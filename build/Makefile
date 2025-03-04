@@ -310,30 +310,6 @@ src/misc.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/misc.cpp.s
 .PHONY : src/misc.cpp.s
 
-src/tree/MultiBranchTree.o: src/tree/MultiBranchTree.cpp.o
-.PHONY : src/tree/MultiBranchTree.o
-
-# target to build an object file
-src/tree/MultiBranchTree.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o
-.PHONY : src/tree/MultiBranchTree.cpp.o
-
-src/tree/MultiBranchTree.i: src/tree/MultiBranchTree.cpp.i
-.PHONY : src/tree/MultiBranchTree.i
-
-# target to preprocess a source file
-src/tree/MultiBranchTree.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.i
-.PHONY : src/tree/MultiBranchTree.cpp.i
-
-src/tree/MultiBranchTree.s: src/tree/MultiBranchTree.cpp.s
-.PHONY : src/tree/MultiBranchTree.s
-
-# target to generate assembly for a file
-src/tree/MultiBranchTree.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.s
-.PHONY : src/tree/MultiBranchTree.cpp.s
-
 src/tree/NCliqueCoreDecomposition.o: src/tree/NCliqueCoreDecomposition.cpp.o
 .PHONY : src/tree/NCliqueCoreDecomposition.o
 
@@ -357,6 +333,30 @@ src/tree/NCliqueCoreDecomposition.s: src/tree/NCliqueCoreDecomposition.cpp.s
 src/tree/NCliqueCoreDecomposition.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/degeneracy_cliques.dir/build.make CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.s
 .PHONY : src/tree/NCliqueCoreDecomposition.cpp.s
+
+src/tree/multiBranchTree.o: src/tree/multiBranchTree.cpp.o
+.PHONY : src/tree/multiBranchTree.o
+
+# target to build an object file
+src/tree/multiBranchTree.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o
+.PHONY : src/tree/multiBranchTree.cpp.o
+
+src/tree/multiBranchTree.i: src/tree/multiBranchTree.cpp.i
+.PHONY : src/tree/multiBranchTree.i
+
+# target to preprocess a source file
+src/tree/multiBranchTree.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.i
+.PHONY : src/tree/multiBranchTree.cpp.i
+
+src/tree/multiBranchTree.s: src/tree/multiBranchTree.cpp.s
+.PHONY : src/tree/multiBranchTree.s
+
+# target to generate assembly for a file
+src/tree/multiBranchTree.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.s
+.PHONY : src/tree/multiBranchTree.cpp.s
 
 # Help Target
 help:
@@ -389,12 +389,12 @@ help:
 	@echo "... src/misc.o"
 	@echo "... src/misc.i"
 	@echo "... src/misc.s"
-	@echo "... src/tree/MultiBranchTree.o"
-	@echo "... src/tree/MultiBranchTree.i"
-	@echo "... src/tree/MultiBranchTree.s"
 	@echo "... src/tree/NCliqueCoreDecomposition.o"
 	@echo "... src/tree/NCliqueCoreDecomposition.i"
 	@echo "... src/tree/NCliqueCoreDecomposition.s"
+	@echo "... src/tree/multiBranchTree.o"
+	@echo "... src/tree/multiBranchTree.i"
+	@echo "... src/tree/multiBranchTree.s"
 .PHONY : help
 
 

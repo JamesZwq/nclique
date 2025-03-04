@@ -32,7 +32,16 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f5b58768-c828-4856-b4d7-60ff4d2c551c" name="更改" comment="" />
+    <list default="true" id="f5b58768-c828-4856-b4d7-60ff4d2c551c" name="更改" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CmakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CmakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/Makefile.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/Makefile.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/common.dir/compiler_depend.internal" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/common.dir/compiler_depend.internal" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/common.dir/compiler_depend.make" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/common.dir/compiler_depend.make" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/degeneracy_cliques.dir/compiler_depend.make" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/degeneracy_cliques.dir/compiler_depend.make" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o.d" beforeDir="false" afterPath="$PROJECT_DIR$/build/CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o.d" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tree/multiBranchTree.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/tree/MultiBranchTree.cpp" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -233,7 +242,7 @@
       <workItem from="1740965144138" duration="1368000" />
       <workItem from="1740966519692" duration="21311000" />
       <workItem from="1741049152019" duration="11030000" />
-      <workItem from="1741064536535" duration="4607000" />
+      <workItem from="1741064536535" duration="5054000" />
     </task>
     <servers />
   </component>

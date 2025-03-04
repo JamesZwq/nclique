@@ -13,8 +13,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/common.dir/src/graph/graph.cpp.o.d"
   "CMakeFiles/common.dir/src/misc.cpp.o"
   "CMakeFiles/common.dir/src/misc.cpp.o.d"
-  "CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o"
-  "CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o.d"
+  "CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o"
+  "CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o.d"
   "obj/libcommon.a"
   "obj/libcommon.pdb"
 )

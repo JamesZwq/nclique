@@ -20,10 +20,10 @@ set(COMMON_SOURCES
         src/degeneracy_helper.cpp
         src/misc.cpp
         src/graph/graph.cpp
-        src/tree/MultiBranchTree.cpp
+        src/tree/multiBranchTree.cpp
         src/global.h
         src/degeneracy_cliques.cpp
-        src/tree/multiBranchTree.cpp
+        src/tree/MultiBranchTree.cpp
         src/tree/MultiBranchTree.h
 )
 

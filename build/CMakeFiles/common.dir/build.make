@@ -156,19 +156,19 @@ CMakeFiles/common.dir/src/graph/graph.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/common.dir/src/graph/graph.cpp.s"
 	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/zhangwenqian/UNSW/pivoter/src/graph/graph.cpp -o CMakeFiles/common.dir/src/graph/graph.cpp.s
 
-CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o: CMakeFiles/common.dir/flags.make
-CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o: /Users/zhangwenqian/UNSW/pivoter/src/tree/MultiBranchTree.cpp
-CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o: CMakeFiles/common.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o"
-	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o -MF CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o.d -o CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o -c /Users/zhangwenqian/UNSW/pivoter/src/tree/MultiBranchTree.cpp
+CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o: CMakeFiles/common.dir/flags.make
+CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o: /Users/zhangwenqian/UNSW/pivoter/src/tree/multiBranchTree.cpp
+CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o: CMakeFiles/common.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o -MF CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o.d -o CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o -c /Users/zhangwenqian/UNSW/pivoter/src/tree/multiBranchTree.cpp
 
-CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.i"
-	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/zhangwenqian/UNSW/pivoter/src/tree/MultiBranchTree.cpp > CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.i
+CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.i"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/zhangwenqian/UNSW/pivoter/src/tree/multiBranchTree.cpp > CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.i
 
-CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.s"
-	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/zhangwenqian/UNSW/pivoter/src/tree/MultiBranchTree.cpp -o CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.s
+CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.s"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/zhangwenqian/UNSW/pivoter/src/tree/multiBranchTree.cpp -o CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.s
 
 CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o: CMakeFiles/common.dir/flags.make
 CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o: /Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp
@@ -192,7 +192,7 @@ common_OBJECTS = \
 "CMakeFiles/common.dir/src/degeneracy_helper.cpp.o" \
 "CMakeFiles/common.dir/src/misc.cpp.o" \
 "CMakeFiles/common.dir/src/graph/graph.cpp.o" \
-"CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o" \
+"CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o" \
 "CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o"
 
 # External object files for target common
@@ -204,7 +204,7 @@ obj/libcommon.a: CMakeFiles/common.dir/src/degeneracy_algorithm_cliques_V.cpp.o
 obj/libcommon.a: CMakeFiles/common.dir/src/degeneracy_helper.cpp.o
 obj/libcommon.a: CMakeFiles/common.dir/src/misc.cpp.o
 obj/libcommon.a: CMakeFiles/common.dir/src/graph/graph.cpp.o
-obj/libcommon.a: CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o
+obj/libcommon.a: CMakeFiles/common.dir/src/tree/multiBranchTree.cpp.o
 obj/libcommon.a: CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o
 obj/libcommon.a: CMakeFiles/common.dir/build.make
 obj/libcommon.a: CMakeFiles/common.dir/link.txt
