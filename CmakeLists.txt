@@ -1,0 +1,36 @@
+cmake_minimum_required(VERSION 3.10)
+project(pivoter C CXX)
+set(CMAKE_CXX_STANDARD 23)
+# Set compilation flags
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -g")
+
+# Set output directories for executables and libraries
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/obj)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/obj)
+
+# Include the src directory for header files if needed
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
+# Define the common sources (the ones compiled into object files in your Makefile)
+set(COMMON_SOURCES
+        ${CMAKE_SOURCE_DIR}/src/LinkedList.cpp
+        ${CMAKE_SOURCE_DIR}/src/MemoryManager.cpp
+        ${CMAKE_SOURCE_DIR}/src/degeneracy_algorithm_cliques_V.cpp
+        ${CMAKE_SOURCE_DIR}/src/degeneracy_helper.cpp
+        ${CMAKE_SOURCE_DIR}/src/misc.cpp
+        ${CMAKE_SOURCE_DIR}/src/graph/graph.cpp
+        ${CMAKE_SOURCE_DIR}/src/tree/MultiBranchTree.cpp
+        ${CMAKE_SOURCE_DIR}/src/global.h
+        ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
+        src/tree/multiBranchTree.cpp
+        src/tree/MultiBranchTree.h
+)
+
+# Create a static library from the common sources
+add_library(common STATIC ${COMMON_SOURCES})
+
+add_executable(degeneracy_cliques
+        src/tree/NCliqueCoreDecomposition.cpp
+        src/tree/NCliqueCoreDecomposition.h)
+target_link_libraries(degeneracy_cliques common)

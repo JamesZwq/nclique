@@ -29,8 +29,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/> 
 */
 
-#include<stdlib.h>
-
+// #include<cstdlib>
+#ifdef __cplusplus
+#include <cstdlib>
+#else
+#include <stdlib.h>
+#endif
 
 #ifdef MEMORY_DEBUG
 #include<stdio.h>
@@ -100,8 +104,8 @@ static void* CallocWithCheck(size_t x, size_t y)
 
     #else
 
-    #define Malloc(x) malloc(max(x,1))
-    #define Calloc(x,y) calloc(max(x,1),max(y,1))
+    #define Malloc(x) malloc(MY_MAX(x,1))
+    #define Calloc(x,y) calloc(MY_MAX(x,1),MY_MAX(y,1))
     #define Free(x) free(x)
 
     #endif // ALLOW_ALLOC_ZERO_BYTES

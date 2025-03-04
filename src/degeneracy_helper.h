@@ -46,12 +46,13 @@
     \brief For a given ordering, this stores later neighbors and earlier neighbors
            for a given vertex in linked lists.
 */
-
-struct NeighborList
-{
+#ifdef __cplusplus
+extern "C" {
+#endif
+struct NeighborList {
     int vertex; //!< the vertex that owns this neighbor list
-    LinkedList* earlier; //!< a linked list of neighbors that come before this vertex in the ordering
-    LinkedList* later; //!< a linked list of neighbors that come after this vertex in the ordering
+    LinkedList *earlier; //!< a linked list of neighbors that come before this vertex in the ordering
+    LinkedList *later; //!< a linked list of neighbors that come after this vertex in the ordering
     int orderNumber; //!< the position of this verex in the ordering
 };
 
@@ -65,24 +66,27 @@ typedef struct NeighborList NeighborList;
     This version of the NeighborList structure is more cache efficient.
 */
 
-struct NeighborListArray
-{
+struct NeighborListArray {
     int vertex; //!< the vertex that owns this neighbor list
-    int* earlier; //!< an array of neighbors that come before this vertex in an ordering
+    int *earlier; //!< an array of neighbors that come before this vertex in an ordering
     int earlierDegree; //!< the number of neighbors in earlier
-    int* later; //!< an array of neighbors that come after this vertex in an ordering
+    int *later; //!< an array of neighbors that come after this vertex in an ordering
     int laterDegree; //!< an array of neighbors that come after this vertex in an ordering
     int orderNumber; //!< the position of this verex in the ordering
 };
 
 typedef struct NeighborListArray NeighborListArray;
 
-int computeDegeneracy(LinkedList** list, int size);
+int computeDegeneracy(LinkedList **list, int size);
 
-NeighborList** computeDegeneracyOrderList(LinkedList** list, int size);
+NeighborList **computeDegeneracyOrderList(LinkedList **list, int size);
 
-NeighborListArray** computeDegeneracyOrderArray(LinkedList** list, int size);
+NeighborListArray **computeDegeneracyOrderArray(LinkedList **list, int size);
 
-int neighborListComparator(int* nl1, int* nl2);
+int neighborListComparator(int *nl1, int *nl2);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

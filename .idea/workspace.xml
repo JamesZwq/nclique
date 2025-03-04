@@ -20,41 +20,56 @@
   </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
-      <config projectName="pivoter" targetName="all" />
-      <config projectName="pivoter" targetName="bin" />
-      <config projectName="pivoter" targetName="obj" />
+      <config projectName="pivoter" targetName="common" />
+      <config projectName="pivoter" targetName="degeneracy_cliques" />
     </generated>
   </component>
   <component name="CMakeSettings">
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
+      <configuration PROFILE_NAME="Debug-覆盖率" ENABLED="true" CONFIG_NAME="Debug" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fcoverage-mapping -fprofile-instr-generate&quot; -DCMAKE_C_FLAGS=&quot;-fcoverage-mapping -fprofile-instr-generate&quot;" />
+      <configuration PROFILE_NAME="Release" ENABLED="true" CONFIG_NAME="Release" />
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ae04f400-2ab9-470d-a2cb-7e5a2c1f9fc1" name="更改" comment="">
+    <list default="true" id="f5b58768-c828-4856-b4d7-60ff4d2c551c" name="更改" comment="">
+      <change afterPath="$PROJECT_DIR$/src/Global.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/graph/Graph.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/graph/graph.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tree/MultiBranchTree.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tree/NCliqueCoreDecomposition.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tree/NCliqueCoreDecomposition.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tree/multiBranchTree.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/pivoter.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/pivoter.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/compdegen" beforeDir="false" afterPath="$PROJECT_DIR$/bin/compdegen" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/compdegen.dSYM/Contents/Resources/DWARF/compdegen" beforeDir="false" afterPath="$PROJECT_DIR$/bin/compdegen.dSYM/Contents/Resources/DWARF/compdegen" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/degeneracy_cliques" beforeDir="false" afterPath="$PROJECT_DIR$/bin/degeneracy_cliques" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/degeneracy_cliques.dSYM/Contents/Resources/DWARF/degeneracy_cliques" beforeDir="false" afterPath="$PROJECT_DIR$/bin/degeneracy_cliques.dSYM/Contents/Resources/DWARF/degeneracy_cliques" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obj/LinkedList.o" beforeDir="false" afterPath="$PROJECT_DIR$/obj/LinkedList.o" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obj/MemoryManager.o" beforeDir="false" afterPath="$PROJECT_DIR$/obj/MemoryManager.o" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obj/degeneracy_algorithm_cliques_A.o" beforeDir="false" afterPath="$PROJECT_DIR$/obj/degeneracy_algorithm_cliques_A.o" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obj/degeneracy_algorithm_cliques_E.o" beforeDir="false" afterPath="$PROJECT_DIR$/obj/degeneracy_algorithm_cliques_E.o" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/obj/degeneracy_algorithm_cliques_V.o" beforeDir="false" afterPath="$PROJECT_DIR$/obj/degeneracy_algorithm_cliques_V.o" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obj/degeneracy_helper.o" beforeDir="false" afterPath="$PROJECT_DIR$/obj/degeneracy_helper.o" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/obj/misc.o" beforeDir="false" afterPath="$PROJECT_DIR$/obj/misc.o" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/python/generate_nCr.py" beforeDir="false" afterPath="$PROJECT_DIR$/python/generate_nCr.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/python/graph_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/python/graph_tools.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/python/sanitize.py" beforeDir="false" afterPath="$PROJECT_DIR$/python/sanitize.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/LinkedList.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/LinkedList.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/MemoryManager.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/MemoryManager.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_A.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_A.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_E.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_E.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_cliques.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_cliques.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_helper.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_helper.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/misc.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/misc.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/misc.c_bkp" beforeDir="false" afterPath="$PROJECT_DIR$/src/misc.c_bkp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/email-Enron_V.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/email-Enron_V.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/small_garph_V.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/small_garph_V.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/LinkedList.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/LinkedList.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/LinkedList.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/MemoryManager.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/MemoryManager.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/MemoryManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/MemoryManager.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_A.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_A.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_E.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_E.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/degeneracy_cliques.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_cliques.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/degeneracy_helper.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_helper.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/degeneracy_helper.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_helper.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/misc.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/misc.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/misc.c_bkp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/misc.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/misc.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/printnm.c" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,145 +79,178 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
-  <component name="ExternalProjectsData">
-    <projectState path="$PROJECT_DIR$">
-      <ProjectState />
-    </projectState>
-  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Release" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;JamesZwq&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;git@github.com:JamesZwq/nclique.git&quot;,
+    &quot;accountId&quot;: &quot;b4574867-8fc1-4469-a9ce-64b35738b668&quot;
+  }
+}</component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file:///Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/unistd.h" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/src/degeneracy_algorithm_cliques_A.c" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/src/degeneracy_algorithm_cliques_E.c" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/src/degeneracy_algorithm_cliques_E.h" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.c" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/src/degeneracy_cliques.c" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/src/misc.c" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file:///Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/fill.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file:///Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/__algorithm/max.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file:///Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/include/c++/v1/limits" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/Global.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/graph/graph.cpp" root0="FORCE_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="MacroExpansionManager">
-    <option name="directoryName" value="czszjk9e" />
-  </component>
-  <component name="MakefileLocalSettings">
-    <option name="availableProjects">
-      <map>
-        <entry>
-          <key>
-            <ExternalProjectPojo>
-              <option name="name" value="pivoter" />
-              <option name="path" value="$PROJECT_DIR$" />
-            </ExternalProjectPojo>
-          </key>
-          <value>
-            <list>
-              <ExternalProjectPojo>
-                <option name="name" value="pivoter" />
-                <option name="path" value="$PROJECT_DIR$" />
-              </ExternalProjectPojo>
-            </list>
-          </value>
-        </entry>
-      </map>
-    </option>
-    <option name="projectSyncType">
-      <map>
-        <entry key="$PROJECT_DIR$" value="RE_IMPORT" />
-      </map>
-    </option>
+    <option name="directoryName" value="9OHyS364" />
   </component>
   <component name="ProjectApplicationVersion">
     <option name="ide" value="CLion" />
     <option name="majorVersion" value="2024" />
-    <option name="minorVersion" value="2.3" />
+    <option name="minorVersion" value="3.3" />
     <option name="productBranch" value="Classic" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
 }</component>
-  <component name="ProjectId" id="2omlSQniVpFZtvGnW87yrt7MKba" />
+  <component name="ProjectId" id="2tkDvWcyQrsi1tmNjGlj4LcPCjz" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake 应用程序.pivoter.executor": "Run",
-    "Python.generate_nCr.executor": "Run",
+    "CMake 应用程序.degeneracy_cliques.executor": "Run",
+    "CMake 应用程序.small.executor": "Run",
+    "CMake 应用程序.soc-LiveJournal.executor": "Run",
+    "CMake 调试.MyProject.executor": "Debug",
     "RunOnceActivity.RadMigrateCodeStyle": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "RunOnceActivity.west.config.association.type.startup.service": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/zhangwenqian/UNSW/pivoter/src",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
     "org.rust.first.attach.projects": "true",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "structure.view.defaults.are.configured": "true",
-    "vue.rearranger.settings.migration": "true",
-    "原生应用程序.all.executor": "Run"
+    "settings.editor.selected.configurable": "CMakeSettings",
+    "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager" selected="原生应用程序.all">
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/tree" />
+      <recent name="$PROJECT_DIR$/src/graph" />
+      <recent name="$PROJECT_DIR$/src" />
+    </key>
+  </component>
+  <component name="RunManager" selected="CMake 应用程序.soc-LiveJournal">
     <configuration default="true" type="CppFileRunConfiguration" factoryName="CppFileRunConfiguration" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <option name="compilerOptions" value="-std=c++20" />
       <method v="2">
         <option name="com.jetbrains.cidr.cpp.runfile.CppFileBuildBeforeRunTaskProvider$BasicBuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="all" type="CLionNativeAppRunConfigurationType" PROGRAM_PARAMS="-i $PROJECT_DIR$/../KClique/small_garph.edges -t A -d 2 -k 0 " REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="pivoter" TARGET_NAME="all" CONFIG_NAME="all" version="1" RUN_PATH="$PROJECT_DIR$/bin/degeneracy_cliques">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
-        <option name="CLION.COMPOUND.BUILD" enabled="true" />
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
-    <configuration name="bin" type="CLionNativeAppRunConfigurationType" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="pivoter" TARGET_NAME="bin" CONFIG_NAME="bin" version="1">
-      <method v="2">
-        <option name="CLION.COMPOUND.BUILD" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="obj" type="CLionNativeAppRunConfigurationType" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="pivoter" TARGET_NAME="obj" CONFIG_NAME="obj" version="1">
-      <method v="2">
-        <option name="CLION.COMPOUND.BUILD" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="generate_nCr" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="pivoter" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/python" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/python/generate_nCr.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
+    <configuration name="MyProject" type="CMakeListConfigurationType" factoryName="CMakeListConfigurationFactory" temporary="true">
       <method v="2" />
     </configuration>
+    <configuration name="degeneracy_cliques" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS=" -i $PROJECT_DIR$/graphs/email-Enron.edges -t V -d 1 -k 0 " REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="pivoter" TARGET_NAME="degeneracy_cliques" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="pivoter" RUN_TARGET_NAME="degeneracy_cliques">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="small" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS=" -i $PROJECT_DIR$/../KClique/small_garph.edges -t V -d 1 -k 0 " REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="pivoter" TARGET_NAME="degeneracy_cliques" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="pivoter" RUN_TARGET_NAME="degeneracy_cliques">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="soc-LiveJournal" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS=" -i $USER_HOME$/Downloads/soc-LiveJournal.txt -t V -d 1 -k 0 " REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="pivoter" TARGET_NAME="degeneracy_cliques" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="pivoter" RUN_TARGET_NAME="degeneracy_cliques">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <list>
-      <item itemvalue="Python.generate_nCr" />
-      <item itemvalue="原生应用程序.all" />
-      <item itemvalue="原生应用程序.bin" />
-      <item itemvalue="原生应用程序.obj" />
+      <item itemvalue="CMake 应用程序.soc-LiveJournal" />
+      <item itemvalue="CMake 应用程序.degeneracy_cliques" />
+      <item itemvalue="CMake 应用程序.small" />
+      <item itemvalue="CMake 调试.MyProject" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.generate_nCr" />
+        <item itemvalue="CMake 调试.MyProject" />
       </list>
     </recent_temporary>
   </component>
@@ -212,30 +260,18 @@
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="应用程序级" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="默认任务">
-      <changelist id="ae04f400-2ab9-470d-a2cb-7e5a2c1f9fc1" name="更改" comment="" />
-      <created>1731482631011</created>
+      <changelist id="f5b58768-c828-4856-b4d7-60ff4d2c551c" name="更改" comment="" />
+      <created>1740887409687</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1731482631011</updated>
-      <workItem from="1731482632067" duration="4783000" />
-      <workItem from="1731556049821" duration="1000" />
-      <workItem from="1731556088408" duration="6654000" />
-      <workItem from="1731580135633" duration="1288000" />
-      <workItem from="1731581545564" duration="2410000" />
-      <workItem from="1731627051567" duration="11329000" />
-      <workItem from="1731896308230" duration="37275000" />
-      <workItem from="1732266318769" duration="3838000" />
-      <workItem from="1732282294510" duration="599000" />
-      <workItem from="1732405344268" duration="10940000" />
-      <workItem from="1732689818164" duration="368000" />
-      <workItem from="1732692847236" duration="18000" />
-      <workItem from="1733048605868" duration="4207000" />
-      <workItem from="1733181712683" duration="35000" />
-      <workItem from="1733203877831" duration="1691000" />
-      <workItem from="1737011820854" duration="1810000" />
-      <workItem from="1740453069670" duration="2553000" />
-      <workItem from="1740466375116" duration="17537000" />
-      <workItem from="1740781929583" duration="13791000" />
+      <updated>1740887409687</updated>
+      <workItem from="1740887410880" duration="4776000" />
+      <workItem from="1740906157447" duration="6355000" />
+      <workItem from="1740962317603" duration="2750000" />
+      <workItem from="1740965144138" duration="1368000" />
+      <workItem from="1740966519692" duration="21311000" />
+      <workItem from="1741049152019" duration="11030000" />
+      <workItem from="1741064536535" duration="3957000" />
     </task>
     <servers />
   </component>
@@ -246,5 +282,8 @@
     <isAutomaticCheckingOnLaunch value="false" />
     <isAutomaticFoundErrors value="true" />
     <isAutomaticReloadCMake value="true" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="../../../../UNSW/pivoter/cmake-build-debug-" NAME="degeneracy_cliques 覆盖结果" MODIFIED="1740887679731" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="gcov/llvm" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
   </component>
 </project>

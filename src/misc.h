@@ -31,12 +31,13 @@
 
 #include"LinkedList.h"
 #include"degeneracy_helper.h"
-#include"degeneracy_algorithm_cliques_A.h"
 #include"degeneracy_algorithm_cliques_V.h"
-#include"degeneracy_algorithm_cliques_E.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define max(x,y) (x > y? x:y)
-#define min(x,y) (x < y? x:y)
+#define MY_MAX(x,y) (x > y? x:y)
+#define MY_MIN(x,y) (x < y? x:y)
 #define MAX_CSIZE 400
 
 void populate_nCr();
@@ -63,15 +64,15 @@ void runAndPrintStatsCliques(LinkedList** adjListLinked,
 
 int findNbrCSC(int u, int v, int *CSCindex, int *CSCedges);
 
-void moveFromRToXDegeneracyCliques( int vertex, 
-                                    int* vertexSets, int* vertexLookup, 
-                                    int* pBeginX, int* pBeginP, int* pBeginR);
+void moveFromRToXDegeneracyCliques(int vertex,
+                                   int* vertexSets, int* vertexLookup,
+                                   int* pBeginP, int* pBeginR);
 
-void moveToRDegeneracyCliques( int vertex, 
-                               int* vertexSets, int* vertexLookup, 
-                               int** neighborsInP, int* numNeighbors,
-                               int* pBeginX, int *pBeginP, int *pBeginR, 
-                               int* pNewBeginX, int* pNewBeginP, int *pNewBeginR);
+void moveToRDegeneracyCliques(int vertex,
+                              int* vertexSets, int* vertexLookup,
+                              int** neighborsInP, int* numNeighbors,
+                              int *pBeginP, int *pBeginR,
+                              int* pNewBeginP, int *pNewBeginR);
 
 void fillInPandXForRecursiveCallDegeneracyCliques( int vertex, int orderNumber,
                                                    int* vertexSets, int* vertexLookup, 
@@ -80,10 +81,12 @@ void fillInPandXForRecursiveCallDegeneracyCliques( int vertex, int orderNumber,
                                                    int* pBeginX, int *pBeginP, int *pBeginR, 
                                                    int* pNewBeginX, int* pNewBeginP, int *pNewBeginR);
 
-int findBestPivotNonNeighborsDegeneracyCliques( int** pivotNonNeighbors, int* numNonNeighbors,
-                                                int* vertexSets, int* vertexLookup,
-                                                int** neighborsInP, int* numNeighbors,
-                                                int beginX, int beginP, int beginR);
-
+int findBestPivotNonNeighborsDegeneracyCliques(int** pivotNonNeighbors, int* numNonNeighbors,
+                                               int* vertexSets, int* vertexLookup,
+                                               int** neighborsInP, int* numNeighbors,
+                                               int beginP, int beginR);
+#ifdef __cplusplus
+}
+#endif
 #endif
 

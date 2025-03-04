@@ -1,0 +1,4 @@
+/Users/zhangwenqian/UNSW/pivoter/cmake-build-debug-/CMakeFiles/common.dir
+/Users/zhangwenqian/UNSW/pivoter/cmake-build-debug-/CMakeFiles/degeneracy_cliques.dir
+/Users/zhangwenqian/UNSW/pivoter/cmake-build-debug-/CMakeFiles/edit_cache.dir
+/Users/zhangwenqian/UNSW/pivoter/cmake-build-debug-/CMakeFiles/rebuild_cache.dir

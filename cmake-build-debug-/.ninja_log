@@ -1,0 +1,14 @@
+# ninja log v6
+20	405	1740957915245947906	CMakeFiles/common.dir/src/degeneracy_algorithm_cliques_V.cpp.o	be59dd2604d4eead
+5	211	1740890193808266454	CMakeFiles/common.dir/src/degeneracy_algorithm_cliques_V.c.o	61575c3eb26082c8
+472	562	1740957915698065920	bin/degeneracy_cliques	22edf6acf281c43
+5	184	1740957583964238933	CMakeFiles/common.dir/src/misc.c.o	8687e13034016bfe
+19	180	1740957915245692487	CMakeFiles/common.dir/src/LinkedList.c.o	a9cae4b824f1b94d
+5	215	1740890557714238881	CMakeFiles/common.dir/src/degeneracy_algorithm_cliques_A.c.o	7d62127fa3bb59d1
+20	178	1740957915246337409	CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.c.o	d580e347d7082914
+20	179	1740957915246090074	CMakeFiles/common.dir/src/degeneracy_helper.c.o	7c53a390f341637a
+20	449	1740957915246215533	CMakeFiles/common.dir/src/misc.cpp.o	90b91748a96c0ea
+5	215	1740890557714514800	CMakeFiles/common.dir/src/degeneracy_algorithm_cliques_E.c.o	3f9841a144781adf
+449	472	1740957915675876106	obj/libcommon.a	6909bbc1e3ae34d7
+1	50	1740887677913715704	CMakeFiles/common.dir/src/MemoryManager.c.o	9740b9059f3f59f6
+2	52	1741064538599198048	build.ninja	e55c58b9db7c9b46

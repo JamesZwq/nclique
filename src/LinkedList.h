@@ -28,7 +28,9 @@
     You should have received a copy of the GNU General Public License 
     along with this program.  If not, see <http://www.gnu.org/licenses/> 
 */
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 struct Link;
 
 /*! \struct LinkedList
@@ -115,5 +117,7 @@ void printList(LinkedList* linkedList, void (*printFunc)(int));
 int length(LinkedList* linkedList);
 
 int isEmpty(LinkedList* linkedList);
-
+#ifdef __cplusplus
+}
+#endif
 #endif

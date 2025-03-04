@@ -29,10 +29,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/> 
 */
 
-#include<assert.h>
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <tree/MultiBranchTree.h>
 
 #include"misc.h"
 #include"LinkedList.h"
@@ -40,14 +43,19 @@
 #include"degeneracy_helper.h"
 
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void listAllCliquesDegeneracyRecursive_V(double *,
-                                               int* vertexSets, int* vertexLookup,
-                                               int** neighborsInP, int* numNeighbors,
-                                               int beginX, int beginP, int beginR, int keep, int drop, int *keepV, int *dropV, int max_k);
+                                         int *vertexSets, int *vertexLookup,
+                                         int **neighborsInP, int *numNeighbors,
+                                         int beginP, int beginR, int keep, int drop, int *keepV, int *dropV, int max_k, TreeNode *tree);
 
-void listAllCliquesDegeneracy_V(double *, NeighborListArray**,
-                                      int size, int max_k );
+void listAllCliquesDegeneracy_V(double *, NeighborListArray **,
+                                int size, int max_k);
+#ifdef __cplusplus
+}
+#endif
 
 #endif
