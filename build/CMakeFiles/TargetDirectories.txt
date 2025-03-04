@@ -1,4 +1,0 @@
-/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles/common.dir
-/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles/degeneracy_cliques.dir
-/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles/edit_cache.dir
-/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles/rebuild_cache.dir
