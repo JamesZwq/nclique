@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp" "CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o" "gcc" "CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o.d"
+  "/Users/zhangwenqian/UNSW/pivoter/src/tree/NCliqueCoreDecomposition.cpp" "CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o" "gcc" "CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

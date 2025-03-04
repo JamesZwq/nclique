@@ -33,43 +33,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f5b58768-c828-4856-b4d7-60ff4d2c551c" name="更改" comment="">
-      <change afterPath="$PROJECT_DIR$/src/Global.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/graph/Graph.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/graph/graph.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tree/MultiBranchTree.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tree/NCliqueCoreDecomposition.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tree/NCliqueCoreDecomposition.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tree/multiBranchTree.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/pivoter.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/pivoter.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/compdegen" beforeDir="false" afterPath="$PROJECT_DIR$/bin/compdegen" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/compdegen.dSYM/Contents/Resources/DWARF/compdegen" beforeDir="false" afterPath="$PROJECT_DIR$/bin/compdegen.dSYM/Contents/Resources/DWARF/compdegen" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/degeneracy_cliques" beforeDir="false" afterPath="$PROJECT_DIR$/bin/degeneracy_cliques" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/degeneracy_cliques.dSYM/Contents/Resources/DWARF/degeneracy_cliques" beforeDir="false" afterPath="$PROJECT_DIR$/bin/degeneracy_cliques.dSYM/Contents/Resources/DWARF/degeneracy_cliques" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obj/degeneracy_algorithm_cliques_V.o" beforeDir="false" afterPath="$PROJECT_DIR$/obj/degeneracy_algorithm_cliques_V.o" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obj/misc.o" beforeDir="false" afterPath="$PROJECT_DIR$/obj/misc.o" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/email-Enron_V.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/email-Enron_V.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/small_garph_V.txt" beforeDir="false" afterPath="$PROJECT_DIR$/results/small_garph_V.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/LinkedList.c" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/LinkedList.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/LinkedList.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/MemoryManager.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/MemoryManager.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/MemoryManager.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/MemoryManager.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_A.c" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_A.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_E.c" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_E.h" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_algorithm_cliques_V.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_cliques.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_cliques.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_helper.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_helper.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/degeneracy_helper.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/degeneracy_helper.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/misc.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/misc.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/misc.c_bkp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/misc.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/misc.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/printnm.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CmakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CmakeLists.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -271,7 +236,7 @@
       <workItem from="1740965144138" duration="1368000" />
       <workItem from="1740966519692" duration="21311000" />
       <workItem from="1741049152019" duration="11030000" />
-      <workItem from="1741064536535" duration="3957000" />
+      <workItem from="1741064536535" duration="4469000" />
     </task>
     <servers />
   </component>

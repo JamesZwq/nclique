@@ -72,28 +72,28 @@ include CMakeFiles/degeneracy_cliques.dir/flags.make
 CMakeFiles/degeneracy_cliques.dir/codegen:
 .PHONY : CMakeFiles/degeneracy_cliques.dir/codegen
 
-CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o: CMakeFiles/degeneracy_cliques.dir/flags.make
-CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o: /Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp
-CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o: CMakeFiles/degeneracy_cliques.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o"
-	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o -MF CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o.d -o CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o -c /Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp
+CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o: CMakeFiles/degeneracy_cliques.dir/flags.make
+CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o: /Users/zhangwenqian/UNSW/pivoter/src/tree/NCliqueCoreDecomposition.cpp
+CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o: CMakeFiles/degeneracy_cliques.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o -MF CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o.d -o CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o -c /Users/zhangwenqian/UNSW/pivoter/src/tree/NCliqueCoreDecomposition.cpp
 
-CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.i"
-	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp > CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.i
+CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.i"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/zhangwenqian/UNSW/pivoter/src/tree/NCliqueCoreDecomposition.cpp > CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.i
 
-CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.s"
-	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp -o CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.s
+CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.s"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/zhangwenqian/UNSW/pivoter/src/tree/NCliqueCoreDecomposition.cpp -o CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.s
 
 # Object files for target degeneracy_cliques
 degeneracy_cliques_OBJECTS = \
-"CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o"
+"CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o"
 
 # External object files for target degeneracy_cliques
 degeneracy_cliques_EXTERNAL_OBJECTS =
 
-bin/degeneracy_cliques: CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o
+bin/degeneracy_cliques: CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o
 bin/degeneracy_cliques: CMakeFiles/degeneracy_cliques.dir/build.make
 bin/degeneracy_cliques: obj/libcommon.a
 bin/degeneracy_cliques: CMakeFiles/degeneracy_cliques.dir/link.txt

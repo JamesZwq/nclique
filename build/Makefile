@@ -219,7 +219,7 @@ src/degeneracy_cliques.o: src/degeneracy_cliques.cpp.o
 
 # target to build an object file
 src/degeneracy_cliques.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/degeneracy_cliques.dir/build.make CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o
 .PHONY : src/degeneracy_cliques.cpp.o
 
 src/degeneracy_cliques.i: src/degeneracy_cliques.cpp.i
@@ -227,7 +227,7 @@ src/degeneracy_cliques.i: src/degeneracy_cliques.cpp.i
 
 # target to preprocess a source file
 src/degeneracy_cliques.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/degeneracy_cliques.dir/build.make CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/degeneracy_cliques.cpp.i
 .PHONY : src/degeneracy_cliques.cpp.i
 
 src/degeneracy_cliques.s: src/degeneracy_cliques.cpp.s
@@ -235,7 +235,7 @@ src/degeneracy_cliques.s: src/degeneracy_cliques.cpp.s
 
 # target to generate assembly for a file
 src/degeneracy_cliques.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/degeneracy_cliques.dir/build.make CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/degeneracy_cliques.cpp.s
 .PHONY : src/degeneracy_cliques.cpp.s
 
 src/degeneracy_helper.o: src/degeneracy_helper.cpp.o
@@ -334,6 +334,30 @@ src/tree/MultiBranchTree.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/common.dir/build.make CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.s
 .PHONY : src/tree/MultiBranchTree.cpp.s
 
+src/tree/NCliqueCoreDecomposition.o: src/tree/NCliqueCoreDecomposition.cpp.o
+.PHONY : src/tree/NCliqueCoreDecomposition.o
+
+# target to build an object file
+src/tree/NCliqueCoreDecomposition.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/degeneracy_cliques.dir/build.make CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o
+.PHONY : src/tree/NCliqueCoreDecomposition.cpp.o
+
+src/tree/NCliqueCoreDecomposition.i: src/tree/NCliqueCoreDecomposition.cpp.i
+.PHONY : src/tree/NCliqueCoreDecomposition.i
+
+# target to preprocess a source file
+src/tree/NCliqueCoreDecomposition.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/degeneracy_cliques.dir/build.make CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.i
+.PHONY : src/tree/NCliqueCoreDecomposition.cpp.i
+
+src/tree/NCliqueCoreDecomposition.s: src/tree/NCliqueCoreDecomposition.cpp.s
+.PHONY : src/tree/NCliqueCoreDecomposition.s
+
+# target to generate assembly for a file
+src/tree/NCliqueCoreDecomposition.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/degeneracy_cliques.dir/build.make CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.s
+.PHONY : src/tree/NCliqueCoreDecomposition.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -368,6 +392,9 @@ help:
 	@echo "... src/tree/MultiBranchTree.o"
 	@echo "... src/tree/MultiBranchTree.i"
 	@echo "... src/tree/MultiBranchTree.s"
+	@echo "... src/tree/NCliqueCoreDecomposition.o"
+	@echo "... src/tree/NCliqueCoreDecomposition.i"
+	@echo "... src/tree/NCliqueCoreDecomposition.s"
 .PHONY : help
 
 

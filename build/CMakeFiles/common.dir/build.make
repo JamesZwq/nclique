@@ -170,6 +170,20 @@ CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.s"
 	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/zhangwenqian/UNSW/pivoter/src/tree/MultiBranchTree.cpp -o CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.s
 
+CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o: CMakeFiles/common.dir/flags.make
+CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o: /Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp
+CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o: CMakeFiles/common.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o -MF CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o.d -o CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o -c /Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp
+
+CMakeFiles/common.dir/src/degeneracy_cliques.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/common.dir/src/degeneracy_cliques.cpp.i"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp > CMakeFiles/common.dir/src/degeneracy_cliques.cpp.i
+
+CMakeFiles/common.dir/src/degeneracy_cliques.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/common.dir/src/degeneracy_cliques.cpp.s"
+	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp -o CMakeFiles/common.dir/src/degeneracy_cliques.cpp.s
+
 # Object files for target common
 common_OBJECTS = \
 "CMakeFiles/common.dir/src/LinkedList.cpp.o" \
@@ -178,7 +192,8 @@ common_OBJECTS = \
 "CMakeFiles/common.dir/src/degeneracy_helper.cpp.o" \
 "CMakeFiles/common.dir/src/misc.cpp.o" \
 "CMakeFiles/common.dir/src/graph/graph.cpp.o" \
-"CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o"
+"CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o" \
+"CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o"
 
 # External object files for target common
 common_EXTERNAL_OBJECTS =
@@ -190,9 +205,10 @@ obj/libcommon.a: CMakeFiles/common.dir/src/degeneracy_helper.cpp.o
 obj/libcommon.a: CMakeFiles/common.dir/src/misc.cpp.o
 obj/libcommon.a: CMakeFiles/common.dir/src/graph/graph.cpp.o
 obj/libcommon.a: CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o
+obj/libcommon.a: CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o
 obj/libcommon.a: CMakeFiles/common.dir/build.make
 obj/libcommon.a: CMakeFiles/common.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX static library obj/libcommon.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/zhangwenqian/UNSW/pivoter/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking CXX static library obj/libcommon.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/common.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/common.dir/link.txt --verbose=$(VERBOSE)
 

@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o"
-  "CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o.d"
+  "CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o"
+  "CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o.d"
   "bin/degeneracy_cliques"
   "bin/degeneracy_cliques.pdb"
 )

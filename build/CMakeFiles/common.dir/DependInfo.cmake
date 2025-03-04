@@ -11,6 +11,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/zhangwenqian/UNSW/pivoter/src/LinkedList.cpp" "CMakeFiles/common.dir/src/LinkedList.cpp.o" "gcc" "CMakeFiles/common.dir/src/LinkedList.cpp.o.d"
   "/Users/zhangwenqian/UNSW/pivoter/src/MemoryManager.cpp" "CMakeFiles/common.dir/src/MemoryManager.cpp.o" "gcc" "CMakeFiles/common.dir/src/MemoryManager.cpp.o.d"
   "/Users/zhangwenqian/UNSW/pivoter/src/degeneracy_algorithm_cliques_V.cpp" "CMakeFiles/common.dir/src/degeneracy_algorithm_cliques_V.cpp.o" "gcc" "CMakeFiles/common.dir/src/degeneracy_algorithm_cliques_V.cpp.o.d"
+  "/Users/zhangwenqian/UNSW/pivoter/src/degeneracy_cliques.cpp" "CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o" "gcc" "CMakeFiles/common.dir/src/degeneracy_cliques.cpp.o.d"
   "/Users/zhangwenqian/UNSW/pivoter/src/degeneracy_helper.cpp" "CMakeFiles/common.dir/src/degeneracy_helper.cpp.o" "gcc" "CMakeFiles/common.dir/src/degeneracy_helper.cpp.o.d"
   "/Users/zhangwenqian/UNSW/pivoter/src/graph/graph.cpp" "CMakeFiles/common.dir/src/graph/graph.cpp.o" "gcc" "CMakeFiles/common.dir/src/graph/graph.cpp.o.d"
   "/Users/zhangwenqian/UNSW/pivoter/src/misc.cpp" "CMakeFiles/common.dir/src/misc.cpp.o" "gcc" "CMakeFiles/common.dir/src/misc.cpp.o.d"
