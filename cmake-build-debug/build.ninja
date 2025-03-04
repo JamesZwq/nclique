@@ -131,12 +131,12 @@ build obj/libcommon.a: CXX_STATIC_LIBRARY_LINKER__common_Debug CMakeFiles/common
 
 build cmake_object_order_depends_target_degeneracy_cliques: phony || cmake_object_order_depends_target_common
 
-build CMakeFiles/degeneracy_cliques.dir/src/graph/NCliqueCoreDecomposition.cpp.o: CXX_COMPILER__degeneracy_cliques_unscanned_Debug /Users/zhangwenqian/UNSW/pivoter/src/graph/NCliqueCoreDecomposition.cpp || cmake_object_order_depends_target_degeneracy_cliques
-  DEP_FILE = CMakeFiles/degeneracy_cliques.dir/src/graph/NCliqueCoreDecomposition.cpp.o.d
+build CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o: CXX_COMPILER__degeneracy_cliques_unscanned_Debug /Users/zhangwenqian/UNSW/pivoter/src/tree/NCliqueCoreDecomposition.cpp || cmake_object_order_depends_target_degeneracy_cliques
+  DEP_FILE = CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o.d
   FLAGS = -g -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk -fcolor-diagnostics
   INCLUDES = -I/Users/zhangwenqian/UNSW/pivoter/src
   OBJECT_DIR = CMakeFiles/degeneracy_cliques.dir
-  OBJECT_FILE_DIR = CMakeFiles/degeneracy_cliques.dir/src/graph
+  OBJECT_FILE_DIR = CMakeFiles/degeneracy_cliques.dir/src/tree
 
 
 # =============================================================================
@@ -146,7 +146,7 @@ build CMakeFiles/degeneracy_cliques.dir/src/graph/NCliqueCoreDecomposition.cpp.o
 #############################################
 # Link the executable bin/degeneracy_cliques
 
-build bin/degeneracy_cliques: CXX_EXECUTABLE_LINKER__degeneracy_cliques_Debug CMakeFiles/degeneracy_cliques.dir/src/graph/NCliqueCoreDecomposition.cpp.o | obj/libcommon.a || obj/libcommon.a
+build bin/degeneracy_cliques: CXX_EXECUTABLE_LINKER__degeneracy_cliques_Debug CMakeFiles/degeneracy_cliques.dir/src/tree/NCliqueCoreDecomposition.cpp.o | obj/libcommon.a || obj/libcommon.a
   FLAGS = -g -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk
   LINK_FLAGS = -L/opt/homebrew/opt/libomp/lib
   LINK_LIBRARIES = obj/libcommon.a

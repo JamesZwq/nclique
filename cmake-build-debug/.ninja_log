@@ -1,6 +1,6 @@
 # ninja log v6
 15	692	1741062689064340188	CMakeFiles/degeneracy_cliques.dir/src/degeneracy_cliques.cpp.o	6422aa0bf7386f17
-2	59	1741064538598072787	build.ninja	7ba4d47f1a30aac6
+2	59	1741070074032376187	build.ninja	7ba4d47f1a30aac6
 13	803	1741055584622597607	CMakeFiles/common.dir/src/graph/graph.cpp.o	2b95d04d65d6293
 1	714	1740966963009944773	CMakeFiles/common.dir/src/graph.cpp.o	7da957f6255ea3fb
 8	616	1741062914010222984	CMakeFiles/common.dir/src/tree/MultiBranchTree.cpp.o	ba317cd23140e82e

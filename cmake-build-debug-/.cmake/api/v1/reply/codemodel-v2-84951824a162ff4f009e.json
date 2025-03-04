@@ -41,14 +41,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "common::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-common-Debug-9ac68a0af76a16e127b8.json",
+					"jsonFile" : "target-common-Debug-04b23a6fbf9f3c5a71c9.json",
 					"name" : "common",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "degeneracy_cliques::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-degeneracy_cliques-Debug-743706f84623d4732564.json",
+					"jsonFile" : "target-degeneracy_cliques-Debug-f61176183017cae6ee4f.json",
 					"name" : "degeneracy_cliques",
 					"projectIndex" : 0
 				}
@@ -58,7 +58,7 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/Users/zhangwenqian/UNSW/pivoter/cmake-build-debug",
+		"build" : "/Users/zhangwenqian/UNSW/pivoter/cmake-build-debug-",
 		"source" : "/Users/zhangwenqian/UNSW/pivoter"
 	},
 	"version" : 
