@@ -1,0 +1,40 @@
+# CLion project-specific files
+.idea/
+*.iml
+
+# CMake build directories
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# macOS system files
+.DS_Store
+
+# Editor backups and swap files
+*.swp
+*.swo
+
+# Binary and executable files
+*.out
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.dll
+
+# Logs and temporary files
+*.log
+*.tmp
+*.pid
+
+# Git files
+*.orig
+*.rej
+
+# Python virtual environment (if used)
+venv/
+__pycache__/

@@ -23,7 +23,6 @@ set(COMMON_SOURCES
         src/tree/MultiBranchTree.cpp
         src/Global.h
         src/degeneracy_cliques.cpp
-        src/tree/MultiBranchTree.cpp
         src/tree/MultiBranchTree.h
 )
 

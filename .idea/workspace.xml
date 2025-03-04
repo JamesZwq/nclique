@@ -33,8 +33,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f5b58768-c828-4856-b4d7-60ff4d2c551c" name="更改" comment="">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CmakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CmakeLists.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -155,7 +156,7 @@
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/zhangwenqian/UNSW/pivoter/src",
+    "last_opened_file_path": "/Users/zhangwenqian/UNSW/pivoter",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -169,6 +170,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/src" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
@@ -236,7 +238,7 @@
       <workItem from="1740965144138" duration="1368000" />
       <workItem from="1740966519692" duration="21311000" />
       <workItem from="1741049152019" duration="11030000" />
-      <workItem from="1741064536535" duration="5325000" />
+      <workItem from="1741064536535" duration="5446000" />
     </task>
     <servers />
   </component>
