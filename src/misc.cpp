@@ -47,7 +47,7 @@ double nCr[1001][401];
 
 void populate_nCr() {
     FILE *infile;
-    infile = fopen("/Users/zhangwenqian/UNSW/pivoter/src/nCr.txt", "r");
+    infile = fopen("src/nCr.txt", "r");
     double d = 0;
     if (infile == NULL) {
         printf("file could not be openeddd\n");
