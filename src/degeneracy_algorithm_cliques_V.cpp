@@ -40,6 +40,7 @@
 #include"MemoryManager.h"
 #include"misc.h"
 #include"tree/MultiBranchTree.h"
+#include <cstring>
 // #include"nCr.h"
 
 extern double nCr[1001][401];
