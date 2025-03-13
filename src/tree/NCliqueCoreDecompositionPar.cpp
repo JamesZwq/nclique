@@ -227,7 +227,7 @@ void baseNucleusCoreDecompositionPar(const MultiBranchTree &tree, daf::CliqueSiz
                 std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
         time_start = std::chrono::high_resolution_clock::now();
         auto sup = basePar::computeSup(tree, k, core);
-        std::cout << sup << std::endl;
+        // std::cout << sup << std::endl;
         for (daf::Size v = 0; v < tree.getRoot()->children.size(); v++) {
             auto &supV = sup[v];
             daf::Size prveCount = 0;
@@ -246,11 +246,11 @@ void baseNucleusCoreDecompositionPar(const MultiBranchTree &tree, daf::CliqueSiz
         }
     }
 
-    auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/b", "w");
-    std::sort(core, core + tree.getRoot()->children.size());
-    for (daf::Size i = 0; i < tree.getRoot()->children.size(); i++) {
-        fprintf(file, "%d\n", core[i]);
-    }
-    fclose(file);
+    // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/b", "w");
+    // std::sort(core, core + tree.getRoot()->children.size());
+    // for (daf::Size i = 0; i < tree.getRoot()->children.size(); i++) {
+    //     fprintf(file, "%d\n", core[i]);
+    // }
+    // fclose(file);
     delete[] core;
 }
