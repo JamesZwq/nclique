@@ -4,9 +4,11 @@ project(pivoter CXX)
 if(APPLE)
     set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
     set(TBB_ROOT "/Users/zhangwenqian/myBin/tbb")
+    set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.dylib")
 else()
     set(CMAKE_CXX_COMPILER "/usr/bin/g++")
     set(TBB_ROOT "~/bin/tbb")
+    set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.so")
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
@@ -32,4 +34,4 @@ file(GLOB_RECURSE SOURCES src/*.cpp src/*/*.cpp src/*/*.h)
 add_executable(degeneracy_cliques ${SOURCES})
 
 # 指定 TBB 库的路径（根据平台，macOS 一般是 .dylib）
-target_link_libraries(degeneracy_cliques PRIVATE "${TBB_ROOT}/lib/libtbb.dylib" ${Boost_LIBRARIES})
+target_link_libraries(degeneracy_cliques PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
