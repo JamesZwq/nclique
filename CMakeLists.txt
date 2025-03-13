@@ -3,14 +3,15 @@ project(pivoter CXX)
 
 if(APPLE)
     set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
+    set(TBB_ROOT "/Users/zhangwenqian/myBin/tbb")
 else()
     set(CMAKE_CXX_COMPILER "/usr/bin/g++")
+    set(TBB_ROOT "~/bin/tbb")
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(TBB_ROOT "/Users/zhangwenqian/myBin/tbb")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
