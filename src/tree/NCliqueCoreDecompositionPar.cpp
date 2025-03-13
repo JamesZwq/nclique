@@ -5,7 +5,6 @@
 #include "../tree/NCliqueCoreDecomposition.h"
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
-#include <__algorithm/ranges_sort.h>
 #include <tbb/global_control.h>
 #include <mutex>
 

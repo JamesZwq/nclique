@@ -6,6 +6,8 @@
 #define NCLIQUECOREDECOMPOSITION_H
 #include "MultiBranchTree.h"
 #include <tbb/spin_mutex.h>
+
+#include <ranges>
 #include <map>
 
 struct ThreadSafeMap {

@@ -4,8 +4,6 @@
 
 #include "../tree/NCliqueCoreDecomposition.h"
 
-#include <__algorithm/ranges_sort.h>
-
 #include "dataStruct/StaticVector.h"
 
 
