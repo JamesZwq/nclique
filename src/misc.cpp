@@ -46,7 +46,7 @@
 double nCr[1001][401];
 
 void populate_nCr() {
-    std::ifstream infile("/Users/zhangwenqian/UNSW/pivoter/src/nCr.txt");
+    std::ifstream infile("src/nCr.txt");
     if (!infile.is_open()) {
         std::cerr << "file could not be opened" << std::endl;
         exit(1);
