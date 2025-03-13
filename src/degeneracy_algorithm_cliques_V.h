@@ -47,12 +47,12 @@
 extern "C" {
 #endif
 
-void listAllCliquesDegeneracyRecursive_V(double *,
+void listAllCliquesDegeneracyRecursive_V(daf::Size *,
                                          int *vertexSets, int *vertexLookup,
                                          int **neighborsInP, int *numNeighbors,
                                          int beginP, int beginR, int keep, int drop, int *keepV, int *dropV, int max_k, TreeNode *tree);
 
-void listAllCliquesDegeneracy_V(double *, NeighborListArray **,
+void listAllCliquesDegeneracy_V(daf::Size *, NeighborListArray **,
                                 int size, int max_k);
 #ifdef __cplusplus
 }

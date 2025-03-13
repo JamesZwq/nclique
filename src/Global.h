@@ -18,8 +18,19 @@
 #include <cmath>
 #include <ranges>
 #include <chrono>
+#include <map>
 
 #define MAX_CSIZE 400
+
+template<typename T>
+std::ostream &operator<<(std::ostream &os, const std::pair<T, T> &pair);
+
+template<typename T>
+std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec);
+
+template<typename Key, typename Value, typename Compare>
+std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &m);
+
 
 template<typename T>
 std::ostream &operator<<(std::ostream &os, const std::pair<T, T> &pair) {
@@ -28,8 +39,8 @@ std::ostream &operator<<(std::ostream &os, const std::pair<T, T> &pair) {
 }
 
 
-template<typename Size>
-std::ostream &operator<<(std::ostream &os, const std::vector<Size> &vec) {
+template<typename T>
+std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
     os << "[";
     for (size_t i = 0; i < vec.size(); ++i) {
         os << vec[i];
@@ -41,6 +52,20 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Size> &vec) {
     return os;
 }
 
+template<typename Key, typename Value, typename Compare>
+std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &m) {
+    os << "{";
+    bool first = true;
+    for (const auto &pair : m) {
+        if (!first) {
+            os << ", ";
+        }
+        os << pair.first << ": " << pair.second;
+        first = false;
+    }
+    os << "}";
+    return os;
+}
 
 namespace daf {
     using Size = uint32_t;
@@ -48,6 +73,7 @@ namespace daf {
     static constexpr Size UNDEFINED = std::numeric_limits<Size>::max();
 
     void coverGraphToAdjFileDisk(const std::string &intput);
+
     void coverGraphToAdjFileMemory(const std::string &intput);
 
     constexpr Size INVALID_SIZE = std::numeric_limits<Size>::max();
@@ -70,11 +96,13 @@ namespace daf {
             int gcd = std::gcd(numerator, denominator);
             numerator /= gcd;
             denominator /= gcd;
-            if (denominator < 0) { // 确保分母为正
+            if (denominator < 0) {
+                // 确保分母为正
                 numerator = -numerator;
                 denominator = -denominator;
             }
         }
+
     public:
         Size numerator; // 分子
         Size denominator; // 分母
@@ -88,7 +116,7 @@ namespace daf {
 
 
         [[nodiscard]] Size get_min_Numer(const Size newDeno) const {
-            return static_cast<Size>(std::ceil(static_cast<double>(numerator) / denominator * newDeno  - 1e-9));
+            return static_cast<Size>(std::ceil(static_cast<double>(numerator) / denominator * newDeno - 1e-9));
         }
 
         // 获取分子和分母
@@ -180,6 +208,7 @@ namespace daf {
         if (denominator == 0) return 0;
         return (numerator * accuarcy) / denominator;
     }
+
 }
 
 

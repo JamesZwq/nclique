@@ -46,24 +46,32 @@
 double nCr[1001][401];
 
 void populate_nCr() {
-    FILE *infile;
-    infile = fopen("src/nCr.txt", "r");
-    double d = 0;
-    if (infile == NULL) {
-        printf("file could not be openeddd\n");
+    std::ifstream infile("/Users/zhangwenqian/UNSW/pivoter/src/nCr.txt");
+    if (!infile.is_open()) {
+        std::cerr << "file could not be opened" << std::endl;
         exit(1);
     }
 
-
+    std::string line;
     for (int row = 0; row < 1001; ++row) {
+        // 使用 std::getline 动态读取整行，不依赖固定缓冲区大小
+        if (!std::getline(infile, line)) {
+            std::cerr << "Error reading line " << row << std::endl;
+            break;
+        }
+
+        std::istringstream iss(line);
+        std::string token;
         for (int col = 0; col < 401; ++col) {
-            if (!fscanf(infile, "%lf,", &d))
-                fprintf(stderr, "Error\n");
-            // fprintf(stderr, "%lf\n", d);
-            nCr[row][col] = d;
+            if (!std::getline(iss, token, ',')) {
+                std::cerr << "Error: not enough tokens in row " << row << std::endl;
+                break;
+            }
+            // 使用 std::stoull 将 token 转换为 unsigned long long 类型
+            nCr[row][col] = std::stod(token);
         }
     }
-    fclose(infile);
+    infile.close();
 }
 
 /*! \brief compare integers return -1,0,1 for <,=,>
@@ -388,7 +396,7 @@ void runAndPrintStatsCliques(LinkedList **adjListLinked,
 
     if (max_k == 0) max_k = deg + 1;
     if (T == 'V') {
-        double *cliqueCounts = (double *) Calloc(n*((max_k)+1), sizeof(double));
+        daf::Size *cliqueCounts = (daf::Size *) Calloc(n*((max_k)+1), sizeof(daf::Size));
         auto timeStaart = std::chrono::high_resolution_clock::now();
         listAllCliquesDegeneracy_V(cliqueCounts, orderingArray, n, max_k);
         std::cout << "Time taken to list all cliques: " << std::chrono::duration_cast<std::chrono::milliseconds>(

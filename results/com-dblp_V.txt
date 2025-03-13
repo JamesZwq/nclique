@@ -1,0 +1,6 @@
+time,max_k,degen
+1.435329,0,113
+
+(v,k): Ck
+
+0.000000 total cliques

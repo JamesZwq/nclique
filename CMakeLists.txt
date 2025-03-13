@@ -1,19 +1,34 @@
 cmake_minimum_required(VERSION 3.10)
 project(pivoter CXX)
 
-# 使用 C++23 标准
+if(APPLE)
+    set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
+else()
+    set(CMAKE_CXX_COMPILER "/usr/bin/g++")
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 让 CMake 自动创建 `bin` 目录（防止链接错误）
+set(TBB_ROOT "/Users/zhangwenqian/myBin/tbb")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
-# 头文件搜索路径
+# add Boost
+find_package(Boost REQUIRED COMPONENTS serialization)
+include_directories(${Boost_INCLUDE_DIRS})
+#print boost include directories
+message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
+
+# 添加 TBB 的头文件搜索路径
+include_directories("${TBB_ROOT}/include")
 include_directories(src)
 
-# 获取所有的 .cpp 文件（不需要手动列举）
-file(GLOB_RECURSE SOURCES src/*.cpp)
+file(GLOB_RECURSE SOURCES src/*.cpp src/*/*.cpp src/*/*.h)
 
-# 生成可执行文件（包含所有 .cpp 文件）
 add_executable(degeneracy_cliques ${SOURCES})
+
+# 指定 TBB 库的路径（根据平台，macOS 一般是 .dylib）
+target_link_libraries(degeneracy_cliques PRIVATE "${TBB_ROOT}/lib/libtbb.dylib" ${Boost_LIBRARIES})

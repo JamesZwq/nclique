@@ -41,6 +41,7 @@
 #include"misc.h"
 #include"tree/MultiBranchTree.h"
 #include <cstring>
+#include <tree/NCliqueCoreDecomposition.h>
 // #include"nCr.h"
 
 extern double nCr[1001][401];
@@ -96,7 +97,7 @@ extern double nCr[1001][401];
     \return the number of maximal cliques of the input graph.
 */
 
-void listAllCliquesDegeneracy_V(double *cliqueCounts, NeighborListArray **orderingArray,
+void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **orderingArray,
                                 int size, int max_k) {
     // vertex sets are stored in an array like this:
     // |--X--|--P--|
@@ -168,11 +169,16 @@ void listAllCliquesDegeneracy_V(double *cliqueCounts, NeighborListArray **orderi
         beginR = beginR + 1;
     }
 
+    tree.initMaxDeep();
     // tree.printTree();
+    // baseNucleusCoreDecompositionPar(tree, 4);
     auto timeStaart = std::chrono::high_resolution_clock::now();
-    tree.cliqueCount();
-    std::cout << "Time taken to tree list all cliques: " << std::chrono::duration_cast<std::chrono::milliseconds>(
+    // tree.cliqueCount();
+    baseNucleusCoreDecompositionPar(tree, 4);
+    std::cout << "Time CD: " << std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - timeStaart).count() << " ms" << std::endl;
+
+    // baseNucleusCoreDecomposition(tree, 4);
     // Free(vertexSets);
     // Free(vertexLookup);
 
@@ -221,44 +227,13 @@ void listAllCliquesDegeneracy_V(double *cliqueCounts, NeighborListArray **orderi
 
 */
 
-void listAllCliquesDegeneracyRecursive_V(double *cliqueCounts,
+void listAllCliquesDegeneracyRecursive_V(daf::Size *cliqueCounts,
                                          int *vertexSets, int *vertexLookup,
                                          int **neighborsInP, int *numNeighbors,
                                          int beginP, int beginR, int keep, int drop, int *keepV, int *dropV,
                                          int max_k, TreeNode *root) {
     // std::cout << "max_k: " << max_k << std::endl;
     if ((beginP >= beginR) || (keep > max_k)) {
-        // printf("Clique found: ");
-        // // 打印通过非pivot加入的顶点（keepV中存储的顶点）
-        // printf("keep: ");
-        // for (int j = 0; j < keep; j++) {
-        //     printf("%d ", keepV[j]);
-        // }
-        // // 打印通过pivot分支放入dropV的顶点
-        // printf("drop: ");
-        // for (int j = 0; j < drop; j++) {
-        //     printf("%d ", dropV[j]);
-        // }
-        // printf("\n");
-
-        double kkeepCliques = 0; // number of kcliques a vertex from "keep" is involved in
-        for (int i = drop; (i >= 0) && (keep + drop - i <= max_k); i--) {
-            int k = keep + drop - i;
-            kkeepCliques = nCr[drop][i];
-            for (int j = 0; j < keep; j++) {
-                int v = keepV[j];
-                cliqueCounts[v * (max_k + 1) + k] += kkeepCliques;
-            }
-        }
-        double kdropCliques = 0;
-        for (int i = drop - 1; (i >= 0) && (keep + drop - i <= max_k); i--) {
-            int k = keep + drop - i;
-            kdropCliques = nCr[drop - 1][i];
-            for (int j = 0; j < drop; j++) {
-                int v = dropV[j];
-                cliqueCounts[v * (max_k + 1) + k] += kdropCliques;
-            }
-        }
         return;
     }
 
@@ -274,7 +249,7 @@ void listAllCliquesDegeneracyRecursive_V(double *cliqueCounts,
 
 
     // add candiate vertices to the partial clique one at a time and
-    // search for maximal cliques
+    // search for maximal cliquesRazer Viper V3 Pro
     if (numCandidatesToIterateThrough != 0) {
         int iterator = 0;
         while (iterator < numCandidatesToIterateThrough) {
