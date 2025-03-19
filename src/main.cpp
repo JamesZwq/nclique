@@ -9,6 +9,7 @@
 #include<limits.h>
 #include<unistd.h>
 #include<libgen.h>
+#include <tree/NCliqueCoreDecomposition.h>
 
 #include"misc.h"
 #include"LinkedList.h"
@@ -34,4 +35,5 @@ int main(int argc, char **argv) {
     auto tree = MultiBranchTree::deserialize(fpath);
     // tree->printTree();
     tree->cliqueCount();
+    baseNucleusCoreDecompositionPar(*tree,3);
 }

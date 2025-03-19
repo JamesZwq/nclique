@@ -1,6 +1,0 @@
-time,max_k,degen
-0.836198,0,113
-
-(v,k): Ck
-
-0.000000 total cliques

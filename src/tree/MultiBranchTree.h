@@ -145,7 +145,7 @@ public:
 
 private:
     void cliqueCountHelper(TreeNode *node, daf::CliqueSize pivotCount, daf::CliqueSize nonPivotCount,
-                           std::vector<daf::Size> &cliqueCounts);
+                           std::vector<double> &cliqueCounts);
 
     friend class boost::serialization::access;
     template<class Archive>

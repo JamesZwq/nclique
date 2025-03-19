@@ -171,10 +171,10 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     }
 
     tree.initMaxDeep();
+    tree.cliqueCount();
     tree.serialize(databasePath + ".tree");
     // tree.printTree();
     // baseNucleusCoreDecompositionPar(tree, 4);
-    tree.cliqueCount();
     // auto timeStaart = std::chrono::high_resolution_clock::now();
     // // baseNucleusCoreDecompositionPar(tree, 4);
     // std::cout << "Time CD: " << std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -236,6 +236,24 @@ void listAllCliquesDegeneracyRecursive_V(daf::Size *cliqueCounts,
                                          int max_k, TreeNode *root) {
     // std::cout << "max_k: " << max_k << std::endl;
     if ((beginP >= beginR) || (keep > max_k)) {
+        daf::Size kkeepCliques = 0; // number of kcliques a vertex from "keep" is involved in
+        // for (int i = drop; (i >= 0) && (keep + drop - i <= max_k); i--) {
+        //     int k = keep + drop - i;
+        //     kkeepCliques = nCr[drop][i];
+        //     for (int j = 0; j < keep; j++) {
+        //         int v = keepV[j];
+        //         cliqueCounts[v * (max_k + 1) + k] += kkeepCliques;
+        //     }
+        // }
+        // daf::Size kdropCliques = 0;
+        // for (int i = drop - 1; (i >= 0) && (keep + drop - i <= max_k); i--) {
+        //     int k = keep + drop - i;
+        //     kdropCliques = nCr[drop - 1][i];
+        //     for (int j = 0; j < drop; j++) {
+        //         int v = dropV[j];
+        //         cliqueCounts[v * (max_k + 1) + k] += kdropCliques;
+        //     }
+        // }
         return;
     }
 

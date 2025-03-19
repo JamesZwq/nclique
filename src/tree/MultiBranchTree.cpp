@@ -19,7 +19,7 @@ void MultiBranchTree::printTree() const {
 }
 
 void MultiBranchTree::cliqueCountHelper(TreeNode *node, daf::CliqueSize pivotCount, daf::CliqueSize nonPivotCount,
-                                        std::vector<daf::Size> &cliqueCounts) {
+                                        std::vector<double> &cliqueCounts) {
     if (node->children.empty()) {
         int rsize = pivotCount + nonPivotCount;
         // if (rsize != 10) return;
@@ -42,7 +42,7 @@ void MultiBranchTree::cliqueCountHelper(TreeNode *node, daf::CliqueSize pivotCou
 
 void MultiBranchTree::cliqueCount() {
     // 如果根节点没有子节点，则返回空计数（这通常不会发生）
-    std::vector<daf::Size> counts(root->MaxDeep + 1, 0);
+    std::vector<double> counts(root->MaxDeep + 1, 0);
     cliqueCountHelper(root, 0, 0, counts);
     std::cout << counts << std::endl;
 }
