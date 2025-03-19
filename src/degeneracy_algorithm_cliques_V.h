@@ -53,7 +53,7 @@ void listAllCliquesDegeneracyRecursive_V(daf::Size *,
                                          int beginP, int beginR, int keep, int drop, int *keepV, int *dropV, int max_k, TreeNode *tree);
 
 void listAllCliquesDegeneracy_V(daf::Size *, NeighborListArray **,
-                                int size, int max_k);
+                                int size, int max_k, std::string databasePath);
 #ifdef __cplusplus
 }
 #endif

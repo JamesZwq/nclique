@@ -7,7 +7,8 @@ if(APPLE)
     set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.dylib")
 else()
     set(CMAKE_CXX_COMPILER "/usr/bin/g++")
-    set(TBB_ROOT "~/bin/tbb")
+    get_filename_component(HOME_DIR "~" REALPATH)
+    set(TBB_ROOT "${HOME_DIR}/bin/tbb")
     set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.so")
 endif()
 
@@ -20,7 +21,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 # add Boost
-find_package(Boost REQUIRED COMPONENTS serialization)
+#find_package(Boost REQUIRED COMPONENTS serialization)
+find_package(Boost REQUIRED CONFIG COMPONENTS serialization)
 include_directories(${Boost_INCLUDE_DIRS})
 #print boost include directories
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
@@ -29,9 +31,18 @@ message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 include_directories("${TBB_ROOT}/include")
 include_directories(src)
 
-file(GLOB_RECURSE SOURCES src/*.cpp src/*/*.cpp src/*/*.h)
+file(GLOB_RECURSE ALL_SOURCES src/*.cpp)
+set(EXCLUDE_SRCS
+        ${CMAKE_SOURCE_DIR}/src/main.cpp
+        ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
+)
+list(REMOVE_ITEM ALL_SOURCES ${EXCLUDE_SRCS})
+set(COMMON_SOURCES ${ALL_SOURCES})
 
-add_executable(degeneracy_cliques ${SOURCES})
+# 指定每个可执行文件
+add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
+add_executable(main ${COMMON_SOURCES} src/main.cpp)
 
-# 指定 TBB 库的路径（根据平台，macOS 一般是 .dylib）
+# 链接库
 target_link_libraries(degeneracy_cliques PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})

@@ -103,9 +103,9 @@ void populate_nCr() {
 */
 
 int sortComparator(int node1, int node2) {
-    if (*(int *) node1 < *(int *) node2)
+    if (*reinterpret_cast<int *>(node1) < *reinterpret_cast<int *>(node2))
         return -1;
-    if (*(int *) node1 > *(int *) node2)
+    if (*reinterpret_cast<int *>(node1) > *reinterpret_cast<int *>(node2))
         return 1;
 
     return 0;
@@ -186,7 +186,7 @@ void printClique(int *clique) {
 void destroyCliqueResults(LinkedList *cliques) {
     Link *curr = cliques->head->next;
     while (!isTail(curr)) {
-        int *clique = (int *) curr->data;
+        int *clique = reinterpret_cast<int *>(curr->data);
 
 #ifdef DEBUG
         int i=0;
@@ -339,7 +339,7 @@ LinkedList **readInGraphAdjListToDoubleEdges(int *n, int *m, char *fpath) {
 
 void runAndPrintStatsCliques(LinkedList **adjListLinked,
                              int n, const char *gname,
-                             char T, int max_k, int flag_d) {
+                             char T, int max_k, int flag_d, std::string databaseName) {
     //printf("In runAndPrint function.\n");
     fflush(stderr);
     int max_k_in = max_k;
@@ -358,7 +358,8 @@ void runAndPrintStatsCliques(LinkedList **adjListLinked,
         strcpy(fname, "results/");
         strcat(fname, gname);
         char *s_max_k = (char *) Calloc(10, sizeof(char));
-        sprintf(s_max_k, "%d", max_k);
+        snprintf(s_max_k, sizeof(s_max_k), "%d", max_k);
+
         if (max_k > 0) {
             strcat(fname, "_");
             strcat(fname, s_max_k);
@@ -388,6 +389,14 @@ void runAndPrintStatsCliques(LinkedList **adjListLinked,
 
     NeighborListArray **orderingArray = computeDegeneracyOrderArray(adjListLinked, n);
     //printf("Before for. After computeDegeneracy.\n");
+    // print orderingArray
+    // for (int i = 0; i < n; i++) {
+    //     printf("Vertex %d: \n", i);
+    //     printf("Earlier: ");
+    //     printArray(orderingArray[i]->earlier, orderingArray[i]->earlierDegree);
+    //     printf("Later: ");
+    //     printArray(orderingArray[i]->later, orderingArray[i]->laterDegree);
+    // }
     fflush(stdout);
     for (int i = 0; i < n; i++) {
         if (deg < orderingArray[i]->laterDegree) deg = orderingArray[i]->laterDegree;
@@ -398,38 +407,9 @@ void runAndPrintStatsCliques(LinkedList **adjListLinked,
     if (T == 'V') {
         daf::Size *cliqueCounts = (daf::Size *) Calloc(n*((max_k)+1), sizeof(daf::Size));
         auto timeStaart = std::chrono::high_resolution_clock::now();
-        listAllCliquesDegeneracy_V(cliqueCounts, orderingArray, n, max_k);
+        listAllCliquesDegeneracy_V(cliqueCounts, orderingArray, n, max_k, databaseName);
         std::cout << "Time taken to list all cliques: " << std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - timeStaart).count() << " ms" << std::endl;
-        clock_t end = clock();
-
-        double kcliques = 0;
-
-        printf("time,max_k,degen\n");
-        printf("%lf,%d,%d\n\n", (double) (end - start) / (double) (CLOCKS_PER_SEC), max_k_in, deg);
-        if ((flag_d == 1) || (flag_d == 2)) {
-            fprintf(fp, "time,max_k,degen\n");
-            fprintf(fp, "%lf,%d,%d\n\n", (double) (end - start) / (double) (CLOCKS_PER_SEC), max_k_in, deg);
-        }
-
-        if (flag_d == 1) fprintf(fp, "(v,k): Ck\n");
-
-        for (int j = 1; j <= max_k; j++) {
-            kcliques = 0;
-            for (int i = 0; i < n; i++) {
-                kcliques += cliqueCounts[(i * (max_k + 1)) + j];
-                if ((cliqueCounts[(i * (max_k + 1)) + j] != 0) && (flag_d == 1))fprintf(
-                    fp, "(%d, %d): %.0lf\n", i, j, cliqueCounts[(i * (max_k + 1)) + j]);
-            }
-
-            if (kcliques != 0) {
-                printf("%d, %lf\n", j, (double) (kcliques) / (double) (j));
-                totalCliques += ((double) (kcliques) / (double) (j));
-            }
-        }
-        if (flag_d == 1) fprintf(fp, "\n%lf total cliques\n", totalCliques);
-
-        printf("\n%lf total cliques\n", totalCliques);
 
         Free(cliqueCounts);
     }

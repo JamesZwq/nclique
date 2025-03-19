@@ -66,7 +66,7 @@ public:
         if (isPivot) {
             os << "[Pivot] ";
         }
-        os << v << std::endl;
+        os << v << " deep-" << MaxDeep << std::endl;
         // 递归打印每个子节点，缩进加 1
         auto cCount = 0;
         for (const auto &child: children) {
@@ -118,13 +118,26 @@ public:
 
     void serialize(const std::string &filename) const {
         std::ofstream ofs(filename, std::ios::binary);
+        if (!ofs) {
+            std::cerr << "Failed to serialize Tree, failed to open " << filename << std::endl;
+            return;
+        }
+        // sort tree by deep
+        // std::ranges::sort(root->children, [](const TreeNode *a, const TreeNode *b) {
+        //     return a->MaxDeep < b->MaxDeep;
+        // });
         boost::archive::binary_oarchive oa(ofs);
         oa << *this;
+        std::cout << "Tree serialized to " << filename << std::endl;
     }
 
     static MultiBranchTree *deserialize(const std::string &filename) {
         auto *newTree = new MultiBranchTree();
         std::ifstream ifs(filename, std::ios::binary);
+        if (!ifs) {
+            std::cerr << "Failed to deserialize Tree, failed to open " << filename << std::endl;
+            return nullptr;
+        }
         boost::archive::binary_iarchive ia(ifs);
         ia >> *newTree;
         return newTree;

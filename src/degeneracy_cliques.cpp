@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
 
     populate_nCr();
     printf("about to call runAndPrint.\n");
-    runAndPrintStatsCliques(adjacencyList, n, gname, t, max_k, flag_d);
+    runAndPrintStatsCliques(adjacencyList, n, gname, t, max_k, flag_d, fpath);
 
 
     i = 0;

@@ -58,8 +58,8 @@ LinkedList** readInGraphAdjListToDoubleEdges(int* n, int* m, char *fpath);
 
 
 void runAndPrintStatsCliques(LinkedList** adjListLinked,
-                               int n, const char * gname, 
-                               char T, int max_k, int flag_d);
+                             int n, const char * gname,
+                             char T, int max_k, int flag_d, std::string databaseName);
 
 
 int findNbrCSC(int u, int v, int *CSCindex, int *CSCedges);

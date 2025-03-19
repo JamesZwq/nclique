@@ -75,6 +75,7 @@ extern double nCr[1001][401];
     \param beginP The index where set P begins in vertexSets.
 
     \param beginR The index where set R begins in vertexSets.
+    \param databasePath
 
 */
 
@@ -98,7 +99,7 @@ extern double nCr[1001][401];
 */
 
 void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **orderingArray,
-                                int size, int max_k) {
+                                int size, int max_k, std::string databasePath) {
     // vertex sets are stored in an array like this:
     // |--X--|--P--|
     std::vector<int> vertexSets(size);
@@ -170,13 +171,14 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     }
 
     tree.initMaxDeep();
+    tree.serialize(databasePath + ".tree");
     // tree.printTree();
     // baseNucleusCoreDecompositionPar(tree, 4);
-    auto timeStaart = std::chrono::high_resolution_clock::now();
-    // tree.cliqueCount();
-    baseNucleusCoreDecompositionPar(tree, 4);
-    std::cout << "Time CD: " << std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::high_resolution_clock::now() - timeStaart).count() << " ms" << std::endl;
+    tree.cliqueCount();
+    // auto timeStaart = std::chrono::high_resolution_clock::now();
+    // // baseNucleusCoreDecompositionPar(tree, 4);
+    // std::cout << "Time CD: " << std::chrono::duration_cast<std::chrono::milliseconds>(
+    //     std::chrono::high_resolution_clock::now() - timeStaart).count() << " ms" << std::endl;
 
     // baseNucleusCoreDecomposition(tree, 4);
     // Free(vertexSets);

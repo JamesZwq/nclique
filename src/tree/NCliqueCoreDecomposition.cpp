@@ -23,9 +23,6 @@ void countingPerVertexHelp(const TreeNode &node,
             totalKcliques = nCr[povit.size()][needPivot];
         }
         for (const auto v: keepC) {
-            // if (v == 0) {
-                // std::cout << "keep: " << v << " totalKcliques: " << totalKcliques << std::endl;
-            // }
             core[v] += totalKcliques;
         }
 
@@ -36,7 +33,6 @@ void countingPerVertexHelp(const TreeNode &node,
         }
 
         for (auto v: povit) {
-            // std::cout << "povit: " << v << " eachPivotKcliques: " << eachPivotKcliques << std::endl;
             core[v] += eachPivotKcliques;
         }
 
