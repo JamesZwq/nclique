@@ -37,8 +37,8 @@ int main(int argc, char **argv) {
         switch (opt) {
             case 'i':
                 printf("In case i. optarg = %s\n", optarg);
-                // strcpy(fpath, optarg);
-                fpath = optarg;
+                strcpy(fpath, optarg);
+                // fpath = optarg;
             // printf("fpath = %s\n", fpath);
                 break;
             case 't':
