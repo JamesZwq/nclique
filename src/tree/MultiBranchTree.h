@@ -121,6 +121,8 @@ public:
         if (!ofs) {
             std::cerr << "Failed to serialize Tree, failed to open " << filename << std::endl;
             return;
+        } else {
+            std::cout << "Tree serialized to " << filename << std::endl;
         }
         // sort tree by deep
         // std::ranges::sort(root->children, [](const TreeNode *a, const TreeNode *b) {
@@ -128,7 +130,7 @@ public:
         // });
         boost::archive::binary_oarchive oa(ofs);
         oa << *this;
-        std::cout << "Tree serialized to " << filename << std::endl;
+        std::cout << "serialize success" << std::endl;
     }
 
     static MultiBranchTree *deserialize(const std::string &filename) {
