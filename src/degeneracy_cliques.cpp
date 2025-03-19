@@ -75,9 +75,9 @@ int main(int argc, char **argv) {
     char *gname = basename(fpath);
 
     printf("about to call runAndPrint for dataset %s\n", fpath);
-    char *lastdot = strrchr(gname, '.');
-    if (lastdot != NULL)
-        *lastdot = '\0';
+    // char *lastdot = strrchr(gname, '.');
+    // if (lastdot != NULL)
+    //     *lastdot = '\0';
 
 
     printf("about to call runAndPrint for dataset %s\n", fpath);
