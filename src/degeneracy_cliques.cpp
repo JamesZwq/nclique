@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     while ((opt = getopt(argc, argv, ":i:t:k:d:")) != -1) {
         switch (opt) {
             case 'i':
-                // printf("In case i. optarg = %s\n", optarg);
+                printf("In case i. optarg = %s\n", optarg);
                 // strcpy(fpath, optarg);
                 fpath = optarg;
             // printf("fpath = %s\n", fpath);
