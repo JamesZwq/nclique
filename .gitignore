@@ -11,6 +11,7 @@ Makefile
 compile_commands.json
 build/
 graphs/
+results/
 
 # macOS system files
 .DS_Store

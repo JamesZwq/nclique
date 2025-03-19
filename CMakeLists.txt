@@ -39,6 +39,29 @@ set(EXCLUDE_SRCS
 list(REMOVE_ITEM ALL_SOURCES ${EXCLUDE_SRCS})
 set(COMMON_SOURCES ${ALL_SOURCES})
 
+#add_compile_options(
+#        -Wall
+#        -Wextra
+#        -Werror
+#        -pedantic-errors
+#        -Wconversion
+#        -Wsign-conversion
+#        -Wdouble-promotion
+#        -Wcast-align
+#        -Wformat=2
+#        -Wuninitialized
+#        -Wnull-dereference
+#        -Wnon-virtual-dtor
+#        -Woverloaded-virtual
+##        -Wold-style-cast
+#        -Wzero-as-null-pointer-constant
+#        -Wno-self-assign-overloaded
+#        -Wno-self-move
+#        -Wsuggest-override
+#        -fstack-protector-strong
+#        -ferror-limit=1000
+#)
+
 # 指定每个可执行文件
 add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
 add_executable(main ${COMMON_SOURCES} src/main.cpp)

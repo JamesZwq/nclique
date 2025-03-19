@@ -11,14 +11,14 @@ extern double nCr[1001][401];
 namespace baseCD{
 void countingPerVertexHelp(const TreeNode &node,
                            const daf::CliqueSize k,
-                           daf::Size *core,
+                           double *core,
                            StaticVector<daf::Size> &povit,
                            StaticVector<daf::Size> &keepC
 ) {
     daf::Size cliqueSize = povit.size() + keepC.size();
     if (node.children.empty() && cliqueSize >= k && keepC.size() <= k) {
         const int needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
-        daf::Size totalKcliques = 0;
+        double totalKcliques = 0;
         if (needPivot >= 0 && needPivot <= povit.size()) {
             totalKcliques = nCr[povit.size()][needPivot];
         }
@@ -26,7 +26,7 @@ void countingPerVertexHelp(const TreeNode &node,
             core[v] += totalKcliques;
         }
 
-        daf::Size eachPivotKcliques = 0;
+        double eachPivotKcliques = 0;
         const int needPivotWithV = needPivot - 1;
         if (needPivotWithV >= 0 && needPivotWithV <= povit.size() - 1) {
             eachPivotKcliques = nCr[povit.size() - 1][needPivotWithV];
@@ -55,8 +55,8 @@ void countingPerVertexHelp(const TreeNode &node,
     }
 }
 
-daf::Size *countingPerVertex(const MultiBranchTree &tree, const daf::CliqueSize k) {
-    auto *core = new daf::Size[tree.getRoot()->children.size()];
+double *countingPerVertex(const MultiBranchTree &tree, const daf::CliqueSize k) {
+    auto *core = new double[tree.getRoot()->children.size()];
     //init 0
     std::memset(core, 0, tree.getRoot()->children.size() * sizeof(daf::Size));
     StaticVector<daf::Size> povitC;
@@ -76,10 +76,10 @@ daf::Size *countingPerVertex(const MultiBranchTree &tree, const daf::CliqueSize 
 
 void computeSupHelp(const TreeNode &node,
                            const daf::CliqueSize k,
-                           const daf::Size *core,
+                           const double *core,
                            StaticVector<daf::Size> &povit,
                            StaticVector<daf::Size> &keepC,
-                           std::vector<std::map<daf::Size, daf::Size, std::greater<>>> &sup
+                           std::vector<std::map<double,double, std::greater<>>> &sup
 ) {
     daf::Size cliqueSize = povit.size() + keepC.size();
     if (node.children.empty() && cliqueSize >= k && keepC.size() <= k) {
@@ -90,10 +90,10 @@ void computeSupHelp(const TreeNode &node,
         std::ranges::sort(orderPovit, [core](daf::Size a, daf::Size b) {
             return core[a] > core[b];
         });
-        const int needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
+        const daf::Size needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
 
 
-        daf::Size maxK = core[*std::ranges::min_element(keepC, [core](daf::Size a, daf::Size b) {
+        double maxK = core[*std::ranges::min_element(keepC, [core](daf::Size a, daf::Size b) {
                                                 return core[a] < core[b];
                                             })];
         if (needPivot == 0) {
@@ -105,7 +105,7 @@ void computeSupHelp(const TreeNode &node,
 
         maxK = std::min(maxK, core[orderPovit[needPivot - 1]]);
 
-        int numGraterThanMaxKinKeepC = needPivot;
+        daf::Size numGraterThanMaxKinKeepC = needPivot;
         for (daf::Size i = needPivot; i < orderPovit.size(); i++) {
             auto v = orderPovit[i];
             if (core[v] >= maxK) {
@@ -115,14 +115,14 @@ void computeSupHelp(const TreeNode &node,
             }
         }
 
-        daf::Size prveCore = maxK;
+        double prveCore = maxK;
         daf::Size prvePovit = 0;
-        daf::Size prveKeepCliqueCount = 0;
-        daf::Size prvepovitCliqueCount = 0;
+        double prveKeepCliqueCount = 0;
+        double prvepovitCliqueCount = 0;
         for (daf::Size i = numGraterThanMaxKinKeepC; i <= orderPovit.size(); i++) {
             if (i == orderPovit.size() || core[orderPovit[i]] < prveCore) {
-                const daf::Size keepCliqueCount = nCr[i][needPivot];
-                const daf::Size povitCliqueCount = nCr[i - 1][needPivot - 1];
+                const double keepCliqueCount = nCr[i][needPivot];
+                const double povitCliqueCount = nCr[i - 1][needPivot - 1];
                 for (const auto v: keepC) {
                     sup[v][prveCore] += keepCliqueCount - prveKeepCliqueCount;
                 }
@@ -159,12 +159,12 @@ void computeSupHelp(const TreeNode &node,
     }
 }
 
-std::vector<std::map<daf::Size, daf::Size, std::greater<>>> computeSup(const MultiBranchTree &tree,
+std::vector<std::map<double, double, std::greater<>>> computeSup(const MultiBranchTree &tree,
                 const daf::CliqueSize k,
-                const daf::Size *core) {
+                const double *core) {
     StaticVector<daf::Size> povitC;
     StaticVector<daf::Size> keepC;
-    std::vector<std::map<daf::Size, daf::Size, std::greater<>>> sup(tree.getRoot()->children.size());
+    std::vector<std::map<double, double, std::greater<>>> sup(tree.getRoot()->children.size());
     for (const auto node: tree.getRoot()->children) {
         if (node->MaxDeep < k) {
             continue;
@@ -195,10 +195,10 @@ void baseNucleusCoreDecomposition(const MultiBranchTree &tree, daf::CliqueSize k
         for (daf::Size v = 0; v < tree.getRoot()->children.size(); v++) {
             auto &supV = sup[v];
             std::cout << v << " supV: " << supV << std::endl;
-            daf::Size prveCount = 0;
+            double prveCount = 0;
             for (auto &[c, count]: supV) {
                 if (prveCount + count >= c) {
-                    daf::Size newCore = std::max(c,prveCount);
+                    double newCore = std::max(c,prveCount);
                     if (core[v] > newCore) {
                         core[v] = newCore;
                         update = true;
@@ -216,7 +216,7 @@ void baseNucleusCoreDecomposition(const MultiBranchTree &tree, daf::CliqueSize k
     auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/a", "w");
     std::sort(core, core + tree.getRoot()->children.size());
     for (daf::Size i = 0; i < tree.getRoot()->children.size(); i++) {
-        fprintf(file, "%d\n", core[i]);
+        fprintf(file, "%f\n", core[i]);
     }
     fclose(file);
     delete[] core;

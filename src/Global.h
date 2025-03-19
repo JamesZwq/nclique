@@ -68,7 +68,7 @@ std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &
 }
 
 namespace daf {
-    using Size = uint32_t;
+    using Size = uint64_t;
     using CliqueSize = uint16_t;
     static constexpr Size UNDEFINED = std::numeric_limits<Size>::max();
 
@@ -88,121 +88,121 @@ namespace daf {
         std::cout << std::endl;
     }
 
-    class Fraction {
-        void normalize() {
-            if (denominator == 0) {
-                throw std::invalid_argument("Denominator cannot be zero.");
-            }
-            int gcd = std::gcd(numerator, denominator);
-            numerator /= gcd;
-            denominator /= gcd;
-            if (denominator < 0) {
-                // 确保分母为正
-                numerator = -numerator;
-                denominator = -denominator;
-            }
-        }
-
-    public:
-        Size numerator; // 分子
-        Size denominator; // 分母
-        // int f_value;
-        // 构造函数
-        explicit Fraction(const Size num = 0, const Size denom = 1) : numerator(num), denominator(denom) {
-        }
-
-        // copy constructor
-        Fraction(const Fraction &other) = default;
-
-
-        [[nodiscard]] Size get_min_Numer(const Size newDeno) const {
-            return static_cast<Size>(std::ceil(static_cast<double>(numerator) / denominator * newDeno - 1e-9));
-        }
-
-        // 获取分子和分母
-        [[nodiscard]] Size getNumerator() const { return numerator; }
-        [[nodiscard]] Size getDenominator() const { return denominator; }
-
-        // 转换为浮点数
-        [[nodiscard]] double toDouble() const {
-            return denominator == 0 ? 0.0 : static_cast<double>(numerator) / denominator;
-        }
-
-        // 运算符重载
-        Fraction operator+(const Fraction &other) const {
-            const Size num = numerator * other.denominator + other.numerator * denominator;
-            const Size denom = denominator * other.denominator;
-            return Fraction(num, denom);
-        }
-
-        Fraction operator-(const Fraction &other) const {
-            const Size num = numerator * other.denominator - other.numerator * denominator;
-            const Size denom = denominator * other.denominator;
-            return Fraction(num, denom);
-        }
-
-        Fraction operator*(const Fraction &other) const {
-            return Fraction(numerator * other.numerator, denominator * other.denominator);
-        }
-
-        Fraction operator/(const Fraction &other) const {
-            if (other.numerator == 0) {
-                throw std::invalid_argument("Division by zero.");
-            }
-            return Fraction(numerator * other.denominator, denominator * other.numerator);
-        }
-
-        // 比较运算符
-        bool operator==(const Fraction &other) const {
-            return numerator * other.denominator == other.numerator * denominator;
-        }
-
-        bool operator!=(const Fraction &other) const {
-            return !(*this == other);
-        }
-
-        bool operator<(const Fraction &other) const {
-            return numerator * other.denominator < other.numerator * denominator;
-        }
-
-        bool operator<=(const Fraction &other) const {
-            return numerator * other.denominator <= other.numerator * denominator;
-        }
-
-        bool operator>(const Fraction &other) const {
-            return numerator * other.denominator > other.numerator * denominator;
-        }
-
-        bool operator>=(const Fraction &other) const {
-            return numerator * other.denominator >= other.numerator * denominator;
-        }
-
-        // 输出流重载
-        friend std::ostream &operator<<(std::ostream &os, Fraction &frac) {
-            // os << frac.numerator;
-            // if (frac.denominator != 1) {
-            //     os << "/" << frac.denominator;
-            // }
-            // os << (frac.numerator * accuarcy) / frac.denominator;
-            frac.normalize();
-            os << frac.numerator << "/" << frac.denominator << " | " << (frac.numerator * accuarcy) / frac.denominator;
-            return os;
-        }
-
-        Fraction &operator=(const Fraction *fraction) {
-            this->numerator = fraction->numerator;
-            this->denominator = fraction->denominator;
-            return *this;
-        }
-
-        bool operator==(const int i) const {
-            return denominator == 1 && numerator == i;
-        }
-
-        operator Size() const {
-            return numerator * accuarcy / denominator; // 示例转换逻辑
-        }
-    };
+    // class Fraction {
+    //     void normalize() {
+    //         if (denominator == 0) {
+    //             throw std::invalid_argument("Denominator cannot be zero.");
+    //         }
+    //         int gcd = std::gcd(numerator, denominator);
+    //         numerator /= gcd;
+    //         denominator /= gcd;
+    //         if (denominator < 0) {
+    //             // 确保分母为正
+    //             numerator = -numerator;
+    //             denominator = -denominator;
+    //         }
+    //     }
+    //
+    // public:
+    //     Size numerator; // 分子
+    //     Size denominator; // 分母
+    //     // int f_value;
+    //     // 构造函数
+    //     explicit Fraction(const Size num = 0, const Size denom = 1) : numerator(num), denominator(denom) {
+    //     }
+    //
+    //     // copy constructor
+    //     Fraction(const Fraction &other) = default;
+    //
+    //
+    //     [[nodiscard]] Size get_min_Numer(const Size newDeno) const {
+    //         return static_cast<Size>(std::ceil(static_cast<double>(numerator) / denominator * newDeno - 1e-9));
+    //     }
+    //
+    //     // 获取分子和分母
+    //     [[nodiscard]] Size getNumerator() const { return numerator; }
+    //     [[nodiscard]] Size getDenominator() const { return denominator; }
+    //
+    //     // 转换为浮点数
+    //     [[nodiscard]] double toDouble() const {
+    //         return denominator == 0 ? 0.0 : static_cast<double>(numerator) / denominator;
+    //     }
+    //
+    //     // 运算符重载
+    //     Fraction operator+(const Fraction &other) const {
+    //         const Size num = numerator * other.denominator + other.numerator * denominator;
+    //         const Size denom = denominator * other.denominator;
+    //         return Fraction(num, denom);
+    //     }
+    //
+    //     Fraction operator-(const Fraction &other) const {
+    //         const Size num = numerator * other.denominator - other.numerator * denominator;
+    //         const Size denom = denominator * other.denominator;
+    //         return Fraction(num, denom);
+    //     }
+    //
+    //     Fraction operator*(const Fraction &other) const {
+    //         return Fraction(numerator * other.numerator, denominator * other.denominator);
+    //     }
+    //
+    //     Fraction operator/(const Fraction &other) const {
+    //         if (other.numerator == 0) {
+    //             throw std::invalid_argument("Division by zero.");
+    //         }
+    //         return Fraction(numerator * other.denominator, denominator * other.numerator);
+    //     }
+    //
+    //     // 比较运算符
+    //     bool operator==(const Fraction &other) const {
+    //         return numerator * other.denominator == other.numerator * denominator;
+    //     }
+    //
+    //     bool operator!=(const Fraction &other) const {
+    //         return !(*this == other);
+    //     }
+    //
+    //     bool operator<(const Fraction &other) const {
+    //         return numerator * other.denominator < other.numerator * denominator;
+    //     }
+    //
+    //     bool operator<=(const Fraction &other) const {
+    //         return numerator * other.denominator <= other.numerator * denominator;
+    //     }
+    //
+    //     bool operator>(const Fraction &other) const {
+    //         return numerator * other.denominator > other.numerator * denominator;
+    //     }
+    //
+    //     bool operator>=(const Fraction &other) const {
+    //         return numerator * other.denominator >= other.numerator * denominator;
+    //     }
+    //
+    //     // 输出流重载
+    //     friend std::ostream &operator<<(std::ostream &os, Fraction &frac) {
+    //         // os << frac.numerator;
+    //         // if (frac.denominator != 1) {
+    //         //     os << "/" << frac.denominator;
+    //         // }
+    //         // os << (frac.numerator * accuarcy) / frac.denominator;
+    //         frac.normalize();
+    //         os << frac.numerator << "/" << frac.denominator << " | " << (frac.numerator * accuarcy) / frac.denominator;
+    //         return os;
+    //     }
+    //
+    //     Fraction &operator=(const Fraction *fraction) {
+    //         this->numerator = fraction->numerator;
+    //         this->denominator = fraction->denominator;
+    //         return *this;
+    //     }
+    //
+    //     bool operator==(const int i) const {
+    //         return denominator == 1 && numerator == i;
+    //     }
+    //
+    //     operator Size() const {
+    //         return numerator * accuarcy / denominator; // 示例转换逻辑
+    //     }
+    // };
 
     inline Size divide(const Size numerator, const Size denominator) {
         if (denominator == 0) return 0;

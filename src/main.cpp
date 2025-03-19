@@ -36,4 +36,6 @@ int main(int argc, char **argv) {
     // tree->printTree();
     tree->cliqueCount();
     baseNucleusCoreDecompositionPar(*tree,3);
+
+    // baseNucleusCoreDecomposition(*tree,3);
 }

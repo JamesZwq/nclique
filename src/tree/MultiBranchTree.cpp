@@ -21,10 +21,10 @@ void MultiBranchTree::printTree() const {
 void MultiBranchTree::cliqueCountHelper(TreeNode *node, daf::CliqueSize pivotCount, daf::CliqueSize nonPivotCount,
                                         std::vector<double> &cliqueCounts) {
     if (node->children.empty()) {
-        int rsize = pivotCount + nonPivotCount;
+        daf::CliqueSize rsize = pivotCount + nonPivotCount;
         // if (rsize != 10) return;
-        for (int i = 0; i <= pivotCount; i++) {
-            int k = rsize - i;
+        for (daf::CliqueSize i = 0; i <= pivotCount; i++) {
+            daf::Size k = rsize - i;
             cliqueCounts[k] += nCr[pivotCount][i];
         }
         return;

@@ -10,22 +10,23 @@
 #include <ranges>
 #include <map>
 
+template<typename T_Key, typename T_Value>
 struct ThreadSafeMap {
-    std::map<daf::Size, daf::Size, std::greater<>> map;
+    std::map<T_Key, T_Value, std::greater<>> map;
     tbb::spin_mutex mutex;
 
-    void insert(daf::Size key, daf::Size value) {
+    void insert(T_Key key, T_Value value) {
         tbb::spin_mutex::scoped_lock lock(mutex);
         map[key] = value;
     }
 
-    daf::Size add(daf::Size key, daf::Size value) {
+    T_Value add(T_Key key, T_Value value) {
         tbb::spin_mutex::scoped_lock lock(mutex);
         map[key] += value;
         return map[key];
     }
 
-    daf::Size get(daf::Size key) {
+    T_Value get(T_Key key) {
         tbb::spin_mutex::scoped_lock lock(mutex);
         return map[key];
     }

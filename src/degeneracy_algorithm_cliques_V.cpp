@@ -236,7 +236,7 @@ void listAllCliquesDegeneracyRecursive_V(daf::Size *cliqueCounts,
                                          int max_k, TreeNode *root) {
     // std::cout << "max_k: " << max_k << std::endl;
     if ((beginP >= beginR) || (keep > max_k)) {
-        daf::Size kkeepCliques = 0; // number of kcliques a vertex from "keep" is involved in
+        // daf::Size kkeepCliques = 0; // number of kcliques a vertex from "keep" is involved in
         // for (int i = drop; (i >= 0) && (keep + drop - i <= max_k); i--) {
         //     int k = keep + drop - i;
         //     kkeepCliques = nCr[drop][i];

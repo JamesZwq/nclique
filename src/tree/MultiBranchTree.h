@@ -34,7 +34,7 @@ public:
     }
 
 
-    TreeNode(int data, bool isPivot) : v(data), isPivot(isPivot) {
+    TreeNode(daf::Size data, bool isPivot) : v(data), isPivot(isPivot) {
         children.reserve(4);
     }
 
@@ -42,7 +42,7 @@ public:
 
     TreeNode &operator=(const TreeNode &) = delete;
 
-    TreeNode *addChild(int data, bool isPivot) {
+    TreeNode *addChild(daf::Size data, bool isPivot) {
         auto *child = new TreeNode(data, isPivot);
         // child->deep = deep + 1;
         // maxCliques = std::max(maxCliques, child->deep);
@@ -68,7 +68,7 @@ public:
         }
         os << v << " deep-" << MaxDeep << std::endl;
         // 递归打印每个子节点，缩进加 1
-        auto cCount = 0;
+        // auto cCount = 0;
         for (const auto &child: children) {
             // std::cout << " v: " << v << " child: " << ++cCount << std::endl;
             child->prettyPrint(os, indent + 1);
@@ -79,7 +79,7 @@ private:
     // Boost.Serialization 需要访问私有成员
     friend class boost::serialization::access;
     template<class Archive>
-    void serialize(Archive & ar, const unsigned int version) {
+    void serialize(Archive & ar, const unsigned int) {
         ar & v;
         ar & isPivot;
         ar & children;
@@ -149,7 +149,7 @@ private:
 
     friend class boost::serialization::access;
     template<class Archive>
-    void serialize(Archive & ar, const unsigned int version) {
+    void serialize(Archive & ar, const unsigned int) {
         ar & root;
     }
     // void cliqueCountHelper(TreeNode* node, int pivotCount, int nonPivotCount, std::vector<daf::CliqueSize> &cliqueCounts) const;

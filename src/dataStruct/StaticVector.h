@@ -53,7 +53,7 @@ template<typename T>
             return c_size == 0;
         }
 
-        T &operator[](daf::CliqueSize index) {
+        T &operator[](daf::Size index) {
 #if DEBUG
             if (index >= MAX_CSIZE) {
                 throw std::out_of_range("Index out of range.");

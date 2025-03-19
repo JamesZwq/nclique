@@ -19,7 +19,11 @@ public:
 
     [[nodiscard]] auto getNbrVec(const daf::Size node_id) const {
         const auto [fst, snd] = getNbr(node_id);
-        return std::ranges::subrange(adj_list.begin() + fst, adj_list.begin() + snd);
+        using diff_t = std::iterator_traits<decltype(adj_list.begin())>::difference_type;
+        return std::ranges::subrange(
+            adj_list.begin() + static_cast<diff_t>(fst),
+            adj_list.begin() + static_cast<diff_t>(snd)
+        );
     }
 
     [[nodiscard]] daf::Size getNbrCount(daf::Size node_id) const;
