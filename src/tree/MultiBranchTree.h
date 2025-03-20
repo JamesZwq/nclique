@@ -123,8 +123,6 @@ public:
             return;
         }
         std::cout << "Tree serialized to " << filename << std::endl;
-        boost::archive::binary_oarchive oa(ofs);
-        // oa << *this;
 
         try {
             boost::archive::binary_oarchive oa(ofs);
