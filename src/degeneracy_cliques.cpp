@@ -11,7 +11,8 @@
 #include"misc.h"
 #include"LinkedList.h"
 #include"MemoryManager.h"
-
+#include <boost/serialization/export.hpp>
+BOOST_CLASS_EXPORT(TreeNode)
 
 int main(int argc, char **argv) {
     std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
