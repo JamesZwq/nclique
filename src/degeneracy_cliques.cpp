@@ -6,6 +6,7 @@
 #include<limits.h>
 #include<unistd.h>
 #include<libgen.h>
+#include <boost/version.hpp>
 
 #include"misc.h"
 #include"LinkedList.h"
@@ -13,6 +14,7 @@
 
 
 int main(int argc, char **argv) {
+    std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
     if (argc != 9) {
         printf("Incorrect number of arguments.\n");
         printf("./degeneracy_cliques -i <file_path> -t <type> -k <max_clique_size> -d <data_flag>\n");

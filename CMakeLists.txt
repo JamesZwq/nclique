@@ -61,7 +61,8 @@ set(COMMON_SOURCES ${ALL_SOURCES})
 #        -fstack-protector-strong
 #        -ferror-limit=1000
 #)
-
+message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
+message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # 指定每个可执行文件
 add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
 add_executable(main ${COMMON_SOURCES} src/main.cpp)
