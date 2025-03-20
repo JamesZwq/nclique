@@ -10,12 +10,15 @@ else()
     get_filename_component(HOME_DIR "~" REALPATH)
     set(TBB_ROOT "${HOME_DIR}/bin/tbb")
     set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.so")
-    cmake_policy(SET CMP0074 NEW)
-    set(BOOST_ROOT "/home/wenqianz/bin/boost")
-    set(Boost_INCLUDE_DIRS "/home/wenqianz/bin/boost/include")
-    set(Boost_LIBRARIES "/home/wenqianz/bin/boost/lib")
 
-    message(STATUS "Linux Boost include dirs: ${Boost_INCLUDE_DIRS}")
+    cmake_policy(SET CMP0074 NEW)
+
+    # 设置 Boost 的目录
+    set(BOOST_ROOT "/home/wenqianz/bin/boost")
+    set(BOOST_INCLUDEDIR "/home/wenqianz/bin/boost/include")
+    set(BOOST_LIBRARYDIR "/home/wenqianz/bin/boost/lib")
+    set(BOOST_NO_SYSTEM_PATHS TRUE)
+    message(STATUS "Linux Boost root: ${BOOST_ROOT}")
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
@@ -26,6 +29,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
+find_package(Boost REQUIRED COMPONENTS serialization)
 #find_package(Boost REQUIRED CONFIG COMPONENTS serialization)
 include_directories(${Boost_INCLUDE_DIRS})
 #print boost include directories

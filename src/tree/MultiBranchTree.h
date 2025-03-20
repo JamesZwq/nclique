@@ -50,8 +50,8 @@ public:
         return child;
     }
 
-    ~TreeNode() {
-        for (auto child: children) {
+    virtual ~TreeNode() {
+        for (auto child : children) {
             delete child;
         }
     }
