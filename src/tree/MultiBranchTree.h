@@ -117,12 +117,13 @@ public:
     void cliqueCount();
 
     void serialize(const std::string &filename) const {
-        std::ofstream ofs(filename, std::ios::binary);
+        auto tmp_fileName = "/data/wenqianz/test.bin";
+        std::ofstream ofs(tmp_fileName, std::ios::binary);
         if (!ofs) {
-            std::cerr << "Failed to serialize Tree, failed to open " << filename << std::endl;
+            std::cerr << "Failed to serialize Tree, failed to open " << tmp_fileName << std::endl;
             return;
         }
-        std::cout << "Tree serialized to " << filename << std::endl;
+        std::cout << "Tree serialized to " << tmp_fileName << std::endl;
 
         try {
             boost::archive::binary_oarchive oa(ofs);
