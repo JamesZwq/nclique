@@ -10,6 +10,7 @@ else()
     get_filename_component(HOME_DIR "~" REALPATH)
     set(TBB_ROOT "${HOME_DIR}/bin/tbb")
     set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.so")
+    set(Boost_ROOT "/home/wenqianz/bin/boost")
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
