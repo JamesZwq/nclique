@@ -116,7 +116,7 @@ public:
 
     void cliqueCount();
 
-    void serialize(const std::string &filename) const {ga
+    void serialize(const std::string &filename) const {
         // auto filename = "/data/wenqianz/test.bin";
         std::ofstream ofs(filename, std::ios::binary);
         if (!ofs) {
