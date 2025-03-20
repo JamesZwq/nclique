@@ -211,7 +211,7 @@ std::vector<ThreadSafeMap<double,double>> computeSup(const MultiBranchTree &tree
 
 }
 void baseNucleusCoreDecompositionPar(const MultiBranchTree &tree, daf::CliqueSize k){
-    // daf::Size numThreads = 4;
+    daf::Size numThreads = 16;
     // tbb::global_control gc(tbb::global_control::max_allowed_parallelism, numThreads);
     std::cout << "numThreads: " << tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism) << std::endl;
 
