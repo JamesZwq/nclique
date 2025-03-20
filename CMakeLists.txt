@@ -11,6 +11,7 @@ else()
     set(TBB_ROOT "${HOME_DIR}/bin/tbb")
     set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.so")
     set(Boost_ROOT "/home/wenqianz/bin/boost")
+    cmake_policy(SET CMP0074 NEW)
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
