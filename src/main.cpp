@@ -35,7 +35,11 @@ int main(int argc, char **argv) {
     auto tree = MultiBranchTree::deserialize(fpath);
     // tree->printTree();
     tree->cliqueCount();
+
+    auto time_start = std::chrono::high_resolution_clock::now();
     baseNucleusCoreDecompositionPar(*tree,3);
+    auto time_end = std::chrono::high_resolution_clock::now();
+    std::cout << "Time taken to decompose: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_end - time_start).count() << " ms" << std::endl;
 
     // baseNucleusCoreDecomposition(*tree,3);
 }
