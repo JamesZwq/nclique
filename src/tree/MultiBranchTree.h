@@ -121,15 +121,18 @@ public:
         if (!ofs) {
             std::cerr << "Failed to serialize Tree, failed to open " << filename << std::endl;
             return;
-        } else {
-            std::cout << "Tree serialized to " << filename << std::endl;
         }
-        // sort tree by deep
-        // std::ranges::sort(root->children, [](const TreeNode *a, const TreeNode *b) {
-        //     return a->MaxDeep < b->MaxDeep;
-        // });
+        std::cout << "Tree serialized to " << filename << std::endl;
         boost::archive::binary_oarchive oa(ofs);
-        oa << *this;
+        // oa << *this;
+
+        try {
+            boost::archive::binary_oarchive oa(ofs);
+            oa << *this;
+        } catch(const boost::archive::archive_exception &e) {
+            std::cerr << "Archive exception: " << e.what() << std::endl;
+            return;
+        }
         std::cout << "serialize success" << std::endl;
     }
 
