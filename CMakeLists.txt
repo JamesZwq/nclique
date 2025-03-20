@@ -14,6 +14,8 @@ else()
     set(BOOST_ROOT "/home/wenqianz/bin/boost")
     set(Boost_INCLUDE_DIRS "/home/wenqianz/bin/boost/include")
     set(Boost_LIBRARIES "/home/wenqianz/bin/boost/lib")
+
+    message(STATUS "Linux Boost include dirs: ${Boost_INCLUDE_DIRS}")
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
