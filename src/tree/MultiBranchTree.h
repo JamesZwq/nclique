@@ -26,8 +26,9 @@ public:
     bool isPivot; // 注意将原来的 isPiovt 改为 isPivot
     std::vector<TreeNode *> children;
     daf::CliqueSize MaxDeep = 1;
-
+    // daf::Size leafId = std::numeric_limits<daf::Size>::max();
     static daf::CliqueSize maxCliques;
+    TreeNode *parent;
 
     TreeNode() : v(0), isPivot(false) {
         children.reserve(4);
@@ -84,6 +85,7 @@ private:
         ar & isPivot;
         ar & children;
         ar & MaxDeep;
+        ar & parent;
     }
 
 };
@@ -147,7 +149,45 @@ public:
         return newTree;
     }
 
+    /**
+     * @brief 计算树中叶子节点的数量。
+     *
+     * 使用内部 lambda 表达式进行递归遍历，从根节点开始统计所有叶子节点（即没有子节点的节点）。
+     *
+     * @return 叶子节点总数。
+     */
+    [[nodiscard]] double numLeafs() const {
+        // 定义一个 lambda 用于递归计算叶子数
+        std::function<double(TreeNode*)> rec = [&](TreeNode* node) -> double {
+            if (node->children.empty()) {
+                return 1;
+            }
+            double sum = 0;
+            for (const auto &child : node->children) {
+                sum += rec(child);
+            }
+            return sum;
+        };
+        return rec(root);
+    }
+
+    /**
+     * 初始化叶子节点的parent指针
+     */
+    void initLeafsParent() const {
+        // 定义一个 lambda 用于递归初始化叶子节点的 ID
+        std::function<void(TreeNode*)> rec = [&](TreeNode* node) -> void {
+            if (node->children.empty()) return;
+            for (const auto &child : node->children) {
+                rec(child);
+                child->parent = node;
+            }
+        };
+        rec(root);
+    }
+
 private:
+
     void cliqueCountHelper(TreeNode *node, daf::CliqueSize pivotCount, daf::CliqueSize nonPivotCount,
                            std::vector<double> &cliqueCounts);
 

@@ -135,7 +135,7 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     // keepV.resize(MAX_CSIZE);
     // for each vertex
     for (i = 0; i < size; i++) {
-        std::cout << "Vertex: " << i << std::endl;
+        // std::cout << "Vertex: " << i << std::endl;
         int vertex = (int) orderingArray[i]->vertex;
 
         int newBeginX, newBeginP, newBeginR;
@@ -172,6 +172,7 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     }
 
     tree.initMaxDeep();
+    tree.initLeafsParent();
     tree.cliqueCount();
     tree.serialize(databasePath + ".tree");
     // tree.printTree();

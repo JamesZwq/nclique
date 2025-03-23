@@ -33,9 +33,10 @@ int main(int argc, char **argv) {
     populate_nCr();
 
     auto tree = MultiBranchTree::deserialize(fpath);
-    // tree->printTree();
+    tree->printTree();
     tree->cliqueCount();
-
+    // tree->numLeafs();
+    std::cout << "numLeafs: " << tree->numLeafs() << std::endl;
     auto time_start = std::chrono::high_resolution_clock::now();
     baseNucleusCoreDecompositionPar(*tree,s);
     auto time_end = std::chrono::high_resolution_clock::now();

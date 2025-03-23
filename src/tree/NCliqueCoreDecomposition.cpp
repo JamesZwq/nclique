@@ -194,7 +194,7 @@ void baseNucleusCoreDecomposition(const MultiBranchTree &tree, daf::CliqueSize k
         auto sup = baseCD::computeSup(tree, k, core);
         for (daf::Size v = 0; v < tree.getRoot()->children.size(); v++) {
             auto &supV = sup[v];
-            std::cout << v << " supV: " << supV << std::endl;
+            // std::cout << v << " supV: " << supV << std::endl;
             double prveCount = 0;
             for (auto &[c, count]: supV) {
                 if (prveCount + count >= c) {
