@@ -172,7 +172,7 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     }
 
     tree.initMaxDeep();
-    tree.initLeafsParent();
+    // tree.initLeafsParent();
     tree.cliqueCount();
     tree.serialize(databasePath + ".tree");
     // tree.printTree();

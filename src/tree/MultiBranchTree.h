@@ -28,7 +28,7 @@ public:
     daf::CliqueSize MaxDeep = 1;
     // daf::Size leafId = std::numeric_limits<daf::Size>::max();
     static daf::CliqueSize maxCliques;
-    TreeNode *parent;
+    TreeNode *parent = nullptr;
 
     TreeNode() : v(0), isPivot(false) {
         children.reserve(4);
