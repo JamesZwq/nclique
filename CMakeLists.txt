@@ -25,6 +25,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
@@ -47,32 +48,58 @@ set(EXCLUDE_SRCS
 list(REMOVE_ITEM ALL_SOURCES ${EXCLUDE_SRCS})
 set(COMMON_SOURCES ${ALL_SOURCES})
 
-#add_compile_options(
-#        -Wall
-#        -Wextra
-#        -Werror
-#        -pedantic-errors
-#        -Wconversion
-#        -Wsign-conversion
-#        -Wdouble-promotion
-#        -Wcast-align
-#        -Wformat=2
-#        -Wuninitialized
-#        -Wnull-dereference
-#        -Wnon-virtual-dtor
-#        -Woverloaded-virtual
-##        -Wold-style-cast
-#        -Wzero-as-null-pointer-constant
-#        -Wno-self-assign-overloaded
-#        -Wno-self-move
-#        -Wsuggest-override
-#        -fstack-protector-strong
-#        -ferror-limit=1000
-#)
+#if debug
+if (CMAKE_BUILD_TYPE MATCHES "Debug")
+    message(STATUS "Debug build type detected.")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+    add_compile_options(
+            -Wall
+            -Wextra
+    #        -Werror
+    #        -fsanitize=address
+            -pedantic-errors
+            -Wconversion
+            -Wsign-conversion
+            -Wdouble-promotion
+            -Wcast-align
+            -Wformat=2
+            -Wuninitialized
+            -Wnull-dereference
+            -Wnon-virtual-dtor
+            -Woverloaded-virtual
+    #        -Wold-style-cast
+            -Wzero-as-null-pointer-constant
+            -Wno-self-assign-overloaded
+            -Wno-self-move
+            -Wsuggest-override
+            -fstack-protector-strong
+            -ferror-limit=1000
+    )
+    set(CMAKE_CXX_FLAGS        "${CMAKE_CXX_FLAGS}        -fsanitize=address -fno-omit-frame-pointer -g")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+endif()
+
+if (CMAKE_BUILD_TYPE MATCHES "Release")
+    message(STATUS "Release build type detected.")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+    add_compile_options(
+            -march=native
+    )
+    set(CMAKE_CXX_FLAGS        "${CMAKE_CXX_FLAGS}        -O3")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3")
+endif()
+
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # 指定每个可执行文件
-add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
+add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp
+        src/tree/NucleusCoreDecomposition.cpp
+        src/tree/NucleusCoreDecomposition.h
+        src/dataStruct/CliqueHashMap.h
+        src/graph/EdgeList.h
+        src/graph/EdgeList.cpp
+        src/graph/DynamicGraph.cpp
+        src/graph/DynamicGraph.h)
 add_executable(main ${COMMON_SOURCES} src/main.cpp)
 
 # 链接库

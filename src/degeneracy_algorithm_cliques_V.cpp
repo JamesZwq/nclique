@@ -173,7 +173,7 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
 
     tree.initMaxDeep();
     // tree.initLeafsParent();
-    tree.cliqueCount();
+    tree.cliqueCount().print();
     tree.serialize(databasePath + ".tree");
     // tree.printTree();
     // baseNucleusCoreDecompositionPar(tree, 4);
@@ -325,6 +325,7 @@ void listAllCliquesDegeneracyRecursive_V(daf::Size *cliqueCounts,
             iterator++;
         }
     }
+
 
     // don't need to check for emptiness before freeing, since
     // something will always be there (we allocated enough memory

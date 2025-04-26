@@ -18,12 +18,11 @@ for i in range(1001):
 		else:
 			binoms[i,j] = 0;
 
-print(binoms[3,3])
+np.savetxt('nCr.txt', binoms, delimiter=',')
 
 while True:
-    print("Enter n and r:")
-    inp = input()
-    inp = inp.split()
-    print(binoms[int(inp[0]),int(inp[1])])
-
-# np.savetxt('nCr.txt', binoms, delimiter=',')
+    inp = input("Please input n and r (or 'exit' to quit): ")
+    if inp.lower() == 'exit':
+        break
+    n, r = map(int, inp.split())
+    print("nCr: ", binoms[n,r])
