@@ -358,7 +358,7 @@ NeighborListArray **computeDegeneracyOrderArray(LinkedList **list, int size) {
 
     // fprintf(stderr, "Ordering is:\n" );
     for (i = 0; i < size; i++) {
-        fprintf(stderr, "vertex = %d, orderNumber = %d, laterdeg = %d, earlierdeg = %d\n", orderingArray[i]->vertex, orderingArray[i]->orderNumber, orderingArray[i]->laterDegree, orderingArray[i]->earlierDegree );
+        // fprintf(stderr, "vertex = %d, orderNumber = %d, laterdeg = %d, earlierdeg = %d\n", orderingArray[i]->vertex, orderingArray[i]->orderNumber, orderingArray[i]->laterDegree, orderingArray[i]->earlierDegree );
         Free(ordering[i]);
         destroyLinkedList(verticesByDegree[i]);
     }

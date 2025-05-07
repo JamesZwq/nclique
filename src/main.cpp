@@ -18,6 +18,7 @@
 #include"LinkedList.h"
 #include"MemoryManager.h"
 #include "graph/DynamicGraph.h"
+#include "tree/BronKerbosch.h"
 
 // 使用模板和可变参数
 
@@ -71,11 +72,14 @@ int main(int argc, char **argv) {
         DynamicGraph<TreeGraphNode> treeGraph = DynamicGraph<TreeGraphNode>(leafList, minK);
         Graph edgeGraph = Graph(graphFile, true);
         DynamicGraph<daf::Size> treeGraphV = DynamicGraph<daf::Size>(leafList, edgeGraph.getGraphNodeSize(), minK);
+        daf::vListMap.resize(edgeGraph.n + 1);
+
 #ifndef NDEBUG
         treeGraphV.printGraphPerV();
 #endif
         baseNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphV, minK);
         leafList.free();
+        daf::vListMap.free();
         return 0;
     }
 

@@ -274,9 +274,9 @@ namespace NucleusCD {
 
 
 void NucleusCoreDecomposition(MultiBranchTree &tree,
-                              daf::StaticVector<TreeNode *> leafList,
-                              Graph treeGraphV,
-                              Graph leafGraph,
+                              daf::StaticVector<TreeNode *> &leafList,
+                              Graph &treeGraphV,
+                              Graph &leafGraph,
                               daf::CliqueSize r, daf::CliqueSize s) {
     auto time_start = std::chrono::high_resolution_clock::now();
     auto *core = new double[treeGraphV.getGraphNodeSize()];

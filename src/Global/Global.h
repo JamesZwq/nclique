@@ -1,7 +1,7 @@
 //
 // Created by 张文谦 on 24-7-29.
 //
-
+#pragma once
 #ifndef SUBGRAPHMATCHING_GLOBAL_H
 #define SUBGRAPHMATCHING_GLOBAL_H
 #include <cassert>
@@ -164,6 +164,12 @@ namespace daf {
             data[c_size++] = value;
         }
 
+        template <typename... Args>
+        void emplace_back(Args&&... args) {
+            // 对于原始内存，可用 placement new；如果 data 已经是 T 类型数组直接赋值也行
+            new (&data[c_size]) T(std::forward<Args>(args)...);
+            ++c_size;
+        }
 
         void pop_back() {
             c_size--;
@@ -211,6 +217,12 @@ namespace daf {
             return copy;
         }
 
+        void resize(Size newSize) {
+            delete[] data;
+            data = new T[newSize];
+            maxSize = newSize;
+            c_size = newSize;
+        }
         void free() const {
             delete[] data;
         }
@@ -379,15 +391,14 @@ namespace daf {
     template<typename T,
         typename Callback = bool(*)(StaticVector<T> &, StaticVector<T> &)>
     void enumerateCombinations(StaticVector<T> &keep, StaticVector<T> &drop,
-                               CliqueSize r, CliqueSize s,
+                               CliqueSize r,
                                Callback cb = printCandidate<T>) {
         // 检查输入条件是否满足
-        if (keep.size() > s) {
+        if (keep.size() > r) {
             return;
         }
-        if (keep.size() + drop.size() < s) {
-            throw std::invalid_argument(
-                "Invalid input in Function generateCombinations, keep.size() > k or keep.size() + drop.size() < k");
+        if (keep.size() + drop.size() < r) {
+            return;
         }
 
         // 需要从 drop 数组中选择的额外元素数量
@@ -438,6 +449,10 @@ namespace daf {
             }
         }
     }
+
+
+
+    extern daf::StaticVector<daf::Size> vListMap;
 }
 
 

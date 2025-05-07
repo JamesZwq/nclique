@@ -25,7 +25,7 @@ struct TreeGraphNode {
         }
         return os;
     }
-
+    operator uint64_t() const noexcept { return v; }
     // == operater with unit64
     bool operator==(const TreeGraphNode &other) const {
         return v == other.v && isPivot == other.isPivot;
@@ -63,8 +63,13 @@ class DynamicGraph {
         explicit DynamicGraph(const daf::StaticVector<TreeNode *> &leafList, daf::Size minK);
         explicit DynamicGraph(const daf::StaticVector<TreeNode *> &leafList, daf::Size n, daf::Size minK);
 
-        void addNbr(daf::Size node_id, T nbr) {
-            adj_list[node_id].push_back(nbr);
+    void addNbr(daf::Size node_id, T nbr) {
+            if (nbr < adj_list[node_id].back()) {
+                adj_list[node_id].push_back(nbr);
+                std::sort(adj_list[node_id].begin(), adj_list[node_id].end());
+            } else {
+                adj_list[node_id].push_back(nbr);
+            }
         }
 
         std::vector<T> *getNbr(daf::Size node_id) {
@@ -73,12 +78,9 @@ class DynamicGraph {
 
         void removeNbr(daf::Size node_id, T nbr) {
             auto &nbrs = adj_list[node_id];
-            for (daf::Size i = 0; i < nbrs.size(); i++) {
-                if (nbrs[i] == nbr) {
-                    nbrs[i] = nbrs.back();
-                    nbrs.pop_back();
-                    break;
-                }
+            auto it = std::lower_bound(nbrs.begin(), nbrs.end(), nbr);
+            if (it != nbrs.end() && *it == nbr) {
+                nbrs.erase(it);
             }
         }
 
@@ -107,14 +109,14 @@ class DynamicGraph {
             return lst;
         }
 
-        daf::Size addNode() {
+        [[nodiscard]] daf::Size addNode(std::vector<T> &nbrs) {
             if (removedNodes.empty()) {
-                adj_list.emplace_back();
+                adj_list.emplace_back(std::move(nbrs));
                 return adj_list.size() - 1;
             }
             daf::Size node_id = removedNodes.back();
             removedNodes.pop_back();
-            adj_list[node_id].clear();
+            adj_list[node_id] = std::move(nbrs);
             return node_id;
         }
 

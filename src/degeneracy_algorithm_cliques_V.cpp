@@ -172,8 +172,16 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     }
 
     tree.initMaxDeep();
+    tree.initLeafsParentAndId();
+    tree.printTree();
     // tree.initLeafsParent();
-    tree.cliqueCount().print();
+    // tree.cliqueCount().print();
+    auto file1 = fopen("/Users/zhangwenqian/UNSW/pivoter/outB.txt", "w");
+    for (auto &i: tree.cliqueCount()) {
+        // printf("%lf\n", i);
+        fprintf(file1, "%lf\n", i);
+    }
+    fclose(file1);
     tree.serialize(databasePath + ".tree");
     // tree.printTree();
     // baseNucleusCoreDecompositionPar(tree, 4);
@@ -237,7 +245,10 @@ void listAllCliquesDegeneracyRecursive_V(daf::Size *cliqueCounts,
                                          int beginP, int beginR, int keep, int drop, int *keepV, int *dropV,
                                          int max_k, TreeNode *root) {
     // std::cout << "max_k: " << max_k << std::endl;
-    if ((beginP >= beginR) || (keep > max_k)) {
+    // if (keep > 3) {
+    //     std::cerr << "keep should be less than 4" << std::endl;
+    // }
+    if ((beginP >= beginR)) {
         // daf::Size kkeepCliques = 0; // number of kcliques a vertex from "keep" is involved in
         // for (int i = drop; (i >= 0) && (keep + drop - i <= max_k); i--) {
         //     int k = keep + drop - i;

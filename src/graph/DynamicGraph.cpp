@@ -22,6 +22,9 @@ DynamicGraph<TreeGraphNode>::DynamicGraph(const daf::StaticVector<TreeNode *> &l
         }
     }
     removedNodes.reserve(leafList.size()/2);
+    for (auto &i: adj_list) {
+        std::ranges::sort(i);
+    }
 }
 
 // node to leaf
@@ -53,7 +56,9 @@ DynamicGraph<daf::Size>::DynamicGraph(const daf::StaticVector<TreeNode *> &leafL
             node = node->parent;
         }
     }
-
+    for (auto &i: adj_list) {
+        std::ranges::sort(i);
+    }
     removedNodes.reserve(n/2);
     delete[] degree;
 }
