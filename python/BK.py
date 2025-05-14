@@ -177,7 +177,6 @@ def draw_graph_with_cliques(edges):
     nx.draw_networkx_nodes(G, pos, node_color='lightblue', node_size=500)
     nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
 
-    # 找出所有大小大于等于4的 clique，并且要求 clique 包含节点1
     cliques = [sorted(clique) for clique in nx.find_cliques(G) if len(clique) >= 4]
     cliques = [clique for clique in cliques if 1 in clique]
     print("Cliques:", cliques)
@@ -228,43 +227,54 @@ def draw_graph(edges):
     nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=500, font_size=10, font_weight='bold')
     plt.title("Generated Graph")
     plt.savefig("/Users/zhangwenqian/UNSW/KClique/small_garph.edges.png")
+import random, bisect, os
+from typing import Set, Tuple
 
-def generate_graph(node_count, edge_count, output_file):
+def generate_graph_log(
+        node_count: int,
+        edge_count: int,
+        output_file: str,
+        mu: float = 0.0,
+        sigma: float = 1.0
+) -> Set[Tuple[int,int]]:
+    """
+    用对数正态分布给节点加权，再按权重抽样边。
+    mu, sigma 控制 lognormal 的位置和形状。
+    返回最终的边集合（无向，(u,v) u<v）。
+    """
     total = node_count * (node_count - 1) // 2
     if edge_count > total:
         raise ValueError(f"Too many edges (max {total}), got {edge_count}")
 
-    # 1. 生成上三角每行（以 u 为行）的边数列表：[n-1, n-2, ..., 1]
-    row_counts = [node_count - 1 - u for u in range(node_count - 1)]
-    # 2. 前缀和，用于后面二分快速定位 row
-    #    prefix[i] = sum of row_counts[0..i-1]
-    prefix = [0]
-    for cnt in row_counts:
-        prefix.append(prefix[-1] + cnt)
+    # 先做 ±10%~20% 扰动
+    edge_count = int(edge_count * random.uniform(0.9, 1.2))
+    edge_count = min(edge_count, total)
 
-    # 3. 从 0..total-1 中抽 edge_count 个不重复索引
-    #    random.sample 对 range 对象做采样，不会一次性创建全量列表
-    choices = random.sample(range(total), edge_count)
+    # 1. 为每个节点生成一个 log-normal 权重
+    weights = [random.lognormvariate(mu, sigma) for _ in range(node_count)]
+    # 要传给 random.choices 的权重列表
+    # 注意 random.choices 要 Python3.6+
+    node_indices = list(range(node_count))
 
-    # 4. 将每个扁平下标 k 解码成 (u,v)
-    edges = []
-    for k in choices:
-        # 找到最大的 u 使 prefix[u] <= k < prefix[u+1]
-        # 也就是 u = bisect_right(prefix, k) - 1
-        u = bisect.bisect_right(prefix, k) - 1
-        # 在第 u 行中，偏移量 offset = k - prefix[u]
-        offset = k - prefix[u]
-        # 这一行对应的 v 从 u+1 开始，依次 +1
-        v = u + 1 + offset
-        edges.append((u, v))
+    # 2. 加权抽样生成边
+    edges = set()
+    def normalize(u: int, v: int) -> Tuple[int,int]:
+        return (u,v) if u < v else (v,u)
 
-    # 5. 写到文件
+    while len(edges) < edge_count:
+        u = random.choices(node_indices, weights)[0]
+        v = random.choices(node_indices, weights)[0]
+        if u == v:
+            continue
+        edges.add(normalize(u, v))
+
+    # 3. 写文件
     with open(output_file, 'w') as f:
-        f.write(f"{node_count} {edge_count}\n")
+        f.write(f"{node_count} {len(edges)}\n")
         for u, v in sorted(edges):
             f.write(f"{u} {v}\n")
 
-    return set(edges)
+    return edges
 
 
 def run_cmd(name, cmd, error_label):
@@ -280,8 +290,8 @@ def run_cmd(name, cmd, error_label):
         # print(f"{Fore.GREEN}✅ [{name}] 成功 ({elapsed:.2f}s)")
     # print()  # 空行分隔
 # Example usage:
-node_count = 10  # Number of nodes
-edge_count =  40 # Number of edges
+node_count = 100  # Number of nodes
+edge_count = 3000 # Number of edges
 
 
 output_file = '/Users/zhangwenqian/UNSW/KClique/new_small_garph.edges'  # Output file path
@@ -298,26 +308,30 @@ while True:
     print(f"{Style.BRIGHT}{Fore.CYAN}🚀 第 {count} 轮测试启动！加油！\n")
 
     # 1. 生成随机图
-    edgeList = generate_graph(node_count, edge_count, output_file)
+    # edge count +- 10%
+    edgeList = generate_graph_log(node_count, edge_count, output_file)
     # print(f"{Fore.CYAN}🗺️  随机图生成完毕，共 {len(edgeList)} 条边。\n")
 
     # 2. 第一步工具：degeneracy_cliques
     cmd1 = f"{BIN1} -i {output_file} -t V -d 1 -k 0"
-    run_cmd("DegeneracyCliques", cmd1, "degeneracy_cliques 非零退出")
 
+    run_cmd("DegeneracyCliques", cmd1, "degeneracy_cliques 非零退出")
+    print(f"{Fore.GREEN}✅ DegeneracyCliques 成功！\n")
     # 3. 第二步工具：main
     cmd2 = f"{BIN2} {output_file}.tree 2 4 {output_file}"
     run_cmd("Main", cmd2, "main 非零退出")
-
+    print(f"{Fore.GREEN}✅ Main 成功！\n")
     # 4. 第三步工具：nucleus
     cmd3 = f"{BIN3} {output_file} 24 no"
+    #
     run_cmd("Nucleus", cmd3, "nucleus 非零退出")
+    print(f"{Fore.GREEN}✅ Nucleus 成功！\n")
 
     # 5. 比对结果
     # print(f"{Fore.YELLOW}🔍 正在用 uniq + diff 检查一致性...")
-    subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/a > /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True)
-    subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/b > /Users/zhangwenqian/UNSW/pivoter/b.tmp", shell=True)
-    diff = subprocess.run("diff a.tmp b.tmp", shell=True,
+    # subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/a > /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True)
+    # subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/b > /Users/zhangwenqian/UNSW/pivoter/b.tmp", shell=True)
+    diff = subprocess.run("diff /Users/zhangwenqian/UNSW/pivoter/a /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True,
                           capture_output=True, text=True)
     if diff.stdout or diff.stderr:
         print(f"{Fore.RED}❌ 对比失败！输出不一致：\n{diff.stdout or diff.stderr}")
@@ -327,8 +341,8 @@ while True:
     else:
         print(f"{Fore.GREEN}✅ 结果一致！本轮测试完美通过 🎉\n")
 
-
-# file_path = "/Users/zhangwenqian/UNSW/KClique/small_garph.edges"
+#
+# file_path = output_file
 # edges = []
 # firstLine = True
 # with open(file_path, 'r') as f:
@@ -339,4 +353,20 @@ while True:
 #             continue
 #         edges.append((u, v))
 #
-# draw_graph_with_cliques(edges)
+# G = nx.Graph()
+# G.add_edges_from(edges)
+# pos = nx.kamada_kawai_layout(G)
+#
+# plt.figure(figsize=(8, 6))
+# nx.draw_networkx_edges(G, pos)
+# nx.draw_networkx_nodes(G, pos, node_color='lightblue', node_size=500)
+# nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
+# # [0,2,3,6,8,9,12,13]
+# # 找到所有maximal clique
+# cliques = [sorted(clique) for clique in nx.find_cliques(G) if len(clique) >= 4]
+# print(cliques)
+# cliques = [clique for clique in cliques if clique]
+# in [0,2,3,6,8,9,12,13]
+# // if clique is subset of [0,2,3,6,8,9,12,13]
+# print("4-cliques:", cliques)
+# print(len(cliques))

@@ -72,18 +72,14 @@ int main(int argc, char **argv) {
 
     int i;
 
-    printf("about to call runAndPrint for dataset %s\n", fpath);
     char *gname = basename(fpath);
 
-    printf("about to call runAndPrint for dataset %s\n", fpath);
     // char *lastdot = strrchr(gname, '.');
     // if (lastdot != NULL)
     //     *lastdot = '\0';
 
 
-    printf("about to call runAndPrint for dataset %s\n", fpath);
     populate_nCr();
-    printf("about to call runAndPrint for dataset %s\n", fpath);
     runAndPrintStatsCliques(adjacencyList, n, gname, t, max_k, flag_d, fpath);
 
 

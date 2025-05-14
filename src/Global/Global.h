@@ -21,6 +21,7 @@
 #include <map>
 #include <tbb/spin_mutex.h>
 
+
 #define MAX_CSIZE 400
 
 template<typename U, typename V>
@@ -142,12 +143,12 @@ namespace daf {
             if (c_size != vertices.c_size || maxSize != vertices.maxSize) {
                 return false;
             }
-            for (daf::Size i = 0; i < c_size; i++) {
-                if (data[i] != vertices.data[i]) {
-                    return false;
-                }
-            }
-            return true;
+            // for (daf::Size i = 0; i < c_size; i++) {
+            //     if (data[i] != vertices.data[i]) {
+            //         return false;
+            //     }
+            // }
+            return std::memcmp(data, vertices.data, c_size * sizeof(T)) == 0;
         }
 
 
@@ -309,7 +310,6 @@ namespace daf {
         }
     };
 
-
     template<typename T>
     class MutexStaticVector {
     public:
@@ -455,5 +455,15 @@ namespace daf {
     extern daf::StaticVector<daf::Size> vListMap;
 }
 
+template<>
+struct std::hash<daf::StaticVector<daf::Size>> {
+    std::size_t operator()(const daf::StaticVector<daf::Size> &c) const noexcept {
+        std::size_t seed = 0;
+        for (const daf::Size &v: c) {
+            seed ^= std::hash<daf::Size>()(v) + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+        }
+        return seed;
+    }
+};
 
 #endif //SUBGRAPHMATCHING_GLOBAL_H

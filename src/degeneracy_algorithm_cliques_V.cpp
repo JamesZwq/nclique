@@ -173,12 +173,12 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
 
     tree.initMaxDeep();
     tree.initLeafsParentAndId();
-    tree.printTree();
+    // tree.printTree();
     // tree.initLeafsParent();
     // tree.cliqueCount().print();
     auto file1 = fopen("/Users/zhangwenqian/UNSW/pivoter/outB.txt", "w");
     for (auto &i: tree.cliqueCount()) {
-        // printf("%lf\n", i);
+        printf("%lf\n", i);
         fprintf(file1, "%lf\n", i);
     }
     fclose(file1);

@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(pivoter CXX)
+include(CTest)
+add_subdirectory(tests)
 
 if(APPLE)
     set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
@@ -44,6 +46,7 @@ file(GLOB_RECURSE ALL_SOURCES src/*.cpp)
 set(EXCLUDE_SRCS
         ${CMAKE_SOURCE_DIR}/src/main.cpp
         ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
+        ${CMAKE_SOURCE_DIR}/src/BCtest.cpp
 )
 list(REMOVE_ITEM ALL_SOURCES ${EXCLUDE_SRCS})
 set(COMMON_SOURCES ${ALL_SOURCES})
@@ -75,33 +78,31 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
             -fstack-protector-strong
             -ferror-limit=1000
     )
-    set(CMAKE_CXX_FLAGS        "${CMAKE_CXX_FLAGS}        -fsanitize=address -fno-omit-frame-pointer -g")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -fno-omit-frame-pointer  -fsanitize-address-use-after-scope -fdefer-pop -g")
 endif()
 
-if (CMAKE_BUILD_TYPE MATCHES "Release")
-    message(STATUS "Release build type detected.")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-    add_compile_options(
-            -march=native
-    )
-    set(CMAKE_CXX_FLAGS        "${CMAKE_CXX_FLAGS}        -O3")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3")
-endif()
-
+#if(CMAKE_BUILD_TYPE MATCHES "Release")
+#    message(STATUS "Release+MSan build")
+#    add_compile_options(-O2 -g
+#            -fsanitize=memory
+#            -fno-omit-frame-pointer
+#            -fno-sanitize-recover=memory)
+#endif()
+#if(CMAKE_BUILD_TYPE STREQUAL "Release")
+#    add_compile_options(-O3 -g -fsanitize=address -fno-sanitize-recover=undefined)
+#    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+#endif()
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # 指定每个可执行文件
-add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp
-        src/tree/NucleusCoreDecomposition.cpp
-        src/tree/NucleusCoreDecomposition.h
-        src/dataStruct/CliqueHashMap.h
-        src/graph/EdgeList.h
-        src/graph/EdgeList.cpp
-        src/graph/DynamicGraph.cpp
-        src/graph/DynamicGraph.h)
+add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
 add_executable(main ${COMMON_SOURCES} src/main.cpp)
+add_executable(BCtest ${COMMON_SOURCES} src/BCtest.cpp
+        src/dataStruct/CliqueMap.hpp)
 
 # 链接库
 target_link_libraries(degeneracy_cliques PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(BCtest PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+
+include(CTest)            # 或者 enable_testing()

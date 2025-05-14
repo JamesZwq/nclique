@@ -7,7 +7,7 @@
 
 
 #include <vector>
-#include "../Global/Global.h"
+#include "Global/Global.h"
 #include <span>
 class MultiBranchTree;
 class TreeNode;
