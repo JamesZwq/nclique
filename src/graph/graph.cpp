@@ -232,6 +232,100 @@ void Graph::sortByBFSTraversal() {
     sortVertexByGivenOrder(ordered_vertex);
 }
 
+void Graph::sortByDegeneracyOrder() {
+    const daf::Size n = getGraphNodeSize();
+    if (n == 0) return;
+
+    /*------------------------------------------------------------
+     * 1. 预处理：统计度数并记录最大度
+     *-----------------------------------------------------------*/
+    std::vector<int> deg(n);          // 当前度数
+    int max_deg = 0;
+    for (daf::Size v = 0; v < n; ++v) {
+        auto [l, r] = getNbr(v);      // 邻接区间 [l, r)
+        deg[v] = static_cast<int>(r - l);
+        max_deg = std::max(max_deg, deg[v]);
+    }
+
+    /*------------------------------------------------------------
+     * 2. 建立 bin 数组：bin[d] 保存“度 = d 的顶点段”的起始下标
+     *-----------------------------------------------------------*/
+    std::vector<int> bin(max_deg + 1, 0);
+    for (int d : deg) ++bin[d];               // 先统计每个度出现次数
+
+    // 前缀和 → 起始位
+    int start = 0;
+    for (int d = 0; d <= max_deg; ++d) {
+        int cnt = bin[d];
+        bin[d] = start;
+        start += cnt;
+    }
+
+    /*------------------------------------------------------------
+     * 3. vert[pos] = 顶点编号，pos[v] = v 在 vert 中的位置
+     *-----------------------------------------------------------*/
+    std::vector<int>          vert(n);
+    std::vector<int>          pos(n);
+
+    for (daf::Size v = 0; v < n; ++v) {
+        int d = deg[v];
+        int p = bin[d]++;          // bin[d] 现在是插入点，插完再 +1
+        vert[p] = static_cast<int>(v);
+        pos[v]  = p;
+    }
+
+    // 把 bin 恢复成段首下标（上一步多 +1 了）
+    for (int d = max_deg; d > 0; --d) bin[d] = bin[d - 1];
+    bin[0] = 0;
+
+    /*------------------------------------------------------------
+     * 4. 剥皮主循环：O(|V| + |E|)
+     *-----------------------------------------------------------*/
+    std::vector<daf::Size> ordered_vertex;
+    ordered_vertex.reserve(n);
+
+    int degeneracy = 0;       // 可选：记录图的 k-core 退化度
+
+    for (int i = 0; i < static_cast<int>(n); ++i) {
+        int v = vert[i];
+        ordered_vertex.push_back(static_cast<daf::Size>(v));
+
+        degeneracy = std::max(degeneracy, deg[v]);
+
+        // 所有度数严格大于 deg[v] 的邻居度数减一，并在 vert 中前移
+        for (auto idx = getNbr(v).first; idx < getNbr(v).second; ++idx) {
+            int u = static_cast<int>(adj_list[idx]);
+            if (deg[u] > deg[v]) {
+                int du  = deg[u];
+                int pu  = pos[u];        // u 当前在 vert 的位置
+                int pw  = bin[du];       // du 段的首元素
+                int w   = vert[pw];      // 该段当前首顶点
+
+                if (u != w) {
+                    // 交换 u 和 w 的位置，并更新 pos[]
+                    std::swap(vert[pu], vert[pw]);
+                    pos[u] = pw;
+                    pos[w] = pu;
+                }
+                ++bin[du];               // du 段首右移一格
+                --deg[u];                // 度数减一
+            }
+        }
+    }
+
+    /*------------------------------------------------------------
+     * 5. 可选：将高退化度顶点排在前面，保持与 BFS 实现一致
+     *-----------------------------------------------------------*/
+    // std::ranges::reverse(ordered_vertex);
+
+    /*------------------------------------------------------------
+     * 6. 调用框架内已有的重排函数
+     *-----------------------------------------------------------*/
+    sortVertexByGivenOrder(ordered_vertex);
+
+    // 如需使用 degeneracy，可在此返回或存成员变量
+}
+
 // void Graph::sortByDegeneracyOrdering() {
 // std::vector<daf::Size> vertex_order;
 // kCore::FlatArrayCoreDecomposition(*this, vertex_order);

@@ -418,6 +418,89 @@ void runAndPrintStatsCliques(LinkedList **adjListLinked,
     Free(orderingArray);
 }
 
+
+void runAndPrintStatsCliquesEdgeGraph(Graph &edgeGraph,
+                             int n, const char *gname,
+                             char T, int max_k, int flag_d, std::string databaseName) {
+    //printf("In runAndPrint function.\n");
+    fflush(stderr);
+    int max_k_in = max_k;
+
+    clock_t start = clock();
+
+    double totalCliques = 0;
+    int deg = 0, m = 0;
+    FILE *fp;
+
+    //printf("Before if of flag_d.\n");
+    fflush(stdout);
+    if ((flag_d == 1) || (flag_d == 2)) {
+        char *fname = (char *) Calloc(1000, sizeof(char));
+
+        strcpy(fname, "results/");
+        strcat(fname, gname);
+        char *s_max_k = (char *) Calloc(10, sizeof(char));
+        snprintf(s_max_k, sizeof(s_max_k), "%d", max_k);
+
+        if (max_k > 0) {
+            strcat(fname, "_");
+            strcat(fname, s_max_k);
+        }
+        if (T == 'A') {
+            if (flag_d == 2)
+                strcat(fname, "_A_stat.txt");
+            else
+                strcat(fname, "_A.txt");
+        } else if (T == 'V') {
+            if (flag_d == 2)
+                strcat(fname, "_V_stat.txt");
+            else
+                strcat(fname, "_V.txt");
+        } else {
+            if (flag_d == 2)
+                strcat(fname, "_E_stat.txt");
+            else
+                strcat(fname, "_E.txt");
+        }
+
+        fp = fopen(fname, "w");
+        if (!fp) printf("Could not open output file.\n");
+    }
+    //printf("Before computeDegeneracy.\n");
+    fflush(stdout);
+
+    // NeighborListArray **orderingArray = computeDegeneracyOrderArray(adjListLinked, n);
+    edgeGraph.sortByDegeneracyOrder();
+    //printf("Before for. After computeDegeneracy.\n");
+    // print orderingArray
+    // for (int i = 0; i < n; i++) {
+    //     printf("Vertex %d: \n", i);
+    //     printf("Earlier: ");
+    //     printArray(orderingArray[i]->earlier, orderingArray[i]->earlierDegree);
+    //     printf("Later: ");
+    //     printArray(orderingArray[i]->later, orderingArray[i]->laterDegree);
+    // }
+    fflush(stdout);
+    // for (int i = 0; i < n; i++) {
+    //     if (deg < orderingArray[i]->laterDegree) deg = orderingArray[i]->laterDegree;
+    //     m += orderingArray[i]->laterDegree;
+    // }
+
+    if (max_k == 0) max_k = deg + 1;
+    if (T == 'V') {
+        daf::Size *cliqueCounts = (daf::Size *) Calloc(n*((max_k)+1), sizeof(daf::Size));
+        auto timeStaart = std::chrono::high_resolution_clock::now();
+        listAllCliquesDegeneracy_VedgeGraph(cliqueCounts, edgeGraph, max_k, databaseName);
+        std::cout << "Time taken to list all cliques: " << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - timeStaart).count() << " ms" << std::endl;
+
+        Free(cliqueCounts);
+    }
+
+    if (flag_d >= 1) fclose(fp);
+    // Free(orderingArray);
+}
+
 /*! \brief Computes the vertex v in P union X that has the most neighbors in P,
            and places P \ {neighborhood of v} in an array. These are the
            vertices to consider adding to the partial clique during the current
@@ -658,6 +741,74 @@ void fillInPandXForRecursiveCallDegeneracyCliques(int vertex, int orderNumber,
     }
 }
 
+void fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(int vertex, int *vertexSets, int *vertexLookup,
+                                                  Graph &edgeGraph,
+                                                  int **neighborsInP, int *numNeighbors,
+                                                  int *pBeginX, int *pBeginP, int *pBeginR,
+                                                  int *pNewBeginX, int *pNewBeginP, int *pNewBeginR) {
+    int vertexLocation = vertexLookup[vertex];
+
+    (*pBeginR)--;
+    vertexSets[vertexLocation] = vertexSets[*pBeginR];
+    vertexLookup[vertexSets[*pBeginR]] = vertexLocation;
+    vertexSets[*pBeginR] = vertex;
+    vertexLookup[vertex] = *pBeginR;
+
+    *pNewBeginR = *pBeginR;
+    *pNewBeginP = *pBeginR;
+
+    //printf("Before 1st while\n");
+    // swap later neighbors of vertex into P section of vertexSets
+    // while (j < orderingArray[orderNumber]->laterDegree) {
+    auto [nbr_begin, nbr_end] = edgeGraph.getNbr(vertex);
+    for (int idx = nbr_begin; idx < nbr_end; ++idx) {
+        int neighbor = edgeGraph.adj_list[idx];
+        if (neighbor <= vertex) continue;
+        int neighborLocation = vertexLookup[neighbor];
+
+        (*pNewBeginP)--;
+
+        vertexSets[neighborLocation] = vertexSets[*pNewBeginP];
+        vertexLookup[vertexSets[*pNewBeginP]] = neighborLocation;
+        vertexSets[*pNewBeginP] = neighbor;
+        vertexLookup[neighbor] = *pNewBeginP;
+    }
+
+    *pNewBeginX = *pNewBeginP;
+
+    // reset numNeighbors and neighborsInP for this vertex
+    for (int j = *pNewBeginP; j < *pNewBeginR; ++j) {
+        int vertexInP = vertexSets[j];
+        //printf("vertexInP = %d, numNeighbors[vertexInP]=%d\n", vertexInP, numNeighbors[vertexInP] );
+        //printf("Address being freed: %p\n", neighborsInP[vertexInP]);
+        numNeighbors[vertexInP] = 0;
+        Free(neighborsInP[vertexInP]);
+        //printf("Allocating %d space for neighborsInP[vertexInP].\n", min( *pNewBeginR-*pNewBeginP,
+        //  orderingArray[vertexInP]->laterDegree
+        //+ orderingArray[vertexInP]->earlierDegree));
+        neighborsInP[vertexInP] = (int *) Calloc(MY_MIN( *pNewBeginR-*pNewBeginP,
+                                                     edgeGraph.getNbrCount(vertexInP)), sizeof(int));
+    }
+
+    // count neighbors in P, and fill in array of n
+    for (int j = *pNewBeginP; j < *pNewBeginR; ++j) {
+        int vertexInP = vertexSets[j];
+
+        auto [nbr_begin, nbr_end] = edgeGraph.getNbr(vertexInP);
+        for (auto idx = nbr_begin; idx < nbr_end; ++idx) {
+            int laterNeighbor = edgeGraph.adj_list[idx];
+            if (laterNeighbor <= vertexInP) continue;
+            int laterNeighborLocation = vertexLookup[laterNeighbor];
+
+            if (laterNeighborLocation >= *pNewBeginP && laterNeighborLocation < *pNewBeginR) {
+                neighborsInP[vertexInP][numNeighbors[vertexInP]] = laterNeighbor;
+                numNeighbors[vertexInP]++;
+                neighborsInP[laterNeighbor][numNeighbors[laterNeighbor]] = vertexInP;
+                numNeighbors[laterNeighbor]++;
+            }
+        }
+    }
+}
 
 /*! \brief Move a vertex to the set R, and update sets P and X
            and the arrays of neighbors in P

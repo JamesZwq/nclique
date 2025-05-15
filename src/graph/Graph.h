@@ -87,7 +87,7 @@ public:
 
     daf::Size getDegreeCount(daf::Size d) const;
 
-    void sortByDegeneracyOrdering();
+    void sortByDegeneracyOrder();
 
     void printGraphInfo() const;
 

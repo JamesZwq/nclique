@@ -24,9 +24,6 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    int n; // number of vertices
-    int m; // 2x number of edges
-
     // char *opt = NULL;
     int opt;
     char *fpath = (char *) Calloc(1000, sizeof(char));
@@ -68,7 +65,18 @@ int main(int argc, char **argv) {
 
     printf("about to call runAndPrint for dataset %s\n", fpath);
     // printf("Parsed all arguments. t = %c, max_k = %d, flag_d = %d. About to get graph.\n", t, max_k, flag_d);
+    int n; // number of vertices
+    int m; // 2x number of edges
+
     LinkedList **adjacencyList = readInGraphAdjListToDoubleEdges(&n, &m, fpath);
+
+    Graph edgeGraph(fpath);
+    if (n != edgeGraph.getGraphNodeSize() || m != edgeGraph.getGraphEdgeSize() * 2) {
+        std::cerr << "Error: n != edgeGraph.getGraphEdgeSize() || m != edgeGraph.getGraphNodeSize()" << std::endl;
+        std::cerr << "n: " << n << " m: " << m << std::endl;
+        std::cerr << "edgeGraph.getGraphNodeSize(): " << edgeGraph.getGraphNodeSize() << " edgeGraph.getGraphEdgeSize(): " << edgeGraph.getGraphEdgeSize() << std::endl;
+        return 1;
+    }
 
     int i;
 
@@ -78,8 +86,10 @@ int main(int argc, char **argv) {
     // if (lastdot != NULL)
     //     *lastdot = '\0';
 
-
     populate_nCr();
+
+    runAndPrintStatsCliquesEdgeGraph(edgeGraph, n, gname, t, max_k, flag_d, fpath);
+
     runAndPrintStatsCliques(adjacencyList, n, gname, t, max_k, flag_d, fpath);
 
 

@@ -54,6 +54,9 @@ void listAllCliquesDegeneracyRecursive_V(daf::Size *,
 
 void listAllCliquesDegeneracy_V(daf::Size *, NeighborListArray **,
                                 int size, int max_k, std::string databasePath);
+
+void listAllCliquesDegeneracy_VedgeGraph(daf::Size *cliqueCounts, Graph &orderingArray,
+                                         int max_k, std::string databasePath);
 #ifdef __cplusplus
 }
 #endif

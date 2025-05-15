@@ -60,7 +60,9 @@ LinkedList** readInGraphAdjListToDoubleEdges(int* n, int* m, char *fpath);
 void runAndPrintStatsCliques(LinkedList** adjListLinked,
                              int n, const char * gname,
                              char T, int max_k, int flag_d, std::string databaseName);
-
+void runAndPrintStatsCliquesEdgeGraph(Graph &edgeGraph,
+                             int n, const char *gname,
+                             char T, int max_k, int flag_d, std::string databaseName);
 
 int findNbrCSC(int u, int v, int *CSCindex, int *CSCedges);
 
@@ -85,6 +87,12 @@ int findBestPivotNonNeighborsDegeneracyCliques(int** pivotNonNeighbors, int* num
                                                int* vertexSets, int* vertexLookup,
                                                int** neighborsInP, int* numNeighbors,
                                                int beginP, int beginR);
+
+void fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(int vertex, int *vertexSets, int *vertexLookup,
+                                              Graph &edgeGraph,
+                                              int **neighborsInP, int *numNeighbors,
+                                              int *pBeginX, int *pBeginP, int *pBeginR,
+                                              int *pNewBeginX, int *pNewBeginP, int *pNewBeginR);
 #ifdef __cplusplus
 }
 #endif

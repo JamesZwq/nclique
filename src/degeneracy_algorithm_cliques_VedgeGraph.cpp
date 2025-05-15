@@ -46,7 +46,11 @@
 
 extern double nCr[1001][401];
 
-
+void listAllCliquesDegeneracyRecursive_VedgeGraph(daf::Size *cliqueCounts,
+                                         int *vertexSets, int *vertexLookup,
+                                         int **neighborsInP, int *numNeighbors,
+                                         int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
+                                         int max_k, TreeNode *root) ;
 /*! \brief Computes the vertex v in P union X that has the most neighbors in P,
            and places P \ {neighborhood of v} in an array. These are the 
            vertices to consider adding to the partial clique during the current
@@ -98,32 +102,36 @@ extern double nCr[1001][401];
     \return the number of maximal cliques of the input graph.
 */
 
-void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **orderingArray,
-                                int size, int max_k, std::string databasePath) {
+void listAllCliquesDegeneracy_VedgeGraph(daf::Size *cliqueCounts, Graph &edgeGraph,
+                                         int max_k, std::string databasePath) {
     // vertex sets are stored in an array like this:
     // |--X--|--P--|
-    std::vector<int> vertexSets(size);
-    std::vector<int> vertexLookup(size);
-    std::vector<int *> neighborsInP(size);
-    std::vector<int> numNeighbors(size);
+    auto size = edgeGraph.getGraphNodeSize();
+    daf::StaticVector<int> vertexSets(size);
+    daf::StaticVector<int> vertexLookup(size);
+    daf::StaticVector<int *> neighborsInP(size);
+    daf::StaticVector<int> numNeighbors(size);
+    vertexSets.c_size = size;
+    vertexLookup.c_size = size;
+    neighborsInP.c_size = size;
+    numNeighbors.c_size = size;
 
-    int i = 0, deg = 0;
 
-    while (i < size) {
+    for (int i = 0; i < size; ++i) {
         vertexLookup[i] = i;
         vertexSets[i] = i;
         neighborsInP[i] = static_cast<int *>(Calloc(1, sizeof(int)));
         numNeighbors[i] = 1;
-        if (orderingArray[i]->laterDegree > deg) deg = orderingArray[i]->laterDegree;
-        i++;
     }
 
     int beginX = 0;
     int beginP = 0;
     int beginR = size;
 
-    int *dropV = (int *) Calloc(MAX_CSIZE, sizeof(int));
-    int *keepV = (int *) Calloc(MAX_CSIZE, sizeof(int));
+    // int *dropV = (int *) Calloc(MAX_CSIZE, sizeof(int));
+    // int *keepV = (int *) Calloc(MAX_CSIZE, sizeof(int));
+    daf::StaticVector<int> dropV(MAX_CSIZE);
+    daf::StaticVector<int> keepV(MAX_CSIZE);
 
     MultiBranchTree tree;
     TreeNode *root = tree.getRoot();
@@ -134,39 +142,41 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     // dropV.resize(MAX_CSIZE);
     // keepV.resize(MAX_CSIZE);
     // for each vertex
-    for (i = 0; i < size; i++) {
+    for (int vertex = 0; vertex < edgeGraph.getGraphNodeSize(); ++vertex) {
         // std::cout << "Vertex: " << i << std::endl;
-        int vertex = (int) orderingArray[i]->vertex;
 
         int newBeginX, newBeginP, newBeginR;
 
         // set P to be later neighbors and X to be be earlier neighbors
         // of vertex
-        fillInPandXForRecursiveCallDegeneracyCliques(i, vertex,
-                                                     vertexSets.data(), vertexLookup.data(),
-                                                     orderingArray,
-                                                     neighborsInP.data(), numNeighbors.data(),
+        fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(vertex,
+                                                     vertexSets.data, vertexLookup.data,
+                                                     edgeGraph,
+                                                     neighborsInP.data, numNeighbors.data,
                                                      &beginX, &beginP, &beginR,
                                                      &newBeginX, &newBeginP, &newBeginR);
 
 
         // recursively compute maximal cliques containing vertex, some of its
         // later neighbors, and avoiding earlier neighbors
-        int drop = 0;
-        int keep = 1;
-        memset(keepV, 0, MAX_CSIZE);
-        memset(dropV, 0, MAX_CSIZE);
+        // int drop = 0;
+        // int keep = 1;
+        dropV.clear();
+        keepV.clear();
+        // memset(keepV, 0, MAX_CSIZE);
+        // memset(dropV, 0, MAX_CSIZE);
         // std::fill(keepV.begin(), keepV.end(), 0);
         // std::fill(dropV.begin(), dropV.end(), 0);
         // keepV.clear();
         // dropV.clear();
-        keepV[keep - 1] = vertex;
+        // keepV[keep - 1] = vertex;
+        keepV.push_back(vertex);
         // keepV.push_back(vertex);
 
-        listAllCliquesDegeneracyRecursive_V(cliqueCounts,
-                                            vertexSets.data(), vertexLookup.data(),
-                                            neighborsInP.data(), numNeighbors.data(),
-                                            newBeginP, newBeginR, keep, drop, keepV, dropV, max_k, root->addChild(vertex, false));
+        listAllCliquesDegeneracyRecursive_VedgeGraph(cliqueCounts,
+                                            vertexSets.data, vertexLookup.data,
+                                            neighborsInP.data, numNeighbors.data,
+                                            newBeginP, newBeginR, keepV, dropV, max_k, root->addChild(vertex, false));
 
         beginR = beginR + 1;
     }
@@ -176,7 +186,7 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     // tree.printTree();
     // tree.initLeafsParent();
     // tree.cliqueCount().print();
-    auto file1 = fopen("/Users/zhangwenqian/UNSW/pivoter/outA.txt", "w");
+    auto file1 = fopen("/Users/zhangwenqian/UNSW/pivoter/outB.txt", "w");
     for (auto &i: tree.cliqueCount()) {
         printf("%lf\n", i);
         fprintf(file1, "%lf\n", i);
@@ -194,12 +204,12 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     // Free(vertexSets);
     // Free(vertexLookup);
 
-    for (i = 0; i < size; i++) {
-        // Free(neighborsInP[i]);
-        Free(orderingArray[i]->later);
-        Free(orderingArray[i]->earlier);
-        Free(orderingArray[i]);
-    }
+    // for (int i = 0; i < size; ++i) {
+    //     // Free(neighborsInP[i]);
+    //     Free(orderingArray[i]->later);
+    //     Free(orderingArray[i]->earlier);
+    //     Free(orderingArray[i]);
+    // }
 
     // Free(neighborsInP);
     // Free(numNeighbors);
@@ -239,34 +249,17 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
 
 */
 
-void listAllCliquesDegeneracyRecursive_V(daf::Size *cliqueCounts,
+void listAllCliquesDegeneracyRecursive_VedgeGraph(daf::Size *cliqueCounts,
                                          int *vertexSets, int *vertexLookup,
                                          int **neighborsInP, int *numNeighbors,
-                                         int beginP, int beginR, int keep, int drop, int *keepV, int *dropV,
+                                         int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
                                          int max_k, TreeNode *root) {
     // std::cout << "max_k: " << max_k << std::endl;
     // if (keep > 3) {
     //     std::cerr << "keep should be less than 4" << std::endl;
     // }
     if ((beginP >= beginR)) {
-        // daf::Size kkeepCliques = 0; // number of kcliques a vertex from "keep" is involved in
-        // for (int i = drop; (i >= 0) && (keep + drop - i <= max_k); i--) {
-        //     int k = keep + drop - i;
-        //     kkeepCliques = nCr[drop][i];
-        //     for (int j = 0; j < keep; j++) {
-        //         int v = keepV[j];
-        //         cliqueCounts[v * (max_k + 1) + k] += kkeepCliques;
-        //     }
-        // }
-        // daf::Size kdropCliques = 0;
-        // for (int i = drop - 1; (i >= 0) && (keep + drop - i <= max_k); i--) {
-        //     int k = keep + drop - i;
-        //     kdropCliques = nCr[drop - 1][i];
-        //     for (int j = 0; j < drop; j++) {
-        //         int v = dropV[j];
-        //         cliqueCounts[v * (max_k + 1) + k] += kdropCliques;
-        //     }
-        // }
+
         return;
     }
 
@@ -301,17 +294,20 @@ void listAllCliquesDegeneracyRecursive_V(daf::Size *cliqueCounts,
 
             // recursively compute maximal cliques with new sets R, P and X
             if (vertex == pivot) {
-                dropV[drop] = vertex;
-                listAllCliquesDegeneracyRecursive_V(cliqueCounts,
+                // dropV[drop] = vertex;
+                dropV.push_back(vertex);
+                listAllCliquesDegeneracyRecursive_VedgeGraph(cliqueCounts,
                                                     vertexSets, vertexLookup,
                                                     neighborsInP, numNeighbors,
-                                                    newBeginP, newBeginR, keep, drop + 1, keepV, dropV, max_k, root->addChild(vertex, true));
+                                                    newBeginP, newBeginR, keepV, dropV, max_k, root->addChild(vertex, true));
+                dropV.pop_back();
             } else {
-                keepV[keep] = vertex;
-                listAllCliquesDegeneracyRecursive_V(cliqueCounts,
+                keepV.push_back(vertex);
+                listAllCliquesDegeneracyRecursive_VedgeGraph(cliqueCounts,
                                                     vertexSets, vertexLookup,
                                                     neighborsInP, numNeighbors,
-                                                    newBeginP, newBeginR, keep + 1, drop, keepV, dropV, max_k, root->addChild(vertex, false));
+                                                    newBeginP, newBeginR, keepV, dropV, max_k, root->addChild(vertex, false));
+                keepV.pop_back();
             }
 
             moveFromRToXDegeneracyCliques(vertex,

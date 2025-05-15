@@ -161,6 +161,7 @@ namespace daf {
             return data;
         }
 
+
         void push_back(const T &value) {
             data[c_size++] = value;
         }
