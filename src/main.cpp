@@ -59,7 +59,6 @@ int main(int argc, char **argv) {
     std::cout << "numLeaf: " << numLeaf << std::endl;
     std::cout << "nun of nodes: " << tree.getRoot()->children.size() << std::endl;
 
-
     daf::StaticVector<TreeNode *> leafList = tree.getLeafsList(numLeaf, minK);
 
 // if debug
@@ -71,7 +70,7 @@ int main(int argc, char **argv) {
     if (r == 2) {
         DynamicGraph<TreeGraphNode> treeGraph = DynamicGraph<TreeGraphNode>(leafList, minK);
         Graph edgeGraph = Graph(graphFile, true);
-        DynamicGraph<daf::Size> treeGraphV = DynamicGraph<daf::Size>(leafList, edgeGraph.getGraphNodeSize(), minK);
+        DynamicGraph<daf::Size> treeGraphV(leafList, edgeGraph.getGraphNodeSize(), minK);
         daf::vListMap.resize(edgeGraph.n + 1);
 
 #ifndef NDEBUG

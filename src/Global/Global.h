@@ -225,8 +225,40 @@ namespace daf {
             maxSize = newSize;
             c_size = newSize;
         }
+
+        // reserve
+        void reserve(Size newSize) {
+            if (newSize > maxSize) {
+                T *newData = new T[newSize];
+                std::memcpy(newData, data, c_size * sizeof(T));
+                delete[] data;
+                data = newData;
+                maxSize = newSize;
+            }
+        }
+
+
+        void swap(StaticVector &other) {
+            std::swap(c_size, other.c_size);
+            std::swap(maxSize, other.maxSize);
+            std::swap(data, other.data);
+        }
+
         void free() const {
             delete[] data;
+        }
+
+        T &front() {
+            return data[0];
+        }
+        [[nodiscard]] const T &front() const {
+            return data[0];
+        }
+        T &back() {
+            return data[c_size - 1];
+        }
+        [[nodiscard]] const T &back() const {
+            return data[c_size - 1];
         }
 
         T &operator[](daf::Size index) {

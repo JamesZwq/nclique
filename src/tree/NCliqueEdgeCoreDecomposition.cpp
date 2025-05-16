@@ -439,14 +439,13 @@ namespace baseECD {
     }
 }
 
-void baseNucleusEdgeCoreDecomposition(DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-                                      DynamicGraph<daf::Size> &treeGraphV, daf::CliqueSize k) {
-    // daf::Size numNodes = tree.getRoot()->children.size();
-    // tree.printTree();
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCoreDecomposition(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraph<daf::Size> &treeGraphV, daf::CliqueSize k) {
+
     auto time_start = std::chrono::high_resolution_clock::now();
     auto [countingKE, degreeERemove] = baseECD::countingPerEdge(tree, edgeGraph, k);
-    // degreeE
-    // std::vector<baseECD::leafInfo> leafInfos(tree.adj_list.size());
+
     std::vector<double> leafCore = baseECD::initLeafCore(tree, countingKE, k, edgeGraph);
 
 #ifndef NDEBUG
@@ -701,7 +700,6 @@ void baseNucleusEdgeCoreDecomposition(DynamicGraph<TreeGraphNode> &tree, const G
                 );
 
 
-
                 auto removeW = [&](daf::Size u, daf::Size v, double w) {
                     auto idx = edgeGraph.getEdgeIndex(u, v);
                     coreE[idx] = currCore;
@@ -870,7 +868,6 @@ void baseNucleusEdgeCoreDecomposition(DynamicGraph<TreeGraphNode> &tree, const G
             }
 
 
-
             // std::cout << "updateLeaf: " << std::endl;
             for (auto &u: updateLeaf) {
                 daf::Size updateLeafId = u.first;
@@ -880,7 +877,6 @@ void baseNucleusEdgeCoreDecomposition(DynamicGraph<TreeGraphNode> &tree, const G
                     heap.update(heapHandles[updateLeafId]);
                 }
             }
-
 
 
 #ifndef NDEBUG
@@ -943,7 +939,6 @@ void baseNucleusEdgeCoreDecomposition(DynamicGraph<TreeGraphNode> &tree, const G
 
     // /Users/zhangwenqian/UNSW/pivoter/a
     daf::Size numCounting = 0;
-    auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/a", "w");
     // std::sort(coreE, coreE + edgeGraph.adj_list.size());
     std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > sortedK;
     sortedK.reserve(edgeGraph.adj_list.size());
@@ -965,22 +960,10 @@ void baseNucleusEdgeCoreDecomposition(DynamicGraph<TreeGraphNode> &tree, const G
         }
     }
 
-    std::sort(sortedK.begin(), sortedK.end(),
-              [](const auto &a, const auto &b) {
-                  if (a.second != b.second) {
-                      return a.second < b.second;
-                  }
-                  if (a.first.first != b.first.first) {
-                      return a.first.first < b.first.first;
-                  }
-                  return a.first.second < b.first.second;
-              }
-    );
-
-    for (auto i: sortedK) {
-        fprintf(file, "%d %d %d\n", i.first.first, i.first.second, i.second);
-    }
-    fclose(file);
+    // for (auto i: sortedK) {
+    //     fprintf(file, "%d %d %d\n", i.first.first, i.first.second, i.second);
+    // }
+    // fclose(file);
 
     // if (numCounting != 0) {
     //     // exit 1
@@ -1001,14 +984,15 @@ void baseNucleusEdgeCoreDecomposition(DynamicGraph<TreeGraphNode> &tree, const G
     currentRemoveLeafIds.free();
     removedEdges.free();
     // leafIds.free();
+    return sortedK;
 }
 
 
 template<class Bitset>
-void print_clique(const Bitset& bs) {
+void print_clique(const Bitset &bs) {
     std::cout << '[';
     bool first = true;
-    bk::for_each_bit(bs, (int)bs.size(), [&](int v){
+    bk::for_each_bit(bs, (int) bs.size(), [&](int v) {
         if (!first) std::cout << ',';
         first = false;
         std::cout << v;
@@ -1016,4 +1000,3 @@ void print_clique(const Bitset& bs) {
     });
     std::cout << "]\n";
 }
-

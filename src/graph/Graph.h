@@ -44,14 +44,17 @@ public:
     Graph(const Graph &) = delete;
     Graph(Graph &&) {
         std::cout << "graph move constructor" << std::endl;
-        adj_list_offsets = std::move(adj_list_offsets);
-        adj_list = std::move(adj_list);
-        n = std::move(n);
-        max_degree = std::move(max_degree);
+        // adj_list_offsets = std::move(adj_list_offsets);
+        // adj_list = std::move(adj_list);
+        // n = std::move(n);
+        // max_degree = std::move(max_degree);
     }
     Graph &operator=(const Graph &) = delete;
     Graph &operator=(Graph &&) = delete;
-    virtual ~Graph() = default;
+    virtual ~Graph() {
+        adj_list.free();
+        adj_list_offsets.free();
+    }
     //    print the Graph with <<
     [[nodiscard]] std::pair<daf::Size, daf::Size> getNbr(daf::Size node_id) const;
 
@@ -87,7 +90,7 @@ public:
 
     daf::Size getDegreeCount(daf::Size d) const;
 
-    void sortByDegeneracyOrder();
+    std::vector<daf::Size> sortByDegeneracyOrder();
 
     void printGraphInfo() const;
 
@@ -138,7 +141,7 @@ public:
 
         // 2. 拿到邻居区间 [b,e)
         auto [b, e] = getNbr(u);
-        const daf::Size* data = adj_list.data();
+        const daf::Size* data = adj_list.data;
 
         // 3. 手写二分查找 v
         std::size_t lo = b, hi = e;
@@ -156,9 +159,10 @@ public:
         std::cerr << "Error: [" << u << ", " << v << "] not found" << std::endl;
         return static_cast<daf::Size>(-1);
     }
+    void beSingleEdge();
 
-    std::vector<daf::Size> adj_list_offsets;
-    std::vector<daf::Size> adj_list;
+    daf::StaticVector<daf::Size> adj_list_offsets;
+    daf::StaticVector<daf::Size> adj_list;
     daf::Size n;
     daf::Size max_degree;
 private:

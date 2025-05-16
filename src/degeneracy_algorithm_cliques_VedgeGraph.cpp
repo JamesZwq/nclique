@@ -46,11 +46,11 @@
 
 extern double nCr[1001][401];
 
-void listAllCliquesDegeneracyRecursive_VedgeGraph(daf::Size *cliqueCounts,
-                                                  int *vertexSets, int *vertexLookup,
-                                                  int **neighborsInP, int *numNeighbors,
-                                                  int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
-                                                  int max_k, int min_k, DynamicGraph<TreeGraphNode> &tree) ;
+void listAllCliquesDegeneracyRecursive_VedgeGraph(
+    int *vertexSets, int *vertexLookup,
+    int **neighborsInP, int *numNeighbors,
+    int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
+    int max_k, int min_k, DynamicGraph<TreeGraphNode> &tree) ;
 /*! \brief Computes the vertex v in P union X that has the most neighbors in P,
            and places P \ {neighborhood of v} in an array. These are the 
            vertices to consider adding to the partial clique during the current
@@ -79,6 +79,7 @@ void listAllCliquesDegeneracyRecursive_VedgeGraph(daf::Size *cliqueCounts,
     \param beginP The index where set P begins in vertexSets.
 
     \param beginR The index where set R begins in vertexSets.
+    \param min_k
 
 */
 
@@ -101,7 +102,7 @@ void listAllCliquesDegeneracyRecursive_VedgeGraph(daf::Size *cliqueCounts,
     \return the number of maximal cliques of the input graph.
 */
 
-void listAllCliquesDegeneracy_VedgeGraph(daf::Size *cliqueCounts, Graph &edgeGraph, int max_k) {
+DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &edgeGraph, int max_k, int min_k) {
     // vertex sets are stored in an array like this:
     // |--X--|--P--|
     auto size = edgeGraph.getGraphNodeSize();
@@ -147,10 +148,10 @@ void listAllCliquesDegeneracy_VedgeGraph(daf::Size *cliqueCounts, Graph &edgeGra
         keepV.clear();
         keepV.push_back(vertex);
         // keepV.push_back(vertex);
-        listAllCliquesDegeneracyRecursive_VedgeGraph(cliqueCounts,
-                                                     vertexSets.data, vertexLookup.data,
-                                                     neighborsInP.data, numNeighbors.data,
-                                                     newBeginP, newBeginR, keepV, dropV, max_k, 0, treeGraph);
+        listAllCliquesDegeneracyRecursive_VedgeGraph(vertexSets.data,
+                                                     vertexLookup.data, neighborsInP.data,
+                                                     numNeighbors.data, newBeginP,
+                                                     newBeginR, keepV, dropV, max_k, min_k, treeGraph);
 
         beginR = beginR + 1;
     }
@@ -172,7 +173,7 @@ void listAllCliquesDegeneracy_VedgeGraph(daf::Size *cliqueCounts, Graph &edgeGra
     numNeighbors.free();
 
 
-    return;
+    return treeGraph;
 }
 
 /*! \brief Recursively list all maximal cliques containing all of
@@ -206,11 +207,11 @@ void listAllCliquesDegeneracy_VedgeGraph(daf::Size *cliqueCounts, Graph &edgeGra
 
 */
 
-void listAllCliquesDegeneracyRecursive_VedgeGraph(daf::Size *cliqueCounts,
-                                                  int *vertexSets, int *vertexLookup,
-                                                  int **neighborsInP, int *numNeighbors,
-                                                  int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
-                                                  int max_k, int min_k, DynamicGraph<TreeGraphNode> &tree) {
+void listAllCliquesDegeneracyRecursive_VedgeGraph(
+    int *vertexSets, int *vertexLookup,
+    int **neighborsInP, int *numNeighbors,
+    int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
+    int max_k, int min_k, DynamicGraph<TreeGraphNode> &tree) {
     // std::cout << "max_k: " << max_k << std::endl;
     // if (keep > 3) {
     //     std::cerr << "keep should be less than 4" << std::endl;
@@ -269,17 +270,17 @@ void listAllCliquesDegeneracyRecursive_VedgeGraph(daf::Size *cliqueCounts,
             if (vertex == pivot) {
                 // dropV[drop] = vertex;
                 dropV.push_back(vertex);
-                listAllCliquesDegeneracyRecursive_VedgeGraph(cliqueCounts,
-                                                             vertexSets, vertexLookup,
-                                                             neighborsInP, numNeighbors,
-                                                             newBeginP, newBeginR, keepV, dropV, max_k, min_k, tree);
+                listAllCliquesDegeneracyRecursive_VedgeGraph(vertexSets,
+                                                             vertexLookup, neighborsInP,
+                                                             numNeighbors, newBeginP,
+                                                             newBeginR, keepV, dropV, max_k, min_k, tree);
                 dropV.pop_back();
             } else {
                 keepV.push_back(vertex);
-                listAllCliquesDegeneracyRecursive_VedgeGraph(cliqueCounts,
-                                                             vertexSets, vertexLookup,
-                                                             neighborsInP, numNeighbors,
-                                                             newBeginP, newBeginR, keepV, dropV, max_k, min_k, tree);
+                listAllCliquesDegeneracyRecursive_VedgeGraph(vertexSets,
+                                                             vertexLookup, neighborsInP,
+                                                             numNeighbors, newBeginP,
+                                                             newBeginR, keepV, dropV, max_k, min_k, tree);
                 keepV.pop_back();
             }
 

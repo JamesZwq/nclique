@@ -420,85 +420,15 @@ void runAndPrintStatsCliques(LinkedList **adjListLinked,
 
 
 void runAndPrintStatsCliquesEdgeGraph(Graph &edgeGraph,
-                             int n, const char *gname,
-                             char T, int max_k, int flag_d, std::string databaseName) {
+                                      int max_k, int min_k) {
     //printf("In runAndPrint function.\n");
-    fflush(stderr);
-    int max_k_in = max_k;
-
-    clock_t start = clock();
-
-    double totalCliques = 0;
-    int deg = 0, m = 0;
-    FILE *fp;
-
-    //printf("Before if of flag_d.\n");
-    fflush(stdout);
-    if ((flag_d == 1) || (flag_d == 2)) {
-        char *fname = (char *) Calloc(1000, sizeof(char));
-
-        strcpy(fname, "results/");
-        strcat(fname, gname);
-        char *s_max_k = (char *) Calloc(10, sizeof(char));
-        snprintf(s_max_k, sizeof(s_max_k), "%d", max_k);
-
-        if (max_k > 0) {
-            strcat(fname, "_");
-            strcat(fname, s_max_k);
-        }
-        if (T == 'A') {
-            if (flag_d == 2)
-                strcat(fname, "_A_stat.txt");
-            else
-                strcat(fname, "_A.txt");
-        } else if (T == 'V') {
-            if (flag_d == 2)
-                strcat(fname, "_V_stat.txt");
-            else
-                strcat(fname, "_V.txt");
-        } else {
-            if (flag_d == 2)
-                strcat(fname, "_E_stat.txt");
-            else
-                strcat(fname, "_E.txt");
-        }
-
-        fp = fopen(fname, "w");
-        if (!fp) printf("Could not open output file.\n");
-    }
-    //printf("Before computeDegeneracy.\n");
-    fflush(stdout);
-
-    // NeighborListArray **orderingArray = computeDegeneracyOrderArray(adjListLinked, n);
     edgeGraph.sortByDegeneracyOrder();
-    //printf("Before for. After computeDegeneracy.\n");
-    // print orderingArray
-    // for (int i = 0; i < n; i++) {
-    //     printf("Vertex %d: \n", i);
-    //     printf("Earlier: ");
-    //     printArray(orderingArray[i]->earlier, orderingArray[i]->earlierDegree);
-    //     printf("Later: ");
-    //     printArray(orderingArray[i]->later, orderingArray[i]->laterDegree);
-    // }
     fflush(stdout);
-    // for (int i = 0; i < n; i++) {
-    //     if (deg < orderingArray[i]->laterDegree) deg = orderingArray[i]->laterDegree;
-    //     m += orderingArray[i]->laterDegree;
-    // }
 
-    if (max_k == 0) max_k = deg + 1;
-    if (T == 'V') {
-        daf::Size *cliqueCounts = (daf::Size *) Calloc(n*((max_k)+1), sizeof(daf::Size));
-        auto timeStaart = std::chrono::high_resolution_clock::now();
-        listAllCliquesDegeneracy_VedgeGraph(cliqueCounts, edgeGraph, max_k);
-        std::cout << "Time taken to list all cliques: " << std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::high_resolution_clock::now() - timeStaart).count() << " ms" << std::endl;
-
-        Free(cliqueCounts);
-    }
-
-    if (flag_d >= 1) fclose(fp);
-    // Free(orderingArray);
+    auto timeStaart = std::chrono::high_resolution_clock::now();
+    listAllCliquesDegeneracy_VedgeGraph(edgeGraph, max_k, min_k);
+    std::cout << "Time taken to list all cliques: " << std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::high_resolution_clock::now() - timeStaart).count() << " ms" << std::endl;
 }
 
 /*! \brief Computes the vertex v in P union X that has the most neighbors in P,

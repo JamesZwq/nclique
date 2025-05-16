@@ -161,11 +161,11 @@ std::pair<daf::Size, daf::Size> Graph::getNbr(const daf::Size node_id) const {
 }
 
 
-std::pair<std::vector<daf::Size>::const_iterator, std::vector<daf::Size>::const_iterator>
-Graph::getNbrInter(const daf::Size node_id) const {
-    auto [nbr_start, nbr_end] = getNbr(node_id);
-    return {adj_list.cbegin() + nbr_start, adj_list.cbegin() + nbr_end};
-}
+// std::pair<std::vector<daf::Size>::const_iterator, std::vector<daf::Size>::const_iterator>
+// Graph::getNbrInter(const daf::Size node_id) const {
+//     auto [nbr_start, nbr_end] = getNbr(node_id);
+//     return {adj_list.cbegin() + nbr_start, adj_list.cbegin() + nbr_end};
+// }
 
 
 daf::Size Graph::getNbrCount(daf::Size node_id) const {
@@ -232,9 +232,9 @@ void Graph::sortByBFSTraversal() {
     sortVertexByGivenOrder(ordered_vertex);
 }
 
-void Graph::sortByDegeneracyOrder() {
+std::vector<daf::Size> Graph::sortByDegeneracyOrder() {
     const daf::Size n = getGraphNodeSize();
-    if (n == 0) return;
+    if (n == 0) return {};
 
     /*------------------------------------------------------------
      * 1. 预处理：统计度数并记录最大度
@@ -324,6 +324,7 @@ void Graph::sortByDegeneracyOrder() {
     sortVertexByGivenOrder(ordered_vertex);
 
     // 如需使用 degeneracy，可在此返回或存成员变量
+    return ordered_vertex;
 }
 
 // void Graph::sortByDegeneracyOrdering() {
@@ -614,4 +615,52 @@ Graph::Graph(const MultiBranchTree &tree,
     // treeGraphV.getAvgDegree();
     adj_list_offsets.resize(treeGraphV.adj_list_offsets.size());
     adj_list.reserve(treeGraphV.adj_list.size());
+}
+
+
+void Graph::beSingleEdge() {
+    // 1) 第一遍：统计每个 u 的“新度数” deg[u] = |{v in N(u) | v>u}|
+    std::vector<daf::Size> deg(n, 0);
+    daf::Size new_max_deg = 0;
+    for (daf::Size u = 0; u < n; ++u) {
+        for (daf::Size ei = adj_list_offsets[u]; ei < adj_list_offsets[u+1]; ++ei) {
+            daf::Size v = adj_list[ei];
+            if (v > u) {
+                ++deg[u];
+            }
+        }
+        if (deg[u] > new_max_deg) new_max_deg = deg[u];
+    }
+
+    // 2) 构建新的 offsets 前缀和
+    daf::StaticVector<daf::Size> new_offsets(n+1);
+    new_offsets.c_size = n + 1;
+    new_offsets[0] = 0;
+    for (daf::Size u = 0; u < n; ++u) {
+        new_offsets[u+1] = new_offsets[u] + deg[u];
+    }
+    daf::Size m_new = new_offsets[n];
+
+    // 3) 分配并填充新的邻接数组；重用 deg 作为写入指针
+    daf::StaticVector<daf::Size> new_adj(m_new);
+    new_adj.c_size = m_new;
+    std::fill(deg.begin(), deg.end(), 0);
+    for (daf::Size u = 0; u < n; ++u) {
+        daf::Size base = new_offsets[u];
+        for (daf::Size ei = adj_list_offsets[u]; ei < adj_list_offsets[u+1]; ++ei) {
+            daf::Size v = adj_list[ei];
+            if (v > u) {
+                new_adj[ base + deg[u] ] = v;
+                ++deg[u];
+            }
+        }
+    }
+
+    // 4) 用新数组替换旧数组，并更新 max_degree 与边数 m
+    adj_list_offsets.swap(new_offsets);
+    adj_list.swap(new_adj);
+    max_degree = new_max_deg;
+    new_offsets.free();
+    new_adj.free();
+    // （如果你有成员 m，记得同时更新 m = m_new;）
 }

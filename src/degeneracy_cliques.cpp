@@ -11,95 +11,76 @@
 #include"misc.h"
 #include"LinkedList.h"
 #include"MemoryManager.h"
+#include "tree/NCliqueCoreDecomposition.h"
 
 int main(int argc, char **argv) {
     std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
-    if (argc != 9) {
+    if (argc != 4) {
         printf("Incorrect number of arguments.\n");
-        printf("./degeneracy_cliques -i <file_path> -t <type> -k <max_clique_size> -d <data_flag>\n");
-        printf("file_path: path to file\n");
-        printf("type: A/V/E. A for just k-clique information, V for per-vertex k-cliques, E for per-edge k-cliques\n");
-        printf("max_clique_size: max_clique_size. If 0, calculate for all k.\n");
-        printf("data_flag: 1 if information is to be output to a file, 0 otherwise.\n");
+        printf("./main <graphFile> <r> <s>\n");
+        printf("graphFile: path to graph\n");
+        printf("r: r\n");
+        printf("s: s\n");
         return 0;
     }
 
     // char *opt = NULL;
-    int opt;
-    char *fpath = (char *) Calloc(1000, sizeof(char));
-    char t;
-    int flag_d;
-    int max_k = 0;
-
-    while ((opt = getopt(argc, argv, ":i:t:k:d:")) != -1) {
-        switch (opt) {
-            case 'i':
-                printf("In case i. optarg = %s\n", optarg);
-                strcpy(fpath, optarg);
-                // fpath = optarg;
-            // printf("fpath = %s\n", fpath);
-                break;
-            case 't':
-                t = *optarg;
-                if ((t != 'A') && (t != 'V') && (t != 'E')) {
-                    printf("Incorrect type. Type should be A, V or E.\n");
-                    return 0;
-                }
-                break;
-            case 'k':
-                max_k = atoi(optarg);
-                break;
-            case 'd':
-                flag_d = atoi(optarg);
-                if ((flag_d < 0) || (flag_d > 2)) {
-                    printf("Incorrect flag for data. Shoudld be 0, 1 or 2.\n");
-                    return 0;
-                }
-                break;
-            default:
-                printf("In default case.\n");
-                abort();
-        }
-    }
-
+    const char *fpath = argv[1];
+    const daf::CliqueSize r = strtol(argv[2], nullptr, 10);
+    const daf::CliqueSize s = strtol(argv[3], nullptr, 10);
 
     printf("about to call runAndPrint for dataset %s\n", fpath);
-    // printf("Parsed all arguments. t = %c, max_k = %d, flag_d = %d. About to get graph.\n", t, max_k, flag_d);
-    int n; // number of vertices
-    int m; // 2x number of edges
-
-    LinkedList **adjacencyList = readInGraphAdjListToDoubleEdges(&n, &m, fpath);
 
     Graph edgeGraph(fpath);
-    if (n != edgeGraph.getGraphNodeSize() || m != edgeGraph.getGraphEdgeSize() * 2) {
-        std::cerr << "Error: n != edgeGraph.getGraphEdgeSize() || m != edgeGraph.getGraphNodeSize()" << std::endl;
-        std::cerr << "n: " << n << " m: " << m << std::endl;
-        std::cerr << "edgeGraph.getGraphNodeSize(): " << edgeGraph.getGraphNodeSize() << " edgeGraph.getGraphEdgeSize(): " << edgeGraph.getGraphEdgeSize() << std::endl;
-        return 1;
-    }
-
-    int i;
-
-    char *gname = basename(fpath);
-
-    // char *lastdot = strrchr(gname, '.');
-    // if (lastdot != NULL)
-    //     *lastdot = '\0';
-
+    edgeGraph.printGraphInfo();
     populate_nCr();
+    auto vertexMap = edgeGraph.sortByDegeneracyOrder();
+    // std::vector<daf::Size> vertexMap(edgeGraph.getGraphNodeSize());
+    // for (daf::Size i = 0; i < vertexToOrder.size(); ++i) {
+    //     vertexMap[vertexToOrder[i]] = i;
+    // }
+    // fflush(stdout);
 
-    runAndPrintStatsCliquesEdgeGraph(edgeGraph, n, gname, t, max_k, flag_d, fpath);
+    auto treeGraph = daf::timeCount("Tree Build", [&] {
+        return listAllCliquesDegeneracy_VedgeGraph(edgeGraph, s, s);
+    });
+    std::cout << "nun Leaf: " << treeGraph.adj_list.size() << std::endl;
+    DynamicGraph<daf::Size> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
+    // std::cout << "Before" << std::endl;
+    // edgeGraph.printGraphPerV();
+    edgeGraph.beSingleEdge();
+    // std::cout << "After" << std::endl;
+    // edgeGraph.printGraphPerV();
 
-    runAndPrintStatsCliques(adjacencyList, n, gname, t, max_k, flag_d, fpath);
+    // auto core = baseNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
+    auto core = daf::timeCount("Core Decomposition", [&] {
+        return baseNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
+    });
 
+    std::ranges::sort(core,
+                      [vertexMap](const auto &a, const auto &b) {
+                          if (a.second != b.second) {
+                              return a.second < b.second;
+                          }
+                          auto a_from = vertexMap[a.first.first];
+                          auto a_to = vertexMap[a.first.second];
+                          auto b_from = vertexMap[b.first.first];
+                          auto b_to = vertexMap[b.first.second];
+                          if (a_from != b_from) {
+                              return a_from < b_from;
+                          }
+                          if (a_to != b_to) {
+                              return a_to < b_to;
+                          }
+                          return a.second < b.second;
+                      }
+    );
 
-    i = 0;
-    while (i < n) {
-        destroyLinkedList(adjacencyList[i]);
-        i++;
+    auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/b", "w");
+    for (auto i: core) {
+        fprintf(file, "%d %d %d\n", vertexMap[i.first.first], vertexMap[i.first.second], i.second);
     }
-
-    Free(adjacencyList);
+    fclose(file);
 
     return 0;
 }

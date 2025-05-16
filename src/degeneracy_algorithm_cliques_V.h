@@ -41,6 +41,7 @@
 #include"LinkedList.h"
 #include"MemoryManager.h"
 #include"degeneracy_helper.h"
+#include "graph/DynamicGraph.h"
 
 
 #ifdef __cplusplus
@@ -55,8 +56,8 @@ void listAllCliquesDegeneracyRecursive_V(daf::Size *,
 void listAllCliquesDegeneracy_V(daf::Size *, NeighborListArray **,
                                 int size, int max_k, std::string databasePath);
 
-void listAllCliquesDegeneracy_VedgeGraph(daf::Size *cliqueCounts, Graph &orderingArray,
-                                         int max_k);
+DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &orderingArray,
+                                                                int max_k, int min_k);
 #ifdef __cplusplus
 }
 #endif

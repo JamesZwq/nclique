@@ -56,8 +56,9 @@ inline double getCore(daf::CliqueSize povit, daf::CliqueSize keep, daf::CliqueSi
 
 void baseNucleusCoreDecomposition(const MultiBranchTree &tree, daf::CliqueSize k);
 
-void baseNucleusEdgeCoreDecomposition(DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-                                      DynamicGraph<daf::Size> &treeGraphV, daf::CliqueSize k);
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> baseNucleusEdgeCoreDecomposition(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraph<daf::Size> &treeGraphV, daf::CliqueSize k);
 
 void baseNucleusCoreDecompositionLeaf(const MultiBranchTree &tree, daf::CliqueSize k);
 

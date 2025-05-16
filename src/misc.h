@@ -61,8 +61,7 @@ void runAndPrintStatsCliques(LinkedList** adjListLinked,
                              int n, const char * gname,
                              char T, int max_k, int flag_d, std::string databaseName);
 void runAndPrintStatsCliquesEdgeGraph(Graph &edgeGraph,
-                             int n, const char *gname,
-                             char T, int max_k, int flag_d, std::string databaseName);
+                                      int max_k, int min_k);
 
 int findNbrCSC(int u, int v, int *CSCindex, int *CSCedges);
 
