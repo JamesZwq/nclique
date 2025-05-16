@@ -490,7 +490,7 @@ void runAndPrintStatsCliquesEdgeGraph(Graph &edgeGraph,
     if (T == 'V') {
         daf::Size *cliqueCounts = (daf::Size *) Calloc(n*((max_k)+1), sizeof(daf::Size));
         auto timeStaart = std::chrono::high_resolution_clock::now();
-        listAllCliquesDegeneracy_VedgeGraph(cliqueCounts, edgeGraph, max_k, databaseName);
+        listAllCliquesDegeneracy_VedgeGraph(cliqueCounts, edgeGraph, max_k);
         std::cout << "Time taken to list all cliques: " << std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - timeStaart).count() << " ms" << std::endl;
 

@@ -62,7 +62,10 @@ class DynamicGraph {
     public:
         explicit DynamicGraph(const daf::StaticVector<TreeNode *> &leafList, daf::Size minK);
         explicit DynamicGraph(const daf::StaticVector<TreeNode *> &leafList, daf::Size n, daf::Size minK);
-
+        explicit DynamicGraph() = default;
+        explicit DynamicGraph(daf::Size n) {
+            adj_list.reserve(n);
+        }
     void addNbr(daf::Size node_id, T nbr) {
             if (nbr < adj_list[node_id].back()) {
                 adj_list[node_id].push_back(nbr);
@@ -145,6 +148,40 @@ class DynamicGraph {
         }
 
 
+    daf::StaticVector<double> cliqueCount();
+    // {
+    //         daf::StaticVector<double> counts(root->MaxDeep + 1);
+    //         counts.c_size = root->MaxDeep + 1;
+    //         memset(counts.data, 0, (root->MaxDeep + 1) * sizeof(double));
+    //         std::function<void(TreeNode *, daf::CliqueSize, daf::CliqueSize)> helper =
+    //                 [&](TreeNode *node, daf::CliqueSize pivotCount, daf::CliqueSize nonPivotCount) {
+    //                     if (node->children.empty()) {
+    //                         const daf::CliqueSize rsize = pivotCount + nonPivotCount;
+    //                         for (daf::CliqueSize i = 0; i <= pivotCount; i++) {
+    //                             const daf::Size k = rsize - i;
+    //                             counts[k] += nCr[pivotCount][i];
+    //                         }
+    //                         return;
+    //                     }
+    //                     for (const auto child: node->children) {
+    //                         if (child->isPivot) helper(child, pivotCount + 1, nonPivotCount);
+    //                         else helper(child, pivotCount, nonPivotCount + 1);
+    //                     }
+    //         };
+    //
+    //         helper(root, 0, 0);
+    //         // std::cout << counts << std::endl;
+    //         return counts;
+    //     }
+        daf::Size maxDegree() const {
+            daf::Size max = 0;
+            for (const auto &i: adj_list) {
+                if (i.size() > max) {
+                    max = i.size();
+                }
+            }
+            return max;
+        }
         std::vector<std::vector<T> > adj_list;
 private:
         std::vector<daf::Size> removedNodes;

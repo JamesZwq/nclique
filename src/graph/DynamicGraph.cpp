@@ -63,3 +63,27 @@ DynamicGraph<daf::Size>::DynamicGraph(const daf::StaticVector<TreeNode *> &leafL
     delete[] degree;
 }
 
+template<>
+daf::StaticVector<double> DynamicGraph<TreeGraphNode>::cliqueCount() {
+    auto maxdegree = this->maxDegree();
+    daf::StaticVector<double> counts(maxdegree + 1);
+    counts.c_size = maxdegree + 1;
+    memset(counts.data, 0, (maxdegree + 1) * sizeof(double));
+    for (auto leaf: this->adj_list) {
+        int pivotCount = 0, nonPivotCount = 0;
+        for (const auto &node: leaf) {
+            if (node.isPivot) {
+                pivotCount++;
+            } else {
+                nonPivotCount++;
+            }
+        }
+        const daf::CliqueSize rsize = pivotCount + nonPivotCount;
+        for (daf::CliqueSize i = 0; i <= pivotCount; i++) {
+            const daf::Size k = rsize - i;
+            counts[k] += nCr[pivotCount][i];
+        }
+    }
+    return counts;
+}
+
