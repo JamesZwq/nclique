@@ -34,30 +34,49 @@ int main(int argc, char **argv) {
     Graph edgeGraph(fpath);
     edgeGraph.printGraphInfo();
     populate_nCr();
+
+
     auto vertexMap = edgeGraph.sortByDegeneracyOrder();
-    // std::vector<daf::Size> vertexMap(edgeGraph.getGraphNodeSize());
-    // for (daf::Size i = 0; i < vertexToOrder.size(); ++i) {
-    //     vertexMap[vertexToOrder[i]] = i;
-    // }
-    // fflush(stdout);
 
     auto treeGraph = daf::timeCount("Tree Build", [&] {
         return listAllCliquesDegeneracy_VedgeGraph(edgeGraph, s, s);
     });
     std::cout << "nun Leaf: " << treeGraph.adj_list.size() << std::endl;
     DynamicGraph<daf::Size> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
-    // std::cout << "Before" << std::endl;
-    // edgeGraph.printGraphPerV();
     edgeGraph.beSingleEdge();
-    // std::cout << "After" << std::endl;
-    // edgeGraph.printGraphPerV();
 
     // auto core = baseNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
-    auto core = daf::timeCount("Core Decomposition", [&] {
-        return baseNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
+    auto treeGraphClone = treeGraph.clone();
+    auto treeGraphVClone = treeGraphV.clone();
+    auto corePlus = daf::timeCount("Plus Core Decomposition", [&] {
+        return PlusNucleusEdgeCoreDecomposition(treeGraphClone, edgeGraph, treeGraphVClone, s);
     });
 
-    std::ranges::sort(core,
+    auto coreBase = daf::timeCount("Base Core Decomposition", [&] {
+        return baseNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
+    });
+    //
+    //
+    //
+    std::ranges::sort(corePlus,
+                      [vertexMap](const auto &a, const auto &b) {
+                          if (a.second != b.second) {
+                              return a.second < b.second;
+                          }
+                          auto a_from = vertexMap[a.first.first];
+                          auto a_to = vertexMap[a.first.second];
+                          auto b_from = vertexMap[b.first.first];
+                          auto b_to = vertexMap[b.first.second];
+                          if (a_from != b_from) {
+                              return a_from < b_from;
+                          }
+                          if (a_to != b_to) {
+                              return a_to < b_to;
+                          }
+                          return a.second < b.second;
+                      }
+                      );
+    std::ranges::sort(coreBase,
                       [vertexMap](const auto &a, const auto &b) {
                           if (a.second != b.second) {
                               return a.second < b.second;
@@ -75,12 +94,19 @@ int main(int argc, char **argv) {
                           return a.second < b.second;
                       }
     );
-
-    auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/b", "w");
-    for (auto i: core) {
-        fprintf(file, "%d %d %d\n", vertexMap[i.first.first], vertexMap[i.first.second], i.second);
+    // check diff
+    // std::cout << "corePlus: " << corePlus << std::endl;
+    // std::cout << "coreBase: " << coreBase << std::endl;
+    for (auto i = 0; i < corePlus.size(); ++i) {
+        if (corePlus[i] != coreBase[i]) {
+            std::cout << "corePlus: " << corePlus[i].first.first << " " << corePlus[i].first.second << " "
+                      << corePlus[i].second << std::endl;
+            std::cout << "coreBase: " << coreBase[i].first.first << " " << coreBase[i].first.second << " "
+                      << coreBase[i].second << std::endl;
+            return 1;
+        }
     }
-    fclose(file);
+
 
     return 0;
 }

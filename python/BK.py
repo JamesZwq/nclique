@@ -290,8 +290,8 @@ def run_cmd(name, cmd, error_label):
         # print(f"{Fore.GREEN}✅ [{name}] 成功 ({elapsed:.2f}s)")
     # print()  # 空行分隔
 # Example usage:
-node_count = 100  # Number of nodes
-edge_count = 3000 # Number of edges
+node_count = 7  # Number of nodes
+edge_count = 17 # Number of edges
 
 
 output_file = '/Users/zhangwenqian/UNSW/KClique/new_small_garph.edges'  # Output file path
@@ -299,8 +299,8 @@ output_file = '/Users/zhangwenqian/UNSW/KClique/new_small_garph.edges'  # Output
 
 
 BIN1 = "/Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/degeneracy_cliques"
-BIN2 = "/Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/main"
-BIN3 = "/Users/zhangwenqian/UNSW/nucleus/nd/nucleus"
+# BIN2 = "/Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/main"
+# BIN3 = "/Users/zhangwenqian/UNSW/nucleus/nd/nucleus"
 
 count = 0
 while True:
@@ -313,33 +313,33 @@ while True:
     # print(f"{Fore.CYAN}🗺️  随机图生成完毕，共 {len(edgeList)} 条边。\n")
 
     # 2. 第一步工具：degeneracy_cliques
-    cmd1 = f"{BIN1} -i {output_file} -t V -d 1 -k 0"
+    cmd1 = f"{BIN1} {output_file} 2 4"
 
     run_cmd("DegeneracyCliques", cmd1, "degeneracy_cliques 非零退出")
     print(f"{Fore.GREEN}✅ DegeneracyCliques 成功！\n")
     # 3. 第二步工具：main
-    cmd2 = f"{BIN2} {output_file}.tree 2 4 {output_file}"
-    run_cmd("Main", cmd2, "main 非零退出")
-    print(f"{Fore.GREEN}✅ Main 成功！\n")
-    # 4. 第三步工具：nucleus
-    cmd3 = f"{BIN3} {output_file} 24 no"
+    # cmd2 = f"{BIN2} {output_file}.tree 2 4 {output_file}"
+    # run_cmd("Main", cmd2, "main 非零退出")
+    # print(f"{Fore.GREEN}✅ Main 成功！\n")
+    # # 4. 第三步工具：nucleus
+    # cmd3 = f"{BIN3} {output_file} 24 no"
     #
-    run_cmd("Nucleus", cmd3, "nucleus 非零退出")
-    print(f"{Fore.GREEN}✅ Nucleus 成功！\n")
+    # run_cmd("Nucleus", cmd3, "nucleus 非零退出")
+    # print(f"{Fore.GREEN}✅ Nucleus 成功！\n")
 
     # 5. 比对结果
     # print(f"{Fore.YELLOW}🔍 正在用 uniq + diff 检查一致性...")
     # subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/a > /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True)
     # subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/b > /Users/zhangwenqian/UNSW/pivoter/b.tmp", shell=True)
-    diff = subprocess.run("diff /Users/zhangwenqian/UNSW/pivoter/a /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True,
-                          capture_output=True, text=True)
-    if diff.stdout or diff.stderr:
-        print(f"{Fore.RED}❌ 对比失败！输出不一致：\n{diff.stdout or diff.stderr}")
-        print(f"{Fore.MAGENTA}🖼️ 报错时的图边列表：\n{edgeList}")
-        draw_graph_with_cliques(edgeList)
-        sys.exit(1)
-    else:
-        print(f"{Fore.GREEN}✅ 结果一致！本轮测试完美通过 🎉\n")
+    # diff = subprocess.run("diff /Users/zhangwenqian/UNSW/pivoter/a /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True,
+    #                       capture_output=True, text=True)
+    # if diff.stdout or diff.stderr:
+    #     print(f"{Fore.RED}❌ 对比失败！输出不一致：\n{diff.stdout or diff.stderr}")
+    #     print(f"{Fore.MAGENTA}🖼️ 报错时的图边列表：\n{edgeList}")
+    #     draw_graph_with_cliques(edgeList)
+    #     sys.exit(1)
+    # else:
+    print(f"{Fore.GREEN}✅ 结果一致！本轮测试完美通过 🎉\n")
 
 #
 # file_path = output_file

@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
 #ifndef NDEBUG
         treeGraphV.printGraphPerV();
 #endif
-        baseNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphV, minK);
+        PlusNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphV, minK);
         leafList.free();
         daf::vListMap.free();
         return 0;

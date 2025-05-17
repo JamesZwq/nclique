@@ -65,6 +65,7 @@ void baseNucleusCoreDecompositionLeaf(const MultiBranchTree &tree, daf::CliqueSi
 void baseNucleusCoreDecompositionPar(const MultiBranchTree &tree, daf::CliqueSize k);
 
 void baseNucleusCoreDecompositionParHash(const MultiBranchTree &tree, daf::CliqueSize k);
-
-
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecomposition(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraph<daf::Size> &treeGraphV, daf::CliqueSize k);
 #endif //NCLIQUECOREDECOMPOSITION_H

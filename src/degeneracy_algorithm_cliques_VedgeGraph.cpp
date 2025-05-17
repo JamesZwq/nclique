@@ -158,12 +158,13 @@ DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &edgeGraph
     // tree.printTree();
     // tree.initLeafsParent();
     // tree.cliqueCount().print();
-    auto file1 = fopen("/Users/zhangwenqian/UNSW/pivoter/outB.txt", "w");
-    for (auto &i: treeGraph.cliqueCount()) {
-        printf("%lf\n", i);
-        fprintf(file1, "%lf\n", i);
-    }
-    fclose(file1);
+
+    // auto file1 = fopen("/Users/zhangwenqian/UNSW/pivoter/outB.txt", "w");
+    // for (auto &i: treeGraph.cliqueCount()) {
+    //     printf("%lf\n", i);
+    //     fprintf(file1, "%lf\n", i);
+    // }
+    // fclose(file1);
     vertexSets.free();
     vertexLookup.free();
     for (int i = 0; i < size; ++i) {

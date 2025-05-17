@@ -164,6 +164,12 @@ class DynamicGraph {
         return max;
     }
 
+    DynamicGraph clone() const {
+        DynamicGraph clone;
+        clone.adj_list = adj_list;
+        clone.removedNodes = removedNodes;
+        return clone;
+    }
 
         std::vector<std::vector<T> > adj_list;
 private:
