@@ -189,8 +189,8 @@ void runCase(const std::string& name, std::size_t N, int R = 1000, std::size_t w
 }
 
 int main() {
-    const std::size_t N = 1000;
-    const int R = 10000;
+    const std::size_t N = 100;
+    const int R = 100000;
     std::cout << "Bench N = " << N << "  (total of " << R << " runs)\n";
     runCase<std::unordered_set<std::uint64_t>>("unordered", N);
 #ifndef NO_ABSL
