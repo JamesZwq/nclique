@@ -1,12 +1,10 @@
 //
 // Created by 张文谦 on 25-4-24.
 //
-
+#pragma once
 #ifndef TREEGRAPH_H
 #define TREEGRAPH_H
-#include "Graph.h"
 #include "tree/MultiBranchTree.h"
-#include "graph/DynamicGraph.h"
 #include <functional>
 #include <cstddef>
 #include <utility>

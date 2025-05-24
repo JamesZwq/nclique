@@ -11,6 +11,10 @@
 #include <map>
 
 #include "graph/DynamicGraph.h"
+#include "graph/DynamicGraphSet.h"
+
+template<typename T>
+class DynamicGraphSet;
 
 extern double nCr[1001][401];
 
@@ -68,4 +72,9 @@ void baseNucleusCoreDecompositionParHash(const MultiBranchTree &tree, daf::Cliqu
 std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecomposition(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraph<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet(
+    DynamicGraphSet<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 #endif //NCLIQUECOREDECOMPOSITION_H

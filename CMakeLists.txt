@@ -51,7 +51,7 @@ message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 include_directories("${TBB_ROOT}/include")
 include_directories(src)
 
-file(GLOB_RECURSE ALL_SOURCES src/*.cpp)
+file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.hpp src/*.h src/*/*.cpp src/*/*.hpp src/*/*.h)
 set(EXCLUDE_SRCS
         ${CMAKE_SOURCE_DIR}/src/main.cpp
         ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp

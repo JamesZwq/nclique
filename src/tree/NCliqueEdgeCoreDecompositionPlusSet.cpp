@@ -21,7 +21,7 @@ extern double nCr[1001][401];
 // set NOEBUG as trus
 
 
-namespace PlusECD {
+namespace PlusECDSet {
     struct LeafRmInfo {
         bool removedKeepC;
         daf::StaticVector<daf::Size> removedPivots{0};
@@ -477,20 +477,20 @@ namespace PlusECD {
     }
 }
 
-std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCoreDecomposition(
-    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraph<TreeGraphNode> &treeGraphV, daf::CliqueSize k) {
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet(
+    DynamicGraphSet<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k) {
 
     auto time_start = std::chrono::high_resolution_clock::now();
-    auto [countingKE, degreeERemove] = PlusECD::countingPerEdge(tree, edgeGraph, k);
+    auto [countingKE, degreeERemove] = PlusECDSet::countingPerEdge(tree, edgeGraph, k);
 
-    // std::vector<double> leafCore = PlusECD::initLeafCore(tree, countingKE, k, edgeGraph);
+    // std::vector<double> leafCore = PlusECDSet::initLeafCore(tree, countingKE, k, edgeGraph);
 
 #ifndef NDEBUG
     tree.printGraphPerV();
     daf::printArray(countingKE, edgeGraph.adj_list.size());
-    PlusECD::printEdgeCore(edgeGraph, countingKE);
-    // PlusECD::printEdgeCore(edgeGraph, degreeE);
+    PlusECDSet::printEdgeCore(edgeGraph, countingKE);
+    // PlusECDSet::printEdgeCore(edgeGraph, degreeE);
 #endif
 
     // memset(removedLeaf.getData(), false, tree.adj_list.size() * sizeof(bool));
@@ -517,13 +517,13 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
     std::map<daf::Size, double> updateLeaf;
 
     daf::StaticVector<daf::Size> removedLeaf(tree.adj_list.size());
-    daf::StaticVector<PlusECD::LeafRmInfo> leafRmInfo(tree.adj_list.size());
+    daf::StaticVector<PlusECDSet::LeafRmInfo> leafRmInfo(tree.adj_list.size());
     leafRmInfo.c_size = tree.adj_list.size();
 
 
     double currCore = 0;
-    PlusECD::DHeap heap{PlusECD::CompareEdge(countingKE)};
-    std::vector<PlusECD::DHeap::handle_type> heapHandles(edgeGraph.adj_list.size());
+    PlusECDSet::DHeap heap{PlusECDSet::CompareEdge(countingKE)};
+    std::vector<PlusECDSet::DHeap::handle_type> heapHandles(edgeGraph.adj_list.size());
 
     for (daf::Size i = 0; i < edgeGraph.adj_list.size(); ++i) {
         heapHandles[i] = heap.push(i);
@@ -535,9 +535,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
     // treeGraphV.printGraphPerV();
 #ifndef NDEBUG
     std::cout << "coreE: ";
-    PlusECD::printEdgeCore(edgeGraph, coreE);
+    PlusECDSet::printEdgeCore(edgeGraph, coreE);
     std::cout << "countingKE: ";
-    PlusECD::printEdgeCore(edgeGraph, countingKE);
+    PlusECDSet::printEdgeCore(edgeGraph, countingKE);
     std::cout << "tree: ";
     tree.printGraphPerV();
 
@@ -610,7 +610,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
                 std::cerr << "Error: leaf is empty" << std::endl;
                 std::exit(1);
             }
-            PlusECD::LeafRmInfo &leafRm = leafRmInfo[leafId];
+            PlusECDSet::LeafRmInfo &leafRm = leafRmInfo[leafId];
 #ifndef NDEBUG
             std::cout << leafId << " leaf: " << leaf << "\n leafRm: " << leafRm << std::endl;
 #endif
@@ -655,17 +655,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
 
                 if (needPivot <= povit.size()) {
                     KtoK = nCr[povit.size()][needPivot];
-                    PlusECD::processEdgePairs(keepC, KtoK, removeW);
+                    PlusECDSet::processEdgePairs(keepC, KtoK, removeW);
                 }
                 int needPP = int(needPivot) - 2;
                 if (0 <= needPP && needPP <= int(povit.size()) - 2) {
                     PtoP = nCr[povit.size() - 2][needPP];
-                    PlusECD::processEdgePairs(povit, PtoP, removeW);
+                    PlusECDSet::processEdgePairs(povit, PtoP, removeW);
                 }
                 int needKP = int(needPivot) - 1;
                 if (0 <= needKP && needKP <= int(povit.size()) - 1) {
                     KtoP = nCr[povit.size() - 1][needKP];
-                    PlusECD::processEdgePairs(keepC, povit, KtoP, removeW);
+                    PlusECDSet::processEdgePairs(keepC, povit, KtoP, removeW);
                 }
                 tree.removeNode(leafId);
                 for (auto i: leaf) {
@@ -698,17 +698,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
                     daf::Size needPivot = k - newKeepC.size();
                     if (needPivot <= newPivot.size() && newKeepC.size() > 1) {
                         KtoK = nCr[newPivot.size()][needPivot];
-                        PlusECD::processEdgePairs(newKeepC, KtoK, addW);
+                        PlusECDSet::processEdgePairs(newKeepC, KtoK, addW);
                     }
                     int needPP = int(needPivot) - 2;
                     if (0 <= needPP && needPP <= int(newPivot.size()) - 2) {
                         PtoP = nCr[newPivot.size() - 2][needPP];
-                        PlusECD::processEdgePairs(newPivot, PtoP, addW);
+                        PlusECDSet::processEdgePairs(newPivot, PtoP, addW);
                     }
                     int needKP = int(needPivot) - 1;
                     if (0 <= needKP && needKP <= int(newPivot.size()) - 1) {
                         KtoP = nCr[newPivot.size() - 1][needKP];
-                        PlusECD::processEdgePairs(newKeepC, newPivot, KtoP, addW);
+                        PlusECDSet::processEdgePairs(newKeepC, newPivot, KtoP, addW);
                     }
                     newPivot.clear();
                     newKeepC.clear();
@@ -764,17 +764,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
                 // daf::Size needPivot = k - keepC.size();
                 if (needPivot <= povit.size()) {
                     KtoK = nCr[povit.size()][needPivot];
-                    PlusECD::processEdgePairs(keepC, KtoK, removeW);
+                    PlusECDSet::processEdgePairs(keepC, KtoK, removeW);
                 }
                 int needPP = int(needPivot) - 2;
                 if (0 <= needPP && needPP <= int(povit.size()) - 2) {
                     PtoP = nCr[povit.size() - 2][needPP];
-                    PlusECD::processEdgePairs(povit, PtoP, removeW);
+                    PlusECDSet::processEdgePairs(povit, PtoP, removeW);
                 }
                 int needKP = int(needPivot) - 1;
                 if (0 <= needKP && needKP <= int(povit.size()) - 1) {
                     KtoP = nCr[povit.size() - 1][needKP];
-                    PlusECD::processEdgePairs(keepC, povit, KtoP, removeW);
+                    PlusECDSet::processEdgePairs(keepC, povit, KtoP, removeW);
                 }
                 tree.removeNode(leafId);
             } else {
@@ -919,19 +919,19 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
 
 // #ifndef NDEBUG
 //             std::cout << "countingKE: ";
-//             PlusECD::printEdgeCore(edgeGraph, countingKE);
+//             PlusECDSet::printEdgeCore(edgeGraph, countingKE);
 //                 // updateLeaf.print("updateLeaf");
 //                 // removedLeaf.print("removedLeaf");
 //             std::cout << "removedLeaf: " << removedLeaf << std::endl;
 //
 //             // //
 //             // // std::cout << "degreeE: ";
-//             // // PlusECD::printEdgeCore(edgeGraph, degreeE);
+//             // // PlusECDSet::printEdgeCore(edgeGraph, degreeE);
 //             // std::cout << "degreeV: ";
 //             // daf::printArray(degreeV, treeGraphV.adj_list.size());
 //             //
 //             std::cout << "coreE: ";
-//             PlusECD::printEdgeCore(edgeGraph, coreE);
+//             PlusECDSet::printEdgeCore(edgeGraph, coreE);
 //             //
 //
 //             // removedLeaf.print("removedLeaf");
@@ -955,9 +955,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
         // currentRemoveLeafIds.clear();
 #ifndef NDEBUG
         std::cout << "coreE: ";
-        PlusECD::printEdgeCore(edgeGraph, coreE);
+        PlusECDSet::printEdgeCore(edgeGraph, coreE);
         std::cout << "countingKE: ";
-        PlusECD::printEdgeCore(edgeGraph, countingKE);
+        PlusECDSet::printEdgeCore(edgeGraph, countingKE);
         std::cout << "tree: ";
         tree.printGraphPerV();
 
