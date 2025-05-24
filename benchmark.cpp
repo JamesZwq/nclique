@@ -1,151 +1,264 @@
-#include <iostream>
-#include <vector>
-#include <random>
+/**********************************************************************
+ * benchmark_sets_vector_google.cpp   –   C++20 micro-benchmark
+ *
+ *  比较 6 类容器在 4 种操作上的性能：
+ *      1) std::unordered_set
+ *      2) absl::flat_hash_set         (Abseil)
+ *      3) tsl::robin_set              (tsl-robin-map)
+ *      4) folly::F14FastSet           (Facebook Folly)
+ *      5) google::dense_hash_set      (Google SparseHash)
+ *      6) 已排序 std::vector          (二分插入 / 查找 / 删除；双指针交集)
+ *
+ *  • 每类容器重复 R 次，输出平均耗时（毫秒）。
+ *  • 可用宏 -DNO_ABSL / -DNO_TSL / -DNO_FOLLY / -DNO_GOOGLE 屏蔽某库。
+ *  • dense_hash_set 需先 set_empty_key 及 set_deleted_key；随机数据避开这两个键。
+ *********************************************************************/
+
+#include <algorithm>
 #include <chrono>
-#include <set>  // 新增
+#include <iomanip>
+#include <iostream>
+#include <numeric>
+#include <random>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
-// Boost 头文件
-#include <boost/heap/d_ary_heap.hpp>
-#include <boost/heap/pairing_heap.hpp>
-#include <boost/heap/fibonacci_heap.hpp>
+#ifndef NO_ABSL
+  #include <absl/container/flat_hash_set.h>
+#endif
+#ifndef NO_TSL
+  #include <tsl/robin_set.h>
+#endif
+#ifndef NO_FOLLY
+  #include <folly/container/F14Set.h>
+#endif
+#ifndef NO_GOOGLE
+  #include <google/dense_hash_set>
+#endif
 
-struct Node {
-    int key;
-};
-
-// 用于 heap 和 multiset 的比较器（最小堆 / 最小有序集）
-struct Compare {
-    bool operator()(Node const& a, Node const& b) const {
-        return a.key > b.key;
+/* ---------- 计时器 ---------- */
+using Clock = std::chrono::high_resolution_clock;
+struct Timer {
+    Clock::time_point t0;
+    void   tic() { t0 = Clock::now(); }
+    double toc() const {
+        return std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
     }
 };
 
-// 通用的 Boost.Heap 基准函数
-template<typename Heap>
-void benchmark_heap(const std::string& name, int N, int M, std::mt19937_64& gen) {
-    using Handle = typename Heap::handle_type;
-    std::uniform_int_distribution<int> dist(0, N * 10);
-
-    Heap heap;
-    std::vector<Handle> handles;
-    handles.reserve(N);
-
-    // 插入
-    auto t1 = std::chrono::steady_clock::now();
-    for (int i = 0; i < N; ++i) {
-        handles.push_back(heap.push(Node{ dist(gen) }));
-    }
-    auto t2 = std::chrono::steady_clock::now();
-
-    // decrease-key
-    auto t3 = std::chrono::steady_clock::now();
-    for (int i = 0; i < M; ++i) {
-        int idx = gen() % N;
-        int new_key = dist(gen);
-        Node &node = *handles[idx];
-        if (new_key < node.key) {
-            heap.update(handles[idx], Node{ new_key });
-        }
-    }
-    auto t4 = std::chrono::steady_clock::now();
-
-    // pop-all
-    while (!heap.empty()) heap.pop();
-    auto t5 = std::chrono::steady_clock::now();
-
-    auto to_ms = [&](auto d){
-        return std::chrono::duration_cast<std::chrono::milliseconds>(d).count();
-    };
-    std::cout << name
-              << " | insert: "      << to_ms(t2 - t1) << " ms"
-              << " | decrease-key: " << to_ms(t4 - t3) << " ms"
-              << " | pop-all: "      << to_ms(t5 - t4) << " ms"
-              << " | total: "      << to_ms(t5 - t1) << " ms"
-              << "\n";
+/* ---------- 生成随机 uint64，排除 UINT64_MAX 和 UINT64_MAX-1 ---------- */
+std::vector<std::uint64_t> makeRandom(std::size_t N, std::uint64_t seed) {
+    std::mt19937_64 rng(seed);
+    // 上界设为 max()-2，以避开 empty_key = max() 和 deleted_key = max()-1
+    std::uniform_int_distribution<std::uint64_t> dist(
+        0, std::numeric_limits<std::uint64_t>::max() - 2);
+    std::vector<std::uint64_t> v(N);
+    for (auto& x : v) x = dist(rng);
+    return v;
 }
 
-// 专用于 std::multiset 的基准函数
-void benchmark_set(const std::string& name, int N, int M, std::mt19937_64& gen) {
-    std::uniform_int_distribution<int> dist(0, N * 10);
-    std::multiset<Node, std::function<bool(Node const&, Node const&)>> s(
-        [](Node const& a, Node const& b){ return a.key < b.key; }
-    );
-    std::vector<std::multiset<Node, std::function<bool(Node const&, Node const&)>>::iterator> handles;
-    handles.reserve(N);
+/* ======================================================================
+ *  Sorted Vector “Set” 适配器
+ * ====================================================================*/
+struct SortedVector {
+    std::vector<std::uint64_t> v;
 
-    // 插入
-    auto t1 = std::chrono::steady_clock::now();
-    for (int i = 0; i < N; ++i) {
-        handles.push_back(s.insert(Node{ dist(gen) }));
+    void reserve(std::size_t n) { v.reserve(n); }
+
+    void insert(std::uint64_t x) {
+        auto it = std::lower_bound(v.begin(), v.end(), x);
+        if (it == v.end() || *it != x) v.insert(it, x);
     }
-    auto t2 = std::chrono::steady_clock::now();
-
-    // “减少键” —— erase + insert
-    auto t3 = std::chrono::steady_clock::now();
-    for (int i = 0; i < M; ++i) {
-        int idx = gen() % N;
-        int new_key = dist(gen);
-        auto it = handles[idx];
-        if (new_key < it->key) {
-            s.erase(it);
-            handles[idx] = s.insert(Node{ new_key });
-        }
+    bool contains(std::uint64_t x) const {
+        return std::binary_search(v.begin(), v.end(), x);
     }
-    auto t4 = std::chrono::steady_clock::now();
+    void erase(std::uint64_t x) {
+        auto it = std::lower_bound(v.begin(), v.end(), x);
+        if (it != v.end() && *it == x) v.erase(it);
+    }
 
-    // pop-all
-    while (!s.empty()) s.erase(s.begin());
-    auto t5 = std::chrono::steady_clock::now();
+    std::size_t size() const { return v.size(); }
+    auto begin()  const { return v.begin(); }
+    auto end()    const { return v.end();   }
+};
 
-    auto to_ms = [&](auto d){
-        return std::chrono::duration_cast<std::chrono::milliseconds>(d).count();
-    };
-    std::cout << name
-              << " | insert: "      << to_ms(t2 - t1) << " ms"
-              << " | decrease-key: " << to_ms(t4 - t3) << " ms"
-              << " | pop-all: "      << to_ms(t5 - t4) << " ms"
-              << " | total: "      << to_ms(t5 - t1) << " ms"
-              << "\n";
+std::size_t intersectionSize(const SortedVector& A, const SortedVector& B) {
+    const auto& a = A.v; const auto& b = B.v;
+    std::size_t i = 0, j = 0, cnt = 0;
+    while (i < a.size() && j < b.size()) {
+        if (a[i] < b[j]) ++i;
+        else if (b[j] < a[i]) ++j;
+        else { ++cnt; ++i; ++j; }
+    }
+    return cnt;
 }
 
-int main() {
-    const int N = 500000;   // 插入元素个数
-    const int M = 2000000;   // decrease-key 操作次数
-    std::mt19937_64 gen(123456);
-    std::cout << "N = " << N << ", M = " << M << "\n";
-    // d-ary heap (d=4)
-    using DHeap = boost::heap::d_ary_heap<
-        Node,
-        boost::heap::arity<4>,
-        boost::heap::mutable_<true>,
-        boost::heap::compare<Compare>
-    >;
-    benchmark_heap<DHeap>("d-ary-heap (d=4)", N, M, gen);
-    using DHeap8 = boost::heap::d_ary_heap<
-        Node,
-        boost::heap::arity<8>,
-        boost::heap::mutable_<true>,
-        boost::heap::compare<Compare>
-    >;
-    benchmark_heap<DHeap8>("d-ary-heap (d=8)", N, M, gen);
-    // pairing heap
-    using PHeap = boost::heap::pairing_heap<
-        Node,
-        boost::heap::mutable_<true>,
-        boost::heap::compare<Compare>
-    >;
-    benchmark_heap<PHeap>("pairing-heap",           N, M, gen);
+/* ======================================================================
+ *  Google dense_hash_set 适配器（已添加 deleted_key）
+ * ====================================================================*/
+#ifndef NO_GOOGLE
+struct DenseHashSet {
+    using SetT = google::dense_hash_set<std::uint64_t>;
+    SetT s;
 
-    // fibonacci heap
-    using FHeap = boost::heap::fibonacci_heap<
-        Node,
-        boost::heap::mutable_<true>,
-        boost::heap::compare<Compare>
-    >;
-    benchmark_heap<FHeap>("fibonacci-heap",         N, M, gen);
+    DenseHashSet() {
+        // 选择两个不在数据域内的 sentinel 值
+        auto empty_key   = std::numeric_limits<std::uint64_t>::max();     // 2^64-1
+        auto deleted_key = empty_key - 1;                                 // 2^64-2
 
-    // C++ 标准库 multiset 对比
-    benchmark_set("std::multiset (erase+insert)",  N, M, gen);
+        s.set_empty_key(empty_key);
+        s.set_deleted_key(deleted_key);
+    }
+
+    /* 区间构造 */
+    template<class It>
+    DenseHashSet(It first, It last) : DenseHashSet() {
+        std::size_t n = std::distance(first, last);
+        s.resize(n * 2);  // 负载 < 0.5
+        for (auto it = first; it != last; ++it) s.insert(*it);
+    }
+
+    /* 常规接口 */
+    void reserve(std::size_t n)          { s.resize(n * 2); }
+    void insert(std::uint64_t x)         { s.insert(x); }
+    bool contains(std::uint64_t x) const { return s.find(x) != s.end(); }
+    void erase(std::uint64_t x)          { s.erase(x); }
+
+    std::size_t size() const { return s.size(); }
+    auto begin() const { return s.begin(); }
+    auto end()   const { return s.end();   }
+};
+#endif
+
+/* ======================================================================
+ *  通用基准：Insert + Lookup + Erase
+ * ====================================================================*/
+template<class Set>
+double benchInsertLookupErase(const std::vector<std::uint64_t>& data,
+                              std::size_t lookups)
+{
+    Set s;
+    s.reserve(data.size());
+
+    Timer tm; tm.tic();
+    for (auto x : data) s.insert(x);
+
+    std::size_t hit = 0;
+    for (std::size_t i = 0; i < lookups; ++i)
+        hit += s.contains(data[i % data.size()]);
+
+    for (auto x : data) s.erase(x);
+    (void)hit;
+    return tm.toc();
+}
+
+/* vector 专用重载 */
+double benchInsertLookupErase(const std::vector<std::uint64_t>& data,
+                              std::size_t lookups,
+                              SortedVector*)
+{
+    SortedVector s; s.reserve(data.size());
+    Timer tm; tm.tic();
+    for (auto x : data) s.insert(x);
+    std::size_t hit = 0;
+    for (std::size_t i = 0; i < lookups; ++i)
+        hit += s.contains(data[i % data.size()]);
+    for (auto x : data) s.erase(x);
+    (void)hit;
+    return tm.toc();
+}
+
+/* ======================================================================
+ *  交集基准
+ * ====================================================================*/
+template<class Set>
+double benchIntersection(const std::vector<std::uint64_t>& A,
+                         const std::vector<std::uint64_t>& B)
+{
+    Set s1(A.begin(), A.end()), s2(B.begin(), B.end());
+    const Set& small = (s1.size() < s2.size()) ? s1 : s2;
+    const Set& large = (s1.size() < s2.size()) ? s2 : s1;
+
+    Timer tm; tm.tic();
+    std::size_t cnt = 0;
+    for (auto x : small) if (large.contains(x)) ++cnt;
+    (void)cnt;
+    return tm.toc();
+}
+
+/* vector 专用 */
+double benchIntersection(const std::vector<std::uint64_t>& A,
+                         const std::vector<std::uint64_t>& B,
+                         SortedVector*)
+{
+    SortedVector s1, s2;
+    s1.v.assign(A.begin(), A.end());
+    s2.v.assign(B.begin(), B.end());
+    std::sort(s1.v.begin(), s1.v.end());
+    std::sort(s2.v.begin(), s2.v.end());
+
+    Timer tm; tm.tic();
+    auto sz = intersectionSize(s1, s2);
+    (void)sz;
+    return tm.toc();
+}
+
+/* ======================================================================
+ *  统一调用（重复 R 次取平均）
+ * ====================================================================*/
+template<class Set>
+void runCase(const std::string& name,
+             std::size_t N,
+             int R = 5,
+             std::size_t w = 13)
+{
+    std::vector<double> tIns(R), tInt(R);
+    for (int r = 0; r < R; ++r) {
+        auto d1 = makeRandom(N, 100 + r);
+        auto d2 = makeRandom(N, 200 + r);
+
+        if constexpr (std::is_same_v<Set, SortedVector>) {
+            tIns[r] = benchInsertLookupErase(d1, N, static_cast<Set*>(nullptr));
+            tInt[r] = benchIntersection    (d1, d2, static_cast<Set*>(nullptr));
+        } else {
+            tIns[r] = benchInsertLookupErase<Set>(d1, N);
+            tInt[r] = benchIntersection    <Set>(d1, d2);
+        }
+    }
+    auto avg = [](const std::vector<double>& v){
+        return std::accumulate(v.begin(), v.end(), 0.0) / v.size();
+    };
+
+    std::cout << std::left << std::setw(w) << name
+              << " | Insert+Lookup+Erase: "
+              << std::setw(8) << std::fixed << std::setprecision(3) << avg(tIns) << " ms"
+              << " | Intersection: "
+              << avg(tInt) << " ms\n";
+}
+
+/* ======================================================================*/
+int main()
+{
+    const std::size_t N = 1'000'000;  // 元素数
+    const int R = 5;                  // 重复次数
+
+    std::cout << "Bench N = " << N << "  (avg of " << R << " runs)\n";
+
+    runCase<std::unordered_set<std::uint64_t>>("unordered", N, R);
+#ifndef NO_ABSL
+    runCase<absl::flat_hash_set<std::uint64_t>>("absl_flat", N, R);
+#endif
+#ifndef NO_TSL
+    runCase<tsl::robin_set<std::uint64_t>>("tsl_robin", N, R);
+#endif
+#ifndef NO_FOLLY
+    runCase<folly::F14FastSet<std::uint64_t>>("folly_F14", N, R);
+#endif
+#ifndef NO_GOOGLE
+    runCase<DenseHashSet>("google_dense", N, R);
+#endif
+    runCase<SortedVector>("vec_sorted", N, R);
 
     return 0;
 }

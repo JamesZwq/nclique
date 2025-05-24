@@ -2,11 +2,22 @@ cmake_minimum_required(VERSION 3.10)
 project(pivoter CXX)
 include(CTest)
 add_subdirectory(tests)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 
 if(APPLE)
     set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
     set(TBB_ROOT "/Users/zhangwenqian/myBin/tbb")
     set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.dylib")
+
+    find_path(SPARSEHASH_INCLUDE_DIR
+            NAMES
+            sparsehash/dense_hash_set
+            google/dense_hash_set
+            HINTS /opt/homebrew/include /usr/local/include
+    )
+    include_directories(${SPARSEHASH_INCLUDE_DIR})
 else()
     set(CMAKE_CXX_COMPILER "/usr/bin/g++")
     get_filename_component(HOME_DIR "~" REALPATH)
@@ -23,8 +34,6 @@ else()
     message(STATUS "Linux Boost root: ${BOOST_ROOT}")
 endif()
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
@@ -91,7 +100,12 @@ endif()
 #if(CMAKE_BUILD_TYPE STREQUAL "Release")
 #    add_compile_options(-O3 -g -fsanitize=address -fno-sanitize-recover=undefined)
 #    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
-#endif()
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO
+        "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fsanitize=address -fno-omit-frame-pointer")
+set(CMAKE_LINKER_FLAGS_RELWITHDEBINFO
+        "${CMAKE_LINKER_FLAGS_RELWITHDEBINFO} -fsanitize=address")#endif()
+
+
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # 指定每个可执行文件

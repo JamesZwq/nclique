@@ -290,8 +290,8 @@ def run_cmd(name, cmd, error_label):
         # print(f"{Fore.GREEN}✅ [{name}] 成功 ({elapsed:.2f}s)")
     # print()  # 空行分隔
 # Example usage:
-node_count = 7  # Number of nodes
-edge_count = 17 # Number of edges
+node_count = 8  # Number of nodes
+edge_count = 20 # Number of edges
 
 
 output_file = '/Users/zhangwenqian/UNSW/KClique/new_small_garph.edges'  # Output file path

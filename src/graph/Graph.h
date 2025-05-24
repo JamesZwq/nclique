@@ -9,6 +9,7 @@
 #include <vector>
 #include "Global/Global.h"
 #include <span>
+#include <google/dense_hash_map>
 class MultiBranchTree;
 class TreeNode;
 
@@ -161,10 +162,51 @@ public:
     }
     void beSingleEdge();
 
+    void buildEdgeIdMap() {
+        // 只要调用过 beSingleEdge()，adj_list_offsets/new_adj 就只剩 u<v 的单边
+        // 1) 准备稀疏哈希
+        edgeIdMap_.set_empty_key( std::numeric_limits<uint64_t>::max() );
+        edgeIdMap_.set_deleted_key( std::numeric_limits<uint64_t>::max() - 1 );
+        // 一次性分配足够多的桶
+        edgeIdMap_.resize( static_cast<size_t>(adj_list.c_size * 1.3) );
+        eidToNode.reserve(adj_list.c_size);
+        // 2) 直接按 CSR 下标填 map
+        for (daf::Size u = 0; u < n; ++u) {
+            for (daf::Size eid = adj_list_offsets[u]; eid < adj_list_offsets[u + 1]; ++eid) {
+                daf::Size v = adj_list[eid];
+                // beSingleEdge 已经保证只剩下 v>u 的情况
+                uint64_t key = (static_cast<uint64_t>(u) << 32) | static_cast<uint64_t>(v);
+                // 这里直接把数组索引 ei 当作 ID
+                edgeIdMap_[key] = eid;
+                eidToNode[eid] = u;
+            }
+        }
+    }
+
+    [[nodiscard]] daf::Size getEdgeCompressedId(daf::Size u, daf::Size v) const noexcept {
+        if (u > v) std::swap(u,v);
+        const uint64_t key = (u << 32) | v;
+        const auto it = edgeIdMap_.find(key);
+        if (it != edgeIdMap_.end()) return it->second;
+        return static_cast<daf::Size>(-1);
+    }
+
+    std::pair<daf::Size, daf::Size> getEdgeById(daf::Size eid) const {
+        if (eid >= adj_list.c_size) {
+            std::cerr << "Error: eid out of range" << std::endl;
+            return {static_cast<daf::Size>(-1), static_cast<daf::Size>(-1)};
+        }
+        return {eidToNode[eid], adj_list[eid]};
+    }
+
     daf::StaticVector<daf::Size> adj_list_offsets;
     daf::StaticVector<daf::Size> adj_list;
+    daf::StaticVector<daf::Size> eidToNode;
     daf::Size n;
     daf::Size max_degree;
+
+    // key = (u<<32)|v, value = 连续 ID
+    google::dense_hash_map<uint64_t, daf::Size> edgeIdMap_;
 private:
     void BronKerboschPivotHelp(std::vector<daf::Size>& R,
                            std::vector<daf::Size>& P,

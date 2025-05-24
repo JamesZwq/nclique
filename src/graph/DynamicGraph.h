@@ -9,53 +9,9 @@
 #include <functional>
 #include <cstddef>
 #include <utility>
-struct TreeGraphNode {
-    uint64_t v : 63;
-    uint64_t isPivot : 1;
-    TreeGraphNode() = default;
-    TreeGraphNode(uint64_t v, bool isPivot) : v(v), isPivot(isPivot) {}
 
-    // <<
-    friend std::ostream &operator<<(std::ostream &os, const TreeGraphNode &node) {
-        // os << "(" << node.v << ", " << node.isPivot << ")";
-        if (node.isPivot) {
-            os << "(" << node.v << ", Drop)";
-        } else {
-            os << "(" << node.v << ", Keep)";
-        }
-        return os;
-    }
-    operator uint64_t() const noexcept { return v; }
-    // == operater with unit64
-    bool operator==(const TreeGraphNode &other) const {
-        return v == other.v && isPivot == other.isPivot;
-    }
+#include "dataStruct/CliqueHashMap.h"
 
-    bool operator!=(const TreeGraphNode &other) const {
-        return !(*this == other);
-    }
-
-    bool operator<(const TreeGraphNode &other) const {
-        if (v != other.v) {
-            return v < other.v;
-        }
-        return isPivot < other.isPivot;
-    }
-
-    bool operator>(const TreeGraphNode &other) const {
-        if (v != other.v) {
-            return v > other.v;
-        }
-        return isPivot > other.isPivot;
-    }
-
-
-    bool operator==(const daf::Size other) const {
-        return v == other;
-    }
-
-};
-static_assert(sizeof(TreeGraphNode)==8);
 
 template<typename T>
 class DynamicGraph {
@@ -71,6 +27,10 @@ class DynamicGraph {
             adj_list.reserve(n);
         }
     void addNbr(daf::Size node_id, T nbr) {
+            if (adj_list[node_id].empty()) {
+                adj_list[node_id].push_back(nbr);
+                return;
+            }
             if (nbr < adj_list[node_id].back()) {
                 adj_list[node_id].push_back(nbr);
                 std::sort(adj_list[node_id].begin(), adj_list[node_id].end());
@@ -79,8 +39,8 @@ class DynamicGraph {
             }
         }
 
-        std::vector<T> *getNbr(daf::Size node_id) {
-            return &adj_list[node_id];
+        std::vector<T> &getNbr(daf::Size node_id) {
+            return adj_list[node_id];
         }
 
         void removeNbr(daf::Size node_id, T nbr) {
@@ -133,8 +93,8 @@ class DynamicGraph {
                 throw std::out_of_range("Node ID out of range.");
             }
 #endif
-            adj_list[node_id].clear();
             removedNodes.push_back(node_id);
+            adj_list[node_id].clear();
         }
 
         void printGraphPerV() {
@@ -171,10 +131,18 @@ class DynamicGraph {
         return clone;
     }
 
+        double cliqueCount(daf::Size k);
+
+        daf::Size numBipartEdge(daf::Size k);
+
         std::vector<std::vector<T> > adj_list;
 private:
         std::vector<daf::Size> removedNodes;
 
 };
 
+
+// return r clique list, and the graph, r clique is the node, connect to treeGraph, like bipartite graph.
+std::pair<DynamicGraph<daf::Size>,std::vector<Clique>> getCliqueGraph(const DynamicGraph<TreeGraphNode> &treeGraph,
+        daf::CliqueSize r, daf::CliqueSize s);
 #endif //TREEGRAPH_H

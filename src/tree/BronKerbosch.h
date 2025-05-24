@@ -152,6 +152,10 @@ namespace bk {
         }
         // 删除 removeEdgeList 中的边，同时把它们的两端从 staticVertex 中踢掉
         for (auto [u0, v0] : removeEdgeList) {
+            if (daf::vListMap[u0] == std::numeric_limits<daf::Size>::max() ||
+                    daf::vListMap[v0] == std::numeric_limits<daf::Size>::max()) {
+                continue;
+            }
             auto u = daf::vListMap[u0];
             auto v = daf::vListMap[v0];
             adj[u].reset(v);
@@ -160,6 +164,10 @@ namespace bk {
             staticVertex.reset(v);
             pivot.reset(u);
             pivot.reset(v);
+        }
+
+        for (int i = 0; i < n; ++i) {
+            daf::vListMap[vList[i]] = std::numeric_limits<daf::Size>::max();
         }
         return adj;
     }

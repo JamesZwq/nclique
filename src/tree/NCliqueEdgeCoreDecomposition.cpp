@@ -599,8 +599,8 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                     }
                     auto uIter = treeGraphV.getNbr(u);
                     auto vIter = treeGraphV.getNbr(v);
-                    daf::intersect_with_callback(uIter->begin(), uIter->end(),
-                                                 vIter->begin(), vIter->end(),
+                    daf::intersect_with_callback(uIter,
+                                                 vIter,
                                                  [&](const daf::Size &x) {
                                                      if (leafCore[x] > countingKE[idx] && !removedLeaf[x]) {
                                                          auto pvre = updateLeaf.find(x);
@@ -707,8 +707,8 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                     auto index = edgeGraph.getEdgeIndex(u, v);
                     auto nbrU = treeGraphV.getNbr(u);
                     auto nbrV = treeGraphV.getNbr(v);
-                    daf::intersect_with_callback(nbrU->begin(), nbrU->end(),
-                                                 nbrV->begin(), nbrV->end(),
+                    daf::intersect_with_callback(nbrU,
+                                                 nbrV,
                                                  [&](const daf::Size &x) {
                                                      if (leafCore[x] > countingKE[index] && !removedLeaf[x]) {
                                                          auto prve = updateLeaf.find(x);
@@ -817,8 +817,8 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                     }
                     auto uIter = treeGraphV.getNbr(u);
                     auto vIter = treeGraphV.getNbr(v);
-                    daf::intersect_with_callback(uIter->begin(), uIter->end(),
-                                                 vIter->begin(), vIter->end(),
+                    daf::intersect_with_callback(uIter,
+                                                 vIter,
                                                  [&](const daf::Size &x) {
                                                      if (leafCore[x] > countingKE[idx] && !removedLeaf[x]) {
                                                          // updateLeaf.push_back(std::make_pair(x, countingKE[idx]));

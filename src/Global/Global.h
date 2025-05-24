@@ -22,6 +22,8 @@
 #include <tbb/spin_mutex.h>
 
 
+#include <iomanip>
+
 #define MAX_CSIZE 400
 
 template<typename U, typename V>
@@ -163,12 +165,18 @@ namespace daf {
 
 
         void push_back(const T &value) {
+            if (c_size >= maxSize) {
+                reAllocate(maxSize * 1.5);
+            }
             data[c_size++] = value;
         }
 
         template <typename... Args>
         void emplace_back(Args&&... args) {
             // 对于原始内存，可用 placement new；如果 data 已经是 T 类型数组直接赋值也行
+            if (c_size >= maxSize) {
+                reAllocate(maxSize * 1.5);
+            }
             new (&data[c_size]) T(std::forward<Args>(args)...);
             ++c_size;
         }
@@ -220,10 +228,28 @@ namespace daf {
         }
 
         void resize(Size newSize) {
-            delete[] data;
-            data = new T[newSize];
-            maxSize = newSize;
-            c_size = newSize;
+            // if (newSize <= maxSize) {
+            //     // 如果只是缩小，直接改变当前大小即可
+            //     c_size = newSize;
+            //     return;
+            // }
+            // // 扩容：申请新内存，注意先申请再 delete[]，保证异常安全
+            // T* newData = new T[newSize];
+            // // 拷贝旧数据——如果 T 是 POD 类型，可换成 std::memcpy；否则用 std::move 或 std::copy
+            // if constexpr(std::is_trivially_copyable<T>::value) {
+            //     std::memcpy(newData, data, sizeof(T) * c_size);
+            // } else {
+            //     for (Size i = 0; i < c_size; ++i) {
+            //         newData[i] = std::move(data[i]);
+            //     }
+            // }
+            // // 释放旧内存
+            // delete[] data;
+            // // 指针、容量、当前大小更新
+            // data    = newData;
+            // maxSize = newSize;
+            reAllocate(newSize);
+            c_size  = newSize;
         }
 
         // reserve
@@ -340,6 +366,45 @@ namespace daf {
 
         [[nodiscard]] const_iterator cend() const {
             return data + c_size;
+        }
+    private:
+        // void resize(Size newSize) {
+        //     if (newSize <= maxSize) {
+        //         // 如果只是缩小，直接改变当前大小即可
+        //         c_size = newSize;
+        //         return;
+        //     }
+        //     // 扩容：申请新内存，注意先申请再 delete[]，保证异常安全
+        //     T* newData = new T[newSize];
+        //     // 拷贝旧数据——如果 T 是 POD 类型，可换成 std::memcpy；否则用 std::move 或 std::copy
+        //     if constexpr(std::is_trivially_copyable<T>::value) {
+        //         std::memcpy(newData, data, sizeof(T) * c_size);
+        //     } else {
+        //         for (Size i = 0; i < c_size; ++i) {
+        //             newData[i] = std::move(data[i]);
+        //         }
+        //     }
+        //     // 释放旧内存
+        //     delete[] data;
+        //     // 指针、容量、当前大小更新
+        //     data    = newData;
+        //     maxSize = newSize;
+        //     c_size  = newSize;
+        // }
+        void reAllocate(Size newSize) {
+            if (newSize > maxSize) {
+                T *newData = new T[newSize];
+                if constexpr(std::is_trivially_copyable<T>::value) {
+                    std::memcpy(newData, data, sizeof(T) * c_size);
+                } else {
+                    for (Size i = 0; i < c_size; ++i) {
+                        newData[i] = std::move(data[i]);
+                    }
+                }
+                delete[] data;
+                data = newData;
+                maxSize = newSize;
+            }
         }
     };
 
@@ -483,10 +548,164 @@ namespace daf {
         }
     }
 
+    template<
+        std::ranges::forward_range R1,
+        std::ranges::forward_range R2,
+        typename Func
+    >
+        requires std::equality_comparable_with<
+                     std::ranges::range_value_t<R1>,
+                     std::ranges::range_value_t<R2>
+                 > &&
+                 std::invocable<Func, std::ranges::range_value_t<R1>>
+    inline void intersect_with_callback(const R1 &c1,
+                                        const R2 &c2,
+                                        Func &&f) noexcept {
+        intersect_with_callback(
+            std::begin(c1), std::end(c1),
+            std::begin(c2), std::end(c2),
+            std::forward<Func>(f)
+        );
+    }
 
+    // 迭代器版：二参回调
+    // template<typename It1, typename It2, typename Func>
+    // inline void intersect_with_callback_pair(It1 first1, It1 last1,
+    //                                          It2 first2, It2 last2,
+    //                                          Func &&f) noexcept {
+    //     while (first1 != last1 && first2 != last2) {
+    //         if (*first1 < *first2) {
+    //             ++first1;
+    //         } else if (*first2 < *first1) {
+    //             ++first2;
+    //         } else {
+    //             // 这里把两个“相等”但来自不同容器的引用都传给 f
+    //             f(*first1, *first2);
+    //             ++first1;
+    //             ++first2;
+    //         }
+    //     }
+    // }
+
+    // 容器版转发
+    template<
+        std::ranges::forward_range R1,
+        std::ranges::forward_range R2,
+        typename Func
+    >
+    requires
+        // 确保两个引用能比较大小／相等
+        std::totally_ordered_with<
+          std::ranges::range_reference_t<R1>,
+          std::ranges::range_reference_t<R2>
+        > &&
+        // 确保 Func 可以被调用，且参数是两个引用
+        std::invocable<
+          Func,
+          std::ranges::range_reference_t<R1>,
+          std::ranges::range_reference_t<R2>
+        >
+    inline void intersect_with_callback_pair(const R1 &c1,
+                                             const R2 &c2,
+                                             Func &&f) noexcept
+    {
+        auto first1 = std::begin(c1), last1 = std::end(c1);
+        auto first2 = std::begin(c2), last2 = std::end(c2);
+        while (first1 != last1 && first2 != last2) {
+            if (*first1 < *first2) {
+                ++first1;
+            } else if (*first2 < *first1) {
+                ++first2;
+            } else {
+                // 这里 f 拿到的就是 TreeGraphNode& 而非拷贝
+                f(*first1, *first2);
+                ++first1;
+                ++first2;
+            }
+        }
+    }
+
+    inline void printProgress(std::size_t curr, std::size_t total)
+    {
+        constexpr int barWidth = 50;
+        double ratio = static_cast<double>(curr) / total;
+        int filled   = static_cast<int>(ratio * barWidth);
+
+        std::cout << '\r'        // 回到行首，覆盖上一帧
+                  << '[';
+        for (int i = 0; i < barWidth; ++i)
+            std::cout << (i < filled ? '=' : ' ');
+        std::cout << "] "
+                  << std::setw(6) << std::fixed << std::setprecision(2)
+                  << (ratio * 100.0) << "%  "
+                  << '(' << curr << '/' << total << ')'
+                  << std::flush; // 立即刷新
+    }
 
     extern daf::StaticVector<daf::Size> vListMap;
 }
+
+struct TreeGraphNode {
+    uint64_t v : 63;
+    uint64_t isPivot : 1;
+    constexpr TreeGraphNode() = default;
+    constexpr TreeGraphNode(uint64_t v, bool isPivot) : v(v), isPivot(isPivot) {}
+    constexpr explicit TreeGraphNode(uint64_t v) : v(v), isPivot(false) {}
+    constexpr TreeGraphNode(uint64_t v, uint64_t isPivot) : v(v), isPivot(isPivot) {}
+
+    // <<
+    friend std::ostream &operator<<(std::ostream &os, const TreeGraphNode &node) {
+        // os << "(" << node.v << ", " << node.isPivot << ")";
+        if (node.isPivot) {
+            os << "(" << node.v << ", Drop)";
+        } else {
+            os << "(" << node.v << ", Keep)";
+        }
+        return os;
+    }
+    operator uint64_t() const noexcept { return v; }
+    // == operater with unit64
+    constexpr bool operator==(const TreeGraphNode &other) const {
+        return v == other.v;
+    }
+
+    bool operator!=(const TreeGraphNode &other) const {
+        return !(*this == other);
+    }
+
+    bool operator<(const TreeGraphNode &other) const {
+        return v < other.v;
+    }
+
+    bool operator>(const TreeGraphNode &other) const {
+        return v > other.v;
+    }
+
+
+    constexpr bool operator==(const daf::Size other) const {
+        return v == other;
+    }
+
+
+    static const TreeGraphNode EMPTYKEY;
+    static const TreeGraphNode DELETEDKEY;
+};
+
+static_assert(sizeof(TreeGraphNode)==8);
+
+inline const TreeGraphNode TreeGraphNode::EMPTYKEY {
+    (uint64_t(1) << 63) - 1, false
+};
+inline const TreeGraphNode TreeGraphNode::DELETEDKEY {
+    (uint64_t(1) << 63) - 2, false
+};
+
+template<>
+struct std::hash<TreeGraphNode> {
+    size_t operator()(const TreeGraphNode &node) const noexcept {
+        return std::hash<uint64_t>()(node.v);
+    }
+};
 
 template<>
 struct std::hash<daf::StaticVector<daf::Size>> {
