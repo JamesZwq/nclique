@@ -76,7 +76,7 @@ DynamicGraphSet<daf::Size>::DynamicGraphSet(const daf::StaticVector<TreeNode *> 
 
 
 template<>
-DynamicGraphSet<daf::Size>::DynamicGraphSet(const DynamicGraphSet<TreeGraphNode> &treeGraph,
+DynamicGraphSet<daf::Size>::DynamicGraphSet(const DynamicGraph<TreeGraphNode> &treeGraph,
                                 daf::Size n,
                                 daf::Size minK) {
     adj_list.resize(n);
@@ -118,7 +118,7 @@ DynamicGraphSet<daf::Size>::DynamicGraphSet(const DynamicGraphSet<TreeGraphNode>
 
 
 template<>
-DynamicGraphSet<TreeGraphNode>::DynamicGraphSet(const DynamicGraphSet<TreeGraphNode> &treeGraph,
+DynamicGraphSet<TreeGraphNode>::DynamicGraphSet(const DynamicGraph<TreeGraphNode> &treeGraph,
                                 daf::Size n,
                                 daf::Size minK) {
     adj_list.resize(n);
@@ -136,17 +136,6 @@ DynamicGraphSet<TreeGraphNode>::DynamicGraphSet(const DynamicGraphSet<TreeGraphN
         // adj_list[i].reserve(degree[i]);
         initDenseHashSet(adj_list[i], degree[i]);
     }
-
-    // for (auto leaf: treeGraph.adj_list) {
-    //     if (leaf.size() < minK) continue;
-    //     // while (node->v != ROOTID) {
-    //     //     adj_list[node->v].push_back(leaf->leafId);
-    //     //     node = node->parent;
-    //     // }
-    //     for (const auto &i: leaf) {
-    //         adj_list[i.v].push_back(leaf[0].leafId);
-    //     }
-    // }
     for (daf::Size leafId = 0; leafId < treeGraph.adj_list.size(); ++leafId) {
         const auto &leaf = treeGraph.adj_list[leafId];
         if (leaf.size() < minK) continue;
@@ -158,6 +147,46 @@ DynamicGraphSet<TreeGraphNode>::DynamicGraphSet(const DynamicGraphSet<TreeGraphN
     delete[] degree;
 }
 
+template<>
+DynamicGraphSet<TreeGraphNode>::DynamicGraphSet(const DynamicGraph<TreeGraphNode> &treeGraph,
+                                const Graph &edgeGraph,
+                                daf::Size n,
+                                daf::Size minK) {
+    adj_list.resize(n);
+    unsigned int *degree = new unsigned int[n];
+    memset(degree, 0, n * sizeof(unsigned int));
+    for (auto leaf: treeGraph.adj_list) {
+        if (leaf.size() < minK) continue;
+        auto node = leaf;
+        daf::Size leafCore = std::numeric_limits<int>::max();
+        for (const auto &i: leaf) {
+            if (!i.isPivot) {
+                leafCore = std::min(leafCore, edgeGraph.coreV[i.v]);
+            }
+            if (edgeGraph.coreV[i.v] > leafCore) break;
+            degree[i.v]++;
+        }
+    }
+
+    for (daf::Size i = 0; i < n; ++i) {
+        // adj_list[i].reserve(degree[i]);
+        initDenseHashSet(adj_list[i], degree[i]);
+    }
+    for (daf::Size leafId = 0; leafId < treeGraph.adj_list.size(); ++leafId) {
+        const auto &leaf = treeGraph.adj_list[leafId];
+        if (leaf.size() < minK) continue;
+        daf::Size leafCore = std::numeric_limits<int>::max();
+        for (const auto &i: leaf) {
+            if (!i.isPivot) {
+                leafCore = std::min(leafCore, edgeGraph.coreV[i.v]);
+            }
+            if (edgeGraph.coreV[i.v] > leafCore) break;
+            adj_list[i.v].insert({leafId, i.isPivot});
+        }
+    }
+    removedNodes.reserve(n/2);
+    delete[] degree;
+}
 template<>
 daf::StaticVector<double> DynamicGraphSet<TreeGraphNode>::cliqueCount() {
     auto maxdegree = this->maxDegree();

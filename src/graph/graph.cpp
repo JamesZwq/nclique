@@ -7,7 +7,7 @@
 #include <sstream>
 #include <algorithm>
 #include <queue>
-#include "Graph.h"
+#include "graph/Graph.h"
 #include "../Global/Global.h"
 #include "tree/MultiBranchTree.h"
 
@@ -474,9 +474,9 @@ Graph::Graph(const MultiBranchTree &tree, const Graph &leafGraph, const daf::Sta
         }
         for (const auto &child: node->children) {
             if (child->MaxDeep < s) continue;
-            auto [nbr_begin, nbr_end] = leafGraph.getNbr(child->v);
+            auto [nbr_begin, nbr_end] = this->getNbr(child->v);
             for (daf::Size i = nbr_begin; i < nbr_end; ++i) {
-                const auto leafId = leafGraph.adj_list[i];
+                const auto leafId = this->adj_list[i];
                 candidateNbr[leafId]++;
                 if (candidateNbr[leafId] == r) {
                     numNbr++;
@@ -485,7 +485,7 @@ Graph::Graph(const MultiBranchTree &tree, const Graph &leafGraph, const daf::Sta
             }
             rec(child);
             for (daf::Size i = nbr_begin; i < nbr_end; ++i) {
-                const auto leafId = leafGraph.adj_list[i];
+                const auto leafId = this->adj_list[i];
                 if (candidateNbr[leafId] == r) {
                     numNbr--;
                     selectNbr.pop_back();
@@ -496,17 +496,17 @@ Graph::Graph(const MultiBranchTree &tree, const Graph &leafGraph, const daf::Sta
     };
     for (const auto child: tree.root->children) {
         if (child->MaxDeep < s) continue;
-        auto [nbr_begin, nbr_end] = leafGraph.getNbr(child->v);
+        auto [nbr_begin, nbr_end] = this->getNbr(child->v);
         daf::CliqueSize numKeep = 0;
         std::vector<daf::Size> keep;
         for (daf::Size i = nbr_begin; i < nbr_end; ++i) {
-            const auto leafId = leafGraph.adj_list[i];
+            const auto leafId = this->adj_list[i];
             candidateNbr[leafId] = 1;
         }
         rec(child);
         // candidateNbr.clear();
         for (daf::Size i = nbr_begin; i < nbr_end; ++i) {
-            const auto leafId = leafGraph.adj_list[i];
+            const auto leafId = this->adj_list[i];
             candidateNbr[leafId] = 0;
         }
     }
@@ -663,4 +663,69 @@ void Graph::beSingleEdge() {
     new_offsets.free();
     new_adj.free();
     // （如果你有成员 m，记得同时更新 m = m_new;）
+}
+
+void Graph::initCore() {
+    auto *bin = new daf::Size[this->getMaxDegree() + 1];
+    auto *pos = new daf::Size[this->getGraphNodeSize() + 1];
+    auto *vert = new daf::Size[this->getGraphNodeSize() + 1];
+    // auto *coreV = new daf::Size[this->getGraphNodeSize() + 1];
+    coreV.resize(this->getGraphNodeSize() + 1);
+    for (daf::Size i = 0; i < this->getGraphNodeSize(); ++i) {
+        coreV[i] = this->getNbrCount(i);
+    }
+
+    std::fill_n(bin, (this->getMaxDegree() + 1), 0);
+
+    for (auto v = 0; v < this->getGraphNodeSize(); ++v) {
+        bin[coreV[v]] += 1;
+    }
+
+    daf::Size start = 0;
+
+    for (daf::Size d = 0; d <= this->getMaxDegree(); ++d) {
+        const daf::Size num = bin[d];
+        bin[d] = start;
+        start += num;
+    }
+
+    for (auto v = 0; v < this->getGraphNodeSize(); ++v) {
+        pos[v] = bin[coreV[v]];
+        vert[pos[v]] = v;
+        bin[coreV[v]] += 1;
+    }
+
+    for (daf::Size d = this->getMaxDegree(); d--;) {
+        bin[d + 1] = bin[d];
+    }
+    bin[0] = 0;
+
+    for (daf::Size i = 0; i < this->getGraphNodeSize(); ++i) {
+        auto v = vert[i];
+        //        std::cout << v << " ";
+        std::pair<daf::Size, daf::Size> nbr = this->getNbr(v);
+        for (daf::Size j = nbr.first; j < nbr.second; j++) {
+            const daf::Size u = this->adj_list[j];
+            if (coreV[u] > coreV[v]) {
+                const daf::Size du = coreV[u];
+                const daf::Size pu = pos[u];
+                const daf::Size pw = bin[du];
+                const daf::Size w = vert[pw];
+
+                if (u != w) {
+                    pos[u] = pw;
+                    pos[w] = pu;
+                    vert[pu] = w;
+                    vert[pw] = u;
+                }
+
+                bin[du]++;
+                coreV[u]--;
+            }
+        }
+    }
+
+    delete[] bin;
+    delete[] pos;
+    delete[] vert;
 }

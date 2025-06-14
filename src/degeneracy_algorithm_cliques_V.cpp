@@ -41,7 +41,7 @@
 #include"misc.h"
 #include"tree/MultiBranchTree.h"
 #include <cstring>
-#include <tree/NCliqueCoreDecomposition.h>
+#include <NucleusDecomposition/NCliqueCoreDecomposition.h>
 // #include"nCr.h"
 
 extern double nCr[1001][401];
@@ -123,6 +123,13 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     int beginR = size;
 
     int *dropV = (int *) Calloc(MAX_CSIZE, sizeof(int));
+    // removedEdges.clear();
+    // removedKeepC = false;
+    // for (auto v: removedPovit) {
+    //     isRemovedV[v] = false;
+    // }
+    // removedPovit.clear();
+
     int *keepV = (int *) Calloc(MAX_CSIZE, sizeof(int));
 
     MultiBranchTree tree;

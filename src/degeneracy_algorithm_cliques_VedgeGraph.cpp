@@ -41,7 +41,7 @@
 #include"misc.h"
 #include"tree/MultiBranchTree.h"
 #include <cstring>
-#include <tree/NCliqueCoreDecomposition.h>
+#include <NucleusDecomposition/NCliqueCoreDecomposition.h>
 // #include"nCr.h"
 
 extern double nCr[1001][401];
@@ -132,7 +132,9 @@ DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &edgeGraph
 
     DynamicGraph<TreeGraphNode> treeGraph(edgeGraph.getGraphNodeSize());
     for (int vertex = 0; vertex < edgeGraph.getGraphNodeSize(); ++vertex) {
-
+        // if (edgeGraph.coreV[vertex] < min_k) {
+        //     continue; // skip vertices with core less than min_k
+        // }
         int newBeginX, newBeginP, newBeginR;
 
         // of vertex
@@ -220,12 +222,20 @@ void listAllCliquesDegeneracyRecursive_VedgeGraph(
     if (keepV.size() > max_k) {
         return;
     }
-    if ((beginP >= beginR)) {
+    if ((beginP >= beginR) || (keepV.size() == max_k)) {
         auto cSize = keepV.size() + dropV.size();
         if (cSize < min_k) {
             return;
         }
         std::vector<TreeGraphNode> newNode;
+        if (keepV.size() == max_k) {
+            newNode.reserve(cSize);
+            for (uint64_t i: keepV) {
+                newNode.emplace_back(i, false);
+            }
+            tree.addNode(newNode);
+            return;
+        }
         newNode.reserve(cSize);
         for (uint64_t i: keepV) {
             newNode.emplace_back(i, false);

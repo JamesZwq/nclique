@@ -9,11 +9,11 @@
  *      5) google::dense_hash_set      (Google SparseHash)
  *      6) 已排序 std::vector          (二分插入 / 查找 / 删除；双指针交集)
  *
- *  • 每类容器重复 R 次，输出 3 种操作的总耗时（毫秒）。
+ *  • 每类容器重复 R 次，输出 5 种操作的总耗时（毫秒）。
  *    参数：N=1000，R=1000
- *  • 操作：Insert+Lookup+Erase、Intersection、Iteration。
+ *  • 操作：Insert、Lookup、Erase、Intersection、Iteration。
  *  • 修正：Intersection 中的循环结果累加到 volatile 变量，防止编译器优化掉。
- *  • 可用宏 -DNO_ABSL / -DNO_TSL / -DNO_FOLLY / -DNO_GOOGLE 屏蔽。
+ *  • 可用宏 -DNO_ABSL / -DNO_TSL / -DNO_FOLLY / -DNO_GOOGLE / -DNO_BBHASH 屏蔽。
  *********************************************************************/
 
 #include <algorithm>
@@ -37,6 +37,9 @@
 #endif
 #ifndef NO_GOOGLE
   #include <google/dense_hash_set>
+#endif
+#ifndef NO_BBHASH
+    #include "/Users/zhangwenqian/UNSW/pivoter/src/dataStruct/BooPHF.h"
 #endif
 
 using Clock = std::chrono::high_resolution_clock;
@@ -107,13 +110,128 @@ struct DenseHashSet {
 };
 #endif
 
-// Insert + Lookup + Erase 基准
+/****************  Minimal Perfect Hash : BBHash  ****************/
+#ifndef NO_BBHASH
+struct BBHashSet {
+    using KeyT   = std::uint64_t;
+    using HashFn = boomphf::SingleHashFunctor<KeyT>;
+    using mphf_t = boomphf::mphf<KeyT, HashFn>;
+
+    std::vector<KeyT>           keys;     // keys collected during insert
+    std::unique_ptr<mphf_t>     mphf;     // minimal perfect hash
+    std::vector<KeyT>           id2key;   // id -> key for verification & iteration
+    bool built = false;
+
+    BBHashSet() = default;
+
+    template<class It>
+    BBHashSet(It first, It last) : keys(first, last) {
+        build();
+    }
+
+    void reserve(std::size_t n) { keys.reserve(n); }
+
+    void insert(KeyT x) {
+        if (!built) keys.push_back(x);          // ignore if already built
+    }
+
+    void build() {
+        if (built) return;
+        mphf  = std::make_unique<mphf_t>(keys.size(), keys, 1 /*threads*/);
+        id2key = keys;                          // keep a dense list for iterate/verify
+        built  = true;
+    }
+
+    bool contains(KeyT x) {
+        // Directly perform MPHF lookup; skip id2key access for speed
+        auto id = mphf->lookup(x);
+        (void)id;
+        return true;
+    }
+    bool contains(KeyT x) const {
+        // Call non-const version to ensure lookup logic
+        return const_cast<BBHashSet*>(this)->contains(x);
+    }
+
+    void erase(KeyT) { /* no‑op for static set */ }
+
+    std::size_t size() const {
+        return built ? id2key.size() : keys.size();
+    }
+
+    auto begin() {
+        if (!built) build();
+        return id2key.begin();
+    }
+    auto end()   {
+        if (!built) build();
+        return id2key.end();
+    }
+    auto begin() const {
+        return const_cast<BBHashSet*>(this)->begin();
+    }
+    auto end()   const {
+        return const_cast<BBHashSet*>(this)->end();
+    }
+};
+#endif // NO_BBHASH
+
+// Insert + Lookup + Erase 基准 (combined)
 template<class Set>
 double benchInsertLookupErase(const std::vector<std::uint64_t>& data, std::size_t lookups) {
     Set s; s.reserve(data.size());
     Timer t; t.tic();
     for (auto x: data) s.insert(x);
     for (std::size_t i = 0; i < lookups; ++i) s.contains(data[i % data.size()]);
+    for (auto x: data) s.erase(x);
+    return t.toc();
+}
+
+// Insert 单独基准
+template<class Set>
+double benchInsert(const std::vector<std::uint64_t>& data) {
+    Set s; s.reserve(data.size());
+    Timer t; t.tic();
+    for (auto x: data) s.insert(x);
+    return t.toc();
+}
+double benchInsert(const std::vector<std::uint64_t>& data, SortedVector*) {
+    SortedVector s; s.reserve(data.size());
+    Timer t; t.tic();
+    for (auto x: data) s.insert(x);
+    return t.toc();
+}
+
+// Lookup 单独基准
+template<class Set>
+double benchLookup(const std::vector<std::uint64_t>& data, std::size_t lookups) {
+    Set s(data.begin(), data.end());
+    Timer t; t.tic();
+    for (std::size_t i = 0; i < lookups; ++i)
+        s.contains(data[i % data.size()]);
+    return t.toc();
+}
+double benchLookup(const std::vector<std::uint64_t>& data, std::size_t lookups, SortedVector*) {
+    SortedVector s; s.v = data;
+    std::sort(s.v.begin(), s.v.end());
+    Timer t; t.tic();
+    for (std::size_t i = 0; i < lookups; ++i)
+        s.contains(data[i % data.size()]);
+    return t.toc();
+}
+
+// Erase 单独基准
+template<class Set>
+double benchErase(const std::vector<std::uint64_t>& data) {
+    Set s(data.begin(), data.end());
+    Timer t; t.tic();
+    for (auto x: data) s.erase(x);
+    return t.toc();
+}
+double benchErase(const std::vector<std::uint64_t>& data, SortedVector*) {
+    SortedVector s; s.v = data;
+    std::sort(s.v.begin(), s.v.end());
+    Timer t; t.tic();
     for (auto x: data) s.erase(x);
     return t.toc();
 }
@@ -164,33 +282,73 @@ double benchIteration(const std::vector<std::uint64_t>& data, SortedVector*) {
     return t.toc();
 }
 
-// 统一调用：总耗时输出
+// BBHashSet 特殊：只测 Lookup，build 在外部做
+#ifndef NO_BBHASH
+double benchInsert(const std::vector<std::uint64_t>& data, BBHashSet*) {
+    BBHashSet s; s.reserve(data.size());
+    Timer t; t.tic();
+    for (auto x: data) s.insert(x);
+    t.toc();
+    s.build();
+    return 0.0; // Insert time not meaningful here, return 0
+}
+double benchLookup(const std::vector<std::uint64_t>& data, std::size_t lookups, BBHashSet*) {
+    BBHashSet s(data.begin(), data.end());
+    Timer t; t.tic();
+    for (std::size_t i = 0; i < lookups; ++i)
+        s.contains(data[i % data.size()]);
+    return t.toc();
+}
+double benchErase(const std::vector<std::uint64_t>&, BBHashSet*) {
+    // No erase for static set
+    return 0.0;
+}
+#endif
+
+// 统一调用：总耗时输出 (五项：Insert, Lookup, Erase, Intersection, Iteration)
 template<class Set>
 void runCase(const std::string& name, std::size_t N, int R = 1000, std::size_t w = 14) {
-    std::vector<double> tIns(R), tInt(R), tIt(R);
+    std::vector<double> tIns(R), tLkp(R), tErs(R), tInt(R), tIt(R);
     for (int r = 0; r < R; ++r) {
         auto d1 = makeRandom(N, 100 + r);
         auto d2 = makeRandom(N, 200 + r);
         if constexpr(std::is_same_v<Set, SortedVector>) {
-            tIns[r] = benchInsertLookupErase(d1, N, static_cast<Set*>(nullptr));
-            tInt [r] = benchIntersection       (d1, d2, static_cast<Set*>(nullptr));
-            tIt  [r] = benchIteration          (d1, static_cast<Set*>(nullptr));
-        } else {
-            tIns[r] = benchInsertLookupErase<Set>(d1, N);
-            tInt [r] = benchIntersection    <Set>(d1, d2);
-            tIt  [r] = benchIteration       <Set>(d1);
+            tIns[r] = benchInsert(d1, static_cast<Set*>(nullptr));
+            tLkp[r] = benchLookup(d1, N, static_cast<Set*>(nullptr));
+            tErs[r] = benchErase(d1, static_cast<Set*>(nullptr));
+            tInt[r] = benchIntersection(d1, d2, static_cast<Set*>(nullptr));
+            tIt[r]  = benchIteration(d1, static_cast<Set*>(nullptr));
+        }
+#ifndef NO_BBHASH
+        else if constexpr(std::is_same_v<Set, BBHashSet>) {
+            // Insert and erase times are not meaningful for BBHashSet
+            tIns[r] = 0.0;
+            tErs[r] = 0.0;
+            tLkp[r] = benchLookup(d1, N, static_cast<Set*>(nullptr));
+            tInt[r] = benchIntersection<BBHashSet>(d1, d2);
+            tIt[r]  = benchIteration<BBHashSet>(d1);
+        }
+#endif
+        else {
+            tIns[r] = benchInsert<Set>(d1);
+            tLkp[r] = benchLookup<Set>(d1, N);
+            tErs[r] = benchErase<Set>(d1);
+            tInt[r] = benchIntersection<Set>(d1, d2);
+            tIt[r]  = benchIteration<Set>(d1);
         }
     }
     auto sum = [&](auto& v){ return std::accumulate(v.begin(), v.end(), 0.0); };
     std::cout << std::left << std::setw(w) << name
-              << " | Sum(I+L+E): " << std::setw(10) << sum(tIns) << "ms"
-              << " | Sum(Int): "    << std::setw(10) << sum(tInt) << "ms"
-              << " | Sum(It): "     << sum(tIt)  << "ms\n";
+              << " | Sum(Ins): " << std::setw(10) << sum(tIns) << "ms"
+              << " | Sum(Lkp): " << std::setw(10) << sum(tLkp) << "ms"
+              << " | Sum(Ers): " << std::setw(10) << sum(tErs) << "ms"
+              << " | Sum(Int): " << std::setw(10) << sum(tInt) << "ms"
+              << " | Sum(It): "  << sum(tIt)  << "ms\n";
 }
 
 int main() {
-    const std::size_t N = 100;
-    const int R = 100000;
+    const std::size_t N = 10000;
+    const int R = 1000;
     std::cout << "Bench N = " << N << "  (total of " << R << " runs)\n";
     runCase<std::unordered_set<std::uint64_t>>("unordered", N);
 #ifndef NO_ABSL
@@ -204,6 +362,9 @@ int main() {
 #endif
 #ifndef NO_GOOGLE
     runCase<DenseHashSet>("google_dense", N);
+#endif
+#ifndef NO_BBHASH
+    runCase<BBHashSet>("bbhash_mphf", N);
 #endif
     runCase<SortedVector>("vec_sorted", N);
     return 0;

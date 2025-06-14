@@ -41,7 +41,6 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 add_executable(test_bronkerbosch
         test_bronkerbosch.cpp
         ${PROJECT_SOURCE_DIR}/src/Global/Global.cpp
-        ${PROJECT_SOURCE_DIR}/src/tree/BronKerbosch.cpp
         ${PROJECT_SOURCE_DIR}/src/graph/DynamicGraph.cpp
 )
 

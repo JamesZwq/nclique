@@ -4,7 +4,7 @@
 
 #ifndef NCLIQUECOREDECOMPOSITION_H
 #define NCLIQUECOREDECOMPOSITION_H
-#include "MultiBranchTree.h"
+#include "../tree/MultiBranchTree.h"
 #include <tbb/spin_mutex.h>
 
 #include <ranges>
@@ -12,6 +12,7 @@
 
 #include "graph/DynamicGraph.h"
 #include "graph/DynamicGraphSet.h"
+#include "graph/Graph.h"
 
 template<typename T>
 class DynamicGraphSet;
@@ -64,7 +65,8 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> baseNucleusEdgeCore
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraph<daf::Size> &treeGraphV, daf::CliqueSize k);
 
-void baseNucleusCoreDecompositionLeaf(const MultiBranchTree &tree, daf::CliqueSize k);
+
+double * baseNucleusCoreDecompositionLeaf(const MultiBranchTree &tree, daf::CliqueSize k);
 
 void baseNucleusCoreDecompositionPar(const MultiBranchTree &tree, daf::CliqueSize k);
 
@@ -75,6 +77,20 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
 
 std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet(
-    DynamicGraphSet<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCoreDecompositionSet(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSetKCore(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+
+double * NCliqueVertexCoreDecomposition(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 #endif //NCLIQUECOREDECOMPOSITION_H

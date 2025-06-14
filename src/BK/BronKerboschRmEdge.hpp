@@ -12,7 +12,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 
-namespace bk {
+namespace bkRmEdge {
     // static constexpr int MAXN = 400;
     using Bitset = boost::dynamic_bitset<>;
 

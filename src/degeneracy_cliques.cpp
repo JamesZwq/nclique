@@ -11,8 +11,10 @@
 #include"misc.h"
 #include"LinkedList.h"
 #include"MemoryManager.h"
+#include "dataStruct/disJionSet.hpp"
 #include "graph/DynamicBipartiteGraph.hpp"
-#include "tree/NCliqueCoreDecomposition.h"
+#include "NucleusDecomposition/NCliqueCoreDecomposition.h"
+#include "NucleusDecomposition/NucleusCoreDecomposition.h"
 
 int main(int argc, char **argv) {
     std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
@@ -34,7 +36,6 @@ int main(int argc, char **argv) {
 
     Graph edgeGraph(fpath);
     edgeGraph.printGraphInfo();
-
     populate_nCr();
     daf::vListMap.resize(edgeGraph.n + 1);
     // std::numeric_limits<daf::Size>::max();
@@ -44,69 +45,104 @@ int main(int argc, char **argv) {
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&] {
         return listAllCliquesDegeneracy_VedgeGraph(edgeGraph, s, s);
     });
+    std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
+
+    // treeGraph.printGraphPerV();
+    for (auto leaf: treeGraph.adj_list) {
+        if (leaf[0].isPivot) {
+            std::cout << "leaf: " << leaf[0].v << " is pivot" << std::endl;
+        }
+    }
+
+
+    edgeGraph.initCore();
+    // treeGraph.printGraphPerV();
+    // std::cout << "core: " << edgeGraph.coreV << std::endl;
     edgeGraph.beSingleEdge();
     edgeGraph.buildEdgeIdMap();
     // DynamicBipartiteGraph BGraph(treeGraph, edgeGraph);
 
 
     std::cout << "nun Leaf: " << treeGraph.adj_list.size() << std::endl;
-    DynamicGraph<TreeGraphNode> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
+    // DynamicGraphSet<TreeGraphNode> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
+    DynamicGraphSet<TreeGraphNode> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
 
-    // auto core = baseNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
-
+    // edgeGraph.printGraphPerV();
 
     auto treeGraphClone = treeGraph.clone();
     DynamicGraph<daf::Size> treeGraphVSize(treeGraph, edgeGraph.getGraphNodeSize(), s);
 
+    // StaticCliqueIndex cliqueIndex(r);
+    // daf::timeCount("clique Index build",
+    //                [&]() {
+    //                    cliqueIndex.build(treeGraph, edgeGraph.adj_list.size());
+    //                });
+    //
+    // cliqueIndex.verify();
 
-    auto corePlus = daf::timeCount("Plus Core Decomposition", [&] {
-        return PlusNucleusEdgeCoreDecomposition(treeGraphClone, edgeGraph, treeGraphV, s);
+    auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {
+        return NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
     });
 
-
-    auto coreBase = daf::timeCount("Base Core Decomposition", [&] {
-        return baseNucleusEdgeCoreDecomposition(treeGraph, edgeGraph, treeGraphVSize, s);
-    });
-
-    std::ranges::sort(corePlus,
-                      [vertexMap](const auto &a, const auto &b) {
-                          if (a.second != b.second) return a.second < b.second;
-                          auto a_from = vertexMap[a.first.first];
-                          auto a_to = vertexMap[a.first.second];
-                          auto b_from = vertexMap[b.first.first];
-                          auto b_to = vertexMap[b.first.second];
-                          if (a_from != b_from) return a_from < b_from;
-                          if (a_to != b_to) return a_to < b_to;
-                          return a.second < b.second;
-                      }
-    );
-    std::ranges::sort(coreBase,
-                      [vertexMap](const auto &a, const auto &b) {
-                          if (a.second != b.second) return a.second < b.second;
-                          auto a_from = vertexMap[a.first.first];
-                          auto a_to = vertexMap[a.first.second];
-                          auto b_from = vertexMap[b.first.first];
-                          auto b_to = vertexMap[b.first.second];
-                          if (a_from != b_from) return a_from < b_from;
-                          if (a_to != b_to) return a_to < b_to;
-                          return a.second < b.second;
-                      }
-    );
-
-#ifndef NDEBUG
     std::cout << "corePlus: " << corePlus << std::endl;
-    std::cout << "coreBase: " << coreBase << std::endl;
-#endif
-    for (auto i = 0; i < corePlus.size(); ++i) {
-        if (corePlus[i] != coreBase[i]) {
-            std::cout << "corePlus: " << corePlus[i].first.first << " " << corePlus[i].first.second << " "
-                    << corePlus[i].second << std::endl;
-            std::cout << "coreBase: " << coreBase[i].first.first << " " << coreBase[i].first.second << " "
-                    << coreBase[i].second << std::endl;
-            return 1;
-        }
-    }
-
-
-    return 0;
+     //
+     // auto coreBase = daf::timeCount("PlusNucleusEdgeCoreDecomposition", [&] {
+     //     return baseNucleusCoreDecompositionLeaf(treeGraph, edgeGraph, treeGraphVSize, s);
+     // });
+//
+//     std::ranges::sort(corePlus,
+//                       [vertexMap](const auto &a, const auto &b) {
+//                           if (a.second != b.second) return a.second < b.second;
+//                           auto a_from = vertexMap[a.first.first];
+//                           auto a_to = vertexMap[a.first.second];
+//                           auto b_from = vertexMap[b.first.first];
+//                           auto b_to = vertexMap[b.first.second];
+//                           if (a_from != b_from) return a_from < b_from;
+//                           if (a_to != b_to) return a_to < b_to;
+//                           return a.second < b.second;
+//     );
+//     std::ranges::sort(coreBase,
+//                       [vertexMap](const auto &a, const auto &b) {
+//                           if (a.second != b.second) return a.second < b.second;
+//                           auto a_from = vertexMap[a.first.first]//                       };
+    //                           auto a_to = vertexMap[a.first.second];
+//                           auto b_from = vertexMap[b.first.first];
+//                           auto b_to = vertexMap[b.first.second];
+//                           if (a_from != b_from) return a_from < b_from;
+//                           if (a_to != b_to) return a_to < b_to;
+//                           return a.second < b.second;
+//                       }
+//     );
+//
+// #ifndef NDEBUG
+//     std::cout << "corePlus: " << corePlus << std::endl;
+//     std::cout << "coreBase: " << coreBase << std::endl;
+// #endif
+//     for (auto i = 0; i < corePlus.size(); ++i) {
+//         if (corePlus[i] != coreBase[i]) {
+//             std::cout << "corePlus: " << corePlus[i].first.first << " " << corePlus[i].first.second << " "
+//                     << corePlus[i].second << std::endl;
+//             std::cout << "coreBase: " << coreBase[i].first.first << " " << coreBase[i].first.second << " "
+//                     << coreBase[i].second << std::endl;
+//             return 1;
+//         }
+//         coreV[corePlus[i].first.first] = std::max(coreV[corePlus[i].first.first], (double) corePlus[i].second);
+//         coreV[corePlus[i].first.second] = std::max(coreV[corePlus[i].first.second], (double) corePlus[i].second);
+//     }
+    //  std::vector<double> coreV(edgeGraph.n);
+    // for (daf::Size i = 0; i < edgeGraph.n; ++i) {
+    //     coreV[i] = corePlus[i];
+    //     // std::cout << "coreV[" << i << "]: " << coreV[i] << std::endl;
+    // }
+    //  std::ranges::sort(coreV);
+    //  // /Users/zhangwenqian/UNSW/pivoter/a
+    //  auto fileOutput = fopen("/Users/zhangwenqian/UNSW/pivoter/a", "w");
+    //  // for (const auto &i: corePlus) {
+    //  //     fprintf(fileOutput, "%d %d %d\n", i.first.first, i.first.second, i.second);
+    //  // }
+    //  for (const auto &i: coreV) {
+    //      fprintf(fileOutput, "%lf\n", i);
+    //  }
+    //
+    // return 0;
 }

@@ -69,6 +69,7 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
             -Wextra
     #        -Werror
     #        -fsanitize=address
+            -O0
             -pedantic-errors
             -Wconversion
             -Wsign-conversion
@@ -90,6 +91,7 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -fno-omit-frame-pointer  -fsanitize-address-use-after-scope -fdefer-pop -g")
 endif()
 
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -fno-omit-frame-pointer  -fsanitize-address-use-after-scope -fdefer-pop -g")
 #if(CMAKE_BUILD_TYPE MATCHES "Release")
 #    message(STATUS "Release+MSan build")
 #    add_compile_options(-O2 -g

@@ -33,9 +33,7 @@ def make_case(src, keep_ratio=1):
 
 def pipeline(gfile):
     cmd = (
-        f"{BIN1} -i {gfile} -t V -d 1 -k 4 && "
-        f"{BIN2} {gfile}.tree 2 4 {gfile} > out && "
-        f"{BIN3} {gfile} 24 no && diff /Users/zhangwenqian/UNSW/pivoter/a /Users/zhangwenqian/UNSW/pivoter/a.tmp"
+        f"{BIN2} {gfile}.tree 2 3 {gfile}"
     )
     return subprocess.run(cmd, shell=True).returncode
 

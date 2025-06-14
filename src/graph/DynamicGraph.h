@@ -2,15 +2,15 @@
 // Created by 张文谦 on 25-4-24.
 //
 #pragma once
-#ifndef TREEGRAPH_H
-#define TREEGRAPH_H
+#ifndef DynamicGraph_H
+#define DynamicGraph_H
 #include "Graph.h"
 #include "tree/MultiBranchTree.h"
 #include <functional>
 #include <cstddef>
 #include <utility>
 
-#include "dataStruct/CliqueHashMap.h"
+// #include "dataStruct/CliqueHashMap.h"
 
 
 template<typename T>
@@ -112,7 +112,7 @@ class DynamicGraph {
         }
 
 
-    daf::StaticVector<double> cliqueCount();
+    [[nodiscard]] daf::StaticVector<double> cliqueCount() const;
 
     [[nodiscard]] daf::Size maxDegree() const {
         daf::Size max = 0;
@@ -131,9 +131,12 @@ class DynamicGraph {
         return clone;
     }
 
-        double cliqueCount(daf::Size k);
+    [[nodiscard]]  double cliqueCount(daf::Size k) const;
 
         daf::Size numBipartEdge(daf::Size k);
+
+        daf::StaticVector<double> cliqueCountPerV(daf::Size maxV, daf::Size k) const;
+        daf::StaticVector<daf::Size> cliqueCountPerVAcc(daf::Size maxV, daf::Size k) const;
 
         std::vector<std::vector<T> > adj_list;
 private:
@@ -142,7 +145,7 @@ private:
 };
 
 
-// return r clique list, and the graph, r clique is the node, connect to treeGraph, like bipartite graph.
-std::pair<DynamicGraph<daf::Size>,std::vector<Clique>> getCliqueGraph(const DynamicGraph<TreeGraphNode> &treeGraph,
-        daf::CliqueSize r, daf::CliqueSize s);
-#endif //TREEGRAPH_H
+// // return r clique list, and the graph, r clique is the node, connect to treeGraph, like bipartite graph.
+// std::pair<DynamicGraph<daf::Size>,std::vector<Clique>> getCliqueGraph(const DynamicGraph<TreeGraphNode> &treeGraph,
+//         daf::CliqueSize r, daf::CliqueSize s);
+#endif //DynamicGraph_H

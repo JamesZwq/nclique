@@ -124,15 +124,6 @@ private:
         s.resize(bucketSize_ * 2);
         return s;
     }
-
-    inline bool checkLeft(int u) const {
-        if (u < 0 || u >= nLeft_)
-            return false;
-    }
-    inline bool checkRight(int v) const {
-        if (v < 0 || v >= nRight_)
-            return false;
-    }
 };
 
 #endif //DYNAMICBIPARTITEGRAPH_HPP

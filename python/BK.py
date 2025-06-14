@@ -313,7 +313,7 @@ while True:
     # print(f"{Fore.CYAN}🗺️  随机图生成完毕，共 {len(edgeList)} 条边。\n")
 
     # 2. 第一步工具：degeneracy_cliques
-    cmd1 = f"{BIN1} {output_file} 2 4"
+    cmd1 = f"{BIN1} {output_file} 2 2"
 
     run_cmd("DegeneracyCliques", cmd1, "degeneracy_cliques 非零退出")
     print(f"{Fore.GREEN}✅ DegeneracyCliques 成功！\n")
@@ -359,9 +359,9 @@ while True:
 #
 # plt.figure(figsize=(8, 6))
 # nx.draw_networkx_edges(G, pos)
-# nx.draw_networkx_nodes(G, pos, node_color='lightblue', node_size=500)
-# nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
-# # [0,2,3,6,8,9,12,13]
+# nx.draw_networkx_nodes(G, pos, node_color='lightblue', node_size=500)'bold')
+# #
+# nx.draw_networkx_labels(G, pos, font_size=10, font_weight= # [0,2,3,6,8,9,12,13]
 # # 找到所有maximal clique
 # cliques = [sorted(clique) for clique in nx.find_cliques(G) if len(clique) >= 4]
 # print(cliques)

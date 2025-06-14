@@ -2,19 +2,15 @@
 // Created by 张文谦 on 25-3-4.
 //
 
-#include "../tree/NCliqueCoreDecomposition.h"
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range.h>
-#include <tbb/global_control.h>
-#include <mutex>
+#include "../NucleusDecomposition/NCliqueCoreDecomposition.h"
 
 
 extern double nCr[1001][401];
 
-namespace basePar {
+namespace baseCD {
     void countingPerVertexHelp(const TreeNode &node,
                                const daf::CliqueSize k,
-                               daf::MutexStaticVector<double> &core,
+                               double *core,
                                daf::StaticVector<daf::Size> &povit,
                                daf::StaticVector<daf::Size> &keepC
     ) {
@@ -26,11 +22,7 @@ namespace basePar {
                 totalKcliques = nCr[povit.size()][needPivot];
             }
             for (const auto v: keepC) {
-                // if (v == 0) {
-                // std::cout << "keep: " << v << " totalKcliques: " << totalKcliques << std::endl;
-                // }
-                // core[v] += totalKcliques;
-                core.add(v, totalKcliques);
+                core[v] += totalKcliques;
             }
 
             double eachPivotKcliques = 0;
@@ -40,9 +32,7 @@ namespace basePar {
             }
 
             for (auto v: povit) {
-                // std::cout << "povit: " << v << " eachPivotKcliques: " << eachPivotKcliques << std::endl;
-                // core[v] += eachPivotKcliques;
-                core.add(v, eachPivotKcliques);
+                core[v] += eachPivotKcliques;
             }
 
             return;
@@ -65,23 +55,20 @@ namespace basePar {
     }
 
     double *countingPerVertex(const MultiBranchTree &tree, const daf::CliqueSize k) {
-        // auto *core = new daf::Size[tree.getRoot()->children.size()];
-        auto core = new daf::MutexStaticVector<double>(tree.getRoot()->children.size());
-
-        tbb::parallel_for(tbb::blocked_range<size_t>(0, tree.getRoot()->children.size()),
-                          [&](const tbb::blocked_range<size_t> &r) {
-                              for (size_t i = r.begin(); i != r.end(); ++i) {
-                                  const auto node = tree.getRoot()->children[i];
-                                  if (node->MaxDeep < k) {
-                                      continue;
-                                  }
-                                  daf::StaticVector<daf::Size> povitC;
-                                  daf::StaticVector<daf::Size> keepC;
-                                  keepC.push_back(node->v);
-                                  countingPerVertexHelp(*node, k, *core, povitC, keepC);
-                              }
-                          });
-        return core->data;
+        auto *core = new double[tree.getRoot()->children.size()];
+        //init 0
+        std::memset(core, 0, tree.getRoot()->children.size() * sizeof(daf::Size));
+        daf::StaticVector<daf::Size> povitC;
+        daf::StaticVector<daf::Size> keepC;
+        for (auto node: tree.getRoot()->children) {
+            if (node->MaxDeep < k) {
+                continue;
+            }
+            keepC.push_back(node->v);
+            countingPerVertexHelp(*node, k, core, povitC, keepC);
+            keepC.pop_back();
+        }
+        return core;
     }
 
 
@@ -90,13 +77,13 @@ namespace basePar {
                         const double *core,
                         daf::StaticVector<daf::Size> &povit,
                         daf::StaticVector<daf::Size> &keepC,
-                        std::vector<ThreadSafeMap<double, double> > &sup
+                        std::vector<std::map<double, double, std::greater<> > > &sup
     ) {
         daf::Size cliqueSize = povit.size() + keepC.size();
         if (node.children.empty() && cliqueSize >= k && keepC.size() <= k) {
             assert(!keepC.empty());
 
-            daf::StaticVector<daf::Size> orderPovit = povit;
+            daf::StaticVector<daf::Size> orderPovit = povit.deepCopy();
             // sort from large to small
             std::ranges::sort(orderPovit, [core](daf::Size a, daf::Size b) {
                 return core[a] > core[b];
@@ -109,8 +96,7 @@ namespace basePar {
             })];
             if (needPivot == 0) {
                 for (const auto v: keepC) {
-                    // sup[v][maxK]++;
-                    sup[v].add(maxK, 1);
+                    sup[v][maxK]++;
                 }
                 return;
             }
@@ -136,16 +122,13 @@ namespace basePar {
                     const double keepCliqueCount = nCr[i][needPivot];
                     const double povitCliqueCount = nCr[i - 1][needPivot - 1];
                     for (const auto v: keepC) {
-                        // sup[v][prveCore] += keepCliqueCount - prveKeepCliqueCount;
-                        sup[v].add(prveCore, keepCliqueCount - prveKeepCliqueCount);
+                        sup[v][prveCore] += keepCliqueCount - prveKeepCliqueCount;
                     }
                     for (daf::Size v = 0; v < prvePovit; v++) {
-                        // sup[orderPovit[v]][prveCore] += povitCliqueCount - prvepovitCliqueCount;
-                        sup[orderPovit[v]].add(prveCore, povitCliqueCount - prvepovitCliqueCount);
+                        sup[orderPovit[v]][prveCore] += povitCliqueCount - prvepovitCliqueCount;
                     }
                     for (daf::Size v = prvePovit; v < i; v++) {
-                        // sup[orderPovit[v]][prveCore] += povitCliqueCount;
-                        sup[orderPovit[v]].add(prveCore, povitCliqueCount);
+                        sup[orderPovit[v]][prveCore] += povitCliqueCount;
                     }
                     if (i == orderPovit.size()) break;
                     prveCore = core[orderPovit[i]];
@@ -154,7 +137,7 @@ namespace basePar {
                     prvePovit = i;
                 }
             }
-
+            orderPovit.free();
             return;
         }
 
@@ -164,7 +147,9 @@ namespace basePar {
             }
             if (child->isPivot) {
                 povit.push_back(child->v);
+                // std::cout << "Apovit: " << povit << std::endl;
                 computeSupHelp(*child, k, core, povit, keepC, sup);
+                // std::cout << "Bpovit: " << povit << std::endl;
                 povit.pop_back();
             } else {
                 keepC.push_back(child->v);
@@ -174,39 +159,31 @@ namespace basePar {
         }
     }
 
-    std::vector<ThreadSafeMap<double, double> > computeSup(const MultiBranchTree &tree,
-                                                           const daf::CliqueSize k,
-                                                           const double *core) {
-        auto &children = tree.getRoot()->children;
-        std::vector<ThreadSafeMap<double, double> > sup(children.size());
-
-        // 并行遍历每个子节点
-        tbb::parallel_for(tbb::blocked_range<size_t>(0, children.size()),
-                          [&](const tbb::blocked_range<size_t> &r) {
-                              for (size_t i = r.begin(); i != r.end(); ++i) {
-                                  auto node = children[i];
-                                  if (node->MaxDeep < k) {
-                                      continue;
-                                  }
-                                  // 为每个迭代创建独立的局部变量，防止多线程竞争
-                                  daf::StaticVector<daf::Size> povitC;
-                                  daf::StaticVector<daf::Size> keepC;
-                                  keepC.push_back(node->v);
-                                  computeSupHelp(*node, k, core, povitC, keepC, sup);
-                              }
-                          });
+    std::vector<std::map<double, double, std::greater<> > > computeSup(const MultiBranchTree &tree,
+                                                                       const daf::CliqueSize k,
+                                                                       const double *core) {
+        daf::StaticVector<daf::Size> povitC;
+        daf::StaticVector<daf::Size> keepC;
+        std::vector<std::map<double, double, std::greater<> > > sup(tree.getRoot()->children.size());
+        for (const auto node: tree.getRoot()->children) {
+            if (node->MaxDeep < k) {
+                continue;
+            }
+            keepC.push_back(node->v);
+            computeSupHelp(*node, k, core, povitC, keepC, sup);
+            keepC.pop_back();
+        }
         return sup;
     }
 }
 
-void baseNucleusCoreDecompositionPar(const MultiBranchTree &tree, daf::CliqueSize k) {
-    daf::Size numThreads = 1;
-    tbb::global_control gc(tbb::global_control::max_allowed_parallelism, numThreads);
-    std::cout << "numThreads: " << tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism) <<
-            std::endl;
-
+void baseNucleusCoreDecomposition(const MultiBranchTree &tree, daf::CliqueSize k) {
+    // daf::Size numNodes = tree.getRoot()->children.size();
+    // tree.printTree();
     auto time_start = std::chrono::high_resolution_clock::now();
-    auto *core = basePar::countingPerVertex(tree, k);
+    auto *core = baseCD::countingPerVertex(tree, k);
+
+    // daf::printArray(core, tree.getRoot()->children.size());
     // std::cout << "init core: ";
     // daf::printArray(core, tree.getRoot()->children.size());
     bool update = true;
@@ -216,14 +193,14 @@ void baseNucleusCoreDecompositionPar(const MultiBranchTree &tree, daf::CliqueSiz
         std::cout << ++iter << " " << std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
         time_start = std::chrono::high_resolution_clock::now();
-        auto sup = basePar::computeSup(tree, k, core);
-        // std::cout << sup << std::endl;
+        auto sup = baseCD::computeSup(tree, k, core);
         for (daf::Size v = 0; v < tree.getRoot()->children.size(); v++) {
             auto &supV = sup[v];
+            // std::cout << v << " supV: " << supV << std::endl;
             double prveCount = 0;
-            for (auto &[c, count]: supV.map) {
+            for (auto &[c, count]: supV) {
                 if (prveCount + count >= c) {
-                    auto newCore = std::max(c, prveCount);
+                    double newCore = std::max(c, prveCount);
                     if (core[v] > newCore) {
                         core[v] = newCore;
                         update = true;
@@ -234,13 +211,15 @@ void baseNucleusCoreDecompositionPar(const MultiBranchTree &tree, daf::CliqueSiz
                 // prveCount = count;
             }
         }
+        // std::cout << "core: ";
+        // daf::printArray(core, tree.getRoot()->children.size());
     }
 
-    // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/b", "w");
-    // std::sort(core, core + tree.getRoot()->children.size());
-    // for (daf::Size i = 0; i < tree.getRoot()->children.size(); i++) {
-    //     fprintf(file, "%d\n", core[i]);
-    // }
-    // fclose(file);
+    auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/b", "w");
+    std::sort(core, core + tree.getRoot()->children.size());
+    for (daf::Size i = 0; i < tree.getRoot()->children.size(); i++) {
+        fprintf(file, "%f\n", core[i]);
+    }
+    fclose(file);
     delete[] core;
 }

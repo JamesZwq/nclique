@@ -11,14 +11,14 @@
 #include<unistd.h>
 #include<libgen.h>
 #include <graph/Graph.h>
-#include <tree/NCliqueCoreDecomposition.h>
-#include <tree/NucleusCoreDecomposition.h>
+#include <NucleusDecomposition/NCliqueCoreDecomposition.h>
+#include <NucleusDecomposition/NucleusCoreDecomposition.h>
 
 #include"misc.h"
 #include"LinkedList.h"
 #include"MemoryManager.h"
 #include "graph/DynamicGraph.h"
-#include "tree/BronKerbosch.h"
+#include "BK/BronKerboschRmEdge.hpp"
 
 // 使用模板和可变参数
 

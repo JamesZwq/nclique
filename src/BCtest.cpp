@@ -11,14 +11,14 @@
 #include<unistd.h>
 #include<libgen.h>
 #include <graph/Graph.h>
-#include <tree/NCliqueCoreDecomposition.h>
-#include <tree/NucleusCoreDecomposition.h>
+#include <NucleusDecomposition/NCliqueCoreDecomposition.h>
+#include <NucleusDecomposition/NucleusCoreDecomposition.h>
 
 #include"misc.h"
 #include"LinkedList.h"
 #include"MemoryManager.h"
 #include "graph/DynamicGraph.h"
-#include "tree/BronKerbosch.h"
+#include "BK/BronKerboschRmEdge.hpp"
 // #include "nCr.h"
 
 // 使用模板和可变参数
@@ -58,10 +58,10 @@ int main() {
     cliqueCount.resize(cliqueSize + 1);
     memset(cliqueCount.data(), 0, (cliqueSize + 1) * sizeof(double));
     std::vector<std::vector<daf::Size>> cliques;
-    bk::bronKerbosch(
+    bkRmEdge::bronKerbosch(
         vList, delEdges, /*minK=*/1,
-        [&](const bk::Bitset &R, const bk::Bitset &piv) {
-            auto clique = bk::coverToVertex(R, piv, vList);
+        [&](const bkRmEdge::Bitset &R, const bkRmEdge::Bitset &piv) {
+            auto clique = bkRmEdge::coverToVertex(R, piv, vList);
             std::cout << "clique: " << clique << " Size: " << clique.size() << std::endl;
 
             int numPivots = 0;

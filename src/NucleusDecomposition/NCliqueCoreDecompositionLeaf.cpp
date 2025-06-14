@@ -4,7 +4,7 @@
 
 #include <graph/Graph.h>
 
-#include "../tree/NCliqueCoreDecomposition.h"
+#include "NCliqueCoreDecomposition.h"
 
 
 extern double nCr[1001][401];
@@ -140,7 +140,7 @@ namespace baseCDLeaf {
     }
 }
 
-void baseNucleusCoreDecompositionLeaf(const MultiBranchTree &tree, daf::CliqueSize k) {
+double * baseNucleusCoreDecompositionLeaf(const MultiBranchTree &tree, daf::CliqueSize k) {
     // daf::Size numNodes = tree.getRoot()->children.size();
     // tree.printTree();
     auto time_start = std::chrono::high_resolution_clock::now();
@@ -184,4 +184,6 @@ void baseNucleusCoreDecompositionLeaf(const MultiBranchTree &tree, daf::CliqueSi
     // fclose(file);
     delete[] core;
     leafList.free();
+
+    return core;
 }

@@ -1,87 +1,62 @@
-#!/usr/bin/env python3
-# chmod +x shrink_until_min_fail.py
-import subprocess, tempfile, os, pathlib, shutil
+from decimal import Decimal, getcontext
+import math
+import sys
 
-ORIG = "/Users/zhangwenqian/UNSW/pivoter/small_garph.txt_13_K"
-BIN1 = "/Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/degeneracy_cliques"
-BIN2 = "/Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/main"
-BIN3 = "/Users/zhangwenqian/UNSW/nucleus/nd/nucleus"
+# 提高小数运算的精度
+getcontext().prec = 50
 
-# ---------- 基础 I/O ------------- #
-def read_graph(path):
-    with open(path) as f:
-        n, _ = map(int, f.readline().split())
-        edges = [tuple(map(int, line.split())) for line in f]
-    return n, edges
+def collision_probability(m):
+    """
+    计算在 128-bit 哈希空间中，m 个元素的碰撞概率
+    近似公式：p ≈ 1 - exp(- m*(m-1)/(2 * 2^128))
+    对于 m 非常小的情况，可以近似 p ≈ m*(m-1)/(2 * 2^128)
+    """
+    m = Decimal(m)
+    two_128 = Decimal(2) ** 128
+    pair_count = m * (m - 1) / 2
+    x = pair_count / two_128  # 这是 -log(1-p) 的近似值
+    # 对于极小 x，可直接用 x 近似 p
+    p_approx = x
+    # 计算精确值 1 - exp(-x)，对于 x 极小也近似为 x
+    p_exact = Decimal(1) - Decimal(math.exp(-float(x)))
+    return p_approx, p_exact
 
-def write_graph(path, n, edges):
-    with open(path, "w") as f:
-        f.write(f"{n} {len(edges)}\n")
-        for u, v in edges:
-            f.write(f"{u} {v}\n")
-
-# ---------- 运行三段式管道 -------- #
-def pipeline(gfile) -> int:
-    """返回码：0=OK(输出相同)，1=diff 不同，其它>1=程序崩溃"""
-    cmd = (
-        f"{BIN1} -i {gfile} -t V -d 1 -k 0 && "
-        f"{BIN2} {gfile}.tree 2 4 {gfile} > out && "
-        f"{BIN3} {gfile} 24 no && diff a b"
-    )
-    return subprocess.run(cmd, shell=True).returncode
-
-# ---------- 主过程 --------------- #
 def main():
-    n, edges = read_graph(ORIG)
-    print(f"起始图：{n} 点, {len(edges)} 条边")
+    if len(sys.argv) != 4:
+        print("用法: python collision.py <n_max> <clique_count> <k>")
+        print("  <n_max> : 顶点范围最大值")
+        print("  <clique_count> : 实际 clique 数量")
+        print("  <k> : 每个 clique 的大小 (用于计算可能的总组合，非必需)")
+        sys.exit(1)
 
-    # 先确保原始图确实 FAIL；若没有 diff 就没必要缩
-    tmp0 = tempfile.mktemp(suffix=".txt", dir=str(pathlib.Path(ORIG).parent))
-    write_graph(tmp0, n, edges)
-    if pipeline(tmp0) == 0:
-        print("❗️ 原始图已经 PASS（diff=0），没有要缩的内容")
-        os.remove(tmp0)
-        return
-    os.remove(tmp0)
+    # 解析命令行参数
+    try:
+        n_max = int(sys.argv[1])
+        clique_count = int(sys.argv[2])
+        k = int(sys.argv[3])
+    except ValueError:
+        print("请确保所有输入都是整数。")
+        sys.exit(1)
 
-    round_no = 0
-    while True:
-        round_no += 1
-        changed = False
-        print(f"\n=== 第 {round_no} 轮扫描（当前 {len(edges)} 边） ===")
-        for idx in range(len(edges)):
-            # 每次都新写文件（简化处理 .tree）
-            new_edges = edges[:idx] + edges[idx+1:]
-            gfile = tempfile.mktemp(suffix=".txt", dir=str(pathlib.Path(ORIG).parent))
-            write_graph(gfile, n, new_edges)
+    # 计算可能的总 clique 数 (C(n_max, k))，如果 k > n_max，则忽略
+    try:
+        total_possible = math.comb(n_max, k)
+    except ValueError:
+        total_possible = None
 
-            rc = pipeline(gfile)
+    # 计算碰撞概率
+    p_approx, p_exact = collision_probability(clique_count)
 
-            # 清理生成的 .tree、临时图文件
-            # for ext in ("", ".tree"):
-            #     try:
-            #         os.remove(gfile + ext)
-            #     except FileNotFoundError:
-            #         pass
-            subprocess.run(f"rm -f {gfile} {gfile}.tree {gfile}.bin {gfile}._24_K", shell=True)
+    # 输出结果
+    print(f"输入参数: n_max = {n_max}, clique_count = {clique_count}, k = {k}")
+    if total_possible is not None:
+        print(f"可能的总 clique 数 = C({n_max}, {k}) = {total_possible}")
+    else:
+        print("无法计算总组合数 (可能 k > n_max)。")
 
-
-            if rc != 0:               # 删掉后仍 FAIL → 真能删
-                    print(f"  [-] 删除边 {edges[idx]} ⇒ 仍 FAIL, 保留删除")
-                    # writh remove edge to file
-                    with open("/Users/zhangwenqian/UNSW/pivoter/remove.txt", "a") as f:
-                        f.write(f"{edges[idx]}\n")
-                    edges = new_edges     # 永久更新
-                    changed = True
-                    break                 # 边集变了，重新开始新一轮
-
-        if not changed:
-            print("\n✅ 找不到可进一步删除的边，缩减完成")
-            break
-
-    out_path = "minimal_fail.txt"
-    write_graph(out_path, n, edges)
-    print(f"最小失败用例写入 → {out_path}  (共 {len(edges)} 条边)")
+    print(f"\n使用 {clique_count} 个元素计算 128 位哈希碰撞概率:")
+    print(f"  近似碰撞概率 p ≈ {p_approx}")
+    print(f"  精确计算 1 - exp(-x) ≈ {p_exact}")
 
 if __name__ == "__main__":
     main()

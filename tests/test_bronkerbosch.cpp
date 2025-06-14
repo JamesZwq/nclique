@@ -1,5 +1,5 @@
 // test_bronkerbosch.cpp
-#include "tree/BronKerbosch.h"
+#include "../src/BK/BronKerboschRmEdge.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -12,7 +12,7 @@
 template<class Bitset>
 std::vector<int> bitset_to_vec(const Bitset& bs) {
     std::vector<int> res;
-    bk::for_each_bit(bs, (int)bs.size(), [&](int v){
+    bkRmEdge::for_each_bit(bs, (int)bs.size(), [&](int v){
         res.push_back(v);
         return true;
     });
@@ -37,9 +37,9 @@ void run_case(
         std::vector<std::vector<int>> expect)
 {
     std::vector<std::vector<int>> got;
-    bk::bronKerbosch(
+    bkRmEdge::bronKerbosch(
         vList, removeEdgeList, /*minK=*/1,
-        [&](const bk::Bitset& R, const bk::Bitset& /*pivots*/){
+        [&](const bkRmEdge::Bitset& R, const bkRmEdge::Bitset& /*pivots*/){
             got.emplace_back(bitset_to_vec(R));
         });
 

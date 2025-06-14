@@ -1,7 +1,7 @@
 //
 // Created by 张文谦 on 24-7-29.
 //
-#pragma once
+// #pragma once
 #ifndef SUBGRAPHMATCHING_GLOBAL_H
 #define SUBGRAPHMATCHING_GLOBAL_H
 #include <cassert>
@@ -20,9 +20,11 @@
 #include <chrono>
 #include <map>
 #include <tbb/spin_mutex.h>
-
+#include <google/dense_hash_set>
 
 #include <iomanip>
+#include <random>
+
 
 #define MAX_CSIZE 400
 
@@ -71,6 +73,19 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
     return os;
 }
 
+template<typename T>
+std::ostream &operator<<(std::ostream & lhs, const std::span<T> & rhs) {
+    lhs << "[";
+    for (size_t i = 0; i < rhs.size(); ++i) {
+        lhs << rhs[i];
+        if (i != rhs.size() - 1) {
+            lhs << ", ";
+        }
+    }
+    lhs << "]";
+    return lhs;
+}
+
 template<typename Key, typename Value, typename Compare>
 std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &m) {
     os << "{";
@@ -86,6 +101,19 @@ std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &
     return os;
 }
 
+// 全局，放一个公共 .h/.hpp 里
+template<typename T>
+std::ostream &operator<<(std::ostream &os, const google::dense_hash_set<T> &s) {
+    os << "{";
+    bool first = true;
+    for (const auto &x: s) {
+        if (!first) os << ", ";
+        first = false;
+        os << x;
+    }
+    os << "}";
+    return os;
+}
 
 namespace daf {
     using Size = uint64_t;
@@ -123,7 +151,8 @@ namespace daf {
         T *data;
 
 
-        explicit StaticVector(const daf::Size maxSize = MAX_CSIZE) : c_size(0), maxSize(maxSize), data(new T[maxSize]) {
+        explicit StaticVector(const daf::Size maxSize = MAX_CSIZE) : c_size(0), maxSize(maxSize + 1),
+                                                                     data(new T[maxSize]) {
         }
 
         // copy operator
@@ -164,20 +193,32 @@ namespace daf {
         }
 
 
-        void push_back(const T &value) {
+        void push_back_with_check(const T &value) {
             if (c_size >= maxSize) {
                 reAllocate(maxSize * 1.5);
+                // std::cout << "Reallocating memory for StaticVector, current size: " << c_size
+                //           << ", new max size: " << maxSize << std::endl;
             }
             data[c_size++] = value;
         }
 
-        template <typename... Args>
-        void emplace_back(Args&&... args) {
+
+        void push_back(const T &value) {
+            // if (c_size >= maxSize) {
+            //     reAllocate(maxSize * 1.5);
+            //     std::cout << "Reallocating memory for StaticVector, current size: " << c_size
+            //               << ", new max size: " << maxSize << std::endl;
+            // }
+            data[c_size++] = value;
+        }
+
+        template<typename... Args>
+        void emplace_back(Args &&... args) {
             // 对于原始内存，可用 placement new；如果 data 已经是 T 类型数组直接赋值也行
             if (c_size >= maxSize) {
                 reAllocate(maxSize * 1.5);
             }
-            new (&data[c_size]) T(std::forward<Args>(args)...);
+            new(&data[c_size]) T(std::forward<Args>(args)...);
             ++c_size;
         }
 
@@ -200,7 +241,7 @@ namespace daf {
             c_size += size;
         }
 
-        template<typename BinaryPred = std::equal_to<T>>
+        template<typename BinaryPred = std::equal_to<T> >
         void unique(BinaryPred comp = BinaryPred()) noexcept {
             if (c_size < 2) return;
             daf::Size write = 1;
@@ -228,28 +269,8 @@ namespace daf {
         }
 
         void resize(Size newSize) {
-            // if (newSize <= maxSize) {
-            //     // 如果只是缩小，直接改变当前大小即可
-            //     c_size = newSize;
-            //     return;
-            // }
-            // // 扩容：申请新内存，注意先申请再 delete[]，保证异常安全
-            // T* newData = new T[newSize];
-            // // 拷贝旧数据——如果 T 是 POD 类型，可换成 std::memcpy；否则用 std::move 或 std::copy
-            // if constexpr(std::is_trivially_copyable<T>::value) {
-            //     std::memcpy(newData, data, sizeof(T) * c_size);
-            // } else {
-            //     for (Size i = 0; i < c_size; ++i) {
-            //         newData[i] = std::move(data[i]);
-            //     }
-            // }
-            // // 释放旧内存
-            // delete[] data;
-            // // 指针、容量、当前大小更新
-            // data    = newData;
-            // maxSize = newSize;
             reAllocate(newSize);
-            c_size  = newSize;
+            c_size = newSize;
         }
 
         // reserve
@@ -277,12 +298,15 @@ namespace daf {
         T &front() {
             return data[0];
         }
+
         [[nodiscard]] const T &front() const {
             return data[0];
         }
+
         T &back() {
             return data[c_size - 1];
         }
+
         [[nodiscard]] const T &back() const {
             return data[c_size - 1];
         }
@@ -329,7 +353,7 @@ namespace daf {
             if constexpr (std::is_same_v<T, bool>) {
                 std::cout << std::boolalpha;
             }
-            std::cout << name <<": [";
+            std::cout << name << ": [";
             for (daf::Size i = 0; i < c_size; i++) {
                 std::cout << data[i];
                 if (i != c_size - 1) {
@@ -367,6 +391,7 @@ namespace daf {
         [[nodiscard]] const_iterator cend() const {
             return data + c_size;
         }
+
     private:
         // void resize(Size newSize) {
         //     if (newSize <= maxSize) {
@@ -394,7 +419,7 @@ namespace daf {
         void reAllocate(Size newSize) {
             if (newSize > maxSize) {
                 T *newData = new T[newSize];
-                if constexpr(std::is_trivially_copyable<T>::value) {
+                if constexpr (std::is_trivially_copyable<T>::value) {
                     std::memcpy(newData, data, sizeof(T) * c_size);
                 } else {
                     for (Size i = 0; i < c_size; ++i) {
@@ -486,50 +511,201 @@ namespace daf {
     // input a function, the format of the function is:
     // bool function(StaticVector<T> &keep, StaticVector<T> &combination)
     // return true if continue to enumerate, false if stop to enumerate
-    template<typename T,
-        typename Callback = bool(*)(StaticVector<T> &, StaticVector<T> &)>
-    void enumerateCombinations(StaticVector<T> &keep, StaticVector<T> &drop,
-                               CliqueSize r,
-                               Callback cb = printCandidate<T>) {
-        // 检查输入条件是否满足
-        if (keep.size() > r) {
-            return;
-        }
-        if (keep.size() + drop.size() < r) {
-            return;
+    // template<
+    //     typename Container,
+    //     typename Callback,
+    //     typename T = typename Container::value_type>
+    // void enumerateCombinations(const Container &items,
+    //                            size_t r,
+    //                            Callback cb) {
+    //     size_t n = items.size();
+    //     if (r > n) return; // 不足以选出 r 个
+    //
+    //     std::vector<T> combination;
+    //     combination.reserve(r);
+    //
+    //     // 用递归回溯：从 items[start..n) 中选 k 个
+    //     std::function<bool(size_t, size_t)> backtrack =
+    //             [&](size_t start, size_t k) -> bool {
+    //         if (k == 0) {
+    //             // 选够了，调用回调
+    //             return cb(combination);
+    //         }
+    //         // 剪枝：剩余元素不足 k 个
+    //         if (n - start < k) {
+    //             return true; // 这一支不够，回到上一层继续
+    //         }
+    //         // 枚举：在 [start .. n-k] 范围内选一个
+    //         for (size_t i = start; i + k <= n; ++i) {
+    //             combination.push_back(items[i]);
+    //             // 还需选 k-1 个，从 i+1 开始
+    //             if (!backtrack(i + 1, k - 1)) {
+    //                 return false; // 回调请求提前终止
+    //             }
+    //             combination.pop_back();
+    //         }
+    //         return true; // 本层枚举完毕，继续上一层
+    //     };
+    //
+    //     // 触发回溯
+    //     backtrack(0, r);
+    // }
+
+    template<class T, class U>
+concept EqualityComparable = requires(const T& a, const U& b) {
+        { a == b } -> std::convertible_to<bool>;
+};
+
+    template<
+        typename S,
+        typename R,
+        typename Fn
+    >
+        requires EqualityComparable<typename S::value_type, typename R::value_type>
+
+    auto enumerateCombinations(const S& keep,
+                               const R& drop,
+                               size_t r,
+                               Fn cb) -> bool {
+        using T = typename S::value_type;
+
+        size_t keepCount = keep.size();
+        size_t dropCount = drop.size();
+        if (keepCount > r || keepCount + dropCount < r) {
+            return true; // 条件不满足，直接跳过
         }
 
-        // 需要从 drop 数组中选择的额外元素数量
-        const CliqueSize needDrop = r - keep.size();
-        StaticVector<T> combination(needDrop); // 用于存储当前组合
+        size_t needDrop = r - keepCount;
+        daf::StaticVector<T> comb(needDrop);
+        comb.c_size = needDrop; // 设置当前大小
+        // 为了支持任意可迭代容器，先拷贝至 vector
 
-        // 定义回溯函数：start 表示从 drop 的哪个位置开始选，choose 表示还需要选几个元素
-        std::function<bool(int, int)> backtrack = [&](int start, int choose) {
-            if (choose == 0) {
-                return cb(keep, combination);
-            }
-            // 剪枝：保证剩余元素足够选出需要的个数
-            for (int i = start; i <= static_cast<int>(drop.size()) - choose; ++i) {
-                combination.push_back(drop[i]);
-                if (backtrack(i + 1, choose - 1)) {
-                    combination.pop_back(); // 回溯：撤销选择
-                } else {
-                    combination.pop_back();
-                    return false;
+        std::function<bool(size_t, size_t)> dfs =
+            [&](size_t start, size_t choose) -> bool {
+                if (choose == 0) {
+                    return cb(keep, comb);
                 }
+                // 剪枝：剩余元素不足
+                if (dropCount - start < choose) {
+                    return true;
+                }
+                for (size_t i = start; i + choose <= dropCount; ++i) {
+                    comb[needDrop - choose] = drop[i];
+                    if (!dfs(i + 1, choose - 1))
+                        return false;
+                }
+                return true;
+        };
+
+        if (needDrop == 0) {
+            cb(keep, comb);
+        } else {
+            dfs(0, needDrop);
+        }
+        comb.free(); // 仅在 dfs 完全结束后释放
+        return true;
+    }
+
+    template<typename Container, typename Fn>
+    bool enumerateCombinations(const Container &C, size_t size, Fn cb) {
+        size_t n = C.size();
+        if (size > n) return true;
+        daf::StaticVector<typename Container::value_type> comb(size);
+        comb.c_size = size; // 设置当前大小
+        // dfs(pos, left): 从 C[pos..] 还要选 left 个
+        std::function<bool(size_t, size_t)> dfs = [&](size_t pos, size_t left) -> bool {
+            if (left == 0) {
+                if constexpr (std::is_void_v<
+                    std::invoke_result_t<Fn, decltype(comb)>
+                >) {
+                    cb(comb);
+                    return true;
+                } else {
+                    return cb(comb);
+                }
+            }
+            // 剪枝：剩余元素不足
+            if (n - pos < left) return true;
+            // 枚举：在 [pos .. n-left] 中取一个
+            for (size_t i = pos; i + left <= n; ++i) {
+                comb[size - left] = C[i];
+                if (!dfs(i + 1, left - 1)) return false;
             }
             return true;
         };
 
-        // 如果无需从 drop 中选择任何元素，则直接调用回调函数处理 keep 数组
-        if (needDrop == 0) {
-            cb(keep, combination);
-        } else {
-            backtrack(0, needDrop);
-        }
-
-        combination.free();
+        bool cont = dfs(0, size);
+        comb.free();          // **仅在 dfs 完全结束后释放**
+        return cont;
     }
+
+    template<typename Container, typename T, typename Fn>
+    bool enumerateCombinations(const Container &C,
+                               size_t size,
+                               T *buf,
+                               Fn cb) {
+        size_t n = C.size();
+        if (size > n) return true;
+
+        std::function<bool(size_t, size_t)> dfs = [&](size_t pos, size_t left) -> bool {
+            if (left == 0) {
+                // return cb(buf, size);
+                if constexpr ( std::is_void_v<
+                    std::invoke_result_t<Fn,
+                        decltype(buf),    // buf 的指针类型，比如 T*
+                        decltype(size)    // size_t
+                    >
+                > ) {
+                    cb(buf, size);
+                    return true;
+                } else {
+                    return cb(buf, size);
+                }
+            }
+            if (n - pos < left) return true;
+            for (size_t i = pos; i + left <= n; ++i) {
+                buf[size - left] = C[i];
+                if (!dfs(i + 1, left - 1)) return false;
+            }
+            return true;
+        };
+        return dfs(0, size);
+    }
+
+    // -----------------------------------------------------------------------------
+    // 从 S ∪ R 中枚举所有大小为 k 且至少包含 1 个来自 S 的组合
+    // S, R: 随机访问容器，S::value_type != R::value_type 也可
+    // Fn: 回调 bool(const Sval* bufS, size_t sCount, const Rval* bufR, size_t rCount)
+    // -----------------------------------------------------------------------------
+    template<typename S, typename R, typename Fn>
+    bool enumAtLeastOneFromTwo(const S &s,
+                               const R &r,
+                               size_t k,
+                               Fn cb) {
+        size_t sz = s.size(), zr = r.size();
+        assert(k > 0 && k <= sz + zr);
+
+        using Sval = typename S::value_type;
+        using Rval = typename R::value_type;
+
+        // 预分配组合缓冲区
+        std::vector<Sval> bufS(k);
+        std::vector<Rval> bufR(k);
+
+        // t = 1..min(k, sz)
+        for (size_t t = 1; t <= std::min(k, sz); ++t) {
+            bool contS = enumerateCombinations(s, t, bufS.data(), [&](Sval *sdata, size_t scount) {
+                // 再从 R 中选 k-t
+                return enumerateCombinations(r, k - t, bufR.data(), [&](Rval *rdata, size_t rcount) {
+                    // 回调分别传入 S 部分和 R 部分
+                    return cb(sdata, scount, rdata, rcount);
+                });
+            });
+            if (!contS) return false;
+        }
+        return true;
+    }
+
 
     template<typename It1, typename It2, typename Func>
     inline void intersect_with_callback(It1 first1, It1 last1,
@@ -557,7 +733,7 @@ namespace daf {
                      std::ranges::range_value_t<R1>,
                      std::ranges::range_value_t<R2>
                  > &&
-                 std::invocable<Func, std::ranges::range_value_t<R1>>
+                 std::invocable<Func, std::ranges::range_value_t<R1> >
     inline void intersect_with_callback(const R1 &c1,
                                         const R2 &c2,
                                         Func &&f) noexcept {
@@ -593,22 +769,21 @@ namespace daf {
         std::ranges::forward_range R2,
         typename Func
     >
-    requires
+        requires
         // 确保两个引用能比较大小／相等
         std::totally_ordered_with<
-          std::ranges::range_reference_t<R1>,
-          std::ranges::range_reference_t<R2>
+            std::ranges::range_reference_t<R1>,
+            std::ranges::range_reference_t<R2>
         > &&
         // 确保 Func 可以被调用，且参数是两个引用
         std::invocable<
-          Func,
-          std::ranges::range_reference_t<R1>,
-          std::ranges::range_reference_t<R2>
+            Func,
+            std::ranges::range_reference_t<R1>,
+            std::ranges::range_reference_t<R2>
         >
     inline void intersect_with_callback_pair(const R1 &c1,
                                              const R2 &c2,
-                                             Func &&f) noexcept
-    {
+                                             Func &&f) noexcept {
         auto first1 = std::begin(c1), last1 = std::end(c1);
         auto first2 = std::begin(c2), last2 = std::end(c2);
         while (first1 != last1 && first2 != last2) {
@@ -625,33 +800,132 @@ namespace daf {
         }
     }
 
-    inline void printProgress(std::size_t curr, std::size_t total)
-    {
+    inline void printProgress(std::size_t curr, std::size_t total) {
         constexpr int barWidth = 50;
         double ratio = static_cast<double>(curr) / total;
-        int filled   = static_cast<int>(ratio * barWidth);
+        int filled = static_cast<int>(ratio * barWidth);
 
-        std::cout << '\r'        // 回到行首，覆盖上一帧
-                  << '[';
+        std::cout << '\r' // 回到行首，覆盖上一帧
+                << '[';
         for (int i = 0; i < barWidth; ++i)
             std::cout << (i < filled ? '=' : ' ');
         std::cout << "] "
-                  << std::setw(6) << std::fixed << std::setprecision(2)
-                  << (ratio * 100.0) << "%  "
-                  << '(' << curr << '/' << total << ')'
-                  << std::flush; // 立即刷新
+                << std::setw(6) << std::fixed << std::setprecision(2)
+                << (ratio * 100.0) << "%  "
+                << '(' << curr << '/' << total << ')'
+                << std::flush; // 立即刷新
+    }
+
+    template<typename T, typename Func>
+    void intersect_dense_sets(const google::dense_hash_set<T> &A,
+                              const google::dense_hash_set<T> &B,
+                              Func callback) noexcept {
+        // 先挑小的遍历，保证 find 次数最少
+        const google::dense_hash_set<T> *small = &A, *large = &B;
+        bool swapped = false;
+        if (B.size() < A.size()) {
+            std::swap(small, large);
+            swapped = true;
+        }
+        for (const auto &x: *small) {
+            auto it = large->find(x);
+            if (it != large->end()) {
+                // x: 来自 small； *it: 来自 large
+                // callback(x, *it);
+                if (swapped) {
+                    callback(*it, x); // 如果 swapped，先是 large 的元素
+                } else {
+                    callback(x, *it); // 否则先是 small 的元素
+                }
+            }
+        }
     }
 
     extern daf::StaticVector<daf::Size> vListMap;
+
+
+    inline void StaticVectorTest() {
+        /* ===== 参数 ===== */
+        constexpr std::size_t N = 5'000'000; // 若内存足够可调大
+        constexpr int ROUNDS = 3;
+
+        /* ===== 生成一个随机索引序列，用于“随机写入” ===== */
+        std::vector<std::size_t> idx(N);
+        std::iota(idx.begin(), idx.end(), 0);
+        std::mt19937_64 rng(42);
+        std::shuffle(idx.begin(), idx.end(), rng);
+
+        auto ms = [](auto ns) { return ns.count() * 1e-6; };
+        using clock = std::chrono::high_resolution_clock;
+
+        auto bench = [&](auto &&container, const char *name) {
+            std::chrono::nanoseconds best_seq_write{};
+            std::chrono::nanoseconds best_rand_write{};
+            std::chrono::nanoseconds best_iter{};
+
+            best_seq_write = best_rand_write = best_iter = std::chrono::nanoseconds::max();
+
+            for (int r = 0; r < ROUNDS; ++r) {
+                /* ---------- 顺序写 ---------- */
+                auto t0 = clock::now();
+                for (std::size_t i = 0; i < N; ++i) container[i] = static_cast<int>(i);
+                auto t1 = clock::now();
+                best_seq_write = std::min(best_seq_write, t1 - t0);
+
+                /* ---------- 随机写 ---------- */
+                auto t2 = clock::now();
+                for (std::size_t i = 0; i < N; ++i) container[idx[i]] = static_cast<int>(i);
+                auto t3 = clock::now();
+                best_rand_write = std::min(best_rand_write, t3 - t2);
+
+                /* ---------- 顺序遍历 ---------- */
+                volatile long long sink = 0;
+                auto t4 = clock::now();
+                for (std::size_t i = 0; i < N; ++i) sink += container[i];
+                auto t5 = clock::now();
+                best_iter = std::min(best_iter, t5 - t4);
+            }
+
+            std::cout << name
+                    << "  seq-write: " << ms(best_seq_write)
+                    << " ms  | rand-write: " << ms(best_rand_write)
+                    << " ms  | iterate: " << ms(best_iter) << " ms\n";
+        };
+
+        /* ===== 1) std::vector ===== */
+        std::vector<int> stdVec(N);
+        bench(stdVec, "std::vector");
+
+        /* ===== 2) StaticVector ===== */
+        StaticVector<int> staticVec(N);
+        staticVec.resize(N); // 保证 c_size==N，直接用 operator[]
+        bench(staticVec, "StaticVector");
+
+        /* ===== 3) C-array ===== */
+        auto *rawArr = new int[N];
+        bench(rawArr, "C-array");
+        delete[] rawArr;
+
+        /* ===== 4) std::array ===== */
+        static std::array<int, N> stdArr; // 静态放 data 段；或改成 thread_local
+        bench(stdArr, "std::array");
+    }
 }
 
 struct TreeGraphNode {
-    uint64_t v : 63;
-    uint64_t isPivot : 1;
+    uint64_t v: 63;
+    uint64_t isPivot: 1;
+
     constexpr TreeGraphNode() = default;
-    constexpr TreeGraphNode(uint64_t v, bool isPivot) : v(v), isPivot(isPivot) {}
-    constexpr explicit TreeGraphNode(uint64_t v) : v(v), isPivot(false) {}
-    constexpr TreeGraphNode(uint64_t v, uint64_t isPivot) : v(v), isPivot(isPivot) {}
+
+    constexpr TreeGraphNode(uint64_t v, bool isPivot) : v(v), isPivot(isPivot) {
+    }
+
+    constexpr explicit TreeGraphNode(uint64_t v) : v(v), isPivot(false) {
+    }
+
+    constexpr TreeGraphNode(uint64_t v, uint64_t isPivot) : v(v), isPivot(isPivot) {
+    }
 
     // <<
     friend std::ostream &operator<<(std::ostream &os, const TreeGraphNode &node) {
@@ -663,6 +937,7 @@ struct TreeGraphNode {
         }
         return os;
     }
+
     operator uint64_t() const noexcept { return v; }
     // == operater with unit64
     constexpr bool operator==(const TreeGraphNode &other) const {
@@ -691,12 +966,12 @@ struct TreeGraphNode {
     static const TreeGraphNode DELETEDKEY;
 };
 
-static_assert(sizeof(TreeGraphNode)==8);
+static_assert(sizeof(TreeGraphNode) == 8);
 
-inline const TreeGraphNode TreeGraphNode::EMPTYKEY {
+inline const TreeGraphNode TreeGraphNode::EMPTYKEY{
     (uint64_t(1) << 63) - 1, false
 };
-inline const TreeGraphNode TreeGraphNode::DELETEDKEY {
+inline const TreeGraphNode TreeGraphNode::DELETEDKEY{
     (uint64_t(1) << 63) - 2, false
 };
 
@@ -708,7 +983,7 @@ struct std::hash<TreeGraphNode> {
 };
 
 template<>
-struct std::hash<daf::StaticVector<daf::Size>> {
+struct std::hash<daf::StaticVector<daf::Size> > {
     std::size_t operator()(const daf::StaticVector<daf::Size> &c) const noexcept {
         std::size_t seed = 0;
         for (const daf::Size &v: c) {

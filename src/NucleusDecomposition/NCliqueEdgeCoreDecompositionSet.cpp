@@ -2,13 +2,13 @@
 // Created by 张文谦 on 25-3-4.
 //
 
-#include "../tree/NCliqueCoreDecomposition.h"
+#include "NCliqueCoreDecomposition.h"
 #include <boost/heap/d_ary_heap.hpp>
 #include <boost/heap/pairing_heap.hpp>
 #include <boost/heap/fibonacci_heap.hpp>
 #include <set>
 
-#include "BronKerbosch.h"
+#include "../BK/BronKerboschRmEdge.hpp"
 #include "dataStruct/CliqueHashMap.h"
 #include "debug/EdgeSet.h"
 #include "graph/DynamicGraph.h"
@@ -17,69 +17,70 @@ extern double nCr[1001][401];
 // 放在你的函数外（比如文件顶部），保证编译时可见并内联
 // #ifndef NDEBUG
 // set NOEBUG as trus
-template<typename It1, typename It2, typename UpdateFunc>
-inline void processEdgePairsImpl(It1 b1, It1 e1,
-                                 It2 b2, It2 e2,
+namespace BaseECDSet {
+    template<typename It1, typename It2, typename UpdateFunc>
+    inline void processEdgePairsImpl(It1 b1, It1 e1,
+                                     It2 b2, It2 e2,
+                                     double weight,
+                                     UpdateFunc &&upd) noexcept {
+        if (weight < 0.0) return;
+
+        // 判断两个区间迭代器是否相同
+        // if all same, do nothing
+        if (b1 == b2 && e1 == e2 && b1 == e1 && b2 == e2) {
+            return;
+        }
+        if (b1 == b2 && e1 == e2) {
+            // 同一范围：i < j
+            for (auto it = b1; it + 1 != e1; ++it) {
+                auto u = *it;
+                for (auto jt = it + 1; jt != e1; ++jt) {
+                    upd(u, *jt, weight);
+                }
+            }
+        } else {
+            // 不同范围：笛卡尔积
+            for (auto it = b1; it != e1; ++it) {
+                auto u = *it;
+                for (auto jt = b2; jt != e2; ++jt) {
+                    upd(u, *jt, weight);
+                }
+            }
+        }
+    }
+
+    template<
+        typename Range1, typename Range2,
+        typename UpdateFunc
+    >
+    inline void processEdgePairs(const Range1 &r1,
+                                 const Range2 &r2,
                                  double weight,
                                  UpdateFunc &&upd) noexcept {
-    if (weight < 0.0) return;
-
-    // 判断两个区间迭代器是否相同
-    // if all same, do nothing
-    if (b1 == b2 && e1 == e2 && b1 == e1 && b2 == e2) {
-        return;
+        processEdgePairsImpl(
+            std::begin(r1), std::end(r1),
+            std::begin(r2), std::end(r2),
+            weight,
+            std::forward<UpdateFunc>(upd)
+        );
     }
-    if (b1 == b2 && e1 == e2) {
-        // 同一范围：i < j
-        for (auto it = b1; it + 1 != e1; ++it) {
-            auto u = *it;
-            for (auto jt = it + 1; jt != e1; ++jt) {
-                upd(u, *jt, weight);
-            }
-        }
-    } else {
-        // 不同范围：笛卡尔积
-        for (auto it = b1; it != e1; ++it) {
-            auto u = *it;
-            for (auto jt = b2; jt != e2; ++jt) {
-                upd(u, *jt, weight);
-            }
-        }
+
+    template<
+        typename Range,
+        typename UpdateFunc
+    >
+    inline void processEdgePairs(const Range &r,
+                                 double weight,
+                                 UpdateFunc &&upd) noexcept {
+        processEdgePairsImpl(
+            std::begin(r), std::end(r),
+            std::begin(r), std::end(r),
+            weight,
+            std::forward<UpdateFunc>(upd)
+        );
     }
-}
 
-template<
-    typename Range1, typename Range2,
-    typename UpdateFunc
->
-inline void processEdgePairs(const Range1 &r1,
-                             const Range2 &r2,
-                             double weight,
-                             UpdateFunc &&upd) noexcept {
-    processEdgePairsImpl(
-        std::begin(r1), std::end(r1),
-        std::begin(r2), std::end(r2),
-        weight,
-        std::forward<UpdateFunc>(upd)
-    );
-}
 
-template<
-    typename Range,
-    typename UpdateFunc
->
-inline void processEdgePairs(const Range &r,
-                             double weight,
-                             UpdateFunc &&upd) noexcept {
-    processEdgePairsImpl(
-        std::begin(r), std::end(r),
-        std::begin(r), std::end(r),
-        weight,
-        std::forward<UpdateFunc>(upd)
-    );
-}
-
-namespace baseECD {
     struct CompareLeaf {
         const std::vector<double> &coreLeaf; // 指向外部数组
         explicit CompareLeaf(const std::vector<double> &coreLeaf) : coreLeaf(coreLeaf) {
@@ -439,21 +440,21 @@ namespace baseECD {
     }
 }
 
-std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCoreDecomposition(
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCoreDecompositionSet(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraph<daf::Size> &treeGraphV, daf::CliqueSize k) {
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k) {
 
     auto time_start = std::chrono::high_resolution_clock::now();
-    auto [countingKE, degreeERemove] = baseECD::countingPerEdge(tree, edgeGraph, k);
+    auto [countingKE, degreeERemove] = BaseECDSet::countingPerEdge(tree, edgeGraph, k);
 
-    std::vector<double> leafCore = baseECD::initLeafCore(tree, countingKE, k, edgeGraph);
+    std::vector<double> leafCore = BaseECDSet::initLeafCore(tree, countingKE, k, edgeGraph);
 
 #ifndef NDEBUG
     tree.printGraphPerV();
     daf::printArray(countingKE, edgeGraph.adj_list.size());
-    baseECD::printEdgeCore(edgeGraph, countingKE);
+    BaseECDSet::printEdgeCore(edgeGraph, countingKE);
     std::cout << "leafCore: " << leafCore << std::endl;
-    // baseECD::printEdgeCore(edgeGraph, degreeE);
+    // BaseECDSet::printEdgeCore(edgeGraph, degreeE);
 #endif
 
 
@@ -463,15 +464,12 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
     auto *coreE = new double[edgeGraph.adj_list.size()];
     memset(coreE, 0, edgeGraph.adj_list.size() * sizeof(daf::Size));
 
-    auto *degreeV = new daf::Size[treeGraphV.adj_list.size()];
-    // std::cout << "adj_list_offsets: " << treeGraphV.adj_list_offsets << std::endl;
-    for (daf::Size i = 0; i < treeGraphV.adj_list.size(); ++i) {
-        degreeV[i] = treeGraphV.adj_list[i].size();
-    }
+    // auto *degreeV = new daf::Size[treeGraphV.adj_list.size()];
+    // // std::cout << "adj_list_offsets: " << treeGraphV.adj_list_offsets << std::endl;
+    // for (daf::Size i = 0; i < treeGraphV.adj_list.size(); ++i) {
+    //     degreeV[i] = treeGraphV.adj_list[i].size();
+    // }
 
-    // std::cout << "degreeV: " << std::endl;
-    // daf::printArray(degreeV, treeGraphV.adj_list_offsets.size() - 1);
-    // std::cout << std::endl;
 
     daf::StaticVector<daf::Size> povit;
     daf::StaticVector<daf::Size> keepC;
@@ -491,8 +489,8 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
 
 
     double currCore = 0;
-    baseECD::DHeap heap{baseECD::CompareLeaf(leafCore)};
-    std::vector<baseECD::DHeap::handle_type> heapHandles(tree.adj_list.size());
+    BaseECDSet::DHeap heap{BaseECDSet::CompareLeaf(leafCore)};
+    std::vector<BaseECDSet::DHeap::handle_type> heapHandles(tree.adj_list.size());
 
     for (daf::Size i = 0; i < tree.adj_list.size(); ++i) {
         auto leaf = tree.adj_list[i];
@@ -513,35 +511,29 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
             currentRemoveLeafIds.push_back(id);
         }
 
-        for (auto currLeafId: currentRemoveLeafIds) {
-            auto leaf = tree.adj_list[currLeafId];
-            for (auto i = 0; i < leaf.size(); ++i) {
-                --degreeV[leaf[i].v];
-            }
-        }
+        // for (auto currLeafId: currentRemoveLeafIds) {
+        //     auto leaf = tree.adj_list[currLeafId];
+        //     for (auto i = 0; i < leaf.size(); ++i) {
+        //         --degreeV[leaf[i].v];
+        //     }
+        // }
+        // std::cout << "currentCore: " << currCore << std::endl;
 #ifndef NDEBUG
         std::cout << "currentRemoveLeafIds: " << currentRemoveLeafIds << std::endl;
         std::cout << "currentRemoveLeafIds: " << currentRemoveLeafIds << std::endl;
 #endif
         for (auto leafId: currentRemoveLeafIds) {
-            // if (leafId == 2677) {
-            //     std::cerr << "Error: leaf id is not found" << std::endl;
-            // }
+        //     // if (leafId == 2677) {
+        //     //     std::cerr << "Error: leaf id is not found" << std::endl;
+        //     // }
             auto leaf = tree.adj_list[leafId];
-            // std::cout << leafId << " leaf: " << leaf << std::endl;
+        // std::cout << leafId << " leaf: " << leaf << std::endl;
             currCore = std::max(currCore, leafCore[leafId]);
             for (auto node: leaf) {
                 if (node.isPivot) {
                     povit.push_back(node.v);
-                    if (degreeV[node.v] == 0) {
-                        removedPovit.push_back(node.v);
-                        isRemovedV[node.v] = true;
-                    }
                 } else {
                     keepC.push_back(node.v);
-                    if (degreeV[node.v] == 0) {
-                        removedKeepC = true;
-                    }
                 }
             }
 
@@ -558,6 +550,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                     auto idx = edgeGraph.getEdgeIndex(u, v);
                     if (countingKE[idx] <= currCore) {
                         removedKeepC = true;
+                        coreE[idx] = currCore;
                     }
                 }
             }
@@ -568,28 +561,31 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                 for (auto j = 0; j < keepC.size(); ++j) {
                     auto v = keepC[j];
                     auto idx = edgeGraph.getEdgeIndex(u, v);
-                    if (countingKE[idx] <= currCore && degreeV[u] != 0 && degreeV[v] != 0) {
-                        // std::cout << "removedPovit: " << u << " " << v << std::endl;
+                    if (countingKE[idx] <= currCore) {
                         removedPovit.push_back(u);
                         isRemovedV[u] = true;
                         break;
                     }
+                    coreE[idx] = currCore;
                 }
             }
+
             int removePPEdgeCount = 0;
             for (daf::Size i = 0; i < povit.size(); ++i) {
                 for (daf::Size j = i + 1; j < povit.size(); ++j) {
                     auto u = povit[i], v = povit[j];
                     auto idx = edgeGraph.getEdgeIndex(u, v);
-                    if (countingKE[idx] <= currCore && degreeV[u] != 0 && degreeV[v] != 0 && !isRemovedV[u] && !
+                    if (countingKE[idx] <= currCore && !isRemovedV[u] && !
                         isRemovedV
                         [v]) {
                         removedEdges.push_back(std::make_pair(u, v));
                         ++removePPEdgeCount;
                     }
+                    coreE[idx] = currCore;
                 }
             }
-
+            // std::cout << "coreE: " << std::endl;
+            // daf::printArray(coreE, edgeGraph.adj_list.size());
             if (removedKeepC || needPivot > povit.size() - removedPovit.size()) {
                 auto removeW = [&](daf::Size u, daf::Size v, double w) {
                     auto idx = edgeGraph.getEdgeIndex(u, v);
@@ -599,8 +595,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                     }
                     auto uIter = treeGraphV.getNbr(u);
                     auto vIter = treeGraphV.getNbr(v);
-                    daf::intersect_with_callback(uIter,
-                                                 vIter,
+                    daf::intersect_with_callback(uIter, vIter,
                                                  [&](const daf::Size &x) {
                                                      if (leafCore[x] > countingKE[idx] && !removedLeaf[x]) {
                                                          auto pvre = updateLeaf.find(x);
@@ -617,22 +612,22 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                 double PtoP = 0;
                 if (needPivot <= povit.size()) {
                     KtoK = nCr[povit.size()][needPivot];
-                    processEdgePairs(keepC, KtoK, removeW);
+                    BaseECDSet::processEdgePairs(keepC, KtoK, removeW);
                 }
                 int needPP = int(needPivot) - 2;
                 if (0 <= needPP && needPP <= int(povit.size()) - 2) {
                     PtoP = nCr[povit.size() - 2][needPP];
-                    processEdgePairs(povit, PtoP, removeW);
+                    BaseECDSet::processEdgePairs(povit, PtoP, removeW);
                 }
                 int needKP = int(needPivot) - 1;
                 if (0 <= needKP && needKP <= int(povit.size()) - 1) {
                     KtoP = nCr[povit.size() - 1][needKP];
-                    processEdgePairs(keepC, povit, KtoP, removeW);
+                    BaseECDSet::processEdgePairs(keepC, povit, KtoP, removeW);
                 }
                 tree.removeNode(leafId);
                 removedLeaf[leafId] = true;
                 for (auto i: leaf) {
-                    treeGraphV.removeNbr(i.v, leafId);
+                    treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
                 }
             } else if (!removedEdges.empty()) {
                 // std::cout << "============================================================" << std::endl;
@@ -659,17 +654,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                     daf::Size needPivot = k - newKeepC.size();
                     if (needPivot <= newPivot.size() && newKeepC.size() > 1) {
                         KtoK = nCr[newPivot.size()][needPivot];
-                        processEdgePairs(newKeepC, KtoK, addW);
+                        BaseECDSet::processEdgePairs(newKeepC, KtoK, addW);
                     }
                     int needPP = int(needPivot) - 2;
                     if (0 <= needPP && needPP <= int(newPivot.size()) - 2) {
                         PtoP = nCr[newPivot.size() - 2][needPP];
-                        processEdgePairs(newPivot, PtoP, addW);
+                        BaseECDSet::processEdgePairs(newPivot, PtoP, addW);
                     }
                     int needKP = int(needPivot) - 1;
                     if (0 <= needKP && needKP <= int(newPivot.size()) - 1) {
                         KtoP = nCr[newPivot.size() - 1][needKP];
-                        processEdgePairs(newKeepC, newPivot, KtoP, addW);
+                        BaseECDSet::processEdgePairs(newKeepC, newPivot, KtoP, addW);
                     }
                     newPivot.clear();
                     newKeepC.clear();
@@ -681,14 +676,14 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                 if (!removedPovit.empty()) {
                     newLeaf = tree.removeNbrs(leafId, removedPovit);
                 }
-                bk::bronKerbosch(newLeaf, removedEdges, k,
-                                 [&](const bk::Bitset &c, const bk::Bitset &pivots) {
-                                     std::vector<TreeGraphNode> newSubLeaf = bk::coverToVertex(c, pivots, leaf);
+                bkRmEdge::bronKerbosch(newLeaf, removedEdges, k,
+                                 [&](const bkRmEdge::Bitset &c, const bkRmEdge::Bitset &pivots) {
+                                     std::vector<TreeGraphNode> newSubLeaf = bkRmEdge::coverToVertex(c, pivots, leaf);
                                      auto newId = tree.addNode(newSubLeaf);
                                      // std::cout << "newSubLeaf: " << tree.adj_list[newId] << " newId: " << newId << std::endl;
-                                     for (auto i: newLeaf) {
-                                         ++degreeV[i.v];
-                                     }
+                                     // for (auto i: newLeaf) {
+                                     //     ++degreeV[i.v];
+                                     // }
                                      initCore(tree.adj_list[newId]);
                                      newLeafIds.push_back(newId);
                                      if (newId >= leafCore.size()) {
@@ -702,13 +697,15 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
 
                 auto removeW = [&](daf::Size u, daf::Size v, double w) {
                     auto idx = edgeGraph.getEdgeIndex(u, v);
-                    coreE[idx] = currCore;
                     countingKE[idx] -= w;
+
+                    if (countingKE[idx] <= currCore) {
+                        coreE[idx] = currCore;
+                    }
                     auto index = edgeGraph.getEdgeIndex(u, v);
                     auto nbrU = treeGraphV.getNbr(u);
                     auto nbrV = treeGraphV.getNbr(v);
-                    daf::intersect_with_callback(nbrU,
-                                                 nbrV,
+                    daf::intersect_with_callback(nbrU, nbrV,
                                                  [&](const daf::Size &x) {
                                                      if (leafCore[x] > countingKE[index] && !removedLeaf[x]) {
                                                          auto prve = updateLeaf.find(x);
@@ -724,17 +721,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                 // daf::Size needPivot = k - keepC.size();
                 if (needPivot <= povit.size()) {
                     KtoK = nCr[povit.size()][needPivot];
-                    processEdgePairs(keepC, KtoK, removeW);
+                    BaseECDSet::processEdgePairs(keepC, KtoK, removeW);
                 }
                 int needPP = int(needPivot) - 2;
                 if (0 <= needPP && needPP <= int(povit.size()) - 2) {
                     PtoP = nCr[povit.size() - 2][needPP];
-                    processEdgePairs(povit, PtoP, removeW);
+                    BaseECDSet::processEdgePairs(povit, PtoP, removeW);
                 }
                 int needKP = int(needPivot) - 1;
                 if (0 <= needKP && needKP <= int(povit.size()) - 1) {
                     KtoP = nCr[povit.size() - 1][needKP];
-                    processEdgePairs(keepC, povit, KtoP, removeW);
+                    BaseECDSet::processEdgePairs(keepC, povit, KtoP, removeW);
                 }
 
                 for (auto i: newLeafIds) {
@@ -746,7 +743,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                             auto index = edgeGraph.getEdgeIndex(u.v, v.v);
                             minCore = std::min(minCore, countingKE[index]);
                         }
-                        treeGraphV.addNbr(newLeaf[j].v, i);
+                        treeGraphV.addNbr(newLeaf[j].v, static_cast<TreeGraphNode>(i));
                     }
                     leafCore[i] = minCore;
                     heapHandles[i] = heap.push(i);
@@ -756,7 +753,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
 
                 if (removedPovit.empty()) {
                     for (auto v: leaf) {
-                        treeGraphV.removeNbr(v.v, leafId);
+                        treeGraphV.removeNbr(v.v, static_cast<TreeGraphNode>(leafId));
                     }
                     tree.removeNode(leafId);
                 }
@@ -804,21 +801,21 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                     // if (debugSet.contains(u,v) && coreE[idx] <= 188) {
                     //     std::cout << "debugSet: " << u << " " << v << std::endl;
                     // }
+
                     if (isRemovedV[u] || isRemovedV[v]) {
                         countingKE[idx] -= rW;
-                        coreE[idx] = currCore;
                     } else {
                         countingKE[idx] -= w;
-                        if (countingKE[idx] <= currCore) {
-                            coreE[idx] = currCore;
-                        } else {
+                        if (countingKE[idx] > currCore) {
                             minCounting = std::min(minCounting, countingKE[idx]);
                         }
                     }
+                    if (countingKE[idx] <= currCore) {
+                        coreE[idx] = currCore;
+                    }
                     auto uIter = treeGraphV.getNbr(u);
                     auto vIter = treeGraphV.getNbr(v);
-                    daf::intersect_with_callback(uIter,
-                                                 vIter,
+                    daf::intersect_with_callback(uIter, vIter,
                                                  [&](const daf::Size &x) {
                                                      if (leafCore[x] > countingKE[idx] && !removedLeaf[x]) {
                                                          // updateLeaf.push_back(std::make_pair(x, countingKE[idx]));
@@ -834,13 +831,13 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                 };
 
                 // 1) keep–keep
-                processEdgePairs(keepC, KtoK, [&](daf::Size u, daf::Size v, double w) {
+                BaseECDSet::processEdgePairs(keepC, KtoK, [&](daf::Size u, daf::Size v, double w) {
                     updateEdgeTemp(u, v, w, RemovedKtoK);
                 });
-                processEdgePairs(povit, PtoP, [&](daf::Size u, daf::Size v, double w) {
+                BaseECDSet::processEdgePairs(povit, PtoP, [&](daf::Size u, daf::Size v, double w) {
                     updateEdgeTemp(u, v, w, RemovedPtoP);
                 });
-                processEdgePairs(keepC, povit, KtoP, [&](daf::Size u, daf::Size v, double w) {
+                BaseECDSet::processEdgePairs(keepC, povit, KtoP, [&](daf::Size u, daf::Size v, double w) {
                     updateEdgeTemp(u, v, w, RemovedKtoP);
                 });
 
@@ -848,16 +845,16 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                 if (!removedPovit.empty() && needPivot <= povit.size() - removedPovit.size()) {
                     const auto newLeaf = tree.removeNbrs(leafId, removedPovit);
                     for (auto removedNbr: removedPovit) {
-                        treeGraphV.removeNbr(removedNbr, leafId);
+                        treeGraphV.removeNbr(removedNbr, static_cast<TreeGraphNode>(leafId));
                     }
                     if (!newLeaf.empty()) {
                         leafCore[leafId] = minCounting;
                         heapHandles[leafId] = heap.push(leafId);
                         removedLeaf[leafId] = false;
                         // daf::StaticVector<daf::Size> newPovit;
-                        for (auto i: newLeaf) {
-                            ++degreeV[i.v];
-                        }
+                        // for (auto i: newLeaf) {
+                        //     ++degreeV[i.v];
+                        // }
                         if (!removedEdges.empty()) {
                             removedEdges.clear();
                         }
@@ -883,7 +880,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
             std::cout << "\n\n leafId: " << leafId << " leafCore: " << leafCore[leafId] << " currCore: " << currCore
             << std::endl;
             std::cout << "countingKE: ";
-            baseECD::printEdgeCore(edgeGraph, countingKE);
+            BaseECDSet::printEdgeCore(edgeGraph, countingKE);
                 // updateLeaf.print("updateLeaf");
                 // removedLeaf.print("removedLeaf");
             std::cout << "removedLeaf: " << removedLeaf << std::endl;
@@ -892,12 +889,12 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
             std::cout << removedKeepC << std::endl;
             // //
             // // std::cout << "degreeE: ";
-            // // baseECD::printEdgeCore(edgeGraph, degreeE);
-            std::cout << "degreeV: ";
-            daf::printArray(degreeV, treeGraphV.adj_list.size());
+            // // BaseECDSet::printEdgeCore(edgeGraph, degreeE);
+            // std::cout << "degreeV: ";
+            // daf::printArray(degreeV, treeGraphV.adj_list.size());
             //
             std::cout << "coreE: ";
-            baseECD::printEdgeCore(edgeGraph, coreE);
+            BaseECDSet::printEdgeCore(edgeGraph, coreE);
             //
             std::cout << "leafCore: " << leafCore << std::endl;
 
@@ -919,12 +916,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
             }
             removedPovit.clear();
         }
-        // for (auto removedLeafId:currentRemoveLeafIds) {
-        //     removedLeaf[removedLeafId] = false;
-        // }
         currentRemoveLeafIds.clear();
-        // sleep
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -934,7 +926,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
     // daf::printArray(coreE, edgeGraph.adj_list.size());
 
 #ifndef NDEBUG
-    baseECD::printEdgeCore(edgeGraph, coreE);
+    BaseECDSet::printEdgeCore(edgeGraph, coreE);
 #endif
 
     // /Users/zhangwenqian/UNSW/pivoter/a
@@ -973,7 +965,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
     assert(numCounting == 0);
 
     delete[] countingKE;
-    delete[] degreeV;
+    // delete[] degreeV;
     delete[] coreE;
     delete[] degreeERemove;
     povit.free();
@@ -992,7 +984,7 @@ template<class Bitset>
 void print_clique(const Bitset &bs) {
     std::cout << '[';
     bool first = true;
-    bk::for_each_bit(bs, (int) bs.size(), [&](int v) {
+    bkRmEdge::for_each_bit(bs, (int) bs.size(), [&](int v) {
         if (!first) std::cout << ',';
         first = false;
         std::cout << v;

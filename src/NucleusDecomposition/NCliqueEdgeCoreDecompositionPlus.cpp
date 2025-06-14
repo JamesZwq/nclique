@@ -2,13 +2,13 @@
 // Created by 张文谦 on 25-3-4.
 //
 
-#include "../tree/NCliqueCoreDecomposition.h"
+#include "NCliqueCoreDecomposition.h"
 #include <boost/heap/d_ary_heap.hpp>
 #include <boost/heap/pairing_heap.hpp>
 #include <boost/heap/fibonacci_heap.hpp>
 #include <set>
 
-#include "BronKerbosch.h"
+#include "../BK/BronKerboschRmEdge.hpp"
 #include "dataStruct/CliqueHashMap.h"
 #include "debug/EdgeSet.h"
 #include "graph/DynamicBipartiteGraph.hpp"
@@ -559,7 +559,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
             currentRemoveEdgeIds.push_back(id);
             coreE[id] = minCore;
             // std::cout << "progress: " << numProgress++ << "/" << edgeGraph.adj_list.size() << std::flush;
-            daf::printProgress(numProgress++, edgeGraph.adj_list.size());
+            // daf::printProgress(numProgress++, edgeGraph.adj_list.size());
         }
 
         currCore = minCore;
@@ -596,6 +596,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
                 }
             });
         }
+
         // removedLeaf.print("removedLeaf");
         for (auto leafId : removedLeaf) {
             auto leaf = tree.adj_list[leafId];
@@ -738,9 +739,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
                     // }
                     newLeaf = tree.removeNbrs(leafId, leafRm.removedPivots);
                 }
-                bk::bronKerbosch(newLeaf, leafRm.removedEdges, k,
-                                 [&](const bk::Bitset &c, const bk::Bitset &pivots) {
-                                     std::vector<TreeGraphNode> newSubLeaf = bk::coverToVertex(c, pivots, leaf);
+                bkRmEdge::bronKerbosch(newLeaf, leafRm.removedEdges, k,
+                                 [&](const bkRmEdge::Bitset &c, const bkRmEdge::Bitset &pivots) {
+                                     std::vector<TreeGraphNode> newSubLeaf = bkRmEdge::coverToVertex(c, pivots, leaf);
                                      auto newId = tree.addNode(newSubLeaf);
                                      initCore(tree.adj_list[newId], newId);
                                      if (newId >= leafRmInfo.size()) {
@@ -1035,7 +1036,7 @@ template<class Bitset>
 void print_clique(const Bitset &bs) {
     std::cout << '[';
     bool first = true;
-    bk::for_each_bit(bs, (int) bs.size(), [&](int v) {
+    bkRmEdge::for_each_bit(bs, (int) bs.size(), [&](int v) {
         if (!first) std::cout << ',';
         first = false;
         std::cout << v;

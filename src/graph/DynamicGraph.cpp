@@ -154,7 +154,7 @@ DynamicGraph<TreeGraphNode>::DynamicGraph(const DynamicGraph<TreeGraphNode> &tre
 }
 
 template<>
-daf::StaticVector<double> DynamicGraph<TreeGraphNode>::cliqueCount() {
+daf::StaticVector<double> DynamicGraph<TreeGraphNode>::cliqueCount() const {
     auto maxdegree = this->maxDegree();
     daf::StaticVector<double> counts(maxdegree + 1);
     counts.c_size = maxdegree + 1;
@@ -178,8 +178,74 @@ daf::StaticVector<double> DynamicGraph<TreeGraphNode>::cliqueCount() {
 }
 
 
+
 template<>
-double DynamicGraph<TreeGraphNode>::cliqueCount(daf::Size k) {
+daf::StaticVector<double> DynamicGraph<TreeGraphNode>::cliqueCountPerV(daf::Size maxV, daf::Size k) const {
+    daf::StaticVector<double> countsV(maxV);
+    countsV.c_size = maxV;
+    memset(countsV.data, 0, maxV * sizeof(double));
+    for (auto leaf: this->adj_list) {
+        int pivotCount = 0, nonPivotCount = 0;
+        for (const auto &node: leaf) {
+            if (node.isPivot) {
+                pivotCount++;
+            } else {
+                nonPivotCount++;
+            }
+        }
+        const daf::CliqueSize rsize = pivotCount + nonPivotCount;
+        if (k > rsize || nonPivotCount > k) {
+            continue;
+        }
+        const double PCount = nCr[pivotCount - 1][k - nonPivotCount - 1];
+        const double NPCount = nCr[pivotCount][k - nonPivotCount];
+        for (const auto &node: leaf) {
+            if (node.isPivot) {
+                countsV[node.v] += PCount;
+            } else {
+                countsV[node.v] += NPCount;
+            }
+        }
+    }
+    return countsV;
+}
+
+
+
+template<>
+daf::StaticVector<daf::Size> DynamicGraph<TreeGraphNode>::cliqueCountPerVAcc(daf::Size maxV, daf::Size k) const {
+    daf::StaticVector<daf::Size> countsV(maxV);
+    countsV.c_size = maxV;
+    memset(countsV.data, 0, maxV * sizeof(double));
+    for (auto leaf: this->adj_list) {
+        int pivotCount = 0, nonPivotCount = 0;
+        for (const auto &node: leaf) {
+            if (node.isPivot) {
+                pivotCount++;
+            } else {
+                nonPivotCount++;
+            }
+        }
+        const daf::CliqueSize rsize = pivotCount + nonPivotCount;
+        if (k > rsize || nonPivotCount > k) {
+            continue;
+        }
+        const daf::Size PCount = nCr[pivotCount - 1][k - nonPivotCount - 1];
+        const daf::Size NPCount = nCr[pivotCount][k - nonPivotCount];
+        for (const auto &node: leaf) {
+            if (node.isPivot) {
+                countsV[node.v] += PCount;
+            } else {
+                countsV[node.v] += NPCount;
+            }
+        }
+    }
+    return countsV;
+}
+
+
+template<>
+double DynamicGraph<TreeGraphNode>::cliqueCount(daf::Size k) const {
     double counts = 0;
     for (const auto& leaf: this->adj_list) {
         int pivotCount = 0, nonPivotCount = 0;
