@@ -19,6 +19,7 @@
 #include <ranges>
 #include <chrono>
 #include <map>
+#include <span>
 #include <tbb/spin_mutex.h>
 // #include <google/dense_hash_set>
 
