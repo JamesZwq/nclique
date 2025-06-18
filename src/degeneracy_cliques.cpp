@@ -11,12 +11,25 @@
 #include"misc.h"
 #include"LinkedList.h"
 #include"MemoryManager.h"
-#include "dataStruct/disJionSet.hpp"
+#include "dataStruct/disJoinSet.hpp"
 #include "graph/DynamicBipartiteGraph.hpp"
 #include "NucleusDecomposition/NCliqueCoreDecomposition.h"
 #include "NucleusDecomposition/NucleusCoreDecomposition.h"
 
 int main(int argc, char **argv) {
+
+    // BipartiteDSU disJoinSet(5, 5);
+    // disJoinSet.uniteAB(1, 2);
+    // disJoinSet.print();
+    // disJoinSet.uniteAB(3, 4);
+    // disJoinSet.print();
+    // disJoinSet.uniteAB(1, 3);
+    // disJoinSet.print();
+    // disJoinSet.uniteAA(0, 1);
+    // disJoinSet.uniteBB(4, 3);
+    // disJoinSet.print();
+    // return 0;
+
     std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
     if (argc != 4) {
         printf("Incorrect number of arguments.\n");
@@ -67,10 +80,6 @@ int main(int argc, char **argv) {
     // DynamicGraphSet<TreeGraphNode> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
     DynamicGraphSet<TreeGraphNode> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
 
-    // edgeGraph.printGraphPerV();
-
-    auto treeGraphClone = treeGraph.clone();
-    DynamicGraph<daf::Size> treeGraphVSize(treeGraph, edgeGraph.getGraphNodeSize(), s);
 
     // StaticCliqueIndex cliqueIndex(r);
     // daf::timeCount("clique Index build",
@@ -80,11 +89,20 @@ int main(int argc, char **argv) {
     //
     // cliqueIndex.verify();
 
-    auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {
-        return NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
+    daf::timeCount("NucleusCoreDecomposition", [&] {
+        if (r == 2) {
+            PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);
+        } else if (r == 1) {
+            NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
+        } else {
+            NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
+        }
     });
+    // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {
+    //     return PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);
+    // });
 
-    std::cout << "corePlus: " << corePlus << std::endl;
+    // std::cout << "corePlus: " << corePlus << std::endl;
      //
      // auto coreBase = daf::timeCount("PlusNucleusEdgeCoreDecomposition", [&] {
      //     return baseNucleusCoreDecompositionLeaf(treeGraph, edgeGraph, treeGraphVSize, s);

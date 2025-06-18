@@ -20,10 +20,12 @@
 #include <chrono>
 #include <map>
 #include <tbb/spin_mutex.h>
-#include <google/dense_hash_set>
+// #include <google/dense_hash_set>
 
 #include <iomanip>
 #include <random>
+
+#include "dataStruct/robin_hood.h"
 
 
 #define MAX_CSIZE 400
@@ -102,18 +104,18 @@ std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &
 }
 
 // 全局，放一个公共 .h/.hpp 里
-template<typename T>
-std::ostream &operator<<(std::ostream &os, const google::dense_hash_set<T> &s) {
-    os << "{";
-    bool first = true;
-    for (const auto &x: s) {
-        if (!first) os << ", ";
-        first = false;
-        os << x;
-    }
-    os << "}";
-    return os;
-}
+// template<typename T>
+// std::ostream &operator<<(std::ostream &os, const google::dense_hash_set<T> &s) {
+//     os << "{";
+//     bool first = true;
+//     for (const auto &x: s) {
+//         if (!first) os << ", ";
+//         first = false;
+//         os << x;
+//     }
+//     os << "}";
+//     return os;
+// }
 
 namespace daf {
     using Size = uint64_t;
@@ -204,11 +206,11 @@ namespace daf {
 
 
         void push_back(const T &value) {
-            // if (c_size >= maxSize) {
-            //     reAllocate(maxSize * 1.5);
-            //     std::cout << "Reallocating memory for StaticVector, current size: " << c_size
-            //               << ", new max size: " << maxSize << std::endl;
-            // }
+            if (c_size >= maxSize) {
+                reAllocate(maxSize * 1.5);
+                // std::cout << "Reallocating memory for StaticVector, current size: " << c_size
+                //           << ", new max size: " << maxSize << std::endl;
+            }
             data[c_size++] = value;
         }
 
@@ -817,11 +819,11 @@ concept EqualityComparable = requires(const T& a, const U& b) {
     }
 
     template<typename T, typename Func>
-    void intersect_dense_sets(const google::dense_hash_set<T> &A,
-                              const google::dense_hash_set<T> &B,
+    void intersect_dense_sets(const robin_hood::unordered_flat_set<T> &A,
+                              const robin_hood::unordered_flat_set<T> &B,
                               Func callback) noexcept {
         // 先挑小的遍历，保证 find 次数最少
-        const google::dense_hash_set<T> *small = &A, *large = &B;
+        const auto *small = &A, *large = &B;
         bool swapped = false;
         if (B.size() < A.size()) {
             std::swap(small, large);
@@ -966,7 +968,6 @@ struct TreeGraphNode {
     static const TreeGraphNode DELETEDKEY;
 };
 
-static_assert(sizeof(TreeGraphNode) == 8);
 
 inline const TreeGraphNode TreeGraphNode::EMPTYKEY{
     (uint64_t(1) << 63) - 1, false

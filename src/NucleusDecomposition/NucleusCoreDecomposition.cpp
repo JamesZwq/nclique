@@ -13,6 +13,7 @@
 #include "debug/EdgeSet.h"
 #include "graph/DynamicBipartiteGraph.hpp"
 // #include "graph/DynamicGraph.h"
+#include "dataStruct/disJoinSet.hpp"
 #include "graph/DynamicGraphSet.h"
 
 extern double nCr[1001][401];
@@ -525,7 +526,6 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
     auto time_start = std::chrono::high_resolution_clock::now();
-
     StaticCliqueIndex cliqueIndex(r);
     daf::timeCount("clique Index build",
                    [&]() {
@@ -541,6 +541,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
                                                             return CDSet::countingPerEdgeAndRClique(
                                                                 tree, cliqueIndex, edgeGraph, r, s);
                                                         });
+
 
 
     auto *coreE = new double[edgeGraph.adj_list.size()];
@@ -743,17 +744,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
                             if (node.isPivot) {
                                 subNumPovit++;
                             } else {
-
-                                //     std::cout << "removedEdges: " << removedEdges << std::endl;
-
-                                double KtoK = 0;
-                                double KtoP = 0;
-                                double PtoP = 0;
-
-                                auto addW = [&](daf::Size u, daf::Size v, double w) {
-                                    auto idx = edgeGraph.getEdgeCompressedId(u, v);
-                                    countingKE[idx] += w;
-                                };                                subNumKeepC++;
+                                subNumKeepC++;
                             }
                         }
                         auto ncrValue = nCr[newPivotC - subNumPovit][needPivot - subNumPovit];

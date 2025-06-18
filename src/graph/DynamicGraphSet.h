@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <utility>
 
-#include <sparsehash/dense_hash_set>
+// #include <sparsehash/dense_hash_set>
 
 #include "DynamicGraph.h"
 #include "dataStruct/CliqueHashMap.h"
@@ -47,7 +47,7 @@ public:
         adj_list[node_id].insert(nbr);
     }
 
-    google::dense_hash_set<T> &getNbr(daf::Size node_id) {
+    robin_hood::unordered_flat_set<T> &getNbr(daf::Size node_id) {
         return adj_list[node_id];
     }
 
@@ -56,7 +56,7 @@ public:
         nbrs.erase(nbr);
     }
 
-    google::dense_hash_set<T> &removeNbrs(daf::Size node_id, google::dense_hash_set<daf::Size> &nbrs) {
+    robin_hood::unordered_flat_set<T> &removeNbrs(daf::Size node_id, robin_hood::unordered_flat_set<daf::Size> &nbrs) {
         auto &s = adj_list[node_id];
         // s.erase(nbrs);
         for (const auto &nbr: nbrs) {
@@ -122,7 +122,9 @@ public:
 
     daf::Size numBipartEdge(daf::Size k);
 
-    std::vector<google::dense_hash_set<T> > adj_list;
+    std::vector<robin_hood::unordered_flat_set<T> > adj_list;
+    // std::vector<robin_hood::unordered_flat_set<T> > adj_list;
+    // robin_hood::unordered_flat_set<><T>
 
     // 用于存储被删除的节点 ID
 private:

@@ -391,7 +391,7 @@ namespace PlusECDSet {
         daf::StaticVector<daf::Size> keepC;
         daf::Size count = 0;
 
-        for (const dense_hash_set<TreeGraphNode> &clique: treeGraph.adj_list) {
+        for (const auto &clique: treeGraph.adj_list) {
             povit.clear();
             keepC.clear();
             if (clique.size() < k) {
@@ -639,7 +639,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
         currCore = minCore;
 
-        // std::cout << "currentCore: " << currCore << std::endl;
+        std::cout << "currentCore: " << currCore << std::endl;
 #ifndef NDEBUG
         std::cout << "currentRemoveEdge: " << std::endl;
 #endif

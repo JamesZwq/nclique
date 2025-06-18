@@ -146,12 +146,14 @@ public:
         eidToNode.reserve(adj_list.c_size);
         // 2) 直接按 CSR 下标填 map
         for (daf::Size u = 0; u < n; ++u) {
+            bool useMap = (getNbrCount(u) >= 1000);
             for (daf::Size eid = adj_list_offsets[u]; eid < adj_list_offsets[u + 1]; ++eid) {
                 daf::Size v = adj_list[eid];
                 // beSingleEdge 已经保证只剩下 v>u 的情况
-                uint64_t key = (static_cast<uint64_t>(u) << 32) | static_cast<uint64_t>(v);
-                // 这里直接把数组索引 ei 当作 ID
-                edgeIdMap_[key] = eid;
+                if (useMap) {
+                    uint64_t key = (static_cast<uint64_t>(u) << 32) | static_cast<uint64_t>(v);
+                    edgeIdMap_[key] = eid;
+                }
                 eidToNode[eid] = u;
             }
         }
