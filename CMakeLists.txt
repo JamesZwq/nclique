@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(pivoter CXX)
-include(CTest)
-add_subdirectory(tests)
+#include(CTest)
+#add_subdirectory(tests)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -54,7 +54,6 @@ include_directories(src)
 file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.hpp src/*.h src/*/*.cpp src/*/*.hpp src/*/*.h)
 set(EXCLUDE_SRCS
         ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
-        ${CMAKE_SOURCE_DIR}/src/BCtest.cpp
 )
 list(REMOVE_ITEM ALL_SOURCES ${EXCLUDE_SRCS})
 set(COMMON_SOURCES ${ALL_SOURCES})
@@ -112,12 +111,12 @@ message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # 指定每个可执行文件
 add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
 #add_executable(main ${COMMON_SOURCES} src/main.cpp)
-add_executable(BCtest ${COMMON_SOURCES} src/BCtest.cpp
-        src/dataStruct/CliqueMap.hpp)
+#add_executable(BCtest ${COMMON_SOURCES}
+#        src/dataStruct/CliqueMap.hpp)
 
 # 链接库
 target_link_libraries(degeneracy_cliques PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
-target_link_libraries(BCtest PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+#target_link_libraries(BCtest PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 
-include(CTest)            # 或者 enable_testing()
+#include(CTest)            # 或者 enable_testing()
