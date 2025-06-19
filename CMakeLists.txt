@@ -53,7 +53,6 @@ include_directories(src)
 
 file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.hpp src/*.h src/*/*.cpp src/*/*.hpp src/*/*.h)
 set(EXCLUDE_SRCS
-        ${CMAKE_SOURCE_DIR}/src/main.cpp
         ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
         ${CMAKE_SOURCE_DIR}/src/BCtest.cpp
 )
@@ -112,13 +111,13 @@ message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # 指定每个可执行文件
 add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
-add_executable(main ${COMMON_SOURCES} src/main.cpp)
+#add_executable(main ${COMMON_SOURCES} src/main.cpp)
 add_executable(BCtest ${COMMON_SOURCES} src/BCtest.cpp
         src/dataStruct/CliqueMap.hpp)
 
 # 链接库
 target_link_libraries(degeneracy_cliques PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
-target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+#target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 target_link_libraries(BCtest PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 
 include(CTest)            # 或者 enable_testing()
