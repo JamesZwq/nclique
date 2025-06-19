@@ -571,6 +571,8 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
     leafRmInfo.c_size = tree.adj_list.size();
 
     CDSet::DHeap heap{CDSet::CompareRClique(countingRClique.data())};
+    heap.reserve(cliqueIndex.size());
+
     std::vector<CDSet::DHeap::handle_type> heapHandles(cliqueIndex.size());
 
     for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {

@@ -9,7 +9,7 @@
 #include <vector>
 #include "Global/Global.h"
 #include <span>
-#include <google/dense_hash_map>
+// #include <google/dense_hash_map>
 
 class MultiBranchTree;
 class TreeNode;
@@ -139,10 +139,11 @@ public:
     void buildEdgeIdMap() {
         // 只要调用过 beSingleEdge()，adj_list_offsets/new_adj 就只剩 u<v 的单边
         // 1) 准备稀疏哈希
-        edgeIdMap_.set_empty_key( std::numeric_limits<uint64_t>::max() );
-        edgeIdMap_.set_deleted_key( std::numeric_limits<uint64_t>::max() - 1 );
+        // edgeIdMap_.set_empty_key( std::numeric_limits<uint64_t>::max() );
+        // edgeIdMap_.set_deleted_key( std::numeric_limits<uint64_t>::max() - 1 );
         // 一次性分配足够多的桶
-        edgeIdMap_.resize( static_cast<size_t>(adj_list.c_size * 1.3) );
+        // edgeIdMap_.resize( static_cast<size_t>(adj_list.c_size * 1.3) );
+        edgeIdMap_.reserve(static_cast<size_t>(adj_list.c_size * 1.3));
         eidToNode.reserve(adj_list.c_size);
         // 2) 直接按 CSR 下标填 map
         for (daf::Size u = 0; u < n; ++u) {
@@ -216,7 +217,8 @@ public:
     daf::Size max_degree;
 
     // key = (u<<32)|v, value = 连续 ID
-    google::dense_hash_map<uint64_t, daf::Size> edgeIdMap_;
+    // google::dense_hash_map<uint64_t, daf::Size> edgeIdMap_;
+    robin_hood::unordered_flat_map<uint64_t, daf::Size> edgeIdMap_;
 private:
     void BronKerboschPivotHelp(std::vector<daf::Size>& R,
                            std::vector<daf::Size>& P,
