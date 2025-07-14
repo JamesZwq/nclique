@@ -406,7 +406,7 @@ namespace CDSet {
                         }
                     }
                     if (rCliqueSCounting.size() <= id) {
-                        rCliqueSCounting.resize(id * 1.1, 0.0);
+                        rCliqueSCounting.resize(std::min(id + 1.1, id * 1.3), 0.0);
                     }
                 }
                 rCliqueSCounting[id] += ncrValue;
@@ -551,6 +551,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
     tree.printGraphPerV();
     // daf::printArray(countingKE, edgeGraph.adj_list.size());
     CDSet::printEdgeCore(edgeGraph, countingKE);
+    std::cout << "countingRClique" << countingRClique << std::endl;
     // CDSet::printEdgeCore(edgeGraph, degreeE);
 #endif
 
@@ -607,6 +608,10 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
             currentRemoveRcliqueIds.push_back(id);
             // std::cout << "progress: " << numProgress++ << "/" << edgeGraph.adj_list.size() << std::flush;
             // daf::printProgress(numProgress++, edgeGraph.adj_list.size());
+#ifndef NDEBUG
+            std::cout << "removed Clique: " << cliqueIndex.byId(id) << " id: " << id
+                      << " core: " << countingRClique[id] << std::endl;
+#endif
         }
 
         for (auto rmRCliqueId: currentRemoveRcliqueIds) {
@@ -628,6 +633,8 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
 
         // std::cout << "currentCore: " << currCore << std::endl;
 #ifndef NDEBUG
+        // std::cout << "countingKE" << std::endl;
+        // CDSet::printEdgeCore(edgeGraph, countingKE);
         std::cout << "currentRemoveEdge: " << std::endl;
 #endif
         for (auto edgeId: currentRemoveEdgeIds) {

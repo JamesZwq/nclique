@@ -101,7 +101,6 @@ namespace bkRmEdge {
         for_each_bit(candidates, n, [&](int v) {
             Bitset R2 = R;    R2.set(v);
             Bitset P2 = P & adj[v];
-            Bitset X2 = adj[v];
 
             // 1) 先拷一份 pivots
             Bitset piv2 = pivots;

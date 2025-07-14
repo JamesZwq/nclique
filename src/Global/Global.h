@@ -198,7 +198,7 @@ namespace daf {
 
         void push_back_with_check(const T &value) {
             if (c_size >= maxSize) {
-                reAllocate(maxSize * 1.5);
+                reAllocate(std::max(maxSize * 1.5, maxSize + 1.1));
                 // std::cout << "Reallocating memory for StaticVector, current size: " << c_size
                 //           << ", new max size: " << maxSize << std::endl;
             }
