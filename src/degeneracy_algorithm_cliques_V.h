@@ -56,10 +56,11 @@ void listAllCliquesDegeneracyRecursive_V(daf::Size *,
 void listAllCliquesDegeneracy_V(daf::Size *, NeighborListArray **,
                                 int size, int max_k, std::string databasePath);
 
-DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &orderingArray,
-                                                                int max_k, int min_k);
 #ifdef __cplusplus
 }
 #endif
+
+DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &orderingArray,
+                                                                int max_k, int min_k);
 
 #endif
