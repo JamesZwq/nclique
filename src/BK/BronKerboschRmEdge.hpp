@@ -11,6 +11,7 @@
 #include "graph/DynamicGraph.h"
 #include <boost/dynamic_bitset.hpp>
 
+extern double nCr[1001][401];
 
 namespace bkRmEdge {
     // static constexpr int MAXN = 400;
@@ -22,10 +23,21 @@ namespace bkRmEdge {
     template<class F>
     void for_each_bit(const Bitset &bs, int n, F &&callback) {
         // 首先找第一个 1
-        for (size_t v = bs.find_first(); v != Bitset::npos && (int)v < n; v = bs.find_next(v)) {
+        for (size_t v = bs.find_first(); v != Bitset::npos && (int) v < n; v = bs.find_next(v)) {
             // bs.test(v) 肯定为 true，不用再测
-            if (!callback((int)v)) break;
+            if (!callback((int) v)) break;
         }
+    }
+
+    inline void printBitset(const Bitset &bs, std::string name = "") {
+        if (!name.empty()) {
+            std::cout << name << ": ";
+        }
+        for_each_bit(bs, (int) bs.size(), [&](int v) {
+            std::cout << v << ' ';
+            return true;
+        });
+        std::cout << std::endl;
     }
 
 
@@ -59,9 +71,9 @@ namespace bkRmEdge {
             // 移动到 cover 的下一个 1 位
             i = cover.find_next(i);
         }
-
         return result;
     }
+
     /**
      * 原来 class 中的 run() 方法，完全照搬逻辑，
      * 把 adj, n, minK 从成员变量变成了入参，
@@ -95,16 +107,22 @@ namespace bkRmEdge {
             }
             return true;
         });
-        // std::cout << "bestU: " << bestU << std::endl;
-        // 3) 遍历 P \ nbr(bestU)
         Bitset candidates = P & ~adj[bestU];
+        std::cout << "candidates: " ;
+        std::cout << "bestU: " << bestU << std::endl;
+        printBitset(P, "P");
+        printBitset(R, "R");
+        printBitset(adj[bestU], "adj[bestU]");
+        printBitset(candidates, "candidates");
+
         for_each_bit(candidates, n, [&](int v) {
-            Bitset R2 = R;    R2.set(v);
+            // std::cout << v << std::endl;
+            Bitset R2 = R;
+            R2.set(v);
             Bitset P2 = P & adj[v];
 
             // 1) 先拷一份 pivots
             Bitset piv2 = pivots;
-            // 2) 如果这个 v 是 pivot，就在这份 piv2 上打标
             if (v == bestU) piv2.set(v);
 
             // 3) 用拷贝去递归
@@ -123,13 +141,13 @@ namespace bkRmEdge {
      * 返回构造好的 adj， 并通过 outN/outMinK 传回 n/minK
      */
     inline std::vector<Bitset>
-        build_adj(std::vector<TreeGraphNode> &vList,
-                  daf::StaticVector<std::pair<daf::Size, daf::Size>> &removeEdgeList,
-                  Bitset &staticVertex,  // 输出：那些从未在 removeEdgeList 出现过的点
-                  Bitset &pivot,  // 输出：那些从未在 removeEdgeList 出现过的点
-                  int &outN) {
+    build_adj(std::vector<TreeGraphNode> &vList,
+              daf::StaticVector<std::pair<daf::Size, daf::Size> > &removeEdgeList,
+              Bitset &staticVertex, // 输出：那些从未在 removeEdgeList 出现过的点
+              Bitset &pivot, // 输出：那些从未在 removeEdgeList 出现过的点
+              int &outN) {
         std::ranges::sort(vList);
-        int n = (int)vList.size();
+        int n = (int) vList.size();
         outN = n;
 
         // 一开始假设所有点都是静态点
@@ -150,9 +168,9 @@ namespace bkRmEdge {
             }
         }
         // 删除 removeEdgeList 中的边，同时把它们的两端从 staticVertex 中踢掉
-        for (auto [u0, v0] : removeEdgeList) {
+        for (auto [u0, v0]: removeEdgeList) {
             if (daf::vListMap[u0] == std::numeric_limits<daf::Size>::max() ||
-                    daf::vListMap[v0] == std::numeric_limits<daf::Size>::max()) {
+                daf::vListMap[v0] == std::numeric_limits<daf::Size>::max()) {
                 continue;
             }
             auto u = daf::vListMap[u0];
@@ -181,7 +199,7 @@ namespace bkRmEdge {
      */
     template<class ReportFn>
     void bronKerbosch(std::vector<TreeGraphNode> &vList,
-                      daf::StaticVector<std::pair<daf::Size, daf::Size>> &removeEdgeList,
+                      daf::StaticVector<std::pair<daf::Size, daf::Size> > &removeEdgeList,
                       int minK,
                       ReportFn &&report) {
         int n;
@@ -189,14 +207,151 @@ namespace bkRmEdge {
         Bitset povit;
         auto adj = build_adj(vList, removeEdgeList, R, povit, n);
 
-        Bitset mask(n); mask.set();
+        Bitset mask(n);
+        mask.set();
         Bitset P = (~R) & mask;
         // X 还是空
         Bitset X(n);
+
+
         // 运行原来的递归，只不过带了预先的 R
+        std::cout << "adj" << std::endl;
+        std::cout << adj << std::endl;
+        std::cout << R << " " << P << " " << povit << std::endl;
         bk_run(adj, n, minK, R, P, povit, std::forward<ReportFn>(report));
     }
 
+    inline void testBronKerbosch() {
+        // 3 个点完全图：0–1, 0–2, 1–2
+        std::vector<TreeGraphNode> vList = {
+            {0, true},
+            {1, true},
+            {2, true},
+            {3, true},
+            {4, true},
+            {5, true}
+        };
+        daf::StaticVector<std::pair<daf::Size, daf::Size> > removeEdgeList;
+        removeEdgeList.emplace_back(0, 1);
+        int minK = 1;
+        std::vector<double> cliqueCounts(vList.size(), 0);
+        bronKerbosch(vList, removeEdgeList, minK,
+                     [&](const Bitset &clique, const Bitset &pivots) {
+                         std::vector<int> C, P, H;
+                         for (size_t i = clique.find_first(); i != Bitset::npos; i = clique.find_next(i)) {
+                             C.push_back(vList[i].v);
+                             (pivots.test(i) ? P : H).push_back(vList[i].v);
+                         }
+                         std::cout << "!!!!!!!!!!! Clique: ";
+                         for (int x: C) std::cout << x << ' ';
+                         std::cout << "| Pivots: ";
+                         for (int x: P) std::cout << x << ' ';
+                         std::cout << "| Holds: ";
+                         for (int x: H) std::cout << x << ' ';
+                         std::cout << '\n';
+
+                         // use ncr do clique counting
+                         for (size_t i = H.size(); i <= C.size(); ++i) {
+                             auto need = C.size() - i;
+                             cliqueCounts[i] += nCr[P.size()][need];
+                         }
+                     });
+
+        std::cout << "Clique counts: " << cliqueCounts << std::endl;
+    }
+
+    template<class ReportFn>
+    void bronKerboschFromFile(const std::string &filepath,
+                              int minK,
+                              ReportFn &&report) {
+        std::ifstream fin(filepath);
+        if (!fin) {
+            std::cerr << "Error: cannot open file " << filepath << std::endl;
+            return;
+        }
+        int n, m;
+        fin >> n >> m;
+        // 构建邻接矩阵
+        std::vector<Bitset> adj(n, Bitset(n));
+        for (int i = 0; i < n; ++i) {
+            adj[i].reset(); // 清空
+        }
+        int u, v;
+        for (int i = 0; i < m; ++i) {
+            fin >> u >> v;
+            if (u >= 0 && u < n && v >= 0 && v < n) {
+                adj[u].set(v);
+                adj[v].set(u);
+            }
+        }
+
+        // 初始 R 空，P 和 pivots 全 1
+        Bitset R(n), P(n), pivots(n);
+        R.reset();
+        P.set(); // 所有顶点都在 P
+        pivots = R;
+
+        // std::cout << adj << std::endl;
+        // 调用主算法
+
+        // std::cout << R << " " << P << " " << pivots << std::endl;
+        bk_run(adj, n, minK, R, P, pivots, std::forward<ReportFn>(report));
+    }
+
+    // 测试函数：从文件读取图并统计所有 k-clique 数量
+    inline void testFromFile() {
+        std::string filepath = "/Users/zhangwenqian/UNSW/pivoter/b";
+        auto minK = 1;
+        std::vector<double> cliqueCounts;
+        // 先读取 n 以初始化 cliqueCounts 大小
+        std::ifstream fin(filepath);
+        int n, m;
+        fin >> n >> m;
+        cliqueCounts.assign(n + 1, 0.0);
+        fin.close();
+
+        bronKerboschFromFile(filepath, minK,
+                             [&](const Bitset &clique, const Bitset &pivots) {
+                                 // 计算 hold / pivot 集合
+                                 std::vector<int> H, P;
+                                 // std::cout << clique << " " << pivots << std::endl;
+                                 for (size_t i = clique.find_first(); i != Bitset::npos; i = clique.find_next(i)) {
+                                     (pivots.test(i) ? P : H).push_back((int) i);
+                                 }
+                                 int h = (int) H.size();
+                                 int p = (int) P.size();
+                                 std::cout << "!!!!!!!!!!! Clique: ";
+                                 std::cout << "Findclique: H: " << H << ", P: " << P << std::endl;
+                                 // 对任意 q 从 0 到 p，都会产生 h+q 大小的 clique
+                                 for (int q = 0; q <= p; ++q) {
+                                     int size_k = h + q;
+                                     if (size_k <= n && size_k >= 0) {
+                                         cliqueCounts[size_k] += nCr[p][q];
+                                     }
+                                 }
+                             }
+        );
+        // std::cout << cliqueCounts << std::endl;
+        for (size_t k = minK; k < cliqueCounts.size(); ++k) {
+            if (cliqueCounts[k] > 0) {
+                // std::cout << cliqueCounts[k] << std::endl; //output as int
+                printf("%.0f\n", cliqueCounts[k]);
+            }
+        }
+        // 输出结果
+        // std::cout << "Clique counts (k: count):\n";
+        // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/b.out", "w");
+        // for (size_t k = minK; k < cliqueCounts.size(); ++k) {
+        //     double cnt = cliqueCounts[k];
+        //     if (cnt > 0) {
+        //         // std::cout << cnt;
+        //         fprintf(file, "%.0f\n", cnt);
+        //     }
+        // }
+        //
+        // fclose(file);
+    }
 } // namespace bk
+
 
 #endif // BRONKERBOSCHFNS_HPP

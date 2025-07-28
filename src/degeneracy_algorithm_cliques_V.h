@@ -58,6 +58,10 @@ void listAllCliquesDegeneracy_V(daf::Size *, NeighborListArray **,
 
 DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &orderingArray,
                                                                 int max_k, int min_k);
+
+
+DynamicGraph<TreeGraphNode> SDCT(Graph &orderingArray,
+                                                                int max_k, int min_k);
 #ifdef __cplusplus
 }
 #endif

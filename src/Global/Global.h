@@ -21,102 +21,17 @@
 #include <map>
 #include <span>
 #include <tbb/spin_mutex.h>
+#include <csignal>
 // #include <google/dense_hash_set>
 
 #include <iomanip>
 #include <random>
 
 #include "dataStruct/robin_hood.h"
+#include "Global/ostreamOverload.hpp"
 
 
 #define MAX_CSIZE 400
-
-template<typename U, typename V>
-std::ostream &operator<<(std::ostream &os, const std::pair<U, V> &p);
-
-template<typename T>
-std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec);
-
-template<typename Key, typename Value, typename Compare>
-std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &m);
-
-
-template<typename Iterator>
-std::ostream &operator<<(std::ostream &os, const std::ranges::subrange<Iterator> &subrange) {
-    os << "[";
-    bool first = true;
-    for (auto it = subrange.begin(); it != subrange.end(); ++it) {
-        if (!first) {
-            os << ", ";
-        }
-        os << *it;
-        first = false;
-    }
-    os << "]";
-    return os;
-}
-
-template<typename U, typename V>
-std::ostream &operator<<(std::ostream &os, const std::pair<U, V> &p) {
-    os << "(" << p.first << ", " << p.second << ")";
-    return os;
-}
-
-
-template<typename T>
-std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
-    os << "[";
-    for (size_t i = 0; i < vec.size(); ++i) {
-        os << vec[i];
-        if (i != vec.size() - 1) {
-            os << ", ";
-        }
-    }
-    os << "]";
-    return os;
-}
-
-template<typename T>
-std::ostream &operator<<(std::ostream & lhs, const std::span<T> & rhs) {
-    lhs << "[";
-    for (size_t i = 0; i < rhs.size(); ++i) {
-        lhs << rhs[i];
-        if (i != rhs.size() - 1) {
-            lhs << ", ";
-        }
-    }
-    lhs << "]";
-    return lhs;
-}
-
-template<typename Key, typename Value, typename Compare>
-std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &m) {
-    os << "{";
-    bool first = true;
-    for (const auto &pair: m) {
-        if (!first) {
-            os << ", ";
-        }
-        os << pair.first << ": " << pair.second;
-        first = false;
-    }
-    os << "}";
-    return os;
-}
-
-// 全局，放一个公共 .h/.hpp 里
-// template<typename T>
-// std::ostream &operator<<(std::ostream &os, const google::dense_hash_set<T> &s) {
-//     os << "{";
-//     bool first = true;
-//     for (const auto &x: s) {
-//         if (!first) os << ", ";
-//         first = false;
-//         os << x;
-//     }
-//     os << "}";
-//     return os;
-// }
 
 namespace daf {
     using Size = uint64_t;
@@ -555,9 +470,10 @@ namespace daf {
     // }
 
     template<class T, class U>
-concept EqualityComparable = requires(const T& a, const U& b) {
+    concept EqualityComparable = requires(const T &a, const U &b)
+    {
         { a == b } -> std::convertible_to<bool>;
-};
+    };
 
     template<
         typename S,
@@ -566,8 +482,8 @@ concept EqualityComparable = requires(const T& a, const U& b) {
     >
         requires EqualityComparable<typename S::value_type, typename R::value_type>
 
-    auto enumerateCombinations(const S& keep,
-                               const R& drop,
+    auto enumerateCombinations(const S &keep,
+                               const R &drop,
                                size_t r,
                                Fn cb) -> bool {
         using T = typename S::value_type;
@@ -584,20 +500,20 @@ concept EqualityComparable = requires(const T& a, const U& b) {
         // 为了支持任意可迭代容器，先拷贝至 vector
 
         std::function<bool(size_t, size_t)> dfs =
-            [&](size_t start, size_t choose) -> bool {
-                if (choose == 0) {
-                    return cb(keep, comb);
-                }
-                // 剪枝：剩余元素不足
-                if (dropCount - start < choose) {
-                    return true;
-                }
-                for (size_t i = start; i + choose <= dropCount; ++i) {
-                    comb[needDrop - choose] = drop[i];
-                    if (!dfs(i + 1, choose - 1))
-                        return false;
-                }
+                [&](size_t start, size_t choose) -> bool {
+            if (choose == 0) {
+                return cb(keep, comb);
+            }
+            // 剪枝：剩余元素不足
+            if (dropCount - start < choose) {
                 return true;
+            }
+            for (size_t i = start; i + choose <= dropCount; ++i) {
+                comb[needDrop - choose] = drop[i];
+                if (!dfs(i + 1, choose - 1))
+                    return false;
+            }
+            return true;
         };
 
         if (needDrop == 0) {
@@ -610,7 +526,7 @@ concept EqualityComparable = requires(const T& a, const U& b) {
     }
 
     template<typename Container, typename Fn>
-    bool enumerateCombinations(const Container &C, size_t size, Fn cb) {
+    bool enumerateCombinations__(const Container &C, size_t size, Fn cb) {
         size_t n = C.size();
         if (size > n) return true;
         daf::StaticVector<typename Container::value_type> comb(size);
@@ -638,8 +554,45 @@ concept EqualityComparable = requires(const T& a, const U& b) {
         };
 
         bool cont = dfs(0, size);
-        comb.free();          // **仅在 dfs 完全结束后释放**
+        comb.free(); // **仅在 dfs 完全结束后释放**
         return cont;
+    }
+
+    template<class Container, class Fn>
+    void enumerateCombinations(const Container &C, std::size_t k, Fn &&cb) {
+        const std::size_t n = C.size();
+        if (k == 0 || k > n) return;
+
+        // index buffer
+        daf::StaticVector<std::size_t> idx(k);
+        idx.c_size = k;
+        for (std::size_t i = 0; i < k; ++i) idx[i] = i;
+
+        daf::StaticVector<typename Container::value_type> comb(k);
+        comb.c_size = k;
+
+        auto emit = [&]() {
+            for (std::size_t t = 0; t < k; ++t) comb[t] = C[idx[t]];
+            if constexpr (std::is_same_v<void,
+                decltype(std::forward<Fn>(cb)(comb))>)
+                cb(comb);
+            else
+                if (!cb(comb)) return false;
+            return true;
+        };
+        if (!emit()) return;
+
+        while (true) {
+            std::size_t i = k;
+            // find right-most idx[i] that can ++
+            while (i > 0 && idx[i - 1] == n - k + i - 1) --i;
+            if (i == 0) break; // finished
+
+            --i;
+            ++idx[i];
+            for (std::size_t j = i + 1; j < k; ++j) idx[j] = idx[j - 1] + 1;
+            if (!emit()) break;
+        }
     }
 
     template<typename Container, typename T, typename Fn>
@@ -653,12 +606,12 @@ concept EqualityComparable = requires(const T& a, const U& b) {
         std::function<bool(size_t, size_t)> dfs = [&](size_t pos, size_t left) -> bool {
             if (left == 0) {
                 // return cb(buf, size);
-                if constexpr ( std::is_void_v<
+                if constexpr (std::is_void_v<
                     std::invoke_result_t<Fn,
-                        decltype(buf),    // buf 的指针类型，比如 T*
-                        decltype(size)    // size_t
+                        decltype(buf), // buf 的指针类型，比如 T*
+                        decltype(size) // size_t
                     >
-                > ) {
+                >) {
                     cb(buf, size);
                     return true;
                 } else {
@@ -844,8 +797,51 @@ concept EqualityComparable = requires(const T& a, const U& b) {
         }
     }
 
-    extern daf::StaticVector<daf::Size> vListMap;
+    template<class T,
+        class IndexRange, // 可迭代：std::vector<size_t>、std::span<size_t> 等
+        class Func>
+    void intersect_dense_sets_multi(IndexRange &indices, // 要求交集的集合下标
+                                    std::vector<robin_hood::unordered_flat_set<T> > &adj_list,
+                                    Func &&callback) // 满足交集元素时调用
+        noexcept {
+        /* ---------- 0. 边界情况 ---------- */
+        if (indices.empty()) return;
 
+        /* ---------- 1. 找“最小”的集合 ---------- */
+        std::size_t best_idx = std::numeric_limits<std::size_t>::max();
+        std::size_t best_sz = std::numeric_limits<std::size_t>::max();
+
+        for (auto id: indices) {
+            const auto &S = adj_list[id];
+            if (S.size() < best_sz) {
+                best_sz = S.size();
+                best_idx = id;
+            }
+        }
+        if (best_sz == 0) return; // 有空集 ⇒ 交集为空
+
+        const auto &base = adj_list[best_idx];
+
+        /* ---------- 2. 预先缓存其余集合指针 ---------- */
+        std::vector<const robin_hood::unordered_flat_set<T> *> others;
+        others.reserve(indices.size() - 1);
+        for (auto id: indices)
+            if (id != best_idx) others.push_back(&adj_list[id]);
+
+        /* ---------- 3. 枚举 base，检查其余 ---------- */
+        for (const auto &x: base) {
+            bool ok = true;
+            for (const auto *pSet: others) {
+                if (pSet->find(x) == pSet->end()) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok) callback(x); // x 同时在所有集合中
+        }
+    }
+
+    extern daf::StaticVector<daf::Size> vListMap;
 }
 
 struct TreeGraphNode {
@@ -865,12 +861,13 @@ struct TreeGraphNode {
 
     // <<
     friend std::ostream &operator<<(std::ostream &os, const TreeGraphNode &node) {
-        // os << "(" << node.v << ", " << node.isPivot << ")";
+        os << "(" << node.v << ", ";
         if (node.isPivot) {
-            os << "(" << node.v << ", Drop)";
+            os << "\033[31mDrop\033[0m";
         } else {
-            os << "(" << node.v << ", Keep)";
+            os << "\033[32mKeep\033[0m";
         }
+        os << ")";
         return os;
     }
 

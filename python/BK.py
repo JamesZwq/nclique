@@ -1,4 +1,5 @@
 import random
+import re
 import subprocess
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -228,7 +229,8 @@ def draw_graph(edges):
     plt.title("Generated Graph")
     plt.savefig("/Users/zhangwenqian/UNSW/KClique/small_garph.edges.png")
 import random, bisect, os
-from typing import Set, Tuple
+from typing import Set, Tuple, List
+
 
 def generate_graph_log(
         node_count: int,
@@ -286,13 +288,47 @@ def run_cmd(name, cmd, error_label):
         print(f"{Fore.RED}❌ [{name}] 失败 ({elapsed:.2f}s) —— {error_label}")
         print(f"{Fore.RED}{result.stderr or result.stdout}")
         sys.exit(1)
+    print(f"{Fore.GREEN}✅ [{name}] 成功 ({elapsed:.2f}s)")
     return result
     # else:
         # print(f"{Fore.GREEN}✅ [{name}] 成功 ({elapsed:.2f}s)")
     # print()  # 空行分隔
+
+
+
+
+def extract_clique_counts(cmd: str, out_fname: str = 'clique_counts.txt') -> None:
+    """
+    运行外部命令 cmd（字符串），解析输出中每行形如 "idx, value.000000"，提取整数 value，
+    并写入 out_fname，每行一个数字。
+
+    参数：
+      cmd       – 要执行的命令字符串，例如：
+                   "/path/to/degeneracy_cliques -i b -t V -d 1 -k 0"
+      out_fname – 输出文件名，默认 'clique_counts.txt'
+    """
+    # 调用命令并捕获 stdout
+    timeStart = time.time()
+    completed = subprocess.run(cmd, shell=True, check=True,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print(f"time taken: {time.time() - timeStart:.2f} seconds")
+    text = completed.stdout.decode('utf-8', errors='ignore')
+
+    counts = []
+    # 按行解析
+    for line in text.splitlines():
+        m = re.match(r'\s*\d+,\s*([\d]+)\.\d+', line)
+        if m:
+            counts.append(m.group(1))
+
+    # 写入文件
+    with open(out_fname, 'w', encoding='utf-8') as f:
+        for c in counts:
+            f.write(c + '\n')
+
 # Example usage:
-node_count = 7  # Number of nodes
-edge_count = 12 # Number of edges
+node_count = 20  # Number of nodes
+edge_count = 100 # Number of edges
 
 
 output_file = '/Users/zhangwenqian/UNSW/pivoter/new_small_garph.edges'  # Output file path
@@ -305,79 +341,36 @@ BIN3 = "/Users/zhangwenqian/UNSW/nucleus/nd/nucleus"
 
 count = 0
 while True:
-    # count += 1
-    # print(f"{Style.BRIGHT}{Fore.CYAN}🚀 第 {count} 轮测试启动！加油！\n")
+    count += 1
+    print(f"{Style.BRIGHT}{Fore.CYAN}🚀 第 {count} 轮测试启动！加油！\n")
     #
     # # 1. 生成随机图
     # # edge count +- 10%
     edgeList = generate_graph_log(node_count, edge_count, output_file)
-    # print(f"{Fore.CYAN}🗺️  随机图生成完毕，共 {len(edgeList)} 条边。\n")
-    #
-    # # 2. 第一步工具：degeneracy_cliques
-    # cmd1 = f"{BIN1} {output_file} 3 4"
-    #
-    # res1 = run_cmd("DegeneracyCliques", cmd1, f"degeneracy_cliques 非零退出 BIN1: {BIN1}")
-    # print(f"{Fore.GREEN}✅ DegeneracyCliques 成功！\n")
-    # mincore_values = []
-    # for line in res1.stdout.splitlines():
-    #     if "minCore:" in line:
-    #         try:
-    #             val = int(line.strip().split("minCore:")[1])
-    #             if val > 0:
-    #                 mincore_values.append(val)
-    #         except ValueError:
-    #             pass
-    #
-    # # 去重 + 排序
-    # mincore_values = sorted(set(mincore_values))
+    print(f"{Fore.CYAN}🗺️  随机图生成完毕，共 {len(edgeList)} 条边。\n")
 
-    # 输出结果
-    # print(mincore_values)
+    out = run_cmd(f"my", f"/Users/zhangwenqian/UNSW/nucleus/nd/nucleus {output_file} 34 YES", "degeneracy_cliques 非零退出")
 
-    cmd2 = f"{BIN3} {output_file} 13 YES"
-    run_cmd("DegeneracyCliques", cmd2, "degeneracy_cliques 非零退出")
+    cmd2 = f"awk '/K:/ {{ for (i=1; i<=NF; i++) if ($i == \"K:\") print $(i+1) }}' {output_file}_34_Hierarchy | sort -n | uniq > /Users/zhangwenqian/UNSW/pivoter/b.out"
+    print(f"{Fore.YELLOW}🔍 正在用 awk 提取 K 值...")
+    res2 = run_cmd("awk", cmd2, "awk 非零退出")
 
-    cmd2 = f"awk '/K:/ {{ for (i=1; i<=NF; i++) if ($i == \"K:\") print $(i+1) }}' {output_file}_13_Hierarchy | sort -n | uniq"
-    correctCode = run_cmd("DegeneracyCliques", cmd2, "awk 非零退出")
-    correctCode = correctCode.stdout.strip().split('\n')
-    correctCode = [int(x) for x in correctCode if x.isdigit()]
-    print(correctCode)
-    if len(correctCode) >= 3:
-        draw_graph_with_cliques(edgeList)
-        break
-    continue
+    out = run_cmd(f"my", f"/Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/degeneracy_cliques {output_file} 3 4", "degeneracy_cliques 非零退出")
+    # 5. 比对结果
+    print(f"{Fore.YELLOW}🔍 正在用 uniq + diff 检查一致性...")
+    subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/a.out > /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True)
+    subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/b.out > /Users/zhangwenqian/UNSW/pivoter/b.tmp", shell=True)
+    diff = subprocess.run("diff /Users/zhangwenqian/UNSW/pivoter/a.tmp /Users/zhangwenqian/UNSW/pivoter/b.tmp",
+                          shell=True,  # 使用 shell=True 以便使用管道
+                          capture_output=True, text=True)
 
-    if mincore_values != correctCode:
-        print(f"{Fore.RED}❌ 最小核心值不匹配！\n")
+    if diff.stdout or diff.stderr:
+        print(f"{Fore.RED}❌ 对比失败！输出不一致：\n{diff.stdout or diff.stderr}")
         print(f"{Fore.MAGENTA}🖼️ 报错时的图边列表：\n{edgeList}")
         draw_graph_with_cliques(edgeList)
         sys.exit(1)
-
-    # subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/a > /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True)
-    # subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/b > /Users/zhangwenqian/UNSW/pivoter/b.tmp", shell=True)
-    # 3. 第二步工具：main
-    # cmd2 = f"{BIN2} {output_file}.tree 2 4 {output_file}"
-    # run_cmd("Main", cmd2, "main 非零退出")
-    # print(f"{Fore.GREEN}✅ Main 成功！\n")
-    # # 4. 第三步工具：nucleus
-    # cmd3 = f"{BIN3} {output_file} 24 no"
-    #
-    # run_cmd("Nucleus", cmd3, "nucleus 非零退出")
-    # print(f"{Fore.GREEN}✅ Nucleus 成功！\n")
-
-    # 5. 比对结果
-    # print(f"{Fore.YELLOW}🔍 正在用 uniq + diff 检查一致性...")
-    # subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/a > /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True)
-    # subprocess.run(f"uniq /Users/zhangwenqian/UNSW/pivoter/b > /Users/zhangwenqian/UNSW/pivoter/b.tmp", shell=True)
-    # diff = subprocess.run("diff /Users/zhangwenqian/UNSW/pivoter/a /Users/zhangwenqian/UNSW/pivoter/a.tmp", shell=True,
-    #                       capture_output=True, text=True)
-    # if diff.stdout or diff.stderr:
-    #     print(f"{Fore.RED}❌ 对比失败！输出不一致：\n{diff.stdout or diff.stderr}")
-    #     print(f"{Fore.MAGENTA}🖼️ 报错时的图边列表：\n{edgeList}")
-    #     draw_graph_with_cliques(edgeList)
-    #     sys.exit(1)
-    # else:
-    print(f"{Fore.GREEN}✅ 结果一致！本轮测试完美通过 🎉\n")
+    else:
+        print(f"{Fore.GREEN}✅ 结果一致！本轮测试完美通过 🎉\n")
 
 #
 # file_path = output_file

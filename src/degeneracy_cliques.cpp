@@ -11,23 +11,19 @@
 #include"misc.h"
 #include"LinkedList.h"
 #include"MemoryManager.h"
+#include "BK/BronKerboschRmEdge.hpp"
+#include "BK/BronKerboschRmRClique.hpp"
 #include "dataStruct/disJoinSet.hpp"
 #include "graph/DynamicBipartiteGraph.hpp"
 #include "NucleusDecomposition/NCliqueCoreDecomposition.h"
 #include "NucleusDecomposition/NucleusCoreDecomposition.h"
 
-int main(int argc, char **argv) {
 
-    // BipartiteDSU disJoinSet(5, 5);
-    // disJoinSet.uniteAB(1, 2);
-    // disJoinSet.print();
-    // disJoinSet.uniteAB(3, 4);
-    // disJoinSet.print();
-    // disJoinSet.uniteAB(1, 3);
-    // disJoinSet.print();
-    // disJoinSet.uniteAA(0, 1);
-    // disJoinSet.uniteBB(4, 3);
-    // disJoinSet.print();
+
+int main(int argc, char **argv) {
+    // populate_nCr();
+    // daf::vListMap.resize(10);
+    // bkRmClique::testBronKerbosch();
     // return 0;
 
     std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
@@ -56,9 +52,9 @@ int main(int argc, char **argv) {
     // auto vertexMap = edgeGraph.sortByDegeneracyOrder();
 
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&] {
-        return listAllCliquesDegeneracy_VedgeGraph(edgeGraph, s, s);
+        return SDCT(edgeGraph, s, s);
     });
-    std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
+    std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(2) << std::endl;
 
     // treeGraph.printGraphPerV();
     for (auto leaf: treeGraph.adj_list) {
@@ -70,7 +66,7 @@ int main(int argc, char **argv) {
 
     edgeGraph.initCore();
     // treeGraph.printGraphPerV();
-    // std::cout << "core: " << edgeGraph.coreV << std::endl;
+
     edgeGraph.beSingleEdge();
     edgeGraph.buildEdgeIdMap();
     // DynamicBipartiteGraph BGraph(treeGraph, edgeGraph);
@@ -95,7 +91,8 @@ int main(int argc, char **argv) {
         } else if (r == 1) {
             NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
         } else {
-            NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
+            // NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
+            NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
     // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {

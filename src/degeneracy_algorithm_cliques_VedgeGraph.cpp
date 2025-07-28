@@ -222,11 +222,8 @@ void listAllCliquesDegeneracyRecursive_VedgeGraph(
     if (keepV.size() > max_k) {
         return;
     }
-    if ((beginP >= beginR) || (keepV.size() == max_k)) {
+    if ((beginP >= beginR)) {
         auto cSize = keepV.size() + dropV.size();
-        if (cSize < min_k) {
-            return;
-        }
         std::vector<TreeGraphNode> newNode;
         if (keepV.size() == max_k) {
             newNode.reserve(cSize);
