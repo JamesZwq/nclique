@@ -123,10 +123,13 @@ namespace CDSetRS {
                 if (i.isPivot) pivotC++;
                 else keepC++;
             }
-
+            // std::cout << "leaf: " << leaf << " pivotC: " << pivotC
+            //           << " keepC: " << keepC << " size: " << leaf.size() << std::endl;
+            // DEBUG_BREAK_IF(leaf.size() == 4);
             // clique
             int needPivot = s - static_cast<int>(keepC);
             daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &rClique) {
+            // daf::enumerateCombinationsIdx(leaf, r, [&](const std::size_t* idx) {
                 daf::CliqueSize subNumKeepC = 0;
                 daf::CliqueSize subNumPovit = 0;
                 for (const auto &node: rClique) {
@@ -142,7 +145,7 @@ namespace CDSetRS {
                 auto [id, isNew] = cliqueHashmap.byNewClique(rClique);
                 if (isNew) {
                     if (rCliqueSCounting.size() <= id) {
-                        rCliqueSCounting.resize(std::min(id + 1.1, id * 1.3), 0.0);
+                        rCliqueSCounting.resize(std::min(id + 2, id * 2), 0.0);
                     }
                 }
                 rCliqueSCounting[id] += ncrValue;
@@ -259,6 +262,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
         minCore = std::max(countingRClique[heap.top()], minCore);
         // 一次循环把所有 core==minCore 的 leaf 全部 pop 出来
         std::cout << "minCore: " << minCore << std::endl;
+        // if (minCore == 99) break;
         while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
             auto id = heap.top();
             rCliqueInHeap[id] = false;
@@ -269,6 +273,10 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
             std::cout << "removed Clique: " << cliqueIndex.byId(id) << " id: " << id
                       << " core: " << countingRClique[id] << std::endl;
 #endif
+        }
+
+        if (heap.empty()) {
+            break;
         }
 
         for (auto rmRCliqueId: currentRemoveRcliqueIds) {
@@ -302,32 +310,54 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
             // std::cout << std::endl;
 
-            auto initCore = [&](const std::vector<TreeGraphNode> &leaf, const daf::Size &leafId) {
+            auto initCore = [&](const std::vector<TreeGraphNode> &newLeaf, const daf::Size &newLeafId) {
                 daf::CliqueSize newPivotC = 0, newKeepC = 0;
-                for (auto i: leaf) {
+                for (auto i: newLeaf) {
                     if (i.isPivot) {
-                        treeGraphV.addNbr(i.v, {leafId, true});
+                        treeGraphV.addNbr(i.v, {newLeafId, true});
                         newPivotC++;
                     } else {
-                        treeGraphV.addNbr(i.v, {leafId, false});
+                        treeGraphV.addNbr(i.v, {newLeafId, false});
                         newKeepC++;
                     }
                 }
                 daf::Size needPivot = s - newKeepC;
 
-                daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &newLeaf) {
+
+                daf::enumerateCombinations(newLeaf, r, [&](const daf::StaticVector<TreeGraphNode> &rclique) {
                     daf::CliqueSize subNumKeepC = 0;
                     daf::CliqueSize subNumPovit = 0;
-                    for (const auto &node: newLeaf) {
+                    for (const auto &node: rclique) {
                         if (node.isPivot) {
                             subNumPovit++;
                         } else {
                             subNumKeepC++;
                         }
                     }
-                    auto ncrValue = nCr[newPivotC - subNumPovit][needPivot - subNumPovit];
-                    auto cliqueIndexId = cliqueIndex.byClique(newLeaf);
-                    countingRClique[cliqueIndexId] += ncrValue;
+
+                    if (subNumPovit <= needPivot) {
+                        if (newPivotC - subNumPovit < 0 || newPivotC - subNumPovit >= 1001 ||
+                            needPivot - subNumPovit < 0 || needPivot - subNumPovit >= 401) {
+                            // std::cerr << "nCr index out of range: row
+                            std::cerr << "nCr index out of range: row=" << newPivotC - subNumPovit
+                                    << " col=" << needPivot - subNumPovit
+                                    << " newPivotC=" << newPivotC
+                                    << " subNumPovit=" << subNumPovit
+                                    << " needPivot=" << needPivot
+                                    << " subNumKeepC=" << subNumKeepC
+                                    << " newLeaf: " << rclique
+                                    << std::endl;
+                            for (auto &node: newLeaf) {
+                                std::cout << "node: " << node.v << " isPivot: " << node.isPivot << std::endl;
+                            }
+                            // << "leaf: " << newLeaf
+
+                            std::abort();
+                        }
+                        auto ncrValue = nCr[newPivotC - subNumPovit][needPivot - subNumPovit];
+                        auto cliqueIndexId = cliqueIndex.byClique(rclique);
+                        countingRClique[cliqueIndexId] += ncrValue;
+                    }
 
                     return true;
                 });
@@ -351,14 +381,14 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                           );
 
             // DEBUG_BREAK_IF(leafId == 5);
-            bkRmClique::removeRClique(leaf, mapped, s, [&](const bkRmEdge::Bitset &c, const bkRmEdge::Bitset &pivots) {
+            bkRmClique::removeRClique(leaf, mapped, r, s, [&](const bkRmEdge::Bitset &c, const bkRmEdge::Bitset &pivots) {
                 auto newLeaf = bkRmEdge::coverToVertex(c, pivots, leaf);
                 // std::cout << " newLeaf: " << newLeaf;
                 auto newId = tree.addNode(newLeaf);
                 // std::cout << " newId: " << newId << std::endl;
                 initCore(tree.adj_list[newId], newId);
                 if (newId >= changedLeafIndex.size()) {
-                    changedLeafIndex.resize(newId * 1.5, std::numeric_limits<daf::Size>::max());
+                    changedLeafIndex.resize(newId * 2, std::numeric_limits<daf::Size>::max());
                 }
             });
 

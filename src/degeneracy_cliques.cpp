@@ -91,8 +91,8 @@ int main(int argc, char **argv) {
         } else if (r == 1) {
             NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
         } else {
-            // NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
-            NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
+            NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
+            // NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
     // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {

@@ -108,12 +108,12 @@ namespace bkRmEdge {
             return true;
         });
         Bitset candidates = P & ~adj[bestU];
-        std::cout << "candidates: " ;
-        std::cout << "bestU: " << bestU << std::endl;
-        printBitset(P, "P");
-        printBitset(R, "R");
-        printBitset(adj[bestU], "adj[bestU]");
-        printBitset(candidates, "candidates");
+        // std::cout << "candidates: " ;
+        // std::cout << "bestU: " << bestU << std::endl;
+        // printBitset(P, "P");
+        // printBitset(R, "R");
+        // printBitset(adj[bestU], "adj[bestU]");
+        // printBitset(candidates, "candidates");
 
         for_each_bit(candidates, n, [&](int v) {
             // std::cout << v << std::endl;
@@ -215,9 +215,9 @@ namespace bkRmEdge {
 
 
         // 运行原来的递归，只不过带了预先的 R
-        std::cout << "adj" << std::endl;
-        std::cout << adj << std::endl;
-        std::cout << R << " " << P << " " << povit << std::endl;
+        // std::cout << "adj" << std::endl;
+        // std::cout << adj << std::endl;
+        // std::cout << R << " " << P << " " << povit << std::endl;
         bk_run(adj, n, minK, R, P, povit, std::forward<ReportFn>(report));
     }
 

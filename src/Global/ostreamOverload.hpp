@@ -14,17 +14,14 @@
 #include <random>
 #include <type_traits>
 
-#include "dataStruct/robin_hood.h"
+ #include "dataStruct/robin_hood.h"
+
+// ostreamable concept must come before any usage in overloads
+template<class T>
+concept ostreamable =
+    requires(std::ostream& os, T const& v) { os << v; };
 
 
-template<typename U, typename V>
-std::ostream &operator<<(std::ostream &os, const std::pair<U, V> &p);
-
-template<typename T>
-std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec);
-
-template<typename Key, typename Value, typename Compare>
-std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &m);
 
 
 template<typename Iterator>
@@ -48,76 +45,50 @@ std::ostream &operator<<(std::ostream &os, const std::pair<U, V> &p) {
     return os;
 }
 
-
-// template<typename T>
-// std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
-//     os << "vec size: "<< vec.size() << " [";
-//     for (size_t i = 0; i < vec.size(); ++i) {
-//         os << vec[i];
-//         if (i != vec.size() - 1) {
-//             os << ", ";
-//         }
-//     }
-//     os << "]";
-//     return os;
-// }
-template<class T>
-concept ostreamable =
-    requires(std::ostream& os, T const& v) { os << v; };
-
 // ─── 通用 Range 可打印概念 ────────────────────────────────
-template<class R>
-concept printable_range =
-       std::ranges::input_range<R>                                               // 可遍历
-    && requires(std::ostream& os, std::ranges::range_reference_t<R> ref) {       // 每个元素能被 << 输出
-           os << ref;
-       }
-    // 排除字符串 / 字符数组 / C‑string
-    && !std::same_as<std::remove_cvref_t<R>, std::string>
-    && !std::same_as<std::remove_cvref_t<R>, std::string_view>
-    && !(std::is_pointer_v<std::remove_cvref_t<R>> &&
-         std::is_same_v<std::remove_cvref_t<std::remove_pointer_t<R>>, char>)
-    && !(std::is_array_v<std::remove_cvref_t<R>> &&
-         std::is_same_v<std::remove_all_extents_t<std::remove_cvref_t<R>>, char>);
-
-// ─── 真正的通用输出重载 ───────────────────────────────────────────
-template<printable_range R>
-std::ostream& operator<<(std::ostream& os, R&& r)
+template<typename R>
+auto operator<<(std::ostream& os, R const& r)
+    -> std::enable_if_t<
+           std::ranges::input_range<R> &&
+           !std::same_as<std::remove_cvref_t<R>, std::string> &&
+           !std::same_as<std::remove_cvref_t<R>, std::string_view> &&
+           !(std::is_pointer_v<std::remove_cvref_t<R>> &&
+             std::is_same_v<std::remove_pointer_t<std::remove_cvref_t<R>>, char>) &&
+           !(std::is_array_v<std::remove_cvref_t<R>> &&
+             std::is_same_v<std::remove_all_extents_t<std::remove_cvref_t<R>>, char>),
+           std::ostream&
+       >
 {
-    using std::ranges::begin, std::ranges::end, std::ranges::distance;
+    using std::ranges::begin;
+    using std::ranges::end;
+    using std::ranges::size;
 
-    bool isClique = false;
-    // 检查范围内的元素是否为整数类型，并且范围长度大于1
-    if constexpr (std::is_integral_v<std::ranges::range_value_t<R>>) {
-        auto n = distance(r);
-        if (n > 1) {
-            isClique = true;
-        }
+    std::size_t n;
+    if constexpr (std::ranges::sized_range<R>) {
+        n = size(r);
+    } else {
+        n = 0;
+        for (auto it = begin(r); it != end(r); ++it) ++n;
     }
+
+    constexpr bool elem_is_int =
+        std::integral<std::remove_cvref_t<std::ranges::range_value_t<R>>>;
+    bool isClique = elem_is_int && n > 1;
 
     if (isClique) {
         os << "[";
-        bool first = true;
-        for (auto&& elem : r) {
-            if (!first) os << ", ";
-            first = false;
-            os << elem;
-        }
-        return os << "]";
     } else {
-        os << "vec size: " << distance(r) << " [";
-        bool first = true;
-        for (auto&& elem : r) {
-            if (!first) os << ", ";
-            first = false;
-            os << elem;
-        }
-        return os << "]";
+        os << "vec size: " << n << " [";
     }
-}
-// Make the generic << visible to std::ranges views (transform_view, filter_view …)
-namespace std::ranges {
-    using ::operator<<;
+
+    bool first = true;
+    for (auto&& e : r) {
+        if (!first) os << ", ";
+        first = false;
+        os << e;
+    }
+    os << "]";
+    return os;
 }
 
 

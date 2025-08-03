@@ -1,0 +1,11 @@
+# 先看是不是 fat binary
+lipo -info  /Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/degeneracy_cliques
+
+# 把两条 slice 都扫一遍
+for arch in arm64 x86_64; do
+  echo "=== $arch ==="
+  nm -a -m -arch $arch  /Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/degeneracy_cliques | grep ___udivmodti4
+done
+
+# 如果还是空，再查 lazy-bind 表
+otool -Iv -arch arm64  /Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/degeneracy_cliques | grep ___udivmodti4

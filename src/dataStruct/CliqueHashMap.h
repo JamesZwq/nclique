@@ -16,11 +16,21 @@ static inline unsigned __int128 binom_u128(T n, T r) noexcept {
     if (r > n) return 0;
     if (r == 0 || r == n) return 1;
     if (r > n - r) r = n - r;
-    unsigned __int128 res = 1;
-    for (T i = 1; i <= r; ++i) {
-        res = res * (n - r + i) / i;
+
+    switch (r) {        // 手写到 r = 4 已覆盖你目前的全部情况
+        case 1:  return n;
+        case 2:  return (unsigned __int128)n * (n - 1) / 2;
+        case 3:  return (unsigned __int128)n * (n - 1) * (n - 2) / 6;
+        case 4:  return (unsigned __int128)n * (n - 1) * (n - 2) * (n - 3) / 24;
+        case 5:  return (unsigned __int128)n * (n - 1) * (n - 2) * (n - 3) * (n - 4) / 120;
+        case 6:  return (unsigned __int128)n * (n - 1) * (n - 2) * (n - 3) * (n - 4) * (n - 5) / 720;
+        default: {
+            unsigned __int128 res = 1;
+            for (T i = 1; i <= r; ++i)
+                res = res * (n - r + i) / i;
+            return res;
+        }
     }
-    return res;
 }
 
 // ========== 索引类 ==========
@@ -264,8 +274,7 @@ public:
         typename = std::enable_if_t<
             std::is_convertible_v<typename PivotContainer::value_type, daf::Size> &&
             std::is_convertible_v<typename KeepContainer::value_type, daf::Size>
-        >
-    >
+        > >
     Id byClique(const PivotContainer &pivots,
                 const KeepContainer &keeps) const {
         const size_t pCount = pivots.size();

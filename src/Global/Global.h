@@ -69,7 +69,7 @@ namespace daf {
         T *data;
 
 
-        explicit StaticVector(const daf::Size maxSize = MAX_CSIZE) : c_size(0), maxSize(maxSize + 1),
+        explicit StaticVector(const daf::Size maxSize = MAX_CSIZE) : c_size(0), maxSize(maxSize),
                                                                      data(new T[maxSize]) {
         }
 
@@ -230,20 +230,18 @@ namespace daf {
         }
 
         T &operator[](daf::Size index) {
-#if DEBUG
-            if (index >= c_size) {
-                throw std::out_of_range("Index out of range.");
-            }
-#endif
+// #if DEBUG
+
+// #endif
             return data[index];
         }
 
         const T &operator[](daf::Size index) const {
-#if DEBUG
-            if (index >= c_size) {
-                throw std::out_of_range("Index out of range.");
-            }
-#endif
+// #if DEBUG
+            // if (index >= c_size) {
+            //     throw std::out_of_range("Index out of range.");
+            // }
+// #endif
             return data[index];
         }
 

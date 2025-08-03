@@ -1,125 +1,84 @@
-// file: bitset_bench.cpp
 #include <iostream>
+#include <ranges>
 #include <vector>
-#include <algorithm>
-#include <cstring>
-#include <chrono>
-#include <iostream>
-#include <iomanip>   // for fixed, setprecision, setw
-#include <random>    // for std::mt19937_64, std::uniform_int_distribution
-#include <vector>
-#include <chrono>    // for timing
-#include <boost/dynamic_bitset.hpp>
-using namespace std;
-using clk = chrono::high_resolution_clock;
+#include <string>
+#include <string_view>
+#include <type_traits>
 
-template<typename Fn>
-double timeit(Fn&& fn, unsigned rounds = 1)
-{
-    auto st = clk::now();
-    while (rounds--) fn();
-    return chrono::duration<double, std::nano>(clk::now() - st).count();
-}
+// ─── 概念：可遍历、元素可用 << 输出，排除 string / C-string 等 ───────────
+template<class R>
+concept printable_range =
+       std::ranges::input_range<R> &&
+       requires(std::ostream& os, std::ranges::range_reference_t<R> ref) {
+           os << ref;
+       } &&
+       !std::same_as<std::remove_cvref_t<R>, std::string> &&
+       !std::same_as<std::remove_cvref_t<R>, std::string_view> &&
+       !(std::is_pointer_v<std::remove_cvref_t<R>> &&
+         std::is_same_v<std::remove_cvref_t<std::remove_pointer_t<R>>, char>) &&
+       !(std::is_array_v<std::remove_cvref_t<R>> &&
+         std::is_same_v<std::remove_all_extents_t<std::remove_cvref_t<R>>, char>);
 
-struct ManualBits
-{
-    vector<uint64_t> w;
-    explicit ManualBits(size_t nBits) : w((nBits + 63) >> 6) {}
-    void randomFill() { for(auto& x: w) x = rng64(); }
-    static uint64_t rng64()
-    {
-        static thread_local std::mt19937_64 gen{1234567};
-        return gen();
-    }
-    // 四种集合运算：this = this (op) other
-    void op_and(const ManualBits& o) { for(size_t i=0;i<w.size();++i) w[i] &= o.w[i]; }
-    void op_or (const ManualBits& o) { for(size_t i=0;i<w.size();++i) w[i] |= o.w[i]; }
-    void op_xor(const ManualBits& o) { for(size_t i=0;i<w.size();++i) w[i] ^= o.w[i]; }
-    void op_sub(const ManualBits& o) { for(size_t i=0;i<w.size();++i) w[i] &= ~o.w[i]; }
+// ─── 包装器：让 operator<< 可用在任意 printable_range 上 ───────────────
+template<printable_range R>
+struct printable_wrapper {
+    R r;
 };
 
-int main(int argc,char* argv[])
-{
-    if (argc!=3){ cerr<<"Usage: "<<argv[0]<<" Nbits Rounds\n"; return 1; }
-    const size_t N = stoull(argv[1]);
-    const unsigned R = stoul(argv[2]);      // 每个操作重复 R 次取平均
-    cout<<fixed<<setprecision(3);
+// 让 CTAD 推导出 printable_wrapper 类型（关键：解决 no deduction guide 错误）
+template<printable_range R>
+printable_wrapper(R&&) -> printable_wrapper<std::remove_cvref_t<R>>;
 
-    /* ---------- boost::dynamic_bitset ---------- */
-    boost::dynamic_bitset<> b1(N), b2(N);
-    b1.set();  b2.reset();  // 先随便变一下以避免 lazy-all-zero
-    // 填随机
-    for(size_t i=0;i<N;++i) if(rand()%2) b1.set(i);
-    for(size_t i=0;i<N;++i) if(rand()%2) b2.set(i);
+// 实际的 operator<< 重载（作用于包装后的 range）
+template<printable_range R>
+std::ostream& operator<<(std::ostream& os, printable_wrapper<R> const& w) {
+    using std::ranges::begin;
+    using std::ranges::end;
+    using std::ranges::size;
+    using value_t = std::remove_cvref_t<std::ranges::range_value_t<R>>;
 
-    auto t_and_boost = timeit([&]{
-        auto tmp = b1;
-        tmp &= b2;
-    }, R)/R;
-    auto t_or_boost  = timeit([&]{
-        auto tmp = b1;
-        tmp |= b2;
-    }, R)/R;
-    auto t_xor_boost = timeit([&]{
-        auto tmp = b1;
-        tmp ^= b2;
-    }, R)/R;
-    auto t_sub_boost = timeit([&]{
-        auto tmp = b1;
-        tmp &= ~b2;
-    }, R)/R;
+    constexpr bool elem_is_int = std::integral<value_t>;
 
-    /* ---------- vector<bool> ---------- */
-    vector<bool> vb1(N), vb2(N);
-    generate(vb1.begin(), vb1.end(), []{ return rand()&1; });
-    generate(vb2.begin(), vb2.end(), []{ return rand()&1; });
+    std::size_t n;
+    if constexpr (std::ranges::sized_range<R>) {
+        n = size(w.r);
+    } else {
+        n = std::ranges::distance(begin(w.r), end(w.r));
+    }
 
-    auto t_and_vbool = timeit([&]{
-        vector<bool> tmp = vb1;
-        for(size_t i=0;i<N;++i) tmp[i] = tmp[i] & vb2[i];
-    }, R)/R;
-    auto t_or_vbool  = timeit([&]{
-        vector<bool> tmp = vb1;
-        for(size_t i=0;i<N;++i) tmp[i] = tmp[i] | vb2[i];
-    }, R)/R;
-    auto t_xor_vbool = timeit([&]{
-        vector<bool> tmp = vb1;
-        for(size_t i=0;i<N;++i) tmp[i] = tmp[i] ^ vb2[i];
-    }, R)/R;
-    auto t_sub_vbool = timeit([&]{
-        vector<bool> tmp = vb1;
-        for(size_t i=0;i<N;++i) tmp[i] = tmp[i] & !vb2[i];
-    }, R)/R;
+    bool isClique = elem_is_int && n > 1;
 
-    /* ---------- 手写 uint64_t 数组 ---------- */
-    ManualBits m1(N), m2(N); m1.randomFill(); m2.randomFill();
+    if (isClique) {
+        os << "[";
+    } else {
+        os << "vec size: " << n << " [";
+    }
 
-    auto t_and_man = timeit([&]{
-        auto tmp = m1; tmp.op_and(m2);
-    }, R)/R;
-    auto t_or_man  = timeit([&]{
-        auto tmp = m1; tmp.op_or(m2);
-    }, R)/R;
-    auto t_xor_man = timeit([&]{
-        auto tmp = m1; tmp.op_xor(m2);
-    }, R)/R;
-    auto t_sub_man = timeit([&]{
-        auto tmp = m1; tmp.op_sub(m2);
-    }, R)/R;
+    bool first = true;
+    for (auto&& elem : w.r) {
+        if (!first) os << ", ";
+        first = false;
+        os << elem;
+    }
 
-    /* ---------- 报告 ---------- */
-    cout<< "N bits = "<<N<<", R = "<<R <<"\n";
-    cout<< left << setw(18) << "Operation"
-        << setw(14) << "boost"
-        << setw(14) << "vector<bool>"
-        << setw(14) << "manual64"
-        << "\n";
+    os << "]";
+    return os;
+}
 
-    auto line=[&](string op,double a,double b,double c){
-        cout<< setw(18)<<op<< setw(14)<<a<< setw(14)<<b<< setw(14)<<c<<"\n";
-    };
-    line("AND (∩)",  t_and_boost, t_and_vbool, t_and_man);
-    line("OR  (∪)",  t_or_boost , t_or_vbool , t_or_man);
-    line("XOR (△)",  t_xor_boost, t_xor_vbool, t_xor_man);
-    line("SUB (\\)", t_sub_boost, t_sub_vbool, t_sub_man);
+// ─── 示例用法 ───────────────────────────────────────────────────────
+int main() {
+    std::vector<unsigned long long> v{1, 2, 3, 4};
+    auto transformed = v | std::views::transform([](auto x){ return x * 10; });
+
+    std::cout << "原始 vector: " << printable_wrapper(v) << "\n";
+    std::cout << "transform_view: " << printable_wrapper(transformed) << "\n";
+
+    // 结合你的打印语境（类似 conflictSets / maxRClique）
+    unsigned long long maxRClique = 42;
+    std::cout << "Conflict sets: " << printable_wrapper(transformed)
+              << ", maxRClique: " << maxRClique << std::endl;
+
+    // 非整数元素的例子（用于验证 clique 判断分支）
+    std::vector<std::string> names{"alice", "bob"};
+    std::cout << "Names: " << printable_wrapper(names) << "\n";
 }

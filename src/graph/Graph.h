@@ -144,7 +144,7 @@ public:
         // 一次性分配足够多的桶
         // edgeIdMap_.resize( static_cast<size_t>(adj_list.c_size * 1.3) );
         edgeIdMap_.reserve(static_cast<size_t>(adj_list.c_size * 1.3));
-        eidToNode.reserve(adj_list.c_size);
+        eidToNode.resize(adj_list.c_size);
         // 2) 直接按 CSR 下标填 map
         for (daf::Size u = 0; u < n; ++u) {
             bool useMap = (getNbrCount(u) >= 1000);

@@ -77,6 +77,7 @@ class DynamicGraph {
         }
 
         [[nodiscard]] daf::Size addNode(std::vector<T> &nbrs) {
+            std::sort(nbrs.begin(), nbrs.end());
             if (removedNodes.empty()) {
                 adj_list.emplace_back(std::move(nbrs));
                 return adj_list.size() - 1;
@@ -99,9 +100,9 @@ class DynamicGraph {
 
         void printGraphPerV() {
             // sort
-            for (auto &i: adj_list) {
-                std::sort(i.begin(), i.end());
-            }
+            // for (auto &i: adj_list) {
+            //     std::sort(i.begin(), i.end());
+            // }
             for (daf::Size i = 0; i < adj_list.size(); ++i) {
                 std::cout << i << ": ";
                 for (const auto &nbr: adj_list[i]) {

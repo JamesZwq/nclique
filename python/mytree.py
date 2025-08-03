@@ -1,62 +1,44 @@
-from typing import List, Tuple, Set
+class LocalIndexer:
+    def __init__(self, max_id):
+        self.max_id = max_id
+        self.stamp = [0] * (max_id + 1)
+        self.localIdx = [0] * (max_id + 1)
+        self.cur_stamp = 0
 
-def enumerate_valid_maximal_sets(v_list, conflict_sets):
-    keep   = {v for v, isP in v_list if not isP}
-    pivots = [v for v, isP in v_list if  isP]
-    involved = {v: [i for i,F in enumerate(conflict_sets) if v in F] for v in pivots}
+    def start_leaf(self, leaf_nodes):
+        """Initialize a new leaf context with given global node IDs."""
+        self.cur_stamp += 1
+        for idx, node in enumerate(leaf_nodes):
+            self.stamp[node] = self.cur_stamp
+            self.localIdx[node] = idx
 
-    F_size  = [len(F) for F in conflict_sets]
-    counter = [len(F & keep) for F in conflict_sets]
+    def local_index(self, node):
+        """Return the local index of `node` in the current leaf, or None if absent."""
+        if 0 <= node <= self.max_id and self.stamp[node] == self.cur_stamp:
+            return self.localIdx[node]
+        return None
 
-    res, cur, cur_pivs = [], set(keep), set()
+# Demonstration
+indexer = LocalIndexer(max_id=10)
 
-    def can_add(v):
-        """ 把 v 放进来会不会装满某个 F？ """
-        return all(counter[i] + 1 < F_size[i] for i in involved[v])
+leaves = [
+    [1, 5, 7],
+    [2, 5, 9],
+    [1, 2, 3, 9,10]
+]
 
-    def is_maximal():
-        """ 没有任何 pivot 再加进来仍合法 => 当前 clique 是极大 """
-        return all(not can_add(v) for v in pivots if v not in cur_pivs)
+for i, leaf in enumerate(leaves, 1):
+    indexer.start_leaf(leaf)
 
-    def dfs(idx):
-        # 若已冲突，剪枝
-        if any(counter[i] == F_size[i] for i in range(len(conflict_sets))):
-            return
-        if idx == len(pivots):
-            if is_maximal():
-                res.append((cur.copy(), cur_pivs.copy()))
-            return
 
-        v = pivots[idx]
+for i, leaf in enumerate(leaves, 1):
+    print(f"Leaf {i}: {leaf}")
+    for node in range(0, indexer.max_id + 1):
+        local = indexer.local_index(node)
+        if local is not None:
+            print(f"  Global {node} -> Local {local}")
+    print()
 
-        # 选 v
-        if can_add(v):
-            for i in involved[v]: counter[i] += 1
-            cur.add(v); cur_pivs.add(v)
-            dfs(idx+1)
-            cur.remove(v); cur_pivs.remove(v)
-            for i in involved[v]: counter[i] -= 1
-
-        # 不选 v
-        dfs(idx+1)
-
-    pivots.sort(key=lambda v: -len(involved[v]))
-    dfs(0)
-    return res
-
-# --------------------------- Demo ------------------------------------------
-if __name__ == "__main__":
-    v_list = [
-        (1, False),
-        (2, False), (4, True), (5, True), (6, True), (9, True)   # pivots
-    ]
-    conflict_sets = [
-        {5, 6, 9},
-    ]
-
-    valid = enumerate_valid_maximal_sets(v_list, conflict_sets)
-
-    print(f"总计 {len(valid)} 个合法 (Clique, PivotSubset)：\n")
-    for clique, pivs in valid:
-        holds = clique - pivs
-        print(f"Clique: {sorted(clique)}  Pivots: {sorted(pivs)}  Holds: {sorted(holds)}")
+print("Final local indices:", indexer.localIdx)
+print("Final stamps:", indexer.stamp)
+print("Current stamp:", indexer.cur_stamp)

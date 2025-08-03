@@ -13,6 +13,7 @@
 
 #include "DynamicGraph.h"
 #include "dataStruct/CliqueHashMap.h"
+#include "Global/ostreamOverload.hpp"
 
 template<typename T>
 class DynamicGraphSet {
