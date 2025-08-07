@@ -227,6 +227,9 @@ namespace bkRmClique {
             daf::Size maxRClique = nCr[n-1][r-1];
             if (conflictSetsReverse[i].size() >= maxRClique) {
                 P.reset(i); // 从 P 中删除这个点
+                if (P.count() < minK) {
+                    return; // 如果 P 的大小小于 minK，直接返回
+                }
                 if (pivots.test(i)) {
                     pivots.reset(i); // 从 pivots 中删除这个点
                 }
