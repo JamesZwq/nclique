@@ -1,22 +1,655 @@
-10 21
-0 1
-1 2
-1 3
-1 4
-1 5
-1 6
-2 3
-2 4
-2 5
-3 4
-3 5
-4 5
-4 6
-4 7
-5 6
-5 8
-6 7
-6 8
-6 9
-7 9
-8 9
+/Users/zhangwenqian/UNSW/pivoter/cmake-build-debug/bin/degeneracy_cliques /Users/zhangwenqian/UNSW/pivoter/new_small_garph.edges 3 4
+Boost version: 1_88
+about to call runAndPrint for dataset /Users/zhangwenqian/UNSW/pivoter/new_small_garph.edges
+skip the first line: 10 35
+skip the first line: 10 35
+Graph Info:
+Node Size: 10
+Edge Size: 35
+Max Degree: 9
+Avg Degree: 7
+
+Tree Build took: 0.191 ms
+4-Clique count: 28
+nun Leaf: 12
+Clique Index: 57 cliques, 35 vertices.
+clique Index build took: 0.088 ms
+countingPerEdgeAndRClique took: 0.082 ms
+0: (0, Keep) (2, Drop) (4, Drop) (6, Drop) (7, Drop) (9, Keep)
+1: (0, Keep) (2, Drop) (4, Drop) (6, Drop) (7, Drop) (8, Drop)
+2: (0, Keep) (2, Drop) (4, Drop) (5, Keep) (7, Drop) (8, Drop)
+3: (1, Keep) (2, Drop) (3, Drop) (4, Drop) (8, Drop)
+4: (2, Keep) (4, Drop) (6, Drop) (7, Drop) (9, Keep)
+5: (2, Keep) (3, Drop) (4, Drop) (6, Drop) (7, Drop) (8, Drop)
+6: (2, Keep) (3, Drop) (4, Drop) (5, Keep) (7, Drop) (8, Drop)
+7: (3, Keep) (4, Drop) (5, Drop) (7, Drop) (8, Drop)
+8: (3, Keep) (4, Drop) (6, Keep) (7, Drop) (8, Drop)
+9: (4, Keep) (6, Drop) (7, Drop) (9, Keep)
+10: (4, Keep) (6, Drop) (7, Drop) (8, Drop)
+11: (4, Keep) (5, Keep) (7, Drop) (8, Drop)
+Clique: [0, 2, 9] id: 0 count: 3
+Clique: [0, 4, 9] id: 1 count: 3
+Clique: [0, 6, 9] id: 2 count: 3
+Clique: [0, 7, 9] id: 3 count: 3
+Clique: [0, 2, 4] id: 4 count: 5
+Clique: [0, 2, 6] id: 5 count: 4
+Clique: [0, 2, 7] id: 6 count: 5
+Clique: [0, 2, 8] id: 7 count: 4
+Clique: [0, 4, 6] id: 8 count: 4
+Clique: [0, 4, 7] id: 9 count: 5
+Clique: [0, 4, 8] id: 10 count: 4
+Clique: [0, 6, 7] id: 11 count: 4
+Clique: [0, 6, 8] id: 12 count: 3
+Clique: [0, 7, 8] id: 13 count: 4
+Clique: [0, 2, 5] id: 14 count: 3
+Clique: [0, 4, 5] id: 15 count: 3
+Clique: [0, 5, 7] id: 16 count: 3
+Clique: [0, 5, 8] id: 17 count: 3
+Clique: [1, 2, 3] id: 18 count: 2
+Clique: [1, 2, 4] id: 19 count: 2
+Clique: [1, 2, 8] id: 20 count: 2
+Clique: [1, 3, 4] id: 21 count: 2
+Clique: [1, 3, 8] id: 22 count: 2
+Clique: [1, 4, 8] id: 23 count: 2
+Clique: [2, 4, 9] id: 24 count: 3
+Clique: [2, 6, 9] id: 25 count: 3
+Clique: [2, 7, 9] id: 26 count: 3
+Clique: [2, 3, 4] id: 27 count: 5
+Clique: [2, 3, 6] id: 28 count: 3
+Clique: [2, 3, 7] id: 29 count: 4
+Clique: [2, 3, 8] id: 30 count: 5
+Clique: [2, 4, 6] id: 31 count: 5
+Clique: [2, 4, 7] id: 32 count: 6
+Clique: [2, 4, 8] id: 33 count: 6
+Clique: [2, 6, 7] id: 34 count: 5
+Clique: [2, 6, 8] id: 35 count: 4
+Clique: [2, 7, 8] id: 36 count: 5
+Clique: [2, 3, 5] id: 37 count: 3
+Clique: [2, 4, 5] id: 38 count: 4
+Clique: [2, 5, 7] id: 39 count: 4
+Clique: [2, 5, 8] id: 40 count: 4
+Clique: [3, 4, 5] id: 41 count: 3
+Clique: [3, 4, 7] id: 42 count: 4
+Clique: [3, 4, 8] id: 43 count: 5
+Clique: [3, 5, 7] id: 44 count: 3
+Clique: [3, 5, 8] id: 45 count: 3
+Clique: [3, 7, 8] id: 46 count: 4
+Clique: [3, 4, 6] id: 47 count: 3
+Clique: [3, 6, 7] id: 48 count: 3
+Clique: [3, 6, 8] id: 49 count: 3
+Clique: [4, 6, 9] id: 50 count: 3
+Clique: [4, 7, 9] id: 51 count: 3
+Clique: [4, 6, 7] id: 52 count: 5
+Clique: [4, 6, 8] id: 53 count: 4
+Clique: [4, 7, 8] id: 54 count: 5
+Clique: [4, 5, 7] id: 55 count: 4
+Clique: [4, 5, 8] id: 56 count: 4
+Clique: [6, 7, 9] id: 57 count: 3
+Clique: [6, 7, 8] id: 58 count: 4
+Clique: [5, 7, 8] id: 59 count: 4
+cliqueIndex Size : 60
+countingKE: countingRClique: vec size: 60 [3, 3, 3, 3, 5, 4, 5, 4, 4, 5, 4, 4, 3, 4, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 3, 3, 3, 5, 3, 4, 5, 5, 6, 6, 5, 4, 5, 3, 4, 4, 4, 3, 4, 5, 3, 3, 4, 3, 3, 3, 3, 3, 5, 4, 5, 4, 4, 3, 4, 4]
+tree: 0: (0, Keep) (2, Drop) (4, Drop) (6, Drop) (7, Drop) (9, Keep)
+1: (0, Keep) (2, Drop) (4, Drop) (6, Drop) (7, Drop) (8, Drop)
+2: (0, Keep) (2, Drop) (4, Drop) (5, Keep) (7, Drop) (8, Drop)
+3: (1, Keep) (2, Drop) (3, Drop) (4, Drop) (8, Drop)
+4: (2, Keep) (4, Drop) (6, Drop) (7, Drop) (9, Keep)
+5: (2, Keep) (3, Drop) (4, Drop) (6, Drop) (7, Drop) (8, Drop)
+6: (2, Keep) (3, Drop) (4, Drop) (5, Keep) (7, Drop) (8, Drop)
+7: (3, Keep) (4, Drop) (5, Drop) (7, Drop) (8, Drop)
+8: (3, Keep) (4, Drop) (6, Keep) (7, Drop) (8, Drop)
+9: (4, Keep) (6, Drop) (7, Drop) (9, Keep)
+10: (4, Keep) (6, Drop) (7, Drop) (8, Drop)
+11: (4, Keep) (5, Keep) (7, Drop) (8, Drop)
+treeGraphV: 0: (0, Keep) (1, Keep) (2, Keep)
+1: (3, Keep)
+2: (0, Drop) (4, Keep) (3, Drop) (1, Drop) (5, Keep) (6, Keep) (2, Drop)
+3: (5, Drop) (6, Drop) (8, Keep) (7, Keep) (3, Drop)
+4: (0, Drop) (4, Drop) (3, Drop) (5, Drop) (6, Drop) (7, Drop) (9, Keep) (8, Drop) (11, Keep) (10, Keep) (1, Drop) (2, Drop)
+5: (6, Keep) (7, Drop) (11, Keep) (2, Keep)
+6: (0, Drop) (4, Drop) (8, Keep) (10, Drop) (1, Drop) (5, Drop) (9, Drop)
+7: (0, Drop) (4, Drop) (5, Drop) (6, Drop) (7, Drop) (9, Drop) (8, Drop) (11, Drop) (10, Drop) (1, Drop) (2, Drop)
+8: (8, Drop) (3, Drop) (11, Drop) (10, Drop) (1, Drop) (5, Drop) (6, Drop) (7, Drop) (2, Drop)
+9: (0, Keep) (4, Keep) (9, Keep)
+=========================begin=========================
+minCore: 2
+removed Clique: [1, 2, 3] id: 18 core: 2
+removed Clique: [1, 2, 4] id: 19 core: 2
+removed Clique: [1, 2, 8] id: 20 core: 2
+removed Clique: [1, 3, 4] id: 21 core: 2
+removed Clique: [1, 3, 8] id: 22 core: 2
+removed Clique: [1, 4, 8] id: 23 core: 2
+tree: 0: (0, Keep) (2, Drop) (4, Drop) (6, Drop) (7, Drop) (9, Keep)
+1: (0, Keep) (2, Drop) (4, Drop) (6, Drop) (7, Drop) (8, Drop)
+2: (0, Keep) (2, Drop) (4, Drop) (5, Keep) (7, Drop) (8, Drop)
+3:
+4: (2, Keep) (4, Drop) (6, Drop) (7, Drop) (9, Keep)
+5: (2, Keep) (3, Drop) (4, Drop) (6, Drop) (7, Drop) (8, Drop)
+6: (2, Keep) (3, Drop) (4, Drop) (5, Keep) (7, Drop) (8, Drop)
+7: (3, Keep) (4, Drop) (5, Drop) (7, Drop) (8, Drop)
+8: (3, Keep) (4, Drop) (6, Keep) (7, Drop) (8, Drop)
+9: (4, Keep) (6, Drop) (7, Drop) (9, Keep)
+10: (4, Keep) (6, Drop) (7, Drop) (8, Drop)
+11: (4, Keep) (5, Keep) (7, Drop) (8, Drop)
+treeGraphV: 0: (0, Keep) (1, Keep) (2, Keep)
+1:
+2: (0, Drop) (4, Keep) (1, Drop) (5, Keep) (6, Keep) (2, Drop)
+3: (5, Drop) (6, Drop) (8, Keep) (7, Keep)
+4: (0, Drop) (4, Drop) (5, Drop) (6, Drop) (7, Drop) (9, Keep) (8, Drop) (11, Keep) (10, Keep) (1, Drop) (2, Drop)
+5: (6, Keep) (7, Drop) (11, Keep) (2, Keep)
+6: (0, Drop) (4, Drop) (8, Keep) (10, Drop) (1, Drop) (5, Drop) (9, Drop)
+7: (0, Drop) (4, Drop) (5, Drop) (6, Drop) (7, Drop) (9, Drop) (8, Drop) (11, Drop) (10, Drop) (1, Drop) (2, Drop)
+8: (8, Drop) (11, Drop) (10, Drop) (1, Drop) (5, Drop) (6, Drop) (7, Drop) (2, Drop)
+9: (0, Keep) (4, Keep) (9, Keep)
+clique countingRClique: 0: 3 [0, 2, 9]
+1: 3 [0, 4, 9]
+2: 3 [0, 6, 9]
+3: 3 [0, 7, 9]
+4: 5 [0, 2, 4]
+5: 4 [0, 2, 6]
+6: 5 [0, 2, 7]
+7: 4 [0, 2, 8]
+8: 4 [0, 4, 6]
+9: 5 [0, 4, 7]
+10: 4 [0, 4, 8]
+11: 4 [0, 6, 7]
+12: 3 [0, 6, 8]
+13: 4 [0, 7, 8]
+14: 3 [0, 2, 5]
+15: 3 [0, 4, 5]
+16: 3 [0, 5, 7]
+17: 3 [0, 5, 8]
+18: 2 [1, 2, 3]
+19: 2 [1, 2, 4]
+20: 2 [1, 2, 8]
+21: 2 [1, 3, 4]
+22: 2 [1, 3, 8]
+23: 2 [1, 4, 8]
+24: 3 [2, 4, 9]
+25: 3 [2, 6, 9]
+26: 3 [2, 7, 9]
+27: 4 [2, 3, 4]
+28: 3 [2, 3, 6]
+29: 4 [2, 3, 7]
+30: 4 [2, 3, 8]
+31: 5 [2, 4, 6]
+32: 6 [2, 4, 7]
+33: 5 [2, 4, 8]
+34: 5 [2, 6, 7]
+35: 4 [2, 6, 8]
+36: 5 [2, 7, 8]
+37: 3 [2, 3, 5]
+38: 4 [2, 4, 5]
+39: 4 [2, 5, 7]
+40: 4 [2, 5, 8]
+41: 3 [3, 4, 5]
+42: 4 [3, 4, 7]
+43: 4 [3, 4, 8]
+44: 3 [3, 5, 7]
+45: 3 [3, 5, 8]
+46: 4 [3, 7, 8]
+47: 3 [3, 4, 6]
+48: 3 [3, 6, 7]
+49: 3 [3, 6, 8]
+50: 3 [4, 6, 9]
+51: 3 [4, 7, 9]
+52: 5 [4, 6, 7]
+53: 4 [4, 6, 8]
+54: 5 [4, 7, 8]
+55: 4 [4, 5, 7]
+56: 4 [4, 5, 8]
+57: 3 [6, 7, 9]
+58: 4 [6, 7, 8]
+59: 4 [5, 7, 8]
+minCore: 3
+removed Clique: [0, 4, 9] id: 1 core: 3
+removed Clique: [0, 6, 8] id: 12 core: 3
+removed Clique: [0, 2, 5] id: 14 core: 3
+removed Clique: [0, 4, 5] id: 15 core: 3
+removed Clique: [0, 5, 7] id: 16 core: 3
+removed Clique: [4, 7, 9] id: 51 core: 3
+removed Clique: [4, 6, 9] id: 50 core: 3
+removed Clique: [3, 6, 7] id: 48 core: 3
+removed Clique: [3, 4, 6] id: 47 core: 3
+removed Clique: [0, 5, 8] id: 17 core: 3
+removed Clique: [0, 6, 9] id: 2 core: 3
+removed Clique: [3, 5, 8] id: 45 core: 3
+removed Clique: [3, 5, 7] id: 44 core: 3
+removed Clique: [0, 2, 9] id: 0 core: 3
+removed Clique: [2, 4, 9] id: 24 core: 3
+removed Clique: [0, 7, 9] id: 3 core: 3
+removed Clique: [2, 6, 9] id: 25 core: 3
+removed Clique: [2, 7, 9] id: 26 core: 3
+removed Clique: [2, 3, 6] id: 28 core: 3
+removed Clique: [2, 3, 5] id: 37 core: 3
+removed Clique: [3, 4, 5] id: 41 core: 3
+removed Clique: [3, 6, 8] id: 49 core: 3
+removed Clique: [6, 7, 9] id: 57 core: 3
+vlist: vec size: 6 [(0, Keep), (2, Drop), (4, Drop), (6, Drop), (7, Drop), (8, Drop)]
+conflictSets: { 0 6 8  }
+ newLeaf: vec size: 5 [(2, Drop), (4, Drop), (6, Drop), (7, Drop), (8, Drop)]
+ newLeaf: vec size: 5 [(0, Keep), (2, Drop), (4, Drop), (7, Drop), (8, Drop)]
+ newLeaf: vec size: 5 [(0, Keep), (2, Drop), (4, Drop), (6, Keep), (7, Drop)]
+vlist: vec size: 6 [(0, Keep), (2, Drop), (4, Drop), (5, Keep), (7, Drop), (8, Drop)]
+conflictSets: { 0 2 5  } { 0 4 5  } { 0 5 7  } { 0 5 8  }
+vlist: vec size: 6 [(2, Keep), (3, Drop), (4, Drop), (6, Drop), (7, Drop), (8, Drop)]
+conflictSets: { 3 6 7  } { 3 4 6  } { 2 3 6  } { 3 6 8  }
+Removing edge (1, 3) from P and pivots.
+ newLeaf: vec size: 5 [(2, Drop), (3, Drop), (4, Drop), (7, Drop), (8, Drop)]
+ newLeaf: vec size: 5 [(2, Drop), (4, Drop), (6, Keep), (7, Drop), (8, Drop)]
+vlist: vec size: 5 [(3, Keep), (4, Drop), (6, Keep), (7, Drop), (8, Drop)]
+conflictSets: { 3 6 7  } { 3 4 6  } { 3 6 8  }
+vlist: vec size: 6 [(2, Keep), (3, Drop), (4, Drop), (5, Keep), (7, Drop), (8, Drop)]
+conflictSets: { 3 5 8  } { 3 5 7  } { 2 3 5  } { 3 4 5  }
+ newLeaf: vec size: 5 [(2, Drop), (4, Drop), (5, Drop), (7, Drop), (8, Drop)]
+vlist: vec size: 5 [(3, Keep), (4, Drop), (5, Drop), (7, Drop), (8, Drop)]
+conflictSets: { 3 5 8  } { 3 5 7  } { 3 4 5  }
+ newLeaf: vec size: 4 [(3, Drop), (4, Drop), (7, Drop), (8, Drop)]
+tree: 0: (2, Drop) (4, Drop) (6, Drop) (7, Drop) (8, Drop)
+1:
+2:
+3: (0, Keep) (2, Drop) (4, Drop) (7, Drop) (8, Drop)
+4: (2, Drop) (4, Drop) (6, Keep) (7, Drop) (8, Drop)
+5:
+6: (3, Drop) (4, Drop) (7, Drop) (8, Drop)
+7:
+8: (2, Drop) (4, Drop) (5, Drop) (7, Drop) (8, Drop)
+9: (2, Drop) (3, Drop) (4, Drop) (7, Drop) (8, Drop)
+10: (4, Keep) (6, Drop) (7, Drop) (8, Drop)
+11: (4, Keep) (5, Keep) (7, Drop) (8, Drop)
+12: (0, Keep) (2, Drop) (4, Drop) (6, Keep) (7, Drop)
+treeGraphV: 0: (12, Keep) (3, Keep)
+1:
+2: (0, Drop) (12, Drop) (4, Drop) (8, Drop) (3, Drop) (9, Drop)
+3: (6, Drop) (9, Drop)
+4: (0, Drop) (12, Drop) (4, Drop) (3, Drop) (6, Drop) (9, Drop) (8, Drop) (11, Keep) (10, Keep)
+5: (8, Drop) (11, Keep)
+6: (0, Drop) (12, Keep) (4, Keep) (10, Drop)
+7: (0, Drop) (12, Drop) (4, Drop) (3, Drop) (6, Drop) (9, Drop) (8, Drop) (11, Drop) (10, Drop)
+8: (0, Drop) (4, Drop) (8, Drop) (3, Drop) (11, Drop) (10, Drop) (6, Drop) (9, Drop)
+9:
+clique countingRClique: 0: 3 [0, 2, 9]
+1: 3 [0, 4, 9]
+2: 3 [0, 6, 9]
+3: 3 [0, 7, 9]
+4: 3 [0, 2, 4]
+5: 2 [0, 2, 6]
+6: 3 [0, 2, 7]
+7: 2 [0, 2, 8]
+8: 2 [0, 4, 6]
+9: 3 [0, 4, 7]
+10: 2 [0, 4, 8]
+11: 2 [0, 6, 7]
+12: 3 [0, 6, 8]
+13: 2 [0, 7, 8]
+14: 3 [0, 2, 5]
+15: 3 [0, 4, 5]
+16: 3 [0, 5, 7]
+17: 3 [0, 5, 8]
+18: 2 [1, 2, 3]
+19: 2 [1, 2, 4]
+20: 2 [1, 2, 8]
+21: 2 [1, 3, 4]
+22: 2 [1, 3, 8]
+23: 2 [1, 4, 8]
+24: 3 [2, 4, 9]
+25: 3 [2, 6, 9]
+26: 3 [2, 7, 9]
+27: 2 [2, 3, 4]
+28: 3 [2, 3, 6]
+29: 2 [2, 3, 7]
+30: 2 [2, 3, 8]
+31: 5 [2, 4, 6]
+32: 8 [2, 4, 7]
+33: 8 [2, 4, 8]
+34: 5 [2, 6, 7]
+35: 4 [2, 6, 8]
+36: 8 [2, 7, 8]
+37: 3 [2, 3, 5]
+38: 2 [2, 4, 5]
+39: 2 [2, 5, 7]
+40: 2 [2, 5, 8]
+41: 3 [3, 4, 5]
+42: 3 [3, 4, 7]
+43: 3 [3, 4, 8]
+44: 3 [3, 5, 7]
+45: 3 [3, 5, 8]
+46: 3 [3, 7, 8]
+47: 3 [3, 4, 6]
+48: 3 [3, 6, 7]
+49: 3 [3, 6, 8]
+50: 3 [4, 6, 9]
+51: 3 [4, 7, 9]
+52: 6 [4, 6, 7]
+53: 5 [4, 6, 8]
+54: 11 [4, 7, 8]
+55: 3 [4, 5, 7]
+56: 3 [4, 5, 8]
+57: 3 [6, 7, 9]
+58: 5 [6, 7, 8]
+59: 3 [5, 7, 8]
+minCore: 3
+removed Clique: [0, 2, 6] id: 5 core: 2
+removed Clique: [0, 6, 7] id: 11 core: 2
+removed Clique: [0, 7, 8] id: 13 core: 2
+removed Clique: [2, 3, 8] id: 30 core: 2
+removed Clique: [2, 3, 7] id: 29 core: 2
+removed Clique: [2, 4, 5] id: 38 core: 2
+removed Clique: [2, 5, 7] id: 39 core: 2
+removed Clique: [0, 2, 8] id: 7 core: 2
+removed Clique: [2, 5, 8] id: 40 core: 2
+removed Clique: [0, 4, 8] id: 10 core: 2
+removed Clique: [2, 3, 4] id: 27 core: 2
+removed Clique: [0, 4, 6] id: 8 core: 2
+removed Clique: [0, 4, 7] id: 9 core: 3
+removed Clique: [3, 7, 8] id: 46 core: 3
+removed Clique: [3, 4, 7] id: 42 core: 3
+removed Clique: [3, 4, 8] id: 43 core: 3
+removed Clique: [4, 5, 8] id: 56 core: 3
+removed Clique: [0, 2, 7] id: 6 core: 3
+removed Clique: [4, 5, 7] id: 55 core: 3
+removed Clique: [0, 2, 4] id: 4 core: 3
+removed Clique: [5, 7, 8] id: 59 core: 3
+vlist: vec size: 5 [(2, Drop), (3, Drop), (4, Drop), (7, Drop), (8, Drop)]
+conflictSets: { 2 3 8  } { 2 3 7  } { 2 3 4  } { 3 7 8  } { 3 4 7  } { 3 4 8  }
+ newLeaf: vec size: 4 [(2, Drop), (4, Drop), (7, Drop), (8, Drop)]
+vlist: vec size: 5 [(2, Drop), (4, Drop), (5, Drop), (7, Drop), (8, Drop)]
+conflictSets: { 2 4 5  } { 2 5 7  } { 2 5 8  } { 4 5 8  } { 4 5 7  } { 5 7 8  }
+ newLeaf: vec size: 4 [(2, Drop), (4, Drop), (7, Drop), (8, Drop)]
+tree: 0: (2, Drop) (4, Drop) (6, Drop) (7, Drop) (8, Drop)
+1:
+2:
+3: (2, Drop) (4, Drop) (7, Drop) (8, Drop)
+4: (2, Drop) (4, Drop) (6, Keep) (7, Drop) (8, Drop)
+5:
+6:
+7:
+8:
+9: (2, Drop) (4, Drop) (7, Drop) (8, Drop)
+10: (4, Keep) (6, Drop) (7, Drop) (8, Drop)
+11:
+12:
+treeGraphV: 0:
+1:
+2: (0, Drop) (4, Drop) (3, Drop) (9, Drop)
+3:
+4: (0, Drop) (4, Drop) (3, Drop) (9, Drop) (10, Keep)
+5:
+6: (0, Drop) (4, Keep) (10, Drop)
+7: (0, Drop) (4, Drop) (3, Drop) (9, Drop) (10, Drop)
+8: (0, Drop) (4, Drop) (3, Drop) (10, Drop) (9, Drop)
+9:
+clique countingRClique: 0: 3 [0, 2, 9]
+1: 3 [0, 4, 9]
+2: 3 [0, 6, 9]
+3: 3 [0, 7, 9]
+4: 3 [0, 2, 4]
+5: 2 [0, 2, 6]
+6: 3 [0, 2, 7]
+7: 2 [0, 2, 8]
+8: 2 [0, 4, 6]
+9: 3 [0, 4, 7]
+10: 2 [0, 4, 8]
+11: 2 [0, 6, 7]
+12: 3 [0, 6, 8]
+13: 2 [0, 7, 8]
+14: 3 [0, 2, 5]
+15: 3 [0, 4, 5]
+16: 3 [0, 5, 7]
+17: 3 [0, 5, 8]
+18: 2 [1, 2, 3]
+19: 2 [1, 2, 4]
+20: 2 [1, 2, 8]
+21: 2 [1, 3, 4]
+22: 2 [1, 3, 8]
+23: 2 [1, 4, 8]
+24: 3 [2, 4, 9]
+25: 3 [2, 6, 9]
+26: 3 [2, 7, 9]
+27: 2 [2, 3, 4]
+28: 3 [2, 3, 6]
+29: 2 [2, 3, 7]
+30: 2 [2, 3, 8]
+31: 4 [2, 4, 6]
+32: 5 [2, 4, 7]
+33: 5 [2, 4, 8]
+34: 4 [2, 6, 7]
+35: 4 [2, 6, 8]
+36: 5 [2, 7, 8]
+37: 3 [2, 3, 5]
+38: 2 [2, 4, 5]
+39: 2 [2, 5, 7]
+40: 2 [2, 5, 8]
+41: 3 [3, 4, 5]
+42: 3 [3, 4, 7]
+43: 3 [3, 4, 8]
+44: 3 [3, 5, 7]
+45: 3 [3, 5, 8]
+46: 3 [3, 7, 8]
+47: 3 [3, 4, 6]
+48: 3 [3, 6, 7]
+49: 3 [3, 6, 8]
+50: 3 [4, 6, 9]
+51: 3 [4, 7, 9]
+52: 5 [4, 6, 7]
+53: 5 [4, 6, 8]
+54: 6 [4, 7, 8]
+55: 3 [4, 5, 7]
+56: 3 [4, 5, 8]
+57: 3 [6, 7, 9]
+58: 5 [6, 7, 8]
+59: 3 [5, 7, 8]
+minCore: 4
+removed Clique: [2, 6, 8] id: 35 core: 4
+removed Clique: [2, 4, 6] id: 31 core: 4
+removed Clique: [2, 6, 7] id: 34 core: 4
+vlist: vec size: 5 [(2, Drop), (4, Drop), (6, Drop), (7, Drop), (8, Drop)]
+conflictSets: { 2 6 8  } { 2 4 6  } { 2 6 7  }
+Removing edge (0, 2) from P and pivots.
+ newLeaf: vec size: 4 [(2, Drop), (4, Drop), (7, Drop), (8, Drop)]
+ newLeaf: vec size: 4 [(4, Drop), (6, Keep), (7, Drop), (8, Drop)]
+vlist: vec size: 5 [(2, Drop), (4, Drop), (6, Keep), (7, Drop), (8, Drop)]
+conflictSets: { 2 6 8  } { 2 4 6  } { 2 6 7  }
+ newLeaf: vec size: 4 [(4, Drop), (6, Drop), (7, Drop), (8, Drop)]
+tree: 0: (4, Drop) (6, Drop) (7, Drop) (8, Drop)
+1:
+2:
+3: (2, Drop) (4, Drop) (7, Drop) (8, Drop)
+4:
+5:
+6: (4, Drop) (6, Keep) (7, Drop) (8, Drop)
+7:
+8:
+9: (2, Drop) (4, Drop) (7, Drop) (8, Drop)
+10: (4, Keep) (6, Drop) (7, Drop) (8, Drop)
+11: (2, Drop) (4, Drop) (7, Drop) (8, Drop)
+12:
+treeGraphV: 0:
+1:
+2: (3, Drop) (11, Drop) (9, Drop)
+3:
+4: (0, Drop) (3, Drop) (6, Drop) (9, Drop) (11, Drop) (10, Keep)
+5:
+6: (0, Drop) (10, Drop) (6, Keep)
+7: (0, Drop) (3, Drop) (6, Drop) (9, Drop) (11, Drop) (10, Drop)
+8: (0, Drop) (3, Drop) (11, Drop) (10, Drop) (6, Drop) (9, Drop)
+9:
+clique countingRClique: 0: 3 [0, 2, 9]
+1: 3 [0, 4, 9]
+2: 3 [0, 6, 9]
+3: 3 [0, 7, 9]
+4: 3 [0, 2, 4]
+5: 2 [0, 2, 6]
+6: 3 [0, 2, 7]
+7: 2 [0, 2, 8]
+8: 2 [0, 4, 6]
+9: 3 [0, 4, 7]
+10: 2 [0, 4, 8]
+11: 2 [0, 6, 7]
+12: 3 [0, 6, 8]
+13: 2 [0, 7, 8]
+14: 3 [0, 2, 5]
+15: 3 [0, 4, 5]
+16: 3 [0, 5, 7]
+17: 3 [0, 5, 8]
+18: 2 [1, 2, 3]
+19: 2 [1, 2, 4]
+20: 2 [1, 2, 8]
+21: 2 [1, 3, 4]
+22: 2 [1, 3, 8]
+23: 2 [1, 4, 8]
+24: 3 [2, 4, 9]
+25: 3 [2, 6, 9]
+26: 3 [2, 7, 9]
+27: 2 [2, 3, 4]
+28: 3 [2, 3, 6]
+29: 2 [2, 3, 7]
+30: 2 [2, 3, 8]
+31: 4 [2, 4, 6]
+32: 3 [2, 4, 7]
+33: 3 [2, 4, 8]
+34: 4 [2, 6, 7]
+35: 4 [2, 6, 8]
+36: 3 [2, 7, 8]
+37: 3 [2, 3, 5]
+38: 2 [2, 4, 5]
+39: 2 [2, 5, 7]
+40: 2 [2, 5, 8]
+41: 3 [3, 4, 5]
+42: 3 [3, 4, 7]
+43: 3 [3, 4, 8]
+44: 3 [3, 5, 7]
+45: 3 [3, 5, 8]
+46: 3 [3, 7, 8]
+47: 3 [3, 4, 6]
+48: 3 [3, 6, 7]
+49: 3 [3, 6, 8]
+50: 3 [4, 6, 9]
+51: 3 [4, 7, 9]
+52: 3 [4, 6, 7]
+53: 3 [4, 6, 8]
+54: 6 [4, 7, 8]
+55: 3 [4, 5, 7]
+56: 3 [4, 5, 8]
+57: 3 [6, 7, 9]
+58: 3 [6, 7, 8]
+59: 3 [5, 7, 8]
+minCore: 4
+removed Clique: [2, 4, 7] id: 32 core: 3
+removed Clique: [2, 7, 8] id: 36 core: 3
+removed Clique: [4, 6, 8] id: 53 core: 3
+removed Clique: [4, 6, 7] id: 52 core: 3
+removed Clique: [2, 4, 8] id: 33 core: 3
+removed Clique: [6, 7, 8] id: 58 core: 3
+tree: 0:
+1:
+2:
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+treeGraphV: 0:
+1:
+2:
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+clique countingRClique: 0: 3 [0, 2, 9]
+1: 3 [0, 4, 9]
+2: 3 [0, 6, 9]
+3: 3 [0, 7, 9]
+4: 3 [0, 2, 4]
+5: 2 [0, 2, 6]
+6: 3 [0, 2, 7]
+7: 2 [0, 2, 8]
+8: 2 [0, 4, 6]
+9: 3 [0, 4, 7]
+10: 2 [0, 4, 8]
+11: 2 [0, 6, 7]
+12: 3 [0, 6, 8]
+13: 2 [0, 7, 8]
+14: 3 [0, 2, 5]
+15: 3 [0, 4, 5]
+16: 3 [0, 5, 7]
+17: 3 [0, 5, 8]
+18: 2 [1, 2, 3]
+19: 2 [1, 2, 4]
+20: 2 [1, 2, 8]
+21: 2 [1, 3, 4]
+22: 2 [1, 3, 8]
+23: 2 [1, 4, 8]
+24: 3 [2, 4, 9]
+25: 3 [2, 6, 9]
+26: 3 [2, 7, 9]
+27: 2 [2, 3, 4]
+28: 3 [2, 3, 6]
+29: 2 [2, 3, 7]
+30: 2 [2, 3, 8]
+31: 4 [2, 4, 6]
+32: 3 [2, 4, 7]
+33: 3 [2, 4, 8]
+34: 4 [2, 6, 7]
+35: 4 [2, 6, 8]
+36: 3 [2, 7, 8]
+37: 3 [2, 3, 5]
+38: 2 [2, 4, 5]
+39: 2 [2, 5, 7]
+40: 2 [2, 5, 8]
+41: 3 [3, 4, 5]
+42: 3 [3, 4, 7]
+43: 3 [3, 4, 8]
+44: 3 [3, 5, 7]
+45: 3 [3, 5, 8]
+46: 3 [3, 7, 8]
+47: 3 [3, 4, 6]
+48: 3 [3, 6, 7]
+49: 3 [3, 6, 8]
+50: 3 [4, 6, 9]
+51: 3 [4, 7, 9]
+52: 3 [4, 6, 7]
+53: 3 [4, 6, 8]
+54: 0 [4, 7, 8]
+55: 3 [4, 5, 7]
+56: 3 [4, 5, 8]
+57: 3 [6, 7, 9]
+58: 3 [6, 7, 8]
+59: 3 [5, 7, 8]
+minCore: 4
+removed Clique: [4, 7, 8] id: 54 core: 0
+tree: 0:
+1:
+2:
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+treeGraphV: 0:
+1:
+2:
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+time: 2 ms
+NucleusCoreDecomposition took: 2.884 ms
+
+进程已结束，退出代码为 0

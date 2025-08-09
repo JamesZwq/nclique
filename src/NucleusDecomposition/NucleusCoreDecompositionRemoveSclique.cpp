@@ -145,12 +145,13 @@ namespace CDSetRS {
                 auto [id, isNew] = cliqueHashmap.byNewClique(rClique);
                 if (isNew) {
                     if (rCliqueSCounting.size() <= id) {
-                        rCliqueSCounting.resize(std::min(id + 2, id * 2), 0.0);
+                        rCliqueSCounting.push_back(0.0);
+                    }
+                    if (rCliqueSCounting.capacity() <= id) {
+                        rCliqueSCounting.reserve(std::max(id + 2, id * 2));
                     }
                 }
                 rCliqueSCounting[id] += ncrValue;
-
-
                 return true;
             });
         }
@@ -381,9 +382,10 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                           );
 
             // DEBUG_BREAK_IF(leafId == 5);
-            bkRmClique::removeRClique(leaf, mapped, r, s, [&](const bkRmEdge::Bitset &c, const bkRmEdge::Bitset &pivots) {
-                auto newLeaf = bkRmEdge::coverToVertex(c, pivots, leaf);
-                // std::cout << " newLeaf: " << newLeaf;
+            bkRmClique::removeRClique(leaf, mapped, r, s, [&](const bkRmClique::Bitset &c, const bkRmClique::Bitset &pivots) {
+                auto newLeaf = bkRmClique::coverToVertex(c, pivots, leaf);
+                DEBUG_BREAK_IF(newLeaf.size() < s);
+                // std::cout << " newLeaf: " << newLeaf << std::endl;
                 auto newId = tree.addNode(newLeaf);
                 // std::cout << " newId: " << newId << std::endl;
                 initCore(tree.adj_list[newId], newId);
@@ -467,15 +469,6 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
         std::vector<daf::Size> cliqueCopy(clique.begin(), clique.end());
         sortedK.emplace_back(cliqueCopy, coreRClique[i]);
     }
-
-    // if (std::accumulate(countingRClique.begin(), countingRClique.end(), 0.0) != 0) {
-    //     std::cerr << "Error: countingRClique != 0" << std::endl;
-    //     std::cerr << "countingRClique: " << countingRClique << std::endl;
-    //     std::exit(1);
-    // }
-    // std::cout << "sortedK size: " << sortedK << std::endl;
-
-    // /Users/zhangwenqian/UNSW/pivoter/a
     std::sort(sortedK.begin(), sortedK.end(),
               [](const auto &a, const auto &b) {
                   return a.second < b.second; // 按照 core 值降序排序

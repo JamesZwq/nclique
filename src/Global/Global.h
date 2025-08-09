@@ -28,6 +28,7 @@
 #include <random>
 
 #include "dataStruct/robin_hood.h"
+#include "dataStruct/Bitset.hpp"
 #include "Global/ostreamOverload.hpp"
 
 
@@ -840,6 +841,7 @@ namespace daf {
     }
 
     extern daf::StaticVector<daf::Size> vListMap;
+    extern daf::StaticVector<daf::Size> globalCSR;
 }
 
 struct TreeGraphNode {

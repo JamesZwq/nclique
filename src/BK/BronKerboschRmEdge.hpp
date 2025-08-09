@@ -88,6 +88,8 @@ namespace bkRmEdge {
                 Bitset pivots,
                 ReportFn &&report) {
         // 1) 如果 P,X 都空，就报告 R
+        // std::cout << R << " " << P << " " << pivots << std::endl;
+        // 111111 000000 111110
         if (P.none()) {
             if ((int) R.count() >= minK) {
                 report(R, pivots);
@@ -207,11 +209,8 @@ namespace bkRmEdge {
         Bitset povit;
         auto adj = build_adj(vList, removeEdgeList, R, povit, n);
 
-        Bitset mask(n);
-        mask.set();
-        Bitset P = (~R) & mask;
+        Bitset P = ~R;
         // X 还是空
-        Bitset X(n);
 
 
         // 运行原来的递归，只不过带了预先的 R
@@ -224,7 +223,7 @@ namespace bkRmEdge {
     inline void testBronKerbosch() {
         // 3 个点完全图：0–1, 0–2, 1–2
         std::vector<TreeGraphNode> vList = {
-            {0, true},
+            {0, false},
             {1, true},
             {2, true},
             {3, true},
@@ -232,7 +231,7 @@ namespace bkRmEdge {
             {5, true}
         };
         daf::StaticVector<std::pair<daf::Size, daf::Size> > removeEdgeList;
-        removeEdgeList.emplace_back(0, 1);
+        // removeEdgeList.emplace_back(0, 1);
         int minK = 1;
         std::vector<double> cliqueCounts(vList.size(), 0);
         bronKerbosch(vList, removeEdgeList, minK,

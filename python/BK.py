@@ -327,8 +327,8 @@ def extract_clique_counts(cmd: str, out_fname: str = 'clique_counts.txt') -> Non
             f.write(c + '\n')
 
 # Example usage:
-node_count = 20  # Number of nodes
-edge_count = 100 # Number of edges
+node_count = 10  # Number of nodes
+edge_count = 30 # Number of edges
 
 
 output_file = '/Users/zhangwenqian/UNSW/pivoter/new_small_garph.edges'  # Output file path
