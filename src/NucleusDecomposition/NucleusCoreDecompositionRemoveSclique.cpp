@@ -473,11 +473,11 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
               [](const auto &a, const auto &b) {
                   return a.second < b.second; // 按照 core 值降序排序
               });
-    auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/a.out", "w");
-    for (auto i: sortedK) {
-        fprintf(file, "%d\n", (int) i.second);
-    }
-    fclose(file);
+    // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/a.out", "w");
+    // for (auto i: sortedK) {
+    //     fprintf(file, "%d\n", (int) i.second);
+    // }
+    // fclose(file);
     return sortedK;
 }
 

@@ -76,7 +76,7 @@ class DynamicGraph {
             return lst;
         }
 
-        [[nodiscard]] daf::Size addNode(std::vector<T> &nbrs) {
+        daf::Size addNode(std::vector<T> &nbrs) {
             std::sort(nbrs.begin(), nbrs.end());
             if (removedNodes.empty()) {
                 adj_list.emplace_back(std::move(nbrs));
