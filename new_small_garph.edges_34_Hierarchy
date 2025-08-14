@@ -1,11 +1,12 @@
-Triangle enumeration:  0.000016
-# 4-cliques: 55
-4-clique counting:  0.000004
-Only peeling + on-the-fly hierarchy construction time:  0.000033
+Triangle enumeration:  0.000011
+# 4-cliques: 20
+4-clique counting:  0.000002
+Only peeling + on-the-fly hierarchy construction time:  0.000016
 Building hierarchy time:  0.000001
-Total 3,4 nucleus decomposition time (excluding density computation):  0.000054
-# subcores: 2		 # subsubcores: 3		 |V|: 10
-id: 1  K: 3  |V|: 9  |E|: 31  ed: 0.86  LEAF?: 1  parent id: 0	0 2 3 4 5 6 7 8 9 -1
-id: 0  K: 2  |V|: 10  |E|: 35  ed: 0.78  LEAF?: 0  parent id: 2	0 1 2 3 4 5 6 7 8 9 -1
-Total 3,4 nucleus decomposition time:  0.000153
-End-to-end Time:  0.000356
+Total 3,4 nucleus decomposition time (excluding density computation):  0.000030
+# subcores: 4		 # subsubcores: 5		 |V|: 8
+id: 3  K: 3  |V|: 6  |E|: 15  ed: 1.00  LEAF?: 1  parent id: 1	0 2 3 4 5 7 -1
+id: 1  K: 2  |V|: 7  |E|: 19  ed: 0.90  LEAF?: 0  parent id: 0	0 2 3 4 5 6 7 -1
+id: 0  K: 1  |V|: 8  |E|: 23  ed: 0.82  LEAF?: 0  parent id: 4	0 1 2 3 4 5 6 7 -1
+Total 3,4 nucleus decomposition time:  0.000121
+End-to-end Time:  0.000325

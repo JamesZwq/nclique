@@ -327,8 +327,8 @@ def extract_clique_counts(cmd: str, out_fname: str = 'clique_counts.txt') -> Non
             f.write(c + '\n')
 
 # Example usage:
-node_count = 10  # Number of nodes
-edge_count = 30 # Number of edges
+node_count = 8  # Number of nodes
+edge_count = 20 # Number of edges
 
 
 output_file = '/Users/zhangwenqian/UNSW/pivoter/new_small_garph.edges'  # Output file path
@@ -371,6 +371,13 @@ while True:
         sys.exit(1)
     else:
         print(f"{Fore.GREEN}✅ 结果一致！本轮测试完美通过 🎉\n")
+
+#         如果/Users/zhangwenqian/UNSW/pivoter/a.tmp里面有超过3行, 停止
+        if len(open('/Users/zhangwenqian/UNSW/pivoter/a.tmp').readlines()) > 2:
+            print(f"{Fore.RED}❌ 结果异常，a.tmp 文件行数超过 2 行，可能存在问题！")
+            print(f"{Fore.MAGENTA}🖼️ 报错时的图边列表：\n{edgeList}")
+            draw_graph_with_cliques(edgeList)
+            sys.exit(1)
 
 #
 # file_path = output_file

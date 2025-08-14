@@ -16,7 +16,6 @@
 #include "dataStruct/disJoinSet.hpp"
 #include "graph/DynamicBipartiteGraph.hpp"
 #include "NucleusDecomposition/NCliqueCoreDecomposition.h"
-#include "NucleusDecomposition/NucleusCoreDecomposition.h"
 
 
 
@@ -33,6 +32,7 @@ int main(int argc, char **argv) {
         printf("graphFile: path to graph\n");
         printf("r: r\n");
         printf("s: s\n");
+
         return 0;
     }
 
@@ -92,7 +92,8 @@ int main(int argc, char **argv) {
             NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
         } else {
             // NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
-            NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
+            // NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
+            NucleusCoreDecompositionHierarchy(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
     // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {
