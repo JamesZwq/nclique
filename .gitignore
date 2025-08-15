@@ -41,3 +41,10 @@ results/
 # Python virtual environment (if used)
 venv/
 __pycache__/
+
+
+a.edge_*_Hierarchy
+*.edges_*_Hierarchy
+*.edges_*_NUCLEI
+*.bin
+*.rmp
