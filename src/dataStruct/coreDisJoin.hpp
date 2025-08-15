@@ -10,13 +10,14 @@
 #include <utility>
 #include <iostream>
 #include <unordered_map>
+#include <fstream>
 
 #include "Global/Global.h"
 
 
 class CoreDisJoin {
-
     using idx_t = daf::Size;
+
 public:
     explicit CoreDisJoin(daf::Size n, daf::Size numK) noexcept {
         codeDisjointSets.resize(numK);
@@ -37,6 +38,7 @@ public:
             }
         }
     }
+
     // Component 26: [26: ([4, 5, 7]) 27: ([4, 6, 7])]
     inline void addK() noexcept {
         currKIndex++;
@@ -50,7 +52,22 @@ public:
         // print by component
         for (size_t i = 0; i <= cdj.currKIndex; ++i) {
             auto &ds = cdj.codeDisjointSets[i];
-            os << ds;
+            // Only print components with size > 1
+            std::unordered_map<idx_t, std::vector<idx_t> > components;
+            for (idx_t v = 0; v < ds.n(); ++v) {
+                idx_t p = ds.find(v);
+                components[p].push_back(v);
+            }
+            os << "DisjointSet(n=" << ds.n() << ", comp_cnt=" << ds.count() << ")\n";
+            for (const auto &[rep, members]: components) {
+                if (members.size() == 1) continue;
+                os << "  Component " << rep << ": [";
+                for (size_t i = 0; i < members.size(); ++i) {
+                    if (i > 0) os << " ";
+                    os << members[i];
+                }
+                os << "]\n";
+            }
         }
         return os;
     }
@@ -69,23 +86,77 @@ public:
     // }
 
     // 函数映射版：mapper(id) -> 可打印类型
-    template <class Mapper>
+    template<class Mapper>
     void print(const Mapper &mapper) {
         std::cout << "coreDisJoin(n=" << n << ", numK=" << numK << ", currKIndex=" << currKIndex << ")\n";
         for (size_t i = 0; i <= static_cast<size_t>(currKIndex); ++i) {
             std::cout << "K = " << i << ":\n";
-            codeDisjointSets[i].print_with_mapper(std::cout, mapper);
+            auto &ds = codeDisjointSets[i];
+            std::unordered_map<idx_t, std::vector<idx_t> > components;
+            for (idx_t v = 0; v < ds.n(); ++v) {
+                idx_t p = ds.find(v);
+                components[p].push_back(v);
+            }
+            std::cout << "DisjointSet(n=" << ds.n() << ", comp_cnt=" << ds.count() << ")\n";
+            for (const auto &kv: components) {
+                idx_t rep = kv.first;
+                const auto &members = kv.second;
+                if (members.size() == 1) continue;
+                std::cout << "  Component " << rep << ": [";
+                for (size_t i = 0; i < members.size(); ++i) {
+                    if (i) std::cout << ' ';
+                    std::cout << members[i] << ": (" << mapper(members[i]) << ")";
+                }
+                std::cout << "]\n";
+            }
         }
     }
 
+    // 将与上面相同的内容输出到文件
+    template<class Mapper, class PathLike>
+    bool print_to_file(const PathLike &filePath, const Mapper &mapper) {
+        std::ofstream ofs(filePath);
+        if (!ofs) {
+            std::cerr << "[CoreDisJoin] Failed to open file: " << filePath << "\n";
+            return false;
+        }
+        ofs << "coreDisJoin(n=" << n << ", numK=" << numK << ", currKIndex=" << currKIndex << ")\n";
+        for (size_t i = 0; i <= static_cast<size_t>(currKIndex); ++i) {
+            ofs << "K = " << i << ":\n";
+            auto &ds = codeDisjointSets[i];
+            std::unordered_map<idx_t, std::vector<idx_t> > components;
+            for (idx_t v = 0; v < ds.n(); ++v) {
+                idx_t p = ds.find(v);
+                components[p].push_back(v);
+            }
+            ofs << "DisjointSet(n=" << ds.n() << ", comp_cnt=" << ds.count() << ")\n";
+            for (const auto &kv: components) {
+                idx_t rep = kv.first;
+                const auto &members = kv.second;
+                if (members.size() == 1) continue;
+                ofs << "  Component " << rep << ": [";
+                for (size_t i = 0; i < members.size(); ++i) {
+                    if (i) ofs << ' ';
+                    ofs << members[i] << ": (" << mapper(members[i]) << ")";
+                }
+                ofs << "]\n";
+            }
+        }
+        ofs.flush();
+        return true;
+    }
+
+    bool validate_top_layer(daf::Size minSize) noexcept {
+        if (codeDisjointSets.empty()) return true;
+        size_t top = static_cast<size_t>(currKIndex);
+        if (top >= codeDisjointSets.size()) top = codeDisjointSets.size() - 1; // 兜底
+        return codeDisjointSets[top].validate_min_component_size(static_cast<idx_t>(minSize));
+    }
 
 
-
-
-private:
+    // private:
     class DisjointSet {
     public:
-
         explicit DisjointSet(idx_t n = 0) noexcept { reset(n); }
 
         // 重新初始化为 n 个单点集合
@@ -142,13 +213,14 @@ private:
 
         friend std::ostream &operator<<(std::ostream &os, DisjointSet &cdj) {
             // print by component
-            std::unordered_map<idx_t, std::vector<idx_t>> components;
+            std::unordered_map<idx_t, std::vector<idx_t> > components;
             for (idx_t v = 0; v < cdj.n(); ++v) {
                 idx_t p = cdj.find(v);
                 components[p].push_back(v);
             }
             os << "DisjointSet(n=" << cdj.n() << ", comp_cnt=" << cdj.comp_cnt_ << ")\n";
             for (const auto &[rep, members]: components) {
+                if (members.size() == 1) continue;
                 os << "  Component " << rep << ": [";
                 for (size_t i = 0; i < members.size(); ++i) {
                     if (i > 0) os << " ";
@@ -159,18 +231,19 @@ private:
             return os;
         }
 
-        template <class Indexable>
+        template<class Indexable>
         void print_with_data(std::ostream &os, const Indexable &data) {
             // Build components map: representative -> members
-            std::unordered_map<idx_t, std::vector<idx_t>> components;
+            std::unordered_map<idx_t, std::vector<idx_t> > components;
             for (idx_t v = 0; v < n(); ++v) {
                 idx_t p = find(v); // path halving allowed here
                 components[p].push_back(v);
             }
             os << "DisjointSet(n=" << n() << ", comp_cnt=" << comp_cnt_ << ")\n";
-            for (const auto &kv : components) {
+            for (const auto &kv: components) {
                 idx_t rep = kv.first;
                 const auto &members = kv.second;
+                if (members.size() == 1) continue;
                 os << "  Component " << rep << " (" << data[rep] << "): [";
                 for (size_t i = 0; i < members.size(); ++i) {
                     if (i) os << ' ';
@@ -181,17 +254,18 @@ private:
         }
 
         // 使用函数映射打印：仅对代表元 rep 做 mapper(rep) 标签
-        template <class Mapper>
+        template<class Mapper>
         void print_with_mapper(std::ostream &os, const Mapper &mapper) {
-            std::unordered_map<idx_t, std::vector<idx_t>> components;
+            std::unordered_map<idx_t, std::vector<idx_t> > components;
             for (idx_t v = 0; v < n(); ++v) {
                 idx_t p = find(v); // 允许路径减半
                 components[p].push_back(v);
             }
             os << "DisjointSet(n=" << n() << ", comp_cnt=" << comp_cnt_ << ")\n";
-            for (const auto &kv : components) {
+            for (const auto &kv: components) {
                 idx_t rep = kv.first;
                 const auto &members = kv.second;
+                if (members.size() == 1) continue;
                 os << "  Component " << rep << ": [";
                 for (size_t i = 0; i < members.size(); ++i) {
                     if (i) os << ' ';
@@ -202,7 +276,29 @@ private:
             }
         }
 
-    private:
+
+        bool validate_min_component_size(idx_t minSize) noexcept {
+            if (n() == 0) return true;
+            std::unordered_map<idx_t, idx_t> comp_sz;
+            comp_sz.reserve(static_cast<size_t>(n()));
+            for (idx_t v = 0; v < n(); ++v) {
+                idx_t r = find(v); // 只读查找，不做路径压缩
+                ++comp_sz[r];
+            }
+            for (const auto &kv: comp_sz) {
+                idx_t sz = kv.second;
+                if (sz == 1) continue; // 单点允许
+                if (sz < minSize) {
+                    std::cout << "DisjointSet validation failed: "
+                            << "component size " << sz << " < " << minSize
+                            << " for representative " << kv.first << "\n";
+                    return false; // 2..minSize-1 失败
+                }
+            }
+            return true;
+        }
+
+        // private:
         std::vector<idx_t> parent_;
         std::vector<idx_t> size_;
         // std::vector<bool> beCall_;

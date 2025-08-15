@@ -269,6 +269,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
         auto currMinCore = countingRClique[heap.top()];
         if (currMinCore > minCore) {
             if (minCore !=0) {
+                // hierarchyBuilder.validate_top_layer((minCore * (minCore-1)) / 2);
                 hierarchyBuilder.addK();
             }
             minCore = currMinCore;
@@ -505,9 +506,9 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
     //     fprintf(file, "%d\n", (int) i.second);
     // }
     // fclose(file);
-    std::cout << "=========================end=========================" << std::endl;
-
-    // hierarchyBuilder.print([&](const daf::Size &k) {
+    // std::cout << "=========================end=========================" << std::endl;
+    //
+    // hierarchyBuilder.print_to_file("/Users/zhangwenqian/UNSW/pivoter/a.edge_34_Hierarchy", [&](const daf::Size &k) {
     //     return cliqueIndex.byId(k);
     // });
 
