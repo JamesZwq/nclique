@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+# Auto-generated for 5552894
+
+STUDENT_ID = "5552894"
+STUDENT_NAME = "Chen Zhang"
+
+# ======= 学生代码 =======
+from collections import deque
+
+class kCoreBaseStructuralDiversity(object):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def build_induced_subgraph(adj_list, nodes):
+
+        #Build the induced subgraph by the given set of nodes. Returns the adjacency list and degree array for the subgraph.
+
+
+        idx = {v: i for i, v in enumerate(nodes)}  # Mapping from node to subgraph index
+        n = len(nodes)
+        deg = [0] * n
+        g = [[] for _ in range(n)]
+        for i, u in enumerate(nodes):
+            for v in adj_list[u]:
+                if v in idx:
+                    g[i].append(idx[v])
+                    deg[i] += 1
+        return g, deg
+
+    @staticmethod
+    def prune_k_core(g, deg, k):
+
+        #Perform k-core pruning in the induced subgraph.  Remove nodes whose degree is less than k.  Returns a list indicating which nodes are still alive.
+        n = len(g)
+        alive = [True] * n
+        dq = deque()
+        for i in range(n):
+            if deg[i] < k:
+                dq.append(i)
+                alive[i] = False
+        while dq:
+            u = dq.popleft()
+            for v in g[u]:
+                if alive[v]:
+                    deg[v] -= 1
+                    if deg[v] < k:
+                        dq.append(v)
+                        alive[v] = False
+        return alive
+
+    @staticmethod
+    def count_connected_components(g, alive):
+        #Count the number of connected components in the k-core induced subgraph.
+        n = len(g)
+        vis = [False] * n
+        res = 0
+        for i in range(n):
+            if alive[i] and not vis[i]:
+                res += 1
+                q = deque([i])
+                vis[i] = True
+                while q:
+                    u = q.popleft()
+                    for v in g[u]:
+                        if alive[v] and not vis[v]:
+                            vis[v] = True
+                            q.append(v)
+        return res
+
+    @staticmethod
+    def k_core_components(adj_list, k, nodes):
+
+        #For the subgraph induced by 'nodes', compute the number of connected components after k-core pruning.
+
+        g, deg = kCoreBaseStructuralDiversity.build_induced_subgraph(adj_list, nodes)
+        alive = kCoreBaseStructuralDiversity.prune_k_core(g, deg, k)
+        return kCoreBaseStructuralDiversity.count_connected_components(g, alive)
+
+    @staticmethod
+    def process(G, k):
+
+        # Main entry: For each vertex, compute its k-core-based structural diversity.
+
+        n = G.vertex_num
+        sd = [0] * n
+        for v in range(n):
+            nbrs = G.adj_list[v]   # Neighbors of vertex v
+            if not nbrs:
+                sd[v] = 0
+                continue
+            nodes = list(set(nbrs))  # Only consider the neighbor set (excluding v itself)
+            if not nodes:
+                sd[v] = 0
+                continue
+            sd[v] = kCoreBaseStructuralDiversity.k_core_components(G.adj_list, k, nodes)
+        return sd
+
+# ======= 测试框架 =======
+
+import glob, os, re, time
+
+class UndirectedUnweightedGraph:
+    def __init__(self, edge_list):
+        info = True
+        for u, v in edge_list:
+            if info:
+                info = False
+                self.vertex_num, self.edge_num = u, v
+                self.adj_list = [list() for _ in range(self.vertex_num)]
+            else:
+                self.adj_list[u].append(v)
+                self.adj_list[v].append(u)
+
+# 数据集根目录，请按需修改 BASE_DIR
+BASE_DIR = "./COMP9312-25T2-Project"
+
+def load_graph(path):
+    edges = []
+    with open(path) as f:
+        for line in f:
+            u, v = map(int, line.split())
+            edges.append([u, v])
+    return UndirectedUnweightedGraph(edges)
+
+def load_expected(path, k_in_name):
+    nums = list(map(int, open(path).read().strip().split()))
+    return nums[1:] if nums and nums[0] == k_in_name else nums
+
+def run_all_tests():
+    start_time = time.time()
+    graph_pat  = re.compile(r"data_(\d+)\.graph\.txt")
+    answer_pat = re.compile(r"ans_(\d+)_(\d+)\.txt")
+
+    total_expected = 0
+    total_mismatch = 0
+
+    for gfile in sorted(glob.glob(os.path.join(BASE_DIR, "data_*.graph.txt"))):
+        G = load_graph(gfile)
+        size = graph_pat.match(os.path.basename(gfile)).group(1)
+        for afile in sorted(glob.glob(os.path.join(BASE_DIR, f"ans_{size}_*.txt"))):
+            k = int(answer_pat.match(os.path.basename(afile)).group(2))
+            expected = load_expected(afile, k)
+
+            start = time.time()
+            tau = kCoreBaseStructuralDiversity.process(G, k)
+            # 不打印中间信息
+            tau.sort()
+            counts = [0] * (tau[-1]+1) if tau else [0]
+            for t in tau:
+                counts[t] += 1
+
+            # 统计
+            total_expected += sum(expected)
+            total_mismatch += sum(abs(c - e) for c, e in zip(counts, expected))
+
+    total_time = time.time() - start_time
+    # 计算正确率和分数
+    total_correct = total_expected - total_mismatch
+    correct_rate = total_correct / total_expected if total_expected else 0
+    score = correct_rate * 6
+    # 输出：zid, 姓名, 正确率, 分数, 总时长
+    print(f"{STUDENT_ID}\t{STUDENT_NAME}\t{correct_rate:.2%}\t{score:.2f}\t{total_time:.2f}s")
+
+if __name__ == '__main__':
+    run_all_tests()
