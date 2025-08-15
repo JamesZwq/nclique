@@ -16,9 +16,9 @@
 
 
 class CoreDisJoin {
+public:
     using idx_t = daf::Size;
 
-public:
     explicit CoreDisJoin(daf::Size n, daf::Size numK) noexcept {
         codeDisjointSets.resize(numK);
         for (auto &ds: codeDisjointSets) {
