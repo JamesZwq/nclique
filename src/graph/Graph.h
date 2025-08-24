@@ -169,7 +169,7 @@ public:
 
         // 2. 拿到邻居区间 [b,e)
         auto [b, e] = getNbr(u);
-        const daf::Size* data = adj_list.data;
+        const daf::Size* data = adj_list.data();
 
         // 3. 手写二分查找 v
         std::size_t lo = b, hi = e;

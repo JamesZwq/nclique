@@ -5,6 +5,20 @@
 #ifndef BITSET_HPP
 #define BITSET_HPP
 
+#include <cstdint>
+#include <cstddef>
+#include <vector>
+#include <algorithm>
+#include <limits>
+#include <ostream>
+
+#if defined(__x86_64__) || defined(_M_X64)
+  #include <immintrin.h>
+#endif
+#if defined(__ARM_NEON)
+  #include <arm_neon.h>
+#endif
+
 struct DynBitset {
     /* -------- 类型与常量 -------- */
     using word_t = std::uint64_t;
@@ -41,16 +55,158 @@ struct DynBitset {
 
     /* -------- 逻辑运算 (原地) -------- */
     inline void assign_and(const DynBitset &o) {
-        for (std::size_t i = 0, N = data.size(); i < N; ++i) data[i] &= o.data[i];
+        // 支持不同长度时取交集；自赋值时仅需掩去尾部
+        if (&o == this) { trim_tail(); return; }
+        const std::size_t N = std::min(data.size(), o.data.size());
+
+    #if defined(__AVX512F__)
+        // 512-bit: 每次 8×u64
+        std::size_t i = 0, L = N & ~std::size_t(7);
+        for (; i < L; i += 8) {
+            __m512i a = _mm512_loadu_si512(reinterpret_cast<const void*>(&data[i]));
+            __m512i b = _mm512_loadu_si512(reinterpret_cast<const void*>(&o.data[i]));
+            a = _mm512_and_si512(a, b);
+            _mm512_storeu_si512(reinterpret_cast<void*>(&data[i]), a);
+        }
+        for (; i < N; ++i) data[i] &= o.data[i];
+    #elif defined(__AVX2__)
+        // 256-bit: 每次 4×u64
+        std::size_t i = 0, L = N & ~std::size_t(3);
+        for (; i < L; i += 4) {
+            __m256i a = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&data[i]));
+            __m256i b = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&o.data[i]));
+            a = _mm256_and_si256(a, b);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(&data[i]), a);
+        }
+        for (; i < N; ++i) data[i] &= o.data[i];
+    #elif defined(__SSE2__)
+        // 128-bit: 每次 2×u64
+        std::size_t i = 0, L = N & ~std::size_t(1);
+        for (; i < L; i += 2) {
+            __m128i a = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&data[i]));
+            __m128i b = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&o.data[i]));
+            a = _mm_and_si128(a, b);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(&data[i]), a);
+        }
+        if (i < N) data[i] &= o.data[i];
+    #elif defined(__ARM_NEON)
+        // NEON: 每次 2×u64
+        std::size_t i = 0, L = N & ~std::size_t(1);
+        for (; i < L; i += 2) {
+            uint64x2_t a = vld1q_u64(&data[i]);
+            uint64x2_t b = vld1q_u64(&o.data[i]);
+            a = vandq_u64(a, b);
+            vst1q_u64(&data[i], a);
+        }
+        if (i < N) data[i] &= o.data[i];
+    #else
+        for (std::size_t i = 0; i < N; ++i) data[i] &= o.data[i];
+    #endif
+        // AND 理论上不会点亮尾部，但为了严谨性，仍然掩掉无效尾位
+        trim_tail();
     }
 
     inline void assign_or(const DynBitset &o) {
-        for (std::size_t i = 0, N = data.size(); i < N; ++i) data[i] |= o.data[i];
+        if (&o == this) { trim_tail(); return; }
+        const std::size_t N = std::min(data.size(), o.data.size());
+
+    #if defined(__AVX512F__)
+        std::size_t i = 0, L = N & ~std::size_t(7);
+        for (; i < L; i += 8) {
+            __m512i a = _mm512_loadu_si512(reinterpret_cast<const void*>(&data[i]));
+            __m512i b = _mm512_loadu_si512(reinterpret_cast<const void*>(&o.data[i]));
+            a = _mm512_or_si512(a, b);
+            _mm512_storeu_si512(reinterpret_cast<void*>(&data[i]), a);
+        }
+        for (; i < N; ++i) data[i] |= o.data[i];
+    #elif defined(__AVX2__)
+        std::size_t i = 0, L = N & ~std::size_t(3);
+        for (; i < L; i += 4) {
+            __m256i a = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&data[i]));
+            __m256i b = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&o.data[i]));
+            a = _mm256_or_si256(a, b);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(&data[i]), a);
+        }
+        for (; i < N; ++i) data[i] |= o.data[i];
+    #elif defined(__SSE2__)
+        std::size_t i = 0, L = N & ~std::size_t(1);
+        for (; i < L; i += 2) {
+            __m128i a = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&data[i]));
+            __m128i b = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&o.data[i]));
+            a = _mm_or_si128(a, b);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(&data[i]), a);
+        }
+        if (i < N) data[i] |= o.data[i];
+    #elif defined(__ARM_NEON)
+        std::size_t i = 0, L = N & ~std::size_t(1);
+        for (; i < L; i += 2) {
+            uint64x2_t a = vld1q_u64(&data[i]);
+            uint64x2_t b = vld1q_u64(&o.data[i]);
+            a = vorrq_u64(a, b);
+            vst1q_u64(&data[i], a);
+        }
+        if (i < N) data[i] |= o.data[i];
+    #else
+        for (std::size_t i = 0; i < N; ++i) data[i] |= o.data[i];
+    #endif
+        // OR 可能点亮无效尾位，必须掩掉
+        trim_tail();
     }
 
     inline void assign_xor(const DynBitset &o) {
-        for (std::size_t i = 0, N = data.size(); i < N; ++i) data[i] ^= o.data[i];
+        if (&o == this) { reset_all(); return; }
+        const std::size_t N = std::min(data.size(), o.data.size());
+
+    #if defined(__AVX512F__)
+        std::size_t i = 0, L = N & ~std::size_t(7);
+        for (; i < L; i += 8) {
+            __m512i a = _mm512_loadu_si512(reinterpret_cast<const void*>(&data[i]));
+            __m512i b = _mm512_loadu_si512(reinterpret_cast<const void*>(&o.data[i]));
+            a = _mm512_xor_si512(a, b);
+            _mm512_storeu_si512(reinterpret_cast<void*>(&data[i]), a);
+        }
+        for (; i < N; ++i) data[i] ^= o.data[i];
+    #elif defined(__AVX2__)
+        std::size_t i = 0, L = N & ~std::size_t(3);
+        for (; i < L; i += 4) {
+            __m256i a = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&data[i]));
+            __m256i b = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&o.data[i]));
+            a = _mm256_xor_si256(a, b);
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(&data[i]), a);
+        }
+        for (; i < N; ++i) data[i] ^= o.data[i];
+    #elif defined(__SSE2__)
+        std::size_t i = 0, L = N & ~std::size_t(1);
+        for (; i < L; i += 2) {
+            __m128i a = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&data[i]));
+            __m128i b = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&o.data[i]));
+            a = _mm_xor_si128(a, b);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(&data[i]), a);
+        }
+        if (i < N) data[i] ^= o.data[i];
+    #elif defined(__ARM_NEON)
+        std::size_t i = 0, L = N & ~std::size_t(1);
+        for (; i < L; i += 2) {
+            uint64x2_t a = vld1q_u64(&data[i]);
+            uint64x2_t b = vld1q_u64(&o.data[i]);
+            a = veorq_u64(a, b);
+            vst1q_u64(&data[i], a);
+        }
+        if (i < N) data[i] ^= o.data[i];
+    #else
+        for (std::size_t i = 0; i < N; ++i) data[i] ^= o.data[i];
+    #endif
         trim_tail();
+    }
+
+    // 统计 (*this & o) 中 1 的个数；不产生临时对象
+    inline std::size_t count_and(const DynBitset& o) const noexcept {
+        const std::size_t N = std::min(data.size(), o.data.size());
+        std::size_t c = 0;
+        for (std::size_t i = 0; i < N; ++i) {
+            c += __builtin_popcountll(data[i] & o.data[i]);
+        }
+        return c;
     }
 
     /* -------- 计数 / 判空 -------- */

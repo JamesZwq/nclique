@@ -36,19 +36,19 @@ static inline unsigned __int128 binom_u128(T n, T r) noexcept {
 // ========== 索引类 ==========
 class StaticCliqueIndex {
 public:
-    using Id = uint32_t; // 可换 size_t
+    using Id = uint32_t; // 可换 daf::Size
 
 private:
-    size_t k_;
+    daf::Size k_;
     // id -> k_ 连排节点
     std::vector<daf::Size> pool_;
     // rank/hash -> id
     std::vector<robin_hood::unordered_flat_map<uint64_t, Id> > mapList_;
     daf::Size numClique = 0; // 用于统计总 clique 数量
     // ---- rank 计算（组合数排名，保证无碰撞）----
-    uint64_t rank64(const daf::Size *data, size_t len) const noexcept {
+    uint64_t rank64(const daf::Size *data, daf::Size len) const noexcept {
         unsigned __int128 acc = 0;
-        for (size_t i = 0; i < len; ++i) {
+        for (daf::Size i = 0; i < len; ++i) {
             acc += binom_u128(data[i], static_cast<daf::Size>(i + 1));
         }
         return static_cast<uint64_t>(acc);
@@ -56,20 +56,20 @@ private:
 
     uint64_t rank64(const std::vector<daf::Size> &c) const noexcept {
         unsigned __int128 acc = 0;
-        for (size_t i = 0; i < c.size(); ++i) {
+        for (daf::Size i = 0; i < c.size(); ++i) {
             acc += binom_u128(c[i], static_cast<daf::Size>(i + 1));
         }
         return static_cast<uint64_t>(acc); // 足够 k<=8 & n<=2^60；否则可返回 128bit 并哈希
     }
 
     static uint64_t rank64_from_two_sorted(
-        const daf::Size *pivots, size_t pCount,
-        const TreeGraphNode *keeps, size_t keepCount) noexcept {
-        size_t k = pCount + keepCount;
+        const daf::Size *pivots, daf::Size pCount,
+        const TreeGraphNode *keeps, daf::Size keepCount) noexcept {
+        daf::Size k = pCount + keepCount;
         unsigned __int128 acc = 0;
-        size_t i = 0, j = 0;
+        daf::Size i = 0, j = 0;
         // idx 从 1 开始，对应 binom(c[idx-1], idx)
-        for (size_t idx = 1; idx <= k; ++idx) {
+        for (daf::Size idx = 1; idx <= k; ++idx) {
             daf::Size v;
             if (i < pCount && (j >= keepCount || pivots[i] < keeps[j].v)) {
                 v = pivots[i++];
@@ -82,21 +82,21 @@ private:
     }
 
 public:
-    StaticCliqueIndex(size_t K) : k_(K) {
+    StaticCliqueIndex(daf::Size K) : k_(K) {
     }
 
-    StaticCliqueIndex(const DynamicGraph<TreeGraphNode> &treeGraph, const daf::Size maxV, size_t K) : k_(K) {
+    StaticCliqueIndex(const DynamicGraph<TreeGraphNode> &treeGraph, const daf::Size maxV, daf::Size K) : k_(K) {
         build(treeGraph, maxV);
     }
 
     // ------- 批量构建 -------
     void build(const DynamicGraph<TreeGraphNode> &treeGraph, const daf::Size maxV) {
-        daf::StaticVector<daf::Size> countV = treeGraph.cliqueCountPerVAcc(maxV, k_);
+        daf::StaticVector<double> countV = treeGraph.cliqueCountPerVAcc(maxV, k_);
         daf::Size N = treeGraph.cliqueCount(k_);
         mapList_.resize(countV.size());
         for (daf::Size i = 0; i < countV.size(); ++i) {
             if (countV[i] > 0) {
-                mapList_[i].reserve(static_cast<size_t>(countV[i] * 1.1));
+                mapList_[i].reserve(static_cast<daf::Size>(countV[i] * 1.1));
             }
         }
         std::cout << "Clique Index: " << N << " cliques, " << countV.size() << " vertices." << std::endl;
@@ -117,14 +117,14 @@ public:
                                        [&](const daf::StaticVector<daf::Size> &keep,
                                            const daf::StaticVector<daf::Size> &combination) {
                                            // 1) 扩容并准备输出区间
-                                           size_t start = pool_.size();
+                                           daf::Size start = pool_.size();
                                            pool_.resize(start + k_);
                                            daf::Size *out = pool_.data() + start;
 
                                            // 2) 线性归并 combination (长度 m) 和 keep (长度 n),  m+n == k_
-                                           const daf::Size *a = combination.data;
+                                           const daf::Size *a = combination.data();
                                            const daf::Size *a_end = a + combination.size();
-                                           const daf::Size *b = keep.data;
+                                           const daf::Size *b = keep.data();
                                            const daf::Size *b_end = b + keep.size();
 
                                            while (a < a_end && b < b_end) {
@@ -132,17 +132,17 @@ public:
                                            }
                                            if (a < a_end) {
                                                // 剩余 a 段
-                                               size_t rem = a_end - a;
+                                               daf::Size rem = a_end - a;
                                                std::memcpy(out, a, rem * sizeof(daf::Size));
                                            } else if (b < b_end) {
                                                // 剩余 b 段
-                                               size_t rem = b_end - b;
+                                               daf::Size rem = b_end - b;
                                                std::memcpy(out, b, rem * sizeof(daf::Size));
                                            }
 
                                            // 3) 计算组合排名：对刚刚写入的 k_ 个元素做 rank
                                            unsigned __int128 acc = 0;
-                                           for (size_t i = 0; i < k_; ++i) {
+                                           for (daf::Size i = 0; i < k_; ++i) {
                                                daf::Size v = pool_[start + i];
                                                acc += binom_u128(v, static_cast<daf::Size>(i + 1));
                                            }
@@ -166,7 +166,7 @@ public:
     }
 
     std::span<const daf::Size> byId(Id id) const {
-        size_t start = static_cast<size_t>(id) * k_;
+        daf::Size start = static_cast<daf::Size>(id) * k_;
         if (start + k_ > pool_.size()) {
             throw std::out_of_range("bad clique id");
         }
@@ -177,7 +177,7 @@ public:
     Id byClique(const Iterable &c) const {
         // Assume c is sorted and has length k_
         const auto r = c.size();
-        if (static_cast<size_t>(r) != k_) {
+        if (static_cast<daf::Size>(r) != k_) {
             throw std::invalid_argument("byClique: wrong clique size");
         }
         // First element is minimum
@@ -185,7 +185,7 @@ public:
         daf::Size vmin = *it_begin;
         // Compute rank directly from the iterable
         unsigned __int128 acc = 0;
-        size_t idx = 0;
+        daf::Size idx = 0;
         for (auto it = it_begin; it != std::end(c); ++it, ++idx) {
             acc += binom_u128(static_cast<daf::Size>(*it),
                               static_cast<daf::Size>(idx + 1));
@@ -214,7 +214,7 @@ public:
 
         // 3) 计算 rank
         unsigned __int128 acc = 0;
-        size_t idx = 0;
+        daf::Size idx = 0;
         for (auto it = std::begin(c); it != std::end(c); ++it, ++idx) {
             acc += binom_u128(static_cast<daf::Size>(*it),
                               static_cast<daf::Size>(idx + 1));
@@ -241,8 +241,8 @@ public:
         return {newId, true};
     }
 
-    Id byClique(const daf::Size *pivots, size_t pivotCount,
-                const TreeGraphNode *keeps, size_t keepCount) const {
+    Id byClique(const daf::Size *pivots, daf::Size pivotCount,
+                const TreeGraphNode *keeps, daf::Size keepCount) const {
         if (pivotCount == 0 || pivotCount + keepCount != k_) {
             throw std::invalid_argument(
                 "byClique: pivotCount must be >=1 and pivotCount+keepCount==k");
@@ -277,8 +277,8 @@ public:
         > >
     Id byClique(const PivotContainer &pivots,
                 const KeepContainer &keeps) const {
-        const size_t pCount = pivots.size();
-        const size_t kCount = keeps.size();
+        const daf::Size pCount = pivots.size();
+        const daf::Size kCount = keeps.size();
         if (pCount == 0 || pCount + kCount != k_) {
             throw std::invalid_argument(
                 "byClique: pivotCount must be >=1 and pivotCount+keepCount==k");
@@ -294,7 +294,7 @@ public:
 
         // 2) 一次归并同时计算 rank
         unsigned __int128 acc = 0;
-        size_t idx = 1; // binom(_, idx)
+        daf::Size idx = 1; // binom(_, idx)
         auto itP = std::begin(pivots), endP = std::end(pivots);
         auto itK = std::begin(keeps), endK = std::end(keeps);
 
@@ -355,7 +355,7 @@ public:
         }
 
         // 2) 验证所有 mapList_ 桶中的 key/id
-        for (size_t i = 0; i < mapList_.size(); ++i) {
+        for (daf::Size i = 0; i < mapList_.size(); ++i) {
             const auto &bucket = mapList_[i];
             for (auto const &kv: bucket) {
                 uint64_t key = kv.first;

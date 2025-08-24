@@ -139,9 +139,9 @@ DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &edgeGraph
 
         // of vertex
         fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(vertex,
-                                                     vertexSets.data, vertexLookup.data,
+                                                     vertexSets.data(), vertexLookup.data(),
                                                      edgeGraph,
-                                                     neighborsInP.data, numNeighbors.data,
+                                                     neighborsInP.data(), numNeighbors.data(),
                                                      &beginX, &beginP, &beginR,
                                                      &newBeginX, &newBeginP, &newBeginR);
 
@@ -150,9 +150,9 @@ DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &edgeGraph
         keepV.clear();
         keepV.push_back(vertex);
         // keepV.push_back(vertex);
-        listAllCliquesDegeneracyRecursive_VedgeGraph(vertexSets.data,
-                                                     vertexLookup.data, neighborsInP.data,
-                                                     numNeighbors.data, newBeginP,
+        listAllCliquesDegeneracyRecursive_VedgeGraph(vertexSets.data(),
+                                                     vertexLookup.data(), neighborsInP.data(),
+                                                     numNeighbors.data(), newBeginP,
                                                      newBeginR, keepV, dropV, max_k, min_k, treeGraph);
 
         beginR = beginR + 1;

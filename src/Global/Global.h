@@ -22,6 +22,7 @@
 #include <span>
 #include <tbb/spin_mutex.h>
 #include <csignal>
+#include <memory>
 // #include <google/dense_hash_set>
 
 #include <iomanip>
@@ -35,7 +36,7 @@
 #define MAX_CSIZE 400
 
 namespace daf {
-    using Size = uint64_t;
+    using Size = uint32_t;
     using CliqueSize = uint16_t;
     static constexpr Size UNDEFINED = std::numeric_limits<Size>::max();
 
@@ -58,132 +59,105 @@ namespace daf {
 
     template<typename T>
     class StaticVector {
-        static_assert(std::is_copy_constructible_v<T>, "StaticVector requires T to be trivially copyable");
+        static_assert(std::is_copy_constructible_v<T>,
+                      "StaticVector requires T to be copy-constructible");
 
     public:
-        typedef T *iterator;
-        typedef const T *const_iterator;
+        using iterator = T *;
+        using const_iterator = const T *;
         using value_type = T;
+        using Size = daf::Size;
 
-        daf::Size c_size;
-        daf::Size maxSize;
-        T *data;
+        // 当前有效元素数 / 容量
+        Size c_size = 0;
+        Size maxSize = 0;
 
+    private:
+        // 共享拥有，避免泄漏/双删；保持浅拷贝语义
+        std::shared_ptr<T[]> data_;
 
-        explicit StaticVector(const daf::Size maxSize = MAX_CSIZE) : c_size(0), maxSize(maxSize),
-                                                                     data(new T[maxSize]) {
+    public:
+        explicit StaticVector(Size cap = MAX_CSIZE)
+            : c_size(0), maxSize(cap),
+              data_(cap
+                        ? std::shared_ptr<T[]>(
+                            new T[cap], std::default_delete<T[]>()) // C++17 兼容
+                        : std::shared_ptr<T[]>()) {
         }
 
-        // copy operator
-        StaticVector(const StaticVector &other) : c_size(other.c_size), maxSize(other.maxSize), data(other.data) {
+        // 拷贝/移动：共享同一缓冲区（浅拷贝），O(1)
+        StaticVector(const StaticVector &) = default;
+
+        StaticVector &operator=(const StaticVector &) = default;
+
+        StaticVector(StaticVector &&) noexcept = default;
+
+        StaticVector &operator=(StaticVector &&) noexcept = default;
+
+        // 自动释放（shared_ptr 负责）
+        ~StaticVector() = default;
+
+        // 与老接口保持一致
+        explicit operator T *() { return data(); }
+        T *getData() const { return data(); }
+        T *data() const { return data_.get(); }
+
+        void push_back_with_check(const T &v) {
+            if (c_size >= maxSize) reAllocate(grow_capacity());
+            data()[c_size++] = v;
         }
 
-        StaticVector &operator=(const StaticVector &other) {
-            if (this == &other) {
-                return *this;
-            }
-            c_size = other.c_size;
-            maxSize = other.maxSize;
-            data = other.data;
-            // std::cout << "copy constructor" << std::endl;
-            return *this;
-        }
-
-        bool operator==(const StaticVector &vertices) const {
-            if (c_size != vertices.c_size || maxSize != vertices.maxSize) {
-                return false;
-            }
-            // for (daf::Size i = 0; i < c_size; i++) {
-            //     if (data[i] != vertices.data[i]) {
-            //         return false;
-            //     }
-            // }
-            return std::memcmp(data, vertices.data, c_size * sizeof(T)) == 0;
-        }
-
-
-        StaticVector(StaticVector &&other) noexcept : c_size(other.c_size), data(other.data), maxSize(other.maxSize) {
-            other.data = nullptr;
-            other.c_size = 0;
-        }
-
-        explicit operator T *() {
-            return data;
-        }
-
-
-        void push_back_with_check(const T &value) {
-            if (c_size >= maxSize) {
-                reAllocate(std::max(maxSize * 1.5, maxSize + 1.1));
-                // std::cout << "Reallocating memory for StaticVector, current size: " << c_size
-                //           << ", new max size: " << maxSize << std::endl;
-            }
-            data[c_size++] = value;
-        }
-
-
-        void push_back(const T &value) {
-            if (c_size >= maxSize) {
-                reAllocate(maxSize * 1.5);
-                // std::cout << "Reallocating memory for StaticVector, current size: " << c_size
-                //           << ", new max size: " << maxSize << std::endl;
-            }
-            data[c_size++] = value;
+        void push_back(const T &v) {
+            if (c_size >= maxSize) reAllocate(grow_capacity());
+            data()[c_size++] = v;
         }
 
         template<typename... Args>
         void emplace_back(Args &&... args) {
-            // 对于原始内存，可用 placement new；如果 data 已经是 T 类型数组直接赋值也行
-            if (c_size >= maxSize) {
-                reAllocate(maxSize * 1.5);
-            }
-            new(&data[c_size]) T(std::forward<Args>(args)...);
+            if (c_size >= maxSize) reAllocate(grow_capacity());
+            new(data() + c_size) T(std::forward<Args>(args)...);
             ++c_size;
         }
 
-        void pop_back() {
-            c_size--;
-        }
+        void pop_back() { --c_size; }
 
-        // erase
-        void remove(daf::Size index) {
+        // O(1) 删除：与原来一致，用末尾覆盖
+        void remove(Size index) {
 #ifndef NDEBUG
-            if (index >= c_size) {
-                throw std::out_of_range("Index out of range.");
-            }
+            if (index >= c_size) throw std::out_of_range("Index out of range.");
 #endif
-            data[index] = data[--c_size];
+            data()[index] = std::move(data()[--c_size]);
         }
 
-        void extend(const T *begin, daf::Size size) {
-            std::memcpy(data + c_size, begin, size * sizeof(T));
-            c_size += size;
+        // 追加一段（注意：沿用你原逻辑，这里不额外检查容量）
+        void extend(const T *begin, Size sz) {
+            std::memcpy(data() + c_size, begin, sz * sizeof(T));
+            c_size += sz;
         }
 
         template<typename BinaryPred = std::equal_to<T> >
         void unique(BinaryPred comp = BinaryPred()) noexcept {
             if (c_size < 2) return;
-            daf::Size write = 1;
-            for (daf::Size read = 1; read < c_size; ++read) {
-                if (!comp(data[read], data[write - 1])) {
-                    data[write++] = data[read];
+            Size write = 1;
+            for (Size read = 1; read < c_size; ++read) {
+                if (!comp(data()[read], data()[write - 1])) {
+                    data()[write++] = data()[read];
                 }
             }
             c_size = write;
         }
 
-        [[nodiscard]] bool empty() const {
-            return c_size == 0;
-        }
-
-        void clear() {
-            c_size = 0;
-        }
+        [[nodiscard]] bool empty() const { return c_size == 0; }
+        void clear() { c_size = 0; }
 
         [[nodiscard]] StaticVector deepCopy() const {
             StaticVector copy(maxSize);
             copy.c_size = c_size;
-            std::memcpy(copy.data, data, c_size * sizeof(T));
+            if constexpr (std::is_trivially_copyable_v<T>) {
+                std::memcpy(copy.data(), data(), c_size * sizeof(T));
+            } else {
+                for (Size i = 0; i < c_size; ++i) copy.data()[i] = data()[i];
+            }
             return copy;
         }
 
@@ -192,161 +166,85 @@ namespace daf {
             c_size = newSize;
         }
 
-        // reserve
-        void reserve(Size newSize) {
-            if (newSize > maxSize) {
-                T *newData = new T[newSize];
-                std::memcpy(newData, data, c_size * sizeof(T));
-                delete[] data;
-                data = newData;
-                maxSize = newSize;
-            }
+        void reserve(Size newCap) {
+            if (newCap > maxSize) reAllocate(newCap);
         }
-
 
         void swap(StaticVector &other) {
             std::swap(c_size, other.c_size);
             std::swap(maxSize, other.maxSize);
-            std::swap(data, other.data);
+            data_.swap(other.data_);
         }
 
-        void free() const {
-            delete[] data;
+        // 兼容旧代码：立即释放当前拥有（不影响其他别名）
+        void free() {
+            data_.reset();
+            c_size = 0;
+            maxSize = 0;
         }
 
-        T &front() {
-            return data[0];
-        }
+        T &front() { return data()[0]; }
+        const T &front() const { return data()[0]; }
+        T &back() { return data()[c_size - 1]; }
+        const T &back() const { return data()[c_size - 1]; }
 
-        [[nodiscard]] const T &front() const {
-            return data[0];
-        }
+        T &operator[](Size i) { return data()[i]; }
+        const T &operator[](Size i) const { return data()[i]; }
 
-        T &back() {
-            return data[c_size - 1];
-        }
+        [[nodiscard]] Size size() const { return c_size; }
 
-        [[nodiscard]] const T &back() const {
-            return data[c_size - 1];
-        }
-
-        T &operator[](daf::Size index) {
-// #if DEBUG
-
-// #endif
-            return data[index];
-        }
-
-        const T &operator[](daf::Size index) const {
-// #if DEBUG
-            // if (index >= c_size) {
-            //     throw std::out_of_range("Index out of range.");
-            // }
-// #endif
-            return data[index];
-        }
-
-        [[nodiscard]] daf::Size size() const {
-            return c_size;
-        }
-
-        friend std::ostream &operator<<(std::ostream &os, const StaticVector &vector) {
-            // if type is bool
-            if constexpr (std::is_same_v<T, bool>) {
-                os << std::boolalpha;
-            }
+        // 打印与相等性（对非平凡类型回退逐元素比较）
+        friend std::ostream &operator<<(std::ostream &os, const StaticVector &v) {
+            if constexpr (std::is_same_v<T, bool>) os << std::boolalpha;
             os << "[";
-            for (daf::Size i = 0; i < vector.c_size; i++) {
-                os << vector.data[i];
-                if (i != vector.c_size - 1) {
-                    os << ", ";
-                }
+            for (Size i = 0; i < v.c_size; ++i) {
+                os << v.data()[i];
+                if (i + 1 != v.c_size) os << ", ";
             }
             os << "]";
             return os;
         }
 
+        bool operator==(const StaticVector &o) const {
+            if (c_size != o.c_size || maxSize != o.maxSize) return false;
+            if constexpr (std::is_trivially_copyable_v<T>) {
+                return std::memcmp(data(), o.data(), c_size * sizeof(T)) == 0;
+            } else {
+                for (Size i = 0; i < c_size; ++i)
+                    if (!(data()[i] == o.data()[i])) return false;
+                return true;
+            }
+        }
+
         void print(const std::string &name = "") const {
-            if constexpr (std::is_same_v<T, bool>) {
-                std::cout << std::boolalpha;
-            }
-            std::cout << name << ": [";
-            for (daf::Size i = 0; i < c_size; i++) {
-                std::cout << data[i];
-                if (i != c_size - 1) {
-                    std::cout << ", ";
-                }
-            }
-            std::cout << "]" << std::endl;
+            if constexpr (std::is_same_v<T, bool>) std::cout << std::boolalpha;
+            if (!name.empty()) std::cout << name << ": ";
+            std::cout << *this << '\n';
         }
 
-        [[nodiscard]] T *getData() const {
-            return data;
-        }
-
-        // 添加迭代器接口，支持范围 for 循环
-        iterator begin() {
-            return data;
-        }
-
-        iterator end() {
-            return data + c_size;
-        }
-
-        [[nodiscard]] const_iterator begin() const {
-            return data;
-        }
-
-        [[nodiscard]] const_iterator end() const {
-            return data + c_size;
-        }
-
-        [[nodiscard]] const_iterator cbegin() const {
-            return data;
-        }
-
-        [[nodiscard]] const_iterator cend() const {
-            return data + c_size;
-        }
+        iterator begin() { return data(); }
+        iterator end() { return data() + c_size; }
+        const_iterator begin() const { return data(); }
+        const_iterator end() const { return data() + c_size; }
+        const_iterator cbegin() const { return data(); }
+        const_iterator cend() const { return data() + c_size; }
 
     private:
-        // void resize(Size newSize) {
-        //     if (newSize <= maxSize) {
-        //         // 如果只是缩小，直接改变当前大小即可
-        //         c_size = newSize;
-        //         return;
-        //     }
-        //     // 扩容：申请新内存，注意先申请再 delete[]，保证异常安全
-        //     T* newData = new T[newSize];
-        //     // 拷贝旧数据——如果 T 是 POD 类型，可换成 std::memcpy；否则用 std::move 或 std::copy
-        //     if constexpr(std::is_trivially_copyable<T>::value) {
-        //         std::memcpy(newData, data, sizeof(T) * c_size);
-        //     } else {
-        //         for (Size i = 0; i < c_size; ++i) {
-        //             newData[i] = std::move(data[i]);
-        //         }
-        //     }
-        //     // 释放旧内存
-        //     delete[] data;
-        //     // 指针、容量、当前大小更新
-        //     data    = newData;
-        //     maxSize = newSize;
-        //     c_size  = newSize;
-        // }
-        void reAllocate(Size newSize) {
-            if (newSize > maxSize) {
-                T *newData = new T[newSize];
-                if constexpr (std::is_trivially_copyable<T>::value) {
-                    std::memcpy(newData, data, sizeof(T) * c_size);
-                } else {
-                    for (Size i = 0; i < c_size; ++i) {
-                        newData[i] = std::move(data[i]);
-                    }
-                }
-                delete[] data;
-                data = newData;
-                maxSize = newSize;
+        // 1.5x 扩容策略（整型安全）
+        Size grow_capacity() const {
+            return maxSize ? (maxSize + (maxSize >> 1) + 1) : Size(1);
+        }
+
+        void reAllocate(Size newCap) {
+            if (newCap <= maxSize) return;
+            std::shared_ptr<T[]> newData(new T[newCap], std::default_delete<T[]>());
+            if constexpr (std::is_trivially_copyable_v<T>) {
+                std::memcpy(newData.get(), data(), c_size * sizeof(T));
+            } else {
+                for (Size i = 0; i < c_size; ++i) newData[i] = std::move(data()[i]);
             }
+            data_.swap(newData); // 旧缓冲区在无人持有时自动释放
+            maxSize = newCap;
         }
     };
 
@@ -557,12 +455,102 @@ namespace daf {
         return cont;
     }
 
+    // template<class Container, class Fn>
+    // void enumerateCombinations(const Container &C, std::size_t k, Fn &&cb) {
+    //     const std::size_t n = C.size();
+    //     if (k == 0 || k > n) return;
+    //
+    //     // index buffer
+    //     daf::StaticVector<std::size_t> idx(k);
+    //     // use shot vector to avoid heap allocation
+    //     idx.c_size = k;
+    //     for (std::size_t i = 0; i < k; ++i) idx[i] = i;
+    //
+    //     daf::StaticVector<typename Container::value_type> comb(k);
+    //     comb.c_size = k;
+    //
+    //     auto emit = [&]() {
+    //         for (std::size_t t = 0; t < k; ++t) comb[t] = C[idx[t]];
+    //         if constexpr (std::is_same_v<void,
+    //             decltype(std::forward<Fn>(cb)(comb))>)
+    //             cb(comb);
+    //         else
+    //             if (!cb(comb)) return false;
+    //         return true;
+    //     };
+    //     if (!emit()) return;
+    //
+    //     while (true) {
+    //         std::size_t i = k;
+    //         // find right-most idx[i] that can ++
+    //         while (i > 0 && idx[i - 1] == n - k + i - 1) --i;
+    //         if (i == 0) break; // finished
+    //
+    //         --i;
+    //         ++idx[i];
+    //         for (std::size_t j = i + 1; j < k; ++j) idx[j] = idx[j - 1] + 1;
+    //         if (!emit()) break;
+    //     }
+    // }
+
+
+    template<class Container, class Fn, size_t K>
+    inline void enumerateCombinations_fixedK(const Container &C, Fn &&cb) {
+        static_assert(K >= 1, "K must be >= 1");
+        const size_t n = C.size();
+        if (K > n) return;
+
+        // 1) 栈上 idx、栈上 comb（零堆分配）
+        std::array<size_t, K> idx;
+        for (size_t i = 0; i < K; ++i) idx[i] = i;
+
+        daf::StaticVector<typename Container::value_type> comb(K);
+        comb.c_size = K; // 你自己的 StaticVector 不是标准容器，这里保持原用法
+
+        auto emit = [&]() -> bool {
+            // 就地写 comb
+            for (size_t t = 0; t < K; ++t) comb[t] = C[idx[t]];
+            if constexpr (std::is_same_v<void, decltype(std::forward<Fn>(cb)(comb))>) {
+                cb(comb);
+                return true;
+            } else {
+                return cb(comb);
+            }
+        };
+
+        if (!emit()) return;
+
+        while (true) {
+            // 2) 经典“右端进位”推进（对 K 常量，编译器可很好展开）
+            size_t i = K;
+            while (i > 0 && idx[i - 1] == n - K + i - 1) --i;
+            if (i == 0) break;
+            --i;
+            ++idx[i];
+            for (size_t j = i + 1; j < K; ++j) idx[j] = idx[j - 1] + 1;
+            if (!emit()) break;
+        }
+    }
+
+    // 入口：不改你现在的接口
     template<class Container, class Fn>
-    void enumerateCombinations(const Container &C, std::size_t k, Fn &&cb) {
+    void enumerateCombinations(const Container &C, size_t k, Fn &&cb) {
+        switch (k) {
+            case 1: return enumerateCombinations_fixedK<Container, Fn, 1>(C, std::forward<Fn>(cb));
+            case 2: return enumerateCombinations_fixedK<Container, Fn, 2>(C, std::forward<Fn>(cb));
+            case 3: return enumerateCombinations_fixedK<Container, Fn, 3>(C, std::forward<Fn>(cb));
+            case 4: return enumerateCombinations_fixedK<Container, Fn, 4>(C, std::forward<Fn>(cb));
+            case 5: return enumerateCombinations_fixedK<Container, Fn, 5>(C, std::forward<Fn>(cb));
+            case 6: return enumerateCombinations_fixedK<Container, Fn, 6>(C, std::forward<Fn>(cb));
+            case 7: return enumerateCombinations_fixedK<Container, Fn, 7>(C, std::forward<Fn>(cb));
+            case 8: return enumerateCombinations_fixedK<Container, Fn, 8>(C, std::forward<Fn>(cb));
+            default: break; // 走通用版本
+        }
+
+        // ===== 你的原通用版本（保底路径）=====
         const std::size_t n = C.size();
         if (k == 0 || k > n) return;
 
-        // index buffer
         daf::StaticVector<std::size_t> idx(k);
         idx.c_size = k;
         for (std::size_t i = 0; i < k; ++i) idx[i] = i;
@@ -572,8 +560,7 @@ namespace daf {
 
         auto emit = [&]() {
             for (std::size_t t = 0; t < k; ++t) comb[t] = C[idx[t]];
-            if constexpr (std::is_same_v<void,
-                decltype(std::forward<Fn>(cb)(comb))>)
+            if constexpr (std::is_same_v<void, decltype(std::forward<Fn>(cb)(comb))>)
                 cb(comb);
             else
                 if (!cb(comb)) return false;
@@ -583,16 +570,15 @@ namespace daf {
 
         while (true) {
             std::size_t i = k;
-            // find right-most idx[i] that can ++
             while (i > 0 && idx[i - 1] == n - k + i - 1) --i;
-            if (i == 0) break; // finished
-
+            if (i == 0) break;
             --i;
             ++idx[i];
             for (std::size_t j = i + 1; j < k; ++j) idx[j] = idx[j - 1] + 1;
             if (!emit()) break;
         }
     }
+
 
     template<typename Container, typename T, typename Fn>
     bool enumerateCombinations(const Container &C,
@@ -845,18 +831,18 @@ namespace daf {
 }
 
 struct TreeGraphNode {
-    uint64_t v: 63;
-    uint64_t isPivot: 1;
+    daf::Size v: 63;
+    daf::Size isPivot: 1;
 
     constexpr TreeGraphNode() = default;
 
-    constexpr TreeGraphNode(uint64_t v, bool isPivot) : v(v), isPivot(isPivot) {
+    constexpr TreeGraphNode(daf::Size v, bool isPivot) : v(v), isPivot(isPivot) {
     }
 
-    constexpr explicit TreeGraphNode(uint64_t v) : v(v), isPivot(false) {
+    constexpr explicit TreeGraphNode(daf::Size v) : v(v), isPivot(false) {
     }
 
-    constexpr TreeGraphNode(uint64_t v, uint64_t isPivot) : v(v), isPivot(isPivot) {
+    constexpr TreeGraphNode(daf::Size v, daf::Size isPivot) : v(v), isPivot(isPivot) {
     }
 
     // <<
@@ -871,7 +857,7 @@ struct TreeGraphNode {
         return os;
     }
 
-    operator uint64_t() const noexcept { return v; }
+    operator daf::Size() const noexcept { return v; }
     // == operater with unit64
     constexpr bool operator==(const TreeGraphNode &other) const {
         return v == other.v;
@@ -901,16 +887,16 @@ struct TreeGraphNode {
 
 
 inline const TreeGraphNode TreeGraphNode::EMPTYKEY{
-    (uint64_t(1) << 63) - 1, false
+    (daf::Size(1) << 63) - 1, false
 };
 inline const TreeGraphNode TreeGraphNode::DELETEDKEY{
-    (uint64_t(1) << 63) - 2, false
+    (daf::Size(1) << 63) - 2, false
 };
 
 template<>
 struct std::hash<TreeGraphNode> {
     size_t operator()(const TreeGraphNode &node) const noexcept {
-        return std::hash<uint64_t>()(node.v);
+        return std::hash<daf::Size>()(node.v);
     }
 };
 

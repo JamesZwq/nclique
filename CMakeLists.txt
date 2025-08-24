@@ -18,6 +18,8 @@ if(APPLE)
             HINTS /opt/homebrew/include /usr/local/include
     )
     include_directories(${SPARSEHASH_INCLUDE_DIR})
+#    set(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG} -g -fno-omit-frame-pointer -fno-inline -fno-inline-functions -fno-inline-functions-called-once")
+#    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -g -fno-omit-frame-pointer")
 else()
     set(CMAKE_CXX_COMPILER "/usr/bin/g++")
     get_filename_component(HOME_DIR "~" REALPATH)
@@ -35,7 +37,7 @@ else()
 endif()
 
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -90,13 +92,9 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
 endif()
 
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -fno-omit-frame-pointer  -fsanitize-address-use-after-scope -fdefer-pop -g")
-#if(CMAKE_BUILD_TYPE MATCHES "Release")
-#    message(STATUS "Release+MSan build")
-#    add_compile_options(-O2 -g
-#            -fsanitize=memory
-#            -fno-omit-frame-pointer
-#            -fno-sanitize-recover=memory)
-#endif()
+if(CMAKE_BUILD_TYPE MATCHES "Release")
+    add_compile_options(-march=native -O3 -DNDEBUG)
+endif()
 #if(CMAKE_BUILD_TYPE STREQUAL "Release")
 #    add_compile_options(-O3 -g -fsanitize=address -fno-sanitize-recover=undefined)
 #    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")

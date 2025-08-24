@@ -199,7 +199,7 @@ daf::StaticVector<double> DynamicGraphSet<TreeGraphNode>::cliqueCount() {
     auto maxdegree = this->maxDegree();
     daf::StaticVector<double> counts(maxdegree + 1);
     counts.c_size = maxdegree + 1;
-    std::memset(counts.data, 0, (maxdegree + 1) * sizeof(double));
+    std::memset(counts.data(), 0, (maxdegree + 1) * sizeof(double));
 
     for (const auto& leaf : this->adj_list) {
         int pivotCount = 0, nonPivotCount = 0;

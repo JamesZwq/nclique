@@ -217,7 +217,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
     std::cout << "cliqueIndex Size : " << cliqueIndex.size() << std::endl;
     // CDSetRSH::printEdgeCore(edgeGraph, degreeE);
 #endif
-
+    // std::abort();
     std::vector<daf::Size> changedLeafIndex(tree.adj_list.size(), std::numeric_limits<daf::Size>::max());
     std::vector<std::vector<daf::Size> > removedRCliqueIdForLeaf;
     std::vector<daf::Size> changedLeaf;
@@ -230,6 +230,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
 
     daf::StaticVector<bool> rCliqueInHeap(cliqueIndex.size());
     // rCliqueInHeap.fill(true);
+
     rCliqueInHeap.resize(cliqueIndex.size());
     memset(rCliqueInHeap.getData(), true, cliqueIndex.size() * sizeof(bool));
 
@@ -490,17 +491,17 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
     // /Users/zhangwenqian/UNSW/pivoter/a
     // std::sort(coreE, coreE + edgeGraph.adj_list.size());
     std::vector<std::pair<std::vector<daf::Size>, int> > sortedK;
-    sortedK.reserve(countingRClique.size());
-
-    for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
-        auto clique = cliqueIndex.byId(i);
-        std::vector<daf::Size> cliqueCopy(clique.begin(), clique.end());
-        sortedK.emplace_back(cliqueCopy, coreRClique[i]);
-    }
-    std::sort(sortedK.begin(), sortedK.end(),
-              [](const auto &a, const auto &b) {
-                  return a.second < b.second; // 按照 core 值降序排序
-              });
+    // sortedK.reserve(countingRClique.size());
+    //
+    // for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
+    //     auto clique = cliqueIndex.byId(i);
+    //     std::vector<daf::Size> cliqueCopy(clique.begin(), clique.end());
+    //     sortedK.emplace_back(cliqueCopy, coreRClique[i]);
+    // }
+    // std::sort(sortedK.begin(), sortedK.end(),
+    //           [](const auto &a, const auto &b) {
+    //               return a.second < b.second; // 按照 core 值降序排序
+    //           });
     // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/a.out", "w");
     // for (auto i: sortedK) {
     //     fprintf(file, "%d\n", (int) i.second);

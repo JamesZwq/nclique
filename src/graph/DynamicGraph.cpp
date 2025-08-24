@@ -158,7 +158,7 @@ daf::StaticVector<double> DynamicGraph<TreeGraphNode>::cliqueCount() const {
     auto maxdegree = this->maxDegree();
     daf::StaticVector<double> counts(maxdegree + 1);
     counts.c_size = maxdegree + 1;
-    memset(counts.data, 0, (maxdegree + 1) * sizeof(double));
+    memset(counts.data(), 0, (maxdegree + 1) * sizeof(double));
     for (auto leaf: this->adj_list) {
         int pivotCount = 0, nonPivotCount = 0;
         for (const auto &node: leaf) {
@@ -183,7 +183,7 @@ template<>
 daf::StaticVector<double> DynamicGraph<TreeGraphNode>::cliqueCountPerV(daf::Size maxV, daf::Size k) const {
     daf::StaticVector<double> countsV(maxV);
     countsV.c_size = maxV;
-    memset(countsV.data, 0, maxV * sizeof(double));
+    memset(countsV.data(), 0, maxV * sizeof(double));
     for (auto leaf: this->adj_list) {
         int pivotCount = 0, nonPivotCount = 0;
         for (const auto &node: leaf) {
@@ -213,12 +213,12 @@ daf::StaticVector<double> DynamicGraph<TreeGraphNode>::cliqueCountPerV(daf::Size
 
 
 template<>
-daf::StaticVector<daf::Size> DynamicGraph<TreeGraphNode>::cliqueCountPerVAcc(daf::Size maxV, daf::Size k) const {
-    daf::StaticVector<daf::Size> countsV(maxV);
+daf::StaticVector<double> DynamicGraph<TreeGraphNode>::cliqueCountPerVAcc(daf::Size maxV, daf::Size k) const {
+    daf::StaticVector<double> countsV(maxV);
     countsV.c_size = maxV;
-    memset(countsV.data, 0, maxV * sizeof(double));
+    memset(countsV.data(), 0, maxV * sizeof(double));
     for (auto leaf: this->adj_list) {
-        int pivotCount = 0, nonPivotCount = 0;
+        daf::CliqueSize pivotCount = 0, nonPivotCount = 0;
         for (const auto &node: leaf) {
             if (node.isPivot) {
                 pivotCount++;
@@ -227,11 +227,11 @@ daf::StaticVector<daf::Size> DynamicGraph<TreeGraphNode>::cliqueCountPerVAcc(daf
             }
         }
         const daf::CliqueSize rsize = pivotCount + nonPivotCount;
-        if (k > rsize || nonPivotCount > k) {
+        if (k > rsize || nonPivotCount > k - 1) {
             continue;
         }
-        const daf::Size PCount = nCr[pivotCount - 1][k - nonPivotCount - 1];
-        const daf::Size NPCount = nCr[pivotCount][k - nonPivotCount];
+        const auto PCount = nCr[pivotCount - 1][k - nonPivotCount - 1];
+        const auto NPCount = nCr[pivotCount][k - nonPivotCount];
         for (const auto &node: leaf) {
             if (node.isPivot) {
                 countsV[node.v] += PCount;

@@ -137,7 +137,7 @@ class DynamicGraph {
         daf::Size numBipartEdge(daf::Size k);
 
         daf::StaticVector<double> cliqueCountPerV(daf::Size maxV, daf::Size k) const;
-        daf::StaticVector<daf::Size> cliqueCountPerVAcc(daf::Size maxV, daf::Size k) const;
+        daf::StaticVector<double> cliqueCountPerVAcc(daf::Size maxV, daf::Size k) const;
 
         std::vector<std::vector<T> > adj_list;
 private:

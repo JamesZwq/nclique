@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     populate_nCr();
     daf::vListMap.resize(edgeGraph.n + 1);
     // std::numeric_limits<daf::Size>::max();
-    memset(daf::vListMap.data, -1, edgeGraph.n * sizeof(daf::Size));
+    memset(daf::vListMap.data(), -1, edgeGraph.n * sizeof(daf::Size));
     // auto vertexMap = edgeGraph.sortByDegeneracyOrder();
 
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&] {
@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
         }
     }
 
+    // return 0;
 
     edgeGraph.initCore();
     // treeGraph.printGraphPerV();

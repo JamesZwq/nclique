@@ -22,7 +22,7 @@ void MultiBranchTree::printTree() const {
 daf::StaticVector<double> MultiBranchTree::cliqueCount() const {
     daf::StaticVector<double> counts(root->MaxDeep + 1);
     counts.c_size = root->MaxDeep + 1;
-    memset(counts.data, 0, (root->MaxDeep + 1) * sizeof(double));
+    memset(counts.data(), 0, (root->MaxDeep + 1) * sizeof(double));
     std::function<void(TreeNode *, daf::CliqueSize, daf::CliqueSize)> helper =
             [&](TreeNode *node, daf::CliqueSize pivotCount, daf::CliqueSize nonPivotCount) {
         if (node->children.empty()) {

@@ -3,13 +3,14 @@
 #define BKClique_HPP
 
 #include <algorithm>
-#include <algorithm>
 #include <bitset>
 #include <vector>
 #include <ranges>
 #include "Global/Global.h"
 #include "graph/DynamicGraph.h"
 #include <boost/dynamic_bitset.hpp>
+#include <limits>
+#include <cassert>
 
 extern double nCr[1001][401];
 // ---------------- fast dynamic bitset  ( ≤ 400 bits ) ----------------
@@ -19,6 +20,7 @@ extern double nCr[1001][401];
 #include <cstdint>
 #include <algorithm>
 #include <limits>
+#include <cassert>
 
 
 namespace bkRmClique {
@@ -26,6 +28,8 @@ namespace bkRmClique {
     // using Bitset = DynBitset;
     // using Bitset = boost::dynamic_bitset<>;
     using Bitset = DynBitset;
+    using VIdx = uint16_t;
+    static_assert(std::numeric_limits<VIdx>::max() >= 400, "VIdx must hold n<=400");
 
     /**
      * 和原来成员版本一模一样，只是把 n 也作为参数传进来
@@ -107,17 +111,15 @@ namespace bkRmClique {
 
         // 2) 选 pivot u ∈ P∪X，使 |P ∧ nbr(u)| 最大
         int bestU = -1, bestCnt = -1;
-        Bitset PX = P;
-        for_each_bit(PX, n, [&](int u) {
-            Bitset nbr = adj[u] & P;
-            int cnt = (int) nbr.count();
+        for_each_bit(P, n, [&](int u) {
+            int cnt = adj[u].count_and(P); // 对应实现里做 word-wise popcount(a[i] & b[i])
             if (cnt > bestCnt) {
                 bestCnt = cnt;
                 bestU = u;
             }
             return true;
         });
-        Bitset candidates = P & ~adj[bestU];
+        // Bitset candidates = ;
         // std::cout << "candidates: " ;
         // std::cout << "bestU: " << bestU << std::endl;
         // printBitset(P, "P");
@@ -125,7 +127,7 @@ namespace bkRmClique {
         // printBitset(adj[bestU], "adj[bestU]");
         // printBitset(candidates, "candidates");
 
-        for_each_bit(candidates, n, [&](int v) {
+        for_each_bit(P & ~adj[bestU], n, [&](int v) {
             // std::cout << v << std::endl;
             Bitset R2 = R;
             R2.set(v);
@@ -143,109 +145,94 @@ namespace bkRmClique {
         });
     }
 
-    template<typename ConflictSetsRange, typename ConflictSetsReverseRange, typename ReportFn>
+    // CSR-based pathSplit with shadow counters (pSize/pivSize)
+    template<typename ReportFn>
     void pathSplit(int n, int r, int minK,
                    Bitset &P,
                    Bitset &pivots,
+                   int &pSize,               // |P|
+                   int &pivSize,             // |pivots|
                    daf::StaticVector<daf::Size> &conflictCount,
                    const daf::StaticVector<daf::Size> &conflictMaxSize,
-                   ConflictSetsRange &conflictSets,
-                   ConflictSetsReverseRange &conflictSetsReverse,
-                   daf::Size nextCid, ReportFn &&report) {
-        // 直接调用 bk_run
-        // std::cout << "===================================================================" << std::endl;
-        // printBitset(P, "P");
-        // printBitset(pivots, "pivots");
-        // std::cout << "conflictCount: " << conflictCount << std::endl;
-        // std::cout << "conflictMaxSize: " << conflictMaxSize << std::endl;
-        // std::cout << "conflictSets: " ;
-        // for (const auto &set : conflictSets) {
-        //     std::cout << "{ ";
-        //     for (auto v : set) {
-        //         std::cout << v << ' ';
-        //     }
-        //     std::cout << " } ";
-        // }
-        // std::cout << std::endl;
-        // std::cout << "conflictSetsReverse: " << conflictSetsReverse << std::endl;
+                   const std::vector<uint32_t> &csOff,
+                   const std::vector<VIdx>     &csCol,
+                   const std::vector<uint32_t> &rsOff,
+                   const std::vector<uint32_t> &rsCol,
+                   daf::Size nextCid,
+                   const Bitset &emptyPivotsForReport,
+                   ReportFn &&report) {
+        // 剪枝：规模或 pivot 约束不满足
+        if (pSize < minK || (pSize - pivSize) > minK) return;
 
-        if ((pivots & ~P).any()) {
-            std::abort();
-        }
-
-        auto currN = P.count();
-        if (currN < minK || currN - pivots.count() > minK) {
+        // 正好满足 |P|-|pivots| == minK → 只保留 P 中非 pivot 的作为 clique 报告
+        if ((pSize - pivSize) == minK) {
+            report(P & (~pivots), emptyPivotsForReport);
             return;
         }
 
-        if (currN - pivots.count() == minK) {
-            Bitset reportPivots(n);
-            reportPivots.reset(); // 初始化为全 false
-            report(P & (~pivots), reportPivots); // 直接报告当前的 P 和 pivots
+        // 寻找第一个违反的冲突集
+        size_t pick = conflictCount.size();
+        for (size_t cid = nextCid; cid < conflictCount.size(); ++cid) {
+            if (conflictCount[cid] >= conflictMaxSize[cid]) { pick = cid; break; }
+        }
+
+        if (pick < conflictCount.size()) {
+            // 收集该冲突集中属于 pivot 的顶点（索引）
+            VIdx pivBuf[400];
+            int pc = 0;
+            for (uint32_t e = csOff[pick]; e < csOff[pick + 1]; ++e) {
+                VIdx v = csCol[e];
+                if (pivots.test(v)) pivBuf[pc++] = v;
+            }
+
+            for (int i = 0; i < pc; ++i) {
+                VIdx v = pivBuf[i];
+
+                bool wasP   = P.test(v);
+                bool wasPi  = pivots.test(v);
+                if (wasP)  { P.reset(v);   --pSize; }
+                if (wasPi) { pivots.reset(v); --pivSize; }
+
+                // v 出现于哪些冲突集：rsOff/rsCol
+                for (uint32_t e = rsOff[static_cast<size_t>(v)];
+                     e < rsOff[static_cast<size_t>(v) + 1]; ++e) {
+                    uint32_t g = rsCol[e];
+                    --conflictCount[g];
+                }
+
+                // 与原逻辑一致：除了第一个，其它分支把上一个 pivot 从 pivots 转回 P
+                if (i != 0) {
+                    VIdx u = pivBuf[i - 1];
+                    if (pivots.test(u)) { pivots.reset(u); --pivSize; }
+                    if (!P.test(u))     { P.set(u);       ++pSize; }
+                }
+
+                pathSplit(n, r, minK, P, pivots, pSize, pivSize,
+                          conflictCount, conflictMaxSize,
+                          csOff, csCol, rsOff, rsCol,
+                          pick + 1, emptyPivotsForReport, report);
+
+                // 回溯
+                for (uint32_t e = rsOff[static_cast<size_t>(v)];
+                     e < rsOff[static_cast<size_t>(v) + 1]; ++e) {
+                    uint32_t g = rsCol[e];
+                    ++conflictCount[g];
+                }
+                if (wasPi) { pivots.set(v); ++pivSize; }
+                if (wasP)  { P.set(v);     ++pSize; }
+            }
+
+            // 复原：除了最后一个，前面的 pivot 需要设回 pivot（匹配原实现最后的 reset pivots）
+            for (int i = 0; i + 1 < pc; ++i) {
+                VIdx u = pivBuf[i];
+                if (!pivots.test(u)) { pivots.set(u); ++pivSize; }
+            }
             return;
         }
 
-        // if (!bkRmClique::for_each_bit(P & (~pivots), n, [&](int v) {
-        //     auto numConflict = 0;
-        //     for (auto cid: conflictSetsReverse[v]) {
-        //         if (conflictCount[cid] >= conflictMaxSize[cid]) {
-        //             numConflict++;
-        //         }
-        //     }
-        //     if (numConflict >= nCr[currN - 1][r - 1]) {
-        //         return false; // 直接返回，后续不需要处理
-        //     }
-        //     return true; // 继续处理下一个点
-        // })) {
-        //     return;
-        // }
-
-        bool noConflict = true;
-        for (daf::Size cid = nextCid; cid < conflictCount.size(); ++cid) {
-            if (conflictCount[cid] >= conflictMaxSize[cid]) {
-                noConflict = false; // 有冲突
-                std::vector<daf::Size> conflictInPivot;
-                conflictInPivot.reserve(conflictMaxSize[cid]);
-                for (auto v: conflictSets[cid]) {
-                    auto idx = daf::vListMap[v];
-                    if (pivots.test(idx)) {
-                        conflictInPivot.push_back(idx);
-                    }
-                }
-                for (int i = 0; i < conflictInPivot.size(); ++i) {
-                    P.reset(conflictInPivot[i]);
-                    pivots.reset(conflictInPivot[i]);
-
-                    for (auto g: conflictSetsReverse[conflictInPivot[i]]) {
-                        conflictCount[g]--;
-                    }
-                    if (i != 0) {
-                        pivots.reset(conflictInPivot[i - 1]);
-                        P.set(conflictInPivot[i - 1]);
-                    }
-                    pathSplit(n, r, minK, P, pivots,
-                              conflictCount, conflictMaxSize, conflictSets, conflictSetsReverse,
-                              cid + 1, std::forward<decltype(report)>(report));
-
-                    for (auto g: conflictSetsReverse[conflictInPivot[i]]) {
-                        conflictCount[g]++;
-                    }
-
-                    P.set(conflictInPivot[i]); // 恢复 P
-                    pivots.set(conflictInPivot[i]); // 恢复 pivots
-                }
-                // reset pivots
-                for (int i = 0; i + 1 < conflictInPivot.size(); ++i) {
-                    pivots.set(conflictInPivot[i]);
-                }
-                return;
-            }
-        }
-        if (noConflict) {
-            // 没有冲突，直接运行原来的 bk_run
-            if (P.count() >= minK) {
-                report(P, pivots); // 直接报告当前的 P 和 pivots
-            }
+        // 没有任何违反冲突集，直接报告（保持原逻辑）
+        if (pSize >= minK) {
+            report(P, pivots);
         }
     }
 
@@ -276,145 +263,104 @@ namespace bkRmClique {
                        int minK,
                        ReportFn &&report) {
         const int n = static_cast<int>(vList.size());
-        // Bitset staticV;        // 真正的 staticVertex
-        Bitset pivots(n);
-        pivots.reset(); // 初始化为全 false
-        std::vector<std::vector<daf::Size> > conflictSetsReverse;
-        // daf::Size maxN = 0;
-        conflictSetsReverse.resize(vList.size());
+        assert(n <= static_cast<int>(std::numeric_limits<VIdx>::max()));
 
+        Bitset pivots(n);  pivots.reset();
+        Bitset P(n);       P.set();
+
+        // vListMap：把原节点 id 映射到 [0..n-1]
         for (int i = 0; i < n; ++i) {
-            daf::vListMap[vList[i]] = i; // 建反向索引
+            daf::vListMap[vList[i]] = i;
             if (vList[i].isPivot) pivots.set(i);
         }
 
-
-        Bitset P(n);
-        P.set(); // 起始 P 为全部顶点（或 ~staticV 按需剪枝）
-        // daf::StaticVector<std::pair<daf::Size, daf::Size> > removeEdgeListPairs;
+        // 初始化计数
         daf::StaticVector<daf::Size> conflictCount, conflictMaxSize;
         conflictCount.resize(conflictSets.size());
         conflictMaxSize.resize(conflictSets.size());
-        for (int i = 0; i < conflictSets.size(); ++i) {
-            for (auto j = 0; j < conflictSets[i].size(); ++j) {
-                auto idx = conflictSets[i][j];
-                if (conflictSetsReverse[daf::vListMap[idx]].empty()) {
-                    conflictSetsReverse[daf::vListMap[idx]].reserve(conflictSets[i].size());
-                }
-                conflictSetsReverse[daf::vListMap[idx]].push_back(i);
-            }
-            conflictCount[i] = conflictSets[i].size();
-            conflictMaxSize[i] = conflictSets[i].size();
+        size_t G = conflictSets.size();
+        size_t total = 0;
+        for (size_t cid = 0; cid < G; ++cid) {
+            daf::Size sz = static_cast<daf::Size>(conflictSets[cid].size());
+            conflictCount[cid]   = sz;
+            conflictMaxSize[cid] = sz;
+            total += (size_t)sz;
         }
-        // 如果一个点出现在所有 conflictSets 中, 那么则先把它从 conflictSets 中删除
+
+        // ---------- 构建 CSR: 冲突集 -> 顶点 (索引) ----------
+        std::vector<uint32_t> csOff(G + 1); csOff[0] = 0;
+        std::vector<VIdx> csCol(total);
+        std::vector<uint32_t> deg(static_cast<size_t>(n), 0u);
+        {
+            size_t pos = 0;
+            for (size_t cid = 0; cid < G; ++cid) {
+                csOff[cid] = static_cast<uint32_t>(pos);
+                for (auto raw : conflictSets[cid]) {
+                    VIdx v = static_cast<VIdx>(daf::vListMap[raw]);
+#ifndef NDEBUG
+                    if (v >= static_cast<VIdx>(n)) { std::abort(); }
+#endif
+                    csCol[pos++] = v;
+                    ++deg[static_cast<size_t>(v)];
+                }
+            }
+            csOff[G] = static_cast<uint32_t>(pos);
+        }
+
+        // 前缀和得到 rsOff
+        std::vector<uint32_t> rsOff(static_cast<size_t>(n) + 1u);
+        rsOff[0] = 0u;
+        for (int v = 0; v < n; ++v) {
+            rsOff[static_cast<size_t>(v) + 1u] = rsOff[static_cast<size_t>(v)] + deg[static_cast<size_t>(v)];
+        }
+
+        // 反向列数组，长度 = 所有出现次数之和
+        std::vector<uint32_t> rsCol;
+        rsCol.resize(rsOff.back());
+
+        // 游标从 rsOff 拷贝一份出来；用 memcpy 等价但这里保持可读
+        std::vector<uint32_t> cur(rsOff.begin(), rsOff.end());
+
+        for (size_t cid = 0; cid < G; ++cid) {
+            const uint32_t begin = csOff[cid];
+            const uint32_t end   = csOff[cid + 1];
+            for (uint32_t e = begin; e < end; ++e) {
+                VIdx v = csCol[e];
+                rsCol[cur[static_cast<size_t>(v)]++] = static_cast<uint32_t>(cid);
+            }
+        }
+
+        // ---------- 预剪枝：若某顶点出现在所有需要的冲突集中，则剔除（与原逻辑一致） ----------
         for (int i = 0; i < n; ++i) {
             daf::Size maxRClique = nCr[n - 1][r - 1];
-            if (conflictSetsReverse[i].size() >= maxRClique) {
-                P.reset(i); // 从 P 中删除这个点
-                if (P.count() < minK) {
-                    return; // 如果 P 的大小小于 minK，直接返回
-                }
-                if (pivots.test(i)) {
-                    pivots.reset(i); // 从 pivots 中删除这个点
-                } else {
-                    return;
-                }
-                for (auto cid: conflictSetsReverse[i]) {
-                    conflictCount[cid]--;
+            if ((daf::Size)deg[i] >= maxRClique) {
+                if (P.test(i)) P.reset(i);
+                if (P.count() < (size_t)minK) return; // 保持原检查
+                if (pivots.test(i)) pivots.reset(i);
+                else return;
+                // 同步减少相关冲突集计数
+                for (uint32_t e = rsOff[i]; e < rsOff[i + 1]; ++e) {
+                    uint32_t cid = rsCol[e];
+                    --conflictCount[cid];
                 }
             }
         }
 
-        // std::cout << "P: " << P << std::endl;
-        // std::cout << "pivots: " << pivots << std::endl;
-        // std::cout <<
-        // VLIST,以及转换完之后的VLIST,还有ConflicSets,以及转换完之后的ConflicSets, vListMap转换之后的
-        // std::cout << "vlist: " << vList << std::endl;
-        // std::cout << "conflictSets: ";
-        // for (const auto &set : conflictSets) {
-        //     std::cout << "{ ";
-        //     for (auto v : set) {
-        //         std::cout << v << ' ';
-        //     }
-        //     std::cout << " } ";
-        // }
-        // std::cout << std::endl;
+        // 影子计数，避免重复 count()
+        int pSize   = (int)P.count();
+        int pivSize = (int)pivots.count();
 
-        // std::vector<Bitset> adj(n, Bitset(n));
-        //
-        // // std::vector<daf::Size>
-        // bkRmClique::for_each_bit(P, n, [&](int v) {
-        //     // 这里的 v 是 vList 中的索引
-        //     adj[v] = P;
-        //     adj[v].reset(v); // 自己不连自己
-        //     return true; // 继续处理下一个点
-        // });
-        //
-        // // std::cout << "pivots: " << pivots << std::endl;
-        // daf::globalCSR.resize((n + 1) * (n) / 2);
-        // // daf::globalCSR.data
-        // std::memset(daf::globalCSR.data, 0, daf::globalCSR.size() * sizeof(daf::Size));
-        // auto staticVertex = Bitset(n);
-        // staticVertex.set(); // 初始化为全 true
-        // for (int i = 0; i < conflictSets.size(); ++i) {
-        //     if (conflictCount[i] < conflictMaxSize[i]) continue;
-        //     for (auto j = 0; j < conflictSets[i].size(); ++j) {
-        //         auto u = daf::vListMap[conflictSets[i][j]];
-        //         for (auto k = j + 1; k < conflictSets[i].size(); ++k) {
-        //             auto v = daf::vListMap[conflictSets[i][k]];
-        //             auto edgeID = v * (v + 1) / 2 + u;
-        //             daf::globalCSR[edgeID] += 1;
-        //             if (daf::globalCSR[edgeID] >= nCr[n - 2][r - 2]) {
-        //                 if (const bool uIsPivot = pivots.test(u), vIsPivot = pivots.test(v); uIsPivot && vIsPivot) {
-        //                     // 如果 u 和 v 都是 pivots，则从 P 中删除
-        //                     adj[u].reset(v);
-        //                     adj[v].reset(u);
-        //                     pivots.reset(u);
-        //                     pivots.reset(v);
-        //                     staticVertex.reset(u);
-        //                     staticVertex.reset(v);
-        //                     // std::cout << "Removing edge (" << u << ", " << v << ") from P and pivots." << std::endl;
-        //                 } else if (uIsPivot) {
-        //                     P.reset(u);
-        //                 } else if (vIsPivot) {
-        //                     P.reset(v);
-        //                 } else {
-        //                     return;
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-        //
-        // // 从staticVertex删除所有不在P中的点
-        // pivots &= P;
-        // staticVertex &= P;
-        // for (auto &nbrs: adj) {
-        //     nbrs &= P; // 只保留 P 中的点
-        // }
-        //
-        // edgeSplit(adj, n, minK, staticVertex, ~P, pivots,
-        //           [&](Bitset &clique, Bitset &pivots) {
-        //               //re compute conflictCount
-        //               // conflictCount.
-        //                 // std::cout << "clique: " << clique << std::endl;
-        //                 // std::cout << "pivots: " << pivots << std::endl;
-        //               std::memset(conflictCount.data, 0, conflictCount.size() * sizeof(daf::Size));
-        //               for_each_bit(clique, n, [&](int v) {
-        //                   for (auto cid: conflictSetsReverse[v]) {
-        //                       conflictCount[cid]++;
-        //                   }
-        //                   return true;
-        //               });
-        //               bkRmClique::pathSplit(n, r, minK, clique, pivots,
-        //                         conflictCount, conflictMaxSize, conflictSets, conflictSetsReverse,
-        //                         0, std::forward<ReportFn>(report));
-        //           });
+        // 复用的“空 pivots”供某个报告分支使用，避免反复分配
+        Bitset emptyPiv(n); emptyPiv.reset();
 
+        // 进入递归
+        pathSplit(n, r, minK, P, pivots, pSize, pivSize,
+                  conflictCount, conflictMaxSize,
+                  csOff, csCol, rsOff, rsCol,
+                  0, emptyPiv, std::forward<ReportFn>(report));
 
-        pathSplit(n, r, minK, P, pivots,
-                  conflictCount, conflictMaxSize, conflictSets, conflictSetsReverse,
-                  0, std::forward<ReportFn>(report));
+        conflictCount.free();
+        conflictMaxSize.free();
     }
 
     inline void testBronKerbosch() {

@@ -147,7 +147,7 @@ double * baseNucleusCoreDecompositionLeaf(const MultiBranchTree &tree, daf::Cliq
 
     const auto numLeaf = tree.initLeafsParentAndId();
     std::cout << "numLeaf: " << numLeaf << std::endl;
-    const daf::StaticVector<TreeNode *> leafList = tree.getLeafsList(numLeaf);
+    daf::StaticVector<TreeNode *> leafList = tree.getLeafsList(numLeaf);
     auto *core = baseCDLeaf::countingPerVertex(tree, k, leafList);
     // daf::printArray(core, tree.getRoot()->children.size());
     bool update = true;
