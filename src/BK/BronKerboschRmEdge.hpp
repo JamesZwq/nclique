@@ -122,16 +122,17 @@ namespace bkRmEdge {
 
         Bitset R2 = R;
         for_each_bit(scratch, n, [&](int v) {
-            // std::cout << v << std::endl;
             R2.set(v);
             Bitset P2 = P & adj[v];
 
-            // 1) 先拷一份 pivots
-            Bitset piv2 = pivots;
-            if (v == bestU) piv2.set(v);
-
-            // 3) 用拷贝去递归
-            bk_run(adj, n, minK, R2, P2, piv2, report);
+            // 避免额外拷贝：在本栈帧内临时设置/恢复 pivot 位。
+            if (v == bestU) {
+                pivots.set(v);
+                bk_run(adj, n, minK, R2, P2, pivots, report);
+                pivots.reset(v);
+            } else {
+                bk_run(adj, n, minK, R2, P2, pivots, report);
+            }
 
             P.reset(v);
             R2.reset(v);
