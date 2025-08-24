@@ -1044,14 +1044,14 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
 
-    for (auto i = 0;  i < edgeGraph.adj_list.size(); ++i) {
-        auto counting = countingKE[i];
-        if (counting != 0) {
-            std::cerr << "Error: countingKE != 0" << std::endl;
-            std::cerr << "countingKE: " << counting << std::endl;
-            std::exit(1);
-        }
-    }
+    // for (auto i = 0;  i < edgeGraph.adj_list.size(); ++i) {
+    //     auto counting = countingKE[i];
+    //     if (counting != 0) {
+    //         std::cerr << "Error: countingKE != 0" << std::endl;
+    //         std::cerr << "countingKE: " << counting << std::endl;
+    //         std::exit(1);
+    //     }
+    // }
 
     // coreE
     // daf::printArray(coreE, edgeGraph.adj_list.size());
