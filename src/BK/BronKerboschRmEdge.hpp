@@ -98,28 +98,31 @@ namespace bkRmEdge {
         }
 
         // 2) 选 pivot u ∈ P∪X，使 |P ∧ nbr(u)| 最大
-        int bestU = -1, bestCnt = -1;
-        Bitset PX = P;
-        for_each_bit(PX, n, [&](int u) {
-            Bitset nbr = adj[u] & P;
-            int cnt = (int) nbr.count();
+        int bestU = -1;
+        int bestCnt = -1;
+        const int Pc = (int)P.count();
+        const int perfect = Pc - 1;
+        // 复用一个 scratch，避免每次循环构造临时 bitset
+        Bitset scratch(n);
+        for_each_bit(P, n, [&](int u) {
+            scratch = adj[u];   // 拷入邻接
+            scratch &= P;       // 与 P 做掩码
+            int cnt = (int)scratch.count();
             if (cnt > bestCnt) {
                 bestCnt = cnt;
                 bestU = u;
+                if (bestCnt == perfect) return false; // 提前停止：已达上界
             }
             return true;
         });
-        Bitset candidates = P & ~adj[bestU];
-        // std::cout << "candidates: " ;
-        // std::cout << "bestU: " << bestU << std::endl;
-        // printBitset(P, "P");
-        // printBitset(R, "R");
-        // printBitset(adj[bestU], "adj[bestU]");
-        // printBitset(candidates, "candidates");
+        // 计算候选集合：candidates = P \ N(bestU)
+        scratch = adj[bestU];
+        scratch.flip();     // ~adj[bestU]
+        scratch &= P;
 
-        for_each_bit(candidates, n, [&](int v) {
+        Bitset R2 = R;
+        for_each_bit(scratch, n, [&](int v) {
             // std::cout << v << std::endl;
-            Bitset R2 = R;
             R2.set(v);
             Bitset P2 = P & adj[v];
 
@@ -131,6 +134,7 @@ namespace bkRmEdge {
             bk_run(adj, n, minK, R2, P2, piv2, report);
 
             P.reset(v);
+            R2.reset(v);
             return true;
         });
     }

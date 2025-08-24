@@ -589,7 +589,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     memset(edgeInHeap.getData(), true, edgeGraph.adj_list.size() * sizeof(bool));
 
     // daf::StaticVector<std::pair<daf::Size, double> > updateLeaf(tree.adj_list.size() * 10);
-    std::map<daf::Size, double> updateLeaf;
+    // std::map<daf::Size, double> updateLeaf;
 
     daf::StaticVector<daf::Size> removedLeaf(tree.adj_list.size());
     daf::StaticVector<PlusECDSet::LeafRmInfo> leafRmInfo(tree.adj_list.size());
@@ -1013,7 +1013,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 #endif
 
             leafRmInfo[leafId].clear();
-            updateLeaf.clear();
+            // updateLeaf.clear();
             povit.clear();
             keepC.clear();
             // removedEdges.clear();
