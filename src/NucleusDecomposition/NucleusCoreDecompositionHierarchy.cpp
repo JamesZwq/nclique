@@ -276,7 +276,8 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
             minCore = currMinCore;
         }
         // 一次循环把所有 core==minCore 的 leaf 全部 pop 出来
-        std::cout << "minCore: " << minCore << std::endl;
+        // std::cout << "minCore: " << minCore << std::endl;
+        printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
         // if (minCore == 99) break;
         while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
             auto id = heap.top();
