@@ -48,3 +48,5 @@ a.edge_*_Hierarchy
 *.edges_*_NUCLEI
 *.bin
 *.rmp
+
+build-xcode/
