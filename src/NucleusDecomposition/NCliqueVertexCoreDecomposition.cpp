@@ -416,7 +416,7 @@ namespace VCD {
     }
 }
 
-double * NCliqueVertexCoreDecomposition(
+double *  NCliqueVertexCoreDecomposition(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k) {
 

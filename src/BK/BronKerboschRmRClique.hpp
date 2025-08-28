@@ -30,7 +30,10 @@ namespace bkRmClique {
     using Bitset = DynBitset;
     using VIdx = uint16_t;
     static_assert(std::numeric_limits<VIdx>::max() >= 400, "VIdx must hold n<=400");
-
+    static DynBitset R, P, pivots, emptyPiv, tmp2;
+    // Reusable static buffers (single-threaded use)
+    static std::vector<uint32_t> s_csOff, s_rsOff, s_rsCol, s_deg, s_cur;
+    static std::vector<VIdx>     s_csCol;
     /**
      * 和原来成员版本一模一样，只是把 n 也作为参数传进来
      */
@@ -166,6 +169,7 @@ namespace bkRmClique {
 
         // 正好满足 |P|-|pivots| == minK → 只保留 P 中非 pivot 的作为 clique 报告
         if ((pSize - pivSize) == minK) {
+            // tmp2.setSize(n);
             report(P & (~pivots), emptyPivotsForReport);
             return;
         }
@@ -265,8 +269,10 @@ namespace bkRmClique {
         const int n = static_cast<int>(vList.size());
         assert(n <= static_cast<int>(std::numeric_limits<VIdx>::max()));
 
-        Bitset pivots(n);  pivots.reset();
-        Bitset P(n);       P.set();
+        // Bitset pivots(n);  pivots.reset();
+        // Bitset P(n);       P.set();
+        pivots.setSize(n);  pivots.reset();
+        P.setSize(n);       P.set();
 
         // vListMap：把原节点 id 映射到 [0..n-1]
         for (int i = 0; i < n; ++i) {
@@ -288,59 +294,58 @@ namespace bkRmClique {
         }
 
         // ---------- 构建 CSR: 冲突集 -> 顶点 (索引) ----------
-        std::vector<uint32_t> csOff(G + 1); csOff[0] = 0;
-        std::vector<VIdx> csCol(total);
-        std::vector<uint32_t> deg(static_cast<size_t>(n), 0u);
+        s_csOff.resize(G + 1); s_csOff[0] = 0;
+        s_csCol.resize(total);
+        s_deg.assign(static_cast<size_t>(n), 0u);
         {
             size_t pos = 0;
             for (size_t cid = 0; cid < G; ++cid) {
-                csOff[cid] = static_cast<uint32_t>(pos);
+                s_csOff[cid] = static_cast<uint32_t>(pos);
                 for (auto raw : conflictSets[cid]) {
                     VIdx v = static_cast<VIdx>(daf::vListMap[raw]);
 #ifndef NDEBUG
                     if (v >= static_cast<VIdx>(n)) { std::abort(); }
 #endif
-                    csCol[pos++] = v;
-                    ++deg[static_cast<size_t>(v)];
+                    s_csCol[pos++] = v;
+                    ++s_deg[static_cast<size_t>(v)];
                 }
             }
-            csOff[G] = static_cast<uint32_t>(pos);
+            s_csOff[G] = static_cast<uint32_t>(pos);
         }
 
         // 前缀和得到 rsOff
-        std::vector<uint32_t> rsOff(static_cast<size_t>(n) + 1u);
-        rsOff[0] = 0u;
+        s_rsOff.resize(static_cast<size_t>(n) + 1u);
+        s_rsOff[0] = 0u;
         for (int v = 0; v < n; ++v) {
-            rsOff[static_cast<size_t>(v) + 1u] = rsOff[static_cast<size_t>(v)] + deg[static_cast<size_t>(v)];
+            s_rsOff[static_cast<size_t>(v) + 1u] = s_rsOff[static_cast<size_t>(v)] + s_deg[static_cast<size_t>(v)];
         }
 
         // 反向列数组，长度 = 所有出现次数之和
-        std::vector<uint32_t> rsCol;
-        rsCol.resize(rsOff.back());
+        s_rsCol.resize(s_rsOff.back());
 
-        // 游标从 rsOff 拷贝一份出来；用 memcpy 等价但这里保持可读
-        std::vector<uint32_t> cur(rsOff.begin(), rsOff.end());
+        // 游标从 rsOff 拷贝一份出来
+        s_cur = s_rsOff;
 
         for (size_t cid = 0; cid < G; ++cid) {
-            const uint32_t begin = csOff[cid];
-            const uint32_t end   = csOff[cid + 1];
+            const uint32_t begin = s_csOff[cid];
+            const uint32_t end   = s_csOff[cid + 1];
             for (uint32_t e = begin; e < end; ++e) {
-                VIdx v = csCol[e];
-                rsCol[cur[static_cast<size_t>(v)]++] = static_cast<uint32_t>(cid);
+                VIdx v = s_csCol[e];
+                s_rsCol[s_cur[static_cast<size_t>(v)]++] = static_cast<uint32_t>(cid);
             }
         }
 
         // ---------- 预剪枝：若某顶点出现在所有需要的冲突集中，则剔除（与原逻辑一致） ----------
         for (int i = 0; i < n; ++i) {
             daf::Size maxRClique = nCr[n - 1][r - 1];
-            if ((daf::Size)deg[i] >= maxRClique) {
+            if ((daf::Size)s_deg[static_cast<size_t>(i)] >= maxRClique) {
                 if (P.test(i)) P.reset(i);
                 if (P.count() < (size_t)minK) return; // 保持原检查
                 if (pivots.test(i)) pivots.reset(i);
                 else return;
                 // 同步减少相关冲突集计数
-                for (uint32_t e = rsOff[i]; e < rsOff[i + 1]; ++e) {
-                    uint32_t cid = rsCol[e];
+                for (uint32_t e = s_rsOff[static_cast<size_t>(i)]; e < s_rsOff[static_cast<size_t>(i) + 1]; ++e) {
+                    uint32_t cid = s_rsCol[e];
                     --conflictCount[cid];
                 }
             }
@@ -351,12 +356,13 @@ namespace bkRmClique {
         int pivSize = (int)pivots.count();
 
         // 复用的“空 pivots”供某个报告分支使用，避免反复分配
-        Bitset emptyPiv(n); emptyPiv.reset();
+        // Bitset emptyPiv(n); emptyPiv.reset();
+        emptyPiv.setSize(n); emptyPiv.reset();
 
         // 进入递归
         pathSplit(n, r, minK, P, pivots, pSize, pivSize,
                   conflictCount, conflictMaxSize,
-                  csOff, csCol, rsOff, rsCol,
+                  s_csOff, s_csCol, s_rsOff, s_rsCol,
                   0, emptyPiv, std::forward<ReportFn>(report));
 
         conflictCount.free();
@@ -412,6 +418,8 @@ namespace bkRmClique {
 
         std::cout << "Clique counts: " << cliqueCounts << std::endl;
     }
+
+
 } // namespace bk
 
 
