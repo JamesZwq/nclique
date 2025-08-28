@@ -275,6 +275,9 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
             }
             minCore = currMinCore;
         }
+        // if (minCore == 3132) {
+        //     tree.printGraphPerV();
+        // }
         // 一次循环把所有 core==minCore 的 leaf 全部 pop 出来
         // std::cout << "minCore: " << minCore << std::endl;
         printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());

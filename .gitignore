@@ -50,3 +50,5 @@ a.edge_*_Hierarchy
 *.rmp
 
 build-xcode/
+
+*.trace

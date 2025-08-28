@@ -168,11 +168,10 @@ namespace bkRmClique {
         if (pSize < minK || (pSize - pivSize) > minK) return;
 
         // 正好满足 |P|-|pivots| == minK → 只保留 P 中非 pivot 的作为 clique 报告
-        if ((pSize - pivSize) == minK) {
-            // tmp2.setSize(n);
-            report(P & (~pivots), emptyPivotsForReport);
-            return;
-        }
+        // if ((pSize - pivSize) == minK) {
+        //     report(P & (~pivots), emptyPivotsForReport);
+        //     return;
+        // }
 
         // 寻找第一个违反的冲突集
         size_t pick = conflictCount.size();
