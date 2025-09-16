@@ -21,8 +21,14 @@
 
 int main(int argc, char **argv) {
     // populate_nCr();
-    // daf::vListMap.resize(10);
-    // bkRmEdge::testBronKerbosch();
+    // daf::vListMap.resize(100);
+    // // bkRmEdge::bronKerboschFromFile("/Users/zhangwenqian/UNSW/pivoter/a.edge", 1,
+    // //                                [](const bkRmEdge::Bitset &clique, const bkRmEdge::Bitset &pivots) {
+    // //                                    std::cout << "Find clique: " << clique << " pivots: " << pivots << std::endl;
+    // //                                    return true;
+    // //                                });
+    //
+    // bkRmClique::testBronKerbosch();
     // return 0;
 
     std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
@@ -55,7 +61,8 @@ int main(int argc, char **argv) {
         return SDCT(edgeGraph, s, s);
     });
     std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(2) << std::endl;
-
+    std::cout << "max clique: " << treeGraph.maxDegree() << std::endl;
+    // if (s >
     // treeGraph.printGraphPerV();
     for (auto leaf: treeGraph.adj_list) {
         if (leaf[0].isPivot) {
@@ -93,8 +100,8 @@ int main(int argc, char **argv) {
             NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
         } else {
             // NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
-            // NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
-            NucleusCoreDecompositionHierarchy(treeGraph, edgeGraph, treeGraphV, r, s);
+            NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
+            // NucleusCoreDecompositionHierarchy(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
     // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {

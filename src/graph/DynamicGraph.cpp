@@ -274,4 +274,3 @@ daf::Size DynamicGraph<TreeGraphNode>::numBipartEdge(const daf::Size k) {
     }
     return counts;
 }
-

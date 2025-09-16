@@ -229,14 +229,15 @@ namespace bkRmEdge {
         // 3 个点完全图：0–1, 0–2, 1–2
         std::vector<TreeGraphNode> vList = {
             {0, false},
-            {1, true},
+            {1, false},
             {2, true},
             {3, true},
             {4, true},
             {5, true}
         };
         daf::StaticVector<std::pair<daf::Size, daf::Size> > removeEdgeList;
-        // removeEdgeList.emplace_back(0, 1);
+        removeEdgeList.emplace_back(0, 1);
+        // removeEdgeList.emplace_back(0, 2);
         int minK = 1;
         std::vector<double> cliqueCounts(vList.size(), 0);
         bronKerbosch(vList, removeEdgeList, minK,
@@ -299,7 +300,21 @@ namespace bkRmEdge {
         // 调用主算法
 
         // std::cout << R << " " << P << " " << pivots << std::endl;
-        bk_run(adj, n, minK, R, P, pivots, std::forward<ReportFn>(report));
+        bk_run(adj, n, minK, R, P, pivots, [&](const Bitset &clique, const Bitset &pivots) {
+                         std::vector<int> C, P, H;
+                         for (size_t i = clique.find_first(); i != Bitset::npos; i = clique.find_next(i)) {
+                             C.push_back(i);
+                             (pivots.test(i) ? P : H).push_back(i);
+                         }
+                         std::cout << "!!!!!!!!!!! Clique: ";
+                         for (int x: C) std::cout << x << ' ';
+                         std::cout << "| Pivots: ";
+                         for (int x: P) std::cout << x << ' ';
+                         std::cout << "| Holds: ";
+                         for (int x: H) std::cout << x << ' ';
+                         std::cout << '\n';
+
+                     });
     }
 
     // 测试函数：从文件读取图并统计所有 k-clique 数量

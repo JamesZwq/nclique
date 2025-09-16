@@ -11,6 +11,7 @@
 #include <boost/dynamic_bitset.hpp>
 #include <limits>
 #include <cassert>
+#include <iostream>
 
 extern double nCr[1001][401];
 // ---------------- fast dynamic bitset  ( ≤ 400 bits ) ----------------
@@ -111,7 +112,10 @@ namespace bkRmClique {
             }
             return;
         }
-
+        const int need = minK - (int) R.count();
+        if (need > 0 && need > (int) P.count()) {
+            return;
+        }
         // 2) 选 pivot u ∈ P∪X，使 |P ∧ nbr(u)| 最大
         int bestU = -1, bestCnt = -1;
         for_each_bit(P, n, [&](int u) {
@@ -166,14 +170,14 @@ namespace bkRmClique {
                    ReportFn &&report) {
         // 剪枝：规模或 pivot 约束不满足
         if (pSize < minK || (pSize - pivSize) > minK) return;
-
+        // std::cout << "pathSplit: pSize=" << pSize << ", pivSize=" << pivSize << std::endl;
         // 正好满足 |P|-|pivots| == minK → 只保留 P 中非 pivot 的作为 clique 报告
         // if ((pSize - pivSize) == minK) {
         //     report(P & (~pivots), emptyPivotsForReport);
         //     return;
         // }
-
         // 寻找第一个违反的冲突集
+
         size_t pick = conflictCount.size();
         for (size_t cid = nextCid; cid < conflictCount.size(); ++cid) {
             if (conflictCount[cid] >= conflictMaxSize[cid]) {
@@ -184,12 +188,30 @@ namespace bkRmClique {
 
         if (pick < conflictCount.size()) {
             // 收集该冲突集中属于 pivot 的顶点（索引）
+            // {
+            //     int possibleGain = 0;
+            //     for (uint32_t e = csOff[pick]; e < csOff[pick + 1]; ++e) {
+            //         VIdx v = csCol[e];
+            //         if (P.test(v) && !pivots.test(v)) ++possibleGain;
+
+            //     }
+            //     if (pSize + possibleGain < minK) {
+            //         return;
+            //     }
+            // }
+
             VIdx pivBuf[400];
             int pc = 0;
             for (uint32_t e = csOff[pick]; e < csOff[pick + 1]; ++e) {
                 VIdx v = csCol[e];
                 if (pivots.test(v)) pivBuf[pc++] = v;
             }
+
+            std::sort(pivBuf, pivBuf + pc, [&](VIdx a, VIdx b) {
+                uint32_t da = s_rsOff[(size_t) a + 1] - s_rsOff[(size_t) a];
+                uint32_t db = s_rsOff[(size_t) b + 1] - s_rsOff[(size_t) b];
+                return da > db;
+            });
 
             for (int i = 0; i < pc; ++i) {
                 VIdx v = pivBuf[i];
@@ -296,7 +318,7 @@ namespace bkRmClique {
         assert(n <= static_cast<int>(std::numeric_limits<VIdx>::max()));
 
         // Bitset pivots(n);  pivots.reset();
-        // Bitset P(n);       P.set();
+        // Bitset P(n);       P.set();meis
         pivots.setSize(n);
         pivots.reset();
         P.setSize(n);
@@ -325,21 +347,29 @@ namespace bkRmClique {
         s_csOff.resize(G + 1);
         s_csOff[0] = 0;
         s_csCol.resize(total);
-        s_deg.assign(static_cast<size_t>(n), 0u); {
-            size_t pos = 0;
-            for (size_t cid = 0; cid < G; ++cid) {
-                s_csOff[cid] = static_cast<uint32_t>(pos);
-                for (auto raw: conflictSets[cid]) {
-                    VIdx v = static_cast<VIdx>(daf::vListMap[raw]);
+        s_deg.assign(static_cast<size_t>(n), 0u);
+
+        size_t pos = 0;
+        for (size_t cid = 0; cid < G; ++cid) {
+            s_csOff[cid] = static_cast<uint32_t>(pos);
+            // 如果发现一个全都不是 pivots 的冲突集，说明无解，直接返回
+            bool hasPiv = false;
+            for (auto raw: conflictSets[cid]) {
+                VIdx v = static_cast<VIdx>(daf::vListMap[raw]);
 #ifndef NDEBUG
-                    if (v >= static_cast<VIdx>(n)) { std::abort(); }
+                if (v >= static_cast<VIdx>(n)) { std::abort(); }
 #endif
-                    s_csCol[pos++] = v;
-                    ++s_deg[static_cast<size_t>(v)];
+                if (pivots.test(v)) {
+                    hasPiv = true;
                 }
+                s_csCol[pos++] = v;
+                ++s_deg[static_cast<size_t>(v)];
             }
-            s_csOff[G] = static_cast<uint32_t>(pos);
+            if (!hasPiv) {
+                return;
+            }
         }
+        s_csOff[G] = static_cast<uint32_t>(pos);
 
         // 前缀和得到 rsOff
         s_rsOff.resize(static_cast<size_t>(n) + 1u);
@@ -403,7 +433,7 @@ namespace bkRmClique {
         // 假设 TreeGraphNode 的构造函数为 TreeGraphNode(size_t id, bool flag)
         std::vector<TreeGraphNode> vList = {
             {1, false}, // 原来是 3
-            {2, true}, // 原来是 4
+            {2, false}, // 原来是 4
             {3, true}, // 原来是 6
             {4, true}, // 原来是 7
             {5, true}, // 原来是 8
@@ -411,10 +441,10 @@ namespace bkRmClique {
         };
 
         std::vector<std::vector<daf::Size> > conflictSets;
-        conflictSets.emplace_back(std::vector<daf::Size>{1, 2, 6}); // {3,4,9}
+        conflictSets.emplace_back(std::vector<daf::Size>{1, 2}); // {3,4,9}
         // conflictSets.emplace_back(std::vector<daf::Size>{1, 3, 6});  // {3,6,9}
-        conflictSets.emplace_back(std::vector<daf::Size>{4, 5, 6}); // {7,8,9}
-        conflictSets.emplace_back(std::vector<daf::Size>{3, 5, 6}); // {6,8,9}
+        // conflictSets.emplace_back(std::vector<daf::Size>{4, 5, 6}); // {7,8,9}
+        // conflictSets.emplace_back(std::vector<daf::Size>{3, 5, 6}); // {6,8,9}
         // conflictSets.emplace_back(std::vector<daf::Size>{1, 4, 6});  // {3,7,9}
         // conflictSets.emplace_back(std::vector<daf::Size>{1, 5, 6});  // {3,8,9}
         // conflictSets.emplace_back(std::vector<daf::Size>{2, 3, 6});  // {4,6,9}

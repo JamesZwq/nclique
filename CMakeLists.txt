@@ -23,8 +23,8 @@ if(APPLE)
 else()
     set(CMAKE_CXX_COMPILER "/usr/bin/g++")
     get_filename_component(HOME_DIR "~" REALPATH)
-    set(TBB_ROOT "${HOME_DIR}/bin/tbb")
-    set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.so")
+#    set(TBB_ROOT "${HOME_DIR}/bin/tbb")
+#    set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.so")
 
     cmake_policy(SET CMP0074 NEW)
 
@@ -37,7 +37,7 @@ else()
 endif()
 
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
