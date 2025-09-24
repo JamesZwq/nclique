@@ -6,8 +6,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import NullLocator
 
-from python.experiment import make_plots, make_plots_bazel
-from python.experiment.make_plots_nuclear import arcData
+import make_plots, make_plots_bazel
+from make_plots_nuclear import arcData
 
 # ===== Academic plotting style =====
 ACADEMIC_FONTSIZE_BASE = 12
@@ -34,34 +34,74 @@ plt.rcParams.update({
 })
 # Hatch patterns per series (stable order)
 HATCH_MAP = {
-    'CBS': '////',
-    'CBS-noHi': '',
-    'ARC': 'xx',
-    'Nuclear-YES': '...',
-    'Nuclear-NO': 'oo',
-    'data3-YES': '...',
-    'data3-NO': 'oo',
-    'data3': '///',
+    'CBS': '',
+    'CBS-noHi': '///',
+    'ARC': '',
+    'Nuclear-YES': '',
+    'Nuclear-NO': '///',
+    'data3-YES': '',
+    'data3-NO': '///',
+    'data3': '...',
 }
+
+# Map to line style (instead of hatch)
+LINESTYLE_MAP = {
+    'CBS': 'solid', #'dashed','dotted'
+    'CBS-noHi': 'solid',
+    'ARC': 'solid',
+    'Nuclear-YES': 'solid',
+    'Nuclear-NO': 'solid',
+    'data3-YES': 'solid',
+    'data3-NO': 'solid',
+    'data3': 'solid',
+}
+
+MARKER_MAP = {
+    'CBS': 'o',
+    'CBS-noHi': 'o',
+    'ARC': 's',
+    'Nuclear-YES': '^',
+    'Nuclear-NO': '^',
+    'data3-YES': 'X',
+    'data3-NO': 'X',
+    'data3': 'X',
+}
+
 
 
 COLOUR_MAP = {
-    'CBS': 'gray',
-    'CBS-noHi': 'BLACK',
-    'ARC': 'w',
-    'Nuclear-YES': 'w',
-    'Nuclear-NO': 'w',
-    'data3-YES': 'w',
-    'data3-NO': 'w',
-    'data3': 'w',
+    'CBS': 'black',  # 'lightgray','dimgray'
+    'CBS-noHi': 'gray',
+    'ARC': 'black',
+    'Nuclear-YES': 'black',
+    'Nuclear-NO': 'gray',
+    'data3-YES': 'black',
+    'data3-NO': 'gray',
+    'data3': 'lightgray',
 }
 
 def _style_axes(ax):
-    """Apply clean academic style to an axes."""
-    # Ticks
+    # """Apply clean academic style to an axes."""
+    # # Ticks
+    # ax.tick_params(axis='both', which='both', direction='out', length=4, width=0.8)
+    # ax.minorticks_on()
+    # # x-axis: keep exactly one major tick per label; disable all minor ticks
+    # ax.tick_params(axis='x', which='major', length=3)
+    # ax.tick_params(axis='x', which='minor', bottom=False)
+    # ax.xaxis.set_minor_locator(NullLocator())
+    # # Grid on y, light dashed
+    # ax.grid(axis='y', linestyle='--', linewidth=0.6, alpha=0.4)
+    # # Spines: keep left/bottom, fade top/right
+    # for sp in ['top', 'right']:
+    #     ax.spines[sp].set_visible(False)
+    # for sp in ['left', 'bottom']:
+    #     ax.spines[sp].set_linewidth(0.8)
+    # # Legend: tidy defaults if present later
+    # return ax
+        # Ticks
     ax.tick_params(axis='both', which='both', direction='out', length=4, width=0.8)
     ax.minorticks_on()
-    # x-axis: keep exactly one major tick per label; disable all minor ticks
+    # x-axis: major ticks only, no minors
     ax.tick_params(axis='x', which='major', length=3)
     ax.tick_params(axis='x', which='minor', bottom=False)
     ax.xaxis.set_minor_locator(NullLocator())
@@ -72,16 +112,15 @@ def _style_axes(ax):
         ax.spines[sp].set_visible(False)
     for sp in ['left', 'bottom']:
         ax.spines[sp].set_linewidth(0.8)
-    # Legend: tidy defaults if present later
     return ax
 
 # ----- Output directory for comparison plots -----
-COMPARE_OUT = "/Users/zhangwenqian/Library/CloudStorage/Dropbox/应用/Overleaf/Nuclear CD/figure/"
+COMPARE_OUT = "./images_compare"
 os.makedirs(COMPARE_OUT, exist_ok=True)
 
 EPS_T = 1e-1   # minimum positive value for time (seconds) on log scale
 EPS_M = 1   # minimum positive value for memory (MB) on log scale
-TIME_YMAX_SEC = 6 * 3600  # 6 hours upper bound for time axis
+TIME_YMAX_SEC = 8 * 3600  # 6 hours upper bound for time axis
 
 def _prep_data1(df: pd.DataFrame) -> pd.DataFrame:
     """Use existing DataFrame from make_plots.myData(); compute total_sec from three ms columns."""
@@ -233,6 +272,39 @@ def _grouped_bar(ax, x_vals: List[int], series: Dict[str, List[float]], title: s
     # Title and legend removed for external control
 
 
+def _multi_line(ax, x_vals: List[int], series: Dict[str, List[float]], title: str, y_label: str):
+    """
+    Multi-line helper with stable ordering.
+    - Stable order: CBS, CBS-noHi, ARC, Nuclear-YES, Nuclear-NO, data3-YES, data3-NO, data3, then any others sorted.
+    - No grouped offsets (lines share the same x positions).
+    """
+    prefer_order = ["CBS", "CBS-noHi", "ARC", "Nuclear-YES", "Nuclear-NO", "data3-YES", "data3-NO", "data3"]
+    present = list(series.keys())
+    ordered = [k for k in prefer_order if k in present] + [k for k in sorted(present) if k not in prefer_order]
+
+    x_idx = np.arange(len(x_vals))
+
+    for lab in ordered:
+        ys = series[lab]
+        ax.plot(
+            x_idx,
+            ys,
+            label=lab,
+            color=COLOUR_MAP.get(lab, 'black'),
+            linestyle=LINESTYLE_MAP.get(lab, 'solid'),
+            linewidth=1.6,
+            marker=MARKER_MAP.get(lab, None),
+            markersize=4,
+        )
+
+    ax.set_xticks(x_idx)
+    ax.set_xticklabels([str(v) for v in x_vals])
+    ax.set_xlim(-0.5, len(x_vals) - 0.5)
+
+    ax.set_xlabel("r")  # (kept to match your original interface)
+    ax.set_ylabel(y_label)
+
+
 def _plot_compare_by_r(df: pd.DataFrame, out_dir: str) -> List[str]:
     """
     For each dataset and each r, draw two grouped-bar figures with X = s:
@@ -271,7 +343,7 @@ def _plot_compare_by_r(df: pd.DataFrame, out_dir: str) -> List[str]:
             _grouped_bar(ax1, s_vals, series_t, f"{dataset_name}  r={r_val}  (Time)", "Total time (s)")
             # rotate x tick labels by 30 degrees for readability
             for _lbl in ax1.get_xticklabels():
-                _lbl.set_rotation(30)
+                _lbl.set_rotation(45)
                 _lbl.set_ha('right')
             _style_axes(ax1)
             ax1.set_yscale('log')
@@ -283,10 +355,79 @@ def _plot_compare_by_r(df: pd.DataFrame, out_dir: str) -> List[str]:
             # 30 degree for x
 
             plt.tight_layout()
-            p1 = os.path.join(out_dir, f"{dataset_name}_r{r_val}_time_by_s.eps")
+            p1 = os.path.join(out_dir, f"{dataset_name}_r{r_val}_time_by_s.png")
             fig1.savefig(p1, dpi=300, bbox_inches='tight')
             plt.close(fig1)
             paths.append(p1)
+
+
+            # --- Time figure (Y=log, line chart) ---
+            fig1 = plt.figure(figsize=(5, 2))
+            ax1 = fig1.gca()
+            series_t: Dict[str, List[float]] = {}
+            na_pos: Dict[str, List[int]] = {}   # store indices of NaNs per series
+
+            for src in sorted(dd["source"].unique()):
+                mm = dd[dd["source"] == src].set_index("s")["total_sec"]
+
+                ys = []
+                na_idx = []
+                for j, s in enumerate(s_vals):
+                    v = mm.get(s, np.nan)
+                    try:
+                        fv = float(v)
+                    except Exception:
+                        fv = np.nan
+
+                    if pd.isna(fv):
+                        # NaN -> use TIME_YMAX_SEC and remember for red highlight
+                        ys.append(TIME_YMAX_SEC)
+                        na_idx.append(j)
+                    else:
+                        # keep previous behavior for non-positive values
+                        ys.append(fv if fv > 0 else EPS_T)
+
+                series_t[src] = ys
+                na_pos[src] = na_idx
+
+            _multi_line(ax1, s_vals, series_t, f"{dataset_name}  r={r_val}  (Time)", "Total time (s)")
+
+            # overlay red markers where values were NaN
+            x_idx = np.arange(len(s_vals))
+            for lab, idxs in na_pos.items():
+                if idxs:
+                    ax1.scatter(
+                        x_idx[idxs],
+                        [TIME_YMAX_SEC] * len(idxs),
+                        s=18,
+                        color='red',
+                        marker=MARKER_MAP.get(lab, 'o'),  # use same marker pattern
+                        edgecolors='none',
+                        zorder=4
+                    )
+
+            # rotate x tick labels for readability
+            for _lbl in ax1.get_xticklabels():
+                _lbl.set_rotation(45)
+                _lbl.set_ha('right')
+
+            _style_axes(ax1)
+            ax1.set_yscale('log')
+            ax1.set_ylim(bottom=EPS_T, top=TIME_YMAX_SEC)
+
+            # add legend
+            _h, _l = ax1.get_legend_handles_labels()
+            if _l:
+                ax1.legend(loc='upper left', ncol=min(3, len(_l)), frameon=True)
+
+            plt.tight_layout()
+            p1 = os.path.join(out_dir, f"{dataset_name}_r{r_val}_time_by_s_line.png")
+            fig1.savefig(p1, dpi=300, bbox_inches='tight')
+            plt.close(fig1)
+            paths.append(p1)
+
+
+
 
             # # --- Memory figure (Y=log) ---
             # fig2 = plt.figure(figsize=(6, 2))
@@ -343,7 +484,7 @@ if __name__ == "__main__":
     # df_d.to_csv("/Users/zhangwenqian/UNSW/pivoter/python/experiment/data/data4.csv", index=False)
 
 
-    DATA_DIR = "/Users/zhangwenqian/UNSW/pivoter/python/experiment/data"
+    DATA_DIR = "./data"
     df_a = pd.read_csv(os.path.join(DATA_DIR, "data1.csv"))  # CBS
     df_b = pd.read_csv(os.path.join(DATA_DIR, "data2.csv"))  # ARC
     df_c = pd.read_csv(os.path.join(DATA_DIR, "data3.csv"))  # Nuclear (YES/NO variants already encoded in 'source')
