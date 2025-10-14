@@ -32,10 +32,10 @@ namespace PlusECDSet {
             return !removedKeepC && removedPivots.empty() && removedEdges.empty();
         }
 
-        void init() {
+        void init(auto capacity = 400) {
             removedKeepC = false;
-            removedPivots.reserve(400);
-            removedEdges.reserve(400);
+            removedPivots.reserve(capacity);
+            removedEdges.reserve(capacity);
         }
 
         void clear() {
@@ -661,7 +661,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                                           // std::cout << uClique << " " << vClique << std::endl;
                                           if (leafRmInfo[uClique.v].empty()) {
                                               removedLeaf.push_back(uClique.v);
-                                              leafRmInfo[uClique.v].init();
+                                              leafRmInfo[uClique.v].init(tree.adj_list[uClique.v].size());
                                           }
                                           if (leafRmInfo[uClique.v].removedKeepC) return;
                                           if (!uClique.isPivot && !vClique.isPivot) {
