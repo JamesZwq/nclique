@@ -13,6 +13,7 @@
 #include "debug/EdgeSet.h"
 #include "graph/DynamicBipartiteGraph.hpp"
 // #include "graph/DynamicGraph.h"
+#include "dataStruct/coreDisJoin.hpp"
 #include "graph/DynamicGraphSet.h"
 
 extern double nCr[1001][401];
@@ -31,9 +32,9 @@ namespace VCD {
             return !removedKeepC && removedPivots.empty();
         }
 
-        void init() {
+        void init(auto capacity = 400) {
             removedKeepC = false;
-            removedPivots.reserve(400);
+            removedPivots.reserve(capacity);
         }
 
         void clear() {
@@ -440,10 +441,10 @@ double *  NCliqueVertexCoreDecomposition(
     daf::StaticVector<daf::Size> newPivot;
     daf::StaticVector<daf::Size> newKeepC;
 
-    daf::StaticVector<daf::Size> currentRemoveVertexIds(edgeGraph.adj_list.size());
+    daf::StaticVector<daf::Size> currentRemoveVertexIds(edgeGraph.adj_list_offsets.size());
 
     daf::StaticVector<bool> vertexInHeap(edgeGraph.adj_list_offsets.size());
-    vertexInHeap.c_size = edgeGraph.adj_list.size();
+    vertexInHeap.c_size = edgeGraph.adj_list_offsets.size();
     memset(vertexInHeap.getData(), true, edgeGraph.adj_list_offsets.size() * sizeof(bool));
 
     // daf::StaticVector<std::pair<daf::Size, double> > updateLeaf(tree.adj_list.size() * 10);
@@ -475,6 +476,7 @@ double *  NCliqueVertexCoreDecomposition(
     // daf::StaticVector<std::pair<daf::Size, daf::Size> > removedEdges(1000);
     double minCore = 0;
     int numProgress = 0;
+    CoreDisJoin hierarchyBuilder(edgeGraph.adj_list_offsets.size() - 1, 20);
     while (!heap.empty()) {
 
         minCore = std::max( countingV[heap.top()], minCore );
@@ -498,7 +500,7 @@ double *  NCliqueVertexCoreDecomposition(
             for (const auto &clique: adjClique) {
                 if (leafRmInfo[clique.v].empty()) {
                     removedLeaf.push_back(clique.v);
-                    leafRmInfo[clique.v].init();
+                    leafRmInfo[clique.v].init(tree.adj_list[clique.v].size());
                 }
                 if (leafRmInfo[clique.v].removedKeepC) {
                     continue;
