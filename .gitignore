@@ -52,3 +52,9 @@ a.edge_*_Hierarchy
 build-xcode/
 
 *.trace
+
+data
+
+*.csv
+
+*.py
