@@ -483,7 +483,11 @@ double *  NCliqueVertexCoreDecomposition(
         // 一次循环把所有 core==minCore 的 leaf 全部 pop 出来
         // printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
 
-        std::cout << "minCore: " << minCore << " heap size: " << heap.size() << " num Leaf: " << tree.size() << std::endl;
+        std::cout << "minCore: " << minCore
+        << " heap size: " << heap.size()
+        << " num Leaf: " << tree.size() << " "
+        << k << "-Clique count: " << tree.cliqueCount(k)
+        << std::endl;
         while (!heap.empty() && countingV[heap.top()] <= minCore) {
             auto id = heap.top();
             vertexInHeap[id] = false;

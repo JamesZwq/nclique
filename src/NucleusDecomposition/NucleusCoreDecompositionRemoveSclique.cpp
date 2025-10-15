@@ -264,7 +264,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
         // 一次循环把所有 core==minCore 的 leaf 全部 pop 出来
         std::cout << "minCore: " << minCore
         << " heap size: " << heap.size()
-        << " num Leaf: " << tree.size()
+        << " num Leaf: " << tree.size() << " "
         << s << "-Clique count: " << tree.cliqueCount(s)
         << std::endl;
         // if (minCore == 99) break;
