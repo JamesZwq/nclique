@@ -262,7 +262,11 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
         minCore = std::max(countingRClique[heap.top()], minCore);
         // 一次循环把所有 core==minCore 的 leaf 全部 pop 出来
-        std::cout << "minCore: " << minCore << std::endl;
+        std::cout << "minCore: " << minCore
+        << " heap size: " << heap.size()
+        << " num Leaf: " << tree.size()
+        << s << "-Clique count: " << tree.cliqueCount(s)
+        << std::endl;
         // if (minCore == 99) break;
         while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
             auto id = heap.top();
@@ -474,15 +478,15 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                   return a.second < b.second; // 按照 core 值降序排序
               });
     // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/a.out", "w");
-    for (auto i: sortedK) {
-        printf("[");
-        for (std::size_t j = 0; j < i.first.size(); ++j) {
-            if (j != 0) printf(",");
-            printf("%zu", i.first[j]);
-        }
-        printf("] %d\n", (int) i.second);
-        // fprintf(file, "%d\n", (int) i.second);
-    }
+    // for (auto i: sortedK) {
+    //     printf("[");
+    //     for (std::size_t j = 0; j < i.first.size(); ++j) {
+    //         if (j != 0) printf(",");
+    //         printf("%zu", i.first[j]);
+    //     }
+    //     printf("] %d\n", (int) i.second);
+    //     // fprintf(file, "%d\n", (int) i.second);
+    // }
     // fclose(file);
     return sortedK;
 }

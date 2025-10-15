@@ -641,7 +641,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
         // std::cout << "currentCore: " << currCore << std::endl;
 
-        printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
+        // printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
+
+        std::cout << "minCore: " << minCore << " heap size: " << heap.size() << " num Leaf: " << tree.size() << std::endl;
 #ifndef NDEBUG
         std::cout << "currentRemoveEdge: " << std::endl;
 #endif

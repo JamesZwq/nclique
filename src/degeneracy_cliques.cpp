@@ -6,7 +6,7 @@
 #include<limits.h>
 #include<unistd.h>
 #include<libgen.h>
-#include <boost/version.hpp>
+// #include <boost/version.hpp>
 
 #include"misc.h"
 #include"LinkedList.h"
@@ -31,7 +31,8 @@ int main(int argc, char **argv) {
     // bkRmClique::testBronKerbosch();
     // return 0;
 
-    std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
+
+    // std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
     if (argc != 4) {
         printf("Incorrect number of arguments.\n");
         printf("./main <graphFile> <r> <s>\n");

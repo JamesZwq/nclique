@@ -132,6 +132,10 @@ class DynamicGraph {
         return clone;
     }
 
+    [[nodiscard]] daf::Size size() const {
+        return adj_list.size() - removedNodes.size();
+    }
+
     [[nodiscard]]  double cliqueCount(daf::Size k) const;
 
         daf::Size numBipartEdge(daf::Size k);
