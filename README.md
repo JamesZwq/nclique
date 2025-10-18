@@ -1,98 +1,113 @@
-These files contain the code for the algorithm for counting all cliques
-given by Jain and Seshadhri in "The power of pivoting for exact clique counting." (WSDM 2020).
 
-This code is a modified version of the code of quick-cliques-1.0 library for counting maximal cliques by Darren Strash (first name DOT last name AT gmail DOT com).
 
-Original author: Darren Strash (first name DOT last name AT gmail DOT com)
+# CBND — Clique‑Path Based $(r,s)$‑Nucleus Decomposition
 
-Copyright (c) 2011 Darren Strash. This code is released under the GNU Public License (GPL) 3.0.
+CBND is a counting‑based implementation of $(r,s)$‑nucleus decomposition that builds and updates a **Clique Path Index (CPI)** instead of enumerating all $s$‑cliques. The approach keeps the index compact and supports path‑local updates used by the peeling routine and (optionally) the hierarchy construction.
 
-Modifications Copyright (c) 2020 Shweta Jain
-August 16, 2019: Modified the code of quick-cliques-1.0 library to count all cliques (not just maximal).
+> TL;DR: Build with CMake, then run
+> ```bash
+> ./build/bin/degeneracy_cliques <graph.edges> <s> <r>
+> ```
+> on an undirected edge list. No batch scripts are required.
 
-This program is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published by 
-the Free Software Foundation, either version 3 of the License, or 
-(at your option) any later version. 
+---
 
-This program is distributed in the hope that it will be useful, 
-but WITHOUT ANY WARRANTY; without even the implied warranty of 
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
-GNU General Public License for more details. 
+## 1) Build
 
-You should have received a copy of the GNU General Public License 
-along with this program.  If not, see <http://www.gnu.org/licenses/> 
+Requirements:
+- Linux/macOS, CMake ≥ 3.16, a modern C++ compiler (GCC/Clang)
 
--------------
+```bash
+mkdir -p build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+```
 
-This code can be used to calculate the number of global k-cliques, per-vertex k-cliques and per-edge k-cliques in a graph. 
+The main binary will be created at:
+```
+build/bin/degeneracy_cliques
+```
 
-*Getting the graph*
+---
 
-The graph is expected to be in the .edges format. This is a custom format that looks as follows:
+## 2) Input graph format
 
-403398 2443411  
-0 1  
-0 2  
+- **Undirected simple graph** as an edge list text file.
+- One edge per line: `u v` (space or tab).
+- Vertex IDs are integers; 0‑ or 1‑based are both fine as long as the file is consistent.
+- Self‑loops and multi‑edges should be removed beforehand.
 
-First line has 2 integers separated by a space. The first integer is n: number of vertices and second is m: number of edges. This line should be followed by m lines, each having 2 integers representing the end vertices of an edge, separated by a space.
+Example (`toy.edges`):
+```
+1 2
+2 3
+2 4
+3 4
+4 5
+```
 
-The graph is expected to be simple (no loops or repeated edges) and undirected (0 1 and 1 0 should not both be there).
+---
 
-Graphs can be placed in the "graphs" folder.
+## 3) Quick start
 
-The "python" folder has a python script (you may have to use python2.7) that can be used to convert a graph from the SNAP datasets given here: https://snap.stanford.edu/data/index.html into the .edges format. Download and untar the graph in the "graphs" folder and run:
+Run $(r,s)=(3,4)$ on the toy graph:
+```bash
+./build/bin/degeneracy_cliques toy.edges 4 3
+```
 
-python sanitize.py ../graphs <filename>
+General form:
+```bash
+./build/bin/degeneracy_cliques <graph.edges> <s> <r>
+```
+- `<graph.edges>`: path to the edge‑list file
+- `<s>`: target clique size (e.g., 4)
+- `<r>`: base clique size for support (e.g., 3)
 
-eg.:
+The program prints a short summary to `stdout` (and error messages to `stderr`).
 
-python sanitize.py ../graphs email-Enron.txt
+> Tip: if you need wall‑clock and peak memory for a single run, wrap the command with `/usr/bin/time -v` (optional).
 
-This will read the email-Enron.txt file from the "graphs" folder and write an email-Enron.edges in the same folder.
+---
 
-*Running the code*
+## 4) What gets computed
 
-From the main directory (that contains src, bin, results, graphs etc.) run
+- $(r,s)$‑nucleus decomposition using CPI‑based counting.
+- One‑shot support initialization from CPI, then path‑local updates as peeling proceeds.
+- (If enabled in your build) a hierarchy can be maintained via a stack of disjoint‑set unions (DSUs). No special command‑line flags are required for basic runs.
 
-make
+---
 
-to compile.
+## 5) Examples
 
-To run the code, from the main directory, run the following command:
+```bash
+# (2,3) — truss‑like setting
+./build/bin/degeneracy_cliques graph.edges 3 2
 
-./bin/degeneracy_cliques -i <file_path> -t <type> -k <max_clique_size> -d <data_flag>
+# (3,4) — higher‑order setting
+./build/bin/degeneracy_cliques graph.edges 4 3
 
-where 
+# (1,3) — vertex‑centric higher‑order core
+./build/bin/degeneracy_cliques graph.edges 3 1
+```
 
-file_path: path to .edges file 
+---
 
-type: A/V/E. A for just k-clique information, V for per-vertex k-cliques, E for per-edge k-cliques 
+## 6) Performance notes
 
-max_clique_size: max_clique_size. If 0, calculates for all k 
+- Build in `Release` mode for full optimizations.
+- Larger graphs and higher parameters benefit from fast I/O and sufficient RAM.
+- CPI avoids explicit $s$‑clique enumeration; in practice runtime is dominated by path‑local updates and support maintenance.
 
-data_flag: 
+---
 
-0: prints global k-clique counts on the screen.
+## 7) Troubleshooting
 
-1: prints global k-clique counts on the screen. Outputs global, per-vertex or per-edge k-clique counts (depending on the "type" flag) to an output file. Depending on the "type" flag, the global counts may be calculated using local k-clique counts. 
+- **`std::bad_alloc` / out‑of‑memory**: ensure the graph is cleaned (no duplicates/self‑loops) and run in `Release` build.
+- **Unexpected IDs**: verify the edge list contains only integer vertex IDs and consistent indexing.
+- **Slow I/O**: place the graph on a local SSD and avoid network filesystems when benchmarking.
 
-2: prints global k-clique counts on the screen. Outputs stats to an output file. Depending on the "type" flag, the global counts may be calculated using local k-clique counts. 
+---
 
-eg.:
+## 8) License
 
-./bin/degeneracy_cliques -i graphs/email-Enron.edges -t V -d 1 -k 6
-
-will count the number of k-cliques per vertex for k<=6 and store the counts in email-Enron_6_V.txt file in "results" folder.
-
-./bin/degeneracy_cliques -i graphs/email-Enron.edges -t A -d 2 -k 0
-
-will count the number of global k-cliques for all k and store the stats in email-Enron_A_stat.txt file in "results" folder.
-
-./bin/degeneracy_cliques -i graphs/email-Enron.edges -t E -d 0 -k 0
-
-will count the number of k-cliques per edge for all k but will not store the information in any file. Instead, it will simply print the total number of k-cliques obtained from the per-edge counts.
-
-There can be some loss of precision (depending on whether storing the numbers as double is lossy) because of which for the t=V and t=E options, some values may show as non-integers. Be careful when storing the information (esp. per-edge counts) to a result file as for some graphs the result file can become very large.
-
-If you find any bugs or have any questions, please contact Shweta Jain (sjain12@ucsc.edu).
+See `LICENSE` in this repository.
