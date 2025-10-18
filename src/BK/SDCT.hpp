@@ -261,7 +261,7 @@ namespace SDCT {
 
     // 测试函数：从文件读取图并统计所有 k-clique 数量
     inline void testFromFile() {
-        std::string filepath = "/Users/zhangwenqian/UNSW/pivoter/b";
+        std::string filepath = "~/_/pivoter/b";
         auto minK = 1;
         std::vector<double> cliqueCounts;
         // 先读取 n 以初始化 cliqueCounts 大小
@@ -301,7 +301,7 @@ namespace SDCT {
         }
         // 输出结果
         // std::cout << "Clique counts (k: count):\n";
-        // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/b.out", "w");
+        // auto file = fopen("~/_/pivoter/b.out", "w");
         // for (size_t k = minK; k < cliqueCounts.size(); ++k) {
         //     double cnt = cliqueCounts[k];
         //     if (cnt > 0) {

@@ -1,6 +1,6 @@
 //
 // Compact‑Sparse‑Row graph container
-// Author: 张文谦   Date: 2025‑08‑05
+// Author: _   Date: 2025‑08‑05
 //
 #ifndef CSR_HPP
 #define CSR_HPP

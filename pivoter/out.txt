@@ -1,6 +1,6 @@
-/Users/zhangwenqian/UNSW/pivoter/cmake-build-debug/bin/main /Users/zhangwenqian/UNSW/KClique/new_small_garph.edges.tree 2 4 /Users/zhangwenqian/UNSW/KClique/new_small_garph.edges
+~/_/pivoter/cmake-build-debug/bin/main ~/_/KClique/new_small_garph.edges.tree 2 4 ~/_/KClique/new_small_garph.edges
 main(40014,0x206accc80) malloc: nano zone abandoned due to inability to reserve vm space.
-/Users/zhangwenqian/UNSW/KClique/new_small_garph.edges.tree 2 4
+~/_/KClique/new_small_garph.edges.tree 2 4
 numLeaf: 12
 nun of nodes: 10
 Tree:

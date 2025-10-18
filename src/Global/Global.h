@@ -1,5 +1,5 @@
 //
-// Created by 张文谦 on 24-7-29.
+// Created by _ on 24-7-29.
 //
 // #pragma once
 #ifndef SUBGRAPHMATCHING_GLOBAL_H

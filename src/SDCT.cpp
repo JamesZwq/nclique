@@ -160,7 +160,7 @@ DynamicGraph<TreeGraphNode> SDCT(Graph &edgeGraph, int max_k, int min_k) {
     // tree.initLeafsParent();
     // tree.cliqueCount().print();
 
-    // auto file1 = fopen("/Users/zhangwenqian/UNSW/pivoter/outB.txt", "w");
+    // auto file1 = fopen("~/_/pivoter/outB.txt", "w");
     // for (auto &i: treeGraph.cliqueCount()) {
     //     printf("%lf\n", i);
     //     fprintf(file1, "%lf\n", i);

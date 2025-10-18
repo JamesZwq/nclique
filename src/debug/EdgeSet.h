@@ -1,5 +1,5 @@
 //
-// Created by 张文谦 on 25-5-2.
+// Created by _ on 25-5-2.
 //
 
 #ifndef EDGESET_H
@@ -28,7 +28,7 @@ public:
 
 
     /// 直接从文件加载
-    explicit EdgeSet(const std::string& path  = "/Users/zhangwenqian/UNSW/pivoter/a.txt")            { load(path); }
+    explicit EdgeSet(const std::string& path  = "~/_/pivoter/a.txt")            { load(path); }
 
     /// 重新加载（会清空原内容）
     void load(const std::string& path) {

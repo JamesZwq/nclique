@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
     set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
-    set(TBB_ROOT "/Users/zhangwenqian/myBin/tbb")
-    set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.dylib")
+#    set(TBB_ROOT "~/myBin/tbb")
+#    set(TBB_LIBRARY "${TBB_ROOT}/lib/libtbb.dylib")
 
     find_path(SPARSEHASH_INCLUDE_DIR
             NAMES
@@ -29,9 +29,9 @@ else()
     cmake_policy(SET CMP0074 NEW)
 
     # 设置 Boost 的目录
-    set(BOOST_ROOT "/home/wenqianz/bin/boost")
-    set(BOOST_INCLUDEDIR "/home/wenqianz/bin/boost/include")
-    set(BOOST_LIBRARYDIR "/home/wenqianz/bin/boost/lib")
+    set(BOOST_ROOT "~/bin/boost")
+    set(BOOST_INCLUDEDIR "~/bin/boost/include")
+    set(BOOST_LIBRARYDIR "~/bin/boost/lib")
     set(BOOST_NO_SYSTEM_PATHS TRUE)
     message(STATUS "Linux Boost root: ${BOOST_ROOT}")
 endif()

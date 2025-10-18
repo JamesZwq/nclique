@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export TBBROOT=/Users/zhangwenqian/UNSW/pivoter/oneTBB
+export TBBROOT=~/_/pivoter/oneTBB
 
-DYLD_LIBRARY_PATH="/Users/zhangwenqian/UNSW/pivoter/oneTBB/appleclang_16.0_cxx11_64_release:${DYLD_LIBRARY_PATH}"; export DYLD_LIBRARY_PATH
-LIBRARY_PATH="/Users/zhangwenqian/UNSW/pivoter/oneTBB/appleclang_16.0_cxx11_64_release:${LIBRARY_PATH}"; export LIBRARY_PATH
+DYLD_LIBRARY_PATH="~/_/pivoter/oneTBB/appleclang_16.0_cxx11_64_release:${DYLD_LIBRARY_PATH}"; export DYLD_LIBRARY_PATH
+LIBRARY_PATH="~/_/pivoter/oneTBB/appleclang_16.0_cxx11_64_release:${LIBRARY_PATH}"; export LIBRARY_PATH
 CPATH="${TBBROOT}/include:${CPATH}"; export CPATH
-PKG_CONFIG_PATH="/Users/zhangwenqian/UNSW/pivoter/oneTBB/appleclang_16.0_cxx11_64_release/pkgconfig:${PKG_CONFIG_PATH}"; export PKG_CONFIG_PATH
+PKG_CONFIG_PATH="~/_/pivoter/oneTBB/appleclang_16.0_cxx11_64_release/pkgconfig:${PKG_CONFIG_PATH}"; export PKG_CONFIG_PATH
 
 

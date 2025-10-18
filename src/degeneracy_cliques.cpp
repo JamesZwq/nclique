@@ -20,16 +20,6 @@
 
 
 int main(int argc, char **argv) {
-    populate_nCr();
-    daf::vListMap.resize(100);
-    bkRmEdge::bronKerboschFromFile("/Users/zhangwenqian/UNSW/pivoter/a.edge", 1,
-                                   [](const bkRmEdge::Bitset &clique, const bkRmEdge::Bitset &pivots) {
-                                       std::cout << "Find clique: " << clique << " pivots: " << pivots << std::endl;
-                                       return true;
-                                   });
-
-    // bkRmClique::testBronKerbosch();
-    return 0;
 
 
     // std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
@@ -160,8 +150,8 @@ int main(int argc, char **argv) {
     //     // std::cout << "coreV[" << i << "]: " << coreV[i] << std::endl;
     // }
     //  std::ranges::sort(coreV);
-    //  // /Users/zhangwenqian/UNSW/pivoter/a
-    //  auto fileOutput = fopen("/Users/zhangwenqian/UNSW/pivoter/a", "w");
+    //  // ~/_/pivoter/a
+    //  auto fileOutput = fopen("~/_/pivoter/a", "w");
     //  // for (const auto &i: corePlus) {
     //  //     fprintf(fileOutput, "%d %d %d\n", i.first.first, i.first.second, i.second);
     //  // }

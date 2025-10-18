@@ -1,5 +1,5 @@
 //
-// Created by 张文谦 on 25-3-4.
+// Created by _ on 25-3-4.
 //
 
 #include "NCliqueCoreDecomposition.h"

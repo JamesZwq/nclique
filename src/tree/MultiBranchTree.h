@@ -163,7 +163,7 @@ public:
     void removeLeaf(TreeNode *leaf);
 
     void serialize(const std::string &filename) const {
-        // auto filename = "/data/wenqianz/test.bin";
+        // auto filename = "/data/_/test.bin";
         std::ofstream ofs(filename, std::ios::binary);
         if (!ofs) {
             std::cerr << "Failed to serialize Tree, failed to open " << filename << std::endl;

@@ -183,7 +183,7 @@ void listAllCliquesDegeneracy_V(daf::Size *cliqueCounts, NeighborListArray **ord
     // tree.printTree();
     // tree.initLeafsParent();
     // tree.cliqueCount().print();
-    auto file1 = fopen("/Users/zhangwenqian/UNSW/pivoter/outA.txt", "w");
+    auto file1 = fopen("~/_/pivoter/outA.txt", "w");
     for (auto &i: tree.cliqueCount()) {
         printf("%lf\n", i);
         fprintf(file1, "%lf\n", i);

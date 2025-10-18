@@ -1,5 +1,5 @@
 //
-// Created by 张文谦 on 25-3-4.
+// Created by _ on 25-3-4.
 //
 
 #include "NCliqueCoreDecomposition.h"
@@ -236,7 +236,7 @@ void baseNucleusCoreDecompositionPar(const MultiBranchTree &tree, daf::CliqueSiz
         }
     }
 
-    // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/b", "w");
+    // auto file = fopen("~/_/pivoter/b", "w");
     // std::sort(core, core + tree.getRoot()->children.size());
     // for (daf::Size i = 0; i < tree.getRoot()->children.size(); i++) {
     //     fprintf(file, "%d\n", core[i]);

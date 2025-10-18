@@ -1,5 +1,5 @@
 //
-// Created by 张文谦 on 25-3-4.
+// Created by _ on 25-3-4.
 //
 
 #include "../NucleusDecomposition/NCliqueCoreDecomposition.h"
@@ -492,7 +492,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
     // daf::printArray(coreE, edgeGraph.adj_list.size());
 
 
-    // /Users/zhangwenqian/UNSW/pivoter/a
+    // ~/_/pivoter/a
     // std::sort(coreE, coreE + edgeGraph.adj_list.size());
     std::vector<std::pair<std::vector<daf::Size>, int> > sortedK;
     // sortedK.reserve(countingRClique.size());
@@ -506,14 +506,14 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
     //           [](const auto &a, const auto &b) {
     //               return a.second < b.second; // 按照 core 值降序排序
     //           });
-    // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/a.out", "w");
+    // auto file = fopen("~/_/pivoter/a.out", "w");
     // for (auto i: sortedK) {
     //     fprintf(file, "%d\n", (int) i.second);
     // }
     // fclose(file);
     // std::cout << "=========================end=========================" << std::endl;
     //
-    // hierarchyBuilder.print_to_file("/Users/zhangwenqian/UNSW/pivoter/a.edge_34_Hierarchy", [&](const daf::Size &k) {
+    // hierarchyBuilder.print_to_file("~/_/pivoter/a.edge_34_Hierarchy", [&](const daf::Size &k) {
     //     return cliqueIndex.byId(k);
     // });
 

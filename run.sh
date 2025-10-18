@@ -20,12 +20,12 @@ OUTPUT_FILE="experimentdata"
 
 # 数据集列表
 DATASETS=(
-  "/data/wenqianz/web-it-2004.edges"
-  "/data/wenqianz/com-dblp.edges"
-  "/data/wenqianz/web-Google.edges"
-  "/data/wenqianz/soc-pokec-relationships.edges"
-  "/data/wenqianz/web-Stanford.edges"
-  "/data/wenqianz/com-youtube.edges"
+  "/data/_/web-it-2004.edges"
+  "/data/_/com-dblp.edges"
+  "/data/_/web-Google.edges"
+  "/data/_/soc-pokec-relationships.edges"
+  "/data/_/web-Stanford.edges"
+  "/data/_/com-youtube.edges"
 )
 
 # s 的取值与 r 的范围：

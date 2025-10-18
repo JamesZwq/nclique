@@ -1,5 +1,5 @@
 //
-// Created by 张文谦 on 24-7-24.
+// Created by _ on 24-7-24.
 //
 
 #include <iostream>
@@ -410,13 +410,13 @@ Graph::Graph(const MultiBranchTree &tree, const daf::StaticVector<TreeNode *> &l
             node = node->parent;
         }
     }
-    std::ofstream out("/Users/zhangwenqian/UNSW/pivoter/adj_list.txt");
+    std::ofstream out("~/_/pivoter/adj_list.txt");
     for (const auto &i: adj_list_offsets) {
         out << i << "\n";
     }
     out.close();
     // degree 分布已经输出到文件中
-    std::cout << "The degree distribution has been output to the file: /Users/zhangwenqian/UNSW/pivoter/adj_list.txt" <<
+    std::cout << "The degree distribution has been output to the file: ~/_/pivoter/adj_list.txt" <<
             std::endl;
     for (daf::Size i = 1; i < n + 2; ++i) {
         max_degree = std::max(max_degree, adj_list_offsets[i]);
@@ -439,7 +439,7 @@ Graph::Graph(const MultiBranchTree &tree, const daf::StaticVector<TreeNode *> &l
     // std::cout << "adj_list_offsets: " << adj_list_offsets << std::endl;
     // std::cout << "adj_list: " << adj_list << std::endl;
     // print adj List to file
-    // /Users/zhangwenqian/UNSW/pivoter/adj_list.txt
+    // ~/_/pivoter/adj_list.txt
 }
 
 Graph::Graph(const MultiBranchTree &tree, const Graph &leafGraph, const daf::StaticVector<TreeNode *> &leafList,
@@ -594,8 +594,8 @@ std::vector<std::vector<daf::Size> > Graph::BronKerboschPivot() {
     // 输出所有极大团
     std::cout << "所有极大团：" << std::endl;
     // std::cout << cliques << std::endl;
-    // /Users/zhangwenqian/UNSW/pivoter/a
-    auto out = fopen("/Users/zhangwenqian/UNSW/pivoter/b", "w");
+    // ~/_/pivoter/a
+    auto out = fopen("~/_/pivoter/b", "w");
     for (const auto &clique: cliques) {
         for (int vertex: clique) {
             fprintf(out, "%d ", vertex);

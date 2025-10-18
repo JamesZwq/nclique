@@ -1,4 +1,4 @@
-// Created by 张文谦 on 25-4-24.
+// Created by _ on 25-4-24.
 // Updated 2025-06-15: switched underlying adjacency container
 // from google::dense_hash_set to robin_hood::unordered_flat_set.
 

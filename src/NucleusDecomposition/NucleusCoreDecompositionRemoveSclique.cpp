@@ -1,5 +1,5 @@
 //
-// Created by 张文谦 on 25-3-4.
+// Created by _ on 25-3-4.
 //
 
 #include "../NucleusDecomposition/NCliqueCoreDecomposition.h"
@@ -463,7 +463,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     // daf::printArray(coreE, edgeGraph.adj_list.size());
 
 
-    // /Users/zhangwenqian/UNSW/pivoter/a
+    // ~/_/pivoter/a
     // std::sort(coreE, coreE + edgeGraph.adj_list.size());
     std::vector<std::pair<std::vector<daf::Size>, int> > sortedK;
     sortedK.reserve(countingRClique.size());
@@ -477,7 +477,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
               [](const auto &a, const auto &b) {
                   return a.second < b.second; // 按照 core 值降序排序
               });
-    // auto file = fopen("/Users/zhangwenqian/UNSW/pivoter/a.out", "w");
+    // auto file = fopen("~/_/pivoter/a.out", "w");
     // for (auto i: sortedK) {
     //     printf("[");
     //     for (std::size_t j = 0; j < i.first.size(); ++j) {

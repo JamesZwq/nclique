@@ -1,5 +1,5 @@
 //
-// Created by 张文谦 on 25-3-4.
+// Created by _ on 25-3-4.
 //
 
 #include "NCliqueCoreDecomposition.h"
@@ -929,7 +929,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
     BaseECD::printEdgeCore(edgeGraph, coreE);
 #endif
 
-    // /Users/zhangwenqian/UNSW/pivoter/a
+    // ~/_/pivoter/a
     daf::Size numCounting = 0;
     // std::sort(coreE, coreE + edgeGraph.adj_list.size());
     std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > sortedK;
