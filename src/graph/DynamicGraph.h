@@ -56,22 +56,22 @@ class DynamicGraph {
             std::size_t N = lst.size(), M = nbrs.size();
             std::size_t i = 0, j = 0, k = 0;
 
-            // 同时向后读：i 读 lst，j 读 nbrs；k 是写指针
+            // ：i  lst，j  nbrs；k 
             while (i < N && j < M) {
                 if (lst[i] == nbrs[j]) {
-                    // 匹配到一个要删的：跳过它（i++、j++），不写入 k
+                    // ：（i++、j++）， k
                     ++i; ++j;
                 }
                 else {
-                    // lst[i] 不是要删的，保留
+                    // lst[i] ，
                     lst[k++] = std::move(lst[i++]);
                 }
             }
-            // 如果 lst 还剩尾部元素（nbrs 已经扫完），全部保留
+            //  lst （nbrs ），
             while (i < N) {
                 lst[k++] = std::move(lst[i++]);
             }
-            // 截断多余尾部
+            // 
             lst.resize(k);
             return lst;
         }

@@ -12,7 +12,7 @@
 using namespace std;
 using namespace std::chrono;
 
-// 随机生成无向图的边列表
+// 
 vector<pair<int,int>> make_edges(int n, int m) {
     mt19937_64 rng(12345);
     uniform_int_distribution<int> dist(0, n-1);
@@ -31,7 +31,7 @@ vector<pair<int,int>> make_edges(int n, int m) {
     return edges;
 }
 
-// 构造 vector<vector<int>> 邻接表
+//  vector<vector<int>> 
 vector<vector<int>> build_adj(int n, const vector<pair<int,int>>& edges) {
     vector<vector<int>> adj(n);
     for (auto &e: edges) {
@@ -41,7 +41,7 @@ vector<vector<int>> build_adj(int n, const vector<pair<int,int>>& edges) {
     return adj;
 }
 
-// 构造 CSR (offsets + neighbors)
+//  CSR (offsets + neighbors)
 void build_csr(int n,
                const vector<pair<int,int>>& edges,
                vector<int>& offsets,
@@ -72,19 +72,19 @@ int main(int argc, char** argv){
     }
     cout << "Nodes="<<n<<" Edges="<<m<<" Queries="<<q<<"\n";
 
-    // 1) 生成随机图
+    // 1) 
     auto edges = make_edges(n, m);
 
-    // 2) 构造两种结构
+    // 2) 
     auto adj = build_adj(n, edges);
     vector<int> csr_off, csr_nbr;
     build_csr(n, edges, csr_off, csr_nbr);
 
-    // 3) 两个相同种子、同步生成随机序列的 RNG
+    // 3) 、 RNG
     mt19937 rng_list(123), rng_csr(123);
     uniform_int_distribution<int> dist_node(0, n-1);
 
-    // 4) 直接在循环里生成随机 (u,i) 访问，避免大内存
+    // 4)  (u,i) ，
     //    List-of-lists
     auto t1 = high_resolution_clock::now();
     long long sum1 = 0;

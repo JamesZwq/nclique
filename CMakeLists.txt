@@ -28,7 +28,7 @@ else()
 
     cmake_policy(SET CMP0074 NEW)
 
-    # 设置 Boost 的目录
+    #  Boost 
     set(BOOST_ROOT "~/bin/boost")
     set(BOOST_INCLUDEDIR "~/bin/boost/include")
     set(BOOST_LIBRARYDIR "~/bin/boost/lib")
@@ -49,7 +49,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 #print boost include directories
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 
-# 添加 TBB 的头文件搜索路径
+#  TBB 
 include_directories("${TBB_ROOT}/include")
 include_directories(src)
 
@@ -106,15 +106,15 @@ set(CMAKE_LINKER_FLAGS_RELWITHDEBINFO
 
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
-# 指定每个可执行文件
+# 
 add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
 #add_executable(main ${COMMON_SOURCES} src/main.cpp)
 #add_executable(BCtest ${COMMON_SOURCES}
 #        src/dataStruct/CliqueMap.hpp)
 
-# 链接库
+# 
 target_link_libraries(degeneracy_cliques PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(BCtest PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 
-#include(CTest)            # 或者 enable_testing()
+#include(CTest)            #  enable_testing()

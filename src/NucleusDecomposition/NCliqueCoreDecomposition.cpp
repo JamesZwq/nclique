@@ -16,7 +16,7 @@ namespace baseCD {
     ) {
         daf::Size cliqueSize = povit.size() + keepC.size();
         if (node.children.empty() && cliqueSize >= k && keepC.size() <= k) {
-            const int needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
+            const int needPivot = k - keepC.size(); //  pivot 
             double totalKcliques = 0;
             if (needPivot >= 0 && needPivot <= povit.size()) {
                 totalKcliques = nCr[povit.size()][needPivot];
@@ -88,7 +88,7 @@ namespace baseCD {
             std::ranges::sort(orderPovit, [core](daf::Size a, daf::Size b) {
                 return core[a] > core[b];
             });
-            const daf::Size needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
+            const daf::Size needPivot = k - keepC.size(); //  pivot 
 
 
             double maxK = core[*std::ranges::min_element(keepC, [core](daf::Size a, daf::Size b) {

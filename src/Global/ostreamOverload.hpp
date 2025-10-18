@@ -45,7 +45,7 @@ std::ostream &operator<<(std::ostream &os, const std::pair<U, V> &p) {
     return os;
 }
 
-// ─── 通用 Range 可打印概念 ────────────────────────────────
+// ───  Range  ────────────────────────────────
 template<typename R>
 auto operator<<(std::ostream& os, R const& r)
     -> std::enable_if_t<
@@ -108,7 +108,7 @@ std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &
 }
 
 
-// 全局，放一个公共 .h/.hpp 里
+// ， .h/.hpp 
 // template<typename T>
 // std::ostream &operator<<(std::ostream &os, const google::dense_hash_set<T> &s) {
 //     os << "{";
@@ -126,21 +126,21 @@ std::ostream &operator<<(std::ostream &os, const std::map<Key, Value, Compare> &
 inline void debug_break_impl() noexcept
 {
 #if defined(_MSC_VER)            // MSVC / clang-cl
-    __debugbreak();              // 直接调用 IDE 自带的软中断
+    __debugbreak();              //  IDE 
 #elif defined(__clang__) || defined(__GNUC__)
 #   if __has_builtin(__builtin_debugtrap)
     __builtin_debugtrap();   // clang / gcc 10+
 #   elif (defined(__i386__) || defined(__x86_64__))
-    __asm__ volatile("int3"); // x86 上最简单
+    __asm__ volatile("int3"); // x86 
 #   else
-    std::raise(SIGTRAP);     // 其它架构退而求其次
+    std::raise(SIGTRAP);     // 
 #   endif
 #else
-    std::raise(SIGTRAP);         // C 标准库方案，几乎处处可用
+    std::raise(SIGTRAP);         // C ，
 #endif
 }
 
-/* 只要把表达式写进去，满足时就停：
+/* ，：
  *   DEBUG_BREAK_IF(ptr == nullptr);
  */
 #define DEBUG_BREAK_IF(expr)     \
@@ -149,7 +149,7 @@ if (__builtin_expect(!!(expr), 0)) \
 debug_break_impl();  \
 } while (false)
 
-/* 像 assert 一样用，但失败时不是 abort 而是断在原地 */
+/*  assert ， abort  */
 #define ASSERT_BREAK(expr)       \
 DEBUG_BREAK_IF(!(expr))
 #endif //OSTREAMOVERLOAD_HPP

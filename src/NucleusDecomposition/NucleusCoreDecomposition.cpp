@@ -17,7 +17,7 @@
 #include "graph/DynamicGraphSet.h"
 
 extern double nCr[1001][401];
-// 放在你的函数外（比如文件顶部），保证编译时可见并内联
+// （），
 // #ifndef NDEBUG
 // set NOEBUG as trus
 
@@ -62,13 +62,13 @@ namespace CDSet {
                                      UpdateFunc &&upd) noexcept {
         if (weight < 0.0) return;
 
-        // 判断两个区间迭代器是否相同
+        // 
         // if all same, do nothing
         if (b1 == b2 && e1 == e2 && b1 == e1 && b2 == e2) {
             return;
         }
         if (b1 == b2 && e1 == e2) {
-            // 同一范围：i < j
+            // ：i < j
             for (auto it = b1; it + 1 != e1; ++it) {
                 auto u = *it;
                 for (auto jt = it + 1; jt != e1; ++jt) {
@@ -76,7 +76,7 @@ namespace CDSet {
                 }
             }
         } else {
-            // 不同范围：笛卡尔积
+            // ：
             for (auto it = b1; it != e1; ++it) {
                 auto u = *it;
                 for (auto jt = b2; jt != e2; ++jt) {
@@ -119,11 +119,11 @@ namespace CDSet {
 
 
     struct CompareRClique {
-        const double *RCliqueCounting; // 指向外部数组
+        const double *RCliqueCounting; // 
         explicit CompareRClique(const double *coreLeaf) : RCliqueCounting(coreLeaf) {
         }
 
-        // 注意：这里要返回 “a 排在前面” 的条件，为最小堆写成 coreLeaf[a] > coreLeaf[b]
+        // ： “a ” ， coreLeaf[a] > coreLeaf[b]
         bool operator()(daf::Size const &a, daf::Size const &b) const {
             return RCliqueCounting[a] > RCliqueCounting[b];
         }
@@ -145,7 +145,7 @@ namespace CDSet {
     ) {
         daf::Size cliqueSize = povit.size() + keepC.size();
         if (node.children.empty() && cliqueSize >= k && keepC.size() <= k) {
-            const int needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
+            const int needPivot = k - keepC.size(); //  pivot 
             double totalKcliques = 0;
             if (needPivot >= 0 && needPivot <= povit.size()) {
                 totalKcliques = nCr[povit.size()][needPivot];
@@ -211,11 +211,11 @@ namespace CDSet {
     ) {
         daf::Size cliqueSize = povit.size() + keepC.size();
         if (node.children.empty() && cliqueSize >= k && keepC.size() <= k) {
-            // 还需从 pivot 里选的点数
+            //  pivot 
             int needPivot = int(k) - int(keepC.size());
-            // 1) keep-keep 边：两端都在 keepC 中
+            // 1) keep-keep ： keepC 
             double totalKcliques = -1;
-            // 从 pivot.size() 个点里选 needPivot 个，再分配给每条 keep‑keep 边
+            //  pivot.size()  needPivot ， keep‑keep 
             if (needPivot >= 1 && needPivot <= int(povit.size())) {
                 totalKcliques = nCr[povit.size()][needPivot];
                 for (size_t i = 0; i < keepC.size(); ++i) {
@@ -228,7 +228,7 @@ namespace CDSet {
                 }
             }
 
-            // 2) pivot‑pivot 边：两端都在 povit 中
+            // 2) pivot‑pivot ： povit 
             double eachPivotKcliques = -1;
             int needPivotWithV = needPivot - 2;
             if (needPivotWithV >= 0 && needPivotWithV <= static_cast<int>(povit.size()) - 2) {
@@ -244,7 +244,7 @@ namespace CDSet {
             }
 
 
-            // 3) cross 边：一端在 keepC，一端在 povit
+            // 3) cross ： keepC， povit
             double eachKeepPivotKcliques = -1;
             int needKeepPivotWithV = needPivot - 1;
             if (needKeepPivotWithV >= 0 && needKeepPivotWithV <= static_cast<int>(povit.size()) - 1) {
@@ -339,9 +339,9 @@ namespace CDSet {
 
             int needPivot = int(r) - int(keepC.size());
 
-            // 1) keep-keep 边：两端都在 keepC 中
+            // 1) keep-keep ： keepC 
             double totalKcliques = -1;
-            // 从 pivot.size() 个点里选 needPivot 个，再分配给每条 keep‑keep 边
+            //  pivot.size()  needPivot ， keep‑keep 
             if (needPivot >= 0 && needPivot <= int(povit.size())) {
                 totalKcliques = nCr[povit.size()][needPivot];
                 for (size_t i = 0; i < keepC.size(); ++i) {
@@ -353,7 +353,7 @@ namespace CDSet {
                 }
             }
 
-            // 2) pivot‑pivot 边：两端都在 povit 中
+            // 2) pivot‑pivot ： povit 
             double eachPivotKcliques = -1;
             int needPivotWithV = needPivot - 2;
             if (needPivotWithV >= 0 && needPivotWithV <= static_cast<int>(povit.size()) - 2) {
@@ -368,7 +368,7 @@ namespace CDSet {
             }
 
 
-            // 3) cross 边：一端在 keepC，一端在 povit
+            // 3) cross ： keepC， povit
             double eachKeepPivotKcliques = -1;
             int needKeepPivotWithV = needPivot - 1;
             if (needKeepPivotWithV >= 0 && needKeepPivotWithV <= static_cast<int>(povit.size()) - 1) {
@@ -599,7 +599,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
     int numProgress = 0;
     while (!heap.empty()) {
         minCore = std::max(countingRClique[heap.top()], minCore);
-        // 一次循环把所有 core==minCore 的 leaf 全部 pop 出来
+        //  core==minCore  leaf  pop 
         std::cout << "minCore: " << minCore << std::endl;
         while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
             auto id = heap.top();

@@ -21,7 +21,7 @@ public:
     explicit Graph() = default;
     // @brief constructor
     // @param file_path the path of the graph file
-    // @param singleEdge if true, 只有从小到大的边
+    // @param singleEdge if true, 
     explicit Graph(const std::string &file_path, bool singleEdge = false);
 
     // std::vector<daf::Size> adj_list_offsets;
@@ -137,20 +137,20 @@ public:
     void beSingleEdge();
 
     void buildEdgeIdMap() {
-        // 只要调用过 beSingleEdge()，adj_list_offsets/new_adj 就只剩 u<v 的单边
-        // 1) 准备稀疏哈希
+        //  beSingleEdge()，adj_list_offsets/new_adj  u<v 
+        // 1) 
         // edgeIdMap_.set_empty_key( std::numeric_limits<uint64_t>::max() );
         // edgeIdMap_.set_deleted_key( std::numeric_limits<uint64_t>::max() - 1 );
-        // 一次性分配足够多的桶
+        // 
         // edgeIdMap_.resize( static_cast<size_t>(adj_list.c_size * 1.3) );
         edgeIdMap_.reserve(static_cast<size_t>(adj_list.c_size * 1.3));
         eidToNode.resize(adj_list.c_size);
-        // 2) 直接按 CSR 下标填 map
+        // 2)  CSR  map
         for (daf::Size u = 0; u < n; ++u) {
             bool useMap = (getNbrCount(u) >= 1000);
             for (daf::Size eid = adj_list_offsets[u]; eid < adj_list_offsets[u + 1]; ++eid) {
                 daf::Size v = adj_list[eid];
-                // beSingleEdge 已经保证只剩下 v>u 的情况
+                // beSingleEdge  v>u 
                 if (useMap) {
                     uint64_t key = (static_cast<uint64_t>(u) << 32) | static_cast<uint64_t>(v);
                     edgeIdMap_[key] = eid;
@@ -162,16 +162,16 @@ public:
 
 
     inline daf::Size getEdgeIndex(daf::Size u, daf::Size v) const noexcept {
-        // 1. 归一化
+        // 1. 
         if (u > v) {
             auto t = u; u = v; v = t;
         }
 
-        // 2. 拿到邻居区间 [b,e)
+        // 2.  [b,e)
         auto [b, e] = getNbr(u);
         const daf::Size* data = adj_list.data();
 
-        // 3. 手写二分查找 v
+        // 3.  v
         std::size_t lo = b, hi = e;
         while (lo < hi) {
             std::size_t mid = lo + ((hi - lo) >> 1);
@@ -179,7 +179,7 @@ public:
             else               hi = mid;
         }
 
-        // 4. 命中检查
+        // 4. 
         if (lo < e && data[lo] == v) {
             return lo;
         }
@@ -216,7 +216,7 @@ public:
     daf::Size n;
     daf::Size max_degree;
 
-    // key = (u<<32)|v, value = 连续 ID
+    // key = (u<<32)|v, value =  ID
     // google::dense_hash_map<uint64_t, daf::Size> edgeIdMap_;
     robin_hood::unordered_flat_map<uint64_t, daf::Size> edgeIdMap_;
 private:

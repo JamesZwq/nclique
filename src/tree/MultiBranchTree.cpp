@@ -248,7 +248,7 @@ void MultiBranchTree::initMaxDeep() const {
 }
 
 [[nodiscard]] double MultiBranchTree::numLeafs() const {
-    // 定义一个 lambda 用于递归计算叶子数
+    //  lambda 
     std::function<double(TreeNode *)> rec = [&](TreeNode *node) -> double {
         if (node->children.empty()) {
             return 1;
@@ -263,11 +263,11 @@ void MultiBranchTree::initMaxDeep() const {
 }
 
 void TreeNode::prettyPrint(std::ostream &os, int indent) const {
-    // 打印缩进
+    // 
     for (int i = 0; i < indent; i++) {
-        os << "  "; // 两个空格缩进
+        os << "  "; // 
     }
-    // 如果是 pivot 节点，在前面添加标记
+    //  pivot ，
     if (isPivot) {
         os << "[Pivot] ";
     }
@@ -276,7 +276,7 @@ void TreeNode::prettyPrint(std::ostream &os, int indent) const {
         os << " leafId-" << leafId;
     }
     os << std::endl;
-    // 递归打印每个子节点，缩进加 1
+    // ， 1
     // auto cCount = 0;
     for (const auto &child: children) {
         // std::cout << " v: " << v << " child: " << ++cCount << std::endl;

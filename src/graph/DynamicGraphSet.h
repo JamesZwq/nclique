@@ -127,7 +127,7 @@ public:
     // std::vector<robin_hood::unordered_flat_set<T> > adj_list;
     // robin_hood::unordered_flat_set<><T>
 
-    // 用于存储被删除的节点 ID
+    //  ID
 private:
     std::vector<daf::Size> removedNodes;
 };

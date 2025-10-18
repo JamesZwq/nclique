@@ -10,14 +10,14 @@
 #include "robin_hood.h"
 #include "graph/DynamicGraph.h"
 
-// ===== 小工具：逐项计算 C(n,r)，用 128bit 防溢出 =====
+// ===== ： C(n,r)， 128bit  =====
 template<typename T>
 static inline unsigned __int128 binom_u128(T n, T r) noexcept {
     if (r > n) return 0;
     if (r == 0 || r == n) return 1;
     if (r > n - r) r = n - r;
 
-    switch (r) {        // 手写到 r = 4 已覆盖你目前的全部情况
+    switch (r) {        //  r = 4 
         case 1:  return n;
         case 2:  return (unsigned __int128)n * (n - 1) / 2;
         case 3:  return (unsigned __int128)n * (n - 1) * (n - 2) / 6;
@@ -33,19 +33,19 @@ static inline unsigned __int128 binom_u128(T n, T r) noexcept {
     }
 }
 
-// ========== 索引类 ==========
+// ==========  ==========
 class StaticCliqueIndex {
 public:
-    using Id = uint32_t; // 可换 daf::Size
+    using Id = uint32_t; //  daf::Size
 
 private:
     daf::Size k_;
-    // id -> k_ 连排节点
+    // id -> k_ 
     std::vector<daf::Size> pool_;
     // rank/hash -> id
     std::vector<robin_hood::unordered_flat_map<uint64_t, Id> > mapList_;
-    daf::Size numClique = 0; // 用于统计总 clique 数量
-    // ---- rank 计算（组合数排名，保证无碰撞）----
+    daf::Size numClique = 0; //  clique 
+    // ---- rank （，）----
     uint64_t rank64(const daf::Size *data, daf::Size len) const noexcept {
         unsigned __int128 acc = 0;
         for (daf::Size i = 0; i < len; ++i) {
@@ -59,7 +59,7 @@ private:
         for (daf::Size i = 0; i < c.size(); ++i) {
             acc += binom_u128(c[i], static_cast<daf::Size>(i + 1));
         }
-        return static_cast<uint64_t>(acc); // 足够 k<=8 & n<=2^60；否则可返回 128bit 并哈希
+        return static_cast<uint64_t>(acc); //  k<=8 & n<=2^60； 128bit 
     }
 
     static uint64_t rank64_from_two_sorted(
@@ -68,7 +68,7 @@ private:
         daf::Size k = pCount + keepCount;
         unsigned __int128 acc = 0;
         daf::Size i = 0, j = 0;
-        // idx 从 1 开始，对应 binom(c[idx-1], idx)
+        // idx  1 ， binom(c[idx-1], idx)
         for (daf::Size idx = 1; idx <= k; ++idx) {
             daf::Size v;
             if (i < pCount && (j >= keepCount || pivots[i] < keeps[j].v)) {
@@ -89,7 +89,7 @@ public:
         build(treeGraph, maxV);
     }
 
-    // ------- 批量构建 -------
+    // -------  -------
     void build(const DynamicGraph<TreeGraphNode> &treeGraph, const daf::Size maxV) {
         daf::StaticVector<double> countV = treeGraph.cliqueCountPerVAcc(maxV, k_);
         daf::Size N = treeGraph.cliqueCount(k_);
@@ -107,7 +107,7 @@ public:
 
         for (const auto &clique: treeGraph.adj_list) {
             // Clique c = raw;
-            // std::sort(c.begin(), c.end());          // 保升序，确保 rank 唯一
+            // std::sort(c.begin(), c.end());          // ， rank 
             // auto key = rank64(c);
             for (const auto &node: clique) {
                 if (node.isPivot) drop.push_back(node.v);
@@ -116,12 +116,12 @@ public:
             daf::enumerateCombinations(keep, drop, k_,
                                        [&](const daf::StaticVector<daf::Size> &keep,
                                            const daf::StaticVector<daf::Size> &combination) {
-                                           // 1) 扩容并准备输出区间
+                                           // 1) 
                                            daf::Size start = pool_.size();
                                            pool_.resize(start + k_);
                                            daf::Size *out = pool_.data() + start;
 
-                                           // 2) 线性归并 combination (长度 m) 和 keep (长度 n),  m+n == k_
+                                           // 2)  combination ( m)  keep ( n),  m+n == k_
                                            const daf::Size *a = combination.data();
                                            const daf::Size *a_end = a + combination.size();
                                            const daf::Size *b = keep.data();
@@ -131,16 +131,16 @@ public:
                                                *out++ = (*a < *b ? *a++ : *b++);
                                            }
                                            if (a < a_end) {
-                                               // 剩余 a 段
+                                               //  a 
                                                daf::Size rem = a_end - a;
                                                std::memcpy(out, a, rem * sizeof(daf::Size));
                                            } else if (b < b_end) {
-                                               // 剩余 b 段
+                                               //  b 
                                                daf::Size rem = b_end - b;
                                                std::memcpy(out, b, rem * sizeof(daf::Size));
                                            }
 
-                                           // 3) 计算组合排名：对刚刚写入的 k_ 个元素做 rank
+                                           // 3) ： k_  rank
                                            unsigned __int128 acc = 0;
                                            for (daf::Size i = 0; i < k_; ++i) {
                                                daf::Size v = pool_[start + i];
@@ -148,8 +148,8 @@ public:
                                            }
                                            uint64_t key = static_cast<uint64_t>(acc);
 
-                                           // 4) 插入到 map（假设永不失败）
-                                           daf::Size vmin = pool_[start]; // merge 后第一位即最小值
+                                           // 4)  map（）
+                                           daf::Size vmin = pool_[start]; // merge 
                                            mapList_[vmin].emplace(key, numClique++);
 
                                            return true;
@@ -209,10 +209,10 @@ public:
             throw std::invalid_argument("byNewClique: wrong clique size");
         }
 
-        // 2) 计算最小顶点，用作桶索引
+        // 2) ，
         daf::Size vmin = *std::begin(c);
 
-        // 3) 计算 rank
+        // 3)  rank
         unsigned __int128 acc = 0;
         daf::Size idx = 0;
         for (auto it = std::begin(c); it != std::end(c); ++it, ++idx) {
@@ -221,20 +221,20 @@ public:
         }
         uint64_t key = static_cast<uint64_t>(acc);
 
-        // 4) 在 mapList_ 中查找
+        // 4)  mapList_ 
         auto &bucket = mapList_[vmin];
         auto itMap = bucket.find(key);
         if (itMap != bucket.end()) {
-            // 已存在，直接返回 ID
+            // ， ID
             return {itMap->second, false};
         }
 
-        // 5) 不存在：插入新 clique
+        // 5) ： clique
         Id newId = static_cast<Id>(numClique);
-        // 5.1 扩容 pool_: 依次追加 c 中的每一个元素
+        // 5.1  pool_:  c 
         pool_.insert(pool_.end(), std::begin(c), std::end(c));
 
-        // 5.2 向桶里插入 (key -> newId)
+        // 5.2  (key -> newId)
         bucket.emplace(key, newId);
         ++numClique;
 
@@ -247,18 +247,18 @@ public:
             throw std::invalid_argument(
                 "byClique: pivotCount must be >=1 and pivotCount+keepCount==k");
         }
-        // 取两段首元素的最小值作为桶索引
+        // 
         daf::Size vmin = keeps && keepCount > 0
                              ? std::min(pivots[0], keeps[0].v)
                              : pivots[0];
 
-        // 一次归并计算 rank
+        //  rank
         uint64_t key = rank64_from_two_sorted(
             pivots, pivotCount,
             keeps, keepCount
         );
 
-        // 在桶里查找
+        // 
         const auto &bucket = mapList_[vmin];
         auto it = bucket.find(key);
         if (it == bucket.end()) {
@@ -270,7 +270,7 @@ public:
     template<
         typename PivotContainer,
         typename KeepContainer,
-        // 回退到 C++17/14 时可把下面两行换成 static_assert
+        //  C++17/14  static_assert
         typename = std::enable_if_t<
             std::is_convertible_v<typename PivotContainer::value_type, daf::Size> &&
             std::is_convertible_v<typename KeepContainer::value_type, daf::Size>
@@ -284,7 +284,7 @@ public:
                 "byClique: pivotCount must be >=1 and pivotCount+keepCount==k");
         }
 
-        // 1) 选出桶索引 vmin = min(pivots.front(), keeps.front())
+        // 1)  vmin = min(pivots.front(), keeps.front())
         daf::Size firstP = static_cast<daf::Size>(*std::begin(pivots));
         daf::Size vmin = firstP;
         if (kCount > 0) {
@@ -292,7 +292,7 @@ public:
             vmin = std::min(firstP, firstK);
         }
 
-        // 2) 一次归并同时计算 rank
+        // 2)  rank
         unsigned __int128 acc = 0;
         daf::Size idx = 1; // binom(_, idx)
         auto itP = std::begin(pivots), endP = std::end(pivots);
@@ -309,7 +309,7 @@ public:
                 ++itK;
             }
         }
-        // 把剩下的都吃掉
+        // 
         while (itP != endP) {
             daf::Size vP = static_cast<daf::Size>(*itP++);
             acc += binom_u128(vP, static_cast<daf::Size>(idx++));
@@ -331,13 +331,13 @@ public:
     auto size() const noexcept { return numClique; }
 
     void verify() const {
-        // 1) 验证 byId / byClique 正向、反向一致
+        // 1)  byId / byClique 、
         for (Id id = 0; id < numClique; ++id) {
-            // 拿回 CSR 存储的 clique
+            //  CSR  clique
             auto span_c = byId(id);
-            // 转成可排序的 vector
+            //  vector
             std::vector<daf::Size> c(span_c.begin(), span_c.end());
-            // 最小值检查
+            // 
             daf::Size vmin = *std::min_element(c.begin(), c.end());
             if (vmin != c.front()) {
                 std::cerr << "Error: id=" << id
@@ -345,7 +345,7 @@ public:
                         << " but front=" << c.front() << "\n";
                 throw std::runtime_error("verify failed: unsorted byId");
             }
-            // 反查
+            // 
             Id id2 = byClique(c);
             if (id2 != id) {
                 std::cerr << "Error: byClique returned " << id2
@@ -354,7 +354,7 @@ public:
             }
         }
 
-        // 2) 验证所有 mapList_ 桶中的 key/id
+        // 2)  mapList_  key/id
         for (daf::Size i = 0; i < mapList_.size(); ++i) {
             const auto &bucket = mapList_[i];
             for (auto const &kv: bucket) {
@@ -365,7 +365,7 @@ public:
                             << id << " >= size()\n";
                     throw std::runtime_error("verify failed: id out of range");
                 }
-                // 拿出 clique，并检查最小值
+                //  clique，
                 auto span_c = byId(id);
                 if (span_c.front() != static_cast<daf::Size>(i)) {
                     std::cerr << "Error: mapList_[" << i
@@ -373,7 +373,7 @@ public:
                             << " has min=" << span_c.front() << "\n";
                     throw std::runtime_error("verify failed: bucket index mismatch");
                 }
-                // 重新计算 rank
+                //  rank
                 uint64_t key2 = rank64(span_c.data(), span_c.size());
                 if (key2 != key) {
                     std::cerr << "Error: mapList_[" << i
@@ -390,7 +390,7 @@ public:
                 << mapList_.size() << " buckets.\n";
     }
 
-    // 输出索引内容：key: clique nodes
+    // ：key: clique nodes
     friend std::ostream &operator<<(std::ostream &os, const StaticCliqueIndex &idx) {
         for (Id id = 0; id < idx.numClique; ++id) {
             auto span_c = idx.byId(id);
@@ -404,7 +404,7 @@ public:
         return os;
     }
 
-    // 打印到指定输出流（默认 std::cout）
+    // （ std::cout）
     void print(std::ostream &os = std::cout) const {
         os << *this;
     }

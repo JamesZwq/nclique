@@ -18,21 +18,21 @@
 // extern double nCr[1001][401];
 // class DynamicBipartiteGraph {
 // public:
-//     // 用于 dense_hash_set 的 空槽 和 删除标记
+//     //  dense_hash_set    
 //     static constexpr int EMPTY_KEY   = -1;
 //     static constexpr int DELETED_KEY = -2;
 //
-//     // 构造：nLeft, nRight 初始节点数；maxEdges 用于预估平均度
+//     // ：nLeft, nRight ；maxEdges 
 //     DynamicBipartiteGraph(daf::Size nLeft, daf::Size nRight, size_t maxEdges)
 //         : nLeft_(nLeft), nRight_(nRight)
 //     {
 //         if (nLeft_ <= 0 || nRight_ <= 0)
 //             throw std::invalid_argument("Node counts must be positive");
 //
-//         // 估算每个节点的平均桶数（降低装载因子）
+//         // （）
 //         bucketSize_ = maxEdges / (nLeft_ + nRight_) + 1;
 //
-//         // 初始化左、右两侧哈希集合
+//         // 、
 //         leftAdj_.reserve(nLeft_);
 //         rightAdj_.reserve(nRight_);
 //         for (int i = 0; i < nLeft_; ++i) {
@@ -45,19 +45,19 @@
 //
 //     // DynamicBipartiteGraph(DynamicGraph<TreeGraphNode> &treeGraph, Graph &edgeGraph);
 //
-//     // 在左侧添加一个新节点，返回它的 ID（连续）
+//     // ， ID（）
 //     int addLeftNode() {
 //         leftAdj_.emplace_back(createEmptySet());
 //         return nLeft_++;
 //     }
 //
-//     // 在右侧添加一个新节点，返回它的 ID（连续）
+//     // ， ID（）
 //     int addRightNode() {
 //         rightAdj_.emplace_back(createEmptySet());
 //         return nRight_++;
 //     }
 //
-//     // 插入一条边 (u->v)，若 u/v 超出当前范围，请先调用 addLeftNode/addRightNode
+//     //  (u->v)， u/v ， addLeftNode/addRightNode
 //     bool addEdge(int u, int v) {
 //         if (u > nLeft_) {
 //             if (u == nLeft_) {
@@ -81,7 +81,7 @@
 //         return true;
 //     }
 //
-//     // 删除边
+//     // 
 //     bool removeEdge(int u, int v) {
 //         auto &Ls = leftAdj_[u];
 //         if (Ls.find(v) == Ls.end()) return false;
@@ -90,12 +90,12 @@
 //         return true;
 //     }
 //
-//     // 查询边是否存在
+//     // 
 //     bool hasEdge(int u, int v) const {
 //         return leftAdj_[u].find(v) != leftAdj_[u].end();
 //     }
 //
-//     // 返回当前左/右节点数
+//     // /
 //     int numLeft() const  { return nLeft_; }
 //     int numRight() const { return nRight_; }
 //
@@ -116,7 +116,7 @@
 //     size_t bucketSize_;
 //     std::vector<dense_hash_set<int>> leftAdj_, rightAdj_;
 //
-//     // 统一创建并初始化一个空的 dense_hash_set
+//     //  dense_hash_set
 //     dense_hash_set<int> createEmptySet() const {
 //         dense_hash_set<int> s;
 //         s.set_empty_key(EMPTY_KEY);

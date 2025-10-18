@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# 批跑 degeneracy_cliques，强制 /bin/time -v，所有输出写到一个文件：experimentdata
-# 用法：chmod +x run_all.sh && ./run_all.sh
+#  degeneracy_cliques， /bin/time -v，：experimentdata
+# ：chmod +x run_all.sh && ./run_all.sh
 set -u -o pipefail
 
-TIME_BIN="/bin/time"   # 必须使用 /bin/time -v
+TIME_BIN="/bin/time"   #  /bin/time -v
 if [[ ! -x "$TIME_BIN" ]]; then
-  echo "[FATAL] /bin/time 不存在或不可执行" >&2
+  echo "[FATAL] /bin/time " >&2
   exit 1
 fi
 
 BIN="./build/bin/degeneracy_cliques"
 if [[ ! -x "$BIN" ]]; then
-  echo "[FATAL] 找不到可执行文件：$BIN" >&2
+  echo "[FATAL] ：$BIN" >&2
   exit 1
 fi
 
-# 所有结果写到这个单一文件（如需改名可改这里）
+# （）
 OUTPUT_FILE="experimentdata"
 
-# 数据集列表
+# 
 DATASETS=(
   "/data/_/web-it-2004.edges"
   "/data/_/com-dblp.edges"
@@ -28,7 +28,7 @@ DATASETS=(
   "/data/_/com-youtube.edges"
 )
 
-# s 的取值与 r 的范围：
+# s  r ：
 # s=1 -> r=3..30
 # s=2 -> r=4..30
 # s=3 -> r=4..30
@@ -39,7 +39,7 @@ r_range_for_s () {
   case "$s" in
     1) echo "3 30" ;;
     2|3) echo "4 30" ;;
-    *) echo "5 30" ;; # 兜底，不会用到
+    *) echo "5 30" ;; # ，
   esac
 }
 
@@ -81,7 +81,7 @@ for ds in "${DATASETS[@]}"; do
       } >> "$OUTPUT_FILE"
 
       tlog="$TMPDIR/time.$$.$RANDOM.log"
-      # 程序 stdout/stderr 直接写入 OUTPUT_FILE；/bin/time -v 输出写到临时文件，随后拼接
+      #  stdout/stderr  OUTPUT_FILE；/bin/time -v ，
       "$TIME_BIN" -v -o "$tlog" "$BIN" "$ds" "$s" "$r" >> "$OUTPUT_FILE" 2>&1
       status=$?
 
@@ -99,4 +99,4 @@ for ds in "${DATASETS[@]}"; do
 done
 
 echo "===== RUN END $(date '+%F %T') =====" >> "$OUTPUT_FILE"
-echo "所有结果已写入：$OUTPUT_FILE"
+echo "：$OUTPUT_FILE"

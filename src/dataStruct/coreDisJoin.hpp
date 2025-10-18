@@ -85,7 +85,7 @@ public:
     //     }
     // }
 
-    // 函数映射版：mapper(id) -> 可打印类型
+    // ：mapper(id) -> 
     template<class Mapper>
     void print(const Mapper &mapper) {
         std::cout << "coreDisJoin(n=" << n << ", numK=" << numK << ", currKIndex=" << currKIndex << ")\n";
@@ -112,7 +112,7 @@ public:
         }
     }
 
-    // 将与上面相同的内容输出到文件
+    // 
     template<class Mapper, class PathLike>
     bool print_to_file(const PathLike &filePath, const Mapper &mapper) {
         std::ofstream ofs(filePath);
@@ -149,7 +149,7 @@ public:
     bool validate_top_layer(daf::Size minSize) noexcept {
         if (codeDisjointSets.empty()) return true;
         size_t top = static_cast<size_t>(currKIndex);
-        if (top >= codeDisjointSets.size()) top = codeDisjointSets.size() - 1; // 兜底
+        if (top >= codeDisjointSets.size()) top = codeDisjointSets.size() - 1; // 
         return codeDisjointSets[top].validate_min_component_size(static_cast<idx_t>(minSize));
     }
 
@@ -159,23 +159,23 @@ public:
     public:
         explicit DisjointSet(idx_t n = 0) noexcept { reset(n); }
 
-        // 重新初始化为 n 个单点集合
+        //  n 
         void reset(const idx_t n) noexcept {
             parent_.resize(n);
             size_.assign(n, 1);
             std::iota(parent_.begin(), parent_.end(), 0);
             comp_cnt_ = n;
-            // beCall_.assign(n, false); // 初始化为 false
+            // beCall_.assign(n, false); //  false
         }
 
-        // 仅预留容量，避免反复扩容
+        // ，
         void reserve(idx_t n) {
             parent_.reserve(n);
             size_.reserve(n);
             // beCall_.reserve(n);
         }
 
-        // 查找代表元（迭代 + 路径减半）
+        // （ + ）
         inline idx_t find(idx_t x) noexcept {
             while (parent_[x] != x) {
                 parent_[x] = parent_[parent_[x]]; // path halving
@@ -184,14 +184,14 @@ public:
             return x;
         }
 
-        // 合并 a 与 b 所在集合；若已同属一集返回 false
+        //  a  b ； false
         inline bool unite(idx_t a, idx_t b) noexcept {
             a = find(a);
             b = find(b);
             // beCall_[a] = true;
             // beCall_[b] = true;
             if (a == b) return false;
-            // 按大小合并（把小树挂到大树）
+            // （）
             if (size_[a] < size_[b]) std::swap(a, b);
             parent_[b] = a;
             size_[a] += size_[b];
@@ -199,16 +199,16 @@ public:
             return true;
         }
 
-        // 是否同属一集合
+        // 
         inline bool same(idx_t a, idx_t b) noexcept { return find(a) == find(b); }
 
-        // 返回 x 所在集合的大小
+        //  x 
         inline idx_t size(idx_t x) noexcept { return size_[find(x)]; }
 
-        // 当前连通分量个数
+        // 
         inline idx_t count() const noexcept { return comp_cnt_; }
 
-        // 元素个数
+        // 
         inline idx_t n() const noexcept { return static_cast<idx_t>(parent_.size()); }
 
         friend std::ostream &operator<<(std::ostream &os, DisjointSet &cdj) {
@@ -253,12 +253,12 @@ public:
             }
         }
 
-        // 使用函数映射打印：仅对代表元 rep 做 mapper(rep) 标签
+        // ： rep  mapper(rep) 
         template<class Mapper>
         void print_with_mapper(std::ostream &os, const Mapper &mapper) {
             std::unordered_map<idx_t, std::vector<idx_t> > components;
             for (idx_t v = 0; v < n(); ++v) {
-                idx_t p = find(v); // 允许路径减半
+                idx_t p = find(v); // 
                 components[p].push_back(v);
             }
             os << "DisjointSet(n=" << n() << ", comp_cnt=" << comp_cnt_ << ")\n";
@@ -282,17 +282,17 @@ public:
             std::unordered_map<idx_t, idx_t> comp_sz;
             comp_sz.reserve(static_cast<size_t>(n()));
             for (idx_t v = 0; v < n(); ++v) {
-                idx_t r = find(v); // 只读查找，不做路径压缩
+                idx_t r = find(v); // ，
                 ++comp_sz[r];
             }
             for (const auto &kv: comp_sz) {
                 idx_t sz = kv.second;
-                if (sz == 1) continue; // 单点允许
+                if (sz == 1) continue; // 
                 if (sz < minSize) {
                     std::cout << "DisjointSet validation failed: "
                             << "component size " << sz << " < " << minSize
                             << " for representative " << kv.first << "\n";
-                    return false; // 2..minSize-1 失败
+                    return false; // 2..minSize-1 
                 }
             }
             return true;
@@ -308,8 +308,8 @@ public:
     std::vector<DisjointSet> codeDisjointSets;
     // std::vector<daf::Size> coreList;
     daf::Size n;
-    daf::Size numK; // 记录 k 的大小
-    daf::Size currKIndex; // 记录 k 的大小
+    daf::Size numK; //  k 
+    daf::Size currKIndex; //  k 
 };
 
 #endif //PIVOTER_COREDISJOIN_HPP

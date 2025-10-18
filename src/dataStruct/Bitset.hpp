@@ -22,49 +22,49 @@
 #endif
 
 struct DynBitset {
-    /* -------- 类型与常量 -------- */
+    /* --------  -------- */
     using word_t = std::uint64_t;
     static constexpr std::size_t W = 64;
-    static constexpr std::size_t MAX_BITS = 400;                 // 固定容量上限
+    static constexpr std::size_t MAX_BITS = 400;                 // 
     static constexpr std::size_t NWORDS  = (MAX_BITS + W - 1) / W;
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
 
-    /* -------- 内存布局 --------
-     * 采用“固定容量 + 可变逻辑尺寸”模式：
-     * - data 固定为 400 位（7×u64）容量，避免任何运行期扩容/分配
-     * - nbits 记录当前有效位数（<= MAX_BITS）
+    /* --------  --------
+     * “ + ”：
+     * - data  400 （7×u64），/
+     * - nbits （<= MAX_BITS）
      */
-    std::size_t nbits = MAX_BITS;                 ///< 真实位数（逻辑长度）
-    alignas(64) std::array<word_t, NWORDS> data{};///< 固定 400 位容量，默认零初始化
+    std::size_t nbits = MAX_BITS;                 ///< （）
+    alignas(64) std::array<word_t, NWORDS> data{};///<  400 ，
 
-    // 默认构造：逻辑尺寸为 MAX_BITS（400），所有位清零
+    // ： MAX_BITS（400），
     explicit DynBitset() noexcept = default;
 
-    // 仅更新逻辑尺寸；不触发任何分配
+    // ；
     inline void setSize(std::size_t n) noexcept {
         if (this->nbits == n) return;
         const std::size_t oldWN = word_count();
         nbits = n;
         const std::size_t newWN = word_count();
-        // 若扩张了逻辑长度，把新引入的 word 清零以保持确定性
+        // ， word 
         for (std::size_t i = oldWN; i < newWN; ++i) data[i] = 0;
         trim_tail();
     }
 
-    // 逻辑所占用的 u64 个数
+    //  u64 
     inline std::size_t word_count() const noexcept { return (nbits + W - 1) / W; }
 
-    // 末尾有效位掩码（根据 nbits 计算）
+    // （ nbits ）
     static inline word_t tail_mask_from_bits(std::size_t n) noexcept {
         const unsigned e = static_cast<unsigned>(n & 63);
         return e ? ((word_t(1) << e) - 1) : ~word_t(0);
     }
     inline word_t tail_mask() const noexcept { return tail_mask_from_bits(nbits); }
 
-    /* -------- 容量 -------- */
+    /* --------  -------- */
     std::size_t size() const noexcept { return nbits; }
 
-    /* -------- 单点操作 -------- */
+    /* --------  -------- */
     inline void set(std::size_t i) {
         assert(i < nbits && "DynBitset::set out of range");
         data[i / W] |= word_t(1) << (i & 63);
@@ -82,26 +82,26 @@ struct DynBitset {
     inline void set() { set_all(); }
     inline void reset() { reset_all(); }
 
-    /* -------- 整体操作 -------- */
+    /* --------  -------- */
     inline void set_all() {
         const std::size_t WN = word_count();
         if (WN == 0) return;
-        // 先把前 WN-1 个 word 全置 1
+        //  WN-1  word  1
         for (std::size_t i = 0; i + 1 < WN; ++i) data[i] = ~word_t(0);
-        // 最后一个 word 仅置到 nbits 的尾掩码
+        //  word  nbits 
         data[WN - 1] = tail_mask();
-        // 其余未用 word 置 0（可选，保证状态确定）
+        //  word  0（，）
         for (std::size_t i = WN; i < data.size(); ++i) data[i] = 0;
     }
 
     inline void reset_all() {
         const std::size_t WN = word_count();
         for (std::size_t i = 0; i < WN; ++i) data[i] = 0;
-        // 可选：清理未用区，避免未来扩张时携带脏位
+        // ：，
         for (std::size_t i = WN; i < data.size(); ++i) data[i] = 0;
     }
 
-    /* -------- 逻辑运算 (原地) -------- */
+    /* --------  () -------- */
     inline void assign_and(const DynBitset &o) {
         if (&o == this) { trim_tail(); return; }
         const std::size_t WN  = word_count();
@@ -147,7 +147,7 @@ struct DynBitset {
 #else
         for (std::size_t i = 0; i < N; ++i) data[i] &= o.data[i];
 #endif
-        // 超过对方长度的逻辑段，AND 视作与 0 相与，必须清零
+        // ，AND  0 ，
         for (std::size_t i = N; i < WN; ++i) data[i] = 0;
         trim_tail();
     }
@@ -248,7 +248,7 @@ struct DynBitset {
         trim_tail();
     }
 
-    // 统计 (*this & o) 中 1 的个数；不产生临时对象
+    //  (*this & o)  1 ；
     inline std::size_t count_and(const DynBitset &o) const noexcept {
         const std::size_t N = std::min(word_count(), o.word_count());
         std::size_t c = 0;
@@ -258,16 +258,16 @@ struct DynBitset {
         return c;
     }
 
-    /* -------- 计数 / 判空 -------- */
+    /* --------  /  -------- */
     inline std::size_t count() const {
-        // 同 boost 的 count()
+        //  boost  count()
         std::size_t c = 0;
         const std::size_t WN = word_count();
         for (std::size_t i = 0; i < WN; ++i) c += __builtin_popcountll(data[i]);
         return c;
     }
 
-    inline std::size_t popcount() const { return count(); } // 兼容老名字
+    inline std::size_t popcount() const { return count(); } // 
     inline bool any() const {
         const std::size_t WN = word_count();
         for (std::size_t i = 0; i < WN; ++i) if (data[i]) return true;
@@ -276,7 +276,7 @@ struct DynBitset {
 
     inline bool none() const { return !any(); }
 
-    /* -------- 查找 -------- */
+    /* --------  -------- */
     inline std::size_t find_first() const {
         const std::size_t WN = word_count();
         if (WN == 0) return npos;
@@ -304,7 +304,7 @@ struct DynBitset {
         return npos;
     }
 
-    /* -------- 遍历 -------- */
+    /* --------  -------- */
     template<class Fn>
     inline void for_each_bit(Fn &&fn) const {
         const std::size_t WN = word_count();
@@ -320,7 +320,7 @@ struct DynBitset {
     }
 
 private:
-    /* -------- 抹掉末尾多余位 -------- */
+    /* --------  -------- */
     inline void trim_tail() {
         const std::size_t WN = word_count();
         if (WN == 0) return;
@@ -335,7 +335,7 @@ public:
     friend inline DynBitset operator~(DynBitset a) {
         const std::size_t WN = a.word_count();
         for (std::size_t i = 0; i < WN; ++i) a.data[i] = ~a.data[i];
-        // 未用区保持为 0（可选）
+        //  0（）
         for (std::size_t i = WN; i < a.data.size(); ++i) a.data[i] = 0;
         a.trim_tail();
         return a;

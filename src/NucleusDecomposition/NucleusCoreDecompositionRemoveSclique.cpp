@@ -18,7 +18,7 @@
 #include "graph/DynamicGraphSet.h"
 
 extern double nCr[1001][401];
-// 放在你的函数外（比如文件顶部），保证编译时可见并内联
+// （），
 // #ifndef NDEBUG
 // set NOEBUG as trus
 
@@ -31,13 +31,13 @@ namespace CDSetRS {
                                      UpdateFunc &&upd) noexcept {
         if (weight < 0.0) return;
 
-        // 判断两个区间迭代器是否相同
+        // 
         // if all same, do nothing
         if (b1 == b2 && e1 == e2 && b1 == e1 && b2 == e2) {
             return;
         }
         if (b1 == b2 && e1 == e2) {
-            // 同一范围：i < j
+            // ：i < j
             for (auto it = b1; it + 1 != e1; ++it) {
                 auto u = *it;
                 for (auto jt = it + 1; jt != e1; ++jt) {
@@ -45,7 +45,7 @@ namespace CDSetRS {
                 }
             }
         } else {
-            // 不同范围：笛卡尔积
+            // ：
             for (auto it = b1; it != e1; ++it) {
                 auto u = *it;
                 for (auto jt = b2; jt != e2; ++jt) {
@@ -88,11 +88,11 @@ namespace CDSetRS {
 
 
     struct CompareRClique {
-        const double *RCliqueCounting; // 指向外部数组
+        const double *RCliqueCounting; // 
         explicit CompareRClique(const double *coreLeaf) : RCliqueCounting(coreLeaf) {
         }
 
-        // 注意：这里要返回 “a 排在前面” 的条件，为最小堆写成 coreLeaf[a] > coreLeaf[b]
+        // ： “a ” ， coreLeaf[a] > coreLeaf[b]
         bool operator()(daf::Size const &a, daf::Size const &b) const {
             return RCliqueCounting[a] > RCliqueCounting[b];
         }
@@ -261,7 +261,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
         currentRemoveRcliqueIds.clear();
 
         minCore = std::max(countingRClique[heap.top()], minCore);
-        // 一次循环把所有 core==minCore 的 leaf 全部 pop 出来
+        //  core==minCore  leaf  pop 
         std::cout << "minCore: " << minCore
         << " heap size: " << heap.size()
         << " num Leaf: " << tree.size() << " "
@@ -475,7 +475,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     }
     std::sort(sortedK.begin(), sortedK.end(),
               [](const auto &a, const auto &b) {
-                  return a.second < b.second; // 按照 core 值降序排序
+                  return a.second < b.second; //  core 
               });
     // auto file = fopen("~/_/pivoter/a.out", "w");
     // for (auto i: sortedK) {

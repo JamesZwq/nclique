@@ -68,12 +68,12 @@ namespace daf {
         using value_type = T;
         using Size = daf::Size;
 
-        // 当前有效元素数 / 容量
+        //  / 
         Size c_size = 0;
         Size maxSize = 0;
 
     private:
-        // 共享拥有，避免泄漏/双删；保持浅拷贝语义
+        // ，/；
         std::shared_ptr<T[]> data_;
 
     public:
@@ -81,11 +81,11 @@ namespace daf {
             : c_size(0), maxSize(cap),
               data_(cap
                         ? std::shared_ptr<T[]>(
-                            new T[cap], std::default_delete<T[]>()) // C++17 兼容
+                            new T[cap], std::default_delete<T[]>()) // C++17 
                         : std::shared_ptr<T[]>()) {
         }
 
-        // 拷贝/移动：共享同一缓冲区（浅拷贝），O(1)
+        // /：（），O(1)
         StaticVector(const StaticVector &) = default;
 
         StaticVector &operator=(const StaticVector &) = default;
@@ -94,10 +94,10 @@ namespace daf {
 
         StaticVector &operator=(StaticVector &&) noexcept = default;
 
-        // 自动释放（shared_ptr 负责）
+        // （shared_ptr ）
         ~StaticVector() = default;
 
-        // 与老接口保持一致
+        // 
         explicit operator T *() { return data(); }
         T *getData() const { return data(); }
         T *data() const { return data_.get(); }
@@ -121,7 +121,7 @@ namespace daf {
 
         void pop_back() { --c_size; }
 
-        // O(1) 删除：与原来一致，用末尾覆盖
+        // O(1) ：，
         void remove(Size index) {
 #ifndef NDEBUG
             if (index >= c_size) throw std::out_of_range("Index out of range.");
@@ -129,7 +129,7 @@ namespace daf {
             data()[index] = std::move(data()[--c_size]);
         }
 
-        // 追加一段（注意：沿用你原逻辑，这里不额外检查容量）
+        // （：，）
         void extend(const T *begin, Size sz) {
             std::memcpy(data() + c_size, begin, sz * sizeof(T));
             c_size += sz;
@@ -176,7 +176,7 @@ namespace daf {
             data_.swap(other.data_);
         }
 
-        // 兼容旧代码：立即释放当前拥有（不影响其他别名）
+        // ：（）
         void free() {
             data_.reset();
             c_size = 0;
@@ -193,7 +193,7 @@ namespace daf {
 
         [[nodiscard]] Size size() const { return c_size; }
 
-        // 打印与相等性（对非平凡类型回退逐元素比较）
+        // （）
         friend std::ostream &operator<<(std::ostream &os, const StaticVector &v) {
             if constexpr (std::is_same_v<T, bool>) os << std::boolalpha;
             os << "[";
@@ -230,7 +230,7 @@ namespace daf {
         const_iterator cend() const { return data() + c_size; }
 
     private:
-        // 1.5x 扩容策略（整型安全）
+        // 1.5x （）
         Size grow_capacity() const {
             return maxSize ? (maxSize + (maxSize >> 1) + 1) : Size(1);
         }
@@ -243,7 +243,7 @@ namespace daf {
             } else {
                 for (Size i = 0; i < c_size; ++i) newData[i] = std::move(data()[i]);
             }
-            data_.swap(newData); // 旧缓冲区在无人持有时自动释放
+            data_.swap(newData); // 
             maxSize = newCap;
         }
     };
@@ -334,35 +334,35 @@ namespace daf {
     //                            size_t r,
     //                            Callback cb) {
     //     size_t n = items.size();
-    //     if (r > n) return; // 不足以选出 r 个
+    //     if (r > n) return; //  r 
     //
     //     std::vector<T> combination;
     //     combination.reserve(r);
     //
-    //     // 用递归回溯：从 items[start..n) 中选 k 个
+    //     // ： items[start..n)  k 
     //     std::function<bool(size_t, size_t)> backtrack =
     //             [&](size_t start, size_t k) -> bool {
     //         if (k == 0) {
-    //             // 选够了，调用回调
+    //             // ，
     //             return cb(combination);
     //         }
-    //         // 剪枝：剩余元素不足 k 个
+    //         // ： k 
     //         if (n - start < k) {
-    //             return true; // 这一支不够，回到上一层继续
+    //             return true; // ，
     //         }
-    //         // 枚举：在 [start .. n-k] 范围内选一个
+    //         // ： [start .. n-k] 
     //         for (size_t i = start; i + k <= n; ++i) {
     //             combination.push_back(items[i]);
-    //             // 还需选 k-1 个，从 i+1 开始
+    //             //  k-1 ， i+1 
     //             if (!backtrack(i + 1, k - 1)) {
-    //                 return false; // 回调请求提前终止
+    //                 return false; // 
     //             }
     //             combination.pop_back();
     //         }
-    //         return true; // 本层枚举完毕，继续上一层
+    //         return true; // ，
     //     };
     //
-    //     // 触发回溯
+    //     // 
     //     backtrack(0, r);
     // }
 
@@ -388,20 +388,20 @@ namespace daf {
         size_t keepCount = keep.size();
         size_t dropCount = drop.size();
         if (keepCount > r || keepCount + dropCount < r) {
-            return true; // 条件不满足，直接跳过
+            return true; // ，
         }
 
         size_t needDrop = r - keepCount;
         daf::StaticVector<T> comb(needDrop);
-        comb.c_size = needDrop; // 设置当前大小
-        // 为了支持任意可迭代容器，先拷贝至 vector
+        comb.c_size = needDrop; // 
+        // ， vector
 
         std::function<bool(size_t, size_t)> dfs =
                 [&](size_t start, size_t choose) -> bool {
             if (choose == 0) {
                 return cb(keep, comb);
             }
-            // 剪枝：剩余元素不足
+            // ：
             if (dropCount - start < choose) {
                 return true;
             }
@@ -418,7 +418,7 @@ namespace daf {
         } else {
             dfs(0, needDrop);
         }
-        comb.free(); // 仅在 dfs 完全结束后释放
+        comb.free(); //  dfs 
         return true;
     }
 
@@ -427,8 +427,8 @@ namespace daf {
         size_t n = C.size();
         if (size > n) return true;
         daf::StaticVector<typename Container::value_type> comb(size);
-        comb.c_size = size; // 设置当前大小
-        // dfs(pos, left): 从 C[pos..] 还要选 left 个
+        comb.c_size = size; // 
+        // dfs(pos, left):  C[pos..]  left 
         std::function<bool(size_t, size_t)> dfs = [&](size_t pos, size_t left) -> bool {
             if (left == 0) {
                 if constexpr (std::is_void_v<
@@ -440,9 +440,9 @@ namespace daf {
                     return cb(comb);
                 }
             }
-            // 剪枝：剩余元素不足
+            // ：
             if (n - pos < left) return true;
-            // 枚举：在 [pos .. n-left] 中取一个
+            // ： [pos .. n-left] 
             for (size_t i = pos; i + left <= n; ++i) {
                 comb[size - left] = C[i];
                 if (!dfs(i + 1, left - 1)) return false;
@@ -451,7 +451,7 @@ namespace daf {
         };
 
         bool cont = dfs(0, size);
-        comb.free(); // **仅在 dfs 完全结束后释放**
+        comb.free(); // ** dfs **
         return cont;
     }
 
@@ -500,15 +500,15 @@ namespace daf {
         const size_t n = C.size();
         if (K > n) return;
 
-        // 1) 栈上 idx、栈上 comb（零堆分配）
+        // 1)  idx、 comb（）
         std::array<size_t, K> idx;
         for (size_t i = 0; i < K; ++i) idx[i] = i;
 
         daf::StaticVector<typename Container::value_type> comb(K);
-        comb.c_size = K; // 你自己的 StaticVector 不是标准容器，这里保持原用法
+        comb.c_size = K; //  StaticVector ，
 
         auto emit = [&]() -> bool {
-            // 就地写 comb
+            //  comb
             for (size_t t = 0; t < K; ++t) comb[t] = C[idx[t]];
             if constexpr (std::is_same_v<void, decltype(std::forward<Fn>(cb)(comb))>) {
                 cb(comb);
@@ -521,7 +521,7 @@ namespace daf {
         if (!emit()) return;
 
         while (true) {
-            // 2) 经典“右端进位”推进（对 K 常量，编译器可很好展开）
+            // 2) “”（ K ，）
             size_t i = K;
             while (i > 0 && idx[i - 1] == n - K + i - 1) --i;
             if (i == 0) break;
@@ -532,7 +532,7 @@ namespace daf {
         }
     }
 
-    // 入口：不改你现在的接口
+    // ：
     template<class Container, class Fn>
     void enumerateCombinations(const Container &C, size_t k, Fn &&cb) {
         switch (k) {
@@ -544,10 +544,10 @@ namespace daf {
             case 6: return enumerateCombinations_fixedK<Container, Fn, 6>(C, std::forward<Fn>(cb));
             case 7: return enumerateCombinations_fixedK<Container, Fn, 7>(C, std::forward<Fn>(cb));
             case 8: return enumerateCombinations_fixedK<Container, Fn, 8>(C, std::forward<Fn>(cb));
-            default: break; // 走通用版本
+            default: break; // 
         }
 
-        // ===== 你的原通用版本（保底路径）=====
+        // ===== （）=====
         const std::size_t n = C.size();
         if (k == 0 || k > n) return;
 
@@ -593,7 +593,7 @@ namespace daf {
                 // return cb(buf, size);
                 if constexpr (std::is_void_v<
                     std::invoke_result_t<Fn,
-                        decltype(buf), // buf 的指针类型，比如 T*
+                        decltype(buf), // buf ， T*
                         decltype(size) // size_t
                     >
                 >) {
@@ -614,9 +614,9 @@ namespace daf {
     }
 
     // -----------------------------------------------------------------------------
-    // 从 S ∪ R 中枚举所有大小为 k 且至少包含 1 个来自 S 的组合
-    // S, R: 随机访问容器，S::value_type != R::value_type 也可
-    // Fn: 回调 bool(const Sval* bufS, size_t sCount, const Rval* bufR, size_t rCount)
+    //  S ∪ R  k  1  S 
+    // S, R: ，S::value_type != R::value_type 
+    // Fn:  bool(const Sval* bufS, size_t sCount, const Rval* bufR, size_t rCount)
     // -----------------------------------------------------------------------------
     template<typename S, typename R, typename Fn>
     bool enumAtLeastOneFromTwo(const S &s,
@@ -629,16 +629,16 @@ namespace daf {
         using Sval = typename S::value_type;
         using Rval = typename R::value_type;
 
-        // 预分配组合缓冲区
+        // 
         std::vector<Sval> bufS(k);
         std::vector<Rval> bufR(k);
 
         // t = 1..min(k, sz)
         for (size_t t = 1; t <= std::min(k, sz); ++t) {
             bool contS = enumerateCombinations(s, t, bufS.data(), [&](Sval *sdata, size_t scount) {
-                // 再从 R 中选 k-t
+                //  R  k-t
                 return enumerateCombinations(r, k - t, bufR.data(), [&](Rval *rdata, size_t rcount) {
-                    // 回调分别传入 S 部分和 R 部分
+                    //  S  R 
                     return cb(sdata, scount, rdata, rcount);
                 });
             });
@@ -685,7 +685,7 @@ namespace daf {
         );
     }
 
-    // 迭代器版：二参回调
+    // ：
     // template<typename It1, typename It2, typename Func>
     // inline void intersect_with_callback_pair(It1 first1, It1 last1,
     //                                          It2 first2, It2 last2,
@@ -696,7 +696,7 @@ namespace daf {
     //         } else if (*first2 < *first1) {
     //             ++first2;
     //         } else {
-    //             // 这里把两个“相等”但来自不同容器的引用都传给 f
+    //             // “” f
     //             f(*first1, *first2);
     //             ++first1;
     //             ++first2;
@@ -704,19 +704,19 @@ namespace daf {
     //     }
     // }
 
-    // 容器版转发
+    // 
     template<
         std::ranges::forward_range R1,
         std::ranges::forward_range R2,
         typename Func
     >
         requires
-        // 确保两个引用能比较大小／相等
+        // ／
         std::totally_ordered_with<
             std::ranges::range_reference_t<R1>,
             std::ranges::range_reference_t<R2>
         > &&
-        // 确保 Func 可以被调用，且参数是两个引用
+        //  Func ，
         std::invocable<
             Func,
             std::ranges::range_reference_t<R1>,
@@ -733,7 +733,7 @@ namespace daf {
             } else if (*first2 < *first1) {
                 ++first2;
             } else {
-                // 这里 f 拿到的就是 TreeGraphNode& 而非拷贝
+                //  f  TreeGraphNode& 
                 f(*first1, *first2);
                 ++first1;
                 ++first2;
@@ -746,7 +746,7 @@ namespace daf {
         double ratio = static_cast<double>(curr) / total;
         int filled = static_cast<int>(ratio * barWidth);
 
-        std::cout << '\r' // 回到行首，覆盖上一帧
+        std::cout << '\r' // ，
                 << '[';
         for (int i = 0; i < barWidth; ++i)
             std::cout << (i < filled ? '=' : ' ');
@@ -754,14 +754,14 @@ namespace daf {
                 << std::setw(6) << std::fixed << std::setprecision(2)
                 << (ratio * 100.0) << "%  "
                 << '(' << curr << '/' << total << ')'
-                << std::flush; // 立即刷新
+                << std::flush; // 
     }
 
     template<typename T, typename Func>
     void intersect_dense_sets(const robin_hood::unordered_flat_set<T> &A,
                               const robin_hood::unordered_flat_set<T> &B,
                               Func callback) noexcept {
-        // 先挑小的遍历，保证 find 次数最少
+        // ， find 
         const auto *small = &A, *large = &B;
         bool swapped = false;
         if (B.size() < A.size()) {
@@ -771,28 +771,28 @@ namespace daf {
         for (const auto &x: *small) {
             auto it = large->find(x);
             if (it != large->end()) {
-                // x: 来自 small； *it: 来自 large
+                // x:  small； *it:  large
                 // callback(x, *it);
                 if (swapped) {
-                    callback(*it, x); // 如果 swapped，先是 large 的元素
+                    callback(*it, x); //  swapped， large 
                 } else {
-                    callback(x, *it); // 否则先是 small 的元素
+                    callback(x, *it); //  small 
                 }
             }
         }
     }
 
     template<class T,
-        class IndexRange, // 可迭代：std::vector<size_t>、std::span<size_t> 等
+        class IndexRange, // ：std::vector<size_t>、std::span<size_t> 
         class Func>
-    void intersect_dense_sets_multi(IndexRange &indices, // 要求交集的集合下标
+    void intersect_dense_sets_multi(IndexRange &indices, // 
                                     std::vector<robin_hood::unordered_flat_set<T> > &adj_list,
-                                    Func &&callback) // 满足交集元素时调用
+                                    Func &&callback) // 
         noexcept {
-        /* ---------- 0. 边界情况 ---------- */
+        /* ---------- 0.  ---------- */
         if (indices.empty()) return;
 
-        /* ---------- 1. 找“最小”的集合 ---------- */
+        /* ---------- 1. “” ---------- */
         std::size_t best_idx = std::numeric_limits<std::size_t>::max();
         std::size_t best_sz = std::numeric_limits<std::size_t>::max();
 
@@ -803,17 +803,17 @@ namespace daf {
                 best_idx = id;
             }
         }
-        if (best_sz == 0) return; // 有空集 ⇒ 交集为空
+        if (best_sz == 0) return; //  ⇒ 
 
         const auto &base = adj_list[best_idx];
 
-        /* ---------- 2. 预先缓存其余集合指针 ---------- */
+        /* ---------- 2.  ---------- */
         std::vector<const robin_hood::unordered_flat_set<T> *> others;
         others.reserve(indices.size() - 1);
         for (auto id: indices)
             if (id != best_idx) others.push_back(&adj_list[id]);
 
-        /* ---------- 3. 枚举 base，检查其余 ---------- */
+        /* ---------- 3.  base， ---------- */
         for (const auto &x: base) {
             bool ok = true;
             for (const auto *pSet: others) {
@@ -822,7 +822,7 @@ namespace daf {
                     break;
                 }
             }
-            if (ok) callback(x); // x 同时在所有集合中
+            if (ok) callback(x); // x 
         }
     }
 

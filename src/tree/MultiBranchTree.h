@@ -28,7 +28,7 @@ extern double nCr[1001][401];
 class TreeNode final {
 public:
     daf::Size v;
-    bool isPivot; // 注意将原来的 isPiovt 改为 isPivot
+    bool isPivot; //  isPiovt  isPivot
     std::vector<TreeNode *> children;
     daf::CliqueSize MaxDeep = 1;
     daf::Size leafId = std::numeric_limits<daf::Size>::max();
@@ -67,7 +67,7 @@ public:
         for (const auto child: children) delete child;
     }
 
-    // 递归打印节点，indent 表示缩进级别
+    // ，indent 
     void prettyPrint(std::ostream &os, int indent = 0) const;
 
     void prettyPrint() const { prettyPrint(std::cout, 0); }
@@ -85,7 +85,7 @@ public:
 
 
 private:
-    // Boost.Serialization 需要访问私有成员
+    // Boost.Serialization 
     friend class boost::serialization::access;
 
     template<class Archive>
@@ -135,7 +135,7 @@ public:
         return root;
     }
 
-    // 重载输出运算符调用 prettyPrint
+    //  prettyPrint
     friend std::ostream &operator<<(std::ostream &os, const MultiBranchTree &tree) {
         tree.root->prettyPrint(os, 0);
         return os;
@@ -194,16 +194,16 @@ public:
     }
 
     /**
-     * @brief 计算树中叶子节点的数量。
+     * @brief 。
      *
-     * 使用内部 lambda 表达式进行递归遍历，从根节点开始统计所有叶子节点（即没有子节点的节点）。
+     *  lambda ，（）。
      *
-     * @return 叶子节点总数。
+     * @return 。
      */
     [[nodiscard]] double numLeafs() const;
 
     /**
-     * 初始化叶子节点的parent指针, 和叶子节点的ID
+     * parent, ID
      */
     [[nodiscard]] daf::Size initLeafsParentAndId(daf::CliqueSize minK = 0) const;
 

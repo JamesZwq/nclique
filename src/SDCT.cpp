@@ -1,7 +1,7 @@
 /*
     This file contains the algorithm for listing all cliques
     according to the algorithm of Jain et al. specified in
-    "The power of pivoting for exact clique counting." (WSDM 2020).一键试用 Demo
+    "The power of pivoting for exact clique counting." (WSDM 2020). Demo
     This code is a modified version of the code of quick-cliques-1.0 library for counting
     maximal cliques by Darren Strash (first name DOT last name AT gmail DOT com).
 

@@ -20,7 +20,7 @@ namespace basePar {
     ) {
         daf::Size cliqueSize = povit.size() + keepC.size();
         if (node.children.empty() && cliqueSize >= k && keepC.size() <= k) {
-            const int needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
+            const int needPivot = k - keepC.size(); //  pivot 
             double totalKcliques = 0;
             if (needPivot >= 0 && needPivot <= povit.size()) {
                 totalKcliques = nCr[povit.size()][needPivot];
@@ -101,7 +101,7 @@ namespace basePar {
             std::ranges::sort(orderPovit, [core](daf::Size a, daf::Size b) {
                 return core[a] > core[b];
             });
-            const daf::Size needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
+            const daf::Size needPivot = k - keepC.size(); //  pivot 
 
 
             double maxK = core[*std::ranges::min_element(keepC, [core](daf::Size a, daf::Size b) {
@@ -180,7 +180,7 @@ namespace basePar {
         auto &children = tree.getRoot()->children;
         std::vector<ThreadSafeMap<double, double> > sup(children.size());
 
-        // 并行遍历每个子节点
+        // 
         tbb::parallel_for(tbb::blocked_range<size_t>(0, children.size()),
                           [&](const tbb::blocked_range<size_t> &r) {
                               for (size_t i = r.begin(); i != r.end(); ++i) {
@@ -188,7 +188,7 @@ namespace basePar {
                                   if (node->MaxDeep < k) {
                                       continue;
                                   }
-                                  // 为每个迭代创建独立的局部变量，防止多线程竞争
+                                  // ，
                                   daf::StaticVector<daf::Size> povitC;
                                   daf::StaticVector<daf::Size> keepC;
                                   keepC.push_back(node->v);

@@ -54,7 +54,7 @@ void populate_nCr() {
 
     std::string line;
     for (int row = 0; row < 1001; ++row) {
-        // 使用 std::getline 动态读取整行，不依赖固定缓冲区大小
+        //  std::getline ，
         if (!std::getline(infile, line)) {
             std::cerr << "Error reading line " << row << std::endl;
             break;
@@ -67,7 +67,7 @@ void populate_nCr() {
                 std::cerr << "Error: not enough tokens in row " << row << std::endl;
                 break;
             }
-            // 使用 std::stoull 将 token 转换为 unsigned long long 类型
+            //  std::stoull  token  unsigned long long 
             nCr[row][col] = std::stod(token);
         }
     }

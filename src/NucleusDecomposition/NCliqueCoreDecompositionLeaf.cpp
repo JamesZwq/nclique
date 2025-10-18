@@ -29,7 +29,7 @@ namespace baseCDLeaf {
                     if (keepC.size() > k) {
                         break;
                     }
-                    const int needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
+                    const int needPivot = k - keepC.size(); //  pivot 
                     double totalKcliques = 0;
                     if (needPivot >= 0 && needPivot <= povitC.size()) {
                         totalKcliques = nCr[povitC.size()][needPivot];
@@ -79,7 +79,7 @@ namespace baseCDLeaf {
                     std::ranges::sort(povitC, [core](daf::Size a, daf::Size b) {
                         return core[a] > core[b];
                     });
-                    const daf::Size needPivot = k - keepC.size(); // 还需从 pivot 中选的顶点数
+                    const daf::Size needPivot = k - keepC.size(); //  pivot 
 
 
                     double maxK = core[*std::ranges::min_element(keepC, [core](daf::Size a, daf::Size b) {

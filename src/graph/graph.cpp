@@ -237,23 +237,23 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder() {
     if (n == 0) return {};
 
     /*------------------------------------------------------------
-     * 1. 预处理：统计度数并记录最大度
+     * 1. ：
      *-----------------------------------------------------------*/
-    std::vector<int> deg(n);          // 当前度数
+    std::vector<int> deg(n);          // 
     int max_deg = 0;
     for (daf::Size v = 0; v < n; ++v) {
-        auto [l, r] = getNbr(v);      // 邻接区间 [l, r)
+        auto [l, r] = getNbr(v);      //  [l, r)
         deg[v] = static_cast<int>(r - l);
         max_deg = std::max(max_deg, deg[v]);
     }
 
     /*------------------------------------------------------------
-     * 2. 建立 bin 数组：bin[d] 保存“度 = d 的顶点段”的起始下标
+     * 2.  bin ：bin[d] “ = d ”
      *-----------------------------------------------------------*/
     std::vector<int> bin(max_deg + 1, 0);
-    for (int d : deg) ++bin[d];               // 先统计每个度出现次数
+    for (int d : deg) ++bin[d];               // 
 
-    // 前缀和 → 起始位
+    //  → 
     int start = 0;
     for (int d = 0; d <= max_deg; ++d) {
         int cnt = bin[d];
@@ -262,29 +262,29 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder() {
     }
 
     /*------------------------------------------------------------
-     * 3. vert[pos] = 顶点编号，pos[v] = v 在 vert 中的位置
+     * 3. vert[pos] = ，pos[v] = v  vert 
      *-----------------------------------------------------------*/
     std::vector<int>          vert(n);
     std::vector<int>          pos(n);
 
     for (daf::Size v = 0; v < n; ++v) {
         int d = deg[v];
-        int p = bin[d]++;          // bin[d] 现在是插入点，插完再 +1
+        int p = bin[d]++;          // bin[d] ， +1
         vert[p] = static_cast<int>(v);
         pos[v]  = p;
     }
 
-    // 把 bin 恢复成段首下标（上一步多 +1 了）
+    //  bin （ +1 ）
     for (int d = max_deg; d > 0; --d) bin[d] = bin[d - 1];
     bin[0] = 0;
 
     /*------------------------------------------------------------
-     * 4. 剥皮主循环：O(|V| + |E|)
+     * 4. ：O(|V| + |E|)
      *-----------------------------------------------------------*/
     std::vector<daf::Size> ordered_vertex;
     ordered_vertex.reserve(n);
 
-    int degeneracy = 0;       // 可选：记录图的 k-core 退化度
+    int degeneracy = 0;       // ： k-core 
 
     for (int i = 0; i < static_cast<int>(n); ++i) {
         int v = vert[i];
@@ -292,38 +292,38 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder() {
 
         degeneracy = std::max(degeneracy, deg[v]);
 
-        // 所有度数严格大于 deg[v] 的邻居度数减一，并在 vert 中前移
+        //  deg[v] ， vert 
         for (auto idx = getNbr(v).first; idx < getNbr(v).second; ++idx) {
             int u = static_cast<int>(adj_list[idx]);
             if (deg[u] > deg[v]) {
                 int du  = deg[u];
-                int pu  = pos[u];        // u 当前在 vert 的位置
-                int pw  = bin[du];       // du 段的首元素
-                int w   = vert[pw];      // 该段当前首顶点
+                int pu  = pos[u];        // u  vert 
+                int pw  = bin[du];       // du 
+                int w   = vert[pw];      // 
 
                 if (u != w) {
-                    // 交换 u 和 w 的位置，并更新 pos[]
+                    //  u  w ， pos[]
                     std::swap(vert[pu], vert[pw]);
                     pos[u] = pw;
                     pos[w] = pu;
                 }
-                ++bin[du];               // du 段首右移一格
-                --deg[u];                // 度数减一
+                ++bin[du];               // du 
+                --deg[u];                // 
             }
         }
     }
 
     /*------------------------------------------------------------
-     * 5. 可选：将高退化度顶点排在前面，保持与 BFS 实现一致
+     * 5. ：， BFS 
      *-----------------------------------------------------------*/
     // std::ranges::reverse(ordered_vertex);
 
     /*------------------------------------------------------------
-     * 6. 调用框架内已有的重排函数
+     * 6. 
      *-----------------------------------------------------------*/
     sortVertexByGivenOrder(ordered_vertex);
 
-    // 如需使用 degeneracy，可在此返回或存成员变量
+    //  degeneracy，
     return ordered_vertex;
 }
 
@@ -415,7 +415,7 @@ Graph::Graph(const MultiBranchTree &tree, const daf::StaticVector<TreeNode *> &l
         out << i << "\n";
     }
     out.close();
-    // degree 分布已经输出到文件中
+    // degree 
     std::cout << "The degree distribution has been output to the file: ~/_/pivoter/adj_list.txt" <<
             std::endl;
     for (daf::Size i = 1; i < n + 2; ++i) {
@@ -519,13 +519,13 @@ void Graph::BronKerboschPivotHelp(std::vector<daf::Size> &R,
                                   std::vector<daf::Size> &P,
                                   std::vector<daf::Size> &X,
                                   std::vector<std::vector<daf::Size> > &cliques) {
-    // 若 P 和 X 均为空，则 R 是一个极大团
+    //  P  X ， R 
     if (P.empty() && X.empty()) {
         cliques.push_back(R);
         return;
     }
 
-    // 选择枢轴 u：从 P ∪ X 中选一个邻居最多的顶点
+    //  u： P ∪ X 
     int u = -1;
     int maxDegree = -1;
     std::vector<daf::Size> unionPX = P;
@@ -539,7 +539,7 @@ void Graph::BronKerboschPivotHelp(std::vector<daf::Size> &R,
         }
     }
 
-    // 利用枢轴 u 计算 P\N(u)
+    //  u  P\N(u)
     std::vector<daf::Size> diff;
     auto [nbegin, nend] = getNbr(u);
     std::set_difference(P.begin(), P.end(),
@@ -547,7 +547,7 @@ void Graph::BronKerboschPivotHelp(std::vector<daf::Size> &R,
                         adj_list.begin() + nbegin, adj_list.begin() + nend,
                         std::back_inserter(diff));
 
-    // 对 diff 中的每个顶点 v 进行递归搜索
+    //  diff  v 
     for (daf::Size v: diff) {
         std::vector<daf::Size> R_new = R;
         R_new.push_back(v);
@@ -569,30 +569,30 @@ void Graph::BronKerboschPivotHelp(std::vector<daf::Size> &R,
 
         BronKerboschPivotHelp(R_new, P_new, X_new, cliques);
 
-        // 从 P 中移除 v，并加入 X（保持集合的不重复性）
+        //  P  v， X（）
         P.erase(std::remove(P.begin(), P.end(), v), P.end());
         X.push_back(v);
-        // 保持 X 有序以确保下一次 set_intersection 正确
+        //  X  set_intersection 
         std::sort(X.begin(), X.end());
     }
 }
 
 std::vector<std::vector<daf::Size> > Graph::BronKerboschPivot() {
-    std::vector<daf::Size> R; // 当前团（起始为空）
-    std::vector<daf::Size> P; // 可拓展的顶点，初始为所有顶点
-    std::vector<daf::Size> X; // 已处理的顶点集合，初始为空
-    std::vector<std::vector<daf::Size> > cliques; // 保存所有极大团
+    std::vector<daf::Size> R; // （）
+    std::vector<daf::Size> P; // ，
+    std::vector<daf::Size> X; // ，
+    std::vector<std::vector<daf::Size> > cliques; // 
 
-    // 初始化 P 为所有顶点（假定 0,1,2,...,n-1 已经有序）
+    //  P （ 0,1,2,...,n-1 ）
     for (daf::Size i = 0; i < n; i++) {
         P.push_back(i);
     }
 
-    // 执行递归算法
+    // 
     BronKerboschPivotHelp(R, P, X, cliques);
 
-    // 输出所有极大团
-    std::cout << "所有极大团：" << std::endl;
+    // 
+    std::cout << "：" << std::endl;
     // std::cout << cliques << std::endl;
     // ~/_/pivoter/a
     auto out = fopen("~/_/pivoter/b", "w");
@@ -619,7 +619,7 @@ Graph::Graph(const MultiBranchTree &tree,
 
 
 void Graph::beSingleEdge() {
-    // 1) 第一遍：统计每个 u 的“新度数” deg[u] = |{v in N(u) | v>u}|
+    // 1) ： u “” deg[u] = |{v in N(u) | v>u}|
     std::vector<daf::Size> deg(n, 0);
     daf::Size new_max_deg = 0;
     for (daf::Size u = 0; u < n; ++u) {
@@ -632,7 +632,7 @@ void Graph::beSingleEdge() {
         if (deg[u] > new_max_deg) new_max_deg = deg[u];
     }
 
-    // 2) 构建新的 offsets 前缀和
+    // 2)  offsets 
     daf::StaticVector<daf::Size> new_offsets(n+1);
     new_offsets.c_size = n + 1;
     new_offsets[0] = 0;
@@ -641,7 +641,7 @@ void Graph::beSingleEdge() {
     }
     daf::Size m_new = new_offsets[n];
 
-    // 3) 分配并填充新的邻接数组；重用 deg 作为写入指针
+    // 3) ； deg 
     daf::StaticVector<daf::Size> new_adj(m_new);
     new_adj.c_size = m_new;
     std::fill(deg.begin(), deg.end(), 0);
@@ -656,13 +656,13 @@ void Graph::beSingleEdge() {
         }
     }
 
-    // 4) 用新数组替换旧数组，并更新 max_degree 与边数 m
+    // 4) ， max_degree  m
     adj_list_offsets.swap(new_offsets);
     adj_list.swap(new_adj);
     max_degree = new_max_deg;
     new_offsets.free();
     new_adj.free();
-    // （如果你有成员 m，记得同时更新 m = m_new;）
+    // （ m， m = m_new;）
 }
 
 void Graph::initCore() {
