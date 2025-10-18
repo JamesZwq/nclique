@@ -20,16 +20,16 @@
 
 
 int main(int argc, char **argv) {
-    // populate_nCr();
-    // daf::vListMap.resize(100);
-    // // bkRmEdge::bronKerboschFromFile("/Users/zhangwenqian/UNSW/pivoter/a.edge", 1,
-    // //                                [](const bkRmEdge::Bitset &clique, const bkRmEdge::Bitset &pivots) {
-    // //                                    std::cout << "Find clique: " << clique << " pivots: " << pivots << std::endl;
-    // //                                    return true;
-    // //                                });
-    //
+    populate_nCr();
+    daf::vListMap.resize(100);
+    bkRmEdge::bronKerboschFromFile("/Users/zhangwenqian/UNSW/pivoter/a.edge", 1,
+                                   [](const bkRmEdge::Bitset &clique, const bkRmEdge::Bitset &pivots) {
+                                       std::cout << "Find clique: " << clique << " pivots: " << pivots << std::endl;
+                                       return true;
+                                   });
+
     // bkRmClique::testBronKerbosch();
-    // return 0;
+    return 0;
 
 
     // std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;

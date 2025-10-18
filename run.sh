@@ -20,26 +20,26 @@ OUTPUT_FILE="experimentdata"
 
 # 数据集列表
 DATASETS=(
-  "/data1/wenqianz/web-it-2004.edges"
-  "/data1/wenqianz/com-dblp.edges"
-  "/data1/wenqianz/web-Google.edges"
-  "/data1/wenqianz/soc-pokec-relationships.edges"
-  "/data1/wenqianz/web-Stanford.edges"
-  "/data1/wenqianz/com-youtube.edges"
+  "/data/wenqianz/web-it-2004.edges"
+  "/data/wenqianz/com-dblp.edges"
+  "/data/wenqianz/web-Google.edges"
+  "/data/wenqianz/soc-pokec-relationships.edges"
+  "/data/wenqianz/web-Stanford.edges"
+  "/data/wenqianz/com-youtube.edges"
 )
 
 # s 的取值与 r 的范围：
 # s=1 -> r=3..30
 # s=2 -> r=4..30
 # s=3 -> r=4..30
-S_VALUES=(1 2 3)
+S_VALUES=(3 4)
 
 r_range_for_s () {
   local s="$1"
   case "$s" in
     1) echo "3 30" ;;
     2|3) echo "4 30" ;;
-    *) echo "4 30" ;; # 兜底，不会用到
+    *) echo "5 30" ;; # 兜底，不会用到
   esac
 }
 

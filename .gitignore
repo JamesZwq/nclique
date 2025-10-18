@@ -58,3 +58,9 @@ data
 *.csv
 
 *.py
+
+tmp*
+
+obj/
+
+python/
