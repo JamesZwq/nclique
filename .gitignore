@@ -57,10 +57,10 @@ data
 
 *.csv
 
-*.py
+#*.py
 
 tmp*
 
 obj/
 
-python/
+#python/
