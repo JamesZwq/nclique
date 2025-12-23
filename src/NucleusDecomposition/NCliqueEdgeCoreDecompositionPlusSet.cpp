@@ -602,6 +602,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     std::vector<PlusECDSet::DHeap::handle_type> heapHandles(edgeGraph.adj_list.size());
 
     for (daf::Size i = 0; i < edgeGraph.adj_list.size(); ++i) {
+        if (countingKE[i] == 0) {
+            continue;
+        }
         heapHandles[i] = heap.push(i);
     }
     // std::cout << "tree: ";

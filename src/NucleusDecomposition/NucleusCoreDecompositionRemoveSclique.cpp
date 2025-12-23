@@ -188,7 +188,6 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
     auto time_start = std::chrono::high_resolution_clock::now();
     // Accumulate total time (nanoseconds) spent updating countingRClique in this function
-    long long countingRCliqueNanos = 0;
     StaticCliqueIndex cliqueIndex(r);
     daf::timeCount("clique Index build",
                    [&]() {
@@ -199,7 +198,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     // cliqueIndex.verify();
 
 
-    auto countingRClique = daf::timeCount("countingPerEdgeAndRClique",
+    auto countingRClique = daf::timeCount("countingPerRClique",
                                           [&]() {
                                               return CDSetRS::countingPerRClique(
                                                   tree, cliqueIndex, r, s);
@@ -266,11 +265,11 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
         minCore = std::max(countingRClique[heap.top()], minCore);
         //  core==minCore  leaf  pop 
-        std::cout << "minCore: " << minCore
-        << " heap size: " << heap.size()
-        << " num Leaf: " << tree.size() << " "
-        << s << "-Clique count: " << tree.cliqueCount(s)
-        << std::endl;
+        // std::cout << "minCore: " << minCore
+        // << " heap size: " << heap.size()
+        // << " num Leaf: " << tree.size() << " "
+        // << s << "-Clique count: " << tree.cliqueCount(s)
+        // << std::endl;
         // if (minCore == 99) break;
         while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
             auto id = heap.top();
@@ -435,8 +434,6 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                      heap.update(heapHandles[cliqueIndexId]);
                      return true;
                  });
-                countingRCliqueNanos += std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::high_resolution_clock::now() - __t1).count();
             }
             // end of timed enumerateCombinations that decrements countingRClique
 
@@ -471,8 +468,6 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
 
-    // Print the accumulated time spent updating countingRClique (ms)
-    std::cout << "countingRClique updates time: " << (double)countingRCliqueNanos / 1e6 << " ms" << std::endl;
 
     // coreE
     // daf::printArray(coreE, edgeGraph.adj_list.size());

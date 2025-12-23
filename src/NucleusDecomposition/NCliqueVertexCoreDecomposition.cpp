@@ -417,6 +417,10 @@ namespace VCD {
     }
 }
 
+std::chrono::steady_clock::time_point get_value(std::chrono::steady_clock::time_point time_start) {
+    return time_start;
+}
+
 double *  NCliqueVertexCoreDecomposition(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k) {
@@ -441,6 +445,11 @@ double *  NCliqueVertexCoreDecomposition(
     daf::StaticVector<daf::Size> newPivot;
     daf::StaticVector<daf::Size> newKeepC;
 
+    povit.reserve(400);
+    keepC.reserve(400);
+    newPivot.reserve(400);
+    newKeepC.reserve(400);
+
     daf::StaticVector<daf::Size> currentRemoveVertexIds(edgeGraph.adj_list_offsets.size());
 
     daf::StaticVector<bool> vertexInHeap(edgeGraph.adj_list_offsets.size());
@@ -455,7 +464,10 @@ double *  NCliqueVertexCoreDecomposition(
     VCD::DHeap heap{VCD::CompareVertex(countingV)};
     std::vector<VCD::DHeap::handle_type> heapHandles(edgeGraph.adj_list_offsets.size() - 1);
     for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i) {
-        heapHandles[i] = heap.push(i);
+        // push if counting > 0
+        // heapHandles[i] = heap.push(i);
+        if (countingV[i] > 0)
+            heapHandles[i] = heap.push(i);
     }
     // std::cout << "tree: ";
     // tree.printGraphPerV();
@@ -483,11 +495,11 @@ double *  NCliqueVertexCoreDecomposition(
         //  core==minCore  leaf  pop 
         // printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
 
-        std::cout << "minCore: " << minCore
-        << " heap size: " << heap.size()
-        << " num Leaf: " << tree.size() << " "
-        << k << "-Clique count: " << tree.cliqueCount(k)
-        << std::endl;
+        // std::cout << "minCore: " << minCore
+        // << " heap size: " << heap.size()
+        // << " num Leaf: " << tree.size() << " "
+        // << k << "-Clique count: " << tree.cliqueCount(k)
+        // << std::endl;
         while (!heap.empty() && countingV[heap.top()] <= minCore) {
             auto id = heap.top();
             vertexInHeap[id] = false;
@@ -497,10 +509,9 @@ double *  NCliqueVertexCoreDecomposition(
             // daf::printProgress(numProgress++, edgeGraph.adj_list.size());
         }
 
-        // std::cout << "currentCore: " << currCore << std::endl;
-#ifndef NDEBUG
-        std::cout << "currentRemoveVertexIds: " << currentRemoveVertexIds << std::endl;
-#endif
+        #ifndef NDEBUG
+         std::cout << "currentRemoveVertexIds: " << currentRemoveVertexIds << std::endl;
+ #endif
         for (auto v: currentRemoveVertexIds) {
             auto &adjClique = treeGraphV.getNbr(v);
             for (const auto &clique: adjClique) {
@@ -518,6 +529,7 @@ double *  NCliqueVertexCoreDecomposition(
                 }
             }
         }
+        auto processStart = std::chrono::high_resolution_clock::now();
         // removedLeaf.print("removedLeaf");
         // for (auto leafId : removedLeaf) {
         for (auto leafIdIdx = 0; leafIdIdx < removedLeaf.size(); ++leafIdIdx) {
@@ -674,21 +686,22 @@ double *  NCliqueVertexCoreDecomposition(
             // }
             // removedPovit.clear();
         }
+        auto processEnd = std::chrono::high_resolution_clock::now();
+
         currentRemoveVertexIds.clear();
         removedLeaf.clear();
         // currentRemoveLeafIds.clear();
-#ifndef NDEBUG
-        std::cout << "coreV: " << std::endl;
-        daf::printArray(coreV, edgeGraph.adj_list_offsets.size() - 1);
-        std::cout << "countingV: ";
-        daf::printArray(countingV, edgeGraph.adj_list_offsets.size() - 1);
-        std::cout << "tree: ";
-        tree.printGraphPerV();
+ #ifndef NDEBUG
+         std::cout << "coreV: " << std::endl;
+         daf::printArray(coreV, edgeGraph.adj_list_offsets.size() - 1);
+         std::cout << "countingV: ";
+         daf::printArray(countingV, edgeGraph.adj_list_offsets.size() - 1);
+         std::cout << "tree: ";
+         tree.printGraphPerV();
 
-        std::cout << "treeGraphV: ";
-        treeGraphV.printGraphPerV();
-#endif
-
+         std::cout << "treeGraphV: ";
+         treeGraphV.printGraphPerV();
+ #endif
     }
     //
     // for (auto i = 0;  i < edgeGraph.adj_list_offsets.size(); ++i) {
