@@ -16,6 +16,8 @@
 #include "BK/BronKerboschRmRClique.hpp"
 #include "dataStruct/disJoinSet.hpp"
 #include "graph/DynamicGraphSet.h"
+// timing
+#include <chrono>
 
 extern double nCr[1001][401];
 // （），
@@ -185,6 +187,8 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
     auto time_start = std::chrono::high_resolution_clock::now();
+    // Accumulate total time (nanoseconds) spent updating countingRClique in this function
+    long long countingRCliqueNanos = 0;
     StaticCliqueIndex cliqueIndex(r);
     daf::timeCount("clique Index build",
                    [&]() {
@@ -359,6 +363,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
                             std::abort();
                         }
+                        // timed update to countingRClique (measure whole enumerateCombinations call by outer wrapper)
                         auto ncrValue = nCr[newPivotC - subNumPovit][needPivot - subNumPovit];
                         auto cliqueIndexId = cliqueIndex.byClique(rclique);
                         countingRClique[cliqueIndexId] += ncrValue;
@@ -366,6 +371,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
                     return true;
                 });
+                // end of enumerateCombinations in initCore (timed by outer scope)
             };
 
             // if (!removedPovit.empty() && needPivot <= povit.size() - removedPovit.size())
@@ -403,32 +409,38 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                 if (node.isPivot) pivotC++;
                 else keepC++;
             }
+            // time the enumeration that decrements countingRClique
+            {
+                auto __t1 = std::chrono::high_resolution_clock::now();
+                daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &clique) {
+                     auto cliqueIndexId = cliqueIndex.byClique(clique);
+                     // std::cout << "cliqueIndexId: " << cliqueIndexId
+                     //           << " clique: " << clique << std::endl;
+                     // rCliqueInHeap.print("rCliqueInHeap: ");
+                     if (!rCliqueInHeap[cliqueIndexId]) return true;
+                     daf::CliqueSize subNumKeepC = 0;
+                     daf::CliqueSize subNumPovit = 0;
+                     for (const auto &node: clique) {
+                         if (node.isPivot) subNumPovit++;
+                         else subNumKeepC++;
+                     }
+                     auto ncrValue = nCr[pivotC - subNumPovit][s - keepC - subNumPovit];
+                     countingRClique[cliqueIndexId] -= ncrValue;
+                     // std::cout << "ncrValue: " << ncrValue
+                     //           << " pivotC: " << pivotC
+                     //           << " subNumPovit: " << subNumPovit
+                     //           << " keepC: " << keepC
+                     //           << " subNumKeepC: " << subNumKeepC
+                     //           << std::endl;
+                     heap.update(heapHandles[cliqueIndexId]);
+                     return true;
+                 });
+                countingRCliqueNanos += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::high_resolution_clock::now() - __t1).count();
+            }
+            // end of timed enumerateCombinations that decrements countingRClique
 
-            daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &clique) {
-                auto cliqueIndexId = cliqueIndex.byClique(clique);
-                // std::cout << "cliqueIndexId: " << cliqueIndexId
-                //           << " clique: " << clique << std::endl;
-                // rCliqueInHeap.print("rCliqueInHeap: ");
-                if (!rCliqueInHeap[cliqueIndexId]) return true;
-                daf::CliqueSize subNumKeepC = 0;
-                daf::CliqueSize subNumPovit = 0;
-                for (const auto &node: clique) {
-                    if (node.isPivot) subNumPovit++;
-                    else subNumKeepC++;
-                }
-                auto ncrValue = nCr[pivotC - subNumPovit][s - keepC - subNumPovit];
-                countingRClique[cliqueIndexId] -= ncrValue;
-                // std::cout << "ncrValue: " << ncrValue
-                //           << " pivotC: " << pivotC
-                //           << " subNumPovit: " << subNumPovit
-                //           << " keepC: " << keepC
-                //           << " subNumKeepC: " << subNumKeepC
-                //           << std::endl;
-                heap.update(heapHandles[cliqueIndexId]);
-                return true;
-            });
-
-            tree.removeNode(leafId);
+             tree.removeNode(leafId);
         }
 
 
@@ -458,6 +470,9 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
+
+    // Print the accumulated time spent updating countingRClique (ms)
+    std::cout << "countingRClique updates time: " << (double)countingRCliqueNanos / 1e6 << " ms" << std::endl;
 
     // coreE
     // daf::printArray(coreE, edgeGraph.adj_list.size());

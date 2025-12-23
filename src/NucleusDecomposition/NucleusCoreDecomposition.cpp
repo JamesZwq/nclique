@@ -15,6 +15,8 @@
 // #include "graph/DynamicGraph.h"
 #include "dataStruct/disJoinSet.hpp"
 #include "graph/DynamicGraphSet.h"
+// timing
+#include <chrono>
 
 extern double nCr[1001][401];
 // （），

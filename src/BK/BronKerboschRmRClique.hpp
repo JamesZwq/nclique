@@ -36,7 +36,7 @@ namespace bkRmClique {
     static std::vector<uint32_t> s_csOff, s_rsOff, s_rsCol, s_deg, s_cur;
     static std::vector<VIdx> s_csCol;
     /**
-     * ， n 
+     * ， n
      */
     template<class F>
     bool for_each_bit(const Bitset &bs, int n, F &&callback) {
@@ -48,7 +48,7 @@ namespace bkRmClique {
             }
         }
 
-        return true; //  true 
+        return true; //  true
     }
 
     inline void printBitset(const Bitset &bs, std::string name = "") {
@@ -73,9 +73,9 @@ namespace bkRmClique {
         std::vector<TreeGraphNode> result;
         result.reserve(cover.count());
 
-        // cover  1 
+        // cover  1
         auto i = cover.find_first();
-        // pivots  1 
+        // pivots  1
         auto pj = pivots.find_first();
 
         //  cover  1 ，
@@ -87,10 +87,10 @@ namespace bkRmClique {
             //  pj == i， pivot
             bool isP = (pj == i);
 
-            // 
+            //
             result.emplace_back(vList[i].v, isP);
 
-            //  cover  1 
+            //  cover  1
             i = cover.find_next(i);
         }
         return result;
@@ -116,7 +116,7 @@ namespace bkRmClique {
         if (need > 0 && need > (int) P.count()) {
             return;
         }
-        // 2)  pivot u ∈ P∪X， |P ∧ nbr(u)| 
+        // 2)  pivot u ∈ P∪X， |P ∧ nbr(u)|
         int bestU = -1, bestCnt = -1;
         for_each_bit(P, n, [&](int u) {
             int cnt = adj[u].count_and(P); //  word-wise popcount(a[i] & b[i])
@@ -144,7 +144,7 @@ namespace bkRmClique {
             Bitset piv2 = pivots;
             if (v == bestU) piv2.set(v);
 
-            // 3) 
+            // 3)
             edgeSplit(adj, n, minK, R2, P2, piv2, report);
 
             P.reset(v);
@@ -168,15 +168,15 @@ namespace bkRmClique {
                    daf::Size nextCid,
                    const Bitset &emptyPivotsForReport,
                    ReportFn &&report) {
-        // ： pivot 
+        // ： pivot
         if (pSize < minK || (pSize - pivSize) > minK) return;
         // std::cout << "pathSplit: pSize=" << pSize << ", pivSize=" << pivSize << std::endl;
-        //  |P|-|pivots| == minK →  P  pivot  clique 
+        //  |P|-|pivots| == minK →  P  pivot  clique
         // if ((pSize - pivSize) == minK) {
         //     report(P & (~pivots), emptyPivotsForReport);
         //     return;
         // }
-        // 
+        //
 
         size_t pick = conflictCount.size();
         for (size_t cid = nextCid; cid < conflictCount.size(); ++cid) {
@@ -252,7 +252,7 @@ namespace bkRmClique {
                           csOff, csCol, rsOff, rsCol,
                           pick + 1, emptyPivotsForReport, report);
 
-                // 
+                //
                 for (uint32_t e = rsOff[static_cast<size_t>(v)];
                      e < rsOff[static_cast<size_t>(v) + 1]; ++e) {
                     uint32_t g = rsCol[e];
@@ -281,7 +281,7 @@ namespace bkRmClique {
 
         // ，（）
         if (pSize >= minK) {
-            // P-pivots=minK,  P  pivot 
+            // P-pivots=minK,  P  pivot
             if ((pSize - pivSize) == minK) {
                 report(P & (~pivots), emptyPivotsForReport);
             } else { report(P, pivots); }
@@ -330,7 +330,7 @@ namespace bkRmClique {
             if (vList[i].isPivot) pivots.set(i);
         }
 
-        // 
+        //
         daf::StaticVector<daf::Size> conflictCount, conflictMaxSize;
         conflictCount.resize(conflictSets.size());
         conflictMaxSize.resize(conflictSets.size());
@@ -378,10 +378,10 @@ namespace bkRmClique {
             s_rsOff[static_cast<size_t>(v) + 1u] = s_rsOff[static_cast<size_t>(v)] + s_deg[static_cast<size_t>(v)];
         }
 
-        // ， = 
+        // ， =
         s_rsCol.resize(s_rsOff.back());
 
-        //  rsOff 
+        //  rsOff
         s_cur = s_rsOff;
 
         for (size_t cid = 0; cid < G; ++cid) {
@@ -398,10 +398,10 @@ namespace bkRmClique {
             daf::Size maxRClique = nCr[n - 1][r - 1];
             if ((daf::Size) s_deg[static_cast<size_t>(i)] >= maxRClique) {
                 if (P.test(i)) P.reset(i);
-                if (P.count() < (size_t) minK) return; // 
+                if (P.count() < (size_t) minK) return; //
                 if (pivots.test(i)) pivots.reset(i);
                 else return;
-                // 
+                //
                 for (uint32_t e = s_rsOff[static_cast<size_t>(i)]; e < s_rsOff[static_cast<size_t>(i) + 1]; ++e) {
                     uint32_t cid = s_rsCol[e];
                     --conflictCount[cid];
@@ -418,7 +418,7 @@ namespace bkRmClique {
         emptyPiv.setSize(n);
         emptyPiv.reset();
 
-        // 
+        //
         pathSplit(n, r, minK, P, pivots, pSize, pivSize,
                   conflictCount, conflictMaxSize,
                   s_csOff, s_csCol, s_rsOff, s_rsCol,
@@ -451,7 +451,7 @@ namespace bkRmClique {
         // conflictSets.emplace_back(std::vector<daf::Size>{2, 5, 6});  // {4,8,9}
         // conflictSets.emplace_back(std::vector<daf::Size>{2, 4, 6});  // {4,7,9}
         // conflictSets.emplace_back(std::vector<daf::Size>{3, 4, 6});  // {6,7,9}
-        int minK = 4; //  clique 
+        int minK = 4; //  clique
         std::vector<double> cliqueCounts(vList.size(), 0);
         removeRClique(vList, conflictSets, 3, minK,
                       [&](const Bitset &clique, const Bitset &pivots) {
