@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&] {
         return SDCT(edgeGraph, s, s);
     });
-    std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(2) << std::endl;
+    std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
     std::cout << "max clique: " << treeGraph.maxDegree() << std::endl;
     // if (s >
     // treeGraph.printGraphPerV();
