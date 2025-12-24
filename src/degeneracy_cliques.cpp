@@ -37,7 +37,10 @@ int main(int argc, char **argv) {
     const char *fpath = argv[1];
     const daf::CliqueSize r = strtol(argv[2], nullptr, 10);
     const daf::CliqueSize s = strtol(argv[3], nullptr, 10);
-
+    if (r >= s) {
+        printf("r must be less than s\n");
+        return 0;
+    }
     printf("about to call runAndPrint for dataset %s\n", fpath);
 
     Graph edgeGraph(fpath);
