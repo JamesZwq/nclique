@@ -255,6 +255,8 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 #endif
     std::cout << "=========================begin=========================" << std::endl;
     double minCore = 0;
+
+    daf::log_memory("AUX_index");
     while (!heap.empty()) {
         for (auto &leafId: changedLeaf) {
             changedLeafIndex[leafId] = std::numeric_limits<daf::Size>::max();

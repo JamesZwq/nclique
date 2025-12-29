@@ -95,6 +95,7 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES "Release")
     add_compile_options(-march=native -O3 -DNDEBUG)
 endif()
+
 #if(CMAKE_BUILD_TYPE STREQUAL "Release")
 #    add_compile_options(-O3 -g -fsanitize=address -fno-sanitize-recover=undefined)
 #    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")

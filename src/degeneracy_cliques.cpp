@@ -51,10 +51,18 @@ int main(int argc, char **argv) {
     memset(daf::vListMap.data(), -1, edgeGraph.n * sizeof(daf::Size));
     edgeGraph.sortByDegeneracyOrder();
     // edgeGraph.sortByDegree();
+    // 1. 图加载完毕后
+    daf::log_memory("Graph_Storage");
 
+    // 2. 树构建完毕后
+    // daf::log_memory("Tree_Structure");
+
+    // 3. 辅助索引构建完毕后
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&] {
         return SDCT(edgeGraph, s, s);
     });
+    daf::log_memory("Tree_Structure");
+
     std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
     std::cout << "max clique: " << treeGraph.maxDegree() << std::endl;
     // if (s >
@@ -99,6 +107,8 @@ int main(int argc, char **argv) {
             // NucleusCoreDecompositionHierarchy(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
+
+    daf::log_memory("Peak_Runtime");
     // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {
     //     return PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);
     // });

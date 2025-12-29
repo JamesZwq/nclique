@@ -182,6 +182,12 @@ def scan_text_for_time_and_mem(lines):
      exit_status = None
      terminated_by_signal = False
      for ln in lines:
+         if 'Elapsed (wall clock) time' in ln:
+             # Format from /bin/time -v, e.g., "Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.41"
+             val = ln.split(':', maxsplit=1)[-1].strip()
+             e = parse_elapsed_to_seconds(val)
+             if e is not None:
+                 elapsed = e
          # if 'Elapsed (wall clock) time' in ln:
          #     val = ln.split(':', maxsplit=1)[-1].strip()
          #     e = parse_elapsed_to_seconds(val)
