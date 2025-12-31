@@ -104,7 +104,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
 
 std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRClique(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s, StaticCliqueIndex &cliqueIndex);
 
 
 std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCliquePar(

@@ -57,21 +57,18 @@ int main(int argc, char **argv) {
     // 2. 树构建完毕后
     // daf::log_memory("Tree_Structure");
 
+    StaticCliqueIndex cliqueIndex(r);
     // 3. 辅助索引构建完毕后
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&] {
-        return SDCT(edgeGraph, s, s);
+        return SDCT(edgeGraph, s, r, cliqueIndex);
     });
     daf::log_memory("Tree_Structure");
-
+    daf::timeCount("INdex Finish Time", [&]() {
+        cliqueIndex.finish(edgeGraph.getGraphNodeSize());
+    });
     std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
     std::cout << "max clique: " << treeGraph.maxDegree() << std::endl;
     // if (s >
-    // treeGraph.printGraphPerV();
-    for (auto leaf: treeGraph.adj_list) {
-        if (leaf[0].isPivot) {
-            std::cout << "leaf: " << leaf[0].v << " is pivot" << std::endl;
-        }
-    }
 
     // return 0;
 
@@ -103,7 +100,7 @@ int main(int argc, char **argv) {
             NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
         } else {
             // NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
-            NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
+            NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s, cliqueIndex);
             // NucleusCoreDecompositionHierarchy(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });

@@ -1,4 +1,4 @@
-/Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/degeneracy_cliques /Users/zhangwenqian/UNSW/pivoter/graphs/com-dblp.edges 1 13
+/Users/zhangwenqian/UNSW/pivoter/cmake-build-release/bin/degeneracy_cliques /Users/zhangwenqian/UNSW/pivoter/graphs/com-dblp.edges 3 4
 about to call runAndPrint for dataset /Users/zhangwenqian/UNSW/pivoter/graphs/com-dblp.edges
 skip the first line: 317080 1049866
 skip the first line: 317080 1049866
@@ -8,79 +8,181 @@ Edge Size: 1049866
 Max Degree: 343
 Avg Degree: 6.62209
 
-Tree Build took: 285.565 ms
-13-Clique count: 70700
+[Memory-Mac] Graph_Storage: 61520 kB
+Tree Build took: 238.635 ms
+[Memory-Mac] Tree_Structure: 76592 kB
+4-Clique count: 1.67132e+07
 max clique: 114
-nun Leaf: 3636
-Clique Index: 3537 cliques, 1049866 vertices.
-clique Index build took: 11.814 ms
-countingPerRClique took: 1.835 ms
+nun Leaf: 166918
+Clique Index: 2074019 cliques, 1049866 vertices.
+clique Index build took: 156.985 ms
+countingPerRClique took: 445.058 ms
 =========================begin=========================
-minCore: 1 heap size: 9961 num Leaf: 3636 13-Clique count: 5.2703e+16
-minCore: 1 heap size: 8181 num Leaf: 3460 13-Clique count: 5.2703e+16
-minCore: 13 heap size: 8089 num Leaf: 3455 13-Clique count: 5.2703e+16
-minCore: 13 heap size: 6807 num Leaf: 3223 13-Clique count: 5.2703e+16
-minCore: 91 heap size: 6767 num Leaf: 3215 13-Clique count: 5.2703e+16
-minCore: 91 heap size: 5767 num Leaf: 2980 13-Clique count: 5.2703e+16
-minCore: 103 heap size: 5747 num Leaf: 2970 13-Clique count: 5.2703e+16
-minCore: 455 heap size: 5746 num Leaf: 2968 13-Clique count: 5.2703e+16
-minCore: 455 heap size: 4747 num Leaf: 2684 13-Clique count: 5.2703e+16
-minCore: 1820 heap size: 4743 num Leaf: 2677 13-Clique count: 5.2703e+16
-minCore: 1820 heap size: 4223 num Leaf: 2494 13-Clique count: 5.2703e+16
-minCore: 1832 heap size: 4212 num Leaf: 2483 13-Clique count: 5.2703e+16
-minCore: 1898 heap size: 4211 num Leaf: 2481 13-Clique count: 5.2703e+16
-minCore: 1898 heap size: 4210 num Leaf: 2479 13-Clique count: 5.2703e+16
-minCore: 3185 heap size: 4209 num Leaf: 2477 13-Clique count: 5.2703e+16
-minCore: 6188 heap size: 4207 num Leaf: 2474 13-Clique count: 5.2703e+16
-minCore: 6188 heap size: 3659 num Leaf: 2266 13-Clique count: 5.2703e+16
-minCore: 18564 heap size: 3656 num Leaf: 2263 13-Clique count: 5.2703e+16
-minCore: 18564 heap size: 3397 num Leaf: 2147 13-Clique count: 5.2703e+16
-minCore: 50388 heap size: 3396 num Leaf: 2145 13-Clique count: 5.2703e+16
-minCore: 50388 heap size: 3074 num Leaf: 2001 13-Clique count: 5.2703e+16
-minCore: 125970 heap size: 3060 num Leaf: 1998 13-Clique count: 5.2703e+16
-minCore: 125970 heap size: 2726 num Leaf: 1834 13-Clique count: 5.2703e+16
-minCore: 127335 heap size: 2723 num Leaf: 1830 13-Clique count: 5.2703e+16
-minCore: 293930 heap size: 2722 num Leaf: 1828 13-Clique count: 5.2703e+16
-minCore: 293930 heap size: 2460 num Leaf: 1696 13-Clique count: 5.2703e+16
-minCore: 646646 heap size: 2438 num Leaf: 1684 13-Clique count: 5.2703e+16
-minCore: 646646 heap size: 2233 num Leaf: 1581 13-Clique count: 5.2703e+16
-minCore: 1.35208e+06 heap size: 2221 num Leaf: 1561 13-Clique count: 5.2703e+16
-minCore: 1.35208e+06 heap size: 2070 num Leaf: 1480 13-Clique count: 5.2703e+16
-minCore: 2.70416e+06 heap size: 2069 num Leaf: 1480 13-Clique count: 5.2703e+16
-minCore: 5.2003e+06 heap size: 1896 num Leaf: 1389 13-Clique count: 5.2703e+16
-minCore: 5.2003e+06 heap size: 1719 num Leaf: 1283 13-Clique count: 5.2703e+16
-minCore: 9.6577e+06 heap size: 1715 num Leaf: 1266 13-Clique count: 5.2703e+16
-minCore: 1.73839e+07 heap size: 1603 num Leaf: 1202 13-Clique count: 5.2703e+16
-minCore: 1.73839e+07 heap size: 1488 num Leaf: 1133 13-Clique count: 5.2703e+16
-minCore: 3.04218e+07 heap size: 1487 num Leaf: 1131 13-Clique count: 5.2703e+16
-minCore: 5.18959e+07 heap size: 1358 num Leaf: 1044 13-Clique count: 5.2703e+16
-minCore: 5.18959e+07 heap size: 1211 num Leaf: 945 13-Clique count: 5.2703e+16
-minCore: 8.64932e+07 heap size: 1206 num Leaf: 936 13-Clique count: 5.2703e+16
-minCore: 8.64932e+07 heap size: 1053 num Leaf: 840 13-Clique count: 5.2703e+16
-minCore: 8.66612e+07 heap size: 1052 num Leaf: 839 13-Clique count: 5.2703e+16
-minCore: 8.66612e+07 heap size: 1051 num Leaf: 837 13-Clique count: 5.2703e+16
-minCore: 1.41121e+08 heap size: 1050 num Leaf: 835 13-Clique count: 5.2703e+16
-minCore: 2.25793e+08 heap size: 955 num Leaf: 775 13-Clique count: 5.2703e+16
-minCore: 3.54817e+08 heap size: 856 num Leaf: 712 13-Clique count: 5.2703e+16
-minCore: 5.48354e+08 heap size: 822 num Leaf: 690 13-Clique count: 5.2703e+16
-minCore: 8.34452e+08 heap size: 819 num Leaf: 687 13-Clique count: 5.2703e+16
-minCore: 1.25168e+09 heap size: 738 num Leaf: 630 13-Clique count: 5.2703e+16
-minCore: 1.25168e+09 heap size: 721 num Leaf: 613 13-Clique count: 5.2703e+16
-minCore: 2.70748e+09 heap size: 703 num Leaf: 597 13-Clique count: 5.2703e+16
-minCore: 2.70748e+09 heap size: 656 num Leaf: 543 13-Clique count: 5.2703e+16
-minCore: 3.9108e+09 heap size: 625 num Leaf: 523 13-Clique count: 5.2703e+16
-minCore: 1.10581e+10 heap size: 585 num Leaf: 495 13-Clique count: 5.2703e+16
-minCore: 1.53387e+10 heap size: 542 num Leaf: 464 13-Clique count: 5.27029e+16
-minCore: 5.22514e+10 heap size: 454 num Leaf: 400 13-Clique count: 5.27028e+16
-minCore: 6.96685e+10 heap size: 358 num Leaf: 328 13-Clique count: 5.27024e+16
-minCore: 1.58753e+11 heap size: 309 num Leaf: 291 13-Clique count: 5.27022e+16
-minCore: 1.58753e+11 heap size: 294 num Leaf: 276 13-Clique count: 5.27016e+16
-minCore: 2.16015e+12 heap size: 280 num Leaf: 244 13-Clique count: 5.27015e+16
-minCore: 3.28421e+12 heap size: 217 num Leaf: 193 13-Clique count: 5.26911e+16
-minCore: 1.19205e+15 heap size: 216 num Leaf: 192 13-Clique count: 5.26878e+16
-minCore: 4.94169e+15 heap size: 114 num Leaf: 102 13-Clique count: 4.33348e+16
-time: 21 ms
-countingRClique updates time: 1.0775 ms
-NucleusCoreDecomposition took: 27.137 ms
+[Memory-Mac] AUX_index: 806464 kB
+minCore: 1 heap size: 2136762 num Leaf: 166918 4-Clique count: 1.67132e+07
+[Memory-Mac] Inter loop: 806464 kB
+minCore: 1 heap size: 1967792 num Leaf: 114330 4-Clique count: 1.66606e+07
+[Memory-Mac] Inter loop: 814656 kB
+minCore: 1 heap size: 1957156 num Leaf: 113961 4-Clique count: 1.66602e+07
+[Memory-Mac] Inter loop: 814656 kB
+minCore: 1 heap size: 1957061 num Leaf: 113925 4-Clique count: 1.66602e+07
+[Memory-Mac] Inter loop: 814656 kB
+minCore: 1 heap size: 1957048 num Leaf: 113916 4-Clique count: 1.66602e+07
+[Memory-Mac] Inter loop: 814656 kB
+minCore: 1 heap size: 1957047 num Leaf: 113915 4-Clique count: 1.66602e+07
+[Memory-Mac] Inter loop: 814656 kB
+minCore: 1 heap size: 1957046 num Leaf: 113914 4-Clique count: 1.66602e+07
+[Memory-Mac] Inter loop: 814656 kB
+minCore: 1 heap size: 1957045 num Leaf: 113913 4-Clique count: 1.66602e+07
+[Memory-Mac] Inter loop: 814656 kB
+minCore: 2 heap size: 1957044 num Leaf: 113912 4-Clique count: 1.66602e+07
+[Memory-Mac] Inter loop: 814656 kB
+minCore: 2 heap size: 1778800 num Leaf: 77266 4-Clique count: 1.65569e+07
+[Memory-Mac] Inter loop: 815536 kB
+minCore: 2 heap size: 1765881 num Leaf: 73266 4-Clique count: 1.65525e+07
+[Memory-Mac] Inter loop: 815568 kB
+minCore: 2 heap size: 1765537 num Leaf: 73209 4-Clique count: 1.65524e+07
+[Memory-Mac] Inter loop: 815568 kB
+minCore: 3 heap size: 1765520 num Leaf: 73199 4-Clique count: 1.65524e+07
+[Memory-Mac] Inter loop: 815568 kB
+minCore: 3 heap size: 1610487 num Leaf: 49943 4-Clique count: 1.64242e+07
+[Memory-Mac] Inter loop: 816912 kB
+minCore: 3 heap size: 1601313 num Leaf: 47834 4-Clique count: 1.64187e+07
+[Memory-Mac] Inter loop: 816928 kB
+minCore: 3 heap size: 1601008 num Leaf: 47755 4-Clique count: 1.64186e+07
+[Memory-Mac] Inter loop: 816928 kB
+minCore: 3 heap size: 1601004 num Leaf: 47755 4-Clique count: 1.64186e+07
+[Memory-Mac] Inter loop: 816928 kB
+minCore: 4 heap size: 1601003 num Leaf: 47756 4-Clique count: 1.64185e+07
+[Memory-Mac] Inter loop: 816928 kB
+minCore: 4 heap size: 1479014 num Leaf: 33898 4-Clique count: 1.62876e+07
+[Memory-Mac] Inter loop: 818848 kB
+minCore: 4 heap size: 1473195 num Leaf: 32889 4-Clique count: 1.62825e+07
+[Memory-Mac] Inter loop: 818864 kB
+minCore: 4 heap size: 1472935 num Leaf: 32824 4-Clique count: 1.62823e+07
+[Memory-Mac] Inter loop: 818864 kB
+minCore: 5 heap size: 1472914 num Leaf: 32819 4-Clique count: 1.62822e+07
+[Memory-Mac] Inter loop: 818864 kB
+minCore: 5 heap size: 1375260 num Leaf: 24094 4-Clique count: 1.6153e+07
+[Memory-Mac] Inter loop: 819952 kB
+minCore: 5 heap size: 1371276 num Leaf: 23551 4-Clique count: 1.61484e+07
+[Memory-Mac] Inter loop: 819968 kB
+minCore: 5 heap size: 1371145 num Leaf: 23522 4-Clique count: 1.61482e+07
+[Memory-Mac] Inter loop: 819968 kB
+minCore: 5 heap size: 1371129 num Leaf: 23521 4-Clique count: 1.61482e+07
+[Memory-Mac] Inter loop: 819968 kB
+minCore: 6 heap size: 1371123 num Leaf: 23519 4-Clique count: 1.61482e+07
+[Memory-Mac] Inter loop: 819968 kB
+minCore: 6 heap size: 1292020 num Leaf: 17880 4-Clique count: 1.60241e+07
+[Memory-Mac] Inter loop: 745328 kB
+minCore: 6 heap size: 1289575 num Leaf: 17638 4-Clique count: 1.60208e+07
+[Memory-Mac] Inter loop: 745328 kB
+minCore: 7 heap size: 1289460 num Leaf: 17626 4-Clique count: 1.60206e+07
+[Memory-Mac] Inter loop: 745328 kB
+minCore: 7 heap size: 1223416 num Leaf: 13830 4-Clique count: 1.59008e+07
+[Memory-Mac] Inter loop: 745712 kB
+minCore: 7 heap size: 1221947 num Leaf: 13715 4-Clique count: 1.58983e+07
+[Memory-Mac] Inter loop: 745712 kB
+minCore: 7 heap size: 1221875 num Leaf: 13710 4-Clique count: 1.58982e+07
+[Memory-Mac] Inter loop: 745712 kB
+minCore: 8 heap size: 1221861 num Leaf: 13706 4-Clique count: 1.58981e+07
+[Memory-Mac] Inter loop: 745712 kB
+minCore: 8 heap size: 1170851 num Leaf: 11241 4-Clique count: 1.57921e+07
+[Memory-Mac] Inter loop: 746448 kB
+minCore: 8 heap size: 1169471 num Leaf: 11144 4-Clique count: 1.57895e+07
+[Memory-Mac] Inter loop: 746448 kB
+minCore: 9 heap size: 1169453 num Leaf: 11145 4-Clique count: 1.57895e+07
+[Memory-Mac] Inter loop: 746448 kB
+minCore: 9 heap size: 1126878 num Leaf: 9391 4-Clique count: 1.5691e+07
+[Memory-Mac] Inter loop: 746720 kB
+minCore: 10 heap size: 1126052 num Leaf: 9336 4-Clique count: 1.56893e+07
+[Memory-Mac] Inter loop: 746720 kB
+minCore: 10 heap size: 1079397 num Leaf: 7702 4-Clique count: 1.55693e+07
+[Memory-Mac] Inter loop: 747072 kB
+minCore: 11 heap size: 1077953 num Leaf: 7633 4-Clique count: 1.55663e+07
+[Memory-Mac] Inter loop: 747072 kB
+minCore: 11 heap size: 1037883 num Leaf: 6429 4-Clique count: 1.54534e+07
+[Memory-Mac] Inter loop: 747632 kB
+minCore: 12 heap size: 1037430 num Leaf: 6408 4-Clique count: 1.54522e+07
+[Memory-Mac] Inter loop: 747632 kB
+minCore: 12 heap size: 1002598 num Leaf: 5503 4-Clique count: 1.53453e+07
+[Memory-Mac] Inter loop: 747856 kB
+minCore: 13 heap size: 1002068 num Leaf: 5489 4-Clique count: 1.53438e+07
+[Memory-Mac] Inter loop: 747856 kB
+minCore: 14 heap size: 962993 num Leaf: 4576 4-Clique count: 1.52147e+07
+[Memory-Mac] Inter loop: 748224 kB
+minCore: 14 heap size: 938108 num Leaf: 4055 4-Clique count: 1.51251e+07
+[Memory-Mac] Inter loop: 748592 kB
+minCore: 15 heap size: 937751 num Leaf: 4042 4-Clique count: 1.51238e+07
+[Memory-Mac] Inter loop: 748592 kB
+minCore: 16 heap size: 909801 num Leaf: 3531 4-Clique count: 1.50177e+07
+[Memory-Mac] Inter loop: 749120 kB
+minCore: 17 heap size: 893815 num Leaf: 3287 4-Clique count: 1.49523e+07
+[Memory-Mac] Inter loop: 749168 kB
+minCore: 18 heap size: 872688 num Leaf: 3031 4-Clique count: 1.48609e+07
+[Memory-Mac] Inter loop: 749296 kB
+minCore: 18 heap size: 847964 num Leaf: 2662 4-Clique count: 1.4747e+07
+[Memory-Mac] Inter loop: 749712 kB
+minCore: 19 heap size: 847960 num Leaf: 2661 4-Clique count: 1.4747e+07
+[Memory-Mac] Inter loop: 749712 kB
+minCore: 19 heap size: 827056 num Leaf: 2411 4-Clique count: 1.46441e+07
+[Memory-Mac] Inter loop: 749952 kB
+minCore: 20 heap size: 825159 num Leaf: 2390 4-Clique count: 1.46347e+07
+[Memory-Mac] Inter loop: 749952 kB
+minCore: 21 heap size: 807419 num Leaf: 2152 4-Clique count: 1.45458e+07
+[Memory-Mac] Inter loop: 750080 kB
+minCore: 22 heap size: 793203 num Leaf: 2017 4-Clique count: 1.44683e+07
+[Memory-Mac] Inter loop: 750144 kB
+minCore: 23 heap size: 777103 num Leaf: 1858 4-Clique count: 1.43797e+07
+[Memory-Mac] Inter loop: 750320 kB
+minCore: 24 heap size: 756442 num Leaf: 1678 4-Clique count: 1.42582e+07
+[Memory-Mac] Inter loop: 750704 kB
+minCore: 25 heap size: 743418 num Leaf: 1574 4-Clique count: 1.41773e+07
+[Memory-Mac] Inter loop: 751008 kB
+minCore: 26 heap size: 728080 num Leaf: 1446 4-Clique count: 1.40787e+07
+[Memory-Mac] Inter loop: 751168 kB
+minCore: 27 heap size: 709111 num Leaf: 1317 4-Clique count: 1.39534e+07
+[Memory-Mac] Inter loop: 751232 kB
+minCore: 28 heap size: 685191 num Leaf: 1158 4-Clique count: 1.37891e+07
+[Memory-Mac] Inter loop: 751232 kB
+minCore: 28 heap size: 662223 num Leaf: 1016 4-Clique count: 1.36269e+07
+[Memory-Mac] Inter loop: 752000 kB
+minCore: 29 heap size: 661411 num Leaf: 1014 4-Clique count: 1.36196e+07
+[Memory-Mac] Inter loop: 752000 kB
+minCore: 30 heap size: 646456 num Leaf: 930 4-Clique count: 1.35104e+07
+[Memory-Mac] Inter loop: 752112 kB
+minCore: 31 heap size: 629440 num Leaf: 849 4-Clique count: 1.33792e+07
+[Memory-Mac] Inter loop: 752272 kB
+minCore: 32 heap size: 623456 num Leaf: 818 4-Clique count: 1.33328e+07
+[Memory-Mac] Inter loop: 752352 kB
+minCore: 33 heap size: 621563 num Leaf: 815 4-Clique count: 1.33122e+07
+[Memory-Mac] Inter loop: 752368 kB
+minCore: 34 heap size: 601993 num Leaf: 739 4-Clique count: 1.31395e+07
+[Memory-Mac] Inter loop: 752464 kB
+minCore: 36 heap size: 594223 num Leaf: 704 4-Clique count: 1.30735e+07
+[Memory-Mac] Inter loop: 752544 kB
+minCore: 37 heap size: 575945 num Leaf: 611 4-Clique count: 1.2909e+07
+[Memory-Mac] Inter loop: 753552 kB
+minCore: 40 heap size: 566065 num Leaf: 574 4-Clique count: 1.28176e+07
+[Memory-Mac] Inter loop: 753648 kB
+minCore: 41 heap size: 553724 num Leaf: 534 4-Clique count: 1.26942e+07
+[Memory-Mac] Inter loop: 753840 kB
+minCore: 45 heap size: 527236 num Leaf: 452 4-Clique count: 1.24227e+07
+[Memory-Mac] Inter loop: 755120 kB
+minCore: 46 heap size: 492644 num Leaf: 362 4-Clique count: 1.20335e+07
+[Memory-Mac] Inter loop: 756624 kB
+minCore: 49 heap size: 474220 num Leaf: 316 4-Clique count: 1.18216e+07
+[Memory-Mac] Inter loop: 756880 kB
+minCore: 60 heap size: 453891 num Leaf: 271 4-Clique count: 1.15598e+07
+[Memory-Mac] Inter loop: 757168 kB
+minCore: 62 heap size: 414180 num Leaf: 211 4-Clique count: 1.09641e+07
+[Memory-Mac] Inter loop: 761840 kB
+minCore: 99 heap size: 412164 num Leaf: 210 4-Clique count: 1.09225e+07
+[Memory-Mac] Inter loop: 761840 kB
+minCore: 111 heap size: 240464 num Leaf: 111 4-Clique count: 6.67288e+06
+[Memory-Mac] Inter loop: 810816 kB
+time: 1981 ms
+NucleusCoreDecomposition took: 2151 ms
+[Memory-Mac] Peak_Runtime: 813664 kB
 
 进程已结束，退出代码为 0

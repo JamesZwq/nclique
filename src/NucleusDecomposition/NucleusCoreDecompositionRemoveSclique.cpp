@@ -144,15 +144,16 @@ namespace CDSetRS {
 
                 auto ncrValue = nCr[pivotC - subNumPovit][needPivot - subNumPovit];
                 // rCliqueSCounting[cliqueHashmap.byNewClique(rClique)] += ncrValue;
-                auto [id, isNew] = cliqueHashmap.byNewClique(rClique);
-                if (isNew) {
-                    if (rCliqueSCounting.size() <= id) {
-                        rCliqueSCounting.push_back(0.0);
-                    }
-                    if (rCliqueSCounting.capacity() <= id) {
-                        rCliqueSCounting.reserve(std::max(id + 2, id * 2));
-                    }
-                }
+                // auto [id, isNew] = cliqueHashmap.byNewClique(rClique);
+                auto id = cliqueHashmap.byClique(rClique);
+                // if (isNew) {
+                //     if (rCliqueSCounting.size() <= id) {
+                //         rCliqueSCounting.push_back(0.0);
+                //     }
+                //     if (rCliqueSCounting.capacity() <= id) {
+                //         rCliqueSCounting.reserve(std::max(id + 2, id * 2));
+                //     }
+                // }
                 rCliqueSCounting[id] += ncrValue;
                 return true;
             });
@@ -185,14 +186,16 @@ namespace CDSetRS {
 
 std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRClique(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s, StaticCliqueIndex &cliqueIndex) {
     auto time_start = std::chrono::high_resolution_clock::now();
     // Accumulate total time (nanoseconds) spent updating countingRClique in this function
-    StaticCliqueIndex cliqueIndex(r);
-    daf::timeCount("clique Index build",
-                   [&]() {
-                       cliqueIndex.build(tree, edgeGraph.adj_list.size());
-                   });
+    // StaticCliqueIndex cliqueIndex(r);
+    // daf::timeCount("clique Index build",
+    //                [&]() {
+    //                    cliqueIndex.build(tree, edgeGraph.adj_list.size());
+    //                });
+
+    daf::log_memory("AUX_index");
     // tree.printGraphPerV();
     // cliqueIndex.print();
     // cliqueIndex.verify();
@@ -219,6 +222,9 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 #endif
 
     std::vector<daf::Size> changedLeafIndex(tree.adj_list.size(), std::numeric_limits<daf::Size>::max());
+
+    daf::log_memory("changedLeafIndex");
+
     std::vector<std::vector<daf::Size> > removedRCliqueIdForLeaf;
     std::vector<daf::Size> changedLeaf;
     std::vector<daf::Size> currentRemoveRcliqueIds;
@@ -236,11 +242,13 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     CDSetRS::DHeap heap{CDSetRS::CompareRClique(countingRClique.data())};
     heap.reserve(cliqueIndex.size());
 
+    daf::log_memory("other_index");
     std::vector<CDSetRS::DHeap::handle_type> heapHandles(cliqueIndex.size());
 
     for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
         heapHandles[i] = heap.push(i);
     }
+    daf::log_memory("heap");
 #ifndef NDEBUG
     std::cout << "countingKE: ";
     // CDSetRS::printEdgeCore(edgeGraph, countingKE);
@@ -256,7 +264,8 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     std::cout << "=========================begin=========================" << std::endl;
     double minCore = 0;
 
-    daf::log_memory("AUX_index");
+
+    
     while (!heap.empty()) {
         for (auto &leafId: changedLeaf) {
             changedLeafIndex[leafId] = std::numeric_limits<daf::Size>::max();
@@ -267,11 +276,12 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
         minCore = std::max(countingRClique[heap.top()], minCore);
         //  core==minCore  leaf  pop 
-        // std::cout << "minCore: " << minCore
-        // << " heap size: " << heap.size()
-        // << " num Leaf: " << tree.size() << " "
-        // << s << "-Clique count: " << tree.cliqueCount(s)
-        // << std::endl;
+        std::cout << "minCore: " << minCore
+        << " heap size: " << heap.size()
+        << " num Leaf: " << tree.size() << " "
+        << s << "-Clique count: " << tree.cliqueCount(s)
+        << std::endl;
+        daf::log_memory("Inter loop");
         // if (minCore == 99) break;
         while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
             auto id = heap.top();
@@ -396,7 +406,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
             bkRmClique::removeRClique(leaf, mapped, r, s, [&](const bkRmClique::Bitset &c, const bkRmClique::Bitset &pivots) {
                 auto newLeaf = bkRmClique::coverToVertex(c, pivots, leaf);
                 DEBUG_BREAK_IF(newLeaf.size() < s);
-                // std::cout << " newLeaf: " << newLeaf << std::endl;
+                // std::cout << " newLeaf: " << newLminCore: eaf << std::endl;
                 auto newId = tree.addNode(newLeaf);
                 // std::cout << " newId: " << newId << std::endl;
                 initCore(tree.adj_list[newId], newId);

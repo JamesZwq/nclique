@@ -41,6 +41,7 @@
 #include"LinkedList.h"
 #include"MemoryManager.h"
 #include"degeneracy_helper.h"
+#include "dataStruct/CliqueHashMap.h"
 #include "graph/DynamicGraph.h"
 
 
@@ -61,7 +62,7 @@ DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &orderingA
 
 
 DynamicGraph<TreeGraphNode> SDCT(Graph &orderingArray,
-                                                                int max_k, int min_k);
+                                 int max_k, int min_k, StaticCliqueIndex &cliqueIndex);
 #ifdef __cplusplus
 }
 #endif

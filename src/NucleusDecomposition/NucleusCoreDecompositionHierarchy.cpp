@@ -145,15 +145,16 @@ namespace CDSetRSH {
                 }
                 auto ncrValue = nCr[pivotC - subNumPovit][needPivot - subNumPovit];
                 // rCliqueSCounting[cliqueHashmap.byNewClique(rClique)] += ncrValue;
-                auto [id, isNew] = cliqueHashmap.byNewClique(rClique);
-                if (isNew) {
-                    if (rCliqueSCounting.size() <= id) {
-                        rCliqueSCounting.push_back(0.0);
-                    }
-                    if (rCliqueSCounting.capacity() <= id) {
-                        rCliqueSCounting.reserve(std::max(id + 2, id * 2));
-                    }
-                }
+                // auto [id, isNew] = cliqueHashmap.byNewClique(rClique);
+                auto id = cliqueHashmap.byClique(rClique);
+                // if (isNew) {
+                //     if (rCliqueSCounting.size() <= id) {
+                //         rCliqueSCounting.push_back(0.0);
+                //     }
+                //     if (rCliqueSCounting.capacity() <= id) {
+                //         rCliqueSCounting.reserve(std::max(id + 2, id * 2));
+                //     }
+                // }
                 rCliqueSCounting[id] += ncrValue;
                 return true;
             });
@@ -189,10 +190,10 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
     auto time_start = std::chrono::high_resolution_clock::now();
     StaticCliqueIndex cliqueIndex(r);
-    daf::timeCount("clique Index build",
-                   [&]() {
-                       cliqueIndex.build(tree, edgeGraph.adj_list.size());
-                   });
+    // daf::timeCount("clique Index build",
+    //                [&]() {
+    //                    cliqueIndex.build(tree, edgeGraph.adj_list.size());
+    //                });
     // tree.printGraphPerV();
     // cliqueIndex.print();
     // cliqueIndex.verify();

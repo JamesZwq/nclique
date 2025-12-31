@@ -43,7 +43,7 @@
 #define MAX_CSIZE 400
 
 namespace daf {
-    using Size = uint64_t;
+    using Size = uint32_t;
     using CliqueSize = uint16_t;
     static constexpr Size UNDEFINED = std::numeric_limits<Size>::max();
 

@@ -651,6 +651,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                 << " num Leaf: " << tree.size() << " "
                 << k << "-Clique count: " << tree.cliqueCount(k)
                 << std::endl;
+        daf::log_memory("Inter loop");
 #ifndef NDEBUG
         std::cout << "currentRemoveEdge: " << std::endl;
 #endif

@@ -495,11 +495,13 @@ double *  NCliqueVertexCoreDecomposition(
         //  core==minCore  leaf  pop 
         // printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
 
-        // std::cout << "minCore: " << minCore
-        // << " heap size: " << heap.size()
-        // << " num Leaf: " << tree.size() << " "
-        // << k << "-Clique count: " << tree.cliqueCount(k)
-        // << std::endl;
+        std::cout << "minCore: " << minCore
+        << " heap size: " << heap.size()
+        << " num Leaf: " << tree.size() << " "
+        << k << "-Clique count: " << tree.cliqueCount(k)
+        << std::endl;
+
+        daf::log_memory("Inter loop");
         while (!heap.empty() && countingV[heap.top()] <= minCore) {
             auto id = heap.top();
             vertexInHeap[id] = false;

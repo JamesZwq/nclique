@@ -398,19 +398,20 @@ namespace CDSet {
 
                 auto ncrValue = nCr[povit.size() - subNumPovit][needPivot - subNumPovit];
                 // rCliqueSCounting[cliqueHashmap.byNewClique(rClique)] += ncrValue;
-                auto [id, isNew] = cliqueHashmap.byNewClique(rClique);
-                if (isNew) {
-                    for (size_t i = 0; i < rClique.size(); ++i) {
-                        for (size_t j = i + 1; j < rClique.size(); ++j) {
-                            daf::Size u = rClique[i].v, v = rClique[j].v;
-                            auto index = edgeGraph.getEdgeCompressedId(u, v);
-                            countingE[index] += 1;
-                        }
-                    }
-                    if (rCliqueSCounting.size() <= id) {
-                        rCliqueSCounting.resize(std::min(id + 1.1, id * 1.3), 0.0);
-                    }
-                }
+                // auto [id, isNew] = cliqueHashmap.byNewClique(rClique);
+                auto id = cliqueHashmap.byClique(rClique);
+                // if (isNew) {
+                //     for (size_t i = 0; i < rClique.size(); ++i) {
+                //         for (size_t j = i + 1; j < rClique.size(); ++j) {
+                //             daf::Size u = rClique[i].v, v = rClique[j].v;
+                //             auto index = edgeGraph.getEdgeCompressedId(u, v);
+                //             countingE[index] += 1;
+                //         }
+                //     }
+                //     if (rCliqueSCounting.size() <= id) {
+                //         rCliqueSCounting.resize(std::min(id + 1.1, id * 1.3), 0.0);
+                //     }
+                // }
                 rCliqueSCounting[id] += ncrValue;
 
 
@@ -529,10 +530,10 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
     auto time_start = std::chrono::high_resolution_clock::now();
     StaticCliqueIndex cliqueIndex(r);
-    daf::timeCount("clique Index build",
-                   [&]() {
-                       cliqueIndex.build(tree, edgeGraph.adj_list.size());
-                   });
+    // daf::timeCount("clique Index build",
+    //                [&]() {
+    //                    cliqueIndex.build(tree, edgeGraph.adj_list.size());
+    //                });
     // tree.printGraphPerV();
     // cliqueIndex.print();
     // cliqueIndex.verify();
