@@ -25,9 +25,16 @@
 #include <memory>
 // #include <google/dense_hash_set>
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <unistd.h>
+
 #include <iomanip>
 #include <random>
-
+#if defined(__APPLE__)
+#include <mach/mach.h>
+#endif
 #include "dataStruct/robin_hood.h"
 #include "dataStruct/Bitset.hpp"
 #include "Global/ostreamOverload.hpp"
@@ -36,7 +43,7 @@
 #define MAX_CSIZE 400
 
 namespace daf {
-    using Size = uint64_t;
+    using Size = uint32_t;
     using CliqueSize = uint16_t;
     static constexpr Size UNDEFINED = std::numeric_limits<Size>::max();
 
@@ -56,6 +63,56 @@ namespace daf {
         std::cout << std::endl;
     }
 
+
+    inline void log_memory(const std::string& label) {
+        long rss_kb = 0;
+
+#if defined(__linux__)
+        // ==========================================
+        // Linux 实现: 读取 /proc/self/status
+        // ==========================================
+        std::ifstream status_file("/proc/self/status");
+        std::string line;
+        while (std::getline(status_file, line)) {
+            if (line.substr(0, 6) == "VmRSS:") {
+                // line 格式通常是 "VmRSS:    1234 kB"
+                // 我们提取数字部分
+                std::string val_str = line.substr(7);
+                // 去掉尾部的 " kB" (简单处理，直接打印整行也可以，这里为了统一定义个变量)
+                // 实际上直接打印 line 也是可以的
+                std::cout << "[Memory-Linux] " << label << ": " << line.substr(6) << std::endl;
+                return;
+            }
+        }
+
+#elif defined(__APPLE__)
+        // ==========================================
+        // macOS (Darwin) 实现: 使用 task_info
+        // ==========================================
+        struct task_basic_info t_info;
+        mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+
+        if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count) == KERN_SUCCESS) {
+            // macOS 返回的是字节 (Bytes)，我们需要除以 1024 换算成 KB，以便与 Linux 统一
+            rss_kb = t_info.resident_size / 1024;
+            std::cout << "[Memory-Mac] " << label << ": " << rss_kb << " kB" << std::endl;
+        } else {
+            std::cerr << "[Memory-Mac] Failed to get memory info" << std::endl;
+        }
+
+#else
+        // ==========================================
+        // 其他系统 (如 Windows)
+        // ==========================================
+        std::cout << "[Memory] " << label << ": OS not supported for memory tracking" << std::endl;
+#endif
+    }
+
+    // 用法:
+    // load_graph(G);
+    // log_memory("After Graph Load");
+    // build_tree(T);
+    // log_memory("After Tree Build");
 
     template<typename T>
     class StaticVector {

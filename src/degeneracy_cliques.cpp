@@ -52,9 +52,11 @@ int main(int argc, char **argv) {
     edgeGraph.sortByDegeneracyOrder();
     // edgeGraph.sortByDegree();
 
+    daf::log_memory("Graph Memory");
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&] {
         return SDCT(edgeGraph, s, s);
     });
+    daf::log_memory("Tree Memory");
     std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
     std::cout << "max clique: " << treeGraph.maxDegree() << std::endl;
     // if (s >
@@ -88,6 +90,7 @@ int main(int argc, char **argv) {
     //
     // cliqueIndex.verify();
 
+    daf::log_memory("Other Index Memory");
     daf::timeCount("NucleusCoreDecomposition", [&] {
         if (r == 2) {
             PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);
@@ -99,6 +102,8 @@ int main(int argc, char **argv) {
             // NucleusCoreDecompositionHierarchy(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
+
+    daf::log_memory("Final Memory");
     // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {
     //     return PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);
     // });

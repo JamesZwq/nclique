@@ -193,6 +193,8 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                    [&]() {
                        cliqueIndex.build(tree, edgeGraph.adj_list.size());
                    });
+
+    daf::log_memory("r-clique index");
     // tree.printGraphPerV();
     // cliqueIndex.print();
     // cliqueIndex.verify();
@@ -253,6 +255,8 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     std::cout << "treeGraphV: ";
     treeGraphV.printGraphPerV();
 #endif
+
+    daf::log_memory("Other index(incloud head)");
     std::cout << "=========================begin=========================" << std::endl;
     double minCore = 0;
     while (!heap.empty()) {
@@ -265,11 +269,13 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
         minCore = std::max(countingRClique[heap.top()], minCore);
         //  core==minCore  leaf  pop 
-        // std::cout << "minCore: " << minCore
-        // << " heap size: " << heap.size()
-        // << " num Leaf: " << tree.size() << " "
-        // << s << "-Clique count: " << tree.cliqueCount(s)
-        // << std::endl;
+        std::cout << "minCore: " << minCore
+        << " heap size: " << heap.size()
+        << " num Leaf: " << tree.size() << " "
+        << s << "-Clique count: " << tree.cliqueCount(s)
+        << std::endl;
+
+        daf::log_memory("while loop top");
         // if (minCore == 99) break;
         while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
             auto id = heap.top();
