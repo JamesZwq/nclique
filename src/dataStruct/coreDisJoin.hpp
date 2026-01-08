@@ -172,6 +172,7 @@ public:
             size_.assign(n, 1);
             std::iota(parent_.begin(), parent_.end(), 0);
             comp_cnt_ = n;
+            live_count = 0;
             // beCall_.assign(n, false); //  false
         }
 
@@ -201,7 +202,13 @@ public:
             // （）
             if (size_[a] < size_[b]) std::swap(a, b);
             parent_[b] = a;
+            if (size_[a] == 1 && size_[b] == 1) {
+                live_count++;
+            } else if (size_[a] > 1 && size_[b] > 1) {
+                live_count--;
+            }
             size_[a] += size_[b];
+            // size_[b] = 0;
             --comp_cnt_;
             return true;
         }
@@ -310,6 +317,7 @@ public:
         std::vector<idx_t> size_;
         // std::vector<bool> beCall_;
         idx_t comp_cnt_ = 0;
+        idx_t live_count = 0;
     };
 
     std::vector<DisjointSet> codeDisjointSets;

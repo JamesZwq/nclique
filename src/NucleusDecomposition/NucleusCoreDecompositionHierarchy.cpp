@@ -269,6 +269,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     std::cout << "=========================begin=========================" << std::endl;
     double minCore = 0;
     std::vector<std::pair<double, daf::Size>> core_stats_map;
+    std::map<double, size_t> node_stats_map;
 
     while (!heap.empty()) {
         for (auto &leafId: changedLeaf) {
@@ -281,11 +282,20 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         // minCore = std::max(countingRClique[heap.top()], minCore);
         auto currMinCore = countingRClique[heap.top()];
         if (currMinCore > minCore) {
-            if (minCore !=0) {
+            // if (minCore !=0) {
                 // hierarchyBuilder.validate_top_layer((minCore * (minCore-1)) / 2);
-                core_stats_map.push_back({minCore, hierarchyBuilder.currKIndex});
-                hierarchyBuilder.addK(minCore);
-            }
+                std::set<daf::Size> unique_nodes;
+                for (const auto& adj : treeGraphV.adj_list) {
+                    for (const auto& node : adj) {
+                        unique_nodes.insert(node.v);
+                    }
+                }
+                size_t current_living_nodes = unique_nodes.size();
+                node_stats_map[currMinCore] = current_living_nodes;
+
+                core_stats_map.push_back({currMinCore, hierarchyBuilder.currKIndex});
+                hierarchyBuilder.addK(currMinCore);
+            // }
             minCore = currMinCore;
         }
         // if (minCore == 3132) {
@@ -513,16 +523,24 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
 
-    if (minCore != 0) {
-        core_stats_map.push_back({minCore, hierarchyBuilder.currKIndex});
-    }
 
     std::cout << "=========================Core Component Stats=========================" << std::endl;
     for (const auto& [core, level] : core_stats_map) {
         auto &ds = hierarchyBuilder.codeDisjointSets[level];
-        size_t num_comps = 0;
-
-        std::cout << "Core: " << core << " Components: " << ds.comp_cnt_ << std::endl;
+        // size_t num_comps = 0;
+        // for (size_t i = 0; i < ds.parent_.size(); ++i) {
+        //     if (ds.parent_[i] == i) {
+        //         if (ds.size_[i] > 1) {
+        //             num_comps++;
+        //         } else {
+        //             if (coreRClique[i] >= core) {
+        //                 num_comps++;
+        //             }
+        //         }
+        //     }
+        // }
+        size_t l_nodes = node_stats_map[core];
+        std::cout << "Core: " << core << " Components: " << ds.live_count << " LivingNodes: " << l_nodes << std::endl;
     }
     std::cout << "======================================================================" << std::endl;
 
