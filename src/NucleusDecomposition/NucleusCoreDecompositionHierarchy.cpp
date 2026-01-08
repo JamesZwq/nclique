@@ -268,6 +268,8 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
 
     std::cout << "=========================begin=========================" << std::endl;
     double minCore = 0;
+    std::vector<std::pair<double, daf::Size>> core_stats_map;
+
     while (!heap.empty()) {
         for (auto &leafId: changedLeaf) {
             changedLeafIndex[leafId] = std::numeric_limits<daf::Size>::max();
@@ -281,20 +283,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         if (currMinCore > minCore) {
             if (minCore !=0) {
                 // hierarchyBuilder.validate_top_layer((minCore * (minCore-1)) / 2);
-                auto &ds = hierarchyBuilder.codeDisjointSets[hierarchyBuilder.currKIndex];
-                size_t num_comps = 0;
-                for (size_t i = 0; i < ds.parent_.size(); ++i) {
-                    if (ds.parent_[i] == i) {
-                        if (ds.size_[i] > 1) {
-                            num_comps++;
-                        } else {
-                            if (coreRClique[i] == minCore || countingRClique[i] > minCore) {
-                                num_comps++;
-                            }
-                        }
-                    }
-                }
-                std::cout << "Core: " << minCore << " Components: " << num_comps << std::endl;
+                core_stats_map.push_back({minCore, hierarchyBuilder.currKIndex});
                 hierarchyBuilder.addK(minCore);
             }
             minCore = currMinCore;
@@ -523,6 +512,19 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
 
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
+
+    if (minCore != 0) {
+        core_stats_map.push_back({minCore, hierarchyBuilder.currKIndex});
+    }
+
+    std::cout << "=========================Core Component Stats=========================" << std::endl;
+    for (const auto& [core, level] : core_stats_map) {
+        auto &ds = hierarchyBuilder.codeDisjointSets[level];
+        size_t num_comps = 0;
+
+        std::cout << "Core: " << core << " Components: " << ds.comp_cnt_ << std::endl;
+    }
+    std::cout << "======================================================================" << std::endl;
 
     // if (fp_nodes) {
     //     for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
