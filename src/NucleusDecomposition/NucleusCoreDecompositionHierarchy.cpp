@@ -7,6 +7,8 @@
 #include <boost/heap/pairing_heap.hpp>
 #include <boost/heap/fibonacci_heap.hpp>
 #include <set>
+#include <fstream>
+#include <filesystem>
 
 #include "../BK/BronKerboschRmEdge.hpp"
 #include "dataStruct/CliqueHashMap.h"
@@ -106,7 +108,7 @@ namespace CDSetRSH {
         boost::heap::compare<CompareRClique>
     >;
 
-    std::vector<double> countingPerRClique(
+          std::vector<double> countingPerRClique(
         const DynamicGraph<TreeGraphNode> &treeGraph,
         StaticCliqueIndex &cliqueHashmap,
         const daf::CliqueSize r,
@@ -184,7 +186,7 @@ namespace CDSetRSH {
 }
 
 
-std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHierarchy(
+std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecompositionHierarchy(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
     auto time_start = std::chrono::high_resolution_clock::now();
@@ -204,7 +206,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
                                                   tree, cliqueIndex, r, s);
                                           });
 
-    std::vector<daf::Size> coreRClique(countingRClique.size());
+    std::vector<double> coreRClique(countingRClique.size());
 #ifndef NDEBUG
     tree.printGraphPerV();
     // daf::printArray(countingKE, edgeGraph.adj_list.size());
@@ -256,6 +258,14 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
     std::cout << "treeGraphV: ";
     treeGraphV.printGraphPerV();
 #endif
+
+    std::string outDir = "/Users/zhangwenqian/UNSW/pivoter/python/caseStudy/vis_data";
+    if (!std::filesystem::exists(outDir)) {
+        std::filesystem::create_directory(outDir);
+    }
+    FILE* fp_edges = fopen((outDir + "/edges.log").c_str(), "w");
+    FILE* fp_nodes = fopen((outDir + "/clique_cores.txt").c_str(), "w");
+
     std::cout << "=========================begin=========================" << std::endl;
     double minCore = 0;
     while (!heap.empty()) {
@@ -271,7 +281,21 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
         if (currMinCore > minCore) {
             if (minCore !=0) {
                 // hierarchyBuilder.validate_top_layer((minCore * (minCore-1)) / 2);
-                hierarchyBuilder.addK();
+                auto &ds = hierarchyBuilder.codeDisjointSets[hierarchyBuilder.currKIndex];
+                size_t num_comps = 0;
+                for (size_t i = 0; i < ds.parent_.size(); ++i) {
+                    if (ds.parent_[i] == i) {
+                        if (ds.size_[i] > 1) {
+                            num_comps++;
+                        } else {
+                            if (coreRClique[i] == minCore || countingRClique[i] > minCore) {
+                                num_comps++;
+                            }
+                        }
+                    }
+                }
+                std::cout << "Core: " << minCore << " Components: " << num_comps << std::endl;
+                hierarchyBuilder.addK(minCore);
             }
             minCore = currMinCore;
         }
@@ -280,7 +304,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
         // }
         //  core==minCore  leaf  pop 
         // std::cout << "minCore: " << minCore << std::endl;
-        printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
+        // printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
         // if (minCore == 99) break;
         while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
             auto id = heap.top();
@@ -430,6 +454,11 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
                 //         << " cliqueIndexId: " << cliqueIndexId
                 //         << " clique: " << clique << std::endl;
                 hierarchyBuilder.unite(cliqueIndexId, removedR[0]);
+
+                if (fp_edges) {
+                    fprintf(fp_edges, "%.2f,%zu,%zu\n", minCore, cliqueIndexId, removedR[0]);
+                }
+
                 if (!rCliqueInHeap[cliqueIndexId]) return true;
                 daf::CliqueSize subNumKeepC = 0;
                 daf::CliqueSize subNumPovit = 0;
@@ -456,6 +485,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
 
             tree.removeNode(leafId);
         }
+        std::cout << "Current Leaves: " << tree.size() << std::endl;
 
 #ifndef NDEBUG
         std::cout << "tree: ";
@@ -491,10 +521,69 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionHie
     // coreE
     // daf::printArray(coreE, edgeGraph.adj_list.size());
 
+    std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
 
+    if (fp_nodes) {
+        for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
+            // 格式: ID, Core, NumVertices
+            fprintf(fp_nodes, "%zu,%.2f,%zu\n", i, coreRClique[i], cliqueIndex.byId(i).size());
+        }
+    }
+
+    // [新增] 3. 关闭文件
+    if (fp_edges) fclose(fp_edges);
+    if (fp_nodes) fclose(fp_nodes);
+
+    std::cout << "[Data Export] Finished exporting edges.log and clique_cores.txt to " << outDir << std::endl;
+    std::cout << "Largest Core Value: " << coreRClique[std::size(coreRClique) - 1] << std::endl;
+
+
+    // if (!std::filesystem::exists(outDir)) {
+    //     std::filesystem::create_directory(outDir);
+    // }
+    //
+    // // 1. 导出 Hierarchy Tree (利用 CoreDisJoin 自带的方法)
+    // // 格式: Component Rep: [ID: (MapperOut) ...]
+    // std::string treePath = outDir + "/hierarchy.txt";
+    //
+    // // 我们传入一个简单的 mapper，只打印 "sz=N"，方便 Python 正则提取 ID
+    // // ID 本身由 print_to_file 打印在括号前面
+    // hierarchyBuilder.print_to_file(treePath, [&](const daf::Size &k) {
+    //     return "s=" + std::to_string(cliqueIndex.byId(k).size());
+    // });
+    // std::cout << "[Export] Hierarchy tree saved to: " << treePath << std::endl;
+    //
+    // // 2. 导出 Clique Metadata (JSON 格式)
+    // // 包含每个 CliqueID 对应的 Core 值和包含的真实节点
+    // std::string metaPath = outDir + "/metadata.json";
+    // std::ofstream metaOfs(metaPath);
+    // metaOfs << "[\n";
+    //
+    // // 遍历所有 Clique
+    // for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
+    //     // 获取该 Clique 包含的图节点
+    //     auto nodes = cliqueIndex.byId(i);
+    //
+    //     metaOfs << "  {\"id\": " << i
+    //             << ", \"core\": " << coreRClique[i] // 之前计算出的 core 值
+    //             << ", \"nodes\": [";
+    //
+    //     for (size_t j = 0; j < nodes.size(); ++j) {
+    //         metaOfs << nodes[j] << (j < nodes.size() - 1 ? "," : "");
+    //     }
+    //     metaOfs << "]}";
+    //
+    //     if (i < cliqueIndex.size() - 1) metaOfs << ",";
+    //     metaOfs << "\n";
+    // }
+    // metaOfs << "]\n";
+    // metaOfs.close();
+    // std::cout << "[Export] Metadata saved to: " << metaPath << std::endl;
+    // std::cout << "Largest Core Value: " << coreRClique[std::size(coreRClique) - 1] << std::endl;
     // ~/_/pivoter/a
     // std::sort(coreE, coreE + edgeGraph.adj_list.size());
-    std::vector<std::pair<std::vector<daf::Size>, int> > sortedK;
+    std::vector<std::pair<std::vector<daf::Size>, double> > sortedK;
     // sortedK.reserve(countingRClique.size());
     //
     // for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {

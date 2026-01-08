@@ -18,6 +18,7 @@
 class CoreDisJoin {
 public:
     using idx_t = daf::Size;
+    std::vector<double> levelValues;
 
     explicit CoreDisJoin(daf::Size n, daf::Size numK) noexcept {
         codeDisjointSets.resize(numK);
@@ -27,7 +28,8 @@ public:
         this->numK = numK;
         currKIndex = 0;
         this->n = n;
-        // coreList.resize(numK);
+        levelValues.reserve(numK);
+        levelValues.push_back(0.0);
     }
 
     inline void unite(idx_t a, idx_t b) noexcept {
@@ -40,10 +42,15 @@ public:
     }
 
     // Component 26: [26: ([4, 5, 7]) 27: ([4, 6, 7])]
-    inline void addK() noexcept {
+    inline void addK(double val = 0.0) noexcept {
         currKIndex++;
         if (currKIndex >= codeDisjointSets.size()) {
             codeDisjointSets.emplace_back(n);
+        }
+        if (currKIndex < levelValues.size()) {
+            levelValues[currKIndex] = val;
+        } else {
+            levelValues.push_back(val);
         }
     }
 
@@ -90,7 +97,7 @@ public:
     void print(const Mapper &mapper) {
         std::cout << "coreDisJoin(n=" << n << ", numK=" << numK << ", currKIndex=" << currKIndex << ")\n";
         for (size_t i = 0; i <= static_cast<size_t>(currKIndex); ++i) {
-            std::cout << "K = " << i << ":\n";
+            std::cout << "K = " << (i < levelValues.size() ? levelValues[i] : (double)i) << ":\n";
             auto &ds = codeDisjointSets[i];
             std::unordered_map<idx_t, std::vector<idx_t> > components;
             for (idx_t v = 0; v < ds.n(); ++v) {
@@ -122,7 +129,7 @@ public:
         }
         ofs << "coreDisJoin(n=" << n << ", numK=" << numK << ", currKIndex=" << currKIndex << ")\n";
         for (size_t i = 0; i <= static_cast<size_t>(currKIndex); ++i) {
-            ofs << "K = " << i << ":\n";
+            ofs << "K = " << (i < levelValues.size() ? levelValues[i] : (double)i) << ":\n";
             auto &ds = codeDisjointSets[i];
             std::unordered_map<idx_t, std::vector<idx_t> > components;
             for (idx_t v = 0; v < ds.n(); ++v) {

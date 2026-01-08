@@ -89,29 +89,70 @@ def dataset_nice_name(base):
         break
     return name
 
+
 def scan_filename_for_dataset_r_s(path):
-    """Fallback: parse r, s, dataset from filename patterns like
-    nucleus_r2_s4_soc-pokec-relationships.log
-    or any ...r<r>_s< s or ss><s>_<dataset>.<ext>
+    """
+    Parse r, s, dataset from filename patterns.
+    Supports two formats:
+    1. Suffix style:  <dataset>_r<r>_s<s>.log  (e.g., com-dblp_r5_s6.log)
+    2. Prefix style:  ...r<r>_s<s>_<dataset>.log (e.g., nucleus_r3_s13_com-youtube.log)
     """
     name = os.path.basename(path)
     r_val = None
     s_val = None
     dataset = None
-    # Try r<r>_s< s or ss><s>_<dataset>
-    m = re.search(r"r(\d+)[-_]s(?:s)?(\d+)[-_](.+?)(?:\.[^.]+)?$", name)
-    if m:
+
+    # ---------------------------------------------------------
+    # Pattern 1: Dataset at START, r/s at END
+    # Example: com-dblp_r5_s6.log
+    # Regex explanation:
+    #   ^(.+?)          -> Capture dataset name at the start (lazy match)
+    #   [-_]r(\d+)      -> Separator followed by r<number>
+    #   [-_]s(?:s)?(\d+) -> Separator followed by s<number> (or ss<number>)
+    #   (?:\.[^.]+)?$   -> Optional extension at the very end
+    # ---------------------------------------------------------
+    m_suffix = re.search(r"^(.+?)[-_]r(\d+)[-_]s(?:s)?(\d+)(?:\.[^.]+)?$", name)
+
+    # ---------------------------------------------------------
+    # Pattern 2: r/s in MIDDLE, Dataset at END (Original Logic)
+    # Example: nucleus_r3_s13_com-youtube.log
+    # ---------------------------------------------------------
+    m_prefix = re.search(r"r(\d+)[-_]s(?:s)?(\d+)[-_](.+?)(?:\.[^.]+)?$", name)
+
+    ds_token = None
+
+    if m_suffix:
+        # Hit Pattern 1 (New format)
+        ds_token = m_suffix.group(1)
         try:
-            r_val = int(m.group(1))
-            s_val = int(m.group(2))
+            r_val = int(m_suffix.group(2))
+            s_val = int(m_suffix.group(3))
         except Exception:
-            r_val = None; s_val = None
-        ds_token = m.group(3)
+            r_val = None;
+            s_val = None
+
+    elif m_prefix:
+        # Hit Pattern 2 (Old format)
+        ds_token = m_prefix.group(3)
+        try:
+            r_val = int(m_prefix.group(1))
+            s_val = int(m_prefix.group(2))
+        except Exception:
+            r_val = None;
+            s_val = None
+
+    # Common logic to handle dataset extension
+    if ds_token:
+        # Remove potential leading "nucleus_" or similar prefixes if they ended up in the token
+        # (Only really applies if you want to clean up Pattern 1 specifically,
+        # but usually Pattern 1 implies the whole start is the dataset)
+
         # If token already carries an extension we keep it; else assume .adj
         if re.search(r"\.(?:edges|adj)$", ds_token, flags=re.IGNORECASE):
             dataset = ds_token
         else:
             dataset = ds_token + ".adj"
+
     return dataset, r_val, s_val
 
 def scan_text_for_dataset_r_s(lines):

@@ -9,6 +9,7 @@
 #include <functional>
 #include <cstddef>
 #include <utility>
+#include <type_traits>
 
 // #include "dataStruct/CliqueHashMap.h"
 
@@ -109,6 +110,39 @@ class DynamicGraph {
                     std::cout << nbr << " ";
                 }
                 std::cout << std::endl;
+            }
+        }
+
+        void printAdjStats() {
+            if constexpr (std::is_same_v<T, TreeGraphNode>) {
+                size_t maxLen = 0;
+                for (const auto& adj : adj_list) {
+                    if (adj.size() > maxLen) {
+                        maxLen = adj.size();
+                    }
+                }
+
+                std::cout << "Adj stats list (size " << maxLen + 1 << "): ";
+                for (size_t n = 0; n <= maxLen; ++n) {
+                    size_t count = 0;
+                    for (const auto& adj : adj_list) {
+                        if (adj.size() >= n) {
+                            size_t nonPivotCount = 0;
+                            for (const auto& treeNode : adj) {
+                                if (!treeNode.isPivot) {
+                                    nonPivotCount++;
+                                }
+                            }
+                            if (nonPivotCount < n) {
+                                count++;
+                            }
+                        }
+                    }
+                    std::cout << count << ";";
+                }
+                std::cout << std::endl;
+            } else {
+                std::cout << "printAdjStats only supported for DynamicGraph<TreeNode*>" << std::endl;
             }
         }
 
