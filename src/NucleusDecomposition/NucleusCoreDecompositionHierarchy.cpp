@@ -259,12 +259,12 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     treeGraphV.printGraphPerV();
 #endif
 
-    std::string outDir = "/Users/zhangwenqian/UNSW/pivoter/python/caseStudy/vis_data";
-    if (!std::filesystem::exists(outDir)) {
-        std::filesystem::create_directory(outDir);
-    }
-    FILE* fp_edges = fopen((outDir + "/edges.log").c_str(), "w");
-    FILE* fp_nodes = fopen((outDir + "/clique_cores.txt").c_str(), "w");
+    // std::string outDir = "/Users/zhangwenqian/UNSW/pivoter/python/caseStudy/vis_data";
+    // if (!std::filesystem::exists(outDir)) {
+    //     std::filesystem::create_directory(outDir);
+    // }
+    // FILE* fp_edges = fopen((outDir + "/edges.log").c_str(), "w");
+    // FILE* fp_nodes = fopen((outDir + "/clique_cores.txt").c_str(), "w");
 
     std::cout << "=========================begin=========================" << std::endl;
     double minCore = 0;
@@ -455,9 +455,9 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                 //         << " clique: " << clique << std::endl;
                 hierarchyBuilder.unite(cliqueIndexId, removedR[0]);
 
-                if (fp_edges) {
-                    fprintf(fp_edges, "%.2f,%zu,%zu\n", minCore, cliqueIndexId, removedR[0]);
-                }
+                // if (fp_edges) {
+                //     fprintf(fp_edges, "%.2f,%zu,%zu\n", minCore, cliqueIndexId, removedR[0]);
+                // }
 
                 if (!rCliqueInHeap[cliqueIndexId]) return true;
                 daf::CliqueSize subNumKeepC = 0;
@@ -524,18 +524,18 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
 
-    if (fp_nodes) {
-        for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
-            // 格式: ID, Core, NumVertices
-            fprintf(fp_nodes, "%zu,%.2f,%zu\n", i, coreRClique[i], cliqueIndex.byId(i).size());
-        }
-    }
+    // if (fp_nodes) {
+    //     for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
+    //         // 格式: ID, Core, NumVertices
+    //         fprintf(fp_nodes, "%zu,%.2f,%zu\n", i, coreRClique[i], cliqueIndex.byId(i).size());
+    //     }
+    // }
+    //
+    // // [新增] 3. 关闭文件
+    // if (fp_edges) fclose(fp_edges);
+    // if (fp_nodes) fclose(fp_nodes);
 
-    // [新增] 3. 关闭文件
-    if (fp_edges) fclose(fp_edges);
-    if (fp_nodes) fclose(fp_nodes);
-
-    std::cout << "[Data Export] Finished exporting edges.log and clique_cores.txt to " << outDir << std::endl;
+    // std::cout << "[Data Export] Finished exporting edges.log and clique_cores.txt to " << outDir << std::endl;
     std::cout << "Largest Core Value: " << coreRClique[std::size(coreRClique) - 1] << std::endl;
 
 
