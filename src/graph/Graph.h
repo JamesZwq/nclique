@@ -92,7 +92,7 @@ public:
 
     daf::Size getDegreeCount(daf::Size d) const;
 
-    std::vector<daf::Size> sortByDegeneracyOrder();
+    std::vector<daf::Size> sortByDegeneracyOrder(bool reverse = false);
 
     void printGraphInfo() const;
 

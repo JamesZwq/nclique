@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 
 
     // std::cout << "Boost version: " << BOOST_LIB_VERSION << std::endl;
-    if (argc != 4) {
+    if (argc > 5 ) {
         printf("Incorrect number of arguments.\n");
         printf("./main <graphFile> <r> <s>\n");
         printf("graphFile: path to graph\n");
@@ -49,7 +49,34 @@ int main(int argc, char **argv) {
     daf::vListMap.resize(edgeGraph.n + 1);
     // std::numeric_limits<daf::Size>::max();
     memset(daf::vListMap.data(), -1, edgeGraph.n * sizeof(daf::Size));
-    edgeGraph.sortByDegeneracyOrder();
+
+    // edgeGraph.sortByDegeneracyOrder(false);
+    // edgeGraph.sortByDegeneracyOrder(true);
+    // edgeGraph.sortByDegree(false);
+    // edgeGraph.sortByDegree(true);
+
+    if (argc >= 5) {
+        auto sortOption = std::string(argv[4]);
+        if (sortOption == "degen") {
+            edgeGraph.sortByDegeneracyOrder(false);
+        } else if (sortOption == "degenR") {
+            edgeGraph.sortByDegeneracyOrder(true);
+        } else if (sortOption == "degree") {
+            edgeGraph.sortByDegree(false);
+        } else if (sortOption == "degreeR") {
+            edgeGraph.sortByDegree(true);
+        } else if (sortOption == "default") {
+            // do nothing
+        } else {
+            std::cout << "Unknown sort option: " << sortOption << std::endl;
+            std::cout << "Available options: degen, degenR, degree, degreeR, default" << std::endl;
+            return 1;
+        }
+
+        std::cout << "Graph sorted by " << sortOption << std::endl;
+    } else {
+        edgeGraph.sortByDegeneracyOrder();
+    }
     // edgeGraph.sortByDegree();
 
     daf::log_memory("Graph Memory");
@@ -98,8 +125,8 @@ int main(int argc, char **argv) {
             NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
         } else {
             // NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
-            // NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
-            NucleusCoreDecompositionHierarchy(treeGraph, edgeGraph, treeGraphV, r, s);
+            NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
+            // NucleusCoreDecompositionHierarchy(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
 

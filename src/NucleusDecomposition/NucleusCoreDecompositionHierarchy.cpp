@@ -625,6 +625,49 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     // hierarchyBuilder.print_to_file("~/_/pivoter/a.edge_34_Hierarchy", [&](const daf::Size &k) {
     //     return cliqueIndex.byId(k);
     // });
+    // ================= START OF LOGGING BLOCK (Dynamic Filenames) =================
+    std::string outDir = "case_study_output";
+    if (!std::filesystem::exists(outDir)) {
+        std::filesystem::create_directory(outDir);
+    }
+
+    // 构建带参数的文件后缀，例如 "_r3_s4"
+    std::string fileSuffix = "_r" + std::to_string(r) + "_s" + std::to_string(s);
+
+    std::cout << "[Logging] Exporting data for r=" << r << ", s=" << s << "..." << std::endl;
+
+    // 1. 导出 Metadata -> case_study_output/metadata_r3_s4.json
+    std::string metaPath = outDir + "/metadata" + fileSuffix + ".json";
+    std::ofstream metaOfs(metaPath);
+    metaOfs << "[\n";
+
+    for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
+        auto nodes = cliqueIndex.byId(i);
+
+        metaOfs << "  {\"id\": " << i
+                << ", \"core\": " << coreRClique[i]
+                << ", \"nodes\": [";
+
+        for (size_t j = 0; j < nodes.size(); ++j) {
+            metaOfs << nodes[j] << (j < nodes.size() - 1 ? "," : "");
+        }
+        metaOfs << "]}";
+
+        if (i < cliqueIndex.size() - 1) metaOfs << ",";
+        metaOfs << "\n";
+    }
+    metaOfs << "]\n";
+    metaOfs.close();
+    std::cout << "[Logging] Metadata saved: " << metaPath << std::endl;
+
+    // 2. 导出 Hierarchy -> case_study_output/hierarchy_r3_s4.txt
+    std::string treePath = outDir + "/hierarchy" + fileSuffix + ".txt";
+    hierarchyBuilder.print_to_file(treePath, [&](const daf::Size &k) {
+        return "Core=" + std::to_string((int)coreRClique[k]) +
+               ",Size=" + std::to_string(cliqueIndex.byId(k).size());
+    });
+    std::cout << "[Logging] Hierarchy tree saved: " << treePath << std::endl;
+    // ================= END OF LOGGING BLOCK =================
 
     return sortedK;
 }

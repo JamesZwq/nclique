@@ -232,7 +232,7 @@ void Graph::sortByBFSTraversal() {
     sortVertexByGivenOrder(ordered_vertex);
 }
 
-std::vector<daf::Size> Graph::sortByDegeneracyOrder() {
+std::vector<daf::Size> Graph::sortByDegeneracyOrder(bool reverse) {
     const daf::Size n = getGraphNodeSize();
     if (n == 0) return {};
 
@@ -317,6 +317,9 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder() {
      * 5. ：， BFS 
      *-----------------------------------------------------------*/
     // std::ranges::reverse(ordered_vertex);
+    if (reverse) {
+        std::ranges::reverse(ordered_vertex);
+    }
 
     /*------------------------------------------------------------
      * 6. 

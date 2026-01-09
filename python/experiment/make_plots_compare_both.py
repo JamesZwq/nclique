@@ -26,7 +26,7 @@ COMPARE_OUT = "/Users/zhangwenqian/Library/CloudStorage/Dropbox/应用/Overleaf/
 # PNG 输出路径 (用于预览) - 会在当前目录下创建
 PNG_OUT_DIR = "plots_png/"
 DATA_DIR = "/Users/zhangwenqian/UNSW/pivoter/python/experiment/data/"
-REGENERATE_FROM_RAW = True  # Set True to re-run slow data extraction from raw logs
+REGENERATE_FROM_RAW = 0  # Set True to re-run slow data extraction from raw logs
 
 # --- Plotting Constants ---
 EPS_T = 1e-1
@@ -186,14 +186,60 @@ def _style_axes(ax):
 def _save_standalone_legend(ax, eps_dir: str, fname: str, ncol: int = None):
     handles, labels = ax.get_legend_handles_labels()
     if not labels: return
-    fig = plt.figure(figsize=(max(2.5, 0.7 * len(labels)), 0.9))
-    fig.legend(handles, [lab.replace("CBS", "CND") for lab in labels], loc="center",
-               ncol=(ncol or min(4, len(labels))), frameon=True, framealpha=1.0, edgecolor="black")
+
+    # Define a mapping for labels that should be merged in the legend
+    rename_map = {
+        'CBS': 'CND',
+        'CBS-noHi': 'CND',
+        'ARB': 'ARC',
+        'ARB-noHi': 'ARC',
+        'Nuclear-NO': 'ND'
+    }
+
+    # Create a dictionary to hold unique handles and labels for the legend
+    legend_dict = {}
+    for handle, label in zip(handles, labels):
+        # Get the display label, defaulting to the original label if not in map
+        display_label = rename_map.get(label, label)
+        # If we haven't seen this display label yet, add it to our dict
+        if display_label not in legend_dict:
+            legend_dict[display_label] = handle
+
+    # Extract the unique handles and labels
+    unique_labels = list(legend_dict.keys())
+    unique_handles = list(legend_dict.values())
+
+    if not unique_labels: return
+
+    fig = plt.figure(figsize=(max(2.5, 0.7 * len(unique_labels)), 0.9))
+    fig.legend(unique_handles, unique_labels, loc="center",
+               ncol=(ncol or min(4, len(unique_labels))), frameon=True, framealpha=1.0, edgecolor="black")
     fig.gca().axis("off")
 
-    # Use the new helper to save both EPS and PNG
     _save_fig_formats(fig, fname, eps_dir, PNG_OUT_DIR)
+    plt.close(fig)
 
+
+def _create_memory_legend(out_dir: str):
+    """Creates a single, unified legend for all memory plots."""
+    style_map = {
+        'CND': {'color': COLOUR_MAP['CBS'], 'linestyle': LINESTYLE_MAP['CBS'], 'marker': MARKER_MAP['CBS-noHi']},
+        'ARC': {'color': COLOUR_MAP['ARB'], 'linestyle': LINESTYLE_MAP['ARB'], 'marker': MARKER_MAP['ARB-noHi']},
+        'ND': {'color': COLOUR_MAP['Nuclear-NO'], 'linestyle': LINESTYLE_MAP['Nuclear-NO'],
+               'marker': MARKER_MAP['Nuclear-NO']},
+    }
+    handles = []
+    for label, style in style_map.items():
+        handles.append(Line2D([0], [0], color=style['color'], linestyle=style['linestyle'],
+                              marker=style['marker'], label=label, markersize=MARKER_SIZE_PT,
+                              markerfacecolor='none' if HOLLOW_MARKERS else 'auto',
+                              markeredgecolor=style['color'], markeredgewidth=MARKER_EDGE_WIDTH))
+
+    fig = plt.figure(figsize=(max(2.5, 0.7 * len(handles)), 0.9))
+    fig.legend(handles, style_map.keys(), loc="center", ncol=len(handles), frameon=True, framealpha=1.0,
+               edgecolor="black")
+    fig.gca().axis("off")
+    _save_fig_formats(fig, "legend_mem", out_dir, PNG_OUT_DIR)
     plt.close(fig)
 
 
@@ -403,20 +449,38 @@ def _plot_compare_by_r(df: pd.DataFrame, out_dir: str):
 
 def _plot_memory_compare_by_r(df: pd.DataFrame, out_dir: str):
     if df.empty: return
-    target_sources = ['CBS', 'CBS-noHi', 'ARB-noHi', 'Nuclear-NO']
 
-    for ds in sorted(df["dataset_name"].unique()):
-        for r_val in sorted(df[df["dataset_name"] == ds]["r"].unique()):
-            plot_df = df[(df["dataset_name"] == ds) & (df["r"] == r_val)]
+    df_mem = df.copy()
 
-            if r_val in [3, 4]:
-                plot_df = plot_df[plot_df["s"] <= 30]
-            elif r_val in [1, 2]:
+    # Define masks for each display source based on string matching
+    cnd_mask = df_mem['source'].str.contains('CBS', na=False)
+    arc_mask = df_mem['source'].str.contains('ARB', na=False)
+    nd_mask = df_mem['source'] == 'Nuclear-NO'
+
+    # Apply masks to create a 'display_source' column for unified labels
+    df_mem['display_source'] = np.nan
+    df_mem.loc[cnd_mask, 'display_source'] = 'CND'
+    df_mem.loc[arc_mask, 'display_source'] = 'ARC'
+    df_mem.loc[nd_mask, 'display_source'] = 'ND'
+
+    # Filter out rows that don't belong to any of our target display sources
+    df_mem.dropna(subset=['display_source'], inplace=True)
+
+    # For each group (dataset, s, r, display_source), find the minimum memory value
+    if not df_mem.empty:
+        df_mem = df_mem.groupby(['dataset_name', 's', 'r', 'display_source'], as_index=False)['max_rss_mb'].min()
+
+    for ds in sorted(df_mem["dataset_name"].unique()):
+        for r_val in sorted(df_mem[df_mem["dataset_name"] == ds]["r"].unique()):
+            plot_df = df_mem[(df_mem["dataset_name"] == ds) & (df_mem["r"] == r_val)]
+
+            # Apply s-value filtering
+            if r_val in [1, 2, 3, 4]:
                 plot_df = plot_df[plot_df["s"] <= 30]
             elif r_val >= 5:
                 plot_df = plot_df[plot_df["s"] <= 45]
 
-            plot_df = plot_df[plot_df['source'].isin(target_sources)]
+            # Special filter for a specific dataset
             if ds == 'soc-pokec-relationships':
                 plot_df = plot_df[~((plot_df['max_rss_mb'] < 1000))]
 
@@ -424,20 +488,30 @@ def _plot_memory_compare_by_r(df: pd.DataFrame, out_dir: str):
             if not s_vals: continue
 
             fig, ax = plt.subplots(figsize=(2, 1.5))
-            series_mem = {}
-            pivot = plot_df.pivot_table(index='s', columns='source', values='max_rss_mb').reindex(s_vals)
 
-            for src in _order_series_keys(plot_df["source"].unique()):
-                if src not in pivot.columns: continue
-                series_mem[src] = pivot[src].tolist()
+            # Pivot using the new 'display_source' column
+            pivot = plot_df.pivot_table(index='s', columns='display_source', values='max_rss_mb').reindex(s_vals)
 
-            for lab, ys in series_mem.items():
+            # Define styles for the new display labels, ensuring markers are included
+            style_map = {
+                'CND': {'color': COLOUR_MAP['CBS'], 'linestyle': LINESTYLE_MAP['CBS'], 'marker': MARKER_MAP['CBS-noHi']},
+                'ARC': {'color': COLOUR_MAP['ARB'], 'linestyle': LINESTYLE_MAP['ARB'], 'marker': MARKER_MAP['ARB-noHi']},
+                'ND': {'color': COLOUR_MAP['Nuclear-NO'], 'linestyle': LINESTYLE_MAP['Nuclear-NO'], 'marker': MARKER_MAP['Nuclear-NO']},
+            }
+            ordered_keys = [k for k in ["CND", "ARC", "ND"] if k in pivot.columns]
+
+            for lab in ordered_keys:
+                ys = pivot[lab].tolist()
                 if all(pd.isna(y) for y in ys): continue
-                ax.plot(np.arange(len(s_vals)), ys, label=lab, color=COLOUR_MAP.get(lab, 'black'),
-                        linestyle=LINESTYLE_MAP.get(lab, 'solid'), linewidth=2,
-                        marker=MARKER_MAP.get(lab, 'o'), markersize=MARKER_SIZE_PT,
+                style = style_map.get(lab, {})
+                ax.plot(np.arange(len(s_vals)), ys, label=lab,
+                        color=style.get('color', 'black'),
+                        linestyle=style.get('linestyle', 'solid'),
+                        linewidth=2,
+                        marker=style.get('marker', ''),
+                        markersize=MARKER_SIZE_PT,
                         markerfacecolor='none' if HOLLOW_MARKERS else 'auto',
-                        markeredgecolor=COLOUR_MAP.get(lab, 'black'),
+                        markeredgecolor=style.get('color', 'black'),
                         markeredgewidth=MARKER_EDGE_WIDTH)
 
             tick_positions, tick_labels = _get_smart_ticks(s_vals)
@@ -451,11 +525,11 @@ def _plot_memory_compare_by_r(df: pd.DataFrame, out_dir: str):
             ax.set_ylabel("Memory (MB)")
             _style_axes(ax)
 
-            _save_standalone_legend(ax, out_dir, f"{ds}_legend_mem", ncol=len(series_mem))
+            # Removed per-plot legend generation
+            # _save_standalone_legend(ax, out_dir, f"{ds}_legend_mem", ncol=len(ordered_keys))
 
-            # Save both formats
             _save_fig_formats(fig, f"{ds}_r{r_val}_memory_by_s", out_dir, PNG_OUT_DIR)
-
+            print(f"Saved memory plot for {ds}, r={r_val}")
             plt.close(fig)
 
 
@@ -632,6 +706,7 @@ def main():
     print("Sources:", combined_df['source'].unique())
     print("R values:", sorted(combined_df['r'].unique()))
 
+    _create_memory_legend(COMPARE_OUT)
     _plot_cbs_vs_nohi_long_comparison(combined_df.copy(), COMPARE_OUT)
     _plot_compare_by_r(combined_df, COMPARE_OUT)
     _plot_memory_compare_by_r(combined_df, COMPARE_OUT)
