@@ -132,11 +132,9 @@ DynamicGraph<TreeGraphNode> SDCT_Par(Graph &edgeGraph, int max_k, int min_k) {
         local_neighborsInP.c_size = size;
         local_numNeighbors.c_size = size;
 
-        // 每个线程都在内部维护属于自己的 0..N-1 排列
+        // 每个线程都在内部维护属于自己的 vertexSets 和 lookup
+        // 注意：这些数组会在每次处理 vertex 时被重新初始化
         for (int i = 0; i < size; ++i) {
-            local_vertexLookup[i] = i;
-            local_vertexSets[i] = i;
-            // 初始先给 nullptr，按需分配以节省内存
             local_neighborsInP[i] = nullptr;
             local_numNeighbors[i] = 1;
         }
@@ -155,9 +153,16 @@ DynamicGraph<TreeGraphNode> SDCT_Par(Graph &edgeGraph, int max_k, int min_k) {
         #pragma omp for schedule(dynamic, 1) nowait
         for (int vertex = 0; vertex < size; ++vertex) {
 
+            // 关键：每次处理新的 vertex 时，重新初始化 vertexSets 和 vertexLookup
+            // 只包含 vertex 及其之后的顶点（degeneracy ordering 的性质）
+            for (int i = vertex; i < size; ++i) {
+                local_vertexSets[i] = i;
+                local_vertexLookup[i] = i;
+            }
+
             int beginX = 0;
             int beginP = 0;
-            int beginR = size; // 每次处理新节点，直接把 R 重置到末尾
+            int beginR = size;  // R 初始为空，从 size 开始
             int newBeginX, newBeginP, newBeginR;
 
             // 传入当前线程自己的数组
