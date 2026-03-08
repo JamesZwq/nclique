@@ -94,10 +94,10 @@ int main(int argc, char **argv) {
     });
     if (treeGraph != treeGraphPar) {
         std::cout << "Error: treeGraph and treeGraphPar have different number of leaves" << std::endl;
-        std::cout << "TreeGraph: " << std::endl;
-        treeGraph.printGraphPerV();
-        std::cout << "TreeGraph Per: " << std::endl;
-        treeGraphPar.printGraphPerV();
+        // std::cout << "TreeGraph: " << std::endl;
+        // treeGraph.printGraphPerV();
+        // std::cout << "TreeGraph Per: " << std::endl;
+        // treeGraphPar.printGraphPerV();
         return 1;
     }
     std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
