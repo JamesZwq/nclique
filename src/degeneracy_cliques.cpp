@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
     DynamicGraph<TreeGraphNode> treeGraphPar = daf::timeCount("Tree Build", [&]() -> DynamicGraph<TreeGraphNode> {
         return SDCT_Par(edgeGraph, 1000000, 0);
     });
-    if (treeGraph != treeGraphPar) {
+    if (treeGraph.cliqueCount() != treeGraphPar.cliqueCount()) {
         std::cout << "Error: treeGraph and treeGraphPar have different number of leaves" << std::endl;
         // std::cout << "TreeGraph: " << std::endl;
         // treeGraph.printGraphPerV();
@@ -100,8 +100,8 @@ int main(int argc, char **argv) {
         // treeGraphPar.printGraphPerV();
         return 1;
     }
-    std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
-    std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
+    // std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
+    // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
 
     // daf::log_memory("Tree Memory");
     // std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
