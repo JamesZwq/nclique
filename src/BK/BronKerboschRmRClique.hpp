@@ -31,10 +31,10 @@ namespace bkRmClique {
     using Bitset = DynBitset;
     using VIdx = uint16_t;
     static_assert(std::numeric_limits<VIdx>::max() >= 400, "VIdx must hold n<=400");
-    static DynBitset R, P, pivots, emptyPiv, tmp2;
-    // Reusable static buffers (single-threaded use)
-    static std::vector<uint32_t> s_csOff, s_rsOff, s_rsCol, s_deg, s_cur;
-    static std::vector<VIdx> s_csCol;
+    static thread_local DynBitset R, P, pivots, emptyPiv, tmp2;
+    // Reusable static buffers (thread-local for parallel use)
+    static thread_local std::vector<uint32_t> s_csOff, s_rsOff, s_rsCol, s_deg, s_cur;
+    static thread_local std::vector<VIdx> s_csCol;
     /**
      * ， n
      */
@@ -313,20 +313,20 @@ namespace bkRmClique {
                        ConflictSetsRange &conflictSets,
                        int r,
                        int minK,
-                       ReportFn &&report) {
+                       ReportFn &&report,
+                       daf::StaticVector<daf::Size>* vertexToIndex = nullptr) {
         const int n = static_cast<int>(vList.size());
         assert(n <= static_cast<int>(std::numeric_limits<VIdx>::max()));
 
-        // Bitset pivots(n);  pivots.reset();
-        // Bitset P(n);       P.set();meis
         pivots.setSize(n);
         pivots.reset();
         P.setSize(n);
         P.set();
 
-        // vListMap： id  [0..n-1]
+        // Vertex id -> index [0..n-1]; use thread-local map when provided for parallel use
+        daf::StaticVector<daf::Size>* const mapPtr = vertexToIndex ? vertexToIndex : &daf::vListMap;
         for (int i = 0; i < n; ++i) {
-            daf::vListMap[vList[i]] = i;
+            (*mapPtr)[vList[i].v] = static_cast<daf::Size>(i);
             if (vList[i].isPivot) pivots.set(i);
         }
 
@@ -355,7 +355,7 @@ namespace bkRmClique {
             //  pivots ，，
             bool hasPiv = false;
             for (auto raw: conflictSets[cid]) {
-                VIdx v = static_cast<VIdx>(daf::vListMap[raw]);
+                VIdx v = static_cast<VIdx>((*mapPtr)[raw]);
 #ifndef NDEBUG
                 if (v >= static_cast<VIdx>(n)) { std::abort(); }
 #endif

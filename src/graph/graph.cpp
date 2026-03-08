@@ -239,7 +239,7 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder(bool reverse) {
     /*------------------------------------------------------------
      * 1. ：
      *-----------------------------------------------------------*/
-    std::vector<int> deg(n);          // 
+    std::vector<int> deg(n);          //
     int max_deg = 0;
     for (daf::Size v = 0; v < n; ++v) {
         auto [l, r] = getNbr(v);      //  [l, r)
@@ -251,9 +251,9 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder(bool reverse) {
      * 2.  bin ：bin[d] “ = d ”
      *-----------------------------------------------------------*/
     std::vector<int> bin(max_deg + 1, 0);
-    for (int d : deg) ++bin[d];               // 
+    for (int d : deg) ++bin[d];               //
 
-    //  → 
+    //  →
     int start = 0;
     for (int d = 0; d <= max_deg; ++d) {
         int cnt = bin[d];
@@ -262,7 +262,7 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder(bool reverse) {
     }
 
     /*------------------------------------------------------------
-     * 3. vert[pos] = ，pos[v] = v  vert 
+     * 3. vert[pos] = ，pos[v] = v  vert
      *-----------------------------------------------------------*/
     std::vector<int>          vert(n);
     std::vector<int>          pos(n);
@@ -284,7 +284,7 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder(bool reverse) {
     std::vector<daf::Size> ordered_vertex;
     ordered_vertex.reserve(n);
 
-    int degeneracy = 0;       // ： k-core 
+    int degeneracy = 0;       // ： k-core
 
     for (int i = 0; i < static_cast<int>(n); ++i) {
         int v = vert[i];
@@ -292,14 +292,14 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder(bool reverse) {
 
         degeneracy = std::max(degeneracy, deg[v]);
 
-        //  deg[v] ， vert 
+        //  deg[v] ， vert
         for (auto idx = getNbr(v).first; idx < getNbr(v).second; ++idx) {
             int u = static_cast<int>(adj_list[idx]);
             if (deg[u] > deg[v]) {
                 int du  = deg[u];
-                int pu  = pos[u];        // u  vert 
-                int pw  = bin[du];       // du 
-                int w   = vert[pw];      // 
+                int pu  = pos[u];        // u  vert
+                int pw  = bin[du];       // du
+                int w   = vert[pw];      //
 
                 if (u != w) {
                     //  u  w ， pos[]
@@ -307,14 +307,14 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder(bool reverse) {
                     pos[u] = pw;
                     pos[w] = pu;
                 }
-                ++bin[du];               // du 
-                --deg[u];                // 
+                ++bin[du];               // du
+                --deg[u];                //
             }
         }
     }
 
     /*------------------------------------------------------------
-     * 5. ：， BFS 
+     * 5. ：， BFS
      *-----------------------------------------------------------*/
     // std::ranges::reverse(ordered_vertex);
     if (reverse) {
@@ -322,7 +322,7 @@ std::vector<daf::Size> Graph::sortByDegeneracyOrder(bool reverse) {
     }
 
     /*------------------------------------------------------------
-     * 6. 
+     * 6.
      *-----------------------------------------------------------*/
     sortVertexByGivenOrder(ordered_vertex);
 
@@ -418,7 +418,7 @@ Graph::Graph(const MultiBranchTree &tree, const daf::StaticVector<TreeNode *> &l
         out << i << "\n";
     }
     out.close();
-    // degree 
+    // degree
     std::cout << "The degree distribution has been output to the file: ~/_/pivoter/adj_list.txt" <<
             std::endl;
     for (daf::Size i = 1; i < n + 2; ++i) {
@@ -522,13 +522,13 @@ void Graph::BronKerboschPivotHelp(std::vector<daf::Size> &R,
                                   std::vector<daf::Size> &P,
                                   std::vector<daf::Size> &X,
                                   std::vector<std::vector<daf::Size> > &cliques) {
-    //  P  X ， R 
+    //  P  X ， R
     if (P.empty() && X.empty()) {
         cliques.push_back(R);
         return;
     }
 
-    //  u： P ∪ X 
+    //  u： P ∪ X
     int u = -1;
     int maxDegree = -1;
     std::vector<daf::Size> unionPX = P;
@@ -550,7 +550,7 @@ void Graph::BronKerboschPivotHelp(std::vector<daf::Size> &R,
                         adj_list.begin() + nbegin, adj_list.begin() + nend,
                         std::back_inserter(diff));
 
-    //  diff  v 
+    //  diff  v
     for (daf::Size v: diff) {
         std::vector<daf::Size> R_new = R;
         R_new.push_back(v);
@@ -575,7 +575,7 @@ void Graph::BronKerboschPivotHelp(std::vector<daf::Size> &R,
         //  P  v， X（）
         P.erase(std::remove(P.begin(), P.end(), v), P.end());
         X.push_back(v);
-        //  X  set_intersection 
+        //  X  set_intersection
         std::sort(X.begin(), X.end());
     }
 }
@@ -584,17 +584,17 @@ std::vector<std::vector<daf::Size> > Graph::BronKerboschPivot() {
     std::vector<daf::Size> R; // （）
     std::vector<daf::Size> P; // ，
     std::vector<daf::Size> X; // ，
-    std::vector<std::vector<daf::Size> > cliques; // 
+    std::vector<std::vector<daf::Size> > cliques; //
 
     //  P （ 0,1,2,...,n-1 ）
     for (daf::Size i = 0; i < n; i++) {
         P.push_back(i);
     }
 
-    // 
+    //
     BronKerboschPivotHelp(R, P, X, cliques);
 
-    // 
+    //
     std::cout << "：" << std::endl;
     // std::cout << cliques << std::endl;
     // ~/_/pivoter/a
@@ -635,7 +635,7 @@ void Graph::beSingleEdge() {
         if (deg[u] > new_max_deg) new_max_deg = deg[u];
     }
 
-    // 2)  offsets 
+    // 2)  offsets
     daf::StaticVector<daf::Size> new_offsets(n+1);
     new_offsets.c_size = n + 1;
     new_offsets[0] = 0;
@@ -644,7 +644,7 @@ void Graph::beSingleEdge() {
     }
     daf::Size m_new = new_offsets[n];
 
-    // 3) ； deg 
+    // 3) ； deg
     daf::StaticVector<daf::Size> new_adj(m_new);
     new_adj.c_size = m_new;
     std::fill(deg.begin(), deg.end(), 0);

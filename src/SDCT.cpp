@@ -32,6 +32,9 @@
 #include<vector>
 #include <iostream>
 #include <fstream>
+#include <omp.h>
+#include <mutex>
+#include <vector>
 
 #include"degeneracy_algorithm_cliques_V.h"
 #include"degeneracy_helper.h"
@@ -50,31 +53,37 @@ void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
     int **neighborsInP, int *numNeighbors,
     int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
     int max_k, int min_k, DynamicGraph<TreeGraphNode> &tree) ;
+
+void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
+    int *vertexSets, int *vertexLookup,
+    int **neighborsInP, int *numNeighbors,
+    int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
+    int max_k, int min_k, std::vector<std::vector<TreeGraphNode>> &tree_buffer);
 /*! \brief Computes the vertex v in P union X that has the most neighbors in P,
-           and places P \ {neighborhood of v} in an array. These are the 
+           and places P \ {neighborhood of v} in an array. These are the
            vertices to consider adding to the partial clique during the current
            recursive call of the algorithm.
 
-    \param pivotNonNeighbors  An intially unallocated pointer, which will contain the set 
+    \param pivotNonNeighbors  An intially unallocated pointer, which will contain the set
                               P \ {neighborhood of v} when this function completes.
 
     \param numNonNeighbors A pointer to a single integer, which has been preallocated,
                            which will contain the number of elements in pivotNonNeighbors.
- 
+
     \param vertexSets An array containing sets of vertices divided into sets X, P, R, and other.
- 
-    \param vertexLookup A lookup table indexed by vertex number, storing the index of that 
+
+    \param vertexLookup A lookup table indexed by vertex number, storing the index of that
                         vertex in vertexSets.
 
-    \param neighborsInP Maps vertices to arrays of neighbors such that 
+    \param neighborsInP Maps vertices to arrays of neighbors such that
                         neighbors in P fill the first cells
 
     \param numNeighbors An the neighbor of neighbors a vertex had in P,
-                        the first time this function is called, this bound is 
+                        the first time this function is called, this bound is
                         used to keep us from allocating more than linear space.
- 
+
     \param beginX The index where set X begins in vertexSets.
- 
+
     \param beginP The index where set P begins in vertexSets.
 
     \param beginR The index where set R begins in vertexSets.
@@ -87,11 +96,11 @@ void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
 
     \param adjList An array of linked lists, representing the input graph in the
                    "typical" adjacency list format.
- 
+
     \param adjacencyList an array of arrays, representing the input graph in a more
                          compact and cache-friendly adjacency list format. (not currently used)
 
-    \param cliques A linked list of cliques to return. <b>(only available when compiled 
+    \param cliques A linked list of cliques to return. <b>(only available when compiled
                    with RETURN_CLIQUES_ONE_BY_ONE defined)</b>
 
     \param degree An array, indexed by vertex, containing the degree of that vertex. (not currently used)
@@ -100,6 +109,109 @@ void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
 
     \return the number of maximal cliques of the input graph.
 */
+
+DynamicGraph<TreeGraphNode> SDCT_Par(Graph &edgeGraph, int max_k, int min_k) {
+    auto size = edgeGraph.getGraphNodeSize();
+    DynamicGraph<TreeGraphNode> treeGraph(size);
+    std::mutex treeMutex; // 用于保护全局树图的写入
+    std::cout << "Starting SDCT parallel execution with " << omp_get_max_threads() << " threads..." << std::endl;
+
+    // 开启 OpenMP 并行域
+    #pragma omp parallel
+    {
+        // ==========================================
+        // 1. 初始化 Thread-Local 的完整状态空间
+        // ==========================================
+        daf::StaticVector<int> local_vertexSets(size);
+        daf::StaticVector<int> local_vertexLookup(size);
+        daf::StaticVector<int *> local_neighborsInP(size);
+        daf::StaticVector<int> local_numNeighbors(size);
+
+        local_vertexSets.c_size = size;
+        local_vertexLookup.c_size = size;
+        local_neighborsInP.c_size = size;
+        local_numNeighbors.c_size = size;
+
+        // 每个线程都在内部维护属于自己的 0..N-1 排列
+        for (int i = 0; i < size; ++i) {
+            local_vertexLookup[i] = i;
+            local_vertexSets[i] = i;
+            // 初始先给 nullptr，按需分配以节省内存
+            local_neighborsInP[i] = nullptr;
+            local_numNeighbors[i] = 1;
+        }
+
+        daf::StaticVector<int> local_dropV(MAX_CSIZE);
+        daf::StaticVector<int> local_keepV(MAX_CSIZE);
+
+        // 线程局部结果缓存，防止锁竞争导致的性能暴跌
+        std::vector<std::vector<TreeGraphNode>> local_tree_buffer;
+        local_tree_buffer.reserve(5000);
+
+        // ==========================================
+        // 2. 动态调度分配外层节点任务
+        // schedule(dynamic, 1) 对这种高度不均衡的图算法最有效
+        // ==========================================
+        #pragma omp for schedule(dynamic, 1) nowait
+        for (int vertex = 0; vertex < size; ++vertex) {
+
+            int beginX = 0;
+            int beginP = 0;
+            int beginR = size; // 每次处理新节点，直接把 R 重置到末尾
+            int newBeginX, newBeginP, newBeginR;
+
+            // 传入当前线程自己的数组
+            fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(
+                vertex,
+                local_vertexSets.data(), local_vertexLookup.data(),
+                edgeGraph,
+                local_neighborsInP.data(), local_numNeighbors.data(),
+                &beginX, &beginP, &beginR,
+                &newBeginX, &newBeginP, &newBeginR
+            );
+
+            local_dropV.clear();
+            local_keepV.clear();
+            local_keepV.push_back(vertex);
+
+            // 递归调用（注意将最后的结果写入参数改成 local_tree_buffer）
+            listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
+                local_vertexSets.data(), local_vertexLookup.data(),
+                local_neighborsInP.data(), local_numNeighbors.data(),
+                newBeginP, newBeginR,
+                local_keepV, local_dropV, max_k, min_k, local_tree_buffer
+            );
+
+            // 如果缓存满了，统一加锁写入全局图
+            if (local_tree_buffer.size() >= 5000) {
+                std::lock_guard<std::mutex> lock(treeMutex);
+                for (auto& nodes : local_tree_buffer) {
+                    treeGraph.addNode(nodes);
+                }
+                local_tree_buffer.clear();
+            }
+        }
+
+        // ==========================================
+        // 3. 循环结束后，清空剩余缓存并释放内存
+        // ==========================================
+        if (!local_tree_buffer.empty()) {
+            std::lock_guard<std::mutex> lock(treeMutex);
+            for (auto& nodes : local_tree_buffer) {
+                treeGraph.addNode(nodes);
+            }
+            local_tree_buffer.clear();
+        }
+
+        for (int i = 0; i < size; ++i) {
+            if (local_neighborsInP[i]) {
+                Free(local_neighborsInP[i]);
+            }
+        }
+    } // OpenMP Barrier，所有线程同步
+
+    return treeGraph;
+}
 
 DynamicGraph<TreeGraphNode> SDCT(Graph &edgeGraph, int max_k, int min_k) {
     // vertex sets are stored in an array like this:
@@ -208,6 +320,123 @@ DynamicGraph<TreeGraphNode> SDCT(Graph &edgeGraph, int max_k, int min_k) {
     \param beginR The index where set R begins in vertexSets.
 
 */
+
+void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
+    int *vertexSets, int *vertexLookup,
+    int **neighborsInP, int *numNeighbors,
+    int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
+    int max_k, int min_k, std::vector<std::vector<TreeGraphNode>> &tree_buffer) {
+    // std::cout << "max_k: " << max_k << std::endl;
+    // if (keep > 3) {
+    //     std::cerr << "keep should be less than 4" << std::endl;
+    // }
+    if (keepV.size() > max_k) {
+        return;
+    }
+    if ((beginP >= beginR)) {
+        auto cSize = keepV.size() + dropV.size();
+        if (cSize < min_k) {
+            return;
+        }
+        std::vector<TreeGraphNode> newNode;
+       if (keepV.size() == max_k) {
+            newNode.reserve(cSize);
+            for (uint64_t i: keepV) {
+                newNode.emplace_back(i, false);
+            }
+            tree_buffer.push_back(newNode);
+            return;
+        }
+        newNode.reserve(cSize);
+        for (uint64_t i: keepV) {
+            newNode.emplace_back(i, false);
+        }
+        for (uint64_t i: dropV) {
+            newNode.emplace_back(i, true);
+        }
+        std::ranges::sort(newNode);
+        tree_buffer.push_back(newNode);
+        return;
+    }
+
+    int *myCandidatesToIterateThrough;
+    int numCandidatesToIterateThrough;
+
+    // get the candidates to add to R to make a maximal clique
+    int pivot = findBestPivotNonNeighborsDegeneracyCliques(&myCandidatesToIterateThrough,
+                                                           &numCandidatesToIterateThrough,
+                                                           vertexSets, vertexLookup,
+                                                           neighborsInP, numNeighbors,
+                                                           beginP, beginR);
+
+
+    // add candiate vertices to the partial clique one at a time and
+    // search for maximal cliquesRazer Viper V3 Pro
+    if (numCandidatesToIterateThrough != 0) {
+        int iterator = 0;
+        while (iterator < numCandidatesToIterateThrough) {
+            // vertex to be added to the partial clique
+            int vertex = myCandidatesToIterateThrough[iterator];
+
+            int newBeginP, newBeginR;
+
+            // swap vertex into R and update all data structures
+            moveToRDegeneracyCliques(vertex,
+                                     vertexSets, vertexLookup,
+                                     neighborsInP, numNeighbors,
+                                     &beginP, &beginR, &newBeginP,
+                                     &newBeginR);
+
+
+            // recursively compute maximal cliques with new sets R, P and X
+            if (vertex == pivot) {
+                // dropV[drop] = vertex;
+                dropV.push_back(vertex);
+                listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(vertexSets,
+                                                             vertexLookup, neighborsInP,
+                                                             numNeighbors, newBeginP,
+                                                             newBeginR, keepV, dropV, max_k, min_k, tree_buffer);
+                dropV.pop_back();
+            } else {
+                keepV.push_back(vertex);
+                listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(vertexSets,
+                                                             vertexLookup, neighborsInP,
+                                                             numNeighbors, newBeginP,
+                                                             newBeginR, keepV, dropV, max_k, min_k, tree_buffer);
+                keepV.pop_back();
+            }
+
+            // moveFromRToXDegeneracyCliques(vertex,
+            //                               vertexSets, vertexLookup,
+            //                               &beginP, &beginR);
+
+            iterator++;
+        }
+
+        // swap vertices that were moved to X back into P, for higher recursive calls.
+        // iterator = 0;
+        // while (iterator < numCandidatesToIterateThrough) {
+        //     int vertex = myCandidatesToIterateThrough[iterator];
+        //     int vertexLocation = vertexLookup[vertex];
+        //
+        //     beginP--;
+        //     vertexSets[vertexLocation] = vertexSets[beginP];
+        //     vertexSets[beginP] = vertex;
+        //     vertexLookup[vertex] = beginP;
+        //     vertexLookup[vertexSets[vertexLocation]] = vertexLocation;
+        //
+        //     iterator++;
+        // }
+    }
+
+
+    // don't need to check for emptiness before freeing, since
+    // something will always be there (we allocated enough memory
+    // for all of P, which is nonempty)
+    Free(myCandidatesToIterateThrough);
+
+    return;
+}
 
 void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
     int *vertexSets, int *vertexLookup,

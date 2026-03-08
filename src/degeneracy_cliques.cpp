@@ -3,9 +3,14 @@
 #include<stdlib.h>
 #include<string.h>
 #include<time.h>
+#include<cstdlib>
 #include<limits.h>
 #include<unistd.h>
 #include<libgen.h>
+#include<chrono>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 // #include <boost/version.hpp>
 
 #include"misc.h"
@@ -16,6 +21,7 @@
 #include "dataStruct/disJoinSet.hpp"
 #include "graph/DynamicBipartiteGraph.hpp"
 #include "NucleusDecomposition/NCliqueCoreDecomposition.h"
+#include "degeneracy_algorithm_cliques_V.h"
 
 
 
@@ -49,7 +55,7 @@ int main(int argc, char **argv) {
     daf::vListMap.resize(edgeGraph.n + 1);
     // std::numeric_limits<daf::Size>::max();
     memset(daf::vListMap.data(), -1, edgeGraph.n * sizeof(daf::Size));
-
+    std::cout << "Han Nbr C: " << edgeGraph.getNbrCount(154) << std::endl;
     // edgeGraph.sortByDegeneracyOrder(false);
     // edgeGraph.sortByDegeneracyOrder(true);
     // edgeGraph.sortByDegree(false);
@@ -80,19 +86,33 @@ int main(int argc, char **argv) {
     // edgeGraph.sortByDegree();
 
     daf::log_memory("Graph Memory");
-    DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&] {
-        return SDCT(edgeGraph, s, s);
+    DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&]() -> DynamicGraph<TreeGraphNode> {
+        return SDCT(edgeGraph, 1000000, 0);
     });
-    daf::log_memory("Tree Memory");
-    std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
-    std::cout << "max clique: " << treeGraph.maxDegree() << std::endl;
-    // if (s >
-    // treeGraph.printGraphPerV();
-    for (auto leaf: treeGraph.adj_list) {
-        if (leaf[0].isPivot) {
-            std::cout << "leaf: " << leaf[0].v << " is pivot" << std::endl;
-        }
+    DynamicGraph<TreeGraphNode> treeGraphPar = daf::timeCount("Tree Build", [&]() -> DynamicGraph<TreeGraphNode> {
+        return SDCT_Par(edgeGraph, 1000000, 0);
+    });
+    if (treeGraph != treeGraphPar) {
+        std::cout << "Error: treeGraph and treeGraphPar have different number of leaves" << std::endl;
+        std::cout << "TreeGraph: " << std::endl;
+        treeGraph.printGraphPerV();
+        std::cout << "TreeGraph Per: " << std::endl;
+        treeGraphPar.printGraphPerV();
+        return 1;
     }
+    std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
+    std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
+
+    // daf::log_memory("Tree Memory");
+    // std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
+    // std::cout << "max clique: " << treeGraph.maxDegree() << std::endl;
+    // // if (s >
+    // treeGraph.printGraphPerV();
+    // for (auto leaf: treeGraph.adj_list) {
+    //     if (leaf[0].isPivot) {
+    //         std::cout << "leaf: " << leaf[0].v << " is pivot" << std::endl;
+    //     }
+    // }
 
     // return 0;
 
@@ -116,21 +136,101 @@ int main(int argc, char **argv) {
     //                });
     //
     // cliqueIndex.verify();
-
+    // print all leaf with node 154
+    for (daf::Size leafId = 0; leafId < treeGraph.adj_list.size(); ++leafId) {
+        const auto &leaf = treeGraph.adj_list[leafId];
+        for (const auto &node: leaf) {
+            if (node.v == 154) {
+                std::cout << "leafId: " << leafId << " leaf Size: " << leaf.size() << std::endl;
+            }
+        }
+    }
     daf::log_memory("Other Index Memory");
+    const bool compareMode = std::getenv("PIVOTER_COMPARE") != nullptr;
+    const bool referenceOnlyMode = std::getenv("PIVOTER_RUN_REF") != nullptr;
     daf::timeCount("NucleusCoreDecomposition", [&] {
         if (r == 2) {
             PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);
         } else if (r == 1) {
             NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
+        } else if (referenceOnlyMode) {
+            NucleusCoreDecompositionRCliqueRef(treeGraph, edgeGraph, treeGraphV, r, s);
+        } else if (compareMode) {
+            auto refTree = treeGraph.clone();
+            auto refTreeGraphV = treeGraphV.clone();
+            auto refCore = NucleusCoreDecompositionRCliqueRef(refTree, edgeGraph, refTreeGraphV, r, s);
+
+            auto optTree = treeGraph.clone();
+            auto optTreeGraphV = treeGraphV.clone();
+            auto optCore = NucleusCoreDecompositionRClique(optTree, edgeGraph, optTreeGraphV, r, s);
+
+            auto canonicalLess = [](const auto &a, const auto &b) {
+                if (a.second != b.second) {
+                    return a.second < b.second;
+                }
+                return a.first < b.first;
+            };
+            std::sort(refCore.begin(), refCore.end(), canonicalLess);
+            std::sort(optCore.begin(), optCore.end(), canonicalLess);
+
+            if (refCore != optCore) {
+                std::cerr << "Comparison failed: optimized core decomposition differs from reference." << std::endl;
+                const auto mismatchCount = std::min(refCore.size(), optCore.size());
+                for (size_t i = 0; i < mismatchCount; ++i) {
+                    if (refCore[i] != optCore[i]) {
+                        std::cerr << "First mismatch at index " << i << std::endl;
+                        std::cerr << "Reference clique:";
+                        for (auto v: refCore[i].first) std::cerr << ' ' << v;
+                        std::cerr << std::endl;
+                        std::cerr << "Optimized clique:";
+                        for (auto v: optCore[i].first) std::cerr << ' ' << v;
+                        std::cerr << std::endl;
+                        std::cerr << "Reference core: " << refCore[i].second << " Optimized core: " << optCore[i].second << std::endl;
+                        break;
+                    }
+                }
+                std::abort();
+            }
+            std::cout << "Comparison passed: optimized result matches reference." << std::endl;
         } else {
-            // NucleusCoreDecomposition(treeGraph, edgeGraph, treeGraphV, r, s);
             NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
-            // NucleusCoreDecompositionHierarchy(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
 
     daf::log_memory("Final Memory");
+
+    // Print thread count and single/multi-threaded timing for r>=3
+    if (r >= 3) {
+#ifdef _OPENMP
+        int nthreads = omp_get_max_threads();
+        auto treeCopy1 = treeGraph.clone();
+        auto treeGraphVCopy1 = treeGraphV.clone();
+        omp_set_num_threads(1);
+        auto t1 = std::chrono::high_resolution_clock::now();
+        NucleusCoreDecompositionRClique(treeCopy1, edgeGraph, treeGraphVCopy1, r, s);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        auto single_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+
+        auto treeCopy2 = treeGraph.clone();
+        auto treeGraphVCopy2 = treeGraphV.clone();
+        omp_set_num_threads(nthreads);
+        auto t3 = std::chrono::high_resolution_clock::now();
+        NucleusCoreDecompositionRClique(treeCopy2, edgeGraph, treeGraphVCopy2, r, s);
+        auto t4 = std::chrono::high_resolution_clock::now();
+        auto multi_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count();
+
+        std::cout << "--- Timing Summary ---" << std::endl;
+        std::cout << "Thread count: " << nthreads << std::endl;
+        std::cout << "Single-threaded time: " << single_ms << " ms" << std::endl;
+        std::cout << "Multi-threaded time: " << multi_ms << " ms" << std::endl;
+#else
+        std::cout << "--- Timing Summary ---" << std::endl;
+        std::cout << "Thread count: 1 (OpenMP not enabled)" << std::endl;
+        std::cout << "Single-threaded time: N/A" << std::endl;
+        std::cout << "Multi-threaded time: N/A" << std::endl;
+#endif
+    }
+
     // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {
     //     return PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);
     // });

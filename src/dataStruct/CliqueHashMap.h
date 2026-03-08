@@ -7,8 +7,13 @@
 #include <stdexcept>
 #include <limits>
 #include <iostream>
+#include <atomic>
+#include <mutex>
 #include "robin_hood.h"
 #include "graph/DynamicGraph.h"
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 // ===== ： C(n,r)， 128bit  =====
 template<typename T>
@@ -164,6 +169,77 @@ public:
         countV.free();
         pool_.shrink_to_fit();
     }
+
+#ifdef _OPENMP
+    void buildParallel(const DynamicGraph<TreeGraphNode> &treeGraph, const daf::Size maxV) {
+        daf::StaticVector<double> countV = treeGraph.cliqueCountPerVAcc(maxV, k_);
+        daf::Size N = static_cast<daf::Size>(treeGraph.cliqueCount(k_));
+        mapList_.resize(countV.size());
+        for (daf::Size i = 0; i < countV.size(); ++i) {
+            if (countV[i] > 0) {
+                mapList_[i].reserve(static_cast<daf::Size>(countV[i] * 1.1));
+            }
+        }
+        std::cout << "Clique Index: " << N << " cliques, " << countV.size() << " vertices." << std::endl;
+        pool_.resize(N * k_);
+        std::atomic<daf::Size> numCliqueAtom{0};
+        std::vector<std::mutex> bucketMutex(mapList_.size());
+
+        const auto &adj = treeGraph.adj_list;
+#pragma omp parallel
+        {
+            daf::StaticVector<daf::Size> keep, drop;
+#pragma omp for schedule(dynamic, 64)
+            for (daf::Size leafIdx = 0; leafIdx < adj.size(); ++leafIdx) {
+                const auto &clique = adj[leafIdx];
+                keep.clear();
+                drop.clear();
+                for (const auto &node : clique) {
+                    if (node.isPivot) drop.push_back(node.v);
+                    else keep.push_back(node.v);
+                }
+                daf::enumerateCombinations(keep, drop, k_,
+                    [&](const daf::StaticVector<daf::Size> &kKeep,
+                        const daf::StaticVector<daf::Size> &combination) {
+                        daf::Size buf[32];
+                        const daf::Size *a = combination.data();
+                        const daf::Size *a_end = a + combination.size();
+                        const daf::Size *b = kKeep.data();
+                        const daf::Size *b_end = b + kKeep.size();
+                        daf::Size *out = buf;
+                        while (a < a_end && b < b_end) {
+                            *out++ = (*a < *b ? *a++ : *b++);
+                        }
+                        if (a < a_end) {
+                            daf::Size rem = a_end - a;
+                            std::memcpy(out, a, rem * sizeof(daf::Size));
+                            out += rem;
+                        } else if (b < b_end) {
+                            daf::Size rem = b_end - b;
+                            std::memcpy(out, b, rem * sizeof(daf::Size));
+                        }
+                        unsigned __int128 acc = 0;
+                        for (daf::Size i = 0; i < k_; ++i) {
+                            acc += binom_u128(buf[i], static_cast<daf::Size>(i + 1));
+                        }
+                        uint64_t key = static_cast<uint64_t>(acc);
+                        daf::Size vmin = buf[0];
+                        std::lock_guard<std::mutex> lock(bucketMutex[vmin]);
+                        auto it = mapList_[vmin].find(key);
+                        if (it != mapList_[vmin].end()) return true;
+                        Id newId = numCliqueAtom.fetch_add(1);
+                        mapList_[vmin].emplace(key, newId);
+                        daf::Size start = newId * k_;
+                        std::memcpy(pool_.data() + start, buf, k_ * sizeof(daf::Size));
+                        return true;
+                    });
+            }
+        }
+        numClique = numCliqueAtom.load();
+        countV.free();
+        pool_.shrink_to_fit();
+    }
+#endif
 
     std::span<const daf::Size> byId(Id id) const {
         daf::Size start = static_cast<daf::Size>(id) * k_;

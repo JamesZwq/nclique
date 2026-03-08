@@ -57,7 +57,7 @@ class DynamicGraph {
             std::size_t N = lst.size(), M = nbrs.size();
             std::size_t i = 0, j = 0, k = 0;
 
-            // ：i  lst，j  nbrs；k 
+            // ：i  lst，j  nbrs；k
             while (i < N && j < M) {
                 if (lst[i] == nbrs[j]) {
                     // ：（i++、j++）， k
@@ -72,7 +72,7 @@ class DynamicGraph {
             while (i < N) {
                 lst[k++] = std::move(lst[i++]);
             }
-            // 
+            //
             lst.resize(k);
             return lst;
         }
@@ -157,6 +157,24 @@ class DynamicGraph {
             }
         }
         return max;
+    }
+
+    bool operator==(const DynamicGraph &other) const {
+        auto sorted_this = adj_list;
+        auto sorted_other = other.adj_list;
+        for (auto &neighbors : sorted_this) {
+            std::sort(neighbors.begin(), neighbors.end());
+        }
+        for (auto &neighbors : sorted_other) {
+            std::sort(neighbors.begin(), neighbors.end());
+        }
+        std::sort(sorted_this.begin(), sorted_this.end());
+        std::sort(sorted_other.begin(), sorted_other.end());
+        return sorted_this == sorted_other;
+    }
+
+    bool operator!=(const DynamicGraph &other) const {
+        return !(*this == other);
     }
 
     DynamicGraph clone() const {

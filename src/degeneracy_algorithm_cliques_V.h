@@ -44,10 +44,6 @@
 #include "graph/DynamicGraph.h"
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void listAllCliquesDegeneracyRecursive_V(daf::Size *,
                                          int *vertexSets, int *vertexLookup,
                                          int **neighborsInP, int *numNeighbors,
@@ -61,9 +57,8 @@ DynamicGraph<TreeGraphNode> listAllCliquesDegeneracy_VedgeGraph(Graph &orderingA
 
 
 DynamicGraph<TreeGraphNode> SDCT(Graph &orderingArray,
-                                                                int max_k, int min_k);
-#ifdef __cplusplus
-}
-#endif
+                                 int max_k, int min_k);
+
+DynamicGraph<TreeGraphNode> SDCT_Par(Graph &edgeGraph, int max_k, int min_k);
 
 #endif
