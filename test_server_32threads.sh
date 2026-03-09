@@ -17,7 +17,7 @@ echo "  Memory: $(free -h | grep Mem | awk '{print $2}')"
 echo ""
 
 # 设置测试配置
-GRAPHS=("test_small.edges" "test_medium_500.edges" "test_large_1000.edges")
+GRAPHS=("/data/wenqianz/com-dblp.edges" "test_medium_500.edges" "test_large_1000.edges")
 GRAPH_NAMES=("Small (50 nodes)" "Medium (500 nodes)" "Large (1000 nodes)")
 THREADS=(1 2 4 8 16 32)
 R=3
