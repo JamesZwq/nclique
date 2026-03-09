@@ -56,6 +56,7 @@ include_directories(src)
 file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.hpp src/*.h src/*/*.cpp src/*/*.hpp src/*/*.h)
 set(EXCLUDE_SRCS
         ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
+        ${CMAKE_SOURCE_DIR}/src/test_new_algorithm.cpp
 )
 list(REMOVE_ITEM ALL_SOURCES ${EXCLUDE_SRCS})
 set(COMMON_SOURCES ${ALL_SOURCES})
@@ -108,12 +109,16 @@ message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # 
 add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
+add_executable(test_ultra_parallel ${COMMON_SOURCES} test_ultra_parallel.cpp)
+add_executable(test_detailed_verification ${COMMON_SOURCES} test_detailed_verification.cpp)
 #add_executable(main ${COMMON_SOURCES} src/main.cpp)
 #add_executable(BCtest ${COMMON_SOURCES}
 #        src/dataStruct/CliqueMap.hpp)
 
 # 
 target_link_libraries(degeneracy_cliques PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(test_ultra_parallel PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(test_detailed_verification PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(BCtest PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 
