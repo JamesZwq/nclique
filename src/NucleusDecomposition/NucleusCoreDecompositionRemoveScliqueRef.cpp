@@ -7,6 +7,8 @@
 #include <boost/heap/pairing_heap.hpp>
 #include <boost/heap/fibonacci_heap.hpp>
 #include <set>
+#include <atomic>
+#include <cstdint>
 
 #include "../BK/BronKerboschRmEdge.hpp"
 #include "dataStruct/CliqueHashMap.h"
@@ -172,9 +174,12 @@ namespace CDSetRSRef {
         const daf::Size nClique = cliqueIndex.size();
         std::vector<double> rCliqueSCounting(nClique, 0.0);
 #ifdef _OPENMP
+        int nthreads = omp_get_max_threads();
+        std::vector<std::vector<double>> thread_locals(nthreads, std::vector<double>(nClique, 0.0));
 #pragma omp parallel
         {
-            std::vector<double> local(nClique, 0.0);
+            int tid = omp_get_thread_num();
+            auto &local = thread_locals[tid];
 #pragma omp for schedule(dynamic, 64)
             for (daf::Size leafIdx = 0; leafIdx < treeGraph.adj_list.size(); ++leafIdx) {
                 const auto &leaf = treeGraph.adj_list[leafIdx];
@@ -191,8 +196,12 @@ namespace CDSetRSRef {
                     return true;
                 });
             }
-#pragma omp critical
-            for (daf::Size i = 0; i < nClique; ++i) rCliqueSCounting[i] += local[i];
+        }
+#pragma omp parallel for schedule(static)
+        for (daf::Size i = 0; i < nClique; ++i) {
+            for (int t = 0; t < nthreads; ++t) {
+                rCliqueSCounting[i] += thread_locals[t][i];
+            }
         }
 #else
         for (const auto &leaf : treeGraph.adj_list) {
@@ -343,12 +352,15 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
         }
 
 #ifdef _OPENMP
-        // Parallel Phase A: same deterministic merge as opt
+        // Parallel Phase A: 优化版本，避免 critical section
         using PairOV = std::pair<daf::Size, daf::Size>;
-        std::vector<PairOV> allPairs;
+        int nthreads = omp_get_max_threads();
+        std::vector<std::vector<PairOV>> threadPairs(nthreads);
 #pragma omp parallel
         {
-            std::vector<PairOV> localPairs;
+            int tid = omp_get_thread_num();
+            auto &localPairs = threadPairs[tid];
+            localPairs.reserve(1000);
 #pragma omp for schedule(dynamic, 1)
             for (daf::Size origIdx = 0; origIdx < currentRemoveRcliqueIds.size(); ++origIdx) {
                 auto rmRCliqueId = currentRemoveRcliqueIds[origIdx];
@@ -358,10 +370,13 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                         localPairs.emplace_back(origIdx, uClique.v);
                     });
             }
-#pragma omp critical
-            {
-                for (const auto &p : localPairs) allPairs.push_back(p);
-            }
+        }
+        std::vector<PairOV> allPairs;
+        size_t totalSize = 0;
+        for (const auto &tp : threadPairs) totalSize += tp.size();
+        allPairs.reserve(totalSize);
+        for (const auto &tp : threadPairs) {
+            allPairs.insert(allPairs.end(), tp.begin(), tp.end());
         }
         std::sort(allPairs.begin(), allPairs.end());
         for (const auto &p : allPairs) {
@@ -461,34 +476,98 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
             }
         }
 
-        // Sequential apply: same order as original, preserves correctness
+        // 方案 1：批量收集 + 串行应用（简化版本，确保正确性）
+        const daf::Size nClique = countingRClique.size();
+        
+        // 并行更新 support
+        std::vector<std::atomic<double>> atomicCounting(nClique);
+#pragma omp parallel for schedule(static)
+        for (daf::Size i = 0; i < nClique; ++i) {
+            atomicCounting[i].store(countingRClique[i], std::memory_order_relaxed);
+        }
+        
+        std::vector<std::atomic<bool>> needHeapUpdate(nClique);
+        for (daf::Size i = 0; i < nClique; ++i) {
+            needHeapUpdate[i].store(false, std::memory_order_relaxed);
+        }
+        
+#pragma omp parallel for schedule(dynamic, 16)
+        for (daf::Size idx = 0; idx < changedLeaf.size(); ++idx) {
+            LeafResult &res = leafResults[idx];
+            
+            for (const auto &p : res.incr) {
+                union { double d; uint64_t u; } old_val, new_val;
+                std::atomic<uint64_t> *atomic_ptr = 
+                    reinterpret_cast<std::atomic<uint64_t>*>(&atomicCounting[p.first]);
+                old_val.u = atomic_ptr->load(std::memory_order_relaxed);
+                do {
+                    new_val.d = old_val.d + p.second;
+                } while (!atomic_ptr->compare_exchange_weak(
+                    old_val.u, new_val.u, std::memory_order_relaxed));
+            }
+            for (const auto &p : res.decr) {
+                union { double d; uint64_t u; } old_val, new_val;
+                std::atomic<uint64_t> *atomic_ptr = 
+                    reinterpret_cast<std::atomic<uint64_t>*>(&atomicCounting[p.first]);
+                old_val.u = atomic_ptr->load(std::memory_order_relaxed);
+                do {
+                    new_val.d = old_val.d - p.second;
+                } while (!atomic_ptr->compare_exchange_weak(
+                    old_val.u, new_val.u, std::memory_order_relaxed));
+                needHeapUpdate[p.first].store(true, std::memory_order_relaxed);
+            }
+        }
+        
+        // 批量收集 treeGraphV 操作（串行，确保正确性）
+        std::vector<std::vector<TreeGraphNode>> toRemove(graphN);
+        std::vector<std::vector<TreeGraphNode>> toAdd(graphN);
+        
         for (daf::Size idx = 0; idx < changedLeaf.size(); ++idx) {
             auto leafId = changedLeaf[idx];
             const auto leaf = tree.adj_list[leafId];
             LeafResult &res = leafResults[idx];
-
+            
+            // 收集移除操作
             for (auto leafV : leaf) {
-                if (leafV.isPivot) treeGraphV.removeNbr(leafV.v, {leafId, true});
-                else treeGraphV.removeNbr(leafV.v, {leafId, false});
+                toRemove[leafV.v].push_back({leafId, leafV.isPivot});
             }
-
+            
+            // 更新 tree
+            tree.removeNode(leafId);
+            
             for (auto &newLeaf : res.newLeaves) {
-                auto newId = tree.addNode(newLeaf);
+                daf::Size newId = tree.addNode(newLeaf);
                 const auto &stored = tree.adj_list[newId];
+                
+                // 收集添加操作
                 for (auto i : stored) {
-                    if (i.isPivot) treeGraphV.addNbr(i.v, {newId, true});
-                    else treeGraphV.addNbr(i.v, {newId, false});
+                    toAdd[i.v].push_back({newId, i.isPivot});
                 }
+                
                 if (newId >= changedLeafIndex.size())
                     changedLeafIndex.resize(newId * 2, std::numeric_limits<daf::Size>::max());
             }
-
-            for (const auto &p : res.incr) countingRClique[p.first] += p.second;
-            for (const auto &p : res.decr) {
-                countingRClique[p.first] -= p.second;
-                heap.update(heapHandles[p.first]);
+        }
+        
+        // 批量应用 treeGraphV 更新（并行化！）
+#pragma omp parallel for schedule(dynamic, 1024)
+        for (daf::Size v = 0; v < graphN; ++v) {
+            if (!toRemove[v].empty() || !toAdd[v].empty()) {
+                for (const auto &node : toRemove[v]) {
+                    treeGraphV.removeNbr(v, node);
+                }
+                for (const auto &node : toAdd[v]) {
+                    treeGraphV.addNbr(v, node);
+                }
             }
-            tree.removeNode(leafId);
+        }
+        
+        // 同步 support 并更新 heap
+        for (daf::Size i = 0; i < nClique; ++i) {
+            if (needHeapUpdate[i].load(std::memory_order_relaxed)) {
+                countingRClique[i] = atomicCounting[i].load(std::memory_order_relaxed);
+                heap.update(heapHandles[i]);
+            }
         }
 #else
         // Sequential path when OpenMP not available

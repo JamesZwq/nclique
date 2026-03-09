@@ -124,9 +124,12 @@ namespace CDSetRS {
         const daf::Size nClique = cliqueIndex.size();
         std::vector<double> rCliqueSCounting(nClique, 0.0);
 #ifdef _OPENMP
+        int nthreads = omp_get_max_threads();
+        std::vector<std::vector<double>> thread_locals(nthreads, std::vector<double>(nClique, 0.0));
 #pragma omp parallel
         {
-            std::vector<double> local(nClique, 0.0);
+            int tid = omp_get_thread_num();
+            auto &local = thread_locals[tid];
 #pragma omp for schedule(dynamic, 64)
             for (daf::Size leafIdx = 0; leafIdx < treeGraph.adj_list.size(); ++leafIdx) {
                 const auto &leaf = treeGraph.adj_list[leafIdx];
@@ -146,8 +149,13 @@ namespace CDSetRS {
                     return true;
                 });
             }
-#pragma omp critical
-            for (daf::Size i = 0; i < nClique; ++i) rCliqueSCounting[i] += local[i];
+        }
+        // 并行合并
+#pragma omp parallel for schedule(static)
+        for (daf::Size i = 0; i < nClique; ++i) {
+            for (int t = 0; t < nthreads; ++t) {
+                rCliqueSCounting[i] += thread_locals[t][i];
+            }
         }
 #else
         for (const auto &leaf : treeGraph.adj_list) {
@@ -276,24 +284,29 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
 #ifdef _OPENMP
         using PairOV = std::pair<daf::Size, daf::Size>;
-        std::vector<PairOV> allPairs;
+        int nthreads = omp_get_max_threads();
+        std::vector<std::vector<PairOV>> thread_pairs(nthreads);
 #pragma omp parallel
         {
-            std::vector<PairOV> localPairs;
-            localPairs.reserve(2048);
+            int tid = omp_get_thread_num();
+            thread_pairs[tid].reserve(2048);
 #pragma omp for schedule(dynamic, 4)
             for (daf::Size origIdx = 0; origIdx < currentRemoveRcliqueIds.size(); ++origIdx) {
                 auto rmRCliqueId = currentRemoveRcliqueIds[origIdx];
                 auto rClique = cliqueIndex.byId(rmRCliqueId);
                 daf::intersect_dense_sets_multi(rClique, treeGraphV.adj_list,
                     [&](const TreeGraphNode &uClique) {
-                        localPairs.emplace_back(origIdx, uClique.v);
+                        thread_pairs[tid].emplace_back(origIdx, uClique.v);
                     });
             }
-#pragma omp critical
-            {
-                for (const auto &p : localPairs) allPairs.push_back(p);
-            }
+        }
+        // 计算总大小并合并
+        size_t total_size = 0;
+        for (const auto &tp : thread_pairs) total_size += tp.size();
+        std::vector<PairOV> allPairs;
+        allPairs.reserve(total_size);
+        for (auto &tp : thread_pairs) {
+            allPairs.insert(allPairs.end(), tp.begin(), tp.end());
         }
         std::sort(allPairs.begin(), allPairs.end());
         for (const auto &p : allPairs) {

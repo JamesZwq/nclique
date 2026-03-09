@@ -115,6 +115,13 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
 
+// Batch Parallel version (new aggressive optimization)
+namespace BatchParallel {
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCliqueBatchParallel(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+}
+
 
 std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCliquePar(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
@@ -122,3 +129,23 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
 
 #endif //NCLIQUECOREDECOMPOSITION_H
+// Level-based Parallel Algorithm
+namespace LevelParallel {
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCliqueLevelPar(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+}
+
+// Advanced Parallel Algorithm (Target: 3x+ speedup on 8 threads)
+namespace AdvancedParallel {
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionAdvancedParallel(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+}
+
+// Ultra Parallel Algorithm (Target: 3x+ speedup on 8 threads, optimized version)
+namespace UltraParallel {
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionUltraParallel(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+}

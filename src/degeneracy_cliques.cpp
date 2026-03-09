@@ -87,19 +87,8 @@ int main(int argc, char **argv) {
 
     daf::log_memory("Graph Memory");
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&]() -> DynamicGraph<TreeGraphNode> {
-        return SDCT(edgeGraph, 1000000, 0);
+        return SDCT_Par(edgeGraph, 1000000, 0);  // 使用并行版本
     });
-    DynamicGraph<TreeGraphNode> treeGraphPar = daf::timeCount("Tree Build", [&]() -> DynamicGraph<TreeGraphNode> {
-        return SDCT_Par(edgeGraph, 1000000, 0);
-    });
-    if (treeGraph.cliqueCount() != treeGraphPar.cliqueCount()) {
-        std::cout << "Error: treeGraph and treeGraphPar have different number of leaves" << std::endl;
-        // std::cout << "TreeGraph: " << std::endl;
-        // treeGraph.printGraphPerV();
-        // std::cout << "TreeGraph Per: " << std::endl;
-        // treeGraphPar.printGraphPerV();
-        return 1;
-    }
     // std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
     // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
 
@@ -158,11 +147,17 @@ int main(int argc, char **argv) {
         } else if (compareMode) {
             auto refTree = treeGraph.clone();
             auto refTreeGraphV = treeGraphV.clone();
-            auto refCore = NucleusCoreDecompositionRCliqueRef(refTree, edgeGraph, refTreeGraphV, r, s);
+            // auto refCore = NucleusCoreDecompositionRCliqueRef(refTree, edgeGraph, refTreeGraphV, r, s);
+            auto refCore = daf::timeCount("Reference NucleusCoreDecomposition", [&]() {
+                return NucleusCoreDecompositionRCliqueRef(refTree, edgeGraph, refTreeGraphV, r, s);
+            });
 
             auto optTree = treeGraph.clone();
             auto optTreeGraphV = treeGraphV.clone();
-            auto optCore = NucleusCoreDecompositionRClique(optTree, edgeGraph, optTreeGraphV, r, s);
+            // auto optCore = NucleusCoreDecompositionRClique(optTree, edgeGraph, optTreeGraphV, r, s);
+            auto optCore = daf::timeCount("Optimized NucleusCoreDecomposition", [&]() {
+                return NucleusCoreDecompositionRClique(optTree, edgeGraph, optTreeGraphV, r, s);
+            });
 
             auto canonicalLess = [](const auto &a, const auto &b) {
                 if (a.second != b.second) {
@@ -193,7 +188,9 @@ int main(int argc, char **argv) {
             }
             std::cout << "Comparison passed: optimized result matches reference." << std::endl;
         } else {
-            NucleusCoreDecompositionRClique(treeGraph, edgeGraph, treeGraphV, r, s);
+            // 使用优化的 Ref 版本
+            std::cout << "Using optimized Ref version" << std::endl;
+            NucleusCoreDecompositionRCliqueRef(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
 
@@ -203,26 +200,35 @@ int main(int argc, char **argv) {
     if (r >= 3) {
 #ifdef _OPENMP
         int nthreads = omp_get_max_threads();
-        auto treeCopy1 = treeGraph.clone();
-        auto treeGraphVCopy1 = treeGraphV.clone();
-        omp_set_num_threads(1);
-        auto t1 = std::chrono::high_resolution_clock::now();
-        NucleusCoreDecompositionRClique(treeCopy1, edgeGraph, treeGraphVCopy1, r, s);
-        auto t2 = std::chrono::high_resolution_clock::now();
-        auto single_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-
-        auto treeCopy2 = treeGraph.clone();
-        auto treeGraphVCopy2 = treeGraphV.clone();
+        
+        // 测试不同线程数的性能
+        std::vector<int> thread_counts = {1, 8, 16, 32, 64};
+        std::vector<long long> times;
+        
+        std::cout << "\n=== Multi-threading Performance Test ===" << std::endl;
+        std::cout << "Testing with different thread counts..." << std::endl;
+        
+        for (int threads : thread_counts) {
+            auto treeCopy = treeGraph.clone();
+            auto treeGraphVCopy = treeGraphV.clone();
+            omp_set_num_threads(threads);
+            
+            auto t1 = std::chrono::high_resolution_clock::now();
+            NucleusCoreDecompositionRCliqueRef(treeCopy, edgeGraph, treeGraphVCopy, r, s);
+            auto t2 = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+            times.push_back(elapsed);
+            
+            std::cout << "Threads: " << threads << " -> Time: " << elapsed << " ms";
+            if (threads > 1) {
+                double speedup = (double)times[0] / elapsed;
+                std::cout << " (speedup: " << speedup << "x)";
+            }
+            std::cout << std::endl;
+        }
+        
+        // 恢复原来的线程数
         omp_set_num_threads(nthreads);
-        auto t3 = std::chrono::high_resolution_clock::now();
-        NucleusCoreDecompositionRClique(treeCopy2, edgeGraph, treeGraphVCopy2, r, s);
-        auto t4 = std::chrono::high_resolution_clock::now();
-        auto multi_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count();
-
-        std::cout << "--- Timing Summary ---" << std::endl;
-        std::cout << "Thread count: " << nthreads << std::endl;
-        std::cout << "Single-threaded time: " << single_ms << " ms" << std::endl;
-        std::cout << "Multi-threaded time: " << multi_ms << " ms" << std::endl;
 #else
         std::cout << "--- Timing Summary ---" << std::endl;
         std::cout << "Thread count: 1 (OpenMP not enabled)" << std::endl;

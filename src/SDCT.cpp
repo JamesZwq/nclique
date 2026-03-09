@@ -112,111 +112,88 @@ void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
 
 DynamicGraph<TreeGraphNode> SDCT_Par(Graph &edgeGraph, int max_k, int min_k) {
     auto size = edgeGraph.getGraphNodeSize();
-    DynamicGraph<TreeGraphNode> treeGraph(size);
-    std::mutex treeMutex; // 用于保护全局树图的写入
-    std::cout << "Starting SDCT parallel execution with " << omp_get_max_threads() << " threads..." << std::endl;
-
-    // 开启 OpenMP 并行域
+    int nthreads = omp_get_max_threads();
+    
+    std::cout << "Starting SDCT final optimized with " << nthreads << " threads..." << std::endl;
+    
+    std::vector<DynamicGraph<TreeGraphNode>> thread_graphs(nthreads, DynamicGraph<TreeGraphNode>(size));
+    
     #pragma omp parallel
     {
-        // ==========================================
-        // 1. 初始化 Thread-Local 的完整状态空间
-        // ==========================================
-        daf::StaticVector<int> local_vertexSets(size);
-        daf::StaticVector<int> local_vertexLookup(size);
-        daf::StaticVector<int *> local_neighborsInP(size);
-        daf::StaticVector<int> local_numNeighbors(size);
-
-        local_vertexSets.c_size = size;
-        local_vertexLookup.c_size = size;
-        local_neighborsInP.c_size = size;
-        local_numNeighbors.c_size = size;
-
-        // 每个线程都在内部维护属于自己的 vertexSets 和 lookup
-        // 注意：这些数组会在每次处理 vertex 时被重新初始化
-        for (int i = 0; i < size; ++i) {
-            local_neighborsInP[i] = nullptr;
-            local_numNeighbors[i] = 1;
-        }
-
-        daf::StaticVector<int> local_dropV(MAX_CSIZE);
-        daf::StaticVector<int> local_keepV(MAX_CSIZE);
-
-        // 线程局部结果缓存，防止锁竞争导致的性能暴跌
-        std::vector<std::vector<TreeGraphNode>> local_tree_buffer;
-        local_tree_buffer.reserve(5000);
-
-        // ==========================================
-        // 2. 动态调度分配外层节点任务
-        // schedule(dynamic, 1) 对这种高度不均衡的图算法最有效
-        // ==========================================
-        #pragma omp for schedule(dynamic, 1) nowait
-        for (int vertex = 0; vertex < size; ++vertex) {
-
-            // 关键：每次处理新的 vertex 时，重新初始化 vertexSets 和 vertexLookup
-            // 只包含 vertex 及其之后的顶点（degeneracy ordering 的性质）
-            for (int i = vertex; i < size; ++i) {
-                local_vertexSets[i] = i;
-                local_vertexLookup[i] = i;
+        int tid = omp_get_thread_num();
+        int vertices_per_thread = (size + nthreads - 1) / nthreads;
+        int start_v = tid * vertices_per_thread;
+        int end_v = std::min(start_v + vertices_per_thread, (int)size);
+        
+        if (start_v < size) {
+            auto vertexSets = std::make_unique<int[]>(size);
+            auto vertexLookup = std::make_unique<int[]>(size);
+            auto neighborsInP = std::make_unique<int*[]>(size);
+            auto numNeighbors = std::make_unique<int[]>(size);
+            
+            for (int i = 0; i < size; ++i) {
+                vertexSets[i] = i;
+                vertexLookup[i] = i;
+                neighborsInP[i] = nullptr;
+                numNeighbors[i] = 1;
             }
 
             int beginX = 0;
             int beginP = 0;
-            int beginR = size;  // R 初始为空，从 size 开始
-            int newBeginX, newBeginP, newBeginR;
+            int beginR = size;
+            daf::StaticVector<int> dropV(MAX_CSIZE);
+            daf::StaticVector<int> keepV(MAX_CSIZE);
+            
+            thread_graphs[tid].adj_list.reserve((end_v - start_v) * 10);
 
-            // 传入当前线程自己的数组
-            fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(
-                vertex,
-                local_vertexSets.data(), local_vertexLookup.data(),
-                edgeGraph,
-                local_neighborsInP.data(), local_numNeighbors.data(),
-                &beginX, &beginP, &beginR,
-                &newBeginX, &newBeginP, &newBeginR
-            );
+            for (int vertex = start_v; vertex < end_v; ++vertex) {
+                int newBeginX, newBeginP, newBeginR;
 
-            local_dropV.clear();
-            local_keepV.clear();
-            local_keepV.push_back(vertex);
+                fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(
+                    vertex, vertexSets.get(), vertexLookup.get(),
+                    edgeGraph, neighborsInP.get(), numNeighbors.get(),
+                    &beginX, &beginP, &beginR,
+                    &newBeginX, &newBeginP, &newBeginR);
 
-            // 递归调用（注意将最后的结果写入参数改成 local_tree_buffer）
-            listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
-                local_vertexSets.data(), local_vertexLookup.data(),
-                local_neighborsInP.data(), local_numNeighbors.data(),
-                newBeginP, newBeginR,
-                local_keepV, local_dropV, max_k, min_k, local_tree_buffer
-            );
+                dropV.clear();
+                keepV.clear();
+                keepV.push_back(vertex);
+                
+                listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
+                    vertexSets.get(), vertexLookup.get(),
+                    neighborsInP.get(), numNeighbors.get(),
+                    newBeginP, newBeginR, keepV, dropV,
+                    max_k, min_k, thread_graphs[tid]);
 
-            // 如果缓存满了，统一加锁写入全局图
-            if (local_tree_buffer.size() >= 5000) {
-                std::lock_guard<std::mutex> lock(treeMutex);
-                for (auto& nodes : local_tree_buffer) {
-                    treeGraph.addNode(nodes);
+                beginR = beginR + 1;
+            }
+
+            for (int i = 0; i < size; ++i) {
+                if (neighborsInP[i]) {
+                    Free(neighborsInP[i]);
                 }
-                local_tree_buffer.clear();
             }
         }
-
-        // ==========================================
-        // 3. 循环结束后，清空剩余缓存并释放内存
-        // ==========================================
-        if (!local_tree_buffer.empty()) {
-            std::lock_guard<std::mutex> lock(treeMutex);
-            for (auto& nodes : local_tree_buffer) {
-                treeGraph.addNode(nodes);
-            }
-            local_tree_buffer.clear();
-        }
-
-        for (int i = 0; i < size; ++i) {
-            if (local_neighborsInP[i]) {
-                Free(local_neighborsInP[i]);
-            }
-        }
-    } // OpenMP Barrier，所有线程同步
-
+    }
+    
+    DynamicGraph<TreeGraphNode> treeGraph(size);
+    size_t total_leaves = 0;
+    for (int t = 0; t < nthreads; t++) {
+        total_leaves += thread_graphs[t].adj_list.size();
+    }
+    treeGraph.adj_list.reserve(total_leaves);
+    
+    for (int t = 0; t < nthreads; t++) {
+        treeGraph.adj_list.insert(
+            treeGraph.adj_list.end(),
+            std::make_move_iterator(thread_graphs[t].adj_list.begin()),
+            std::make_move_iterator(thread_graphs[t].adj_list.end())
+        );
+    }
+    
     return treeGraph;
 }
+
 
 DynamicGraph<TreeGraphNode> SDCT(Graph &edgeGraph, int max_k, int min_k) {
     // vertex sets are stored in an array like this:
