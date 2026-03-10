@@ -111,6 +111,7 @@ message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp)
 add_executable(test_ultra_parallel ${COMMON_SOURCES} test_ultra_parallel.cpp)
 add_executable(test_detailed_verification ${COMMON_SOURCES} test_detailed_verification.cpp)
+add_executable(test_sdct_verify ${COMMON_SOURCES} test_sdct_verify.cpp)
 #add_executable(main ${COMMON_SOURCES} src/main.cpp)
 #add_executable(BCtest ${COMMON_SOURCES}
 #        src/dataStruct/CliqueMap.hpp)
@@ -119,6 +120,7 @@ add_executable(test_detailed_verification ${COMMON_SOURCES} test_detailed_verifi
 target_link_libraries(degeneracy_cliques PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 target_link_libraries(test_ultra_parallel PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 target_link_libraries(test_detailed_verification PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(test_sdct_verify PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(BCtest PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 
