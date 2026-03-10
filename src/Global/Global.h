@@ -263,14 +263,29 @@ namespace daf {
         }
 
         bool operator==(const StaticVector &o) const {
-            if (c_size != o.c_size || maxSize != o.maxSize) return false;
-            if constexpr (std::is_trivially_copyable_v<T>) {
+            if (c_size != o.c_size) return false;
+            if constexpr (std::is_floating_point_v<T>) {
+                // floating-point: use relative + absolute tolerance
+                for (Size i = 0; i < c_size; ++i) {
+                    T a = data()[i], b = o.data()[i];
+                    if (a == b) continue;
+                    T diff = std::abs(a - b);
+                    T maxVal = std::max(std::abs(a), std::abs(b));
+                    if (diff > static_cast<T>(1e-9) * maxVal && diff > static_cast<T>(1e-9))
+                        return false;
+                }
+                return true;
+            } else if constexpr (std::is_trivially_copyable_v<T>) {
                 return std::memcmp(data(), o.data(), c_size * sizeof(T)) == 0;
             } else {
                 for (Size i = 0; i < c_size; ++i)
                     if (!(data()[i] == o.data()[i])) return false;
                 return true;
             }
+        }
+
+        bool operator!=(const StaticVector &o) const {
+            return !(*this == o);
         }
 
         void print(const std::string &name = "") const {
