@@ -1,5 +1,4 @@
-// 测试 SDCT_Par 和 SDCT 的 cliqueCount 输出是否一致
-// double值不能直接比较，使用相对误差
+// 测试 SDCT, SDCT_Par, SDCT_Par2 的 cliqueCount 输出是否一致
 
 #include <iostream>
 #include <chrono>
@@ -28,7 +27,7 @@ bool approxEqual(double a, double b, double relTol = 1e-9, double absTol = 1e-9)
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cout << "Usage: " << argv[0] << " <graph_file> [threads]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <graph_file> [threads]" << std::endl;
         return 1;
     }
 
@@ -38,86 +37,81 @@ int main(int argc, char* argv[]) {
     populate_nCr();
 
     std::cout << "========================================" << std::endl;
-    std::cout << "SDCT vs SDCT_Par cliqueCount Verification" << std::endl;
+    std::cout << "SDCT vs SDCT_Par vs SDCT_Par2 Verification" << std::endl;
     std::cout << "========================================" << std::endl;
-    std::cout << "Graph: " << fpath << std::endl;
-    std::cout << "Threads for SDCT_Par: " << numThreads << std::endl;
-    std::cout << std::endl;
+    std::cout << "Graph: " << fpath << ", Threads: " << numThreads << std::endl << std::endl;
 
-    // 运行 SDCT（串行版本）
-    std::cout << "[1/2] Running SDCT (serial)..." << std::endl;
-    std::cout.flush();
-    Graph edgeGraphSerial(fpath);
-    edgeGraphSerial.sortByDegeneracyOrder();
+    // Run SDCT
+    std::cout << "[1/3] SDCT (serial)..." << std::endl;
+    Graph g1(fpath); g1.sortByDegeneracyOrder();
     auto t1 = std::chrono::high_resolution_clock::now();
-    DynamicGraph<TreeGraphNode> treeSerial = SDCT(edgeGraphSerial, 1000000, 0);
-    auto t2 = std::chrono::high_resolution_clock::now();
-    auto serialTime = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    std::cout << "  SDCT done: " << serialTime << " ms"
-              << ", leaves: " << treeSerial.adj_list.size() << std::endl;
+    auto treeSerial = SDCT(g1, 1000000, 0);
+    auto serialMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::high_resolution_clock::now() - t1).count();
+    std::cout << "  done: " << serialMs << " ms, leaves: " << treeSerial.adj_list.size() << std::endl;
 
-    // 运行 SDCT_Par（并行版本）
-    std::cout << "[2/2] Running SDCT_Par (" << numThreads << " threads)..." << std::endl;
-    std::cout.flush();
+    // Run SDCT_Par
 #ifdef _OPENMP
     omp_set_num_threads(numThreads);
 #endif
-    Graph edgeGraphPar(fpath);
-    edgeGraphPar.sortByDegeneracyOrder();
+    std::cout << "[2/3] SDCT_Par (" << numThreads << " threads)..." << std::endl;
+    Graph g2(fpath); g2.sortByDegeneracyOrder();
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto treePar = SDCT_Par(g2, 1000000, 0);
+    auto parMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::high_resolution_clock::now() - t2).count();
+    std::cout << "  done: " << parMs << " ms, leaves: " << treePar.adj_list.size() << std::endl;
+
+    // Run SDCT_Par2
+    std::cout << "[3/3] SDCT_Par2 (" << numThreads << " threads)..." << std::endl;
+    Graph g3(fpath); g3.sortByDegeneracyOrder();
     auto t3 = std::chrono::high_resolution_clock::now();
-    DynamicGraph<TreeGraphNode> treePar = SDCT_Par(edgeGraphPar, 1000000, 0);
-    auto t4 = std::chrono::high_resolution_clock::now();
-    auto parTime = std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count();
-    std::cout << "  SDCT_Par done: " << parTime << " ms"
-              << ", leaves: " << treePar.adj_list.size() << std::endl;
+    auto treePar2 = SDCT_Par2(g3, 1000000, 0);
+    auto par2Ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::high_resolution_clock::now() - t3).count();
+    std::cout << "  done: " << par2Ms << " ms, leaves: " << treePar2.adj_list.size() << std::endl;
     std::cout << std::endl;
 
-    // 计算 cliqueCount()
-    auto countsSerial = treeSerial.cliqueCount();
-    auto countsPar    = treePar.cliqueCount();
+    auto cSerial = treeSerial.cliqueCount();
+    auto cPar    = treePar.cliqueCount();
+    auto cPar2   = treePar2.cliqueCount();
 
-    std::cout << "========================================" << std::endl;
-    std::cout << "cliqueCount() comparison" << std::endl;
-    std::cout << "  SDCT    size: " << countsSerial.size() << std::endl;
-    std::cout << "  SDCT_Par size: " << countsPar.size() << std::endl;
-    std::cout << std::endl;
-
-    std::cout << std::left
-              << std::setw(5)  << "k"
-              << std::setw(20) << "SDCT"
-              << std::setw(20) << "SDCT_Par"
-              << "Match" << std::endl;
-    std::cout << std::string(60, '-') << std::endl;
+    std::cout << "k    SDCT             SDCT_Par         SDCT_Par2        Par Match  Par2 Match" << std::endl;
+    std::cout << std::string(80, '-') << std::endl;
 
     bool allMatch = true;
-    daf::Size maxK = std::max(countsSerial.size(), countsPar.size());
+    daf::Size maxK = std::max({cSerial.size(), cPar.size(), cPar2.size()});
+    for (daf::Size k = 0; k < maxK; k++) {
+        double sv  = (k < cSerial.size()) ? cSerial[k] : 0.0;
+        double pv  = (k < cPar.size())    ? cPar[k]    : 0.0;
+        double p2v = (k < cPar2.size())   ? cPar2[k]   : 0.0;
+        if (sv == 0.0 && pv == 0.0 && p2v == 0.0) continue;
 
-    for (daf::Size k = 0; k < maxK; ++k) {
-        double sVal = (k < countsSerial.size()) ? countsSerial[k] : 0.0;
-        double pVal = (k < countsPar.size())    ? countsPar[k]    : 0.0;
-        if (sVal == 0.0 && pVal == 0.0) continue;
-
-        bool match = approxEqual(sVal, pVal);
-        if (!match) allMatch = false;
+        bool m1 = approxEqual(sv, pv);
+        bool m2 = approxEqual(sv, p2v);
+        if (!m1 || !m2) allMatch = false;
 
         std::cout << std::left
                   << std::setw(5)  << k
-                  << std::setw(20) << std::fixed << std::setprecision(1) << sVal
-                  << std::setw(20) << pVal
-                  << (match ? "OK" : "MISMATCH !!")
+                  << std::setw(17) << std::fixed << std::setprecision(1) << sv
+                  << std::setw(17) << pv
+                  << std::setw(17) << p2v
+                  << std::setw(11) << (m1 ? "OK" : "MISMATCH")
+                  << (m2 ? "OK" : "MISMATCH")
                   << std::endl;
     }
 
-    std::cout << std::string(60, '-') << std::endl;
+    std::cout << std::string(80, '-') << std::endl;
     std::cout << std::endl;
-
-    // 总结
     std::cout << "========================================" << std::endl;
     if (allMatch) {
-        std::cout << "PASS: SDCT and SDCT_Par produce identical cliqueCount" << std::endl;
+        std::cout << "PASS: All three produce identical cliqueCount" << std::endl;
     } else {
         std::cout << "FAIL: MISMATCH detected!" << std::endl;
     }
+    std::cout << "Speedup SDCT_Par:  " << std::fixed << std::setprecision(2)
+              << (parMs > 0 ? (double)serialMs/parMs : 0.0) << "x" << std::endl;
+    std::cout << "Speedup SDCT_Par2: " << (par2Ms > 0 ? (double)serialMs/par2Ms : 0.0) << "x" << std::endl;
     std::cout << "========================================" << std::endl;
 
     return allMatch ? 0 : 1;
