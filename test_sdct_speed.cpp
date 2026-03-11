@@ -73,6 +73,17 @@ long long runSDCT_Par4(const char* fpath, int threads) {
     return std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 }
 
+long long runSDCT_Par5(const char* fpath, int threads) {
+#ifdef _OPENMP
+    omp_set_num_threads(threads);
+#endif
+    Graph g(fpath); g.sortByDegeneracyOrder();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    DynamicGraph<TreeGraphNode> tree = SDCT_Par5(g, 1000000, 0);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <graph_file> <max_threads>" << std::endl;
@@ -118,6 +129,13 @@ int main(int argc, char* argv[]) {
         std::cout << "SDCT_Par4 threads=" << t
                   << " time_ms=" << par4Time
                   << " speedup=" << std::fixed << std::setprecision(2) << speedup4
+                  << std::endl;
+
+        long long par5Time = runSDCT_Par5(fpath, t);
+        double speedup5 = (par5Time > 0) ? (double)serialTime / par5Time : 0.0;
+        std::cout << "SDCT_Par5 threads=" << t
+                  << " time_ms=" << par5Time
+                  << " speedup=" << std::fixed << std::setprecision(2) << speedup5
                   << std::endl;
     }
 

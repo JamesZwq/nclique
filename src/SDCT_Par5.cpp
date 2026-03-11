@@ -1,0 +1,246 @@
+/*
+ * SDCT_Par5: Prefetch + flat leaf arena
+ * New over Par4:
+ * 1. __builtin_prefetch on adj_list traversal
+ * 2. Flat leaf storage: contiguous LeafArena avoids per-leaf heap alloc
+ */
+
+#include <omp.h>
+#include <cstring>
+#include <cstdlib>
+#include <algorithm>
+#include <vector>
+#include <iostream>
+
+#include "degeneracy_algorithm_cliques_V.h"
+#include "degeneracy_helper.h"
+#include "LinkedList.h"
+#include "MemoryManager.h"
+#include "misc.h"
+#include "tree/MultiBranchTree.h"
+#include "graph/DynamicGraph.h"
+#include "graph/Graph.h"
+
+extern double nCr[1001][401];
+
+struct Arena5 {
+    int* base=nullptr; int top=0; int cap=0;
+    void init(int n){cap=n+16;base=(int*)std::malloc(cap*sizeof(int));top=0;}
+    ~Arena5(){std::free(base);}
+    int* alloc_raw(int n){if(n<=0)n=1;int*p=base+top;top+=n;return p;}
+    int save(){return top;}
+    void restore(int t){top=t;}
+};
+static thread_local Arena5 g_arena5;
+
+struct MarkArray5 {
+    std::vector<int> mark; int gen=0;
+    void init(int n){mark.assign(n,0);}
+    void next(){++gen;}
+    void set(int v){mark[v]=gen;}
+    bool get(int v)const{return mark[v]==gen;}
+};
+static thread_local MarkArray5 g_mark5;
+
+// Flat leaf arena: [total, v0, drop0, v1, drop1, ...] per leaf
+struct LeafArena5 {
+    std::vector<int> buf;
+    std::vector<int> offsets;
+    void reserve(int n){buf.reserve(n*10);offsets.reserve(n);}
+    void add(int* keepV,int keepSz,int* dropV,int dropSz){
+        offsets.push_back((int)buf.size());
+        int total=keepSz+dropSz;
+        buf.push_back(total);
+        TreeGraphNode tmp[512];
+        for(int i=0;i<keepSz;i++)tmp[i]={(daf::Size)keepV[i],false};
+        for(int i=0;i<dropSz;i++)tmp[keepSz+i]={(daf::Size)dropV[i],true};
+        if(total<=32){
+            for(int i=1;i<total;i++){TreeGraphNode k=tmp[i];int j=i-1;
+                while(j>=0&&tmp[j]>k){tmp[j+1]=tmp[j];j--;}tmp[j+1]=k;}
+        }else{std::sort(tmp,tmp+total);}
+        for(int i=0;i<total;i++){buf.push_back((int)tmp[i].v);buf.push_back((int)tmp[i].isPivot);}
+    }
+    void flush(DynamicGraph<TreeGraphNode>& out){
+        for(int oi=0;oi<(int)offsets.size();oi++){
+            int pos=offsets[oi],sz=buf[pos++];
+            std::vector<TreeGraphNode> leaf; leaf.reserve(sz);
+            for(int i=0;i<sz;i++){leaf.emplace_back((daf::Size)buf[pos],(bool)buf[pos+1]);pos+=2;}
+            out.adj_list.push_back(std::move(leaf));
+        }
+    }
+};
+static thread_local LeafArena5 g_leafarena5;
+
+static int findPivotMark5(
+    int** pivotNonNeighbors,int* numNonNeighbors,
+    int* vertexSets,int* vertexLookup,
+    int** neighborsInP,int* numNeighbors,
+    int beginP,int beginR)
+{
+    int pivot=-1,maxInP=-1,sz=beginR-beginP;
+    for(int j=beginP;j<beginR;j++){
+        int v=vertexSets[j],numP=MY_MIN(sz,numNeighbors[v]),inP=0;
+        for(int k=0;k<numP;k++){int l=vertexLookup[neighborsInP[v][k]];if(l>=beginP&&l<beginR)inP++;else break;}
+        if(inP>maxInP){maxInP=inP;pivot=v;}
+    }
+    g_mark5.next();
+    int nPN=MY_MIN(sz,numNeighbors[pivot]);
+    for(int j=0;j<nPN;j++){int nb=neighborsInP[pivot][j],l=vertexLookup[nb];if(l>=beginP&&l<beginR)g_mark5.set(nb);else break;}
+    int*buf=g_arena5.alloc_raw(sz),nc=0;
+    for(int j=beginP;j<beginR;j++){int v=vertexSets[j];if(!g_mark5.get(v))buf[nc++]=v;}
+    *pivotNonNeighbors=buf;*numNonNeighbors=nc;
+    return pivot;
+}
+
+static void moveToRFast5(
+    int vertex,int* vertexSets,int* vertexLookup,
+    int** neighborsInP,int* numNeighbors,
+    int* pBeginP,int* pBeginR,int* pNewBeginP,int* pNewBeginR)
+{
+    int vl=vertexLookup[vertex];
+    (*pBeginR)--;vertexSets[vl]=vertexSets[*pBeginR];vertexLookup[vertexSets[*pBeginR]]=vl;
+    vertexSets[*pBeginR]=vertex;vertexLookup[vertex]=*pBeginR;
+    *pNewBeginP=*pBeginP;*pNewBeginR=*pBeginP;
+    int sizeOfP=*pBeginR-*pBeginP;
+    g_mark5.next();
+    int numNbr=MY_MIN(sizeOfP,numNeighbors[vertex]);
+    for(int k=0;k<numNbr;k++)g_mark5.set(neighborsInP[vertex][k]);
+    for(int j=*pBeginP;j<*pBeginR;j++){
+        int nb=vertexSets[j];
+        if(g_mark5.get(nb)){
+            vertexSets[j]=vertexSets[*pNewBeginR];vertexLookup[vertexSets[*pNewBeginR]]=j;
+            vertexSets[*pNewBeginR]=nb;vertexLookup[nb]=*pNewBeginR;(*pNewBeginR)++;
+        }
+    }
+    for(int j2=*pNewBeginP;j2<*pNewBeginR;j2++){
+        int tv=vertexSets[j2],numP=MY_MIN(sizeOfP,numNeighbors[tv]),cnt=0;
+        for(int k=0;k<numP;k++){int nbr=neighborsInP[tv][k],nl=vertexLookup[nbr];
+            if(nl>=*pNewBeginP&&nl<*pNewBeginR){neighborsInP[tv][k]=neighborsInP[tv][cnt];neighborsInP[tv][cnt++]=nbr;}}
+    }
+}
+
+static void fillInPandXArena5(
+    int vertex,int* vertexSets,int* vertexLookup,
+    Graph& edgeGraph,int** neighborsInP,int* numNeighbors,
+    int* pBeginX,int* pBeginP,int* pBeginR,
+    int* pNewBeginX,int* pNewBeginP,int* pNewBeginR)
+{
+    int vl=vertexLookup[vertex];
+    (*pBeginR)--;vertexSets[vl]=vertexSets[*pBeginR];vertexLookup[vertexSets[*pBeginR]]=vl;
+    vertexSets[*pBeginR]=vertex;vertexLookup[vertex]=*pBeginR;
+    *pNewBeginR=*pBeginR;*pNewBeginP=*pBeginR;
+    auto [nb,ne]=edgeGraph.getNbr(vertex);
+    if(nb<ne)__builtin_prefetch(&edgeGraph.adj_list[nb],0,1);
+    for(int idx=nb;idx<ne;++idx){
+        if(idx+4<ne)__builtin_prefetch(&edgeGraph.adj_list[idx+4],0,0);
+        int neighbor=edgeGraph.adj_list[idx];
+        if(neighbor<=vertex)continue;
+        int nl=vertexLookup[neighbor];(*pNewBeginP)--;
+        vertexSets[nl]=vertexSets[*pNewBeginP];vertexLookup[vertexSets[*pNewBeginP]]=nl;
+        vertexSets[*pNewBeginP]=neighbor;vertexLookup[neighbor]=*pNewBeginP;
+    }
+    *pNewBeginX=*pNewBeginP;
+    int pSize=*pNewBeginR-*pNewBeginP;
+    for(int j=*pNewBeginP;j<*pNewBeginR;++j){
+        int v=vertexSets[j];numNeighbors[v]=0;
+        int as=MY_MIN(pSize,edgeGraph.getNbrCount(v));
+        neighborsInP[v]=g_arena5.alloc_raw(as>0?as:1);
+    }
+    for(int j=*pNewBeginP;j<*pNewBeginR;++j){
+        int v=vertexSets[j];
+        auto [nb2,ne2]=edgeGraph.getNbr(v);
+        if(nb2<ne2)__builtin_prefetch(&edgeGraph.adj_list[nb2],0,1);
+        for(auto idx=nb2;idx<ne2;++idx){
+            if(idx+4<ne2)__builtin_prefetch(&edgeGraph.adj_list[idx+4],0,0);
+            int w=edgeGraph.adj_list[idx];
+            if(w<=v)continue;
+            int wl=vertexLookup[w];
+            if(wl>=*pNewBeginP&&wl<*pNewBeginR){
+                neighborsInP[v][numNeighbors[v]++]=w;
+                neighborsInP[w][numNeighbors[w]++]=v;
+            }
+        }
+    }
+}
+
+static void recurse5(
+    int* vertexSets,int* vertexLookup,
+    int** neighborsInP,int* numNeighbors,
+    int beginP,int beginR,
+    int* keepV,int keepSz,int* dropV,int dropSz,
+    int max_k,int min_k)
+{
+    if(keepSz>max_k)return;
+    if(beginP>=beginR){
+        int cSize=keepSz+dropSz;
+        if(cSize<min_k)return;
+        if(keepSz==max_k) g_leafarena5.add(keepV,keepSz,dropV,0);
+        else              g_leafarena5.add(keepV,keepSz,dropV,dropSz);
+        return;
+    }
+    int*cands;int nCands;
+    int arenaTop=g_arena5.save();
+    int pivot=findPivotMark5(&cands,&nCands,vertexSets,vertexLookup,
+                             neighborsInP,numNeighbors,beginP,beginR);
+    for(int ci=0;ci<nCands;ci++){
+        int vertex=cands[ci],newBeginP,newBeginR;
+        moveToRFast5(vertex,vertexSets,vertexLookup,neighborsInP,numNeighbors,
+                     &beginP,&beginR,&newBeginP,&newBeginR);
+        if(vertex==pivot){dropV[dropSz]=vertex;
+            recurse5(vertexSets,vertexLookup,neighborsInP,numNeighbors,
+                     newBeginP,newBeginR,keepV,keepSz,dropV,dropSz+1,max_k,min_k);
+        }else{keepV[keepSz]=vertex;
+            recurse5(vertexSets,vertexLookup,neighborsInP,numNeighbors,
+                     newBeginP,newBeginR,keepV,keepSz+1,dropV,dropSz,max_k,min_k);
+        }
+    }
+    g_arena5.restore(arenaTop);
+}
+
+DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
+    auto size=(int)edgeGraph.getGraphNodeSize();
+    int nthreads=omp_get_max_threads();
+    std::cout<<"SDCT_Par5 "<<nthreads<<" threads"<<std::endl;
+    std::vector<LeafArena5> thread_leaves(nthreads);
+
+    #pragma omp parallel
+    {
+        int tid=omp_get_thread_num();
+        g_arena5.init(size*64);
+        g_mark5.init(size);
+        g_leafarena5.reserve(std::max(1,size/nthreads)*20);
+
+        std::vector<int> vertexSets(size),vertexLookup(size);
+        std::vector<int*> neighborsInP(size,nullptr);
+        std::vector<int> numNeighbors(size,1);
+        for(int i=0;i<size;i++){
+            vertexSets[i]=i;vertexLookup[i]=i;
+            neighborsInP[i]=g_arena5.alloc_raw(1);numNeighbors[i]=1;
+        }
+        int beginX=0,beginP=0,beginR=size;
+        int keepV[MAX_CSIZE],dropV[MAX_CSIZE];
+
+        #pragma omp for schedule(dynamic,1) nowait
+        for(int vertex=0;vertex<size;vertex++){
+            int arenaBase=g_arena5.save();
+            int newBeginX,newBeginP,newBeginR;
+            fillInPandXArena5(vertex,vertexSets.data(),vertexLookup.data(),edgeGraph,
+                              neighborsInP.data(),numNeighbors.data(),
+                              &beginX,&beginP,&beginR,&newBeginX,&newBeginP,&newBeginR);
+            keepV[0]=vertex;
+            recurse5(vertexSets.data(),vertexLookup.data(),neighborsInP.data(),numNeighbors.data(),
+                     newBeginP,newBeginR,keepV,1,dropV,0,max_k,min_k);
+            g_arena5.restore(arenaBase);
+            beginR++;
+        }
+        #pragma omp critical
+        thread_leaves[tid]=std::move(g_leafarena5);
+    }
+
+    size_t total=0;
+    for(auto&tl:thread_leaves)total+=tl.offsets.size();
+    DynamicGraph<TreeGraphNode> treeGraph(size);
+    treeGraph.adj_list.reserve(total);
+    for(auto&tl:thread_leaves)tl.flush(treeGraph);
+    return treeGraph;
+}
