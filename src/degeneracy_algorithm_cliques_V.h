@@ -63,4 +63,8 @@ DynamicGraph<TreeGraphNode> SDCT_Par(Graph &edgeGraph, int max_k, int min_k);
 
 DynamicGraph<TreeGraphNode> SDCT_Par2(Graph &edgeGraph, int max_k, int min_k);
 
+DynamicGraph<TreeGraphNode> SDCT_Par3(Graph &edgeGraph, int max_k, int min_k);
+
+DynamicGraph<TreeGraphNode> SDCT_Par4(Graph &edgeGraph, int max_k, int min_k);
+
 #endif
