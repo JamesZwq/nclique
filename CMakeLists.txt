@@ -89,7 +89,7 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
             -fstack-protector-strong
             -ferror-limit=1000
     )
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -fno-omit-frame-pointer  -fsanitize-address-use-after-scope -fdefer-pop -g")
+#    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -fno-omit-frame-pointer  -fsanitize-address-use-after-scope -fdefer-pop -g")
 endif()
 
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -fno-omit-frame-pointer  -fsanitize-address-use-after-scope -fdefer-pop -g")
@@ -99,10 +99,10 @@ endif()
 #if(CMAKE_BUILD_TYPE STREQUAL "Release")
 #    add_compile_options(-O3 -g -fsanitize=address -fno-sanitize-recover=undefined)
 #    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO
-        "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fsanitize=address -fno-omit-frame-pointer")
-set(CMAKE_LINKER_FLAGS_RELWITHDEBINFO
-        "${CMAKE_LINKER_FLAGS_RELWITHDEBINFO} -fsanitize=address")#endif()
+#set(CMAKE_CXX_FLAGS_RELWITHDEBINFO
+#        "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fsanitize=address -fno-omit-frame-pointer")
+#set(CMAKE_LINKER_FLAGS_RELWITHDEBINFO
+#        "${CMAKE_LINKER_FLAGS_RELWITHDEBINFO} -fsanitize=address")#endif()
 
 
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
@@ -113,6 +113,7 @@ add_executable(test_ultra_parallel ${COMMON_SOURCES} test_ultra_parallel.cpp)
 add_executable(test_detailed_verification ${COMMON_SOURCES} test_detailed_verification.cpp)
 add_executable(test_sdct_verify ${COMMON_SOURCES} test_sdct_verify.cpp)
 add_executable(test_sdct_speed ${COMMON_SOURCES} test_sdct_speed.cpp)
+add_executable(verify_all_sdct ${COMMON_SOURCES} verify_all_sdct.cpp)
 #add_executable(main ${COMMON_SOURCES} src/main.cpp)
 #add_executable(BCtest ${COMMON_SOURCES}
 #        src/dataStruct/CliqueMap.hpp)
@@ -123,6 +124,7 @@ target_link_libraries(test_ultra_parallel PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARI
 target_link_libraries(test_detailed_verification PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 target_link_libraries(test_sdct_verify PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 target_link_libraries(test_sdct_speed PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(verify_all_sdct PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(BCtest PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 

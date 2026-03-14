@@ -59,6 +59,13 @@ void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
     int **neighborsInP, int *numNeighbors,
     int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
     int max_k, int min_k, std::vector<std::vector<TreeGraphNode>> &tree_buffer);
+
+void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
+    int *vertexSets, int *vertexLookup,
+    int **neighborsInP, int *numNeighbors,
+    int beginP, int beginR, daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
+    int max_k, int min_k, DynamicGraph<TreeGraphNode> &tree);
+
 /*! \brief Computes the vertex v in P union X that has the most neighbors in P,
            and places P \ {neighborhood of v} in an array. These are the
            vertices to consider adding to the partial clique during the current
@@ -111,87 +118,7 @@ void listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
 */
 
 DynamicGraph<TreeGraphNode> SDCT_Par(Graph &edgeGraph, int max_k, int min_k) {
-    auto size = edgeGraph.getGraphNodeSize();
-    int nthreads = omp_get_max_threads();
-    
-    std::cout << "Starting SDCT final optimized with " << nthreads << " threads..." << std::endl;
-    
-    std::vector<DynamicGraph<TreeGraphNode>> thread_graphs(nthreads, DynamicGraph<TreeGraphNode>(size));
-    
-    #pragma omp parallel
-    {
-        int tid = omp_get_thread_num();
-        int vertices_per_thread = (size + nthreads - 1) / nthreads;
-        int start_v = tid * vertices_per_thread;
-        int end_v = std::min(start_v + vertices_per_thread, (int)size);
-        
-        if (start_v < size) {
-            auto vertexSets = std::make_unique<int[]>(size);
-            auto vertexLookup = std::make_unique<int[]>(size);
-            auto neighborsInP = std::make_unique<int*[]>(size);
-            auto numNeighbors = std::make_unique<int[]>(size);
-            
-            for (int i = 0; i < size; ++i) {
-                vertexSets[i] = i;
-                vertexLookup[i] = i;
-                neighborsInP[i] = nullptr;
-                numNeighbors[i] = 1;
-            }
-
-            int beginX = 0;
-            int beginP = 0;
-            int beginR = size;
-            daf::StaticVector<int> dropV(MAX_CSIZE);
-            daf::StaticVector<int> keepV(MAX_CSIZE);
-            
-            thread_graphs[tid].adj_list.reserve((end_v - start_v) * 10);
-
-            for (int vertex = start_v; vertex < end_v; ++vertex) {
-                int newBeginX, newBeginP, newBeginR;
-
-                fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(
-                    vertex, vertexSets.get(), vertexLookup.get(),
-                    edgeGraph, neighborsInP.get(), numNeighbors.get(),
-                    &beginX, &beginP, &beginR,
-                    &newBeginX, &newBeginP, &newBeginR);
-
-                dropV.clear();
-                keepV.clear();
-                keepV.push_back(vertex);
-                
-                listAllCliquesDegeneracyRecursive_VedgeGraphSDCT(
-                    vertexSets.get(), vertexLookup.get(),
-                    neighborsInP.get(), numNeighbors.get(),
-                    newBeginP, newBeginR, keepV, dropV,
-                    max_k, min_k, thread_graphs[tid]);
-
-                beginR = beginR + 1;
-            }
-
-            for (int i = 0; i < size; ++i) {
-                if (neighborsInP[i]) {
-                    Free(neighborsInP[i]);
-                }
-            }
-        }
-    }
-    
-    DynamicGraph<TreeGraphNode> treeGraph(size);
-    size_t total_leaves = 0;
-    for (int t = 0; t < nthreads; t++) {
-        total_leaves += thread_graphs[t].adj_list.size();
-    }
-    treeGraph.adj_list.reserve(total_leaves);
-    
-    for (int t = 0; t < nthreads; t++) {
-        treeGraph.adj_list.insert(
-            treeGraph.adj_list.end(),
-            std::make_move_iterator(thread_graphs[t].adj_list.begin()),
-            std::make_move_iterator(thread_graphs[t].adj_list.end())
-        );
-    }
-    
-    return treeGraph;
+    return SDCT(edgeGraph, max_k, min_k);
 }
 
 

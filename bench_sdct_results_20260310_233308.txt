@@ -1,0 +1,84 @@
+graph                                     algorithm   threads     time_ms     speedup
+-------------------------------------------------------------------------------------
+
+--- new_small_garph.edges ---
+new_small_garph.edges                     SDCT        1           0           -
+new_small_garph.edges                     SDCT_Par    1           0           0.00x
+new_small_garph.edges                     SDCT_Par    2           0           0.00x
+new_small_garph.edges                     SDCT_Par    4           0           0.00x
+
+--- test_huge_3000.edges ---
+test_huge_3000.edges                      SDCT        1           4           -
+test_huge_3000.edges                      SDCT_Par    1           5           0.80x
+test_huge_3000.edges                      SDCT_Par    2           3           1.33x
+test_huge_3000.edges                      SDCT_Par    4           2           2.00x
+
+--- test_large.edges ---
+test_large.edges                          SDCT        1           0           -
+test_large.edges                          SDCT_Par    1           0           0.00x
+test_large.edges                          SDCT_Par    2           0           0.00x
+test_large.edges                          SDCT_Par    4           0           0.00x
+
+--- test_large_1000.edges ---
+test_large_1000.edges                     SDCT        1           21          -
+test_large_1000.edges                     SDCT_Par    1           20          1.05x
+test_large_1000.edges                     SDCT_Par    2           16          1.31x
+test_large_1000.edges                     SDCT_Par    4           10          2.10x
+
+--- test_medium.edges ---
+test_medium.edges                         SDCT        1           2           -
+test_medium.edges                         SDCT_Par    1           2           1.00x
+test_medium.edges                         SDCT_Par    2           1           2.00x
+test_medium.edges                         SDCT_Par    4           1           2.00x
+
+--- test_medium_500.edges ---
+test_medium_500.edges                     SDCT        1           22          -
+test_medium_500.edges                     SDCT_Par    1           16          1.38x
+test_medium_500.edges                     SDCT_Par    2           14          1.57x
+test_medium_500.edges                     SDCT_Par    4           8           2.75x
+
+--- test_server_huge_10000.edges ---
+test_server_huge_10000.edges              SDCT        1           19          -
+test_server_huge_10000.edges              SDCT_Par    1           19          1.00x
+test_server_huge_10000.edges              SDCT_Par    2           16          1.19x
+test_server_huge_10000.edges              SDCT_Par    4           9           2.11x
+
+--- test_server_large_2000.edges ---
+test_server_large_2000.edges              SDCT        1           185         -
+test_server_large_2000.edges              SDCT_Par    1           183         1.01x
+test_server_large_2000.edges              SDCT_Par    2           152         1.22x
+test_server_large_2000.edges              SDCT_Par    4           94          1.97x
+
+--- test_server_xlarge_5000.edges ---
+test_server_xlarge_5000.edges             SDCT        1           7           -
+test_server_xlarge_5000.edges             SDCT_Par    1           7           1.00x
+test_server_xlarge_5000.edges             SDCT_Par    2           6           1.17x
+test_server_xlarge_5000.edges             SDCT_Par    4           3           2.33x
+
+--- test_small.edges ---
+test_small.edges                          SDCT        1           0           -
+test_small.edges                          SDCT_Par    1           0           0.00x
+test_small.edges                          SDCT_Par    2           0           0.00x
+test_small.edges                          SDCT_Par    4           0           0.00x
+
+--- test_tiny.edges ---
+test_tiny.edges                           SDCT        1           0           -
+test_tiny.edges                           SDCT_Par    1           0           0.00x
+test_tiny.edges                           SDCT_Par    2           0           0.00x
+test_tiny.edges                           SDCT_Par    4           0           0.00x
+
+--- test_xlarge_2000.edges ---
+test_xlarge_2000.edges                    SDCT        1           2           -
+test_xlarge_2000.edges                    SDCT_Par    1           2           1.00x
+test_xlarge_2000.edges                    SDCT_Par    2           1           2.00x
+test_xlarge_2000.edges                    SDCT_Par    4           1           2.00x
+
+--- toy.edges ---
+toy.edges                                 SDCT        1           0           -
+toy.edges                                 SDCT_Par    1           0           0.00x
+toy.edges                                 SDCT_Par    2           0           0.00x
+toy.edges                                 SDCT_Par    4           0           0.00x
+
+==========================================
+Done. Results saved to: bench_sdct_results_20260310_233308.txt
+==========================================

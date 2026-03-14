@@ -1,0 +1,36 @@
+========================================
+修复完成 - 请在服务器上重新运行
+========================================
+
+问题原因：
+脚本中使用了错误的路径 ./build/bin/test_ultra_parallel
+应该是 ./build-ultra/bin/test_ultra_parallel
+
+已修复并push到git！
+
+在服务器上执行：
+========================================
+
+cd ~/pivoter
+
+# 拉取最新代码
+git pull
+
+# 重新运行测试
+./test_server_32threads.sh
+
+# 或者使用大图测试
+python3 generate_server_test_graphs.py
+./test_server_large_graphs.sh
+
+========================================
+
+现在应该能看到真实的时间了！
+
+预期输出示例：
+  Reference (1 thread): 128ms
+  Ultra Parallel (1 thread): 104ms
+  Ultra Parallel (8 threads): 32ms
+    Speedup vs Reference: 4.00x ✓
+
+========================================

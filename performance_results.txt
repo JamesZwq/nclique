@@ -1,0 +1,42 @@
+Performance Test Results - Mon Mar  9 16:15:16 AEDT 2026
+========================================
+
+Graph: Small (50 nodes)
+File: test_small.edges
+Parameters: r=3, s=4
+
+  Reference (1 thread): 0 ms
+  Ultra Parallel (1 threads): 0 ms
+  Ultra Parallel (2 threads): 0 ms
+  Ultra Parallel (4 threads): 1 ms
+  Ultra Parallel (8 threads): 0 ms
+
+----------------------------------------
+
+Graph: Medium (200 nodes)
+File: test_medium.edges
+Parameters: r=3, s=4
+
+  Reference (1 thread): 12 ms
+  Ultra Parallel (1 threads): 10 ms
+  Ultra Parallel (2 threads): 7 ms
+    Speedup vs 1 thread: 1.42x
+  Ultra Parallel (4 threads): 6 ms
+    Speedup vs 1 thread: 1.66x
+  Ultra Parallel (8 threads): 7 ms
+    Speedup vs 1 thread: 1.42x
+
+----------------------------------------
+
+Graph: Large (500 nodes)
+File: test_large.edges
+Parameters: r=3, s=4
+
+  Reference (1 thread): 0 ms
+  Ultra Parallel (1 threads): 0 ms
+  Ultra Parallel (2 threads): 0 ms
+  Ultra Parallel (4 threads): 0 ms
+  Ultra Parallel (8 threads): 0 ms
+
+----------------------------------------
+

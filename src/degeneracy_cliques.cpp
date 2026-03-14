@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&]() -> DynamicGraph<TreeGraphNode> {
         return SDCT_Par(edgeGraph, 1000000, 0);  // 使用并行版本
     });
-    // std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
+    std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
     // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
 
     // daf::log_memory("Tree Memory");
@@ -144,6 +144,18 @@ int main(int argc, char **argv) {
             NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
         } else if (referenceOnlyMode) {
             NucleusCoreDecompositionRCliqueRef(treeGraph, edgeGraph, treeGraphV, r, s);
+            std::map<int, int> coreValueCount;
+            for (const auto &leaf: treeGraph.adj_list) {
+                for (const auto &node: leaf) {
+                    if (!node.isPivot) {
+                        coreValueCount[node.v]++;
+                    }
+                }
+            }
+            std::cout << "Core value distribution (vertex degree in tree):" << std::endl;
+            for (const auto &[coreValue, count]: coreValueCount) {
+                std::cout << "Core value: " << coreValue << " Count: " << count << std::endl;
+            }
         } else if (compareMode) {
             auto refTree = treeGraph.clone();
             auto refTreeGraphV = treeGraphV.clone();
