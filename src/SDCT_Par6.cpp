@@ -633,11 +633,12 @@ CliqueCSR<int> SDCT_Par6_CSR(Graph& edgeGraph, int max_k, int min_k) {
         }
     }
 
-    // Build CliqueCSR from the flat arrays (single memcpy equivalent)
-    for (size_t i = 0; i < total_cliques; i++) {
-        result.add_clique(csr_data.data() + csr_offsets[i],
-                          csr_offsets[i+1] - csr_offsets[i]);
-    }
+    // Convert size_t offsets to int offsets (CliqueCSR<int> uses int index)
+    std::vector<int> final_offsets(total_cliques + 1);
+    for (size_t i = 0; i <= total_cliques; i++)
+        final_offsets[i] = (int)csr_offsets[i];
+    // Zero-copy move into CliqueCSR
+    result.init_from_flat(std::move(final_offsets), std::move(csr_data));
 
     printf("SDCT_Par6_CSR: merge %.1f ms | total cliques: %zu | wall %.1f ms\n",
            (omp_get_wtime()-t_m0)*1000.0, total_cliques, (omp_get_wtime()-t_par0)*1000.0);

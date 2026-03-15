@@ -90,6 +90,16 @@ public:
     void reserve_vertices(size_t n) {
         data_.reserve(n);
     }
+
+    /**
+     * Bulk init from pre-built flat arrays (zero-copy move).
+     * offsets: size = total_cliques+1, offsets[i] = start of clique i in data.
+     * data: concatenated vertex IDs.
+     */
+    void init_from_flat(std::vector<index_t>&& offsets_in, std::vector<index_t>&& data_in) {
+        offset_ = std::move(offsets_in);
+        data_   = std::move(data_in);
+    }
     
     /**
      * Clear all cliques
