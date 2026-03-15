@@ -118,6 +118,61 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    // Test SDCT_Par7 (stateless independent parallel BK)
+    // Compare actual clique vertex sets, not just count
+    auto par7Result = daf::timeCount("SDCT_Par7", [&]() -> CliqueCSR<int> {
+        return SDCT_Par7(edgeGraph, 1000000, 0);
+    });
+    size_t par7Count = par7Result.num_cliques();
+    printf("SDCT_Par7 clique count: %zu\n", par7Count);
+    if (par7Count == referenceCliqueCount) {
+        printf("✓ SDCT_Par7 correct\n");
+    } else {
+        printf("✗ SDCT_Par7 WRONG (diff %ld)\n", (long)par7Count - (long)referenceCliqueCount);
+        // Get reference cliques for comparison
+        auto refResult = SDCT_Par6_CSR(edgeGraph, 1000000, 0);
+        // Collect and sort all cliques from both
+        std::vector<std::vector<int>> par7Cliques, refCliques;
+        for (size_t i = 0; i < par7Result.num_cliques(); i++) {
+            auto span = par7Result.clique(i);
+            std::vector<int> c(span.begin(), span.end());
+            std::sort(c.begin(), c.end());
+            par7Cliques.push_back(std::move(c));
+        }
+        for (size_t i = 0; i < refResult.num_cliques(); i++) {
+            auto span = refResult.clique(i);
+            std::vector<int> c(span.begin(), span.end());
+            std::sort(c.begin(), c.end());
+            refCliques.push_back(std::move(c));
+        }
+        std::sort(par7Cliques.begin(), par7Cliques.end());
+        std::sort(refCliques.begin(), refCliques.end());
+        int extraCount = 0;
+        for (auto& c : par7Cliques) {
+            if (!std::binary_search(refCliques.begin(), refCliques.end(), c)) {
+                if (extraCount < 5) {
+                    printf("  Extra in par7: {");
+                    for (int x : c) printf("%d ", x);
+                    printf("}\n");
+                }
+                extraCount++;
+            }
+        }
+        int missingCount = 0;
+        for (auto& c : refCliques) {
+            if (!std::binary_search(par7Cliques.begin(), par7Cliques.end(), c)) {
+                if (missingCount < 5) {
+                    printf("  Missing from par7: {");
+                    for (int x : c) printf("%d ", x);
+                    printf("}\n");
+                }
+                missingCount++;
+            }
+        }
+        printf("Extra: %d, Missing: %d\n", extraCount, missingCount);
+        return 1;
+    }
+
     return 0;  // Early return
     // daf::log_memory("Tree Memory");
     // std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
