@@ -5,15 +5,19 @@
 #include <vector>
 #include <cstdint>
 #include <span>
+#include <cstring>
 #include "CSR.hpp"
+
+extern double nCr[1001][401];
 
 /**
  * CliqueCSR: CSR-based storage for clique results
- * 
+ *
  * Stores cliques (sets of vertices) in compressed sparse row format:
  * - offset_: clique start positions in data_
  * - data_: concatenated vertex lists for all cliques
- * 
+ * - pivot_: per-vertex isPivot flags (optional, for cliqueCount)
+ *
  * This is much more efficient than std::vector<std::vector<T>> for:
  * - Memory layout (single contiguous allocation)
  * - Cache locality
@@ -22,10 +26,11 @@
 template<typename NodeType = std::uint32_t>
 class CliqueCSR {
     using index_t = NodeType;
-    
+
     std::vector<index_t> offset_;  // size = num_cliques + 1
     std::vector<index_t> data_;    // concatenated clique vertex lists
-    
+    std::vector<uint8_t> pivot_;   // isPivot flag per vertex (parallel to data_)
+
 public:
     CliqueCSR() {
         offset_.push_back(0);  // Initialize with starting offset
@@ -100,7 +105,51 @@ public:
         offset_ = std::move(offsets_in);
         data_   = std::move(data_in);
     }
-    
+
+    /**
+     * Bulk init with pivot flags (zero-copy move).
+     */
+    void init_from_flat(std::vector<index_t>&& offsets_in, std::vector<index_t>&& data_in,
+                        std::vector<uint8_t>&& pivot_in) {
+        offset_ = std::move(offsets_in);
+        data_   = std::move(data_in);
+        pivot_  = std::move(pivot_in);
+    }
+
+    /**
+     * Whether pivot flags are available.
+     */
+    [[nodiscard]] bool has_pivot() const noexcept { return !pivot_.empty(); }
+
+    /**
+     * Compute clique counts per size k.
+     * Returns vector where result[k] = number of k-cliques encoded in this SDCT.
+     * Requires pivot flags to be present.
+     */
+    [[nodiscard]] std::vector<double> cliqueCount() const {
+        size_t maxSz = 0;
+        size_t nc = num_cliques();
+        for (size_t i = 0; i < nc; i++) {
+            size_t sz = (size_t)(offset_[i+1] - offset_[i]);
+            if (sz > maxSz) maxSz = sz;
+        }
+        std::vector<double> counts(maxSz + 1, 0.0);
+        for (size_t i = 0; i < nc; i++) {
+            size_t beg = (size_t)offset_[i], end = (size_t)offset_[i+1];
+            int pivotCount = 0, nonPivotCount = 0;
+            for (size_t j = beg; j < end; j++) {
+                if (pivot_[j]) pivotCount++;
+                else nonPivotCount++;
+            }
+            int rsize = pivotCount + nonPivotCount;
+            for (int q = 0; q <= pivotCount; q++) {
+                int k = rsize - q;
+                counts[(size_t)k] += nCr[pivotCount][q];
+            }
+        }
+        return counts;
+    }
+
     /**
      * Clear all cliques
      */

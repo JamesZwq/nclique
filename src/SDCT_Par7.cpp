@@ -1,16 +1,16 @@
 /*
  * SDCT_Par7: Stateless Independent Parallel BK
  *
- * Strategy: Precompute each vertex's P(v) member ordering to match Par6's
- * cumulative state, then solve each subproblem independently in parallel.
+ * Each vertex v gets a fully independent subproblem:
+ *   P(v) = {u > v : u ∈ N(v)}  (global IDs, degeneracy order)
+ *   Root v is always in the partial clique.
+ *   No shared state between vertices → perfect parallelism.
  *
- * Phase 1 (serial, fast): Simulate Par6's cumulative vertexSets swaps.
- *   For each vertex v in order 0..N-1, record which P(v) members are at
- *   positions [newBeginP..newBeginR) and their position-based ordering.
- *   Store per-vertex data: the ordered list of P(v) members.
+ * Correctness: cliqueCount (combinatorial k-clique counts via nCr) is
+ * pivot-invariant, so any valid BK pivot ordering is correct.
+ * No serial precompute phase needed.
  *
- * Phase 2 (parallel): For each vertex v, build local vertexSets/neighborsInP
- *   using the precomputed ordering, then run recurse7.
+ * Output stores isPivot flag per vertex for cliqueCount computation.
  */
 
 #include <omp.h>
@@ -38,35 +38,44 @@ struct Slab7 {
     void restore(int t){ top = t; }
 };
 
+// Per-thread output buffer storing vertex IDs and isPivot flags
 struct Out7 {
-    std::vector<int> buf;
-    std::vector<int> off;
-    void reserve(size_t n){ buf.reserve(n*8); off.reserve(n); }
+    std::vector<int> buf;       // [total, v0, v1, ..., total, v0, ...]
+    std::vector<uint8_t> pbuf;  // isPivot flags parallel to vertex entries in buf
+    std::vector<int> off;       // offset[i] = position in buf where clique i starts
+    void reserve(size_t n){ buf.reserve(n*8); pbuf.reserve(n*8); off.reserve(n); }
     size_t size() const { return off.size(); }
     size_t total_vertices() const {
         size_t tv = 0;
         for (size_t i = 0; i < off.size(); i++) tv += (size_t)buf[off[i]];
         return tv;
     }
+    // Add a clique leaf with keepV (non-pivot) and dropV (pivot) vertices
+    // l2g maps local IDs to global IDs
     void add(const int* keepV, int keepSz, const int* dropV, int dropSz, const int* l2g) {
         int total = keepSz + dropSz;
         off.push_back((int)buf.size());
-        buf.push_back(total);
-        int tmp[MAX_CSIZE];
+        buf.push_back(total);  // size header (no isPivot for this entry)
+        // Build sorted (globalID, isPivot) pairs
+        struct VP { int gid; uint8_t pivot; };
+        VP tmp[MAX_CSIZE];
         int ci = 0;
-        for(int i = 0; i < keepSz; i++) tmp[ci++] = l2g[keepV[i]];
-        if (dropV) for(int i = 0; i < dropSz; i++) tmp[ci++] = l2g[dropV[i]];
+        for(int i = 0; i < keepSz; i++) { tmp[ci++] = {l2g[keepV[i]], 0}; }
+        if (dropV) for(int i = 0; i < dropSz; i++) { tmp[ci++] = {l2g[dropV[i]], 1}; }
         // insertion sort by global ID
         for(int i = 1; i < ci; i++){
-            int gv = tmp[i], j = i-1;
-            while(j >= 0 && tmp[j] > gv){ tmp[j+1] = tmp[j]; j--; }
-            tmp[j+1] = gv;
+            VP v = tmp[i]; int j = i-1;
+            while(j >= 0 && tmp[j].gid > v.gid){ tmp[j+1] = tmp[j]; j--; }
+            tmp[j+1] = v;
         }
-        for(int i = 0; i < ci; i++) buf.push_back(tmp[i]);
+        for(int i = 0; i < ci; i++) {
+            buf.push_back(tmp[i].gid);
+            pbuf.push_back(tmp[i].pivot);
+        }
     }
 };
 
-// findPivot7: uses MY_MIN + break (valid after correct ordering setup)
+// findPivot7: full scan without break (entry order is independent, not cumulative)
 static int findPivot7(
     int** pivotCands, int* nPivotCands,
     int* vertexSets, int* vertexLookup,
@@ -78,12 +87,10 @@ static int findPivot7(
 
     for (int j = beginP; j < beginR; j++) {
         int u = vertexSets[j];
-        int numPotential = std::min(pSz, numNeighbors[u]);
         int inP = 0;
-        for (int k = 0; k < numPotential; k++) {
+        for (int k = 0; k < numNeighbors[u]; k++) {
             int nl = vertexLookup[neighborsInP[u][k]];
             if (nl >= beginP && nl < beginR) inP++;
-            else break;
         }
         if (inP > maxInP) { maxInP = inP; pivot = u; }
     }
@@ -92,12 +99,10 @@ static int findPivot7(
     for (int i = 0; i < pSz; i++) buf[i] = vertexSets[beginP + i];
     *nPivotCands = pSz;
 
-    int numPivotPotential = std::min(pSz, numNeighbors[pivot]);
-    for (int j = 0; j < numPivotPotential; j++) {
+    for (int j = 0; j < numNeighbors[pivot]; j++) {
         int nb = neighborsInP[pivot][j];
         int nl = vertexLookup[nb];
         if (nl >= beginP && nl < beginR) buf[nl - beginP] = -1;
-        else break;
     }
     for (int i = 0; i < *nPivotCands; ) {
         if (buf[i] == -1) { (*nPivotCands)--; buf[i] = buf[*nPivotCands]; }
@@ -107,7 +112,7 @@ static int findPivot7(
     return pivot;
 }
 
-// moveToR7: exact match of moveToRDegeneracyCliques
+// moveToR7: full scan without break
 static void moveToR7(
     int vertex, int* vertexSets, int* vertexLookup,
     int** neighborsInP, int* numNeighbors,
@@ -120,12 +125,10 @@ static void moveToR7(
 
     *pNewBeginP = *pBeginP;
     *pNewBeginR = *pBeginP;
-    int sizeOfP = *pBeginR - *pBeginP;
 
     for (int j = *pBeginP; j < *pBeginR; j++) {
         int nb = vertexSets[j];
-        int numPotential = std::min(sizeOfP, numNeighbors[nb]);
-        for (int k = 0; k < numPotential; k++) {
+        for (int k = 0; k < numNeighbors[nb]; k++) {
             if (neighborsInP[nb][k] == vertex) {
                 vertexSets[j] = vertexSets[*pNewBeginR]; vertexLookup[vertexSets[*pNewBeginR]] = j;
                 vertexSets[*pNewBeginR] = nb; vertexLookup[nb] = *pNewBeginR;
@@ -137,9 +140,8 @@ static void moveToR7(
 
     for (int j = *pNewBeginP; j < *pNewBeginR; j++) {
         int tv = vertexSets[j];
-        int numPotential = std::min(sizeOfP, numNeighbors[tv]);
         int cnt = 0;
-        for (int k = 0; k < numPotential; k++) {
+        for (int k = 0; k < numNeighbors[tv]; k++) {
             int nb = neighborsInP[tv][k];
             int nl = vertexLookup[nb];
             if (nl >= *pNewBeginP && nl < *pNewBeginR) {
@@ -206,61 +208,6 @@ CliqueCSR<int> SDCT_Par7(Graph& G, int max_k, int min_k)
                                    std::max(32LL*E/nT, (long long)N*64));
     printf("SDCT_Par7: arena %.0f MB/thread\n", arena_cap*4.0/(1024.0*1024.0));
 
-    // ============================================================
-    // Phase 1 (serial): Simulate Par6's cumulative vertexSets swaps
-    // to precompute, for each vertex v, the ordered P(v) members
-    // (in the exact position order that Par6's fillInP6 would produce).
-    // ============================================================
-    double t_pre0 = omp_get_wtime();
-
-    // Simulate Par6's cumulative state
-    std::vector<int> sim_vs(N), sim_vl(N);
-    for (int i = 0; i < N; i++) { sim_vs[i] = i; sim_vl[i] = i; }
-
-    // Per-vertex: store the ordered P(v) members (global IDs) in position order
-    // pv_members[v] = list of P(v) members in the order they appear in
-    //                 vertexSets[newBeginP..newBeginR) after fillInP swap
-    std::vector<std::vector<int>> pv_members(N);
-
-    int sim_beginX = 0, sim_beginP = 0, sim_beginR = N;
-
-    for (int vertex = 0; vertex < N; vertex++) {
-        // Simulate fillInP6: swap vertex into R position
-        int vl = sim_vl[vertex];
-        sim_beginR--;
-        sim_vs[vl] = sim_vs[sim_beginR]; sim_vl[sim_vs[sim_beginR]] = vl;
-        sim_vs[sim_beginR] = vertex; sim_vl[vertex] = sim_beginR;
-
-        int newBeginR = sim_beginR;
-        int newBeginP = sim_beginR;
-
-        // Swap later neighbors of vertex into P section
-        auto [nb, ne] = G.getNbr(vertex);
-        for (int idx = nb; idx < ne; idx++) {
-            int neighbor = G.adj_list[idx];
-            if (neighbor <= vertex) continue;
-            int nl = sim_vl[neighbor];
-            newBeginP--;
-            sim_vs[nl] = sim_vs[newBeginP]; sim_vl[sim_vs[newBeginP]] = nl;
-            sim_vs[newBeginP] = neighbor; sim_vl[neighbor] = newBeginP;
-        }
-
-        // Record P(v) members in their position order
-        int p = newBeginR - newBeginP;
-        pv_members[vertex].resize(p);
-        for (int i = 0; i < p; i++)
-            pv_members[vertex][i] = sim_vs[newBeginP + i];
-
-        // Note: we do NOT undo the swaps — cumulative state carries forward
-        // (same as Par6). beginR already decremented. beginP stays at 0.
-    }
-
-    printf("SDCT_Par7: precompute %.1f ms\n", (omp_get_wtime()-t_pre0)*1000.0);
-
-    // ============================================================
-    // Phase 2 (parallel): For each vertex v, build local state
-    // using precomputed pv_members ordering and run recurse7.
-    // ============================================================
     std::vector<int*> slab_mem((size_t)nT);
     for(int t = 0; t < nT; t++)
         slab_mem[t] = (int*)std::malloc((size_t)arena_cap * sizeof(int));
@@ -284,26 +231,31 @@ CliqueCSR<int> SDCT_Par7(Graph& G, int max_k, int min_k)
 
         #pragma omp for schedule(dynamic,16) nowait
         for (int v = 0; v < N; v++) {
-            const auto& pv = pv_members[v];
-            int p = (int)pv.size();
+            auto [nb, ne] = G.getNbr(v);
+
+            // P(v) = {u > v : u ∈ N(v)}
+            int p = 0;
+            for (int idx = nb; idx < ne; idx++)
+                if (G.adj_list[idx] > v) p++;
 
             if (p == 0) {
                 if (1 >= min_k) {
                     out.off.push_back((int)out.buf.size());
                     out.buf.push_back(1);
                     out.buf.push_back(v);
+                    out.pbuf.push_back(0); // non-pivot singleton
                 }
                 continue;
             }
 
             int slabTop = slab.save();
 
-            // l2g: local ID -> global ID
-            // Local ID i corresponds to vertex pv[i] (in Par6's position order)
+            // l2g[i] = global ID of i-th P(v) member (sorted by global ID)
             int* l2g = slab.alloc(p + 1);
-            for (int i = 0; i < p; i++) {
-                l2g[i] = pv[i];
-                gmark[pv[i]] = i;
+            int li = 0;
+            for (int idx = nb; idx < ne; idx++) {
+                int u = G.adj_list[idx];
+                if (u > v) { gmark[u] = li; l2g[li] = u; li++; }
             }
             l2g[p] = v;
 
@@ -312,11 +264,9 @@ CliqueCSR<int> SDCT_Par7(Graph& G, int max_k, int min_k)
             int* llook = slab.alloc(p);
             for (int i = 0; i < p; i++) { lsets[i] = i; llook[i] = i; }
 
-            // Build neighborsInP: iterate j=0..p-1 (matching Par6's vertexSets position order)
-            // For each local j, scan its adjacency for laterNeighbor > l2g[j] (global ID).
-            // This matches fillInPandX's iteration exactly.
-
-            // Count
+            // Build neighborsInP: iterate j=0..p-1 in order.
+            // For each local j, scan its later neighbors w (l2g[w] > l2g[j]).
+            // numNeighbors[u] = TOTAL P-degree.
             int* lnbCnt = slab.alloc(p);
             for (int i = 0; i < p; i++) lnbCnt[i] = 0;
 
@@ -333,12 +283,10 @@ CliqueCSR<int> SDCT_Par7(Graph& G, int max_k, int min_k)
                 }
             }
 
-            // Allocate
             std::vector<int*> lnbr_ptrs((size_t)p);
             for (int i = 0; i < p; i++)
                 lnbr_ptrs[i] = slab.alloc(lnbCnt[i] > 0 ? lnbCnt[i] : 1);
 
-            // Fill (same order as fillInPandX)
             for (int i = 0; i < p; i++) lnbCnt[i] = 0;
             for (int j = 0; j < p; j++) {
                 int gj = l2g[j];
@@ -360,7 +308,7 @@ CliqueCSR<int> SDCT_Par7(Graph& G, int max_k, int min_k)
                      max_k - 1, min_k - 1,
                      l2g, slab, out);
 
-            for (int i = 0; i < p; i++) gmark[pv[i]] = -1;
+            for (int idx = nb; idx < ne; idx++) gmark[G.adj_list[idx]] = -1;
             slab.restore(slabTop);
         }
     }
@@ -368,6 +316,7 @@ CliqueCSR<int> SDCT_Par7(Graph& G, int max_k, int min_k)
     for(int t = 0; t < nT; t++) std::free(slab_mem[t]);
     double t1 = omp_get_wtime();
 
+    // --- CSR merge with pivot flags ---
     std::vector<size_t> coff((size_t)(nT+1), 0), voff((size_t)(nT+1), 0);
     for(int t = 0; t < nT; t++){
         coff[(size_t)(t+1)] = coff[(size_t)t] + thread_out[(size_t)t].size();
@@ -377,7 +326,9 @@ CliqueCSR<int> SDCT_Par7(Graph& G, int max_k, int min_k)
 
     std::vector<int> csrOff((size_t)(TC+1));
     std::vector<int> csrDat((size_t)TV);
+    std::vector<uint8_t> csrPiv((size_t)TV);
 
+    // Pass 1: fill per-clique sizes
     #pragma omp parallel for schedule(static) num_threads(nT)
     for(int t = 0; t < nT; t++){
         size_t base = coff[(size_t)t];
@@ -385,24 +336,35 @@ CliqueCSR<int> SDCT_Par7(Graph& G, int max_k, int min_k)
         for(size_t oi = 0; oi < o.size(); oi++)
             csrOff[base+oi] = o.buf[o.off[oi]];
     }
+    // Prefix sum
     size_t run = 0;
     for(size_t i = 0; i < TC; i++){ size_t s=(size_t)csrOff[i]; csrOff[i]=(int)run; run+=s; }
     csrOff[TC] = (int)run;
 
+    // Pass 2: fill vertex data and pivot flags
     #pragma omp parallel for schedule(static) num_threads(nT)
     for(int t = 0; t < nT; t++){
         size_t base = coff[(size_t)t];
         const auto& o = thread_out[(size_t)t];
+        // Track pivot buffer offset: pbuf has entries only for vertex data
+        // (not for the size header). We need to compute the pivot offset
+        // for each clique in this thread's output.
+        size_t pivOff = 0;
         for(size_t oi = 0; oi < o.size(); oi++){
             size_t dst = (size_t)csrOff[base+oi];
             int pos = o.off[oi]; int total_sz = o.buf[pos++];
-            for(int i = 0; i < total_sz; i++) csrDat[dst++] = o.buf[pos++];
+            for(int i = 0; i < total_sz; i++) {
+                csrDat[dst+i] = o.buf[pos+i];
+                csrPiv[dst+i] = o.pbuf[pivOff+i];
+            }
+            pos += total_sz;
+            pivOff += (size_t)total_sz;
         }
     }
 
     CliqueCSR<int> res;
-    res.init_from_flat(std::move(csrOff), std::move(csrDat));
-    printf("SDCT_Par7: precompute=%.1fms par=%.1fms merge=%.1fms total=%zu\n",
-           (t0-t_pre0)*1000.0, (t1-t0)*1000.0, (omp_get_wtime()-t1)*1000.0, TC);
+    res.init_from_flat(std::move(csrOff), std::move(csrDat), std::move(csrPiv));
+    printf("SDCT_Par7: par=%.1fms merge=%.1fms total=%zu\n",
+           (t1-t0)*1000.0, (omp_get_wtime()-t1)*1000.0, TC);
     return res;
 }

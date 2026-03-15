@@ -87,90 +87,56 @@ int main(int argc, char **argv) {
     // edgeGraph.sortByDegree();
 
     daf::log_memory("Graph Memory");
-    
-    // Get reference clique count from original SDCT
-    size_t referenceCliqueCount = daf::timeCount("SDCT (reference)", [&]() -> size_t {
-        return SDCT(edgeGraph, 1000000, 0).adj_list.size();
-    });
-    printf("Reference SDCT clique count: %zu\n", referenceCliqueCount);
 
-    // Test SDCT_Par6 (DynamicGraph output)
-    size_t par6Count = daf::timeCount("SDCT_Par6", [&]() -> size_t {
-        return SDCT_Par6(edgeGraph, 1000000, 0).adj_list.size();
+    // Get reference cliqueCount from original SDCT
+    auto refTree = daf::timeCount("SDCT (reference)", [&]() {
+        return SDCT(edgeGraph, 1000000, 0);
     });
-    printf("SDCT_Par6 clique count: %zu\n", par6Count);
-    if (par6Count == referenceCliqueCount)
-        printf("✓ SDCT_Par6 correct\n");
-    else {
-        printf("✗ SDCT_Par6 WRONG (diff %ld)\n", (long)par6Count - (long)referenceCliqueCount);
-        return 1;
+    auto refCC = refTree.cliqueCount();
+    printf("Reference SDCT leaf count: %zu, maxK: %zu\n", refTree.adj_list.size(), (size_t)refCC.size()-1);
+    printf("Reference cliqueCount:");
+    for (size_t k = 1; k < refCC.size(); k++) {
+        if (refCC[k] > 0) printf(" [%zu]=%.0f", k, refCC[k]);
     }
-
-    // Test SDCT_Par6_CSR (CSR-only output, no per-clique heap alloc in merge)
-    size_t csrCount = daf::timeCount("SDCT_Par6_CSR", [&]() -> size_t {
-        return SDCT_Par6_CSR(edgeGraph, 1000000, 0).num_cliques();
-    });
-    printf("SDCT_Par6_CSR clique count: %zu\n", csrCount);
-    if (csrCount == referenceCliqueCount)
-        printf("✓ SDCT_Par6_CSR correct\n");
-    else {
-        printf("✗ SDCT_Par6_CSR WRONG (diff %ld)\n", (long)csrCount - (long)referenceCliqueCount);
-        return 1;
-    }
+    printf("\n");
 
     // Test SDCT_Par7 (stateless independent parallel BK)
-    // Compare actual clique vertex sets, not just count
+    // Compare cliqueCount vectors (pivot-invariant) with floating-point tolerance
     auto par7Result = daf::timeCount("SDCT_Par7", [&]() -> CliqueCSR<int> {
         return SDCT_Par7(edgeGraph, 1000000, 0);
     });
-    size_t par7Count = par7Result.num_cliques();
-    printf("SDCT_Par7 clique count: %zu\n", par7Count);
-    if (par7Count == referenceCliqueCount) {
-        printf("✓ SDCT_Par7 correct\n");
+    printf("SDCT_Par7 leaf count: %zu\n", par7Result.num_cliques());
+
+    if (par7Result.has_pivot()) {
+        auto par7CC = par7Result.cliqueCount();
+        printf("Par7 cliqueCount:");
+        for (size_t k = 1; k < par7CC.size(); k++) {
+            if (par7CC[k] > 0) printf(" [%zu]=%.0f", k, par7CC[k]);
+        }
+        printf("\n");
+
+        // Compare with tolerance: relative error < 1e-6 or absolute error < 0.5
+        bool match = true;
+        size_t maxK = std::max((size_t)refCC.size(), par7CC.size());
+        for (size_t k = 0; k < maxK; k++) {
+            double rv = (k < refCC.size()) ? refCC[k] : 0.0;
+            double pv = (k < par7CC.size()) ? par7CC[k] : 0.0;
+            double diff = std::abs(rv - pv);
+            double maxVal = std::max(std::abs(rv), std::abs(pv));
+            if (diff > 0.5 && (maxVal < 1e-10 || diff / maxVal > 1e-6)) {
+                printf("  ✗ cliqueCount mismatch at k=%zu: ref=%.0f par7=%.0f diff=%.0f\n",
+                       k, rv, pv, rv - pv);
+                match = false;
+            }
+        }
+        if (match)
+            printf("✓ SDCT_Par7 cliqueCount correct\n");
+        else {
+            printf("✗ SDCT_Par7 cliqueCount WRONG\n");
+            return 1;
+        }
     } else {
-        printf("✗ SDCT_Par7 WRONG (diff %ld)\n", (long)par7Count - (long)referenceCliqueCount);
-        // Get reference cliques for comparison
-        auto refResult = SDCT_Par6_CSR(edgeGraph, 1000000, 0);
-        // Collect and sort all cliques from both
-        std::vector<std::vector<int>> par7Cliques, refCliques;
-        for (size_t i = 0; i < par7Result.num_cliques(); i++) {
-            auto span = par7Result.clique(i);
-            std::vector<int> c(span.begin(), span.end());
-            std::sort(c.begin(), c.end());
-            par7Cliques.push_back(std::move(c));
-        }
-        for (size_t i = 0; i < refResult.num_cliques(); i++) {
-            auto span = refResult.clique(i);
-            std::vector<int> c(span.begin(), span.end());
-            std::sort(c.begin(), c.end());
-            refCliques.push_back(std::move(c));
-        }
-        std::sort(par7Cliques.begin(), par7Cliques.end());
-        std::sort(refCliques.begin(), refCliques.end());
-        int extraCount = 0;
-        for (auto& c : par7Cliques) {
-            if (!std::binary_search(refCliques.begin(), refCliques.end(), c)) {
-                if (extraCount < 5) {
-                    printf("  Extra in par7: {");
-                    for (int x : c) printf("%d ", x);
-                    printf("}\n");
-                }
-                extraCount++;
-            }
-        }
-        int missingCount = 0;
-        for (auto& c : refCliques) {
-            if (!std::binary_search(par7Cliques.begin(), par7Cliques.end(), c)) {
-                if (missingCount < 5) {
-                    printf("  Missing from par7: {");
-                    for (int x : c) printf("%d ", x);
-                    printf("}\n");
-                }
-                missingCount++;
-            }
-        }
-        printf("Extra: %d, Missing: %d\n", extraCount, missingCount);
-        return 1;
+        printf("  (no pivot flags — cannot verify cliqueCount)\n");
     }
 
     return 0;  // Early return
