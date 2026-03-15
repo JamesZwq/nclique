@@ -277,7 +277,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         double t_work=0;
         double t_par_start = omp_get_wtime();
 
-        #pragma omp for schedule(guided,4) nowait
+        #pragma omp for schedule(guided) nowait
         for(int vertex=0;vertex<size;vertex++){
             double tw0=omp_get_wtime();
             // beginR is deterministic: after processing vertices 0..vertex-1,
@@ -317,14 +317,20 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     size_t total=0;
     double t_merge0 = omp_get_wtime();
     for(auto&tl:thread_leaves)total+=tl.size();
+    double t_count = omp_get_wtime();
     
     DynamicGraph<TreeGraphNode> treeGraph(size);
+    double t_construct = omp_get_wtime();
     treeGraph.adj_list.reserve(total);
+    double t_reserve = omp_get_wtime();
     
     // Serial flush with pre-reserved space (no reallocation)
     for(int t=0;t<nthreads;t++) thread_leaves[t].flush(treeGraph);
+    double t_flush = omp_get_wtime();
     
-    double t_merge1 = omp_get_wtime();
-    printf("Result merge took: %.1f ms (total cliques: %zu)\n", (t_merge1-t_merge0)*1000, total);
+    printf("Merge breakdown: count=%.1fms construct=%.1fms reserve=%.1fms flush=%.1fms\n",
+           (t_count-t_merge0)*1000, (t_construct-t_count)*1000, 
+           (t_reserve-t_construct)*1000, (t_flush-t_reserve)*1000);
+    printf("Result merge took: %.1f ms (total cliques: %zu)\n", (t_flush-t_merge0)*1000, total);
     return treeGraph;
 }
