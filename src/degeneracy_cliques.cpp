@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
 
     daf::log_memory("Graph Memory");
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&]() -> DynamicGraph<TreeGraphNode> {
-        return SDCT_Parallel_Atomic(edgeGraph, 1000000, 0);  // 原子操作并行版本
+        return SDCT_Parallel_Optimized_Final(edgeGraph, 1000000, 0);  // 最终优化版本（带核心剪枝）
     });
     std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
     // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
