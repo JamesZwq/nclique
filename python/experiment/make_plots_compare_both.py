@@ -585,26 +585,35 @@ def _plot_cbs_special_cases(df: pd.DataFrame, out_dir: str):
             ax.set_xticklabels(tick_labels)
             ax.set_xlim(left=-0.5, right=len(s_vals) - 0.5)
 
-            ax.set_yscale('linear')
+            ax.set_yscale('log')
             max_time = plot_df['total_sec'].max()
             ax.set_ylim(bottom=0, top=max_time * 1.1 if pd.notna(max_time) else None)
 
             ax.set_xlabel("s")
             ax.set_ylabel("Time (s)")
-            ax.set_title(f"{ds_name}\nr={r_val}")
+            # ax.set_title(f"{ds_name}\nr={r_val}")
             _style_axes(ax)
             # ax.legend() # Legend is now external
 
             _save_fig_formats(fig, f"special_{ds_name}_r{r_val}_time", out_dir, PNG_OUT_DIR)
             plt.close(fig)
-
+    # print(plot_df)
+    # print all plot_df
+    print("\n[DEBUG] Special Cases Data:")
+    for ds_name in datasets_to_plot:
+        for r_val in target_r_values:
+            plot_df = df[(df["dataset_name"] == ds_name) &
+                         (df["r"] == r_val) &
+                         (df['source'].isin(sources_to_plot))].copy()
+            print(f"\nDataset: {ds_name}, r: {r_val}")
+            print(plot_df[["s", "source", "total_sec", "max_rss_mb", "exit_status"]])
     for ds_name in datasets_to_plot:
         for r_val in target_r_values:
             plot_df = df[(df["dataset_name"] == ds_name) &
                          (df["r"] == r_val) &
                          (df['source'].isin(sources_to_plot))].copy()
 
-            plot_df.dropna(subset=['max_rss_kb'], inplace=True)
+            plot_df.dropna(subset=['max_rss_mb'], inplace=True)
 
             s_vals = sorted(plot_df["s"].unique())
             if not s_vals:
@@ -614,7 +623,7 @@ def _plot_cbs_special_cases(df: pd.DataFrame, out_dir: str):
             print(f"\n[Plotting Special Time] Dataset: {ds_name}, r: {r_val}")
 
             fig, ax = plt.subplots(figsize=(3, 1.4))
-            pivot = plot_df.pivot_table(index='s', columns='source', values='max_rss_kb').reindex(s_vals)
+            pivot = plot_df.pivot_table(index='s', columns='source', values='max_rss_mb').reindex(s_vals)
 
             for src in _order_series_keys(pivot.columns):
                 if src not in sources_to_plot: continue
@@ -634,13 +643,14 @@ def _plot_cbs_special_cases(df: pd.DataFrame, out_dir: str):
             ax.set_xticklabels(tick_labels)
             ax.set_xlim(left=-0.5, right=len(s_vals) - 0.5)
 
-            ax.set_yscale('linear')
-            max_time = plot_df['total_sec'].max()
-            ax.set_ylim(bottom=0, top=max_time * 1.1 if pd.notna(max_time) else None)
+            ax.set_yscale('log')
+            # Use memory values (not time) to set y-limits so visible lines are not clipped
+            max_mem = plot_df['max_rss_mb'].max()
+            ax.set_ylim(bottom=0, top=max_mem * 1.1 if pd.notna(max_mem) else None)
 
             ax.set_xlabel("s")
             ax.set_ylabel("Memory (MB)")
-            ax.set_title(f"{ds_name}\nr={r_val}")
+            # ax.set_title(f"{ds_name}\nr={r_val}")
             _style_axes(ax)
             # ax.legend() # Legend is now external
 
