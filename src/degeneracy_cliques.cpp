@@ -93,9 +93,8 @@ int main(int argc, char **argv) {
     
     // Verify clique count
     printf("Total cliques: %zu\n", cliqueResult.num_cliques());
-    printf("Total vertices in cliques: %zu\n", cliqueResult.total_vertices());
     
-    return 0;  // Early return - CSR version complete
+    return 0;  // Early return
     // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
 
     // daf::log_memory("Tree Memory");

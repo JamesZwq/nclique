@@ -87,12 +87,14 @@ struct LeafArena5 {
     void flush_csr(CliqueCSR<int>& out){
         for(int oi=0;oi<(int)offsets.size();oi++){
             int pos=offsets[oi],sz=buf[pos++];
-            std::vector<int> clique; clique.reserve(sz);
+            // Extract vertex IDs directly (skip isPivot flags)
+            std::vector<int> vertices;
+            vertices.reserve(sz);
             for(int i=0;i<sz;i++){
-                clique.push_back((int)buf[pos]);  // only store vertex id, skip isPivot
+                vertices.push_back((int)buf[pos]);  // only store vertex id, skip isPivot
                 pos+=2;
             }
-            out.add_clique(clique);
+            out.add_clique(vertices);
         }
     }
     size_t size() const { return offsets.size(); }
