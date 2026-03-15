@@ -226,10 +226,13 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         int** neighborsInP= (int**)std::malloc(size*sizeof(int*));
 
         // Initialize with first-touch (thread writes its own pages -> NUMA local)
+        // Use arena base directly for neighborsInP to avoid 317K alloc_raw calls
+        int* nbr_base = g_arena5.base;
         for(int i=0;i<size;i++){
             vertexSets[i]=i; vertexLookup[i]=i; numNeighbors[i]=1;
-            neighborsInP[i]=g_arena5.alloc_raw(1);
+            neighborsInP[i]=nbr_base+i;  // direct pointer arithmetic, no function call
         }
+        g_arena5.top = size;  // mark first `size` slots as used
 
         // Barrier: wait for ALL threads to finish init before starting work
         // This prevents Thread 0 (fast init) from hogging early vertices
