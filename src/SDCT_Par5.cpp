@@ -315,7 +315,6 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     }
 
     size_t total=0;
-    size_t total=0;
     double t_merge0 = omp_get_wtime();
     for(auto&tl:thread_leaves)total+=tl.size();
     
