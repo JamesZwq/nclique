@@ -277,7 +277,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         double t_work=0;
         double t_par_start = omp_get_wtime();
 
-        #pragma omp for schedule(guided) nowait
+        #pragma omp for schedule(guided,4) nowait
         for(int vertex=0;vertex<size;vertex++){
             double tw0=omp_get_wtime();
             // beginR is deterministic: after processing vertices 0..vertex-1,
