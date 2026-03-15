@@ -68,35 +68,10 @@ struct LeafArena5 {
         for(int i=0;i<total;i++){buf.push_back((int)tmp[i].v);buf.push_back((int)tmp[i].isPivot);}
     }
     void flush(DynamicGraph<TreeGraphNode>& out){
-        // Pre-allocate all TreeGraphNode data in one big chunk
-        // Count total nodes
-        size_t total_nodes = 0;
-        for(int oi=0;oi<(int)offsets.size();oi++){
-            total_nodes += buf[offsets[oi]];
-        }
-        
-        // Single allocation for all nodes
-        std::vector<TreeGraphNode> pool;
-        pool.reserve(total_nodes);
-        
-        // Fill pool and track leaf boundaries
-        std::vector<std::pair<int,int>> leaf_ranges; // (start, size)
-        leaf_ranges.reserve(offsets.size());
-        
         for(int oi=0;oi<(int)offsets.size();oi++){
             int pos=offsets[oi],sz=buf[pos++];
-            int start = pool.size();
-            for(int i=0;i<sz;i++){
-                pool.emplace_back((daf::Size)buf[pos],(bool)buf[pos+1]);
-                pos+=2;
-            }
-            leaf_ranges.push_back({start, sz});
-        }
-        
-        // Now create vectors from pool slices (avoids per-vector malloc)
-        out.adj_list.reserve(out.adj_list.size() + leaf_ranges.size());
-        for(auto [start, sz] : leaf_ranges){
-            std::vector<TreeGraphNode> leaf(pool.begin()+start, pool.begin()+start+sz);
+            std::vector<TreeGraphNode> leaf; leaf.reserve(sz);
+            for(int i=0;i<sz;i++){leaf.emplace_back((daf::Size)buf[pos],(bool)buf[pos+1]);pos+=2;}
             out.adj_list.push_back(std::move(leaf));
         }
     }
@@ -342,9 +317,20 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     size_t total=0;
     double t_merge0 = omp_get_wtime();
     for(auto&tl:thread_leaves)total+=tl.size();
+    
     DynamicGraph<TreeGraphNode> treeGraph(size);
-    treeGraph.adj_list.reserve(total);
-    for(int t=0;t<nthreads;t++) thread_leaves[t].flush(treeGraph);
+    treeGraph.adj_list.resize(total);  // Pre-allocate all vectors
+    
+    // Compute per-thread offsets for parallel flush
+    std::vector<size_t> t_offsets(nthreads+1, 0);
+    for(int t=0;t<nthreads;t++) t_offsets[t+1] = t_offsets[t] + thread_leaves[t].size();
+    
+    // Parallel flush: each thread fills its own slice
+    #pragma omp parallel for schedule(static) num_threads(nthreads)
+    for(int t=0;t<nthreads;t++){
+        thread_leaves[t].flush_range(treeGraph, t_offsets[t]);
+    }
+    
     double t_merge1 = omp_get_wtime();
     printf("Result merge took: %.1f ms (total cliques: %zu)\n", (t_merge1-t_merge0)*1000, total);
     return treeGraph;
