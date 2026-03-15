@@ -32,8 +32,7 @@ DynamicGraph<TreeGraphNode> SDCT_Parallel_Limited(Graph &edgeGraph, int max_k, i
     
     // Limit threads to avoid memory explosion
     int max_threads = omp_get_max_threads();
-    int effective_threads = std::min(max_threads, 16);  // Use at most 16 threads
-    omp_set_num_threads(effective_threads);
+    int effective_threads = std::min(max_threads, 8);  // Use at most 8 threads
     
     std::cout << "SDCT_Parallel_Limited with " << effective_threads << " threads (max available: " << max_threads << ")" << std::endl;
     
@@ -95,9 +94,6 @@ DynamicGraph<TreeGraphNode> SDCT_Parallel_Limited(Graph &edgeGraph, int max_k, i
             Free(local_neighborsInP[i]);
         }
     }
-
-    // Restore original thread count
-    omp_set_num_threads(max_threads);
 
     // Merge results from all threads
     DynamicGraph<TreeGraphNode> treeGraph(size);
