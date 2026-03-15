@@ -210,7 +210,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
 
     // Pre-allocate all per-thread buffers SERIALLY before parallel region
     // This eliminates malloc contention (32 threads competing for glibc malloc lock)
-    int arena_cap = size * 16;
+    int arena_cap = size * 4;  // Reduced from 16: most vertices have small neighborhoods
     struct ThreadBufs {
         int* vertexSets=nullptr; int* vertexLookup=nullptr;
         int* numNeighbors=nullptr; int** neighborsInP=nullptr;
