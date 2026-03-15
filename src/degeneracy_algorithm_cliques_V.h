@@ -77,4 +77,6 @@ DynamicGraph<TreeGraphNode> SDCT_Parallel(Graph &edgeGraph, int max_k, int min_k
 
 DynamicGraph<TreeGraphNode> SDCT_Parallel_Optimized(Graph &edgeGraph, int max_k, int min_k);
 
+DynamicGraph<TreeGraphNode> SDCT_Parallel_Efficient(Graph &edgeGraph, int max_k, int min_k);
+
 #endif
