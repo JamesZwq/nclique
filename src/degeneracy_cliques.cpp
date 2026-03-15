@@ -93,24 +93,31 @@ int main(int argc, char **argv) {
         return SDCT(edgeGraph, 1000000, 0).adj_list.size();
     });
     printf("Reference SDCT clique count: %zu\n", referenceCliqueCount);
-    
-    // Get optimized clique count from SDCT_Par6
-    size_t optimizedCliqueCount = daf::timeCount("SDCT_Par6 (optimized)", [&]() -> size_t {
+
+    // Test SDCT_Par6 (DynamicGraph output)
+    size_t par6Count = daf::timeCount("SDCT_Par6", [&]() -> size_t {
         return SDCT_Par6(edgeGraph, 1000000, 0).adj_list.size();
     });
-    printf("Optimized SDCT_Par6 clique count: %zu\n", optimizedCliqueCount);
-
-    // Verify correctness
-    if (referenceCliqueCount == optimizedCliqueCount) {
-        printf("✓ Clique counts match! Both have %zu cliques\n", referenceCliqueCount);
-    } else {
-        printf("✗ ERROR: Clique counts DO NOT match!\n");
-        printf("  SDCT: %zu\n", referenceCliqueCount);
-        printf("  SDCT_Par6: %zu\n", optimizedCliqueCount);
-        printf("  Difference: %ld\n", (long)optimizedCliqueCount - (long)referenceCliqueCount);
-        return 1;  // Exit with error
+    printf("SDCT_Par6 clique count: %zu\n", par6Count);
+    if (par6Count == referenceCliqueCount)
+        printf("✓ SDCT_Par6 correct\n");
+    else {
+        printf("✗ SDCT_Par6 WRONG (diff %ld)\n", (long)par6Count - (long)referenceCliqueCount);
+        return 1;
     }
-    
+
+    // Test SDCT_Par6_CSR (CSR-only output, no per-clique heap alloc in merge)
+    size_t csrCount = daf::timeCount("SDCT_Par6_CSR", [&]() -> size_t {
+        return SDCT_Par6_CSR(edgeGraph, 1000000, 0).num_cliques();
+    });
+    printf("SDCT_Par6_CSR clique count: %zu\n", csrCount);
+    if (csrCount == referenceCliqueCount)
+        printf("✓ SDCT_Par6_CSR correct\n");
+    else {
+        printf("✗ SDCT_Par6_CSR WRONG (diff %ld)\n", (long)csrCount - (long)referenceCliqueCount);
+        return 1;
+    }
+
     return 0;  // Early return
     // daf::log_memory("Tree Memory");
     // std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;

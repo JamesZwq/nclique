@@ -51,7 +51,6 @@ struct LeafArena6 {
         int total = keepSz + dropSz;
         buf.push_back(total);
         // Interleave as (v, isPivot) pairs, sort inline
-        // Use a small stack buffer to sort
         int tmp[MAX_CSIZE * 2];  // v, isPivot pairs
         int cnt = 0;
         for (int i = 0; i < keepSz; i++) { tmp[cnt++] = keepV[i]; tmp[cnt++] = 0; }
@@ -67,6 +66,7 @@ struct LeafArena6 {
 
     size_t size() const { return offsets.size(); }
 
+    // Flush to DynamicGraph (kept for correctness testing with small graphs)
     void flush_range(DynamicGraph<TreeGraphNode>& out, size_t base_idx) {
         for (int oi = 0; oi < (int)offsets.size(); oi++) {
             int pos = offsets[oi], sz = buf[pos++];
@@ -78,7 +78,30 @@ struct LeafArena6 {
         }
     }
 
-    size_t total_ints() const { return buf.size(); }
+    // Fast flush to CSR — no per-clique heap allocation; parallel memcpy-friendly
+    // out_offsets[base_clique .. base_clique+size()] and out_data[base_data..]
+    // must be pre-allocated by caller (two-pass: first collect sizes, then fill)
+    void fill_csr_offsets(size_t base_clique, std::vector<size_t>& out_offsets) const {
+        for (int oi = 0; oi < (int)offsets.size(); oi++) {
+            int pos = offsets[oi], sz = buf[pos];  // buf[pos] = total
+            out_offsets[base_clique + (size_t)oi] = (size_t)sz;
+        }
+    }
+
+    // After prefix-sum, fill data region starting at out_data + base_data
+    void fill_csr_data(size_t base_data, std::vector<int>& out_data) const {
+        size_t dst = base_data;
+        for (int oi = 0; oi < (int)offsets.size(); oi++) {
+            int pos = offsets[oi], sz = buf[pos++];
+            // Copy only vertex IDs (every other int: v, isPivot, v, isPivot, ...)
+            for (int i = 0; i < sz; i++) { out_data[dst++] = buf[pos]; pos += 2; }
+        }
+    }
+
+    size_t total_vertices() const {
+        // total (v,isPivot) pairs stored = (buf.size() - offsets.size()) / 2
+        return (buf.size() - offsets.size()) / 2;
+    }
 };
 
 // ---- findBestPivot: exact copy of findBestPivotNonNeighborsDegeneracyCliques
@@ -384,22 +407,240 @@ DynamicGraph<TreeGraphNode> SDCT_Par6(Graph& edgeGraph, int max_k, int min_k) {
         std::free(bufs[t].arena_mem);
     }
 
-    // Parallel two-pass merge
+    // --- Parallel CSR merge (no per-clique heap allocation) ---
     double t_m0 = omp_get_wtime();
-    std::vector<size_t> toff((size_t)(nthreads+1), 0);
-    for (int t = 0; t < nthreads; t++)
-        toff[(size_t)(t+1)] = toff[(size_t)t] + thread_leaves[(size_t)t].size();
-    size_t total = toff[(size_t)nthreads];
 
-    DynamicGraph<TreeGraphNode> treeGraph(size);
-    treeGraph.adj_list.resize(total);
+    // Pass 1: count cliques and vertices per thread
+    std::vector<size_t> clique_off((size_t)(nthreads+1), 0);
+    std::vector<size_t> vert_off((size_t)(nthreads+1), 0);
+    for (int t = 0; t < nthreads; t++) {
+        clique_off[(size_t)(t+1)] = clique_off[(size_t)t] + thread_leaves[(size_t)t].size();
+        vert_off[(size_t)(t+1)]   = vert_off[(size_t)t]   + thread_leaves[(size_t)t].total_vertices();
+    }
+    size_t total_cliques  = clique_off[(size_t)nthreads];
+    size_t total_vertices = vert_off[(size_t)nthreads];
 
+    // Allocate flat CSR arrays
+    // offset_[i] = start in data_ for clique i; offset_[total_cliques] = total_vertices
+    std::vector<size_t> csr_offsets(total_cliques + 1);
+    std::vector<int>    csr_data(total_vertices);
+
+    // Pass 2 (parallel): fill per-clique sizes into csr_offsets[base..base+n]
     #pragma omp parallel for schedule(static) num_threads(nthreads)
-    for (int t = 0; t < nthreads; t++)
-        thread_leaves[(size_t)t].flush_range(treeGraph, toff[(size_t)t]);
+    for (int t = 0; t < nthreads; t++) {
+        size_t base = clique_off[(size_t)t];
+        const auto& la = thread_leaves[(size_t)t];
+        for (size_t oi = 0; oi < la.size(); oi++) {
+            int pos = la.offsets[oi];
+            int sz  = la.buf[pos];  // stored as first int per entry
+            csr_offsets[base + oi] = (size_t)sz;
+        }
+    }
 
-    printf("SDCT_Par6: merge %.1f ms | total cliques: %zu | wall %.1f ms\n",
-           (omp_get_wtime()-t_m0)*1000.0, total, (omp_get_wtime()-t_par0)*1000.0);
+    // Serial prefix sum over csr_offsets (fast: one pass over total_cliques+1 ints)
+    size_t running = 0;
+    for (size_t i = 0; i <= total_cliques; i++) {
+        size_t sz = csr_offsets[i];
+        csr_offsets[i] = running;
+        running += sz;
+    }
+
+    // Pass 3 (parallel): fill vertex data using pre-computed offsets
+    #pragma omp parallel for schedule(static) num_threads(nthreads)
+    for (int t = 0; t < nthreads; t++) {
+        size_t base_clique = clique_off[(size_t)t];
+        const auto& la = thread_leaves[(size_t)t];
+        for (size_t oi = 0; oi < la.size(); oi++) {
+            size_t dst = csr_offsets[base_clique + oi];
+            int pos    = la.offsets[oi];
+            int sz     = la.buf[pos++];
+            // buf layout: sz, v0, p0, v1, p1, ...  — only copy vertex IDs
+            for (int i = 0; i < sz; i++) { csr_data[dst++] = la.buf[pos]; pos += 2; }
+        }
+    }
+
+    double t_merge_ms = (omp_get_wtime() - t_m0) * 1000.0;
+    printf("SDCT_Par6: CSR merge %.1f ms | total cliques: %zu | total verts: %zu | wall %.1f ms\n",
+           t_merge_ms, total_cliques, total_vertices, (omp_get_wtime()-t_par0)*1000.0);
+
+    // Build DynamicGraph from CSR (needed for callers that consume DynamicGraph)
+    double t_dg0 = omp_get_wtime();
+    DynamicGraph<TreeGraphNode> treeGraph(size);
+    treeGraph.adj_list.resize(total_cliques);
+    #pragma omp parallel for schedule(static) num_threads(nthreads)
+    for (int t = 0; t < nthreads; t++) {
+        size_t base = clique_off[(size_t)t];
+        const auto& la = thread_leaves[(size_t)t];
+        for (size_t oi = 0; oi < la.size(); oi++) {
+            size_t ci  = base + oi;
+            size_t src = csr_offsets[ci];
+            size_t sz  = csr_offsets[ci+1] - src;
+            // Reconstruct with isPivot info from original buf
+            int pos = la.offsets[oi]; pos++;  // skip sz field
+            std::vector<TreeGraphNode> leaf; leaf.reserve(sz);
+            for (size_t i = 0; i < sz; i++) {
+                leaf.emplace_back((daf::Size)la.buf[pos], (bool)la.buf[pos+1]); pos += 2;
+            }
+            treeGraph.adj_list[ci] = std::move(leaf);
+        }
+    }
+    printf("SDCT_Par6: DynamicGraph build %.1f ms\n", (omp_get_wtime()-t_dg0)*1000.0);
 
     return treeGraph;
+}
+
+// ============================================================
+// CSR-only entry point — returns CliqueCSR<int>, no DynamicGraph
+// Avoids ALL per-clique vector<> heap allocation in merge.
+// ============================================================
+CliqueCSR<int> SDCT_Par6_CSR(Graph& edgeGraph, int max_k, int min_k) {
+    int size     = (int)edgeGraph.getGraphNodeSize();
+    int nthreads = omp_get_max_threads();
+    printf("SDCT_Par6_CSR: %d threads\n", nthreads);
+
+    long long total_edges = (long long)edgeGraph.getGraphEdgeSize();
+    int arena_cap = (int)std::min(
+        512LL * 1024 * 1024,
+        std::max(8LL * total_edges, (long long)size * 16));
+
+    struct ThreadBufs {
+        int*  vertexSets   = nullptr;
+        int*  vertexLookup = nullptr;
+        int*  numNeighbors = nullptr;
+        int** neighborsInP = nullptr;
+        int*  arena_mem    = nullptr;
+    };
+    std::vector<ThreadBufs> bufs((size_t)nthreads);
+    for (int t = 0; t < nthreads; t++) {
+        bufs[t].vertexSets   = (int*) std::malloc((size_t)size * sizeof(int));
+        bufs[t].vertexLookup = (int*) std::malloc((size_t)size * sizeof(int));
+        bufs[t].numNeighbors = (int*) std::malloc((size_t)size * sizeof(int));
+        bufs[t].neighborsInP = (int**)std::malloc((size_t)size * sizeof(int*));
+        bufs[t].arena_mem    = (int*) std::malloc((size_t)arena_cap * sizeof(int));
+    }
+
+    std::vector<LeafArena6> thread_leaves((size_t)nthreads);
+
+    double t_par0 = omp_get_wtime();
+    #pragma omp parallel
+    {
+        int tid = omp_get_thread_num();
+        SlabArena6 arena;
+        arena.base = bufs[tid].arena_mem;
+        arena.cap  = arena_cap;
+        arena.top  = 0;
+
+        int*  vertexSets   = bufs[tid].vertexSets;
+        int*  vertexLookup = bufs[tid].vertexLookup;
+        int*  numNeighbors = bufs[tid].numNeighbors;
+        int** neighborsInP = bufs[tid].neighborsInP;
+
+        for (int i = 0; i < size; i++) {
+            vertexSets[i]   = i;
+            vertexLookup[i] = i;
+            numNeighbors[i] = 1;
+            neighborsInP[i] = arena.alloc(1);
+        }
+
+        LeafArena6& output = thread_leaves[(size_t)tid];
+        output.reserve((size_t)std::max(1, size / nthreads) * 20);
+
+        #pragma omp barrier
+
+        int beginX = 0, beginP = 0, beginR = size;
+        int keepV[MAX_CSIZE], dropV[MAX_CSIZE];
+        double t_work = 0.0, t_ps = omp_get_wtime();
+
+        #pragma omp for schedule(guided) nowait
+        for (int vertex = 0; vertex < size; vertex++) {
+            double tw0 = omp_get_wtime();
+            int arenaBase = arena.save();
+            int newBeginX, newBeginP, newBeginR;
+            fillInP6(vertex, vertexSets, vertexLookup, edgeGraph,
+                     neighborsInP, numNeighbors,
+                     &beginX, &beginP, &beginR,
+                     &newBeginX, &newBeginP, &newBeginR, arena);
+            keepV[0] = vertex;
+            recurse6(vertexSets, vertexLookup, neighborsInP, numNeighbors,
+                     newBeginP, newBeginR,
+                     keepV, 1, dropV, 0,
+                     max_k, min_k, arena, output);
+            arena.restore(arenaBase);
+            beginR = beginR + 1;
+            t_work += omp_get_wtime() - tw0;
+        }
+
+        double dur = omp_get_wtime() - t_ps;
+        #pragma omp critical
+        printf("Thread %2d: work=%.1fms total=%.1fms eff=%.0f%% cliques=%zu\n",
+               tid, t_work*1000.0, dur*1000.0,
+               dur > 0 ? 100.0*t_work/dur : 0.0, output.size());
+    }
+    printf("SDCT_Par6_CSR: parallel %.1f ms\n", (omp_get_wtime()-t_par0)*1000.0);
+
+    for (int t = 0; t < nthreads; t++) {
+        std::free(bufs[t].vertexSets);   std::free(bufs[t].vertexLookup);
+        std::free(bufs[t].numNeighbors); std::free(bufs[t].neighborsInP);
+        std::free(bufs[t].arena_mem);
+    }
+
+    // Parallel three-pass CSR merge
+    double t_m0 = omp_get_wtime();
+    std::vector<size_t> clique_off((size_t)(nthreads+1), 0);
+    std::vector<size_t> vert_off((size_t)(nthreads+1), 0);
+    for (int t = 0; t < nthreads; t++) {
+        clique_off[(size_t)(t+1)] = clique_off[(size_t)t] + thread_leaves[(size_t)t].size();
+        vert_off[(size_t)(t+1)]   = vert_off[(size_t)t]   + thread_leaves[(size_t)t].total_vertices();
+    }
+    size_t total_cliques  = clique_off[(size_t)nthreads];
+    size_t total_vertices = vert_off[(size_t)nthreads];
+
+    CliqueCSR<int> result;
+    // Pre-allocate: offset_ needs total_cliques+1 entries, data_ needs total_vertices
+    result.reserve_cliques(total_cliques);
+    result.reserve_vertices(total_vertices);
+
+    // We build CSR directly: fill offsets array then data array in parallel
+    // Use internal vectors via a two-pass: accumulate sizes, prefix-sum, fill data
+    std::vector<size_t> csr_offsets(total_cliques + 1);
+
+    #pragma omp parallel for schedule(static) num_threads(nthreads)
+    for (int t = 0; t < nthreads; t++) {
+        size_t base = clique_off[(size_t)t];
+        const auto& la = thread_leaves[(size_t)t];
+        for (size_t oi = 0; oi < la.size(); oi++) {
+            csr_offsets[base + oi] = (size_t)la.buf[la.offsets[oi]];  // sz field
+        }
+    }
+    size_t running = 0;
+    for (size_t i = 0; i < total_cliques; i++) {
+        size_t sz = csr_offsets[i];
+        csr_offsets[i] = running;
+        running += sz;
+    }
+    csr_offsets[total_cliques] = running;
+
+    std::vector<int> csr_data(total_vertices);
+    #pragma omp parallel for schedule(static) num_threads(nthreads)
+    for (int t = 0; t < nthreads; t++) {
+        size_t base = clique_off[(size_t)t];
+        const auto& la = thread_leaves[(size_t)t];
+        for (size_t oi = 0; oi < la.size(); oi++) {
+            size_t dst = csr_offsets[base + oi];
+            int pos    = la.offsets[oi];
+            int sz     = la.buf[pos++];
+            for (int i = 0; i < sz; i++) { csr_data[dst++] = la.buf[pos]; pos += 2; }
+        }
+    }
+
+    // Build CliqueCSR from the flat arrays (single memcpy equivalent)
+    for (size_t i = 0; i < total_cliques; i++) {
+        result.add_clique(csr_data.data() + csr_offsets[i],
+                          csr_offsets[i+1] - csr_offsets[i]);
+    }
+
+    printf("SDCT_Par6_CSR: merge %.1f ms | total cliques: %zu | wall %.1f ms\n",
+           (omp_get_wtime()-t_m0)*1000.0, total_cliques, (omp_get_wtime()-t_par0)*1000.0);
+
+    return result;
 }
