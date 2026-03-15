@@ -45,13 +45,24 @@ struct LeafArena6 {
 
     void reserve(size_t n) { buf.reserve(n * 10); offsets.reserve(n); }
 
-    void add(const std::vector<TreeGraphNode>& node) {
+    // Direct add from raw int arrays — no intermediate vector<TreeGraphNode>
+    void add(const int* keepV, int keepSz, const int* dropV, int dropSz) {
         offsets.push_back((int)buf.size());
-        buf.push_back((int)node.size());
-        for (auto& x : node) {
-            buf.push_back((int)x.v);
-            buf.push_back((int)x.isPivot);
+        int total = keepSz + dropSz;
+        buf.push_back(total);
+        // Interleave as (v, isPivot) pairs, sort inline
+        // Use a small stack buffer to sort
+        int tmp[MAX_CSIZE * 2];  // v, isPivot pairs
+        int cnt = 0;
+        for (int i = 0; i < keepSz; i++) { tmp[cnt++] = keepV[i]; tmp[cnt++] = 0; }
+        for (int i = 0; i < dropSz; i++) { tmp[cnt++] = dropV[i]; tmp[cnt++] = 1; }
+        // insertion sort pairs by v value (total is small in practice)
+        for (int i = 2; i < cnt; i += 2) {
+            int kv = tmp[i], kp = tmp[i+1], j = i - 2;
+            while (j >= 0 && tmp[j] > kv) { tmp[j+2] = tmp[j]; tmp[j+3] = tmp[j+1]; j -= 2; }
+            tmp[j+2] = kv; tmp[j+3] = kp;
         }
+        for (int i = 0; i < cnt; i++) buf.push_back(tmp[i]);
     }
 
     size_t size() const { return offsets.size(); }
@@ -66,6 +77,8 @@ struct LeafArena6 {
             out.adj_list[base_idx + (size_t)oi] = std::move(leaf);
         }
     }
+
+    size_t total_ints() const { return buf.size(); }
 };
 
 // ---- findBestPivot: exact copy of findBestPivotNonNeighborsDegeneracyCliques
@@ -231,17 +244,10 @@ static void recurse6(
     if (beginP >= beginR) {
         int cSize = keepSz + dropSz;
         if (cSize < min_k) return;
-        std::vector<TreeGraphNode> node;
-        if (keepSz == max_k) {
-            node.reserve((size_t)keepSz);
-            for (int i = 0; i < keepSz; i++) node.emplace_back((daf::Size)keepV[i], false);
-        } else {
-            node.reserve((size_t)cSize);
-            for (int i = 0; i < keepSz; i++) node.emplace_back((daf::Size)keepV[i], false);
-            for (int i = 0; i < dropSz; i++) node.emplace_back((daf::Size)dropV[i], true);
-            std::ranges::sort(node);
-        }
-        output.add(node);
+        if (keepSz == max_k)
+            output.add(keepV, keepSz, nullptr, 0);
+        else
+            output.add(keepV, keepSz, dropV, dropSz);
         return;
     }
 
