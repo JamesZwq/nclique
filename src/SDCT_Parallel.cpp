@@ -84,7 +84,7 @@ DynamicGraph<TreeGraphNode> SDCT_Parallel(Graph &edgeGraph, int max_k, int min_k
         int beginP = 0;
         int beginR = size;
 
-        #pragma omp for schedule(dynamic, 4) nowait
+        #pragma omp for schedule(dynamic, 32) nowait
         for (int vertex = 0; vertex < size; ++vertex) {
             int newBeginX, newBeginP, newBeginR;
 

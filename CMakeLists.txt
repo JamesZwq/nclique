@@ -108,7 +108,7 @@ endif()
 message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # 
-add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp src/SDCT_Parallel_Recursive.cpp)
+add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp src/SDCT_Parallel.cpp)
 add_executable(test_ultra_parallel ${COMMON_SOURCES} test_ultra_parallel.cpp)
 add_executable(test_detailed_verification ${COMMON_SOURCES} test_detailed_verification.cpp)
 add_executable(test_sdct_verify ${COMMON_SOURCES} test_sdct_verify.cpp)
