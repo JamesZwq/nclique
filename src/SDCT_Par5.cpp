@@ -208,39 +208,52 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     std::cout<<"SDCT_Par5 "<<nthreads<<" threads"<<std::endl;
     std::vector<LeafArena5> thread_leaves(nthreads);
 
+    // Pre-allocate all per-thread buffers SERIALLY before parallel region
+    // This eliminates malloc contention (32 threads competing for glibc malloc lock)
+    int arena_cap = size * 16;
+    struct ThreadBufs {
+        int* vertexSets=nullptr; int* vertexLookup=nullptr;
+        int* numNeighbors=nullptr; int** neighborsInP=nullptr;
+        int* arena=nullptr; int* mark=nullptr;
+    };
+    std::vector<ThreadBufs> bufs(nthreads);
+    for(int t=0;t<nthreads;t++){
+        bufs[t].vertexSets   = (int*)std::malloc(size*sizeof(int));
+        bufs[t].vertexLookup = (int*)std::malloc(size*sizeof(int));
+        bufs[t].numNeighbors = (int*)std::malloc(size*sizeof(int));
+        bufs[t].neighborsInP = (int**)std::malloc(size*sizeof(int*));
+        bufs[t].arena        = (int*)std::malloc(arena_cap*sizeof(int));
+        bufs[t].mark         = (int*)std::calloc(size, sizeof(int));
+    }
+
     #pragma omp parallel
     {
         int tid=omp_get_thread_num();
 
-        // Use mmap for NUMA-local allocation (first-touch policy)
-        // Each thread allocates its own memory on its local NUMA node
-        double t0=omp_get_wtime();
-        g_arena5.init(size*16);
-        g_mark5.init(size);
+        // Point thread-local structures at pre-allocated buffers
+        g_arena5.base = bufs[tid].arena;
+        g_arena5.cap  = arena_cap;
+        g_arena5.top  = size;
+        g_arena5.owned = false;
+        g_mark5.mark.assign(bufs[tid].mark, bufs[tid].mark + size);
+        g_mark5.gen   = 0;
         g_leafarena5.buf.clear(); g_leafarena5.offsets.clear();
         g_leafarena5.reserve(std::max(1,size/nthreads)*20);
 
-        // Allocate thread-local arrays with malloc for NUMA locality (first-touch)
-        int* vertexSets   = (int*)std::malloc(size*sizeof(int));
-        int* vertexLookup = (int*)std::malloc(size*sizeof(int));
-        int* numNeighbors = (int*)std::malloc(size*sizeof(int));
-        int** neighborsInP= (int**)std::malloc(size*sizeof(int*));
-        double t1=omp_get_wtime();
+        int* vertexSets    = bufs[tid].vertexSets;
+        int* vertexLookup  = bufs[tid].vertexLookup;
+        int* numNeighbors  = bufs[tid].numNeighbors;
+        int** neighborsInP = bufs[tid].neighborsInP;
 
-        // Initialize with first-touch (thread writes its own pages -> NUMA local)
-        // Use arena base directly for neighborsInP to avoid 317K alloc_raw calls
-        int* nbr_base = g_arena5.base;
+        // First-touch initialization in parallel (each thread touches its own pages)
+        // This achieves NUMA locality even though malloc was done in main thread
+        int* nbr_base = bufs[tid].arena;
         for(int i=0;i<size;i++){
             vertexSets[i]=i; vertexLookup[i]=i; numNeighbors[i]=1;
-            neighborsInP[i]=nbr_base+i;  // direct pointer arithmetic, no function call
+            neighborsInP[i]=nbr_base+i;
         }
-        g_arena5.top = size;  // mark first `size` slots as used
-        double t2=omp_get_wtime();
-        #pragma omp critical
-        printf("Thread %2d: malloc=%.2fms fill=%.2fms\n", tid, (t1-t0)*1000, (t2-t1)*1000);
 
-        // Barrier: wait for ALL threads to finish init before starting work
-        // This prevents Thread 0 (fast init) from hogging early vertices
+        // Barrier to synchronize all threads after initialization
         #pragma omp barrier
 
         int beginX=0,beginP=0,beginR=size;
@@ -276,12 +289,14 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
                100.0*t_work/(t_par_end-t_par_start));
         #pragma omp critical
         thread_leaves[tid]=std::move(g_leafarena5);
+        // No free here - bufs are freed after parallel region
+    }
 
-        // Free mmap allocations
-        std::free(vertexSets);
-        std::free(vertexLookup);
-        std::free(numNeighbors);
-        std::free(neighborsInP);
+    // Free all pre-allocated buffers
+    for(int t=0;t<nthreads;t++){
+        std::free(bufs[t].vertexSets); std::free(bufs[t].vertexLookup);
+        std::free(bufs[t].numNeighbors); std::free(bufs[t].neighborsInP);
+        std::free(bufs[t].arena); std::free(bufs[t].mark);
     }
 
     size_t total=0;
