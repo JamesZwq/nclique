@@ -206,7 +206,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     #pragma omp parallel
     {
         int tid=omp_get_thread_num();
-        g_arena5.init(size*64);
+        g_arena5.init(size*16);  // Reduced from 64 to 16 to save memory
         g_mark5.init(size);
         g_leafarena5.reserve(std::max(1,size/nthreads)*20);
 
@@ -220,7 +220,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         int beginX=0,beginP=0,beginR=size;
         int keepV[MAX_CSIZE],dropV[MAX_CSIZE];
 
-        #pragma omp for schedule(dynamic,1) nowait
+        #pragma omp for schedule(dynamic,16) nowait
         for(int vertex=0;vertex<size;vertex++){
             int arenaBase=g_arena5.save();
             int newBeginX,newBeginP,newBeginR;
