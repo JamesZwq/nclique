@@ -214,6 +214,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
 
         // Use mmap for NUMA-local allocation (first-touch policy)
         // Each thread allocates its own memory on its local NUMA node
+        double t0=omp_get_wtime();
         g_arena5.init(size*16);
         g_mark5.init(size);
         g_leafarena5.buf.clear(); g_leafarena5.offsets.clear();
@@ -224,6 +225,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         int* vertexLookup = (int*)std::malloc(size*sizeof(int));
         int* numNeighbors = (int*)std::malloc(size*sizeof(int));
         int** neighborsInP= (int**)std::malloc(size*sizeof(int*));
+        double t1=omp_get_wtime();
 
         // Initialize with first-touch (thread writes its own pages -> NUMA local)
         // Use arena base directly for neighborsInP to avoid 317K alloc_raw calls
@@ -233,6 +235,9 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
             neighborsInP[i]=nbr_base+i;  // direct pointer arithmetic, no function call
         }
         g_arena5.top = size;  // mark first `size` slots as used
+        double t2=omp_get_wtime();
+        #pragma omp critical
+        printf("Thread %2d: malloc=%.2fms fill=%.2fms\n", tid, (t1-t0)*1000, (t2-t1)*1000);
 
         // Barrier: wait for ALL threads to finish init before starting work
         // This prevents Thread 0 (fast init) from hogging early vertices
