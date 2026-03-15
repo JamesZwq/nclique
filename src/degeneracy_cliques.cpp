@@ -87,16 +87,31 @@ int main(int argc, char **argv) {
     // edgeGraph.sortByDegree();
 
     daf::log_memory("Graph Memory");
-    CliqueCSR<int> cliqueResult = daf::timeCount("Tree Build", [&]() -> CliqueCSR<int> {
-        return SDCT_Par5_CSR(edgeGraph, 1000000, 0);  // 使用 SDCT_Par5_CSR（CSR 版本）
-    });
     
-    // Verify clique count
-    printf("Total cliques: %zu\n", cliqueResult.num_cliques());
+    // Get reference clique count from original SDCT
+    size_t referenceCliqueCount = daf::timeCount("SDCT (reference)", [&]() -> size_t {
+        return SDCT(edgeGraph, 1000000, 0).adj_list.size();
+    });
+    printf("Reference SDCT clique count: %zu\n", referenceCliqueCount);
+    
+    // Get optimized clique count from SDCT_Par5
+    size_t optimizedCliqueCount = daf::timeCount("SDCT_Par5 (optimized)", [&]() -> size_t {
+        return SDCT_Par5(edgeGraph, 1000000, 0).adj_list.size();
+    });
+    printf("Optimized SDCT_Par5 clique count: %zu\n", optimizedCliqueCount);
+    
+    // Verify correctness
+    if (referenceCliqueCount == optimizedCliqueCount) {
+        printf("✓ Clique counts match! Both have %zu cliques\n", referenceCliqueCount);
+    } else {
+        printf("✗ ERROR: Clique counts DO NOT match!\n");
+        printf("  SDCT: %zu\n", referenceCliqueCount);
+        printf("  SDCT_Par5: %zu\n", optimizedCliqueCount);
+        printf("  Difference: %ld\n", (long)optimizedCliqueCount - (long)referenceCliqueCount);
+        return 1;  // Exit with error
+    }
     
     return 0;  // Early return
-    // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
-
     // daf::log_memory("Tree Memory");
     // std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
     // std::cout << "max clique: " << treeGraph.maxDegree() << std::endl;
