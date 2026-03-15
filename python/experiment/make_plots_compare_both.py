@@ -598,6 +598,55 @@ def _plot_cbs_special_cases(df: pd.DataFrame, out_dir: str):
             _save_fig_formats(fig, f"special_{ds_name}_r{r_val}_time", out_dir, PNG_OUT_DIR)
             plt.close(fig)
 
+    for ds_name in datasets_to_plot:
+        for r_val in target_r_values:
+            plot_df = df[(df["dataset_name"] == ds_name) &
+                         (df["r"] == r_val) &
+                         (df['source'].isin(sources_to_plot))].copy()
+
+            plot_df.dropna(subset=['max_rss_kb'], inplace=True)
+
+            s_vals = sorted(plot_df["s"].unique())
+            if not s_vals:
+                print(f"[Plotting Special Time] SKIPPING: No data for {ds_name}, r={r_val}")
+                continue
+
+            print(f"\n[Plotting Special Time] Dataset: {ds_name}, r: {r_val}")
+
+            fig, ax = plt.subplots(figsize=(3, 1.4))
+            pivot = plot_df.pivot_table(index='s', columns='source', values='max_rss_kb').reindex(s_vals)
+
+            for src in _order_series_keys(pivot.columns):
+                if src not in sources_to_plot: continue
+                ys = pivot[src].tolist()
+                ax.plot(np.arange(len(s_vals)), ys, label=src,
+                        color=COLOUR_MAP.get(src, 'black'),
+                        linestyle=LINESTYLE_MAP.get(src, 'solid'),
+                        linewidth=2, marker=MARKER_MAP.get(src, 'o'),
+                        markersize=MARKER_SIZE_PT)
+
+            # if not legend_saved and ax.get_legend_handles_labels()[1]:
+            #     _save_standalone_legend(ax, out_dir, "special_cbs_comparison_legend", ncol=2)
+            #     legend_saved = True
+
+            tick_positions, tick_labels = _get_smart_ticks(s_vals, max_ticks=8)
+            ax.set_xticks(tick_positions)
+            ax.set_xticklabels(tick_labels)
+            ax.set_xlim(left=-0.5, right=len(s_vals) - 0.5)
+
+            ax.set_yscale('linear')
+            max_time = plot_df['total_sec'].max()
+            ax.set_ylim(bottom=0, top=max_time * 1.1 if pd.notna(max_time) else None)
+
+            ax.set_xlabel("s")
+            ax.set_ylabel("Memory (MB)")
+            ax.set_title(f"{ds_name}\nr={r_val}")
+            _style_axes(ax)
+            # ax.legend() # Legend is now external
+
+            _save_fig_formats(fig, f"special_{ds_name}_r{r_val}_mem", out_dir, PNG_OUT_DIR)
+            plt.close(fig)
+
 
 # --- Data Loading and Processing ---
 

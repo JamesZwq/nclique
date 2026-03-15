@@ -325,19 +325,9 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     size_t total=0;
     double t_merge0 = omp_get_wtime();
     for(auto&tl:thread_leaves)total+=tl.size();
-
-    // Pre-compute per-thread clique offsets for parallel flush
-    std::vector<size_t> t_start(nthreads+1,0);
-    for(int t=0;t<nthreads;t++) t_start[t+1]=t_start[t]+thread_leaves[t].size();
-
     DynamicGraph<TreeGraphNode> treeGraph(size);
-    treeGraph.adj_list.resize(total); // default-init all vectors first
-
-    // Parallel flush: each thread fills its own slice of adj_list
-    #pragma omp parallel for schedule(static) num_threads(nthreads)
-    for(int t=0;t<nthreads;t++){
-        thread_leaves[t].flush_range(treeGraph, t_start[t]);
-    }
+    treeGraph.adj_list.reserve(total);
+    for(int t=0;t<nthreads;t++) thread_leaves[t].flush(treeGraph);
     double t_merge1 = omp_get_wtime();
     printf("Result merge took: %.1f ms (total cliques: %zu)\n", (t_merge1-t_merge0)*1000, total);
     return treeGraph;
