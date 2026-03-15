@@ -239,7 +239,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         g_arena5.owned = false;
         g_mark5.mark.assign(bufs[tid].mark, bufs[tid].mark + size);
         g_mark5.gen   = 0;
-        g_leafarena5.buf.clear(); g_leafarena5.offsets.clear();
+        g_leafarena5.leaves.clear();
         g_leafarena5.reserve(std::max(1,size/nthreads)*20);
 
         int* vertexSets    = bufs[tid].vertexSets;
