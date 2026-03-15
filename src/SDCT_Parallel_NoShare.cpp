@@ -65,7 +65,7 @@ DynamicGraph<TreeGraphNode> SDCT_Parallel_NoShare(Graph &edgeGraph, int max_k, i
         int beginR = size;
 
         // Each thread processes its own batch of vertices
-        #pragma omp for schedule(static) nowait
+        #pragma omp for schedule(dynamic, 32) nowait
         for (int vertex = 0; vertex < size; ++vertex) {
             int newBeginX, newBeginP, newBeginR;
 
