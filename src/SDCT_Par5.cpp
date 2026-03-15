@@ -28,12 +28,10 @@ struct Arena5 {
     int* base=nullptr; int top=0; int cap=0; bool owned=true;
     void init(int n){
         cap=n+16;
-        // Use mmap for NUMA-local allocation (first-touch policy)
-        base=(int*)mmap(nullptr, cap*sizeof(int), PROT_READ|PROT_WRITE,
-                        MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        base=(int*)std::malloc(cap*sizeof(int));
         top=0; owned=true;
     }
-    ~Arena5(){if(owned&&base&&base!=MAP_FAILED)munmap(base, cap*sizeof(int));}
+    ~Arena5(){if(owned&&base)std::free(base);}
     int* alloc_raw(int n){if(n<=0)n=1;int*p=base+top;top+=n;return p;}
     int save(){return top;}
     void restore(int t){top=t;}
@@ -221,11 +219,11 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         g_leafarena5.buf.clear(); g_leafarena5.offsets.clear();
         g_leafarena5.reserve(std::max(1,size/nthreads)*20);
 
-        // Allocate thread-local arrays via mmap for NUMA locality
-        int* vertexSets   = (int*)mmap(nullptr, size*sizeof(int), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-        int* vertexLookup = (int*)mmap(nullptr, size*sizeof(int), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-        int* numNeighbors = (int*)mmap(nullptr, size*sizeof(int), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-        int** neighborsInP= (int**)mmap(nullptr, size*sizeof(int*), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        // Allocate thread-local arrays with malloc for NUMA locality (first-touch)
+        int* vertexSets   = (int*)std::malloc(size*sizeof(int));
+        int* vertexLookup = (int*)std::malloc(size*sizeof(int));
+        int* numNeighbors = (int*)std::malloc(size*sizeof(int));
+        int** neighborsInP= (int**)std::malloc(size*sizeof(int*));
 
         // Initialize with first-touch (thread writes its own pages -> NUMA local)
         for(int i=0;i<size;i++){
@@ -258,10 +256,10 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         thread_leaves[tid]=std::move(g_leafarena5);
 
         // Free mmap allocations
-        munmap(vertexSets,   size*sizeof(int));
-        munmap(vertexLookup, size*sizeof(int));
-        munmap(numNeighbors, size*sizeof(int));
-        munmap(neighborsInP, size*sizeof(int*));
+        std::free(vertexSets);
+        std::free(vertexLookup);
+        std::free(numNeighbors);
+        std::free(neighborsInP);
     }
 
     size_t total=0;
