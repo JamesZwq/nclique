@@ -95,11 +95,7 @@ int main(int argc, char **argv) {
     printf("Total cliques: %zu\n", cliqueResult.num_cliques());
     printf("Total vertices in cliques: %zu\n", cliqueResult.total_vertices());
     
-    return 0;  // Early return - skip post-processing
-    // Rest of the code below is skipped for now
-    
-    DynamicGraph<TreeGraphNode> treeGraph;  // Dummy for compilation
-    DynamicGraph<TreeGraphNode> treeGraphV;  // Dummy for compilation
+    return 0;  // Early return - CSR version complete
     // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
 
     // daf::log_memory("Tree Memory");
@@ -123,7 +119,8 @@ int main(int argc, char **argv) {
     // DynamicBipartiteGraph BGraph(treeGraph, edgeGraph);
 
 
-    std::cout << "nun Leaf: " << treeGraph.adj_list.size() << std::endl;
+    std::cout << "nun Leaf: " << 0 << std::endl;  // CSR version - no adj_list
+    /*
     // DynamicGraphSet<TreeGraphNode> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
     DynamicGraphSet<TreeGraphNode> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
 
@@ -258,6 +255,7 @@ int main(int argc, char **argv) {
         std::cout << "Multi-threaded time: N/A" << std::endl;
 #endif
     }
+    */
 
     // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {
     //     return PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);
