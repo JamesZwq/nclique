@@ -312,9 +312,12 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     }
 
     size_t total=0;
+    double t_merge0 = omp_get_wtime();
     for(auto&tl:thread_leaves)total+=tl.offsets.size();
     DynamicGraph<TreeGraphNode> treeGraph(size);
     treeGraph.adj_list.reserve(total);
     for(auto&tl:thread_leaves)tl.flush(treeGraph);
+    double t_merge1 = omp_get_wtime();
+    printf("Result merge took: %.1f ms (total cliques: %zu)\n", (t_merge1-t_merge0)*1000, total);
     return treeGraph;
 }
