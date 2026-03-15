@@ -73,6 +73,14 @@ struct LeafArena5 {
             out.adj_list.push_back(std::move(leaf));
         }
     }
+    void flush_range(DynamicGraph<TreeGraphNode>& out, size_t base_idx){
+        for(int oi=0;oi<(int)offsets.size();oi++){
+            int pos=offsets[oi],sz=buf[pos++];
+            std::vector<TreeGraphNode> leaf; leaf.reserve(sz);
+            for(int i=0;i<sz;i++){leaf.emplace_back((daf::Size)buf[pos],(bool)buf[pos+1]);pos+=2;}
+            out.adj_list[base_idx+oi]=std::move(leaf);
+        }
+    }
 };
 static thread_local LeafArena5 g_leafarena5;
 
@@ -315,8 +323,17 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     double t_merge0 = omp_get_wtime();
     for(auto&tl:thread_leaves)total+=tl.offsets.size();
     DynamicGraph<TreeGraphNode> treeGraph(size);
-    treeGraph.adj_list.reserve(total);
-    for(auto&tl:thread_leaves)tl.flush(treeGraph);
+    treeGraph.adj_list.resize(total);
+
+    // Parallel flush: compute prefix sums then fill in parallel
+    std::vector<size_t> offsets_start(nthreads+1, 0);
+    for(int t=0;t<nthreads;t++) offsets_start[t+1]=offsets_start[t]+thread_leaves[t].offsets.size();
+
+    #pragma omp parallel for schedule(static) num_threads(nthreads)
+    for(int t=0;t<nthreads;t++){
+        size_t base = offsets_start[t];
+        thread_leaves[t].flush_range(treeGraph, base);
+    }
     double t_merge1 = omp_get_wtime();
     printf("Result merge took: %.1f ms (total cliques: %zu)\n", (t_merge1-t_merge0)*1000, total);
     return treeGraph;
