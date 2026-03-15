@@ -259,21 +259,13 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         int* numNeighbors  = bufs[tid].numNeighbors;
         int** neighborsInP = bufs[tid].neighborsInP;
 
-        // First-touch initialization in parallel:
-        // Each thread initializes ALL thread buffers for its assigned range [i_start, i_end)
-        // This parallelizes the fill work AND achieves reasonable NUMA locality
-        int chunk = (size + nthreads - 1) / nthreads;
-        int i_start = tid * chunk;
-        int i_end   = std::min(i_start + chunk, size);
-        for(int t=0;t<nthreads;t++){
-            int* vs  = bufs[t].vertexSets;
-            int* vl  = bufs[t].vertexLookup;
-            int* nn  = bufs[t].numNeighbors;
-            int** ni = bufs[t].neighborsInP;
-            int* nb  = bufs[t].arena;
-            for(int i=i_start;i<i_end;i++){
-                vs[i]=i; vl[i]=i; nn[i]=1; ni[i]=nb+i;
-            }
+        // First-touch initialization: each thread initializes ONLY its own buffers
+        // This achieves NUMA locality without redundant work
+        for(int i=0;i<size;i++){
+            vertexSets[i]=i; 
+            vertexLookup[i]=i; 
+            numNeighbors[i]=1; 
+            neighborsInP[i]=bufs[tid].arena+i;
         }
 
         // Barrier to synchronize all threads after initialization
