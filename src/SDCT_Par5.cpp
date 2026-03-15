@@ -217,6 +217,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         int* arena=nullptr; int* mark=nullptr;
     };
     std::vector<ThreadBufs> bufs(nthreads);
+    double t_alloc0 = omp_get_wtime();
     for(int t=0;t<nthreads;t++){
         bufs[t].vertexSets   = (int*)std::malloc(size*sizeof(int));
         bufs[t].vertexLookup = (int*)std::malloc(size*sizeof(int));
@@ -225,6 +226,8 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         bufs[t].arena        = (int*)std::malloc(arena_cap*sizeof(int));
         bufs[t].mark         = (int*)std::calloc(size, sizeof(int));
     }
+    double t_alloc1 = omp_get_wtime();
+    printf("Serial pre-alloc took: %.1f ms\n", (t_alloc1-t_alloc0)*1000);
 
     #pragma omp parallel
     {
