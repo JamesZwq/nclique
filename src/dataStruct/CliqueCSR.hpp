@@ -27,7 +27,9 @@ class CliqueCSR {
     std::vector<index_t> data_;    // concatenated clique vertex lists
     
 public:
-    CliqueCSR() = default;
+    CliqueCSR() {
+        offset_.push_back(0);  // Initialize with starting offset
+    }
     
     explicit CliqueCSR(size_t num_cliques) {
         offset_.reserve(num_cliques + 1);
