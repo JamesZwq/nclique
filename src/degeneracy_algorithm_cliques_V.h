@@ -42,6 +42,7 @@
 #include"MemoryManager.h"
 #include"degeneracy_helper.h"
 #include "graph/DynamicGraph.h"
+#include "dataStruct/CliqueCSR.hpp"
 
 
 void listAllCliquesDegeneracyRecursive_V(daf::Size *,
@@ -68,6 +69,8 @@ DynamicGraph<TreeGraphNode> SDCT_Par3(Graph &edgeGraph, int max_k, int min_k);
 DynamicGraph<TreeGraphNode> SDCT_Par4(Graph &edgeGraph, int max_k, int min_k);
 
 DynamicGraph<TreeGraphNode> SDCT_Par5(Graph &edgeGraph, int max_k, int min_k);
+
+CliqueCSR<int> SDCT_Par5_CSR(Graph &edgeGraph, int max_k, int min_k);
 
 DynamicGraph<TreeGraphNode> SDCT_Par_Optimized(Graph &edgeGraph, int max_k, int min_k);
 

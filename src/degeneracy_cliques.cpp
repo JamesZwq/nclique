@@ -96,6 +96,10 @@ int main(int argc, char **argv) {
     printf("Total vertices in cliques: %zu\n", cliqueResult.total_vertices());
     
     return 0;  // Early return - skip post-processing
+    // Rest of the code below is skipped for now
+    
+    DynamicGraph<TreeGraphNode> treeGraph;  // Dummy for compilation
+    DynamicGraph<TreeGraphNode> treeGraphV;  // Dummy for compilation
     // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
 
     // daf::log_memory("Tree Memory");
