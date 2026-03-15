@@ -564,7 +564,7 @@ def _plot_cbs_special_cases(df: pd.DataFrame, out_dir: str):
 
             print(f"\n[Plotting Special Time] Dataset: {ds_name}, r: {r_val}")
 
-            fig, ax = plt.subplots(figsize=(4, 2.5))
+            fig, ax = plt.subplots(figsize=(3, 1.4))
             pivot = plot_df.pivot_table(index='s', columns='source', values='total_sec').reindex(s_vals)
 
             for src in _order_series_keys(pivot.columns):
