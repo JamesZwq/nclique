@@ -277,7 +277,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         double t_work=0;
         double t_par_start = omp_get_wtime();
 
-        #pragma omp for schedule(dynamic,1) nowait
+        #pragma omp for schedule(guided) nowait
         for(int vertex=0;vertex<size;vertex++){
             double tw0=omp_get_wtime();
             // beginR is deterministic: after processing vertices 0..vertex-1,
@@ -319,17 +319,10 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     for(auto&tl:thread_leaves)total+=tl.size();
     
     DynamicGraph<TreeGraphNode> treeGraph(size);
-    treeGraph.adj_list.resize(total);  // Pre-allocate all vectors
+    treeGraph.adj_list.reserve(total);
     
-    // Compute per-thread offsets for parallel flush
-    std::vector<size_t> t_offsets(nthreads+1, 0);
-    for(int t=0;t<nthreads;t++) t_offsets[t+1] = t_offsets[t] + thread_leaves[t].size();
-    
-    // Parallel flush: each thread fills its own slice
-    #pragma omp parallel for schedule(static) num_threads(nthreads)
-    for(int t=0;t<nthreads;t++){
-        thread_leaves[t].flush_range(treeGraph, t_offsets[t]);
-    }
+    // Serial flush with pre-reserved space (no reallocation)
+    for(int t=0;t<nthreads;t++) thread_leaves[t].flush(treeGraph);
     
     double t_merge1 = omp_get_wtime();
     printf("Result merge took: %.1f ms (total cliques: %zu)\n", (t_merge1-t_merge0)*1000, total);
