@@ -33,8 +33,8 @@ DynamicGraph<TreeGraphNode> SDCT_Parallel_Batch(Graph &edgeGraph, int max_k, int
     std::cout << "SDCT_Parallel_Batch with " << nthreads << " threads" << std::endl;
     
     // Determine batch size: process vertices in batches to reduce overhead
-    int batch_size = std::max(1, size / (nthreads * 4));  // 4 batches per thread
-    int num_batches = (size + batch_size - 1) / batch_size;
+    int batch_size = std::max(1, (int)size / (nthreads * 4));  // 4 batches per thread
+    int num_batches = ((int)size + batch_size - 1) / batch_size;
     
     std::cout << "Batch size: " << batch_size << ", Num batches: " << num_batches << std::endl;
     
@@ -44,7 +44,7 @@ DynamicGraph<TreeGraphNode> SDCT_Parallel_Batch(Graph &edgeGraph, int max_k, int
     #pragma omp parallel for schedule(dynamic, 1) collapse(1)
     for (int batch_id = 0; batch_id < num_batches; ++batch_id) {
         int start_vertex = batch_id * batch_size;
-        int end_vertex = std::min(start_vertex + batch_size, size);
+        int end_vertex = std::min(start_vertex + batch_size, (int)size);
         
         // Each batch has its own data structures
         daf::StaticVector<int> vertexSets(size);
