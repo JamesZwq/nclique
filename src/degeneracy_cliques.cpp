@@ -22,6 +22,7 @@
 #include "graph/DynamicBipartiteGraph.hpp"
 #include "NucleusDecomposition/NCliqueCoreDecomposition.h"
 #include "degeneracy_algorithm_cliques_V.h"
+#include "dataStruct/CliqueCSR.hpp"
 
 
 
@@ -86,11 +87,14 @@ int main(int argc, char **argv) {
     // edgeGraph.sortByDegree();
 
     daf::log_memory("Graph Memory");
-    DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&]() -> DynamicGraph<TreeGraphNode> {
-        return SDCT_Par5(edgeGraph, 1000000, 0);  // 使用 SDCT_Par5（已优化版本）
+    CliqueCSR<int> cliqueResult = daf::timeCount("Tree Build", [&]() -> CliqueCSR<int> {
+        return SDCT_Par5_CSR(edgeGraph, 1000000, 0);  // 使用 SDCT_Par5_CSR（CSR 版本）
     });
-    return 0;  // Early return - skip cliqueCount and post-processing
-    std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
+    
+    // Verify clique count
+    printf("Total cliques: %zu\n", cliqueResult.num_cliques());
+    printf("Total vertices in cliques: %zu\n", cliqueResult.total_vertices());
+    
     return 0;  // Early return - skip post-processing
     // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
 

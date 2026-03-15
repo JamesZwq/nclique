@@ -21,6 +21,7 @@
 #include "tree/MultiBranchTree.h"
 #include "graph/DynamicGraph.h"
 #include "graph/Graph.h"
+#include "dataStruct/CliqueCSR.hpp"
 
 extern double nCr[1001][401];
 
@@ -81,6 +82,17 @@ struct LeafArena5 {
             std::vector<TreeGraphNode> leaf; leaf.reserve(sz);
             for(int i=0;i<sz;i++){leaf.emplace_back((daf::Size)buf[pos],(bool)buf[pos+1]);pos+=2;}
             out.adj_list[base_idx+oi]=std::move(leaf);
+        }
+    }
+    void flush_csr(CliqueCSR<int>& out){
+        for(int oi=0;oi<(int)offsets.size();oi++){
+            int pos=offsets[oi],sz=buf[pos++];
+            std::vector<int> clique; clique.reserve(sz);
+            for(int i=0;i<sz;i++){
+                clique.push_back((int)buf[pos]);  // only store vertex id, skip isPivot
+                pos+=2;
+            }
+            out.add_clique(clique);
         }
     }
     size_t size() const { return offsets.size(); }
@@ -327,4 +339,114 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     double t_merge1 = omp_get_wtime();
     printf("Result merge took: %.1f ms (total cliques: %zu)\n", (t_merge1-t_merge0)*1000, total);
     return treeGraph;
+}
+
+// CSR version: much faster merge using flat data structure
+CliqueCSR<int> SDCT_Par5_CSR(Graph& edgeGraph,int max_k,int min_k){
+    auto size=(int)edgeGraph.getGraphNodeSize();
+    int nthreads=omp_get_max_threads();
+    std::cout<<"SDCT_Par5_CSR "<<nthreads<<" threads"<<std::endl;
+    std::vector<LeafArena5> thread_leaves(nthreads);
+
+    // Pre-allocate all per-thread buffers SERIALLY before parallel region
+    int arena_cap = size * 8;
+    struct ThreadBufs {
+        int* vertexSets=nullptr; int* vertexLookup=nullptr;
+        int* numNeighbors=nullptr; int** neighborsInP=nullptr;
+        int* arena=nullptr; int* mark=nullptr;
+    };
+    std::vector<ThreadBufs> bufs(nthreads);
+    double t_alloc0 = omp_get_wtime();
+    for(int t=0;t<nthreads;t++){
+        bufs[t].vertexSets   = (int*)std::malloc(size*sizeof(int));
+        bufs[t].vertexLookup = (int*)std::malloc(size*sizeof(int));
+        bufs[t].numNeighbors = (int*)std::malloc(size*sizeof(int));
+        bufs[t].neighborsInP = (int**)std::malloc(size*sizeof(int*));
+        bufs[t].arena        = (int*)std::malloc(arena_cap*sizeof(int));
+        bufs[t].mark         = (int*)std::calloc(size, sizeof(int));
+    }
+    double t_alloc1 = omp_get_wtime();
+    printf("Serial pre-alloc took: %.1f ms\n", (t_alloc1-t_alloc0)*1000);
+
+    #pragma omp parallel
+    {
+        int tid=omp_get_thread_num();
+
+        g_arena5.base = bufs[tid].arena;
+        g_arena5.cap  = arena_cap;
+        g_arena5.top  = size;
+        g_arena5.owned = false;
+        g_mark5.mark.assign(bufs[tid].mark, bufs[tid].mark + size);
+        g_mark5.gen   = 0;
+        g_leafarena5.buf.clear(); g_leafarena5.offsets.clear();
+        g_leafarena5.reserve(std::max(1,size/nthreads)*20);
+
+        int* vertexSets    = bufs[tid].vertexSets;
+        int* vertexLookup  = bufs[tid].vertexLookup;
+        int* numNeighbors  = bufs[tid].numNeighbors;
+        int** neighborsInP = bufs[tid].neighborsInP;
+
+        // First-touch initialization: each thread initializes ONLY its own buffers
+        for(int i=0;i<size;i++){
+            vertexSets[i]=i; 
+            vertexLookup[i]=i; 
+            numNeighbors[i]=1; 
+            neighborsInP[i]=bufs[tid].arena+i;
+        }
+
+        #pragma omp barrier
+
+        int beginX=0,beginP=0,beginR=size;
+        int keepV[MAX_CSIZE],dropV[MAX_CSIZE];
+
+        double t_work=0;
+        double t_par_start = omp_get_wtime();
+
+        #pragma omp for schedule(guided) nowait
+        for(int vertex=0;vertex<size;vertex++){
+            double tw0=omp_get_wtime();
+            int localBeginR = size - vertex;
+            int localBeginP = 0;
+            int localBeginX = 0;
+            (void)beginX; (void)beginP; (void)beginR;
+            int arenaBase=g_arena5.save();
+            int newBeginX,newBeginP,newBeginR;
+            fillInPandXArena5(vertex,vertexSets,vertexLookup,edgeGraph,
+                              neighborsInP,numNeighbors,
+                              &localBeginX,&localBeginP,&localBeginR,&newBeginX,&newBeginP,&newBeginR);
+            keepV[0]=vertex;
+            recurse5(vertexSets,vertexLookup,neighborsInP,numNeighbors,
+                     newBeginP,newBeginR,keepV,1,dropV,0,max_k,min_k);
+            g_arena5.restore(arenaBase);
+            t_work += omp_get_wtime()-tw0;
+        }
+        double t_par_end = omp_get_wtime();
+        #pragma omp critical
+        printf("Thread %2d: work=%.1fms total=%.1fms efficiency=%.0f%%\n",
+               tid, t_work*1000, (t_par_end-t_par_start)*1000,
+               100.0*t_work/(t_par_end-t_par_start));
+        #pragma omp critical
+        thread_leaves[tid]=std::move(g_leafarena5);
+    }
+
+    // Free all pre-allocated buffers
+    for(int t=0;t<nthreads;t++){
+        std::free(bufs[t].vertexSets); std::free(bufs[t].vertexLookup);
+        std::free(bufs[t].numNeighbors); std::free(bufs[t].neighborsInP);
+        std::free(bufs[t].arena); std::free(bufs[t].mark);
+    }
+
+    size_t total=0;
+    double t_merge0 = omp_get_wtime();
+    for(auto&tl:thread_leaves)total+=tl.size();
+    
+    CliqueCSR<int> result;
+    result.reserve_cliques(total);
+    
+    // Serial flush with CSR format (much faster!)
+    for(int t=0;t<nthreads;t++) thread_leaves[t].flush_csr(result);
+    
+    double t_merge1 = omp_get_wtime();
+    printf("Result merge took: %.1f ms (total cliques: %zu)\n", (t_merge1-t_merge0)*1000, total);
+    return result;
 }
