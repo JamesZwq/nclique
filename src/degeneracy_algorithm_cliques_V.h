@@ -95,4 +95,6 @@ DynamicGraph<TreeGraphNode> SDCT_Parallel_Atomic(Graph &edgeGraph, int max_k, in
 
 DynamicGraph<TreeGraphNode> SDCT_Parallel_Optimized_Final(Graph &edgeGraph, int max_k, int min_k);
 
+DynamicGraph<TreeGraphNode> SDCT_Parallel_MinimalCritical(Graph &edgeGraph, int max_k, int min_k);
+
 #endif
