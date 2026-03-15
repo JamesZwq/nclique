@@ -90,6 +90,7 @@ int main(int argc, char **argv) {
         return SDCT_Par5(edgeGraph, 1000000, 0);  // 使用 SDCT_Par5（已优化版本）
     });
     std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
+    return 0;  // Early return - skip post-processing
     // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
 
     // daf::log_memory("Tree Memory");
