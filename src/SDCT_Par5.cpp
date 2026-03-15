@@ -220,18 +220,23 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         int beginX=0,beginP=0,beginR=size;
         int keepV[MAX_CSIZE],dropV[MAX_CSIZE];
 
-        #pragma omp for schedule(dynamic,16) nowait
+        #pragma omp for schedule(dynamic,1) nowait
         for(int vertex=0;vertex<size;vertex++){
+            // beginR is deterministic: after processing vertices 0..vertex-1,
+            // each one increments beginR by 1, so beginR = size - vertex
+            int localBeginR = size - vertex;
+            int localBeginP = 0;
+            int localBeginX = 0;
+            (void)beginX; (void)beginP; (void)beginR;
             int arenaBase=g_arena5.save();
             int newBeginX,newBeginP,newBeginR;
             fillInPandXArena5(vertex,vertexSets.data(),vertexLookup.data(),edgeGraph,
                               neighborsInP.data(),numNeighbors.data(),
-                              &beginX,&beginP,&beginR,&newBeginX,&newBeginP,&newBeginR);
+                              &localBeginX,&localBeginP,&localBeginR,&newBeginX,&newBeginP,&newBeginR);
             keepV[0]=vertex;
             recurse5(vertexSets.data(),vertexLookup.data(),neighborsInP.data(),numNeighbors.data(),
                      newBeginP,newBeginR,keepV,1,dropV,0,max_k,min_k);
             g_arena5.restore(arenaBase);
-            beginR++;
         }
         #pragma omp critical
         thread_leaves[tid]=std::move(g_leafarena5);
