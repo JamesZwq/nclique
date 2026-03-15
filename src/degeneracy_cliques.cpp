@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
     DynamicGraph<TreeGraphNode> treeGraph = daf::timeCount("Tree Build", [&]() -> DynamicGraph<TreeGraphNode> {
         return SDCT_Par5(edgeGraph, 1000000, 0);  // 使用 SDCT_Par5（已优化版本）
     });
+    return 0;  // Early return - skip cliqueCount and post-processing
     std::cout << "TreeGraph Clique Count: \n" << treeGraph.cliqueCount() << std::endl;
     return 0;  // Early return - skip post-processing
     // std::cout << "TreeGraphPerV Clique Count: \n" << treeGraphPar.cliqueCount() << std::endl;
