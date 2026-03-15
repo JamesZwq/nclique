@@ -231,6 +231,10 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
             neighborsInP[i]=g_arena5.alloc_raw(1);
         }
 
+        // Barrier: wait for ALL threads to finish init before starting work
+        // This prevents Thread 0 (fast init) from hogging early vertices
+        #pragma omp barrier
+
         int beginX=0,beginP=0,beginR=size;
         int keepV[MAX_CSIZE],dropV[MAX_CSIZE];
 
