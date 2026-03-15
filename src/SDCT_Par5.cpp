@@ -24,9 +24,9 @@
 extern double nCr[1001][401];
 
 struct Arena5 {
-    int* base=nullptr; int top=0; int cap=0;
-    void init(int n){cap=n+16;base=(int*)std::malloc(cap*sizeof(int));top=0;}
-    ~Arena5(){std::free(base);}
+    int* base=nullptr; int top=0; int cap=0; bool owned=true;
+    void init(int n){cap=n+16;base=(int*)std::malloc(cap*sizeof(int));top=0;owned=true;}
+    ~Arena5(){if(owned&&base)std::free(base);}
     int* alloc_raw(int n){if(n<=0)n=1;int*p=base+top;top+=n;return p;}
     int save(){return top;}
     void restore(int t){top=t;}
@@ -203,24 +203,51 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     std::cout<<"SDCT_Par5 "<<nthreads<<" threads"<<std::endl;
     std::vector<LeafArena5> thread_leaves(nthreads);
 
+    // Pre-allocate all per-thread memory BEFORE the parallel region
+    // This avoids malloc contention inside the parallel region
+    int arena_cap = size * 16;
+    std::vector<int> all_arenas(nthreads * arena_cap);        // flat arena pools
+    std::vector<int> all_vertexSets(nthreads * size);          // vertexSets per thread
+    std::vector<int> all_vertexLookup(nthreads * size);        // vertexLookup per thread
+    std::vector<int> all_numNeighbors(nthreads * size, 1);     // numNeighbors per thread
+    std::vector<int*> all_neighborsInP(nthreads * size);       // neighborsInP per thread
+    std::vector<int> all_mark(nthreads * size, 0);             // mark arrays per thread
+
+    // Initialize vertexSets and vertexLookup sequentially (fast)
+    for(int t=0;t<nthreads;t++){
+        int base = t * size;
+        for(int i=0;i<size;i++){
+            all_vertexSets[base+i] = i;
+            all_vertexLookup[base+i] = i;
+        }
+        // Point neighborsInP into the arena
+        int* arena_base = all_arenas.data() + t * arena_cap;
+        for(int i=0;i<size;i++){
+            all_neighborsInP[base+i] = arena_base + i; // 1 slot per vertex initially
+        }
+    }
+
     #pragma omp parallel
     {
         int tid=omp_get_thread_num();
-        double t_init_start = omp_get_wtime();
-        g_arena5.init(size*16);  // Reduced from 64 to 16 to save memory
-        g_mark5.init(size);
+        int base = tid * size;
+
+        // Use pre-allocated memory - no malloc inside parallel region!
+        g_arena5.base = all_arenas.data() + tid * arena_cap;
+        g_arena5.cap  = arena_cap;
+        g_arena5.top  = size; // first `size` ints are used by neighborsInP
+        g_arena5.owned = false; // don't free pre-allocated memory
+        g_mark5.mark.resize(size, 0);
+        std::fill(g_mark5.mark.begin(), g_mark5.mark.end(), 0);
+        g_mark5.gen = 0;
+        g_leafarena5.buf.clear(); g_leafarena5.offsets.clear();
         g_leafarena5.reserve(std::max(1,size/nthreads)*20);
 
-        std::vector<int> vertexSets(size),vertexLookup(size);
-        std::vector<int*> neighborsInP(size,nullptr);
-        std::vector<int> numNeighbors(size,1);
-        for(int i=0;i<size;i++){
-            vertexSets[i]=i;vertexLookup[i]=i;
-            neighborsInP[i]=g_arena5.alloc_raw(1);numNeighbors[i]=1;
-        }
-        double t_init_end = omp_get_wtime();
-        #pragma omp critical
-        printf("Thread %d init took %.1f ms\n", tid, (t_init_end-t_init_start)*1000);
+        int* vertexSets    = all_vertexSets.data()    + base;
+        int* vertexLookup  = all_vertexLookup.data()  + base;
+        int** neighborsInP = all_neighborsInP.data()  + base;
+        int* numNeighbors  = all_numNeighbors.data()  + base;
+
         int beginX=0,beginP=0,beginR=size;
         int keepV[MAX_CSIZE],dropV[MAX_CSIZE];
 
@@ -234,19 +261,13 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
             (void)beginX; (void)beginP; (void)beginR;
             int arenaBase=g_arena5.save();
             int newBeginX,newBeginP,newBeginR;
-            double t0=omp_get_wtime();
-            fillInPandXArena5(vertex,vertexSets.data(),vertexLookup.data(),edgeGraph,
-                              neighborsInP.data(),numNeighbors.data(),
+            fillInPandXArena5(vertex,vertexSets,vertexLookup,edgeGraph,
+                              neighborsInP,numNeighbors,
                               &localBeginX,&localBeginP,&localBeginR,&newBeginX,&newBeginP,&newBeginR);
             keepV[0]=vertex;
-            recurse5(vertexSets.data(),vertexLookup.data(),neighborsInP.data(),numNeighbors.data(),
+            recurse5(vertexSets,vertexLookup,neighborsInP,numNeighbors,
                      newBeginP,newBeginR,keepV,1,dropV,0,max_k,min_k);
             g_arena5.restore(arenaBase);
-            double t1=omp_get_wtime();
-            if(t1-t0 > 0.001) {
-                #pragma omp critical
-                printf("vertex %d deg %d took %.1f ms\n", vertex, edgeGraph.getNbrCount(vertex), (t1-t0)*1000);
-            }
         }
         #pragma omp critical
         thread_leaves[tid]=std::move(g_leafarena5);
