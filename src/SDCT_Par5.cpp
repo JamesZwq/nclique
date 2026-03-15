@@ -5,6 +5,7 @@
  * 2. Flat leaf storage: contiguous LeafArena avoids per-leaf heap alloc
  */
 
+#include <sys/mman.h>
 #include <omp.h>
 #include <cstring>
 #include <cstdlib>
@@ -25,8 +26,14 @@ extern double nCr[1001][401];
 
 struct Arena5 {
     int* base=nullptr; int top=0; int cap=0; bool owned=true;
-    void init(int n){cap=n+16;base=(int*)std::malloc(cap*sizeof(int));top=0;owned=true;}
-    ~Arena5(){if(owned&&base)std::free(base);}
+    void init(int n){
+        cap=n+16;
+        // Use mmap for NUMA-local allocation (first-touch policy)
+        base=(int*)mmap(nullptr, cap*sizeof(int), PROT_READ|PROT_WRITE,
+                        MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        top=0; owned=true;
+    }
+    ~Arena5(){if(owned&&base&&base!=MAP_FAILED)munmap(base, cap*sizeof(int));}
     int* alloc_raw(int n){if(n<=0)n=1;int*p=base+top;top+=n;return p;}
     int save(){return top;}
     void restore(int t){top=t;}
@@ -203,50 +210,28 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
     std::cout<<"SDCT_Par5 "<<nthreads<<" threads"<<std::endl;
     std::vector<LeafArena5> thread_leaves(nthreads);
 
-    // Pre-allocate all per-thread memory BEFORE the parallel region
-    // This avoids malloc contention inside the parallel region
-    int arena_cap = size * 16;
-    std::vector<int> all_arenas(nthreads * arena_cap);        // flat arena pools
-    std::vector<int> all_vertexSets(nthreads * size);          // vertexSets per thread
-    std::vector<int> all_vertexLookup(nthreads * size);        // vertexLookup per thread
-    std::vector<int> all_numNeighbors(nthreads * size, 1);     // numNeighbors per thread
-    std::vector<int*> all_neighborsInP(nthreads * size);       // neighborsInP per thread
-    std::vector<int> all_mark(nthreads * size, 0);             // mark arrays per thread
-
-    // Initialize vertexSets and vertexLookup sequentially (fast)
-    for(int t=0;t<nthreads;t++){
-        int base = t * size;
-        for(int i=0;i<size;i++){
-            all_vertexSets[base+i] = i;
-            all_vertexLookup[base+i] = i;
-        }
-        // Point neighborsInP into the arena
-        int* arena_base = all_arenas.data() + t * arena_cap;
-        for(int i=0;i<size;i++){
-            all_neighborsInP[base+i] = arena_base + i; // 1 slot per vertex initially
-        }
-    }
-
     #pragma omp parallel
     {
         int tid=omp_get_thread_num();
-        int base = tid * size;
 
-        // Use pre-allocated memory - no malloc inside parallel region!
-        g_arena5.base = all_arenas.data() + tid * arena_cap;
-        g_arena5.cap  = arena_cap;
-        g_arena5.top  = size; // first `size` ints are used by neighborsInP
-        g_arena5.owned = false; // don't free pre-allocated memory
-        g_mark5.mark.resize(size, 0);
-        std::fill(g_mark5.mark.begin(), g_mark5.mark.end(), 0);
-        g_mark5.gen = 0;
+        // Use mmap for NUMA-local allocation (first-touch policy)
+        // Each thread allocates its own memory on its local NUMA node
+        g_arena5.init(size*16);
+        g_mark5.init(size);
         g_leafarena5.buf.clear(); g_leafarena5.offsets.clear();
         g_leafarena5.reserve(std::max(1,size/nthreads)*20);
 
-        int* vertexSets    = all_vertexSets.data()    + base;
-        int* vertexLookup  = all_vertexLookup.data()  + base;
-        int** neighborsInP = all_neighborsInP.data()  + base;
-        int* numNeighbors  = all_numNeighbors.data()  + base;
+        // Allocate thread-local arrays via mmap for NUMA locality
+        int* vertexSets   = (int*)mmap(nullptr, size*sizeof(int), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        int* vertexLookup = (int*)mmap(nullptr, size*sizeof(int), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        int* numNeighbors = (int*)mmap(nullptr, size*sizeof(int), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        int** neighborsInP= (int**)mmap(nullptr, size*sizeof(int*), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+
+        // Initialize with first-touch (thread writes its own pages -> NUMA local)
+        for(int i=0;i<size;i++){
+            vertexSets[i]=i; vertexLookup[i]=i; numNeighbors[i]=1;
+            neighborsInP[i]=g_arena5.alloc_raw(1);
+        }
 
         int beginX=0,beginP=0,beginR=size;
         int keepV[MAX_CSIZE],dropV[MAX_CSIZE];
@@ -271,6 +256,12 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
         }
         #pragma omp critical
         thread_leaves[tid]=std::move(g_leafarena5);
+
+        // Free mmap allocations
+        munmap(vertexSets,   size*sizeof(int));
+        munmap(vertexLookup, size*sizeof(int));
+        munmap(numNeighbors, size*sizeof(int));
+        munmap(neighborsInP, size*sizeof(int*));
     }
 
     size_t total=0;
