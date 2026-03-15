@@ -47,15 +47,14 @@ struct MarkArray5 {
 };
 static thread_local MarkArray5 g_mark5;
 
-// Flat leaf arena: [total, v0, drop0, v1, drop1, ...] per leaf
+// Flat leaf arena: stores cliques as vector<TreeGraphNode> directly
+// This avoids re-building vectors during flush
 struct LeafArena5 {
-    std::vector<int> buf;
-    std::vector<int> offsets;
-    void reserve(int n){buf.reserve(n*10);offsets.reserve(n);}
+    std::vector<std::vector<TreeGraphNode>> leaves;
+    void reserve(int n){leaves.reserve(n);}
     void add(int* keepV,int keepSz,int* dropV,int dropSz){
-        offsets.push_back((int)buf.size());
         int total=keepSz+dropSz;
-        buf.push_back(total);
+        std::vector<TreeGraphNode> leaf; leaf.reserve(total);
         TreeGraphNode tmp[512];
         for(int i=0;i<keepSz;i++)tmp[i]={(daf::Size)keepV[i],false};
         for(int i=0;i<dropSz;i++)tmp[keepSz+i]={(daf::Size)dropV[i],true};
@@ -63,24 +62,16 @@ struct LeafArena5 {
             for(int i=1;i<total;i++){TreeGraphNode k=tmp[i];int j=i-1;
                 while(j>=0&&tmp[j]>k){tmp[j+1]=tmp[j];j--;}tmp[j+1]=k;}
         }else{std::sort(tmp,tmp+total);}
-        for(int i=0;i<total;i++){buf.push_back((int)tmp[i].v);buf.push_back((int)tmp[i].isPivot);}
+        for(int i=0;i<total;i++) leaf.push_back(tmp[i]);
+        leaves.push_back(std::move(leaf));
     }
     void flush(DynamicGraph<TreeGraphNode>& out){
-        for(int oi=0;oi<(int)offsets.size();oi++){
-            int pos=offsets[oi],sz=buf[pos++];
-            std::vector<TreeGraphNode> leaf; leaf.reserve(sz);
-            for(int i=0;i<sz;i++){leaf.emplace_back((daf::Size)buf[pos],(bool)buf[pos+1]);pos+=2;}
-            out.adj_list.push_back(std::move(leaf));
-        }
+        for(auto& leaf : leaves) out.adj_list.push_back(std::move(leaf));
     }
     void flush_range(DynamicGraph<TreeGraphNode>& out, size_t base_idx){
-        for(int oi=0;oi<(int)offsets.size();oi++){
-            int pos=offsets[oi],sz=buf[pos++];
-            std::vector<TreeGraphNode> leaf; leaf.reserve(sz);
-            for(int i=0;i<sz;i++){leaf.emplace_back((daf::Size)buf[pos],(bool)buf[pos+1]);pos+=2;}
-            out.adj_list[base_idx+oi]=std::move(leaf);
-        }
+        for(size_t i=0;i<leaves.size();i++) out.adj_list[base_idx+i]=std::move(leaves[i]);
     }
+    size_t size() const { return leaves.size(); }
 };
 static thread_local LeafArena5 g_leafarena5;
 
@@ -321,7 +312,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
 
     size_t total=0;
     double t_merge0 = omp_get_wtime();
-    for(auto&tl:thread_leaves)total+=tl.offsets.size();
+    for(auto&tl:thread_leaves)total+=tl.size();
     DynamicGraph<TreeGraphNode> treeGraph(size);
     treeGraph.adj_list.reserve(total);
     // Serial flush but with pre-reserved space for zero reallocation

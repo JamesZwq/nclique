@@ -352,7 +352,7 @@ def _plot_cbs_vs_nohi_long_comparison(df: pd.DataFrame, out_dir: str):
         series = {src: pivot_to_plot[src].tolist() for src in ["CBS", "CBS-noHi"] if src in pivot_to_plot.columns}
         if not series: continue
 
-        fig, ax = plt.subplots(figsize=(5, 2))
+        fig, ax = plt.subplots(figsize=(3, 1.2))
         n_series = len(series)
         x_idx = np.arange(len(pairs))
         width = 0.85 / n_series
@@ -700,17 +700,17 @@ def main():
     combined_df = _load_processed_data()
     combined_df = _apply_general_filters(combined_df)
 
-    _analyze_cbs_vs_nohi_speedup(combined_df.copy())
+    # _analyze_cbs_vs_nohi_speedup(combined_df.copy())
 
     print("\nData Summary:")
     print("Sources:", combined_df['source'].unique())
     print("R values:", sorted(combined_df['r'].unique()))
 
-    _create_memory_legend(COMPARE_OUT)
+    # _create_memory_legend(COMPARE_OUT)
     _plot_cbs_vs_nohi_long_comparison(combined_df.copy(), COMPARE_OUT)
-    _plot_compare_by_r(combined_df, COMPARE_OUT)
-    _plot_memory_compare_by_r(combined_df, COMPARE_OUT)
-    _plot_cbs_special_cases(combined_df, COMPARE_OUT)
+    # _plot_compare_by_r(combined_df, COMPARE_OUT)
+    # _plot_memory_compare_by_r(combined_df, COMPARE_OUT)
+    # _plot_cbs_special_cases(combined_df, COMPARE_OUT)
     print("\nDone. Check PNG previews in:", PNG_OUT_DIR)
 
 
