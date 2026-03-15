@@ -94,19 +94,19 @@ int main(int argc, char **argv) {
     });
     printf("Reference SDCT clique count: %zu\n", referenceCliqueCount);
     
-    // Get optimized clique count from SDCT_Par5
-    size_t optimizedCliqueCount = daf::timeCount("SDCT_Par5 (optimized)", [&]() -> size_t {
-        return SDCT_Par5(edgeGraph, 1000000, 0).adj_list.size();
+    // Get optimized clique count from SDCT_Par6
+    size_t optimizedCliqueCount = daf::timeCount("SDCT_Par6 (optimized)", [&]() -> size_t {
+        return SDCT_Par6(edgeGraph, 1000000, 0).adj_list.size();
     });
-    printf("Optimized SDCT_Par5 clique count: %zu\n", optimizedCliqueCount);
-    
+    printf("Optimized SDCT_Par6 clique count: %zu\n", optimizedCliqueCount);
+
     // Verify correctness
     if (referenceCliqueCount == optimizedCliqueCount) {
         printf("✓ Clique counts match! Both have %zu cliques\n", referenceCliqueCount);
     } else {
         printf("✗ ERROR: Clique counts DO NOT match!\n");
         printf("  SDCT: %zu\n", referenceCliqueCount);
-        printf("  SDCT_Par5: %zu\n", optimizedCliqueCount);
+        printf("  SDCT_Par6: %zu\n", optimizedCliqueCount);
         printf("  Difference: %ld\n", (long)optimizedCliqueCount - (long)referenceCliqueCount);
         return 1;  // Exit with error
     }

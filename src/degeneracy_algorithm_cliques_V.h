@@ -72,6 +72,8 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph &edgeGraph, int max_k, int min_k);
 
 CliqueCSR<int> SDCT_Par5_CSR(Graph &edgeGraph, int max_k, int min_k);
 
+DynamicGraph<TreeGraphNode> SDCT_Par6(Graph &edgeGraph, int max_k, int min_k);
+
 DynamicGraph<TreeGraphNode> SDCT_Par_Optimized(Graph &edgeGraph, int max_k, int min_k);
 
 DynamicGraph<TreeGraphNode> SDCT_Par_Final(Graph &edgeGraph, int max_k, int min_k);
