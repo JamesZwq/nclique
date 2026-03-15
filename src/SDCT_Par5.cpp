@@ -230,6 +230,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
             (void)beginX; (void)beginP; (void)beginR;
             int arenaBase=g_arena5.save();
             int newBeginX,newBeginP,newBeginR;
+            double t0=omp_get_wtime();
             fillInPandXArena5(vertex,vertexSets.data(),vertexLookup.data(),edgeGraph,
                               neighborsInP.data(),numNeighbors.data(),
                               &localBeginX,&localBeginP,&localBeginR,&newBeginX,&newBeginP,&newBeginR);
@@ -237,6 +238,11 @@ DynamicGraph<TreeGraphNode> SDCT_Par5(Graph& edgeGraph,int max_k,int min_k){
             recurse5(vertexSets.data(),vertexLookup.data(),neighborsInP.data(),numNeighbors.data(),
                      newBeginP,newBeginR,keepV,1,dropV,0,max_k,min_k);
             g_arena5.restore(arenaBase);
+            double t1=omp_get_wtime();
+            if(t1-t0 > 0.005) {
+                #pragma omp critical
+                printf("vertex %d deg %d took %.1f ms\n", vertex, edgeGraph.getNbrCount(vertex), (t1-t0)*1000);
+            }
         }
         #pragma omp critical
         thread_leaves[tid]=std::move(g_leafarena5);
