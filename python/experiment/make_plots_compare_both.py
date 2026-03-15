@@ -707,10 +707,10 @@ def main():
     print("R values:", sorted(combined_df['r'].unique()))
 
     # _create_memory_legend(COMPARE_OUT)
-    _plot_cbs_vs_nohi_long_comparison(combined_df.copy(), COMPARE_OUT)
+    # _plot_cbs_vs_nohi_long_comparison(combined_df.copy(), COMPARE_OUT)
     # _plot_compare_by_r(combined_df, COMPARE_OUT)
     # _plot_memory_compare_by_r(combined_df, COMPARE_OUT)
-    # _plot_cbs_special_cases(combined_df, COMPARE_OUT)
+    _plot_cbs_special_cases(combined_df, COMPARE_OUT)
     print("\nDone. Check PNG previews in:", PNG_OUT_DIR)
 
 
