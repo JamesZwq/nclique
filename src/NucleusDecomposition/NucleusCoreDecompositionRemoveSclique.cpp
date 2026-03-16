@@ -234,23 +234,38 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     rCliqueInHeap.resize(cliqueIndex.size());
     memset(rCliqueInHeap.getData(), true, cliqueIndex.size() * sizeof(bool));
 
-    CDSetRS::DHeap heap{CDSetRS::CompareRClique(countingRClique.data())};
-    heap.reserve(cliqueIndex.size());
-
-    std::vector<CDSetRS::DHeap::handle_type> heapHandles(cliqueIndex.size());
-
+    int maxBucket = 0;
+    for (daf::Size i = 0; i < cliqueIndex.size(); ++i)
+        maxBucket = std::max(maxBucket, (int)countingRClique[i]);
+    std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
+    std::vector<int> bucket_of(cliqueIndex.size());
+    std::vector<daf::Size> pos_in_bucket(cliqueIndex.size());
     for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
-        heapHandles[i] = heap.push(i);
+        int b = (int)countingRClique[i];
+        bucket_of[i] = b;
+        pos_in_bucket[i] = buckets[b].size();
+        buckets[b].push_back(i);
     }
+    int curBucket = 0;
+    daf::Size remainingInHeap = cliqueIndex.size();
 
     daf::log_memory("Other index(incloud head)");
-    std::cout << "=========================begin=========================" << std::endl;
 
     // Measure Init Time
     duration_init = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - time_start).count();
 
+    // O5: Pre-allocate LeafResult struct outside loop
+    struct LeafResult {
+        std::vector<std::vector<TreeGraphNode>> newLeaves;
+        std::vector<std::pair<daf::Size, double>> incr;
+        std::vector<std::pair<daf::Size, double>> decr;
+        void clear() { newLeaves.clear(); incr.clear(); decr.clear(); }
+    };
+
+    const daf::Size graphN = edgeGraph.n;
+
     double minCore = 0;
-    while (!heap.empty()) {
+    while (remainingInHeap > 0) {
         // [Timer] Start Pop
         auto t_loop_start = std::chrono::high_resolution_clock::now();
 
@@ -261,23 +276,31 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
         removedRCliqueIdForLeaf.clear();
         currentRemoveRcliqueIds.clear();
 
-        minCore = std::max(countingRClique[heap.top()], minCore);
+        while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
+        if (curBucket >= (int)buckets.size()) break;
 
-        // Debug print roughly
-        // std::cout << "minCore: " << minCore << " heap size: " << heap.size() << std::endl;
+        minCore = std::max((double)curBucket, minCore);
 
-        while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
-            auto id = heap.top();
-            rCliqueInHeap[id] = false;
-            heap.pop();
-            currentRemoveRcliqueIds.push_back(id);
-            coreRClique[id] = minCore;
+        while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
+               && (double)curBucket <= minCore) {
+            while (!buckets[curBucket].empty()) {
+                auto id = buckets[curBucket].back();
+                buckets[curBucket].pop_back();
+                rCliqueInHeap[id] = false;
+                currentRemoveRcliqueIds.push_back(id);
+                coreRClique[id] = minCore;
+                remainingInHeap--;
+            }
+            if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
+                && (double)(curBucket + 1) <= minCore) {
+                curBucket++;
+            } else break;
         }
 
         // [Timer] End Pop
         duration_pop += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_loop_start).count();
 
-        if (heap.empty()) break;
+        if (remainingInHeap == 0) break;
 
         // [Timer] Start Structure (Part A - Intersect)
         auto t_struct_A = std::chrono::high_resolution_clock::now();
@@ -300,7 +323,6 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                     });
             }
         }
-        // 计算总大小并合并
         size_t total_size = 0;
         for (const auto &tp : thread_pairs) total_size += tp.size();
         std::vector<PairOV> allPairs;
@@ -342,15 +364,11 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
         // [Timer] End Structure A
         duration_structure += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_struct_A).count();
 
-        const daf::Size graphN = edgeGraph.n;
-        struct LeafResult {
-            std::vector<std::vector<TreeGraphNode>> newLeaves;
-            std::vector<std::pair<daf::Size, double>> incr;
-            std::vector<std::pair<daf::Size, double>> decr;
-        };
+        // O5: Resize leafResults to match, clearing old data
         std::vector<LeafResult> leafResults(changedLeaf.size());
 
 #ifdef _OPENMP
+        // ============ Phase B: Parallel BK + enumeration ============
         auto t_par = std::chrono::high_resolution_clock::now();
 #pragma omp parallel
         {
@@ -400,12 +418,13 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
         }
         duration_support += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_par).count();
 
+        // ============ Phase C: Per-leaf serial mutations + support + heap ============
         for (daf::Size idx = 0; idx < changedLeaf.size(); ++idx) {
             auto leafId = changedLeaf[idx];
             const auto leaf = tree.adj_list[leafId];
             LeafResult &res = leafResults[idx];
-            auto t_struct_B = std::chrono::high_resolution_clock::now();
 
+            auto t_struct_B = std::chrono::high_resolution_clock::now();
             for (auto leafV : leaf) {
                 if (leafV.isPivot) treeGraphV.removeNbr(leafV.v, {leafId, true});
                 else treeGraphV.removeNbr(leafV.v, {leafId, false});
@@ -429,7 +448,23 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
             auto t_heap = std::chrono::high_resolution_clock::now();
             for (const auto &p : res.decr) {
                 countingRClique[p.first] -= p.second;
-                heap.update(heapHandles[p.first]);
+                int newB = std::max(0, (int)countingRClique[p.first]);
+                int oldB = bucket_of[p.first];
+                if (newB != oldB) {
+                    auto& oldVec = buckets[oldB];
+                    daf::Size myPos = pos_in_bucket[p.first];
+                    if (myPos < oldVec.size() - 1) {
+                        daf::Size last = oldVec.back();
+                        oldVec[myPos] = last;
+                        pos_in_bucket[last] = myPos;
+                    }
+                    oldVec.pop_back();
+                    if (newB >= (int)buckets.size()) buckets.resize(newB + 1);
+                    bucket_of[p.first] = newB;
+                    pos_in_bucket[p.first] = buckets[newB].size();
+                    buckets[newB].push_back(p.first);
+                    if (newB < curBucket) curBucket = newB;
+                }
             }
             duration_heap += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_heap).count();
 
@@ -437,6 +472,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
             tree.removeNode(leafId);
             duration_structure += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_struct_C).count();
         }
+
 #else
         for (auto leafId: changedLeaf) {
             auto t_struct_B = std::chrono::high_resolution_clock::now();
@@ -480,7 +516,23 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                 daf::CliqueSize subNumPovit = 0;
                 for (const auto &node: clique) if (node.isPivot) ++subNumPovit;
                 countingRClique[cliqueIndexId] -= nCr[pivotC - subNumPovit][s - keepC - subNumPovit];
-                heap.update(heapHandles[cliqueIndexId]);
+                int newB = std::max(0, (int)countingRClique[cliqueIndexId]);
+                int oldB = bucket_of[cliqueIndexId];
+                if (newB != oldB) {
+                    auto& oldVec = buckets[oldB];
+                    daf::Size myPos = pos_in_bucket[cliqueIndexId];
+                    if (myPos < oldVec.size() - 1) {
+                        daf::Size last = oldVec.back();
+                        oldVec[myPos] = last;
+                        pos_in_bucket[last] = myPos;
+                    }
+                    oldVec.pop_back();
+                    if (newB >= (int)buckets.size()) buckets.resize(newB + 1);
+                    bucket_of[cliqueIndexId] = newB;
+                    pos_in_bucket[cliqueIndexId] = buckets[newB].size();
+                    buckets[newB].push_back(cliqueIndexId);
+                    if (newB < curBucket) curBucket = newB;
+                }
                 return true;
             });
             duration_support += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_supp_dec).count();

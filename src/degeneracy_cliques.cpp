@@ -139,20 +139,6 @@ int main(int argc, char **argv) {
         printf("  (no pivot flags — cannot verify cliqueCount)\n");
     }
 
-    return 0;  // Early return
-    // daf::log_memory("Tree Memory");
-    // std::cout << s << "-Clique count: "<< treeGraph.cliqueCount(s) << std::endl;
-    // std::cout << "max clique: " << treeGraph.maxDegree() << std::endl;
-    // // if (s >
-    // treeGraph.printGraphPerV();
-    // for (auto leaf: treeGraph.adj_list) {
-    //     if (leaf[0].isPivot) {
-    //         std::cout << "leaf: " << leaf[0].v << " is pivot" << std::endl;
-    //     }
-    // }
-
-    // return 0;
-
     edgeGraph.initCore();
     // treeGraph.printGraphPerV();
 
@@ -160,11 +146,8 @@ int main(int argc, char **argv) {
     edgeGraph.buildEdgeIdMap();
     // DynamicBipartiteGraph BGraph(treeGraph, edgeGraph);
 
-
-    std::cout << "nun Leaf: " << 0 << std::endl;  // CSR version - no adj_list
-    /*
     // DynamicGraphSet<TreeGraphNode> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
-    DynamicGraphSet<TreeGraphNode> treeGraphV(treeGraph, edgeGraph.getGraphNodeSize(), s);
+    DynamicGraphSet<TreeGraphNode> treeGraphV(refTree, edgeGraph.getGraphNodeSize(), s);
 
 
     // StaticCliqueIndex cliqueIndex(r);
@@ -175,8 +158,8 @@ int main(int argc, char **argv) {
     //
     // cliqueIndex.verify();
     // print all leaf with node 154
-    for (daf::Size leafId = 0; leafId < treeGraph.adj_list.size(); ++leafId) {
-        const auto &leaf = treeGraph.adj_list[leafId];
+    for (daf::Size leafId = 0; leafId < refTree.adj_list.size(); ++leafId) {
+        const auto &leaf = refTree.adj_list[leafId];
         for (const auto &node: leaf) {
             if (node.v == 154) {
                 std::cout << "leafId: " << leafId << " leaf Size: " << leaf.size() << std::endl;
@@ -188,116 +171,77 @@ int main(int argc, char **argv) {
     const bool referenceOnlyMode = std::getenv("PIVOTER_RUN_REF") != nullptr;
     daf::timeCount("NucleusCoreDecomposition", [&] {
         if (r == 2) {
-            PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);
+            PlusNucleusEdgeCoreDecompositionSet(refTree, edgeGraph, treeGraphV, s);
         } else if (r == 1) {
-            NCliqueVertexCoreDecomposition(treeGraph, edgeGraph, treeGraphV, s);
+            NCliqueVertexCoreDecomposition(refTree, edgeGraph, treeGraphV, s);
         } else if (referenceOnlyMode) {
-            NucleusCoreDecompositionRCliqueRef(treeGraph, edgeGraph, treeGraphV, r, s);
-            std::map<int, int> coreValueCount;
-            for (const auto &leaf: treeGraph.adj_list) {
-                for (const auto &node: leaf) {
-                    if (!node.isPivot) {
-                        coreValueCount[node.v]++;
-                    }
-                }
+            auto res = NucleusCoreDecompositionCorrect(refTree, edgeGraph, treeGraphV, r, s);
+            std::map<daf::Size, int> coreValueCount;
+            for (const auto &[clique, coreValue]: res) {
+                coreValueCount[coreValue]++;
             }
             std::cout << "Core value distribution (vertex degree in tree):" << std::endl;
             for (const auto &[coreValue, count]: coreValueCount) {
                 std::cout << "Core value: " << coreValue << " Count: " << count << std::endl;
             }
         } else if (compareMode) {
-            auto refTree = treeGraph.clone();
+            auto optTree = refTree.clone();
+            // auto refTree = refTree.clone();
             auto refTreeGraphV = treeGraphV.clone();
-            // auto refCore = NucleusCoreDecompositionRCliqueRef(refTree, edgeGraph, refTreeGraphV, r, s);
-            auto refCore = daf::timeCount("Reference NucleusCoreDecomposition", [&]() {
-                return NucleusCoreDecompositionRCliqueRef(refTree, edgeGraph, refTreeGraphV, r, s);
+            auto correctCore = daf::timeCount("Reference NucleusCoreDecomposition", [&]() {
+                return NucleusCoreDecompositionCorrect(refTree, edgeGraph, refTreeGraphV, r, s);
             });
 
-            auto optTree = treeGraph.clone();
             auto optTreeGraphV = treeGraphV.clone();
             // auto optCore = NucleusCoreDecompositionRClique(optTree, edgeGraph, optTreeGraphV, r, s);
             auto optCore = daf::timeCount("Optimized NucleusCoreDecomposition", [&]() {
                 return NucleusCoreDecompositionRClique(optTree, edgeGraph, optTreeGraphV, r, s);
             });
+            std::map<daf::Size, int> correctCoreValueCount;
+            for (const auto &[clique, coreValue]: correctCore) {
+                correctCoreValueCount[coreValue]++;
+            }
+            std::map<daf::Size, int> optCoreValueCount;
+            for (const auto &[clique, coreValue]: optCore) {
+                optCoreValueCount[coreValue]++;
+            }
+            std::vector<int> corrDist, optDist;
+            for (const auto &[coreValue, count]: correctCoreValueCount) {
+                corrDist.push_back(count);
+            }
+            for (const auto &[coreValue, count]: optCoreValueCount) {
+                optDist.push_back(count);
+            }
 
-            auto canonicalLess = [](const auto &a, const auto &b) {
-                if (a.second != b.second) {
-                    return a.second < b.second;
-                }
-                return a.first < b.first;
-            };
-            std::sort(refCore.begin(), refCore.end(), canonicalLess);
-            std::sort(optCore.begin(), optCore.end(), canonicalLess);
+            std::sort(corrDist.begin(), corrDist.end());
+            std::sort(optDist.begin(), optDist.end());
 
-            if (refCore != optCore) {
+            if (corrDist != optDist) {
                 std::cerr << "Comparison failed: optimized core decomposition differs from reference." << std::endl;
-                const auto mismatchCount = std::min(refCore.size(), optCore.size());
+                const auto mismatchCount = std::min(correctCore.size(), optCore.size());
                 for (size_t i = 0; i < mismatchCount; ++i) {
-                    if (refCore[i] != optCore[i]) {
+                    if (correctCore[i] != optCore[i]) {
                         std::cerr << "First mismatch at index " << i << std::endl;
                         std::cerr << "Reference clique:";
-                        for (auto v: refCore[i].first) std::cerr << ' ' << v;
+                        for (auto v: correctCore[i].first) std::cerr << ' ' << v;
                         std::cerr << std::endl;
                         std::cerr << "Optimized clique:";
                         for (auto v: optCore[i].first) std::cerr << ' ' << v;
                         std::cerr << std::endl;
-                        std::cerr << "Reference core: " << refCore[i].second << " Optimized core: " << optCore[i].second << std::endl;
+                        std::cerr << "Reference core: " << correctCore[i].second << " Optimized core: " << optCore[i].second << std::endl;
                         break;
                     }
                 }
                 std::abort();
             }
             std::cout << "Comparison passed: optimized result matches reference." << std::endl;
-        } else {
-            // 使用优化的 Ref 版本
-            std::cout << "Using optimized Ref version" << std::endl;
-            NucleusCoreDecompositionRCliqueRef(treeGraph, edgeGraph, treeGraphV, r, s);
         }
     });
 
     daf::log_memory("Final Memory");
 
     // Print thread count and single/multi-threaded timing for r>=3
-    if (r >= 3) {
-#ifdef _OPENMP
-        int nthreads = omp_get_max_threads();
-        
-        // 测试不同线程数的性能
-        std::vector<int> thread_counts = {1, 8, 16, 32, 64};
-        std::vector<long long> times;
-        
-        std::cout << "\n=== Multi-threading Performance Test ===" << std::endl;
-        std::cout << "Testing with different thread counts..." << std::endl;
-        
-        for (int threads : thread_counts) {
-            auto treeCopy = treeGraph.clone();
-            auto treeGraphVCopy = treeGraphV.clone();
-            omp_set_num_threads(threads);
-            
-            auto t1 = std::chrono::high_resolution_clock::now();
-            NucleusCoreDecompositionRCliqueRef(treeCopy, edgeGraph, treeGraphVCopy, r, s);
-            auto t2 = std::chrono::high_resolution_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-            times.push_back(elapsed);
-            
-            std::cout << "Threads: " << threads << " -> Time: " << elapsed << " ms";
-            if (threads > 1) {
-                double speedup = (double)times[0] / elapsed;
-                std::cout << " (speedup: " << speedup << "x)";
-            }
-            std::cout << std::endl;
-        }
-        
-        // 恢复原来的线程数
-        omp_set_num_threads(nthreads);
-#else
-        std::cout << "--- Timing Summary ---" << std::endl;
-        std::cout << "Thread count: 1 (OpenMP not enabled)" << std::endl;
-        std::cout << "Single-threaded time: N/A" << std::endl;
-        std::cout << "Multi-threaded time: N/A" << std::endl;
-#endif
-    }
-    */
+
 
     // auto corePlus = daf::timeCount("NucleusCoreDecomposition", [&] {
     //     return PlusNucleusEdgeCoreDecompositionSet(treeGraph, edgeGraph, treeGraphV, s);

@@ -149,3 +149,8 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionUltr
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
 }
+
+
+std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionCorrect(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
