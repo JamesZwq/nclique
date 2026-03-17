@@ -625,7 +625,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     int maxBucket = 0;
     for (daf::Size i = 0; i < numEdges; ++i) {
         if (countingKE[i] > 0)
-            maxBucket = std::max(maxBucket, (int)countingKE[i]);
+            maxBucket = std::max(maxBucket, (int)std::llround(countingKE[i]));
     }
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
     std::vector<int> bucket_of(numEdges);
@@ -636,7 +636,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
             edgeInHeap[i] = false;
             continue;
         }
-        int b = (int)countingKE[i];
+        int b = (int)std::llround(countingKE[i]);
         bucket_of[i] = b;
         pos_in_bucket[i] = buckets[b].size();
         buckets[b].push_back(i);
@@ -646,7 +646,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
     // Bucket move helper
     auto bucketMove = [&](daf::Size id) {
-        int newB = std::max(0, (int)countingKE[id]);
+        int newB = std::max(0, (int)std::llround(countingKE[id]));
         int oldB = bucket_of[id];
         if (newB == oldB) return;
         auto& oldVec = buckets[oldB];
