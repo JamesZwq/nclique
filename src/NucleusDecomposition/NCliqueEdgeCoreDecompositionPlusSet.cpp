@@ -620,6 +620,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
     double currCore = 0;
 
+    // --- Debug: check for non-integer countingKE values ---
+    {
+        int nonInt = 0;
+        for (daf::Size i = 0; i < edgeGraph.adj_list.size(); ++i) {
+            if (countingKE[i] != 0 && std::abs(countingKE[i] - std::round(countingKE[i])) > 1e-10) {
+                if (nonInt < 5) printf("  non-int countingKE[%u]=%.15f\n", i, countingKE[i]);
+                nonInt++;
+            }
+        }
+        printf("DEBUG: countingKE non-integer count: %d / %zu\n", nonInt, (size_t)edgeGraph.adj_list.size());
+    }
     // --- Bucket array replacing heap ---
     const daf::Size numEdges = edgeGraph.adj_list.size();
     int maxBucket = 0;
