@@ -56,12 +56,12 @@ namespace PlusECDSet {
         }
     };
 
-    template<typename It1, typename It2, typename UpdateFunc>
+    template<typename It1, typename It2, typename WeightT, typename UpdateFunc>
     inline void processEdgePairsImpl(It1 b1, It1 e1,
                                      It2 b2, It2 e2,
-                                     double weight,
+                                     WeightT weight,
                                      UpdateFunc &&upd) noexcept {
-        if (weight < 0.0) return;
+        if (weight < 0) return;
 
         // 
         // if all same, do nothing
@@ -89,11 +89,11 @@ namespace PlusECDSet {
 
     template<
         typename Range1, typename Range2,
-        typename UpdateFunc
+        typename WeightT, typename UpdateFunc
     >
     inline void processEdgePairs(const Range1 &r1,
                                  const Range2 &r2,
-                                 double weight,
+                                 WeightT weight,
                                  UpdateFunc &&upd) noexcept {
         processEdgePairsImpl(
             std::begin(r1), std::end(r1),
@@ -104,11 +104,11 @@ namespace PlusECDSet {
     }
 
     template<
-        typename Range,
+        typename Range, typename WeightT,
         typename UpdateFunc
     >
     inline void processEdgePairs(const Range &r,
-                                 double weight,
+                                 WeightT weight,
                                  UpdateFunc &&upd) noexcept {
         processEdgePairsImpl(
             std::begin(r), std::end(r),
@@ -578,22 +578,24 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k) {
     auto time_start = std::chrono::high_resolution_clock::now();
-    auto [countingKE_, degreeERemove] = PlusECDSet::countingPerEdge(tree, edgeGraph, k);
-    double *countingKE = countingKE_; // alias for OMP capture
+    auto [countingKE_dbl, degreeERemove] = PlusECDSet::countingPerEdge(tree, edgeGraph, k);
 
-    // std::vector<double> leafCore = PlusECDSet::initLeafCore(tree, countingKE, k, edgeGraph);
+    // Convert double support counts to exact integer arithmetic to eliminate float drift
+    const daf::Size numEdgesInit = edgeGraph.adj_list.size();
+    auto *countingKE = new long long[numEdgesInit];
+    for (daf::Size i = 0; i < numEdgesInit; ++i)
+        countingKE[i] = std::llround(countingKE_dbl[i]);
+    delete[] countingKE_dbl;
 
 #ifndef NDEBUG
     tree.printGraphPerV();
-    daf::printArray(countingKE, edgeGraph.adj_list.size());
-    PlusECDSet::printEdgeCore(edgeGraph, countingKE);
-    // PlusECDSet::printEdgeCore(edgeGraph, degreeE);
+    // PlusECDSet::printEdgeCore(edgeGraph, countingKE);
 #endif
 
     // memset(removedLeaf.getData(), false, tree.adj_list.size() * sizeof(bool));
 
-    auto *coreE = new double[edgeGraph.adj_list.size()];
-    memset(coreE, 0, edgeGraph.adj_list.size() * sizeof(daf::Size));
+    auto *coreE = new long long[numEdgesInit];
+    memset(coreE, 0, numEdgesInit * sizeof(long long));
 
     daf::StaticVector<daf::Size> povit;
     daf::StaticVector<daf::Size> keepC;
@@ -618,14 +620,14 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     leafRmInfo.c_size = tree.adj_list.size();
 
 
-    double currCore = 0;
+    long long currCore = 0;
 
     // --- Bucket array replacing heap ---
     const daf::Size numEdges = edgeGraph.adj_list.size();
     int maxBucket = 0;
     for (daf::Size i = 0; i < numEdges; ++i) {
         if (countingKE[i] > 0)
-            maxBucket = std::max(maxBucket, (int)std::llround(countingKE[i]));
+            maxBucket = std::max(maxBucket, (int)countingKE[i]);
     }
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
     std::vector<int> bucket_of(numEdges);
@@ -636,7 +638,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
             edgeInHeap[i] = false;
             continue;
         }
-        int b = (int)std::llround(countingKE[i]);
+        int b = (int)countingKE[i];
         bucket_of[i] = b;
         pos_in_bucket[i] = buckets[b].size();
         buckets[b].push_back(i);
@@ -646,7 +648,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
     // Bucket move helper
     auto bucketMove = [&](daf::Size id) {
-        int newB = std::max(0, (int)std::llround(countingKE[id]));
+        int newB = std::max(0, (int)countingKE[id]);
         int oldB = bucket_of[id];
         if (newB == oldB) return;
         auto& oldVec = buckets[oldB];
@@ -693,7 +695,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     treeGraphV.printGraphPerV();
 #endif
     std::cout << "=========================begin=========================" << std::endl;
-    double minCore = 0;
+    long long minCore = 0;
 
     long long cntA = 0, cntB = 0, cntC = 0, totalIters = 0;
 
@@ -720,10 +722,10 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
         while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
         if (curBucket >= (int)buckets.size()) break;
 
-        minCore = std::max((double)curBucket, minCore);
+        minCore = std::max((long long)curBucket, minCore);
 
         while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
-               && (double)curBucket <= minCore) {
+               && curBucket <= (int)minCore) {
             while (!buckets[curBucket].empty()) {
                 auto id = buckets[curBucket].back();
                 buckets[curBucket].pop_back();
@@ -733,7 +735,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                 remainingInHeap--;
             }
             if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
-                && (double)(curBucket + 1) <= minCore) {
+                && (curBucket + 1) <= (int)minCore) {
                 curBucket++;
             } else break;
         }
@@ -821,7 +823,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 #endif
             auto &myDirty = threadNewLeaves[tid2a]; // reuse threadNewLeaves as dirty list
 
-            auto atomicSub = [&](daf::Size idx, double w) {
+            auto atomicSub = [&](daf::Size idx, long long w) {
 #ifdef _OPENMP
                 #pragma omp atomic
 #endif
@@ -853,49 +855,49 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
                 if (isDeadLeaf) {
                     // ---- Case A: leaf dies — subtract full contribution ----
-                    double KtoK = 0, KtoP = 0, PtoP = 0;
+                    long long KtoK = 0, KtoP = 0, PtoP = 0;
                     if (needPivot <= tPovit.size()) {
-                        KtoK = nCr[tPovit.size()][needPivot];
+                        KtoK = std::llround(nCr[tPovit.size()][needPivot]);
                         for (daf::Size i = 0; i + 1 < tKeepC.size(); ++i)
                             for (daf::Size j = i + 1; j < tKeepC.size(); ++j)
                                 atomicSub(edgeGraph.getEdgeCompressedId(tKeepC[i], tKeepC[j]), KtoK);
                     }
                     int needPP = int(needPivot) - 2;
                     if (0 <= needPP && needPP <= int(tPovit.size()) - 2) {
-                        PtoP = nCr[tPovit.size() - 2][needPP];
+                        PtoP = std::llround(nCr[tPovit.size() - 2][needPP]);
                         for (daf::Size i = 0; i + 1 < tPovit.size(); ++i)
                             for (daf::Size j = i + 1; j < tPovit.size(); ++j)
                                 atomicSub(edgeGraph.getEdgeCompressedId(tPovit[i], tPovit[j]), PtoP);
                     }
                     int needKP = int(needPivot) - 1;
                     if (0 <= needKP && needKP <= int(tPovit.size()) - 1) {
-                        KtoP = nCr[tPovit.size() - 1][needKP];
+                        KtoP = std::llround(nCr[tPovit.size() - 1][needKP]);
                         for (daf::Size i = 0; i < tKeepC.size(); ++i)
                             for (daf::Size j = 0; j < tPovit.size(); ++j)
                                 atomicSub(edgeGraph.getEdgeCompressedId(tKeepC[i], tPovit[j]), KtoP);
                     }
                 } else {
                     // ---- Case C: only pivots removed ----
-                    double KtoK = 0, KtoP = 0, PtoP = 0;
-                    double RemovedKtoK = 0, RemovedKtoP = 0, RemovedPtoP = 0;
+                    long long KtoK = 0, KtoP = 0, PtoP = 0;
+                    long long RemovedKtoK = 0, RemovedKtoP = 0, RemovedPtoP = 0;
 
                     if (needPivot <= tPovit.size()) {
-                        KtoK = nCr[tPovit.size()][needPivot] - nCr[tPovit.size() - leafRm.removedPivots.size()][needPivot];
-                        RemovedKtoK = nCr[tPovit.size()][needPivot];
+                        KtoK = std::llround(nCr[tPovit.size()][needPivot]) - std::llround(nCr[tPovit.size() - leafRm.removedPivots.size()][needPivot]);
+                        RemovedKtoK = std::llround(nCr[tPovit.size()][needPivot]);
                     }
                     int needPP = int(needPivot) - 2;
                     if (0 <= needPP && needPP <= int(tPovit.size()) - 2) {
-                        RemovedPtoP = nCr[tPovit.size() - 2][needPP];
+                        RemovedPtoP = std::llround(nCr[tPovit.size() - 2][needPP]);
                         PtoP = RemovedPtoP;
                         if (leafRm.removedPivots.size() + 2 <= tPovit.size())
-                            PtoP -= nCr[tPovit.size() - 2 - leafRm.removedPivots.size()][needPP];
+                            PtoP -= std::llround(nCr[tPovit.size() - 2 - leafRm.removedPivots.size()][needPP]);
                     }
                     int needKP = int(needPivot) - 1;
                     if (0 <= needKP && needKP <= int(tPovit.size()) - 1) {
-                        RemovedKtoP = nCr[tPovit.size() - 1][needKP];
+                        RemovedKtoP = std::llround(nCr[tPovit.size() - 1][needKP]);
                         KtoP = RemovedKtoP;
                         if (leafRm.removedPivots.size() + 1 <= tPovit.size())
-                            KtoP -= nCr[tPovit.size() - 1 - leafRm.removedPivots.size()][needKP];
+                            KtoP -= std::llround(nCr[tPovit.size() - 1 - leafRm.removedPivots.size()][needKP]);
                     }
 
                     if (!leafRm.removedPivots.empty() && needPivot <= tPovit.size() - leafRm.removedPivots.size()) {
@@ -912,14 +914,14 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                         // newLeaf×removed
                         for (daf::Size i = 0; i < newLeafF.size(); ++i)
                             for (daf::Size j = 0; j < leafRm.removedPivots.size(); ++j) {
-                                double d = newLeafF[i].isPivot ? RemovedPtoP : RemovedKtoP;
+                                long long d = newLeafF[i].isPivot ? RemovedPtoP : RemovedKtoP;
                                 atomicSub(edgeGraph.getEdgeCompressedId(newLeafF[i].v, leafRm.removedPivots[j]), d);
                             }
                         // newLeaf×newLeaf
                         for (daf::Size i = 0; i + 1 < newLeafF.size(); ++i)
                             for (daf::Size j = i + 1; j < newLeafF.size(); ++j) {
                                 auto &u = newLeafF[i], &v = newLeafF[j];
-                                double d = (!u.isPivot && !v.isPivot) ? KtoK : (u.isPivot && v.isPivot) ? PtoP : KtoP;
+                                long long d = (!u.isPivot && !v.isPivot) ? KtoK : (u.isPivot && v.isPivot) ? PtoP : KtoP;
                                 atomicSub(edgeGraph.getEdgeCompressedId(u.v, v.v), d);
                             }
                         newLeafF.free();
@@ -928,7 +930,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                         for (daf::Size i = 0; i + 1 < leaf.size(); ++i)
                             for (daf::Size j = i + 1; j < leaf.size(); ++j) {
                                 auto &u = leaf[i], &v = leaf[j];
-                                double d = (!u.isPivot && !v.isPivot) ? RemovedKtoK : (u.isPivot && v.isPivot) ? RemovedPtoP : RemovedKtoP;
+                                long long d = (!u.isPivot && !v.isPivot) ? RemovedKtoK : (u.isPivot && v.isPivot) ? RemovedPtoP : RemovedKtoP;
                                 atomicSub(edgeGraph.getEdgeCompressedId(u.v, v.v), d);
                             }
                     }
@@ -1086,9 +1088,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                     else keepC.push_back(node.v);
                 }
                 daf::Size needPivot = k - keepC.size();
-                double KtoK = 0, KtoP = 0, PtoP = 0;
+                long long KtoK = 0, KtoP = 0, PtoP = 0;
 
-                auto addW = [&](daf::Size u, daf::Size v, double w) {
+                auto addW = [&](daf::Size u, daf::Size v, long long w) {
                     auto idx = edgeGraph.getEdgeCompressedId(u, v);
                     countingKE[idx] += w;
                 };
@@ -1102,19 +1104,19 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                         else { newKeepC.push_back(i.v); treeGraphV.addNbr(i.v, {newId, false}); }
                     }
                     daf::Size np = k - newKeepC.size();
-                    double KtoK = 0, KtoP = 0, PtoP = 0;
+                    long long KtoK = 0, KtoP = 0, PtoP = 0;
                     if (np <= newPivot.size() && newKeepC.size() > 1) {
-                        KtoK = nCr[newPivot.size()][np];
+                        KtoK = std::llround(nCr[newPivot.size()][np]);
                         PlusECDSet::processEdgePairs(newKeepC, KtoK, addW);
                     }
                     int nPP = int(np) - 2;
                     if (0 <= nPP && nPP <= int(newPivot.size()) - 2) {
-                        PtoP = nCr[newPivot.size() - 2][nPP];
+                        PtoP = std::llround(nCr[newPivot.size() - 2][nPP]);
                         PlusECDSet::processEdgePairs(newPivot, PtoP, addW);
                     }
                     int nKP = int(np) - 1;
                     if (0 <= nKP && nKP <= int(newPivot.size()) - 1) {
-                        KtoP = nCr[newPivot.size() - 1][nKP];
+                        KtoP = std::llround(nCr[newPivot.size() - 1][nKP]);
                         PlusECDSet::processEdgePairs(newKeepC, newPivot, KtoP, addW);
                     }
                     newPivot.clear(); newKeepC.clear();
@@ -1135,23 +1137,23 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                 }
 
                 // Remove old contribution
-                auto removeW = [&](daf::Size u, daf::Size v, double w) {
+                auto removeW = [&](daf::Size u, daf::Size v, long long w) {
                     auto idx = edgeGraph.getEdgeCompressedId(u, v);
                     countingKE[idx] -= w;
                     deferMove(idx);
                 };
                 if (needPivot <= povit.size()) {
-                    KtoK = nCr[povit.size()][needPivot];
+                    KtoK = std::llround(nCr[povit.size()][needPivot]);
                     PlusECDSet::processEdgePairs(keepC, KtoK, removeW);
                 }
                 int needPP = int(needPivot) - 2;
                 if (0 <= needPP && needPP <= int(povit.size()) - 2) {
-                    PtoP = nCr[povit.size() - 2][needPP];
+                    PtoP = std::llround(nCr[povit.size() - 2][needPP]);
                     PlusECDSet::processEdgePairs(povit, PtoP, removeW);
                 }
                 int needKP = int(needPivot) - 1;
                 if (0 <= needKP && needKP <= int(povit.size()) - 1) {
-                    KtoP = nCr[povit.size() - 1][needKP];
+                    KtoP = std::llround(nCr[povit.size() - 1][needKP]);
                     PlusECDSet::processEdgePairs(keepC, povit, KtoP, removeW);
                 }
 
@@ -1172,9 +1174,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                     else keepC.push_back(node.v);
                 }
                 daf::Size needPivot = k - keepC.size();
-                double KtoK = 0, KtoP = 0, PtoP = 0;
+                long long KtoK = 0, KtoP = 0, PtoP = 0;
 
-                auto addW = [&](daf::Size u, daf::Size v, double w) {
+                auto addW = [&](daf::Size u, daf::Size v, long long w) {
                     auto idx = edgeGraph.getEdgeCompressedId(u, v);
                     countingKE[idx] += w;
                 };
@@ -1200,19 +1202,19 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                             else { newKeepC.push_back(i.v); treeGraphV.addNbr(i.v, {newId, false}); }
                         }
                         daf::Size np = k - newKeepC.size();
-                        double KtoK = 0, KtoP = 0, PtoP = 0;
+                        long long KtoK = 0, KtoP = 0, PtoP = 0;
                         if (np <= newPivot.size() && newKeepC.size() > 1) {
-                            KtoK = nCr[newPivot.size()][np];
+                            KtoK = std::llround(nCr[newPivot.size()][np]);
                             PlusECDSet::processEdgePairs(newKeepC, KtoK, addW);
                         }
                         int nPP = int(np) - 2;
                         if (0 <= nPP && nPP <= int(newPivot.size()) - 2) {
-                            PtoP = nCr[newPivot.size() - 2][nPP];
+                            PtoP = std::llround(nCr[newPivot.size() - 2][nPP]);
                             PlusECDSet::processEdgePairs(newPivot, PtoP, addW);
                         }
                         int nKP = int(np) - 1;
                         if (0 <= nKP && nKP <= int(newPivot.size()) - 1) {
-                            KtoP = nCr[newPivot.size() - 1][nKP];
+                            KtoP = std::llround(nCr[newPivot.size() - 1][nKP]);
                             PlusECDSet::processEdgePairs(newKeepC, newPivot, KtoP, addW);
                         }
                         newPivot.clear(); newKeepC.clear();
@@ -1224,23 +1226,23 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                     });
 
                 // Remove old contribution
-                auto removeW = [&](daf::Size u, daf::Size v, double w) {
+                auto removeW = [&](daf::Size u, daf::Size v, long long w) {
                     auto idx = edgeGraph.getEdgeCompressedId(u, v);
                     countingKE[idx] -= w;
                     deferMove(idx);
                 };
                 if (needPivot <= povit.size()) {
-                    KtoK = nCr[povit.size()][needPivot];
+                    KtoK = std::llround(nCr[povit.size()][needPivot]);
                     PlusECDSet::processEdgePairs(keepC, KtoK, removeW);
                 }
                 int needPP = int(needPivot) - 2;
                 if (0 <= needPP && needPP <= int(povit.size()) - 2) {
-                    PtoP = nCr[povit.size() - 2][needPP];
+                    PtoP = std::llround(nCr[povit.size() - 2][needPP]);
                     PlusECDSet::processEdgePairs(povit, PtoP, removeW);
                 }
                 int needKP = int(needPivot) - 1;
                 if (0 <= needKP && needKP <= int(povit.size()) - 1) {
-                    KtoP = nCr[povit.size() - 1][needKP];
+                    KtoP = std::llround(nCr[povit.size() - 1][needKP]);
                     PlusECDSet::processEdgePairs(keepC, povit, KtoP, removeW);
                 }
 
@@ -1249,9 +1251,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                 povit.clear(); keepC.clear();
             }
         }
-        // Deferred bucket move sweep (round to fix float accumulation errors)
+        // Deferred bucket move sweep (integer arithmetic — no rounding needed)
         for (auto idx : dirtyEdges) {
-            countingKE[idx] = std::max(std::round(countingKE[idx]), 0.0);
+            if (countingKE[idx] < 0) countingKE[idx] = 0;
             if (edgeInHeap[idx]) bucketMove(idx);
             dirtyMark[idx] = false;
         }
