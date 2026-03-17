@@ -108,7 +108,7 @@ def _save_fig_formats(fig, filename_base, eps_dir=COMPARE_OUT, png_dir=PNG_OUT_D
     os.makedirs(png_dir, exist_ok=True)
 
     # Save EPS
-    eps_path = os.path.join(eps_dir, f"{filename_base}.eps")
+    eps_path = os.path.join(eps_dir, f"{filename_base}.pdf")
     fig.savefig(eps_path, dpi=300, bbox_inches='tight')
     print(f"Saved: {eps_path}")
     # Save PNG
@@ -564,7 +564,7 @@ def _plot_cbs_special_cases(df: pd.DataFrame, out_dir: str):
 
             print(f"\n[Plotting Special Time] Dataset: {ds_name}, r: {r_val}")
 
-            fig, ax = plt.subplots(figsize=(3, 1.4))
+            fig, ax = plt.subplots(figsize=(3, 1))
             pivot = plot_df.pivot_table(index='s', columns='source', values='total_sec').reindex(s_vals)
 
             for src in _order_series_keys(pivot.columns):
@@ -622,7 +622,7 @@ def _plot_cbs_special_cases(df: pd.DataFrame, out_dir: str):
 
             print(f"\n[Plotting Special Time] Dataset: {ds_name}, r: {r_val}")
 
-            fig, ax = plt.subplots(figsize=(3, 1.4))
+            fig, ax = plt.subplots(figsize=(3, 1))
             pivot = plot_df.pivot_table(index='s', columns='source', values='max_rss_mb').reindex(s_vals)
 
             for src in _order_series_keys(pivot.columns):

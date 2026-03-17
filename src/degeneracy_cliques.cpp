@@ -170,7 +170,71 @@ int main(int argc, char **argv) {
     const bool compareMode = std::getenv("PIVOTER_COMPARE") != nullptr;
     const bool referenceOnlyMode = std::getenv("PIVOTER_RUN_REF") != nullptr;
     daf::timeCount("NucleusCoreDecomposition", [&] {
-        if (r == 2) {
+        if (r == 1 && compareMode) {
+            // Compare r=1: optimized vs reference
+            auto optTree = refTree.clone();
+            auto optTreeGraphV = treeGraphV.clone();
+            auto refCoreV = daf::timeCount("Reference r=1", [&]() {
+                return NucleusCoreDecompositionCorrect(refTree, edgeGraph, treeGraphV, r, s);
+            });
+            auto optCoreV = daf::timeCount("Optimized r=1", [&]() {
+                return NCliqueVertexCoreDecomposition(optTree, edgeGraph, optTreeGraphV, s);
+            });
+            // Compare: reference returns vector<pair<vector<Size>, int>>, optimized returns double*
+            std::map<int, int> refDist, optDist;
+            for (const auto &[clique, coreValue]: refCoreV) {
+                refDist[coreValue]++;
+            }
+            for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i) {
+                if (optCoreV[i] >= 0) optDist[(int)optCoreV[i]]++;
+            }
+            // Exclude core=0 from comparison (vertices with 0 nCr contribution)
+            refDist.erase(0);
+            optDist.erase(0);
+            if (refDist == optDist) {
+                std::cout << "✓ r=1 correctness verified: distributions match" << std::endl;
+            } else {
+                std::cerr << "✗ r=1 MISMATCH!" << std::endl;
+                std::cerr << "Reference dist size: " << refDist.size() << " Optimized dist size: " << optDist.size() << std::endl;
+                for (auto &[k, v] : refDist) {
+                    if (optDist.count(k) == 0 || optDist[k] != v)
+                        std::cerr << "  core=" << k << " ref=" << v << " opt=" << (optDist.count(k) ? optDist[k] : 0) << std::endl;
+                }
+                for (auto &[k, v] : optDist) {
+                    if (refDist.count(k) == 0)
+                        std::cerr << "  core=" << k << " ref=0 opt=" << v << " (extra in opt)" << std::endl;
+                }
+            }
+            delete[] optCoreV;
+        } else if (r == 2 && compareMode) {
+            // Compare r=2: optimized vs reference
+            auto optTree = refTree.clone();
+            auto optTreeGraphV = treeGraphV.clone();
+            auto refCore = daf::timeCount("Reference r=2", [&]() {
+                return NucleusCoreDecompositionCorrect(refTree, edgeGraph, treeGraphV, r, s);
+            });
+            auto optCore = daf::timeCount("Optimized r=2", [&]() {
+                return PlusNucleusEdgeCoreDecompositionSet(optTree, edgeGraph, optTreeGraphV, s);
+            });
+            // Compare distributions
+            std::map<int, int> refDist, optDist;
+            for (const auto &[clique, coreValue]: refCore) {
+                refDist[coreValue]++;
+            }
+            for (const auto &[edge, coreValue]: optCore) {
+                optDist[coreValue]++;
+            }
+            if (refDist == optDist) {
+                std::cout << "✓ r=2 correctness verified: distributions match" << std::endl;
+            } else {
+                std::cerr << "✗ r=2 MISMATCH!" << std::endl;
+                std::cerr << "Reference dist size: " << refDist.size() << " Optimized dist size: " << optDist.size() << std::endl;
+                for (auto &[k, v] : refDist) {
+                    if (optDist.count(k) == 0 || optDist[k] != v)
+                        std::cerr << "  core=" << k << " ref=" << v << " opt=" << (optDist.count(k) ? optDist[k] : 0) << std::endl;
+                }
+            }
+        } else if (r == 2) {
             PlusNucleusEdgeCoreDecompositionSet(refTree, edgeGraph, treeGraphV, s);
         } else if (r == 1) {
             NCliqueVertexCoreDecomposition(refTree, edgeGraph, treeGraphV, s);
@@ -235,6 +299,9 @@ int main(int argc, char **argv) {
                 std::abort();
             }
             std::cout << "Comparison passed: optimized result matches reference." << std::endl;
+        } else {
+            // r>=3 default: run optimized NucleusCoreDecompositionRClique
+            NucleusCoreDecompositionRClique(refTree, edgeGraph, treeGraphV, r, s);
         }
     });
 

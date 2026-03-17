@@ -150,48 +150,48 @@ namespace bkRmEdge {
     inline std::vector<Bitset>
     build_adj(std::vector<TreeGraphNode> &vList,
               daf::StaticVector<std::pair<daf::Size, daf::Size> > &removeEdgeList,
-              Bitset &staticVertex, // ： removeEdgeList 
-              Bitset &pivot, // ： removeEdgeList 
+              Bitset &staticVertex, // ： removeEdgeList
+              Bitset &pivot, // ： removeEdgeList
               int &outN) {
         std::ranges::sort(vList);
         int n = (int) vList.size();
         outN = n;
 
-        // 
+        //
         staticVertex.resize(n);
         staticVertex.set();
 
         pivot.resize(n);
         pivot.reset();
 
-        // 
+        //
         std::vector<Bitset> adj(n, Bitset(n));
         for (int i = 0; i < n; ++i) {
-            daf::vListMap[vList[i]] = i;
             adj[i].set();
             adj[i].reset(i);
             if (vList[i].isPivot) {
                 pivot.set(i);
             }
         }
-        //  removeEdgeList ， staticVertex 
+
+        // Thread-safe: local lookup instead of global vListMap
+        auto findIdx = [&](daf::Size vertexId) -> int {
+            for (int i = 0; i < n; ++i)
+                if (vList[i].v == vertexId) return i;
+            return -1;
+        };
+
+        //  removeEdgeList ， staticVertex
         for (auto [u0, v0]: removeEdgeList) {
-            if (daf::vListMap[u0] == std::numeric_limits<daf::Size>::max() ||
-                daf::vListMap[v0] == std::numeric_limits<daf::Size>::max()) {
-                continue;
-            }
-            auto u = daf::vListMap[u0];
-            auto v = daf::vListMap[v0];
+            int u = findIdx(u0);
+            int v = findIdx(v0);
+            if (u < 0 || v < 0) continue;
             adj[u].reset(v);
             adj[v].reset(u);
             staticVertex.reset(u);
             staticVertex.reset(v);
             pivot.reset(u);
             pivot.reset(v);
-        }
-
-        for (int i = 0; i < n; ++i) {
-            daf::vListMap[vList[i]] = std::numeric_limits<daf::Size>::max();
         }
         return adj;
     }

@@ -15,6 +15,9 @@
 // #include "graph/DynamicGraph.h"
 #include "dataStruct/coreDisJoin.hpp"
 #include "graph/DynamicGraphSet.h"
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 extern double nCr[1001][401];
 // （），
@@ -428,300 +431,313 @@ double *  NCliqueVertexCoreDecomposition(
     auto time_start = std::chrono::high_resolution_clock::now();
 
     auto countingV = VCD::countingPerVertex(tree, edgeGraph, k);
-    auto coreV = new double[edgeGraph.adj_list_offsets.size()];
-    memset(coreV, 0, edgeGraph.adj_list_offsets.size() * sizeof(double));
-    // std::vector<double> leafCore = VCD::initLeafCore(tree, countingKE, k, edgeGraph);
+    const daf::Size numVertices = edgeGraph.adj_list_offsets.size() - 1;
+    auto coreV = new double[numVertices + 1];
+    // Initialize to -1 to distinguish non-participating vertices from core=0
+    for (daf::Size i = 0; i <= numVertices; ++i) coreV[i] = -1.0;
 
-#ifndef NDEBUG
-    tree.printGraphPerV();
-    daf::printArray(countingV, edgeGraph.adj_list.size());
-    // VCD::printEdgeCore(edgeGraph, degreeE);
+#ifdef _OPENMP
+    const int numThreads = omp_get_max_threads();
+#else
+    const int numThreads = 1;
 #endif
 
-    // memset(removedLeaf.getData(), false, tree.adj_list.size() * sizeof(bool));
+    // --- Bucket array replacing O(log n) heap ---
+    int maxBucket = 0;
+    for (daf::Size i = 0; i < numVertices; ++i) {
+        if (countingV[i] > 0)
+            maxBucket = std::max(maxBucket, (int)countingV[i]);
+    }
+    std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
+    std::vector<int> bucket_of(numVertices);
+    std::vector<daf::Size> pos_in_bucket(numVertices);
+    std::vector<bool> vertexInHeap(numVertices, false);
+    daf::Size remainingInHeap = 0;
+    for (daf::Size i = 0; i < numVertices; ++i) {
+        if (countingV[i] <= 0) continue;
+        int b = (int)countingV[i];
+        bucket_of[i] = b;
+        pos_in_bucket[i] = buckets[b].size();
+        buckets[b].push_back(i);
+        vertexInHeap[i] = true;
+        remainingInHeap++;
+    }
+    int curBucket = 0;
 
-    daf::StaticVector<daf::Size> povit;
-    daf::StaticVector<daf::Size> keepC;
-    daf::StaticVector<daf::Size> newPivot;
-    daf::StaticVector<daf::Size> newKeepC;
+    // Bucket move helper (serial only)
+    auto bucketMove = [&](daf::Size id) {
+        int newB = std::max(0, (int)countingV[id]);
+        int oldB = bucket_of[id];
+        if (newB == oldB) return;
+        auto& oldVec = buckets[oldB];
+        daf::Size myPos = pos_in_bucket[id];
+        if (myPos < oldVec.size() - 1) {
+            daf::Size last = oldVec.back();
+            oldVec[myPos] = last;
+            pos_in_bucket[last] = myPos;
+        }
+        oldVec.pop_back();
+        if (newB >= (int)buckets.size()) buckets.resize(newB + 1);
+        bucket_of[id] = newB;
+        pos_in_bucket[id] = buckets[newB].size();
+        buckets[newB].push_back(id);
+        if (newB < curBucket) curBucket = newB;
+    };
 
-    povit.reserve(400);
-    keepC.reserve(400);
-    newPivot.reserve(400);
-    newKeepC.reserve(400);
+    // Deferred bucket move tracking
+    std::vector<bool> dirtyMark(numVertices, false);
+    std::vector<daf::Size> dirtyVertices;
+    dirtyVertices.reserve(8192);
 
-    daf::StaticVector<daf::Size> currentRemoveVertexIds(edgeGraph.adj_list_offsets.size());
+    // Per-thread dirty lists for parallel phases
+    std::vector<std::vector<daf::Size>> threadDirty(numThreads);
+    for (auto& v : threadDirty) v.reserve(4096);
 
-    daf::StaticVector<bool> vertexInHeap(edgeGraph.adj_list_offsets.size());
-    vertexInHeap.c_size = edgeGraph.adj_list_offsets.size();
-    memset(vertexInHeap.getData(), true, edgeGraph.adj_list_offsets.size() * sizeof(bool));
+    // Per-leaf locks for Phase 1
+    static constexpr int NUM_LEAF_LOCKS = 4096;
+#ifdef _OPENMP
+    omp_lock_t leafLocks[NUM_LEAF_LOCKS];
+    for (int i = 0; i < NUM_LEAF_LOCKS; i++) omp_init_lock(&leafLocks[i]);
+#endif
 
-    // daf::StaticVector<std::pair<daf::Size, double> > updateLeaf(tree.adj_list.size() * 10);
+    // Leaf tracking
     daf::StaticVector<daf::Size> removedLeaf(tree.adj_list.size());
     daf::StaticVector<VCD::LeafRmInfo> leafRmInfo(tree.adj_list.size());
     leafRmInfo.c_size = tree.adj_list.size();
+    std::vector<bool> leafAffected(tree.adj_list.size(), false);
 
-    VCD::DHeap heap{VCD::CompareVertex(countingV)};
-    std::vector<VCD::DHeap::handle_type> heapHandles(edgeGraph.adj_list_offsets.size() - 1);
-    for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i) {
-        // push if counting > 0
-        // heapHandles[i] = heap.push(i);
-        if (countingV[i] > 0)
-            heapHandles[i] = heap.push(i);
-    }
-    // std::cout << "tree: ";
-    // tree.printGraphPerV();
-    //
-    // std::cout << "treeGraphV: ";
-    // treeGraphV.printGraphPerV();
-#ifndef NDEBUG
+    // Per-thread new leaf lists for Phase 1
+    std::vector<std::vector<daf::Size>> threadNewLeaves(numThreads);
+    for (auto& v : threadNewLeaves) v.reserve(4096);
 
-    std::cout << "countingV: ";
-    daf::printArray(countingV, edgeGraph.adj_list_offsets.size() - 1);
-    std::cout << "tree: ";
-    tree.printGraphPerV();
+    daf::StaticVector<daf::Size> currentRemoveVertexIds(numVertices);
 
-    std::cout << "treeGraphV: ";
-    treeGraphV.printGraphPerV();
-#endif
     std::cout << "=========================begin=========================" << std::endl;
-    // daf::StaticVector<std::pair<daf::Size, daf::Size> > removedEdges(1000);
+    std::cout << "vertices in heap: " << remainingInHeap << std::endl;
+
     double minCore = 0;
-    int numProgress = 0;
-    CoreDisJoin hierarchyBuilder(edgeGraph.adj_list_offsets.size() - 1, 20);
-    while (!heap.empty()) {
+    // Pre-allocate per-thread recycle lists outside the loop
+    std::vector<std::vector<daf::Size>> threadRecycle(numThreads);
 
-        minCore = std::max( countingV[heap.top()], minCore );
-        //  core==minCore  leaf  pop 
-        // printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
+    while (remainingInHeap > 0) {
+        // --- Bucket pop ---
+        while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
+        if (curBucket >= (int)buckets.size()) break;
 
-        // std::cout << "minCore: " << minCore
-        // << " heap size: " << heap.size()
-        // << " num Leaf: " << tree.size() << " "
-        // << k << "-Clique count: " << tree.cliqueCount(k)
-        // << std::endl;
-        while (!heap.empty() && countingV[heap.top()] <= minCore) {
-            auto id = heap.top();
-            vertexInHeap[id] = false;
-            heap.pop();
-            currentRemoveVertexIds.push_back(id);
-            coreV[id] = minCore;
-            // daf::printProgress(numProgress++, edgeGraph.adj_list.size());
+        minCore = std::max((double)curBucket, minCore);
+
+        while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
+               && (double)curBucket <= minCore) {
+            while (!buckets[curBucket].empty()) {
+                auto id = buckets[curBucket].back();
+                buckets[curBucket].pop_back();
+                vertexInHeap[id] = false;
+                currentRemoveVertexIds.push_back(id);
+                coreV[id] = minCore;
+                remainingInHeap--;
+            }
+            if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
+                && (double)(curBucket + 1) <= minCore) {
+                curBucket++;
+            } else break;
         }
 
-        #ifndef NDEBUG
-         std::cout << "currentRemoveVertexIds: " << currentRemoveVertexIds << std::endl;
- #endif
-        for (auto v: currentRemoveVertexIds) {
-            auto &adjClique = treeGraphV.getNbr(v);
-            for (const auto &clique: adjClique) {
-                if (leafRmInfo[clique.v].empty()) {
-                    removedLeaf.push_back(clique.v);
-                    leafRmInfo[clique.v].init(tree.adj_list[clique.v].size());
+        if (remainingInHeap == 0) break;
+
+        // --- Phase 1: identify affected leaves ---
+        if (numThreads > 1 && currentRemoveVertexIds.size() > 16) {
+            // Parallel path with per-leaf locks
+#ifdef _OPENMP
+            #pragma omp parallel for schedule(dynamic, 8)
+#endif
+            for (int vi = 0; vi < (int)currentRemoveVertexIds.size(); ++vi) {
+#ifdef _OPENMP
+                int tid = omp_get_thread_num();
+#else
+                int tid = 0;
+#endif
+                auto v = currentRemoveVertexIds[vi];
+                auto &adjClique = treeGraphV.getNbr(v);
+                for (const auto &clique : adjClique) {
+                    daf::Size leafId = clique.v;
+                    if (tree.adj_list[leafId].empty()) continue;
+                    auto lockIdx = leafId & (NUM_LEAF_LOCKS - 1);
+#ifdef _OPENMP
+                    omp_set_lock(&leafLocks[lockIdx]);
+#endif
+                    auto &lrm = leafRmInfo[leafId];
+                    bool wasEmpty = lrm.empty();
+                    if (!lrm.removedKeepC) {
+                        if (!clique.isPivot) {
+                            lrm.removedKeepC = true;
+                        } else {
+                            lrm.removedPivots.push_back(v);
+                        }
+                    }
+#ifdef _OPENMP
+                    omp_unset_lock(&leafLocks[lockIdx]);
+#endif
+                    if (wasEmpty) threadNewLeaves[tid].push_back(leafId);
                 }
-                if (leafRmInfo[clique.v].removedKeepC) {
-                    continue;
+            }
+            // Merge per-thread new leaves
+            for (int t = 0; t < numThreads; ++t) {
+                for (auto leafId : threadNewLeaves[t]) {
+                    if (!leafAffected[leafId]) {
+                        leafAffected[leafId] = true;
+                        removedLeaf.push_back(leafId);
+                    }
                 }
-                if (!clique.isPivot) {
-                    leafRmInfo[clique.v].removedKeepC = true;
-                } else {
-                    leafRmInfo[clique.v].removedPivots.push_back(v);
+                threadNewLeaves[t].clear();
+            }
+        } else {
+            // Serial path (no locks, no OMP overhead)
+            for (int vi = 0; vi < (int)currentRemoveVertexIds.size(); ++vi) {
+                auto v = currentRemoveVertexIds[vi];
+                auto &adjClique = treeGraphV.getNbr(v);
+                for (const auto &clique : adjClique) {
+                    daf::Size leafId = clique.v;
+                    if (tree.adj_list[leafId].empty()) continue;
+                    auto &lrm = leafRmInfo[leafId];
+                    if (lrm.empty()) {
+                        removedLeaf.push_back(leafId);
+                        leafAffected[leafId] = true;
+                    }
+                    if (!lrm.removedKeepC) {
+                        if (!clique.isPivot) {
+                            lrm.removedKeepC = true;
+                        } else {
+                            lrm.removedPivots.push_back(v);
+                        }
+                    }
                 }
             }
         }
-        auto processStart = std::chrono::high_resolution_clock::now();
-        // removedLeaf.print("removedLeaf");
-        // for (auto leafId : removedLeaf) {
-        for (auto leafIdIdx = 0; leafIdIdx < removedLeaf.size(); ++leafIdIdx) {
-            auto leafId = removedLeaf[leafIdIdx];
-            auto leaf = tree.adj_list[leafId];
-            // std::cout << "leafId: " << leafId << " leaf: " << leaf << std::endl;
+
+        // --- Phase 2 (parallel): sort + countingV deltas + tree mutations ---
+#ifdef _OPENMP
+        #pragma omp parallel for schedule(dynamic, 64) if(removedLeaf.size() > 32)
+#endif
+        for (int li = 0; li < (int)removedLeaf.size(); ++li) {
+#ifdef _OPENMP
+            int tid = omp_get_thread_num();
+#else
+            int tid = 0;
+#endif
+            auto leafId = removedLeaf[li];
+            auto &leaf = tree.adj_list[leafId];
             VCD::LeafRmInfo &leafRm = leafRmInfo[leafId];
-            if (leaf.empty()) {
-                std::cout << "Error: newLeaf is empty" << std::endl;
-                std::cout << "leafId: " << leafId << std::endl;
-                std::cout << "leafRm.removedPivots: " << leafRm.removedPivots << std::endl;
-                std::cout << "leaf: " << leaf << std::endl;
-                std::cerr << "Error: leaf is empty" << std::endl;
-                std::exit(1);
-            }
+            if (leaf.empty()) continue;
 
+            // Sort removedPivots inline
             std::ranges::sort(leafRm.removedPivots);
             leafRm.removedPivots.unique();
-#ifndef NDEBUG
-            std::cout << leafId << " leaf: " << leaf << "\n leafRm: " << leafRm << std::endl;
-#endif
-            for (auto node: leaf) {
-                if (node.isPivot) {
-                    povit.push_back(node.v);
-                } else {
-                    keepC.push_back(node.v);
-                }
+
+            int numPivots = 0, numKeeps = 0;
+            for (auto &node : leaf) {
+                if (node.isPivot) numPivots++;
+                else numKeeps++;
             }
 
+            int needPivot = (int)k - numKeeps;
+            int remainPivots = numPivots - (int)leafRm.removedPivots.size();
+            bool leafDies = leafRm.removedKeepC || needPivot < 0 || needPivot > remainPivots;
 
-            // removedPovit.print("removedPovit1: ");
-            // double totalKcliques = -1;totalKcliques = nCr[povit.size()][needPivot];
+            if (leafDies) {
+                double keepValue = (needPivot >= 0 && needPivot <= numPivots)
+                                   ? nCr[numPivots][needPivot] : 0.0;
+                double pivotValue = (needPivot >= 1 && needPivot - 1 <= numPivots - 1)
+                                    ? nCr[numPivots - 1][needPivot - 1] : 0.0;
 
-
-
-            daf::Size needPivot = k - keepC.size();
-            // std::cout << "coreE: " << std::endl;
-            // daf::printArray(coreE, edgeGraph.adj_list.size());
-            if (leafRm.removedKeepC || needPivot > povit.size() - leafRm.removedPivots.size()) {
-                // auto removeW = [&](daf::Size u, daf::Size v, double w) {
-                //     auto idx = edgeGraph.getEdgeCompressedId(u, v);
-                //     countingV[idx] -= w;
-                //     if (edgeInHeap[idx]) {
-                //         heap.update(heapHandles[idx]);
-                //     }
-                // };
-                // -----------------------------------------------------------------
-
-                auto keepValue = nCr[povit.size()][needPivot];
-                for (int i = 0; i < keepC.size(); ++i) {
-                    countingV[keepC[i]] -= keepValue;
-                    countingV[keepC[i]] = std::max(countingV[keepC[i]], 0.0);
-                    if (vertexInHeap[keepC[i]]) {
-                        heap.update(heapHandles[keepC[i]]);
-                    }
-                }
-
-                if (needPivot > 0) {
-                    auto pivotValue = nCr[povit.size() - 1][needPivot - 1];
-                    for (int i = 0; i < povit.size(); ++i) {
-                        countingV[povit[i]] -= pivotValue;
-                        countingV[povit[i]] = std::max(countingV[povit[i]], 0.0);
-                        if (vertexInHeap[povit[i]]) {
-                            heap.update(heapHandles[povit[i]]);
-                        }
-                    }
-                }
-                for (auto i: leaf) {
-                    treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
-                }
-                tree.removeNode(leafId);
-            } else {
-
-
-                auto KeepCount = nCr[povit.size()][needPivot] - nCr[povit.size() - leafRm.removedPivots.size()][needPivot];
-                if (!leafRm.removedPivots.empty() && needPivot <= povit.size() - leafRm.removedPivots.size()) {
-                    for (auto removedNbr: leafRm.removedPivots) {
-                        treeGraphV.removeNbr(removedNbr, static_cast<TreeGraphNode>(leafId));
-                    }
-                    const auto newLeaf = tree.removeNbrs(leafId, leafRm.removedPivots);
-
-
-                    auto PivotCount = nCr[povit.size() - 1][needPivot - 1] - nCr[povit.size() - leafRm.removedPivots.size() - 1][needPivot - 1];
-                    auto RemovedPivot = nCr[povit.size() - 1][needPivot - 1];
-                    for (auto removedPivot : leafRm.removedPivots) {
-                        // check(countingV[removedPivot], RemovedPivot);
-                        countingV[removedPivot] -= RemovedPivot;
-                        countingV[removedPivot] = std::max(countingV[removedPivot], 0.0);
-                        if (vertexInHeap[removedPivot]) {
-                            heap.update(heapHandles[removedPivot]);
-                        }
-                        // std::cout << "removedPivot: " << removedPivot << " RemovedPivot: " << RemovedPivot << std::endl;
-                    }
-
-                    for (auto v : newLeaf) {
-                        if (v.isPivot) {
-                            // check(countingV[v.v], PivotCount);
-                            countingV[v.v] -= PivotCount;
-                            countingV[v.v] = std::max(countingV[v.v], 0.0);
-                        } else {
-                            // check(countingV[v.v], KeepCount);
-                            countingV[v.v] -= KeepCount;
-                            countingV[v.v] = std::max(countingV[v.v], 0.0);
-                        }
-                        if (vertexInHeap[v.v]) {
-                            heap.update(heapHandles[v.v]);
-                        }
-                    }
-
-                }
-            }
-
-
-// #ifndef NDEBUG
-//             std::cout << "countingKE: ";
-//             VCD::printEdgeCore(edgeGraph, countingKE);
-//                 // updateLeaf.print("updateLeaf");
-//                 // removedLeaf.print("removedLeaf");
-//             std::cout << "removedLeaf: " << removedLeaf << std::endl;
-//
-//             // //
-//             // // std::cout << "degreeE: ";
-//             // // VCD::printEdgeCore(edgeGraph, degreeE);
-//             // std::cout << "degreeV: ";
-//             // daf::printArray(degreeV, treeGraphV.adj_list.size());
-//             //
-//             std::cout << "coreE: ";
-//             VCD::printEdgeCore(edgeGraph, coreE);
-//             //
-//
-//             // removedLeaf.print("removedLeaf");
-//
-//             std::cout << "--------------------------------------------------------------------------------------------------------------------"<< std::endl;
-            // #endif
-#ifndef NDEBUG
-            std::cout << "coreV: " << std::endl;
-            daf::printArray(coreV, edgeGraph.adj_list_offsets.size() - 1);
-            std::cout << "countingV: ";
-            daf::printArray(countingV, edgeGraph.adj_list_offsets.size() - 1);
-            std::cout << "tree: ";
-            tree.printGraphPerV();
-
-            std::cout << "treeGraphV: ";
-            treeGraphV.printGraphPerV();
+                for (auto &node : leaf) {
+                    double delta = node.isPivot ? pivotValue : keepValue;
+                    if (delta > 0) {
+#ifdef _OPENMP
+                        #pragma omp atomic
 #endif
+                        countingV[node.v] -= delta;
+                        if (vertexInHeap[node.v])
+                            threadDirty[tid].push_back(node.v);
+                    }
+                }
+                leaf.clear();
+                threadRecycle[tid].push_back(leafId);
+            } else if (!leafRm.removedPivots.empty() && needPivot <= remainPivots) {
+                double KeepDelta = nCr[numPivots][needPivot] - nCr[remainPivots][needPivot];
+                double RemovedPivotFull = (needPivot >= 1) ? nCr[numPivots - 1][needPivot - 1] : 0.0;
+                double PivotDelta = (needPivot >= 1)
+                    ? nCr[numPivots - 1][needPivot - 1] - nCr[remainPivots - 1][needPivot - 1]
+                    : 0.0;
 
-            leafRmInfo[leafId].clear();
-            povit.clear();
-            keepC.clear();
-            // removedEdges.clear();
-            // removedKeepC = false;
-            // for (auto v: removedPovit) {
-            //     isRemovedV[v] = false;
-            // }
-            // removedPovit.clear();
+                for (auto rp : leafRm.removedPivots) {
+                    if (RemovedPivotFull > 0) {
+#ifdef _OPENMP
+                        #pragma omp atomic
+#endif
+                        countingV[rp] -= RemovedPivotFull;
+                        if (vertexInHeap[rp])
+                            threadDirty[tid].push_back(rp);
+                    }
+                }
+
+                for (auto &node : leaf) {
+                    if (node.isPivot && std::binary_search(
+                            leafRm.removedPivots.begin(),
+                            leafRm.removedPivots.end(), node.v))
+                        continue;
+                    double delta = node.isPivot ? PivotDelta : KeepDelta;
+                    if (delta > 0) {
+#ifdef _OPENMP
+                        #pragma omp atomic
+#endif
+                        countingV[node.v] -= delta;
+                        if (vertexInHeap[node.v])
+                            threadDirty[tid].push_back(node.v);
+                    }
+                }
+                tree.removeNbrs(leafId, leafRm.removedPivots);
+            }
         }
-        auto processEnd = std::chrono::high_resolution_clock::now();
 
+        // --- Serial: merge recycle + dirty + bucket moves + cleanup ---
+        for (int t = 0; t < numThreads; ++t) {
+            for (auto id : threadRecycle[t])
+                tree.recycleNode(id);
+            threadRecycle[t].clear();
+        }
+        for (int t = 0; t < numThreads; ++t) {
+            for (auto v : threadDirty[t]) {
+                if (!dirtyMark[v]) {
+                    dirtyMark[v] = true;
+                    dirtyVertices.push_back(v);
+                }
+            }
+            threadDirty[t].clear();
+        }
+        for (auto v : dirtyVertices) {
+            countingV[v] = std::max(countingV[v], 0.0);
+            if (vertexInHeap[v]) bucketMove(v);
+            dirtyMark[v] = false;
+        }
+        dirtyVertices.clear();
+
+        for (int li = 0; li < (int)removedLeaf.size(); ++li) {
+            leafRmInfo[removedLeaf[li]].clear();
+            leafAffected[removedLeaf[li]] = false;
+        }
         currentRemoveVertexIds.clear();
         removedLeaf.clear();
-        // currentRemoveLeafIds.clear();
- #ifndef NDEBUG
-         std::cout << "coreV: " << std::endl;
-         daf::printArray(coreV, edgeGraph.adj_list_offsets.size() - 1);
-         std::cout << "countingV: ";
-         daf::printArray(countingV, edgeGraph.adj_list_offsets.size() - 1);
-         std::cout << "tree: ";
-         tree.printGraphPerV();
-
-         std::cout << "treeGraphV: ";
-         treeGraphV.printGraphPerV();
- #endif
     }
-    //
-    // for (auto i = 0;  i < edgeGraph.adj_list_offsets.size(); ++i) {
-    //     if (countingV[i] != 0) {
-    //         std::cerr << "Error: countingKE != 0" << std::endl;
-    //         std::cerr << "countingKE: " << countingV[i] << " at index " << i << std::endl;
-    //         std::exit(1);
-    //     }
-    // }
+
+    // Cleanup locks
+#ifdef _OPENMP
+    for (int i = 0; i < NUM_LEAF_LOCKS; i++) omp_destroy_lock(&leafLocks[i]);
+#endif
 
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
 
-
     delete[] countingV;
-    // delete[] degreeV;
-    povit.free();
-    keepC.free();
-    newPivot.free();
-    newKeepC.free();
     currentRemoveVertexIds.free();
     removedLeaf.free();
     leafRmInfo.free();

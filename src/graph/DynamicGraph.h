@@ -99,6 +99,11 @@ class DynamicGraph {
             adj_list[node_id].clear();
         }
 
+        // Push node_id to free list without clearing adj_list (caller already cleared it)
+        void recycleNode(daf::Size node_id) {
+            removedNodes.push_back(node_id);
+        }
+
         void printGraphPerV() {
             // sort
             // for (auto &i: adj_list) {
