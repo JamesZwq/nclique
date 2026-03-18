@@ -123,12 +123,17 @@ int main(int argc, char **argv) {
         }
         printf("\n");
 
-        // Compare k ≤ max_k (= s) only.
-        // For k > max_k, the keepSz==max_k truncation discards dropV,
-        // making those values pivot-dependent (expected to differ).
+        // Compare only min_k ≤ k ≤ max_k (= s).
+        // - k < min_k: pivot-dependent because min_k filter drops small leaves
+        //   (same clique may be size < min_k under one pivot, ≥ min_k under another)
+        // - k > max_k: pivot-dependent because keepSz==max_k truncation discards dropV
+        // Both boundaries are inherent to the SDCT pruning, not bugs.
         bool match = true;
-        size_t compareUpTo = (size_t)s + 1;  // compare k = 0..s
-        for (size_t k = 0; k < compareUpTo; k++) {
+        // Use the actual min_k passed to SDCT_Par7 (second arg)
+        size_t checkMin = (size_t)s;  // min_k used in the SDCT calls above
+        size_t checkMax = (size_t)s;  // max_k used in the SDCT calls above
+        size_t maxCCSize = refCC.size() > par7CC.size() ? refCC.size() : par7CC.size();
+        for (size_t k = checkMin; k <= checkMax && k < maxCCSize; k++) {
             double rv = (k < refCC.size()) ? refCC[k] : 0.0;
             double pv = (k < par7CC.size()) ? par7CC[k] : 0.0;
             double diff = std::abs(rv - pv);
@@ -140,7 +145,7 @@ int main(int argc, char **argv) {
             }
         }
         if (match)
-            printf("✓ SDCT_Par7 cliqueCount correct (k ≤ %d)\n", s);
+            printf("✓ SDCT_Par7 cliqueCount correct (k=%zu..%zu)\n", checkMin, checkMax);
         else {
             printf("✗ SDCT_Par7 cliqueCount WRONG\n");
             return 1;
@@ -179,8 +184,46 @@ int main(int argc, char **argv) {
     daf::log_memory("Other Index Memory");
     const bool compareMode = std::getenv("PIVOTER_COMPARE") != nullptr;
     const bool referenceOnlyMode = std::getenv("PIVOTER_RUN_REF") != nullptr;
+    const bool singleThreadMode = std::getenv("PIVOTER_RUN_ST") != nullptr;
     daf::timeCount("NucleusCoreDecomposition", [&] {
-        if (r == 1 && compareMode) {
+        if (r == 1 && singleThreadMode) {
+            // Clone BEFORE ST runs (ST consumes the tree)
+            auto refTree2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto refTGV2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto stCoreV = daf::timeCount("ST r=1", [&]() {
+                return NCliqueVertexCoreDecomposition_ST(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCoreV = daf::timeCount("Reference r=1", [&]() {
+                    return NucleusCoreDecompositionCorrect(refTree2, edgeGraph, refTGV2, r, s);
+                });
+                std::map<int, int> refDist, stDist;
+                for (const auto &[clique, coreValue]: refCoreV) refDist[coreValue]++;
+                for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i)
+                    if (stCoreV[i] >= 0) stDist[(int)stCoreV[i]]++;
+                refDist.erase(0); stDist.erase(0);
+                if (refDist == stDist) std::cout << "✓ r=1 ST correctness verified" << std::endl;
+                else std::cerr << "✗ r=1 ST MISMATCH!" << std::endl;
+            }
+            delete[] stCoreV;
+        } else if (r == 2 && singleThreadMode) {
+            // Clone BEFORE ST runs (ST consumes the tree)
+            auto refTree2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto refTGV2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto stCore = daf::timeCount("ST r=2", [&]() {
+                return PlusNucleusEdgeCoreDecompositionSet_ST(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCore = daf::timeCount("Reference r=2", [&]() {
+                    return NucleusCoreDecompositionCorrect(refTree2, edgeGraph, refTGV2, r, s);
+                });
+                std::map<int, int> refDist, stDist;
+                for (const auto &[clique, coreValue]: refCore) refDist[coreValue]++;
+                for (const auto &[edge, coreValue]: stCore) stDist[coreValue]++;
+                if (refDist == stDist) std::cout << "✓ r=2 ST correctness verified" << std::endl;
+                else std::cerr << "✗ r=2 ST MISMATCH!" << std::endl;
+            }
+        } else if (r == 1 && compareMode) {
             // Compare r=1: optimized vs reference
             auto optTree = refTree.clone();
             auto optTreeGraphV = treeGraphV.clone();
@@ -218,6 +261,9 @@ int main(int argc, char **argv) {
                         std::cerr << "  core=" << k << " ref=0 opt=" << v << " (extra in opt)" << std::endl;
                 }
             }
+            // print tree size
+            std::cout << "refTree size: " << refTree.adj_list.size() << " optTree size: " << optTree.adj_list.size() << std::endl;
+
             delete[] optCoreV;
         } else if (r == 2 && compareMode) {
             // Compare r=2: optimized vs reference
@@ -320,6 +366,7 @@ int main(int argc, char **argv) {
 
     daf::log_memory("Final Memory");
 
+    // std::cout << "corePlus: " << corePlus << std::endl;
     // Print thread count and single/multi-threaded timing for r>=3
 
 
