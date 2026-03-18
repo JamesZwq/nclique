@@ -266,11 +266,11 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionCor
 
         minCore = std::max(countingRClique[heap.top()], minCore);
         //  core==minCore  leaf  pop 
-        std::cout << "minCore: " << minCore
-        << " heap size: " << heap.size()
-        << " num Leaf: " << tree.size() << " "
-        << s << "-Clique count: " << tree.cliqueCount(s)
-        << std::endl;
+        // std::cout << "minCore: " << minCore
+        // << " heap size: " << heap.size()
+        // << " num Leaf: " << tree.size() << " "
+        // << s << "-Clique count: " << tree.cliqueCount(s)
+        // << std::endl;
         // if (minCore == 99) break;
         while (!heap.empty() && countingRClique[heap.top()] <= minCore) {
             auto id = heap.top();
@@ -477,10 +477,10 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionCor
         std::vector<daf::Size> cliqueCopy(clique.begin(), clique.end());
         sortedK.emplace_back(cliqueCopy, coreRClique[i]);
     }
-    std::sort(sortedK.begin(), sortedK.end(),
-              [](const auto &a, const auto &b) {
-                  return a.second < b.second; //  core 
-              });
+    // std::sort(sortedK.begin(), sortedK.end(),
+    //           [](const auto &a, const auto &b) {
+    //               return a.second < b.second; //  core
+    //           });
     // auto file = fopen("~/_/pivoter/a.out", "w");
     // for (auto i: sortedK) {
     //     printf("[");

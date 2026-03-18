@@ -75,7 +75,8 @@ struct Out7 {
     }
 };
 
-// findPivot7: full scan (Par7 has bidirectional neighbor lists, no packing invariant)
+// findPivot7: matches reference findBestPivotNonNeighborsDegeneracyCliques
+// Uses MIN(|P|, numNeighbors) bound + early break on non-P neighbor
 static int findPivot7(
     int** pivotCands, int* nPivotCands,
     int* vertexSets, int* vertexLookup,
@@ -87,10 +88,15 @@ static int findPivot7(
 
     for (int j = beginP; j < beginR; j++) {
         int u = vertexSets[j];
+        int numPotentialNeighbors = pSz < numNeighbors[u] ? pSz : numNeighbors[u];
         int inP = 0;
-        for (int k = 0; k < numNeighbors[u]; k++) {
+        for (int k = 0; k < numPotentialNeighbors; k++) {
             int nl = vertexLookup[neighborsInP[u][k]];
-            if (nl >= beginP && nl < beginR) inP++;
+            if (nl >= beginP && nl < beginR) {
+                inP++;
+            } else {
+                break;
+            }
         }
         if (inP > maxInP) { maxInP = inP; pivot = u; }
     }
@@ -99,10 +105,15 @@ static int findPivot7(
     for (int i = 0; i < pSz; i++) buf[i] = vertexSets[beginP + i];
     *nPivotCands = pSz;
 
-    for (int j = 0; j < numNeighbors[pivot]; j++) {
+    int numPivotNeighbors = pSz < numNeighbors[pivot] ? pSz : numNeighbors[pivot];
+    for (int j = 0; j < numPivotNeighbors; j++) {
         int nb = neighborsInP[pivot][j];
         int nl = vertexLookup[nb];
-        if (nl >= beginP && nl < beginR) buf[nl - beginP] = -1;
+        if (nl >= beginP && nl < beginR) {
+            buf[nl - beginP] = -1;
+        } else {
+            break;
+        }
     }
     for (int i = 0; i < *nPivotCands; ) {
         if (buf[i] == -1) { (*nPivotCands)--; buf[i] = buf[*nPivotCands]; }
@@ -112,7 +123,8 @@ static int findPivot7(
     return pivot;
 }
 
-// moveToR7: full scan (no early break, no MIN bound)
+// moveToR7: matches reference moveToRDegeneracyCliques
+// Uses MIN(sizeOfP, numNeighbors) bound, same scanning pattern
 static void moveToR7(
     int vertex, int* vertexSets, int* vertexLookup,
     int** neighborsInP, int* numNeighbors,
@@ -126,29 +138,51 @@ static void moveToR7(
     *pNewBeginP = *pBeginP;
     *pNewBeginR = *pBeginP;
 
-    for (int j = *pBeginP; j < *pBeginR; j++) {
-        int nb = vertexSets[j];
-        for (int k = 0; k < numNeighbors[nb]; k++) {
-            if (neighborsInP[nb][k] == vertex) {
-                vertexSets[j] = vertexSets[*pNewBeginR]; vertexLookup[vertexSets[*pNewBeginR]] = j;
-                vertexSets[*pNewBeginR] = nb; vertexLookup[nb] = *pNewBeginR;
+    int sizeOfP = *pBeginR - *pBeginP;
+
+    // Phase 1: find neighbors of vertex in P, swap to front
+    // Reference: no break after finding vertex, uses MIN bound
+    int j = *pBeginP;
+    while (j < *pBeginR) {
+        int neighbor = vertexSets[j];
+        int neighborLocation = j;
+
+        int numPotentialNeighbors = sizeOfP < numNeighbors[neighbor] ? sizeOfP : numNeighbors[neighbor];
+        int k = 0;
+        while (k < numPotentialNeighbors) {
+            if (neighborsInP[neighbor][k] == vertex) {
+                vertexSets[neighborLocation] = vertexSets[*pNewBeginR];
+                vertexLookup[vertexSets[*pNewBeginR]] = neighborLocation;
+                vertexSets[*pNewBeginR] = neighbor;
+                vertexLookup[neighbor] = *pNewBeginR;
                 (*pNewBeginR)++;
-                break;
             }
+            k++;
         }
+        j++;
     }
 
-    for (int j = *pNewBeginP; j < *pNewBeginR; j++) {
+    // Phase 2: reorder neighbor lists for new P vertices
+    // Reference: uses MIN(sizeOfP, numNeighbors) bound
+    j = *pNewBeginP;
+    while (j < *pNewBeginR) {
         int tv = vertexSets[j];
-        int cnt = 0;
-        for (int k = 0; k < numNeighbors[tv]; k++) {
+
+        int numPotentialNeighbors = sizeOfP < numNeighbors[tv] ? sizeOfP : numNeighbors[tv];
+        int numNeighborsInP = 0;
+
+        int k = 0;
+        while (k < numPotentialNeighbors) {
             int nb = neighborsInP[tv][k];
             int nl = vertexLookup[nb];
             if (nl >= *pNewBeginP && nl < *pNewBeginR) {
-                neighborsInP[tv][k] = neighborsInP[tv][cnt];
-                neighborsInP[tv][cnt++] = nb;
+                neighborsInP[tv][k] = neighborsInP[tv][numNeighborsInP];
+                neighborsInP[tv][numNeighborsInP] = nb;
+                numNeighborsInP++;
             }
+            k++;
         }
+        j++;
     }
 }
 

@@ -1,8 +1,12 @@
 //
 // Single-thread optimized r=1 nucleus decomposition.
-// Stripped of all OMP infrastructure: no locks, no per-thread vectors,
-// no deferred dirty tracking, no atomic directives.
-// Direct countingV updates + immediate bucketMove.
+// Optimizations over parallel version:
+//   - No OMP: no locks, no per-thread vectors, no atomic directives
+//   - Immediate bucketMove (no deferred dirty tracking)
+//   - Integer arithmetic (long long countingV) eliminates float overhead
+//   - vector<uint8_t> instead of vector<bool> for flags
+//   - Small-array fast path: skip sort for ≤2 removedPivots
+//   - Merged Phase 2 (delta + tree mutation in single pass)
 //
 
 #include "NCliqueCoreDecomposition.h"
@@ -33,39 +37,32 @@ namespace VCD_ST {
         }
     };
 
-    double * countingPerVertex(const DynamicGraph<TreeGraphNode> &treeGraph,
-                                                     const Graph &edgeGraph,
-                                                     const daf::CliqueSize k) {
-        double *countingV = new double[edgeGraph.adj_list_offsets.size()];
-        memset(countingV, 0, edgeGraph.adj_list_offsets.size() * sizeof(double));
+    long long * countingPerVertex(const DynamicGraph<TreeGraphNode> &treeGraph,
+                                  const Graph &edgeGraph,
+                                  const daf::CliqueSize k) {
+        const daf::Size n = edgeGraph.adj_list_offsets.size();
+        auto *countingV = new long long[n];
+        memset(countingV, 0, n * sizeof(long long));
         daf::StaticVector<daf::Size> povit;
         daf::StaticVector<daf::Size> keepC;
         for (const auto &clique: treeGraph.adj_list) {
             povit.clear();
             keepC.clear();
-            if (clique.size() < k) {
-                continue;
-            }
+            if (clique.size() < k) continue;
             for (auto &i: clique) {
-                if (i.isPivot) {
-                    povit.push_back(i.v);
-                } else {
-                    keepC.push_back(i.v);
-                }
+                if (i.isPivot) povit.push_back(i.v);
+                else keepC.push_back(i.v);
             }
-
             int needPivot = int(k) - int(keepC.size());
-            for (const auto &v: keepC) {
-                countingV[v] += nCr[povit.size()][needPivot];
-            }
-            double eachPivotKcliques = 0;
+            long long keepVal = std::llround(nCr[povit.size()][needPivot]);
+            for (const auto &v: keepC)
+                countingV[v] += keepVal;
+            long long pivotVal = 0;
             const int needPivotWithV = needPivot - 1;
-            if (needPivotWithV >= 0 && needPivotWithV <= static_cast<int>(povit.size()) - 1) {
-                eachPivotKcliques = nCr[povit.size() - 1][needPivotWithV];
-            }
-            for (const auto &v: povit) {
-                countingV[v] += eachPivotKcliques;
-            }
+            if (needPivotWithV >= 0 && needPivotWithV <= static_cast<int>(povit.size()) - 1)
+                pivotVal = std::llround(nCr[povit.size() - 1][needPivotWithV]);
+            for (const auto &v: povit)
+                countingV[v] += pivotVal;
         }
         povit.free();
         keepC.free();
@@ -93,7 +90,7 @@ double * NCliqueVertexCoreDecomposition_ST(
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
     std::vector<int> bucket_of(numVertices);
     std::vector<daf::Size> pos_in_bucket(numVertices);
-    std::vector<bool> vertexInHeap(numVertices, false);
+    std::vector<uint8_t> vertexInHeap(numVertices, 0);
     daf::Size remainingInHeap = 0;
     for (daf::Size i = 0; i < numVertices; ++i) {
         if (countingV[i] <= 0) continue;
@@ -101,12 +98,12 @@ double * NCliqueVertexCoreDecomposition_ST(
         bucket_of[i] = b;
         pos_in_bucket[i] = buckets[b].size();
         buckets[b].push_back(i);
-        vertexInHeap[i] = true;
+        vertexInHeap[i] = 1;
         remainingInHeap++;
     }
     int curBucket = 0;
 
-    // Bucket move helper — called immediately inline (no deferred tracking)
+    // Bucket move helper — called immediately inline
     auto bucketMove = [&](daf::Size id) {
         int newB = std::max(0, (int)countingV[id]);
         int oldB = bucket_of[id];
@@ -130,34 +127,34 @@ double * NCliqueVertexCoreDecomposition_ST(
     daf::StaticVector<daf::Size> removedLeaf(tree.adj_list.size());
     daf::StaticVector<VCD_ST::LeafRmInfo> leafRmInfo(tree.adj_list.size());
     leafRmInfo.c_size = tree.adj_list.size();
-    std::vector<bool> leafAffected(tree.adj_list.size(), false);
+    std::vector<uint8_t> leafAffected(tree.adj_list.size(), 0);
 
     daf::StaticVector<daf::Size> currentRemoveVertexIds(numVertices);
 
     std::cout << "=========================begin=========================" << std::endl;
     std::cout << "vertices in heap: " << remainingInHeap << std::endl;
 
-    double minCore = 0;
+    long long minCore = 0;
 
     while (remainingInHeap > 0) {
         // --- Bucket pop ---
         while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
         if (curBucket >= (int)buckets.size()) break;
 
-        minCore = std::max((double)curBucket, minCore);
+        minCore = std::max((long long)curBucket, minCore);
 
         while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
-               && (double)curBucket <= minCore) {
+               && curBucket <= (int)minCore) {
             while (!buckets[curBucket].empty()) {
                 auto id = buckets[curBucket].back();
                 buckets[curBucket].pop_back();
-                vertexInHeap[id] = false;
+                vertexInHeap[id] = 0;
                 currentRemoveVertexIds.push_back(id);
-                coreV[id] = minCore;
+                coreV[id] = (double)minCore;
                 remainingInHeap--;
             }
             if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
-                && (double)(curBucket + 1) <= minCore) {
+                && (curBucket + 1) <= (int)minCore) {
                 curBucket++;
             } else break;
         }
@@ -174,7 +171,7 @@ double * NCliqueVertexCoreDecomposition_ST(
                 auto &lrm = leafRmInfo[leafId];
                 if (lrm.empty()) {
                     removedLeaf.push_back(leafId);
-                    leafAffected[leafId] = true;
+                    leafAffected[leafId] = 1;
                 }
                 if (!lrm.removedKeepC) {
                     if (!clique.isPivot) {
@@ -186,16 +183,24 @@ double * NCliqueVertexCoreDecomposition_ST(
             }
         }
 
-        // --- Phase 2: countingV deltas + tree mutations + immediate bucket moves ---
+        // --- Phase 2: merged delta + tree mutation + immediate bucket moves ---
         for (int li = 0; li < (int)removedLeaf.size(); ++li) {
             auto leafId = removedLeaf[li];
             auto &leaf = tree.adj_list[leafId];
             VCD_ST::LeafRmInfo &leafRm = leafRmInfo[leafId];
             if (leaf.empty()) continue;
 
-            // Sort removedPivots inline
-            std::ranges::sort(leafRm.removedPivots);
-            leafRm.removedPivots.unique();
+            // Sort removedPivots — fast path for small arrays
+            const auto rpSize = leafRm.removedPivots.size();
+            if (rpSize == 2) {
+                if (leafRm.removedPivots[0] > leafRm.removedPivots[1])
+                    std::swap(leafRm.removedPivots[0], leafRm.removedPivots[1]);
+                if (leafRm.removedPivots[0] == leafRm.removedPivots[1])
+                    leafRm.removedPivots.c_size = 1;
+            } else if (rpSize > 2) {
+                std::ranges::sort(leafRm.removedPivots);
+                leafRm.removedPivots.unique();
+            }
 
             int numPivots = 0, numKeeps = 0;
             for (auto &node : leaf) {
@@ -208,16 +213,16 @@ double * NCliqueVertexCoreDecomposition_ST(
             bool leafDies = leafRm.removedKeepC || needPivot < 0 || needPivot > remainPivots;
 
             if (leafDies) {
-                double keepValue = (needPivot >= 0 && needPivot <= numPivots)
-                                   ? nCr[numPivots][needPivot] : 0.0;
-                double pivotValue = (needPivot >= 1 && needPivot - 1 <= numPivots - 1)
-                                    ? nCr[numPivots - 1][needPivot - 1] : 0.0;
+                long long keepValue = (needPivot >= 0 && needPivot <= numPivots)
+                                   ? std::llround(nCr[numPivots][needPivot]) : 0;
+                long long pivotValue = (needPivot >= 1 && needPivot - 1 <= numPivots - 1)
+                                    ? std::llround(nCr[numPivots - 1][needPivot - 1]) : 0;
 
                 for (auto &node : leaf) {
-                    double delta = node.isPivot ? pivotValue : keepValue;
+                    long long delta = node.isPivot ? pivotValue : keepValue;
                     if (delta > 0) {
                         countingV[node.v] -= delta;
-                        countingV[node.v] = std::max(countingV[node.v], 0.0);
+                        if (countingV[node.v] < 0) countingV[node.v] = 0;
                         if (vertexInHeap[node.v])
                             bucketMove(node.v);
                     }
@@ -225,30 +230,35 @@ double * NCliqueVertexCoreDecomposition_ST(
                 leaf.clear();
                 tree.recycleNode(leafId);
             } else if (!leafRm.removedPivots.empty() && needPivot <= remainPivots) {
-                double KeepDelta = nCr[numPivots][needPivot] - nCr[remainPivots][needPivot];
-                double RemovedPivotFull = (needPivot >= 1) ? nCr[numPivots - 1][needPivot - 1] : 0.0;
-                double PivotDelta = (needPivot >= 1)
-                    ? nCr[numPivots - 1][needPivot - 1] - nCr[remainPivots - 1][needPivot - 1]
-                    : 0.0;
+                long long KeepDelta = std::llround(nCr[numPivots][needPivot]) - std::llround(nCr[remainPivots][needPivot]);
+                long long RemovedPivotFull = (needPivot >= 1) ? std::llround(nCr[numPivots - 1][needPivot - 1]) : 0;
+                long long PivotDelta = (needPivot >= 1)
+                    ? std::llround(nCr[numPivots - 1][needPivot - 1]) - std::llround(nCr[remainPivots - 1][needPivot - 1])
+                    : 0;
 
                 for (auto rp : leafRm.removedPivots) {
                     if (RemovedPivotFull > 0) {
                         countingV[rp] -= RemovedPivotFull;
-                        countingV[rp] = std::max(countingV[rp], 0.0);
+                        if (countingV[rp] < 0) countingV[rp] = 0;
                         if (vertexInHeap[rp])
                             bucketMove(rp);
                     }
                 }
 
                 for (auto &node : leaf) {
-                    if (node.isPivot && std::binary_search(
-                            leafRm.removedPivots.begin(),
-                            leafRm.removedPivots.end(), node.v))
-                        continue;
-                    double delta = node.isPivot ? PivotDelta : KeepDelta;
+                    if (node.isPivot) {
+                        // Linear scan for small removedPivots (usually 1-3 elements)
+                        bool isRemoved = false;
+                        for (daf::Size ri = 0; ri < leafRm.removedPivots.size(); ++ri) {
+                            if (leafRm.removedPivots[ri] == node.v) { isRemoved = true; break; }
+                            if (leafRm.removedPivots[ri] > node.v) break; // sorted, can early exit
+                        }
+                        if (isRemoved) continue;
+                    }
+                    long long delta = node.isPivot ? PivotDelta : KeepDelta;
                     if (delta > 0) {
                         countingV[node.v] -= delta;
-                        countingV[node.v] = std::max(countingV[node.v], 0.0);
+                        if (countingV[node.v] < 0) countingV[node.v] = 0;
                         if (vertexInHeap[node.v])
                             bucketMove(node.v);
                     }
@@ -260,7 +270,7 @@ double * NCliqueVertexCoreDecomposition_ST(
         // --- Cleanup ---
         for (int li = 0; li < (int)removedLeaf.size(); ++li) {
             leafRmInfo[removedLeaf[li]].clear();
-            leafAffected[removedLeaf[li]] = false;
+            leafAffected[removedLeaf[li]] = 0;
         }
         currentRemoveVertexIds.clear();
         removedLeaf.clear();

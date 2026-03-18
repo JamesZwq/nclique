@@ -1,8 +1,12 @@
 //
 // Single-thread optimized r=2 nucleus decomposition.
-// Stripped of all OMP infrastructure: no locks, no per-thread vectors,
-// no deferred dirty tracking, no atomic directives.
-// Direct countingKE updates + immediate bucketMove.
+// Optimizations over parallel version:
+//   - No OMP: no locks, no per-thread vectors, no atomic directives
+//   - Immediate bucketMove (no deferred dirty tracking)
+//   - Integer arithmetic (long long countingKE)
+//   - vector<uint8_t> instead of vector<bool> for flags
+//   - Merged Phase 2a+2b: delta computation + tree mutation in single pass
+//     (avoids re-iterating removedLeaf and re-computing isDeadLeaf/isCaseB)
 //
 
 #include "NCliqueCoreDecomposition.h"
@@ -80,13 +84,11 @@ namespace PlusECDSet_ST {
             weight, std::forward<UpdateFunc>(upd));
     }
 
-    std::pair<double *, daf::Size *> countingPerEdge(const DynamicGraph<TreeGraphNode> &treeGraph,
-                                                     const Graph &edgeGraph,
-                                                     const daf::CliqueSize k) {
-        double *countingE = new double[edgeGraph.adj_list.size()];
-        daf::Size *degreeE = new daf::Size[edgeGraph.adj_list.size()];
-        memset(countingE, 0, edgeGraph.adj_list.size() * sizeof(double));
-        memset(degreeE, 0, edgeGraph.adj_list.size() * sizeof(daf::Size));
+    long long * countingPerEdge(const DynamicGraph<TreeGraphNode> &treeGraph,
+                                const Graph &edgeGraph,
+                                const daf::CliqueSize k) {
+        auto *countingE = new long long[edgeGraph.adj_list.size()];
+        memset(countingE, 0, edgeGraph.adj_list.size() * sizeof(long long));
 
         const int numLeaves = (int)treeGraph.adj_list.size();
         daf::StaticVector<daf::Size> tPovit, tKeepC;
@@ -103,43 +105,31 @@ namespace PlusECDSet_ST {
 
             int needPivot = int(k) - int(tKeepC.size());
 
-            // 1) keep-keep
             if (needPivot >= 0 && needPivot <= int(tPovit.size())) {
-                double totalKcliques = nCr[tPovit.size()][needPivot];
+                long long totalKcliques = std::llround(nCr[tPovit.size()][needPivot]);
                 for (size_t i = 0; i < tKeepC.size(); ++i)
-                    for (size_t j = i + 1; j < tKeepC.size(); ++j) {
-                        auto index = edgeGraph.getEdgeCompressedId(tKeepC[i], tKeepC[j]);
-                        countingE[index] += totalKcliques;
-                        degreeE[index]++;
-                    }
+                    for (size_t j = i + 1; j < tKeepC.size(); ++j)
+                        countingE[edgeGraph.getEdgeCompressedId(tKeepC[i], tKeepC[j])] += totalKcliques;
             }
 
-            // 2) pivot-pivot
             int needPP = needPivot - 2;
             if (needPP >= 0 && needPP <= int(tPovit.size()) - 2) {
-                double eachPP = nCr[tPovit.size() - 2][needPP];
+                long long eachPP = std::llround(nCr[tPovit.size() - 2][needPP]);
                 for (size_t i = 0; i < tPovit.size(); ++i)
-                    for (size_t j = i + 1; j < tPovit.size(); ++j) {
-                        auto index = edgeGraph.getEdgeCompressedId(tPovit[i], tPovit[j]);
-                        countingE[index] += eachPP;
-                        degreeE[index]++;
-                    }
+                    for (size_t j = i + 1; j < tPovit.size(); ++j)
+                        countingE[edgeGraph.getEdgeCompressedId(tPovit[i], tPovit[j])] += eachPP;
             }
 
-            // 3) keep-pivot cross
             int needKP = needPivot - 1;
             if (needKP >= 0 && needKP <= int(tPovit.size()) - 1) {
-                double eachKP = nCr[tPovit.size() - 1][needKP];
+                long long eachKP = std::llround(nCr[tPovit.size() - 1][needKP]);
                 for (size_t i = 0; i < tKeepC.size(); ++i)
-                    for (size_t j = 0; j < tPovit.size(); ++j) {
-                        auto index = edgeGraph.getEdgeCompressedId(tKeepC[i], tPovit[j]);
-                        countingE[index] += eachKP;
-                        degreeE[index]++;
-                    }
+                    for (size_t j = 0; j < tPovit.size(); ++j)
+                        countingE[edgeGraph.getEdgeCompressedId(tKeepC[i], tPovit[j])] += eachKP;
             }
         }
         tPovit.free(); tKeepC.free();
-        return {countingE, degreeE};
+        return countingE;
     }
 }
 
@@ -147,14 +137,8 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k) {
     auto time_start = std::chrono::high_resolution_clock::now();
-    auto [countingKE_dbl, degreeERemove] = PlusECDSet_ST::countingPerEdge(tree, edgeGraph, k);
-
-    // Convert double support counts to exact integer arithmetic
+    auto *countingKE = PlusECDSet_ST::countingPerEdge(tree, edgeGraph, k);
     const daf::Size numEdgesInit = edgeGraph.adj_list.size();
-    auto *countingKE = new long long[numEdgesInit];
-    for (daf::Size i = 0; i < numEdgesInit; ++i)
-        countingKE[i] = std::llround(countingKE_dbl[i]);
-    delete[] countingKE_dbl;
 
     auto *coreE = new long long[numEdgesInit];
     memset(coreE, 0, numEdgesInit * sizeof(long long));
@@ -166,9 +150,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
     daf::StaticVector<daf::Size> currentRemoveEdgeIds(edgeGraph.adj_list.size());
 
-    daf::StaticVector<bool> edgeInHeap(edgeGraph.adj_list.size());
+    daf::StaticVector<uint8_t> edgeInHeap(edgeGraph.adj_list.size());
     edgeInHeap.c_size = edgeGraph.adj_list.size();
-    memset(edgeInHeap.getData(), true, edgeGraph.adj_list.size() * sizeof(bool));
+    memset(edgeInHeap.getData(), 1, edgeGraph.adj_list.size() * sizeof(uint8_t));
 
     daf::StaticVector<daf::Size> removedLeaf(tree.adj_list.size());
     daf::StaticVector<PlusECDSet_ST::LeafRmInfo> leafRmInfo(tree.adj_list.size());
@@ -189,7 +173,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     daf::Size remainingInHeap = 0;
     for (daf::Size i = 0; i < numEdges; ++i) {
         if (countingKE[i] == 0) {
-            edgeInHeap[i] = false;
+            edgeInHeap[i] = 0;
             continue;
         }
         int b = (int)countingKE[i];
@@ -220,7 +204,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
         if (newB < curBucket) curBucket = newB;
     };
 
-    std::vector<bool> leafAffected(leafRmInfo.size(), false);
+    std::vector<uint8_t> leafAffected(leafRmInfo.size(), 0);
     std::vector<daf::Size> caseBLeafIds;
     caseBLeafIds.reserve(1024);
 
@@ -240,7 +224,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
             while (!buckets[curBucket].empty()) {
                 auto id = buckets[curBucket].back();
                 buckets[curBucket].pop_back();
-                edgeInHeap[id] = false;
+                edgeInHeap[id] = 0;
                 currentRemoveEdgeIds.push_back(id);
                 coreE[id] = minCore;
                 remainingInHeap--;
@@ -269,7 +253,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                                           auto &lrm = leafRmInfo[leafId];
                                           if (lrm.empty()) {
                                               removedLeaf.push_back(leafId);
-                                              leafAffected[leafId] = true;
+                                              leafAffected[leafId] = 1;
                                           }
                                           if (!lrm.removedKeepC) {
                                               if (!uClique.isPivot && !vClique.isPivot) {
@@ -285,14 +269,20 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                                       });
         }
 
-        // Pre-sort removedPivots for all leaves
+        // Pre-sort removedPivots — fast path for small arrays
         for (int leafIdIdx = 0; leafIdIdx < (int)removedLeaf.size(); ++leafIdIdx) {
-            auto leafId = removedLeaf[leafIdIdx];
-            std::ranges::sort(leafRmInfo[leafId].removedPivots);
-            leafRmInfo[leafId].removedPivots.unique();
+            auto &rp = leafRmInfo[removedLeaf[leafIdIdx]].removedPivots;
+            if (rp.size() == 2) {
+                if (rp[0] > rp[1]) std::swap(rp[0], rp[1]);
+                if (rp[0] == rp[1]) rp.c_size = 1;
+            } else if (rp.size() > 2) {
+                std::ranges::sort(rp);
+                rp.unique();
+            }
         }
 
-        // ========== Phase 2a: delta computation for Case A & C (direct updates) ==========
+        // ========== Phase 2: MERGED delta + tree mutation for Case A & C ==========
+        caseBLeafIds.clear();
         {
             daf::StaticVector<daf::Size> tPovit, tKeepC;
 
@@ -311,18 +301,25 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                 if (leaf.empty()) continue;
 
                 tPovit.clear(); tKeepC.clear();
+                daf::Size numKeeps = 0;
                 for (auto node : leaf) {
                     if (node.isPivot) tPovit.push_back(node.v);
-                    else tKeepC.push_back(node.v);
+                    else { tKeepC.push_back(node.v); numKeeps++; }
                 }
-                daf::Size needPivot = k - tKeepC.size();
+                daf::Size needPivot = k - numKeeps;
+                daf::Size numPivots = tPovit.size();
 
-                bool isDeadLeaf = leafRm.removedKeepC || needPivot > tPovit.size() - leafRm.removedPivots.size();
+                bool isDeadLeaf = leafRm.removedKeepC || needPivot > numPivots - leafRm.removedPivots.size();
                 bool isCaseB = !leafRm.removedEdges.empty() && !isDeadLeaf;
-                if (isCaseB) continue; // Case B handled in Phase 2c
+
+                if (isCaseB) {
+                    caseBLeafIds.push_back(leafId);
+                    continue;
+                }
 
                 if (isDeadLeaf) {
-                    // ---- Case A: leaf dies — subtract full contribution ----
+                    // ---- Case A: leaf dies — subtract full contribution + tree mutation ----
+                    cntA++;
                     long long KtoK = 0, KtoP = 0, PtoP = 0;
                     if (needPivot <= tPovit.size()) {
                         KtoK = std::llround(nCr[tPovit.size()][needPivot]);
@@ -344,8 +341,14 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                             for (daf::Size j = 0; j < tPovit.size(); ++j)
                                 directSub(edgeGraph.getEdgeCompressedId(tKeepC[i], tPovit[j]), KtoP);
                     }
+                    // Tree mutation
+                    for (auto i : leaf)
+                        treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
+                    tree.adj_list[leafId].clear();
+                    tree.recycleNode(leafId);
                 } else {
-                    // ---- Case C: only pivots removed ----
+                    // ---- Case C: only pivots removed — delta + tree mutation ----
+                    cntC++;
                     long long KtoK = 0, KtoP = 0, PtoP = 0;
                     long long RemovedKtoK = 0, RemovedKtoP = 0, RemovedPtoP = 0;
 
@@ -374,17 +377,14 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                             if (!std::binary_search(leafRm.removedPivots.begin(), leafRm.removedPivots.end(), node.v))
                                 newLeafF.push_back(node);
                         }
-                        // removed x removed
                         for (daf::Size i = 0; i + 1 < leafRm.removedPivots.size(); ++i)
                             for (daf::Size j = i + 1; j < leafRm.removedPivots.size(); ++j)
                                 directSub(edgeGraph.getEdgeCompressedId(leafRm.removedPivots[i], leafRm.removedPivots[j]), RemovedPtoP);
-                        // newLeaf x removed
                         for (daf::Size i = 0; i < newLeafF.size(); ++i)
                             for (daf::Size j = 0; j < leafRm.removedPivots.size(); ++j) {
                                 long long d = newLeafF[i].isPivot ? RemovedPtoP : RemovedKtoP;
                                 directSub(edgeGraph.getEdgeCompressedId(newLeafF[i].v, leafRm.removedPivots[j]), d);
                             }
-                        // newLeaf x newLeaf
                         for (daf::Size i = 0; i + 1 < newLeafF.size(); ++i)
                             for (daf::Size j = i + 1; j < newLeafF.size(); ++j) {
                                 auto &u = newLeafF[i], &v = newLeafF[j];
@@ -392,81 +392,31 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                                 directSub(edgeGraph.getEdgeCompressedId(u.v, v.v), d);
                             }
                         newLeafF.free();
+                        // Tree mutation for Case C
+                        for (auto removedNbr : leafRm.removedPivots)
+                            treeGraphV.removeNbr(removedNbr, static_cast<TreeGraphNode>(leafId));
+                        tree.removeNbrs(leafId, leafRm.removedPivots);
                     } else {
-                        // Full removal (leaf dies)
                         for (daf::Size i = 0; i + 1 < leaf.size(); ++i)
                             for (daf::Size j = i + 1; j < leaf.size(); ++j) {
                                 auto &u = leaf[i], &v = leaf[j];
                                 long long d = (!u.isPivot && !v.isPivot) ? RemovedKtoK : (u.isPivot && v.isPivot) ? RemovedPtoP : RemovedKtoP;
                                 directSub(edgeGraph.getEdgeCompressedId(u.v, v.v), d);
                             }
-                    }
-                }
-            }
-            tPovit.free(); tKeepC.free();
-        }
-
-        // ========== Phase 2b: tree mutations for Case A & C ==========
-        {
-            for (int leafIdIdx = 0; leafIdIdx < (int)removedLeaf.size(); ++leafIdIdx) {
-                auto leafId = removedLeaf[leafIdIdx];
-                PlusECDSet_ST::LeafRmInfo &leafRm = leafRmInfo[leafId];
-                auto leaf = tree.adj_list[leafId];
-                if (leaf.empty()) continue;
-
-                daf::Size numKeeps = 0;
-                for (auto node : leaf) if (!node.isPivot) numKeeps++;
-                daf::Size needPivot = k - numKeeps;
-                daf::Size numPivots = leaf.size() - numKeeps;
-
-                bool isDeadLeaf = leafRm.removedKeepC || needPivot > numPivots - leafRm.removedPivots.size();
-                bool isCaseB = !leafRm.removedEdges.empty() && !isDeadLeaf;
-                if (isCaseB) continue;
-
-                if (isDeadLeaf) {
-                    cntA++;
-                    for (auto i : leaf) {
-                        treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
-                    }
-                    tree.adj_list[leafId].clear();
-                    tree.recycleNode(leafId);
-                } else {
-                    cntC++;
-                    if (!leafRm.removedPivots.empty() && needPivot <= numPivots - leafRm.removedPivots.size()) {
-                        for (auto removedNbr : leafRm.removedPivots) {
-                            treeGraphV.removeNbr(removedNbr, static_cast<TreeGraphNode>(leafId));
-                        }
-                        tree.removeNbrs(leafId, leafRm.removedPivots);
-                    } else {
-                        for (auto i : leaf) {
+                        for (auto i : leaf)
                             treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
-                        }
                         tree.adj_list[leafId].clear();
                         tree.recycleNode(leafId);
                     }
                 }
                 leafRmInfo[leafId].clear();
             }
+            tPovit.free(); tKeepC.free();
         }
 
         // ========== Phase 2c: BK + apply for Case B (always serial) ==========
-        caseBLeafIds.clear();
-        for (daf::Size leafIdIdx = 0; leafIdIdx < removedLeaf.size(); ++leafIdIdx) {
-            auto leafId = removedLeaf[leafIdIdx];
-            PlusECDSet_ST::LeafRmInfo &leafRm = leafRmInfo[leafId];
-            if (leafRm.removedEdges.empty()) continue;
-            auto &leaf = tree.adj_list[leafId];
-            if (leaf.empty()) continue;
-            daf::Size numKeepsB = 0;
-            for (auto node : leaf) if (!node.isPivot) numKeepsB++;
-            daf::Size needPivotB = k - numKeepsB;
-            daf::Size numPivotsB = leaf.size() - numKeepsB;
-            if (leafRm.removedKeepC || needPivotB > numPivotsB - leafRm.removedPivots.size()) continue;
-            caseBLeafIds.push_back(leafId);
-        }
         cntB += caseBLeafIds.size();
 
-        // Serial BK path
         for (int bi = 0; bi < (int)caseBLeafIds.size(); ++bi) {
             auto leafId = caseBLeafIds[bi];
             PlusECDSet_ST::LeafRmInfo &leafRm = leafRmInfo[leafId];
@@ -527,7 +477,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                     if (newId >= leafRmInfo.size()) {
                         removedLeaf.reserve(newId * 1.5);
                         leafRmInfo.resize(newId * 1.5);
-                        leafAffected.resize(newId * 1.5, false);
+                        leafAffected.resize(newId * 1.5, 0);
                     }
                 });
 
@@ -560,7 +510,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
         }
 
         currentRemoveEdgeIds.clear();
-        for (auto leafId : removedLeaf) leafAffected[leafId] = false;
+        for (auto leafId : removedLeaf) leafAffected[leafId] = 0;
         removedLeaf.clear();
     }
 
@@ -587,7 +537,6 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
     delete[] countingKE;
     delete[] coreE;
-    delete[] degreeERemove;
     povit.free();
     keepC.free();
     newPivot.free();

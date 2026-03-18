@@ -43,8 +43,6 @@ int main(int argc, char **argv) {
     #ifdef _OPENMP
         int maxThreads = omp_get_max_threads();
         printf("Max OpenMP threads: %d\n", maxThreads);
-        // 设置线程数为16（或根据需要调整）
-        // omp_set_num_threads(1);
     #else
         printf("OpenMP not supported, running with a single thread.\n");
     #endif
