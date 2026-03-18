@@ -291,10 +291,6 @@ int main(int argc, char **argv) {
                         std::cerr << "  core=" << k << " ref=" << v << " opt=" << (optDist.count(k) ? optDist[k] : 0) << std::endl;
                 }
             }
-        } else if (r == 2) {
-            PlusNucleusEdgeCoreDecompositionSet(refTree, edgeGraph, treeGraphV, s);
-        } else if (r == 1) {
-            NCliqueVertexCoreDecomposition(refTree, edgeGraph, treeGraphV, s);
         } else if (referenceOnlyMode) {
             auto res = NucleusCoreDecompositionCorrect(refTree, edgeGraph, treeGraphV, r, s);
             std::map<daf::Size, int> coreValueCount;
@@ -305,6 +301,10 @@ int main(int argc, char **argv) {
             for (const auto &[coreValue, count]: coreValueCount) {
                 std::cout << "Core value: " << coreValue << " Count: " << count << std::endl;
             }
+        } else if (r == 2) {
+            PlusNucleusEdgeCoreDecompositionSet(refTree, edgeGraph, treeGraphV, s);
+        } else if (r == 1) {
+            NCliqueVertexCoreDecomposition(refTree, edgeGraph, treeGraphV, s);
         } else if (compareMode) {
             auto optTree = refTree.clone();
             // auto refTree = refTree.clone();
