@@ -39,7 +39,15 @@ int main(int argc, char **argv) {
 
         return 0;
     }
-
+    // 打印当前设置的最大线程数
+    #ifdef _OPENMP
+        int maxThreads = omp_get_max_threads();
+        printf("Max OpenMP threads: %d\n", maxThreads);
+        // 设置线程数为16（或根据需要调整）
+        // omp_set_num_threads(1);
+    #else
+        printf("OpenMP not supported, running with a single thread.\n");
+    #endif
     // char *opt = NULL;
     const char *fpath = argv[1];
     const daf::CliqueSize r = strtol(argv[2], nullptr, 10);
@@ -90,7 +98,7 @@ int main(int argc, char **argv) {
 
     // Get reference cliqueCount from original SDCT
     auto refTree = daf::timeCount("SDCT (reference)", [&]() {
-        return SDCT(edgeGraph, 1000000, 0);
+        return SDCT(edgeGraph, s, r);
     });
     auto refCC = refTree.cliqueCount();
     printf("Reference SDCT leaf count: %zu, maxK: %zu\n", refTree.adj_list.size(), (size_t)refCC.size()-1);
@@ -103,7 +111,7 @@ int main(int argc, char **argv) {
     // Test SDCT_Par7 (stateless independent parallel BK)
     // Compare cliqueCount vectors (pivot-invariant) with floating-point tolerance
     auto par7Result = daf::timeCount("SDCT_Par7", [&]() -> CliqueCSR<int> {
-        return SDCT_Par7(edgeGraph, 1000000, 0);
+        return SDCT_Par7(edgeGraph, s, r);
     });
     printf("SDCT_Par7 leaf count: %zu\n", par7Result.num_cliques());
 
@@ -115,10 +123,12 @@ int main(int argc, char **argv) {
         }
         printf("\n");
 
-        // Compare with tolerance: relative error < 1e-6 or absolute error < 0.5
+        // Compare k ≤ max_k (= s) only.
+        // For k > max_k, the keepSz==max_k truncation discards dropV,
+        // making those values pivot-dependent (expected to differ).
         bool match = true;
-        size_t maxK = std::max((size_t)refCC.size(), par7CC.size());
-        for (size_t k = 0; k < maxK; k++) {
+        size_t compareUpTo = (size_t)s + 1;  // compare k = 0..s
+        for (size_t k = 0; k < compareUpTo; k++) {
             double rv = (k < refCC.size()) ? refCC[k] : 0.0;
             double pv = (k < par7CC.size()) ? par7CC[k] : 0.0;
             double diff = std::abs(rv - pv);
@@ -130,7 +140,7 @@ int main(int argc, char **argv) {
             }
         }
         if (match)
-            printf("✓ SDCT_Par7 cliqueCount correct\n");
+            printf("✓ SDCT_Par7 cliqueCount correct (k ≤ %d)\n", s);
         else {
             printf("✗ SDCT_Par7 cliqueCount WRONG\n");
             return 1;
@@ -174,11 +184,11 @@ int main(int argc, char **argv) {
             // Compare r=1: optimized vs reference
             auto optTree = refTree.clone();
             auto optTreeGraphV = treeGraphV.clone();
-            auto refCoreV = daf::timeCount("Reference r=1", [&]() {
-                return NucleusCoreDecompositionCorrect(refTree, edgeGraph, treeGraphV, r, s);
-            });
             auto optCoreV = daf::timeCount("Optimized r=1", [&]() {
                 return NCliqueVertexCoreDecomposition(optTree, edgeGraph, optTreeGraphV, s);
+            });
+            auto refCoreV = daf::timeCount("Reference r=1", [&]() {
+                return NucleusCoreDecompositionCorrect(refTree, edgeGraph, treeGraphV, r, s);
             });
             // Compare: reference returns vector<pair<vector<Size>, int>>, optimized returns double*
             std::map<int, int> refDist, optDist;
@@ -191,6 +201,9 @@ int main(int argc, char **argv) {
             // Exclude core=0 from comparison (vertices with 0 nCr contribution)
             refDist.erase(0);
             optDist.erase(0);
+
+            std::cout << "refDist: " << refDist << std::endl;
+            std::cout << "optDist: " << optDist << std::endl;
             if (refDist == optDist) {
                 std::cout << "✓ r=1 correctness verified: distributions match" << std::endl;
             } else {

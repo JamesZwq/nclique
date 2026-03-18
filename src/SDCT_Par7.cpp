@@ -75,7 +75,7 @@ struct Out7 {
     }
 };
 
-// findPivot7: full scan without break (entry order is independent, not cumulative)
+// findPivot7: full scan (Par7 has bidirectional neighbor lists, no packing invariant)
 static int findPivot7(
     int** pivotCands, int* nPivotCands,
     int* vertexSets, int* vertexLookup,
@@ -112,7 +112,7 @@ static int findPivot7(
     return pivot;
 }
 
-// moveToR7: full scan without break
+// moveToR7: full scan (no early break, no MIN bound)
 static void moveToR7(
     int vertex, int* vertexSets, int* vertexLookup,
     int** neighborsInP, int* numNeighbors,
@@ -305,7 +305,7 @@ CliqueCSR<int> SDCT_Par7(Graph& G, int max_k, int min_k)
             recurse7(lsets, llook, lnbr_ptrs.data(), lnbCnt,
                      0, p,
                      keepV, 1, dropV, 0,
-                     max_k - 1, min_k - 1,
+                     max_k, min_k,
                      l2g, slab, out);
 
             for (int idx = nb; idx < ne; idx++) gmark[G.adj_list[idx]] = -1;
