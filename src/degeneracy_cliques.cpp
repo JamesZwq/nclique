@@ -183,8 +183,128 @@ int main(int argc, char **argv) {
     const bool compareMode = std::getenv("PIVOTER_COMPARE") != nullptr;
     const bool referenceOnlyMode = std::getenv("PIVOTER_RUN_REF") != nullptr;
     const bool singleThreadMode = std::getenv("PIVOTER_RUN_ST") != nullptr;
+    const bool localMode = std::getenv("PIVOTER_RUN_LOCAL") != nullptr;
+    const bool localNaiveMode = std::getenv("PIVOTER_RUN_LOCAL_NAIVE") != nullptr;
+    const bool localV2Mode = std::getenv("PIVOTER_RUN_LOCAL_V2") != nullptr;
+    const bool localV3Mode = std::getenv("PIVOTER_RUN_LOCAL_V3") != nullptr;
+    const bool localV4Mode = std::getenv("PIVOTER_RUN_LOCAL_V4") != nullptr;
     daf::timeCount("NucleusCoreDecomposition", [&] {
-        if (r == 1 && singleThreadMode) {
+        if (r == 1 && localV4Mode) {
+            auto v4Tree = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto v4TGV = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto v4CoreV = daf::timeCount("Local H-index V4 r=1", [&]() {
+                return NCliqueVertexCoreDecomposition_LocalV4(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCoreV = daf::timeCount("Reference r=1", [&]() {
+                    return NucleusCoreDecompositionCorrect(v4Tree, edgeGraph, v4TGV, r, s);
+                });
+                std::map<int, int> refDist, v4Dist;
+                for (const auto &[clique, coreValue]: refCoreV) refDist[coreValue]++;
+                for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i)
+                    if (v4CoreV[i] >= 0) v4Dist[(int)v4CoreV[i]]++;
+                refDist.erase(0); v4Dist.erase(0);
+                if (refDist == v4Dist) std::cout << "✓ r=1 Local H-index V4 correctness verified" << std::endl;
+                else {
+                    std::cerr << "✗ r=1 Local H-index V4 MISMATCH!" << std::endl;
+                    std::cerr << "refDist: " << refDist << std::endl;
+                    std::cerr << "v4Dist: " << v4Dist << std::endl;
+                }
+            }
+            delete[] v4CoreV;
+        } else if (r == 1 && localV3Mode) {
+            auto v3Tree = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto v3TGV = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto v3CoreV = daf::timeCount("Local H-index V3 r=1", [&]() {
+                return NCliqueVertexCoreDecomposition_LocalV3(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCoreV = daf::timeCount("Reference r=1", [&]() {
+                    return NucleusCoreDecompositionCorrect(v3Tree, edgeGraph, v3TGV, r, s);
+                });
+                std::map<int, int> refDist, v3Dist;
+                for (const auto &[clique, coreValue]: refCoreV) refDist[coreValue]++;
+                for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i)
+                    if (v3CoreV[i] >= 0) v3Dist[(int)v3CoreV[i]]++;
+                refDist.erase(0); v3Dist.erase(0);
+                if (refDist == v3Dist) std::cout << "✓ r=1 Local H-index V3 correctness verified" << std::endl;
+                else {
+                    std::cerr << "✗ r=1 Local H-index V3 MISMATCH!" << std::endl;
+                    std::cerr << "refDist: " << refDist << std::endl;
+                    std::cerr << "v3Dist: " << v3Dist << std::endl;
+                }
+            }
+            delete[] v3CoreV;
+        } else if (r == 1 && localV2Mode) {
+            auto v2Tree = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto v2TGV = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto v2CoreV = daf::timeCount("Local H-index V2 r=1", [&]() {
+                return NCliqueVertexCoreDecomposition_LocalV2(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCoreV = daf::timeCount("Reference r=1", [&]() {
+                    return NucleusCoreDecompositionCorrect(v2Tree, edgeGraph, v2TGV, r, s);
+                });
+                std::map<int, int> refDist, v2Dist;
+                for (const auto &[clique, coreValue]: refCoreV) refDist[coreValue]++;
+                for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i)
+                    if (v2CoreV[i] >= 0) v2Dist[(int)v2CoreV[i]]++;
+                refDist.erase(0); v2Dist.erase(0);
+                if (refDist == v2Dist) std::cout << "✓ r=1 Local H-index V2 correctness verified" << std::endl;
+                else {
+                    std::cerr << "✗ r=1 Local H-index V2 MISMATCH!" << std::endl;
+                    std::cerr << "refDist: " << refDist << std::endl;
+                    std::cerr << "v2Dist: " << v2Dist << std::endl;
+                }
+            }
+            delete[] v2CoreV;
+        } else if (r == 1 && localNaiveMode) {
+            auto naiveTree = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto naiveTGV = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto naiveCoreV = daf::timeCount("Local H-index Naive r=1", [&]() {
+                return NCliqueVertexCoreDecomposition_LocalNaive(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCoreV = daf::timeCount("Reference r=1", [&]() {
+                    return NucleusCoreDecompositionCorrect(naiveTree, edgeGraph, naiveTGV, r, s);
+                });
+                std::map<int, int> refDist, naiveDist;
+                for (const auto &[clique, coreValue]: refCoreV) refDist[coreValue]++;
+                for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i)
+                    if (naiveCoreV[i] >= 0) naiveDist[(int)naiveCoreV[i]]++;
+                refDist.erase(0); naiveDist.erase(0);
+                if (refDist == naiveDist) std::cout << "✓ r=1 Local H-index Naive correctness verified" << std::endl;
+                else {
+                    std::cerr << "✗ r=1 Local H-index Naive MISMATCH!" << std::endl;
+                    std::cerr << "refDist: " << refDist << std::endl;
+                    std::cerr << "naiveDist: " << naiveDist << std::endl;
+                }
+            }
+            delete[] naiveCoreV;
+        } else if (r == 1 && localMode) {
+            auto localTree = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto localTGV = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto localCoreV = daf::timeCount("Local H-index r=1", [&]() {
+                return NCliqueVertexCoreDecomposition_Local(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCoreV = daf::timeCount("Reference r=1", [&]() {
+                    return NucleusCoreDecompositionCorrect(localTree, edgeGraph, localTGV, r, s);
+                });
+                std::map<int, int> refDist, localDist;
+                for (const auto &[clique, coreValue]: refCoreV) refDist[coreValue]++;
+                for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i)
+                    if (localCoreV[i] >= 0) localDist[(int)localCoreV[i]]++;
+                refDist.erase(0); localDist.erase(0);
+                if (refDist == localDist) std::cout << "✓ r=1 Local H-index correctness verified" << std::endl;
+                else {
+                    std::cerr << "✗ r=1 Local H-index MISMATCH!" << std::endl;
+                    std::cerr << "refDist: " << refDist << std::endl;
+                    std::cerr << "localDist: " << localDist << std::endl;
+                }
+            }
+            delete[] localCoreV;
+        } else if (r == 1 && singleThreadMode) {
             // Clone BEFORE ST runs (ST consumes the tree)
             auto refTree2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
             auto refTGV2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
@@ -289,6 +409,29 @@ int main(int argc, char **argv) {
                 for (auto &[k, v] : refDist) {
                     if (optDist.count(k) == 0 || optDist[k] != v)
                         std::cerr << "  core=" << k << " ref=" << v << " opt=" << (optDist.count(k) ? optDist[k] : 0) << std::endl;
+                }
+            }
+        } else if (singleThreadMode) {
+            // r>=3 ST optimized
+            auto refTree2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto refTGV2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto stCore = daf::timeCount("ST r>=3", [&]() {
+                return NucleusCoreDecompositionRClique_ST(refTree, edgeGraph, treeGraphV, r, s);
+            });
+            if (compareMode) {
+                auto refCore = daf::timeCount("Reference r>=3", [&]() {
+                    return NucleusCoreDecompositionCorrect(refTree2, edgeGraph, refTGV2, r, s);
+                });
+                std::map<int, int> refDist, stDist;
+                for (const auto &[clique, coreValue]: refCore) refDist[coreValue]++;
+                for (const auto &[clique, coreValue]: stCore) stDist[coreValue]++;
+                refDist.erase(0); stDist.erase(0);
+                if (refDist == stDist) std::cout << "✓ r>=3 ST correctness verified" << std::endl;
+                else {
+                    std::cerr << "✗ r>=3 ST MISMATCH!" << std::endl;
+                    for (auto &[k, v] : refDist)
+                        if (stDist.count(k) == 0 || stDist[k] != v)
+                            std::cerr << "  core=" << k << " ref=" << v << " st=" << (stDist.count(k) ? stDist[k] : 0) << std::endl;
                 }
             }
         } else if (referenceOnlyMode) {

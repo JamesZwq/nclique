@@ -115,6 +115,11 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
 
+// Single-thread optimized r≥3 (no OMP, integer arithmetic, Case A/C fast paths)
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
 // Batch Parallel version (new aggressive optimization)
 namespace BatchParallel {
 std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCliqueBatchParallel(
@@ -150,6 +155,31 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionUltr
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
 }
 
+
+// Local H-index iterative convergence (r=1, no peeling)
+double * NCliqueVertexCoreDecomposition_Local(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// Local H-index naive version (full scan every iteration, no dirty queue)
+double * NCliqueVertexCoreDecomposition_LocalNaive(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// Local H-index V2: core-level enqueue filter + timestamp skip
+double * NCliqueVertexCoreDecomposition_LocalV2(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// Local H-index V3: OpenMP parallel round-based convergence
+double * NCliqueVertexCoreDecomposition_LocalV3(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// Local H-index V4: async parallel with in-place updates
+double * NCliqueVertexCoreDecomposition_LocalV4(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 
 // Single-thread optimized versions (no OMP overhead)
 double * NCliqueVertexCoreDecomposition_ST(
