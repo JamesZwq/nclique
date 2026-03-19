@@ -10,10 +10,17 @@
 
 set -euo pipefail
 
-# Build first
+# Project root on the server
+PROJDIR="${PROJDIR:-/home/wenqianz/nclique}"
+cd "$PROJDIR"
+
+# Pull latest and build
+echo "Pulling latest code..."
+git pull 2>&1 | tail -3
+echo ""
 echo "Building..."
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release 2>&1 | tail -3
-cmake --build build --target degeneracy_cliques -j $(nproc) 2>&1 | tail -3
+cmake --build build --target degeneracy_cliques -j "$(nproc)" 2>&1 | tail -3
 echo "Build complete."
 echo ""
 
