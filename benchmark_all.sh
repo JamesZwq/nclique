@@ -10,6 +10,13 @@
 
 set -euo pipefail
 
+# Build first
+echo "Building..."
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release 2>&1 | tail -3
+cmake --build build --target degeneracy_cliques -j $(nproc) 2>&1 | tail -3
+echo "Build complete."
+echo ""
+
 BIN="./build/bin/degeneracy_cliques"
 OUTDIR="${1:-benchmark_results}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
