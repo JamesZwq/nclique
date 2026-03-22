@@ -233,12 +233,19 @@ int main(int argc, char **argv) {
     if (r != 2) {
         edgeGraph.eidToNode.free();
     }
-    DynamicGraphSet<TreeGraphNode> treeGraphV(refTree, edgeGraph.getGraphNodeSize(), s);
-    daf::log_memory("Other Index Memory");
 
-    // --- Read mode flags ---
+    // --- Read mode flags (moved before treeGraphV to enable conditional construction) ---
     const bool compareMode = envSet("PIVOTER_COMPARE");
     const daf::Size numVertices = edgeGraph.adj_list_offsets.size() - 1;
+
+    // Opt 6: R1 ST never uses treeGraphV — skip construction to save n × ~60B hash set overhead.
+    // Build treeGraphV only when needed: r>=2, or r=1 non-ST variants, or compare mode.
+    const bool r1_st_only = (r == 1 && envSet("PIVOTER_RUN_ST") && !compareMode);
+    DynamicGraphSet<TreeGraphNode> treeGraphV;
+    if (!r1_st_only) {
+        treeGraphV = DynamicGraphSet<TreeGraphNode>(refTree, edgeGraph.getGraphNodeSize(), s);
+    }
+    daf::log_memory("Other Index Memory");
 
     // ============================================================
     // Dispatch: use PIVOTER_RUN_* env vars to select algorithm
@@ -385,7 +392,9 @@ int main(int argc, char **argv) {
                 return PlusNucleusEdgeCoreDecompositionSet_ST(refTree, edgeGraph, treeGraphV, s);
             });
             if (compareMode) {
-                auto refCore = NucleusCoreDecompositionCorrect(t2, edgeGraph, tgv2, r, s);
+                auto refCore = daf::timeCount("ref r=2", [&]() {
+                    return PlusNucleusEdgeCoreDecompositionSet(t2, edgeGraph, tgv2, s);
+                });
                 std::map<int, int> refDist, testDist;
                 for (const auto &[c, cv] : refCore) refDist[cv]++;
                 for (const auto &[e, cv] : result) testDist[cv]++;

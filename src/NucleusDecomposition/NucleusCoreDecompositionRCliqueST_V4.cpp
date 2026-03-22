@@ -213,7 +213,14 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
 
         // --- Phase 1: Intersect via cliqueLeafIds lookup ---
         auto t_intersect = std::chrono::high_resolution_clock::now();
-        for (auto rmRCliqueId : currentRemoveRcliqueIds) {
+        for (size_t ri = 0; ri < currentRemoveRcliqueIds.size(); ++ri) {
+            auto rmRCliqueId = currentRemoveRcliqueIds[ri];
+            // H4: prefetch next cliqueLeafIds vector
+            if (ri + 1 < currentRemoveRcliqueIds.size()) {
+                auto nextId = currentRemoveRcliqueIds[ri + 1];
+                if (nextId < cliqueLeafIds.size())
+                    __builtin_prefetch(&cliqueLeafIds[nextId], 0, 1);
+            }
             if (rmRCliqueId < cliqueLeafIds.size()) {
                 for (auto leafId : cliqueLeafIds[rmRCliqueId]) {
                     if (tree.adj_list[leafId].empty()) continue;
@@ -291,7 +298,15 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
 
                 auto t_supp = std::chrono::high_resolution_clock::now();
                 if (leafId < leafCliqueInfo.size()) {
-                    for (const auto &entry : leafCliqueInfo[leafId]) {
+                    const auto &entries = leafCliqueInfo[leafId];
+                    for (size_t ei = 0; ei < entries.size(); ++ei) {
+                        // H1: prefetch bucket metadata for next entry's cliqueId
+                        if (ei + 1 < entries.size()) {
+                            auto nextId = entries[ei + 1].cliqueId;
+                            __builtin_prefetch(&countingRClique[nextId], 1, 1);
+                            __builtin_prefetch(&bucket_of[nextId], 0, 1);
+                        }
+                        const auto &entry = entries[ei];
                         if (!rCliqueInHeap[entry.cliqueId]) continue;
                         countingRClique[entry.cliqueId] -= entry.ncrValue;
                         if (countingRClique[entry.cliqueId] < 0) countingRClique[entry.cliqueId] = 0;

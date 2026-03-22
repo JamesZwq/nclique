@@ -72,9 +72,37 @@ double * NCliqueVertexCoreDecomposition_ST(
         leafAlive[L] = (leafNeedPivot[L] >= 0 && leafNeedPivot[L] <= pivots) ? 1 : 0;
     }
 
+    // --- H3: Build flat CSR vertex→leaf index (replaces treeGraphV hash set iteration) ---
+    // TreeGraphNode is 8B (63-bit v + 1-bit isPivot). Store as compact pair<Size,uint8_t>.
+    const daf::Size numVertices = edgeGraph.adj_list_offsets.size() - 1;
+    struct VLeafEntry { daf::Size leafId; uint8_t isPivot; };
+    std::vector<daf::Size> vtxLeafOff(numVertices + 2, 0); // CSR offsets
+    // Count phase
+    for (daf::Size L = 0; L < numLeaves; ++L) {
+        for (const auto &node : tree.adj_list[L]) {
+            if (node.v < numVertices) vtxLeafOff[node.v + 1]++;
+        }
+    }
+    // Prefix sum
+    for (daf::Size i = 1; i <= numVertices + 1; ++i)
+        vtxLeafOff[i] += vtxLeafOff[i - 1];
+    // Fill phase
+    std::vector<VLeafEntry> vtxLeafData(vtxLeafOff[numVertices]);
+    std::vector<daf::Size> vtxLeafPos(numVertices + 1, 0); // write cursor
+    for (daf::Size L = 0; L < numLeaves; ++L) {
+        for (const auto &node : tree.adj_list[L]) {
+            daf::Size v = node.v;
+            if (v < numVertices) {
+                daf::Size pos = vtxLeafOff[v] + vtxLeafPos[v]++;
+                vtxLeafData[pos] = {L, (uint8_t)node.isPivot};
+            }
+        }
+    }
+    vtxLeafPos.clear();
+    vtxLeafPos.shrink_to_fit();
+
     // --- Initial per-vertex support ---
     auto countingV = VCD_ST::countingPerVertex(tree, edgeGraph, k);
-    const daf::Size numVertices = edgeGraph.adj_list_offsets.size() - 1;
     auto coreV = new double[numVertices + 1];
     for (daf::Size i = 0; i <= numVertices; ++i) coreV[i] = -1.0;
 
@@ -165,18 +193,25 @@ double * NCliqueVertexCoreDecomposition_ST(
 
         if (remainingInHeap == 0) break;
 
-        // --- Phase 1: find affected leaves, count removals per leaf ---
+        // --- Phase 1: find affected leaves via flat CSR index (H3) ---
         for (int vi = 0; vi < (int)currentRemoveVertexIds.size(); ++vi) {
             auto v = currentRemoveVertexIds[vi];
-            auto &adjClique = treeGraphV.getNbr(v);
-            for (const auto &clique : adjClique) {
-                daf::Size leafId = clique.v;
+            const daf::Size begin = vtxLeafOff[v];
+            const daf::Size end = vtxLeafOff[v + 1];
+            // H1: prefetch next vertex's CSR region
+            if (vi + 1 < (int)currentRemoveVertexIds.size()) {
+                auto nextV = currentRemoveVertexIds[vi + 1];
+                __builtin_prefetch(&vtxLeafData[vtxLeafOff[nextV]], 0, 1);
+            }
+            for (daf::Size ei = begin; ei < end; ++ei) {
+                const auto &entry = vtxLeafData[ei];
+                daf::Size leafId = entry.leafId;
                 if (!leafAlive[leafId]) continue;
                 if (!leafAffected[leafId]) {
                     leafAffected[leafId] = 1;
                     affectedLeaves.push_back(leafId);
                 }
-                if (!clique.isPivot) {
+                if (!entry.isPivot) {
                     leafDies[leafId] = 1;
                 } else {
                     leafRemovedPivots[leafId]++;
