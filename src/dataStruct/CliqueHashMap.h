@@ -617,6 +617,10 @@ public:
         return it->second; // caller guarantees existence
     }
 
+    // Free the hash-map index (mapList_) after dual index is built.
+    // After this, only byId() (pool_-based) remains usable.
+    void freeMapList() { decltype(mapList_)().swap(mapList_); }
+
     auto size() const noexcept { return numClique; }
 
     void verify() const {

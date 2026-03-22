@@ -264,6 +264,21 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 
+// R2 ST V1: Edge-Leaf Dual Index (eliminates getEdgeCompressedId from peeling)
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCoreDecompositionSet_ST_V1(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// R2 ST V2: V1 + Immutable Tree for Case A/C (eliminates removeNbr calls)
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCoreDecompositionSet_ST_V2(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// R2 ST V3: V2 + Deferred Batch BucketMove (eliminates redundant bucket moves)
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCoreDecompositionSet_ST_V3(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
 std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionCorrect(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);

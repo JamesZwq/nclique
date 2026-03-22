@@ -24,10 +24,18 @@ extern double nCr[1001][401];
 namespace RCliqueSTv11 {
 
 struct LeafCliqueEntry {
-    daf::Size cliqueId;
-    long long ncrValue;
-    uint64_t posMask;     // bitmask: bit j set iff leaf position j is in this r-clique
-    uint8_t positions[8]; // leaf-local positions (still needed for position remapping)
+    daf::Size cliqueId;   // 4B
+    long long ncrValue;   // 8B
+    uint8_t positions[8]; // 8B: leaf-local positions (supports leaf size up to 255)
+    // Total: 20B padded to 24B (down from 32B — posMask eliminated)
+
+    // Reconstruct posMask on-the-fly from positions array
+    uint64_t posMask(daf::CliqueSize r) const {
+        uint64_t mask = 0;
+        for (int j = 0; j < (int)r; ++j)
+            mask |= (uint64_t(1) << positions[j]);
+        return mask;
+    }
 };
 
 struct DualIndex {
@@ -66,11 +74,9 @@ DualIndex buildDualIndex(
         daf::enumerateCombinationsWithIdx(leaf, r,
             [&](const daf::StaticVector<TreeGraphNode> &rClique, const size_t* idx) {
             daf::CliqueSize subNumPivot = 0;
-            uint64_t posMask = 0;
             for (daf::Size j = 0; j < r; ++j) {
                 vertBuf[j] = rClique[j].v;
                 if (rClique[j].isPivot) subNumPivot++;
-                posMask |= (uint64_t(1) << idx[j]);
             }
             long long ncrValue = (long long)(nCr[pivotC - subNumPivot][needPivot - subNumPivot] + 0.5);
 
@@ -81,10 +87,8 @@ DualIndex buildDualIndex(
             LeafCliqueEntry entry;
             entry.cliqueId = id;
             entry.ncrValue = ncrValue;
-            entry.posMask = posMask;
-            for (daf::Size j = 0; j < r; ++j) {
+            for (daf::Size j = 0; j < r; ++j)
                 entry.positions[j] = (uint8_t)idx[j];
-            }
 
             result.leafCliqueInfo[leafId].push_back(entry);
             result.cliqueLeafIds[id].push_back(leafId);
@@ -129,6 +133,10 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
     auto &leafCliqueInfo = dualIndex.leafCliqueInfo;
     auto &cliqueLeafIds = dualIndex.cliqueLeafIds;
     auto countingRClique = std::move(dualIndex.counting);
+
+    // Opt 4: mapList_ only needed during build+buildDualIndex; peeling uses only byId()
+    cliqueIndex.freeMapList();
+    daf::log_memory("after freeMapList");
 
     const daf::Size nClique = cliqueIndex.size();
     std::vector<daf::Size> coreRClique(nClique);
@@ -353,11 +361,14 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
                         reusableEntries.clear();
                         if (leafId < leafCliqueInfo.size()) {
                             for (const auto &entry : leafCliqueInfo[leafId]) {
+                                // Reconstruct posMask on-the-fly from packed positions
+                                uint64_t entryPosMask = entry.posMask(r);
+
                                 // === BITMASK CONTAINMENT (replaces r branch-dependent tests) ===
-                                if ((entry.posMask & childMask) != entry.posMask) continue;
+                                if ((entryPosMask & childMask) != entryPosMask) continue;
 
                                 // === BRANCHLESS PIVOT COUNT (replaces r conditional increments) ===
-                                daf::CliqueSize subP = (daf::CliqueSize)__builtin_popcountll(entry.posMask & pivotMask);
+                                daf::CliqueSize subP = (daf::CliqueSize)__builtin_popcountll(entryPosMask & pivotMask);
 
                                 if (subP <= np && newPivotC - subP < 1001 && np - subP < 401) {
                                     long long ncrVal = (long long)(nCr[newPivotC - subP][np - subP] + 0.5);
@@ -366,14 +377,10 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
                                     RCliqueSTv11::LeafCliqueEntry newEntry;
                                     newEntry.cliqueId = entry.cliqueId;
                                     newEntry.ncrValue = ncrVal;
-                                    // Remap positions and rebuild posMask for child
-                                    uint64_t newPosMask = 0;
+                                    // Remap positions for child leaf
                                     for (int j = 0; j < (int)r; ++j) {
-                                        uint8_t newPos = parentToSubPos[entry.positions[j]];
-                                        newEntry.positions[j] = newPos;
-                                        newPosMask |= (uint64_t(1) << newPos);
+                                        newEntry.positions[j] = parentToSubPos[entry.positions[j]];
                                     }
-                                    newEntry.posMask = newPosMask;
                                     reusableEntries.push_back(newEntry);
 
                                     if (entry.cliqueId < cliqueLeafIds.size()) {

@@ -108,6 +108,10 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
     auto &cliqueLeafIds = dualIndex.cliqueLeafIds;
     auto countingRClique = std::move(dualIndex.counting);
 
+    // Opt 4: mapList_ only needed during build+buildDualIndex; peeling uses only byId()
+    cliqueIndex.freeMapList();
+    daf::log_memory("after freeMapList");
+
     const daf::Size nClique = cliqueIndex.size();
     std::vector<daf::Size> coreRClique(nClique);
     std::vector<daf::Size> changedLeafIndex(tree.adj_list.size(), std::numeric_limits<daf::Size>::max());
@@ -298,9 +302,9 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
                     std::chrono::high_resolution_clock::now() - t_supp).count();
 
                 // Tree mutation (no recycle — stale cliqueLeafIds rely on empty() guard)
+                // Opt 7: skip removeNbr for leaf-death (like V11); treeGraphV has stale
+                // entries but BK case removes all before re-adding.
                 auto t_struct = std::chrono::high_resolution_clock::now();
-                for (auto i : leaf)
-                    treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
                 tree.adj_list[leafId].clear();
                 if (leafId < leafCliqueInfo.size())
                     leafCliqueInfo[leafId].clear();

@@ -200,32 +200,39 @@ int main(int argc, char **argv) {
     printf("\n");
 
     // --- Verify SDCT_Par7 ---
-    auto par7Result = daf::timeCount("SDCT_Par7", [&]() -> CliqueCSR<int> {
-        return SDCT_Par7(edgeGraph, s, r);
-    });
-    printf("SDCT_Par7 leaf count: %zu\n", par7Result.num_cliques());
-    if (par7Result.has_pivot()) {
-        auto par7CC = par7Result.cliqueCount();
-        bool match = true;
-        size_t maxCCSize = refCC.size() > par7CC.size() ? refCC.size() : par7CC.size();
-        for (size_t k = (size_t)s; k <= (size_t)s && k < maxCCSize; k++) {
-            double rv = (k < refCC.size()) ? refCC[k] : 0.0;
-            double pv = (k < par7CC.size()) ? par7CC[k] : 0.0;
-            double diff = std::abs(rv - pv);
-            double maxVal = std::max(std::abs(rv), std::abs(pv));
-            if (diff > 0.5 && (maxVal < 1e-10 || diff / maxVal > 1e-6)) {
-                printf("  ✗ cliqueCount mismatch at k=%zu: ref=%.0f par7=%.0f\n", k, rv, pv);
-                match = false;
+    {
+        auto par7Result = daf::timeCount("SDCT_Par7", [&]() -> CliqueCSR<int> {
+            return SDCT_Par7(edgeGraph, s, r);
+        });
+        printf("SDCT_Par7 leaf count: %zu\n", par7Result.num_cliques());
+        if (par7Result.has_pivot()) {
+            auto par7CC = par7Result.cliqueCount();
+            bool match = true;
+            size_t maxCCSize = refCC.size() > par7CC.size() ? refCC.size() : par7CC.size();
+            for (size_t k = (size_t)s; k <= (size_t)s && k < maxCCSize; k++) {
+                double rv = (k < refCC.size()) ? refCC[k] : 0.0;
+                double pv = (k < par7CC.size()) ? par7CC[k] : 0.0;
+                double diff = std::abs(rv - pv);
+                double maxVal = std::max(std::abs(rv), std::abs(pv));
+                if (diff > 0.5 && (maxVal < 1e-10 || diff / maxVal > 1e-6)) {
+                    printf("  ✗ cliqueCount mismatch at k=%zu: ref=%.0f par7=%.0f\n", k, rv, pv);
+                    match = false;
+                }
             }
+            if (match) printf("✓ SDCT_Par7 cliqueCount correct (k=%d)\n", (int)s);
+            else { printf("✗ SDCT_Par7 cliqueCount WRONG\n"); return 1; }
         }
-        if (match) printf("✓ SDCT_Par7 cliqueCount correct (k=%d)\n", (int)s);
-        else { printf("✗ SDCT_Par7 cliqueCount WRONG\n"); return 1; }
-    }
+    } // par7Result freed here
 
     // --- Prepare graph structures ---
     edgeGraph.initCore();
+    edgeGraph.coreV.free(); // Opt 2: coreV only needed by sortByDegeneracyOrder, already done
     edgeGraph.beSingleEdge();
     edgeGraph.buildEdgeIdMap();
+    // Opt 3: eidToNode only needed by getEdgeById(), which r=1 and r>=3 never call
+    if (r != 2) {
+        edgeGraph.eidToNode.free();
+    }
     DynamicGraphSet<TreeGraphNode> treeGraphV(refTree, edgeGraph.getGraphNodeSize(), s);
     daf::log_memory("Other Index Memory");
 
@@ -328,6 +335,48 @@ int main(int argc, char **argv) {
                 refDist.erase(0); testDist.erase(0);
                 if (refDist == testDist) std::cout << "✓ r=2 Local H-index correctness verified" << std::endl;
                 else std::cerr << "✗ r=2 Local H-index MISMATCH!" << std::endl;
+            }
+        } else if (r == 2 && envSet("PIVOTER_RUN_ST_V3")) {
+            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto result = daf::timeCount("ST_V3 r=2", [&]() {
+                return PlusNucleusEdgeCoreDecompositionSet_ST_V3(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCore = NucleusCoreDecompositionCorrect(t2, edgeGraph, tgv2, r, s);
+                std::map<int, int> refDist, testDist;
+                for (const auto &[c, cv] : refCore) refDist[cv]++;
+                for (const auto &[e, cv] : result) testDist[cv]++;
+                if (refDist == testDist) std::cout << "✓ r=2 ST_V3 correctness verified" << std::endl;
+                else std::cerr << "✗ r=2 ST_V3 MISMATCH!" << std::endl;
+            }
+        } else if (r == 2 && envSet("PIVOTER_RUN_ST_V2")) {
+            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto result = daf::timeCount("ST_V2 r=2", [&]() {
+                return PlusNucleusEdgeCoreDecompositionSet_ST_V2(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCore = NucleusCoreDecompositionCorrect(t2, edgeGraph, tgv2, r, s);
+                std::map<int, int> refDist, testDist;
+                for (const auto &[c, cv] : refCore) refDist[cv]++;
+                for (const auto &[e, cv] : result) testDist[cv]++;
+                if (refDist == testDist) std::cout << "✓ r=2 ST_V2 correctness verified" << std::endl;
+                else std::cerr << "✗ r=2 ST_V2 MISMATCH!" << std::endl;
+            }
+        } else if (r == 2 && envSet("PIVOTER_RUN_ST_V1")) {
+            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto result = daf::timeCount("ST_V1 r=2", [&]() {
+                return PlusNucleusEdgeCoreDecompositionSet_ST_V1(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCore = NucleusCoreDecompositionCorrect(t2, edgeGraph, tgv2, r, s);
+                std::map<int, int> refDist, testDist;
+                for (const auto &[c, cv] : refCore) refDist[cv]++;
+                for (const auto &[e, cv] : result) testDist[cv]++;
+                if (refDist == testDist) std::cout << "✓ r=2 ST_V1 correctness verified" << std::endl;
+                else std::cerr << "✗ r=2 ST_V1 MISMATCH!" << std::endl;
             }
         } else if (r == 2 && envSet("PIVOTER_RUN_ST")) {
             auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
