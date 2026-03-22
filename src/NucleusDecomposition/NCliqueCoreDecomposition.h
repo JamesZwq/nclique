@@ -120,6 +120,80 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
 
+// ST V2: Opt 1 — Leaf-Clique Reverse Index (eliminates Support hash lookups)
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V2(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// ST V3: Opt 2 — Clique-Leaf Mapping (eliminates Intersect hash set intersection)
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V3(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// ST V4: Opt 1+2 Combined (eliminates both Intersect and Support bottlenecks)
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V4(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// ST V5: Δ-Support with Positional Containment (bitset containment, no hash lookups in BK)
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V5(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// ST V6: Case C Extraction — r=2-style delta formula for pivot-only removal
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V6(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// ST V7: Relaxed Case C — pivot-only conflict avoids BK entirely
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V7(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// ST V8: Merged Init + Direct Bitset Containment (eliminates dual-index pass + robin_hood in BK)
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V8(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// ST V9: Combined — no treeGraphV, positional LeafCliqueEntry, no coverToVertex alloc
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V9(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// ST V10: Single-pass init via buildWithCallback, reuse newEntries vector, addNodePresorted
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V10(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// ST V11: Aggressive — single-pass init, batch bucketMove, compact cliqueLeafIds, skip dead in BK
+std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRClique_ST_V11(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// Local CPI Vertex-Proxy H-index for r>=3 (no peeling, no BK, immutable tree)
+std::vector<std::pair<std::vector<daf::Size>, int>>
+NucleusCoreDecompositionRCliqueLocalCPI_VP(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// Local CPI Exact H-index for r>=3 (no peeling, no BK, immutable tree, exact s-clique enum)
+std::vector<std::pair<std::vector<daf::Size>, int>>
+NucleusCoreDecompositionRCliqueLocalCPI_Exact(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// Framework 1: Link-Graph Peeling (no BK, no tree mutation, pairwise weight subtraction)
+std::vector<std::pair<std::vector<daf::Size>, int>>
+NucleusCoreDecompositionRCliqueLinkPeel(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// Framework 2: Link-Graph Local H-Index (no BK, no tree mutation, weighted H-index on leafCliqueInfo)
+std::vector<std::pair<std::vector<daf::Size>, int>>
+NucleusCoreDecompositionRCliqueLinkLocal(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
 // Batch Parallel version (new aggressive optimization)
 namespace BatchParallel {
 std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCliqueBatchParallel(
@@ -191,5 +265,23 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 
 std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionCorrect(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// Local H-index r=2 (edge, no peeling, vertex-proxy)
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>>
+NCliqueEdgeCoreDecomposition_Local(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// Local H-index r≥3 vertex-proxy (no peeling)
+std::vector<std::pair<std::vector<daf::Size>, int>>
+NucleusCoreDecompositionRCliqueLocal(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);
+
+// Local H-index r≥3 with exact s-clique enumeration (Online BK, no peeling)
+std::vector<std::pair<std::vector<daf::Size>, int>>
+NucleusCoreDecompositionRCliqueLocal_BK(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s);

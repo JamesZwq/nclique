@@ -604,6 +604,77 @@ namespace daf {
         }
     }
 
+    // Variant that also passes the index array (positions within C) to the callback.
+    // Callback signature: bool cb(const StaticVector<T>& comb, const size_t* idx)
+    // idx[j] = position in C of comb[j] (j=0..K-1)
+    template<class Container, class Fn, size_t K>
+    inline void enumerateCombinations_fixedK_withIdx(const Container &C, Fn &&cb) {
+        static_assert(K >= 1, "K must be >= 1");
+        const size_t n = C.size();
+        if (K > n) return;
+
+        std::array<size_t, K> idx;
+        for (size_t i = 0; i < K; ++i) idx[i] = i;
+
+        daf::StaticVector<typename Container::value_type> comb(K);
+        comb.c_size = K;
+
+        auto emit = [&]() -> bool {
+            for (size_t t = 0; t < K; ++t) comb[t] = C[idx[t]];
+            return cb(comb, idx.data());
+        };
+
+        if (!emit()) return;
+
+        while (true) {
+            size_t i = K;
+            while (i > 0 && idx[i - 1] == n - K + i - 1) --i;
+            if (i == 0) break;
+            --i;
+            ++idx[i];
+            for (size_t j = i + 1; j < K; ++j) idx[j] = idx[j - 1] + 1;
+            if (!emit()) break;
+        }
+    }
+
+    template<class Container, class Fn>
+    void enumerateCombinationsWithIdx(const Container &C, size_t k, Fn &&cb) {
+        switch (k) {
+            case 1: return enumerateCombinations_fixedK_withIdx<Container, Fn, 1>(C, std::forward<Fn>(cb));
+            case 2: return enumerateCombinations_fixedK_withIdx<Container, Fn, 2>(C, std::forward<Fn>(cb));
+            case 3: return enumerateCombinations_fixedK_withIdx<Container, Fn, 3>(C, std::forward<Fn>(cb));
+            case 4: return enumerateCombinations_fixedK_withIdx<Container, Fn, 4>(C, std::forward<Fn>(cb));
+            case 5: return enumerateCombinations_fixedK_withIdx<Container, Fn, 5>(C, std::forward<Fn>(cb));
+            case 6: return enumerateCombinations_fixedK_withIdx<Container, Fn, 6>(C, std::forward<Fn>(cb));
+            case 7: return enumerateCombinations_fixedK_withIdx<Container, Fn, 7>(C, std::forward<Fn>(cb));
+            case 8: return enumerateCombinations_fixedK_withIdx<Container, Fn, 8>(C, std::forward<Fn>(cb));
+            default: break;
+        }
+        // Fallback for k > 8
+        const std::size_t n = C.size();
+        if (k == 0 || k > n) return;
+        daf::StaticVector<std::size_t> idx(k);
+        idx.c_size = k;
+        for (std::size_t i = 0; i < k; ++i) idx[i] = i;
+        daf::StaticVector<typename Container::value_type> comb(k);
+        comb.c_size = k;
+        auto emit = [&]() {
+            for (std::size_t t = 0; t < k; ++t) comb[t] = C[idx[t]];
+            if (!cb(comb, idx.data())) return false;
+            return true;
+        };
+        if (!emit()) return;
+        while (true) {
+            std::size_t i = k;
+            while (i > 0 && idx[i - 1] == n - k + i - 1) --i;
+            if (i == 0) break;
+            --i;
+            ++idx[i];
+            for (std::size_t j = i + 1; j < k; ++j) idx[j] = idx[j - 1] + 1;
+            if (!emit()) break;
+        }
+    }
+
     // ：
     template<class Container, class Fn>
     void enumerateCombinations(const Container &C, size_t k, Fn &&cb) {

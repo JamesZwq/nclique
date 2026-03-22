@@ -94,6 +94,107 @@ public:
         build(treeGraph, maxV);
     }
 
+    // Pre-size internal structures for byNewClique() usage (V8 single-pass init)
+    void reserveForBuild(const DynamicGraph<TreeGraphNode> &treeGraph, daf::Size maxV) {
+        daf::StaticVector<double> countV = treeGraph.cliqueCountPerVAcc(maxV, k_);
+        daf::Size N = treeGraph.cliqueCount(k_);
+        mapList_.resize(countV.size());
+        for (daf::Size i = 0; i < countV.size(); ++i) {
+            if (countV[i] > 0) {
+                mapList_[i].reserve(static_cast<daf::Size>(countV[i] * 1.1));
+            }
+        }
+        std::cout << "Clique Index: " << N << " cliques, " << countV.size() << " vertices." << std::endl;
+        pool_.reserve(N * k_);
+        numClique = 0;
+        countV.free();
+    }
+
+    // Build clique index AND emit (leafIdx, cliqueId, subNumPivot) per r-clique
+    // via callback — eliminates the need for a separate buildDualIndex() pass.
+    // Callback signature: void(daf::Size leafIdx, Id cliqueId, daf::CliqueSize subNumPivot)
+    template<typename Fn>
+    void buildWithCallback(const DynamicGraph<TreeGraphNode> &treeGraph, const daf::Size maxV, Fn &&cb) {
+        daf::StaticVector<double> countV = treeGraph.cliqueCountPerVAcc(maxV, k_);
+        daf::Size N = treeGraph.cliqueCount(k_);
+        mapList_.resize(countV.size());
+        for (daf::Size i = 0; i < countV.size(); ++i) {
+            if (countV[i] > 0) {
+                mapList_[i].reserve(static_cast<daf::Size>(countV[i] * 1.1));
+            }
+        }
+        std::cout << "Clique Index: " << N << " cliques, " << countV.size() << " vertices." << std::endl;
+        pool_.reserve(N * k_);
+        numClique = 0;
+        daf::StaticVector<daf::Size> keep;
+        daf::StaticVector<daf::Size> drop;
+
+        for (daf::Size leafIdx = 0; leafIdx < treeGraph.adj_list.size(); ++leafIdx) {
+            const auto &clique = treeGraph.adj_list[leafIdx];
+            for (const auto &node: clique) {
+                if (node.isPivot) drop.push_back(node.v);
+                else keep.push_back(node.v);
+            }
+            daf::CliqueSize keepCount = keep.size();
+            daf::enumerateCombinations(keep, drop, k_,
+                                       [&](const daf::StaticVector<daf::Size> &kKeep,
+                                           const daf::StaticVector<daf::Size> &combination) {
+                                           daf::Size start = pool_.size();
+                                           pool_.resize(start + k_);
+                                           daf::Size *out = pool_.data() + start;
+
+                                           const daf::Size *a = combination.data();
+                                           const daf::Size *a_end = a + combination.size();
+                                           const daf::Size *b = kKeep.data();
+                                           const daf::Size *b_end = b + kKeep.size();
+
+                                           while (a < a_end && b < b_end) {
+                                               *out++ = (*a < *b ? *a++ : *b++);
+                                           }
+                                           if (a < a_end) {
+                                               daf::Size rem = a_end - a;
+                                               std::memcpy(out, a, rem * sizeof(daf::Size));
+                                           } else if (b < b_end) {
+                                               daf::Size rem = b_end - b;
+                                               std::memcpy(out, b, rem * sizeof(daf::Size));
+                                           }
+
+                                           unsigned __int128 acc = 0;
+                                           for (daf::Size i = 0; i < k_; ++i) {
+                                               daf::Size v = pool_[start + i];
+                                               acc += binom_u128(v, static_cast<daf::Size>(i + 1));
+                                           }
+                                           uint64_t key = static_cast<uint64_t>(acc);
+
+                                           daf::Size vmin = pool_[start];
+                                           auto &bucket = mapList_[vmin];
+                                           auto [it, inserted] = bucket.emplace(key, numClique);
+                                           Id cliqueId;
+                                           if (inserted) {
+                                               cliqueId = numClique++;
+                                           } else {
+                                               // Duplicate: revert pool allocation, use existing ID
+                                               pool_.resize(start);
+                                               cliqueId = it->second;
+                                           }
+
+                                           // subNumPivot = r - kKeep.size() (combination = pivots chosen)
+                                           daf::CliqueSize subNumPivot = static_cast<daf::CliqueSize>(combination.size());
+                                           cb(leafIdx, cliqueId, subNumPivot);
+
+                                           return true;
+                                       }
+            );
+            keep.clear();
+            drop.clear();
+        }
+
+        keep.free();
+        drop.free();
+        countV.free();
+        pool_.shrink_to_fit();
+    }
+
     // -------  -------
     void build(const DynamicGraph<TreeGraphNode> &treeGraph, const daf::Size maxV) {
         daf::StaticVector<double> countV = treeGraph.cliqueCountPerVAcc(maxV, k_);
@@ -154,8 +255,13 @@ public:
                                            uint64_t key = static_cast<uint64_t>(acc);
 
                                            // 4)  map（）
-                                           daf::Size vmin = pool_[start]; // merge 
-                                           mapList_[vmin].emplace(key, numClique++);
+                                           daf::Size vmin = pool_[start]; // merge
+                                           auto [it, inserted] = mapList_[vmin].emplace(key, numClique);
+                                           if (inserted) {
+                                               numClique++;
+                                           } else {
+                                               pool_.resize(start); // revert orphan pool entry
+                                           }
 
                                            return true;
                                        }
@@ -169,6 +275,78 @@ public:
         countV.free();
         pool_.shrink_to_fit();
     }
+
+    // Fused build + dualIndex: enumerate ALL C(n,r) subsets per leaf (like buildDualIndex),
+    // do ID assignment inline (like build), and callback with full info.
+    // Callback signature: void(daf::Size leafIdx, Id cliqueId, daf::CliqueSize subNumPivot,
+    //                          const uint8_t* positions)
+    // positions[j] = leaf-local index of the j-th r-clique vertex (j=0..r-1)
+    template<typename Fn>
+    void buildWithFullEnum(const DynamicGraph<TreeGraphNode> &treeGraph, const daf::Size maxV, Fn &&cb) {
+        daf::StaticVector<double> countV = treeGraph.cliqueCountPerVAcc(maxV, k_);
+        daf::Size N = treeGraph.cliqueCount(k_);
+        mapList_.resize(countV.size());
+        for (daf::Size i = 0; i < countV.size(); ++i) {
+            if (countV[i] > 0) {
+                mapList_[i].reserve(static_cast<daf::Size>(countV[i] * 1.1));
+            }
+        }
+        std::cout << "Clique Index: " << N << " cliques, " << countV.size() << " vertices." << std::endl;
+        pool_.reserve(N * k_);
+        numClique = 0;
+
+        for (daf::Size leafIdx = 0; leafIdx < treeGraph.adj_list.size(); ++leafIdx) {
+            const auto &leaf = treeGraph.adj_list[leafIdx];
+            if (leaf.size() < k_) continue;
+
+            // Enumerate all C(n, k_) subsets with positions exposed directly
+            daf::enumerateCombinationsWithIdx(leaf, k_,
+                [&](const daf::StaticVector<TreeGraphNode> &rClique, const size_t* idx) {
+                // 1) Count pivots + copy positions from idx (no scanning needed)
+                daf::CliqueSize subNumPivot = 0;
+                uint8_t positions[8];
+                for (daf::Size j = 0; j < k_; ++j) {
+                    positions[j] = (uint8_t)idx[j];
+                    if (rClique[j].isPivot) subNumPivot++;
+                }
+
+                // 2) Build sorted vertex array in pool
+                daf::Size start = pool_.size();
+                pool_.resize(start + k_);
+                for (daf::Size i = 0; i < k_; ++i) {
+                    pool_[start + i] = rClique[i].v;
+                }
+
+                // 3) Compute rank
+                unsigned __int128 acc = 0;
+                for (daf::Size i = 0; i < k_; ++i) {
+                    acc += binom_u128(pool_[start + i], static_cast<daf::Size>(i + 1));
+                }
+                uint64_t key = static_cast<uint64_t>(acc);
+
+                // 4) Deduplicated emplace
+                daf::Size vmin = pool_[start];
+                auto &bucket = mapList_[vmin];
+                auto [it, inserted] = bucket.emplace(key, numClique);
+                Id cliqueId;
+                if (inserted) {
+                    cliqueId = numClique++;
+                } else {
+                    pool_.resize(start); // revert orphan pool entry
+                    cliqueId = it->second;
+                }
+
+                // 5) Callback with full info
+                cb(leafIdx, cliqueId, subNumPivot, positions);
+
+                return true;
+            });
+        }
+
+        countV.free();
+        pool_.shrink_to_fit();
+    }
+
 
 #ifdef _OPENMP
     void buildParallel(const DynamicGraph<TreeGraphNode> &treeGraph, const daf::Size maxV) {
@@ -275,6 +453,26 @@ public:
                     << " vmin=" << vmin << "\n";
             throw std::runtime_error("byClique: clique not found");
         }
+        return it->second;
+    }
+
+    // Safe lookup: returns numClique (invalid) if not found, never throws
+    template<typename Iterable>
+    Id tryByClique(const Iterable &c) const {
+        const auto r = c.size();
+        if (static_cast<daf::Size>(r) != k_) return static_cast<Id>(numClique);
+        auto it_begin = std::begin(c);
+        daf::Size vmin = *it_begin;
+        unsigned __int128 acc = 0;
+        daf::Size idx = 0;
+        for (auto it = it_begin; it != std::end(c); ++it, ++idx) {
+            acc += binom_u128(static_cast<daf::Size>(*it),
+                              static_cast<daf::Size>(idx + 1));
+        }
+        uint64_t key = static_cast<uint64_t>(acc);
+        const auto &bucket = mapList_[vmin];
+        auto it = bucket.find(key);
+        if (it == bucket.end()) return static_cast<Id>(numClique);
         return it->second;
     }
 
@@ -402,6 +600,21 @@ public:
             throw std::runtime_error("byClique: clique not found");
         }
         return found->second;
+    }
+
+    // Fast raw-pointer lookup: takes k_ pre-sorted vertex IDs (daf::Size*),
+    // computes rank inline, does hash find. No template/iterator overhead.
+    // Returns the clique ID. Assumes the clique exists.
+    Id lookupRaw(const daf::Size *verts) const noexcept {
+        daf::Size vmin = verts[0];
+        unsigned __int128 acc = 0;
+        for (daf::Size i = 0; i < k_; ++i) {
+            acc += binom_u128(verts[i], static_cast<daf::Size>(i + 1));
+        }
+        uint64_t key = static_cast<uint64_t>(acc);
+        const auto &bucket = mapList_[vmin];
+        auto it = bucket.find(key);
+        return it->second; // caller guarantees existence
     }
 
     auto size() const noexcept { return numClique; }

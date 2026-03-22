@@ -60,8 +60,8 @@ run_one() {
     local tmplog
     tmplog=$(mktemp /tmp/pivoter_bench.XXXXXX)
 
-    # Set timeout to 30 minutes
-    local cmd="OMP_NUM_THREADS=${threads} ${env_vars} timeout 1800 ${BIN} ${graph} ${r_val} ${s_val} degen"
+    # Set timeout to 3 hours
+    local cmd="OMP_NUM_THREADS=${threads} ${env_vars} timeout 10800 ${BIN} ${graph} ${r_val} ${s_val} degen"
 
     # Capture wall time and peak RSS via /usr/bin/time
     { /usr/bin/time -v bash -c "$cmd" ; } > "$tmplog" 2>&1 || true
@@ -175,6 +175,15 @@ for graph in "${DATASETS[@]}"; do
         # ST (single-thread)
         run_one "ST" "PIVOTER_RUN_ST=1" 1 "$graph" 3 "$s_val" "$CSVFILE"
 
+        # ST_V4 (single-thread)
+        run_one "ST_V4" "PIVOTER_RUN_ST_V4=1" 1 "$graph" 3 "$s_val" "$CSVFILE"
+
+        # ST_V10 (single-thread)
+        run_one "ST_V10" "PIVOTER_RUN_ST_V10=1" 1 "$graph" 3 "$s_val" "$CSVFILE"
+
+        # ST_V11 (single-thread)
+        run_one "ST_V11" "PIVOTER_RUN_ST_V11=1" 1 "$graph" 3 "$s_val" "$CSVFILE"
+
         # Parallel (default r>=3) — sweep threads
         for t in "${THREAD_COUNTS[@]}"; do
             run_one "RClique_Parallel" "" "$t" "$graph" 3 "$s_val" "$CSVFILE"
@@ -197,6 +206,15 @@ for graph in "${DATASETS[@]}"; do
 
         # ST (single-thread)
         run_one "ST" "PIVOTER_RUN_ST=1" 1 "$graph" 4 "$s_val" "$CSVFILE"
+
+        # ST_V4 (single-thread)
+        run_one "ST_V4" "PIVOTER_RUN_ST_V4=1" 1 "$graph" 4 "$s_val" "$CSVFILE"
+
+        # ST_V10 (single-thread)
+        run_one "ST_V10" "PIVOTER_RUN_ST_V10=1" 1 "$graph" 4 "$s_val" "$CSVFILE"
+
+        # ST_V11 (single-thread)
+        run_one "ST_V11" "PIVOTER_RUN_ST_V11=1" 1 "$graph" 4 "$s_val" "$CSVFILE"
 
         # Parallel (default r>=3) — sweep threads
         for t in "${THREAD_COUNTS[@]}"; do
