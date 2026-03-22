@@ -89,6 +89,18 @@ class DynamicGraph {
             return node_id;
         }
 
+        // Like addNode but caller guarantees nbrs is already sorted — skip sort
+        daf::Size addNodePresorted(std::vector<T> &nbrs) {
+            if (removedNodes.empty()) {
+                adj_list.emplace_back(std::move(nbrs));
+                return adj_list.size() - 1;
+            }
+            daf::Size node_id = removedNodes.back();
+            removedNodes.pop_back();
+            adj_list[node_id] = std::move(nbrs);
+            return node_id;
+        }
+
         void removeNode(daf::Size node_id) {
 #ifndef NDEBUG
             if (node_id >= adj_list.size()) {
