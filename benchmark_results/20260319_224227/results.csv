@@ -1,0 +1,433 @@
+graph,r,s,version,threads,peel_time_ms,total_time_ms,peak_rss_kb,cases_info
+com-dblp,1,3,Correct,1,682,N/A,329108,
+com-dblp,1,3,ST,1,96,N/A,171000,
+com-dblp,1,3,Local_V1,1,610,610.85,161544,
+com-dblp,1,3,Local_V2,1,497,497.842,162832,
+com-dblp,1,3,Local_V3,1,1039,1040.11,163560,
+com-dblp,1,3,Local_V3,2,697,698.184,164704,
+com-dblp,1,3,Local_V3,4,612,612.819,168112,
+com-dblp,1,3,Local_V3,8,504,504.823,174232,
+com-dblp,1,3,Local_V3,16,421,421.827,184460,
+com-dblp,1,3,Local_V3,32,346,347.25,212324,
+com-dblp,1,3,Local_V3,64,354,354.834,249096,
+com-dblp,1,3,Local_V4,1,534,535.189,162496,
+com-dblp,1,3,Local_V4,2,331,331.613,163508,
+com-dblp,1,3,Local_V4,4,254,254.637,166748,
+com-dblp,1,3,Local_V4,8,197,197.98,172884,
+com-dblp,1,3,Local_V4,16,141,141.637,183352,
+com-dblp,1,3,Local_V4,32,113,113.612,210764,
+com-dblp,1,3,Local_V4,64,104,104.843,247440,
+com-dblp,1,4,Correct,1,510,N/A,318532,
+com-dblp,1,4,ST,1,73,N/A,166132,
+com-dblp,1,4,Local_V1,1,425,425.743,154544,
+com-dblp,1,4,Local_V2,1,360,361.02,156240,
+com-dblp,1,4,Local_V3,1,649,649.491,155848,
+com-dblp,1,4,Local_V3,2,498,499.007,160204,
+com-dblp,1,4,Local_V3,4,370,370.616,169148,
+com-dblp,1,4,Local_V3,8,328,328.862,185748,
+com-dblp,1,4,Local_V3,16,267,268.217,214988,
+com-dblp,1,4,Local_V3,32,246,247.001,279924,
+com-dblp,1,4,Local_V3,64,241,242.292,377228,
+com-dblp,1,4,Local_V4,1,383,383.953,155040,
+com-dblp,1,4,Local_V4,2,275,275.632,159076,
+com-dblp,1,4,Local_V4,4,193,194.054,166992,
+com-dblp,1,4,Local_V4,8,159,159.777,175180,
+com-dblp,1,4,Local_V4,16,113,113.723,188700,
+com-dblp,1,4,Local_V4,32,111,111.581,215752,
+com-dblp,1,4,Local_V4,64,111,112.015,254844,
+com-dblp,1,5,Correct,1,389,N/A,310984,
+com-dblp,1,5,ST,1,115,N/A,310312,
+com-dblp,1,5,Local_V1,1,1311,1314.4,215108,
+com-dblp,1,5,Local_V2,1,1210,1212.5,220696,
+com-dblp,1,5,Local_V3,1,1577,1579.91,215100,
+com-dblp,1,5,Local_V3,2,1208,1212.57,263012,
+com-dblp,1,5,Local_V3,4,1011,1021.01,408420,
+com-dblp,1,5,Local_V3,8,950,970.425,710632,
+com-dblp,1,5,Local_V3,16,860,900.695,1212632,
+com-dblp,1,5,Local_V3,32,896,968.115,2278036,
+com-dblp,1,5,Local_V3,64,984,1100.59,3718516,
+com-dblp,1,5,Local_V4,1,1223,1226.74,218832,
+com-dblp,1,5,Local_V4,2,1028,1033.96,261504,
+com-dblp,1,5,Local_V4,4,860,876.855,399832,
+com-dblp,1,5,Local_V4,8,818,838.554,507496,
+com-dblp,1,5,Local_V4,16,792,814.229,567548,
+com-dblp,1,5,Local_V4,32,801,824.339,556612,
+com-dblp,1,5,Local_V4,64,755,771.456,608028,
+com-youtube,1,3,Correct,1,2356,N/A,1279036,
+com-youtube,1,3,ST,1,318,N/A,774548,
+com-youtube,1,3,Local_V1,1,13238,13239.5,725520,
+com-youtube,1,3,Local_V2,1,11662,11663.6,738444,
+com-youtube,1,3,Local_V3,1,27689,27690.4,730080,
+com-youtube,1,3,Local_V3,2,18610,18612.6,734396,
+com-youtube,1,3,Local_V3,4,13856,13858.5,752860,
+com-youtube,1,3,Local_V3,8,13448,13454.9,780476,
+com-youtube,1,3,Local_V3,16,10847,10853.6,818844,
+com-youtube,1,3,Local_V3,32,9921,9926.98,937432,
+com-youtube,1,3,Local_V3,64,12265,12272.7,1090552,
+com-youtube,1,3,Local_V4,1,12107,12109.5,726540,
+com-youtube,1,3,Local_V4,2,7186,7189.63,731240,
+com-youtube,1,3,Local_V4,4,4480,4482.25,749012,
+com-youtube,1,3,Local_V4,8,3693,3697.46,778180,
+com-youtube,1,3,Local_V4,16,2498,2501.08,816536,
+com-youtube,1,3,Local_V4,32,2153,2155.95,934712,
+com-youtube,1,3,Local_V4,64,2164,2167.31,1081472,
+com-youtube,1,4,Correct,1,2236,N/A,1351516,
+com-youtube,1,4,ST,1,314,N/A,856356,
+com-youtube,1,4,Local_V1,1,21622,21623.2,799668,
+com-youtube,1,4,Local_V2,1,20874,20875.5,817420,
+com-youtube,1,4,Local_V3,1,46442,46442.7,808008,
+com-youtube,1,4,Local_V3,2,33586,33588.2,814272,
+com-youtube,1,4,Local_V3,4,25284,25286,831132,
+com-youtube,1,4,Local_V3,8,23629,23632.3,864696,
+com-youtube,1,4,Local_V3,16,20420,20423.2,904508,
+com-youtube,1,4,Local_V3,32,19391,19394.5,1040748,
+com-youtube,1,4,Local_V3,64,20963,20967.5,1189544,
+com-youtube,1,4,Local_V4,1,21157,21159.3,804800,
+com-youtube,1,4,Local_V4,2,13416,13419.2,807800,
+com-youtube,1,4,Local_V4,4,8804,8809.96,826304,
+com-youtube,1,4,Local_V4,8,7612,7623.14,862208,
+com-youtube,1,4,Local_V4,16,5574,5578.36,902500,
+com-youtube,1,4,Local_V4,32,4817,4827.93,1031284,
+com-youtube,1,4,Local_V4,64,4462,4468,1179600,
+com-youtube,1,5,Correct,1,2042,N/A,1352476,
+com-youtube,1,5,ST,1,299,N/A,869396,
+com-youtube,1,5,Local_V1,1,19979,19980.3,804736,
+com-youtube,1,5,Local_V2,1,16146,16146.8,828592,
+com-youtube,1,5,Local_V3,1,40562,40562.9,818700,
+com-youtube,1,5,Local_V3,2,30685,30691.3,829916,
+com-youtube,1,5,Local_V3,4,24668,24675.1,849188,
+com-youtube,1,5,Local_V3,8,23381,23388.5,882368,
+com-youtube,1,5,Local_V3,16,19031,19033.7,924856,
+com-youtube,1,5,Local_V3,32,19238,19245,1064856,
+com-youtube,1,5,Local_V3,64,19624,19628.4,1212432,
+com-youtube,1,5,Local_V4,1,16922,16923.2,814496,
+com-youtube,1,5,Local_V4,2,11600,11602.9,825832,
+com-youtube,1,5,Local_V4,4,7406,7408.34,845500,
+com-youtube,1,5,Local_V4,8,6888,6891.45,879156,
+com-youtube,1,5,Local_V4,16,4988,4992.68,922220,
+com-youtube,1,5,Local_V4,32,4583,4589.6,1055096,
+com-youtube,1,5,Local_V4,64,4793,4800.05,1203820,
+web-Google,1,3,Correct,1,2704,N/A,1152972,
+web-Google,1,3,ST,1,415,N/A,650432,
+web-Google,1,3,Local_V1,1,4002,4003.22,621420,
+web-Google,1,3,Local_V2,1,2809,2810.24,628076,
+web-Google,1,3,Local_V3,1,7638,7639.23,627292,
+web-Google,1,3,Local_V3,2,6259,6260.97,630628,
+web-Google,1,3,Local_V3,4,4289,4290.84,642384,
+web-Google,1,3,Local_V3,8,3624,3625.5,663812,
+web-Google,1,3,Local_V3,16,3054,3055.88,693184,
+web-Google,1,3,Local_V3,32,2688,2690.07,786380,
+web-Google,1,3,Local_V3,64,2546,2547.42,901588,
+web-Google,1,3,Local_V4,1,2847,2849.01,623716,
+web-Google,1,3,Local_V4,2,1991,1992.68,627392,
+web-Google,1,3,Local_V4,4,1258,1259.66,638976,
+web-Google,1,3,Local_V4,8,1178,1179.96,658572,
+web-Google,1,3,Local_V4,16,656,657.944,686424,
+web-Google,1,3,Local_V4,32,487,489.483,778952,
+web-Google,1,3,Local_V4,64,405,407.845,887660,
+web-Google,1,4,Correct,1,2259,N/A,1134044,
+web-Google,1,4,ST,1,355,N/A,634872,
+web-Google,1,4,Local_V1,1,3574,3575.41,603752,
+web-Google,1,4,Local_V2,1,2611,2612.26,611920,
+web-Google,1,4,Local_V3,1,6347,6348.42,610620,
+web-Google,1,4,Local_V3,2,5280,5281.48,613160,
+web-Google,1,4,Local_V3,4,3750,3751.39,628012,
+web-Google,1,4,Local_V3,8,3898,3900.58,655528,
+web-Google,1,4,Local_V3,16,2641,2642.39,695744,
+web-Google,1,4,Local_V3,32,2272,2274.49,779624,
+web-Google,1,4,Local_V3,64,2092,2093.54,904152,
+web-Google,1,4,Local_V4,1,2611,2612.8,606892,
+web-Google,1,4,Local_V4,2,1915,1916.54,609332,
+web-Google,1,4,Local_V4,4,1191,1193.48,623240,
+web-Google,1,4,Local_V4,8,1162,1164.57,649624,
+web-Google,1,4,Local_V4,16,621,623.284,688260,
+web-Google,1,4,Local_V4,32,468,470.257,771964,
+web-Google,1,4,Local_V4,64,378,380.837,889884,
+web-Google,1,5,Correct,1,1943,N/A,1113716,
+web-Google,1,5,ST,1,308,N/A,621360,
+web-Google,1,5,Local_V1,1,3215,3216.53,586316,
+web-Google,1,5,Local_V2,1,2472,2473.16,598756,
+web-Google,1,5,Local_V3,1,5250,5251.45,596284,
+web-Google,1,5,Local_V3,2,4090,4091.03,601524,
+web-Google,1,5,Local_V3,4,3086,3088.15,625880,
+web-Google,1,5,Local_V3,8,3556,3557.86,672928,
+web-Google,1,5,Local_V3,16,2144,2145.22,734196,
+web-Google,1,5,Local_V3,32,1874,1875.91,850120,
+web-Google,1,5,Local_V3,64,1713,1715.13,1009368,
+web-Google,1,5,Local_V4,1,2511,2513.05,591460,
+web-Google,1,5,Local_V4,2,1865,1867.06,593740,
+web-Google,1,5,Local_V4,4,1074,1075.64,625208,
+web-Google,1,5,Local_V4,8,894,896.509,662244,
+web-Google,1,5,Local_V4,16,568,569.924,730288,
+web-Google,1,5,Local_V4,32,421,422.845,833404,
+web-Google,1,5,Local_V4,64,355,357.383,983876,
+soc-pokec-relationships,1,3,Correct,1,30824,N/A,6411092,
+soc-pokec-relationships,1,3,ST,1,4382,N/A,4877964,
+soc-pokec-relationships,1,3,Local_V1,1,152200,152205,4613736,
+soc-pokec-relationships,1,3,Local_V2,1,131323,131331,4705728,
+soc-pokec-relationships,1,3,Local_V3,1,300552,300558,4625380,
+soc-pokec-relationships,1,3,Local_V3,2,201262,201268,4631708,
+soc-pokec-relationships,1,3,Local_V3,4,138651,138656,4644584,
+soc-pokec-relationships,1,3,Local_V3,8,138818,138827,4670176,
+soc-pokec-relationships,1,3,Local_V3,16,104471,104484,4721608,
+soc-pokec-relationships,1,3,Local_V3,32,88741,88752,4918408,
+soc-pokec-relationships,1,3,Local_V3,64,85476,85486.3,5205304,
+soc-pokec-relationships,1,3,Local_V4,1,129472,129479,4613596,
+soc-pokec-relationships,1,3,Local_V4,2,79013,79020.9,4620152,
+soc-pokec-relationships,1,3,Local_V4,4,45176,45183.1,4632992,
+soc-pokec-relationships,1,3,Local_V4,8,38948,38959.7,4658740,
+soc-pokec-relationships,1,3,Local_V4,16,18881,18892.1,4709972,
+soc-pokec-relationships,1,3,Local_V4,32,11956,11968.9,4906712,
+soc-pokec-relationships,1,3,Local_V4,64,10799,10808.3,5201708,
+soc-pokec-relationships,1,4,Correct,1,25479,N/A,6371320,
+soc-pokec-relationships,1,4,ST,1,3914,N/A,4868556,
+soc-pokec-relationships,1,4,Local_V1,1,116848,116854,4594324,
+soc-pokec-relationships,1,4,Local_V2,1,99462,99470.1,4690512,
+soc-pokec-relationships,1,4,Local_V3,1,227467,227473,4603292,
+soc-pokec-relationships,1,4,Local_V3,2,151077,151083,4609764,
+soc-pokec-relationships,1,4,Local_V3,4,113388,113393,4622576,
+soc-pokec-relationships,1,4,Local_V3,8,111377,111387,4648100,
+soc-pokec-relationships,1,4,Local_V3,16,83513,83523.8,4699236,
+soc-pokec-relationships,1,4,Local_V3,32,75903,75914.9,4900324,
+soc-pokec-relationships,1,4,Local_V3,64,67812,67823.5,5217444,
+soc-pokec-relationships,1,4,Local_V4,1,100445,100453,4594340,
+soc-pokec-relationships,1,4,Local_V4,2,57947,57954.8,4601020,
+soc-pokec-relationships,1,4,Local_V4,4,34322,34329.5,4613876,
+soc-pokec-relationships,1,4,Local_V4,8,30790,30802.4,4639588,
+soc-pokec-relationships,1,4,Local_V4,16,16258,16267.3,4690740,
+soc-pokec-relationships,1,4,Local_V4,32,10581,10589.8,4891636,
+soc-pokec-relationships,1,4,Local_V4,64,9194,9203.07,5212740,
+soc-pokec-relationships,1,5,Correct,1,19297,N/A,6012188,
+soc-pokec-relationships,1,5,ST,1,3001,N/A,4531128,
+soc-pokec-relationships,1,5,Local_V1,1,75127,75132.4,4250664,
+soc-pokec-relationships,1,5,Local_V2,1,64461,64468.3,4351860,
+soc-pokec-relationships,1,5,Local_V3,1,142947,142953,4259608,
+soc-pokec-relationships,1,5,Local_V3,2,96000,96006.6,4267972,
+soc-pokec-relationships,1,5,Local_V3,4,76619,76624.1,4278952,
+soc-pokec-relationships,1,5,Local_V3,8,84349,84358.9,4306424,
+soc-pokec-relationships,1,5,Local_V3,16,56377,56386.6,4360984,
+soc-pokec-relationships,1,5,Local_V3,32,51151,51163.1,4560612,
+soc-pokec-relationships,1,5,Local_V3,64,46719,46730.1,4896192,
+soc-pokec-relationships,1,5,Local_V4,1,66599,66606.6,4250628,
+soc-pokec-relationships,1,5,Local_V4,2,39879,39887,4257000,
+soc-pokec-relationships,1,5,Local_V4,4,26064,26071.4,4272560,
+soc-pokec-relationships,1,5,Local_V4,8,23003,23015.9,4301824,
+soc-pokec-relationships,1,5,Local_V4,16,12046,12053.9,4352504,
+soc-pokec-relationships,1,5,Local_V4,32,8425,8432.78,4556264,
+soc-pokec-relationships,1,5,Local_V4,64,7006,7017.14,4887196,
+com-dblp,2,3,Correct,1,1415,N/A,459896,
+com-dblp,2,3,ST,1,645,N/A,264056,Cases: A=317878 B=12149 C=11145 iters=162
+com-dblp,2,3,Plus_Parallel,1,726,N/A,268432,Cases: A=317878 B=12149 C=11145 iters=162
+com-dblp,2,3,Plus_Parallel,2,488,N/A,268744,Cases: A=317878 B=12149 C=11145 iters=162
+com-dblp,2,3,Plus_Parallel,4,372,N/A,268936,Cases: A=317878 B=12149 C=11145 iters=162
+com-dblp,2,3,Plus_Parallel,8,325,N/A,279072,Cases: A=317878 B=12149 C=11145 iters=162
+com-dblp,2,3,Plus_Parallel,16,291,N/A,288668,Cases: A=317878 B=12149 C=11145 iters=162
+com-dblp,2,3,Plus_Parallel,32,276,N/A,310812,Cases: A=317878 B=12149 C=11145 iters=162
+com-dblp,2,3,Plus_Parallel,64,282,N/A,349100,Cases: A=317878 B=12149 C=11145 iters=162
+com-dblp,2,4,Correct,1,1167,N/A,448608,
+com-dblp,2,4,ST,1,445,N/A,241820,Cases: A=166586 B=5671 C=3870 iters=302
+com-dblp,2,4,Plus_Parallel,1,510,N/A,245928,Cases: A=166586 B=5671 C=3870 iters=302
+com-dblp,2,4,Plus_Parallel,2,416,N/A,246580,Cases: A=166586 B=5671 C=3870 iters=302
+com-dblp,2,4,Plus_Parallel,4,299,N/A,246812,Cases: A=166586 B=5671 C=3870 iters=302
+com-dblp,2,4,Plus_Parallel,8,276,N/A,256824,Cases: A=166586 B=5671 C=3870 iters=302
+com-dblp,2,4,Plus_Parallel,16,269,N/A,266756,Cases: A=166586 B=5671 C=3870 iters=302
+com-dblp,2,4,Plus_Parallel,32,247,N/A,288288,Cases: A=166586 B=5671 C=3870 iters=302
+com-dblp,2,4,Plus_Parallel,64,258,N/A,324952,Cases: A=166586 B=5671 C=3870 iters=302
+com-dblp,2,5,Correct,1,940,N/A,441392,
+com-dblp,2,5,ST,1,291,N/A,230604,Cases: A=81418 B=2444 C=1409 iters=312
+com-dblp,2,5,Plus_Parallel,1,344,N/A,234592,Cases: A=81418 B=2444 C=1409 iters=312
+com-dblp,2,5,Plus_Parallel,2,309,N/A,234576,Cases: A=81418 B=2444 C=1409 iters=312
+com-dblp,2,5,Plus_Parallel,4,245,N/A,238432,Cases: A=81418 B=2444 C=1409 iters=312
+com-dblp,2,5,Plus_Parallel,8,239,N/A,244876,Cases: A=81418 B=2444 C=1409 iters=312
+com-dblp,2,5,Plus_Parallel,16,217,N/A,255668,Cases: A=81418 B=2444 C=1409 iters=312
+com-dblp,2,5,Plus_Parallel,32,219,N/A,275192,Cases: A=81418 B=2444 C=1409 iters=312
+com-dblp,2,5,Plus_Parallel,64,225,N/A,315028,Cases: A=81418 B=2444 C=1409 iters=312
+com-youtube,2,3,Correct,1,5625,N/A,1586280,
+com-youtube,2,3,ST,1,2436,N/A,1020452,Cases: A=1642334 B=9947 C=118770 iters=616
+com-youtube,2,3,Plus_Parallel,1,2809,N/A,1033096,Cases: A=1642334 B=9947 C=118770 iters=616
+com-youtube,2,3,Plus_Parallel,2,1777,N/A,1034616,Cases: A=1642334 B=9947 C=118770 iters=616
+com-youtube,2,3,Plus_Parallel,4,1179,N/A,1048956,Cases: A=1642334 B=9947 C=118770 iters=616
+com-youtube,2,3,Plus_Parallel,8,1039,N/A,1082588,Cases: A=1642334 B=9947 C=118770 iters=616
+com-youtube,2,3,Plus_Parallel,16,789,N/A,1121272,Cases: A=1642334 B=9947 C=118770 iters=616
+com-youtube,2,3,Plus_Parallel,32,712,N/A,1222236,Cases: A=1642334 B=9947 C=118770 iters=616
+com-youtube,2,3,Plus_Parallel,64,779,N/A,1359848,Cases: A=1642334 B=9947 C=118770 iters=616
+com-youtube,2,4,Correct,1,5630,N/A,1657352,
+com-youtube,2,4,ST,1,3489,N/A,1098316,Cases: A=1403488 B=8549 C=146597 iters=10725
+com-youtube,2,4,Plus_Parallel,1,3268,N/A,1109676,Cases: A=1403488 B=8549 C=146597 iters=10725
+com-youtube,2,4,Plus_Parallel,2,2211,N/A,1112044,Cases: A=1403488 B=8549 C=146597 iters=10725
+com-youtube,2,4,Plus_Parallel,4,1667,N/A,1129356,Cases: A=1403488 B=8549 C=146597 iters=10725
+com-youtube,2,4,Plus_Parallel,8,1671,N/A,1161076,Cases: A=1403488 B=8549 C=146597 iters=10725
+com-youtube,2,4,Plus_Parallel,16,1371,N/A,1199168,Cases: A=1403488 B=8549 C=146597 iters=10725
+com-youtube,2,4,Plus_Parallel,32,1356,N/A,1323248,Cases: A=1403488 B=8549 C=146597 iters=10725
+com-youtube,2,4,Plus_Parallel,64,1591,N/A,1469920,Cases: A=1403488 B=8549 C=146597 iters=10725
+com-youtube,2,5,Correct,1,4986,N/A,1658280,
+com-youtube,2,5,ST,1,2906,N/A,1103152,Cases: A=1080250 B=6623 C=130087 iters=19700
+com-youtube,2,5,Plus_Parallel,1,3117,N/A,1112496,Cases: A=1080250 B=6623 C=130087 iters=19700
+com-youtube,2,5,Plus_Parallel,2,2221,N/A,1113412,Cases: A=1080250 B=6623 C=130087 iters=19700
+com-youtube,2,5,Plus_Parallel,4,1908,N/A,1128720,Cases: A=1080250 B=6623 C=130087 iters=19700
+com-youtube,2,5,Plus_Parallel,8,1839,N/A,1160464,Cases: A=1080250 B=6623 C=130087 iters=19700
+com-youtube,2,5,Plus_Parallel,16,1789,N/A,1199008,Cases: A=1080250 B=6623 C=130087 iters=19700
+com-youtube,2,5,Plus_Parallel,32,1784,N/A,1332952,Cases: A=1080250 B=6623 C=130087 iters=19700
+com-youtube,2,5,Plus_Parallel,64,2160,N/A,1481060,Cases: A=1080250 B=6623 C=130087 iters=19700
+web-Google,2,3,Correct,1,8519,N/A,1803912,
+web-Google,2,3,ST,1,3156,N/A,962520,Cases: A=1232618 B=80779 C=141019 iters=322
+web-Google,2,3,Plus_Parallel,1,3515,N/A,982296,Cases: A=1232618 B=80779 C=141019 iters=322
+web-Google,2,3,Plus_Parallel,2,2613,N/A,982100,Cases: A=1232618 B=80779 C=141019 iters=322
+web-Google,2,3,Plus_Parallel,4,1808,N/A,981644,Cases: A=1232618 B=80779 C=141019 iters=322
+web-Google,2,3,Plus_Parallel,8,1801,N/A,1016616,Cases: A=1232618 B=80779 C=141019 iters=322
+web-Google,2,3,Plus_Parallel,16,1263,N/A,1047560,Cases: A=1232618 B=80779 C=141019 iters=322
+web-Google,2,3,Plus_Parallel,32,1007,N/A,1115120,Cases: A=1232618 B=80779 C=141019 iters=322
+web-Google,2,3,Plus_Parallel,64,985,N/A,1224528,Cases: A=1232618 B=80779 C=141019 iters=322
+web-Google,2,4,Correct,1,7500,N/A,1782740,
+web-Google,2,4,ST,1,2815,N/A,933676,Cases: A=852959 B=69070 C=106125 iters=2408
+web-Google,2,4,Plus_Parallel,1,3003,N/A,952116,Cases: A=852959 B=69070 C=106125 iters=2408
+web-Google,2,4,Plus_Parallel,2,2463,N/A,952760,Cases: A=852959 B=69070 C=106125 iters=2408
+web-Google,2,4,Plus_Parallel,4,2001,N/A,952716,Cases: A=852959 B=69070 C=106125 iters=2408
+web-Google,2,4,Plus_Parallel,8,1716,N/A,988660,Cases: A=852959 B=69070 C=106125 iters=2408
+web-Google,2,4,Plus_Parallel,16,1392,N/A,1019416,Cases: A=852959 B=69070 C=106125 iters=2408
+web-Google,2,4,Plus_Parallel,32,1140,N/A,1085840,Cases: A=852959 B=69070 C=106125 iters=2408
+web-Google,2,4,Plus_Parallel,64,1151,N/A,1194544,Cases: A=852959 B=69070 C=106125 iters=2408
+web-Google,2,5,Correct,1,6575,N/A,1762264,
+web-Google,2,5,ST,1,2437,N/A,908724,Cases: A=637119 B=56932 C=82874 iters=2965
+web-Google,2,5,Plus_Parallel,1,2585,N/A,923156,Cases: A=637119 B=56932 C=82874 iters=2965
+web-Google,2,5,Plus_Parallel,2,2336,N/A,923376,Cases: A=637119 B=56932 C=82874 iters=2965
+web-Google,2,5,Plus_Parallel,4,1686,N/A,926616,Cases: A=637119 B=56932 C=82874 iters=2965
+web-Google,2,5,Plus_Parallel,8,1701,N/A,961100,Cases: A=637119 B=56932 C=82874 iters=2965
+web-Google,2,5,Plus_Parallel,16,1322,N/A,989308,Cases: A=637119 B=56932 C=82874 iters=2965
+web-Google,2,5,Plus_Parallel,32,1080,N/A,1055748,Cases: A=637119 B=56932 C=82874 iters=2965
+web-Google,2,5,Plus_Parallel,64,1058,N/A,1164412,Cases: A=637119 B=56932 C=82874 iters=2965
+soc-pokec-relationships,2,3,Correct,1,99373,N/A,9819924,
+soc-pokec-relationships,2,3,ST,1,42375,N/A,7138540,Cases: A=16036328 B=631682 C=2140661 iters=1063
+soc-pokec-relationships,2,3,Plus_Parallel,1,48348,N/A,7238320,Cases: A=16036328 B=631682 C=2140661 iters=1063
+soc-pokec-relationships,2,3,Plus_Parallel,2,28802,N/A,7241980,Cases: A=16036328 B=631682 C=2140661 iters=1063
+soc-pokec-relationships,2,3,Plus_Parallel,4,18284,N/A,7247352,Cases: A=16036328 B=631682 C=2140661 iters=1063
+soc-pokec-relationships,2,3,Plus_Parallel,8,14396,N/A,7273920,Cases: A=16036328 B=631682 C=2140661 iters=1063
+soc-pokec-relationships,2,3,Plus_Parallel,16,11105,N/A,7298744,Cases: A=16036328 B=631682 C=2140661 iters=1063
+soc-pokec-relationships,2,3,Plus_Parallel,32,9260,N/A,7338200,Cases: A=16036328 B=631682 C=2140661 iters=1063
+soc-pokec-relationships,2,3,Plus_Parallel,64,9088,N/A,7680204,Cases: A=16036328 B=631682 C=2140661 iters=1063
+soc-pokec-relationships,2,4,Correct,1,84943,N/A,9768692,
+soc-pokec-relationships,2,4,ST,1,37641,N/A,7086372,Cases: A=10988670 B=539589 C=1787091 iters=20444
+soc-pokec-relationships,2,4,Plus_Parallel,1,41219,N/A,7188204,Cases: A=10988670 B=539589 C=1787091 iters=20444
+soc-pokec-relationships,2,4,Plus_Parallel,2,25247,N/A,7190896,Cases: A=10988670 B=539589 C=1787091 iters=20444
+soc-pokec-relationships,2,4,Plus_Parallel,4,16407,N/A,7192980,Cases: A=10988670 B=539589 C=1787091 iters=20444
+soc-pokec-relationships,2,4,Plus_Parallel,8,15415,N/A,7215376,Cases: A=10988670 B=539589 C=1787091 iters=20444
+soc-pokec-relationships,2,4,Plus_Parallel,16,11877,N/A,7236564,Cases: A=10988670 B=539589 C=1787091 iters=20444
+soc-pokec-relationships,2,4,Plus_Parallel,32,10402,N/A,7283428,Cases: A=10988670 B=539589 C=1787091 iters=20444
+soc-pokec-relationships,2,4,Plus_Parallel,64,11310,N/A,7674376,Cases: A=10988670 B=539589 C=1787091 iters=20444
+soc-pokec-relationships,2,5,Correct,1,63207,N/A,9408384,
+soc-pokec-relationships,2,5,ST,1,28152,N/A,6623452,Cases: A=6929797 B=363474 C=1142252 iters=49563
+soc-pokec-relationships,2,5,Plus_Parallel,1,29814,N/A,6718664,Cases: A=6929797 B=363474 C=1142252 iters=49563
+soc-pokec-relationships,2,5,Plus_Parallel,2,19091,N/A,6719664,Cases: A=6929797 B=363474 C=1142252 iters=49563
+soc-pokec-relationships,2,5,Plus_Parallel,4,13459,N/A,6720292,Cases: A=6929797 B=363474 C=1142252 iters=49563
+soc-pokec-relationships,2,5,Plus_Parallel,8,13182,N/A,6749944,Cases: A=6929797 B=363474 C=1142252 iters=49563
+soc-pokec-relationships,2,5,Plus_Parallel,16,10566,N/A,6766848,Cases: A=6929797 B=363474 C=1142252 iters=49563
+soc-pokec-relationships,2,5,Plus_Parallel,32,9750,N/A,6879032,Cases: A=6929797 B=363474 C=1142252 iters=49563
+soc-pokec-relationships,2,5,Plus_Parallel,64,10975,N/A,7287744,Cases: A=6929797 B=363474 C=1142252 iters=49563
+com-dblp,3,4,Correct,1,2402,N/A,787504,
+com-dblp,3,4,ST,1,1789,N/A,746876,Cases: LeafDeath=148406 BK=30196 iters=93
+com-dblp,3,4,RClique_Parallel,1,2589,N/A,766016,
+com-dblp,3,4,RClique_Parallel,2,2197,N/A,785968,
+com-dblp,3,4,RClique_Parallel,4,2061,N/A,807236,
+com-dblp,3,4,RClique_Parallel,8,1801,N/A,824024,
+com-dblp,3,4,RClique_Parallel,16,2101,N/A,887300,
+com-dblp,3,4,RClique_Parallel,32,2261,N/A,1188632,
+com-dblp,3,4,RClique_Parallel,64,2811,N/A,1786592,
+com-dblp,3,5,Correct,1,2265,N/A,779756,
+com-dblp,3,5,ST,1,1654,N/A,740316,Cases: LeafDeath=73038 BK=13143 iters=137
+com-dblp,3,5,RClique_Parallel,1,2153,N/A,759512,
+com-dblp,3,5,RClique_Parallel,2,2029,N/A,777884,
+com-dblp,3,5,RClique_Parallel,4,1984,N/A,807916,
+com-dblp,3,5,RClique_Parallel,8,1949,N/A,805652,
+com-dblp,3,5,RClique_Parallel,16,2013,N/A,881076,
+com-dblp,3,5,RClique_Parallel,32,2190,N/A,1181732,
+com-dblp,3,5,RClique_Parallel,64,2530,N/A,1779512,
+com-youtube,3,4,Correct,1,14312,N/A,1515200,
+com-youtube,3,4,ST,1,11728,N/A,1447168,Cases: LeafDeath=126992 BK=1680596 iters=444
+com-youtube,3,4,RClique_Parallel,1,13177,N/A,1489736,
+com-youtube,3,4,RClique_Parallel,2,8741,N/A,1475676,
+com-youtube,3,4,RClique_Parallel,4,6307,N/A,1507960,
+com-youtube,3,4,RClique_Parallel,8,5690,N/A,1543996,
+com-youtube,3,4,RClique_Parallel,16,5236,N/A,1698448,
+com-youtube,3,4,RClique_Parallel,32,4956,N/A,2191936,
+com-youtube,3,4,RClique_Parallel,64,6077,N/A,3105196,
+com-youtube,3,5,Correct,1,14466,N/A,1506864,
+com-youtube,3,5,ST,1,12073,N/A,1449320,Cases: LeafDeath=47382 BK=1367319 iters=6222
+com-youtube,3,5,RClique_Parallel,1,12895,N/A,1494012,
+com-youtube,3,5,RClique_Parallel,2,8578,N/A,1472492,
+com-youtube,3,5,RClique_Parallel,4,6588,N/A,1504268,
+com-youtube,3,5,RClique_Parallel,8,6631,N/A,1540524,
+com-youtube,3,5,RClique_Parallel,16,6282,N/A,1702996,
+com-youtube,3,5,RClique_Parallel,32,5931,N/A,2203468,
+com-youtube,3,5,RClique_Parallel,64,6920,N/A,3112232,
+web-Google,3,4,Correct,1,21260,N/A,4197536,
+web-Google,3,4,ST,1,14213,N/A,3939560,Cases: LeafDeath=478282 BK=627914 iters=208
+web-Google,3,4,RClique_Parallel,1,16018,N/A,3942144,
+web-Google,3,4,RClique_Parallel,2,11948,N/A,4018536,
+web-Google,3,4,RClique_Parallel,4,9044,N/A,4069644,
+web-Google,3,4,RClique_Parallel,8,8943,N/A,4124520,
+web-Google,3,4,RClique_Parallel,16,8101,N/A,4708896,
+web-Google,3,4,RClique_Parallel,32,8344,N/A,6468316,
+web-Google,3,4,RClique_Parallel,64,9954,N/A,9925264,
+web-Google,3,5,Correct,1,20566,N/A,4173232,
+web-Google,3,5,ST,1,13033,N/A,3944940,Cases: LeafDeath=364175 BK=477000 iters=892
+web-Google,3,5,RClique_Parallel,1,14506,N/A,3948496,
+web-Google,3,5,RClique_Parallel,2,11425,N/A,4007280,
+web-Google,3,5,RClique_Parallel,4,8718,N/A,4082480,
+web-Google,3,5,RClique_Parallel,8,8681,N/A,4134556,
+web-Google,3,5,RClique_Parallel,16,7566,N/A,4687512,
+web-Google,3,5,RClique_Parallel,32,8034,N/A,6449004,
+web-Google,3,5,RClique_Parallel,64,9815,N/A,9905540,
+soc-pokec-relationships,3,4,Correct,1,151564,N/A,13013924,
+soc-pokec-relationships,3,4,ST,1,115860,N/A,12359672,Cases: LeafDeath=2603002 BK=12633769 iters=645
+soc-pokec-relationships,3,4,RClique_Parallel,1,131188,N/A,12371176,
+soc-pokec-relationships,3,4,RClique_Parallel,2,89927,N/A,12650708,
+soc-pokec-relationships,3,4,RClique_Parallel,4,63857,N/A,12801460,
+soc-pokec-relationships,3,4,RClique_Parallel,8,55151,N/A,12876252,
+soc-pokec-relationships,3,4,RClique_Parallel,16,51531,N/A,14054196,
+soc-pokec-relationships,3,4,RClique_Parallel,32,51048,N/A,18287048,
+soc-pokec-relationships,3,4,RClique_Parallel,64,53445,N/A,26700564,
+soc-pokec-relationships,3,5,Correct,1,135198,N/A,12649200,
+soc-pokec-relationships,3,5,ST,1,98943,N/A,12021612,Cases: LeafDeath=1197949 BK=8492725 iters=14817
+soc-pokec-relationships,3,5,RClique_Parallel,1,108311,N/A,12032876,
+soc-pokec-relationships,3,5,RClique_Parallel,2,74584,N/A,12299784,
+soc-pokec-relationships,3,5,RClique_Parallel,4,53873,N/A,12463648,
+soc-pokec-relationships,3,5,RClique_Parallel,8,51036,N/A,12525540,
+soc-pokec-relationships,3,5,RClique_Parallel,16,48339,N/A,13709940,
+soc-pokec-relationships,3,5,RClique_Parallel,32,44680,N/A,17943928,
+soc-pokec-relationships,3,5,RClique_Parallel,64,49765,N/A,26362660,
+com-dblp,4,5,Correct,1,37783,N/A,4011780,
+com-dblp,4,5,ST,1,35720,N/A,3841992,Cases: LeafDeath=75564 BK=10776 iters=76
+com-dblp,4,5,RClique_Parallel,1,36039,N/A,4810396,
+com-dblp,4,5,RClique_Parallel,2,33830,N/A,4852036,
+com-dblp,4,5,RClique_Parallel,4,30582,N/A,4923200,
+com-dblp,4,5,RClique_Parallel,8,30455,N/A,5070508,
+com-dblp,4,5,RClique_Parallel,16,32247,N/A,5333980,
+com-dblp,4,5,RClique_Parallel,32,36267,N/A,6834928,
+com-dblp,4,5,RClique_Parallel,64,36467,N/A,11055916,
+com-youtube,4,5,Correct,1,34585,N/A,1987996,
+com-youtube,4,5,ST,1,28932,N/A,1880772,Cases: LeafDeath=72040 BK=1617078 iters=207
+com-youtube,4,5,RClique_Parallel,1,28963,N/A,1918540,
+com-youtube,4,5,RClique_Parallel,2,18106,N/A,1955980,
+com-youtube,4,5,RClique_Parallel,4,11612,N/A,1998104,
+com-youtube,4,5,RClique_Parallel,8,9654,N/A,2056136,
+com-youtube,4,5,RClique_Parallel,16,7580,N/A,2235876,
+com-youtube,4,5,RClique_Parallel,32,7059,N/A,2968032,
+com-youtube,4,5,RClique_Parallel,64,7710,N/A,4354996,
+web-Google,4,5,Correct,1,60256,N/A,10554152,
+web-Google,4,5,ST,1,40216,N/A,9796916,Cases: LeafDeath=377447 BK=482816 iters=177
+web-Google,4,5,RClique_Parallel,1,45274,N/A,9801988,
+web-Google,4,5,RClique_Parallel,2,31234,N/A,9959888,
+web-Google,4,5,RClique_Parallel,4,23471,N/A,10100052,
+web-Google,4,5,RClique_Parallel,8,21602,N/A,10171692,
+web-Google,4,5,RClique_Parallel,16,19612,N/A,11964844,
+web-Google,4,5,RClique_Parallel,32,20290,N/A,17031596,
+web-Google,4,5,RClique_Parallel,64,25645,N/A,27106328,
+soc-pokec-relationships,4,5,Correct,1,249751,N/A,16010444,
+soc-pokec-relationships,4,5,ST,1,176137,N/A,15143604,Cases: LeafDeath=1526192 BK=9473952 iters=368
+soc-pokec-relationships,4,5,RClique_Parallel,1,183405,N/A,15158160,
+soc-pokec-relationships,4,5,RClique_Parallel,2,116063,N/A,15558540,
+soc-pokec-relationships,4,5,RClique_Parallel,4,76290,N/A,15873600,
+soc-pokec-relationships,4,5,RClique_Parallel,8,66999,N/A,16013420,
+soc-pokec-relationships,4,5,RClique_Parallel,16,59218,N/A,17454816,
+soc-pokec-relationships,4,5,RClique_Parallel,32,52562,N/A,22964616,
+soc-pokec-relationships,4,5,RClique_Parallel,64,62853,N/A,33962404,
