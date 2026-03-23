@@ -4,7 +4,7 @@
 # Usage: bash benchmark_all.sh [output_dir]
 #
 # Runs all versions on multiple graphs with different r,s parameters.
-# Parallel versions are tested with thread counts: 1, 2, 4, 8, 16, 32, 64.
+# Single-thread only (no parallel experiments).
 # Records wall-clock time and peak RSS memory.
 #
 
@@ -20,7 +20,7 @@ git pull 2>&1 | tail -3
 echo ""
 echo "Building..."
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release 2>&1 | tail -3
-cmake --build build --target degeneracy_cliques -j "$(nproc)" 2>&1 | tail -3
+cmake --build build --target degeneracy_cliques -j 12 2>&1 | tail -3
 echo "Build complete."
 echo ""
 
@@ -37,7 +37,6 @@ DATASETS=(
     "/data/wenqianz/soc-pokec-relationships.edges"
 )
 
-THREAD_COUNTS=(1 2 4 8 16 32 64)
 
 # =========================================================================
 # Helper: run one experiment, capture time + peak RSS
@@ -118,21 +117,20 @@ for graph in "${DATASETS[@]}"; do
         # ST peeling (single-thread)
         run_one "ST" "PIVOTER_RUN_ST=1" 1 "$graph" 1 "$s_val" "$CSVFILE"
 
+        # ST_V2 tree-free peeling (single-thread)
+        run_one "ST_V2" "PIVOTER_RUN_ST_V2=1" 1 "$graph" 1 "$s_val" "$CSVFILE"
+
         # Local V1 (single-thread)
         run_one "Local_V1" "PIVOTER_RUN_LOCAL=1" 1 "$graph" 1 "$s_val" "$CSVFILE"
 
         # Local V2 (single-thread)
         run_one "Local_V2" "PIVOTER_RUN_LOCAL_V2=1" 1 "$graph" 1 "$s_val" "$CSVFILE"
 
-        # Local V3 parallel — sweep threads
-        for t in "${THREAD_COUNTS[@]}"; do
-            run_one "Local_V3" "PIVOTER_RUN_LOCAL_V3=1" "$t" "$graph" 1 "$s_val" "$CSVFILE"
-        done
+        # Local V3 (single-thread)
+        run_one "Local_V3" "PIVOTER_RUN_LOCAL_V3=1" 1 "$graph" 1 "$s_val" "$CSVFILE"
 
-        # Local V4 parallel — sweep threads
-        for t in "${THREAD_COUNTS[@]}"; do
-            run_one "Local_V4" "PIVOTER_RUN_LOCAL_V4=1" "$t" "$graph" 1 "$s_val" "$CSVFILE"
-        done
+        # Local V4 (single-thread)
+        run_one "Local_V4" "PIVOTER_RUN_LOCAL_V4=1" 1 "$graph" 1 "$s_val" "$CSVFILE"
 
         echo ""
     done
@@ -152,10 +150,8 @@ for graph in "${DATASETS[@]}"; do
         # ST peeling (single-thread)
         run_one "ST" "PIVOTER_RUN_ST=1" 1 "$graph" 2 "$s_val" "$CSVFILE"
 
-        # Plus parallel (default r=2) — sweep threads
-        for t in "${THREAD_COUNTS[@]}"; do
-            run_one "Plus_Parallel" "" "$t" "$graph" 2 "$s_val" "$CSVFILE"
-        done
+        # ST_V4 (single-thread)
+        run_one "ST_V4" "PIVOTER_RUN_ST_V4=1" 1 "$graph" 2 "$s_val" "$CSVFILE"
 
         echo ""
     done
@@ -184,11 +180,6 @@ for graph in "${DATASETS[@]}"; do
         # ST_V11 (single-thread)
         run_one "ST_V11" "PIVOTER_RUN_ST_V11=1" 1 "$graph" 3 "$s_val" "$CSVFILE"
 
-        # Parallel (default r>=3) — sweep threads
-        for t in "${THREAD_COUNTS[@]}"; do
-            run_one "RClique_Parallel" "" "$t" "$graph" 3 "$s_val" "$CSVFILE"
-        done
-
         echo ""
     done
 done
@@ -215,11 +206,6 @@ for graph in "${DATASETS[@]}"; do
 
         # ST_V11 (single-thread)
         run_one "ST_V11" "PIVOTER_RUN_ST_V11=1" 1 "$graph" 4 "$s_val" "$CSVFILE"
-
-        # Parallel (default r>=3) — sweep threads
-        for t in "${THREAD_COUNTS[@]}"; do
-            run_one "RClique_Parallel" "" "$t" "$graph" 4 "$s_val" "$CSVFILE"
-        done
 
         echo ""
     done

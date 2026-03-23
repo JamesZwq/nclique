@@ -92,21 +92,50 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
 
     auto time_start = std::chrono::high_resolution_clock::now();
 
+    // Fused single-pass: build clique index + dual index simultaneously
     StaticCliqueIndex cliqueIndex(r);
-    daf::timeCount("clique Index build", [&]() {
-        cliqueIndex.build(tree, edgeGraph.adj_list.size());
+    const daf::Size numLeaves = tree.adj_list.size();
+    const daf::Size maxV = edgeGraph.adj_list.size();
+
+    std::vector<std::vector<RCliqueSTv4::LeafCliqueEntry>> leafCliqueInfo(numLeaves);
+    std::vector<std::vector<daf::Size>> cliqueLeafIds;
+    std::vector<long long> countingRClique;
+
+    // Pre-compute per-leaf pivotC/keepC for nCr calculation
+    std::vector<daf::CliqueSize> leafPivotC(numLeaves, 0);
+    std::vector<int> leafNeedPivot(numLeaves, 0);
+    for (daf::Size L = 0; L < numLeaves; ++L) {
+        const auto &leaf = tree.adj_list[L];
+        daf::CliqueSize pC = 0, kC = 0;
+        for (const auto &node : leaf) {
+            if (node.isPivot) pC++; else kC++;
+        }
+        leafPivotC[L] = pC;
+        leafNeedPivot[L] = s - static_cast<int>(kC);
+    }
+
+    daf::timeCount("fused build+dualIndex (ST_V4)", [&]() {
+        cliqueIndex.buildWithFullEnum(tree, maxV,
+            [&](daf::Size leafIdx, StaticCliqueIndex::Id cliqueId, daf::CliqueSize subNumPivot,
+                const uint8_t* /*positions*/) {
+                // Grow vectors if needed
+                if (cliqueId >= countingRClique.size()) {
+                    daf::Size newSz = cliqueId + 1;
+                    countingRClique.resize(newSz, 0);
+                    cliqueLeafIds.resize(newSz);
+                }
+                int np = leafNeedPivot[leafIdx];
+                int remPivot = (int)leafPivotC[leafIdx] - (int)subNumPivot;
+                int remNeed = np - (int)subNumPivot;
+                if (remPivot < 0 || remNeed < 0 || remPivot < remNeed) return;
+                long long ncrVal = (long long)(nCr[remPivot][remNeed] + 0.5);
+                countingRClique[cliqueId] += ncrVal;
+                leafCliqueInfo[leafIdx].push_back({cliqueId, ncrVal});
+                cliqueLeafIds[cliqueId].push_back(leafIdx);
+            });
     });
 
-    daf::log_memory("r-clique index");
-
-    // Build both indices and counting in one pass
-    auto dualIndex = daf::timeCount("buildDualIndex (ST_V4)", [&]() {
-        return RCliqueSTv4::buildDualIndex(tree, cliqueIndex, r, s);
-    });
-
-    auto &leafCliqueInfo = dualIndex.leafCliqueInfo;
-    auto &cliqueLeafIds = dualIndex.cliqueLeafIds;
-    auto countingRClique = std::move(dualIndex.counting);
+    daf::log_memory("r-clique index + dual index (fused)");
 
     // Opt 4: mapList_ only needed during build+buildDualIndex; peeling uses only byId()
     cliqueIndex.freeMapList();

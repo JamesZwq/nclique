@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 #include <functional>
+#include <memory>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -224,6 +225,20 @@ int main(int argc, char **argv) {
         }
     } // par7Result freed here
 
+    // --- ST_V2: Build phase MUST run before beSingleEdge() mutates the graph ---
+    const bool st_v2_mode = (r == 1 && envSet("PIVOTER_RUN_ST_V2"));
+    const bool st_v2_probe = (r == 1 && envSet("PIVOTER_RUN_ST_V2_PROBE"));
+    std::unique_ptr<ST_V2_Data> st_v2_data;
+    if (st_v2_mode) {
+        st_v2_data = std::make_unique<ST_V2_Data>(
+            daf::timeCount("ST_V2 Build", [&]() {
+                return NCliqueVertexCoreDecomposition_ST_V2_Build(edgeGraph, s);
+            }));
+    }
+    if (st_v2_probe) {
+        NCliqueVertexCoreDecomposition_ST_V2_InterleavedProbe(edgeGraph, s);
+    }
+
     // --- Prepare graph structures ---
     edgeGraph.initCore();
     edgeGraph.coreV.free(); // Opt 2: coreV only needed by sortByDegeneracyOrder, already done
@@ -238,9 +253,9 @@ int main(int argc, char **argv) {
     const bool compareMode = envSet("PIVOTER_COMPARE");
     const daf::Size numVertices = edgeGraph.adj_list_offsets.size() - 1;
 
-    // Opt 6: R1 ST never uses treeGraphV — skip construction to save n × ~60B hash set overhead.
+    // Opt 6: R1 ST/ST_V2 never uses treeGraphV — skip construction to save n × ~60B hash set overhead.
     // Build treeGraphV only when needed: r>=2, or r=1 non-ST variants, or compare mode.
-    const bool r1_st_only = (r == 1 && envSet("PIVOTER_RUN_ST") && !compareMode);
+    const bool r1_st_only = (r == 1 && (envSet("PIVOTER_RUN_ST") || envSet("PIVOTER_RUN_ST_V2")) && !compareMode);
     DynamicGraphSet<TreeGraphNode> treeGraphV;
     if (!r1_st_only) {
         treeGraphV = DynamicGraphSet<TreeGraphNode>(refTree, edgeGraph.getGraphNodeSize(), s);
@@ -313,6 +328,19 @@ int main(int argc, char **argv) {
                 delete[] refV;
             }
             delete[] coreV;
+        } else if (r == 1 && envSet("PIVOTER_RUN_ST_V2")) {
+            // ST V2: Tree-free R1 — SDCT already built before beSingleEdge()
+            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto coreV = daf::timeCount("ST_V2 r=1 (peel)", [&]() {
+                return NCliqueVertexCoreDecomposition_ST_V2_Peel(*st_v2_data, s);
+            });
+            if (compareMode) {
+                auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+                compareVertexDistBoth(refV, coreV, numVertices, "r=1 ST_V2");
+                delete[] refV;
+            }
+            delete[] coreV;
         } else if (r == 1 && envSet("PIVOTER_RUN_ST")) {
             auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
             auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
@@ -342,6 +370,22 @@ int main(int argc, char **argv) {
                 refDist.erase(0); testDist.erase(0);
                 if (refDist == testDist) std::cout << "✓ r=2 Local H-index correctness verified" << std::endl;
                 else std::cerr << "✗ r=2 Local H-index MISMATCH!" << std::endl;
+            }
+        } else if (r == 2 && envSet("PIVOTER_RUN_ST_V4")) {
+            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
+            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+            auto result = daf::timeCount("ST_V4 r=2", [&]() {
+                return PlusNucleusEdgeCoreDecompositionSet_ST_V4(refTree, edgeGraph, treeGraphV, s);
+            });
+            if (compareMode) {
+                auto refCore = daf::timeCount("ref r=2", [&]() {
+                    return PlusNucleusEdgeCoreDecompositionSet(t2, edgeGraph, tgv2, s);
+                });
+                std::map<int, int> refDist, testDist;
+                for (const auto &[c, cv] : refCore) refDist[cv]++;
+                for (const auto &[e, cv] : result) testDist[cv]++;
+                if (refDist == testDist) std::cout << "✓ r=2 ST_V4 correctness verified" << std::endl;
+                else std::cerr << "✗ r=2 ST_V4 MISMATCH!" << std::endl;
             }
         } else if (r == 2 && envSet("PIVOTER_RUN_ST_V3")) {
             auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();

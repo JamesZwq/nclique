@@ -260,6 +260,39 @@ double * NCliqueVertexCoreDecomposition_ST(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 
+// ST V2: Tree-free R1 peeling via Augmented SDCT + dual CSR
+// Does not need tree or treeGraphV — builds indices inline during SDCT.
+double * NCliqueVertexCoreDecomposition_ST_V2(
+    Graph &edgeGraph, daf::CliqueSize k);
+
+// ST V2 split phases: Build must run BEFORE edgeGraph.beSingleEdge()
+struct ST_V2_Data {
+    struct VLeafEntry { daf::Size leafId; uint8_t isPivot; };
+    struct LeafVtxEntry { daf::Size vertex; uint8_t isPivot; };
+
+    daf::Size numVertices = 0;
+    size_t numLeaves = 0;
+
+    std::vector<daf::Size> vtxLeafOff;
+    std::vector<VLeafEntry> vtxLeafData;
+    std::vector<daf::Size> leafVtxOff;
+    std::vector<LeafVtxEntry> leafVtxData;
+
+    std::vector<int> leafPivotCount;
+    std::vector<int> leafNeedPivot;
+
+    double *countingV = nullptr;
+};
+
+ST_V2_Data NCliqueVertexCoreDecomposition_ST_V2_Build(
+    Graph &edgeGraph, daf::CliqueSize k);
+double * NCliqueVertexCoreDecomposition_ST_V2_Peel(
+    ST_V2_Data &d, daf::CliqueSize k);
+
+// ST V2 interleaved probe: measures feasibility of peeling during construction
+void NCliqueVertexCoreDecomposition_ST_V2_InterleavedProbe(
+    Graph &edgeGraph, daf::CliqueSize k);
+
 std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_ST(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
@@ -276,6 +309,11 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
 
 // R2 ST V3: V2 + Deferred Batch BucketMove (eliminates redundant bucket moves)
 std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCoreDecompositionSet_ST_V3(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// R2 ST V4: Edge-Leaf Dual Index + Immutable Case A/C + Flat Phase 1
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCoreDecompositionSet_ST_V4(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 
