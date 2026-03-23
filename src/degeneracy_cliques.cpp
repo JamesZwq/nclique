@@ -27,102 +27,345 @@
 #include "dataStruct/CliqueCSR.hpp"
 
 // ============================================================
-// Helpers: compare core-value distributions
+// Utility
 // ============================================================
-
-// Compare r-clique results (vector<pair<vector<Size>, int>>)
-static void compareRCliqueDist(
-    const std::vector<std::pair<std::vector<daf::Size>, int>> &refCore,
-    const std::vector<std::pair<std::vector<daf::Size>, int>> &testCore,
-    const char *label) {
-    std::map<int, int> refDist, testDist;
-    for (const auto &[clique, cv] : refCore) refDist[cv]++;
-    for (const auto &[clique, cv] : testCore) testDist[cv]++;
-    refDist.erase(0);
-    testDist.erase(0);
-    if (refDist == testDist) {
-        std::cout << "✓ " << label << " correctness verified" << std::endl;
-    } else {
-        std::cerr << "✗ " << label << " MISMATCH!" << std::endl;
-        for (auto &[k, v] : refDist)
-            if (testDist.count(k) == 0 || testDist[k] != v)
-                std::cerr << "  core=" << k << " ref=" << v
-                          << " test=" << (testDist.count(k) ? testDist[k] : 0) << std::endl;
-    }
-}
-
-// Compare edge results (vector<pair<pair<Size,Size>, int>>)
-static void compareEdgeDist(
-    const std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> &refCore,
-    const std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> &testCore,
-    const char *label) {
-    std::map<int, int> refDist, testDist;
-    for (const auto &[edge, cv] : refCore) refDist[cv]++;
-    for (const auto &[edge, cv] : testCore) testDist[cv]++;
-    refDist.erase(0);
-    testDist.erase(0);
-    if (refDist == testDist) {
-        std::cout << "✓ " << label << " correctness verified" << std::endl;
-    } else {
-        std::cerr << "✗ " << label << " MISMATCH!" << std::endl;
-        for (auto &[k, v] : refDist)
-            if (testDist.count(k) == 0 || testDist[k] != v)
-                std::cerr << "  core=" << k << " ref=" << v
-                          << " test=" << (testDist.count(k) ? testDist[k] : 0) << std::endl;
-    }
-}
-
-// Compare vertex results (double* vs reference r-clique result)
-static void compareVertexDist(
-    const double *testCoreV, daf::Size numVertices,
-    const std::vector<std::pair<std::vector<daf::Size>, int>> &refCore,
-    const char *label) {
-    std::map<int, int> refDist, testDist;
-    for (const auto &[clique, cv] : refCore) refDist[cv]++;
-    for (daf::Size i = 0; i < numVertices; ++i)
-        if (testCoreV[i] >= 0) testDist[(int)testCoreV[i]]++;
-    refDist.erase(0);
-    testDist.erase(0);
-    if (refDist == testDist) {
-        std::cout << "✓ " << label << " correctness verified" << std::endl;
-    } else {
-        std::cerr << "✗ " << label << " MISMATCH!" << std::endl;
-        std::cerr << "refDist: " << refDist << std::endl;
-        std::cerr << "testDist: " << testDist << std::endl;
-    }
-}
-
-// Compare two double* vertex results
-static void compareVertexDistBoth(
-    const double *refV, const double *testV, daf::Size numVertices,
-    const char *label) {
-    std::map<int, int> refDist, testDist;
-    for (daf::Size i = 0; i < numVertices; ++i) {
-        if (refV[i] >= 0) refDist[(int)refV[i]]++;
-        if (testV[i] >= 0) testDist[(int)testV[i]]++;
-    }
-    refDist.erase(0);
-    testDist.erase(0);
-    if (refDist == testDist) {
-        std::cout << "✓ " << label << " correctness verified" << std::endl;
-    } else {
-        std::cerr << "✗ " << label << " MISMATCH!" << std::endl;
-        std::cerr << "refDist: " << refDist << std::endl;
-        std::cerr << "testDist: " << testDist << std::endl;
-    }
-}
 
 static bool envSet(const char *name) { return std::getenv(name) != nullptr; }
 
+// Return the first env var name that is set from a list, or nullptr
+static const char *envFirst(std::initializer_list<const char *> names) {
+    for (auto n : names)
+        if (envSet(n)) return n;
+    return nullptr;
+}
+
 // ============================================================
-// Helpers: run r>=3 variant with optional comparison
+// Correctness comparison helpers
 // ============================================================
 
-// Run r>=3 variant with optional comparison against reference
+static auto buildCoreDist(const auto &coreResults) {
+    std::map<int, int> dist;
+    for (const auto &[key, cv] : coreResults) dist[cv]++;
+    dist.erase(0);
+    return dist;
+}
+
+static auto buildCoreDistFromArray(const double *coreV, daf::Size n) {
+    std::map<int, int> dist;
+    for (daf::Size i = 0; i < n; ++i)
+        if (coreV[i] >= 0) dist[(int)coreV[i]]++;
+    dist.erase(0);
+    return dist;
+}
+
+static void checkDist(const std::map<int,int> &refDist,
+                      const std::map<int,int> &testDist,
+                      const char *label) {
+    if (refDist == testDist) {
+        std::cout << "✓ " << label << " correctness verified" << std::endl;
+    } else {
+        std::cerr << "✗ " << label << " MISMATCH!" << std::endl;
+        for (auto &[k, v] : refDist)
+            if (!testDist.count(k) || testDist.at(k) != v)
+                std::cerr << "  core=" << k << " ref=" << v
+                          << " test=" << (testDist.count(k) ? testDist.at(k) : 0) << std::endl;
+    }
+}
+
+// ============================================================
+// Phase 1: Load graph and sort
+// ============================================================
+
+static Graph loadAndSortGraph(const char *fpath, int argc, char **argv) {
+    Graph g(fpath);
+    g.printGraphInfo();
+    populate_nCr();
+    daf::vListMap.resize(g.n + 1);
+    memset(daf::vListMap.data(), -1, g.n * sizeof(daf::Size));
+
+    if (argc >= 5) {
+        std::string sortOption = argv[4];
+        if (sortOption == "degen") g.sortByDegeneracyOrder(false);
+        else if (sortOption == "degenR") g.sortByDegeneracyOrder(true);
+        else if (sortOption == "degree") g.sortByDegree(false);
+        else if (sortOption == "degreeR") g.sortByDegree(true);
+        else if (sortOption == "default") { /* no-op */ }
+        else {
+            std::cerr << "Unknown sort option: " << sortOption << std::endl;
+            std::cerr << "Available: degen, degenR, degree, degreeR, default" << std::endl;
+            exit(1);
+        }
+        std::cout << "Graph sorted by " << sortOption << std::endl;
+    } else {
+        g.sortByDegeneracyOrder();
+    }
+    daf::log_memory("Graph Memory");
+    return g;
+}
+
+// ============================================================
+// Phase 2: Determine whether SDCT tree is needed
+// ============================================================
+
+// ST_V2 (r=1) and ST_V2_PROBE build their own data via SDCT_Augmented_NoTree.
+// Skip the shared refTree to avoid a redundant SDCT pass.
+static bool needsSDCT(daf::CliqueSize r, bool compareMode) {
+    if (compareMode) return true;  // need refTree for correctness comparison
+    if (r == 1 && (envSet("PIVOTER_RUN_ST_V2") || envSet("PIVOTER_RUN_ST_V2_PROBE")))
+        return false;
+    return true;
+}
+
+static DynamicGraph<TreeGraphNode> buildAndVerifySDCT(
+    Graph &edgeGraph, daf::CliqueSize r, daf::CliqueSize s) {
+
+    auto refTree = daf::timeCount("SDCT (reference)", [&]() {
+        return SDCT(edgeGraph, s, r);
+    });
+
+    auto refCC = refTree.cliqueCount();
+    printf("SDCT leaf count: %zu, maxK: %zu\n", refTree.adj_list.size(), (size_t)refCC.size()-1);
+    printf("cliqueCount:");
+    for (size_t k = 1; k < refCC.size(); k++)
+        if (refCC[k] > 0) printf(" [%zu]=%.0f", k, refCC[k]);
+    printf("\n");
+
+    // Verify SDCT_Par7
+    {
+        auto par7Result = daf::timeCount("SDCT_Par7", [&]() -> CliqueCSR<int> {
+            return SDCT_Par7(edgeGraph, s, r);
+        });
+        printf("SDCT_Par7 leaf count: %zu\n", par7Result.num_cliques());
+        if (par7Result.has_pivot()) {
+            auto par7CC = par7Result.cliqueCount();
+            double rv = ((size_t)s < refCC.size()) ? refCC[s] : 0.0;
+            double pv = ((size_t)s < par7CC.size()) ? par7CC[s] : 0.0;
+            double diff = std::abs(rv - pv);
+            double maxVal = std::max(std::abs(rv), std::abs(pv));
+            if (diff > 0.5 && (maxVal < 1e-10 || diff / maxVal > 1e-6)) {
+                printf("  ✗ cliqueCount mismatch at k=%d: ref=%.0f par7=%.0f\n", (int)s, rv, pv);
+                printf("✗ SDCT_Par7 cliqueCount WRONG\n");
+                exit(1);
+            }
+            printf("✓ SDCT_Par7 cliqueCount correct (k=%d)\n", (int)s);
+        }
+    }
+
+    return refTree;
+}
+
+// ============================================================
+// Phase 3: Pre-mutation work (ST_V2 build, probes)
+// ============================================================
+
+static std::unique_ptr<ST_V2_Data> preMutationPhase(
+    Graph &edgeGraph, daf::CliqueSize r, daf::CliqueSize s) {
+
+    std::unique_ptr<ST_V2_Data> st_v2_data;
+
+    if (r == 1 && envSet("PIVOTER_RUN_ST_V2")) {
+        st_v2_data = std::make_unique<ST_V2_Data>(
+            daf::timeCount("ST_V2 Build", [&]() {
+                return NCliqueVertexCoreDecomposition_ST_V2_Build(edgeGraph, s);
+            }));
+    }
+    if (r == 1 && envSet("PIVOTER_RUN_ST_V2_PROBE")) {
+        NCliqueVertexCoreDecomposition_ST_V2_InterleavedProbe(edgeGraph, s);
+    }
+
+    return st_v2_data;
+}
+
+// ============================================================
+// Phase 4: Prepare graph structures (mutates edgeGraph)
+// ============================================================
+
+static void prepareGraphStructures(Graph &edgeGraph, daf::CliqueSize r) {
+    edgeGraph.initCore();
+    edgeGraph.coreV.free();
+    edgeGraph.beSingleEdge();
+    edgeGraph.buildEdgeIdMap();
+    if (r != 2) {
+        edgeGraph.eidToNode.free();
+    }
+}
+
+// ============================================================
+// Phase 5: Build treeGraphV (conditional)
+// ============================================================
+
+static bool needsTreeGraphV(daf::CliqueSize r, bool compareMode) {
+    if (compareMode) return true;
+    if (r >= 2) return true;
+    // r=1: only ST and ST_V2 can skip treeGraphV
+    if (envSet("PIVOTER_RUN_ST") || envSet("PIVOTER_RUN_ST_V2")) return false;
+    return true;
+}
+
+// ============================================================
+// Dispatch: r=1 vertex-level algorithms
+// ============================================================
+
+// Wrapper: run a r=1 vertex algorithm with optional comparison against reference
+template<typename Func>
+static void runR1Variant(
+    const char *name, Func &&func,
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV,
+    daf::CliqueSize s, daf::Size numVertices, bool compareMode) {
+
+    auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+    auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+
+    auto coreV = daf::timeCount(name, [&]() {
+        return func(tree, edgeGraph, treeGraphV, s);
+    });
+    if (compareMode) {
+        auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+        checkDist(buildCoreDistFromArray(refV, numVertices),
+                  buildCoreDistFromArray(coreV, numVertices), name);
+        delete[] refV;
+    }
+    delete[] coreV;
+}
+
+static bool dispatchR1(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV,
+    daf::CliqueSize s, daf::Size numVertices, bool compareMode,
+    ST_V2_Data *st_v2_data) {
+
+    struct R1Entry {
+        const char *envVar;
+        const char *label;
+        using FuncType = double*(*)(DynamicGraph<TreeGraphNode>&, const Graph&,
+                                     DynamicGraphSet<TreeGraphNode>&, daf::CliqueSize);
+        FuncType func;
+    };
+
+    // Table-driven dispatch for standard r=1 variants
+    static const R1Entry table[] = {
+        {"PIVOTER_RUN_LOCAL_V4",    "Local H-index V4 r=1",    NCliqueVertexCoreDecomposition_LocalV4},
+        {"PIVOTER_RUN_LOCAL_V3",    "Local H-index V3 r=1",    NCliqueVertexCoreDecomposition_LocalV3},
+        {"PIVOTER_RUN_LOCAL_V2",    "Local H-index V2 r=1",    NCliqueVertexCoreDecomposition_LocalV2},
+        {"PIVOTER_RUN_LOCAL_NAIVE", "Local H-index Naive r=1", NCliqueVertexCoreDecomposition_LocalNaive},
+        {"PIVOTER_RUN_LOCAL",       "Local H-index r=1",       NCliqueVertexCoreDecomposition_Local},
+        {"PIVOTER_RUN_ST",          "ST r=1",                  NCliqueVertexCoreDecomposition_ST},
+    };
+
+    for (auto &entry : table) {
+        if (envSet(entry.envVar)) {
+            runR1Variant(entry.label, entry.func, tree, edgeGraph, treeGraphV,
+                         s, numVertices, compareMode);
+            return true;
+        }
+    }
+
+    // ST_V2: special case — uses pre-built data, not the shared tree
+    if (envSet("PIVOTER_RUN_ST_V2") && st_v2_data) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto coreV = daf::timeCount("ST_V2 r=1 (peel)", [&]() {
+            return NCliqueVertexCoreDecomposition_ST_V2_Peel(*st_v2_data, s);
+        });
+        if (compareMode) {
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(coreV, numVertices), "r=1 ST_V2");
+            delete[] refV;
+        }
+        delete[] coreV;
+        return true;
+    }
+
+    return false;
+}
+
+// ============================================================
+// Dispatch: r=2 edge-level algorithms
+// ============================================================
+
+// Wrapper: run a r=2 edge algorithm with optional comparison
+template<typename Func, typename RefFunc>
+static void runR2Variant(
+    const char *name, Func &&func, RefFunc &&refFunc,
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV,
+    daf::CliqueSize r, daf::CliqueSize s, bool compareMode) {
+
+    auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+    auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+
+    auto result = daf::timeCount(name, [&]() {
+        return func(tree, edgeGraph, treeGraphV, s);
+    });
+    if (compareMode) {
+        auto refCore = refFunc(t2, edgeGraph, tgv2, r, s);
+        checkDist(buildCoreDist(refCore), buildCoreDist(result), name);
+    }
+}
+
+static bool dispatchR2(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV,
+    daf::CliqueSize r, daf::CliqueSize s, bool compareMode) {
+
+    // Reference function for comparison
+    auto correctRef = [](DynamicGraph<TreeGraphNode> &t, const Graph &g,
+                         DynamicGraphSet<TreeGraphNode> &tgv,
+                         daf::CliqueSize r, daf::CliqueSize s) {
+        return NucleusCoreDecompositionCorrect(t, g, tgv, r, s);
+    };
+
+    if (envSet("PIVOTER_RUN_LOCAL")) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto result = daf::timeCount("Local H-index r=2", [&]() {
+            return NCliqueEdgeCoreDecomposition_Local(tree, edgeGraph, treeGraphV, s);
+        });
+        if (compareMode) {
+            auto refCore = correctRef(t2, edgeGraph, tgv2, r, s);
+            checkDist(buildCoreDist(refCore), buildCoreDist(result), "r=2 Local H-index");
+        }
+        return true;
+    }
+
+    struct R2Entry {
+        const char *envVar;
+        const char *label;
+        using FuncType = std::vector<std::pair<std::pair<daf::Size,daf::Size>,int>>(*)(
+            DynamicGraph<TreeGraphNode>&, const Graph&,
+            DynamicGraphSet<TreeGraphNode>&, daf::CliqueSize);
+        FuncType func;
+    };
+
+    static const R2Entry table[] = {
+        {"PIVOTER_RUN_ST_V4", "ST_V4 r=2", PlusNucleusEdgeCoreDecompositionSet_ST_V4},
+        {"PIVOTER_RUN_ST_V3", "ST_V3 r=2", PlusNucleusEdgeCoreDecompositionSet_ST_V3},
+        {"PIVOTER_RUN_ST_V2", "ST_V2 r=2", PlusNucleusEdgeCoreDecompositionSet_ST_V2},
+        {"PIVOTER_RUN_ST_V1", "ST_V1 r=2", PlusNucleusEdgeCoreDecompositionSet_ST_V1},
+        {"PIVOTER_RUN_ST",    "ST r=2",    PlusNucleusEdgeCoreDecompositionSet_ST},
+    };
+
+    for (auto &entry : table) {
+        if (envSet(entry.envVar)) {
+            runR2Variant(entry.label, entry.func, correctRef,
+                         tree, edgeGraph, treeGraphV, r, s, compareMode);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ============================================================
+// Dispatch: r>=3 r-clique algorithms
+// ============================================================
+
+// Reuse the existing runRCliqueVariant helper (already table-driven)
 template<typename Func>
 static void runRCliqueVariant(
-    const char *name,
-    Func &&func,
+    const char *name, Func &&func,
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV,
     daf::CliqueSize r, daf::CliqueSize s, bool compareMode) {
@@ -137,7 +380,92 @@ static void runRCliqueVariant(
         auto refCore = daf::timeCount("Reference r>=3", [&]() {
             return NucleusCoreDecompositionCorrect(refTree2, edgeGraph, refTGV2, r, s);
         });
-        compareRCliqueDist(refCore, result, name);
+        checkDist(buildCoreDist(refCore), buildCoreDist(result), name);
+    }
+}
+
+static bool dispatchR3Plus(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV,
+    daf::CliqueSize r, daf::CliqueSize s, bool compareMode) {
+
+    struct R3Entry {
+        const char *envVar;
+        const char *label;
+        using FuncType = std::vector<std::pair<std::vector<daf::Size>,int>>(*)(
+            DynamicGraph<TreeGraphNode>&, const Graph&,
+            DynamicGraphSet<TreeGraphNode>&, daf::CliqueSize, daf::CliqueSize);
+        FuncType func;
+    };
+
+    static const R3Entry table[] = {
+        {"PIVOTER_RUN_LINK_PEEL",      "Link-Graph Peel r>=3",      NucleusCoreDecompositionRCliqueLinkPeel},
+        {"PIVOTER_RUN_LINK_LOCAL",      "Link-Graph Local r>=3",     NucleusCoreDecompositionRCliqueLinkLocal},
+        {"PIVOTER_RUN_LOCAL_CPI_VP",    "Local CPI VP r>=3",         NucleusCoreDecompositionRCliqueLocalCPI_VP},
+        {"PIVOTER_RUN_LOCAL_CPI_EXACT", "Local CPI Exact r>=3",      NucleusCoreDecompositionRCliqueLocalCPI_Exact},
+        {"PIVOTER_RUN_LOCAL_BK",        "Local H-index r>=3 BK",     NucleusCoreDecompositionRCliqueLocal_BK},
+        {"PIVOTER_RUN_LOCAL",           "Local H-index r>=3 VP",     NucleusCoreDecompositionRCliqueLocal},
+        {"PIVOTER_RUN_ST_V11",          "ST_V11 r>=3",               NucleusCoreDecompositionRClique_ST_V11},
+        {"PIVOTER_RUN_ST_V10",          "ST_V10 r>=3",               NucleusCoreDecompositionRClique_ST_V10},
+        {"PIVOTER_RUN_ST_V9",           "ST_V9 r>=3",                NucleusCoreDecompositionRClique_ST_V9},
+        {"PIVOTER_RUN_ST_V8",           "ST_V8 r>=3",                NucleusCoreDecompositionRClique_ST_V8},
+        {"PIVOTER_RUN_ST_V7",           "ST_V7 r>=3",                NucleusCoreDecompositionRClique_ST_V7},
+        {"PIVOTER_RUN_ST_V6",           "ST_V6 r>=3",                NucleusCoreDecompositionRClique_ST_V6},
+        {"PIVOTER_RUN_ST_V5",           "ST_V5 r>=3",                NucleusCoreDecompositionRClique_ST_V5},
+        {"PIVOTER_RUN_ST_V4",           "ST_V4 r>=3",                NucleusCoreDecompositionRClique_ST_V4},
+        {"PIVOTER_RUN_ST_V3",           "ST_V3 r>=3",                NucleusCoreDecompositionRClique_ST_V3},
+        {"PIVOTER_RUN_ST_V2",           "ST_V2 r>=3",                NucleusCoreDecompositionRClique_ST_V2},
+        {"PIVOTER_RUN_ST",              "ST r>=3",                   NucleusCoreDecompositionRClique_ST},
+    };
+
+    for (auto &entry : table) {
+        if (envSet(entry.envVar)) {
+            runRCliqueVariant(entry.label, entry.func,
+                              tree, edgeGraph, treeGraphV, r, s, compareMode);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ============================================================
+// Dispatch: reference-only and defaults
+// ============================================================
+
+static void dispatchRefOrDefault(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV,
+    daf::CliqueSize r, daf::CliqueSize s, bool compareMode) {
+
+    if (envSet("PIVOTER_RUN_REF")) {
+        auto res = NucleusCoreDecompositionCorrect(tree, edgeGraph, treeGraphV, r, s);
+        std::map<daf::Size, int> dist;
+        for (const auto &[clique, cv] : res) dist[cv]++;
+        std::cout << "Core value distribution:" << std::endl;
+        for (const auto &[cv, count] : dist)
+            std::cout << "  core=" << cv << " count=" << count << std::endl;
+        return;
+    }
+
+    // Defaults when no PIVOTER_RUN_* env var is set
+    if (r == 1) {
+        NCliqueVertexCoreDecomposition(tree, edgeGraph, treeGraphV, s);
+    } else if (r == 2) {
+        PlusNucleusEdgeCoreDecompositionSet(tree, edgeGraph, treeGraphV, s);
+    } else if (compareMode) {
+        auto optTree = tree.clone();
+        auto refTGV = treeGraphV.clone();
+        auto refCore = daf::timeCount("Reference", [&]() {
+            return NucleusCoreDecompositionCorrect(tree, edgeGraph, refTGV, r, s);
+        });
+        auto optTGV = treeGraphV.clone();
+        auto optCore = daf::timeCount("Optimized", [&]() {
+            return NucleusCoreDecompositionRClique(optTree, edgeGraph, optTGV, r, s);
+        });
+        checkDist(buildCoreDist(refCore), buildCoreDist(optCore), "r>=3 Optimized vs Reference");
+    } else {
+        NucleusCoreDecompositionRClique(tree, edgeGraph, treeGraphV, r, s);
     }
 }
 
@@ -163,388 +491,46 @@ int main(int argc, char **argv) {
     if (r >= s) { printf("r must be less than s\n"); return 0; }
     printf("Dataset: %s, r=%d, s=%d\n", fpath, (int)r, (int)s);
 
-    // --- Load graph ---
-    Graph edgeGraph(fpath);
-    edgeGraph.printGraphInfo();
-    populate_nCr();
-    daf::vListMap.resize(edgeGraph.n + 1);
-    memset(daf::vListMap.data(), -1, edgeGraph.n * sizeof(daf::Size));
+    // Phase 1: Load and sort
+    Graph edgeGraph = loadAndSortGraph(fpath, argc, argv);
 
-    // --- Sort ---
-    if (argc >= 5) {
-        std::string sortOption = argv[4];
-        if (sortOption == "degen") edgeGraph.sortByDegeneracyOrder(false);
-        else if (sortOption == "degenR") edgeGraph.sortByDegeneracyOrder(true);
-        else if (sortOption == "degree") edgeGraph.sortByDegree(false);
-        else if (sortOption == "degreeR") edgeGraph.sortByDegree(true);
-        else if (sortOption == "default") { /* no-op */ }
-        else {
-            std::cout << "Unknown sort option: " << sortOption << std::endl;
-            std::cout << "Available: degen, degenR, degree, degreeR, default" << std::endl;
-            return 1;
-        }
-        std::cout << "Graph sorted by " << sortOption << std::endl;
-    } else {
-        edgeGraph.sortByDegeneracyOrder();
-    }
-    daf::log_memory("Graph Memory");
-
-    // --- Build SDCT ---
-    auto refTree = daf::timeCount("SDCT (reference)", [&]() {
-        return SDCT(edgeGraph, s, r);
-    });
-    auto refCC = refTree.cliqueCount();
-    printf("SDCT leaf count: %zu, maxK: %zu\n", refTree.adj_list.size(), (size_t)refCC.size()-1);
-    printf("cliqueCount:");
-    for (size_t k = 1; k < refCC.size(); k++)
-        if (refCC[k] > 0) printf(" [%zu]=%.0f", k, refCC[k]);
-    printf("\n");
-
-    // --- Verify SDCT_Par7 ---
-    {
-        auto par7Result = daf::timeCount("SDCT_Par7", [&]() -> CliqueCSR<int> {
-            return SDCT_Par7(edgeGraph, s, r);
-        });
-        printf("SDCT_Par7 leaf count: %zu\n", par7Result.num_cliques());
-        if (par7Result.has_pivot()) {
-            auto par7CC = par7Result.cliqueCount();
-            bool match = true;
-            size_t maxCCSize = refCC.size() > par7CC.size() ? refCC.size() : par7CC.size();
-            for (size_t k = (size_t)s; k <= (size_t)s && k < maxCCSize; k++) {
-                double rv = (k < refCC.size()) ? refCC[k] : 0.0;
-                double pv = (k < par7CC.size()) ? par7CC[k] : 0.0;
-                double diff = std::abs(rv - pv);
-                double maxVal = std::max(std::abs(rv), std::abs(pv));
-                if (diff > 0.5 && (maxVal < 1e-10 || diff / maxVal > 1e-6)) {
-                    printf("  ✗ cliqueCount mismatch at k=%zu: ref=%.0f par7=%.0f\n", k, rv, pv);
-                    match = false;
-                }
-            }
-            if (match) printf("✓ SDCT_Par7 cliqueCount correct (k=%d)\n", (int)s);
-            else { printf("✗ SDCT_Par7 cliqueCount WRONG\n"); return 1; }
-        }
-    } // par7Result freed here
-
-    // --- ST_V2: Build phase MUST run before beSingleEdge() mutates the graph ---
-    const bool st_v2_mode = (r == 1 && envSet("PIVOTER_RUN_ST_V2"));
-    const bool st_v2_probe = (r == 1 && envSet("PIVOTER_RUN_ST_V2_PROBE"));
-    std::unique_ptr<ST_V2_Data> st_v2_data;
-    if (st_v2_mode) {
-        st_v2_data = std::make_unique<ST_V2_Data>(
-            daf::timeCount("ST_V2 Build", [&]() {
-                return NCliqueVertexCoreDecomposition_ST_V2_Build(edgeGraph, s);
-            }));
-    }
-    if (st_v2_probe) {
-        NCliqueVertexCoreDecomposition_ST_V2_InterleavedProbe(edgeGraph, s);
-    }
-
-    // --- Prepare graph structures ---
-    edgeGraph.initCore();
-    edgeGraph.coreV.free(); // Opt 2: coreV only needed by sortByDegeneracyOrder, already done
-    edgeGraph.beSingleEdge();
-    edgeGraph.buildEdgeIdMap();
-    // Opt 3: eidToNode only needed by getEdgeById(), which r=1 and r>=3 never call
-    if (r != 2) {
-        edgeGraph.eidToNode.free();
-    }
-
-    // --- Read mode flags (moved before treeGraphV to enable conditional construction) ---
     const bool compareMode = envSet("PIVOTER_COMPARE");
+
+    // Phase 2: Build SDCT (skip if ST_V2 only — it builds its own data)
+    DynamicGraph<TreeGraphNode> refTree;
+    if (needsSDCT(r, compareMode)) {
+        refTree = buildAndVerifySDCT(edgeGraph, r, s);
+    }
+
+    // Phase 3: Pre-mutation work (must run before beSingleEdge)
+    auto st_v2_data = preMutationPhase(edgeGraph, r, s);
+
+    // Phase 4: Prepare graph structures (mutates edgeGraph)
+    prepareGraphStructures(edgeGraph, r);
+
+    // Phase 5: Build treeGraphV (conditional)
     const daf::Size numVertices = edgeGraph.adj_list_offsets.size() - 1;
 
-    // Opt 6: R1 ST/ST_V2 never uses treeGraphV — skip construction to save n × ~60B hash set overhead.
-    // Build treeGraphV only when needed: r>=2, or r=1 non-ST variants, or compare mode.
-    const bool r1_st_only = (r == 1 && (envSet("PIVOTER_RUN_ST") || envSet("PIVOTER_RUN_ST_V2")) && !compareMode);
     DynamicGraphSet<TreeGraphNode> treeGraphV;
-    if (!r1_st_only) {
+    if (needsTreeGraphV(r, compareMode)) {
         treeGraphV = DynamicGraphSet<TreeGraphNode>(refTree, edgeGraph.getGraphNodeSize(), s);
     }
     daf::log_memory("Other Index Memory");
 
-    // ============================================================
-    // Dispatch: use PIVOTER_RUN_* env vars to select algorithm
-    // ============================================================
+    // Phase 6: Dispatch algorithm
     daf::timeCount("NucleusCoreDecomposition", [&] {
+        bool dispatched = false;
 
-        // ---- r=1 vertex-level algorithms ----
-        if (r == 1 && envSet("PIVOTER_RUN_LOCAL_V4")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto coreV = daf::timeCount("Local H-index V4 r=1", [&]() {
-                return NCliqueVertexCoreDecomposition_LocalV4(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
-                compareVertexDistBoth(refV, coreV, numVertices, "r=1 Local H-index V4");
-                delete[] refV;
-            }
-            delete[] coreV;
-        } else if (r == 1 && envSet("PIVOTER_RUN_LOCAL_V3")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto coreV = daf::timeCount("Local H-index V3 r=1", [&]() {
-                return NCliqueVertexCoreDecomposition_LocalV3(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
-                compareVertexDistBoth(refV, coreV, numVertices, "r=1 Local H-index V3");
-                delete[] refV;
-            }
-            delete[] coreV;
-        } else if (r == 1 && envSet("PIVOTER_RUN_LOCAL_V2")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto coreV = daf::timeCount("Local H-index V2 r=1", [&]() {
-                return NCliqueVertexCoreDecomposition_LocalV2(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
-                compareVertexDistBoth(refV, coreV, numVertices, "r=1 Local H-index V2");
-                delete[] refV;
-            }
-            delete[] coreV;
-        } else if (r == 1 && envSet("PIVOTER_RUN_LOCAL_NAIVE")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto coreV = daf::timeCount("Local H-index Naive r=1", [&]() {
-                return NCliqueVertexCoreDecomposition_LocalNaive(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
-                compareVertexDistBoth(refV, coreV, numVertices, "r=1 Local H-index Naive");
-                delete[] refV;
-            }
-            delete[] coreV;
-        } else if (r == 1 && envSet("PIVOTER_RUN_LOCAL")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto coreV = daf::timeCount("Local H-index r=1", [&]() {
-                return NCliqueVertexCoreDecomposition_Local(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
-                compareVertexDistBoth(refV, coreV, numVertices, "r=1 Local H-index");
-                delete[] refV;
-            }
-            delete[] coreV;
-        } else if (r == 1 && envSet("PIVOTER_RUN_ST_V2")) {
-            // ST V2: Tree-free R1 — SDCT already built before beSingleEdge()
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto coreV = daf::timeCount("ST_V2 r=1 (peel)", [&]() {
-                return NCliqueVertexCoreDecomposition_ST_V2_Peel(*st_v2_data, s);
-            });
-            if (compareMode) {
-                auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
-                compareVertexDistBoth(refV, coreV, numVertices, "r=1 ST_V2");
-                delete[] refV;
-            }
-            delete[] coreV;
-        } else if (r == 1 && envSet("PIVOTER_RUN_ST")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto coreV = daf::timeCount("ST r=1", [&]() {
-                return NCliqueVertexCoreDecomposition_ST(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
-                compareVertexDistBoth(refV, coreV, numVertices, "r=1 ST");
-                delete[] refV;
-            }
-            delete[] coreV;
+        if (r == 1)
+            dispatched = dispatchR1(refTree, edgeGraph, treeGraphV, s,
+                                    numVertices, compareMode, st_v2_data.get());
+        else if (r == 2)
+            dispatched = dispatchR2(refTree, edgeGraph, treeGraphV, r, s, compareMode);
+        else if (r >= 3)
+            dispatched = dispatchR3Plus(refTree, edgeGraph, treeGraphV, r, s, compareMode);
 
-        // ---- r=2 edge-level algorithms ----
-        } else if (r == 2 && envSet("PIVOTER_RUN_LOCAL")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto result = daf::timeCount("Local H-index r=2", [&]() {
-                return NCliqueEdgeCoreDecomposition_Local(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refCore = NucleusCoreDecompositionCorrect(t2, edgeGraph, tgv2, r, s);
-                // Convert r-clique ref to edge dist for comparison
-                std::map<int, int> refDist, testDist;
-                for (const auto &[c, cv] : refCore) refDist[cv]++;
-                for (const auto &[e, cv] : result) testDist[cv]++;
-                refDist.erase(0); testDist.erase(0);
-                if (refDist == testDist) std::cout << "✓ r=2 Local H-index correctness verified" << std::endl;
-                else std::cerr << "✗ r=2 Local H-index MISMATCH!" << std::endl;
-            }
-        } else if (r == 2 && envSet("PIVOTER_RUN_ST_V4")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto result = daf::timeCount("ST_V4 r=2", [&]() {
-                return PlusNucleusEdgeCoreDecompositionSet_ST_V4(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refCore = daf::timeCount("ref r=2", [&]() {
-                    return PlusNucleusEdgeCoreDecompositionSet(t2, edgeGraph, tgv2, s);
-                });
-                std::map<int, int> refDist, testDist;
-                for (const auto &[c, cv] : refCore) refDist[cv]++;
-                for (const auto &[e, cv] : result) testDist[cv]++;
-                if (refDist == testDist) std::cout << "✓ r=2 ST_V4 correctness verified" << std::endl;
-                else std::cerr << "✗ r=2 ST_V4 MISMATCH!" << std::endl;
-            }
-        } else if (r == 2 && envSet("PIVOTER_RUN_ST_V3")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto result = daf::timeCount("ST_V3 r=2", [&]() {
-                return PlusNucleusEdgeCoreDecompositionSet_ST_V3(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refCore = NucleusCoreDecompositionCorrect(t2, edgeGraph, tgv2, r, s);
-                std::map<int, int> refDist, testDist;
-                for (const auto &[c, cv] : refCore) refDist[cv]++;
-                for (const auto &[e, cv] : result) testDist[cv]++;
-                if (refDist == testDist) std::cout << "✓ r=2 ST_V3 correctness verified" << std::endl;
-                else std::cerr << "✗ r=2 ST_V3 MISMATCH!" << std::endl;
-            }
-        } else if (r == 2 && envSet("PIVOTER_RUN_ST_V2")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto result = daf::timeCount("ST_V2 r=2", [&]() {
-                return PlusNucleusEdgeCoreDecompositionSet_ST_V2(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refCore = NucleusCoreDecompositionCorrect(t2, edgeGraph, tgv2, r, s);
-                std::map<int, int> refDist, testDist;
-                for (const auto &[c, cv] : refCore) refDist[cv]++;
-                for (const auto &[e, cv] : result) testDist[cv]++;
-                if (refDist == testDist) std::cout << "✓ r=2 ST_V2 correctness verified" << std::endl;
-                else std::cerr << "✗ r=2 ST_V2 MISMATCH!" << std::endl;
-            }
-        } else if (r == 2 && envSet("PIVOTER_RUN_ST_V1")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto result = daf::timeCount("ST_V1 r=2", [&]() {
-                return PlusNucleusEdgeCoreDecompositionSet_ST_V1(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refCore = NucleusCoreDecompositionCorrect(t2, edgeGraph, tgv2, r, s);
-                std::map<int, int> refDist, testDist;
-                for (const auto &[c, cv] : refCore) refDist[cv]++;
-                for (const auto &[e, cv] : result) testDist[cv]++;
-                if (refDist == testDist) std::cout << "✓ r=2 ST_V1 correctness verified" << std::endl;
-                else std::cerr << "✗ r=2 ST_V1 MISMATCH!" << std::endl;
-            }
-        } else if (r == 2 && envSet("PIVOTER_RUN_ST")) {
-            auto t2 = compareMode ? refTree.clone() : DynamicGraph<TreeGraphNode>();
-            auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
-            auto result = daf::timeCount("ST r=2", [&]() {
-                return PlusNucleusEdgeCoreDecompositionSet_ST(refTree, edgeGraph, treeGraphV, s);
-            });
-            if (compareMode) {
-                auto refCore = daf::timeCount("ref r=2", [&]() {
-                    return PlusNucleusEdgeCoreDecompositionSet(t2, edgeGraph, tgv2, s);
-                });
-                std::map<int, int> refDist, testDist;
-                for (const auto &[c, cv] : refCore) refDist[cv]++;
-                for (const auto &[e, cv] : result) testDist[cv]++;
-                if (refDist == testDist) std::cout << "✓ r=2 ST correctness verified" << std::endl;
-                else std::cerr << "✗ r=2 ST MISMATCH!" << std::endl;
-            }
-
-        // ---- r>=3 algorithms (table-driven via runRCliqueVariant) ----
-        } else if (r >= 3 && envSet("PIVOTER_RUN_LINK_PEEL")) {
-            runRCliqueVariant("Link-Graph Peel r>=3",
-                NucleusCoreDecompositionRCliqueLinkPeel,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_LINK_LOCAL")) {
-            runRCliqueVariant("Link-Graph Local r>=3",
-                NucleusCoreDecompositionRCliqueLinkLocal,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_LOCAL_CPI_VP")) {
-            runRCliqueVariant("Local CPI VP r>=3",
-                NucleusCoreDecompositionRCliqueLocalCPI_VP,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_LOCAL_CPI_EXACT")) {
-            runRCliqueVariant("Local CPI Exact r>=3",
-                NucleusCoreDecompositionRCliqueLocalCPI_Exact,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_LOCAL_BK")) {
-            runRCliqueVariant("Local H-index r>=3 BK",
-                NucleusCoreDecompositionRCliqueLocal_BK,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_LOCAL")) {
-            runRCliqueVariant("Local H-index r>=3 vertex-proxy",
-                NucleusCoreDecompositionRCliqueLocal,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V11")) {
-            runRCliqueVariant("ST_V11 r>=3",
-                NucleusCoreDecompositionRClique_ST_V11,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V10")) {
-            runRCliqueVariant("ST_V10 r>=3",
-                NucleusCoreDecompositionRClique_ST_V10,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V9")) {
-            runRCliqueVariant("ST_V9 r>=3",
-                NucleusCoreDecompositionRClique_ST_V9,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V8")) {
-            runRCliqueVariant("ST_V8 r>=3",
-                NucleusCoreDecompositionRClique_ST_V8,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V7")) {
-            runRCliqueVariant("ST_V7 r>=3",
-                NucleusCoreDecompositionRClique_ST_V7,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V6")) {
-            runRCliqueVariant("ST_V6 r>=3",
-                NucleusCoreDecompositionRClique_ST_V6,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V5")) {
-            runRCliqueVariant("ST_V5 r>=3",
-                NucleusCoreDecompositionRClique_ST_V5,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V4")) {
-            runRCliqueVariant("ST_V4 r>=3",
-                NucleusCoreDecompositionRClique_ST_V4,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V3")) {
-            runRCliqueVariant("ST_V3 r>=3",
-                NucleusCoreDecompositionRClique_ST_V3,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST_V2")) {
-            runRCliqueVariant("ST_V2 r>=3",
-                NucleusCoreDecompositionRClique_ST_V2,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-        } else if (r >= 3 && envSet("PIVOTER_RUN_ST")) {
-            runRCliqueVariant("ST r>=3",
-                NucleusCoreDecompositionRClique_ST,
-                refTree, edgeGraph, treeGraphV, r, s, compareMode);
-
-        // ---- Reference-only mode ----
-        } else if (envSet("PIVOTER_RUN_REF")) {
-            auto res = NucleusCoreDecompositionCorrect(refTree, edgeGraph, treeGraphV, r, s);
-            std::map<daf::Size, int> dist;
-            for (const auto &[clique, cv] : res) dist[cv]++;
-            std::cout << "Core value distribution:" << std::endl;
-            for (const auto &[cv, count] : dist)
-                std::cout << "  core=" << cv << " count=" << count << std::endl;
-
-        // ---- Defaults (no env var) ----
-        } else if (r == 1) {
-            NCliqueVertexCoreDecomposition(refTree, edgeGraph, treeGraphV, s);
-        } else if (r == 2) {
-            PlusNucleusEdgeCoreDecompositionSet(refTree, edgeGraph, treeGraphV, s);
-        } else if (compareMode) {
-            // r>=3 default compare: optimized vs reference
-            auto optTree = refTree.clone();
-            auto refTGV = treeGraphV.clone();
-            auto refCore = daf::timeCount("Reference", [&]() {
-                return NucleusCoreDecompositionCorrect(refTree, edgeGraph, refTGV, r, s);
-            });
-            auto optTGV = treeGraphV.clone();
-            auto optCore = daf::timeCount("Optimized", [&]() {
-                return NucleusCoreDecompositionRClique(optTree, edgeGraph, optTGV, r, s);
-            });
-            compareRCliqueDist(refCore, optCore, "r>=3 Optimized vs Reference");
-        } else {
-            NucleusCoreDecompositionRClique(refTree, edgeGraph, treeGraphV, r, s);
-        }
+        if (!dispatched)
+            dispatchRefOrDefault(refTree, edgeGraph, treeGraphV, r, s, compareMode);
     });
 
     daf::log_memory("Final Memory");
