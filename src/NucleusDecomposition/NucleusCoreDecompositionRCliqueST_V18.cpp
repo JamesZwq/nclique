@@ -11,7 +11,7 @@
 #include <chrono>
 #include <algorithm>
 #include <cstring>
-#include <set>
+#include <boost/heap/d_ary_heap.hpp>
 
 #include "../BK/BronKerboschRmRClique.hpp"
 #include "dataStruct/CliqueHashMap.h"
@@ -135,79 +135,23 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     // Lazy leafCliqueInfo: only populated for BK leaves and their sub-leaves
     std::vector<std::vector<RCliqueSTv18::LeafCliqueEntry>> leafCliqueInfo(tree.adj_list.size());
 
-    // ========== V11's hybrid bucket+set PQ ==========
-    constexpr double BUCKET_THRESHOLD = 5000000.0;
-    double rawMaxBucket = 0;
+    // ========== Pure d-ary heap PQ (same as REF) ==========
+    struct CmpClique {
+        const std::vector<double> &cnt;
+        bool operator()(daf::Size a, daf::Size b) const { return cnt[a] > cnt[b]; }
+    };
+    using CliqueHeap = boost::heap::d_ary_heap<daf::Size, boost::heap::arity<8>,
+        boost::heap::mutable_<true>, boost::heap::compare<CmpClique>>;
+    CliqueHeap pq{CmpClique{countingRClique}};
+    pq.reserve(nClique);
+    std::vector<CliqueHeap::handle_type> pqHandles(nClique);
     for (daf::Size i = 0; i < nClique; ++i)
-        rawMaxBucket = std::max(rawMaxBucket, countingRClique[i]);
-    int maxBucket = (int)std::min(rawMaxBucket, BUCKET_THRESHOLD);
-
-    std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
-    std::set<std::pair<double, daf::Size>> overflowSet;
-    std::vector<int> bucket_of(nClique, -1);
-    std::vector<daf::Size> pos_in_bucket(nClique);
-    std::vector<double> overflowStoredVal(nClique, -1);
-
-    for (daf::Size i = 0; i < nClique; ++i) {
-        if (countingRClique[i] <= BUCKET_THRESHOLD) {
-            int b = (int)countingRClique[i];
-            bucket_of[i] = b;
-            pos_in_bucket[i] = buckets[b].size();
-            buckets[b].push_back(i);
-        } else {
-            overflowSet.insert({countingRClique[i], i});
-            overflowStoredVal[i] = countingRClique[i];
-        }
-    }
-    int curBucket = 0;
+        pqHandles[i] = pq.push(i);
     daf::Size remainingInHeap = nClique;
-
-    if (overflowSet.size() > 0)
-        printf("Hybrid bucket+set: %u in buckets, %zu in overflow (maxSupport=%.0f)\n",
-               (unsigned)(nClique - overflowSet.size()), overflowSet.size(), rawMaxBucket);
 
     auto bucketMove = [&](daf::Size id) {
         if (!rCliqueInHeap[id]) return;
-        double val = std::max(0.0, countingRClique[id]);
-        int oldB = bucket_of[id];
-        if (oldB == -1) overflowSet.erase({overflowStoredVal[id], id});
-        if (val <= BUCKET_THRESHOLD) {
-            int newB = (int)val;
-            if (oldB >= 0 && newB == oldB) return;
-            if (oldB >= 0) {
-                auto &v = buckets[oldB]; daf::Size p = pos_in_bucket[id];
-                if (p < v.size() - 1) { auto last = v.back(); v[p] = last; pos_in_bucket[last] = p; }
-                v.pop_back();
-            }
-            bucket_of[id] = newB;
-            pos_in_bucket[id] = buckets[newB].size();
-            buckets[newB].push_back(id);
-            if (newB < curBucket) curBucket = newB;
-        } else {
-            if (oldB >= 0) {
-                auto &v = buckets[oldB]; daf::Size p = pos_in_bucket[id];
-                if (p < v.size()) {
-                    if (p < v.size() - 1) { auto last = v.back(); v[p] = last; pos_in_bucket[last] = p; }
-                    v.pop_back();
-                }
-            }
-            overflowSet.insert({val, id});
-            overflowStoredVal[id] = val;
-            bucket_of[id] = -1;
-        }
-    };
-
-    auto drainOverflowToBucket = [&]() {
-        while (!overflowSet.empty()) {
-            daf::Size id = overflowSet.begin()->second;
-            if (!rCliqueInHeap[id]) { overflowSet.erase(overflowSet.begin()); continue; }
-            if (countingRClique[id] <= BUCKET_THRESHOLD) {
-                overflowSet.erase(overflowSet.begin());
-                int b = (int)countingRClique[id];
-                bucket_of[id] = b; pos_in_bucket[id] = buckets[b].size();
-                buckets[b].push_back(id);
-            } else break;
-        }
+        pq.update(pqHandles[id]);
     };
 
     daf::log_memory("Other index (include bucket)");
@@ -235,50 +179,16 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
         currentRemoveRcliqueIds.clear();
 
         // --- Pop ---
-        drainOverflowToBucket();
-        while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
-        if (curBucket >= (int)buckets.size()) {
-            if (!overflowSet.empty()) {
-                while (!overflowSet.empty()) {
-                    daf::Size id = overflowSet.begin()->second;
-                    overflowSet.erase(overflowSet.begin());
-                    if (!rCliqueInHeap[id]) continue;
-                    minCore = std::max(countingRClique[id], minCore);
-                    rCliqueInHeap[id] = false;
-                    currentRemoveRcliqueIds.push_back(id);
-                    coreRClique[id] = minCore; remainingInHeap--;
-                    while (!overflowSet.empty()) {
-                        daf::Size next = overflowSet.begin()->second;
-                        if (!rCliqueInHeap[next]) { overflowSet.erase(overflowSet.begin()); continue; }
-                        if (countingRClique[next] <= minCore) {
-                            overflowSet.erase(overflowSet.begin());
-                            rCliqueInHeap[next] = false;
-                            currentRemoveRcliqueIds.push_back(next);
-                            coreRClique[next] = minCore; remainingInHeap--;
-                        } else break;
-                    }
-                    break;
-                }
-                if (currentRemoveRcliqueIds.empty()) break;
-                goto phase1_v18;
-            }
-            break;
+        while (!pq.empty() && !rCliqueInHeap[pq.top()]) pq.pop();
+        if (pq.empty()) break;
+        minCore = std::max(countingRClique[pq.top()], minCore);
+        while (!pq.empty() && countingRClique[pq.top()] <= minCore) {
+            auto id = pq.top(); pq.pop();
+            if (!rCliqueInHeap[id]) continue;
+            rCliqueInHeap[id] = false;
+            currentRemoveRcliqueIds.push_back(id);
+            coreRClique[id] = minCore; remainingInHeap--;
         }
-        minCore = std::max((double)curBucket, minCore);
-        while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
-               && curBucket <= (int)minCore) {
-            while (!buckets[curBucket].empty()) {
-                auto id = buckets[curBucket].back();
-                buckets[curBucket].pop_back();
-                rCliqueInHeap[id] = false;
-                currentRemoveRcliqueIds.push_back(id);
-                coreRClique[id] = minCore; remainingInHeap--;
-            }
-            if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
-                && (curBucket + 1) <= (int)minCore) curBucket++;
-            else break;
-        }
-        phase1_v18:
         duration_pop += std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::high_resolution_clock::now() - t_loop_start).count();
         if (remainingInHeap == 0) break;
