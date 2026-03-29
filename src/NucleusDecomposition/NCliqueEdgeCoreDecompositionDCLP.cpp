@@ -160,7 +160,7 @@ namespace DCLP {
             daf::Size pos = leafEdgeOff[li];
 
             if (needPivot >= 0 && needPivot <= int(tPovit.size())) {
-                double w = std::llround(nCr[tPovit.size()][needPivot]);
+                double w = nCr[tPovit.size()][needPivot];
                 leafWKK[li] = w;
                 for (size_t i = 0; i < tKeepC.size(); ++i)
                     for (size_t j = i + 1; j < tKeepC.size(); ++j) {
@@ -171,7 +171,7 @@ namespace DCLP {
             }
             int needPP = needPivot - 2;
             if (needPP >= 0 && needPP <= int(tPovit.size()) - 2) {
-                double w = std::llround(nCr[tPovit.size() - 2][needPP]);
+                double w = nCr[tPovit.size() - 2][needPP];
                 leafWPP[li] = w;
                 for (size_t i = 0; i < tPovit.size(); ++i)
                     for (size_t j = i + 1; j < tPovit.size(); ++j) {
@@ -182,7 +182,7 @@ namespace DCLP {
             }
             int needKP = needPivot - 1;
             if (needKP >= 0 && needKP <= int(tPovit.size()) - 1) {
-                double w = std::llround(nCr[tPovit.size() - 1][needKP]);
+                double w = nCr[tPovit.size() - 1][needKP];
                 leafWKP[li] = w;
                 for (size_t i = 0; i < tKeepC.size(); ++i)
                     for (size_t j = 0; j < tPovit.size(); ++j) {
@@ -248,15 +248,11 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
 
     // --- Hybrid Bucket + overflow set ---
     const daf::Size numEdges = edgeGraph.adj_list.size();
-    printf("DBG: numEdges=%u, maxBucket scan...\n", numEdges); fflush(stdout);
     int maxBucket = 0;
-    double maxCounting = 0;
     for (daf::Size i = 0; i < numEdges; ++i) {
-        if (countingKE[i] > maxCounting) maxCounting = countingKE[i];
         if (countingKE[i] > 0 && countingKE[i] <= 5e6)
             maxBucket = std::max(maxBucket, (int)countingKE[i]);
     }
-    printf("DBG: maxBucket=%d, maxCounting=%.0f\n", maxBucket, maxCounting); fflush(stdout);
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
     std::set<std::pair<double, daf::Size>> overflowSet;
     std::vector<int> bucket_of(numEdges, -1);
@@ -264,7 +260,6 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
     std::vector<double> overflowStored(numEdges, -1);
     daf::Size remainingInHeap = 0;
     long long overflowCount = 0;
-    printf("DBG: filling buckets...\n"); fflush(stdout);
     for (daf::Size i = 0; i < numEdges; ++i) {
         if (countingKE[i] == 0) { edgeInHeap[i] = 0; continue; }
         if (countingKE[i] <= 5e6) {
@@ -278,7 +273,6 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
         }
         remainingInHeap++;
     }
-    printf("DBG: done filling, overflow=%lld, remaining=%u\n", overflowCount, remainingInHeap); fflush(stdout);
     if (overflowCount > 0) printf("DCLP overflow: %lld edges in overflow set\n", overflowCount);
     int curBucket = 0;
 
@@ -502,7 +496,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                         cntA_fallback++;
                         double KtoK = 0, KtoP = 0, PtoP = 0;
                         if (needPivot <= tPovit.size()) {
-                            KtoK = std::llround(nCr[tPovit.size()][needPivot]);
+                            KtoK = nCr[tPovit.size()][needPivot];
                             for (daf::Size i = 0; i + 1 < tKeepC.size(); ++i)
                                 for (daf::Size j = i + 1; j < tKeepC.size(); ++j) {
                                     work_caseA_fallback++;
@@ -511,7 +505,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                         }
                         int needPP = int(needPivot) - 2;
                         if (0 <= needPP && needPP <= int(tPovit.size()) - 2) {
-                            PtoP = std::llround(nCr[tPovit.size() - 2][needPP]);
+                            PtoP = nCr[tPovit.size() - 2][needPP];
                             for (daf::Size i = 0; i + 1 < tPovit.size(); ++i)
                                 for (daf::Size j = i + 1; j < tPovit.size(); ++j) {
                                     work_caseA_fallback++;
@@ -520,7 +514,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                         }
                         int needKP = int(needPivot) - 1;
                         if (0 <= needKP && needKP <= int(tPovit.size()) - 1) {
-                            KtoP = std::llround(nCr[tPovit.size() - 1][needKP]);
+                            KtoP = nCr[tPovit.size() - 1][needKP];
                             for (daf::Size i = 0; i < tKeepC.size(); ++i)
                                 for (daf::Size j = 0; j < tPovit.size(); ++j) {
                                     work_caseA_fallback++;
@@ -539,22 +533,22 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                     double RemovedKtoK = 0, RemovedKtoP = 0, RemovedPtoP = 0;
 
                     if (needPivot <= tPovit.size()) {
-                        KtoK = std::llround(nCr[tPovit.size()][needPivot]) - std::llround(nCr[tPovit.size() - leafRm.removedPivots.size()][needPivot]);
-                        RemovedKtoK = std::llround(nCr[tPovit.size()][needPivot]);
+                        KtoK = nCr[tPovit.size()][needPivot] - nCr[tPovit.size() - leafRm.removedPivots.size()][needPivot];
+                        RemovedKtoK = nCr[tPovit.size()][needPivot];
                     }
                     int needPP = int(needPivot) - 2;
                     if (0 <= needPP && needPP <= int(tPovit.size()) - 2) {
-                        RemovedPtoP = std::llround(nCr[tPovit.size() - 2][needPP]);
+                        RemovedPtoP = nCr[tPovit.size() - 2][needPP];
                         PtoP = RemovedPtoP;
                         if (leafRm.removedPivots.size() + 2 <= tPovit.size())
-                            PtoP -= std::llround(nCr[tPovit.size() - 2 - leafRm.removedPivots.size()][needPP]);
+                            PtoP -= nCr[tPovit.size() - 2 - leafRm.removedPivots.size()][needPP];
                     }
                     int needKP = int(needPivot) - 1;
                     if (0 <= needKP && needKP <= int(tPovit.size()) - 1) {
-                        RemovedKtoP = std::llround(nCr[tPovit.size() - 1][needKP]);
+                        RemovedKtoP = nCr[tPovit.size() - 1][needKP];
                         KtoP = RemovedKtoP;
                         if (leafRm.removedPivots.size() + 1 <= tPovit.size())
-                            KtoP -= std::llround(nCr[tPovit.size() - 1 - leafRm.removedPivots.size()][needKP]);
+                            KtoP -= nCr[tPovit.size() - 1 - leafRm.removedPivots.size()][needKP];
                     }
 
                     if (!leafRm.removedPivots.empty() && needPivot <= tPovit.size() - leafRm.removedPivots.size()) {
@@ -727,17 +721,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                 }
                 daf::Size np = k - newKeepC.size();
                 if (np <= newPivot.size() && newKeepC.size() > 1) {
-                    double w = std::llround(nCr[newPivot.size()][np]);
+                    double w = nCr[newPivot.size()][np];
                     DCLP::processEdgePairs(newKeepC, w, addW);
                 }
                 int nPP = int(np) - 2;
                 if (0 <= nPP && nPP <= int(newPivot.size()) - 2) {
-                    double w = std::llround(nCr[newPivot.size() - 2][nPP]);
+                    double w = nCr[newPivot.size() - 2][nPP];
                     DCLP::processEdgePairs(newPivot, w, addW);
                 }
                 int nKP = int(np) - 1;
                 if (0 <= nKP && nKP <= int(newPivot.size()) - 1) {
-                    double w = std::llround(nCr[newPivot.size() - 1][nKP]);
+                    double w = nCr[newPivot.size() - 1][nKP];
                     DCLP::processEdgePairs(newKeepC, newPivot, w, addW);
                 }
                 newPivot.clear(); newKeepC.clear();
@@ -761,13 +755,13 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                 }
                 daf::Size np = k - newKeepC.size();
                 if (np <= newPivot.size() && newKeepC.size() > 1)
-                    DCLP::processEdgePairs(newKeepC, std::llround(nCr[newPivot.size()][np]), addW);
+                    DCLP::processEdgePairs(newKeepC, nCr[newPivot.size()][np], addW);
                 int nPP = int(np) - 2;
                 if (0 <= nPP && nPP <= int(newPivot.size()) - 2)
-                    DCLP::processEdgePairs(newPivot, std::llround(nCr[newPivot.size() - 2][nPP]), addW);
+                    DCLP::processEdgePairs(newPivot, nCr[newPivot.size() - 2][nPP], addW);
                 int nKP = int(np) - 1;
                 if (0 <= nKP && nKP <= int(newPivot.size()) - 1)
-                    DCLP::processEdgePairs(newKeepC, newPivot, std::llround(nCr[newPivot.size() - 1][nKP]), addW);
+                    DCLP::processEdgePairs(newKeepC, newPivot, nCr[newPivot.size() - 1][nKP], addW);
                 newPivot.clear(); newKeepC.clear();
                 if (newId >= leafRmInfo.size()) {
                     removedLeaf.reserve(newId * 1.5);
@@ -804,17 +798,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                     }
                     daf::Size np = k - newKeepC.size();
                     if (np <= newPivot.size() && newKeepC.size() > 1) {
-                        double w = std::llround(nCr[newPivot.size()][np]);
+                        double w = nCr[newPivot.size()][np];
                         DCLP::processEdgePairs(newKeepC, w, addW);
                     }
                     int nPP = int(np) - 2;
                     if (0 <= nPP && nPP <= int(newPivot.size()) - 2) {
-                        double w = std::llround(nCr[newPivot.size() - 2][nPP]);
+                        double w = nCr[newPivot.size() - 2][nPP];
                         DCLP::processEdgePairs(newPivot, w, addW);
                     }
                     int nKP = int(np) - 1;
                     if (0 <= nKP && nKP <= int(newPivot.size()) - 1) {
-                        double w = std::llround(nCr[newPivot.size() - 1][nKP]);
+                        double w = nCr[newPivot.size() - 1][nKP];
                         DCLP::processEdgePairs(newKeepC, newPivot, w, addW);
                     }
                     newPivot.clear(); newKeepC.clear();
@@ -838,17 +832,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                         }
                         daf::Size np = k - newKeepC.size();
                         if (np <= newPivot.size() && newKeepC.size() > 1) {
-                            double w = std::llround(nCr[newPivot.size()][np]);
+                            double w = nCr[newPivot.size()][np];
                             DCLP::processEdgePairs(newKeepC, w, addW);
                         }
                         int nPP = int(np) - 2;
                         if (0 <= nPP && nPP <= int(newPivot.size()) - 2) {
-                            double w = std::llround(nCr[newPivot.size() - 2][nPP]);
+                            double w = nCr[newPivot.size() - 2][nPP];
                             DCLP::processEdgePairs(newPivot, w, addW);
                         }
                         int nKP = int(np) - 1;
                         if (0 <= nKP && nKP <= int(newPivot.size()) - 1) {
-                            double w = std::llround(nCr[newPivot.size() - 1][nKP]);
+                            double w = nCr[newPivot.size() - 1][nKP];
                             DCLP::processEdgePairs(newKeepC, newPivot, w, addW);
                         }
                         newPivot.clear(); newKeepC.clear();
@@ -871,17 +865,17 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                     markDirty(idx);
             };
             if (needPivot <= povit.size()) {
-                double w = std::llround(nCr[povit.size()][needPivot]);
+                double w = nCr[povit.size()][needPivot];
                 DCLP::processEdgePairs(keepC, w, removeW);
             }
             int needPP = int(needPivot) - 2;
             if (0 <= needPP && needPP <= int(povit.size()) - 2) {
-                double w = std::llround(nCr[povit.size() - 2][needPP]);
+                double w = nCr[povit.size() - 2][needPP];
                 DCLP::processEdgePairs(povit, w, removeW);
             }
             int needKP = int(needPivot) - 1;
             if (0 <= needKP && needKP <= int(povit.size()) - 1) {
-                double w = std::llround(nCr[povit.size() - 1][needKP]);
+                double w = nCr[povit.size() - 1][needKP];
                 DCLP::processEdgePairs(keepC, povit, w, removeW);
             }
 
