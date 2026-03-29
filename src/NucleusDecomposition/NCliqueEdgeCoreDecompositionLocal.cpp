@@ -27,11 +27,11 @@ extern double nCr[1001][401];
 namespace ECD_Local {
 
 // Initial support counting per edge (same as PlusECDSet_ST)
-long long * countingPerEdge(const DynamicGraph<TreeGraphNode> &treeGraph,
+double * countingPerEdge(const DynamicGraph<TreeGraphNode> &treeGraph,
                             const Graph &edgeGraph,
                             const daf::CliqueSize k) {
-    auto *countingE = new long long[edgeGraph.adj_list.size()];
-    memset(countingE, 0, edgeGraph.adj_list.size() * sizeof(long long));
+    auto *countingE = new double[edgeGraph.adj_list.size()];
+    memset(countingE, 0, edgeGraph.adj_list.size() * sizeof(double));
 
     daf::StaticVector<daf::Size> tPovit, tKeepC;
     for (const auto &clique : treeGraph.adj_list) {
@@ -45,7 +45,7 @@ long long * countingPerEdge(const DynamicGraph<TreeGraphNode> &treeGraph,
 
         // K-K edges
         if (needPivot >= 0 && needPivot <= int(tPovit.size())) {
-            long long val = std::llround(nCr[tPovit.size()][needPivot]);
+            double val = (nCr[tPovit.size()][needPivot]);
             for (size_t i = 0; i + 1 < tKeepC.size(); ++i)
                 for (size_t j = i + 1; j < tKeepC.size(); ++j)
                     countingE[edgeGraph.getEdgeCompressedId(tKeepC[i], tKeepC[j])] += val;
@@ -53,7 +53,7 @@ long long * countingPerEdge(const DynamicGraph<TreeGraphNode> &treeGraph,
         // P-P edges
         int needPP = needPivot - 2;
         if (needPP >= 0 && needPP <= int(tPovit.size()) - 2) {
-            long long val = std::llround(nCr[tPovit.size() - 2][needPP]);
+            double val = (nCr[tPovit.size() - 2][needPP]);
             for (size_t i = 0; i + 1 < tPovit.size(); ++i)
                 for (size_t j = i + 1; j < tPovit.size(); ++j)
                     countingE[edgeGraph.getEdgeCompressedId(tPovit[i], tPovit[j])] += val;
@@ -61,7 +61,7 @@ long long * countingPerEdge(const DynamicGraph<TreeGraphNode> &treeGraph,
         // K-P edges
         int needKP = needPivot - 1;
         if (needKP >= 0 && needKP <= int(tPovit.size()) - 1) {
-            long long val = std::llround(nCr[tPovit.size() - 1][needKP]);
+            double val = (nCr[tPovit.size() - 1][needKP]);
             for (size_t i = 0; i < tKeepC.size(); ++i)
                 for (size_t j = 0; j < tPovit.size(); ++j)
                     countingE[edgeGraph.getEdgeCompressedId(tKeepC[i], tPovit[j])] += val;
@@ -82,20 +82,20 @@ long long * countingPerEdge(const DynamicGraph<TreeGraphNode> &treeGraph,
 //   - for each s-clique, level = min(coreE[e'] for all other edges e')
 //   - bucket[level] += 1
 // ============================================================
-static long long computeEdgeHIndex(
+static double computeEdgeHIndex(
     daf::Size edgeU, daf::Size edgeV, daf::Size selfEdgeId,
     const DynamicGraph<TreeGraphNode> &tree,
     DynamicGraphSet<TreeGraphNode> &treeGraphV,
-    const long long *coreE,
+    const double *coreE,
     const Graph &edgeGraph,
     const daf::CliqueSize s,
     const std::vector<int> &leafNeedPivot,
     const std::vector<uint8_t> &leafValid,
-    long long currentCore,
-    long long &totalSupportOut,
+    double currentCore,
+    double &totalSupportOut,
     std::vector<TreeGraphNode> &otherKeeps,
     std::vector<TreeGraphNode> &otherPivots,
-    std::vector<long long> &buckets)
+    std::vector<double> &buckets)
 {
     totalSupportOut = 0;
     if (currentCore <= 0) return 0;
@@ -106,7 +106,7 @@ static long long computeEdgeHIndex(
         buckets.resize(bucketSize + 1, 0);
     for (int i = 0; i <= bucketSize; ++i) buckets[i] = 0;
 
-    long long rawTotalSupport = 0;
+    double rawTotalSupport = 0;
 
     auto &adjU = treeGraphV.getNbr(edgeU);
     auto &adjV = treeGraphV.getNbr(edgeV);
@@ -152,20 +152,20 @@ static long long computeEdgeHIndex(
                 for (const auto &k : otherKeeps) sVerts.push_back(k.v);
                 for (int i = 0; i < chosenPivotCount; ++i) sVerts.push_back(chosenPivotData[i].v);
 
-                long long minOtherCore = std::numeric_limits<long long>::max();
+                double minOtherCore = 1e18;
                 int nv = (int)sVerts.size();
                 for (int i = 0; i < nv; ++i) {
                     for (int j = i + 1; j < nv; ++j) {
                         auto eid = edgeGraph.getEdgeCompressedId(sVerts[i], sVerts[j]);
                         if (eid == selfEdgeId) continue;
                         if (eid == std::numeric_limits<daf::Size>::max()) continue;
-                        long long c = coreE[eid];
+                        double c = coreE[eid];
                         if (c < minOtherCore) minOtherCore = c;
                     }
                 }
                 sVerts.free();
 
-                if (minOtherCore == std::numeric_limits<long long>::max()) return;
+                if (minOtherCore > 9e17) return;
                 if (minOtherCore < 1) return;
 
                 int level = (minOtherCore > bucketSize) ? bucketSize : (int)minOtherCore;
@@ -190,7 +190,7 @@ static long long computeEdgeHIndex(
     if (rawTotalSupport < 1) return 0;
 
     // Bucket H-index scan (high to low)
-    long long accumulated = 0;
+    double accumulated = 0;
     for (int c = bucketSize; c >= 1; --c) {
         accumulated += buckets[c];
         if (accumulated >= c) return c;
@@ -227,14 +227,14 @@ NCliqueEdgeCoreDecomposition_Local(
 
     // Initial support
     auto *countingE = ECD_Local::countingPerEdge(tree, edgeGraph, k);
-    auto *coreE = new long long[numEdges];
+    auto *coreE = new double[numEdges];
     for (daf::Size i = 0; i < numEdges; ++i)
         coreE[i] = countingE[i];
     delete[] countingE;
 
     // Scratch buffers
     std::vector<TreeGraphNode> otherKeeps, otherPivots;
-    std::vector<long long> buckets;
+    std::vector<double> buckets;
     otherKeeps.reserve(64);
     otherPivots.reserve(64);
     buckets.reserve(4096);
@@ -256,15 +256,15 @@ NCliqueEdgeCoreDecomposition_Local(
             if (coreE[idx] <= 0) continue;
             daf::Size v = edgeGraph.adj_list[idx];
 
-            long long totalSup = 0;
-            long long newCore = computeEdgeHIndex(
+            double totalSup = 0;
+            double newCore = computeEdgeHIndex(
                 u, v, idx, tree, treeGraphV, coreE, edgeGraph, k,
                 leafNeedPivot, leafValid, coreE[idx], totalSup,
                 otherKeeps, otherPivots, buckets);
             newCore = std::min(newCore, coreE[idx]);
 
             if (newCore != coreE[idx]) {
-                long long oldCore = coreE[idx];
+                double oldCore = coreE[idx];
                 coreE[idx] = newCore;
                 // Enqueue co-leaf edges
                 auto &adjU = treeGraphV.getNbr(u);
@@ -306,15 +306,15 @@ NCliqueEdgeCoreDecomposition_Local(
 
             auto [u, v] = edgeGraph.getEdgeById(edgeId);
 
-            long long totalSup = 0;
-            long long newCore = computeEdgeHIndex(
+            double totalSup = 0;
+            double newCore = computeEdgeHIndex(
                 u, v, edgeId, tree, treeGraphV, coreE, edgeGraph, k,
                 leafNeedPivot, leafValid, coreE[edgeId], totalSup,
                 otherKeeps, otherPivots, buckets);
             newCore = std::min(newCore, coreE[edgeId]);
 
             if (newCore != coreE[edgeId]) {
-                long long oldCore = coreE[edgeId];
+                double oldCore = coreE[edgeId];
                 coreE[edgeId] = newCore;
                 // Propagate
                 auto &adjU = treeGraphV.getNbr(u);

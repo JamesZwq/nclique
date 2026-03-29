@@ -2,6 +2,7 @@
 // Eliminates malloc contention in parallel precompute
 // Use nClique as upper bound for total storage
 #include "../NucleusDecomposition/NCliqueCoreDecomposition.h"
+#include "dataStruct/CliqueHashMap.h"
 #include <algorithm>
 #include <numeric>
 #include <cstring>
@@ -15,7 +16,8 @@ namespace NewFastLocal {
 std::vector<std::pair<std::vector<daf::Size>,int>>
 NucleusCoreDecompositionNewFastLocal(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s)
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex)
 {
     const bool verbose=std::getenv("PIVOTER_VERBOSE")!=nullptr;
     StaticCliqueIndex cliqueIndex(r);

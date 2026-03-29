@@ -315,3 +315,80 @@ size_t SDCT_Augmented_NoTree(
 
     return leafCounter;
 }
+
+// ---------------------------------------------------------------------------
+//  Top-level: SDCT_Augmented_NoTree_Interleaved (tree-free + dual callback)
+//  onLeaf(leafId, keepV, dropV) — called at each leaf emission
+//  onVertexDone(vertex)         — called after each top-level vertex's subtree
+// ---------------------------------------------------------------------------
+template<typename OnLeafFn, typename OnVertexDoneFn>
+size_t SDCT_Augmented_NoTree_Interleaved(
+    Graph &edgeGraph, int max_k, int min_k,
+    OnLeafFn &&onLeaf, OnVertexDoneFn &&onVertexDone)
+{
+    // Wrap the onLeaf lambda into AugCtx via a type-erased trampoline
+    auto trampoline = [](void *ud, daf::Size leafId,
+        const daf::StaticVector<int> &keepV, const daf::StaticVector<int> &dropV) {
+        (*static_cast<OnLeafFn*>(ud))(leafId, keepV, dropV);
+    };
+    AugCtx ctx;
+    ctx.callback = trampoline;
+    ctx.userData = &onLeaf;
+
+    auto size = edgeGraph.getGraphNodeSize();
+    daf::StaticVector<int> vertexSets(size);
+    daf::StaticVector<int> vertexLookup(size);
+    daf::StaticVector<int *> neighborsInP(size);
+    daf::StaticVector<int> numNeighbors(size);
+    vertexSets.c_size = size;
+    vertexLookup.c_size = size;
+    neighborsInP.c_size = size;
+    numNeighbors.c_size = size;
+
+    for (int i = 0; i < size; ++i) {
+        vertexLookup[i] = i;
+        vertexSets[i] = i;
+        neighborsInP[i] = static_cast<int *>(Calloc(1, sizeof(int)));
+        numNeighbors[i] = 1;
+    }
+
+    int beginX = 0;
+    int beginP = 0;
+    int beginR = size;
+
+    daf::StaticVector<int> dropV(MAX_CSIZE);
+    daf::StaticVector<int> keepV(MAX_CSIZE);
+
+    size_t leafCounter = 0;
+    for (int vertex = 0; vertex < edgeGraph.getGraphNodeSize(); ++vertex) {
+        int newBeginX, newBeginP, newBeginR;
+
+        fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(vertex,
+            vertexSets.data(), vertexLookup.data(), edgeGraph,
+            neighborsInP.data(), numNeighbors.data(),
+            &beginX, &beginP, &beginR,
+            &newBeginX, &newBeginP, &newBeginR);
+
+        dropV.clear();
+        keepV.clear();
+        keepV.push_back(vertex);
+        bkRecurse_NoTree(
+            vertexSets.data(), vertexLookup.data(),
+            neighborsInP.data(), numNeighbors.data(),
+            newBeginP, newBeginR, keepV, dropV, max_k, min_k,
+            leafCounter, ctx);
+
+        beginR = beginR + 1;
+
+        // Signal that vertex's subtree is complete — countingV[vertex] is finalized
+        onVertexDone(vertex);
+    }
+
+    vertexSets.free();
+    vertexLookup.free();
+    for (int i = 0; i < size; ++i) Free(neighborsInP[i]);
+    neighborsInP.free();
+    numNeighbors.free();
+
+    return leafCounter;
+}

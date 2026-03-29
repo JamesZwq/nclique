@@ -1,5 +1,6 @@
 // NewFastV2: Peeling without heap - use array scan + parallel batch processing
 #include "../NucleusDecomposition/NCliqueCoreDecomposition.h"
+#include "dataStruct/CliqueHashMap.h"
 #include <algorithm>
 #include <numeric>
 #include <atomic>
@@ -13,13 +14,14 @@ extern double nCr[1001][401];
 
 namespace NewFastV2 {
 
-std::vector<std::pair<std::vector<daf::Size>, int>>
+std::vector<std::pair<std::vector<daf::Size>, double>>
 NucleusCoreDecompositionNewFastV2(
     DynamicGraph<TreeGraphNode> &tree,
     const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV,
     daf::CliqueSize r,
-    daf::CliqueSize s)
+    daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex)
 {
     const bool verbose = std::getenv("PIVOTER_VERBOSE") != nullptr;
 
@@ -192,7 +194,7 @@ NucleusCoreDecompositionNewFastV2(
     }
 
     // Convert to output format
-    std::vector<std::pair<std::vector<daf::Size>, int>> result;
+    std::vector<std::pair<std::vector<daf::Size>, double>> result;
     for (daf::Size i = 0; i < nClique; ++i) {
         result.push_back({std::vector<daf::Size>(cliqueIndex.byId(i).begin(), cliqueIndex.byId(i).end()), coreRClique[i]});
     }

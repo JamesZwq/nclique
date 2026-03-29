@@ -621,6 +621,32 @@ public:
     // After this, only byId() (pool_-based) remains usable.
     void freeMapList() { decltype(mapList_)().swap(mapList_); }
 
+    // === Hash-free build API (for SDCT callback) ===
+    void reservePool(daf::Size estimatedCliques) { pool_.reserve(estimatedCliques * k_); }
+
+    Id addUniqueRClique(const daf::Size *sortedVerts) {
+        daf::Size start = pool_.size();
+        pool_.resize(start + k_);
+        std::memcpy(pool_.data() + start, sortedVerts, k_ * sizeof(daf::Size));
+        return numClique++;
+    }
+
+    void buildMapListFromPool(daf::Size maxV) {
+        mapList_.resize(maxV);
+        std::vector<daf::Size> bc(maxV, 0);
+        for (Id id = 0; id < numClique; id++) bc[pool_[id * k_]]++;
+        for (daf::Size v = 0; v < maxV; v++)
+            if (bc[v] > 0) mapList_[v].reserve(static_cast<daf::Size>(bc[v] * 1.1));
+        for (Id id = 0; id < numClique; id++) {
+            const daf::Size *verts = pool_.data() + id * k_;
+            unsigned __int128 acc = 0;
+            for (daf::Size i = 0; i < k_; i++)
+                acc += binom_u128(verts[i], static_cast<daf::Size>(i + 1));
+            mapList_[verts[0]].emplace(static_cast<uint64_t>(acc), id);
+        }
+        std::cout << "Clique Index: " << numClique << " cliques, " << maxV << " vertices." << std::endl;
+    }
+
     auto size() const noexcept { return numClique; }
 
     void verify() const {

@@ -27,13 +27,13 @@ namespace RCliqueLocalVP {
 
 struct LeafCliqueEntry {
     daf::Size cliqueId;
-    long long ncrValue;
+    double ncrValue;
 };
 
 struct DualIndex {
     std::vector<std::vector<LeafCliqueEntry>> leafCliqueInfo;
     std::vector<std::vector<daf::Size>> cliqueLeafIds;
-    std::vector<long long> counting;
+    std::vector<double> counting;
 };
 
 DualIndex buildDualIndex(
@@ -63,7 +63,7 @@ DualIndex buildDualIndex(
         daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &rClique) {
             daf::CliqueSize subP = 0;
             for (const auto &node : rClique) if (node.isPivot) subP++;
-            long long ncrValue = (long long)(nCr[pivotC - subP][needPivot - subP] + 0.5);
+            double ncrValue = nCr[pivotC - subP][needPivot - subP];
             auto id = cliqueIndex.byClique(rClique);
             if (id < nClique) {
                 result.counting[id] += ncrValue;
@@ -183,7 +183,7 @@ static long long computeHIndexVP(
             }
 
             if (countAtThreshold >= effectiveNeedPivot) {
-                long long support = (long long)(nCr[countAtThreshold][effectiveNeedPivot] + 0.5);
+                long long support = (double)(nCr[countAtThreshold][effectiveNeedPivot] + 0.5);
                 long long delta = support - prevSupport;
                 if (delta > 0) {
                     int level = (threshold > bucketSize) ? bucketSize : (int)threshold;
@@ -216,11 +216,12 @@ static long long computeHIndexVP(
 // ============================================================
 // Main entry: Local H-index with vertex-proxy CPI for r≥3
 // ============================================================
-std::vector<std::pair<std::vector<daf::Size>, int>>
+std::vector<std::pair<std::vector<daf::Size>, double>>
 NucleusCoreDecompositionRCliqueLocalCPI_VP(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV,
-    daf::CliqueSize r, daf::CliqueSize s) {
+    daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
 
     auto time_start = std::chrono::high_resolution_clock::now();
 
@@ -374,7 +375,7 @@ NucleusCoreDecompositionRCliqueLocalCPI_VP(
     std::cout << "time: " << elapsed << " ms" << std::endl;
 
     // Build output
-    std::vector<std::pair<std::vector<daf::Size>, int>> result;
+    std::vector<std::pair<std::vector<daf::Size>, double>> result;
     result.reserve(numCliques);
     for (daf::Size i = 0; i < numCliques; ++i) {
         auto verts = cliqueIndex.byId(i);

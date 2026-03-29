@@ -187,7 +187,7 @@ namespace PlusECDSet {
         std::memset(core, 0, tree.getRoot()->children.size() * sizeof(daf::Size));
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -292,7 +292,7 @@ namespace PlusECDSet {
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
         daf::Size count = 0;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -526,7 +526,7 @@ namespace PlusECDSet {
         std::vector<double> leafCore(tree.adj_list.size());
         const daf::Size numLeaf = tree.adj_list.size();
         for (daf::Size i = 0; i < numLeaf; ++i) {
-            auto leaf = tree.adj_list[i];
+            const auto &leaf = tree.adj_list[i];
             // TODO: add lowerBound
             // double lowerBound = nCr[povit.size() - 2][k - 2];
 
@@ -621,9 +621,12 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     treeGraphV.printGraphPerV();
 #endif
     std::cout << "=========================begin=========================" << std::endl;
-    // daf::StaticVector<std::pair<daf::Size, daf::Size> > removedEdges(1000);
     double minCore = 0;
     int numProgress = 0;
+    long long cntA = 0, cntB = 0, cntC = 0, totalIters = 0;
+    long long us_phase1 = 0, us_caseA = 0, us_caseB = 0, us_caseC = 0, us_heapUpdate = 0;
+    long long work_p1_iterate = 0, work_caseA_edges = 0, work_caseB_edges = 0, work_caseC_edges = 0;
+    long long work_heap_updates = 0;
     while (!heap.empty()) {
         minCore = std::max(countingKE[heap.top()], minCore);
         //  core==minCore  leaf  pop
@@ -643,11 +646,13 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
         // printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
 
-        std::cout << "minCore: " << minCore
-                << " heap size: " << heap.size()
-                << " num Leaf: " << tree.size() << " "
-                << k << "-Clique count: " << tree.cliqueCount(k)
-                << std::endl;
+        // std::cout << "minCore: " << minCore
+        //         << " heap size: " << heap.size()
+        //         << " num Leaf: " << tree.size() << " "
+        //         << k << "-Clique count: " << tree.cliqueCount(k)
+        //         << std::endl;
+        totalIters++;
+        auto _t0 = std::chrono::high_resolution_clock::now();
 #ifndef NDEBUG
         std::cout << "currentRemoveEdge: " << std::endl;
 #endif
@@ -681,8 +686,8 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                                           }
                                       });
         }
-        // removedLeaf.print("removedLeaf");
-        // for (auto leafId : removedLeaf) {
+        auto _t1 = std::chrono::high_resolution_clock::now();
+        us_phase1 += std::chrono::duration_cast<std::chrono::microseconds>(_t1 - _t0).count();
         for (auto leafIdIdx = 0; leafIdIdx < removedLeaf.size(); ++leafIdIdx) {
             auto leafId = removedLeaf[leafIdIdx];
             auto leaf = tree.adj_list[leafId];
@@ -704,7 +709,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 #ifndef NDEBUG
             std::cout << leafId << " leaf: " << leaf << "\n leafRm: " << leafRm << std::endl;
 #endif
-            for (auto node: leaf) {
+            for (const auto &node: leaf) {
                 if (node.isPivot) {
                     povit.push_back(node.v);
                 } else {
@@ -721,7 +726,10 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
             // std::cout << "coreE: " << std::endl;
             // daf::printArray(coreE, edgeGraph.adj_list.size());
             if (leafRm.removedKeepC || needPivot > povit.size() - leafRm.removedPivots.size()) {
+                cntA++;
+                auto _tA0 = std::chrono::high_resolution_clock::now();
                 auto removeW = [&](daf::Size u, daf::Size v, double w) {
+                    work_heap_updates++;
                     auto idx = edgeGraph.getEdgeCompressedId(u, v);
                     countingKE[idx] -= w;
                     if (edgeInHeap[idx]) {
@@ -746,11 +754,14 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                     KtoP = nCr[povit.size() - 1][needKP];
                     PlusECDSet::processEdgePairs(keepC, povit, KtoP, removeW);
                 }
-                for (auto i: leaf) {
+                for (const auto &i: leaf) {
                     treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
                 }
                 tree.removeNode(leafId);
+                us_caseA += std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - _tA0).count();
             } else if (!leafRm.removedEdges.empty()) {
+                cntB++;
+                auto _tB0 = std::chrono::high_resolution_clock::now();
                 // std::cout << "============================================================" << std::endl;
                 //     std::cout << "removedEdges: " << removedEdges << std::endl;
 
@@ -765,7 +776,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                 };
 
                 auto initCore = [&](const std::vector<TreeGraphNode> &leaf, const daf::Size &leafId) {
-                    for (auto i: leaf) {
+                    for (const auto &i: leaf) {
                         if (i.isPivot) {
                             newPivot.push_back(i.v);
                             treeGraphV.addNbr(i.v, {leafId, true});
@@ -796,7 +807,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                 // if (!removedPovit.empty() && needPivot <= povit.size() - removedPovit.size())
                 // daf::StaticVector<daf::Size> newLeafIds;
                 auto &newLeaf = leaf;
-                for (auto leafV: leaf) {
+                for (const auto &leafV: leaf) {
                     if (leafV.isPivot) {
                         treeGraphV.removeNbr(leafV.v, {leafId, true});
                     } else {
@@ -855,8 +866,11 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                     PlusECDSet::processEdgePairs(keepC, povit, KtoP, removeW);
                 }
                 tree.removeNode(leafId);
+                us_caseB += std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - _tB0).count();
             } else {
                 // only povit removed
+                cntC++;
+                auto _tC0 = std::chrono::high_resolution_clock::now();
 
                 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -987,6 +1001,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                     }
                     tree.removeNode(leafId);
                 }
+                us_caseC += std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - _tC0).count();
             }
 
 
@@ -1053,6 +1068,12 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
+    std::cout << "  Cases: A=" << cntA << " B=" << cntB << " C=" << cntC << " iters=" << totalIters << std::endl;
+    std::cout << "  Phase1(intersect): " << us_phase1/1000 << " ms" << std::endl;
+    std::cout << "  CaseA(delta+heapUpdate+mut): " << us_caseA/1000 << " ms" << std::endl;
+    std::cout << "  CaseB(BK+addW+removeW+heapUpdate): " << us_caseB/1000 << " ms" << std::endl;
+    std::cout << "  CaseC(delta+heapUpdate+mut): " << us_caseC/1000 << " ms" << std::endl;
+    std::cout << "  HeapUpdates: " << work_heap_updates << std::endl;
 
     // for (auto i = 0;  i < edgeGraph.adj_list.size(); ++i) {
     //     auto counting = countingKE[i];

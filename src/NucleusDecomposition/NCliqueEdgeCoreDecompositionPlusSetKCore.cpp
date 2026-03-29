@@ -184,7 +184,7 @@ namespace PlusECDSetKCore {
         std::memset(core, 0, tree.getRoot()->children.size() * sizeof(daf::Size));
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -290,7 +290,7 @@ namespace PlusECDSetKCore {
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
         daf::Size count = 0;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -456,8 +456,8 @@ namespace PlusECDSetKCore {
         leafCore.c_size = tree.adj_list.size() * 1.5;
         const daf::Size numLeaf = tree.adj_list.size();
         for (daf::Size i = 0; i < numLeaf; ++i) {
-            auto leaf = tree.adj_list[i];
-            for (auto node : leaf) {
+            const auto &leaf = tree.adj_list[i];
+            for (const auto &node : leaf) {
                 if (!node.isPivot) {
                     leafCore[i] = edgeGraph.coreV[node.v];
                     break;
@@ -616,7 +616,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 #ifndef NDEBUG
             std::cout << leafId << " leaf: " << leaf << "\n leafRm: " << leafRm << std::endl;
 #endif
-            for (auto node: leaf) {
+            for (const auto &node: leaf) {
                 if (node.isPivot) {
                     povit.push_back(node.v);
                 } else {
@@ -693,7 +693,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                     KtoP = nCr[povit.size() - 1][needKP];
                     applyKeepPivot(KtoP);
                 }
-                for (auto i: leaf) {
+                for (const auto &i: leaf) {
                     // if (edgeGraph.coreV[i.v] > leafCore[leafId]) {
                     //     break;
                     // }
@@ -716,7 +716,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
 
                 auto initCore = [&](const std::vector<TreeGraphNode> &leaf, const daf::Size &leafId) {
                     daf::Size newLeafCore = std::numeric_limits<daf::Size>::max();
-                    for (auto i: leaf) {
+                    for (const auto &i: leaf) {
                         if (i.isPivot) {
                             newPivot.push_back(i.v);
                             if (edgeGraph.coreV[i.v] <= newLeafCore) {
@@ -778,7 +778,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
                 // if (!removedPovit.empty() && needPivot <= povit.size() - removedPovit.size())
                 // daf::StaticVector<daf::Size> newLeafIds;
                 auto &newLeaf = leaf;
-                for (auto leafV : leaf) {
+                for (const auto &leafV : leaf) {
                     // if (edgeGraph.coreV[leafV.v] > leafCore[leafId]) {
                     //     break;
                     // }

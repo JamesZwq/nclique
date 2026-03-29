@@ -113,7 +113,7 @@ namespace CDSetRSH {
                 continue;
             }
             daf::CliqueSize pivotC = 0, keepC = 0;
-            for (auto &i: leaf) {
+            for (const auto &i: leaf) {
                 if (i.isPivot) pivotC++;
                 else keepC++;
             }
@@ -165,7 +165,7 @@ namespace CDSetRSH {
     }
 
     template<typename T>
-    void printEdgeCore(const Graph &edgeGraph, const std::vector<T> coreE) {
+    void printEdgeCore(const Graph &edgeGraph, const std::vector<T> &coreE) {
         printEdgeCore(edgeGraph, coreE.data());
     }
 }
@@ -173,7 +173,8 @@ namespace CDSetRSH {
 
 std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecompositionHierarchy(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
     auto time_start = std::chrono::high_resolution_clock::now();
     StaticCliqueIndex cliqueIndex(r);
     daf::timeCount("clique Index build",
@@ -292,12 +293,12 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                                             });
         }
         for (auto leafId: changedLeaf) {
-            auto leaf = tree.adj_list[leafId];
+            const auto &leaf = tree.adj_list[leafId];
             auto leafIndex = changedLeafIndex[leafId];
 
             auto initCore = [&](const std::vector<TreeGraphNode> &newLeaf, const daf::Size &newLeafId) {
                 daf::CliqueSize newPivotC = 0, newKeepC = 0;
-                for (auto i: newLeaf) {
+                for (const auto &i: newLeaf) {
                     if (i.isPivot) {
                         treeGraphV.addNbr(i.v, {newLeafId, true});
                         newPivotC++;
@@ -346,7 +347,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                 });
             };
 
-            for (auto leafV: leaf) {
+            for (const auto &leafV: leaf) {
                 if (leafV.isPivot) {
                     treeGraphV.removeNbr(leafV.v, {leafId, true});
                 } else {
@@ -354,7 +355,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                 }
             }
 
-            auto removedR = removedRCliqueIdForLeaf[leafIndex];
+            const auto &removedR = removedRCliqueIdForLeaf[leafIndex];
             auto mapped = removedR | std::views::transform(
                               [&](const daf::Size id) {
                                   return cliqueIndex.byId(id);

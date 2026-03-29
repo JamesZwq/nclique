@@ -189,7 +189,7 @@ namespace PlusECD {
         std::memset(core, 0, tree.getRoot()->children.size() * sizeof(daf::Size));
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -293,7 +293,7 @@ namespace PlusECD {
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
         daf::Size count = 0;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -449,7 +449,7 @@ namespace PlusECD {
         std::vector<double> leafCore(tree.adj_list.size());
         const daf::Size numLeaf = tree.adj_list.size();
         for (daf::Size i = 0; i < numLeaf; ++i) {
-            auto leaf = tree.adj_list[i];
+            const auto &leaf = tree.adj_list[i];
             // TODO: add lowerBound
             // double lowerBound = nCr[povit.size() - 2][k - 2];
 
@@ -615,7 +615,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
 #ifndef NDEBUG
             std::cout << leafId << " leaf: " << leaf << "\n leafRm: " << leafRm << std::endl;
 #endif
-            for (auto node: leaf) {
+            for (const auto &node: leaf) {
                 if (node.isPivot) {
                     povit.push_back(node.v);
                 } else {
@@ -669,7 +669,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
                     PlusECD::processEdgePairs(keepC, povit, KtoP, removeW);
                 }
                 tree.removeNode(leafId);
-                for (auto i: leaf) {
+                for (const auto &i: leaf) {
                     treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
                 }
             } else if (!leafRm.removedEdges.empty()) {
@@ -687,7 +687,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
                 };
 
                 auto initCore = [&](const std::vector<TreeGraphNode> &leaf, const daf::Size &leafId) {
-                    for (auto i: leaf) {
+                    for (const auto &i: leaf) {
                         if (i.isPivot) {
                             newPivot.push_back(i.v);
                             treeGraphV.addNbr(i.v, {leafId, true});
@@ -718,7 +718,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> >  PlusNucleusEdgeCo
                 // if (!removedPovit.empty() && needPivot <= povit.size() - removedPovit.size())
                 // daf::StaticVector<daf::Size> newLeafIds;
                 auto &newLeaf = leaf;
-                for (auto leafV : leaf) {
+                for (const auto &leafV : leaf) {
                     if (leafV.isPivot) {
                         treeGraphV.removeNbr(leafV.v, {leafId, true});
                     } else {

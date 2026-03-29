@@ -50,7 +50,7 @@ class VertexCentricNucleus {
 public:
     VertexCentricNucleus(int numThreads = 16) : numThreads_(numThreads) {}
     
-    std::vector<std::pair<std::vector<daf::Size>, int>> compute(
+    std::vector<std::pair<std::vector<daf::Size>, double>> compute(
         DynamicGraph<TreeGraphNode>& tree,
         const Graph& edgeGraph,
         DynamicGraphSet<TreeGraphNode>& treeGraphV,
@@ -113,7 +113,7 @@ private:
         std::cout << "Vertices: " << n << std::endl;
     }
     
-    std::vector<std::pair<std::vector<daf::Size>, int>> computeCores(
+    std::vector<std::pair<std::vector<daf::Size>, double>> computeCores(
         DynamicGraph<TreeGraphNode>& tree,
         const Graph& edgeGraph,
         int r, int s) {
@@ -210,7 +210,7 @@ private:
         std::cout << "Processed: " << processed << " cliques" << std::endl;
         
         // 转换输出格式
-        std::vector<std::pair<std::vector<daf::Size>, int>> result;
+        std::vector<std::pair<std::vector<daf::Size>, double>> result;
         for (size_t i = 0; i < cliqueIndex.size(); ++i) {
             auto clique = cliqueIndex.byId(i);
             std::vector<daf::Size> vertices;

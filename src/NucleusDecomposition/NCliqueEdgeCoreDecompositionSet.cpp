@@ -152,7 +152,7 @@ namespace BaseECDSet {
         std::memset(core, 0, tree.getRoot()->children.size() * sizeof(daf::Size));
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -256,7 +256,7 @@ namespace BaseECDSet {
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
         daf::Size count = 0;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -412,7 +412,7 @@ namespace BaseECDSet {
         std::vector<double> leafCore(tree.adj_list.size());
         const daf::Size numLeaf = tree.adj_list.size();
         for (daf::Size i = 0; i < numLeaf; ++i) {
-            auto leaf = tree.adj_list[i];
+            const auto &leaf = tree.adj_list[i];
             // TODO: add lowerBound
             // double lowerBound = nCr[povit.size() - 2][k - 2];
 
@@ -493,7 +493,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
     std::vector<BaseECDSet::DHeap::handle_type> heapHandles(tree.adj_list.size());
 
     for (daf::Size i = 0; i < tree.adj_list.size(); ++i) {
-        auto leaf = tree.adj_list[i];
+        const auto &leaf = tree.adj_list[i];
         if (leaf.size() < k) {
             std::cerr << "Error: leaf id is not equal to index" << std::endl;
         }
@@ -529,7 +529,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
             auto leaf = tree.adj_list[leafId];
         // std::cout << leafId << " leaf: " << leaf << std::endl;
             currCore = std::max(currCore, leafCore[leafId]);
-            for (auto node: leaf) {
+            for (const auto &node: leaf) {
                 if (node.isPivot) {
                     povit.push_back(node.v);
                 } else {
@@ -626,7 +626,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                 }
                 tree.removeNode(leafId);
                 removedLeaf[leafId] = true;
-                for (auto i: leaf) {
+                for (const auto &i: leaf) {
                     treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
                 }
             } else if (!removedEdges.empty()) {
@@ -643,7 +643,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                     countingKE[idx] += w;
                 };
                 auto initCore = [&](const std::vector<TreeGraphNode> &leaf) {
-                    for (auto i: leaf) {
+                    for (const auto &i: leaf) {
                         if (i.isPivot) {
                             newPivot.push_back(i.v);
                         } else {
@@ -735,7 +735,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > baseNucleusEdgeCor
                 }
 
                 for (auto i: newLeafIds) {
-                    auto newLeaf = tree.adj_list[i];
+                    const auto &newLeaf = tree.adj_list[i];
                     double minCore = std::numeric_limits<double>::max();
                     for (auto j = 0; j < newLeaf.size(); ++j) {
                         for (auto k = j + 1; k < newLeaf.size(); ++k) {

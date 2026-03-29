@@ -140,6 +140,9 @@ verify_one() {
 R1_VARIANTS=(
     "PIVOTER_RUN_ST=1        ST"
     "PIVOTER_RUN_ST_V2=1     ST_V2"
+    "PIVOTER_RUN_ONDEMAND=1  OnDemand"
+    "PIVOTER_RUN_INTERLEAVED=1 Interleaved"
+    "PIVOTER_RUN_INTERLEAVED_V2=1 InterleavedV2"
     "PIVOTER_RUN_LOCAL=1     Local_V1"
     "PIVOTER_RUN_LOCAL_V2=1  Local_V2"
     "PIVOTER_RUN_LOCAL_V3=1  Local_V3"
@@ -149,6 +152,9 @@ R1_VARIANTS=(
 R2_VARIANTS=(
     "PIVOTER_RUN_ST=1        ST"
     "PIVOTER_RUN_ST_V4=1     ST_V4"
+    "PIVOTER_RUN_R2_ONDEMAND=1 R2_OnDemand"
+    "PIVOTER_RUN_R2_TREEFREE=1 R2_TreeFree"
+    "PIVOTER_RUN_R2_TREEFREE_V2=1 R2_TreeFreeV2"
 )
 
 R3_VARIANTS=(
@@ -156,6 +162,8 @@ R3_VARIANTS=(
     "PIVOTER_RUN_ST_V4=1     ST_V4"
     "PIVOTER_RUN_ST_V10=1    ST_V10"
     "PIVOTER_RUN_ST_V11=1    ST_V11"
+    "PIVOTER_RUN_ST_V12=1    ST_V12"
+    "PIVOTER_RUN_ST_V13=1    ST_V13"
 )
 
 # =========================================================================

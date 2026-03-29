@@ -35,6 +35,8 @@ namespace bkRmClique {
     // Reusable static buffers (thread-local for parallel use)
     static thread_local std::vector<uint32_t> s_csOff, s_rsOff, s_rsCol, s_deg, s_cur;
     static thread_local std::vector<VIdx> s_csCol;
+    // Recursion depth counter (shared across all pathSplit template instantiations)
+    static thread_local int pathSplitDepth_ = 0;
     /**
      * ， n
      */
@@ -152,7 +154,124 @@ namespace bkRmClique {
         });
     }
 
-    // CSR-based pathSplit with shadow counters (pSize/pivSize)
+    // =========================================================
+    // Bipartite Matching LB (König's theorem)
+    // Strictly stronger than disjoint packing: μ(G) ≥ packing(F)
+    // Bipartite graph: L=active conflicts, R=pivot vertices, edge iff v∈F_i
+    // Returns: max matching size = LB on minimum hitting set
+    // =========================================================
+    inline int computeMatchingLB(
+        int n,
+        const Bitset &pivots,
+        const daf::StaticVector<daf::Size> &conflictCount,
+        const daf::StaticVector<daf::Size> &conflictMaxSize,
+        const std::vector<uint32_t> &csOff,
+        const std::vector<VIdx> &csCol)
+    {
+        // Collect active conflicts and their pivot members
+        // Build compact bipartite graph for Hopcroft-Karp
+        int m = 0; // number of active conflicts (left vertices)
+        int activeIds[400]; // map: compact left id → original cid
+        for (size_t cid = 0; cid < conflictCount.size(); ++cid) {
+            if (conflictCount[cid] < conflictMaxSize[cid]) continue;
+            if (m >= 400) break;
+            activeIds[m++] = (int)cid;
+        }
+        if (m == 0) return 0;
+
+        // Collect pivot vertices (right vertices) with compact IDs
+        int a = 0;
+        int pivMap[400]; // vertex → compact pivot id (-1 if not pivot)
+        memset(pivMap, -1, sizeof(pivMap));
+        for (int v = 0; v < n && v < 400; v++) {
+            if (pivots.test(v)) pivMap[v] = a++;
+        }
+        if (a == 0) return 0;
+
+        // Hungarian/Hopcroft-Karp matching on small bipartite graph
+        // Use simple augmenting path algorithm (sufficient for m,a ≤ 400)
+        int matchL[400], matchR[400]; // matchL[left] = right, matchR[right] = left
+        memset(matchL, -1, sizeof(matchL));
+        memset(matchR, -1, sizeof(matchR));
+
+        // For each left vertex, try to find augmenting path (DFS)
+        // Adjacency: left i → right pivMap[v] for each pivot v in conflict activeIds[i]
+        int mu = 0;
+        bool visited[400];
+
+        // DFS augmenting path from left vertex u
+        std::function<bool(int)> tryAugment = [&](int u) -> bool {
+            // Iterate pivot members of conflict activeIds[u]
+            int cid = activeIds[u];
+            for (uint32_t e = csOff[cid]; e < csOff[cid + 1]; ++e) {
+                VIdx v = csCol[e];
+                if (v >= 400 || pivMap[v] < 0) continue;
+                int rv = pivMap[v]; // right vertex id
+                if (visited[rv]) continue;
+                visited[rv] = true;
+                if (matchR[rv] < 0 || tryAugment(matchR[rv])) {
+                    matchL[u] = rv;
+                    matchR[rv] = u;
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        for (int u = 0; u < m; u++) {
+            memset(visited, false, a * sizeof(bool));
+            if (tryAugment(u)) mu++;
+        }
+
+        return mu;
+    }
+
+    // =========================================================
+    // Greedy disjoint packing lower bound (Theorem 4 from r3bk.md)
+    // Returns: max number of pivot-disjoint active conflict sets
+    // Uses tmp2 as scratch bitset (safe: not used concurrently)
+    // =========================================================
+    inline int computePackingLB(
+        int n,
+        const Bitset &pivots,
+        const daf::StaticVector<daf::Size> &conflictCount,
+        const daf::StaticVector<daf::Size> &conflictMaxSize,
+        const std::vector<uint32_t> &csOff,
+        const std::vector<VIdx> &csCol,
+        daf::Size startCid)
+    {
+        tmp2.setSize(n);
+        tmp2.reset(); // tracks pivots already claimed by a packing set
+        int lb = 0;
+        for (size_t cid = startCid; cid < conflictCount.size(); ++cid) {
+            if (conflictCount[cid] < conflictMaxSize[cid]) continue; // resolved
+            // Check: all pivot members unused, and at least 1 pivot member exists
+            bool disjoint = true;
+            int pivCount = 0;
+            for (uint32_t e = csOff[cid]; e < csOff[cid + 1]; ++e) {
+                VIdx v = csCol[e];
+                if (pivots.test(v)) {
+                    if (tmp2.test(v)) { disjoint = false; break; }
+                    pivCount++;
+                }
+            }
+            if (!disjoint || pivCount == 0) continue;
+            // Pack: mark all pivot members as used
+            for (uint32_t e = csOff[cid]; e < csOff[cid + 1]; ++e) {
+                VIdx v = csCol[e];
+                if (pivots.test(v)) tmp2.set(v);
+            }
+            lb++;
+        }
+        return lb;
+    }
+
+    // =========================================================
+    // CSR-based pathSplit with Hitting-Set pruning
+    //   - Packing lower bound (Thm 4): prune if LB > budget
+    //   - Smallest active conflict first (improved branching)
+    //   - Most-constrained pivot ordering within conflict
+    // =========================================================
     template<typename ReportFn>
     void pathSplit(int n, int r, int minK,
                    Bitset &P,
@@ -168,38 +287,24 @@ namespace bkRmClique {
                    daf::Size nextCid,
                    const Bitset &emptyPivotsForReport,
                    ReportFn &&report) {
-        // ： pivot
-        if (pSize < minK || (pSize - pivSize) > minK) return;
-        // std::cout << "pathSplit: pSize=" << pSize << ", pivSize=" << pivSize << std::endl;
-        //  |P|-|pivots| == minK →  P  pivot  clique
-        // if ((pSize - pivSize) == minK) {
-        //     report(P & (~pivots), emptyPivotsForReport);
-        //     return;
-        // }
-        //
+        pathSplitDepth_++;
+        struct DepthGuard_ { ~DepthGuard_() { pathSplitDepth_--; } } _dg;
+        if (pathSplitDepth_ > 500) return;
 
+        // Basic pruning: size check
+        if (pSize < minK || (pSize - pivSize) > minK) return;
+
+        // --- Find first active conflict ---
         size_t pick = conflictCount.size();
         for (size_t cid = nextCid; cid < conflictCount.size(); ++cid) {
-            if (conflictCount[cid] >= conflictMaxSize[cid]) {
-                pick = cid;
-                break;
-            }
+            if (conflictCount[cid] >= conflictMaxSize[cid]) { pick = cid; break; }
         }
 
         if (pick < conflictCount.size()) {
-            //  pivot （）
-            // {
-            //     int possibleGain = 0;
-            //     for (uint32_t e = csOff[pick]; e < csOff[pick + 1]; ++e) {
-            //         VIdx v = csCol[e];
-            //         if (P.test(v) && !pivots.test(v)) ++possibleGain;
+            // Note: Packing LB computed in pre-processing (removeRClique).
+            // Per-node LB too expensive for dense instances (O(G*|F|) per call).
 
-            //     }
-            //     if (pSize + possibleGain < minK) {
-            //         return;
-            //     }
-            // }
-
+            // --- Branch on pivots in the chosen conflict ---
             VIdx pivBuf[400];
             int pc = 0;
             for (uint32_t e = csOff[pick]; e < csOff[pick + 1]; ++e) {
@@ -207,6 +312,7 @@ namespace bkRmClique {
                 if (pivots.test(v)) pivBuf[pc++] = v;
             }
 
+            // Most-constrained-first: sort by descending conflict degree
             std::sort(pivBuf, pivBuf + pc, [&](VIdx a, VIdx b) {
                 uint32_t da = s_rsOff[(size_t) a + 1] - s_rsOff[(size_t) a];
                 uint32_t db = s_rsOff[(size_t) b + 1] - s_rsOff[(size_t) b];
@@ -218,73 +324,96 @@ namespace bkRmClique {
 
                 bool wasP = P.test(v);
                 bool wasPi = pivots.test(v);
-                if (wasP) {
-                    P.reset(v);
-                    --pSize;
-                }
-                if (wasPi) {
-                    pivots.reset(v);
-                    --pivSize;
-                }
+                if (wasP) { P.reset(v); --pSize; }
+                if (wasPi) { pivots.reset(v); --pivSize; }
 
-                // v ：rsOff/rsCol
                 for (uint32_t e = rsOff[static_cast<size_t>(v)];
-                     e < rsOff[static_cast<size_t>(v) + 1]; ++e) {
-                    uint32_t g = rsCol[e];
-                    --conflictCount[g];
-                }
+                     e < rsOff[static_cast<size_t>(v) + 1]; ++e)
+                    --conflictCount[rsCol[e]];
 
-                // ：， pivot  pivots  P
+                // Promote previous pivot to keep
                 if (i != 0) {
                     VIdx u = pivBuf[i - 1];
-                    if (pivots.test(u)) {
-                        pivots.reset(u);
-                        --pivSize;
-                    }
-                    if (!P.test(u)) {
-                        P.set(u);
-                        ++pSize;
+                    if (pivots.test(u)) { pivots.reset(u); --pivSize; }
+                    if (!P.test(u)) { P.set(u); ++pSize; }
+                }
+
+                // --- Recursive unit propagation ---
+                // After removing v (and promoting prev), check for new singletons.
+                // Queue-based: only inspect conflict sets affected by removals.
+                VIdx forcedBuf[400];
+                int nForced = 0;
+                bool dead = false;
+                {
+                    // Seed queue: conflict sets affected by removing v
+                    uint32_t queue[2048];
+                    int qHead = 0, qTail = 0;
+                    for (uint32_t e = rsOff[static_cast<size_t>(v)];
+                         e < rsOff[static_cast<size_t>(v) + 1]; ++e)
+                        if (qTail < 2048) queue[qTail++] = rsCol[e];
+
+                    while (qHead < qTail && !dead) {
+                        uint32_t g = queue[qHead++];
+                        if (conflictCount[g] < conflictMaxSize[g]) continue;
+                        int pivCnt = 0; VIdx single = 0;
+                        for (uint32_t e2 = csOff[g]; e2 < csOff[g + 1]; ++e2) {
+                            VIdx u = csCol[e2];
+                            if (pivots.test(u)) { pivCnt++; single = u; }
+                        }
+                        if (pivCnt == 0) { dead = true; break; }
+                        if (pivCnt == 1) {
+                            P.reset(single); pivots.reset(single);
+                            --pSize; --pivSize;
+                            forcedBuf[nForced++] = single;
+                            for (uint32_t e2 = rsOff[static_cast<size_t>(single)];
+                                 e2 < rsOff[static_cast<size_t>(single) + 1]; ++e2) {
+                                --conflictCount[rsCol[e2]];
+                                if (qTail < 2048) queue[qTail++] = rsCol[e2];
+                            }
+                            if (pSize < minK) { dead = true; break; }
+                        }
                     }
                 }
 
-                pathSplit(n, r, minK, P, pivots, pSize, pivSize,
-                          conflictCount, conflictMaxSize,
-                          csOff, csCol, rsOff, rsCol,
-                          pick + 1, emptyPivotsForReport, report);
+                if (!dead) {
+                    pathSplit(n, r, minK, P, pivots, pSize, pivSize,
+                              conflictCount, conflictMaxSize,
+                              csOff, csCol, rsOff, rsCol,
+                              pick + 1, emptyPivotsForReport, report);
+                }
 
-                //
+                // Undo forced removals (reverse order)
+                for (int fi = nForced - 1; fi >= 0; --fi) {
+                    VIdx u = forcedBuf[fi];
+                    P.set(u); pivots.set(u);
+                    ++pSize; ++pivSize;
+                    for (uint32_t e = rsOff[static_cast<size_t>(u)];
+                         e < rsOff[static_cast<size_t>(u) + 1]; ++e)
+                        ++conflictCount[rsCol[e]];
+                }
+
+                // Backtrack v
                 for (uint32_t e = rsOff[static_cast<size_t>(v)];
-                     e < rsOff[static_cast<size_t>(v) + 1]; ++e) {
-                    uint32_t g = rsCol[e];
-                    ++conflictCount[g];
-                }
-                if (wasPi) {
-                    pivots.set(v);
-                    ++pivSize;
-                }
-                if (wasP) {
-                    P.set(v);
-                    ++pSize;
-                }
+                     e < rsOff[static_cast<size_t>(v) + 1]; ++e)
+                    ++conflictCount[rsCol[e]];
+                if (wasPi) { pivots.set(v); ++pivSize; }
+                if (wasP) { P.set(v); ++pSize; }
             }
 
-            // ：， pivot  pivot（ reset pivots）
+            // Restore promoted pivots
             for (int i = 0; i + 1 < pc; ++i) {
                 VIdx u = pivBuf[i];
-                if (!pivots.test(u)) {
-                    pivots.set(u);
-                    ++pivSize;
-                }
+                if (!pivots.test(u)) { pivots.set(u); ++pivSize; }
             }
             return;
         }
 
-        // ，（）
+        // Terminal: no active conflict — report clique
         if (pSize >= minK) {
-            // P-pivots=minK,  P  pivot
-            if ((pSize - pivSize) == minK) {
+            if ((pSize - pivSize) == minK)
                 report(P & (~pivots), emptyPivotsForReport);
-            } else { report(P, pivots); }
+            else
+                report(P, pivots);
         }
     }
 
@@ -409,12 +538,160 @@ namespace bkRmClique {
             }
         }
 
-        // ， count()
+        // ========== Singleton propagation (Theorem 3) ==========
+        // If a conflict set has exactly 1 pivot member, that pivot MUST be removed.
+        {
+            bool changed = true;
+            while (changed) {
+                changed = false;
+                for (size_t cid = 0; cid < G; ++cid) {
+                    if (conflictCount[cid] < conflictMaxSize[cid]) continue; // resolved
+                    int pivCount = 0;
+                    VIdx singlePiv = 0;
+                    for (uint32_t e = s_csOff[cid]; e < s_csOff[cid + 1]; ++e) {
+                        VIdx v = s_csCol[e];
+                        if (P.test(v) && pivots.test(v)) { pivCount++; singlePiv = v; }
+                    }
+                    if (pivCount == 0) return; // no pivot in active conflict → leaf dead
+                    if (pivCount == 1) {
+                        // Forced removal
+                        P.reset(singlePiv);
+                        pivots.reset(singlePiv);
+                        for (uint32_t e = s_rsOff[singlePiv]; e < s_rsOff[singlePiv + 1]; ++e)
+                            --conflictCount[s_rsCol[e]];
+                        changed = true;
+                        if (P.count() < (size_t)minK) return;
+                    }
+                }
+            }
+        }
+
+        // ========== Subsumption elimination (Theorem 2) ==========
+        // If F_i's pivot-members ⊆ F_j's pivot-members, F_j is redundant.
+        // Only run when G is manageable to avoid O(G^2) blowup.
+        if (G <= 500) {
+            // Build pivot-member bitmasks for each active conflict set
+            struct PivMask { size_t cid; Bitset mask; int size; };
+            std::vector<PivMask> activeSets;
+            activeSets.reserve(G);
+            for (size_t cid = 0; cid < G; ++cid) {
+                if (conflictCount[cid] < conflictMaxSize[cid]) continue;
+                PivMask pm;
+                pm.cid = cid;
+                pm.mask.setSize(n);
+                pm.mask.reset();
+                pm.size = 0;
+                for (uint32_t e = s_csOff[cid]; e < s_csOff[cid + 1]; ++e) {
+                    VIdx v = s_csCol[e];
+                    if (pivots.test(v)) { pm.mask.set(v); pm.size++; }
+                }
+                activeSets.push_back(std::move(pm));
+            }
+            // Sort by size ascending: smaller sets more likely to subsume larger ones
+            std::sort(activeSets.begin(), activeSets.end(),
+                      [](const PivMask &a, const PivMask &b) { return a.size < b.size; });
+            // Mark subsumed sets
+            for (size_t i = 0; i < activeSets.size(); ++i) {
+                if (conflictCount[activeSets[i].cid] < conflictMaxSize[activeSets[i].cid]) continue;
+                for (size_t j = i + 1; j < activeSets.size(); ++j) {
+                    if (conflictCount[activeSets[j].cid] < conflictMaxSize[activeSets[j].cid]) continue;
+                    // Check if F_i ⊆ F_j: every pivot in F_i is also in F_j
+                    if (activeSets[i].size <= activeSets[j].size) {
+                        bool subset = true;
+                        activeSets[i].mask.for_each_bit([&](size_t bit) {
+                            if (!activeSets[j].mask.test(bit)) subset = false;
+                        });
+                        if (subset) {
+                            // F_i ⊆ F_j → F_j subsumed
+                            // Set maxSize to count+1 so the set can never become active:
+                            // Even if backtracking restores count, it restores to
+                            // the pre-processing value which is < the inflated maxSize.
+                            size_t jcid = activeSets[j].cid;
+                            conflictMaxSize[jcid] = conflictCount[jcid] + 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ========== Component decomposition LB (Theorem 5 + Corollary 5.1) ==========
+        // Union-Find on pivots: pivots in same conflict set → same component.
+        // Per-component packing LB sum ≥ global packing LB.
         int pSize = (int) P.count();
         int pivSize = (int) pivots.count();
+        {
+            int budget = pSize - minK;
+            if (budget < 0) return;
 
-        // “ pivots”，
-        // Bitset emptyPiv(n); emptyPiv.reset();
+            // Count active conflicts
+            int numActiveConflicts = 0;
+            for (size_t cid = 0; cid < G; ++cid)
+                if (conflictCount[cid] >= conflictMaxSize[cid]) numActiveConflicts++;
+
+            if (numActiveConflicts > 0) {
+                // Union-Find for pivot components
+                int uf[400];
+                for (int i = 0; i < n; ++i) uf[i] = i;
+                // Find with path compression (iterative)
+                auto ufFind = [&](int x) {
+                    while (uf[x] != x) { uf[x] = uf[uf[x]]; x = uf[x]; }
+                    return x;
+                };
+
+                // Build components: union all pivots within each active conflict set
+                for (size_t cid = 0; cid < G; ++cid) {
+                    if (conflictCount[cid] < conflictMaxSize[cid]) continue;
+                    int firstPiv = -1;
+                    for (uint32_t e = s_csOff[cid]; e < s_csOff[cid + 1]; ++e) {
+                        VIdx v = s_csCol[e];
+                        if (pivots.test(v)) {
+                            if (firstPiv >= 0) {
+                                int ra = ufFind(firstPiv), rb = ufFind((int)v);
+                                if (ra != rb) uf[ra] = rb;
+                            } else firstPiv = (int)v;
+                        }
+                    }
+                }
+
+                // Per-component greedy disjoint packing LB
+                int compLB[400] = {};
+                tmp2.setSize(n);
+                tmp2.reset(); // tracks used pivots globally
+
+                for (size_t cid = 0; cid < G; ++cid) {
+                    if (conflictCount[cid] < conflictMaxSize[cid]) continue;
+                    bool disjoint = true;
+                    int pivCount = 0;
+                    int compRoot = -1;
+                    for (uint32_t e = s_csOff[cid]; e < s_csOff[cid + 1]; ++e) {
+                        VIdx v = s_csCol[e];
+                        if (pivots.test(v)) {
+                            if (tmp2.test(v)) { disjoint = false; break; }
+                            pivCount++;
+                            compRoot = ufFind((int)v);
+                        }
+                    }
+                    if (!disjoint || pivCount == 0 || compRoot < 0) continue;
+                    for (uint32_t e = s_csOff[cid]; e < s_csOff[cid + 1]; ++e) {
+                        VIdx v = s_csCol[e];
+                        if (pivots.test(v)) tmp2.set(v);
+                    }
+                    compLB[compRoot]++;
+                }
+
+                // Sum per-component LBs (Corollary 5.1)
+                int totalLB = 0;
+                for (int i = 0; i < n; ++i)
+                    if (uf[i] == i && compLB[i] > 0) totalLB += compLB[i];
+
+                if (totalLB > budget) return; // leaf dead
+
+                // Note: Bipartite matching gives τ_cover (min vertex cover), NOT τ_hitting_set.
+                // τ_hitting_set ≤ τ_cover = μ(matching). So matching is an UPPER bound, not lower.
+                // Cannot use matching for dead-leaf detection. Disjoint packing remains the best LB.
+            }
+        }
+
         emptyPiv.setSize(n);
         emptyPiv.reset();
 

@@ -191,7 +191,7 @@ namespace CDSet {
         std::memset(core, 0, tree.getRoot()->children.size() * sizeof(daf::Size));
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -296,7 +296,7 @@ namespace CDSet {
         daf::StaticVector<daf::Size> povitC;
         daf::StaticVector<daf::Size> keepC;
         daf::Size count = 0;
-        for (auto node: tree.getRoot()->children) {
+        for (const auto &node: tree.getRoot()->children) {
             if (node->MaxDeep < k) {
                 continue;
             }
@@ -482,7 +482,7 @@ namespace CDSet {
     }
 
     template<typename T>
-    void printEdgeCore(const Graph &edgeGraph, const std::vector<T> coreE) {
+    void printEdgeCore(const Graph &edgeGraph, const std::vector<T> &coreE) {
         printEdgeCore(edgeGraph, coreE.data());
     }
 
@@ -495,7 +495,7 @@ namespace CDSet {
         std::vector<double> leafCore(tree.adj_list.size());
         const daf::Size numLeaf = tree.adj_list.size();
         for (daf::Size i = 0; i < numLeaf; ++i) {
-            auto leaf = tree.adj_list[i];
+            const auto &leaf = tree.adj_list[i];
             // TODO: add lowerBound
             // double lowerBound = nCr[povit.size() - 2][k - 2];
 
@@ -526,7 +526,8 @@ namespace CDSet {
 
 std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecomposition(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
     auto time_start = std::chrono::high_resolution_clock::now();
     StaticCliqueIndex cliqueIndex(r);
     daf::timeCount("clique Index build",
@@ -689,7 +690,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
 #ifndef NDEBUG
             std::cout << leafId << " leaf: " << leaf << "\n leafRm: " << leafRm << std::endl;
 #endif
-            for (auto node: leaf) {
+            for (const auto &node: leaf) {
                 if (node.isPivot) {
                     povit.push_back(node.v);
                 } else {
@@ -728,7 +729,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
                     return true;
                 });
 
-                for (auto i: leaf) {
+                for (const auto &i: leaf) {
                     treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
                 }
                 tree.removeNode(leafId);
@@ -737,7 +738,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
 
                 auto initCore = [&](const std::vector<TreeGraphNode> &leaf, const daf::Size &leafId) {
                     daf::CliqueSize newPivotC = 0, newKeepC = 0;
-                    for (auto i: leaf) {
+                    for (const auto &i: leaf) {
                         if (i.isPivot) {
                             treeGraphV.addNbr(i.v, {leafId, true});
                             newPivotC++;
@@ -770,7 +771,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > NucleusCoreDecompo
                 // daf::StaticVector<daf::Size> newLeafIds;
                 auto &newLeaf = leaf;
                 auto oldLeaf = leaf;
-                for (auto leafV: leaf) {
+                for (const auto &leafV: leaf) {
                     if (leafV.isPivot) {
                         treeGraphV.removeNbr(leafV.v, {leafId, true});
                     } else {

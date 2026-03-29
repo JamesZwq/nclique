@@ -25,13 +25,13 @@ extern double nCr[1001][401];
 namespace RCliqueLocal {
 
 // Initial support counting (same as RCliqueST)
-std::vector<long long> countingPerRClique(
+std::vector<double> countingPerRClique(
     const DynamicGraph<TreeGraphNode> &treeGraph,
     const StaticCliqueIndex &cliqueIndex,
     const daf::CliqueSize r,
     const daf::CliqueSize s) {
     const daf::Size nClique = cliqueIndex.size();
-    std::vector<long long> counting(nClique, 0);
+    std::vector<double> counting(nClique, 0);
     for (const auto &leaf : treeGraph.adj_list) {
         if (leaf.size() < r) continue;
         daf::CliqueSize pivotC = 0, keepC = 0;
@@ -43,7 +43,7 @@ std::vector<long long> countingPerRClique(
         daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &rClique) {
             daf::CliqueSize subNumPovit = 0;
             for (const auto &node : rClique) if (node.isPivot) subNumPovit++;
-            long long ncrValue = (long long)(nCr[pivotC - subNumPovit][needPivot - subNumPovit] + 0.5);
+            double ncrValue = nCr[pivotC - subNumPovit][needPivot - subNumPovit];
             auto id = cliqueIndex.byClique(rClique);
             if (id < nClique) counting[id] += ncrValue;
             return true;
@@ -185,11 +185,12 @@ static long long computeRCliqueHIndex(
 // ============================================================
 // r≥3 Local H-index with exact s-clique enumeration
 // ============================================================
-std::vector<std::pair<std::vector<daf::Size>, int>>
+std::vector<std::pair<std::vector<daf::Size>, double>>
 NucleusCoreDecompositionRCliqueLocal(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV,
-    daf::CliqueSize r, daf::CliqueSize s) {
+    daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
 
     auto time_start = std::chrono::high_resolution_clock::now();
 
@@ -325,7 +326,7 @@ NucleusCoreDecompositionRCliqueLocal(
     std::cout << "time: " << elapsed << " ms" << std::endl;
 
     // Build output
-    std::vector<std::pair<std::vector<daf::Size>, int>> result;
+    std::vector<std::pair<std::vector<daf::Size>, double>> result;
     result.reserve(numCliques);
     for (daf::Size i = 0; i < numCliques; ++i) {
         auto verts = cliqueIndex.byId(i);

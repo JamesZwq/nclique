@@ -235,15 +235,16 @@ namespace CDSetRSRef {
     }
 
     template<typename T>
-    void printEdgeCore(const Graph &edgeGraph, const std::vector<T> coreE) {
+    void printEdgeCore(const Graph &edgeGraph, const std::vector<T> &coreE) {
         printEdgeCore(edgeGraph, coreE.data());
     }
 }
 
 
-std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCliqueRef(
+std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecompositionRCliqueRef(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
     auto time_start = std::chrono::high_resolution_clock::now();
     // Accumulate total time (nanoseconds) spent updating countingRClique in this function
     StaticCliqueIndex cliqueIndex(r);
@@ -264,7 +265,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                                                   tree, cliqueIndex, r, s);
                                           });
 
-    std::vector<daf::Size> coreRClique(countingRClique.size());
+    std::vector<double> coreRClique(countingRClique.size(), 0);
 #ifndef NDEBUG
     tree.printGraphPerV();
     // daf::printArray(countingKE, edgeGraph.adj_list.size());
@@ -426,9 +427,9 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 #pragma omp for schedule(dynamic, 16)
             for (daf::Size idx = 0; idx < changedLeaf.size(); ++idx) {
                 auto leafId = changedLeaf[idx];
-                const auto leaf = tree.adj_list[leafId];
+                const auto &leaf = tree.adj_list[leafId];
                 auto leafIndex = changedLeafIndex[leafId];
-                auto removedR = removedRCliqueIdForLeaf[leafIndex];
+                const auto &removedR = removedRCliqueIdForLeaf[leafIndex];
                 auto mapped = removedR | std::views::transform(
                     [&](const daf::Size id) { return cliqueIndex.byId(id); });
 
@@ -524,11 +525,11 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
         
         for (daf::Size idx = 0; idx < changedLeaf.size(); ++idx) {
             auto leafId = changedLeaf[idx];
-            const auto leaf = tree.adj_list[leafId];
+            const auto &leaf = tree.adj_list[leafId];
             LeafResult &res = leafResults[idx];
-            
+
             // 收集移除操作
-            for (auto leafV : leaf) {
+            for (const auto &leafV : leaf) {
                 toRemove[leafV.v].push_back({leafId, leafV.isPivot});
             }
             
@@ -540,7 +541,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
                 const auto &stored = tree.adj_list[newId];
                 
                 // 收集添加操作
-                for (auto i : stored) {
+                for (const auto &i : stored) {
                     toAdd[i.v].push_back({newId, i.isPivot});
                 }
                 
@@ -572,13 +573,13 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 #else
         // Sequential path when OpenMP not available
         for (auto leafId : changedLeaf) {
-            auto leaf = tree.adj_list[leafId];
+            const auto &leaf = tree.adj_list[leafId];
             auto leafIndex = changedLeafIndex[leafId];
-            for (auto leafV : leaf) {
+            for (const auto &leafV : leaf) {
                 if (leafV.isPivot) treeGraphV.removeNbr(leafV.v, {leafId, true});
                 else treeGraphV.removeNbr(leafV.v, {leafId, false});
             }
-            auto removedR = removedRCliqueIdForLeaf[leafIndex];
+            const auto &removedR = removedRCliqueIdForLeaf[leafIndex];
             auto mapped = removedR | std::views::transform(
                 [&](const daf::Size id) { return cliqueIndex.byId(id); });
             std::vector<std::vector<TreeGraphNode>> newLeavesContent;
@@ -590,7 +591,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
             for (auto &newLeaf : newLeavesContent) {
                 auto newId = tree.addNode(newLeaf);
                 const auto &stored = tree.adj_list[newId];
-                for (auto i : stored) {
+                for (const auto &i : stored) {
                     if (i.isPivot) treeGraphV.addNbr(i.v, {newId, true});
                     else treeGraphV.addNbr(i.v, {newId, false});
                 }
@@ -661,7 +662,7 @@ std::vector<std::pair<std::vector<daf::Size>, int> > NucleusCoreDecompositionRCl
 
     // ~/_/pivoter/a
     // std::sort(coreE, coreE + edgeGraph.adj_list.size());
-    std::vector<std::pair<std::vector<daf::Size>, int> > sortedK;
+    std::vector<std::pair<std::vector<daf::Size>, double> > sortedK;
     sortedK.reserve(countingRClique.size());
 
     for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {

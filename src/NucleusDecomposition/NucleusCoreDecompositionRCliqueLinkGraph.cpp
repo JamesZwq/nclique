@@ -27,13 +27,13 @@ namespace LinkGraphPeel {
 
 struct LeafCliqueEntry {
     daf::Size cliqueId;
-    long long ncrValue; // single-clique nCr contribution (for init support)
+    double ncrValue; // single-clique nCr contribution (for init support)
 };
 
 struct DualIndex {
     std::vector<std::vector<LeafCliqueEntry>> leafCliqueInfo;
     std::vector<std::vector<daf::Size>> cliqueLeafIds;
-    std::vector<long long> counting;
+    std::vector<double> counting;
 };
 
 DualIndex buildDualIndex(
@@ -63,7 +63,7 @@ DualIndex buildDualIndex(
         daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &rClique) {
             daf::CliqueSize subP = 0;
             for (const auto &node : rClique) if (node.isPivot) subP++;
-            long long ncrValue = (long long)(nCr[pivotC - subP][needPivot - subP] + 0.5);
+            double ncrValue = nCr[pivotC - subP][needPivot - subP];
             auto id = cliqueIndex.byClique(rClique);
             if (id < nClique) {
                 result.counting[id] += ncrValue;
@@ -119,17 +119,18 @@ inline long long pairwiseWeight(
     if (remainNeed < 0 || remainPivots < 0 || remainPivots < remainNeed) return 0;
     if (remainPivots >= 1001 || remainNeed >= 401) return 0;
 
-    return (long long)(nCr[remainPivots][remainNeed] + 0.5);
+    return (double)(nCr[remainPivots][remainNeed] + 0.5);
 }
 
 } // namespace LinkGraphPeel
 
 
-std::vector<std::pair<std::vector<daf::Size>, int>>
+std::vector<std::pair<std::vector<daf::Size>, double>>
 NucleusCoreDecompositionRCliqueLinkPeel(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV,
-    daf::CliqueSize r, daf::CliqueSize s) {
+    daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
 
     auto time_start = std::chrono::high_resolution_clock::now();
 
@@ -148,7 +149,7 @@ NucleusCoreDecompositionRCliqueLinkPeel(
     auto countingRClique = std::move(dualIndex.counting);
 
     const daf::Size nClique = cliqueIndex.size();
-    std::vector<daf::Size> coreRClique(nClique);
+    std::vector<double> coreRClique(nClique, 0);
 
     // Precompute per-leaf metadata (immutable — tree never changes!)
     const daf::Size numLeaves = tree.adj_list.size();
@@ -210,7 +211,7 @@ NucleusCoreDecompositionRCliqueLinkPeel(
 
     std::cout << "=========================begin (Link-Graph Peeling r>=" << (int)r << ")=========================" << std::endl;
 
-    long long minCore = 0;
+    double minCore = 0;
     long long totalIters = 0;
     long long duration_pop = 0, duration_update = 0;
 
@@ -220,7 +221,7 @@ NucleusCoreDecompositionRCliqueLinkPeel(
         while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
         if (curBucket >= (int)buckets.size()) break;
 
-        minCore = std::max((long long)curBucket, minCore);
+        minCore = std::max((double)curBucket, minCore);
 
         // Pop ONE r-clique at a time to avoid double-counting
         auto id = buckets[curBucket].back();
@@ -282,7 +283,7 @@ NucleusCoreDecompositionRCliqueLinkPeel(
                 if (remainNeed < 0 || remainPivots < 0 || remainPivots < remainNeed) continue;
                 if (remainPivots >= 1001 || remainNeed >= 401) continue;
 
-                long long w = (long long)(nCr[remainPivots][remainNeed] + 0.5);
+                long long w = (double)(nCr[remainPivots][remainNeed] + 0.5);
                 if (w <= 0) continue;
 
                 countingRClique[entry.cliqueId] -= w;
@@ -306,7 +307,7 @@ NucleusCoreDecompositionRCliqueLinkPeel(
     std::cout << "  iters=" << totalIters << std::endl;
 
     // Build output
-    std::vector<std::pair<std::vector<daf::Size>, int>> sortedK;
+    std::vector<std::pair<std::vector<daf::Size>, double>> sortedK;
     sortedK.reserve(nClique);
     for (daf::Size i = 0; i < nClique; ++i) {
         auto clique = cliqueIndex.byId(i);

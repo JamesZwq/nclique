@@ -41,6 +41,17 @@ template<typename OnLeafFn>
 size_t SDCT_Augmented_NoTree(
     Graph &edgeGraph, int max_k, int min_k, OnLeafFn &&onLeaf);
 
+// ---------------------------------------------------------------------------
+//  SDCT without tree storage (tree-free) + dual callback
+//  onLeaf called at each leaf; onVertexDone called after each top-level
+//  vertex's subtree completes (vertex is then finalized).
+//  Returns the total number of leaves emitted.
+// ---------------------------------------------------------------------------
+template<typename OnLeafFn, typename OnVertexDoneFn>
+size_t SDCT_Augmented_NoTree_Interleaved(
+    Graph &edgeGraph, int max_k, int min_k,
+    OnLeafFn &&onLeaf, OnVertexDoneFn &&onVertexDone);
+
 // Implementation is in SDCT_Augmented.cpp (template — explicit instantiation
 // is not needed because callers include this header and the .cpp is compiled
 // as part of the translation unit via the GLOB_RECURSE in CMakeLists.txt).

@@ -13,6 +13,7 @@
  */
 
 #include "../NucleusDecomposition/NCliqueCoreDecomposition.h"
+#include "dataStruct/CliqueHashMap.h"
 #include <vector>
 #include <algorithm>
 #include <atomic>
@@ -318,20 +319,21 @@ private:
 // 对外接口：与原算法兼容
 // ============================================================================
 
-std::vector<std::pair<std::vector<daf::Size>, int>> 
+std::vector<std::pair<std::vector<daf::Size>, double>> 
 NucleusCoreDecompositionNew(
     DynamicGraph<TreeGraphNode>& tree,
     const Graph& edgeGraph,
     DynamicGraphSet<TreeGraphNode>& treeGraphV,
     daf::CliqueSize r,
-    daf::CliqueSize s) {
+    daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
     
     // 使用新算法
     NucleusNew::BatchPeelingAlgorithm algo(16); // 16 threads
     auto cores = algo.compute(tree, edgeGraph, r, s);
     
     // 转换输出格式（与原算法兼容）
-    std::vector<std::pair<std::vector<daf::Size>, int>> result;
+    std::vector<std::pair<std::vector<daf::Size>, double>> result;
     
     // TODO: 转换格式
     

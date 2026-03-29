@@ -9,6 +9,7 @@
 // 5. Optimized Data Structures：使用flat arrays替代复杂结构
 
 #include "../NucleusDecomposition/NCliqueCoreDecomposition.h"
+#include "dataStruct/CliqueHashMap.h"
 #include "BK/BronKerboschRmRClique.hpp"
 #include <boost/heap/d_ary_heap.hpp>
 #include <vector>
@@ -445,13 +446,14 @@ void applySupportUpdatesLockFree(
 // 主算法
 // ============================================================================
 
-std::vector<std::pair<std::vector<daf::Size>, int>> 
+std::vector<std::pair<std::vector<daf::Size>, double>> 
 NucleusCoreDecompositionUltraParallel(
     DynamicGraph<TreeGraphNode> &tree,
     const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV,
     daf::CliqueSize r,
-    daf::CliqueSize s) {
+    daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
     
     auto timeStart = std::chrono::high_resolution_clock::now();
     
@@ -642,7 +644,7 @@ NucleusCoreDecompositionUltraParallel(
     std::cout << "Total time: " << totalTime << " ms" << std::endl;
     
     // Step 5: 构造返回结果
-    std::vector<std::pair<std::vector<daf::Size>, int>> result;
+    std::vector<std::pair<std::vector<daf::Size>, double>> result;
     result.reserve(nClique);
     
     for (daf::Size i = 0; i < nClique; ++i) {

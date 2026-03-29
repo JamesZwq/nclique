@@ -146,6 +146,7 @@ void NCliqueVertexCoreDecomposition_ST_V2_InterleavedProbe(
     // Count vertices peelable at minimum core level
     // Sort by final support to simulate peeling
     std::vector<std::pair<double, daf::Size>> supportOrder;
+    supportOrder.reserve(numVertices);
     for (daf::Size v = 0; v < numVertices; ++v) {
         if (vinfo[v].finalSupport > 0)
             supportOrder.push_back({vinfo[v].finalSupport, v});

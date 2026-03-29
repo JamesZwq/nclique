@@ -10,6 +10,7 @@
  */
 
 #include "../NucleusDecomposition/NCliqueCoreDecomposition.h"
+#include "dataStruct/CliqueHashMap.h"
 #include <boost/heap/d_ary_heap.hpp>
 #include <vector>
 #include <algorithm>
@@ -98,13 +99,14 @@ private:
 // 主算法
 // ============================================================================
 
-std::vector<std::pair<std::vector<daf::Size>, int>> 
+std::vector<std::pair<std::vector<daf::Size>, double>> 
 NucleusCoreDecompositionOptimized(
     DynamicGraph<TreeGraphNode>& tree,
     const Graph& edgeGraph,
     DynamicGraphSet<TreeGraphNode>& treeGraphV,
     daf::CliqueSize r,
     daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex,
     int numThreads = 16) {
     
     std::cout << "\n========================================" << std::endl;
@@ -256,7 +258,7 @@ NucleusCoreDecompositionOptimized(
               << " ms" << std::endl;
     
     // 转换输出格式
-    std::vector<std::pair<std::vector<daf::Size>, int>> result;
+    std::vector<std::pair<std::vector<daf::Size>, double>> result;
     result.reserve(nCliques);
     
     for (size_t i = 0; i < nCliques; ++i) {

@@ -9,7 +9,7 @@
 
 // 声明新算法
 namespace OptimizedNucleus {
-std::vector<std::pair<std::vector<daf::Size>, int>> 
+std::vector<std::pair<std::vector<daf::Size>, double>> 
 NucleusCoreDecompositionOptimized(
     DynamicGraph<TreeGraphNode>& tree,
     const Graph& edgeGraph,

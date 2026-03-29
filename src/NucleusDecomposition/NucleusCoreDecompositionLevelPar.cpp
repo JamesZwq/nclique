@@ -2,6 +2,7 @@
 // 核心思想：一次性并行处理所有相同 support 值的 r-cliques
 
 #include "../NucleusDecomposition/NCliqueCoreDecomposition.h"
+#include "dataStruct/CliqueHashMap.h"
 #include "BK/BronKerboschRmRClique.hpp"
 #include <vector>
 #include <algorithm>
@@ -16,9 +17,10 @@ extern double nCr[1001][401];
 
 namespace LevelParallel {
 
-std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCliqueLevelPar(
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRCliqueLevelPar(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s) {
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
     
     auto time_start = std::chrono::high_resolution_clock::now();
     
@@ -222,9 +224,9 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
 #pragma omp for schedule(dynamic, 16)
             for (daf::Size idx = 0; idx < changedLeaf.size(); ++idx) {
                 auto leafId = changedLeaf[idx];
-                const auto leaf = tree.adj_list[leafId];
+                const auto &leaf = tree.adj_list[leafId];
                 auto leafIndex = changedLeafIndex[leafId];
-                auto removedR = removedRCliqueIdForLeaf[leafIndex];
+                const auto &removedR = removedRCliqueIdForLeaf[leafIndex];
                 
                 // 计算 decrements
                 for (auto rmId : removedR) {
@@ -316,7 +318,7 @@ std::vector<std::pair<std::vector<daf::Size>, int>> NucleusCoreDecompositionRCli
     std::cout << "Total iterations: " << iterationCount << std::endl;
     
     // Step 4: 构造返回结果
-    std::vector<std::pair<std::vector<daf::Size>, int>> result;
+    std::vector<std::pair<std::vector<daf::Size>, double>> result;
     result.reserve(nClique);
     for (daf::Size i = 0; i < nClique; ++i) {
         auto clique = cliqueIndex.byId(i);

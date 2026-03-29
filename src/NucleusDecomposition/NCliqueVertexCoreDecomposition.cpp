@@ -405,8 +405,8 @@ namespace VCD {
         leafCore.c_size = tree.adj_list.size() * 1.5;
         const daf::Size numLeaf = tree.adj_list.size();
         for (daf::Size i = 0; i < numLeaf; ++i) {
-            auto leaf = tree.adj_list[i];
-            for (auto node : leaf) {
+            const auto &leaf = tree.adj_list[i];
+            for (const auto &node : leaf) {
                 if (!node.isPivot) {
                     leafCore[i] = edgeGraph.coreV[node.v];
                     break;
@@ -522,7 +522,7 @@ double *  NCliqueVertexCoreDecomposition(
         // for (auto leafId : removedLeaf) {
         for (auto leafIdIdx = 0; leafIdIdx < removedLeaf.size(); ++leafIdIdx) {
             auto leafId = removedLeaf[leafIdIdx];
-            auto leaf = tree.adj_list[leafId];
+            const auto &leaf = tree.adj_list[leafId];
             // std::cout << "leafId: " << leafId << " leaf: " << leaf << std::endl;
             VCD::LeafRmInfo &leafRm = leafRmInfo[leafId];
             if (leaf.empty()) {
@@ -539,7 +539,7 @@ double *  NCliqueVertexCoreDecomposition(
 #ifndef NDEBUG
             std::cout << leafId << " leaf: " << leaf << "\n leafRm: " << leafRm << std::endl;
 #endif
-            for (auto node: leaf) {
+            for (const auto &node: leaf) {
                 if (node.isPivot) {
                     povit.push_back(node.v);
                 } else {
@@ -585,7 +585,7 @@ double *  NCliqueVertexCoreDecomposition(
                         }
                     }
                 }
-                for (auto i: leaf) {
+                for (const auto &i: leaf) {
                     treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
                 }
                 tree.removeNode(leafId);
