@@ -76,7 +76,6 @@ double * NCliqueVertexCoreDecomposition_ST(
     }
 
     // --- H3: Build flat CSR vertex→leaf index (replaces treeGraphV hash set iteration) ---
-    // TreeGraphNode is 8B (63-bit v + 1-bit isPivot). Store as compact pair<Size,uint8_t>.
     const daf::Size numVertices = edgeGraph.adj_list_offsets.size() - 1;
     struct VLeafEntry { daf::Size leafId; uint8_t isPivot; };
     std::vector<daf::Size> vtxLeafOff(numVertices + 2, 0); // CSR offsets
@@ -129,11 +128,6 @@ double * NCliqueVertexCoreDecomposition_ST(
         remainingInHeap++;
     }
 
-    auto bucketMove = [&](daf::Size id) {
-        if (!vertexInHeap[id]) return;
-        pq.update(pqHandles[id]);
-    };
-
     // --- Per-leaf batch tracking (reused each iteration) ---
     // leafRemovedPivots[L] = how many pivots removed this round
     // leafDies[L] = 1 if any keepC removed this round
@@ -142,11 +136,6 @@ double * NCliqueVertexCoreDecomposition_ST(
     std::vector<uint8_t> leafAffected(numLeaves, 0);
     std::vector<daf::Size> affectedLeaves;
     affectedLeaves.reserve(4096);
-
-    // Dirty vertex tracking for deferred bucket moves
-    std::vector<uint8_t> dirtyMark(numVertices, 0);
-    std::vector<daf::Size> dirtyVertices;
-    dirtyVertices.reserve(8192);
 
     daf::StaticVector<daf::Size> currentRemoveVertexIds(numVertices);
 
@@ -161,14 +150,7 @@ double * NCliqueVertexCoreDecomposition_ST(
         if (pq.empty()) break;
 
         minCore = std::max(countingV[pq.top()], minCore);
-        // Dump all support values at critical levels
-        if (minCore >= 315 && minCore <= 321) {
-            fprintf(stderr, "ST_DUMP minCore=%.0f remaining=%u:", minCore, remainingInHeap);
-            for (daf::Size i = 0; i < numVertices; ++i)
-                if (vertexInHeap[i]) fprintf(stderr, " %u:%.0f", i, countingV[i]);
-            fprintf(stderr, "\n");
-        }
-        while (!pq.empty() && countingV[pq.top()] <= minCore) {
+while (!pq.empty() && countingV[pq.top()] <= minCore) {
             auto id = pq.top(); pq.pop();
             if (!vertexInHeap[id]) continue;
             vertexInHeap[id] = 0;
@@ -225,32 +207,17 @@ double * NCliqueVertexCoreDecomposition_ST(
                 if (!vertexInHeap[node.v]) continue;
                 double delta = node.isPivot ? deltaPivot : deltaKeep;
                 if (delta > 0) {
-                    if (node.v == 276 && minCore >= 318) {
-                        fprintf(stderr, "  ST v276: leaf=%u delta=%.1f old=%.1f isPivot=%d old_rp=%d new_rp=%d np=%d dies=%d\n",
-                                leafId, delta, countingV[276], (int)node.isPivot,
-                                leafRemainPivots[leafId] + leafRemovedPivots[leafId],
-                                leafRemainPivots[leafId] + leafRemovedPivots[leafId] - leafRemovedPivots[leafId],
-                                leafNeedPivot[leafId], dies ? 1 : 0);
-                    }
                     countingV[node.v] -= delta;
-                    countingV[node.v] = std::max(std::round(countingV[node.v]), 0.0);
-                    if (!dirtyMark[node.v]) {
-                        dirtyMark[node.v] = 1;
-                        dirtyVertices.push_back(node.v);
-                    }
+                    if (countingV[node.v] < 0) countingV[node.v] = 0;
+                    pq.update(pqHandles[node.v]);
                 }
             }
 
             leafRemainPivots[leafId] = new_rp;
-            if (dies) leafAlive[leafId] = 0;
+            if (dies) {
+                leafAlive[leafId] = 0;
+            }
         }
-
-        // --- Batch bucket moves ---
-        for (auto v : dirtyVertices) {
-            if (vertexInHeap[v]) bucketMove(v);
-            dirtyMark[v] = 0;
-        }
-        dirtyVertices.clear();
 
         // --- Cleanup ---
         for (auto leafId : affectedLeaves) {

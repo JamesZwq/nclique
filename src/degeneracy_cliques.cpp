@@ -357,14 +357,6 @@ static void runR1Variant(
         auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
         checkDist(buildCoreDistFromArray(refV, numVertices),
                   buildCoreDistFromArray(coreV, numVertices), name);
-        // Debug: print first mismatched vertices
-        int mismatchCount = 0;
-        for (daf::Size i = 0; i < numVertices && mismatchCount < 20; ++i) {
-            if (std::round(refV[i]) != std::round(coreV[i])) {
-                fprintf(stderr, "  v=%u ref_core=%.0f test_core=%.0f\n", i, refV[i], coreV[i]);
-                mismatchCount++;
-            }
-        }
         delete[] refV;
     }
     delete[] coreV;

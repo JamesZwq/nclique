@@ -369,7 +369,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                 countingKE[idx] -= w;
                 countingKE[idx] = std::max(std::round(countingKE[idx]), 0.0);
                 if (edgeInHeap[idx])
-                    markDirty(idx);
+                    pq.update(pqHandles[idx]);
             };
 
             for (int leafIdIdx = 0; leafIdIdx < (int)removedLeaf.size(); ++leafIdIdx) {
@@ -604,7 +604,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                 auto idx = edgeGraph.getEdgeCompressedId(u, v);
                 countingKE[idx] = std::round(countingKE[idx] + w);
                 if (edgeInHeap[idx])
-                    markDirty(idx);
+                    pq.update(pqHandles[idx]);
             };
 
             // Remove old leaf from treeGraphV
@@ -790,7 +790,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
                 countingKE[idx] -= w;
                 countingKE[idx] = std::max(std::round(countingKE[idx]), 0.0);
                 if (edgeInHeap[idx])
-                    markDirty(idx);
+                    pq.update(pqHandles[idx]);
             };
             if (needPivot <= povit.size()) {
                 double w = nCr[povit.size()][needPivot];

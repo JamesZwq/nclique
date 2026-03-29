@@ -482,12 +482,6 @@ double *  NCliqueVertexCoreDecomposition(
     while (!heap.empty()) {
 
         minCore = std::max( countingV[heap.top()], minCore );
-        if (minCore >= 315 && minCore <= 321) {
-            fprintf(stderr, "REF_DUMP minCore=%.0f:", minCore);
-            for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size()-1; ++i)
-                if (vertexInHeap[i]) fprintf(stderr, " %u:%.0f", i, countingV[i]);
-            fprintf(stderr, "\n");
-        }
 
         // std::cout << "minCore: " << minCore
         // << " heap size: " << heap.size()
@@ -574,6 +568,9 @@ double *  NCliqueVertexCoreDecomposition(
 
                 auto keepValue = nCr[povit.size()][needPivot];
                 for (int i = 0; i < keepC.size(); ++i) {
+                    if (keepC[i] == 87 && getenv("PIVOTER_TRACE_V87"))
+                        fprintf(stderr, "REF v87 DEAD-KEEP: leaf=%u delta=%.0f old=%.0f P=%zu np=%zu\n",
+                                leafId, keepValue, countingV[87], povit.size(), needPivot);
                     countingV[keepC[i]] -= keepValue;
                     countingV[keepC[i]] = std::max(std::round(countingV[keepC[i]]), 0.0);
                     if (vertexInHeap[keepC[i]]) {
@@ -584,6 +581,9 @@ double *  NCliqueVertexCoreDecomposition(
                 if (needPivot > 0) {
                     auto pivotValue = nCr[povit.size() - 1][needPivot - 1];
                     for (int i = 0; i < povit.size(); ++i) {
+                        if (povit[i] == 87 && getenv("PIVOTER_TRACE_V87"))
+                            fprintf(stderr, "REF v87 DEAD-PIVOT: leaf=%u delta=%.0f old=%.0f P=%zu np=%zu\n",
+                                    leafId, pivotValue, countingV[87], povit.size(), needPivot);
                         countingV[povit[i]] -= pivotValue;
                         countingV[povit[i]] = std::max(std::round(countingV[povit[i]]), 0.0);
                         if (vertexInHeap[povit[i]]) {
@@ -620,11 +620,15 @@ double *  NCliqueVertexCoreDecomposition(
 
                     for (auto v : newLeaf) {
                         if (v.isPivot) {
-                            // check(countingV[v.v], PivotCount);
+                            if (v.v == 87 && getenv("PIVOTER_TRACE_V87"))
+                                fprintf(stderr, "REF v87 ALIVE-PIVOT: leaf=%u delta=%.0f old=%.0f P=%zu np=%zu rmPiv=%zu\n",
+                                        leafId, PivotCount, countingV[87], povit.size(), needPivot, leafRm.removedPivots.size());
                             countingV[v.v] -= PivotCount;
                             countingV[v.v] = std::max(std::round(countingV[v.v]), 0.0);
                         } else {
-                            // check(countingV[v.v], KeepCount);
+                            if (v.v == 87 && getenv("PIVOTER_TRACE_V87"))
+                                fprintf(stderr, "REF v87 ALIVE-KEEP: leaf=%u delta=%.0f old=%.0f P=%zu np=%zu rmPiv=%zu\n",
+                                        leafId, KeepCount, countingV[87], povit.size(), needPivot, leafRm.removedPivots.size());
                             countingV[v.v] -= KeepCount;
                             countingV[v.v] = std::max(std::round(countingV[v.v]), 0.0);
                         }
