@@ -247,88 +247,28 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
 
     double currCore = 0;
 
-    // --- Hybrid Bucket + d-ary heap overflow ---
+    // --- Pure d-ary heap PQ (same as REF) ---
     const daf::Size numEdges = edgeGraph.adj_list.size();
-    int maxBucket = 0;
-    for (daf::Size i = 0; i < numEdges; ++i) {
-        if (countingKE[i] > 0 && countingKE[i] <= 5e6)
-            maxBucket = std::max(maxBucket, (int)countingKE[i]);
-    }
-    std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
-    std::vector<int> bucket_of(numEdges, -1);  // -1 = in overflow heap
-    std::vector<daf::Size> pos_in_bucket(numEdges);
-
-    // Overflow: boost d-ary heap (mutable, min-heap by countingKE)
     struct CmpEdge {
         const double *cnt;
         bool operator()(daf::Size a, daf::Size b) const { return cnt[a] > cnt[b]; }
     };
-    using OverflowHeap = boost::heap::d_ary_heap<daf::Size, boost::heap::arity<8>,
+    using EdgeHeap = boost::heap::d_ary_heap<daf::Size, boost::heap::arity<8>,
         boost::heap::mutable_<true>, boost::heap::compare<CmpEdge>>;
-    OverflowHeap overflowHeap{CmpEdge{countingKE}};
-    std::vector<OverflowHeap::handle_type> overflowHandles(numEdges);
-    std::vector<uint8_t> inOverflow(numEdges, 0);
+    EdgeHeap pq{CmpEdge{countingKE}};
+    pq.reserve(numEdges);
+    std::vector<EdgeHeap::handle_type> pqHandles(numEdges);
 
     daf::Size remainingInHeap = 0;
-    long long overflowCount = 0;
     for (daf::Size i = 0; i < numEdges; ++i) {
         if (countingKE[i] == 0) { edgeInHeap[i] = 0; continue; }
-        if (countingKE[i] <= 5e6) {
-            int b = (int)countingKE[i];
-            bucket_of[i] = b; pos_in_bucket[i] = buckets[b].size();
-            buckets[b].push_back(i);
-        } else {
-            overflowHandles[i] = overflowHeap.push(i);
-            inOverflow[i] = 1;
-            overflowCount++;
-        }
+        pqHandles[i] = pq.push(i);
         remainingInHeap++;
     }
-    if (overflowCount > 0) printf("DCLP overflow: %lld edges in overflow heap\n", overflowCount);
-    int curBucket = 0;
 
     auto bucketMove = [&](daf::Size id) {
         if (!edgeInHeap[id]) return;
-        double val = std::max(0.0, countingKE[id]);
-        int oldB = bucket_of[id];
-        // Remove from old location
-        if (oldB == -1 && inOverflow[id]) {
-            // Was in overflow heap — just update priority (heap sees countingKE directly)
-            overflowHeap.update(overflowHandles[id]);
-            // Check if it dropped into bucket range
-            if (val <= 5e6) {
-                overflowHeap.erase(overflowHandles[id]);
-                inOverflow[id] = 0;
-                int newB = (int)val;
-                bucket_of[id] = newB; pos_in_bucket[id] = buckets[newB].size();
-                buckets[newB].push_back(id); if (newB < curBucket) curBucket = newB;
-            }
-            return;
-        }
-        if (val <= 5e6) {
-            int newB = (int)val;
-            if (oldB == newB) return;
-            if (oldB >= 0) {
-                auto &v = buckets[oldB]; auto p = pos_in_bucket[id];
-                if (p < v.size()-1) { auto l=v.back(); v[p]=l; pos_in_bucket[l]=p; }
-                v.pop_back();
-            }
-            bucket_of[id] = newB; pos_in_bucket[id] = buckets[newB].size();
-            buckets[newB].push_back(id); if (newB < curBucket) curBucket = newB;
-        } else {
-            if (oldB >= 0) {
-                auto &v = buckets[oldB]; auto p = pos_in_bucket[id];
-                if (p < v.size()-1) { auto l=v.back(); v[p]=l; pos_in_bucket[l]=p; }
-                v.pop_back();
-            }
-            if (!inOverflow[id]) {
-                overflowHandles[id] = overflowHeap.push(id);
-                inOverflow[id] = 1;
-            } else {
-                overflowHeap.update(overflowHandles[id]);
-            }
-            bucket_of[id] = -1;
-        }
+        pq.update(pqHandles[id]);
     };
 
     // --- deltaAccum: dirty edge tracking ---
@@ -360,64 +300,19 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
     long long cntB_closedForm = 0, cntB_bk = 0;
 
     while (remainingInHeap > 0) {
-        // --- Drain overflow heap → buckets ---
-        while (!overflowHeap.empty()) {
-            daf::Size oid = overflowHeap.top();
-            if (!edgeInHeap[oid]) { overflowHeap.pop(); inOverflow[oid]=0; continue; }
-            if (countingKE[oid] <= 5e6) {
-                overflowHeap.pop(); inOverflow[oid]=0;
-                int b = std::max(0, (int)countingKE[oid]); bucket_of[oid]=b;
-                pos_in_bucket[oid]=buckets[b].size(); buckets[b].push_back(oid);
-            } else break;
-        }
+        // --- Heap pop: batch all edges at current min level ---
+        while (!pq.empty() && !edgeInHeap[pq.top()]) pq.pop();
+        if (pq.empty()) break;
 
-        // --- Bucket pop ---
-        while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
-        if (curBucket >= (int)buckets.size()) {
-            // Process overflow heap
-            if (!overflowHeap.empty()) {
-                while (!overflowHeap.empty()) {
-                    daf::Size oid = overflowHeap.top();
-                    overflowHeap.pop(); inOverflow[oid]=0;
-                    if (!edgeInHeap[oid]) continue;
-                    minCore = std::max(countingKE[oid], minCore);
-                    edgeInHeap[oid] = 0; currentRemoveEdgeIds.push_back(oid);
-                    coreE[oid] = minCore; remainingInHeap--;
-                    while (!overflowHeap.empty()) {
-                        daf::Size nid = overflowHeap.top();
-                        if (!edgeInHeap[nid]) { overflowHeap.pop(); inOverflow[nid]=0; continue; }
-                        if (countingKE[nid] <= minCore) {
-                            overflowHeap.pop(); inOverflow[nid]=0;
-                            edgeInHeap[nid]=0; currentRemoveEdgeIds.push_back(nid);
-                            coreE[nid]=minCore; remainingInHeap--;
-                        } else break;
-                    }
-                    break;
-                }
-                if (currentRemoveEdgeIds.empty()) break;
-                goto dclp_pop_done;
-            }
-            break;
+        minCore = std::max(countingKE[pq.top()], minCore);
+        while (!pq.empty() && countingKE[pq.top()] <= minCore) {
+            auto id = pq.top(); pq.pop();
+            if (!edgeInHeap[id]) continue;
+            edgeInHeap[id] = 0;
+            currentRemoveEdgeIds.push_back(id);
+            coreE[id] = minCore;
+            remainingInHeap--;
         }
-
-        minCore = std::max((double)curBucket, minCore);
-
-        while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
-               && curBucket <= (int)minCore) {
-            while (!buckets[curBucket].empty()) {
-                auto id = buckets[curBucket].back();
-                buckets[curBucket].pop_back();
-                edgeInHeap[id] = 0;
-                currentRemoveEdgeIds.push_back(id);
-                coreE[id] = minCore;
-                remainingInHeap--;
-            }
-            if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
-                && (curBucket + 1) <= (int)minCore) {
-                curBucket++;
-            } else break;
-        }
-        dclp_pop_done:
 
         currCore = minCore;
 
