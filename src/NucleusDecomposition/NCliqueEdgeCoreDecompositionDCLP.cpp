@@ -21,6 +21,7 @@
 #include <chrono>
 #include <algorithm>
 #include <set>
+#include <boost/heap/d_ary_heap.hpp>
 
 #include "../BK/BronKerboschRmEdge.hpp"
 #include "graph/DynamicGraphSet.h"
@@ -246,7 +247,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
 
     double currCore = 0;
 
-    // --- Hybrid Bucket + overflow set ---
+    // --- Hybrid Bucket + d-ary heap overflow ---
     const daf::Size numEdges = edgeGraph.adj_list.size();
     int maxBucket = 0;
     for (daf::Size i = 0; i < numEdges; ++i) {
@@ -254,10 +255,20 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
             maxBucket = std::max(maxBucket, (int)countingKE[i]);
     }
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
-    std::set<std::pair<double, daf::Size>> overflowSet;
-    std::vector<int> bucket_of(numEdges, -1);
+    std::vector<int> bucket_of(numEdges, -1);  // -1 = in overflow heap
     std::vector<daf::Size> pos_in_bucket(numEdges);
-    std::vector<double> overflowStored(numEdges, -1);
+
+    // Overflow: boost d-ary heap (mutable, min-heap by countingKE)
+    struct CmpEdge {
+        const double *cnt;
+        bool operator()(daf::Size a, daf::Size b) const { return cnt[a] > cnt[b]; }
+    };
+    using OverflowHeap = boost::heap::d_ary_heap<daf::Size, boost::heap::arity<8>,
+        boost::heap::mutable_<true>, boost::heap::compare<CmpEdge>>;
+    OverflowHeap overflowHeap{CmpEdge{countingKE}};
+    std::vector<OverflowHeap::handle_type> overflowHandles(numEdges);
+    std::vector<uint8_t> inOverflow(numEdges, 0);
+
     daf::Size remainingInHeap = 0;
     long long overflowCount = 0;
     for (daf::Size i = 0; i < numEdges; ++i) {
@@ -267,23 +278,36 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
             bucket_of[i] = b; pos_in_bucket[i] = buckets[b].size();
             buckets[b].push_back(i);
         } else {
-            overflowSet.insert({(double)countingKE[i], i});
+            overflowHandles[i] = overflowHeap.push(i);
+            inOverflow[i] = 1;
             overflowCount++;
-            overflowStored[i] = (double)countingKE[i];
         }
         remainingInHeap++;
     }
-    if (overflowCount > 0) printf("DCLP overflow: %lld edges in overflow set\n", overflowCount);
+    if (overflowCount > 0) printf("DCLP overflow: %lld edges in overflow heap\n", overflowCount);
     int curBucket = 0;
 
     auto bucketMove = [&](daf::Size id) {
         if (!edgeInHeap[id]) return;
-        double val = std::max(0.0, (double)countingKE[id]);
+        double val = std::max(0.0, countingKE[id]);
         int oldB = bucket_of[id];
-        if (oldB == -1) overflowSet.erase({overflowStored[id], id});
+        // Remove from old location
+        if (oldB == -1 && inOverflow[id]) {
+            // Was in overflow heap — just update priority (heap sees countingKE directly)
+            overflowHeap.update(overflowHandles[id]);
+            // Check if it dropped into bucket range
+            if (val <= 5e6) {
+                overflowHeap.erase(overflowHandles[id]);
+                inOverflow[id] = 0;
+                int newB = (int)val;
+                bucket_of[id] = newB; pos_in_bucket[id] = buckets[newB].size();
+                buckets[newB].push_back(id); if (newB < curBucket) curBucket = newB;
+            }
+            return;
+        }
         if (val <= 5e6) {
             int newB = (int)val;
-            if (oldB >= 0 && newB == oldB) return;
+            if (oldB == newB) return;
             if (oldB >= 0) {
                 auto &v = buckets[oldB]; auto p = pos_in_bucket[id];
                 if (p < v.size()-1) { auto l=v.back(); v[p]=l; pos_in_bucket[l]=p; }
@@ -294,12 +318,18 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
         } else {
             if (oldB >= 0) {
                 auto &v = buckets[oldB]; auto p = pos_in_bucket[id];
-                if (p < v.size()) { if (p<v.size()-1){auto l=v.back();v[p]=l;pos_in_bucket[l]=p;} v.pop_back(); }
+                if (p < v.size()-1) { auto l=v.back(); v[p]=l; pos_in_bucket[l]=p; }
+                v.pop_back();
             }
-            overflowSet.insert({val, id}); overflowStored[id] = val; bucket_of[id] = -1;
+            if (!inOverflow[id]) {
+                overflowHandles[id] = overflowHeap.push(id);
+                inOverflow[id] = 1;
+            } else {
+                overflowHeap.update(overflowHandles[id]);
+            }
+            bucket_of[id] = -1;
         }
     };
-    // (old bucketMove body removed — replaced by hybrid bucket+overflow above)
 
     // --- deltaAccum: dirty edge tracking ---
     std::vector<uint8_t> edgeDirty(numEdges, 0);
@@ -330,13 +360,13 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
     long long cntB_closedForm = 0, cntB_bk = 0;
 
     while (remainingInHeap > 0) {
-        // --- Drain overflow → buckets ---
-        while (!overflowSet.empty()) {
-            daf::Size oid = overflowSet.begin()->second;
-            if (!edgeInHeap[oid]) { overflowSet.erase(overflowSet.begin()); continue; }
-            if ((double)countingKE[oid] <= 5e6) {
-                overflowSet.erase(overflowSet.begin());
-                int b = (int)countingKE[oid]; bucket_of[oid]=b;
+        // --- Drain overflow heap → buckets ---
+        while (!overflowHeap.empty()) {
+            daf::Size oid = overflowHeap.top();
+            if (!edgeInHeap[oid]) { overflowHeap.pop(); inOverflow[oid]=0; continue; }
+            if (countingKE[oid] <= 5e6) {
+                overflowHeap.pop(); inOverflow[oid]=0;
+                int b = std::max(0, (int)countingKE[oid]); bucket_of[oid]=b;
                 pos_in_bucket[oid]=buckets[b].size(); buckets[b].push_back(oid);
             } else break;
         }
@@ -344,20 +374,20 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
         // --- Bucket pop ---
         while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
         if (curBucket >= (int)buckets.size()) {
-            // Process overflow set
-            if (!overflowSet.empty()) {
-                while (!overflowSet.empty()) {
-                    daf::Size oid = overflowSet.begin()->second;
-                    overflowSet.erase(overflowSet.begin());
+            // Process overflow heap
+            if (!overflowHeap.empty()) {
+                while (!overflowHeap.empty()) {
+                    daf::Size oid = overflowHeap.top();
+                    overflowHeap.pop(); inOverflow[oid]=0;
                     if (!edgeInHeap[oid]) continue;
-                    minCore = std::max((double)countingKE[oid], minCore);
+                    minCore = std::max(countingKE[oid], minCore);
                     edgeInHeap[oid] = 0; currentRemoveEdgeIds.push_back(oid);
                     coreE[oid] = minCore; remainingInHeap--;
-                    while (!overflowSet.empty()) {
-                        daf::Size nid = overflowSet.begin()->second;
-                        if (!edgeInHeap[nid]) { overflowSet.erase(overflowSet.begin()); continue; }
-                        if ((double)countingKE[nid] <= minCore) {
-                            overflowSet.erase(overflowSet.begin());
+                    while (!overflowHeap.empty()) {
+                        daf::Size nid = overflowHeap.top();
+                        if (!edgeInHeap[nid]) { overflowHeap.pop(); inOverflow[nid]=0; continue; }
+                        if (countingKE[nid] <= minCore) {
+                            overflowHeap.pop(); inOverflow[nid]=0;
                             edgeInHeap[nid]=0; currentRemoveEdgeIds.push_back(nid);
                             coreE[nid]=minCore; remainingInHeap--;
                         } else break;
