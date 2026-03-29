@@ -46,8 +46,6 @@ namespace VCD_ST {
         }
         povit.free();
         keepC.free();
-        for (daf::Size i = 0; i < n; ++i)
-            countingV[i] = std::round(countingV[i]);
         return countingV;
     }
 }

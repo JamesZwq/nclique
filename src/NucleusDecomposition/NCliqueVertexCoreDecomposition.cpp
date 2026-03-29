@@ -334,8 +334,6 @@ namespace VCD {
         }
         povit.free();
         keepC.free();
-        for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size(); ++i)
-            countingV[i] = std::round(countingV[i]);
         return countingV;
     }
 
@@ -572,7 +570,7 @@ double *  NCliqueVertexCoreDecomposition(
                         fprintf(stderr, "REF v87 DEAD-KEEP: leaf=%u delta=%.0f old=%.0f P=%zu np=%zu\n",
                                 leafId, keepValue, countingV[87], povit.size(), needPivot);
                     countingV[keepC[i]] -= keepValue;
-                    countingV[keepC[i]] = std::max(std::round(countingV[keepC[i]]), 0.0);
+                    countingV[keepC[i]] = std::max(countingV[keepC[i]], 0.0);
                     if (vertexInHeap[keepC[i]]) {
                         heap.update(heapHandles[keepC[i]]);
                     }
@@ -585,7 +583,7 @@ double *  NCliqueVertexCoreDecomposition(
                             fprintf(stderr, "REF v87 DEAD-PIVOT: leaf=%u delta=%.0f old=%.0f P=%zu np=%zu\n",
                                     leafId, pivotValue, countingV[87], povit.size(), needPivot);
                         countingV[povit[i]] -= pivotValue;
-                        countingV[povit[i]] = std::max(std::round(countingV[povit[i]]), 0.0);
+                        countingV[povit[i]] = std::max(countingV[povit[i]], 0.0);
                         if (vertexInHeap[povit[i]]) {
                             heap.update(heapHandles[povit[i]]);
                         }
@@ -611,7 +609,7 @@ double *  NCliqueVertexCoreDecomposition(
                     for (auto removedPivot : leafRm.removedPivots) {
                         // check(countingV[removedPivot], RemovedPivot);
                         countingV[removedPivot] -= RemovedPivot;
-                        countingV[removedPivot] = std::max(std::round(countingV[removedPivot]), 0.0);
+                        countingV[removedPivot] = std::max(countingV[removedPivot], 0.0);
                         if (vertexInHeap[removedPivot]) {
                             heap.update(heapHandles[removedPivot]);
                         }
@@ -624,13 +622,13 @@ double *  NCliqueVertexCoreDecomposition(
                                 fprintf(stderr, "REF v87 ALIVE-PIVOT: leaf=%u delta=%.0f old=%.0f P=%zu np=%zu rmPiv=%zu\n",
                                         leafId, PivotCount, countingV[87], povit.size(), needPivot, leafRm.removedPivots.size());
                             countingV[v.v] -= PivotCount;
-                            countingV[v.v] = std::max(std::round(countingV[v.v]), 0.0);
+                            countingV[v.v] = std::max(countingV[v.v], 0.0);
                         } else {
                             if (v.v == 87 && getenv("PIVOTER_TRACE_V87"))
                                 fprintf(stderr, "REF v87 ALIVE-KEEP: leaf=%u delta=%.0f old=%.0f P=%zu np=%zu rmPiv=%zu\n",
                                         leafId, KeepCount, countingV[87], povit.size(), needPivot, leafRm.removedPivots.size());
                             countingV[v.v] -= KeepCount;
-                            countingV[v.v] = std::max(std::round(countingV[v.v]), 0.0);
+                            countingV[v.v] = std::max(countingV[v.v], 0.0);
                         }
                         if (vertexInHeap[v.v]) {
                             heap.update(heapHandles[v.v]);

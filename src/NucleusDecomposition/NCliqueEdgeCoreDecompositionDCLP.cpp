@@ -196,8 +196,6 @@ namespace DCLP {
         }
         tPovit.free(); tKeepC.free();
 
-        for (daf::Size i = 0; i < numEdges; ++i)
-            countingE[i] = std::round(countingE[i]);
 
         return {countingE,
                 std::move(leafEdgeOff), std::move(leafEdgeData),
@@ -367,7 +365,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
 
             auto directSub = [&](daf::Size idx, double w) {
                 countingKE[idx] -= w;
-                countingKE[idx] = std::max(std::round(countingKE[idx]), 0.0);
+                if (countingKE[idx] < 0) countingKE[idx] = 0;
                 if (edgeInHeap[idx])
                     pq.update(pqHandles[idx]);
             };
@@ -602,7 +600,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
 
             auto addW = [&](daf::Size u, daf::Size v, double w) {
                 auto idx = edgeGraph.getEdgeCompressedId(u, v);
-                countingKE[idx] = std::round(countingKE[idx] + w);
+                countingKE[idx] += w;
                 if (edgeInHeap[idx])
                     pq.update(pqHandles[idx]);
             };
@@ -788,7 +786,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
             auto removeW = [&](daf::Size u, daf::Size v, double w) {
                 auto idx = edgeGraph.getEdgeCompressedId(u, v);
                 countingKE[idx] -= w;
-                countingKE[idx] = std::max(std::round(countingKE[idx]), 0.0);
+                if (countingKE[idx] < 0) countingKE[idx] = 0;
                 if (edgeInHeap[idx])
                     pq.update(pqHandles[idx]);
             };
