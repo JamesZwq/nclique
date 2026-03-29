@@ -46,6 +46,8 @@ namespace VCD_ST {
         }
         povit.free();
         keepC.free();
+        for (daf::Size i = 0; i < n; ++i)
+            countingV[i] = std::round(countingV[i]);
         return countingV;
     }
 }
@@ -217,7 +219,7 @@ double * NCliqueVertexCoreDecomposition_ST(
                 double delta = node.isPivot ? deltaPivot : deltaKeep;
                 if (delta > 0) {
                     countingV[node.v] -= delta;
-                    if (countingV[node.v] < 0) countingV[node.v] = 0;
+                    countingV[node.v] = std::max(std::round(countingV[node.v]), 0.0);
                     if (!dirtyMark[node.v]) {
                         dirtyMark[node.v] = 1;
                         dirtyVertices.push_back(node.v);

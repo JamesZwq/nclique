@@ -47,7 +47,7 @@ static const char *envFirst(std::initializer_list<const char *> names) {
 
 static auto buildCoreDist(const auto &coreResults) {
     std::map<double, int> dist;
-    for (const auto &[key, cv] : coreResults) dist[cv]++;
+    for (const auto &[key, cv] : coreResults) dist[std::round(cv)]++;
     dist.erase(0.0);
     return dist;
 }
@@ -55,7 +55,7 @@ static auto buildCoreDist(const auto &coreResults) {
 static auto buildCoreDistFromArray(const double *coreV, daf::Size n) {
     std::map<double, int> dist;
     for (daf::Size i = 0; i < n; ++i)
-        if (coreV[i] >= 0) dist[coreV[i]]++;
+        if (coreV[i] >= 0) dist[std::round(coreV[i])]++;
     dist.erase(0.0);
     return dist;
 }

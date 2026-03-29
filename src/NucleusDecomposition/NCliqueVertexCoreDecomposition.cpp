@@ -334,6 +334,8 @@ namespace VCD {
         }
         povit.free();
         keepC.free();
+        for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size(); ++i)
+            countingV[i] = std::round(countingV[i]);
         return countingV;
     }
 
@@ -569,7 +571,7 @@ double *  NCliqueVertexCoreDecomposition(
                 auto keepValue = nCr[povit.size()][needPivot];
                 for (int i = 0; i < keepC.size(); ++i) {
                     countingV[keepC[i]] -= keepValue;
-                    countingV[keepC[i]] = std::max(countingV[keepC[i]], 0.0);
+                    countingV[keepC[i]] = std::max(std::round(countingV[keepC[i]]), 0.0);
                     if (vertexInHeap[keepC[i]]) {
                         heap.update(heapHandles[keepC[i]]);
                     }
@@ -579,7 +581,7 @@ double *  NCliqueVertexCoreDecomposition(
                     auto pivotValue = nCr[povit.size() - 1][needPivot - 1];
                     for (int i = 0; i < povit.size(); ++i) {
                         countingV[povit[i]] -= pivotValue;
-                        countingV[povit[i]] = std::max(countingV[povit[i]], 0.0);
+                        countingV[povit[i]] = std::max(std::round(countingV[povit[i]]), 0.0);
                         if (vertexInHeap[povit[i]]) {
                             heap.update(heapHandles[povit[i]]);
                         }
@@ -605,7 +607,7 @@ double *  NCliqueVertexCoreDecomposition(
                     for (auto removedPivot : leafRm.removedPivots) {
                         // check(countingV[removedPivot], RemovedPivot);
                         countingV[removedPivot] -= RemovedPivot;
-                        countingV[removedPivot] = std::max(countingV[removedPivot], 0.0);
+                        countingV[removedPivot] = std::max(std::round(countingV[removedPivot]), 0.0);
                         if (vertexInHeap[removedPivot]) {
                             heap.update(heapHandles[removedPivot]);
                         }
@@ -616,11 +618,11 @@ double *  NCliqueVertexCoreDecomposition(
                         if (v.isPivot) {
                             // check(countingV[v.v], PivotCount);
                             countingV[v.v] -= PivotCount;
-                            countingV[v.v] = std::max(countingV[v.v], 0.0);
+                            countingV[v.v] = std::max(std::round(countingV[v.v]), 0.0);
                         } else {
                             // check(countingV[v.v], KeepCount);
                             countingV[v.v] -= KeepCount;
-                            countingV[v.v] = std::max(countingV[v.v], 0.0);
+                            countingV[v.v] = std::max(std::round(countingV[v.v]), 0.0);
                         }
                         if (vertexInHeap[v.v]) {
                             heap.update(heapHandles[v.v]);
