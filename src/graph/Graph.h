@@ -204,7 +204,7 @@ public:
         if (getNbrCount(u) < 1000) {
             return getEdgeIndex(u, v);
         }
-        const uint64_t key = (u << 32) | v;
+        const uint64_t key = (static_cast<uint64_t>(u) << 32) | static_cast<uint64_t>(v);
         const auto it = edgeIdMap_.find(key);
         if (it != edgeIdMap_.end()) return it->second;
         return static_cast<daf::Size>(-1);
@@ -419,7 +419,7 @@ public:
         if (getNbrCount(u) < 1000) {
             return getEdgeIndex(u, v);
         }
-        const uint64_t key = (u << 32) | v;
+        const uint64_t key = (static_cast<uint64_t>(u) << 32) | static_cast<uint64_t>(v);
         const auto it = edgeIdMap_.find(key);
         if (it != edgeIdMap_.end()) return it->second;
         return static_cast<daf::Size>(-1);

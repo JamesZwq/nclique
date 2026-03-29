@@ -10,6 +10,7 @@
 
 #include "NCliqueCoreDecomposition.h"
 #include <chrono>
+#include <set>
 
 #include "graph/DynamicGraphSet.h"
 
@@ -106,45 +107,72 @@ double * NCliqueVertexCoreDecomposition_ST(
     auto coreV = new double[numVertices + 1];
     for (daf::Size i = 0; i <= numVertices; ++i) coreV[i] = -1.0;
 
-    // --- Bucket array ---
+    // --- Hybrid Bucket + overflow set ---
+    constexpr double BUCKET_THRESHOLD = 5000000.0;
     int maxBucket = 0;
     for (daf::Size i = 0; i < numVertices; ++i) {
-        if (countingV[i] > 0)
+        if (countingV[i] > 0 && countingV[i] <= BUCKET_THRESHOLD)
             maxBucket = std::max(maxBucket, (int)countingV[i]);
     }
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
-    std::vector<int> bucket_of(numVertices);
+    std::set<std::pair<double, daf::Size>> overflowSet;
+    std::vector<int> bucket_of(numVertices, -1);  // -1 = overflow
     std::vector<daf::Size> pos_in_bucket(numVertices);
+    std::vector<double> overflowStored(numVertices, -1);
     std::vector<uint8_t> vertexInHeap(numVertices, 0);
     daf::Size remainingInHeap = 0;
     for (daf::Size i = 0; i < numVertices; ++i) {
         if (countingV[i] <= 0) continue;
-        int b = (int)countingV[i];
-        bucket_of[i] = b;
-        pos_in_bucket[i] = buckets[b].size();
-        buckets[b].push_back(i);
+        if (countingV[i] <= BUCKET_THRESHOLD) {
+            int b = (int)countingV[i];
+            bucket_of[i] = b;
+            pos_in_bucket[i] = buckets[b].size();
+            buckets[b].push_back(i);
+        } else {
+            overflowSet.insert({countingV[i], i});
+            overflowStored[i] = countingV[i];
+        }
         vertexInHeap[i] = 1;
         remainingInHeap++;
     }
     int curBucket = 0;
 
     auto bucketMove = [&](daf::Size id) {
-        int newB = std::max(0, (int)countingV[id]);
+        if (!vertexInHeap[id]) return;
+        double val = std::max(0.0, countingV[id]);
         int oldB = bucket_of[id];
-        if (newB == oldB) return;
-        auto &oldVec = buckets[oldB];
-        daf::Size myPos = pos_in_bucket[id];
-        if (myPos < oldVec.size() - 1) {
-            daf::Size last = oldVec.back();
-            oldVec[myPos] = last;
-            pos_in_bucket[last] = myPos;
+        if (oldB == -1) overflowSet.erase({overflowStored[id], id});
+        if (val <= BUCKET_THRESHOLD) {
+            int newB = (int)val;
+            if (oldB == newB) return;
+            if (oldB >= 0) {
+                auto &oldVec = buckets[oldB];
+                daf::Size myPos = pos_in_bucket[id];
+                if (myPos < oldVec.size() - 1) {
+                    daf::Size last = oldVec.back();
+                    oldVec[myPos] = last;
+                    pos_in_bucket[last] = myPos;
+                }
+                oldVec.pop_back();
+            }
+            if (newB >= (int)buckets.size()) buckets.resize(newB + 1);
+            bucket_of[id] = newB;
+            pos_in_bucket[id] = buckets[newB].size();
+            buckets[newB].push_back(id);
+            if (newB < curBucket) curBucket = newB;
+        } else {
+            if (oldB >= 0) {
+                auto &oldVec = buckets[oldB];
+                daf::Size myPos = pos_in_bucket[id];
+                if (myPos < oldVec.size() - 1) {
+                    daf::Size last = oldVec.back();
+                    oldVec[myPos] = last;
+                    pos_in_bucket[last] = myPos;
+                }
+                oldVec.pop_back();
+            }
+            overflowSet.insert({val, id}); overflowStored[id] = val; bucket_of[id] = -1;
         }
-        oldVec.pop_back();
-        if (newB >= (int)buckets.size()) buckets.resize(newB + 1);
-        bucket_of[id] = newB;
-        pos_in_bucket[id] = buckets[newB].size();
-        buckets[newB].push_back(id);
-        if (newB < curBucket) curBucket = newB;
     };
 
     // --- Per-leaf batch tracking (reused each iteration) ---
@@ -171,24 +199,71 @@ double * NCliqueVertexCoreDecomposition_ST(
     while (remainingInHeap > 0) {
         // --- Bucket pop: batch all vertices at current level ---
         while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
-        if (curBucket >= (int)buckets.size()) break;
 
-        minCore = std::max((double)curBucket, minCore);
-
-        while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
-               && (double)curBucket <= minCore) {
-            while (!buckets[curBucket].empty()) {
-                auto id = buckets[curBucket].back();
-                buckets[curBucket].pop_back();
-                vertexInHeap[id] = 0;
-                currentRemoveVertexIds.push_back(id);
-                coreV[id] = minCore;
-                remainingInHeap--;
+        bool fromOverflow = false;
+        if (curBucket >= (int)buckets.size()) {
+            // Drain overflow set
+            while (!overflowSet.empty()) {
+                daf::Size oid = overflowSet.begin()->second;
+                if (!vertexInHeap[oid]) { overflowSet.erase(overflowSet.begin()); continue; }
+                if (countingV[oid] <= BUCKET_THRESHOLD) {
+                    overflowSet.erase(overflowSet.begin());
+                    int b = std::max(0, (int)countingV[oid]);
+                    if (b >= (int)buckets.size()) buckets.resize(b + 1);
+                    bucket_of[oid] = b; pos_in_bucket[oid] = buckets[b].size();
+                    buckets[b].push_back(oid);
+                    continue;
+                }
+                break;
             }
-            if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
-                && (double)(curBucket + 1) <= minCore) {
-                curBucket++;
-            } else break;
+            // Try overflow min
+            if (!overflowSet.empty()) {
+                daf::Size oid = overflowSet.begin()->second;
+                double oVal = overflowSet.begin()->first;
+                overflowSet.erase(overflowSet.begin());
+                minCore = std::max(oVal, minCore);
+                vertexInHeap[oid] = 0;
+                currentRemoveVertexIds.push_back(oid);
+                coreV[oid] = minCore;
+                remainingInHeap--;
+                // Drain more at same level
+                while (!overflowSet.empty()) {
+                    daf::Size nid = overflowSet.begin()->second;
+                    if (!vertexInHeap[nid]) { overflowSet.erase(overflowSet.begin()); continue; }
+                    if (overflowSet.begin()->first <= minCore) {
+                        overflowSet.erase(overflowSet.begin());
+                        vertexInHeap[nid] = 0;
+                        currentRemoveVertexIds.push_back(nid);
+                        coreV[nid] = minCore;
+                        remainingInHeap--;
+                    } else break;
+                }
+                fromOverflow = true;
+            }
+            if (!fromOverflow) break;
+            // Re-check buckets
+            curBucket = 0;
+            while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
+        }
+
+        if (!fromOverflow) {
+            minCore = std::max((double)curBucket, minCore);
+
+            while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
+                   && (double)curBucket <= minCore) {
+                while (!buckets[curBucket].empty()) {
+                    auto id = buckets[curBucket].back();
+                    buckets[curBucket].pop_back();
+                    vertexInHeap[id] = 0;
+                    currentRemoveVertexIds.push_back(id);
+                    coreV[id] = minCore;
+                    remainingInHeap--;
+                }
+                if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
+                    && (double)(curBucket + 1) <= minCore) {
+                    curBucket++;
+                } else break;
+            }
         }
 
         if (remainingInHeap == 0) break;
