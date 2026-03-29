@@ -16,7 +16,7 @@ cd "$(dirname "$0")"
 rm -rf build
 mkdir -p build
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release 2>&1 | tail -3
-cmake --build build -j 12 2>&1 | tail -5
+cmake --build build -j 12 --target degeneracy_cliques 2>&1 | tail -5
 echo "Build done."
 echo ""
 

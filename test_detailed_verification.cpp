@@ -19,8 +19,8 @@ void printSeparator() {
 }
 
 bool verifyResults(
-    const std::vector<std::pair<std::vector<daf::Size>, int>>& ref,
-    const std::vector<std::pair<std::vector<daf::Size>, int>>& test,
+    const std::vector<std::pair<std::vector<daf::Size>, double>>& ref,
+    const std::vector<std::pair<std::vector<daf::Size>, double>>& test,
     bool verbose = false) {
     
     if (ref.size() != test.size()) {
