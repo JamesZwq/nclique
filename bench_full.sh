@@ -101,7 +101,7 @@ for gi in "${!VALID_GRAPHS[@]}"; do
   for s in $(seq 3 2 $max_s); do
     echo "  r=1 s=$s:"
     run_one "$graph" 1 "$s" "R1_Ours" "PIVOTER_RUN_ST"
-    run_one "$graph" 1 "$s" "R1_REF" "PIVOTER_RUN_REF"
+    run_one "$graph" 1 "$s" "R1_REF" "PIVOTER_NOOPT"
   done
 
   # R=2: s = 3,5,7,...,min(omega,30)
@@ -109,7 +109,7 @@ for gi in "${!VALID_GRAPHS[@]}"; do
   for s in $(seq 3 2 $max_s); do
     echo "  r=2 s=$s:"
     run_one "$graph" 2 "$s" "R2_DCLP" "PIVOTER_RUN_R2_DCLP"
-    run_one "$graph" 2 "$s" "R2_REF" "PIVOTER_RUN_REF"
+    run_one "$graph" 2 "$s" "R2_REF" "PIVOTER_NOOPT"
   done
 
   # R=3: s = 5,7,9,...,min(omega,30)
