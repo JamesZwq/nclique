@@ -482,8 +482,12 @@ double *  NCliqueVertexCoreDecomposition(
     while (!heap.empty()) {
 
         minCore = std::max( countingV[heap.top()], minCore );
-        //  core==minCore  leaf  pop
-        // printf("minCore: %.2f, heap size: %zu\n", minCore, heap.size());
+        if (minCore >= 315 && minCore <= 321) {
+            fprintf(stderr, "REF_DUMP minCore=%.0f:", minCore);
+            for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size()-1; ++i)
+                if (vertexInHeap[i]) fprintf(stderr, " %u:%.0f", i, countingV[i]);
+            fprintf(stderr, "\n");
+        }
 
         // std::cout << "minCore: " << minCore
         // << " heap size: " << heap.size()

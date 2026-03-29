@@ -107,7 +107,7 @@ double * NCliqueVertexCoreDecomposition_ST(
     // --- Initial per-vertex support ---
     auto countingV = VCD_ST::countingPerVertex(tree, edgeGraph, k);
     auto coreV = new double[numVertices + 1];
-    for (daf::Size i = 0; i <= numVertices; ++i) coreV[i] = -1.0;
+    for (daf::Size i = 0; i <= numVertices; ++i) coreV[i] = 0.0;
 
     // --- Pure d-ary heap PQ (same as REF) ---
     struct CmpVtx {
@@ -161,6 +161,13 @@ double * NCliqueVertexCoreDecomposition_ST(
         if (pq.empty()) break;
 
         minCore = std::max(countingV[pq.top()], minCore);
+        // Dump all support values at critical levels
+        if (minCore >= 315 && minCore <= 321) {
+            fprintf(stderr, "ST_DUMP minCore=%.0f remaining=%u:", minCore, remainingInHeap);
+            for (daf::Size i = 0; i < numVertices; ++i)
+                if (vertexInHeap[i]) fprintf(stderr, " %u:%.0f", i, countingV[i]);
+            fprintf(stderr, "\n");
+        }
         while (!pq.empty() && countingV[pq.top()] <= minCore) {
             auto id = pq.top(); pq.pop();
             if (!vertexInHeap[id]) continue;
@@ -218,6 +225,13 @@ double * NCliqueVertexCoreDecomposition_ST(
                 if (!vertexInHeap[node.v]) continue;
                 double delta = node.isPivot ? deltaPivot : deltaKeep;
                 if (delta > 0) {
+                    if (node.v == 276 && minCore >= 318) {
+                        fprintf(stderr, "  ST v276: leaf=%u delta=%.1f old=%.1f isPivot=%d old_rp=%d new_rp=%d np=%d dies=%d\n",
+                                leafId, delta, countingV[276], (int)node.isPivot,
+                                leafRemainPivots[leafId] + leafRemovedPivots[leafId],
+                                leafRemainPivots[leafId] + leafRemovedPivots[leafId] - leafRemovedPivots[leafId],
+                                leafNeedPivot[leafId], dies ? 1 : 0);
+                    }
                     countingV[node.v] -= delta;
                     countingV[node.v] = std::max(std::round(countingV[node.v]), 0.0);
                     if (!dirtyMark[node.v]) {
