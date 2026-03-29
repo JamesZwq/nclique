@@ -221,10 +221,12 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
               << " ms, leafEdgeData=" << leafEdgeData.size() << std::endl;
 
     const daf::Size initialNumLeaves = leafEdgeOff.size() > 0 ? leafEdgeOff.size() - 1 : 0;
+    printf("DBG: initialNumLeaves=%u, leafEdgeOff.size=%zu\n", initialNumLeaves, leafEdgeOff.size());
     // leafEdgeAlive: whether CSR data is valid for this leaf
     std::vector<uint8_t> leafEdgeAlive(initialNumLeaves, 1);
 
     const daf::Size numEdgesInit = edgeGraph.adj_list.size();
+    printf("DBG: numEdgesInit=%u\n", numEdgesInit);
 
     auto *coreE = new double[numEdgesInit];
     memset(coreE, 0, numEdgesInit * sizeof(double));
@@ -246,6 +248,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
 
     double currCore = 0;
 
+    printf("DBG: before hybrid bucket init\n"); fflush(stdout);
     // --- Hybrid Bucket + overflow set ---
     const daf::Size numEdges = edgeGraph.adj_list.size();
     int maxBucket = 0;
@@ -253,7 +256,9 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
         if (countingKE[i] > 0 && countingKE[i] <= 5e6)
             maxBucket = std::max(maxBucket, (int)countingKE[i]);
     }
+    printf("DBG: maxBucket=%d, numEdges=%u\n", maxBucket, numEdges); fflush(stdout);
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
+    printf("DBG: buckets allocated, size=%zu\n", buckets.size()); fflush(stdout);
     std::set<std::pair<double, daf::Size>> overflowSet;
     std::vector<int> bucket_of(numEdges, -1);
     std::vector<daf::Size> pos_in_bucket(numEdges);
