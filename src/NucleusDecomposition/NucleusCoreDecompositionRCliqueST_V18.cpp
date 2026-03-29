@@ -135,23 +135,85 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     // Lazy leafCliqueInfo: only populated for BK leaves and their sub-leaves
     std::vector<std::vector<RCliqueSTv18::LeafCliqueEntry>> leafCliqueInfo(tree.adj_list.size());
 
-    // ========== Pure d-ary heap PQ (same as REF) ==========
+    // ========== Hybrid bucket + d-ary heap PQ ==========
+    constexpr double BUCKET_THRESHOLD = 5000000.0;
+    double rawMaxBucket = 0;
+    for (daf::Size i = 0; i < nClique; ++i)
+        rawMaxBucket = std::max(rawMaxBucket, countingRClique[i]);
+    int maxBucket = (int)std::min(rawMaxBucket, BUCKET_THRESHOLD);
+
+    std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
+    std::vector<int> bucket_of(nClique, -1);
+    std::vector<daf::Size> pos_in_bucket(nClique);
+
+    // Overflow: boost d-ary heap (replaces std::set)
     struct CmpClique {
         const std::vector<double> &cnt;
         bool operator()(daf::Size a, daf::Size b) const { return cnt[a] > cnt[b]; }
     };
-    using CliqueHeap = boost::heap::d_ary_heap<daf::Size, boost::heap::arity<8>,
+    using OverflowHeap = boost::heap::d_ary_heap<daf::Size, boost::heap::arity<8>,
         boost::heap::mutable_<true>, boost::heap::compare<CmpClique>>;
-    CliqueHeap pq{CmpClique{countingRClique}};
-    pq.reserve(nClique);
-    std::vector<CliqueHeap::handle_type> pqHandles(nClique);
-    for (daf::Size i = 0; i < nClique; ++i)
-        pqHandles[i] = pq.push(i);
+    OverflowHeap overflowHeap{CmpClique{countingRClique}};
+    std::vector<OverflowHeap::handle_type> overflowHandles(nClique);
+    std::vector<uint8_t> inOverflow(nClique, 0);
+
+    for (daf::Size i = 0; i < nClique; ++i) {
+        if (countingRClique[i] <= BUCKET_THRESHOLD) {
+            int b = (int)countingRClique[i];
+            bucket_of[i] = b;
+            pos_in_bucket[i] = buckets[b].size();
+            buckets[b].push_back(i);
+        } else {
+            overflowHandles[i] = overflowHeap.push(i);
+            inOverflow[i] = 1;
+        }
+    }
+    int curBucket = 0;
     daf::Size remainingInHeap = nClique;
+
+    if (!overflowHeap.empty())
+        printf("Hybrid bucket+heap: %u in buckets, %zu in overflow (maxSupport=%.0f)\n",
+               (unsigned)(nClique - overflowHeap.size()), overflowHeap.size(), rawMaxBucket);
 
     auto bucketMove = [&](daf::Size id) {
         if (!rCliqueInHeap[id]) return;
-        pq.update(pqHandles[id]);
+        double val = std::max(0.0, countingRClique[id]);
+        int oldB = bucket_of[id];
+        if (oldB == -1 && inOverflow[id]) {
+            overflowHeap.update(overflowHandles[id]);
+            if (val <= BUCKET_THRESHOLD) {
+                overflowHeap.erase(overflowHandles[id]);
+                inOverflow[id] = 0;
+                int newB = (int)val;
+                bucket_of[id] = newB; pos_in_bucket[id] = buckets[newB].size();
+                buckets[newB].push_back(id); if (newB < curBucket) curBucket = newB;
+            }
+            return;
+        }
+        if (val <= BUCKET_THRESHOLD) {
+            int newB = (int)val;
+            if (oldB == newB) return;
+            if (oldB >= 0) {
+                auto &v = buckets[oldB]; auto p = pos_in_bucket[id];
+                if (p < v.size()-1) { auto l=v.back(); v[p]=l; pos_in_bucket[l]=p; }
+                v.pop_back();
+            }
+            bucket_of[id] = newB; pos_in_bucket[id] = buckets[newB].size();
+            buckets[newB].push_back(id); if (newB < curBucket) curBucket = newB;
+        } else {
+            if (oldB >= 0) {
+                auto &v = buckets[oldB]; auto p = pos_in_bucket[id];
+                if (p < v.size()-1) { auto l=v.back(); v[p]=l; pos_in_bucket[l]=p; }
+                v.pop_back();
+            }
+            if (!inOverflow[id]) {
+                overflowHandles[id] = overflowHeap.push(id);
+                inOverflow[id] = 1;
+            } else {
+                overflowHeap.update(overflowHandles[id]);
+            }
+            bucket_of[id] = -1;
+        }
     };
 
     daf::log_memory("Other index (include bucket)");
@@ -178,16 +240,58 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
         removedRCliqueIdForLeaf.clear();
         currentRemoveRcliqueIds.clear();
 
-        // --- Pop ---
-        while (!pq.empty() && !rCliqueInHeap[pq.top()]) pq.pop();
-        if (pq.empty()) break;
-        minCore = std::max(countingRClique[pq.top()], minCore);
-        while (!pq.empty() && countingRClique[pq.top()] <= minCore) {
-            auto id = pq.top(); pq.pop();
-            if (!rCliqueInHeap[id]) continue;
-            rCliqueInHeap[id] = false;
-            currentRemoveRcliqueIds.push_back(id);
-            coreRClique[id] = minCore; remainingInHeap--;
+        // --- Pop: drain overflow heap → buckets, then pop buckets ---
+        while (!overflowHeap.empty()) {
+            daf::Size id = overflowHeap.top();
+            if (!rCliqueInHeap[id]) { overflowHeap.pop(); inOverflow[id]=0; continue; }
+            if (countingRClique[id] <= BUCKET_THRESHOLD) {
+                overflowHeap.pop(); inOverflow[id]=0;
+                int b = std::max(0, (int)countingRClique[id]);
+                bucket_of[id] = b; pos_in_bucket[id] = buckets[b].size();
+                buckets[b].push_back(id);
+            } else break;
+        }
+        while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
+        if (curBucket >= (int)buckets.size()) {
+            // Drain overflow heap
+            if (!overflowHeap.empty()) {
+                while (!overflowHeap.empty()) {
+                    daf::Size id = overflowHeap.top();
+                    overflowHeap.pop(); inOverflow[id]=0;
+                    if (!rCliqueInHeap[id]) continue;
+                    minCore = std::max(countingRClique[id], minCore);
+                    rCliqueInHeap[id] = false;
+                    currentRemoveRcliqueIds.push_back(id);
+                    coreRClique[id] = minCore; remainingInHeap--;
+                    while (!overflowHeap.empty()) {
+                        daf::Size nid = overflowHeap.top();
+                        if (!rCliqueInHeap[nid]) { overflowHeap.pop(); inOverflow[nid]=0; continue; }
+                        if (countingRClique[nid] <= minCore) {
+                            overflowHeap.pop(); inOverflow[nid]=0;
+                            rCliqueInHeap[nid] = false;
+                            currentRemoveRcliqueIds.push_back(nid);
+                            coreRClique[nid] = minCore; remainingInHeap--;
+                        } else break;
+                    }
+                    break;
+                }
+                if (currentRemoveRcliqueIds.empty()) break;
+            } else break;
+        } else {
+            minCore = std::max((double)curBucket, minCore);
+            while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
+                   && curBucket <= (int)minCore) {
+                while (!buckets[curBucket].empty()) {
+                    auto id = buckets[curBucket].back();
+                    buckets[curBucket].pop_back();
+                    rCliqueInHeap[id] = false;
+                    currentRemoveRcliqueIds.push_back(id);
+                    coreRClique[id] = minCore; remainingInHeap--;
+                }
+                if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
+                    && (curBucket + 1) <= (int)minCore) curBucket++;
+                else break;
+            }
         }
         duration_pop += std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::high_resolution_clock::now() - t_loop_start).count();
