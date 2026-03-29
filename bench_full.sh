@@ -6,7 +6,7 @@
 # Output: bench_full_results.csv
 # =============================================================
 
-set -e
+# No set -e: grep returning non-zero is expected
 
 # ============ Step 0: Build ============
 echo "============================================================="
@@ -42,18 +42,26 @@ mkdir -p "$LOGDIR"
 run_one() {
   local graph=$1 r=$2 s=$3 algo_label=$4 env_var=$5
   local logfile="$LOGDIR/${graph}_r${r}_s${s}_${algo_label}.log"
-  local result
-  result=$(eval "$env_var=1 perl -e 'alarm $TIMEOUT; exec @ARGV' $BIN graphs/${graph}.edges $r $s 2>&1")
+  local result=""
+  local exit_code=0
+  result=$(env "${env_var}=1" timeout ${TIMEOUT}s $BIN "graphs/${graph}.edges" "$r" "$s" 2>&1) || exit_code=$?
+
   echo "$result" > "$logfile"
 
-  local took=$(echo "$result" | grep -E "took:.*ms" | tail -1 | sed 's/.*took: //' | sed 's/ ms//')
+  local took=""
   local status="OK"
-  if [ -z "$took" ]; then
-    took=$(echo "$result" | grep "^time:" | tail -1 | awk '{print $2}')
-  fi
-  if [ -z "$took" ]; then
+  if [ $exit_code -eq 124 ]; then
     took="TIMEOUT"
     status="TIMEOUT"
+  else
+    took=$(echo "$result" | grep -oP 'took: \K[0-9.]+(?= ms)' | tail -1) || true
+    if [ -z "$took" ]; then
+      took=$(echo "$result" | grep "^time:" | tail -1 | awk '{print $2}') || true
+    fi
+    if [ -z "$took" ]; then
+      took="ERROR"
+      status="ERROR(exit=$exit_code)"
+    fi
   fi
 
   echo "$graph,$r,$s,$algo_label,$took,$status" >> "$OUTCSV"
