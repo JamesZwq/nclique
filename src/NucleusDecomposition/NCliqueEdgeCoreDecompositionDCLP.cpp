@@ -248,11 +248,15 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
 
     // --- Hybrid Bucket + overflow set ---
     const daf::Size numEdges = edgeGraph.adj_list.size();
+    printf("DBG: numEdges=%u, maxBucket scan...\n", numEdges); fflush(stdout);
     int maxBucket = 0;
+    double maxCounting = 0;
     for (daf::Size i = 0; i < numEdges; ++i) {
+        if (countingKE[i] > maxCounting) maxCounting = countingKE[i];
         if (countingKE[i] > 0 && countingKE[i] <= 5e6)
             maxBucket = std::max(maxBucket, (int)countingKE[i]);
     }
+    printf("DBG: maxBucket=%d, maxCounting=%.0f\n", maxBucket, maxCounting); fflush(stdout);
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
     std::set<std::pair<double, daf::Size>> overflowSet;
     std::vector<int> bucket_of(numEdges, -1);
@@ -260,6 +264,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
     std::vector<double> overflowStored(numEdges, -1);
     daf::Size remainingInHeap = 0;
     long long overflowCount = 0;
+    printf("DBG: filling buckets...\n"); fflush(stdout);
     for (daf::Size i = 0; i < numEdges; ++i) {
         if (countingKE[i] == 0) { edgeInHeap[i] = 0; continue; }
         if (countingKE[i] <= 5e6) {
@@ -273,6 +278,7 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
         }
         remainingInHeap++;
     }
+    printf("DBG: done filling, overflow=%lld, remaining=%u\n", overflowCount, remainingInHeap); fflush(stdout);
     if (overflowCount > 0) printf("DCLP overflow: %lld edges in overflow set\n", overflowCount);
     int curBucket = 0;
 
