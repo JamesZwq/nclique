@@ -190,14 +190,14 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex) {
     auto time_start = std::chrono::high_resolution_clock::now();
-    StaticCliqueIndex cliqueIndex(r);
-    daf::timeCount("clique Index build",
-                   [&]() {
-                       cliqueIndex.build(tree, edgeGraph.adj_list.size());
-                   });
-    // tree.printGraphPerV();
-    // cliqueIndex.print();
-    // cliqueIndex.verify();
+    StaticCliqueIndex localIndex(r);
+    if (!prebuiltIndex) {
+        daf::timeCount("clique Index build",
+                       [&]() {
+                           localIndex.build(tree, edgeGraph.adj_list.size());
+                       });
+    }
+    StaticCliqueIndex &cliqueIndex = prebuiltIndex ? *prebuiltIndex : localIndex;
 
 
     auto countingRClique = daf::timeCount("countingPerEdgeAndRClique",

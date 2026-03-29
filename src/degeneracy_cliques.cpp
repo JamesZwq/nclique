@@ -603,10 +603,11 @@ static bool dispatchR3Plus(
 static void dispatchRefOrDefault(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV,
-    daf::CliqueSize r, daf::CliqueSize s, bool compareMode) {
+    daf::CliqueSize r, daf::CliqueSize s, bool compareMode,
+    StaticCliqueIndex *sharedCIPtr = nullptr) {
 
     if (envSet("PIVOTER_RUN_REF")) {
-        auto res = NucleusCoreDecompositionCorrect(tree, edgeGraph, treeGraphV, r, s);
+        auto res = NucleusCoreDecompositionCorrect(tree, edgeGraph, treeGraphV, r, s, sharedCIPtr);
         std::map<double, int> dist;
         for (const auto &[clique, cv] : res) dist[cv]++;
         std::cout << "Core value distribution:" << std::endl;
@@ -712,7 +713,7 @@ int main(int argc, char **argv) {
             dispatched = dispatchR3Plus(refTree, edgeGraph, treeGraphV, r, s, compareMode, sharedCIPtr);
 
         if (!dispatched)
-            dispatchRefOrDefault(refTree, edgeGraph, treeGraphV, r, s, compareMode);
+            dispatchRefOrDefault(refTree, edgeGraph, treeGraphV, r, s, compareMode, sharedCIPtr);
     });
 
     daf::log_memory("Final Memory");
