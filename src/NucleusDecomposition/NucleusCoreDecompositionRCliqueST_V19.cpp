@@ -1,23 +1,16 @@
 //
-// ST V19: Analytical Inclusion-Exclusion (no pathSplit for small m)
+// ST V19: V18 with pure boost d-ary heap PQ (no bucket, no overflow std::set)
 //
-// Key idea: instead of generating Π|F_i| subpaths via BK pathSplit,
-// compute each r-clique's support change directly via inclusion-exclusion.
-//
-// For m removed r-cliques with conflict sets F_1..F_m:
-//   new_support(q') = Σ_{S⊆[m]} (-1)^|S| · nCr(a - |P_q' ∪ ⋃_{i∈S} F_i|, need - ...)
-//
-// Cost: O(C(n,r) × 2^m)  vs  pathSplit: O(Π|F_i| × C(n',r))
-// For m=10, r=3:  1024 vs 59049 = 57x improvement.
-//
-// Fallback: when m > IE_THRESHOLD, use pathSplit (V18-style).
+// Same as V18 but replaces hybrid bucket+set with a single d-ary heap.
+// Eliminates overflow problem at large s (where 33%+ cliques overflow).
+// Trade-off: O(log n) per update vs O(1) bucket, but no overflow penalty.
 //
 
 #include "NCliqueCoreDecomposition.h"
 #include <chrono>
 #include <algorithm>
 #include <cstring>
-#include <set>
+#include <boost/heap/d_ary_heap.hpp>
 
 #include "../BK/BronKerboschRmRClique.hpp"
 #include "dataStruct/CliqueHashMap.h"
@@ -25,41 +18,55 @@
 
 extern double nCr[1001][401];
 
-namespace RCliqueSTv19 {
+namespace RCliqueSTv18 {
 
-// Max removals for IE path (2^IE_THRESHOLD must be feasible)
-static constexpr int IE_THRESHOLD = 15;
+struct LeafCliqueEntry {
+    daf::Size cliqueId;
+    double ncrValue;
+    uint8_t positions[8]; // leaf-local positions
+};
 
-// Precompute union sizes for all 2^m subsets of conflict pivot-sets.
-// conflictPivots[i] = bitmask of pivot positions for conflict i (leaf-local).
-// Returns unionSize[S] = |⋃_{i∈S} conflictPivots[i]| for each subset S.
-static void precomputeUnionSizes(
-    int m,
-    const uint64_t conflictMasks[],  // bitmask per conflict set (up to 64 pivots)
-    uint16_t unionSize[])            // output: size per subset
-{
-    int total = 1 << m;
-    unionSize[0] = 0;
-    for (int S = 1; S < total; ++S) {
-        // Find lowest set bit
-        int lsb = __builtin_ctz(S);
-        int prev = S & (S - 1); // S without the lowest bit
-        // Union = union of prev ∪ conflictMasks[lsb]
-        // But we store sizes, not full masks. We need the actual mask.
-        // Better: store full union masks, then count bits.
-        // Actually, let's just compute incrementally.
+// Build leafCliqueInfo for ONE leaf on-demand
+static std::vector<LeafCliqueEntry> buildLeafInfo(
+    const std::vector<TreeGraphNode> &leaf,
+    const StaticCliqueIndex &cliqueIndex,
+    daf::CliqueSize r, daf::CliqueSize s) {
+
+    std::vector<LeafCliqueEntry> entries;
+    daf::CliqueSize pivotC = 0, keepC = 0;
+    for (const auto &i : leaf) {
+        if (i.isPivot) pivotC++; else keepC++;
     }
-    // Rewrite: store union MASKS, then popcount
-    uint64_t unionMask[1 << IE_THRESHOLD];
-    unionMask[0] = 0;
-    for (int S = 1; S < total; ++S) {
-        int lsb = __builtin_ctz(S);
-        unionMask[S] = unionMask[S & (S-1)] | conflictMasks[lsb];
-        unionSize[S] = (uint16_t)__builtin_popcountll(unionMask[S]);
-    }
+    int needPivot = s - static_cast<int>(keepC);
+
+    daf::enumerateCombinationsWithIdx(leaf, r,
+        [&](const daf::StaticVector<TreeGraphNode> &rClique, const size_t* idx) {
+        daf::CliqueSize subNumPivot = 0;
+        daf::Size vertBuf[8];
+        for (daf::Size j = 0; j < r; ++j) {
+            vertBuf[j] = rClique[j].v;
+            if (rClique[j].isPivot) subNumPivot++;
+        }
+        if (subNumPivot <= needPivot) {
+            int row = (int)pivotC - (int)subNumPivot;
+            int col = needPivot - (int)subNumPivot;
+            if (row >= 0 && row < 1001 && col >= 0 && col < 401) {
+                double ncrVal = nCr[row][col];
+                auto id = cliqueIndex.lookupRaw(vertBuf);
+                LeafCliqueEntry entry;
+                entry.cliqueId = id;
+                entry.ncrValue = ncrVal;
+                for (daf::Size j = 0; j < r; ++j)
+                    entry.positions[j] = (uint8_t)idx[j];
+                entries.push_back(entry);
+            }
+        }
+        return true;
+    });
+    return entries;
 }
 
-} // namespace RCliqueSTv19
+} // namespace RCliqueSTv18
 
 std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_ST_V19(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
@@ -68,11 +75,11 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
 
     long long duration_init = 0, duration_pop = 0, duration_intersect = 0;
     long long duration_bk = 0, duration_support = 0;
-    long long cntLeafDeath = 0, cntBK = 0, cntIE = 0, cntFallback = 0;
+    long long cntLeafDeath = 0, cntBK = 0;
 
     auto time_start = std::chrono::high_resolution_clock::now();
 
-    // ========== INIT: V17's lightweight approach ==========
+    // ========== INIT: V17's lightweight approach (no dual index) ==========
     StaticCliqueIndex localIndex(r);
     StaticCliqueIndex &cliqueIndex = prebuiltIndex ? *prebuiltIndex : localIndex;
     if (!prebuiltIndex) {
@@ -81,8 +88,9 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
         });
     }
 
+    // Count support (Reference's approach: iterate tree once)
     std::vector<double> countingRClique;
-    daf::timeCount("countingPerRClique (V19)", [&]() {
+    daf::timeCount("countingPerRClique (V18)", [&]() {
         countingRClique.assign(cliqueIndex.size(), 0.0);
         for (const auto &leaf : tree.adj_list) {
             if (leaf.size() < r) continue;
@@ -92,12 +100,14 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
             daf::enumerateCombinations(leaf, r,
                 [&](const daf::StaticVector<TreeGraphNode> &rClique) {
                 daf::CliqueSize subNumPivot = 0;
-                for (const auto &node : rClique) if (node.isPivot) subNumPivot++;
+                for (const auto &node : rClique)
+                    if (node.isPivot) subNumPivot++;
                 if (subNumPivot <= needPivot) {
                     int row = (int)pivotC - (int)subNumPivot;
                     int col = needPivot - (int)subNumPivot;
-                    if (row >= 0 && row < 1001 && col >= 0 && col < 401)
+                    if (row >= 0 && row < 1001 && col >= 0 && col < 401) {
                         countingRClique[cliqueIndex.byClique(rClique)] += nCr[row][col];
+                    }
                 }
                 return true;
             });
@@ -121,77 +131,26 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     rCliqueInHeap.resize(nClique);
     memset(rCliqueInHeap.getData(), true, nClique * sizeof(bool));
 
-    // Per-leaf pending removals for lazy IE
-    std::vector<std::vector<daf::Size>> pendingRemovals(tree.adj_list.size());
+    // Lazy leafCliqueInfo: only populated for BK leaves and their sub-leaves
+    std::vector<std::vector<RCliqueSTv18::LeafCliqueEntry>> leafCliqueInfo(tree.adj_list.size());
 
-    // ========== Hybrid bucket+set PQ ==========
-    constexpr double BUCKET_THRESHOLD = 5000000.0;
-    double rawMaxBucket = 0;
+    // ========== Pure d-ary heap PQ (V19) ==========
+    struct CmpClique {
+        const std::vector<double> &cnt;
+        bool operator()(daf::Size a, daf::Size b) const { return cnt[a] > cnt[b]; }
+    };
+    using CliqueHeap = boost::heap::d_ary_heap<daf::Size, boost::heap::arity<8>,
+        boost::heap::mutable_<true>, boost::heap::compare<CmpClique>>;
+    CliqueHeap pq{CmpClique{countingRClique}};
+    pq.reserve(nClique);
+    std::vector<CliqueHeap::handle_type> pqHandles(nClique);
     for (daf::Size i = 0; i < nClique; ++i)
-        rawMaxBucket = std::max(rawMaxBucket, countingRClique[i]);
-    int maxBucket = (int)std::min(rawMaxBucket, BUCKET_THRESHOLD);
-
-    std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
-    std::set<std::pair<double, daf::Size>> overflowSet;
-    std::vector<int> bucket_of(nClique, -1);
-    std::vector<daf::Size> pos_in_bucket(nClique);
-    std::vector<double> overflowStoredVal(nClique, -1);
-
-    for (daf::Size i = 0; i < nClique; ++i) {
-        if (countingRClique[i] <= BUCKET_THRESHOLD) {
-            int b = (int)countingRClique[i];
-            bucket_of[i] = b;
-            pos_in_bucket[i] = buckets[b].size();
-            buckets[b].push_back(i);
-        } else {
-            overflowSet.insert({countingRClique[i], i});
-            overflowStoredVal[i] = countingRClique[i];
-        }
-    }
-    int curBucket = 0;
+        pqHandles[i] = pq.push(i);
     daf::Size remainingInHeap = nClique;
 
     auto bucketMove = [&](daf::Size id) {
         if (!rCliqueInHeap[id]) return;
-        double val = std::max(0.0, countingRClique[id]);
-        int oldB = bucket_of[id];
-        if (oldB == -1) overflowSet.erase({overflowStoredVal[id], id});
-        if (val <= BUCKET_THRESHOLD) {
-            int newB = (int)val;
-            if (oldB >= 0 && newB == oldB) return;
-            if (oldB >= 0) {
-                auto &v = buckets[oldB]; daf::Size p = pos_in_bucket[id];
-                if (p < v.size() - 1) { auto last = v.back(); v[p] = last; pos_in_bucket[last] = p; }
-                v.pop_back();
-            }
-            bucket_of[id] = newB;
-            pos_in_bucket[id] = buckets[newB].size();
-            buckets[newB].push_back(id);
-            if (newB < curBucket) curBucket = newB;
-        } else {
-            if (oldB >= 0) {
-                auto &v = buckets[oldB]; daf::Size p = pos_in_bucket[id];
-                if (p < v.size()) {
-                    if (p < v.size() - 1) { auto last = v.back(); v[p] = last; pos_in_bucket[last] = p; }
-                    v.pop_back();
-                }
-            }
-            overflowSet.insert({val, id});
-            overflowStoredVal[id] = val;
-            bucket_of[id] = -1;
-        }
-    };
-
-    auto drainOverflowToBucket = [&]() {
-        while (!overflowSet.empty()) {
-            daf::Size id = overflowSet.begin()->second;
-            if (!rCliqueInHeap[id]) { overflowSet.erase(overflowSet.begin()); continue; }
-            if (countingRClique[id] <= BUCKET_THRESHOLD) {
-                overflowSet.erase(overflowSet.begin());
-                int b = (int)countingRClique[id]; bucket_of[id] = b;
-                pos_in_bucket[id] = buckets[b].size(); buckets[b].push_back(id);
-            } else break;
-        }
+        pq.update(pqHandles[id]);
     };
 
     daf::log_memory("Other index (include bucket)");
@@ -200,8 +159,12 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
 
     std::vector<daf::Size> vertexConflictDeg;
     vertexConflictDeg.reserve(512);
+    std::vector<TreeGraphNode> reusableLeaf;
+    reusableLeaf.reserve(400);
+    std::vector<RCliqueSTv18::LeafCliqueEntry> reusableEntries;
+    reusableEntries.reserve(512);
 
-    std::cout << "=========================begin (r>=3 ST_V19)===========================" << std::endl;
+    std::cout << "=========================begin (r>=3 ST_V18)===========================" << std::endl;
     double minCore = 0;
     long long totalIters = 0;
 
@@ -214,51 +177,17 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
         removedRCliqueIdForLeaf.clear();
         currentRemoveRcliqueIds.clear();
 
-        // --- Pop ---
-        drainOverflowToBucket();
-        while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
-        if (curBucket >= (int)buckets.size()) {
-            if (!overflowSet.empty()) {
-                while (!overflowSet.empty()) {
-                    daf::Size id = overflowSet.begin()->second;
-                    overflowSet.erase(overflowSet.begin());
-                    if (!rCliqueInHeap[id]) continue;
-                    minCore = std::max(countingRClique[id], minCore);
-                    rCliqueInHeap[id] = false;
-                    currentRemoveRcliqueIds.push_back(id);
-                    coreRClique[id] = minCore; remainingInHeap--;
-                    while (!overflowSet.empty()) {
-                        daf::Size next = overflowSet.begin()->second;
-                        if (!rCliqueInHeap[next]) { overflowSet.erase(overflowSet.begin()); continue; }
-                        if (countingRClique[next] <= minCore) {
-                            overflowSet.erase(overflowSet.begin());
-                            rCliqueInHeap[next] = false;
-                            currentRemoveRcliqueIds.push_back(next);
-                            coreRClique[next] = minCore; remainingInHeap--;
-                        } else break;
-                    }
-                    break;
-                }
-                if (currentRemoveRcliqueIds.empty()) break;
-                goto phase1_v19;
-            }
-            break;
+        // --- Pop (pure heap) ---
+        while (!pq.empty() && !rCliqueInHeap[pq.top()]) pq.pop();
+        if (pq.empty()) break;
+        minCore = std::max(countingRClique[pq.top()], minCore);
+        while (!pq.empty() && countingRClique[pq.top()] <= minCore) {
+            auto id = pq.top(); pq.pop();
+            if (!rCliqueInHeap[id]) continue;
+            rCliqueInHeap[id] = false;
+            currentRemoveRcliqueIds.push_back(id);
+            coreRClique[id] = minCore; remainingInHeap--;
         }
-        minCore = std::max((double)curBucket, minCore);
-        while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
-               && curBucket <= (int)minCore) {
-            while (!buckets[curBucket].empty()) {
-                auto id = buckets[curBucket].back();
-                buckets[curBucket].pop_back();
-                rCliqueInHeap[id] = false;
-                currentRemoveRcliqueIds.push_back(id);
-                coreRClique[id] = minCore; remainingInHeap--;
-            }
-            if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
-                && (curBucket + 1) <= (int)minCore) curBucket++;
-            else break;
-        }
-        phase1_v19:
         duration_pop += std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::high_resolution_clock::now() - t_loop_start).count();
         if (remainingInHeap == 0) break;
@@ -291,28 +220,22 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
             auto leafIndex = changedLeafIndex[leafId];
             const auto &removedR = removedRCliqueIdForLeaf[leafIndex];
 
-            int n = (int)leaf.size();
             daf::CliqueSize keepC = 0, pivotC = 0;
             for (const auto &node : leaf) {
                 if (node.isPivot) pivotC++; else keepC++;
             }
+            int n = (int)leaf.size();
             int needPivot = s - static_cast<int>(keepC);
 
             auto t_bk = std::chrono::high_resolution_clock::now();
 
-            // --- LeafDeath fast-path ---
+            // --- LeafDeath fast-path (V11's optimization) ---
             daf::Size maxRCliquePerVertex = (daf::Size)(nCr[n - 1][r - 1] + 0.5);
             vertexConflictDeg.assign(n, 0);
             daf::StaticVector<daf::Size> &mapRef = daf::vListMap;
             for (int i = 0; i < n; ++i) mapRef[leaf[i].v] = (daf::Size)i;
 
-            // Count conflict degree including ALL pending + new removals
-            auto &pending = pendingRemovals[leafId];
-            // New removals for this iteration
             for (auto rmId : removedR) {
-                pending.push_back(rmId);
-            }
-            for (auto rmId : pending) {
                 auto rClique = cliqueIndex.byId(rmId);
                 for (auto v : rClique) {
                     daf::Size pos = mapRef[v];
@@ -329,15 +252,14 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
                 }
             }
             if (!leafDead) {
-                int rp = (int)pivotC - forcedPivotRemove;
-                int rt = n - forcedPivotRemove;
-                if (rt < (int)s || rp < needPivot) leafDead = true;
+                int remainingPivots = (int)pivotC - forcedPivotRemove;
+                int remainingTotal = n - forcedPivotRemove;
+                if (remainingTotal < (int)s || remainingPivots < needPivot)
+                    leafDead = true;
             }
 
-            int m = (int)pending.size(); // total pending removals
-
             if (leafDead) {
-                // ===== DEAD LEAF =====
+                // ===== DEAD LEAF: V17's direct enumeration (no leafCliqueInfo) =====
                 cntLeafDeath++;
                 duration_bk += std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::high_resolution_clock::now() - t_bk).count();
@@ -345,70 +267,16 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
                 auto t_supp = std::chrono::high_resolution_clock::now();
                 // Remove from treeGraphV
                 for (const auto &leafV : leaf) {
-                    treeGraphV.removeNbr(leafV.v, {leafId, leafV.isPivot});
+                    if (leafV.isPivot) treeGraphV.removeNbr(leafV.v, {leafId, true});
+                    else treeGraphV.removeNbr(leafV.v, {leafId, false});
                 }
-                // Subtract ALL remaining support (leaf dies → all r-cliques lose this leaf's contribution)
-                // But we need the CURRENT contribution, accounting for previous pending removals.
-                // If no previous pending (common case): just subtract nCr directly.
-                // If pending exists: use IE to compute current support, then subtract.
-                if (m <= RCliqueSTv19::IE_THRESHOLD && m > 0) {
-                    // Build conflict masks for IE
-                    uint64_t conflictMasks[RCliqueSTv19::IE_THRESHOLD];
-                    for (int ci = 0; ci < m; ++ci) {
-                        conflictMasks[ci] = 0;
-                        auto rClique = cliqueIndex.byId(pending[ci]);
-                        for (auto v : rClique) {
-                            daf::Size pos = mapRef[v];
-                            if (pos < (daf::Size)n && leaf[pos].isPivot)
-                                conflictMasks[ci] |= (1ULL << pos);
-                        }
-                    }
-                    uint16_t unionSz[1 << RCliqueSTv19::IE_THRESHOLD];
-                    RCliqueSTv19::precomputeUnionSizes(m, conflictMasks, unionSz);
-
-                    int totalSubsets = 1 << m;
-                    int signs[1 << RCliqueSTv19::IE_THRESHOLD];
-                    for (int S = 0; S < totalSubsets; ++S)
-                        signs[S] = (__builtin_popcount(S) & 1) ? -1 : 1;
-
-                    // For each r-clique, compute current support via IE, then subtract
-                    daf::enumerateCombinations(leaf, r,
-                        [&](const daf::StaticVector<TreeGraphNode> &rClique) {
-                        auto cliqueId = cliqueIndex.byClique(rClique);
-                        if (!rCliqueInHeap[cliqueId]) return true;
-
-                        // Build q' pivot mask
-                        uint64_t qMask = 0;
-                        daf::CliqueSize subP = 0;
-                        for (const auto &node : rClique) {
-                            daf::Size pos = mapRef[node.v];
-                            if (node.isPivot) { qMask |= (1ULL << pos); subP++; }
-                        }
-
-                        // Compute current support via IE
-                        double currentSupport = 0;
-                        for (int S = 0; S < totalSubsets; ++S) {
-                            // |P_q' ∪ ⋃_{i∈S} F_i| = popcount(qMask | unionMask[S])
-                            // But we precomputed unionSz[S] = popcount(unionMask[S])
-                            // We need popcount(qMask | unionMask[S])
-                            // = |qMask| + |unionMask[S]| - |qMask & unionMask[S]|
-                            // Hmm, we don't have the actual unionMask. Let me recompute.
-                        }
-                        // Actually, we need full union masks. Let me fix.
-                        return true;
-                    });
-                }
-                // Simpler: for dead leaves, just subtract the FULL original contribution
-                // (before any pending removals). The pending removals' deltas were already
-                // applied in previous iterations.
-                // Only need to subtract the INCREMENTAL change from NEW removals.
-                // But this is complex... let's use direct enumeration for dead leaves.
+                // Subtract support via direct enumeration
                 daf::enumerateCombinations(leaf, r,
-                    [&](const daf::StaticVector<TreeGraphNode> &rClique) {
-                    auto cliqueId = cliqueIndex.byClique(rClique);
+                    [&](const daf::StaticVector<TreeGraphNode> &clique) {
+                    auto cliqueId = cliqueIndex.byClique(clique);
                     if (!rCliqueInHeap[cliqueId]) return true;
                     daf::CliqueSize subP = 0;
-                    for (const auto &node : rClique) if (node.isPivot) subP++;
+                    for (const auto &node : clique) if (node.isPivot) subP++;
                     countingRClique[cliqueId] -= nCr[pivotC - subP][needPivot - subP];
                     if (countingRClique[cliqueId] < 0) countingRClique[cliqueId] = 0;
                     bucketMove(cliqueId);
@@ -417,157 +285,107 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
                 duration_support += std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::high_resolution_clock::now() - t_supp).count();
                 tree.removeNode(leafId);
-                pending.clear();
-
-            } else if (m <= RCliqueSTv19::IE_THRESHOLD) {
-                // ===== IE PATH: Analytical inclusion-exclusion =====
-                cntIE++;
-
-                // Build local vertex index
-                // Build conflict pivot masks (leaf-local positions, using bitmask)
-                uint64_t conflictMasks[RCliqueSTv19::IE_THRESHOLD];
-                for (int ci = 0; ci < m; ++ci) {
-                    conflictMasks[ci] = 0;
-                    auto rClique = cliqueIndex.byId(pending[ci]);
-                    for (auto v : rClique) {
-                        daf::Size pos = mapRef[v];
-                        if (pos < (daf::Size)n && leaf[pos].isPivot)
-                            conflictMasks[ci] |= (1ULL << pos);
-                    }
+                if (leafId < leafCliqueInfo.size() && !leafCliqueInfo[leafId].empty()) {
+                    leafCliqueInfo[leafId].clear();
+                    leafCliqueInfo[leafId].shrink_to_fit();
                 }
-
-                // Precompute union masks for all 2^m subsets
-                int totalSubsets = 1 << m;
-                uint64_t unionMask[1 << RCliqueSTv19::IE_THRESHOLD];
-                unionMask[0] = 0;
-                for (int S = 1; S < totalSubsets; ++S) {
-                    int lsb = __builtin_ctz(S);
-                    unionMask[S] = unionMask[S & (S-1)] | conflictMasks[lsb];
-                }
-
-                duration_bk += std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::high_resolution_clock::now() - t_bk).count();
-
-                auto t_supp = std::chrono::high_resolution_clock::now();
-
-                // For each r-clique q' in the leaf:
-                // new_support = Σ_{S⊆[m]} (-1)^|S| · nCr(pivotC - |pivots of q' ∪ unionMask[S]|,
-                //                                         needPivot - |pivots of q' ∪ unionMask[S]|)
-                // delta = new_support - old_support (where old = nCr[pivotC-subP][needPivot-subP])
-                daf::enumerateCombinations(leaf, r,
-                    [&](const daf::StaticVector<TreeGraphNode> &rClique) {
-                    auto cliqueId = cliqueIndex.byClique(rClique);
-                    if (!rCliqueInHeap[cliqueId]) return true;
-
-                    // Build q' pivot bitmask
-                    uint64_t qMask = 0;
-                    daf::CliqueSize subP = 0;
-                    for (const auto &node : rClique) {
-                        if (node.isPivot) {
-                            qMask |= (1ULL << mapRef[node.v]);
-                            subP++;
-                        }
-                    }
-
-                    // old support (before any removals from this leaf)
-                    double oldSupp = nCr[pivotC - subP][needPivot - subP];
-
-                    // new support via IE
-                    double newSupp = 0;
-                    for (int S = 0; S < totalSubsets; ++S) {
-                        int sign = (__builtin_popcount(S) & 1) ? -1 : 1;
-                        uint64_t combined = qMask | unionMask[S];
-                        int totalPivUsed = __builtin_popcountll(combined);
-                        int row = (int)pivotC - totalPivUsed;
-                        int col = needPivot - totalPivUsed;
-                        if (row >= 0 && col >= 0 && row < 1001 && col < 401)
-                            newSupp += sign * nCr[row][col];
-                    }
-
-                    double delta = newSupp - oldSupp;
-                    if (delta != 0) {
-                        countingRClique[cliqueId] += delta;
-                        if (countingRClique[cliqueId] < 0) countingRClique[cliqueId] = 0;
-                        bucketMove(cliqueId);
-                    }
-                    return true;
-                });
-
-                // NO tree mutation, NO subpath generation!
-                // The leaf stays as-is with pending removals tracked.
-                // treeGraphV unchanged.
-
-                duration_support += std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::high_resolution_clock::now() - t_supp).count();
 
             } else {
-                // ===== FALLBACK: pathSplit (V17-style) when m > threshold =====
-                cntFallback++;
+                // ===== BK LEAF: build leafCliqueInfo on-demand, then use V11's fast path =====
+                cntBK++;
+
+                // Build leafCliqueInfo for this leaf (if not already built from being a sub-leaf)
+                if (leafId >= leafCliqueInfo.size()) leafCliqueInfo.resize(leafId + 1);
+                if (leafCliqueInfo[leafId].empty()) {
+                    leafCliqueInfo[leafId] = RCliqueSTv18::buildLeafInfo(leaf, cliqueIndex, r, s);
+                }
 
                 // Remove from treeGraphV
-                for (const auto &leafV : leaf)
-                    treeGraphV.removeNbr(leafV.v, {leafId, leafV.isPivot});
+                for (const auto &leafV : leaf) {
+                    if (leafV.isPivot) treeGraphV.removeNbr(leafV.v, {leafId, true});
+                    else treeGraphV.removeNbr(leafV.v, {leafId, false});
+                }
 
-                // Use ALL pending as conflicts
-                auto mapped = pending | std::views::transform(
+                // BK split with leafCliqueInfo-based sub-leaf construction
+                auto mapped = removedR | std::views::transform(
                     [&](const daf::Size id) { return cliqueIndex.byId(id); });
 
                 bkRmClique::removeRClique(leaf, mapped, r, s,
                     [&](const bkRmClique::Bitset &c, const bkRmClique::Bitset &bkPivots) {
-                        std::vector<TreeGraphNode> newLeaf;
-                        c.for_each_bit([&](size_t pos) {
-                            newLeaf.push_back({leaf[pos].v, bkPivots.test(pos)});
-                        });
-                        auto newId = tree.addNode(newLeaf);
-                        for (const auto &v : tree.adj_list[newId])
-                            treeGraphV.addNbr(v.v, {newId, v.isPivot});
-
-                        // Compute support for new sub-leaf
+                        reusableLeaf.clear();
                         daf::CliqueSize newPivotC = 0, newKeepC = 0;
-                        for (const auto &v : tree.adj_list[newId]) {
-                            if (v.isPivot) newPivotC++; else newKeepC++;
-                        }
-                        daf::Size np = s - newKeepC;
-                        daf::enumerateCombinations(tree.adj_list[newId], r,
-                            [&](const daf::StaticVector<TreeGraphNode> &rClique) {
-                            daf::CliqueSize sp = 0;
-                            for (const auto &node : rClique) if (node.isPivot) sp++;
-                            if (sp <= np) {
-                                int row = (int)newPivotC - (int)sp;
-                                int col = (int)np - (int)sp;
-                                if (row >= 0 && row < 1001 && col >= 0 && col < 401)
-                                    countingRClique[cliqueIndex.byClique(rClique)] += nCr[row][col];
-                            }
-                            return true;
+                        uint8_t parentToSubPos[400];
+                        memset(parentToSubPos, 255, sizeof(parentToSubPos));
+                        uint8_t subIdx = 0;
+
+                        c.for_each_bit([&](size_t parentPos) {
+                            bool isP = bkPivots.test(parentPos);
+                            reusableLeaf.push_back({leaf[parentPos].v, isP});
+                            parentToSubPos[parentPos] = subIdx++;
+                            if (isP) newPivotC++; else newKeepC++;
                         });
+
+                        auto newId = tree.addNode(reusableLeaf);
+                        // Add to treeGraphV
+                        for (const auto &v : tree.adj_list[newId]) {
+                            treeGraphV.addNbr(v.v, {newId, v.isPivot});
+                        }
+
+                        daf::Size np = s - newKeepC;
+
+                        // Build new leafCliqueInfo from parent's entries (V11's containment check)
+                        reusableEntries.clear();
+                        for (const auto &entry : leafCliqueInfo[leafId]) {
+                            bool contained = true;
+                            daf::CliqueSize subP = 0;
+                            for (int j = 0; j < (int)r; ++j) {
+                                uint8_t pos = entry.positions[j];
+                                if (!c.test(pos)) { contained = false; break; }
+                                if (bkPivots.test(pos)) subP++;
+                            }
+                            if (!contained) continue;
+
+                            if (subP <= np && newPivotC - subP < 1001 && np - subP < 401) {
+                                double ncrVal = nCr[newPivotC - subP][np - subP];
+                                countingRClique[entry.cliqueId] += ncrVal;
+
+                                RCliqueSTv18::LeafCliqueEntry newEntry;
+                                newEntry.cliqueId = entry.cliqueId;
+                                newEntry.ncrValue = ncrVal;
+                                for (int j = 0; j < (int)r; ++j)
+                                    newEntry.positions[j] = parentToSubPos[entry.positions[j]];
+                                reusableEntries.push_back(newEntry);
+                            }
+                        }
+
+                        if (newId >= leafCliqueInfo.size())
+                            leafCliqueInfo.resize(newId + 1);
+                        // Don't store leafCliqueInfo for sub-leaves here.
+                        // It will be rebuilt on-demand if the sub-leaf enters BK.
+                        // This avoids storing 4+ GB of entries for sub-leaves that
+                        // will mostly hit LeafDeath and never need it.
 
                         if (newId >= changedLeafIndex.size())
                             changedLeafIndex.resize(newId * 2, std::numeric_limits<daf::Size>::max());
-                        if (newId >= pendingRemovals.size())
-                            pendingRemovals.resize(newId + 1);
                     });
 
                 duration_bk += std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::high_resolution_clock::now() - t_bk).count();
 
-                // Subtract old leaf's full contribution
+                // Subtract old leaf's contributions via leafCliqueInfo (V11's fast path)
                 auto t_supp = std::chrono::high_resolution_clock::now();
-                daf::enumerateCombinations(leaf, r,
-                    [&](const daf::StaticVector<TreeGraphNode> &rClique) {
-                    auto cliqueId = cliqueIndex.byClique(rClique);
-                    if (!rCliqueInHeap[cliqueId]) return true;
-                    daf::CliqueSize subP = 0;
-                    for (const auto &node : rClique) if (node.isPivot) subP++;
-                    countingRClique[cliqueId] -= nCr[pivotC - subP][needPivot - subP];
-                    if (countingRClique[cliqueId] < 0) countingRClique[cliqueId] = 0;
-                    bucketMove(cliqueId);
-                    return true;
-                });
+                for (const auto &entry : leafCliqueInfo[leafId]) {
+                    if (!rCliqueInHeap[entry.cliqueId]) continue;
+                    countingRClique[entry.cliqueId] -= entry.ncrValue;
+                    if (countingRClique[entry.cliqueId] < 0) countingRClique[entry.cliqueId] = 0;
+                    bucketMove(entry.cliqueId);
+                }
                 duration_support += std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::high_resolution_clock::now() - t_supp).count();
 
                 tree.removeNode(leafId);
-                pending.clear();
+                leafCliqueInfo[leafId].clear();
+                leafCliqueInfo[leafId].shrink_to_fit();
             }
         }
     }
@@ -582,8 +400,11 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     std::cout << "  Intersect: " << duration_intersect / 1000000.0 << std::endl;
     std::cout << "  BK:        " << duration_bk / 1000000.0 << std::endl;
     std::cout << "  Support:   " << duration_support / 1000000.0 << std::endl;
-    std::cout << "  Cases: LeafDeath=" << cntLeafDeath << " IE=" << cntIE
-              << " Fallback=" << cntFallback << " iters=" << totalIters << std::endl;
+    // Free all remaining leafCliqueInfo
+    leafCliqueInfo.clear();
+    leafCliqueInfo.shrink_to_fit();
+    std::cout << "  Cases: LeafDeath=" << cntLeafDeath << " BK=" << cntBK
+              << " iters=" << totalIters << std::endl;
 
     std::vector<std::pair<std::vector<daf::Size>, double>> sortedK;
     sortedK.reserve(nClique);

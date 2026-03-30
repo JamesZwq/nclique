@@ -600,6 +600,7 @@ static bool dispatchR3Plus(
         {"PIVOTER_RUN_ST_V21",          "ST_V21 r>=3",               NucleusCoreDecompositionRClique_ST_V21},
         {"PIVOTER_RUN_ST_V20",          "ST_V20 r>=3",               NucleusCoreDecompositionRClique_ST_V20},
         {"PIVOTER_RUN_ST_V19",          "ST_V19 r>=3",               NucleusCoreDecompositionRClique_ST_V19},
+        {"PIVOTER_RUN_ST_V19",          "ST_V19 r>=3",               NucleusCoreDecompositionRClique_ST_V19},
         {"PIVOTER_RUN_ST_V18",          "ST_V18 r>=3",               NucleusCoreDecompositionRClique_ST_V18},
         {"PIVOTER_RUN_ST_V17",          "ST_V17 r>=3",               NucleusCoreDecompositionRClique_ST_V17},
         {"PIVOTER_RUN_ST_V16",          "ST_V16 r>=3",               NucleusCoreDecompositionRClique_ST_V16},
