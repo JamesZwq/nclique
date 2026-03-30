@@ -36,7 +36,7 @@ for f in com-dblp.edges com-youtube.edges web-Stanford.edges web-Google.edges so
   fi
 done
 
-echo "graph,r,s,algorithm,time_ms,status" > "$OUTCSV"
+echo "graph,r,s,algorithm,time_ms,memory_kB,status" > "$OUTCSV"
 mkdir -p "$LOGDIR"
 
 run_one() {
@@ -64,8 +64,12 @@ run_one() {
     fi
   fi
 
-  echo "$graph,$r,$s,$algo_label,$took,$status" >> "$OUTCSV"
-  printf "    %-10s %s (%s)\n" "$algo_label" "${took}ms" "$status"
+  local mem=""
+  mem=$(echo "$result" | grep -oP 'Final Memory: \s*\K[0-9]+') || true
+  if [ -z "$mem" ]; then mem="N/A"; fi
+
+  echo "$graph,$r,$s,$algo_label,$took,$mem,$status" >> "$OUTCSV"
+  printf "    %-10s %s (%s) mem=%s kB\n" "$algo_label" "${took}ms" "$status" "$mem"
 }
 
 # ============ Step 2: Run experiments ============
