@@ -376,6 +376,10 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
                 duration_support += std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::high_resolution_clock::now() - t_supp).count();
                 tree.removeNode(leafId);
+                if (leafId < leafCliqueInfo.size() && !leafCliqueInfo[leafId].empty()) {
+                    leafCliqueInfo[leafId].clear();
+                    leafCliqueInfo[leafId].shrink_to_fit();
+                }
 
             } else {
                 // ===== BK LEAF: build leafCliqueInfo on-demand, then use V11's fast path =====
@@ -447,7 +451,10 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
 
                         if (newId >= leafCliqueInfo.size())
                             leafCliqueInfo.resize(newId + 1);
-                        leafCliqueInfo[newId] = reusableEntries;
+                        // Don't store leafCliqueInfo for sub-leaves here.
+                        // It will be rebuilt on-demand if the sub-leaf enters BK.
+                        // This avoids storing 4+ GB of entries for sub-leaves that
+                        // will mostly hit LeafDeath and never need it.
 
                         if (newId >= changedLeafIndex.size())
                             changedLeafIndex.resize(newId * 2, std::numeric_limits<daf::Size>::max());
@@ -484,6 +491,9 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     std::cout << "  Intersect: " << duration_intersect / 1000000.0 << std::endl;
     std::cout << "  BK:        " << duration_bk / 1000000.0 << std::endl;
     std::cout << "  Support:   " << duration_support / 1000000.0 << std::endl;
+    // Free all remaining leafCliqueInfo
+    leafCliqueInfo.clear();
+    leafCliqueInfo.shrink_to_fit();
     std::cout << "  Cases: LeafDeath=" << cntLeafDeath << " BK=" << cntBK
               << " iters=" << totalIters << std::endl;
 

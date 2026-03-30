@@ -555,6 +555,15 @@ static void runRCliqueVariant(
     auto result = daf::timeCount(name, [&]() {
         return func(tree, edgeGraph, treeGraphV, r, s, sharedCI);
     });
+    // Print core distribution
+    {
+        std::map<double, int> dist;
+        for (const auto &[clique, cv] : result) dist[cv]++;
+        dist.erase(0.0);
+        std::cout << "Core value distribution:" << std::endl;
+        for (const auto &[cv, count] : dist)
+            std::cout << "  core=" << cv << " count=" << count << std::endl;
+    }
     if (compareMode) {
         auto refCore = daf::timeCount("Reference r>=3", [&]() {
             return NucleusCoreDecompositionCorrect(refTree2, edgeGraph, refTGV2, r, s, nullptr);
