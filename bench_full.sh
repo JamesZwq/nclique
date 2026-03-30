@@ -22,7 +22,7 @@ echo ""
 
 # ============ Step 1: Setup ============
 BIN="./build/bin/degeneracy_cliques"
-TIMEOUT=1200
+TIMEOUT=3600
 OUTCSV="bench_full_results.csv"
 LOGDIR="bench_logs"
 DATADIR="/data/wenqianz"
@@ -74,7 +74,7 @@ run_one() {
 
 # ============ Step 2: Run experiments ============
 echo "============================================================="
-echo "  Full Benchmark (timeout=${TIMEOUT}s = 20min)"
+echo "  Full Benchmark (timeout=${TIMEOUT}s = 60min)"
 echo "============================================================="
 
 # Graph configs: name, max_clique
