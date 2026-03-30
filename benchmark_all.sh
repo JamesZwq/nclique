@@ -116,8 +116,10 @@ for gi in "${!VALID_GRAPHS[@]}"; do
         run_one "$graph" "$r" "$s" "Ours_DCLP" "PIVOTER_RUN_R2_DCLP"
         run_one "$graph" "$r" "$s" "REF_R2" "PIVOTER_NOOPT"
       else
-        # R>=3: run V18, V11, and REF
+        # R>=3: run V18, V19, V20, V11, and REF
         run_one "$graph" "$r" "$s" "Ours_V18" "PIVOTER_RUN_ST_V18"
+        run_one "$graph" "$r" "$s" "Ours_V19" "PIVOTER_RUN_ST_V19"
+        run_one "$graph" "$r" "$s" "Ours_V20" "PIVOTER_RUN_ST_V20"
         run_one "$graph" "$r" "$s" "Ours_V11" "PIVOTER_RUN_ST_V11"
         run_one "$graph" "$r" "$s" "REF_R3" "PIVOTER_RUN_REF"
       fi
