@@ -1,312 +1,132 @@
 #!/bin/bash
-#
-# Comprehensive benchmark script for all nucleus decomposition versions.
-# Usage: bash benchmark_all.sh [--verify] [output_dir]
-#
-#   --verify   First run correctness verification (PIVOTER_COMPARE=1),
-#              then run performance benchmarks.
-#   (default)  Skip verification, run performance benchmarks only.
-#
-# All program output (memory, timing at each phase) is saved per-run in logs/.
-# Single-thread only. Records wall-clock time and peak RSS memory.
-#
+# =============================================================
+# Full Benchmark: R=1..5, s from r+1 to max_clique
+# 4 Ours + 3 REF algorithms
+# Timeout: 2 hours (7200 seconds)
+# Output: benchmark_all_results.csv
+# =============================================================
 
-set -euo pipefail
+cd "$(dirname "$0")"
 
-# =========================================================================
-# Parse arguments
-# =========================================================================
-VERIFY=0
-POSITIONAL=()
-for arg in "$@"; do
-    case "$arg" in
-        --verify) VERIFY=1 ;;
-        *) POSITIONAL+=("$arg") ;;
-    esac
+# ============ Step 0: Build ============
+echo "============================================================="
+echo "  Step 0: Clean build"
+echo "============================================================="
+rm -rf build
+mkdir -p build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release 2>&1 | tail -3
+cmake --build build -j 12 --target degeneracy_cliques 2>&1 | tail -5
+echo "Build done."
+echo ""
+
+# ============ Step 1: Setup ============
+BIN="./build/bin/degeneracy_cliques"
+TIMEOUT=7200
+OUTCSV="benchmark_all_results.csv"
+LOGDIR="bench_logs"
+DATADIR="/data/wenqianz"
+
+# Symlink graphs if not present
+mkdir -p graphs
+for f in com-dblp.edges com-youtube.edges web-Stanford.edges web-Google.edges soc-pokec-relationships.edges; do
+  if [ ! -f "graphs/$f" ] && [ -f "$DATADIR/$f" ]; then
+    ln -sf "$DATADIR/$f" "graphs/$f"
+    echo "Linked graphs/$f -> $DATADIR/$f"
+  fi
 done
 
-# Project root on the server
-PROJDIR="${PROJDIR:-/home/wenqianz/nclique}"
-cd "$PROJDIR"
-
-# Pull latest and build
-echo "Pulling latest code..."
-git pull 2>&1 | tail -3
-echo ""
-echo "Building..."
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release 2>&1 | tail -3
-cmake --build build --target degeneracy_cliques -j 12 2>&1 | tail -3
-echo "Build complete."
-echo ""
-
-BIN="./build/bin/degeneracy_cliques"
-OUTDIR="${POSITIONAL[0]:-benchmark_results}"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-OUTDIR="${OUTDIR}/${TIMESTAMP}"
-LOGDIR="${OUTDIR}/logs"
+echo "graph,r,s,algorithm,time_ms,memory_kB,status" > "$OUTCSV"
 mkdir -p "$LOGDIR"
 
-DATASETS=(
-    "/data/wenqianz/com-dblp.edges"
-    "/data/wenqianz/com-youtube.edges"
-    "/data/wenqianz/web-Google.edges"
-    "/data/wenqianz/soc-pokec-relationships.edges"
-)
-
-# =========================================================================
-# Helper: run one experiment, capture time + peak RSS + full program output
-# Args: $1=label $2=env_vars $3=threads $4=graph $5=r $6=s $7=csvfile
-# =========================================================================
 run_one() {
-    local label="$1"
-    local env_vars="$2"
-    local threads="$3"
-    local graph="$4"
-    local r_val="$5"
-    local s_val="$6"
-    local csvfile="$7"
-    local gname
-    gname=$(basename "$graph" .edges)
+  local graph=$1 r=$2 s=$3 algo_label=$4 env_var=$5
+  local logfile="$LOGDIR/${graph}_r${r}_s${s}_${algo_label}.log"
+  local result=""
+  local exit_code=0
+  result=$(env "${env_var}=1" timeout ${TIMEOUT}s $BIN "graphs/${graph}.edges" "$r" "$s" 2>&1) || exit_code=$?
 
-    echo -n "  Running: ${label} ${gname} r=${r_val} s=${s_val} ... "
+  echo "$result" > "$logfile"
 
-    # Per-run log file: stores ALL program output
-    local logfile="${LOGDIR}/${gname}_r${r_val}_s${s_val}_${label}.log"
+  local took=""
+  local status="OK"
+  if [ $exit_code -eq 124 ]; then
+    took="TIMEOUT"
+    status="TIMEOUT"
+  else
+    took=$(echo "$result" | grep -oP 'took: \K[0-9.]+(?= ms)' | tail -1) || true
+    if [ -z "$took" ]; then
+      took=$(echo "$result" | grep "^time:" | tail -1 | awk '{print $2}') || true
+    fi
+    if [ -z "$took" ]; then
+      took="ERROR"
+      status="ERROR(exit=$exit_code)"
+    fi
+  fi
 
-    local cmd="OMP_NUM_THREADS=${threads} ${env_vars} timeout 10800 ${BIN} ${graph} ${r_val} ${s_val} degen"
+  local mem=""
+  mem=$(echo "$result" | grep -oP 'Final Memory: \s*\K[0-9]+') || true
+  if [ -z "$mem" ]; then mem="N/A"; fi
 
-    # Capture everything: program stdout/stderr + /usr/bin/time stats
-    { /usr/bin/time -v bash -c "$cmd" ; } > "$logfile" 2>&1 || true
-
-    # Extract peeling time (the "time: XXX ms" line from the algorithm)
-    local peel_time
-    peel_time=$(grep -oP 'time: \K[0-9]+' "$logfile" | tail -1 || echo "N/A")
-
-    # Extract peak RSS from GNU time output
-    local peak_rss_kb
-    peak_rss_kb=$(grep -oP 'Maximum resident set size.*?: \K[0-9]+' "$logfile" || echo "N/A")
-
-    # Extract total wall time from the "took:" line
-    local total_time
-    total_time=$(grep -oP '(?:ST r|ST_V2 r|Reference r|Local H-index|NucleusCoreDecomposition) .* took: \K[0-9.]+' "$logfile" | tail -1 || echo "N/A")
-
-    # Extract Cases info if available
-    local cases_info
-    cases_info=$(grep -oP 'Cases: .*' "$logfile" | tail -1 || echo "")
-
-    # Write CSV row
-    echo "${gname},${r_val},${s_val},${label},${threads},${peel_time},${total_time},${peak_rss_kb},${cases_info}" >> "$csvfile"
-
-    echo "peel=${peel_time}ms rss=${peak_rss_kb}kB"
+  echo "$graph,$r,$s,$algo_label,$took,$mem,$status" >> "$OUTCSV"
+  printf "    %-12s %10sms (%s) mem=%s kB\n" "$algo_label" "$took" "$status" "$mem"
 }
 
-# =========================================================================
-# Helper: run correctness verification for one (graph, r, s, version)
-# Args: $1=label $2=env_vars $3=graph $4=r $5=s
-# Returns 0 if correct, 1 if mismatch
-# =========================================================================
-verify_one() {
-    local label="$1"
-    local env_vars="$2"
-    local graph="$3"
-    local r_val="$4"
-    local s_val="$5"
-    local gname
-    gname=$(basename "$graph" .edges)
+# ============ Step 2: Run experiments ============
+echo "============================================================="
+echo "  Full Benchmark (timeout=${TIMEOUT}s = 2h)"
+echo "============================================================="
 
-    echo -n "  Verify: ${label} ${gname} r=${r_val} s=${s_val} ... "
+# Graph configs: name, max_clique (omega)
+GRAPHS=(com-dblp com-youtube web-Stanford)
+MAX_CLIQUE=(110 17 61)
 
-    local logfile="${LOGDIR}/${gname}_r${r_val}_s${s_val}_${label}_verify.log"
-    local cmd="OMP_NUM_THREADS=1 PIVOTER_COMPARE=1 ${env_vars} timeout 10800 ${BIN} ${graph} ${r_val} ${s_val} degen"
-
-    { /usr/bin/time -v bash -c "$cmd" ; } > "$logfile" 2>&1 || true
-
-    if grep -q '✓.*correctness verified' "$logfile"; then
-        echo "✓ PASS"
-        return 0
-    elif grep -q '✗.*MISMATCH' "$logfile"; then
-        echo "✗ FAIL (see ${logfile})"
-        return 1
-    else
-        echo "? UNKNOWN (see ${logfile})"
-        return 1
-    fi
-}
-
-# =========================================================================
-# Algorithm tables: (env_var, label) pairs per r-value
-# =========================================================================
-
-R1_VARIANTS=(
-    "PIVOTER_RUN_ST=1        ST"
-    "PIVOTER_RUN_ST_V2=1     ST_V2"
-    "PIVOTER_RUN_ONDEMAND=1  OnDemand"
-    "PIVOTER_RUN_INTERLEAVED=1 Interleaved"
-    "PIVOTER_RUN_INTERLEAVED_V2=1 InterleavedV2"
-    "PIVOTER_RUN_LOCAL=1     Local_V1"
-    "PIVOTER_RUN_LOCAL_V2=1  Local_V2"
-    "PIVOTER_RUN_LOCAL_V3=1  Local_V3"
-    "PIVOTER_RUN_LOCAL_V4=1  Local_V4"
-)
-
-R2_VARIANTS=(
-    "PIVOTER_RUN_ST=1        ST"
-    "PIVOTER_RUN_ST_V4=1     ST_V4"
-    "PIVOTER_RUN_R2_ONDEMAND=1 R2_OnDemand"
-    "PIVOTER_RUN_R2_TREEFREE=1 R2_TreeFree"
-    "PIVOTER_RUN_R2_TREEFREE_V2=1 R2_TreeFreeV2"
-)
-
-R3_VARIANTS=(
-    "PIVOTER_RUN_ST=1        ST"
-    "PIVOTER_RUN_ST_V4=1     ST_V4"
-    "PIVOTER_RUN_ST_V10=1    ST_V10"
-    "PIVOTER_RUN_ST_V11=1    ST_V11"
-    "PIVOTER_RUN_ST_V12=1    ST_V12"
-    "PIVOTER_RUN_ST_V13=1    ST_V13"
-)
-
-# =========================================================================
-# Main
-# =========================================================================
-
-echo "=============================================="
-echo " Pivoter Benchmark Suite"
-echo " Output : ${OUTDIR}"
-echo " Verify : $([ $VERIFY -eq 1 ] && echo YES || echo NO)"
-echo " Date   : $(date)"
-echo "=============================================="
-echo ""
-
-CSVFILE="${OUTDIR}/results.csv"
-echo "graph,r,s,version,threads,peel_time_ms,total_time_ms,peak_rss_kb,cases_info" > "$CSVFILE"
-
-VERIFY_FAIL=0
-
-# =========================================================================
-# Phase A: Correctness verification (optional)
-# =========================================================================
-if [ $VERIFY -eq 1 ]; then
-    echo "========== Phase A: Correctness Verification =========="
-    echo ""
-
-    for graph in "${DATASETS[@]}"; do
-        gname=$(basename "$graph" .edges)
-
-        # r=1
-        for s_val in 3 4 5; do
-            echo "--- ${gname} r=1 s=${s_val} ---"
-            for entry in "${R1_VARIANTS[@]}"; do
-                env_var=$(echo "$entry" | awk '{print $1}')
-                label=$(echo "$entry" | awk '{print $2}')
-                verify_one "$label" "$env_var" "$graph" 1 "$s_val" || VERIFY_FAIL=1
-            done
-            echo ""
-        done
-
-        # r=2
-        for s_val in 3 4 5; do
-            echo "--- ${gname} r=2 s=${s_val} ---"
-            for entry in "${R2_VARIANTS[@]}"; do
-                env_var=$(echo "$entry" | awk '{print $1}')
-                label=$(echo "$entry" | awk '{print $2}')
-                verify_one "$label" "$env_var" "$graph" 2 "$s_val" || VERIFY_FAIL=1
-            done
-            echo ""
-        done
-
-        # r=3
-        for s_val in 4 5; do
-            echo "--- ${gname} r=3 s=${s_val} ---"
-            for entry in "${R3_VARIANTS[@]}"; do
-                env_var=$(echo "$entry" | awk '{print $1}')
-                label=$(echo "$entry" | awk '{print $2}')
-                verify_one "$label" "$env_var" "$graph" 3 "$s_val" || VERIFY_FAIL=1
-            done
-            echo ""
-        done
-
-        # r=4
-        for s_val in 5; do
-            echo "--- ${gname} r=4 s=${s_val} ---"
-            for entry in "${R3_VARIANTS[@]}"; do
-                env_var=$(echo "$entry" | awk '{print $1}')
-                label=$(echo "$entry" | awk '{print $2}')
-                verify_one "$label" "$env_var" "$graph" 4 "$s_val" || VERIFY_FAIL=1
-            done
-            echo ""
-        done
-    done
-
-    if [ $VERIFY_FAIL -ne 0 ]; then
-        echo "!!! CORRECTNESS FAILURES DETECTED — check logs in ${LOGDIR} !!!"
-        echo "Aborting benchmark."
-        exit 1
-    fi
-    echo "========== All correctness checks passed =========="
-    echo ""
-fi
-
-# =========================================================================
-# Phase B: Performance benchmarks
-# =========================================================================
-echo "========== Phase B: Performance Benchmarks =========="
-echo ""
-
-for graph in "${DATASETS[@]}"; do
-    gname=$(basename "$graph" .edges)
-
-    # r=1
-    for s_val in 3 4 5; do
-        echo "--- ${gname} r=1 s=${s_val} ---"
-        run_one "Correct" "PIVOTER_RUN_REF=1" 1 "$graph" 1 "$s_val" "$CSVFILE"
-        for entry in "${R1_VARIANTS[@]}"; do
-            env_var=$(echo "$entry" | awk '{print $1}')
-            label=$(echo "$entry" | awk '{print $2}')
-            run_one "$label" "$env_var" 1 "$graph" 1 "$s_val" "$CSVFILE"
-        done
-        echo ""
-    done
-
-    # r=2
-    for s_val in 3 4 5; do
-        echo "--- ${gname} r=2 s=${s_val} ---"
-        run_one "Correct" "PIVOTER_RUN_REF=1" 1 "$graph" 2 "$s_val" "$CSVFILE"
-        for entry in "${R2_VARIANTS[@]}"; do
-            env_var=$(echo "$entry" | awk '{print $1}')
-            label=$(echo "$entry" | awk '{print $2}')
-            run_one "$label" "$env_var" 1 "$graph" 2 "$s_val" "$CSVFILE"
-        done
-        echo ""
-    done
-
-    # r=3
-    for s_val in 4 5; do
-        echo "--- ${gname} r=3 s=${s_val} ---"
-        run_one "Correct" "PIVOTER_RUN_REF=1" 1 "$graph" 3 "$s_val" "$CSVFILE"
-        for entry in "${R3_VARIANTS[@]}"; do
-            env_var=$(echo "$entry" | awk '{print $1}')
-            label=$(echo "$entry" | awk '{print $2}')
-            run_one "$label" "$env_var" 1 "$graph" 3 "$s_val" "$CSVFILE"
-        done
-        echo ""
-    done
-
-    # r=4
-    for s_val in 5; do
-        echo "--- ${gname} r=4 s=${s_val} ---"
-        run_one "Correct" "PIVOTER_RUN_REF=1" 1 "$graph" 4 "$s_val" "$CSVFILE"
-        for entry in "${R3_VARIANTS[@]}"; do
-            env_var=$(echo "$entry" | awk '{print $1}')
-            label=$(echo "$entry" | awk '{print $2}')
-            run_one "$label" "$env_var" 1 "$graph" 4 "$s_val" "$CSVFILE"
-        done
-        echo ""
-    done
+# Check which graphs exist
+VALID_GRAPHS=()
+VALID_MAX=()
+for gi in "${!GRAPHS[@]}"; do
+  if [ -f "graphs/${GRAPHS[$gi]}.edges" ]; then
+    VALID_GRAPHS+=("${GRAPHS[$gi]}")
+    VALID_MAX+=("${MAX_CLIQUE[$gi]}")
+  else
+    echo "SKIP: graphs/${GRAPHS[$gi]}.edges not found"
+  fi
 done
 
-echo "=============================================="
-echo " Benchmark complete!"
-echo " Results CSV : ${CSVFILE}"
-echo " Full logs   : ${LOGDIR}/"
-echo "=============================================="
+for gi in "${!VALID_GRAPHS[@]}"; do
+  graph="${VALID_GRAPHS[$gi]}"
+  omega="${VALID_MAX[$gi]}"
+  echo ""
+  echo "=== $graph (ω=$omega) ==="
+
+  for r in 1 2 3 4 5; do
+    # s ranges from r+1 to min(omega, cap)
+    # Cap s to avoid extremely long runs
+    local_cap=$omega
+    s_start=$((r + 1))
+    if [ $s_start -gt $local_cap ]; then continue; fi
+
+    echo "  --- R=$r ---"
+    for s in $(seq $s_start 1 $local_cap); do
+      echo "  r=$r s=$s:"
+
+      if [ $r -eq 1 ]; then
+        run_one "$graph" "$r" "$s" "Ours_ST" "PIVOTER_RUN_ST"
+        run_one "$graph" "$r" "$s" "REF_R1" "PIVOTER_NOOPT"
+      elif [ $r -eq 2 ]; then
+        run_one "$graph" "$r" "$s" "Ours_DCLP" "PIVOTER_RUN_R2_DCLP"
+        run_one "$graph" "$r" "$s" "REF_R2" "PIVOTER_NOOPT"
+      else
+        # R>=3: run V18, V11, and REF
+        run_one "$graph" "$r" "$s" "Ours_V18" "PIVOTER_RUN_ST_V18"
+        run_one "$graph" "$r" "$s" "Ours_V11" "PIVOTER_RUN_ST_V11"
+        run_one "$graph" "$r" "$s" "REF_R3" "PIVOTER_RUN_REF"
+      fi
+    done
+  done
+done
+
+echo ""
+echo "============================================================="
+echo "  DONE. Results: $OUTCSV"
+echo "  Logs: $LOGDIR/"
+echo "============================================================="
