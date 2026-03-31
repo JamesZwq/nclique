@@ -21,7 +21,7 @@ echo ""
 
 # ============ Step 1: Setup ============
 BIN="./build/bin/degeneracy_cliques"
-TIMEOUT=7200
+TIMEOUT=3600
 OUTCSV="benchmark_all_results.csv"
 LOGDIR="bench_logs"
 DATADIR="/data/wenqianz"
@@ -99,7 +99,7 @@ export BIN TIMEOUT OUTCSV LOGDIR LOCKFILE
 
 # ============ Step 2: Generate all jobs ============
 echo "============================================================="
-echo "  Full Benchmark (timeout=${TIMEOUT}s = 2h, ${NPROC} threads)"
+echo "  Full Benchmark (timeout=${TIMEOUT}s = 1h, ${NPROC} threads)"
 echo "============================================================="
 
 GRAPHS=(com-dblp com-youtube web-Stanford)
