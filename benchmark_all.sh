@@ -40,7 +40,11 @@ if [ "$1" = "--run" ]; then
   if [ $exit_code -eq 124 ]; then
     took="TIMEOUT"; status="TIMEOUT"
   else
-    took=$(echo "$result" | grep -oP 'took: \K[0-9.]+(?= ms)' | tail -1) || true
+    # Priority: NucleusCoreDecomposition took > ST_V* took > time: > any took:
+    took=$(echo "$result" | grep -oP 'NucleusCoreDecomposition took: \K[0-9.]+(?= ms)') || true
+    if [ -z "$took" ]; then
+      took=$(echo "$result" | grep -oP 'ST_V\S+ took: \K[0-9.]+(?= ms)') || true
+    fi
     if [ -z "$took" ]; then
       took=$(echo "$result" | grep "^time:" | tail -1 | awk '{print $2}') || true
     fi
