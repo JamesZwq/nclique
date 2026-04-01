@@ -18,7 +18,7 @@ OUTCSV="benchmark_all_results.csv"
 LOGDIR="bench_logs"
 DATADIR="/data/wenqianz"
 LOCKFILE="/tmp/bench_csv.lock"
-NPROC=4
+NPROC=8
 
 # ============ Internal: run a single job ============
 if [ "$1" = "--run" ]; then
