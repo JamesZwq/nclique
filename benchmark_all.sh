@@ -125,7 +125,6 @@ for gi in "${!GRAPHS[@]}"; do
         echo "--run $graph $r $s REF_R2 PIVOTER_NOOPT" >> "$JOBFILE"
       else
         echo "--run $graph $r $s Ours_V18 PIVOTER_RUN_ST_V18" >> "$JOBFILE"
-        echo "--run $graph $r $s Ours_V19 PIVOTER_RUN_ST_V19" >> "$JOBFILE"
         echo "--run $graph $r $s Ours_V20 PIVOTER_RUN_ST_V20" >> "$JOBFILE"
         echo "--run $graph $r $s Ours_V11 PIVOTER_RUN_ST_V11" >> "$JOBFILE"
         echo "--run $graph $r $s REF_R3 PIVOTER_RUN_REF" >> "$JOBFILE"
