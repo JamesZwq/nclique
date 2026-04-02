@@ -99,8 +99,8 @@ echo "============================================================="
 echo "  Full Benchmark (timeout=${TIMEOUT}s = 1h, ${NPROC} threads)"
 echo "============================================================="
 
-GRAPHS=(com-dblp com-youtube web-Stanford)
-MAX_CLIQUE=(110 17 61)
+GRAPHS=(com-youtube web-Stanford)
+MAX_CLIQUE=(17 61)
 
 JOBFILE=$(mktemp /tmp/bench_jobs.XXXXXX)
 
