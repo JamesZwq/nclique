@@ -218,21 +218,10 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCore
     auto &leafWPP = initResult.leafWPP;
     auto &leafWKP = initResult.leafWKP;
 
-    // Free CSR if too large relative to graph (saves memory on dense graphs)
-    bool csrEnabled = true;
-    if (leafEdgeData.size() > edgeGraph.adj_list.size() * 4) {
-        leafEdgeData.clear(); leafEdgeData.shrink_to_fit();
-        leafEdgeOff.clear(); leafEdgeOff.shrink_to_fit();
-        leafWKK.clear(); leafWKK.shrink_to_fit();
-        leafWPP.clear(); leafWPP.shrink_to_fit();
-        leafWKP.clear(); leafWKP.shrink_to_fit();
-        csrEnabled = false;
-    }
-
     auto time_init = std::chrono::high_resolution_clock::now();
     std::cout << "DCLP init took: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(time_init - time_start).count()
-              << " ms" << (csrEnabled ? " (CSR enabled)" : " (CSR skipped)") << std::endl;
+              << " ms, leafEdgeData=" << leafEdgeData.size() << std::endl;
 
     const daf::Size initialNumLeaves = leafEdgeOff.size() > 0 ? leafEdgeOff.size() - 1 : 0;
     // leafEdgeAlive: whether CSR data is valid for this leaf
