@@ -78,7 +78,7 @@ echo ""
 
 # ============ Step 1: Setup ============
 mkdir -p graphs
-for f in com-dblp.edges com-youtube.edges web-Stanford.edges web-Google.edges soc-pokec-relationships.edges; do
+for f in com-dblp.edges com-youtube.edges web-Stanford.edges web-Google.edges soc-pokec-relationships.edges web-it-2004.edges; do
   if [ ! -f "graphs/$f" ] && [ -f "$DATADIR/$f" ]; then
     ln -sf "$DATADIR/$f" "graphs/$f"
     echo "Linked graphs/$f -> $DATADIR/$f"
@@ -99,8 +99,8 @@ echo "============================================================="
 echo "  Full Benchmark (timeout=${TIMEOUT}s = 1h, ${NPROC} threads)"
 echo "============================================================="
 
-GRAPHS=(com-youtube web-Stanford)
-MAX_CLIQUE=(17 61)
+GRAPHS=(com-youtube web-Stanford web-it-2004)
+MAX_CLIQUE=(17 61 430)
 
 JOBFILE=$(mktemp /tmp/bench_jobs.XXXXXX)
 
