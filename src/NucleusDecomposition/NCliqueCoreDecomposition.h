@@ -235,6 +235,24 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex = nullptr);
 
+// Region-based nucleus decomposition: peel regions (vertex profile groups), not individual r-cliques
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_Region(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
+// RegionExact: exact compressed peeling on r-class / s-class tuples
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionExact(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
+// Quotient Lab: report clean-leaf quotient compression, then run exact V20
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_ST_QuotientLab(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
 // ST V19: V18 + pure d-ary heap PQ (no overflow)
 std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_ST_V19(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
@@ -510,6 +528,46 @@ std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCor
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 
+// R2 DCLP2: DCLP + Complement BK for Case B d>=2 (BK on affected vertices only)
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_DCLP2(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// R2 Hybrid: DCLP + static edge->leaf transpose for original leaves + dynamic leaf graph
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_Hybrid(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// R2 Hybrid Lab: isolated experimental copy; future hybrid experiments should go here
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_HybridLab(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// R2 HardLeaf Lab: isolated DCLP-profile variant for hard-leaf sparsity/dominance experiments
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_HardLeafLab(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_HardLeafHybridLab(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_DefectLab(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_DefectRoutedLab(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_DefectD2Lab(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int> > PlusNucleusEdgeCoreDecompositionSet_DefectD2OrbitLab(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
 // R2 ST V9: Vertex→Leaf CSR + leafAlive + Vertex-Event Grouping
 std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>> PlusNucleusEdgeCoreDecompositionSet_ST_V9(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
@@ -533,6 +591,30 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
 // Local H-index r=2 (edge, no peeling, vertex-proxy)
 std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>>
 NCliqueEdgeCoreDecomposition_Local(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// Local H-index r=2 V2: same exact H-index, but batch propagation by dirty leaf
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>>
+NCliqueEdgeCoreDecomposition_LocalV2(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// Local H-index r=2 V3: batched propagation + edge->leaf CSR + s=3 fast path
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>>
+NCliqueEdgeCoreDecomposition_LocalV3(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// Local H-index r=2 V4: V3 + full edge-id hash lookup in the H-index hot path
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>>
+NCliqueEdgeCoreDecomposition_LocalV4(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+
+// Local H-index r=2 V5: V3 + queue-time exact support-at-core fast check for s=3
+std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>>
+NCliqueEdgeCoreDecomposition_LocalV5(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 

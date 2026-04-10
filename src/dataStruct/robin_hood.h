@@ -1448,10 +1448,16 @@ private:
     // inserts a keyval that is guaranteed to be new, e.g. when the hashmap is resized.
     // @return True on success, false if something went wrong
     void insert_move(Node&& keyval) {
-        // we don't retry, fail if overflowing
         // don't need to check max num elements
         if (0 == mMaxNumElementsAllowed && !try_increase_info()) {
-            throwOverflowError();
+            // Force a table doubling and retry.  This is safe because
+            // rehashPowerOfTwo saves oldKeyVals/oldInfo as local pointers,
+            // so the caller's iteration over the *previous* old table is
+            // unaffected after we grow and re-insert into the larger table.
+            nextHashMultiplier();
+            rehashPowerOfTwo((mMask + 1) * 2, false);
+            insert_move(std::move(keyval));
+            return;
         }
 
         size_t idx{};
@@ -2442,7 +2448,12 @@ private:
                                        << (static_cast<double>(mNumElements) * 100.0 /
                                            (static_cast<double>(mMask) + 1)))
 
-        if (mNumElements * 2 < calcMaxNumElementsAllowed(mMask + 1)) {
+        if (0 == mMaxNumElementsAllowed) {
+            // Probe distance exceeded uint8_t range and info compression is
+            // exhausted.  Doubling the table cuts the load factor in half,
+            // which dramatically shortens probe sequences.
+            rehashPowerOfTwo((mMask + 1) * 2, false);
+        } else if (mNumElements * 2 < calcMaxNumElementsAllowed(mMask + 1)) {
             // we have to resize, even though there would still be plenty of space left!
             // Try to rehash instead. Delete freed memory so we don't steadyily increase mem in case
             // we have to rehash a few times

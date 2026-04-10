@@ -27,6 +27,10 @@
 #include "dataStruct/CliqueCSR.hpp"
 #include "dataStruct/CliqueHashMap.h"
 #include "SDCT_Fused.hpp"
+#include "SDCT_MaxClique.hpp"
+
+// Global: maximal clique tags for Region decomposition
+std::vector<bool> g_maxCliqueTags;
 
 // ============================================================
 // Utility
@@ -153,8 +157,8 @@ static bool needsSDCT(daf::CliqueSize r, bool compareMode) {
 struct SDCTBuildResult {
     DynamicGraph<TreeGraphNode> tree;
     DynamicGraphSet<TreeGraphNode> treeGraphV;
-    // R≥3: pre-built clique index (shared across all variants)
     std::unique_ptr<StaticCliqueIndex> cliqueIndex;
+    std::vector<bool> maxCliqueTags; // true = path is a maximal clique
 };
 
 static SDCTBuildResult buildSDCTWithIndex(
@@ -163,12 +167,14 @@ static SDCTBuildResult buildSDCTWithIndex(
     const int emit_min_k = r;   // callback for all leaves ≥ r
     const int store_min_k = s;  // only store leaves ≥ s in tree
     const daf::Size n = edgeGraph.getGraphNodeSize();
+    const bool quotientLabOnly =
+        envSet("PIVOTER_RUN_ST_QUOTIENT_LAB") && envSet("PIVOTER_QUOTIENT_LAB_ONLY");
 
     DynamicGraphSet<TreeGraphNode> tgv(n);
     tgv.adj_list.resize(n);
 
     // R≥3: build cliqueIndex during SDCT (hash-free, keep+pivot naturally unique)
-    auto ci = (r >= 3) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
+    auto ci = (r >= 3 && !quotientLabOnly) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
     daf::StaticVector<daf::Size> keepBuf, dropBuf;
     daf::Size mergedBuf[16]; // enough for r ≤ 16
 
@@ -182,40 +188,58 @@ static SDCTBuildResult buildSDCTWithIndex(
         ci->reservePool(est);
     }
 
-    auto tree = daf::timeCount("SDCT_Fused", [&]() {
-        return SDCT_Fused(edgeGraph, s, emit_min_k, store_min_k,
-            [&](daf::Size leafId, const std::vector<TreeGraphNode> &leaf, bool stored) {
-                if (stored) {
-                    // treeGraphV: only for stored leaves (size ≥ s)
-                    for (const auto &node : leaf) {
-                        tgv.addNbr(node.v, {leafId, node.isPivot});
-                    }
-                }
+    // Callback body shared between SDCT_Fused and SDCT_MaxClique
+    std::vector<bool> mcTags;
+    const bool useMaxCliqueTagging =
+        envSet("PIVOTER_RUN_REGION") || envSet("PIVOTER_RUN_REGION_EXACT");
 
-                // R≥3: register r-cliques from ALL leaves (including size < s)
-                if (ci) {
-                    keepBuf.clear(); dropBuf.clear();
-                    for (const auto &node : leaf) {
-                        if (node.isPivot) dropBuf.push_back(node.v);
-                        else keepBuf.push_back(node.v);
-                    }
-                    // enumerateCombinations: all keeps + (r-|keep|) pivots → naturally unique
-                    daf::enumerateCombinations(keepBuf, dropBuf, r,
-                        [&](const daf::StaticVector<daf::Size> &keep,
-                            const daf::StaticVector<daf::Size> &combination) {
-                            // Merge-sort keep + combination into sorted buffer
-                            const daf::Size *a = combination.data(), *ae = a + combination.size();
-                            const daf::Size *b = keep.data(), *be = b + keep.size();
-                            daf::Size *out = mergedBuf;
-                            while (a < ae && b < be) *out++ = (*a < *b ? *a++ : *b++);
-                            while (a < ae) *out++ = *a++;
-                            while (b < be) *out++ = *b++;
-                            ci->addUniqueRClique(mergedBuf);
-                            return true;
-                        });
-                }
-            });
-    });
+    auto leafCallback = [&](daf::Size leafId, const std::vector<TreeGraphNode> &leaf,
+                            bool stored, bool isMaximal) {
+        if (stored) {
+            for (const auto &node : leaf) {
+                tgv.addNbr(node.v, {leafId, node.isPivot});
+            }
+            if (useMaxCliqueTagging) {
+                if (leafId >= mcTags.size()) mcTags.resize(leafId + 1, true);
+                mcTags[leafId] = isMaximal;
+            }
+        }
+        if (ci) {
+            keepBuf.clear(); dropBuf.clear();
+            for (const auto &node : leaf) {
+                if (node.isPivot) dropBuf.push_back(node.v);
+                else keepBuf.push_back(node.v);
+            }
+            daf::enumerateCombinations(keepBuf, dropBuf, r,
+                [&](const daf::StaticVector<daf::Size> &keep,
+                    const daf::StaticVector<daf::Size> &combination) {
+                    const daf::Size *a = combination.data(), *ae = a + combination.size();
+                    const daf::Size *b = keep.data(), *be = b + keep.size();
+                    daf::Size *out = mergedBuf;
+                    while (a < ae && b < be) *out++ = (*a < *b ? *a++ : *b++);
+                    while (a < ae) *out++ = *a++;
+                    while (b < be) *out++ = *b++;
+                    ci->addUniqueRClique(mergedBuf);
+                    return true;
+                });
+        }
+    };
+
+    // Wrapper for SDCT_Fused (no X tracking): adapts 3-arg callback to 4-arg
+    auto leafCallbackNoX = [&](daf::Size leafId, const std::vector<TreeGraphNode> &leaf, bool stored) {
+        leafCallback(leafId, leaf, stored, true); // no X → assume maximal
+    };
+
+    DynamicGraph<TreeGraphNode> tree;
+    if (useMaxCliqueTagging) {
+        tree = daf::timeCount("SDCT_MaxClique", [&]() {
+            return SDCT_MaxClique(edgeGraph, s, emit_min_k, store_min_k, leafCallback);
+        });
+    } else {
+        tree = daf::timeCount("SDCT_Fused", [&]() {
+            return SDCT_Fused(edgeGraph, s, emit_min_k, store_min_k, leafCallbackNoX);
+        });
+    }
 
     printf("SDCT leaf count (stored): %zu\n", tree.adj_list.size());
 
@@ -227,7 +251,17 @@ static SDCTBuildResult buildSDCTWithIndex(
         });
     }
 
-    return {std::move(tree), std::move(tgv), std::move(ci)};
+    // Report maximal clique stats
+    if (useMaxCliqueTagging) {
+        daf::Size nMax = 0, nSub = 0;
+        for (daf::Size i = 0; i < mcTags.size(); ++i) {
+            if (i >= tree.adj_list.size() || tree.adj_list[i].empty()) continue;
+            if (mcTags[i]) nMax++; else nSub++;
+        }
+        std::cout << "MaxClique tagging: maximal=" << nMax << " sub-clique=" << nSub << std::endl;
+    }
+
+    return {std::move(tree), std::move(tgv), std::move(ci), std::move(mcTags)};
 }
 
 // Legacy: build SDCT + verify with Par7 (used when compareMode or non-fused path)
@@ -481,6 +515,58 @@ static bool dispatchR2(
         return PlusNucleusEdgeCoreDecompositionSet(t, g, tgv, s);
     };
 
+    if (envSet("PIVOTER_RUN_LOCAL_V5")) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto result = daf::timeCount("Local H-index V5 r=2", [&]() {
+            return NCliqueEdgeCoreDecomposition_LocalV5(tree, edgeGraph, treeGraphV, s);
+        });
+        if (compareMode) {
+            auto refCore = correctRef(t2, edgeGraph, tgv2, r, s);
+            checkDist(buildCoreDist(refCore), buildCoreDist(result), "r=2 Local H-index V5");
+        }
+        return true;
+    }
+
+    if (envSet("PIVOTER_RUN_LOCAL_V4")) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto result = daf::timeCount("Local H-index V4 r=2", [&]() {
+            return NCliqueEdgeCoreDecomposition_LocalV4(tree, edgeGraph, treeGraphV, s);
+        });
+        if (compareMode) {
+            auto refCore = correctRef(t2, edgeGraph, tgv2, r, s);
+            checkDist(buildCoreDist(refCore), buildCoreDist(result), "r=2 Local H-index V4");
+        }
+        return true;
+    }
+
+    if (envSet("PIVOTER_RUN_LOCAL_V3")) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto result = daf::timeCount("Local H-index V3 r=2", [&]() {
+            return NCliqueEdgeCoreDecomposition_LocalV3(tree, edgeGraph, treeGraphV, s);
+        });
+        if (compareMode) {
+            auto refCore = correctRef(t2, edgeGraph, tgv2, r, s);
+            checkDist(buildCoreDist(refCore), buildCoreDist(result), "r=2 Local H-index V3");
+        }
+        return true;
+    }
+
+    if (envSet("PIVOTER_RUN_LOCAL_V2")) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto result = daf::timeCount("Local H-index V2 r=2", [&]() {
+            return NCliqueEdgeCoreDecomposition_LocalV2(tree, edgeGraph, treeGraphV, s);
+        });
+        if (compareMode) {
+            auto refCore = correctRef(t2, edgeGraph, tgv2, r, s);
+            checkDist(buildCoreDist(refCore), buildCoreDist(result), "r=2 Local H-index V2");
+        }
+        return true;
+    }
+
     if (envSet("PIVOTER_RUN_LOCAL")) {
         auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
         auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
@@ -504,6 +590,15 @@ static bool dispatchR2(
     };
 
     static const R2Entry table[] = {
+        {"PIVOTER_RUN_R2_DEFECT_D2_ORBIT_LAB", "Defect D2 Orbit Lab", PlusNucleusEdgeCoreDecompositionSet_DefectD2OrbitLab},
+        {"PIVOTER_RUN_R2_DEFECT_D2_LAB", "Defect D2 Lab", PlusNucleusEdgeCoreDecompositionSet_DefectD2Lab},
+        {"PIVOTER_RUN_R2_DEFECT_ROUTED_LAB", "Defect Routed Lab", PlusNucleusEdgeCoreDecompositionSet_DefectRoutedLab},
+        {"PIVOTER_RUN_R2_DEFECT_LAB", "Defect Lab", PlusNucleusEdgeCoreDecompositionSet_DefectLab},
+        {"PIVOTER_RUN_R2_HARDLEAF_HYBRID_LAB", "HardLeaf Hybrid Lab", PlusNucleusEdgeCoreDecompositionSet_HardLeafHybridLab},
+        {"PIVOTER_RUN_R2_HARDLEAF_LAB", "HardLeaf Lab", PlusNucleusEdgeCoreDecompositionSet_HardLeafLab},
+        {"PIVOTER_RUN_R2_HYBRID_LAB", "Hybrid R2 Lab", PlusNucleusEdgeCoreDecompositionSet_HybridLab},
+        {"PIVOTER_RUN_R2_HYBRID", "Hybrid R2", PlusNucleusEdgeCoreDecompositionSet_Hybrid},
+        {"PIVOTER_RUN_R2_DCLP2", "DCLP2 r=2", PlusNucleusEdgeCoreDecompositionSet_DCLP2},
         {"PIVOTER_RUN_R2_DCLP", "DCLP r=2", PlusNucleusEdgeCoreDecompositionSet_DCLP},
         {"PIVOTER_RUN_R2_ST_V10", "ST_V10 r=2", PlusNucleusEdgeCoreDecompositionSet_ST_V10},
         {"PIVOTER_RUN_R2_ST_V9", "ST_V9 r=2", PlusNucleusEdgeCoreDecompositionSet_ST_V9},
@@ -589,6 +684,9 @@ static bool dispatchR3Plus(
     };
 
     static const R3Entry table[] = {
+        {"PIVOTER_RUN_REGION_EXACT", "Region Exact r>=3", NucleusCoreDecompositionRClique_RegionExact},
+        {"PIVOTER_RUN_REGION", "Region Decomp r>=3", NucleusCoreDecompositionRClique_Region},
+        {"PIVOTER_RUN_ST_QUOTIENT_LAB", "ST Quotient Lab r>=3", NucleusCoreDecompositionRClique_ST_QuotientLab},
         {"PIVOTER_RUN_LINK_PEEL",      "Link-Graph Peel r>=3",      NucleusCoreDecompositionRCliqueLinkPeel},
         {"PIVOTER_RUN_LINK_LOCAL",      "Link-Graph Local r>=3",     NucleusCoreDecompositionRCliqueLinkLocal},
         {"PIVOTER_RUN_LOCAL_CPI_VP",    "Local CPI VP r>=3",         NucleusCoreDecompositionRCliqueLocalCPI_VP},
@@ -701,23 +799,35 @@ int main(int argc, char **argv) {
 
     const bool compareMode = envSet("PIVOTER_COMPARE");
 
-    // Phase 2+5: Build SDCT tree + treeGraphV
+    // Phase 2+5: Build SDCT tree + treeGraphV + maxClique tags
     DynamicGraph<TreeGraphNode> refTree;
     DynamicGraphSet<TreeGraphNode> treeGraphV;
-    std::unique_ptr<StaticCliqueIndex> sharedCliqueIndex;  // R≥3: pre-built, shared
+    std::unique_ptr<StaticCliqueIndex> sharedCliqueIndex;
+    std::vector<bool> maxCliqueTags;
 
     if (needsSDCT(r, compareMode)) {
         if (compareMode) {
-            // Compare mode: legacy SDCT (min_k=r) + Par7 verification
-            refTree = buildAndVerifySDCT(edgeGraph, r, s);
+            if (envSet("PIVOTER_RUN_REGION") || envSet("PIVOTER_RUN_REGION_EXACT")) {
+                auto result = buildSDCTWithIndex(edgeGraph, r, s);
+                refTree = std::move(result.tree);
+                if (needsTreeGraphV(r, compareMode)) {
+                    treeGraphV = std::move(result.treeGraphV);
+                }
+                sharedCliqueIndex = std::move(result.cliqueIndex);
+                maxCliqueTags = std::move(result.maxCliqueTags);
+                g_maxCliqueTags = maxCliqueTags;
+            } else {
+                refTree = buildAndVerifySDCT(edgeGraph, r, s);
+            }
         } else {
-            // Production: fused SDCT (store_min_k=s, emit_min_k=r)
             auto result = buildSDCTWithIndex(edgeGraph, r, s);
             refTree = std::move(result.tree);
             if (needsTreeGraphV(r, compareMode)) {
                 treeGraphV = std::move(result.treeGraphV);
             }
             sharedCliqueIndex = std::move(result.cliqueIndex);
+            maxCliqueTags = std::move(result.maxCliqueTags);
+            g_maxCliqueTags = maxCliqueTags; // copy for Region function access
         }
     }
 
