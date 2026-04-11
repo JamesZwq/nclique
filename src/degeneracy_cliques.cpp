@@ -191,7 +191,8 @@ static SDCTBuildResult buildSDCTWithIndex(
     // Callback body shared between SDCT_Fused and SDCT_MaxClique
     std::vector<bool> mcTags;
     const bool useMaxCliqueTagging =
-        envSet("PIVOTER_RUN_REGION") || envSet("PIVOTER_RUN_REGION_EXACT");
+        envSet("PIVOTER_RUN_REGION") || envSet("PIVOTER_RUN_REGION_EXACT") ||
+        envSet("PIVOTER_RUN_REGION_V2");
 
     auto leafCallback = [&](daf::Size leafId, const std::vector<TreeGraphNode> &leaf,
                             bool stored, bool isMaximal) {
@@ -684,6 +685,7 @@ static bool dispatchR3Plus(
     };
 
     static const R3Entry table[] = {
+        {"PIVOTER_RUN_REGION_V2", "Region V2 (general s) r>=3", NucleusCoreDecompositionRClique_RegionV2},
         {"PIVOTER_RUN_REGION_EXACT", "Region Exact r>=3", NucleusCoreDecompositionRClique_RegionExact},
         {"PIVOTER_RUN_REGION", "Region Decomp r>=3", NucleusCoreDecompositionRClique_Region},
         {"PIVOTER_RUN_ST_QUOTIENT_LAB", "ST Quotient Lab r>=3", NucleusCoreDecompositionRClique_ST_QuotientLab},

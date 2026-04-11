@@ -17,29 +17,44 @@ For s > r+1: each s-clique has C(s,r) r-cliques, some differing by up to s-r ver
 Triangle {a,b,c} differs from {a,d,e} by 2 vertices (b,c → d,e).
 V1 cascade would miss this connection.
 
-**Approach**: For general s, when peeling tuple τ:
-- For each s-clique S containing an r-clique from τ:
-  - S is determined by C_τ (common cliques) and choosing s-r more vertices
-  - The C(s,r)-1 other r-cliques of S are in various tuples
-  - Each gets -1 to support IF all OTHER r-cliques of S are alive
+**Solution: Bipartite Incidence between r-tuples and s-tuples**
 
-The challenge: enumerating the (s-r)-vertex extensions and mapping them back
-to tuples, without enumerating individual r-cliques.
+Instead of computing cascade on-the-fly, enumerate BOTH r-tuples and s-tuples.
+Both are compressed by the same region structure.
 
-**Key insight**: Within a maximal clique M, an s-clique S uses vertices from
-various regions. The r-cliques of S = all C(s,r) r-subsets. Each r-subset
-maps to a tuple. The mapping depends on which regions the s-r extension
-vertices come from.
+**s-tuple** σ = sorted multiset of s classes sharing a common clique.
+Compression: C(|M|,s) s-cliques → C(ρ+s-1, s) s-tuples.
 
-For a tuple τ in clique M: the s-cliques containing τ's r-cliques use
-s-r additional vertices from M. These vertices come from regions in
-regions(M). For each multiset of (s-r) regions (the extension):
-the s-clique's other r-cliques are determined.
+**Incidence**: For each s-tuple σ, list its r-sub-tuples (r-sub-multisets).
+For each r-sub-tuple τ ⊂ σ: store ext(σ,τ) = Π_i C(|c_i| - j_i, m_i - j_i)
+where j_i = multiplicity of c_i in τ, m_i = multiplicity in σ.
 
-This is a region-level enumeration of (s-r)-extensions, NOT per-r-clique.
-Total: O(C(ρ(M)+s-r-1, s-r)) extensions per tuple, independent of |M|.
+**Algorithm**:
+```
+1. Enumerate r-tuples (same as V1)
+2. Enumerate s-tuples (same multiset enumeration, size s)
+3. Build incidence: for each s-tuple σ, find its r-sub-tuples
+4. support(τ) = Σ_{alive σ ∋ τ} ext(σ, τ)
+5. Peeling:
+   Pop min-support r-tuple τ
+   For each s-tuple σ ∋ τ:
+     If alive[σ]:
+       alive[σ] = false
+       For each τ' ≠ τ in σ:
+         support[τ'] -= ext(σ, τ')
+         Update bucket queue
+```
 
-TODO: formalize and implement.
+**Why this is correct**: An s-tuple σ dies when ANY of its r-sub-tuples
+is peeled. This exactly mirrors standard peeling where an s-clique becomes
+incomplete when any r-clique is peeled. ext(σ,τ') correctly counts
+s-clique instances.
+
+**Complexity**: O(#s-tuples × avg-incident-r-tuples). Both compressed.
+No individual r-clique or s-clique enumeration.
+
+**Reduction formula**: ext(σ, τ') = Π_i C(|c_i| - j_i, m_i - j_i)
+where j_i = class c_i's count in τ', m_i = count in σ.
 
 ### P2. Sparse graph performance
 

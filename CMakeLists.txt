@@ -57,6 +57,7 @@ file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.hpp src/*.h src/*/*.cpp src/*/*.hp
 set(EXCLUDE_SRCS
         ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
         ${CMAKE_SOURCE_DIR}/src/test_new_algorithm.cpp
+        ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/NucleusCoreDecompositionRegion_backup.cpp
 )
 list(REMOVE_ITEM ALL_SOURCES ${EXCLUDE_SRCS})
 set(COMMON_SOURCES ${ALL_SOURCES})
