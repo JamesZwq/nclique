@@ -573,50 +573,57 @@ NucleusCoreDecompositionRClique_RegionCPI(
         std::cout << "  CPI vs CPath match: " << (mismatches == 0 ? "PASS" : ("MISMATCH(" + std::to_string(mismatches) + ")")) << std::endl;
     }
 
-    // --- Peeling with Analytical Split (double precision, linear scan) ---
+    // --- Peeling with Analytical Split (double support + bucket queue) ---
     auto tStep6 = std::chrono::high_resolution_clock::now();
 
-    // Use double support directly — no integer rounding
-    std::vector<double> dSup = support; // copy from CPI init
+    // Keep double support for exact arithmetic. Use floor() for bucket index.
+    std::vector<double> dSup = support;
     std::vector<bool> rPeeled(rTuples.size(), false);
 
+    daf::Size maxSup = 0;
+    for (auto &sv : dSup) maxSup = std::max(maxSup, (daf::Size)(sv + 0.5));
+
+    std::vector<std::vector<daf::Size>> buckets(maxSup + 2);
+    for (daf::Size i = 0; i < rTuples.size(); ++i)
+        buckets[(daf::Size)(dSup[i] + 0.5)].push_back(i);
+
     std::map<daf::Size, int64_t> coreDist;
-    daf::Size numPeeled = 0;
-    double coreLevel = 0;
+    daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
     daf::Size totalSplits = 0;
 
     while (numPeeled < rTuples.size()) {
-        // Find min-support alive tuple (linear scan)
-        daf::Size idx = INVALID;
-        double minSup = 1e18;
-        for (daf::Size i = 0; i < rTuples.size(); ++i) {
-            if (!rPeeled[i] && dSup[i] < minSup) { minSup = dSup[i]; idx = i; }
-        }
-        if (idx == INVALID) break;
+        while (currentLevel <= maxSup && buckets[currentLevel].empty())
+            currentLevel++;
+        if (currentLevel > maxSup) break;
+
+        daf::Size idx = buckets[currentLevel].back();
+        buckets[currentLevel].pop_back();
+        if (rPeeled[idx]) continue;
+        daf::Size idxBucket = (daf::Size)(dSup[idx] + 0.5);
+        if (idxBucket != currentLevel) continue; // stale entry
 
         rPeeled[idx] = true;
         numPeeled++;
-        coreLevel = std::max(coreLevel, minSup);
-        coreDist[(daf::Size)(coreLevel + 0.5)] += rTuples[idx].mult;
+        coreLevel = std::max(coreLevel, currentLevel);
+        coreDist[coreLevel] += rTuples[idx].mult;
 
         auto &tauKey = rTuples[idx].key;
         std::unordered_map<daf::Size, int> tauCounts;
         for (auto c : tauKey) tauCounts[c]++;
 
-        // For each constrained path containing τ:
         auto cpathIds = tupleToCPaths[idx]; // copy
         for (daf::Size cpid : cpathIds) {
             auto &cp = cpaths[cpid];
             if (cp.tupleIdxs.empty()) continue;
 
-            // Step A: Subtract old contributions
+            // Compute old contributions
+            std::unordered_map<daf::Size, double> oldContrib;
             for (auto tidx : cp.tupleIdxs) {
                 if (rPeeled[tidx]) continue;
-                double oldContrib = aggrCountOnCPath(tidx, cp);
-                dSup[tidx] -= oldContrib;
+                oldContrib[tidx] = aggrCountOnCPath(tidx, cp);
             }
 
-            // Step B: Find active classes
+            // Find active classes
             struct ActiveClass { daf::Size cid; int mc; };
             std::vector<ActiveClass> active;
             for (auto &[c, jc] : tauCounts) {
@@ -627,20 +634,19 @@ NucleusCoreDecompositionRClique_RegionCPI(
                     active.push_back({c, mc});
             }
 
-            // Alive tuples (excluding just-peeled)
             std::vector<daf::Size> aliveTuples;
             for (auto tidx : cp.tupleIdxs)
                 if (!rPeeled[tidx]) aliveTuples.push_back(tidx);
 
-            // Remove old cpath
             for (auto tidx : cp.tupleIdxs) {
                 auto &vec = tupleToCPaths[tidx];
                 vec.erase(std::remove(vec.begin(), vec.end(), cpid), vec.end());
             }
             cp.tupleIdxs.clear();
 
+            // Compute new contributions
+            std::unordered_map<daf::Size, double> newContrib;
             if (!active.empty()) {
-                // Step C: Split into disjoint sub-paths
                 for (int i = 0; i < (int)active.size(); ++i) {
                     CPath subCp = cp;
                     bool feasible = true;
@@ -667,8 +673,11 @@ NucleusCoreDecompositionRClique_RegionCPI(
 
                     subCp.tupleIdxs.clear();
                     for (auto tidx : aliveTuples) {
-                        double contrib = aggrCountOnCPath(tidx, subCp);
-                        if (contrib > 1e-9) subCp.tupleIdxs.push_back(tidx);
+                        double c = aggrCountOnCPath(tidx, subCp);
+                        if (c > 1e-9) {
+                            subCp.tupleIdxs.push_back(tidx);
+                            newContrib[tidx] += c;
+                        }
                     }
                     if (subCp.tupleIdxs.empty()) continue;
 
@@ -676,13 +685,19 @@ NucleusCoreDecompositionRClique_RegionCPI(
                     cpaths.push_back(std::move(subCp));
                     totalSplits++;
 
-                    // Step D: Add new contributions
-                    for (auto tidx : cpaths.back().tupleIdxs) {
+                    for (auto tidx : cpaths.back().tupleIdxs)
                         tupleToCPaths[tidx].push_back(newCpid);
-                        double newContrib = aggrCountOnCPath(tidx, cpaths.back());
-                        dSup[tidx] += newContrib;
-                    }
                 }
+            }
+
+            // Apply net delta in double, re-bucket
+            for (auto &[tidx, oc] : oldContrib) {
+                double nc = newContrib.count(tidx) ? newContrib[tidx] : 0.0;
+                dSup[tidx] += (nc - oc); // exact in double
+                if (dSup[tidx] < -0.5) dSup[tidx] = 0;
+                daf::Size newBucket = (daf::Size)(dSup[tidx] + 0.5);
+                buckets[newBucket].push_back(tidx);
+                if (newBucket < currentLevel) currentLevel = newBucket;
             }
         }
     }
