@@ -364,80 +364,38 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::cout << "  CPI counting time: " << step4Ms << " ms" << std::endl;
 
     // ============================================================
-    // Step 5+6: ST-style Tree Mutation with Region Compression
+    // Step 5+6: Constrained Path Peeling (Analytical Split)
     // ============================================================
-    // Key idea: maintain the CPI tree (mutable, like ST). When a class
-    // is fully peeled on a path → remove its vertices → path shrinks.
-    // If path becomes infeasible → LeafDeath (subtract full contribution).
-    // Support recomputed via AggrCount on the modified tree.
+    // Constrained Path = CPI path + per-class (min_piv, max_piv) bounds.
+    // When τ is peeled on P̂: subtract old contributions, split P̂ into
+    // κ disjoint sub-paths (each a ConstrainedPath), add new contributions.
+    // NO s-tuple enumeration. NO inclusion-exclusion. NO BK execution.
 
     auto tStep5 = std::chrono::high_resolution_clock::now();
 
-    // --- Per-path mutable state ---
-    struct PathState {
-        std::unordered_map<daf::Size, std::pair<int,int>> classDistrib; // cid -> (nh, np)
-        int h = 0, p = 0;
-        std::vector<daf::Size> tupleIdxs; // alive tuples on this path
-        bool alive = true;
+    // --- Constrained Path data structure ---
+    struct ClassBounds { int nh, np; int minPiv, maxPiv; }; // per-class on a constrained path
+    struct CPath {
+        int h; // total holds
+        std::unordered_map<daf::Size, ClassBounds> classes; // cid -> bounds
+        std::vector<daf::Size> tupleIdxs; // alive tuples on this constrained path
+        int totalP() const { int t=0; for(auto&[_,b]:classes) t+=b.np; return t; }
     };
 
-    std::vector<PathState> pathStates(numPaths);
-    std::vector<std::vector<daf::Size>> tupleToPathIds(rTuples.size());
-
-    // Per (path, class): alive tuple count
-    std::vector<std::unordered_map<daf::Size, int>> aliveClassCount(numPaths);
-
-    // Initialize path states from CPI tree
-    for (daf::Size pid = 0; pid < numPaths; ++pid) {
-        auto &leaf = tree.adj_list[pid];
-        if ((int)leaf.size() < (int)s) continue;
-
-        auto &ps = pathStates[pid];
-        for (const auto &node : leaf) {
-            daf::Size v = node.v;
-            if (v >= numVertices || classOf[v] == INVALID) continue;
-            daf::Size cid = classOf[v];
-            if (node.isPivot) { ps.p++; ps.classDistrib[cid].second++; }
-            else { ps.h++; ps.classDistrib[cid].first++; }
-        }
-        if (ps.h + ps.p < (int)s) continue;
-
-        // Enumerate tuples on this path
-        std::vector<daf::Size> pathClasses;
-        for (auto &[cid, _] : ps.classDistrib) pathClasses.push_back(cid);
-        std::sort(pathClasses.begin(), pathClasses.end());
-
-        TupleKey cur; cur.reserve(r);
-        std::function<void()> cb = [&]() {
-            auto it = rTupleIndex.find(cur);
-            if (it == rTupleIndex.end()) return;
-            daf::Size tidx = it->second;
-            std::unordered_map<daf::Size, int> counts;
-            for (auto c : cur) counts[c]++;
-            for (auto &[c, jc] : counts) {
-                auto cit = ps.classDistrib.find(c);
-                if (cit == ps.classDistrib.end()) return;
-                if (jc > cit->second.first + cit->second.second) return;
-            }
-            ps.tupleIdxs.push_back(tidx);
-            tupleToPathIds[tidx].push_back(pid);
-            // Update alive class count
-            std::unordered_set<daf::Size> seen;
-            for (auto c : cur)
-                if (seen.insert(c).second) aliveClassCount[pid][c]++;
-        };
-        enumerateMultisets(pathClasses, r, 0, cur, cb);
-        ps.alive = !ps.tupleIdxs.empty();
-    }
-
-    // AggrCount on mutable path (same Vandermonde formula, no min/max bounds)
-    auto aggrCount = [&](daf::Size tidx, const PathState &ps) -> double {
+    // Compute AggrCount(τ', P̂) / mult(τ') on a constrained path
+    // g_c[t_c] = C(np_c, t_c) × C(nh_c + t_c, j_c), summed via convolution
+    // Optimized: use stack arrays for small convolutions (degree ≤ r ≤ 10)
+    auto aggrCountOnCPath = [&](daf::Size tidx, const CPath &cp) -> double {
         auto &key = rTuples[tidx].key;
-        int targetTotal = s - ps.h;
+        // Build counts with minimal overhead (key is sorted, use run-length)
+        int targetTotal = s - cp.h;
         if (targetTotal < 0) return 0.0;
 
-        double f[512]; int fLen = 1; f[0] = 1.0;
+        double f[512]; // stack array, enough for large paths
+        int fLen = 1;
+        f[0] = 1.0;
 
+        // Iterate over key's composition inline
         int ki = 0;
         while (ki < (int)key.size()) {
             daf::Size c = key[ki];
@@ -445,35 +403,47 @@ NucleusCoreDecompositionRClique_RegionCPI(
             while (ki + jc < (int)key.size() && key[ki + jc] == c) jc++;
             ki += jc;
 
-            auto cit = ps.classDistrib.find(c);
-            if (cit == ps.classDistrib.end()) return 0.0;
-            int nhc = cit->second.first, npc = cit->second.second;
-            int tMin = std::max(0, jc - nhc);
-            int tMax = std::min({jc, npc, (int)500});
-            if (jc > nhc + npc || tMin > tMax) return 0.0;
+            auto cit = cp.classes.find(c);
+            if (cit == cp.classes.end()) return 0.0;
+            auto &cb = cit->second;
 
-            double gc[512]; int gcLen = tMax + 1;
+            int tMin = std::max(cb.minPiv, std::max(0, jc - cb.nh));
+            int tMax = std::min(cb.maxPiv, cb.np);
+            if (jc > cb.nh + tMax || tMin > tMax) return 0.0;
+
+            // Convolve f with gc inline
+            double gc[512];
+            int gcLen = tMax + 1;
             for (int i = 0; i < gcLen; ++i) gc[i] = 0.0;
-            for (int tc = tMin; tc <= tMax; ++tc)
-                gc[tc] = nCr[npc][tc] * nCr[nhc + tc][jc];
+            for (int tc = tMin; tc <= tMax; ++tc) {
+                if (cb.nh + tc < jc) continue;
+                gc[tc] = nCr[cb.np][tc] * nCr[cb.nh + tc][jc];
+            }
             int newLen = fLen + gcLen - 1;
             double newf[512];
             for (int i = 0; i < newLen; ++i) newf[i] = 0.0;
             for (int i = 0; i < fLen; ++i)
                 for (int j = 0; j < gcLen; ++j)
                     newf[i + j] += f[i] * gc[j];
-            fLen = std::min(newLen, targetTotal + 1);
+            fLen = std::min(newLen, targetTotal + 1); // cap at target
             for (int i = 0; i < fLen; ++i) f[i] = newf[i];
         }
 
-        for (auto &[c, dp] : ps.classDistrib) {
+        // Classes on path not in tuple: contribute only pivots (jc=0)
+        for (auto &[c, cb] : cp.classes) {
+            // Skip classes already handled above
             bool inTuple = false;
             for (auto x : key) if (x == c) { inTuple = true; break; }
             if (inTuple) continue;
-            int npc = dp.second;
-            if (npc == 0) continue; // skip empty classes
-            double gc[512]; int gcLen = std::min(npc + 1, 512);
-            for (int i = 0; i < gcLen; ++i) gc[i] = nCr[npc][i];
+
+            int tMin = cb.minPiv, tMax = std::min(cb.maxPiv, cb.np);
+            if (tMin > tMax) return 0.0;
+
+            double gc[512];
+            int gcLen = tMax + 1;
+            for (int i = 0; i < gcLen; ++i) gc[i] = 0.0;
+            for (int tc = tMin; tc <= tMax; ++tc)
+                gc[tc] = nCr[cb.np][tc]; // C(np, tc) × C(nh+tc, 0) = C(np, tc)
             int newLen = fLen + gcLen - 1;
             double newf[512];
             for (int i = 0; i < newLen; ++i) newf[i] = 0.0;
@@ -484,38 +454,104 @@ NucleusCoreDecompositionRClique_RegionCPI(
             for (int i = 0; i < fLen; ++i) f[i] = newf[i];
         }
 
-        return (targetTotal < fLen) ? f[targetTotal] / rTuples[tidx].mult : 0.0;
+        double aggr = (targetTotal < fLen) ? f[targetTotal] : 0.0;
+        return aggr / rTuples[tidx].mult;
     };
+
+    // --- Initialize constrained paths from CPI paths ---
+    // Use a pool of CPath objects. Each tuple tracks which cpaths it's on.
+    std::vector<CPath> cpaths;
+    std::vector<std::vector<daf::Size>> tupleToCPaths(rTuples.size()); // tuple -> cpath IDs
+
+    for (daf::Size pid = 0; pid < numPaths; ++pid) {
+        auto &leaf = tree.adj_list[pid];
+        if ((int)leaf.size() < (int)s) continue;
+
+        CPath cp;
+        cp.h = 0;
+        for (const auto &node : leaf) {
+            daf::Size v = node.v;
+            if (v >= numVertices || classOf[v] == INVALID) continue;
+            daf::Size cid = classOf[v];
+            auto &cb = cp.classes[cid];
+            if (node.isPivot) { cb.np++; }
+            else { cb.nh++; cp.h++; }
+        }
+        // Set initial bounds
+        for (auto &[cid, cb] : cp.classes) { cb.minPiv = 0; cb.maxPiv = cb.np; }
+
+        // Find tuples on this path (enumerate r-multisets of path's classes)
+        std::vector<daf::Size> pathClasses;
+        for (auto &[cid, _] : cp.classes) pathClasses.push_back(cid);
+        std::sort(pathClasses.begin(), pathClasses.end());
+
+        daf::Size cpid = cpaths.size();
+        TupleKey cur; cur.reserve(r);
+        bool hasTuples = false;
+
+        std::function<void()> enumCb = [&]() {
+            auto it = rTupleIndex.find(cur);
+            if (it == rTupleIndex.end()) return;
+            daf::Size tidx = it->second;
+            // Feasibility check
+            std::unordered_map<daf::Size, int> counts;
+            for (auto c : cur) counts[c]++;
+            for (auto &[c, jc] : counts) {
+                auto cit = cp.classes.find(c);
+                if (cit == cp.classes.end()) return;
+                if (jc > cit->second.nh + cit->second.np) return;
+            }
+            cp.tupleIdxs.push_back(tidx);
+            hasTuples = true;
+        };
+        enumerateMultisets(pathClasses, r, 0, cur, enumCb);
+
+        if (hasTuples) {
+            cpaths.push_back(std::move(cp));
+            for (auto tidx : cpaths.back().tupleIdxs)
+                tupleToCPaths[tidx].push_back(cpid);
+        }
+    }
 
     auto tStep5End = std::chrono::high_resolution_clock::now();
     auto step5Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep5End - tStep5).count();
-    daf::Size numAlivePaths = 0;
-    for (auto &ps : pathStates) if (ps.alive) numAlivePaths++;
-    std::cout << "  Alive paths: " << numAlivePaths << std::endl;
+    std::cout << "  Constrained paths: " << cpaths.size() << std::endl;
     std::cout << "  Index build time: " << step5Ms << " ms" << std::endl;
 
-    // --- Peeling ---
+    // Verify: aggrCountOnCPath matches Step 4 support
+    {
+        std::vector<double> supCheck(rTuples.size(), 0.0);
+        for (daf::Size cpid = 0; cpid < cpaths.size(); ++cpid)
+            for (auto tidx : cpaths[cpid].tupleIdxs)
+                supCheck[tidx] += aggrCountOnCPath(tidx, cpaths[cpid]);
+        double checkSum = 0;
+        int mismatches = 0;
+        for (daf::Size i = 0; i < rTuples.size(); ++i) {
+            checkSum += rTuples[i].mult * supCheck[i];
+            if (std::abs(supCheck[i] - support[i]) > 0.5) mismatches++;
+        }
+        std::cout << "  Support sum (CPath): " << std::fixed << std::setprecision(0) << checkSum << std::endl;
+        std::cout << "  CPI vs CPath match: " << (mismatches == 0 ? "PASS" : ("MISMATCH(" + std::to_string(mismatches) + ")")) << std::endl;
+    }
+
+    // --- Peeling with Analytical Split (double support + bucket queue) ---
     auto tStep6 = std::chrono::high_resolution_clock::now();
 
+    // Profiling counters
+    long long prof_oldContrib_ns = 0, prof_split_ns = 0, prof_newContrib_ns = 0;
+    long long prof_delta_ns = 0, prof_overhead_ns = 0;
+    long long prof_aggrCalls = 0, prof_splitSubpaths = 0, prof_deadPaths = 0;
+
+    // Keep double support for exact arithmetic. Use floor() for bucket index.
     std::vector<double> dSup = support;
     std::vector<bool> rPeeled(rTuples.size(), false);
-
-    // Per-(tuple, path) contribution cache for subtract/add updates
-    std::unordered_map<daf::Size, double> cachedContrib;
-    for (daf::Size pid = 0; pid < numPaths; ++pid) {
-        auto &ps = pathStates[pid];
-        if (!ps.alive) continue;
-        for (auto tidx : ps.tupleIdxs) {
-            daf::Size cacheKey = (daf::Size)pid * rTuples.size() + tidx;
-            cachedContrib[cacheKey] = aggrCount(tidx, ps);
-        }
-    }
 
     daf::Size maxSup = 0;
     for (auto &sv : dSup) maxSup = std::max(maxSup, (daf::Size)llround(sv));
     const daf::Size BUCKET_CAP = std::min(maxSup + 2, (daf::Size)1000001);
+
     std::vector<std::vector<daf::Size>> buckets(BUCKET_CAP);
-    std::multimap<daf::Size, daf::Size> overflow;
+    std::multimap<daf::Size, daf::Size> overflow; // for large support values
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
         daf::Size b = (daf::Size)llround(dSup[i]);
         if (b < BUCKET_CAP) buckets[b].push_back(i);
@@ -524,7 +560,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
 
     std::map<daf::Size, int64_t> coreDist;
     daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
-    long long totalClassRemovals = 0, totalLeafDeaths = 0, totalRecomputes = 0;
+    daf::Size totalSplits = 0;
 
     while (numPeeled < rTuples.size()) {
         while (currentLevel < BUCKET_CAP && buckets[currentLevel].empty())
@@ -541,7 +577,8 @@ NucleusCoreDecompositionRClique_RegionCPI(
         } else break;
 
         if (rPeeled[idx]) continue;
-        if ((daf::Size)llround(dSup[idx]) != currentLevel) continue;
+        daf::Size idxBucket = (daf::Size)llround(dSup[idx]);
+        if (idxBucket != currentLevel) continue;
 
         rPeeled[idx] = true;
         numPeeled++;
@@ -549,163 +586,127 @@ NucleusCoreDecompositionRClique_RegionCPI(
         coreDist[coreLevel] += rTuples[idx].mult;
 
         auto &tauKey = rTuples[idx].key;
-        std::unordered_set<daf::Size> tauClasses(tauKey.begin(), tauKey.end());
+        std::unordered_map<daf::Size, int> tauCounts;
+        for (auto c : tauKey) tauCounts[c]++;
 
-        // Process each path containing this tuple
-        for (daf::Size pid : tupleToPathIds[idx]) {
-            auto &ps = pathStates[pid];
-            if (!ps.alive) continue;
+        auto cpathIds = tupleToCPaths[idx]; // copy
+        for (daf::Size cpid : cpathIds) {
+            auto &cp = cpaths[cpid];
+            if (cp.tupleIdxs.empty()) continue;
 
-            // Step 1: Decrement alive class counts, check for class removal
-            bool treeModified = false;
-            for (daf::Size c : tauClasses) {
-                auto &cnt = aliveClassCount[pid][c];
-                cnt--;
-                if (cnt == 0) {
-                    // Class c fully dead on path pid → remove vertices
-                    auto dit = ps.classDistrib.find(c);
-                    if (dit != ps.classDistrib.end()) {
-                        ps.h -= dit->second.first;
-                        ps.p -= dit->second.second;
-                        ps.classDistrib.erase(dit);
-                        treeModified = true;
-                        totalClassRemovals++;
-                    }
-                }
+            auto _t0 = std::chrono::high_resolution_clock::now();
+
+            // Separate alive tuples into: affected (share class with τ) and unaffected
+            std::unordered_set<daf::Size> tauClassSet(rTuples[idx].key.begin(), rTuples[idx].key.end());
+            std::vector<daf::Size> affectedTuples, unaffectedTuples;
+            for (auto tidx : cp.tupleIdxs) {
+                if (rPeeled[tidx]) continue;
+                bool shares = false;
+                for (auto c : rTuples[tidx].key)
+                    if (tauClassSet.count(c)) { shares = true; break; }
+                if (shares) affectedTuples.push_back(tidx);
+                else unaffectedTuples.push_back(tidx);
             }
 
-            // Step 2: Check LeafDeath (path too small for s-cliques)
-            if (treeModified && ps.h + ps.p < (int)s) {
-                // LeafDeath: subtract ALL remaining contributions, kill path
-                totalLeafDeaths++;
-                for (auto tidx : ps.tupleIdxs) {
-                    if (rPeeled[tidx]) continue;
-                    daf::Size ck = (daf::Size)pid * rTuples.size() + tidx;
-                    double oldC = cachedContrib.count(ck) ? cachedContrib[ck] : 0.0;
-                    dSup[tidx] -= oldC;
-                    if (dSup[tidx] < -0.5) dSup[tidx] = 0;
-                    cachedContrib.erase(ck);
-                    daf::Size newB = (daf::Size)llround(dSup[tidx]);
-                    if (newB < BUCKET_CAP) {
-                        buckets[newB].push_back(tidx);
-                        if (newB < currentLevel) currentLevel = newB;
-                    } else overflow.insert({newB, tidx});
-                }
-                for (auto tidx : ps.tupleIdxs) {
-                    auto &vec = tupleToPathIds[tidx];
-                    vec.erase(std::remove(vec.begin(), vec.end(), pid), vec.end());
-                }
-                ps.tupleIdxs.clear();
-                ps.alive = false;
-                continue;
+            // Compute old contributions (only for AFFECTED tuples)
+            std::unordered_map<daf::Size, double> oldContrib;
+            for (auto tidx : affectedTuples) {
+                oldContrib[tidx] = aggrCountOnCPath(tidx, cp);
+                prof_aggrCalls++;
             }
 
-            // Step 3: If tree was modified (class removed but path survived):
-            // Recompute AggrCount for alive tuples and update dSup (subtract old, add new)
-            if (treeModified) {
-                totalRecomputes++;
-                // Remove peeled tuples
-                std::vector<daf::Size> alive;
-                for (auto tidx : ps.tupleIdxs)
-                    if (!rPeeled[tidx]) alive.push_back(tidx);
-                ps.tupleIdxs.clear();
+            auto _t1 = std::chrono::high_resolution_clock::now();
+            prof_oldContrib_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(_t1-_t0).count();
 
-                for (auto tidx : alive) {
-                    // Subtract old cached contribution
-                    daf::Size cacheKey = (daf::Size)pid * rTuples.size() + tidx;
-                    double oldC = cachedContrib.count(cacheKey) ? cachedContrib[cacheKey] : 0.0;
-                    // Compute new contribution on modified path
-                    double newC = aggrCount(tidx, ps);
-                    if (newC > 1e-9) {
-                        ps.tupleIdxs.push_back(tidx);
-                        cachedContrib[cacheKey] = newC;
-                    } else {
-                        cachedContrib.erase(cacheKey);
-                        // Remove path from tuple's path list
-                        auto &vec = tupleToPathIds[tidx];
-                        vec.erase(std::remove(vec.begin(), vec.end(), pid), vec.end());
-                    }
-                    // Update support
-                    dSup[tidx] += (newC - oldC);
-                    if (dSup[tidx] < -0.5) dSup[tidx] = 0;
-                    daf::Size newB = (daf::Size)llround(dSup[tidx]);
-                    if (newB < BUCKET_CAP) {
-                        buckets[newB].push_back(tidx);
-                        if (newB < currentLevel) currentLevel = newB;
-                    } else overflow.insert({newB, tidx});
-                }
+            // Find active classes
+            struct ActiveClass { daf::Size cid; int mc; };
+            std::vector<ActiveClass> active;
+            for (auto &[c, jc] : tauCounts) {
+                auto cit = cp.classes.find(c);
+                if (cit == cp.classes.end()) continue;
+                int mc = std::max(0, jc - cit->second.nh);
+                if (mc > cit->second.minPiv)
+                    active.push_back({c, mc});
             }
 
-            // Step 4: If NO class was removed on this path: use Theorem 2 delta
-            // to update neighbors' support (approximation, corrected on next class removal)
-            if (!treeModified) {
-                auto &tauKeyRef = rTuples[idx].key;
-                std::unordered_map<daf::Size, int> tCounts;
-                for (auto c : tauKeyRef) tCounts[c]++;
+            for (auto tidx : cp.tupleIdxs) {
+                auto &vec = tupleToCPaths[tidx];
+                vec.erase(std::remove(vec.begin(), vec.end(), cpid), vec.end());
+            }
+            cp.tupleIdxs.clear();
 
-                for (auto tidx : ps.tupleIdxs) {
-                    if (rPeeled[tidx] || tidx == idx) continue;
-                    // Theorem 2: Δ = constrained allocation for specific C_r'
-                    auto &tpKey = rTuples[tidx].key;
-                    std::unordered_map<daf::Size, int> tpCounts;
-                    for (auto c : tpKey) tpCounts[c]++;
+            auto _t2 = std::chrono::high_resolution_clock::now();
+            prof_overhead_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(_t2-_t1).count();
 
-                    // For each class: compute l_c, u_c
-                    int totalMand = 0;
+            // Compute new contributions from sub-paths
+            std::unordered_map<daf::Size, double> newContrib;
+            if (active.empty()) {
+                prof_deadPaths++;
+            } else {
+                for (int i = 0; i < (int)active.size(); ++i) {
+                    CPath subCp = cp;
                     bool feasible = true;
-                    struct AI { int lc, uc; };
-                    std::vector<AI> allocs;
-                    for (auto &[c, dp] : ps.classDistrib) {
-                        int nhc = dp.first, npc = dp.second;
-                        int jTau = tCounts.count(c) ? tCounts[c] : 0;
-                        int jTauP = tpCounts.count(c) ? tpCounts[c] : 0;
-                        int qpc = std::max(0, jTauP - nhc);
-                        int mc = std::max(0, jTau - nhc);
-                        int lc = std::max(0, mc - qpc);
-                        int uc = npc - qpc;
-                        if (uc < 0 || uc < lc) { feasible = false; break; }
-                        totalMand += qpc + lc;
-                        allocs.push_back({lc, uc});
+
+                    for (int j = 0; j < i; ++j) {
+                        auto &cb = subCp.classes[active[j].cid];
+                        cb.minPiv = std::max(cb.minPiv, active[j].mc);
+                        if (cb.minPiv > cb.maxPiv) { feasible = false; break; }
                     }
                     if (!feasible) continue;
-                    int extra = (s - ps.h) - totalMand;
-                    if (extra < 0) continue;
 
-                    double f[64]; int fLen = 1; f[0] = 1.0;
-                    for (auto &ai : allocs) {
-                        int maxE = std::min(ai.uc - ai.lc, extra);
-                        if (maxE < 0) { feasible = false; break; }
-                        double gc[64]; int gcLen = maxE + 1;
-                        for (int e = 0; e <= maxE; ++e)
-                            gc[e] = nCr[ai.uc][ai.lc + e];
-                        int newLen = fLen + gcLen - 1;
-                        double nf[128];
-                        for (int i = 0; i < newLen; ++i) nf[i] = 0.0;
-                        for (int i = 0; i < fLen; ++i)
-                            for (int j = 0; j < gcLen; ++j)
-                                nf[i+j] += f[i] * gc[j];
-                        fLen = std::min(newLen, extra + 1);
-                        for (int i = 0; i < fLen; ++i) f[i] = nf[i];
+                    {
+                        auto &cb = subCp.classes[active[i].cid];
+                        cb.maxPiv = std::min(cb.maxPiv, active[i].mc - 1);
+                        if (cb.minPiv > cb.maxPiv) continue;
                     }
-                    if (!feasible) continue;
-                    double delta = (extra < fLen) ? f[extra] : 0.0;
 
-                    if (delta > 0.5) {
-                        dSup[tidx] -= delta;
-                        if (dSup[tidx] < -0.5) dSup[tidx] = 0;
-                        daf::Size newB = (daf::Size)llround(dSup[tidx]);
-                        if (newB < BUCKET_CAP) {
-                            buckets[newB].push_back(tidx);
-                            if (newB < currentLevel) currentLevel = newB;
-                        } else overflow.insert({newB, tidx});
+                    int minTotal = 0, maxTotal = 0;
+                    for (auto &[_, cb] : subCp.classes) {
+                        minTotal += cb.minPiv;
+                        maxTotal += cb.maxPiv;
                     }
+                    if ((s - subCp.h) < minTotal || (s - subCp.h) > maxTotal) continue;
+
+                    subCp.tupleIdxs.clear();
+                    // Only compute aggrCount for AFFECTED tuples (share class with τ)
+                    for (auto tidx : affectedTuples) {
+                        double c = aggrCountOnCPath(tidx, subCp);
+                        prof_aggrCalls++;
+                        if (c > 1e-9) {
+                            subCp.tupleIdxs.push_back(tidx);
+                            newContrib[tidx] += c;
+                        }
+                    }
+                    // Unaffected tuples: same contribution as parent → add all
+                    for (auto tidx : unaffectedTuples)
+                        subCp.tupleIdxs.push_back(tidx);
+                    if (subCp.tupleIdxs.empty()) continue;
+
+                    daf::Size newCpid = cpaths.size();
+                    cpaths.push_back(std::move(subCp));
+                    totalSplits++;
+                    prof_splitSubpaths++;
+
+                    for (auto tidx : cpaths.back().tupleIdxs)
+                        tupleToCPaths[tidx].push_back(newCpid);
                 }
             }
 
-            // Remove peeled tuple from path
-            {
-                auto &vec = ps.tupleIdxs;
-                vec.erase(std::remove(vec.begin(), vec.end(), idx), vec.end());
+            auto _t3 = std::chrono::high_resolution_clock::now();
+            prof_split_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(_t3-_t2).count();
+
+            // Apply net delta in double, re-bucket
+            for (auto &[tidx, oc] : oldContrib) {
+                double nc = newContrib.count(tidx) ? newContrib[tidx] : 0.0;
+                dSup[tidx] += (nc - oc);
+                if (dSup[tidx] < -0.5) dSup[tidx] = 0;
+                daf::Size newBucket = (daf::Size)llround(dSup[tidx]);
+                if (newBucket < BUCKET_CAP) {
+                    buckets[newBucket].push_back(tidx);
+                    if (newBucket < currentLevel) currentLevel = newBucket;
+                } else {
+                    overflow.insert({newBucket, tidx});
+                }
             }
         }
     }
@@ -715,11 +716,16 @@ NucleusCoreDecompositionRClique_RegionCPI(
     auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tStep6End - tStart).count();
 
     daf::Size maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
-    std::cout << "\n  --- Cascade Peeling (Tree Mutation) ---" << std::endl;
+    std::cout << "\n  --- Cascade Peeling (Analytical Split) ---" << std::endl;
     std::cout << "  Peeled: " << numPeeled << " / " << rTuples.size() << std::endl;
-    std::cout << "  Class removals: " << totalClassRemovals
-              << ", LeafDeaths: " << totalLeafDeaths
-              << ", Recomputes: " << totalRecomputes << std::endl;
+    std::cout << "  Total splits: " << totalSplits << " (sub-paths: " << prof_splitSubpaths
+              << ", dead: " << prof_deadPaths << ")" << std::endl;
+    std::cout << "  Final cpaths: " << cpaths.size() << std::endl;
+    std::cout << "  AggrCount calls: " << prof_aggrCalls << std::endl;
+    std::cout << "  Time breakdown:" << std::endl;
+    std::cout << "    oldContrib: " << prof_oldContrib_ns/1000000 << " ms" << std::endl;
+    std::cout << "    split+new:  " << prof_split_ns/1000000 << " ms" << std::endl;
+    std::cout << "    overhead:   " << prof_overhead_ns/1000000 << " ms" << std::endl;
     std::cout << "  Max core: " << maxCore << std::endl;
     for (auto &[core, cnt] : coreDist)
         std::cout << "  core=" << core << " count=" << cnt << std::endl;
