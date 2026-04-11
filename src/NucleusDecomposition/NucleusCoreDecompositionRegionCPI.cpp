@@ -473,20 +473,12 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::cout << "  Index build time: " << step5Ms << " ms" << std::endl;
 
     // ============================================================
-    // Step 6: Strategy A Peeling (CPI-based, NO s-tuples)
+    // Step 6: Strategy A Peeling (CPI + class removal, NO s-tuples)
     // ============================================================
-    // When τ is peeled: for each path P containing τ, for each other τ' on P:
-    // Δ = "new dying s-cliques on P containing τ' due to τ"
-    //
-    // For correctness: we track which tuples have been peeled per path.
-    // A s-clique on P is dead iff it contains an r-clique from any peeled tuple on P.
-    //
-    // Simple approach: maintain per-tuple alive_support (initially from CPI).
-    // When τ is peeled: iterate over paths, compute delta for each neighbor τ'.
-    //
-    // Delta computation: on path P, the dying s-cliques for τ' are those
-    // containing both τ and τ' r-cliques. We compute this via the
-    // constrained allocation formula (AggrCount for the "union requirement").
+    // Key insight: when all tuples using class c on path P are peeled,
+    // remove c's vertices from P (update h, p). Future SharedCount
+    // computations use updated parameters → dead s-cliques are
+    // automatically excluded. NO inclusion-exclusion needed.
 
     auto tStep6 = std::chrono::high_resolution_clock::now();
 
@@ -502,119 +494,86 @@ NucleusCoreDecompositionRClique_RegionCPI(
         buckets[curSupport[i]].push_back(i);
     }
 
-    // Per-path: track peeled tuples' requirement vectors for dead s-clique tracking
-    // For now: simple approach — recompute alive support per (tuple, path) on demand
-    // using the set of peeled tuples on that path.
-    //
-    // Track per path: list of peeled requirement vectors
-    struct ReqVec { std::unordered_map<daf::Size, int> mR; }; // m_c = max(0, j_c - nh_c)
-    std::vector<std::vector<ReqVec>> pathDeadReqs(numPaths); // per path: dead reqs
+    // Per-path: alive tuple count per class (for class removal tracking)
+    // aliveClassCount[pid][cid] = number of alive tuples on pid using class cid
+    std::vector<std::unordered_map<daf::Size, int>> aliveClassCount(numPaths);
+    for (daf::Size pid = 0; pid < numPaths; ++pid) {
+        for (auto &pti : pathDataVec[pid].tuples) {
+            auto &key = rTuples[pti.tidx].key;
+            std::unordered_set<daf::Size> seen;
+            for (auto c : key) {
+                if (seen.insert(c).second) // count each class once per tuple
+                    aliveClassCount[pid][c]++;
+            }
+        }
+    }
+
+    // Helper: compute SharedCount(τ, τ', P) using CURRENT path parameters
+    // = number of s-cliques on P containing both τ and τ' r-cliques
+    // Combined requirement: for each class c, need max(j_c^τ, j_c^{τ'}) vertices
+    // → pivot need = max(0, max(j_c^τ, j_c^{τ'}) - current_nh_c)
+    auto computeSharedCount = [&](daf::Size pid, daf::Size tidx1, daf::Size tidx2) -> double {
+        auto &pd = pathDataVec[pid];
+        auto &key1 = rTuples[tidx1].key;
+        auto &key2 = rTuples[tidx2].key;
+
+        // Build class counts for both tuples
+        std::unordered_map<daf::Size, int> counts1, counts2;
+        for (auto c : key1) counts1[c]++;
+        for (auto c : key2) counts2[c]++;
+
+        // Merged classes
+        std::unordered_set<daf::Size> allClasses;
+        for (auto &[c, _] : counts1) allClasses.insert(c);
+        for (auto &[c, _] : counts2) allClasses.insert(c);
+
+        // Combined requirement: max(j1_c, j2_c) per class
+        // Constrained allocation: distribute s-h pivots with minimum per class
+        int totalMinPiv = 0;
+        struct ClassAlloc { daf::Size cid; int minPiv; int maxExtra; int npc; };
+        std::vector<ClassAlloc> allocs;
+
+        for (daf::Size c : allClasses) {
+            auto dit = pd.classDistrib.find(c);
+            if (dit == pd.classDistrib.end()) return 0.0;
+            int nhc = dit->second.first, npc = dit->second.second;
+            int j1 = counts1.count(c) ? counts1[c] : 0;
+            int j2 = counts2.count(c) ? counts2[c] : 0;
+            int need = std::max(j1, j2);
+            int pivNeed = std::max(0, need - nhc);
+            if (pivNeed > npc) return 0.0;
+            totalMinPiv += pivNeed;
+            allocs.push_back({c, pivNeed, npc - pivNeed, npc});
+        }
+
+        // Add classes on P not in either tuple (their pivots are freely available)
+        for (auto &[c, dp] : pd.classDistrib) {
+            if (allClasses.count(c)) continue;
+            if (dp.second > 0) allocs.push_back({c, 0, dp.second, dp.second});
+        }
+
+        int extraNeeded = (s - pd.h) - totalMinPiv;
+        if (extraNeeded < 0) return 0.0;
+
+        // Convolution: distribute extraNeeded among classes
+        std::vector<double> f = {1.0};
+        for (auto &ac : allocs) {
+            int maxE = std::min(ac.maxExtra, extraNeeded);
+            if (maxE < 0) continue;
+            std::vector<double> gc(maxE + 1, 0.0);
+            for (int e = 0; e <= maxE; ++e)
+                gc[e] = nCr[ac.npc][ac.minPiv + e];
+            std::vector<double> newf(f.size() + gc.size() - 1, 0.0);
+            for (int i = 0; i < (int)f.size(); ++i)
+                for (int j = 0; j < (int)gc.size(); ++j)
+                    newf[i + j] += f[i] * gc[j];
+            f = std::move(newf);
+        }
+        return (extraNeeded < (int)f.size()) ? f[extraNeeded] : 0.0;
+    };
 
     std::map<daf::Size, int64_t> coreDist;
     daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
-
-    // Helper: compute number of s-cliques on path P containing C_r' from τ'
-    // that ALSO satisfy a set of requirement vectors (i.e., contain r-cliques from dead tuples)
-    // Uses inclusion-exclusion over the requirement vectors.
-    auto countSatisfying = [&](daf::Size pid, daf::Size tidx,
-                               const std::vector<ReqVec> &reqs) -> double {
-        auto &pd = pathDataVec[pid];
-        auto &tauKey = rTuples[tidx].key;
-
-        // Build tau's class distribution on this path
-        std::unordered_map<daf::Size, int> tauCounts;
-        for (auto c : tauKey) tauCounts[c]++;
-
-        // For each subset S of reqs: compute the number of s-cliques containing τ'
-        // AND satisfying all requirements in S.
-        // Combined requirement: for each class c, need max(q'_c, max_{i∈S} m_c^(i)) pivots
-        // where q'_c = max(0, j'_c - nh_c) = min pivots τ' needs from c
-
-        double total = 0;
-        int nReqs = reqs.size();
-        if (nReqs > 20) nReqs = 20; // cap for safety
-
-        for (int mask = 0; mask < (1 << nReqs); ++mask) {
-            // Combined requirement: for each class c, the minimum pivot count
-            std::unordered_map<daf::Size, int> combined;
-
-            // Start with τ' requirements
-            for (auto &[c, jc] : tauCounts) {
-                int nhc = pd.classDistrib.count(c) ? pd.classDistrib[c].first : 0;
-                combined[c] = std::max(0, jc - nhc);
-            }
-
-            // Add requirements from selected dead tuples
-            int bits = __builtin_popcount(mask);
-            for (int b = 0; b < nReqs; ++b) {
-                if (!(mask & (1 << b))) continue;
-                for (auto &[c, mc] : reqs[b].mR) {
-                    combined[c] = std::max(combined[c], mc);
-                }
-            }
-
-            // Count s-cliques with n_Q^c ≥ combined[c] for all c,
-            // and Σ n_Q^c = s - h, and n_Q^c ≤ np_c
-            // This is the constrained allocation formula
-            // Using convolution: for each class c, choices = np_c - combined[c] extra pivots
-            // (after fixing combined[c] mandatory pivots)
-
-            int mandatoryTotal = 0;
-            bool feasible = true;
-            std::vector<std::pair<daf::Size, int>> allocClasses; // (class, max_extra)
-            for (auto &[c, minPiv] : combined) {
-                int npc = pd.classDistrib.count(c) ? pd.classDistrib[c].second : 0;
-                if (minPiv > npc) { feasible = false; break; }
-                mandatoryTotal += minPiv;
-                allocClasses.push_back({c, npc - minPiv});
-            }
-            // Also include classes on P not in combined (they contribute 0 mandatory but have available pivots)
-            if (feasible) {
-                for (auto &[c, dp] : pd.classDistrib) {
-                    if (combined.count(c)) continue;
-                    allocClasses.push_back({c, dp.second}); // all pivots available as extra
-                }
-            }
-
-            int extraNeeded = (s - pd.h) - mandatoryTotal;
-            if (!feasible || extraNeeded < 0) continue;
-
-            // Count allocations: distribute extraNeeded among allocClasses
-            // Each class can contribute 0..max_extra
-            // Count = coefficient of x^extraNeeded in Π (1 + x + ... + x^{max_extra_c})
-            // = coefficient of x^extraNeeded in Π Σ_{e=0}^{max_extra_c} C(1, 1)^e ... nah
-
-            // Actually: we're choosing specific pivot VERTICES, not just counts.
-            // For class c: we need combined[c] + e_c pivots total, choosing from np_c.
-            // Ways = C(np_c, combined[c] + e_c). With e_c extra.
-            // Total = Σ_{e_c ≥ 0, Σe_c = extraNeeded} Π C(np_c, combined_c + e_c)
-
-            // Compute via convolution
-            std::vector<double> f = {1.0};
-            for (auto &[c, maxE] : allocClasses) {
-                int npc = pd.classDistrib.count(c) ? pd.classDistrib[c].second : 0;
-                int minPiv = combined.count(c) ? combined[c] : 0;
-                std::vector<double> gc(std::min(maxE, extraNeeded) + 1, 0.0);
-                for (int e = 0; e < (int)gc.size(); ++e) {
-                    int choose = minPiv + e;
-                    if (choose <= npc)
-                        gc[e] = nCr[npc][choose];
-                }
-                std::vector<double> newf(f.size() + gc.size() - 1, 0.0);
-                for (int i = 0; i < (int)f.size(); ++i)
-                    for (int j = 0; j < (int)gc.size(); ++j)
-                        newf[i + j] += f[i] * gc[j];
-                f = std::move(newf);
-            }
-
-            double count = (extraNeeded < (int)f.size()) ? f[extraNeeded] : 0.0;
-
-            // Inclusion-exclusion sign
-            total += (bits % 2 == 0 ? 1 : -1) * count;
-        }
-
-        return total;
-    };
 
     while (numPeeled < rTuples.size()) {
         while (currentLevel <= maxSup && buckets[currentLevel].empty())
@@ -630,65 +589,18 @@ NucleusCoreDecompositionRClique_RegionCPI(
         coreLevel = std::max(coreLevel, currentLevel);
         coreDist[coreLevel] += rTuples[idx].mult;
 
-        // Build requirement vector for τ
         auto &tauKey = rTuples[idx].key;
 
         for (daf::Size pid : tupleToPathIds[idx]) {
             auto &pd = pathDataVec[pid];
 
-            // Compute τ's requirement vector on this path
-            ReqVec newReq;
-            std::unordered_map<daf::Size, int> tauCounts;
-            for (auto c : tauKey) tauCounts[c]++;
-            for (auto &[c, jc] : tauCounts) {
-                int nhc = pd.classDistrib.count(c) ? pd.classDistrib[c].first : 0;
-                int mc = std::max(0, jc - nhc);
-                if (mc > 0) newReq.mR[c] = mc;
-            }
-
-            // For each other tuple τ' on this path: compute Δ
-            // Δ = (s-cliques containing τ' AND satisfying newReq)
-            //   - (s-cliques containing τ' AND satisfying newReq AND any previous dead req)
-            // = countSatisfying(pid, tidx', {newReq})
-            //   - countSatisfying(pid, tidx', {newReq, prev_reqs...})
-            // But this is just: countSatisfying with {all_reqs_including_new}
-            //                  - countSatisfying with {prev_reqs_only}
-            // = Δ(alive before) - Δ(alive after) = net new deaths for τ'
-
-            // Simpler: alive_P(τ') was maintained. After peeling τ:
-            // new alive_P(τ') = countSatisfying(pid, tidx', {} means "not satisfying ANY dead req")
-            // Hmm, countSatisfying with empty reqs = total s-cliques containing τ' = initial support from P
-
-            // Actually the simplest correct approach:
-            // alive_after = count of s-cliques on P containing τ' and NOT containing any dead tuple's r-clique
-            // Δ = alive_before - alive_after
-
-            auto &deadReqs = pathDeadReqs[pid];
-
+            // Step 1: Compute SharedCount(τ, τ', P) for each alive τ' on P
+            // using CURRENT h/p (before class removal)
             for (auto &pti : pd.tuples) {
                 if (pti.tidx == idx || rPeeled[pti.tidx]) continue;
 
-                // alive_before = support from this path (before peeling τ)
-                // = countSatisfying with complement of deadReqs (alive = NOT satisfying any dead req)
-                // = total - countSatisfying(deadReqs)
-
-                // After adding newReq to deadReqs:
-                // alive_after = total - countSatisfying(deadReqs ∪ {newReq})
-
-                // Δ = alive_before - alive_after
-                //   = countSatisfying(deadReqs ∪ {newReq}) - countSatisfying(deadReqs)
-
-                // This is exactly: (s-cliques satisfying newReq) that DON'T satisfy any previous dead req
-                // = countSatisfying({newReq}) - countSatisfying({newReq} ∩ some dead req)
-
-                // Using inclusion-exclusion over deadReqs ∪ {newReq}:
-
-                std::vector<ReqVec> allReqs = deadReqs;
-                allReqs.push_back(newReq);
-
-                double afterCount = countSatisfying(pid, pti.tidx, allReqs);
-                double beforeCount = countSatisfying(pid, pti.tidx, deadReqs);
-                double delta = afterCount - beforeCount;
+                double shared = computeSharedCount(pid, idx, pti.tidx);
+                double delta = shared / rTuples[pti.tidx].mult;
 
                 if (delta > 0.5) {
                     daf::Size ridx2 = pti.tidx;
@@ -703,8 +615,24 @@ NucleusCoreDecompositionRClique_RegionCPI(
                 }
             }
 
-            // Add newReq to this path's dead list
-            deadReqs.push_back(newReq);
+            // Step 2: Update alive class counts and remove dead classes
+            std::unordered_set<daf::Size> tauClasses;
+            for (auto c : tauKey) tauClasses.insert(c);
+
+            for (daf::Size c : tauClasses) {
+                auto &cnt = aliveClassCount[pid][c];
+                cnt--;
+                if (cnt == 0) {
+                    // All tuples using class c on this path are peeled
+                    // Remove c's vertices from path: update h and p
+                    auto dit = pd.classDistrib.find(c);
+                    if (dit != pd.classDistrib.end()) {
+                        pd.h -= dit->second.first;
+                        pd.p -= dit->second.second;
+                        pd.classDistrib.erase(dit);
+                    }
+                }
+            }
         }
     }
 
