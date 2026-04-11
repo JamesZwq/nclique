@@ -508,67 +508,65 @@ NucleusCoreDecompositionRClique_RegionCPI(
         }
     }
 
-    // Helper: compute SharedCount(τ, τ', P) using CURRENT path parameters
-    // = number of s-cliques on P containing both τ and τ' r-cliques
-    // Combined requirement: for each class c, need max(j_c^τ, j_c^{τ'}) vertices
-    // → pivot need = max(0, max(j_c^τ, j_c^{τ'}) - current_nh_c)
-    auto computeSharedCount = [&](daf::Size pid, daf::Size tidx1, daf::Size tidx2) -> double {
+    // Helper: compute Δ_P(τ', τ) = per-specific-C_r' dying s-clique count
+    // Using Theorem 2's constrained allocation formula:
+    //   Δ = Σ_{l_c ≤ e_c ≤ u_c, Σe_c = s-r} Π C(u_c, e_c)
+    // where:
+    //   q'_c = max(0, j'_c - nh_c)   (pivots C_r' uses from class c)
+    //   m_c  = max(0, j_c^τ - nh_c)  (pivots τ needs from class c)
+    //   l_c  = max(0, m_c - q'_c)    (extra pivots needed for τ beyond C_r')
+    //   u_c  = np_c - q'_c           (available extra pivots)
+    auto computeDelta = [&](daf::Size pid, daf::Size tidxTau, daf::Size tidxTauPrime) -> double {
         auto &pd = pathDataVec[pid];
-        auto &key1 = rTuples[tidx1].key;
-        auto &key2 = rTuples[tidx2].key;
+        auto &keyTau = rTuples[tidxTau].key;
+        auto &keyTauP = rTuples[tidxTauPrime].key;
 
-        // Build class counts for both tuples
-        std::unordered_map<daf::Size, int> counts1, counts2;
-        for (auto c : key1) counts1[c]++;
-        for (auto c : key2) counts2[c]++;
+        std::unordered_map<daf::Size, int> countsTau, countsTauP;
+        for (auto c : keyTau) countsTau[c]++;
+        for (auto c : keyTauP) countsTauP[c]++;
 
-        // Merged classes
-        std::unordered_set<daf::Size> allClasses;
-        for (auto &[c, _] : counts1) allClasses.insert(c);
-        for (auto &[c, _] : counts2) allClasses.insert(c);
+        // All classes on the path
+        int totalMandatory = 0; // Σ (q'_c + l_c) = mandatory pivots
+        struct AllocInfo { int lc; int uc; };
+        std::vector<AllocInfo> allocs;
+        bool feasible = true;
 
-        // Combined requirement: max(j1_c, j2_c) per class
-        // Constrained allocation: distribute s-h pivots with minimum per class
-        int totalMinPiv = 0;
-        struct ClassAlloc { daf::Size cid; int minPiv; int maxExtra; int npc; };
-        std::vector<ClassAlloc> allocs;
-
-        for (daf::Size c : allClasses) {
-            auto dit = pd.classDistrib.find(c);
-            if (dit == pd.classDistrib.end()) return 0.0;
-            int nhc = dit->second.first, npc = dit->second.second;
-            int j1 = counts1.count(c) ? counts1[c] : 0;
-            int j2 = counts2.count(c) ? counts2[c] : 0;
-            int need = std::max(j1, j2);
-            int pivNeed = std::max(0, need - nhc);
-            if (pivNeed > npc) return 0.0;
-            totalMinPiv += pivNeed;
-            allocs.push_back({c, pivNeed, npc - pivNeed, npc});
-        }
-
-        // Add classes on P not in either tuple (their pivots are freely available)
+        // Process all classes on the path
         for (auto &[c, dp] : pd.classDistrib) {
-            if (allClasses.count(c)) continue;
-            if (dp.second > 0) allocs.push_back({c, 0, dp.second, dp.second});
+            int nhc = dp.first, npc = dp.second;
+            int jTau = countsTau.count(c) ? countsTau[c] : 0;
+            int jTauP = countsTauP.count(c) ? countsTauP[c] : 0;
+
+            int qpc = std::max(0, jTauP - nhc); // pivots C_r' uses from c
+            int mc = std::max(0, jTau - nhc);    // pivots τ needs from c
+            int lc = std::max(0, mc - qpc);      // extra needed for τ
+            int uc = npc - qpc;                  // available extra
+
+            if (uc < 0 || uc < lc) { feasible = false; break; }
+            totalMandatory += qpc + lc;
+            allocs.push_back({lc, uc});
         }
 
-        int extraNeeded = (s - pd.h) - totalMinPiv;
+        if (!feasible) return 0.0;
+        int extraNeeded = (s - pd.h) - totalMandatory;
         if (extraNeeded < 0) return 0.0;
 
-        // Convolution: distribute extraNeeded among classes
+        // Convolution: distribute extraNeeded among classes (extra beyond mandatory)
+        // For each class: available extra = u_c - l_c, choose from C(u_c, l_c + e_c)
         std::vector<double> f = {1.0};
-        for (auto &ac : allocs) {
-            int maxE = std::min(ac.maxExtra, extraNeeded);
-            if (maxE < 0) continue;
+        for (auto &ai : allocs) {
+            int maxE = std::min(ai.uc - ai.lc, extraNeeded);
+            if (maxE < 0) { feasible = false; break; }
             std::vector<double> gc(maxE + 1, 0.0);
             for (int e = 0; e <= maxE; ++e)
-                gc[e] = nCr[ac.npc][ac.minPiv + e];
+                gc[e] = nCr[ai.uc][ai.lc + e];
             std::vector<double> newf(f.size() + gc.size() - 1, 0.0);
             for (int i = 0; i < (int)f.size(); ++i)
                 for (int j = 0; j < (int)gc.size(); ++j)
                     newf[i + j] += f[i] * gc[j];
             f = std::move(newf);
         }
+        if (!feasible) return 0.0;
         return (extraNeeded < (int)f.size()) ? f[extraNeeded] : 0.0;
     };
 
@@ -594,13 +592,12 @@ NucleusCoreDecompositionRClique_RegionCPI(
         for (daf::Size pid : tupleToPathIds[idx]) {
             auto &pd = pathDataVec[pid];
 
-            // Step 1: Compute SharedCount(τ, τ', P) for each alive τ' on P
+            // Step 1: Compute Δ(τ', τ) for each alive τ' on P
             // using CURRENT h/p (before class removal)
             for (auto &pti : pd.tuples) {
                 if (pti.tidx == idx || rPeeled[pti.tidx]) continue;
 
-                double shared = computeSharedCount(pid, idx, pti.tidx);
-                double delta = shared / rTuples[pti.tidx].mult;
+                double delta = computeDelta(pid, idx, pti.tidx);
 
                 if (delta > 0.5) {
                     daf::Size ridx2 = pti.tidx;
