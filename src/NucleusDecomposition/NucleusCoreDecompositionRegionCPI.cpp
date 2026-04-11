@@ -22,6 +22,7 @@
 
 extern double nCr[1001][401];
 extern std::vector<bool> g_maxCliqueTags;
+extern std::vector<std::vector<daf::Size>> g_maxCliques;
 
 // ============================================================
 // Tuple utilities (shared with V2)
@@ -139,63 +140,24 @@ NucleusCoreDecompositionRClique_RegionCPI(
     const daf::Size INVALID = static_cast<daf::Size>(-1);
 
     // ============================================================
-    // Step 1: Build Maximal-Clique Regions (same as V2)
+    // Step 1: Build Regions from g_maxCliques (MaxCliqEnum, pre-mutation)
     // ============================================================
 
-    std::vector<bool> pathValid(numPaths, false);
     daf::Size validPaths = 0;
-    for (daf::Size pid = 0; pid < numPaths; ++pid) {
-        if ((int)tree.adj_list[pid].size() >= s) { pathValid[pid] = true; validPaths++; }
-    }
+    for (daf::Size pid = 0; pid < numPaths; ++pid)
+        if ((int)tree.adj_list[pid].size() >= s) validPaths++;
 
-    std::vector<daf::Size> regionOf(numPaths, INVALID);
-    std::vector<daf::Size> maximalPathIds;
-    daf::Size numMaximal = 0, numSub = 0;
-    for (daf::Size pid = 0; pid < numPaths; ++pid) {
-        if (!pathValid[pid]) continue;
-        bool isMax = (pid < g_maxCliqueTags.size()) ? g_maxCliqueTags[pid] : true;
-        if (isMax) { regionOf[pid] = maximalPathIds.size(); maximalPathIds.push_back(pid); numMaximal++; }
-    }
-    daf::Size numRegions = maximalPathIds.size();
-
-    std::vector<std::vector<daf::Size>> regionVerts(numRegions);
+    daf::Size numRegions = 0;
+    std::vector<std::vector<daf::Size>> regionVerts;
     std::vector<std::vector<daf::Size>> vtxMaxPaths(numVertices);
-    for (daf::Size rid = 0; rid < numRegions; ++rid) {
-        auto &leaf = tree.adj_list[maximalPathIds[rid]];
-        regionVerts[rid].reserve(leaf.size());
-        for (const auto &node : leaf) regionVerts[rid].push_back(node.v);
-        std::sort(regionVerts[rid].begin(), regionVerts[rid].end());
-        for (daf::Size v : regionVerts[rid])
-            if (v < numVertices) vtxMaxPaths[v].push_back(rid);
-    }
 
-    daf::Size orphans = 0;
-    for (daf::Size pid = 0; pid < numPaths; ++pid) {
-        if (!pathValid[pid] || regionOf[pid] != INVALID) continue;
-        numSub++;
-        auto &leaf = tree.adj_list[pid];
-        std::vector<daf::Size> pVerts;
-        pVerts.reserve(leaf.size());
-        for (const auto &node : leaf) pVerts.push_back(node.v);
-        std::sort(pVerts.begin(), pVerts.end());
-        daf::Size rareV = pVerts[0], rareCount = vtxMaxPaths[pVerts[0]].size();
-        for (daf::Size v : pVerts)
-            if (vtxMaxPaths[v].size() < rareCount) { rareV = v; rareCount = vtxMaxPaths[v].size(); }
-        for (daf::Size rid : vtxMaxPaths[rareV]) {
-            auto &qv = regionVerts[rid];
-            if (qv.size() <= pVerts.size()) continue;
-            if (std::includes(qv.begin(), qv.end(), pVerts.begin(), pVerts.end())) {
-                regionOf[pid] = rid; break;
-            }
-        }
-        if (regionOf[pid] == INVALID) {
-            regionOf[pid] = maximalPathIds.size();
-            maximalPathIds.push_back(pid);
-            regionVerts.push_back(pVerts);
-            for (daf::Size v : pVerts)
-                if (v < numVertices) vtxMaxPaths[v].push_back(regionVerts.size() - 1);
-            numRegions++; orphans++;
-        }
+    for (auto &mc : g_maxCliques) {
+        if ((int)mc.size() < s) continue;
+        daf::Size rid = regionVerts.size();
+        regionVerts.push_back(mc); // already sorted by MaxCliqEnum
+        for (daf::Size v : mc)
+            if (v < numVertices) vtxMaxPaths[v].push_back(rid);
+        numRegions++;
     }
 
     // ============================================================
@@ -240,9 +202,8 @@ NucleusCoreDecompositionRClique_RegionCPI(
     auto tStep2 = std::chrono::high_resolution_clock::now();
     std::cout << "======= Region CPI (V3) =======" << std::endl;
     std::cout << "  r=" << r << " s=" << s << std::endl;
-    std::cout << "  Vertices: " << numVertices << ", paths: " << validPaths << std::endl;
-    std::cout << "  Maximal cliques: " << numMaximal << ", sub merged: " << numSub
-              << " (orphans: " << orphans << ")" << std::endl;
+    std::cout << "  Vertices: " << numVertices << ", CPI paths: " << validPaths << std::endl;
+    std::cout << "  Maximal cliques (≥s): " << numRegions << std::endl;
     std::cout << "  Overlap classes: " << numClasses << std::endl;
 
     // ============================================================
@@ -403,37 +364,92 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::cout << "  CPI counting time: " << step4Ms << " ms" << std::endl;
 
     // ============================================================
-    // Step 5: Peeling with lazy s-tuple generation
+    // Step 5: Build s-tuple incidence (same as V2, for correct peeling)
     // ============================================================
+    // NOTE: CPI counting replaces s-tuple-based support init (Step 4).
+    // But we still need s-tuples for the peeling cascade.
+    // Future optimization: Strategy A (CPI-based peeling) to avoid this.
 
     auto tStep5 = std::chrono::high_resolution_clock::now();
 
-    // Build incidence lazily: for each r-tuple, list of regions containing all its classes
-    std::vector<std::vector<daf::Size>> tupleRegions(rTuples.size());
-    for (daf::Size tidx = 0; tidx < rTuples.size(); ++tidx) {
-        auto &key = rTuples[tidx].key;
-        // Find regions containing ALL classes in the tuple
-        // A region R contains all classes iff classesInRegion[R] ⊇ unique classes of key
-        std::unordered_set<daf::Size> neededClasses(key.begin(), key.end());
+    std::unordered_map<TupleKey, daf::Size, TupleHash> sTupleIndex;
+    struct STuple {
+        TupleKey key;
+        std::vector<std::pair<daf::Size, double>> incidentRTuples;
+        bool alive;
+    };
+    std::vector<STuple> sTuples;
+    std::vector<std::vector<daf::Size>> rToS(rTuples.size());
 
-        // Start with regions of first class, intersect
-        if (neededClasses.empty()) continue;
-        daf::Size firstClass = *neededClasses.begin();
-        for (daf::Size rid : classes[firstClass].regionIds) {
-            bool allPresent = true;
-            for (daf::Size c : neededClasses) {
-                auto &cr = classesInRegion[rid];
-                if (!std::binary_search(cr.begin(), cr.end(), c)) {
-                    allPresent = false; break;
+    {
+        TupleKey cur; cur.reserve(s);
+        for (daf::Size rid = 0; rid < numRegions; ++rid) {
+            auto &cids = classesInRegion[rid];
+            if (cids.size() > 500) continue;
+            cur.clear();
+            std::function<void()> cb = [&]() {
+                std::unordered_map<daf::Size, int> counts;
+                for (auto c : cur) counts[c]++;
+                for (auto &[c, k] : counts)
+                    if ((int)classSizes[c] < k) return;
+
+                TupleKey key = cur;
+                if (sTupleIndex.count(key)) return;
+
+                auto comp = getComposition(key);
+                TupleKey subKey; subKey.reserve(r);
+                std::vector<std::pair<daf::Size, double>> incidents;
+
+                std::function<void(const TupleKey &)> subCb = [&](const TupleKey &sub) {
+                    auto it = rTupleIndex.find(sub);
+                    if (it == rTupleIndex.end()) return;
+                    double ext = computeExt(comp, sub, classSizes);
+                    if (ext > 0)
+                        incidents.push_back({it->second, ext});
+                };
+                enumerateSubMultisets(comp, r, 0, subKey, subCb);
+
+                if (!incidents.empty()) {
+                    daf::Size sid = sTuples.size();
+                    sTupleIndex[key] = sid;
+                    sTuples.push_back({key, std::move(incidents), true});
+                    for (auto &[ridx, ext] : sTuples.back().incidentRTuples)
+                        rToS[ridx].push_back(sid);
                 }
-            }
-            if (allPresent) tupleRegions[tidx].push_back(rid);
+            };
+            enumerateMultisets(cids, s, 0, cur, cb);
         }
     }
 
-    // Bucket queue peeling
+    auto tStep5End = std::chrono::high_resolution_clock::now();
+    auto step5Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep5End - tStep5).count();
+    std::cout << "  s-tuples: " << sTuples.size() << std::endl;
+    std::cout << "  s-tuple enum time: " << step5Ms << " ms" << std::endl;
+
+    // Verify CPI support matches s-tuple support, then use s-tuple support for peeling
+    {
+        double sTupleSupSum = 0;
+        for (daf::Size sid = 0; sid < sTuples.size(); ++sid)
+            for (auto &[ridx, ext] : sTuples[sid].incidentRTuples)
+                support[ridx] = 0; // reset
+        for (daf::Size sid = 0; sid < sTuples.size(); ++sid)
+            for (auto &[ridx, ext] : sTuples[sid].incidentRTuples)
+                support[ridx] += ext; // recompute from s-tuples (matches V2 exactly)
+        for (daf::Size i = 0; i < rTuples.size(); ++i)
+            sTupleSupSum += rTuples[i].mult * support[i];
+        std::cout << "  Support sum (s-tuple): " << std::fixed << std::setprecision(0) << sTupleSupSum << std::endl;
+        double relErr = std::abs(totalSupportTuples - sTupleSupSum) / std::max(1.0, sTupleSupSum);
+        std::cout << "  CPI vs s-tuple match: " << (relErr < 1e-6 ? "PASS" : "MISMATCH") << std::endl;
+    }
+
+    // ============================================================
+    // Step 6: Cascade Peeling (same as V2, proven correct)
+    // ============================================================
+
+    auto tStep6 = std::chrono::high_resolution_clock::now();
+
     daf::Size maxSup = 0;
-    for (auto &s : support) maxSup = std::max(maxSup, (daf::Size)s);
+    for (auto &sv : support) maxSup = std::max(maxSup, (daf::Size)sv);
 
     std::vector<std::vector<daf::Size>> buckets(maxSup + 2);
     std::vector<daf::Size> curSupport(rTuples.size());
@@ -443,9 +459,6 @@ NucleusCoreDecompositionRClique_RegionCPI(
         curSupport[i] = (daf::Size)support[i];
         buckets[curSupport[i]].push_back(i);
     }
-
-    // Dead s-tuple tracking
-    std::unordered_set<TupleKey, TupleHash> deadSTuples;
 
     std::map<daf::Size, int64_t> coreDist;
     daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
@@ -464,128 +477,35 @@ NucleusCoreDecompositionRClique_RegionCPI(
         coreLevel = std::max(coreLevel, currentLevel);
         coreDist[coreLevel] += rTuples[idx].mult;
 
-        // Lazy s-tuple cascade: for each region containing tau, enumerate dying s-tuples
-        auto &tauKey = rTuples[idx].key;
-        std::unordered_map<daf::Size, int> tauCounts;
-        for (auto c : tauKey) tauCounts[c]++;
+        for (daf::Size sid : rToS[idx]) {
+            if (!sTuples[sid].alive) continue;
+            sTuples[sid].alive = false;
 
-        for (daf::Size rid : tupleRegions[idx]) {
-            auto &cids = classesInRegion[rid];
-            if (cids.size() > 500) continue;
-
-            // Enumerate s-multisets from cids that contain tauKey as sub-multiset
-            TupleKey cur; cur.reserve(s);
-
-            // Pre-fill with tau's classes
-            cur = tauKey;
-
-            // Fill remaining s-r slots from cids (with repetition up to class size)
-            std::function<void(int)> fillRemaining = [&](int startIdx) {
-                if ((int)cur.size() == s) {
-                    // Validate: for each class, count ≤ classSize
-                    std::unordered_map<daf::Size, int> counts;
-                    for (auto c : cur) counts[c]++;
-                    for (auto &[c, k] : counts)
-                        if ((int)classSizes[c] < k) return;
-
-                    TupleKey key = cur;
-                    std::sort(key.begin(), key.end());
-
-                    // Check if already dead
-                    if (deadSTuples.count(key)) return;
-
-                    // Mark dead
-                    deadSTuples.insert(key);
-
-                    // Find r-sub-tuples and update support
-                    auto comp = getComposition(key);
-                    TupleKey subKey; subKey.reserve(r);
-                    std::function<void(const TupleKey &)> subCb = [&](const TupleKey &sub) {
-                        auto it = rTupleIndex.find(sub);
-                        if (it == rTupleIndex.end()) return;
-                        daf::Size ridx2 = it->second;
-                        if (ridx2 == idx || rPeeled[ridx2]) return;
-                        double ext = computeExt(comp, sub, classSizes);
-                        if (ext <= 0) return;
-                        daf::Size oldSup = curSupport[ridx2];
-                        daf::Size red = (daf::Size)ext;
-                        daf::Size newSup = oldSup > red ? oldSup - red : 0;
-                        if (newSup < oldSup) {
-                            curSupport[ridx2] = newSup;
-                            buckets[newSup].push_back(ridx2);
-                            if (newSup < currentLevel) currentLevel = newSup;
-                        }
-                    };
-                    enumerateSubMultisets(comp, r, 0, subKey, subCb);
-                    return;
+            for (auto &[ridx2, ext] : sTuples[sid].incidentRTuples) {
+                if (ridx2 == idx || rPeeled[ridx2]) continue;
+                daf::Size oldSup = curSupport[ridx2];
+                daf::Size red = (daf::Size)ext;
+                daf::Size newSup = oldSup > red ? oldSup - red : 0;
+                if (newSup < oldSup) {
+                    curSupport[ridx2] = newSup;
+                    buckets[newSup].push_back(ridx2);
+                    if (newSup < currentLevel) currentLevel = newSup;
                 }
-                for (int i = startIdx; i < (int)cids.size(); ++i) {
-                    cur.push_back(cids[i]);
-                    fillRemaining(i);
-                    cur.pop_back();
-                }
-            };
-
-            // Sort cur (tau's classes) to maintain sorted order for enumeration
-            std::sort(cur.begin(), cur.end());
-
-            // We need to enumerate s-multisets that contain tauKey
-            // Approach: enumerate ALL s-multisets from cids, filter those ⊇ tauKey
-            // More efficient: start from tauKey, add s-r more classes
-            cur.clear();
-            // Enumerate s-multisets from cids that are ⊇ tauKey (as multiset)
-            // Build by picking exactly jc copies of class c (for c in tau), then s-r more
-            // Use simpler approach: enumerate all s-multisets, check containment
-            std::function<void()> cb = [&]() {
-                // Check if cur ⊇ tauKey (as multiset)
-                std::unordered_map<daf::Size, int> curCounts;
-                for (auto c : cur) curCounts[c]++;
-                for (auto &[c, k] : tauCounts)
-                    if (curCounts[c] < k) return;
-                // Valid: check class sizes
-                for (auto &[c, k] : curCounts)
-                    if ((int)classSizes[c] < k) return;
-
-                TupleKey key = cur;
-                if (deadSTuples.count(key)) return;
-                deadSTuples.insert(key);
-
-                auto comp = getComposition(key);
-                TupleKey subKey; subKey.reserve(r);
-                std::function<void(const TupleKey &)> subCb = [&](const TupleKey &sub) {
-                    auto it = rTupleIndex.find(sub);
-                    if (it == rTupleIndex.end()) return;
-                    daf::Size ridx2 = it->second;
-                    if (ridx2 == idx || rPeeled[ridx2]) return;
-                    double ext = computeExt(comp, sub, classSizes);
-                    if (ext <= 0) return;
-                    daf::Size oldSup = curSupport[ridx2];
-                    daf::Size red = (daf::Size)ext;
-                    daf::Size newSup = oldSup > red ? oldSup - red : 0;
-                    if (newSup < oldSup) {
-                        curSupport[ridx2] = newSup;
-                        buckets[newSup].push_back(ridx2);
-                        if (newSup < currentLevel) currentLevel = newSup;
-                    }
-                };
-                enumerateSubMultisets(comp, r, 0, subKey, subCb);
-            };
-            enumerateMultisets(cids, s, 0, cur, cb);
+            }
         }
     }
 
-    auto tStep5End = std::chrono::high_resolution_clock::now();
-    auto step5Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep5End - tStep5).count();
-    auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tStep5End - tStart).count();
+    auto tStep6End = std::chrono::high_resolution_clock::now();
+    auto step6Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep6End - tStep6).count();
+    auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tStep6End - tStart).count();
 
     daf::Size maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
     std::cout << "\n  --- Cascade Peeling ---" << std::endl;
     std::cout << "  Peeled: " << numPeeled << " / " << rTuples.size() << std::endl;
-    std::cout << "  Dead s-tuples: " << deadSTuples.size() << std::endl;
     std::cout << "  Max core: " << maxCore << std::endl;
     for (auto &[core, cnt] : coreDist)
         std::cout << "  core=" << core << " count=" << cnt << std::endl;
-    std::cout << "  Peeling time: " << step5Ms << " ms" << std::endl;
+    std::cout << "  Peeling time: " << step6Ms << " ms" << std::endl;
     std::cout << "  Total time: " << totalMs << " ms" << std::endl;
     std::cout << "==============================================" << std::endl;
 

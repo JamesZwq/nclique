@@ -32,6 +32,8 @@
 
 // Global: maximal clique tags for Region decomposition
 std::vector<bool> g_maxCliqueTags;
+// Global: MaxCliqEnum results for Region CPI (V3)
+std::vector<std::vector<daf::Size>> g_maxCliques;
 
 // ============================================================
 // Utility
@@ -857,6 +859,13 @@ int main(int argc, char **argv) {
             maxCliqueTags = std::move(result.maxCliqueTags);
             g_maxCliqueTags = maxCliqueTags; // copy for Region function access
         }
+    }
+
+    // Phase 2.5: MaxCliqEnum for V3 (must run before beSingleEdge mutates graph)
+    if (envSet("PIVOTER_RUN_REGION_V3")) {
+        g_maxCliques = daf::timeCount("MaxCliqEnum (V3)", [&]() {
+            return enumerateMaximalCliques(edgeGraph);
+        });
     }
 
     // Phase 3: Pre-mutation work (must run before beSingleEdge)
