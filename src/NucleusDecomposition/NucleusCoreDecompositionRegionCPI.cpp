@@ -284,28 +284,24 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // ============================================================
     // Step 4: CPI Counting for initial support (THE KEY INNOVATION)
     // ============================================================
-    // support(τ) = [Σ_P N(τ,P) × C(p-r+h, s-r)] / mult(τ)
-    // where N(τ,P) = Π_c C(n_p^c, j_c - n_h^c)
+    // CORRECT formula (handles covered-but-not-encoded r-cliques):
+    //
+    // AggrCount(τ, P) = Σ_{b_R} [Π_R C(nh_R, j_R-b_R) C(np_R, b_R)] × C(p-Σb_R, s-h-Σb_R)
+    //
+    // Computed via convolution: g_c(x) per class, f = Π g_c, then sum f[t]×C(p-t, s-h-t).
 
     std::vector<double> support(rTuples.size(), 0.0);
-
-    // Per-path info for CPI counting
-    struct PathClassInfo { daf::Size cid; int nh, np; };
-
-    // Also build: for each r-tuple, list of regions containing it (for lazy s-tuple enum)
-    // (reuse classesInRegion for this)
 
     daf::Size pathsUsed = 0;
     daf::Size totalTuplesOnPaths = 0;
 
     for (daf::Size pid = 0; pid < numPaths; ++pid) {
         auto &leaf = tree.adj_list[pid];
-        if ((int)leaf.size() < (int)s) continue; // path too small for s-cliques
+        if ((int)leaf.size() < (int)s) continue;
 
         // Compute h, p and class distribution on this path
         int h = 0, p = 0;
         std::unordered_map<daf::Size, std::pair<int,int>> classDistrib; // cid -> (nh, np)
-        std::vector<daf::Size> pathClasses; // unique sorted class IDs on this path
 
         for (const auto &node : leaf) {
             daf::Size v = node.v;
@@ -315,53 +311,79 @@ NucleusCoreDecompositionRClique_RegionCPI(
             else { h++; classDistrib[cid].first++; }
         }
 
-        if (h + p < (int)s) continue; // not enough vertices
+        if (h + p < (int)s) continue;
         pathsUsed++;
 
-        // Per-path support contribution (same for ALL r-cliques on this path)
-        double perPathSup = (p - r + h >= 0 && s - r >= 0) ? nCr[p - r + h][s - r] : 0.0;
-        if (perPathSup <= 0) continue;
-
         // Collect unique classes on this path
+        std::vector<daf::Size> pathClasses;
         for (auto &[cid, _] : classDistrib) pathClasses.push_back(cid);
         std::sort(pathClasses.begin(), pathClasses.end());
 
         // Enumerate r-multisets of this path's classes
         TupleKey cur; cur.reserve(r);
         std::function<void()> cb = [&]() {
-            // Check feasibility: for each class c in cur with count j_c:
-            // need n_h^c <= j_c and j_c - n_h^c <= n_p^c
-            std::unordered_map<daf::Size, int> counts;
-            for (auto c : cur) counts[c]++;
-            double N = 1.0;
-            for (auto &[c, jc] : counts) {
-                auto it = classDistrib.find(c);
-                if (it == classDistrib.end()) return;
-                int nhc = it->second.first, npc = it->second.second;
-                if (nhc > jc) return; // too many holds for this class
-                int pivNeeded = jc - nhc;
-                if (pivNeeded > npc) return; // not enough pivots
-                N *= nCr[npc][pivNeeded];
-            }
-            // Also check classes in classDistrib but NOT in counts: nh must be 0
-            // (holds from classes not used by tau are mandatory in every r-clique on P,
-            //  but tau doesn't use them => conflict if nh > 0)
-            // Actually: ALL holds must be in the r-clique (encoding condition).
-            // So for any class c with nh_c > 0: tau must use at least nh_c from c.
-            for (auto &[c, dp] : classDistrib) {
-                if (counts.count(c)) continue;
-                if (dp.first > 0) return; // class c has holds but tau doesn't use it
+            // Build composition: (class, count) pairs
+            std::vector<std::pair<daf::Size, int>> tauClasses;
+            {
+                daf::Size prev = INVALID; int cnt = 0;
+                for (auto c : cur) {
+                    if (c == prev) cnt++;
+                    else { if (prev != INVALID) tauClasses.push_back({prev, cnt}); prev = c; cnt = 1; }
+                }
+                if (prev != INVALID) tauClasses.push_back({prev, cnt});
             }
 
-            if (N <= 0) return;
+            // Feasibility: for each class c with j_c copies in tau,
+            // need j_c <= n_h^c + n_p^c
+            for (auto &[c, jc] : tauClasses) {
+                auto it = classDistrib.find(c);
+                if (it == classDistrib.end()) return;
+                if (jc > it->second.first + it->second.second) return;
+            }
 
             // Look up this r-tuple
             auto it = rTupleIndex.find(cur);
             if (it == rTupleIndex.end()) return;
-
             daf::Size tidx = it->second;
-            support[tidx] += N * perPathSup / rTuples[tidx].mult;
-            totalTuplesOnPaths++;
+
+            // Convolution to compute AggrCount
+            // f[t] = coefficient of x^t in Π_c g_c(x)
+            // where g_c(x) = Σ_{b_c} C(nh_c, j_c-b_c) × C(np_c, b_c) × x^{b_c}
+
+            std::vector<double> f = {1.0}; // polynomial coefficients, f[0]=1
+
+            for (auto &[c, jc] : tauClasses) {
+                auto &[nhc, npc] = classDistrib[c];
+                int bMin = std::max(0, jc - nhc);
+                int bMax = std::min(jc, npc);
+                if (bMin > bMax) return; // infeasible
+
+                // g_c coefficients
+                std::vector<double> gc(bMax + 1, 0.0);
+                for (int bc = bMin; bc <= bMax; ++bc)
+                    gc[bc] = nCr[nhc][jc - bc] * nCr[npc][bc];
+
+                // Convolve f with gc
+                std::vector<double> newf(f.size() + gc.size() - 1, 0.0);
+                for (int i = 0; i < (int)f.size(); ++i)
+                    for (int j = 0; j < (int)gc.size(); ++j)
+                        newf[i + j] += f[i] * gc[j];
+                f = std::move(newf);
+            }
+
+            // AggrCount = Σ_t f[t] × C(p-t, s-h-t)
+            double aggr = 0.0;
+            for (int t = 0; t < (int)f.size(); ++t) {
+                if (f[t] == 0.0) continue;
+                int n = p - t, k = s - h - t;
+                if (n >= 0 && k >= 0 && n >= k)
+                    aggr += f[t] * nCr[n][k];
+            }
+
+            if (aggr > 0) {
+                support[tidx] += aggr / rTuples[tidx].mult;
+                totalTuplesOnPaths++;
+            }
         };
         enumerateMultisets(pathClasses, r, 0, cur, cb);
     }
