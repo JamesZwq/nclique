@@ -383,117 +383,78 @@ NucleusCoreDecompositionRClique_RegionCPI(
     };
 
     // Compute AggrCount(τ', P̂) / mult(τ') on a constrained path
+    // g_c[t_c] = C(np_c, t_c) × C(nh_c + t_c, j_c), summed via convolution
+    // Optimized: use stack arrays for small convolutions (degree ≤ r ≤ 10)
     auto aggrCountOnCPath = [&](daf::Size tidx, const CPath &cp) -> double {
         auto &key = rTuples[tidx].key;
-        std::unordered_map<daf::Size, int> counts;
-        for (auto c : key) counts[c]++;
-
-        int p = cp.totalP();
-
-        // Convolution: for each class c, generate g_c(x)
-        // b_c = pivots chosen from c for the r-clique
-        // b_c ranges: max(0, j_c - nh_c) ≤ b_c ≤ min(j_c, maxPiv_c)
-        // AND b_c ≤ np_c (available pivots)
-        // AND j_c - b_c ≤ nh_c
-        // Ways per b_c: C(nh_c, j_c - b_c) × C(min(np_c, maxPiv_c), b_c) ... hmm
-
-        // Actually: constrained path restricts HOW MANY pivots from c are in Q_s.
-        // For the s-clique: minPiv_c ≤ n_Q^c ≤ maxPiv_c.
-        // For the r-clique C_r' from τ': C_r' uses j_c vertices from c,
-        //   of which (j_c - b_c) from holds and b_c from pivots.
-        // C_r' ⊆ S means the b_c pivots are among Q_s's pivots from c.
-
-        // The s-clique has n_Q^c pivots from c (with minPiv ≤ n_Q^c ≤ maxPiv).
-        // C_r' uses b_c of those pivots.
-        // Ways: C(nh_c, j_c-b_c) × C(n_Q^c, b_c) × (remaining pivots chosen freely)
-
-        // We need to sum over b_c AND n_Q^c. But AggrCount sums over all s-cliques
-        // containing all possible C_r' from τ'. Let me reformulate.
-
-        // Per specific C_r' (with b_c pivots from each c):
-        //   q'_c = b_c (pivots from c in C_r')
-        //   extra pivots from c: e_c = n_Q^c - b_c, with max(minPiv_c - b_c, 0) ≤ e_c ≤ maxPiv_c - b_c
-        //   ways to choose extra: C(np_c - b_c, e_c)
-        //   total extra: Σ e_c = (s - h) - Σ b_c
-
-        // To get AggrCount (total over all C_r' in τ'):
-        //   Σ_{b_c} [Π C(nh_c, j_c-b_c) C(np_c, b_c)] × [s-cliques containing this C_r' on cp]
-        //   where s-cliques containing C_r' = constrained allocation with bounds
-
-        // This is a double summation: over b_c (for the r-clique) and e_c (for extra pivots).
-        // Total pivots from c in s-clique = b_c + e_c, constrained by [minPiv, maxPiv].
-
-        // Combined: for each class c, total pivots t_c = b_c + e_c.
-        // minPiv_c ≤ t_c ≤ maxPiv_c
-        // Ways to split t_c into (b_c from r-clique, e_c extra): C(nh_c, j_c-b_c) × C(np_c, t_c)
-        //   ... wait, this isn't right. The r-clique picks b_c specific pivots, then the
-        //   remaining t_c - b_c are chosen from the remaining np_c - b_c.
-        //   So ways = C(nh_c, j_c-b_c) × C(np_c, b_c) × C(np_c-b_c, t_c-b_c)
-        //   Hmm, but C(np_c, b_c) × C(np_c-b_c, t_c-b_c) = C(np_c, t_c) × C(t_c, b_c)
-
-        // Actually for AggrCount: we're counting (C_r', S) pairs where C_r' ∈ τ' and S is
-        // an s-clique on cp containing C_r'. Each S counted once per C_r' it contains.
-        // Then divide by mult(τ') to get per-C_r' count.
-
-        // Per C_r' from τ' (with b_c pivots from c):
-        //   s-cliques containing C_r' on cp = Σ_{e_c} Π C(np_c - b_c, e_c)
-        //   where for each c: max(0, minPiv_c - b_c) ≤ e_c ≤ maxPiv_c - b_c
-        //   and Σ(b_c + e_c) = s - h, i.e., Σe_c = (s-h) - Σb_c
-
-        // Total AggrCount = Σ_{b_c} [Π C(nh_c, j_c-b_c) × C(np_c, b_c)] × count(e_c's)
-        // Summed over all valid b_c and e_c.
-
-        // Merge b_c + e_c into t_c: t_c = total pivots from c in s-clique.
-        // For each c: t_c ranges from max(minPiv_c, max(0, j_c - nh_c)) to min(maxPiv_c, np_c)
-        // And within t_c: b_c ranges from max(0, j_c-nh_c) to min(j_c, t_c)
-        // Ways = Σ_{b_c} C(nh_c, j_c-b_c) × C(np_c, b_c) × C(np_c-b_c, t_c-b_c)
-
-        // Using identity: C(np_c, b_c) × C(np_c-b_c, t_c-b_c) = C(np_c, t_c) × C(t_c, b_c)
-        // So: ways = C(np_c, t_c) × Σ_{b_c} C(nh_c, j_c-b_c) × C(t_c, b_c)
-        //         = C(np_c, t_c) × C(nh_c + t_c, j_c)  [Vandermonde convolution]
-
-        // So for each class c:
-        //   g_c[t_c] = C(np_c, t_c) × C(nh_c + t_c, j_c)
-        //   for t_c in [max(minPiv_c, max(0, j_c-nh_c)), min(maxPiv_c, np_c)]
-
-        // AggrCount = Σ_{Σt_c = s-h} Π g_c[t_c]
-        // = [x^{s-h}] Π_c (Σ_{t_c} g_c[t_c] x^{t_c})
-
-        // Then divide by mult(τ') for per-C_r' count.
-
-        // This is clean! The generating function per class is g_c(x).
-
-        std::vector<double> f = {1.0};
+        // Build counts with minimal overhead (key is sorted, use run-length)
         int targetTotal = s - cp.h;
+        if (targetTotal < 0) return 0.0;
 
-        for (auto &[c, cb] : cp.classes) {
-            int jc = counts.count(c) ? counts[c] : 0;
+        double f[512]; // stack array, enough for large paths
+        int fLen = 1;
+        f[0] = 1.0;
+
+        // Iterate over key's composition inline
+        int ki = 0;
+        while (ki < (int)key.size()) {
+            daf::Size c = key[ki];
+            int jc = 1;
+            while (ki + jc < (int)key.size() && key[ki + jc] == c) jc++;
+            ki += jc;
+
+            auto cit = cp.classes.find(c);
+            if (cit == cp.classes.end()) return 0.0;
+            auto &cb = cit->second;
+
             int tMin = std::max(cb.minPiv, std::max(0, jc - cb.nh));
             int tMax = std::min(cb.maxPiv, cb.np);
-            if (jc > cb.nh + tMax) return 0.0; // infeasible: not enough vertices for j_c
-            if (tMin > tMax) {
-                // This class can't contribute enough pivots
-                // If jc > 0 and tMax < tMin: tuple can't be on this path
-                if (jc > 0) return 0.0;
-                // If jc == 0: class just contributes to total pivots
-                tMin = std::max(tMin, 0); // but bounded by minPiv
-                if (tMin > tMax) return 0.0;
-            }
+            if (jc > cb.nh + tMax || tMin > tMax) return 0.0;
 
-            std::vector<double> gc(tMax + 1, 0.0);
+            // Convolve f with gc inline
+            double gc[512];
+            int gcLen = tMax + 1;
+            for (int i = 0; i < gcLen; ++i) gc[i] = 0.0;
             for (int tc = tMin; tc <= tMax; ++tc) {
-                if (cb.nh + tc < jc) continue; // C(nh+tc, jc) invalid
+                if (cb.nh + tc < jc) continue;
                 gc[tc] = nCr[cb.np][tc] * nCr[cb.nh + tc][jc];
             }
-
-            std::vector<double> newf(f.size() + gc.size() - 1, 0.0);
-            for (int i = 0; i < (int)f.size(); ++i)
-                for (int j = 0; j < (int)gc.size(); ++j)
+            int newLen = fLen + gcLen - 1;
+            double newf[512];
+            for (int i = 0; i < newLen; ++i) newf[i] = 0.0;
+            for (int i = 0; i < fLen; ++i)
+                for (int j = 0; j < gcLen; ++j)
                     newf[i + j] += f[i] * gc[j];
-            f = std::move(newf);
+            fLen = std::min(newLen, targetTotal + 1); // cap at target
+            for (int i = 0; i < fLen; ++i) f[i] = newf[i];
         }
 
-        double aggr = (targetTotal >= 0 && targetTotal < (int)f.size()) ? f[targetTotal] : 0.0;
+        // Classes on path not in tuple: contribute only pivots (jc=0)
+        for (auto &[c, cb] : cp.classes) {
+            // Skip classes already handled above
+            bool inTuple = false;
+            for (auto x : key) if (x == c) { inTuple = true; break; }
+            if (inTuple) continue;
+
+            int tMin = cb.minPiv, tMax = std::min(cb.maxPiv, cb.np);
+            if (tMin > tMax) return 0.0;
+
+            double gc[512];
+            int gcLen = tMax + 1;
+            for (int i = 0; i < gcLen; ++i) gc[i] = 0.0;
+            for (int tc = tMin; tc <= tMax; ++tc)
+                gc[tc] = nCr[cb.np][tc]; // C(np, tc) × C(nh+tc, 0) = C(np, tc)
+            int newLen = fLen + gcLen - 1;
+            double newf[512];
+            for (int i = 0; i < newLen; ++i) newf[i] = 0.0;
+            for (int i = 0; i < fLen; ++i)
+                for (int j = 0; j < gcLen; ++j)
+                    newf[i + j] += f[i] * gc[j];
+            fLen = std::min(newLen, targetTotal + 1);
+            for (int i = 0; i < fLen; ++i) f[i] = newf[i];
+        }
+
+        double aggr = (targetTotal < fLen) ? f[targetTotal] : 0.0;
         return aggr / rTuples[tidx].mult;
     };
 
@@ -576,31 +537,48 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // --- Peeling with Analytical Split (double support + bucket queue) ---
     auto tStep6 = std::chrono::high_resolution_clock::now();
 
+    // Profiling counters
+    long long prof_oldContrib_ns = 0, prof_split_ns = 0, prof_newContrib_ns = 0;
+    long long prof_delta_ns = 0, prof_overhead_ns = 0;
+    long long prof_aggrCalls = 0, prof_splitSubpaths = 0, prof_deadPaths = 0;
+
     // Keep double support for exact arithmetic. Use floor() for bucket index.
     std::vector<double> dSup = support;
     std::vector<bool> rPeeled(rTuples.size(), false);
 
     daf::Size maxSup = 0;
-    for (auto &sv : dSup) maxSup = std::max(maxSup, (daf::Size)(sv + 0.5));
+    for (auto &sv : dSup) maxSup = std::max(maxSup, (daf::Size)llround(sv));
+    const daf::Size BUCKET_CAP = std::min(maxSup + 2, (daf::Size)1000001);
 
-    std::vector<std::vector<daf::Size>> buckets(maxSup + 2);
-    for (daf::Size i = 0; i < rTuples.size(); ++i)
-        buckets[(daf::Size)(dSup[i] + 0.5)].push_back(i);
+    std::vector<std::vector<daf::Size>> buckets(BUCKET_CAP);
+    std::multimap<daf::Size, daf::Size> overflow; // for large support values
+    for (daf::Size i = 0; i < rTuples.size(); ++i) {
+        daf::Size b = (daf::Size)llround(dSup[i]);
+        if (b < BUCKET_CAP) buckets[b].push_back(i);
+        else overflow.insert({b, i});
+    }
 
     std::map<daf::Size, int64_t> coreDist;
     daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
     daf::Size totalSplits = 0;
 
     while (numPeeled < rTuples.size()) {
-        while (currentLevel <= maxSup && buckets[currentLevel].empty())
+        while (currentLevel < BUCKET_CAP && buckets[currentLevel].empty())
             currentLevel++;
-        if (currentLevel > maxSup) break;
+        daf::Size idx;
+        if (currentLevel < BUCKET_CAP) {
+            idx = buckets[currentLevel].back();
+            buckets[currentLevel].pop_back();
+        } else if (!overflow.empty()) {
+            auto it = overflow.begin();
+            currentLevel = it->first;
+            idx = it->second;
+            overflow.erase(it);
+        } else break;
 
-        daf::Size idx = buckets[currentLevel].back();
-        buckets[currentLevel].pop_back();
         if (rPeeled[idx]) continue;
-        daf::Size idxBucket = (daf::Size)(dSup[idx] + 0.5);
-        if (idxBucket != currentLevel) continue; // stale entry
+        daf::Size idxBucket = (daf::Size)llround(dSup[idx]);
+        if (idxBucket != currentLevel) continue;
 
         rPeeled[idx] = true;
         numPeeled++;
@@ -616,12 +594,18 @@ NucleusCoreDecompositionRClique_RegionCPI(
             auto &cp = cpaths[cpid];
             if (cp.tupleIdxs.empty()) continue;
 
+            auto _t0 = std::chrono::high_resolution_clock::now();
+
             // Compute old contributions
             std::unordered_map<daf::Size, double> oldContrib;
             for (auto tidx : cp.tupleIdxs) {
                 if (rPeeled[tidx]) continue;
                 oldContrib[tidx] = aggrCountOnCPath(tidx, cp);
+                prof_aggrCalls++;
             }
+
+            auto _t1 = std::chrono::high_resolution_clock::now();
+            prof_oldContrib_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(_t1-_t0).count();
 
             // Find active classes
             struct ActiveClass { daf::Size cid; int mc; };
@@ -644,9 +628,14 @@ NucleusCoreDecompositionRClique_RegionCPI(
             }
             cp.tupleIdxs.clear();
 
-            // Compute new contributions
+            auto _t2 = std::chrono::high_resolution_clock::now();
+            prof_overhead_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(_t2-_t1).count();
+
+            // Compute new contributions from sub-paths
             std::unordered_map<daf::Size, double> newContrib;
-            if (!active.empty()) {
+            if (active.empty()) {
+                prof_deadPaths++;
+            } else {
                 for (int i = 0; i < (int)active.size(); ++i) {
                     CPath subCp = cp;
                     bool feasible = true;
@@ -674,6 +663,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
                     subCp.tupleIdxs.clear();
                     for (auto tidx : aliveTuples) {
                         double c = aggrCountOnCPath(tidx, subCp);
+                        prof_aggrCalls++;
                         if (c > 1e-9) {
                             subCp.tupleIdxs.push_back(tidx);
                             newContrib[tidx] += c;
@@ -684,20 +674,28 @@ NucleusCoreDecompositionRClique_RegionCPI(
                     daf::Size newCpid = cpaths.size();
                     cpaths.push_back(std::move(subCp));
                     totalSplits++;
+                    prof_splitSubpaths++;
 
                     for (auto tidx : cpaths.back().tupleIdxs)
                         tupleToCPaths[tidx].push_back(newCpid);
                 }
             }
 
+            auto _t3 = std::chrono::high_resolution_clock::now();
+            prof_split_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(_t3-_t2).count();
+
             // Apply net delta in double, re-bucket
             for (auto &[tidx, oc] : oldContrib) {
                 double nc = newContrib.count(tidx) ? newContrib[tidx] : 0.0;
-                dSup[tidx] += (nc - oc); // exact in double
+                dSup[tidx] += (nc - oc);
                 if (dSup[tidx] < -0.5) dSup[tidx] = 0;
-                daf::Size newBucket = (daf::Size)(dSup[tidx] + 0.5);
-                buckets[newBucket].push_back(tidx);
-                if (newBucket < currentLevel) currentLevel = newBucket;
+                daf::Size newBucket = (daf::Size)llround(dSup[tidx]);
+                if (newBucket < BUCKET_CAP) {
+                    buckets[newBucket].push_back(tidx);
+                    if (newBucket < currentLevel) currentLevel = newBucket;
+                } else {
+                    overflow.insert({newBucket, tidx});
+                }
             }
         }
     }
@@ -709,8 +707,14 @@ NucleusCoreDecompositionRClique_RegionCPI(
     daf::Size maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
     std::cout << "\n  --- Cascade Peeling (Analytical Split) ---" << std::endl;
     std::cout << "  Peeled: " << numPeeled << " / " << rTuples.size() << std::endl;
-    std::cout << "  Total splits: " << totalSplits << std::endl;
+    std::cout << "  Total splits: " << totalSplits << " (sub-paths: " << prof_splitSubpaths
+              << ", dead: " << prof_deadPaths << ")" << std::endl;
     std::cout << "  Final cpaths: " << cpaths.size() << std::endl;
+    std::cout << "  AggrCount calls: " << prof_aggrCalls << std::endl;
+    std::cout << "  Time breakdown:" << std::endl;
+    std::cout << "    oldContrib: " << prof_oldContrib_ns/1000000 << " ms" << std::endl;
+    std::cout << "    split+new:  " << prof_split_ns/1000000 << " ms" << std::endl;
+    std::cout << "    overhead:   " << prof_overhead_ns/1000000 << " ms" << std::endl;
     std::cout << "  Max core: " << maxCore << std::endl;
     for (auto &[core, cnt] : coreDist)
         std::cout << "  core=" << core << " count=" << cnt << std::endl;
