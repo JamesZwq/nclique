@@ -169,12 +169,20 @@ static SDCTBuildResult buildSDCTWithIndex(
     const daf::Size n = edgeGraph.getGraphNodeSize();
     const bool quotientLabOnly =
         envSet("PIVOTER_RUN_ST_QUOTIENT_LAB") && envSet("PIVOTER_QUOTIENT_LAB_ONLY");
+    const bool useMaxCliqueTagging =
+        envSet("PIVOTER_RUN_REGION") || envSet("PIVOTER_RUN_REGION_EXACT") ||
+        envSet("PIVOTER_RUN_REGION_V2");
+    // Region V2 only needs tree + maxCliqueTags, skip expensive ci and tgv
+    const bool regionOnly =
+        useMaxCliqueTagging && !envSet("PIVOTER_COMPARE") &&
+        !envSet("PIVOTER_RUN_ST") && !envSet("PIVOTER_RUN_V20");
 
     DynamicGraphSet<TreeGraphNode> tgv(n);
     tgv.adj_list.resize(n);
 
     // R≥3: build cliqueIndex during SDCT (hash-free, keep+pivot naturally unique)
-    auto ci = (r >= 3 && !quotientLabOnly) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
+    // Skip for regionOnly mode (Region V2 doesn't need ci)
+    auto ci = (r >= 3 && !quotientLabOnly && !regionOnly) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
     daf::StaticVector<daf::Size> keepBuf, dropBuf;
     daf::Size mergedBuf[16]; // enough for r ≤ 16
 
@@ -190,15 +198,14 @@ static SDCTBuildResult buildSDCTWithIndex(
 
     // Callback body shared between SDCT_Fused and SDCT_MaxClique
     std::vector<bool> mcTags;
-    const bool useMaxCliqueTagging =
-        envSet("PIVOTER_RUN_REGION") || envSet("PIVOTER_RUN_REGION_EXACT") ||
-        envSet("PIVOTER_RUN_REGION_V2");
 
     auto leafCallback = [&](daf::Size leafId, const std::vector<TreeGraphNode> &leaf,
                             bool stored, bool isMaximal) {
         if (stored) {
-            for (const auto &node : leaf) {
-                tgv.addNbr(node.v, {leafId, node.isPivot});
+            if (!regionOnly) {
+                for (const auto &node : leaf) {
+                    tgv.addNbr(node.v, {leafId, node.isPivot});
+                }
             }
             if (useMaxCliqueTagging) {
                 if (leafId >= mcTags.size()) mcTags.resize(leafId + 1, true);
