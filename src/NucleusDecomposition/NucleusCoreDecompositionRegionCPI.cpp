@@ -557,6 +557,22 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::cout << "  Constrained paths: " << cpaths.size() << std::endl;
     std::cout << "  Index build time: " << step5Ms << " ms" << std::endl;
 
+    // Verify: aggrCountOnCPath matches Step 4 support
+    {
+        std::vector<double> supCheck(rTuples.size(), 0.0);
+        for (daf::Size cpid = 0; cpid < cpaths.size(); ++cpid)
+            for (auto tidx : cpaths[cpid].tupleIdxs)
+                supCheck[tidx] += aggrCountOnCPath(tidx, cpaths[cpid]);
+        double checkSum = 0;
+        int mismatches = 0;
+        for (daf::Size i = 0; i < rTuples.size(); ++i) {
+            checkSum += rTuples[i].mult * supCheck[i];
+            if (std::abs(supCheck[i] - support[i]) > 0.5) mismatches++;
+        }
+        std::cout << "  Support sum (CPath): " << std::fixed << std::setprecision(0) << checkSum << std::endl;
+        std::cout << "  CPI vs CPath match: " << (mismatches == 0 ? "PASS" : ("MISMATCH(" + std::to_string(mismatches) + ")")) << std::endl;
+    }
+
     // --- Peeling with Analytical Split ---
     auto tStep6 = std::chrono::high_resolution_clock::now();
 
