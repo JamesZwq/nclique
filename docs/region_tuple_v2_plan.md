@@ -89,25 +89,20 @@ compression issue.
 
 **Conclusion**: P3 is NOT a blocking issue. No fix needed.
 
-### P4. Skip unnecessary index builds
+### P4. Skip unnecessary index builds — DONE
 
-**Status**: cliqueIndex mapList build takes 5.3s on web-it-2004 but isn't
-needed for Region Tuple.
+cliqueIndex and treeGraphV skipped when `regionOnly` is true.
+Saves 5.3s on web-it-2004. Correctness verified.
 
-**Approach**: When PIVOTER_RUN_REGION is set, skip the clique index build
-entirely. Only build the SDCT tree and extract maximal clique tags.
+### P5. SDCT build time dominance — DEFERRED
 
-### P5. SDCT build time dominance
+SDCT_MaxClique: 82s on web-it-2004 (96% of total time).
+Most time is BK recursion, not tree storage.
+Skipping sub-clique storage wouldn't help much.
 
-**Status**: SDCT_MaxClique takes 87s on web-it-2004 (vs 3.2s for tuple decomp).
-
-**Approach**: The Region Tuple algorithm only needs:
-1. The set of maximal cliques (vertex sets)
-2. Not the full SDCT tree with all sub-clique paths
-
-Could build a "maximal-clique-only" SDCT that stops building sub-paths
-once maximal status is determined. Or use an external maximal clique
-enumerator (which is typically faster than full SDCT).
+**Real fix**: replace SDCT with a dedicated maximal clique enumerator
+(e.g., quick-cliques in the repo). Region V2 only needs maximal clique
+vertex sets, not CPI hold/pivot info. This is a bigger engineering task.
 
 ## Implementation Plan
 
