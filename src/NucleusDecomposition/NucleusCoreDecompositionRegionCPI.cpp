@@ -383,19 +383,19 @@ NucleusCoreDecompositionRClique_RegionCPI(
     };
 
     // Compute AggrCount(τ', P̂) / mult(τ') on a constrained path
-    // g_c[t_c] = C(np_c, t_c) × C(nh_c + t_c, j_c), summed via convolution
-    // Optimized: use stack arrays for small convolutions (degree ≤ r ≤ 10)
+    // OPTIMIZED: convolve tuple classes (O(r²)) → h[0..r].
+    // Non-tuple unconstrained classes: combine into C(Pfree, T-k) lookup.
+    // Total: O(r² + κ_constrained × r) instead of O(classes × T).
     auto aggrCountOnCPath = [&](daf::Size tidx, const CPath &cp) -> double {
         auto &key = rTuples[tidx].key;
-        // Build counts with minimal overhead (key is sorted, use run-length)
-        int targetTotal = s - cp.h;
-        if (targetTotal < 0) return 0.0;
+        int T = s - cp.h;
+        if (T < 0) return 0.0;
 
-        double f[512]; // stack array, enough for large paths
-        int fLen = 1;
-        f[0] = 1.0;
+        // Phase 1: Convolve tuple classes → h[0..r], and sum Pfree
+        double h[32]; int hLen = 1; h[0] = 1.0;
+        int Pfree = 0;
 
-        // Iterate over key's composition inline
+        // First pass: process tuple classes
         int ki = 0;
         while (ki < (int)key.size()) {
             daf::Size c = key[ki];
@@ -406,55 +406,61 @@ NucleusCoreDecompositionRClique_RegionCPI(
             auto cit = cp.classes.find(c);
             if (cit == cp.classes.end()) return 0.0;
             auto &cb = cit->second;
-
             int tMin = std::max(cb.minPiv, std::max(0, jc - cb.nh));
             int tMax = std::min(cb.maxPiv, cb.np);
             if (jc > cb.nh + tMax || tMin > tMax) return 0.0;
 
-            // Convolve f with gc inline
-            double gc[512];
-            int gcLen = tMax + 1;
+            double gc[32]; int gcLen = tMax + 1;
             for (int i = 0; i < gcLen; ++i) gc[i] = 0.0;
-            for (int tc = tMin; tc <= tMax; ++tc) {
-                if (cb.nh + tc < jc) continue;
+            for (int tc = tMin; tc <= tMax; ++tc)
                 gc[tc] = nCr[cb.np][tc] * nCr[cb.nh + tc][jc];
-            }
-            int newLen = fLen + gcLen - 1;
-            double newf[512];
-            for (int i = 0; i < newLen; ++i) newf[i] = 0.0;
-            for (int i = 0; i < fLen; ++i)
-                for (int j = 0; j < gcLen; ++j)
-                    newf[i + j] += f[i] * gc[j];
-            fLen = std::min(newLen, targetTotal + 1); // cap at target
-            for (int i = 0; i < fLen; ++i) f[i] = newf[i];
+            int nL = std::min(hLen + gcLen - 1, (int)r + 1);
+            double nh2[32];
+            for (int i = 0; i < nL; ++i) nh2[i] = 0.0;
+            for (int i = 0; i < hLen; ++i)
+                for (int j = 0; j < gcLen && i+j < nL; ++j)
+                    nh2[i+j] += h[i] * gc[j];
+            hLen = nL;
+            for (int i = 0; i < hLen; ++i) h[i] = nh2[i];
         }
 
-        // Classes on path not in tuple: contribute only pivots (jc=0)
+        // Phase 2: non-tuple classes
         for (auto &[c, cb] : cp.classes) {
-            // Skip classes already handled above
+            // Check if c is in tuple (inline, no hash set)
             bool inTuple = false;
             for (auto x : key) if (x == c) { inTuple = true; break; }
             if (inTuple) continue;
 
-            int tMin = cb.minPiv, tMax = std::min(cb.maxPiv, cb.np);
-            if (tMin > tMax) return 0.0;
-
-            double gc[512];
-            int gcLen = tMax + 1;
-            for (int i = 0; i < gcLen; ++i) gc[i] = 0.0;
-            for (int tc = tMin; tc <= tMax; ++tc)
-                gc[tc] = nCr[cb.np][tc]; // C(np, tc) × C(nh+tc, 0) = C(np, tc)
-            int newLen = fLen + gcLen - 1;
-            double newf[512];
-            for (int i = 0; i < newLen; ++i) newf[i] = 0.0;
-            for (int i = 0; i < fLen; ++i)
-                for (int j = 0; j < gcLen; ++j)
-                    newf[i + j] += f[i] * gc[j];
-            fLen = std::min(newLen, targetTotal + 1);
-            for (int i = 0; i < fLen; ++i) f[i] = newf[i];
+            if (cb.minPiv == 0 && cb.maxPiv >= cb.np) {
+                // Unconstrained → fold into Pfree
+                Pfree += cb.np;
+            } else {
+                // Constrained non-tuple class: convolve with h
+                int tMin = cb.minPiv, tMax = std::min(cb.maxPiv, cb.np);
+                if (tMin > tMax) return 0.0;
+                double gc[256]; int gcLen = tMax + 1;
+                for (int i = 0; i < gcLen; ++i) gc[i] = 0.0;
+                for (int tc = tMin; tc <= tMax; ++tc)
+                    gc[tc] = nCr[cb.np][tc];
+                int nL = std::min(hLen + gcLen - 1, T + 1);
+                double nh2[256];
+                for (int i = 0; i < nL; ++i) nh2[i] = 0.0;
+                for (int i = 0; i < hLen; ++i)
+                    for (int j = 0; j < gcLen && i+j < nL; ++j)
+                        nh2[i+j] += h[i] * gc[j];
+                hLen = nL;
+                for (int i = 0; i < hLen; ++i) h[i] = nh2[i];
+            }
         }
 
-        double aggr = (targetTotal < fLen) ? f[targetTotal] : 0.0;
+        // Phase 3: Σ h[k] × C(Pfree, T-k)
+        double aggr = 0.0;
+        for (int k = 0; k < hLen; ++k) {
+            if (h[k] == 0.0) continue;
+            int rem = T - k;
+            if (rem >= 0 && rem <= Pfree)
+                aggr += h[k] * nCr[Pfree][rem];
+        }
         return aggr / rTuples[tidx].mult;
     };
 
