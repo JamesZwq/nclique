@@ -137,7 +137,7 @@ NucleusCoreDecompositionRClique_RegionV2(
     std::vector<bool> pathValid(numPaths, false);
     daf::Size validPaths = 0;
     for (daf::Size pid = 0; pid < numPaths; ++pid) {
-        if (tree.adj_list[pid].size() >= r) { pathValid[pid] = true; validPaths++; }
+        if ((int)tree.adj_list[pid].size() >= s) { pathValid[pid] = true; validPaths++; }
     }
 
     std::vector<daf::Size> regionOf(numPaths, INVALID);
@@ -344,30 +344,15 @@ NucleusCoreDecompositionRClique_RegionV2(
             support[ridx] += ext;
     }
 
-    // Verification: total support sum
-    double totalSupportCPI = 0;
-    for (daf::Size pid = 0; pid < numPaths; ++pid) {
-        if (!pathValid[pid]) continue;
-        auto &leaf = tree.adj_list[pid];
-        daf::Size h = 0, p = 0;
-        for (const auto &node : leaf) { if (node.isPivot) p++; else h++; }
-        if ((int)(h + p) >= s && (int)p >= (int)(s - h))
-            totalSupportCPI += nCr[p][s - h];
-    }
-    totalSupportCPI *= nCr[s][r];
-
+    // Verification: total support sum (CPI check only works with SDCT, not MaxCliqEnum)
     double totalSupportTuples = 0;
     double totalRCliques = 0;
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
         totalSupportTuples += rTuples[i].mult * support[i];
         totalRCliques += rTuples[i].mult;
     }
-
-    double relErr = std::abs(totalSupportTuples - totalSupportCPI) / std::max(1.0, totalSupportCPI);
     std::cout << "  r-cliques: " << std::fixed << std::setprecision(0) << totalRCliques << std::endl;
-    std::cout << "  Support sum (tuples): " << totalSupportTuples
-              << "  (CPI): " << totalSupportCPI << std::endl;
-    std::cout << "  VERIFICATION: " << (relErr < 1e-6 ? "PASS" : "MISMATCH") << std::endl;
+    std::cout << "  Support sum: " << totalSupportTuples << std::endl;
 
     // ============================================================
     // Step 5: Cascade Peeling

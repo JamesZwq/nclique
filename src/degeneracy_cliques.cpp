@@ -28,6 +28,7 @@
 #include "dataStruct/CliqueHashMap.h"
 #include "SDCT_Fused.hpp"
 #include "SDCT_MaxClique.hpp"
+#include "MaxCliqEnum.hpp"
 
 // Global: maximal clique tags for Region decomposition
 std::vector<bool> g_maxCliqueTags;
@@ -239,17 +240,32 @@ static SDCTBuildResult buildSDCTWithIndex(
     };
 
     DynamicGraph<TreeGraphNode> tree;
-    if (useMaxCliqueTagging) {
+    if (regionOnly) {
+        // Fast path: use lightweight maximal clique enumerator (P∪X pivoting)
+        auto cliques = daf::timeCount("MaxCliqEnum", [&]() {
+            return enumerateMaximalCliques(edgeGraph);
+        });
+        // Convert to tree format (V2 only reads .v, not .isPivot)
+        tree = DynamicGraph<TreeGraphNode>(edgeGraph.getGraphNodeSize());
+        mcTags.resize(cliques.size(), true); // all maximal
+        for (auto &clique : cliques) {
+            std::vector<TreeGraphNode> nodes;
+            nodes.reserve(clique.size());
+            for (auto v : clique) nodes.push_back({v, false});
+            tree.addNode(nodes);
+        }
+        printf("MaxCliqEnum: %zu maximal cliques\n", cliques.size());
+    } else if (useMaxCliqueTagging) {
         tree = daf::timeCount("SDCT_MaxClique", [&]() {
             return SDCT_MaxClique(edgeGraph, s, emit_min_k, store_min_k, leafCallback);
         });
+        printf("SDCT leaf count (stored): %zu\n", tree.adj_list.size());
     } else {
         tree = daf::timeCount("SDCT_Fused", [&]() {
             return SDCT_Fused(edgeGraph, s, emit_min_k, store_min_k, leafCallbackNoX);
         });
+        printf("SDCT leaf count (stored): %zu\n", tree.adj_list.size());
     }
-
-    printf("SDCT leaf count (stored): %zu\n", tree.adj_list.size());
 
     // R≥3: build mapList from pool (single pass, enables lookupRaw)
     if (ci) {
