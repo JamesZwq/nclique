@@ -364,122 +364,200 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::cout << "  CPI counting time: " << step4Ms << " ms" << std::endl;
 
     // ============================================================
-    // Step 5: Build tuple-path index for Strategy A peeling
+    // Step 5+6: Constrained Path Peeling (Analytical Split)
     // ============================================================
-    // For each path P: list of (tuple_idx, AggrCount_contribution) pairs.
-    // For each tuple: list of paths containing it.
-    // NO s-tuple enumeration.
+    // Constrained Path = CPI path + per-class (min_piv, max_piv) bounds.
+    // When τ is peeled on P̂: subtract old contributions, split P̂ into
+    // κ disjoint sub-paths (each a ConstrainedPath), add new contributions.
+    // NO s-tuple enumeration. NO inclusion-exclusion. NO BK execution.
 
     auto tStep5 = std::chrono::high_resolution_clock::now();
 
-    // Path info: per path, store class distribution and tuple list
-    struct PathTupleInfo {
-        daf::Size tidx;
-        double aggrContrib; // AggrCount(τ,P) / mult(τ) = per-r-clique support from this path
+    // --- Constrained Path data structure ---
+    struct ClassBounds { int nh, np; int minPiv, maxPiv; }; // per-class on a constrained path
+    struct CPath {
+        int h; // total holds
+        std::unordered_map<daf::Size, ClassBounds> classes; // cid -> bounds
+        std::vector<daf::Size> tupleIdxs; // alive tuples on this constrained path
+        int totalP() const { int t=0; for(auto&[_,b]:classes) t+=b.np; return t; }
     };
 
-    struct PathData {
-        int h, p;
-        std::unordered_map<daf::Size, std::pair<int,int>> classDistrib;
-        std::vector<PathTupleInfo> tuples; // tuples on this path
+    // Compute AggrCount(τ', P̂) / mult(τ') on a constrained path
+    auto aggrCountOnCPath = [&](daf::Size tidx, const CPath &cp) -> double {
+        auto &key = rTuples[tidx].key;
+        std::unordered_map<daf::Size, int> counts;
+        for (auto c : key) counts[c]++;
+
+        int p = cp.totalP();
+
+        // Convolution: for each class c, generate g_c(x)
+        // b_c = pivots chosen from c for the r-clique
+        // b_c ranges: max(0, j_c - nh_c) ≤ b_c ≤ min(j_c, maxPiv_c)
+        // AND b_c ≤ np_c (available pivots)
+        // AND j_c - b_c ≤ nh_c
+        // Ways per b_c: C(nh_c, j_c - b_c) × C(min(np_c, maxPiv_c), b_c) ... hmm
+
+        // Actually: constrained path restricts HOW MANY pivots from c are in Q_s.
+        // For the s-clique: minPiv_c ≤ n_Q^c ≤ maxPiv_c.
+        // For the r-clique C_r' from τ': C_r' uses j_c vertices from c,
+        //   of which (j_c - b_c) from holds and b_c from pivots.
+        // C_r' ⊆ S means the b_c pivots are among Q_s's pivots from c.
+
+        // The s-clique has n_Q^c pivots from c (with minPiv ≤ n_Q^c ≤ maxPiv).
+        // C_r' uses b_c of those pivots.
+        // Ways: C(nh_c, j_c-b_c) × C(n_Q^c, b_c) × (remaining pivots chosen freely)
+
+        // We need to sum over b_c AND n_Q^c. But AggrCount sums over all s-cliques
+        // containing all possible C_r' from τ'. Let me reformulate.
+
+        // Per specific C_r' (with b_c pivots from each c):
+        //   q'_c = b_c (pivots from c in C_r')
+        //   extra pivots from c: e_c = n_Q^c - b_c, with max(minPiv_c - b_c, 0) ≤ e_c ≤ maxPiv_c - b_c
+        //   ways to choose extra: C(np_c - b_c, e_c)
+        //   total extra: Σ e_c = (s - h) - Σ b_c
+
+        // To get AggrCount (total over all C_r' in τ'):
+        //   Σ_{b_c} [Π C(nh_c, j_c-b_c) C(np_c, b_c)] × [s-cliques containing this C_r' on cp]
+        //   where s-cliques containing C_r' = constrained allocation with bounds
+
+        // This is a double summation: over b_c (for the r-clique) and e_c (for extra pivots).
+        // Total pivots from c in s-clique = b_c + e_c, constrained by [minPiv, maxPiv].
+
+        // Combined: for each class c, total pivots t_c = b_c + e_c.
+        // minPiv_c ≤ t_c ≤ maxPiv_c
+        // Ways to split t_c into (b_c from r-clique, e_c extra): C(nh_c, j_c-b_c) × C(np_c, t_c)
+        //   ... wait, this isn't right. The r-clique picks b_c specific pivots, then the
+        //   remaining t_c - b_c are chosen from the remaining np_c - b_c.
+        //   So ways = C(nh_c, j_c-b_c) × C(np_c, b_c) × C(np_c-b_c, t_c-b_c)
+        //   Hmm, but C(np_c, b_c) × C(np_c-b_c, t_c-b_c) = C(np_c, t_c) × C(t_c, b_c)
+
+        // Actually for AggrCount: we're counting (C_r', S) pairs where C_r' ∈ τ' and S is
+        // an s-clique on cp containing C_r'. Each S counted once per C_r' it contains.
+        // Then divide by mult(τ') to get per-C_r' count.
+
+        // Per C_r' from τ' (with b_c pivots from c):
+        //   s-cliques containing C_r' on cp = Σ_{e_c} Π C(np_c - b_c, e_c)
+        //   where for each c: max(0, minPiv_c - b_c) ≤ e_c ≤ maxPiv_c - b_c
+        //   and Σ(b_c + e_c) = s - h, i.e., Σe_c = (s-h) - Σb_c
+
+        // Total AggrCount = Σ_{b_c} [Π C(nh_c, j_c-b_c) × C(np_c, b_c)] × count(e_c's)
+        // Summed over all valid b_c and e_c.
+
+        // Merge b_c + e_c into t_c: t_c = total pivots from c in s-clique.
+        // For each c: t_c ranges from max(minPiv_c, max(0, j_c - nh_c)) to min(maxPiv_c, np_c)
+        // And within t_c: b_c ranges from max(0, j_c-nh_c) to min(j_c, t_c)
+        // Ways = Σ_{b_c} C(nh_c, j_c-b_c) × C(np_c, b_c) × C(np_c-b_c, t_c-b_c)
+
+        // Using identity: C(np_c, b_c) × C(np_c-b_c, t_c-b_c) = C(np_c, t_c) × C(t_c, b_c)
+        // So: ways = C(np_c, t_c) × Σ_{b_c} C(nh_c, j_c-b_c) × C(t_c, b_c)
+        //         = C(np_c, t_c) × C(nh_c + t_c, j_c)  [Vandermonde convolution]
+
+        // So for each class c:
+        //   g_c[t_c] = C(np_c, t_c) × C(nh_c + t_c, j_c)
+        //   for t_c in [max(minPiv_c, max(0, j_c-nh_c)), min(maxPiv_c, np_c)]
+
+        // AggrCount = Σ_{Σt_c = s-h} Π g_c[t_c]
+        // = [x^{s-h}] Π_c (Σ_{t_c} g_c[t_c] x^{t_c})
+
+        // Then divide by mult(τ') for per-C_r' count.
+
+        // This is clean! The generating function per class is g_c(x).
+
+        std::vector<double> f = {1.0};
+        int targetTotal = s - cp.h;
+
+        for (auto &[c, cb] : cp.classes) {
+            int jc = counts.count(c) ? counts[c] : 0;
+            int tMin = std::max(cb.minPiv, std::max(0, jc - cb.nh));
+            int tMax = std::min(cb.maxPiv, cb.np);
+            if (jc > cb.nh + tMax) return 0.0; // infeasible: not enough vertices for j_c
+            if (tMin > tMax) {
+                // This class can't contribute enough pivots
+                // If jc > 0 and tMax < tMin: tuple can't be on this path
+                if (jc > 0) return 0.0;
+                // If jc == 0: class just contributes to total pivots
+                tMin = std::max(tMin, 0); // but bounded by minPiv
+                if (tMin > tMax) return 0.0;
+            }
+
+            std::vector<double> gc(tMax + 1, 0.0);
+            for (int tc = tMin; tc <= tMax; ++tc) {
+                if (cb.nh + tc < jc) continue; // C(nh+tc, jc) invalid
+                gc[tc] = nCr[cb.np][tc] * nCr[cb.nh + tc][jc];
+            }
+
+            std::vector<double> newf(f.size() + gc.size() - 1, 0.0);
+            for (int i = 0; i < (int)f.size(); ++i)
+                for (int j = 0; j < (int)gc.size(); ++j)
+                    newf[i + j] += f[i] * gc[j];
+            f = std::move(newf);
+        }
+
+        double aggr = (targetTotal >= 0 && targetTotal < (int)f.size()) ? f[targetTotal] : 0.0;
+        return aggr / rTuples[tidx].mult;
     };
 
-    std::vector<PathData> pathDataVec(numPaths);
-    std::vector<std::vector<daf::Size>> tupleToPathIds(rTuples.size()); // tuple -> path IDs
+    // --- Initialize constrained paths from CPI paths ---
+    // Use a pool of CPath objects. Each tuple tracks which cpaths it's on.
+    std::vector<CPath> cpaths;
+    std::vector<std::vector<daf::Size>> tupleToCPaths(rTuples.size()); // tuple -> cpath IDs
 
-    // Rebuild path class distributions (same as Step 4, but store them)
     for (daf::Size pid = 0; pid < numPaths; ++pid) {
         auto &leaf = tree.adj_list[pid];
         if ((int)leaf.size() < (int)s) continue;
 
-        auto &pd = pathDataVec[pid];
-        pd.h = 0; pd.p = 0;
+        CPath cp;
+        cp.h = 0;
         for (const auto &node : leaf) {
             daf::Size v = node.v;
             if (v >= numVertices || classOf[v] == INVALID) continue;
             daf::Size cid = classOf[v];
-            if (node.isPivot) { pd.p++; pd.classDistrib[cid].second++; }
-            else { pd.h++; pd.classDistrib[cid].first++; }
+            auto &cb = cp.classes[cid];
+            if (node.isPivot) { cb.np++; }
+            else { cb.nh++; cp.h++; }
         }
-    }
+        // Set initial bounds
+        for (auto &[cid, cb] : cp.classes) { cb.minPiv = 0; cb.maxPiv = cb.np; }
 
-    // For each tuple-path pair found during Step 4: record it
-    // (Re-enumerate, this time storing the mapping)
-    for (daf::Size pid = 0; pid < numPaths; ++pid) {
-        auto &pd = pathDataVec[pid];
-        if (pd.h + pd.p < (int)s) continue;
-
+        // Find tuples on this path (enumerate r-multisets of path's classes)
         std::vector<daf::Size> pathClasses;
-        for (auto &[cid, _] : pd.classDistrib) pathClasses.push_back(cid);
+        for (auto &[cid, _] : cp.classes) pathClasses.push_back(cid);
         std::sort(pathClasses.begin(), pathClasses.end());
 
+        daf::Size cpid = cpaths.size();
         TupleKey cur; cur.reserve(r);
-        std::function<void()> cb = [&]() {
+        bool hasTuples = false;
+
+        std::function<void()> enumCb = [&]() {
             auto it = rTupleIndex.find(cur);
             if (it == rTupleIndex.end()) return;
             daf::Size tidx = it->second;
-
-            // Check feasibility and compute AggrCount (same convolution as Step 4)
-            std::vector<std::pair<daf::Size, int>> tauClasses;
-            {
-                daf::Size prev = INVALID; int cnt = 0;
-                for (auto c : cur) {
-                    if (c == prev) cnt++;
-                    else { if (prev != INVALID) tauClasses.push_back({prev, cnt}); prev = c; cnt = 1; }
-                }
-                if (prev != INVALID) tauClasses.push_back({prev, cnt});
+            // Feasibility check
+            std::unordered_map<daf::Size, int> counts;
+            for (auto c : cur) counts[c]++;
+            for (auto &[c, jc] : counts) {
+                auto cit = cp.classes.find(c);
+                if (cit == cp.classes.end()) return;
+                if (jc > cit->second.nh + cit->second.np) return;
             }
-            for (auto &[c, jc] : tauClasses) {
-                auto dit = pd.classDistrib.find(c);
-                if (dit == pd.classDistrib.end()) return;
-                if (jc > dit->second.first + dit->second.second) return;
-            }
-
-            std::vector<double> f = {1.0};
-            for (auto &[c, jc] : tauClasses) {
-                auto &[nhc, npc] = pd.classDistrib[c];
-                int bMin = std::max(0, jc - nhc);
-                int bMax = std::min(jc, npc);
-                if (bMin > bMax) return;
-                std::vector<double> gc(bMax + 1, 0.0);
-                for (int bc = bMin; bc <= bMax; ++bc)
-                    gc[bc] = nCr[nhc][jc - bc] * nCr[npc][bc];
-                std::vector<double> newf(f.size() + gc.size() - 1, 0.0);
-                for (int i = 0; i < (int)f.size(); ++i)
-                    for (int j = 0; j < (int)gc.size(); ++j)
-                        newf[i + j] += f[i] * gc[j];
-                f = std::move(newf);
-            }
-            double aggr = 0.0;
-            for (int t = 0; t < (int)f.size(); ++t) {
-                if (f[t] == 0.0) continue;
-                int n = pd.p - t, k = s - pd.h - t;
-                if (n >= 0 && k >= 0 && n >= k) aggr += f[t] * nCr[n][k];
-            }
-            if (aggr <= 0) return;
-
-            double contrib = aggr / rTuples[tidx].mult;
-            pd.tuples.push_back({tidx, contrib});
-            tupleToPathIds[tidx].push_back(pid);
+            cp.tupleIdxs.push_back(tidx);
+            hasTuples = true;
         };
-        enumerateMultisets(pathClasses, r, 0, cur, cb);
+        enumerateMultisets(pathClasses, r, 0, cur, enumCb);
+
+        if (hasTuples) {
+            cpaths.push_back(std::move(cp));
+            for (auto tidx : cpaths.back().tupleIdxs)
+                tupleToCPaths[tidx].push_back(cpid);
+        }
     }
 
     auto tStep5End = std::chrono::high_resolution_clock::now();
     auto step5Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep5End - tStep5).count();
-    daf::Size totalPathTuplePairs = 0;
-    for (auto &pd : pathDataVec) totalPathTuplePairs += pd.tuples.size();
-    std::cout << "  Tuple-path pairs (index): " << totalPathTuplePairs << std::endl;
+    std::cout << "  Constrained paths: " << cpaths.size() << std::endl;
     std::cout << "  Index build time: " << step5Ms << " ms" << std::endl;
 
-    // ============================================================
-    // Step 6: Strategy A Peeling (CPI + class removal, NO s-tuples)
-    // ============================================================
-    // Key insight: when all tuples using class c on path P are peeled,
-    // remove c's vertices from P (update h, p). Future SharedCount
-    // computations use updated parameters → dead s-cliques are
-    // automatically excluded. NO inclusion-exclusion needed.
-
+    // --- Peeling with Analytical Split ---
     auto tStep6 = std::chrono::high_resolution_clock::now();
 
     daf::Size maxSup = 0;
@@ -494,84 +572,9 @@ NucleusCoreDecompositionRClique_RegionCPI(
         buckets[curSupport[i]].push_back(i);
     }
 
-    // Per-path: alive tuple count per class (for class removal tracking)
-    // aliveClassCount[pid][cid] = number of alive tuples on pid using class cid
-    std::vector<std::unordered_map<daf::Size, int>> aliveClassCount(numPaths);
-    for (daf::Size pid = 0; pid < numPaths; ++pid) {
-        for (auto &pti : pathDataVec[pid].tuples) {
-            auto &key = rTuples[pti.tidx].key;
-            std::unordered_set<daf::Size> seen;
-            for (auto c : key) {
-                if (seen.insert(c).second) // count each class once per tuple
-                    aliveClassCount[pid][c]++;
-            }
-        }
-    }
-
-    // Helper: compute Δ_P(τ', τ) = per-specific-C_r' dying s-clique count
-    // Using Theorem 2's constrained allocation formula:
-    //   Δ = Σ_{l_c ≤ e_c ≤ u_c, Σe_c = s-r} Π C(u_c, e_c)
-    // where:
-    //   q'_c = max(0, j'_c - nh_c)   (pivots C_r' uses from class c)
-    //   m_c  = max(0, j_c^τ - nh_c)  (pivots τ needs from class c)
-    //   l_c  = max(0, m_c - q'_c)    (extra pivots needed for τ beyond C_r')
-    //   u_c  = np_c - q'_c           (available extra pivots)
-    auto computeDelta = [&](daf::Size pid, daf::Size tidxTau, daf::Size tidxTauPrime) -> double {
-        auto &pd = pathDataVec[pid];
-        auto &keyTau = rTuples[tidxTau].key;
-        auto &keyTauP = rTuples[tidxTauPrime].key;
-
-        std::unordered_map<daf::Size, int> countsTau, countsTauP;
-        for (auto c : keyTau) countsTau[c]++;
-        for (auto c : keyTauP) countsTauP[c]++;
-
-        // All classes on the path
-        int totalMandatory = 0; // Σ (q'_c + l_c) = mandatory pivots
-        struct AllocInfo { int lc; int uc; };
-        std::vector<AllocInfo> allocs;
-        bool feasible = true;
-
-        // Process all classes on the path
-        for (auto &[c, dp] : pd.classDistrib) {
-            int nhc = dp.first, npc = dp.second;
-            int jTau = countsTau.count(c) ? countsTau[c] : 0;
-            int jTauP = countsTauP.count(c) ? countsTauP[c] : 0;
-
-            int qpc = std::max(0, jTauP - nhc); // pivots C_r' uses from c
-            int mc = std::max(0, jTau - nhc);    // pivots τ needs from c
-            int lc = std::max(0, mc - qpc);      // extra needed for τ
-            int uc = npc - qpc;                  // available extra
-
-            if (uc < 0 || uc < lc) { feasible = false; break; }
-            totalMandatory += qpc + lc;
-            allocs.push_back({lc, uc});
-        }
-
-        if (!feasible) return 0.0;
-        int extraNeeded = (s - pd.h) - totalMandatory;
-        if (extraNeeded < 0) return 0.0;
-
-        // Convolution: distribute extraNeeded among classes (extra beyond mandatory)
-        // For each class: available extra = u_c - l_c, choose from C(u_c, l_c + e_c)
-        std::vector<double> f = {1.0};
-        for (auto &ai : allocs) {
-            int maxE = std::min(ai.uc - ai.lc, extraNeeded);
-            if (maxE < 0) { feasible = false; break; }
-            std::vector<double> gc(maxE + 1, 0.0);
-            for (int e = 0; e <= maxE; ++e)
-                gc[e] = nCr[ai.uc][ai.lc + e];
-            std::vector<double> newf(f.size() + gc.size() - 1, 0.0);
-            for (int i = 0; i < (int)f.size(); ++i)
-                for (int j = 0; j < (int)gc.size(); ++j)
-                    newf[i + j] += f[i] * gc[j];
-            f = std::move(newf);
-        }
-        if (!feasible) return 0.0;
-        return (extraNeeded < (int)f.size()) ? f[extraNeeded] : 0.0;
-    };
-
     std::map<daf::Size, int64_t> coreDist;
     daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
+    daf::Size totalSplits = 0;
 
     while (numPeeled < rTuples.size()) {
         while (currentLevel <= maxSup && buckets[currentLevel].empty())
@@ -588,45 +591,104 @@ NucleusCoreDecompositionRClique_RegionCPI(
         coreDist[coreLevel] += rTuples[idx].mult;
 
         auto &tauKey = rTuples[idx].key;
+        std::unordered_map<daf::Size, int> tauCounts;
+        for (auto c : tauKey) tauCounts[c]++;
 
-        for (daf::Size pid : tupleToPathIds[idx]) {
-            auto &pd = pathDataVec[pid];
+        // For each constrained path containing τ:
+        auto cpathIds = tupleToCPaths[idx]; // copy (will be modified)
+        for (daf::Size cpid : cpathIds) {
+            auto &cp = cpaths[cpid];
+            if (cp.tupleIdxs.empty()) continue;
 
-            // Step 1: Compute Δ(τ', τ) for each alive τ' on P
-            // using CURRENT h/p (before class removal)
-            for (auto &pti : pd.tuples) {
-                if (pti.tidx == idx || rPeeled[pti.tidx]) continue;
-
-                double delta = computeDelta(pid, idx, pti.tidx);
-
-                if (delta > 0.5) {
-                    daf::Size ridx2 = pti.tidx;
-                    daf::Size oldSup = curSupport[ridx2];
-                    daf::Size red = (daf::Size)(delta + 0.5);
-                    daf::Size newSup = oldSup > red ? oldSup - red : 0;
-                    if (newSup < oldSup) {
-                        curSupport[ridx2] = newSup;
-                        buckets[newSup].push_back(ridx2);
-                        if (newSup < currentLevel) currentLevel = newSup;
-                    }
+            // Step A: Subtract old contributions from this cpath
+            for (auto tidx : cp.tupleIdxs) {
+                if (rPeeled[tidx] && tidx != idx) continue;
+                if (tidx == idx) continue;
+                double oldContrib = aggrCountOnCPath(tidx, cp);
+                if (oldContrib > 0.5) {
+                    daf::Size oldSup = curSupport[tidx];
+                    daf::Size red = (daf::Size)(oldContrib + 0.5);
+                    curSupport[tidx] = oldSup > red ? oldSup - red : 0;
                 }
             }
 
-            // Step 2: Update alive class counts and remove dead classes
-            std::unordered_set<daf::Size> tauClasses;
-            for (auto c : tauKey) tauClasses.insert(c);
+            // Step B: Compute τ's requirement and find active classes
+            struct ActiveClass { daf::Size cid; int mc; };
+            std::vector<ActiveClass> active;
+            for (auto &[c, jc] : tauCounts) {
+                auto cit = cp.classes.find(c);
+                if (cit == cp.classes.end()) continue;
+                int mc = std::max(0, jc - cit->second.nh);
+                if (mc > cit->second.minPiv) // m_c exceeds current lower bound
+                    active.push_back({c, mc});
+            }
 
-            for (daf::Size c : tauClasses) {
-                auto &cnt = aliveClassCount[pid][c];
-                cnt--;
-                if (cnt == 0) {
-                    // All tuples using class c on this path are peeled
-                    // Remove c's vertices from path: update h and p
-                    auto dit = pd.classDistrib.find(c);
-                    if (dit != pd.classDistrib.end()) {
-                        pd.h -= dit->second.first;
-                        pd.p -= dit->second.second;
-                        pd.classDistrib.erase(dit);
+            // Build list of alive tuples (excluding peeled ones)
+            std::vector<daf::Size> aliveTuples;
+            for (auto tidx : cp.tupleIdxs)
+                if (!rPeeled[tidx]) aliveTuples.push_back(tidx);
+
+            // Remove old cpath from all tuples' cpath lists
+            for (auto tidx : cp.tupleIdxs) {
+                auto &vec = tupleToCPaths[tidx];
+                vec.erase(std::remove(vec.begin(), vec.end(), cpid), vec.end());
+            }
+            cp.tupleIdxs.clear();
+
+            if (active.empty()) {
+                // All s-cliques on cp contain τ's r-clique → entire cp is dead
+                // (old contributions already subtracted; don't add anything back)
+            } else {
+                // Step C: Split into |active| disjoint sub-paths
+                for (int i = 0; i < (int)active.size(); ++i) {
+                    CPath subCp = cp; // copy parent's bounds
+                    bool feasible = true;
+
+                    // For j < i: tighten lower bound to m_{c_j}
+                    for (int j = 0; j < i; ++j) {
+                        auto &cb = subCp.classes[active[j].cid];
+                        cb.minPiv = std::max(cb.minPiv, active[j].mc);
+                        if (cb.minPiv > cb.maxPiv) { feasible = false; break; }
+                    }
+                    if (!feasible) continue;
+
+                    // For c_i: tighten upper bound to m_{c_i} - 1
+                    {
+                        auto &cb = subCp.classes[active[i].cid];
+                        cb.maxPiv = std::min(cb.maxPiv, active[i].mc - 1);
+                        if (cb.minPiv > cb.maxPiv) continue; // infeasible
+                    }
+
+                    // Check total pivots feasibility
+                    int minTotal = 0, maxTotal = 0;
+                    for (auto &[_, cb] : subCp.classes) {
+                        minTotal += cb.minPiv;
+                        maxTotal += cb.maxPiv;
+                    }
+                    int need = s - subCp.h;
+                    if (need < minTotal || need > maxTotal) continue;
+
+                    // Find alive tuples on this sub-path
+                    subCp.tupleIdxs.clear();
+                    for (auto tidx : aliveTuples) {
+                        double contrib = aggrCountOnCPath(tidx, subCp);
+                        if (contrib > 1e-9) subCp.tupleIdxs.push_back(tidx);
+                    }
+                    if (subCp.tupleIdxs.empty()) continue;
+
+                    // Add sub-path and register with tuples
+                    daf::Size newCpid = cpaths.size();
+                    cpaths.push_back(std::move(subCp));
+                    totalSplits++;
+
+                    // Step D: Add new contributions from sub-path
+                    for (auto tidx : cpaths.back().tupleIdxs) {
+                        tupleToCPaths[tidx].push_back(newCpid);
+                        double newContrib = aggrCountOnCPath(tidx, cpaths.back());
+                        if (newContrib > 0.5) {
+                            curSupport[tidx] += (daf::Size)(newContrib + 0.5);
+                            buckets[curSupport[tidx]].push_back(tidx);
+                        }
                     }
                 }
             }
@@ -638,8 +700,10 @@ NucleusCoreDecompositionRClique_RegionCPI(
     auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tStep6End - tStart).count();
 
     daf::Size maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
-    std::cout << "\n  --- Cascade Peeling ---" << std::endl;
+    std::cout << "\n  --- Cascade Peeling (Analytical Split) ---" << std::endl;
     std::cout << "  Peeled: " << numPeeled << " / " << rTuples.size() << std::endl;
+    std::cout << "  Total splits: " << totalSplits << std::endl;
+    std::cout << "  Final cpaths: " << cpaths.size() << std::endl;
     std::cout << "  Max core: " << maxCore << std::endl;
     for (auto &[core, cnt] : coreDist)
         std::cout << "  core=" << core << " count=" << cnt << std::endl;
