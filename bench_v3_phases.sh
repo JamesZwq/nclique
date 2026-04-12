@@ -21,7 +21,6 @@ MEM_LIMIT_GB=300             # don't launch new jobs if total usage > this
 MEM_KILL_GB=450              # kill newest job if usage exceeds this
 MEM_CHECK_INTERVAL=5         # seconds between checks when waiting
 LAUNCH_SETTLE=3              # brief pause after launch to let process start
-MAX_RETRIES=2                # max times a killed job is retried before marking OOM
 
 # ============ Internal: run a single job ============
 if [ "$1" = "--run" ]; then
@@ -151,12 +150,20 @@ done
 TOTAL=$(wc -l < "$JOBFILE")
 EXISTING=$(tail -n +2 "$OUTCSV" 2>/dev/null | wc -l | tr -d ' ')
 echo "Total jobs: $TOTAL, existing: $EXISTING, max parallel: $MAX_NPROC"
-echo "Memory: launch < ${MEM_LIMIT_GB}GB, kill > ${MEM_KILL_GB}GB"
+echo "Memory: launch<${MEM_LIMIT_GB}GB, kill>${MEM_KILL_GB}GB"
 echo "Timeout per job: ${TIMEOUT}s"
 echo "Output: $OUTCSV"
 echo ""
 
 # ============ Memory-aware job scheduler ============
+# Strategy:
+#   - Launch jobs as fast as possible (3s settle between launches)
+#   - Don't launch if: jobs >= 32 OR memory usage >= 300GB
+#   - If memory > 450GB: kill newest job
+#     - If it was the ONLY job → it's genuinely OOM → mark OOM in CSV
+#     - If there were multiple jobs → not its fault → re-queue for later
+#   - This lets small jobs blast through 32-parallel, large jobs auto-throttle
+
 get_used_mem_gb() {
   awk '/MemTotal/{t=$2} /MemAvailable/{a=$2} END{printf "%.0f", (t-a)/1024/1024}' /proc/meminfo 2>/dev/null || echo "0"
 }
@@ -173,46 +180,42 @@ refresh_jobs() {
   JOB_ARGS=("${local_args[@]}")
 }
 
-# Kill newest job, return its args in KILLED_ARGS
 kill_newest_job() {
   local last=$(( ${#JOB_PIDS[@]} - 1 ))
   KILLED_ARGS="${JOB_ARGS[$last]}"
   local pid=${JOB_PIDS[$last]}
   kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
-  echo "  [KILL] pid=$pid used=$(get_used_mem_gb)GB > ${MEM_KILL_GB}GB $(date +%H:%M:%S)"
   unset 'JOB_PIDS[$last]'; unset 'JOB_ARGS[$last]'
   JOB_PIDS=("${JOB_PIDS[@]}"); JOB_ARGS=("${JOB_ARGS[@]}")
+  echo "  [KILL] pid=$pid used=$(get_used_mem_gb)GB > ${MEM_KILL_GB}GB $(date +%H:%M:%S)"
 }
 
 write_oom() {
-  local a="$1"; local g r s algo
+  local a="$1" g r s algo
   g=$(echo "$a" | awk '{print $2}'); r=$(echo "$a" | awk '{print $3}')
   s=$(echo "$a" | awk '{print $4}'); algo=$(echo "$a" | awk '{print $5}')
   ( flock -x 200
     echo "${g},${r},${s},${algo},OOM,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA" >> "$OUTCSV"
   ) 200>"$LOCKFILE"
-  echo "  [OOM] ${algo} ${g} r=${r} s=${s} — gave up after ${MAX_RETRIES} retries"
+  echo "  [OOM] ${algo} ${g} r=${r} s=${s}"
 }
 
-# OOM check: if usage > MEM_KILL_GB, kill newest jobs until below
-# Killed jobs go into RETRY_QUEUE (up to MAX_RETRIES times)
+# OOM check: kill newest jobs while memory > MEM_KILL_GB
 oom_check() {
   while true; do
     local used=$(get_used_mem_gb)
     [ "$used" -lt "$MEM_KILL_GB" ] && return
     refresh_jobs
-    [ ${#JOB_PIDS[@]} -eq 0 ] && return  # nothing to kill, external pressure
+    [ ${#JOB_PIDS[@]} -eq 0 ] && return  # external memory pressure, nothing to kill
+    local was_alone=$(( ${#JOB_PIDS[@]} == 1 ? 1 : 0 ))
     kill_newest_job
-    # Track retries
-    local key="$KILLED_ARGS"
-    local cnt=${RETRY_COUNT["$key"]:-0}
-    cnt=$((cnt + 1))
-    if [ "$cnt" -gt "$MAX_RETRIES" ]; then
-      write_oom "$key"
+    if [ "$was_alone" -eq 1 ]; then
+      # Only job running → genuinely OOM
+      write_oom "$KILLED_ARGS"
     else
-      RETRY_COUNT["$key"]=$cnt
-      RETRY_QUEUE+=("$key")
-      echo "  → queued for retry ($cnt/$MAX_RETRIES)"
+      # Multiple jobs → not its fault → re-queue
+      RETRY_QUEUE+=("$KILLED_ARGS")
+      echo "  → re-queued (was not alone, likely not its fault)"
     fi
     sleep 3
   done
@@ -223,9 +226,7 @@ LAUNCHED=0
 declare -a JOB_PIDS=()
 declare -a JOB_ARGS=()
 declare -a RETRY_QUEUE=()
-declare -A RETRY_COUNT=()
 
-# --- Main loop: read from job file, then drain retries ---
 exec 3< "$JOBFILE"
 FILE_DONE=false
 
@@ -236,13 +237,11 @@ while true; do
     jobargs="${RETRY_QUEUE[0]}"
     RETRY_QUEUE=("${RETRY_QUEUE[@]:1}")
   elif ! $FILE_DONE && IFS= read -r jobargs <&3; then
-    : # got job from file
+    :
   else
     FILE_DONE=true
-    # Check if anything still running or pending retry
     refresh_jobs
     [ ${#JOB_PIDS[@]} -eq 0 ] && [ ${#RETRY_QUEUE[@]} -eq 0 ] && break
-    # Still draining — do OOM check and wait
     oom_check
     sleep $MEM_CHECK_INTERVAL
     continue
@@ -254,16 +253,10 @@ while true; do
   # Wait for: jobs < MAX_NPROC AND memory < MEM_LIMIT_GB
   while true; do
     refresh_jobs
-    local njobs=${#JOB_PIDS[@]}
-    local used=$(get_used_mem_gb)
-    if [ "$njobs" -lt "$MAX_NPROC" ] && [ "$used" -lt "$MEM_LIMIT_GB" ]; then
-      break
-    fi
-    # Also do OOM check while waiting
-    if [ "$used" -ge "$MEM_KILL_GB" ]; then
-      oom_check
-      continue
-    fi
+    njobs=${#JOB_PIDS[@]}
+    used=$(get_used_mem_gb)
+    [ "$njobs" -lt "$MAX_NPROC" ] && [ "$used" -lt "$MEM_LIMIT_GB" ] && break
+    [ "$used" -ge "$MEM_KILL_GB" ] && { oom_check; continue; }
     echo "  [wait] jobs=$njobs used=${used}GB $(date +%H:%M:%S)"
     sleep $MEM_CHECK_INTERVAL
   done
@@ -279,7 +272,7 @@ done
 exec 3<&-
 rm -f "$JOBFILE" "$LOCKFILE"
 echo ""
-echo "Launched: $LAUNCHED jobs (including retries)"
+echo "Launched: $LAUNCHED jobs"
 
 echo ""
 echo "============================================================="
