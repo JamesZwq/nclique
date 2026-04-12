@@ -14,6 +14,11 @@ static void listAllCliquesDegeneracyRecursive_MaxClique(
 
     if ((int)keepV.size() > max_k) return;
 
+    // Look-ahead: if max possible path size (current + all remaining P) < store_min_k,
+    // no branch can produce a stored path (size ≥ s). Prune entire subtree.
+    // Paper Lemma (Feasibility): path encodes s-clique iff |V_h| ≤ s ≤ |V_h|+|V_p|.
+    if ((int)keepV.size() + (int)dropV.size() + (beginR - beginP) < store_min_k) return;
+
     if (beginP >= beginR) {
         // P is empty. X empty → maximal clique.
         bool isMaximal = xVerts.empty();

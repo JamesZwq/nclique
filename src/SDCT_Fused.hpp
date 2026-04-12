@@ -26,6 +26,9 @@ static void listAllCliquesDegeneracyRecursive_Fused(
 
     if ((int)keepV.size() > max_k) return;
 
+    // Look-ahead: if max possible path size < store_min_k (s), prune subtree
+    if ((int)keepV.size() + (int)dropV.size() + (beginR - beginP) < store_min_k) return;
+
     if (beginP >= beginR) {
         int cSize = (int)keepV.size() + (int)dropV.size();
         if (cSize < emit_min_k) return;
