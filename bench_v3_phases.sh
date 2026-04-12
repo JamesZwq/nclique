@@ -32,10 +32,18 @@ if [ "$1" = "--run" ]; then
     exit 0
   fi
 
+  # Trap signals: kill child process on TERM/INT (so parent kill propagates)
+  CHILD_PID=""
+  trap 'if [ -n "$CHILD_PID" ]; then kill "$CHILD_PID" 2>/dev/null; wait "$CHILD_PID" 2>/dev/null; fi; exit 143' TERM INT
+
   result=""
   exit_code=0
-  result=$(env "${env_var}=1" timeout ${TIMEOUT}s $BIN "graphs/${graph}.edges" "$r" "$s" 2>&1) || exit_code=$?
-  echo "$result" > "$logfile"
+  env "${env_var}=1" timeout ${TIMEOUT}s $BIN "graphs/${graph}.edges" "$r" "$s" > "$logfile" 2>&1 &
+  CHILD_PID=$!
+  wait "$CHILD_PID"
+  exit_code=$?
+  CHILD_PID=""
+  result=$(cat "$logfile")
 
   status="OK"
   if [ $exit_code -eq 124 ]; then
@@ -184,13 +192,15 @@ kill_newest_job() {
   local last=$(( ${#JOB_PIDS[@]} - 1 ))
   KILLED_ARGS="${JOB_ARGS[$last]}"
   local pid=${JOB_PIDS[$last]}
-  # Kill entire process group (setsid makes pid = pgid)
-  kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null
-  # Wait for process to actually die
-  for _w in 1 2 3 4 5; do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+  # Kill bash wrapper — trap inside propagates to degeneracy_cliques child
+  kill "$pid" 2>/dev/null
+  # Wait for it to actually die (up to 10s)
+  for _w in $(seq 10); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+  # Force kill if still alive
+  kill -9 "$pid" 2>/dev/null
   unset 'JOB_PIDS[$last]'; unset 'JOB_ARGS[$last]'
   JOB_PIDS=("${JOB_PIDS[@]}"); JOB_ARGS=("${JOB_ARGS[@]}")
-  echo "  [KILL] pgid=$pid used=$(get_used_mem_gb)GB > ${MEM_KILL_GB}GB $(date +%H:%M:%S)"
+  echo "  [KILL] pid=$pid used=$(get_used_mem_gb)GB > ${MEM_KILL_GB}GB $(date +%H:%M:%S)"
 }
 
 write_oom() {
@@ -264,8 +274,8 @@ while true; do
     sleep $MEM_CHECK_INTERVAL
   done
 
-  # Launch in its own process group (so kill -- -$pid kills all children)
-  setsid bash "$SCRIPT" $jobargs &
+  # Launch (trap inside --run propagates kill to child)
+  bash "$SCRIPT" $jobargs &
   JOB_PIDS+=($!)
   JOB_ARGS+=("$jobargs")
   LAUNCHED=$((LAUNCHED + 1))
