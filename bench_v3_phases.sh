@@ -184,10 +184,13 @@ kill_newest_job() {
   local last=$(( ${#JOB_PIDS[@]} - 1 ))
   KILLED_ARGS="${JOB_ARGS[$last]}"
   local pid=${JOB_PIDS[$last]}
-  kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+  # Kill entire process group (setsid makes pid = pgid)
+  kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null
+  # Wait for process to actually die
+  for _w in 1 2 3 4 5; do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
   unset 'JOB_PIDS[$last]'; unset 'JOB_ARGS[$last]'
   JOB_PIDS=("${JOB_PIDS[@]}"); JOB_ARGS=("${JOB_ARGS[@]}")
-  echo "  [KILL] pid=$pid used=$(get_used_mem_gb)GB > ${MEM_KILL_GB}GB $(date +%H:%M:%S)"
+  echo "  [KILL] pgid=$pid used=$(get_used_mem_gb)GB > ${MEM_KILL_GB}GB $(date +%H:%M:%S)"
 }
 
 write_oom() {
@@ -261,8 +264,8 @@ while true; do
     sleep $MEM_CHECK_INTERVAL
   done
 
-  # Launch
-  bash "$SCRIPT" $jobargs &
+  # Launch in its own process group (so kill -- -$pid kills all children)
+  setsid bash "$SCRIPT" $jobargs &
   JOB_PIDS+=($!)
   JOB_ARGS+=("$jobargs")
   LAUNCHED=$((LAUNCHED + 1))
