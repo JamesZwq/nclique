@@ -19,8 +19,9 @@ LOCKFILE="/tmp/bench_v3_phases.lock"
 MAX_NPROC=32                 # max parallel jobs
 MEM_LIMIT_GB=300             # don't launch new jobs if total usage > this
 MEM_KILL_GB=450              # kill newest job if usage exceeds this
-MEM_CHECK_INTERVAL=10        # seconds between checks when waiting
-LAUNCH_COOLDOWN=15           # seconds to wait after each launch (let memory stabilize)
+MEM_CHECK_INTERVAL=5         # seconds between checks when waiting
+LAUNCH_SETTLE=3              # brief pause after launch to let process start
+MAX_RETRIES=2                # max times a killed job is retried before marking OOM
 
 # ============ Internal: run a single job ============
 if [ "$1" = "--run" ]; then
@@ -160,117 +161,8 @@ get_used_mem_gb() {
   awk '/MemTotal/{t=$2} /MemAvailable/{a=$2} END{printf "%.0f", (t-a)/1024/1024}' /proc/meminfo 2>/dev/null || echo "0"
 }
 
-count_jobs() {
-  jobs -rp | wc -l | tr -d ' '
-}
-
-# Write OOM result to CSV for a job
-write_oom() {
-  local args="$1"  # e.g. "--run com-dblp 3 8 V3 PIVOTER_RUN_REGION_V3"
-  local g r s algo
-  g=$(echo "$args" | awk '{print $2}')
-  r=$(echo "$args" | awk '{print $3}')
-  s=$(echo "$args" | awk '{print $4}')
-  algo=$(echo "$args" | awk '{print $5}')
-  (
-    flock -x 200
-    echo "${g},${r},${s},${algo},OOM,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA" >> "$OUTCSV"
-  ) 200>"$LOCKFILE"
-  echo "  [OOM] ${algo} ${g} r=${r} s=${s}"
-}
-
-SCRIPT="$(realpath "$0")"
-LAUNCHED=0
-
-# Track running jobs: PIDs and their corresponding jobargs
-declare -a JOB_PIDS=()
-declare -a JOB_ARGS=()
-
-while IFS= read -r jobargs; do
-
-  # --- OOM protection: if usage > MEM_KILL_GB, kill newest jobs ---
-  while true; do
-    used_gb=$(get_used_mem_gb)
-    if [ "$used_gb" -lt "$MEM_KILL_GB" ]; then
-      break
-    fi
-
-    # Find running jobs (clean up finished ones first)
-    local_pids=()
-    local_args=()
-    for i in "${!JOB_PIDS[@]}"; do
-      if kill -0 "${JOB_PIDS[$i]}" 2>/dev/null; then
-        local_pids+=("${JOB_PIDS[$i]}")
-        local_args+=("${JOB_ARGS[$i]}")
-      fi
-    done
-    JOB_PIDS=("${local_pids[@]}")
-    JOB_ARGS=("${local_args[@]}")
-
-    if [ ${#JOB_PIDS[@]} -eq 0 ]; then
-      break  # no jobs to kill
-    fi
-
-    # Only 1 job left → mark OOM, don't kill (it's the only one)
-    if [ ${#JOB_PIDS[@]} -eq 1 ]; then
-      echo "  [OOM] single job running, used=${used_gb}GB > ${MEM_KILL_GB}GB, waiting..."
-      sleep $MEM_CHECK_INTERVAL
-      continue
-    fi
-
-    # Kill the newest (last) job
-    local last_idx=$(( ${#JOB_PIDS[@]} - 1 ))
-    local kill_pid=${JOB_PIDS[$last_idx]}
-    local kill_args="${JOB_ARGS[$last_idx]}"
-    kill "$kill_pid" 2>/dev/null
-    wait "$kill_pid" 2>/dev/null
-    echo "  [KILL] pid=$kill_pid used=${used_gb}GB > ${MEM_KILL_GB}GB $(date +%H:%M:%S)"
-    write_oom "$kill_args"
-    unset 'JOB_PIDS[$last_idx]'
-    unset 'JOB_ARGS[$last_idx]'
-    JOB_PIDS=("${JOB_PIDS[@]}")
-    JOB_ARGS=("${JOB_ARGS[@]}")
-    sleep 2  # let memory settle
-  done
-
-  # --- Wait until slots available and memory below launch limit ---
-  while true; do
-    # Clean up finished jobs
-    local_pids=()
-    local_args=()
-    for i in "${!JOB_PIDS[@]}"; do
-      if kill -0 "${JOB_PIDS[$i]}" 2>/dev/null; then
-        local_pids+=("${JOB_PIDS[$i]}")
-        local_args+=("${JOB_ARGS[$i]}")
-      fi
-    done
-    JOB_PIDS=("${local_pids[@]}")
-    JOB_ARGS=("${local_args[@]}")
-
-    njobs=${#JOB_PIDS[@]}
-    used_gb=$(get_used_mem_gb)
-
-    if [ "$njobs" -lt "$MAX_NPROC" ] && [ "$used_gb" -lt "$MEM_LIMIT_GB" ]; then
-      break
-    fi
-
-    echo "  [wait] jobs=$njobs used=${used_gb}GB (launch<${MEM_LIMIT_GB}GB, max ${MAX_NPROC}) $(date +%H:%M:%S)"
-    sleep $MEM_CHECK_INTERVAL
-  done
-
-  # --- Launch ---
-  bash "$SCRIPT" $jobargs &
-  JOB_PIDS+=($!)
-  JOB_ARGS+=("$jobargs")
-  LAUNCHED=$((LAUNCHED + 1))
-  # Wait for memory to stabilize before launching next job
-  sleep $LAUNCH_COOLDOWN
-done < "$JOBFILE"
-
-# Wait for all remaining jobs (with OOM protection)
-while true; do
-  local_pids=()
-  local_args=()
+refresh_jobs() {
+  local_pids=(); local_args=()
   for i in "${!JOB_PIDS[@]}"; do
     if kill -0 "${JOB_PIDS[$i]}" 2>/dev/null; then
       local_pids+=("${JOB_PIDS[$i]}")
@@ -279,28 +171,115 @@ while true; do
   done
   JOB_PIDS=("${local_pids[@]}")
   JOB_ARGS=("${local_args[@]}")
+}
 
-  [ ${#JOB_PIDS[@]} -eq 0 ] && break
+# Kill newest job, return its args in KILLED_ARGS
+kill_newest_job() {
+  local last=$(( ${#JOB_PIDS[@]} - 1 ))
+  KILLED_ARGS="${JOB_ARGS[$last]}"
+  local pid=${JOB_PIDS[$last]}
+  kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+  echo "  [KILL] pid=$pid used=$(get_used_mem_gb)GB > ${MEM_KILL_GB}GB $(date +%H:%M:%S)"
+  unset 'JOB_PIDS[$last]'; unset 'JOB_ARGS[$last]'
+  JOB_PIDS=("${JOB_PIDS[@]}"); JOB_ARGS=("${JOB_ARGS[@]}")
+}
 
-  used_gb=$(get_used_mem_gb)
-  if [ "$used_gb" -ge "$MEM_KILL_GB" ] && [ ${#JOB_PIDS[@]} -gt 1 ]; then
-    local last_idx=$(( ${#JOB_PIDS[@]} - 1 ))
-    kill "${JOB_PIDS[$last_idx]}" 2>/dev/null
-    wait "${JOB_PIDS[$last_idx]}" 2>/dev/null
-    echo "  [KILL] pid=${JOB_PIDS[$last_idx]} used=${used_gb}GB (draining) $(date +%H:%M:%S)"
-    write_oom "${JOB_ARGS[$last_idx]}"
-    unset 'JOB_PIDS[$last_idx]'
-    unset 'JOB_ARGS[$last_idx]'
-    JOB_PIDS=("${JOB_PIDS[@]}")
-    JOB_ARGS=("${JOB_ARGS[@]}")
+write_oom() {
+  local a="$1"; local g r s algo
+  g=$(echo "$a" | awk '{print $2}'); r=$(echo "$a" | awk '{print $3}')
+  s=$(echo "$a" | awk '{print $4}'); algo=$(echo "$a" | awk '{print $5}')
+  ( flock -x 200
+    echo "${g},${r},${s},${algo},OOM,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA" >> "$OUTCSV"
+  ) 200>"$LOCKFILE"
+  echo "  [OOM] ${algo} ${g} r=${r} s=${s} — gave up after ${MAX_RETRIES} retries"
+}
+
+# OOM check: if usage > MEM_KILL_GB, kill newest jobs until below
+# Killed jobs go into RETRY_QUEUE (up to MAX_RETRIES times)
+oom_check() {
+  while true; do
+    local used=$(get_used_mem_gb)
+    [ "$used" -lt "$MEM_KILL_GB" ] && return
+    refresh_jobs
+    [ ${#JOB_PIDS[@]} -eq 0 ] && return  # nothing to kill, external pressure
+    kill_newest_job
+    # Track retries
+    local key="$KILLED_ARGS"
+    local cnt=${RETRY_COUNT["$key"]:-0}
+    cnt=$((cnt + 1))
+    if [ "$cnt" -gt "$MAX_RETRIES" ]; then
+      write_oom "$key"
+    else
+      RETRY_COUNT["$key"]=$cnt
+      RETRY_QUEUE+=("$key")
+      echo "  → queued for retry ($cnt/$MAX_RETRIES)"
+    fi
+    sleep 3
+  done
+}
+
+SCRIPT="$(realpath "$0")"
+LAUNCHED=0
+declare -a JOB_PIDS=()
+declare -a JOB_ARGS=()
+declare -a RETRY_QUEUE=()
+declare -A RETRY_COUNT=()
+
+# --- Main loop: read from job file, then drain retries ---
+exec 3< "$JOBFILE"
+FILE_DONE=false
+
+while true; do
+  # Pick next job: retry queue first, then job file
+  jobargs=""
+  if [ ${#RETRY_QUEUE[@]} -gt 0 ]; then
+    jobargs="${RETRY_QUEUE[0]}"
+    RETRY_QUEUE=("${RETRY_QUEUE[@]:1}")
+  elif ! $FILE_DONE && IFS= read -r jobargs <&3; then
+    : # got job from file
+  else
+    FILE_DONE=true
+    # Check if anything still running or pending retry
+    refresh_jobs
+    [ ${#JOB_PIDS[@]} -eq 0 ] && [ ${#RETRY_QUEUE[@]} -eq 0 ] && break
+    # Still draining — do OOM check and wait
+    oom_check
+    sleep $MEM_CHECK_INTERVAL
+    continue
   fi
 
-  sleep $MEM_CHECK_INTERVAL
+  # OOM protection before launching
+  oom_check
+
+  # Wait for: jobs < MAX_NPROC AND memory < MEM_LIMIT_GB
+  while true; do
+    refresh_jobs
+    local njobs=${#JOB_PIDS[@]}
+    local used=$(get_used_mem_gb)
+    if [ "$njobs" -lt "$MAX_NPROC" ] && [ "$used" -lt "$MEM_LIMIT_GB" ]; then
+      break
+    fi
+    # Also do OOM check while waiting
+    if [ "$used" -ge "$MEM_KILL_GB" ]; then
+      oom_check
+      continue
+    fi
+    echo "  [wait] jobs=$njobs used=${used}GB $(date +%H:%M:%S)"
+    sleep $MEM_CHECK_INTERVAL
+  done
+
+  # Launch
+  bash "$SCRIPT" $jobargs &
+  JOB_PIDS+=($!)
+  JOB_ARGS+=("$jobargs")
+  LAUNCHED=$((LAUNCHED + 1))
+  sleep $LAUNCH_SETTLE
 done
 
+exec 3<&-
 rm -f "$JOBFILE" "$LOCKFILE"
 echo ""
-echo "Launched: $LAUNCHED jobs"
+echo "Launched: $LAUNCHED jobs (including retries)"
 
 echo ""
 echo "============================================================="
