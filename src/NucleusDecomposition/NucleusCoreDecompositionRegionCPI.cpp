@@ -161,7 +161,114 @@ NucleusCoreDecompositionRClique_RegionCPI(
     }
 
     // ============================================================
-    // Step 2: Build Overlap Classes (same as V2)
+    // Step 1b: r-Mergeable Region Classification
+    // ============================================================
+    // If ALL vertices in region M have overlap < r with every other region:
+    // → all r-cliques in M are only in M → support = C(|M|-r, s-r)
+    // → directly assign core value, skip all pipeline work.
+
+    auto tStep1b = std::chrono::high_resolution_clock::now();
+
+    // Compute pairwise intersection sizes (via vertex membership)
+    std::unordered_map<uint64_t, int> interSize;
+    auto pairKey = [](daf::Size a, daf::Size b) -> uint64_t {
+        if (a > b) std::swap(a, b);
+        return ((uint64_t)a << 32) | b;
+    };
+    for (daf::Size v = 0; v < numVertices; ++v) {
+        auto &rids = vtxMaxPaths[v];
+        for (daf::Size i = 0; i < rids.size(); ++i)
+            for (daf::Size j = i + 1; j < rids.size(); ++j) {
+                auto key = pairKey(rids[i], rids[j]);
+                if (!interSize.count(key)) {
+                    auto &a = regionVerts[rids[i]], &b = regionVerts[rids[j]];
+                    int cnt = 0;
+                    auto ai = a.begin(), bi = b.begin();
+                    while (ai != a.end() && bi != b.end()) {
+                        if (*ai < *bi) ++ai;
+                        else if (*ai > *bi) ++bi;
+                        else { ++cnt; ++ai; ++bi; }
+                    }
+                    interSize[key] = cnt;
+                }
+            }
+    }
+
+    // Check each region: fully r-mergeable?
+    std::vector<bool> fullyMergeable(numRegions, true);
+    for (daf::Size rid = 0; rid < numRegions; ++rid) {
+        for (daf::Size v : regionVerts[rid]) {
+            if (v >= numVertices) continue;
+            for (daf::Size otherRid : vtxMaxPaths[v]) {
+                if (otherRid == rid) continue;
+                if (interSize[pairKey(rid, otherRid)] >= (int)r) {
+                    fullyMergeable[rid] = false;
+                    break;
+                }
+            }
+            if (!fullyMergeable[rid]) break;
+        }
+    }
+
+    // Directly assign fully-mergeable regions
+    std::map<daf::Size, int64_t> coreDist;
+    daf::Size numFullyMergeable = 0, mergedRCliques = 0;
+
+    for (daf::Size rid = 0; rid < numRegions; ++rid) {
+        if (!fullyMergeable[rid]) continue;
+        numFullyMergeable++;
+        int mSize = (int)regionVerts[rid].size();
+        daf::Size coreVal = (mSize >= (int)s) ? (daf::Size)llround(nCr[mSize - r][s - r]) : 0;
+        daf::Size numRC = (daf::Size)llround(nCr[mSize][r]);
+        coreDist[coreVal] += numRC;
+        mergedRCliques += numRC;
+    }
+
+    // Rebuild regions/vtxMaxPaths with only NON-fully-mergeable regions
+    {
+        std::vector<std::vector<daf::Size>> newRegionVerts;
+        std::vector<daf::Size> ridMap(numRegions, INVALID); // old rid → new rid
+        for (daf::Size rid = 0; rid < numRegions; ++rid) {
+            if (fullyMergeable[rid]) continue;
+            ridMap[rid] = newRegionVerts.size();
+            newRegionVerts.push_back(std::move(regionVerts[rid]));
+        }
+        regionVerts = std::move(newRegionVerts);
+        numRegions = regionVerts.size();
+
+        // Rebuild vtxMaxPaths
+        for (daf::Size v = 0; v < numVertices; ++v) {
+            std::vector<daf::Size> newPaths;
+            for (daf::Size rid : vtxMaxPaths[v]) {
+                if (ridMap[rid] != INVALID)
+                    newPaths.push_back(ridMap[rid]);
+            }
+            vtxMaxPaths[v] = std::move(newPaths);
+        }
+    }
+
+    auto tStep1bEnd = std::chrono::high_resolution_clock::now();
+    auto step1bMs = std::chrono::duration_cast<std::chrono::milliseconds>(tStep1bEnd - tStep1b).count();
+    std::cout << "  r-Mergeable classification: " << step1bMs << " ms" << std::endl;
+    std::cout << "    Fully mergeable regions: " << numFullyMergeable
+              << " (" << mergedRCliques << " r-cliques, direct)" << std::endl;
+    std::cout << "    Remaining regions: " << numRegions << std::endl;
+
+    // Early exit if all regions handled
+    if (numRegions == 0) {
+        auto tEnd = std::chrono::high_resolution_clock::now();
+        auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count();
+        daf::Size maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
+        std::cout << "\n  All regions fully r-mergeable. No peeling needed." << std::endl;
+        std::cout << "  Max core: " << maxCore << std::endl;
+        for (auto &[core, cnt] : coreDist)
+            std::cout << "  core=" << core << " count=" << cnt << std::endl;
+        std::cout << "  Total time: " << totalMs << " ms" << std::endl;
+        return {};
+    }
+
+    // ============================================================
+    // Step 2: Build Overlap Classes
     // ============================================================
 
     struct ClassInfo { std::vector<daf::Size> regionIds; daf::Size size; };
@@ -564,7 +671,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
         else overflow.insert({b, i});
     }
 
-    std::map<daf::Size, int64_t> coreDist;
+    // coreDist already initialized in Step 1b (fully-mergeable regions)
     daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
     daf::Size totalSplits = 0;
 
