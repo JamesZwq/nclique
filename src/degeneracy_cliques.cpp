@@ -174,13 +174,14 @@ static SDCTBuildResult buildSDCTWithIndex(
         envSet("PIVOTER_RUN_ST_QUOTIENT_LAB") && envSet("PIVOTER_QUOTIENT_LAB_ONLY");
     const bool useMaxCliqueTagging =
         envSet("PIVOTER_RUN_REGION") || envSet("PIVOTER_RUN_REGION_EXACT") ||
-        envSet("PIVOTER_RUN_REGION_V2") || envSet("PIVOTER_RUN_REGION_V3");
+        envSet("PIVOTER_RUN_REGION_V2") || envSet("PIVOTER_RUN_REGION_V3") ||
+        envSet("PIVOTER_RUN_REGION_V3B");
     // Region V2 only needs tree + maxCliqueTags, skip expensive ci and tgv
     // V3 needs SDCT tree with hold/pivot info — DO NOT use MaxCliqEnum for V3
     const bool regionOnly =
         useMaxCliqueTagging && !envSet("PIVOTER_COMPARE") &&
         !envSet("PIVOTER_RUN_ST") && !envSet("PIVOTER_RUN_V20") &&
-        !envSet("PIVOTER_RUN_REGION_V3");
+        !envSet("PIVOTER_RUN_REGION_V3") && !envSet("PIVOTER_RUN_REGION_V3B");
 
     DynamicGraphSet<TreeGraphNode> tgv(n);
     tgv.adj_list.resize(n);
@@ -715,6 +716,7 @@ static bool dispatchR3Plus(
     };
 
     static const R3Entry table[] = {
+        {"PIVOTER_RUN_REGION_V3B", "Region CPI V3B (Lazy Split) r>=3", NucleusCoreDecompositionRClique_RegionCPI_V2},
         {"PIVOTER_RUN_REGION_V3", "Region CPI (V3) r>=3", NucleusCoreDecompositionRClique_RegionCPI},
         {"PIVOTER_RUN_REGION_V2", "Region V2 (general s) r>=3", NucleusCoreDecompositionRClique_RegionV2},
         // {"PIVOTER_RUN_REGION_EXACT", ...},  // Lab: untracked
@@ -865,7 +867,7 @@ int main(int argc, char **argv) {
     }
 
     // Phase 2.5: MaxCliqEnum for V3 (must run before beSingleEdge mutates graph)
-    if (envSet("PIVOTER_RUN_REGION_V3")) {
+    if (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3)", [&]() {
             return enumerateMaximalCliques(edgeGraph);
         });
