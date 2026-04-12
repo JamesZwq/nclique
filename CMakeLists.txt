@@ -54,10 +54,17 @@ include_directories("${TBB_ROOT}/include")
 include_directories(src)
 
 file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.hpp src/*.h src/*/*.cpp src/*/*.hpp src/*/*.h)
+# Exclude main entry points and experimental/lab files not ready for linking
+file(GLOB _LAB_EXCLUDE
+    ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/*Lab*.cpp
+    ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/*DCLP2*.cpp
+    ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/*RegionExact*.cpp
+)
 set(EXCLUDE_SRCS
         ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
         ${CMAKE_SOURCE_DIR}/src/test_new_algorithm.cpp
         ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/NucleusCoreDecompositionRegion_backup.cpp
+        ${_LAB_EXCLUDE}
 )
 list(REMOVE_ITEM ALL_SOURCES ${EXCLUDE_SRCS})
 set(COMMON_SOURCES ${ALL_SOURCES})

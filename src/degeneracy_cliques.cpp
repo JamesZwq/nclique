@@ -543,6 +543,7 @@ static bool dispatchR2(
         return PlusNucleusEdgeCoreDecompositionSet(t, g, tgv, s);
     };
 
+#if 0 // Disabled: implementations in untracked lab files
     if (envSet("PIVOTER_RUN_LOCAL_V5")) {
         auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
         auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
@@ -594,6 +595,7 @@ static bool dispatchR2(
         }
         return true;
     }
+#endif
 
     if (envSet("PIVOTER_RUN_LOCAL")) {
         auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
@@ -618,15 +620,16 @@ static bool dispatchR2(
     };
 
     static const R2Entry table[] = {
-        {"PIVOTER_RUN_R2_DEFECT_D2_ORBIT_LAB", "Defect D2 Orbit Lab", PlusNucleusEdgeCoreDecompositionSet_DefectD2OrbitLab},
-        {"PIVOTER_RUN_R2_DEFECT_D2_LAB", "Defect D2 Lab", PlusNucleusEdgeCoreDecompositionSet_DefectD2Lab},
-        {"PIVOTER_RUN_R2_DEFECT_ROUTED_LAB", "Defect Routed Lab", PlusNucleusEdgeCoreDecompositionSet_DefectRoutedLab},
-        {"PIVOTER_RUN_R2_DEFECT_LAB", "Defect Lab", PlusNucleusEdgeCoreDecompositionSet_DefectLab},
-        {"PIVOTER_RUN_R2_HARDLEAF_HYBRID_LAB", "HardLeaf Hybrid Lab", PlusNucleusEdgeCoreDecompositionSet_HardLeafHybridLab},
-        {"PIVOTER_RUN_R2_HARDLEAF_LAB", "HardLeaf Lab", PlusNucleusEdgeCoreDecompositionSet_HardLeafLab},
-        {"PIVOTER_RUN_R2_HYBRID_LAB", "Hybrid R2 Lab", PlusNucleusEdgeCoreDecompositionSet_HybridLab},
-        {"PIVOTER_RUN_R2_HYBRID", "Hybrid R2", PlusNucleusEdgeCoreDecompositionSet_Hybrid},
-        {"PIVOTER_RUN_R2_DCLP2", "DCLP2 r=2", PlusNucleusEdgeCoreDecompositionSet_DCLP2},
+        // Lab variants disabled (implementations in untracked files):
+        // {"PIVOTER_RUN_R2_DEFECT_D2_ORBIT_LAB", ...},
+        // {"PIVOTER_RUN_R2_DEFECT_D2_LAB", ...},
+        // {"PIVOTER_RUN_R2_DEFECT_ROUTED_LAB", ...},
+        // {"PIVOTER_RUN_R2_DEFECT_LAB", ...},
+        // {"PIVOTER_RUN_R2_HARDLEAF_HYBRID_LAB", ...},
+        // {"PIVOTER_RUN_R2_HARDLEAF_LAB", ...},
+        // {"PIVOTER_RUN_R2_HYBRID_LAB", ...},
+        // {"PIVOTER_RUN_R2_HYBRID", ...},
+        // {"PIVOTER_RUN_R2_DCLP2", ...},
         {"PIVOTER_RUN_R2_DCLP", "DCLP r=2", PlusNucleusEdgeCoreDecompositionSet_DCLP},
         {"PIVOTER_RUN_R2_ST_V10", "ST_V10 r=2", PlusNucleusEdgeCoreDecompositionSet_ST_V10},
         {"PIVOTER_RUN_R2_ST_V9", "ST_V9 r=2", PlusNucleusEdgeCoreDecompositionSet_ST_V9},
@@ -714,9 +717,9 @@ static bool dispatchR3Plus(
     static const R3Entry table[] = {
         {"PIVOTER_RUN_REGION_V3", "Region CPI (V3) r>=3", NucleusCoreDecompositionRClique_RegionCPI},
         {"PIVOTER_RUN_REGION_V2", "Region V2 (general s) r>=3", NucleusCoreDecompositionRClique_RegionV2},
-        {"PIVOTER_RUN_REGION_EXACT", "Region Exact r>=3", NucleusCoreDecompositionRClique_RegionExact},
+        // {"PIVOTER_RUN_REGION_EXACT", ...},  // Lab: untracked
         {"PIVOTER_RUN_REGION", "Region Decomp r>=3", NucleusCoreDecompositionRClique_Region},
-        {"PIVOTER_RUN_ST_QUOTIENT_LAB", "ST Quotient Lab r>=3", NucleusCoreDecompositionRClique_ST_QuotientLab},
+        // {"PIVOTER_RUN_ST_QUOTIENT_LAB", ...},  // Lab: untracked
         {"PIVOTER_RUN_LINK_PEEL",      "Link-Graph Peel r>=3",      NucleusCoreDecompositionRCliqueLinkPeel},
         {"PIVOTER_RUN_LINK_LOCAL",      "Link-Graph Local r>=3",     NucleusCoreDecompositionRCliqueLinkLocal},
         {"PIVOTER_RUN_LOCAL_CPI_VP",    "Local CPI VP r>=3",         NucleusCoreDecompositionRCliqueLocalCPI_VP},
