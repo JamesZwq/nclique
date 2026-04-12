@@ -20,6 +20,7 @@ MAX_NPROC=32                 # max parallel jobs
 MEM_LIMIT_GB=300             # don't launch new jobs if total usage > this
 MEM_KILL_GB=450              # kill newest job if usage exceeds this
 MEM_CHECK_INTERVAL=10        # seconds between checks when waiting
+LAUNCH_COOLDOWN=15           # seconds to wait after each launch (let memory stabilize)
 
 # ============ Internal: run a single job ============
 if [ "$1" = "--run" ]; then
@@ -262,7 +263,8 @@ while IFS= read -r jobargs; do
   JOB_PIDS+=($!)
   JOB_ARGS+=("$jobargs")
   LAUNCHED=$((LAUNCHED + 1))
-  sleep 0.2
+  # Wait for memory to stabilize before launching next job
+  sleep $LAUNCH_COOLDOWN
 done < "$JOBFILE"
 
 # Wait for all remaining jobs (with OOM protection)
