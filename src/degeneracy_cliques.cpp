@@ -867,9 +867,10 @@ int main(int argc, char **argv) {
     }
 
     // Phase 2.5: MaxCliqEnum for V3 (must run before beSingleEdge mutates graph)
+    // Pruning: only enumerate cliques with size >= s (skip small branches)
     if (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3)", [&]() {
-            return enumerateMaximalCliques(edgeGraph);
+            return enumerateMaximalCliques(edgeGraph, s);
         });
     }
 

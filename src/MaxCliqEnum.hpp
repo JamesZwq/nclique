@@ -48,14 +48,19 @@ inline int countInP(int u, const Graph &g, const std::vector<int> &P) {
 // BK recursion with P∪X pivoting
 // clique: current R (being built)
 // P, X: sorted candidate and exclusion sets
+// minSize: only output cliques with size >= minSize (0 = no filter)
 static void bkRecurse(
     std::vector<daf::Size> &clique,
     std::vector<int> P, std::vector<int> X,
     const Graph &g,
-    std::vector<std::vector<daf::Size>> &output)
+    std::vector<std::vector<daf::Size>> &output,
+    int minSize = 0)
 {
+    // Pruning: if clique + remaining candidates < minSize, can't reach minSize
+    if (minSize > 0 && (int)(clique.size() + P.size()) < minSize) return;
+
     if (P.empty()) {
-        if (X.empty() && !clique.empty()) {
+        if (X.empty() && !clique.empty() && (int)clique.size() >= minSize) {
             output.push_back(clique);
         }
         return;
@@ -92,7 +97,7 @@ static void bkRecurse(
         auto newP = intersect(P, vNbrs);
         auto newX = intersect(X, vNbrs);
 
-        bkRecurse(clique, std::move(newP), std::move(newX), g, output);
+        bkRecurse(clique, std::move(newP), std::move(newX), g, output, minSize);
 
         clique.pop_back();
 
@@ -104,9 +109,10 @@ static void bkRecurse(
 
 } // namespace maxcliq
 
-// Enumerate all maximal cliques in graph g (degeneracy-ordered)
+// Enumerate maximal cliques in graph g (degeneracy-ordered)
 // g must be degeneracy-sorted (adj_list ordered by degeneracy)
-static std::vector<std::vector<daf::Size>> enumerateMaximalCliques(const Graph &g) {
+// minSize: only return cliques with size >= minSize (0 = all)
+static std::vector<std::vector<daf::Size>> enumerateMaximalCliques(const Graph &g, int minSize = 0) {
     int n = g.getGraphNodeSize();
     std::vector<std::vector<daf::Size>> result;
     std::vector<bool> processed(n, false);
@@ -125,7 +131,7 @@ static std::vector<std::vector<daf::Size>> enumerateMaximalCliques(const Graph &
         std::sort(X.begin(), X.end());
 
         std::vector<daf::Size> clique = {(daf::Size)v};
-        maxcliq::bkRecurse(clique, std::move(P), std::move(X), g, result);
+        maxcliq::bkRecurse(clique, std::move(P), std::move(X), g, result, minSize);
 
         processed[v] = true;
     }
