@@ -647,15 +647,372 @@ NucleusCoreDecompositionRClique_RegionCPI(
         std::cout << "  CPI vs CPath match: " << (mismatches == 0 ? "PASS" : ("MISMATCH(" + std::to_string(mismatches) + ")")) << std::endl;
     }
 
-    // --- Peeling with Analytical Split (double support + bucket queue) ---
+    // ============================================================
+    // Step 6: Batch Union Peeling (Weighted)
+    // ============================================================
+    // Instead of splitting CPath objects (which explode in number),
+    // we accumulate "dead boxes" per path as tuples are peeled.
+    // For each alive tuple τ' on an affected path, we compute:
+    //   deadCount = countUnionWeighted(base, upper, deadBoxes, T, weights)
+    //   delta = deadCount - cachedOldDeadCount
+    //   dSup[τ'] -= delta / mult(τ')
+    //
+    // WEIGHTED counting: each allocation b contributes
+    //   Π_c weight_c(b_c) × C(Pfree, T - Σb_c_tuple)
+    // where weight_c(b) = C(nh_c, j'_c - b) × C(np_c, b) for tuple classes
+    //                    = C(np_c, b) for non-tuple classes
+    //
+    // countFeasibleWeighted: convolution DP, O(T × m)
+    // countUnionWeighted: branch-and-bound with Pareto pruning
+
     auto tStep6 = std::chrono::high_resolution_clock::now();
 
-    // Profiling counters
-    long long prof_oldContrib_ns = 0, prof_split_ns = 0, prof_newContrib_ns = 0;
-    long long prof_delta_ns = 0, prof_overhead_ns = 0;
-    long long prof_aggrCalls = 0, prof_splitSubpaths = 0, prof_deadPaths = 0;
+    // --- PathInfo: immutable per-path data + mutable dead boxes ---
+    struct PathInfo {
+        int h, T;                    // holds count, target = s - h
+        std::vector<daf::Size> classIds;   // ordered class IDs on this path
+        std::vector<int> nh;         // per-class hold count (parallel to classIds)
+        std::vector<int> np;         // per-class pivot count (parallel to classIds)
+        std::vector<daf::Size> tupleIdxs;  // alive tuples on this path
+        std::vector<std::vector<int>> deadBoxes;  // accumulated dead requirement vectors
+        // classId -> index in classIds (for fast lookup)
+        std::unordered_map<daf::Size, int> classToIdx;
+    };
 
-    // Keep double support for exact arithmetic. Use floor() for bucket index.
+    // --- Weighted feasible count: convolution DP ---
+    // For each class i, weight_i(b) depends on lower[i]..upper[i] and the
+    // class's nh/np and tuple's j_c. We pass per-class weight tables.
+    // weightTables[i][b - lower[i]] = weight for allocation b on class i.
+    // Returns Σ_{b: lower<=b<=upper, Σb=T} Π_i weightTables[i][b_i - lower[i]]
+    auto countFeasibleWeighted = [](const std::vector<int> &lower,
+                                    const std::vector<int> &upper, int T,
+                                    const std::vector<std::vector<double>> &weightTables) -> double {
+        int m = (int)lower.size();
+        int minSum = 0, maxSum = 0;
+        for (int i = 0; i < m; ++i) {
+            if (lower[i] > upper[i]) return 0.0;
+            minSum += lower[i];
+            maxSum += upper[i];
+        }
+        if (T < minSum || T > maxSum) return 0.0;
+
+        int target = T - minSum;
+        if (target < 0) return 0.0;
+
+        // dp[t] = weighted count of allocations with shifted-sum = t
+        // Process each class: convolve dp with class's weight polynomial
+        std::vector<double> dp(target + 1, 0.0);
+        dp[0] = 1.0;
+        for (int i = 0; i < m; ++i) {
+            int cap = upper[i] - lower[i]; // range: 0..cap (shifted)
+            auto &wt = weightTables[i]; // wt[k] = weight for b_i = lower[i] + k
+            std::vector<double> next(target + 1, 0.0);
+            // For each target sum t, next[t] = Σ_{k=0..min(cap,t)} dp[t-k] * wt[k]
+            for (int t = 0; t <= target; ++t) {
+                double sum = 0.0;
+                int kMax = std::min(cap, t);
+                for (int k = 0; k <= kMax; ++k) {
+                    if (k < (int)wt.size())
+                        sum += dp[t - k] * wt[k];
+                }
+                next[t] = sum;
+            }
+            dp.swap(next);
+        }
+        return dp[target];
+    };
+
+    // --- Build weight tables for tuple τ' on path P with given lower/upper ---
+    // tc = total pivot allocation from class c in the s-clique.
+    // For tuple classes (j'_c > 0): w(tc) = C(np_c, tc) × C(nh_c + tc, j'_c)
+    //   (choose tc pivots, then choose j'_c of the first nh_c + tc vertices for the tuple)
+    // For non-tuple classes (j'_c = 0): w(tc) = C(np_c, tc)
+    // Returns weightTables[i][tc - lower[i]] for each class i
+    auto buildWeightTables = [&](daf::Size tidx, const PathInfo &pi,
+                                 const std::vector<int> &lower,
+                                 const std::vector<int> &upper) -> std::vector<std::vector<double>> {
+        int m = (int)pi.classIds.size();
+        auto &key = rTuples[tidx].key;
+        std::unordered_map<daf::Size, int> counts;
+        for (auto c : key) counts[c]++;
+
+        std::vector<std::vector<double>> wts(m);
+        for (int i = 0; i < m; ++i) {
+            int lo = lower[i], hi = upper[i];
+            int range = hi - lo + 1;
+            if (range <= 0) { wts[i] = {}; continue; }
+            wts[i].resize(range, 0.0);
+
+            auto cit = counts.find(pi.classIds[i]);
+            int jc = (cit != counts.end()) ? cit->second : 0;
+            int nhc = pi.nh[i], npc = pi.np[i];
+
+            for (int k = 0; k < range; ++k) {
+                int tc = lo + k; // total pivots allocated from class i
+                if (tc < 0 || tc > npc) continue;
+                if (jc > 0) {
+                    // tuple class: C(np_c, tc) × C(nh_c + tc, j_c)
+                    int pool = nhc + tc;
+                    if (pool >= jc)
+                        wts[i][k] = nCr[npc][tc] * nCr[pool][jc];
+                } else {
+                    // non-tuple class: C(np_c, tc)
+                    wts[i][k] = nCr[npc][tc];
+                }
+            }
+        }
+        return wts;
+    };
+
+    // --- normalizeBoxes ---
+    struct NormResult { bool fullCover; std::vector<std::vector<int>> boxes; };
+    auto normalizeBoxes = [](const std::vector<int> &lower,
+                             const std::vector<int> &upper, int T,
+                             const std::vector<std::vector<int>> &boxes,
+                             bool pruneDom) -> NormResult {
+        int m = (int)lower.size();
+        std::vector<std::vector<int>> effective;
+        effective.reserve(boxes.size());
+        for (auto &box : boxes) {
+            std::vector<int> cur(m);
+            bool impossible = false;
+            int lSum = 0;
+            for (int i = 0; i < m; ++i) {
+                cur[i] = std::max(lower[i], box[i]);
+                if (cur[i] > upper[i]) { impossible = true; break; }
+                lSum += cur[i];
+            }
+            if (impossible || lSum > T) continue;
+            if (cur == lower) return {true, {}};
+            effective.push_back(std::move(cur));
+        }
+        std::sort(effective.begin(), effective.end());
+        effective.erase(std::unique(effective.begin(), effective.end()), effective.end());
+        if (!pruneDom) return {false, effective};
+
+        // Sort by sum ascending for dominance pruning
+        std::sort(effective.begin(), effective.end(), [](const std::vector<int> &a, const std::vector<int> &b) {
+            int sa = 0, sb = 0;
+            for (int x : a) sa += x;
+            for (int x : b) sb += x;
+            return sa != sb ? sa < sb : a < b;
+        });
+        std::vector<std::vector<int>> minimal;
+        for (auto &box : effective) {
+            bool dominated = false;
+            for (auto &kept : minimal) {
+                bool dom = true;
+                for (int i = 0; i < m; ++i)
+                    if (kept[i] > box[i]) { dom = false; break; }
+                if (dom) { dominated = true; break; }
+            }
+            if (!dominated) minimal.push_back(box);
+        }
+        return {false, minimal};
+    };
+
+    // --- countUnionWeighted: branch-and-bound ---
+    // choosePivotBox: pick box with fewest active dims (ties: highest sum)
+    auto choosePivot = [](const std::vector<int> &lower,
+                          const std::vector<std::vector<int>> &boxes, int m) -> int {
+        int bestIdx = 0, bestActive = m + 1, bestSum = -1;
+        for (int i = 0; i < (int)boxes.size(); ++i) {
+            int active = 0, lsum = 0;
+            for (int c = 0; c < m; ++c) {
+                if (boxes[i][c] > lower[c]) ++active;
+                lsum += boxes[i][c];
+            }
+            if (active < bestActive || (active == bestActive && lsum > bestSum)) {
+                bestIdx = i; bestActive = active; bestSum = lsum;
+            }
+        }
+        return bestIdx;
+    };
+
+    struct UnionCtx {
+        int m, T;
+        long long recCalls;
+        daf::Size tidx;          // tuple being evaluated (for weight computation)
+        const PathInfo *pi;       // path being evaluated
+    };
+
+    // Forward-declare countUnionRec
+    std::function<double(const std::vector<int>&, const std::vector<int>&,
+                         const std::vector<std::vector<int>>&, UnionCtx&)> countUnionRec;
+
+    // Helper: compute weighted feasible for given lower/upper using tuple weights
+    auto feasWeighted = [&](const std::vector<int> &lower, const std::vector<int> &upper,
+                            UnionCtx &ctx) -> double {
+        auto wts = buildWeightTables(ctx.tidx, *ctx.pi, lower, upper);
+        return countFeasibleWeighted(lower, upper, ctx.T, wts);
+    };
+
+    countUnionRec = [&](const std::vector<int> &lower, const std::vector<int> &upper,
+                        const std::vector<std::vector<int>> &boxes,
+                        UnionCtx &ctx) -> double {
+        ctx.recCalls++;
+        // Feasibility check
+        {
+            int minS = 0, maxS = 0;
+            for (int i = 0; i < ctx.m; ++i) {
+                if (lower[i] > upper[i]) return 0.0;
+                minS += lower[i]; maxS += upper[i];
+            }
+            if (ctx.T < minS || ctx.T > maxS) return 0.0;
+        }
+
+        auto norm = normalizeBoxes(lower, upper, ctx.T, boxes, true);
+        if (norm.fullCover) return feasWeighted(lower, upper, ctx);
+        if (norm.boxes.empty()) return 0.0;
+
+        // Branch on pivot
+        int pivIdx = choosePivot(lower, norm.boxes, ctx.m);
+        std::vector<int> pivot = norm.boxes[pivIdx];
+
+        double total = feasWeighted(pivot, upper, ctx);
+
+        std::vector<std::vector<int>> remaining = norm.boxes;
+        remaining.erase(remaining.begin() + pivIdx);
+
+        for (int splitDim = 0; splitDim < ctx.m; ++splitDim) {
+            if (pivot[splitDim] <= lower[splitDim]) continue;
+
+            std::vector<int> nextLower = lower;
+            std::vector<int> nextUpper = upper;
+            for (int earlier = 0; earlier < splitDim; ++earlier)
+                nextLower[earlier] = std::max(nextLower[earlier], pivot[earlier]);
+            nextUpper[splitDim] = std::min(nextUpper[splitDim], pivot[splitDim] - 1);
+
+            total += countUnionRec(nextLower, nextUpper, remaining, ctx);
+        }
+        return total;
+    };
+
+    // --- Build PathInfo structures ---
+    std::vector<PathInfo> pathInfos;
+    std::vector<std::vector<daf::Size>> tupleToPathInfos(rTuples.size());
+
+    for (daf::Size pid = 0; pid < numPaths; ++pid) {
+        auto &leaf = tree.adj_list[pid];
+        if ((int)leaf.size() < (int)s) continue;
+
+        PathInfo pi;
+        pi.h = 0;
+        std::unordered_map<daf::Size, std::pair<int,int>> cd; // cid -> (nh, np)
+        for (const auto &node : leaf) {
+            daf::Size v = node.v;
+            if (v >= numVertices || classOf[v] == INVALID) continue;
+            daf::Size cid = classOf[v];
+            if (node.isPivot) cd[cid].second++;
+            else { cd[cid].first++; pi.h++; }
+        }
+        pi.T = s - pi.h;
+        if (pi.T < 0) continue;
+
+        // Build ordered class arrays
+        for (auto &[cid, p] : cd) pi.classIds.push_back(cid);
+        std::sort(pi.classIds.begin(), pi.classIds.end());
+        pi.nh.resize(pi.classIds.size());
+        pi.np.resize(pi.classIds.size());
+        for (int i = 0; i < (int)pi.classIds.size(); ++i) {
+            pi.classToIdx[pi.classIds[i]] = i;
+            pi.nh[i] = cd[pi.classIds[i]].first;
+            pi.np[i] = cd[pi.classIds[i]].second;
+        }
+
+        // Find tuples on this path
+        TupleKey cur; cur.reserve(r);
+        std::vector<daf::Size> pathClasses;
+        for (auto cid : pi.classIds) pathClasses.push_back(cid);
+        bool hasTuples = false;
+        daf::Size piIdx = pathInfos.size();
+
+        std::function<void()> enumCb = [&]() {
+            auto it = rTupleIndex.find(cur);
+            if (it == rTupleIndex.end()) return;
+            daf::Size tidx = it->second;
+            // Feasibility check
+            std::unordered_map<daf::Size, int> counts;
+            for (auto c : cur) counts[c]++;
+            for (auto &[c, jc] : counts) {
+                auto cit = pi.classToIdx.find(c);
+                if (cit == pi.classToIdx.end()) return;
+                int idx2 = cit->second;
+                if (jc > pi.nh[idx2] + pi.np[idx2]) return;
+            }
+            pi.tupleIdxs.push_back(tidx);
+            hasTuples = true;
+        };
+        enumerateMultisets(pathClasses, r, 0, cur, enumCb);
+
+        if (hasTuples) {
+            pathInfos.push_back(std::move(pi));
+            for (auto tidx : pathInfos.back().tupleIdxs)
+                tupleToPathInfos[tidx].push_back(piIdx);
+        }
+    }
+
+    auto tPathBuild = std::chrono::high_resolution_clock::now();
+    auto pathBuildMs = std::chrono::duration_cast<std::chrono::milliseconds>(tPathBuild - tStep6).count();
+    std::cout << "  PathInfo count: " << pathInfos.size() << std::endl;
+    std::cout << "  PathInfo build time: " << pathBuildMs << " ms" << std::endl;
+
+    // Verify: weighted feasible on full path should match aggrCountOnCPath
+    {
+        std::vector<double> supCheck(rTuples.size(), 0.0);
+        for (daf::Size piIdx = 0; piIdx < pathInfos.size(); ++piIdx) {
+            auto &pi = pathInfos[piIdx];
+            int m = (int)pi.classIds.size();
+            for (auto tidx : pi.tupleIdxs) {
+                auto &key = rTuples[tidx].key;
+                std::unordered_map<daf::Size, int> counts;
+                for (auto c : key) counts[c]++;
+                std::vector<int> base(m), upper(m);
+                for (int i = 0; i < m; ++i) {
+                    int jc = 0;
+                    auto cit = counts.find(pi.classIds[i]);
+                    if (cit != counts.end()) jc = cit->second;
+                    base[i] = std::max(0, jc - pi.nh[i]);
+                    upper[i] = pi.np[i];
+                }
+                auto wts = buildWeightTables(tidx, pi, base, upper);
+                double aggr = countFeasibleWeighted(base, upper, pi.T, wts);
+                supCheck[tidx] += aggr / rTuples[tidx].mult;
+            }
+        }
+        double checkSum = 0;
+        int mismatches = 0;
+        for (daf::Size i = 0; i < rTuples.size(); ++i) {
+            checkSum += rTuples[i].mult * supCheck[i];
+            if (std::abs(supCheck[i] - support[i]) > 0.5) mismatches++;
+        }
+        std::cout << "  Support sum (PathInfo weighted): " << std::fixed << std::setprecision(0) << checkSum << std::endl;
+        std::cout << "  CPI vs PathInfo match: " << (mismatches == 0 ? "PASS" : ("MISMATCH(" + std::to_string(mismatches) + ")")) << std::endl;
+    }
+
+    // --- Build requirement vector for tuple τ on path P ---
+    // reqVec[i] = max(0, j_c - nh_c) for each class i on the path
+    auto buildReqVec = [&](daf::Size tidx, const PathInfo &pi) -> std::vector<int> {
+        int m = (int)pi.classIds.size();
+        std::vector<int> req(m, 0);
+        auto &key = rTuples[tidx].key;
+        std::unordered_map<daf::Size, int> counts;
+        for (auto c : key) counts[c]++;
+        for (auto &[c, jc] : counts) {
+            auto it = pi.classToIdx.find(c);
+            if (it != pi.classToIdx.end()) {
+                int idx2 = it->second;
+                req[idx2] = std::max(0, jc - pi.nh[idx2]);
+            }
+        }
+        return req;
+    };
+
+    // --- Per-(tuple, path) dead count cache ---
+    daf::Size numTuplesSz = rTuples.size();
+    std::unordered_map<uint64_t, double> deadCache;
+
+    // --- Bucket queue setup ---
     std::vector<double> dSup = support;
     std::vector<bool> rPeeled(rTuples.size(), false);
 
@@ -664,195 +1021,139 @@ NucleusCoreDecompositionRClique_RegionCPI(
     const daf::Size BUCKET_CAP = std::min(maxSup + 2, (daf::Size)1000001);
 
     std::vector<std::vector<daf::Size>> buckets(BUCKET_CAP);
-    std::multimap<daf::Size, daf::Size> overflow; // for large support values
+    std::multimap<daf::Size, daf::Size> overflow;
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
         daf::Size b = (daf::Size)llround(dSup[i]);
         if (b < BUCKET_CAP) buckets[b].push_back(i);
         else overflow.insert({b, i});
     }
 
-    // coreDist already initialized in Step 1b (fully-mergeable regions)
+    // Profiling counters
+    long long prof_unionCalls = 0, prof_totalRecCalls = 0;
+    long long prof_deadBoxesAdded = 0, prof_tupleUpdates = 0;
+    long long prof_batchCount = 0;
+
+    // --- Batch peeling loop ---
     daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
-    daf::Size totalSplits = 0;
 
     while (numPeeled < rTuples.size()) {
+        // Find next non-empty level
         while (currentLevel < BUCKET_CAP && buckets[currentLevel].empty())
             currentLevel++;
-        daf::Size idx;
+
+        // Drain ALL tuples at currentLevel (batch)
+        // Use rPeeled to deduplicate (mark during drain, not after)
+        std::vector<daf::Size> batch;
         if (currentLevel < BUCKET_CAP) {
-            idx = buckets[currentLevel].back();
-            buckets[currentLevel].pop_back();
+            while (!buckets[currentLevel].empty()) {
+                daf::Size idx = buckets[currentLevel].back();
+                buckets[currentLevel].pop_back();
+                if (rPeeled[idx]) continue;
+                daf::Size idxBucket = (daf::Size)llround(dSup[idx]);
+                if (idxBucket != currentLevel) continue;
+                rPeeled[idx] = true; // mark immediately to avoid duplicates
+                batch.push_back(idx);
+            }
         } else if (!overflow.empty()) {
-            auto it = overflow.begin();
-            currentLevel = it->first;
-            idx = it->second;
-            overflow.erase(it);
+            currentLevel = overflow.begin()->first;
+            auto range = overflow.equal_range(currentLevel);
+            for (auto it = range.first; it != range.second; ++it) {
+                daf::Size idx = it->second;
+                if (!rPeeled[idx]) {
+                    daf::Size idxBucket = (daf::Size)llround(dSup[idx]);
+                    if (idxBucket == currentLevel) {
+                        rPeeled[idx] = true;
+                        batch.push_back(idx);
+                    }
+                }
+            }
+            overflow.erase(range.first, range.second);
         } else break;
 
-        if (rPeeled[idx]) continue;
-        daf::Size idxBucket = (daf::Size)llround(dSup[idx]);
-        if (idxBucket != currentLevel) continue;
+        if (batch.empty()) { currentLevel++; continue; }
+        prof_batchCount++;
 
-        rPeeled[idx] = true;
-        numPeeled++;
-        coreLevel = std::max(coreLevel, currentLevel);
-        coreDist[coreLevel] += rTuples[idx].mult;
+        // Assign core level
+        for (auto idx : batch) {
+            numPeeled++;
+            coreLevel = std::max(coreLevel, currentLevel);
+            coreDist[coreLevel] += rTuples[idx].mult;
+        }
 
-        auto &tauKey = rTuples[idx].key;
-        std::unordered_map<daf::Size, int> tauCounts;
-        for (auto c : tauKey) tauCounts[c]++;
+        // Collect affected paths
+        std::unordered_set<daf::Size> affectedPathSet;
+        for (auto idx : batch)
+            for (auto piIdx : tupleToPathInfos[idx])
+                affectedPathSet.insert(piIdx);
 
-        auto cpathIds = tupleToCPaths[idx]; // copy
-        for (daf::Size cpid : cpathIds) {
-            auto &cp = cpaths[cpid];
-            if (cp.tupleIdxs.empty()) continue;
+        // Process each affected path ONCE
+        for (daf::Size piIdx : affectedPathSet) {
+            auto &pi = pathInfos[piIdx];
+            int m = (int)pi.classIds.size();
 
-            auto _t0 = std::chrono::high_resolution_clock::now();
+            // Add new dead boxes from batch tuples on this path
+            for (auto idx : batch) {
+                // Check if this tuple is actually on this path
+                bool onPath = false;
+                for (auto p : tupleToPathInfos[idx])
+                    if (p == piIdx) { onPath = true; break; }
+                if (!onPath) continue;
 
-            // Separate alive tuples into: affected (share class with τ) and unaffected
-            std::unordered_set<daf::Size> tauClassSet(rTuples[idx].key.begin(), rTuples[idx].key.end());
-            std::vector<daf::Size> affectedTuples, unaffectedTuples;
-            for (auto tidx : cp.tupleIdxs) {
-                if (rPeeled[tidx]) continue;
-                bool shares = false;
-                for (auto c : rTuples[tidx].key)
-                    if (tauClassSet.count(c)) { shares = true; break; }
-                if (shares) affectedTuples.push_back(tidx);
-                else unaffectedTuples.push_back(tidx);
+                std::vector<int> req = buildReqVec(idx, pi);
+                pi.deadBoxes.push_back(std::move(req));
+                prof_deadBoxesAdded++;
             }
 
-            // Compute old contributions (only for AFFECTED tuples)
-            std::unordered_map<daf::Size, double> oldContrib;
-            for (auto tidx : affectedTuples) {
-                oldContrib[tidx] = aggrCountOnCPath(tidx, cp);
-                prof_aggrCalls++;
-            }
+            // Collect alive tuples (remove peeled ones)
+            std::vector<daf::Size> alive;
+            alive.reserve(pi.tupleIdxs.size());
+            for (auto tidx : pi.tupleIdxs)
+                if (!rPeeled[tidx])
+                    alive.push_back(tidx);
+            pi.tupleIdxs = std::move(alive);
 
-            auto _t1 = std::chrono::high_resolution_clock::now();
-            prof_oldContrib_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(_t1-_t0).count();
+            if (pi.deadBoxes.empty()) continue;
 
-            // Find active classes
-            struct ActiveClass { daf::Size cid; int mc; };
-            std::vector<ActiveClass> active;
-            for (auto &[c, jc] : tauCounts) {
-                auto cit = cp.classes.find(c);
-                if (cit == cp.classes.end()) continue;
-                int mc = std::max(0, jc - cit->second.nh);
-                if (mc > cit->second.minPiv)
-                    active.push_back({c, mc});
-            }
-
-            // LAZY SPLIT (when s < 2r): parent survives with unaffected tuples.
-            // Sub-paths only get affected tuples. Proven correct by Non-Interference Theorem.
-            const bool lazy = false; // Lazy split disabled: transitive interference not handled
-
-            // Save cp state BEFORE modifying tupleIdxs (sub-paths copy from saved state)
-            CPath savedCp = cp; // copy classes/bounds (tupleIdxs will be overwritten anyway)
-
-            if (lazy) {
-                // Only remove affected + peeled from parent
-                for (auto tidx : affectedTuples) {
-                    auto &vec = tupleToCPaths[tidx];
-                    vec.erase(std::remove(vec.begin(), vec.end(), cpid), vec.end());
+            for (auto tidx : pi.tupleIdxs) {
+                // Build base (lower bound) and upper for this tuple on this path
+                auto &key = rTuples[tidx].key;
+                std::unordered_map<daf::Size, int> counts;
+                for (auto c : key) counts[c]++;
+                std::vector<int> base(m), upper(m);
+                for (int i = 0; i < m; ++i) {
+                    int jc = 0;
+                    auto cit = counts.find(pi.classIds[i]);
+                    if (cit != counts.end()) jc = cit->second;
+                    base[i] = std::max(0, jc - pi.nh[i]);
+                    upper[i] = pi.np[i];
                 }
-                { auto &vec = tupleToCPaths[idx];
-                  vec.erase(std::remove(vec.begin(), vec.end(), cpid), vec.end()); }
-                cp.tupleIdxs = unaffectedTuples; // parent keeps unaffected
-            } else {
-                for (auto tidx : cp.tupleIdxs) {
-                    auto &vec = tupleToCPaths[tidx];
-                    vec.erase(std::remove(vec.begin(), vec.end(), cpid), vec.end());
-                }
-                cp.tupleIdxs.clear();
-            }
 
-            auto _t2 = std::chrono::high_resolution_clock::now();
-            prof_overhead_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(_t2-_t1).count();
+                // Compute new dead count via countUnionWeighted
+                UnionCtx ctx{m, pi.T, 0, tidx, &pi};
+                double newDead = countUnionRec(base, upper, pi.deadBoxes, ctx);
+                prof_totalRecCalls += ctx.recCalls;
+                prof_unionCalls++;
 
-            // Compute new contributions from sub-paths
-            std::unordered_map<daf::Size, double> newContrib;
-            if (active.empty()) {
-                prof_deadPaths++;
-                // Path fully dead: unaffected on parent also lose support
-                if (lazy) {
-                    for (auto tidx : cp.tupleIdxs) {
-                        double oc = aggrCountOnCPath(tidx, savedCp);
-                        prof_aggrCalls++;
-                        dSup[tidx] -= oc;
-                        if (dSup[tidx] < -0.5) dSup[tidx] = 0;
-                        daf::Size nb = (daf::Size)llround(dSup[tidx]);
-                        if (nb < BUCKET_CAP) { buckets[nb].push_back(tidx); if (nb < currentLevel) currentLevel = nb; }
-                        else overflow.insert({nb, tidx});
-                        auto &vec = tupleToCPaths[tidx];
-                        vec.erase(std::remove(vec.begin(), vec.end(), cpid), vec.end());
+                // Look up cached old dead count
+                uint64_t cacheKey = (uint64_t)piIdx * numTuplesSz + tidx;
+                double oldDead = 0.0;
+                auto dit = deadCache.find(cacheKey);
+                if (dit != deadCache.end()) oldDead = dit->second;
+
+                double delta = newDead - oldDead;
+                if (delta > 0.5) {
+                    deadCache[cacheKey] = newDead;
+                    dSup[tidx] -= delta / rTuples[tidx].mult;
+                    if (dSup[tidx] < -0.5) dSup[tidx] = 0;
+                    prof_tupleUpdates++;
+
+                    daf::Size newBucket = (daf::Size)llround(dSup[tidx]);
+                    if (newBucket < BUCKET_CAP) {
+                        buckets[newBucket].push_back(tidx);
+                        if (newBucket < currentLevel) currentLevel = newBucket;
+                    } else {
+                        overflow.insert({newBucket, tidx});
                     }
-                    cp.tupleIdxs.clear();
-                }
-            } else {
-                for (int i = 0; i < (int)active.size(); ++i) {
-                    CPath subCp = savedCp; // use SAVED state (original bounds)
-                    bool feasible = true;
-
-                    for (int j = 0; j < i; ++j) {
-                        auto &cb = subCp.classes[active[j].cid];
-                        cb.minPiv = std::max(cb.minPiv, active[j].mc);
-                        if (cb.minPiv > cb.maxPiv) { feasible = false; break; }
-                    }
-                    if (!feasible) continue;
-
-                    {
-                        auto &cb = subCp.classes[active[i].cid];
-                        cb.maxPiv = std::min(cb.maxPiv, active[i].mc - 1);
-                        if (cb.minPiv > cb.maxPiv) continue;
-                    }
-
-                    int minTotal = 0, maxTotal = 0;
-                    for (auto &[_, cb] : subCp.classes) {
-                        minTotal += cb.minPiv;
-                        maxTotal += cb.maxPiv;
-                    }
-                    if ((s - subCp.h) < minTotal || (s - subCp.h) > maxTotal) continue;
-
-                    subCp.tupleIdxs.clear();
-                    for (auto tidx : affectedTuples) {
-                        double c = aggrCountOnCPath(tidx, subCp);
-                        prof_aggrCalls++;
-                        if (c > 1e-9) {
-                            subCp.tupleIdxs.push_back(tidx);
-                            newContrib[tidx] += c;
-                        }
-                    }
-                    // Lazy: unaffected stay on parent. Full: copy to sub-path.
-                    if (!lazy) {
-                        for (auto tidx : unaffectedTuples)
-                            subCp.tupleIdxs.push_back(tidx);
-                    }
-                    if (subCp.tupleIdxs.empty()) continue;
-
-                    daf::Size newCpid = cpaths.size();
-                    cpaths.push_back(std::move(subCp));
-                    totalSplits++;
-                    prof_splitSubpaths++;
-
-                    for (auto tidx : cpaths.back().tupleIdxs)
-                        tupleToCPaths[tidx].push_back(newCpid);
-                }
-            }
-
-            auto _t3 = std::chrono::high_resolution_clock::now();
-            prof_split_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(_t3-_t2).count();
-
-            // Apply net delta in double, re-bucket
-            for (auto &[tidx, oc] : oldContrib) {
-                double nc = newContrib.count(tidx) ? newContrib[tidx] : 0.0;
-                dSup[tidx] += (nc - oc);
-                if (dSup[tidx] < -0.5) dSup[tidx] = 0;
-                daf::Size newBucket = (daf::Size)llround(dSup[tidx]);
-                if (newBucket < BUCKET_CAP) {
-                    buckets[newBucket].push_back(tidx);
-                    if (newBucket < currentLevel) currentLevel = newBucket;
-                } else {
-                    overflow.insert({newBucket, tidx});
                 }
             }
         }
@@ -863,16 +1164,13 @@ NucleusCoreDecompositionRClique_RegionCPI(
     auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tStep6End - tStart).count();
 
     daf::Size maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
-    std::cout << "\n  --- Cascade Peeling (Analytical Split) ---" << std::endl;
+    std::cout << "\n  --- Cascade Peeling (Batch Union) ---" << std::endl;
     std::cout << "  Peeled: " << numPeeled << " / " << rTuples.size() << std::endl;
-    std::cout << "  Total splits: " << totalSplits << " (sub-paths: " << prof_splitSubpaths
-              << ", dead: " << prof_deadPaths << ")" << std::endl;
-    std::cout << "  Final cpaths: " << cpaths.size() << std::endl;
-    std::cout << "  AggrCount calls: " << prof_aggrCalls << std::endl;
-    std::cout << "  Time breakdown:" << std::endl;
-    std::cout << "    oldContrib: " << prof_oldContrib_ns/1000000 << " ms" << std::endl;
-    std::cout << "    split+new:  " << prof_split_ns/1000000 << " ms" << std::endl;
-    std::cout << "    overhead:   " << prof_overhead_ns/1000000 << " ms" << std::endl;
+    std::cout << "  Batches: " << prof_batchCount << std::endl;
+    std::cout << "  Dead boxes added: " << prof_deadBoxesAdded << std::endl;
+    std::cout << "  Union calls: " << prof_unionCalls << std::endl;
+    std::cout << "  Total recursive calls: " << prof_totalRecCalls << std::endl;
+    std::cout << "  Tuple updates: " << prof_tupleUpdates << std::endl;
     std::cout << "  Max core: " << maxCore << std::endl;
     for (auto &[core, cnt] : coreDist)
         std::cout << "  core=" << core << " count=" << cnt << std::endl;
