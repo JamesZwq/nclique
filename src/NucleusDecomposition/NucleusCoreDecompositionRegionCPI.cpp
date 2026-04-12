@@ -140,7 +140,108 @@ NucleusCoreDecompositionRClique_RegionCPI(
     const daf::Size INVALID = static_cast<daf::Size>(-1);
 
     // ============================================================
-    // Step 1: Build Regions from g_maxCliques (MaxCliqEnum, pre-mutation)
+    // Step 0: Connected Component Decomposition of Clique Overlap Graph
+    // ============================================================
+    // Key insight: maximal cliques that don't overlap can be processed
+    // independently. We decompose into connected components and handle:
+    //   - Isolated cliques (no overlap): closed-form core = C(|M|-r, s-r)
+    //   - Multi-clique components: full V3 pipeline (Steps 1-6)
+
+    // First, collect valid maximal cliques (size >= s)
+    std::vector<daf::Size> mcIndices; // indices into g_maxCliques
+    for (daf::Size i = 0; i < g_maxCliques.size(); ++i)
+        if ((int)g_maxCliques[i].size() >= s) mcIndices.push_back(i);
+    daf::Size numMC = mcIndices.size();
+
+    // Build vertex -> clique membership (for valid cliques only)
+    // mcLocalId: position in mcIndices (0..numMC-1)
+    std::vector<std::vector<daf::Size>> vtxToMC(numVertices);
+    for (daf::Size lid = 0; lid < numMC; ++lid) {
+        for (daf::Size v : g_maxCliques[mcIndices[lid]])
+            if (v < numVertices) vtxToMC[v].push_back(lid);
+    }
+
+    // Union-Find for clique overlap graph
+    std::vector<daf::Size> uf_parent(numMC), uf_rank(numMC, 0);
+    for (daf::Size i = 0; i < numMC; ++i) uf_parent[i] = i;
+    std::function<daf::Size(daf::Size)> uf_find = [&](daf::Size x) -> daf::Size {
+        while (uf_parent[x] != x) { uf_parent[x] = uf_parent[uf_parent[x]]; x = uf_parent[x]; }
+        return x;
+    };
+    auto uf_union = [&](daf::Size a, daf::Size b) {
+        a = uf_find(a); b = uf_find(b);
+        if (a == b) return;
+        if (uf_rank[a] < uf_rank[b]) std::swap(a, b);
+        uf_parent[b] = a;
+        if (uf_rank[a] == uf_rank[b]) uf_rank[a]++;
+    };
+
+    // Two cliques overlap if they share a vertex
+    for (daf::Size v = 0; v < numVertices; ++v) {
+        auto &mcs = vtxToMC[v];
+        for (daf::Size i = 1; i < mcs.size(); ++i)
+            uf_union(mcs[0], mcs[i]);
+    }
+
+    // Group cliques by component
+    std::unordered_map<daf::Size, std::vector<daf::Size>> components; // root -> list of local IDs
+    for (daf::Size lid = 0; lid < numMC; ++lid)
+        components[uf_find(lid)].push_back(lid);
+
+    // Classify components
+    daf::Size numIsolated = 0, numLargeComp = 0;
+    int64_t isolatedRCliques = 0;
+    std::map<daf::Size, int64_t> coreDist; // accumulated core distribution
+    std::vector<daf::Size> largePoolCliques; // local IDs for full V3
+
+    for (auto &[root, members] : components) {
+        if (members.size() == 1) {
+            // --- Isolated clique: core = C(|M|-r, s-r) for all r-cliques ---
+            daf::Size lid = members[0];
+            int mSize = (int)g_maxCliques[mcIndices[lid]].size();
+            daf::Size coreVal = (daf::Size)llround(nCr[mSize - r][s - r]);
+            daf::Size numRCliquesInMC = (daf::Size)llround(nCr[mSize][r]);
+            coreDist[coreVal] += numRCliquesInMC;
+            isolatedRCliques += numRCliquesInMC;
+            numIsolated++;
+            continue;
+        }
+
+        // Multi-clique component: send to full V3 pipeline
+        numLargeComp++;
+        for (daf::Size lid : members) largePoolCliques.push_back(lid);
+    }
+
+    auto tStep0 = std::chrono::high_resolution_clock::now();
+    auto step0Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep0 - tStart).count();
+
+    std::cout << "======= Region CPI (V3) =======" << std::endl;
+    std::cout << "  r=" << r << " s=" << s << std::endl;
+    std::cout << "  Step 0: Connected Component Decomposition" << std::endl;
+    std::cout << "    Valid maximal cliques (>= s): " << numMC << std::endl;
+    std::cout << "    Components: " << components.size() << std::endl;
+    std::cout << "      Isolated (1 clique):  " << numIsolated
+              << " (" << isolatedRCliques << " r-cliques, closed-form)" << std::endl;
+    std::cout << "      Multi-clique (full V3): " << numLargeComp
+              << " (" << largePoolCliques.size() << " cliques)" << std::endl;
+    std::cout << "    Step 0 time: " << step0Ms << " ms" << std::endl;
+
+    // If all cliques handled by Step 0, skip Steps 1-6
+    if (largePoolCliques.empty()) {
+        auto tEnd = std::chrono::high_resolution_clock::now();
+        auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count();
+        daf::Size maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
+        std::cout << "\n  All cliques handled by Step 0 decomposition." << std::endl;
+        std::cout << "  Max core: " << maxCore << std::endl;
+        for (auto &[core, cnt] : coreDist)
+            std::cout << "  core=" << core << " count=" << cnt << std::endl;
+        std::cout << "  Total time: " << totalMs << " ms" << std::endl;
+        std::cout << "==============================================" << std::endl;
+        return {};
+    }
+
+    // ============================================================
+    // Step 1: Build Regions from large-component cliques only
     // ============================================================
 
     daf::Size validPaths = 0;
@@ -151,10 +252,11 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::vector<std::vector<daf::Size>> regionVerts;
     std::vector<std::vector<daf::Size>> vtxMaxPaths(numVertices);
 
-    for (auto &mc : g_maxCliques) {
-        if ((int)mc.size() < s) continue;
+    // Only include cliques from large components
+    for (daf::Size lid : largePoolCliques) {
+        auto &mc = g_maxCliques[mcIndices[lid]];
         daf::Size rid = regionVerts.size();
-        regionVerts.push_back(mc); // already sorted by MaxCliqEnum
+        regionVerts.push_back(mc);
         for (daf::Size v : mc)
             if (v < numVertices) vtxMaxPaths[v].push_back(rid);
         numRegions++;
@@ -200,11 +302,10 @@ NucleusCoreDecompositionRClique_RegionCPI(
     for (auto &v : classesInRegion) std::sort(v.begin(), v.end());
 
     auto tStep2 = std::chrono::high_resolution_clock::now();
-    std::cout << "======= Region CPI (V3) =======" << std::endl;
-    std::cout << "  r=" << r << " s=" << s << std::endl;
-    std::cout << "  Vertices: " << numVertices << ", CPI paths: " << validPaths << std::endl;
-    std::cout << "  Maximal cliques (≥s): " << numRegions << std::endl;
-    std::cout << "  Overlap classes: " << numClasses << std::endl;
+    std::cout << "  Steps 1-2 (large components):" << std::endl;
+    std::cout << "    Regions (large pool): " << numRegions << std::endl;
+    std::cout << "    CPI paths: " << validPaths << std::endl;
+    std::cout << "    Overlap classes: " << numClasses << std::endl;
 
     // ============================================================
     // Step 3: Enumerate r-tuples (same as V2)
@@ -564,7 +665,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
         else overflow.insert({b, i});
     }
 
-    std::map<daf::Size, int64_t> coreDist;
+    // coreDist already initialized in Step 0 (may have isolated/small component entries)
     daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
     daf::Size totalSplits = 0;
 
