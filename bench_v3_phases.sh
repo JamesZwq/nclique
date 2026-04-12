@@ -45,6 +45,7 @@ if [ "$1" = "--run" ]; then
   CHILD_PID=""
   result=$(cat "$logfile")
 
+  # Determine status
   status="OK"
   if [ $exit_code -eq 124 ]; then
     status="TIMEOUT"
@@ -52,48 +53,17 @@ if [ "$1" = "--run" ]; then
     status="ERROR($exit_code)"
   fi
 
-  # Extract timing
-  total=$(echo "$result" | grep 'NucleusCoreDecomposition took:' | awk '{print $3}') || true
+  # Quick extract for console output only (Python does the real parsing)
+  total=$(grep 'NucleusCoreDecomposition took:' "$logfile" 2>/dev/null | awk '{print $3}') || true
+  peel=$(grep 'Peeling time:' "$logfile" 2>/dev/null | tail -1 | sed 's/.*Peeling time:[[:space:]]*//' | sed 's/[[:space:]]*ms.*//') || true
 
-  # Extract memory
-  graph_mem=$(echo "$result" | grep "Graph Memory" | awk -F: '{print $NF}' | tr -d ' kB') || true
-  index_mem=$(echo "$result" | grep -E "Other Index Memory|Other index" | awk -F: '{print $NF}' | tr -d ' kB') || true
-  final_mem=$(echo "$result" | grep "Final Memory" | awk -F: '{print $NF}' | tr -d ' kB') || true
-
-  # V3-specific phases
-  sdct_time=$(echo "$result" | grep 'SDCT_MaxClique took:' | awk '{print $3}') || true
-  maxcliq_time=$(echo "$result" | grep 'MaxCliqEnum (V3) took:' | awk '{print $4}') || true
-  merge_time=$(echo "$result" | grep 'r-Mergeable classification:' | awk '{print $3}') || true
-  cpi_time=$(echo "$result" | grep "CPI counting time:" | awk -F: '{print $NF}' | tr -d ' ms') || true
-  pathinfo_time=$(echo "$result" | grep "PathInfo build time:" | awk -F: '{print $NF}' | tr -d ' ms') || true
-  peel_time=$(echo "$result" | grep "Peeling time:" | awk -F: '{print $NF}' | tr -d ' ms') || true
-  v3_total=$(echo "$result" | grep "Total time:" | awk -F: '{print $NF}' | tr -d ' ms') || true
-
-  # V3-specific stats
-  fully_merge=$(echo "$result" | grep "Fully mergeable" | awk '{print $4}') || true
-  remaining=$(echo "$result" | grep "Remaining regions:" | awk -F: '{print $NF}' | tr -d ' ') || true
-  classes=$(echo "$result" | grep "Overlap classes:" | awk -F: '{print $NF}' | tr -d ' ') || true
-  tuples=$(echo "$result" | grep "r-tuples:" | awk -F: '{print $NF}' | tr -d ' ') || true
-  recursive=$(echo "$result" | grep "Total recursive calls:" | awk -F: '{print $NF}' | tr -d ' ') || true
-  max_core=$(echo "$result" | grep "Max core:" | head -1 | awk -F: '{print $NF}' | tr -d ' ') || true
-  rcliques=$(echo "$result" | grep "r-cliques:" | head -1 | awk -F: '{print $NF}' | tr -d ' ') || true
-
-  # V2-specific
-  v2_enum=$(echo "$result" | grep "Enumeration time:" | awk -F: '{print $NF}' | tr -d ' ms') || true
-  v2_stuples=$(echo "$result" | grep "s-tuples:" | head -1 | awk -F: '{print $NF}' | tr -d ' ') || true
-  v2_peel=$(echo "$result" | grep "Peeling time:" | awk -F: '{print $NF}' | tr -d ' ms') || true
-
-  # ST-specific
-  st_fused=$(echo "$result" | grep 'fused build+counting' | awk '{print $4}') || true
-  st_bk=$(echo "$result" | grep "BK:" | awk -F: '{print $NF}' | tr -d ' ') || true
-
-  (
-    flock -x 200
-    echo "${graph},${r},${s},${algo},${status},${total:-NA},${graph_mem:-NA},${index_mem:-NA},${final_mem:-NA},${sdct_time:-NA},${maxcliq_time:-NA},${merge_time:-NA},${cpi_time:-NA},${pathinfo_time:-NA},${peel_time:-NA},${v3_total:-NA},${fully_merge:-NA},${remaining:-NA},${classes:-NA},${tuples:-NA},${recursive:-NA},${max_core:-NA},${rcliques:-NA},${v2_enum:-NA},${v2_stuples:-NA},${v2_peel:-NA},${st_fused:-NA},${st_bk:-NA}" >> "$OUTCSV"
+  # Mark completion (Python parses the actual log for all fields)
+  ( flock -x 200
+    echo "${graph},${r},${s},${algo},${status}" >> "$OUTCSV"
   ) 200>"$LOCKFILE"
 
   printf "  %-12s %-18s r=%s s=%-2s total=%sms peel=%sms status=%s\n" \
-    "$algo" "$graph" "$r" "$s" "${total:-NA}" "${peel_time:-NA}" "$status"
+    "$algo" "$graph" "$r" "$s" "${total:-NA}" "${peel:-NA}" "$status"
   exit 0
 fi
 
@@ -125,7 +95,7 @@ echo ""
 
 # Setup output
 if [ ! -f "$OUTCSV" ] || ! head -1 "$OUTCSV" | grep -q 'graph,r,s'; then
-  echo "graph,r,s,algo,status,total_ms,graph_mem_kB,index_mem_kB,final_mem_kB,sdct_ms,maxcliq_ms,merge_ms,cpi_ms,pathinfo_ms,peel_ms,v3_total_ms,fully_merge,remaining,classes,tuples,recursive_calls,max_core,rcliques,v2_enum_ms,v2_stuples,v2_peel_ms,st_fused_ms,st_bk_ms" > "$OUTCSV"
+  echo "graph,r,s,algo,status" > "$OUTCSV"
 fi
 mkdir -p "$LOGDIR"
 
@@ -208,7 +178,7 @@ write_oom() {
   g=$(echo "$a" | awk '{print $2}'); r=$(echo "$a" | awk '{print $3}')
   s=$(echo "$a" | awk '{print $4}'); algo=$(echo "$a" | awk '{print $5}')
   ( flock -x 200
-    echo "${g},${r},${s},${algo},OOM,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA" >> "$OUTCSV"
+    echo "${g},${r},${s},${algo},OOM" >> "$OUTCSV"
   ) 200>"$LOCKFILE"
   echo "  [OOM] ${algo} ${g} r=${r} s=${s}"
 }
@@ -294,51 +264,7 @@ echo "  Logs: $LOGDIR/"
 echo "  $(date)"
 echo "============================================================="
 
-# ============ Summary table ============
+# ============ Parse logs & generate summary ============
 echo ""
-echo "=== Summary: Total Time (ms) ==="
-echo ""
-printf "%-18s %3s %3s | %10s %10s %10s\n" "Graph" "r" "s" "ST" "V2" "V3"
-echo "---------------------------------------------------------------------"
-
-tail -n +2 "$OUTCSV" | sort -t',' -k1,1 -k2,2n -k3,3n | awk -F',' '
-{
-  key=$1","$2","$3
-  if ($4=="ST") st[key]=$6
-  if ($4=="V2") v2[key]=$6
-  if ($4=="V3") v3[key]=$6
-  seen[key]=1
-}
-END {
-  for (key in seen) {
-    split(key, a, ",")
-    printf "%-18s %3s %3s | %10s %10s %10s\n",
-      a[1], a[2], a[3],
-      (st[key]?st[key]:"NA"), (v2[key]?v2[key]:"NA"), (v3[key]?v3[key]:"NA")
-  }
-}' | sort
-
-echo ""
-echo "=== Summary: Memory (MB) ==="
-echo ""
-printf "%-18s %3s %3s | %8s %8s %8s\n" "Graph" "r" "s" "ST" "V2" "V3"
-echo "---------------------------------------------------------------------"
-
-tail -n +2 "$OUTCSV" | sort -t',' -k1,1 -k2,2n -k3,3n | awk -F',' '
-{
-  key=$1","$2","$3
-  if ($4=="ST") st[key]=$9
-  if ($4=="V2") v2[key]=$9
-  if ($4=="V3") v3[key]=$9
-  seen[key]=1
-}
-END {
-  for (key in seen) {
-    split(key, a, ",")
-    st_mb = (st[key] && st[key]!="NA") ? sprintf("%.0f", st[key]/1024) : "NA"
-    v2_mb = (v2[key] && v2[key]!="NA") ? sprintf("%.0f", v2[key]/1024) : "NA"
-    v3_mb = (v3[key] && v3[key]!="NA") ? sprintf("%.0f", v3[key]/1024) : "NA"
-    printf "%-18s %3s %3s | %8s %8s %8s\n",
-      a[1], a[2], a[3], st_mb, v2_mb, v3_mb
-  }
-}' | sort
+echo "Parsing logs with Python..."
+python3 bench_parse_logs.py
