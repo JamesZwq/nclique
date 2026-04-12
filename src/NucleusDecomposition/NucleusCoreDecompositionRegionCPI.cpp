@@ -454,7 +454,9 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // Partial mergeability (r-mergeable in SOME regions) would require per-region
     // class sizes, which conflicts with the global tuple mult framework.
     daf::Size numOrigClasses = numClasses;
-    const bool mergeDisabled = (getenv("PIVOTER_NO_MERGE") != nullptr);
+    // r-merging: disabled by default (increases split count for large s).
+    // Enable with PIVOTER_MERGE=1 for experiments.
+    const bool mergeDisabled = (getenv("PIVOTER_MERGE") == nullptr);
 
     std::vector<bool> classFullyMergeable(numOrigClasses, false);
     if (!mergeDisabled) {
