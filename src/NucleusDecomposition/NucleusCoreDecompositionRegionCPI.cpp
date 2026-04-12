@@ -263,7 +263,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
     }
 
     // ============================================================
-    // Step 2: Build Overlap Classes (same as V2)
+    // Step 2: Build Overlap Classes (standard)
     // ============================================================
 
     struct ClassInfo { std::vector<daf::Size> regionIds; daf::Size size; };
@@ -301,14 +301,318 @@ NucleusCoreDecompositionRClique_RegionCPI(
             classesInRegion[rid].push_back(cid);
     for (auto &v : classesInRegion) std::sort(v.begin(), v.end());
 
+    // ============================================================
+    // Step 2b: r-Mergeable class analysis (for tuple merging in Step 3b)
+    // ============================================================
+    // A class C is r-mergeable in region R if for ALL other regions R' in C's
+    // profile: |R ∩ R'| < r. This means any r-clique using vertices of C within
+    // R cannot extend to another region.
+    //
+    // Consequence: In region R, if ALL classes of a tuple T are r-mergeable
+    // (or private to R), then ALL r-cliques of type T within R have the same
+    // support = C(|R|-r, s-r). Such tuples can be MERGED into a single
+    // "super-tuple" with combined multiplicity.
+
+    // For class C with profile P_C = {R1,..,Rk}:
+    //   C is r-mergeable in Ri iff for ALL j != i: |Ri ∩ Rj| < r
+    //
+    // Key insight: we don't need ALL pairwise intersection sizes. We only need
+    // to check pairs from the same class profile. And we can use a threshold
+    // approach: a class is NOT r-mergeable in Ri if ANY Rj in its profile has
+    // |Ri ∩ Rj| >= r.
+    //
+    // Fast approach: for each multi-region class C, check if its profile regions
+    // have pairwise intersection >= r. Use per-region neighbor lists to quickly
+    // compute intersection sizes for just the needed pairs.
+
+    // classRMergeable[cid][rid] = true if class cid is r-mergeable in region rid
+    std::vector<std::unordered_map<daf::Size, bool>> classRMergeable(numClasses);
+    daf::Size mergeableClassRegionPairs = 0;
+
+    // Build intersection data lazily: for each multi-region class, compute
+    // pairwise intersection sizes between its profile regions.
+    // Use the fact: |Ri ∩ Rj| = number of vertices in both Ri and Rj
+    //             = Σ classes C' with both Ri and Rj in C'.profile : |C'|
+
+    // Approach: Build per-region -> set of (class, size) for multi-region classes.
+    // Then for a pair (Ri, Rj): |Ri ∩ Rj| = Σ of sizes of classes appearing in both.
+
+    // regionMultiClasses[rid] = list of (cid, size) for multi-region classes in rid
+    std::vector<std::vector<std::pair<daf::Size, daf::Size>>> regionMultiClasses(numRegions);
+    for (daf::Size cid = 0; cid < numClasses; ++cid) {
+        if (classes[cid].regionIds.size() <= 1) continue;
+        for (daf::Size rid : classes[cid].regionIds)
+            regionMultiClasses[rid].push_back({cid, classes[cid].size});
+    }
+
+    // Cache for pairwise intersections (computed on demand)
+    std::unordered_map<uint64_t, int> pairIntersectionCache;
+    auto pairKey = [](daf::Size a, daf::Size b) -> uint64_t {
+        return ((uint64_t)std::min(a,b) << 32) | (uint64_t)std::max(a,b);
+    };
+
+    auto getIntersection = [&](daf::Size r1, daf::Size r2) -> int {
+        uint64_t key = pairKey(r1, r2);
+        auto it = pairIntersectionCache.find(key);
+        if (it != pairIntersectionCache.end()) return it->second;
+
+        // Compute: iterate multi-region classes of the smaller region list
+        int isz = 0;
+        auto &listA = regionMultiClasses[r1];
+        auto &listB = regionMultiClasses[r2];
+        auto &smaller = (listA.size() <= listB.size()) ? listA : listB;
+        daf::Size otherRid = (listA.size() <= listB.size()) ? r2 : r1;
+
+        for (auto &[cid, sz] : smaller) {
+            // Check if this class is also in otherRid
+            bool inOther = false;
+            for (daf::Size rid3 : classes[cid].regionIds)
+                if (rid3 == otherRid) { inOther = true; break; }
+            if (inOther) isz += (int)sz;
+        }
+
+        pairIntersectionCache[key] = isz;
+        return isz;
+    };
+
+    daf::Size skippedLargeClass = 0, skippedLargeProfile = 0;
+    for (daf::Size cid = 0; cid < numClasses; ++cid) {
+        auto &regs = classes[cid].regionIds;
+        if (regs.size() <= 1) {
+            for (daf::Size rid : regs)
+                classRMergeable[cid][rid] = true;
+            continue;
+        }
+
+        // Quick filter 1: |C| >= r → |Ri ∩ Rj| >= |C| >= r → not mergeable
+        if ((int)classes[cid].size >= (int)r) {
+            skippedLargeClass++;
+            continue; // classRMergeable entries default to absent (= non-mergeable)
+        }
+
+        // Quick filter 2: profile size > 500 → skip (too expensive to check,
+        // and almost certainly non-mergeable due to large intersections)
+        if (regs.size() > 500) {
+            skippedLargeProfile++;
+            continue;
+        }
+
+        for (daf::Size rid : regs) {
+            bool mergeable = true;
+            for (daf::Size rid2 : regs) {
+                if (rid == rid2) continue;
+                int isz = getIntersection(rid, rid2);
+                if (isz >= (int)r) { mergeable = false; break; }
+            }
+            classRMergeable[cid][rid] = mergeable;
+            if (mergeable) mergeableClassRegionPairs++;
+        }
+    }
+
+    daf::Size pairsCached = pairIntersectionCache.size();
+    // Free data structures no longer needed
+    regionMultiClasses.clear();
+    regionMultiClasses.shrink_to_fit();
+    pairIntersectionCache.clear();
+
     auto tStep2 = std::chrono::high_resolution_clock::now();
+    auto step2Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep2 - tStep0).count();
     std::cout << "  Steps 1-2 (large components):" << std::endl;
     std::cout << "    Regions (large pool): " << numRegions << std::endl;
     std::cout << "    CPI paths: " << validPaths << std::endl;
-    std::cout << "    Overlap classes: " << numClasses << std::endl;
+    std::cout << "    Overlap classes (before merge): " << numClasses << std::endl;
+    std::cout << "    r-mergeable multi-region (class,region) pairs: " << mergeableClassRegionPairs << std::endl;
+    std::cout << "    Pair intersection cache: " << pairsCached << " pairs" << std::endl;
+    std::cout << "    Step 1-2 time: " << step2Ms << " ms" << std::endl;
 
     // ============================================================
-    // Step 3: Enumerate r-tuples (same as V2)
+    // Step 2c: r-Mergeable Class Merging
+    // ============================================================
+    // For each region R, merge all r-mergeable classes into a SINGLE merged
+    // class M_R. This dramatically reduces class count and tuple count on
+    // sparse graphs.
+    //
+    // Key invariant: each merged class M_R belongs to exactly ONE region R,
+    // so classSizes[M_R] is globally unique (= count of mergeable vertices in R).
+    //
+    // Challenge: vertex v in multiple regions may be mergeable in all of them,
+    // so it belongs to M_R1 in R1 and M_R2 in R2. We can't store both in
+    // classOf[v]. Solution: for CPI paths, determine the path's region and use
+    // a per-region class lookup for mergeable vertices.
+    //
+    // Data structures:
+    //   mergedClassForRegion[rid] = merged class ID for region rid (INVALID if none)
+    //   vertexIsMergeable[v]      = true if v is mergeable in ANY region
+    //   pathRegion[pid]           = region ID that contains CPI path pid
+    //   For path processing: if v is mergeable, use mergedClassForRegion[pathRegion]
+    //                        otherwise use classOf[v] (unchanged)
+
+    // A class C is "fully mergeable" if C is r-mergeable in ALL regions of its
+    // profile. Only fully-mergeable classes can be safely merged: their vertices
+    // are removed from C (size→0) and placed into per-region merged classes.
+    //
+    // Partial mergeability (r-mergeable in SOME regions) would require per-region
+    // class sizes, which conflicts with the global tuple mult framework.
+    daf::Size numOrigClasses = numClasses;
+    const bool mergeDisabled = (getenv("PIVOTER_NO_MERGE") != nullptr);
+
+    std::vector<bool> classFullyMergeable(numOrigClasses, false);
+    if (!mergeDisabled) {
+      for (daf::Size cid = 0; cid < numOrigClasses; ++cid) {
+        auto &regs = classes[cid].regionIds;
+        if (regs.empty()) continue;
+        bool allMerge = true;
+        for (daf::Size rid : regs) {
+            auto it = classRMergeable[cid].find(rid);
+            if (it == classRMergeable[cid].end() || !it->second) {
+                allMerge = false; break;
+            }
+        }
+        classFullyMergeable[cid] = allMerge;
+      }
+    }
+
+    // Identify fully-mergeable vertices and count per region
+    std::vector<bool> vertexIsMergeable(numVertices, false);
+    std::vector<daf::Size> mergeableCount(numRegions, 0);
+    daf::Size fullyMergeableVertices = 0;
+    for (daf::Size v = 0; v < numVertices; ++v) {
+        if (classOf[v] == INVALID) continue;
+        if (!classFullyMergeable[classOf[v]]) continue;
+        vertexIsMergeable[v] = true;
+        fullyMergeableVertices++;
+        for (daf::Size rid : classes[classOf[v]].regionIds)
+            mergeableCount[rid]++;
+    }
+
+    // Create merged classes only for regions with fully-mergeable vertices
+    std::vector<daf::Size> mergedClassForRegion(numRegions, INVALID);
+    daf::Size numMergedClasses = 0;
+    for (daf::Size rid = 0; rid < numRegions; ++rid) {
+        if (mergeableCount[rid] == 0) continue;
+        daf::Size mcid = classes.size();
+        classes.push_back({{rid}, mergeableCount[rid]});
+        mergedClassForRegion[rid] = mcid;
+        numMergedClasses++;
+    }
+    numClasses = classes.size();
+    classSizes.resize(numClasses);
+    for (daf::Size i = numOrigClasses; i < numClasses; ++i)
+        classSizes[i] = classes[i].size;
+
+    // Zero out fully-mergeable original classes (their vertices are now in merged classes)
+    for (daf::Size cid = 0; cid < numOrigClasses; ++cid) {
+        if (!classFullyMergeable[cid]) continue;
+        classSizes[cid] = 0;
+        classes[cid].size = 0;
+    }
+
+    // Rebuild classesInRegion with merged classes
+    classesInRegion.assign(numRegions, {});
+    for (daf::Size cid = 0; cid < numClasses; ++cid) {
+        if (classSizes[cid] == 0) continue; // skip empty classes
+        for (daf::Size rid : classes[cid].regionIds)
+            classesInRegion[rid].push_back(cid);
+    }
+    for (auto &v : classesInRegion) std::sort(v.begin(), v.end());
+
+    // Build path-to-region mapping: for each CPI path, find which region
+    // contains all its vertices. Use the first vertex's region set and intersect.
+    std::vector<daf::Size> pathRegion(numPaths, INVALID);
+    for (daf::Size pid = 0; pid < numPaths; ++pid) {
+        auto &leaf = tree.adj_list[pid];
+        if ((int)leaf.size() < (int)s) continue;
+
+        // Find a vertex in the path that's in the large pool
+        daf::Size bestRid = INVALID;
+        for (const auto &node : leaf) {
+            daf::Size v = node.v;
+            if (v >= numVertices) continue;
+            auto &vregs = vtxMaxPaths[v];
+            if (vregs.empty()) continue;
+            if (bestRid == INVALID) {
+                // First vertex with regions: pick its first region as candidate
+                // (any region containing this vertex)
+                bestRid = vregs[0];
+            }
+            // Verify: is bestRid still valid for this vertex?
+            bool found = false;
+            for (daf::Size rid : vregs)
+                if (rid == bestRid) { found = true; break; }
+            if (!found) {
+                // Need to intersect: find a region common to all vertices so far
+                // For correctness, try all regions of this vertex
+                bestRid = INVALID;
+                for (daf::Size candRid : vregs) {
+                    // Check if candRid contains all previous vertices
+                    // (expensive but paths are small)
+                    bool ok = true;
+                    for (const auto &prevNode : leaf) {
+                        if (&prevNode == &node) break;
+                        daf::Size pv = prevNode.v;
+                        if (pv >= numVertices) continue;
+                        auto &pvregs = vtxMaxPaths[pv];
+                        if (pvregs.empty()) continue;
+                        bool inCand = false;
+                        for (daf::Size rid2 : pvregs)
+                            if (rid2 == candRid) { inCand = true; break; }
+                        if (!inCand) { ok = false; break; }
+                    }
+                    if (ok) { bestRid = candRid; break; }
+                }
+                if (bestRid == INVALID) break;
+            }
+        }
+        pathRegion[pid] = bestRid;
+    }
+
+    // Helper: get the effective class of vertex v on a path in region rid.
+    // If v is fully mergeable and rid has a merged class, return that merged class.
+    // Otherwise return classOf[v] (which may have size 0 if fully merged; caller skips).
+    auto effectiveClass = [&](daf::Size v, daf::Size rid) -> daf::Size {
+        if (v >= numVertices || classOf[v] == INVALID) return INVALID;
+        if (!vertexIsMergeable[v] || rid == INVALID) return classOf[v];
+        daf::Size mcid = mergedClassForRegion[rid];
+        return (mcid != INVALID) ? mcid : classOf[v];
+    };
+
+    // Count original classes-in-region entries (for comparison, before merge)
+    // All original classes with non-zero original size are counted
+    daf::Size origClassesInRegionEntries = 0;
+    for (daf::Size cid = 0; cid < numOrigClasses; ++cid) {
+        // classes[cid].size is now 0 for merged classes; use classFullyMergeable to detect
+        if (classes[cid].size > 0 || classFullyMergeable[cid])
+            origClassesInRegionEntries += classes[cid].regionIds.size();
+    }
+    // Count single-region classes that were merged (they reduce entries)
+    daf::Size singleRegMerged = 0, multiRegMerged = 0;
+    for (daf::Size cid = 0; cid < numOrigClasses; ++cid) {
+        if (!classFullyMergeable[cid]) continue;
+        if (classes[cid].regionIds.size() == 1) singleRegMerged++;
+        else multiRegMerged++;
+    }
+
+    auto tStep2c = std::chrono::high_resolution_clock::now();
+    auto step2cMs = std::chrono::duration_cast<std::chrono::milliseconds>(tStep2c - tStep2).count();
+    std::cout << "  Step 2c: r-Mergeable Class Merging" << std::endl;
+    std::cout << "    Fully-mergeable: " << singleRegMerged << " single-region + "
+              << multiRegMerged << " multi-region = "
+              << (singleRegMerged + multiRegMerged) << " / " << numOrigClasses << std::endl;
+    std::cout << "    Fully-mergeable vertices: " << fullyMergeableVertices << std::endl;
+    std::cout << "    Merged classes created: " << numMergedClasses << std::endl;
+    std::cout << "    Active classes (after merge): "
+              << std::count_if(classSizes.begin(), classSizes.end(), [](daf::Size s){return s>0;})
+              << std::endl;
+    {
+        daf::Size totalClassesInRegions = 0;
+        for (auto &v : classesInRegion) totalClassesInRegions += v.size();
+        std::cout << "    Classes-in-region entries: " << origClassesInRegionEntries
+                  << " -> " << totalClassesInRegions << std::endl;
+    }
+    std::cout << "    Merge time: " << step2cMs << " ms" << std::endl;
+
+    // ============================================================
+    // Step 3: Enumerate r-tuples (using merged classes)
     // ============================================================
 
     std::unordered_map<TupleKey, daf::Size, TupleHash> rTupleIndex;
@@ -341,40 +645,191 @@ NucleusCoreDecompositionRClique_RegionCPI(
     }
 
     auto tStep3 = std::chrono::high_resolution_clock::now();
-    std::cout << "  r-tuples: " << rTuples.size() << std::endl;
+    daf::Size numRawTuples = rTuples.size();
+    std::cout << "  Raw r-tuples (after merge): " << numRawTuples << std::endl;
 
     // ============================================================
-    // Step 4: CPI Counting for initial support (THE KEY INNOVATION)
+    // Step 3b: r-Mergeable Tuple Classification
     // ============================================================
-    // CORRECT formula (handles covered-but-not-encoded r-cliques):
+    // A tuple T is "closed-form" in region R if ALL its classes are r-mergeable
+    // in R (including single-region classes which are trivially private).
+    // Such tuples have support = C(|R|-r, s-r) for all their r-cliques.
     //
-    // AggrCount(τ, P) = Σ_{b_R} [Π_R C(nh_R, j_R-b_R) C(np_R, b_R)] × C(p-Σb_R, s-h-Σb_R)
+    // We merge all closed-form tuples for the same region into a SUPER-TUPLE:
+    //   super_mult = sum of mults of constituent tuples = C(mergeablePoolSize, r)
+    //   support = C(|R|-r, s-r) (closed form, no CPI needed)
     //
-    // Computed via convolution: g_c(x) per class, f = Π g_c, then sum f[t]×C(p-t, s-h-t).
+    // Non-closed-form tuples keep individual support computed via CPI.
+
+    // For each tuple, determine if it's closed-form and in which region
+    std::vector<bool> tupleIsClosedForm(rTuples.size(), false);
+    std::vector<daf::Size> tupleClosedFormRegion(rTuples.size(), INVALID);
+
+    // For each region, compute the "mergeable pool" size = sum of sizes of
+    // all r-mergeable classes in that region (using post-merge class set)
+    // Note: merged classes M_R are single-region, size = mergeableCount[R],
+    // and are trivially "mergeable" in their region.
+    std::vector<daf::Size> mergeablePoolSizeV(numRegions, 0);
+    for (daf::Size rid = 0; rid < numRegions; ++rid) {
+        for (daf::Size cid : classesInRegion[rid]) {
+            if (classSizes[cid] == 0) continue;
+            if (cid >= numOrigClasses) {
+                // Merged class: always mergeable in its region
+                mergeablePoolSizeV[rid] += classSizes[cid];
+            } else if (classes[cid].regionIds.size() == 1) {
+                // Single-region original class (not fully-mergeable, else size=0): mergeable
+                mergeablePoolSizeV[rid] += classSizes[cid];
+            } else {
+                auto it = classRMergeable[cid].find(rid);
+                if (it != classRMergeable[cid].end() && it->second)
+                    mergeablePoolSizeV[rid] += classSizes[cid];
+            }
+        }
+    }
+
+    // Pre-compute: for each class, the set of regions where it's r-mergeable
+    // (includes single-region classes and merged classes which are trivially mergeable)
+    std::vector<std::vector<daf::Size>> classMergeableRegions(numClasses);
+    for (daf::Size cid = 0; cid < numClasses; ++cid) {
+        if (classSizes[cid] == 0) continue;
+        if (cid >= numOrigClasses || classes[cid].regionIds.size() == 1) {
+            // Merged class or single-region: trivially mergeable in its region(s)
+            classMergeableRegions[cid] = classes[cid].regionIds;
+        } else {
+            for (auto &[rid, mg] : classRMergeable[cid])
+                if (mg) classMergeableRegions[cid].push_back(rid);
+            std::sort(classMergeableRegions[cid].begin(), classMergeableRegions[cid].end());
+        }
+    }
+
+    for (daf::Size tidx = 0; tidx < rTuples.size(); ++tidx) {
+        auto &key = rTuples[tidx].key;
+        // Collect unique classes in this tuple
+        std::vector<daf::Size> tupleCids;
+        {
+            daf::Size prev = INVALID;
+            for (auto c : key) if (c != prev) { tupleCids.push_back(c); prev = c; }
+        }
+
+        // Find a region where ALL classes are r-mergeable:
+        // Intersect the mergeable-region sets of all classes
+        // Start with the smallest set for efficiency
+        int smallestIdx = 0;
+        size_t smallestSize = classMergeableRegions[tupleCids[0]].size();
+        for (int i = 1; i < (int)tupleCids.size(); ++i) {
+            if (classMergeableRegions[tupleCids[i]].size() < smallestSize) {
+                smallestSize = classMergeableRegions[tupleCids[i]].size();
+                smallestIdx = i;
+            }
+        }
+
+        // Check each region in the smallest set
+        for (daf::Size rid : classMergeableRegions[tupleCids[smallestIdx]]) {
+            bool allMergeable = true;
+            for (int i = 0; i < (int)tupleCids.size(); ++i) {
+                if (i == smallestIdx) continue;
+                auto &regs = classMergeableRegions[tupleCids[i]];
+                if (!std::binary_search(regs.begin(), regs.end(), rid)) {
+                    allMergeable = false; break;
+                }
+            }
+            if (allMergeable) {
+                tupleIsClosedForm[tidx] = true;
+                tupleClosedFormRegion[tidx] = rid;
+                break;
+            }
+        }
+    }
+
+    // Build super-tuples: one per region that has closed-form tuples
+    // superTuples[rid] = {combined mult, support}
+    struct SuperTuple { daf::Size mult; double support; daf::Size region; };
+    std::vector<SuperTuple> superTuples;
+    std::unordered_map<daf::Size, daf::Size> regionToSuperIdx; // rid -> super-tuple index
+
+    daf::Size closedFormTuples = 0, closedFormRCliques = 0;
+    daf::Size cpiTuples = 0;
+
+    for (daf::Size tidx = 0; tidx < rTuples.size(); ++tidx) {
+        if (!tupleIsClosedForm[tidx]) { cpiTuples++; continue; }
+        closedFormTuples++;
+        closedFormRCliques += rTuples[tidx].mult;
+        daf::Size rid = tupleClosedFormRegion[tidx];
+        auto it = regionToSuperIdx.find(rid);
+        if (it == regionToSuperIdx.end()) {
+            regionToSuperIdx[rid] = superTuples.size();
+            int regSize = (int)regionVerts[rid].size();
+            double sup = (regSize >= (int)s) ? nCr[regSize - r][s - r] : 0.0;
+            superTuples.push_back({rTuples[tidx].mult, sup, rid});
+        } else {
+            superTuples[it->second].mult += rTuples[tidx].mult;
+        }
+    }
+
+    // Verify: for each region with a super-tuple, the combined mult should
+    // equal C(mergeablePoolSizeV[rid], r)
+    for (auto &[rid, sidx] : regionToSuperIdx) {
+        daf::Size expected = (daf::Size)llround(nCr[mergeablePoolSizeV[rid]][r]);
+        if (superTuples[sidx].mult != expected) {
+            std::cout << "  WARNING: super-tuple region " << rid
+                      << " mult=" << superTuples[sidx].mult
+                      << " expected C(" << mergeablePoolSizeV[rid] << "," << r
+                      << ")=" << expected << std::endl;
+        }
+    }
+
+    auto tStep3b = std::chrono::high_resolution_clock::now();
+    auto step3bMs = std::chrono::duration_cast<std::chrono::milliseconds>(tStep3b - tStep3).count();
+    std::cout << "  Closed-form tuples: " << closedFormTuples << " / " << numRawTuples
+              << " (" << closedFormRCliques << " r-cliques)" << std::endl;
+    std::cout << "  Super-tuples (regions): " << superTuples.size() << std::endl;
+    std::cout << "  CPI-needed tuples: " << cpiTuples << std::endl;
+    std::cout << "  Merge classification time: " << step3bMs << " ms" << std::endl;
+
+    // ============================================================
+    // Step 4: CPI Counting for initial support
+    // ============================================================
+    // Only compute CPI support for non-closed-form tuples.
+    // Closed-form tuples already have support = C(|R|-r, s-r).
 
     std::vector<double> support(rTuples.size(), 0.0);
 
+    // Pre-assign closed-form support
+    for (daf::Size tidx = 0; tidx < rTuples.size(); ++tidx) {
+        if (!tupleIsClosedForm[tidx]) continue;
+        daf::Size rid = tupleClosedFormRegion[tidx];
+        int regSize = (int)regionVerts[rid].size();
+        support[tidx] = (regSize >= (int)s) ? nCr[regSize - r][s - r] : 0.0;
+    }
+
     daf::Size pathsUsed = 0;
     daf::Size totalTuplesOnPaths = 0;
+    daf::Size pathsWithRegion = 0, pathsWithoutRegion = 0;
 
     for (daf::Size pid = 0; pid < numPaths; ++pid) {
         auto &leaf = tree.adj_list[pid];
         if ((int)leaf.size() < (int)s) continue;
 
+        daf::Size pRid = pathRegion[pid]; // region for this path
+
         // Compute h, p and class distribution on this path
+        // Use effectiveClass to map mergeable vertices to merged classes
         int h = 0, p = 0;
         std::unordered_map<daf::Size, std::pair<int,int>> classDistrib; // cid -> (nh, np)
 
         for (const auto &node : leaf) {
             daf::Size v = node.v;
-            if (v >= numVertices || classOf[v] == INVALID) continue;
-            daf::Size cid = classOf[v];
+            daf::Size cid = effectiveClass(v, pRid);
+            if (cid == INVALID) continue;
+            if (classSizes[cid] == 0) continue; // class was fully merged away
             if (node.isPivot) { p++; classDistrib[cid].second++; }
             else { h++; classDistrib[cid].first++; }
         }
 
         if (h + p < (int)s) continue;
         pathsUsed++;
+        if (pRid != INVALID) pathsWithRegion++;
+        else pathsWithoutRegion++;
 
         // Collect unique classes on this path
         std::vector<daf::Size> pathClasses;
@@ -384,6 +839,14 @@ NucleusCoreDecompositionRClique_RegionCPI(
         // Enumerate r-multisets of this path's classes
         TupleKey cur; cur.reserve(r);
         std::function<void()> cb = [&]() {
+            // Look up this r-tuple
+            auto it = rTupleIndex.find(cur);
+            if (it == rTupleIndex.end()) return;
+            daf::Size tidx = it->second;
+
+            // Skip closed-form tuples (support already assigned)
+            if (tupleIsClosedForm[tidx]) return;
+
             // Build composition: (class, count) pairs
             std::vector<std::pair<daf::Size, int>> tauClasses;
             {
@@ -398,15 +861,10 @@ NucleusCoreDecompositionRClique_RegionCPI(
             // Feasibility: for each class c with j_c copies in tau,
             // need j_c <= n_h^c + n_p^c
             for (auto &[c, jc] : tauClasses) {
-                auto it = classDistrib.find(c);
-                if (it == classDistrib.end()) return;
-                if (jc > it->second.first + it->second.second) return;
+                auto dit = classDistrib.find(c);
+                if (dit == classDistrib.end()) return;
+                if (jc > dit->second.first + dit->second.second) return;
             }
-
-            // Look up this r-tuple
-            auto it = rTupleIndex.find(cur);
-            if (it == rTupleIndex.end()) return;
-            daf::Size tidx = it->second;
 
             // Convolution to compute AggrCount
             // f[t] = coefficient of x^t in Π_c g_c(x)
@@ -451,17 +909,18 @@ NucleusCoreDecompositionRClique_RegionCPI(
     }
 
     auto tStep4 = std::chrono::high_resolution_clock::now();
-    auto step4Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep4 - tStep3).count();
+    auto step4Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep4 - tStep3b).count();
 
     double totalSupportTuples = 0, totalRCliques = 0;
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
         totalSupportTuples += rTuples[i].mult * support[i];
         totalRCliques += rTuples[i].mult;
     }
-    std::cout << "  CPI paths used: " << pathsUsed << std::endl;
-    std::cout << "  Tuple-path pairs: " << totalTuplesOnPaths << std::endl;
+    std::cout << "  CPI paths used: " << pathsUsed
+              << " (region: " << pathsWithRegion << ", no-region: " << pathsWithoutRegion << ")" << std::endl;
+    std::cout << "  Tuple-path pairs (CPI only): " << totalTuplesOnPaths << std::endl;
     std::cout << "  r-cliques: " << std::fixed << std::setprecision(0) << totalRCliques << std::endl;
-    std::cout << "  Support sum (CPI): " << totalSupportTuples << std::endl;
+    std::cout << "  Support sum: " << totalSupportTuples << std::endl;
     std::cout << "  CPI counting time: " << step4Ms << " ms" << std::endl;
 
     // ============================================================
@@ -574,12 +1033,15 @@ NucleusCoreDecompositionRClique_RegionCPI(
         auto &leaf = tree.adj_list[pid];
         if ((int)leaf.size() < (int)s) continue;
 
+        daf::Size pRid = pathRegion[pid]; // region for this path
+
         CPath cp;
         cp.h = 0;
         for (const auto &node : leaf) {
             daf::Size v = node.v;
-            if (v >= numVertices || classOf[v] == INVALID) continue;
-            daf::Size cid = classOf[v];
+            daf::Size cid = effectiveClass(v, pRid);
+            if (cid == INVALID) continue;
+            if (classSizes[cid] == 0) continue; // merged away
             auto &cb = cp.classes[cid];
             if (node.isPivot) { cb.np++; }
             else { cb.nh++; cp.h++; }
