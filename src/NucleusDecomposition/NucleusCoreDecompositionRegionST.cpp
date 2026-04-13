@@ -1,26 +1,20 @@
 //
-// Region + ST (V4): ST peeling with tuple-level compression.
+// Region + ST (V4): Maximal-Clique-Level Peeling
 //
-// Same correctness as ST. Key optimization: tuple batching.
-// When popping an r-clique, also pop all r-cliques of its tuple
-// (they share the same core value by Support Equality Theorem).
-//
-// Peeling: per-r-clique support tracking (same as ST).
-// Bucket queue: per-r-clique (same as ST), but batch pop by tuple.
+// No CPI, no cliqueIndex, no BK, no convolution.
+// Support computed via inclusion-exclusion over maximal cliques.
+// Each IE term = ONE C(n,k). Typically 2-8 terms per tuple.
 //
 
 #include "NCliqueCoreDecomposition.h"
-#include "../BK/BronKerboschRmRClique.hpp"
-#include "dataStruct/CliqueHashMap.h"
-#include "graph/DynamicGraphSet.h"
 #include <algorithm>
 #include <chrono>
-#include <cstring>
 #include <iostream>
 #include <map>
 #include <unordered_map>
 #include <vector>
 #include <set>
+#include <functional>
 
 extern double nCr[1001][401];
 extern std::vector<std::vector<daf::Size>> g_maxCliques;
@@ -46,19 +40,24 @@ NucleusCoreDecompositionRClique_RegionST(
     const daf::Size INVALID = std::numeric_limits<daf::Size>::max();
 
     // ================================================================
-    // Step 1: Build overlap classes + tuples from maximal cliques
+    // Step 1: MCs, Classes, Tuples
     // ================================================================
-    std::vector<std::vector<daf::Size>> vtxRegions(numVertices);
-    daf::Size numRegions = 0;
-    for (auto &mc : g_maxCliques) {
-        if ((int)mc.size() < s) continue;
-        daf::Size rid = numRegions++;
-        for (daf::Size v : mc)
-            if (v < numVertices) vtxRegions[v].push_back(rid);
-    }
+    // Filter maximal cliques ≥ s
+    std::vector<std::vector<daf::Size>> mcs; // mc[i] = sorted vertex list
+    for (auto &mc : g_maxCliques)
+        if ((int)mc.size() >= s) mcs.push_back(mc);
+    daf::Size numMC = mcs.size();
 
+    // Vertex → MC membership
+    std::vector<std::vector<daf::Size>> vtxMCs(numVertices);
+    for (daf::Size mi = 0; mi < numMC; ++mi)
+        for (auto v : mcs[mi])
+            if (v < numVertices) vtxMCs[v].push_back(mi);
+
+    // Overlap classes
     std::vector<daf::Size> classOf(numVertices, INVALID);
     std::vector<daf::Size> classSizes;
+    std::vector<std::vector<daf::Size>> classVertices;
     {
         using Profile = std::vector<daf::Size>;
         struct PH {
@@ -70,32 +69,38 @@ NucleusCoreDecompositionRClique_RegionST(
         };
         std::unordered_map<Profile, daf::Size, PH> pToC;
         for (daf::Size v = 0; v < numVertices; ++v) {
-            if (vtxRegions[v].empty()) continue;
-            auto it = pToC.find(vtxRegions[v]);
+            if (vtxMCs[v].empty()) continue;
+            auto it = pToC.find(vtxMCs[v]);
             if (it == pToC.end()) {
                 daf::Size cid = classSizes.size();
-                pToC[vtxRegions[v]] = cid;
+                pToC[vtxMCs[v]] = cid;
                 classSizes.push_back(0);
+                classVertices.emplace_back();
             }
-            classOf[v] = pToC[vtxRegions[v]];
-            classSizes[classOf[v]]++;
+            daf::Size cid = pToC[vtxMCs[v]];
+            classOf[v] = cid;
+            classSizes[cid]++;
+            classVertices[cid].push_back(v);
         }
     }
 
-    // Classes per region
-    std::vector<std::vector<daf::Size>> classesInRegion(numRegions);
-    for (daf::Size v = 0; v < numVertices; ++v) {
-        if (classOf[v] == INVALID) continue;
-        for (auto rid : vtxRegions[v]) {
-            auto &cr = classesInRegion[rid];
-            if (std::find(cr.begin(), cr.end(), classOf[v]) == cr.end())
-                cr.push_back(classOf[v]);
-        }
+    // Classes per MC
+    std::vector<std::vector<daf::Size>> mcClasses(numMC);
+    for (daf::Size mi = 0; mi < numMC; ++mi) {
+        robin_hood::unordered_flat_set<daf::Size> seen;
+        for (auto v : mcs[mi])
+            if (classOf[v] != INVALID && seen.insert(classOf[v]).second)
+                mcClasses[mi].push_back(classOf[v]);
+        std::sort(mcClasses[mi].begin(), mcClasses[mi].end());
     }
-    for (auto &v : classesInRegion) std::sort(v.begin(), v.end());
 
-    // Enumerate tuples
-    struct TupleInfo { TupleKey key; daf::Size mult; };
+    // Tuples + representative
+    struct TupleInfo {
+        TupleKey key;
+        daf::Size mult;
+        std::vector<daf::Size> representative;
+        std::vector<std::pair<daf::Size, int>> composition; // (classId, count)
+    };
     std::vector<TupleInfo> tuples;
     std::unordered_map<TupleKey, daf::Size, TupleHash> tupleIndex;
     {
@@ -107,13 +112,18 @@ NucleusCoreDecompositionRClique_RegionST(
                 std::unordered_map<daf::Size, int> counts;
                 for (auto c : cur) counts[c]++;
                 daf::Size mult = 1;
+                std::vector<daf::Size> rep;
+                std::vector<std::pair<daf::Size, int>> comp;
                 for (auto &[c, k] : counts) {
                     if ((int)classSizes[c] < k) return;
                     mult *= (daf::Size)(nCr[classSizes[c]][k] + 0.5);
+                    for (int i = 0; i < k; ++i) rep.push_back(classVertices[c][i]);
+                    comp.push_back({c, k});
                 }
                 if (mult == 0) return;
+                std::sort(rep.begin(), rep.end());
                 tupleIndex[cur] = tuples.size();
-                tuples.push_back({cur, mult});
+                tuples.push_back({cur, mult, std::move(rep), std::move(comp)});
                 return;
             }
             for (int i = start; i < (int)classes.size(); ++i) {
@@ -122,377 +132,235 @@ NucleusCoreDecompositionRClique_RegionST(
                 cur.pop_back();
             }
         };
-        for (daf::Size rid = 0; rid < numRegions; ++rid) {
-            if (classesInRegion[rid].size() > 500) continue;
+        for (daf::Size mi = 0; mi < numMC; ++mi) {
+            if (mcClasses[mi].size() > 500) continue;
             cur.clear();
-            enumerate(classesInRegion[rid], 0);
+            enumerate(mcClasses[mi], 0);
         }
     }
 
     daf::Size totalRCliques = 0;
     for (auto &t : tuples) totalRCliques += t.mult;
 
-    printf("======= Region + ST (V4) =======\n");
-    printf("  r=%d s=%d, Tuples: %zu, r-cliques: %zu (%.1fx compression)\n",
-           (int)r, (int)s, tuples.size(), (size_t)totalRCliques,
+    // ================================================================
+    // Step 2: Tuple → MCs mapping
+    // ================================================================
+    // For each tuple: which MCs contain it?
+    // τ feasible in MC m iff for each class c in τ: |c ∩ m| ≥ j_c
+    std::vector<std::vector<daf::Size>> tupleMCs(tuples.size());
+    std::vector<std::vector<daf::Size>> mcTuples(numMC);
+
+    // Per MC: class sizes within MC
+    std::vector<std::unordered_map<daf::Size, int>> mcClassSize(numMC);
+    for (daf::Size mi = 0; mi < numMC; ++mi)
+        for (auto v : mcs[mi])
+            if (classOf[v] != INVALID) mcClassSize[mi][classOf[v]]++;
+
+    for (daf::Size tid = 0; tid < tuples.size(); ++tid) {
+        for (daf::Size mi = 0; mi < numMC; ++mi) {
+            bool feasible = true;
+            for (auto &[c, k] : tuples[tid].composition) {
+                auto it = mcClassSize[mi].find(c);
+                if (it == mcClassSize[mi].end() || it->second < k) { feasible = false; break; }
+            }
+            if (feasible) {
+                tupleMCs[tid].push_back(mi);
+                mcTuples[mi].push_back(tid);
+            }
+        }
+    }
+
+    // ================================================================
+    // Step 3: Precompute MC pairwise intersection sizes
+    // ================================================================
+    // mcInter[i][j] = |M_i ∩ M_j| (only for overlapping pairs)
+    std::vector<std::unordered_map<daf::Size, int>> mcInter(numMC);
+    for (daf::Size v = 0; v < numVertices; ++v) {
+        auto &ms = vtxMCs[v];
+        for (int i = 0; i < (int)ms.size(); ++i)
+            for (int j = i+1; j < (int)ms.size(); ++j) {
+                mcInter[ms[i]][ms[j]]++;
+                mcInter[ms[j]][ms[i]]++;
+            }
+    }
+
+    auto tInit = std::chrono::high_resolution_clock::now();
+    printf("======= Region + ST (V4 MC-level) =======\n");
+    printf("  r=%d s=%d, MCs: %zu, Tuples: %zu, r-cliques: %zu (%.1fx)\n",
+           (int)r, (int)s, (size_t)numMC, tuples.size(), (size_t)totalRCliques,
            tuples.empty() ? 0.0 : (double)totalRCliques / tuples.size());
+    printf("  Init time: %lld ms\n",
+        std::chrono::duration_cast<std::chrono::milliseconds>(tInit - tStart).count());
 
     // ================================================================
-    // Step 2: Build cliqueIndex + support + r-clique → tuple mapping
+    // Step 4: Compute initial support via IE over MCs
     // ================================================================
-    const daf::Size numLeaves = tree.adj_list.size();
-    std::vector<int> leafPivotC(numLeaves, 0);
-    std::vector<int> leafNeedPivot(numLeaves, 0);
-    for (daf::Size L = 0; L < numLeaves; ++L) {
-        int pC = 0, kC = 0;
-        for (const auto &node : tree.adj_list[L]) {
-            if (node.isPivot) pC++; else kC++;
+    // support(τ) = Σ_{∅≠A ⊆ MCs(τ)} (-1)^{|A|+1} C(|∩A|-r, s-r)
+    // |∩A| = intersection size of all MCs in A
+
+    std::vector<bool> mcAlive(numMC, true);
+
+    // Compute intersection size of a set of MCs
+    auto mcIntersectionSize = [&](const std::vector<daf::Size> &mcSet) -> int {
+        if (mcSet.empty()) return 0;
+        if (mcSet.size() == 1) return (int)mcs[mcSet[0]].size();
+        // Intersect sorted vertex lists
+        std::vector<daf::Size> cur = mcs[mcSet[0]];
+        for (int i = 1; i < (int)mcSet.size(); ++i) {
+            std::vector<daf::Size> next;
+            std::set_intersection(cur.begin(), cur.end(),
+                                  mcs[mcSet[i]].begin(), mcs[mcSet[i]].end(),
+                                  std::back_inserter(next));
+            cur = std::move(next);
         }
-        leafPivotC[L] = pC;
-        leafNeedPivot[L] = s - kC;
-    }
+        return (int)cur.size();
+    };
 
-    StaticCliqueIndex cliqueIndex(r);
-    std::vector<double> countingRClique;
+    // Compute support of tuple using IE over its alive MCs
+    auto computeSupport = [&](daf::Size tid) -> double {
+        std::vector<daf::Size> aliveMCs;
+        for (auto mi : tupleMCs[tid])
+            if (mcAlive[mi]) aliveMCs.push_back(mi);
+        if (aliveMCs.empty()) return 0.0;
 
-    daf::timeCount("fused build+counting (V4)", [&]() {
-        cliqueIndex.buildWithFullEnum(tree, edgeGraph.adj_list.size(),
-            [&](daf::Size leafIdx, StaticCliqueIndex::Id cliqueId,
-                daf::CliqueSize subNumPivot, const uint8_t*) {
-                if (cliqueId >= countingRClique.size())
-                    countingRClique.resize(cliqueId + 1, 0);
-                int rp = leafPivotC[leafIdx] - (int)subNumPivot;
-                int rn = leafNeedPivot[leafIdx] - (int)subNumPivot;
-                if (rp >= 0 && rn >= 0 && rp >= rn)
-                    countingRClique[cliqueId] += nCr[rp][rn];
-            });
-    });
-
-    // Map r-clique → tuple + build tuple → r-cliques index
-    std::vector<daf::Size> rCliqueToTuple(cliqueIndex.size(), INVALID);
-    std::vector<std::vector<daf::Size>> tupleRCliques(tuples.size());
-    {
-        TupleKey keyBuf; keyBuf.reserve(r);
-        for (daf::Size id = 0; id < cliqueIndex.size(); ++id) {
-            auto rc = cliqueIndex.byId(id);
-            keyBuf.clear();
-            bool valid = true;
-            for (auto v : rc) {
-                if (v >= numVertices || classOf[v] == INVALID) { valid = false; break; }
-                keyBuf.push_back(classOf[v]);
-            }
-            if (!valid) continue;
-            std::sort(keyBuf.begin(), keyBuf.end());
-            auto it = tupleIndex.find(keyBuf);
-            if (it != tupleIndex.end()) {
-                rCliqueToTuple[id] = it->second;
-                tupleRCliques[it->second].push_back(id);
-            }
+        int p = (int)aliveMCs.size();
+        double result = 0;
+        for (int mask = 1; mask < (1 << p); ++mask) {
+            std::vector<daf::Size> subset;
+            for (int i = 0; i < p; ++i)
+                if (mask & (1 << i)) subset.push_back(aliveMCs[i]);
+            int interSize = mcIntersectionSize(subset);
+            int n = interSize - (int)r, k = (int)s - (int)r;
+            double val = (n >= k && k >= 0) ? nCr[n][k] : 0.0;
+            int sign = (__builtin_popcount(mask) % 2 == 1) ? 1 : -1;
+            result += sign * val;
         }
-    }
+        return std::max(0.0, result);
+    };
 
-    auto tIndex = std::chrono::high_resolution_clock::now();
-    printf("  cliqueIndex: %zu r-cliques, build+map: %lld ms\n",
-        (size_t)cliqueIndex.size(),
-        std::chrono::duration_cast<std::chrono::milliseconds>(tIndex - tStart).count());
+    std::vector<double> support(tuples.size());
+    for (daf::Size tid = 0; tid < tuples.size(); ++tid)
+        support[tid] = computeSupport(tid);
+
+    auto tSupport = std::chrono::high_resolution_clock::now();
+    double totalSupport = 0;
+    for (daf::Size i = 0; i < tuples.size(); ++i) totalSupport += tuples[i].mult * support[i];
+    printf("  Support sum: %.0f, compute: %lld ms\n", totalSupport,
+        std::chrono::duration_cast<std::chrono::milliseconds>(tSupport - tInit).count());
 
     // ================================================================
-    // Step 3: Peeling (ST mechanism + tuple batch pop)
+    // Step 5: Peeling
     // ================================================================
     std::vector<double> coreTuple(tuples.size(), 0.0);
     std::vector<bool> tuplePeeled(tuples.size(), false);
-    std::vector<bool> rCliqueAlive(cliqueIndex.size(), true);
 
-    // Bucket queue (per-r-clique, same structure as ST)
+    // Bucket queue on tuples
     constexpr int BUCKET_MAX = 5000000;
     double rawMax = 0;
-    for (daf::Size id = 0; id < cliqueIndex.size(); ++id)
-        rawMax = std::max(rawMax, countingRClique[id]);
+    for (auto &sv : support) rawMax = std::max(rawMax, sv);
     int maxBucket = (int)std::min(rawMax, (double)BUCKET_MAX);
 
-    int curBucket = 0;  // declared before lambdas that reference it
+    int curBucket = 0;
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
     std::set<std::pair<double, daf::Size>> overflowSet;
-    std::vector<int> bucket_of(cliqueIndex.size(), -1);
-    std::vector<daf::Size> pos_in_bucket(cliqueIndex.size());
-    std::vector<double> overflowStoredVal(cliqueIndex.size(), -1);
+    std::vector<int> bucket_of(tuples.size(), -1);
+    std::vector<daf::Size> pos_in_bucket(tuples.size());
+    std::vector<double> overflowStoredVal(tuples.size(), -1);
 
-    auto bucketInsert = [&](daf::Size id) {
-        double val = std::max(0.0, countingRClique[id]);
+    auto bucketInsert = [&](daf::Size tid) {
+        double val = std::max(0.0, support[tid]);
         int b = std::min((int)val, maxBucket + 1);
-        if (b <= maxBucket) {
-            pos_in_bucket[id] = buckets[b].size();
-            buckets[b].push_back(id);
-        } else {
-            overflowSet.insert({val, id});
-            overflowStoredVal[id] = val;
-        }
-        bucket_of[id] = b;
+        if (b <= maxBucket) { pos_in_bucket[tid] = buckets[b].size(); buckets[b].push_back(tid); }
+        else { overflowSet.insert({val, tid}); overflowStoredVal[tid] = val; }
+        bucket_of[tid] = b;
     };
-
-    auto bucketMove = [&](daf::Size id) {
-        if (!rCliqueAlive[id]) return;
-        double val = std::max(0.0, countingRClique[id]);
-        int oldB = bucket_of[id];
+    auto bucketMove = [&](daf::Size tid) {
+        if (tuplePeeled[tid]) return;
+        double val = std::max(0.0, support[tid]);
+        int oldB = bucket_of[tid];
         int newB = std::min((int)val, maxBucket + 1);
-
-        if (oldB == newB && (newB <= maxBucket || val == overflowStoredVal[id])) return;
-
-        // Remove from old bucket
+        if (oldB == newB && (newB <= maxBucket || val == overflowStoredVal[tid])) return;
         if (oldB >= 0 && oldB <= maxBucket) {
-            auto &bk = buckets[oldB];
-            daf::Size myPos = pos_in_bucket[id];
-            if (myPos < bk.size() - 1) {
-                daf::Size last = bk.back();
-                bk[myPos] = last;
-                pos_in_bucket[last] = myPos;
-            }
+            auto &bk = buckets[oldB]; daf::Size p = pos_in_bucket[tid];
+            if (p < bk.size()-1) { daf::Size l = bk.back(); bk[p] = l; pos_in_bucket[l] = p; }
             bk.pop_back();
-        } else if (oldB == maxBucket + 1) {
-            overflowSet.erase({overflowStoredVal[id], id});
-        }
-
-        // Insert to new bucket
+        } else if (oldB == maxBucket+1) { overflowSet.erase({overflowStoredVal[tid], tid}); }
         if (newB <= maxBucket) {
-            pos_in_bucket[id] = buckets[newB].size();
-            buckets[newB].push_back(id);
-            // CRITICAL: pull curBucket back if item moved to lower bucket
+            pos_in_bucket[tid] = buckets[newB].size(); buckets[newB].push_back(tid);
             if (newB < curBucket) curBucket = newB;
-        } else {
-            overflowSet.insert({val, id});
-            overflowStoredVal[id] = val;
-        }
-        bucket_of[id] = newB;
+        } else { overflowSet.insert({val, tid}); overflowStoredVal[tid] = val; }
+        bucket_of[tid] = newB;
     };
+    for (daf::Size tid = 0; tid < tuples.size(); ++tid) bucketInsert(tid);
 
-    for (daf::Size id = 0; id < cliqueIndex.size(); ++id) bucketInsert(id);
-
-    daf::Size remainingRCliques = cliqueIndex.size();
+    daf::Size remainingTuples = tuples.size();
     double minCore = 0;
-    long long totalIters = 0, cntLeafDeath = 0, cntBK = 0;
+    long long totalIters = 0;
 
-    std::vector<daf::Size> changedLeaf;
-    std::vector<daf::Size> changedLeafIndex(tree.adj_list.size(), INVALID);
-    std::vector<std::vector<daf::Size>> removedRCliqueIdForLeaf;
-    std::vector<daf::Size> currentRemoveRcliqueIds;
-    std::vector<daf::Size> vertexConflictDeg;
+    std::vector<daf::Size> batchTids;
+    robin_hood::unordered_flat_set<daf::Size> affectedTuples;
+    robin_hood::unordered_flat_set<daf::Size> deadMCs; // MCs killed in this iteration
 
     auto tPeel = std::chrono::high_resolution_clock::now();
 
-    while (remainingRCliques > 0) {
-        for (auto &lid : changedLeaf) changedLeafIndex[lid] = INVALID;
-        changedLeaf.clear();
-        removedRCliqueIdForLeaf.clear();
-        currentRemoveRcliqueIds.clear();
+    while (remainingTuples > 0) {
+        batchTids.clear();
+        affectedTuples.clear();
+        deadMCs.clear();
 
-        // --- Pop r-cliques at current bucket level ---
+        // Pop min-support tuples
         while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
         if (curBucket >= (int)buckets.size()) {
             if (overflowSet.empty()) break;
-            // Handle overflow
             auto it = overflowSet.begin();
-            daf::Size id = it->second;
-            overflowSet.erase(it);
-            if (!rCliqueAlive[id]) continue;
-            minCore = std::max(countingRClique[id], minCore);
-            rCliqueAlive[id] = false;
-            currentRemoveRcliqueIds.push_back(id);
-            remainingRCliques--;
-            // Batch pop: also pop all r-cliques of the same tuple
-            daf::Size tid = rCliqueToTuple[id];
-            if (tid != INVALID && !tuplePeeled[tid]) {
-                tuplePeeled[tid] = true;
-                coreTuple[tid] = minCore;
-                for (auto rid : tupleRCliques[tid]) {
-                    if (rCliqueAlive[rid]) {
-                        rCliqueAlive[rid] = false;
-                        // Remove from bucket/overflow
-                        int b = bucket_of[rid];
-                        if (b >= 0 && b <= maxBucket) {
-                            auto &bk = buckets[b];
-                            daf::Size p = pos_in_bucket[rid];
-                            if (p < bk.size()-1) { daf::Size l = bk.back(); bk[p] = l; pos_in_bucket[l] = p; }
-                            bk.pop_back();
-                        } else if (b == maxBucket+1) {
-                            overflowSet.erase({overflowStoredVal[rid], rid});
-                        }
-                        bucket_of[rid] = -1;
-                        currentRemoveRcliqueIds.push_back(rid);
-                        remainingRCliques--;
-                    }
-                }
-            }
-            goto phase1;
+            daf::Size tid = it->second; overflowSet.erase(it);
+            if (tuplePeeled[tid]) continue;
+            minCore = std::max(support[tid], minCore);
+            tuplePeeled[tid] = true; coreTuple[tid] = minCore; remainingTuples--;
+            batchTids.push_back(tid);
+            goto process;
         }
-
         minCore = std::max((double)curBucket, minCore);
-        while (curBucket < (int)buckets.size() && !buckets[curBucket].empty()
-               && curBucket <= (int)minCore) {
+        while (curBucket < (int)buckets.size() && !buckets[curBucket].empty() && curBucket <= (int)minCore) {
             while (!buckets[curBucket].empty()) {
-                daf::Size id = buckets[curBucket].back();
-                buckets[curBucket].pop_back();
-                if (!rCliqueAlive[id]) continue;
-                rCliqueAlive[id] = false;
-                currentRemoveRcliqueIds.push_back(id);
-                remainingRCliques--;
-                // Batch pop: also pop entire tuple
-                daf::Size tid = rCliqueToTuple[id];
-                if (tid != INVALID && !tuplePeeled[tid]) {
-                    tuplePeeled[tid] = true;
-                    coreTuple[tid] = minCore;
-                    for (auto rid : tupleRCliques[tid]) {
-                        if (rCliqueAlive[rid]) {
-                            rCliqueAlive[rid] = false;
-                            int b = bucket_of[rid];
-                            if (b >= 0 && b <= maxBucket) {
-                                auto &bk = buckets[b];
-                                daf::Size p = pos_in_bucket[rid];
-                                if (p < bk.size()-1) { daf::Size l = bk.back(); bk[p] = l; pos_in_bucket[l] = p; }
-                                bk.pop_back();
-                            } else if (b == maxBucket+1) {
-                                overflowSet.erase({overflowStoredVal[rid], rid});
-                            }
-                            bucket_of[rid] = -1;
-                            currentRemoveRcliqueIds.push_back(rid);
-                            remainingRCliques--;
-                        }
-                    }
-                }
+                daf::Size tid = buckets[curBucket].back(); buckets[curBucket].pop_back();
+                if (tuplePeeled[tid]) continue;
+                tuplePeeled[tid] = true; coreTuple[tid] = minCore; remainingTuples--;
+                batchTids.push_back(tid);
             }
-            if (curBucket+1 < (int)buckets.size() && !buckets[curBucket+1].empty()
-                && (curBucket+1) <= (int)minCore) curBucket++;
+            if (curBucket+1 < (int)buckets.size() && !buckets[curBucket+1].empty() && (curBucket+1) <= (int)minCore) curBucket++;
             else break;
         }
 
-        phase1:
-        if (remainingRCliques == 0) break;
+        process:
+        if (batchTids.empty() || remainingTuples == 0) { if (remainingTuples == 0) break; continue; }
         totalIters++;
 
-        // === Phase 1: Find affected leaves (same as ST) ===
-        for (auto rmId : currentRemoveRcliqueIds) {
-            auto rClique = cliqueIndex.byId(rmId);
-            daf::intersect_dense_sets_multi(rClique, treeGraphV.adj_list,
-                [&](const TreeGraphNode &uClique) {
-                    auto &idx = changedLeafIndex[uClique.v];
-                    if (idx == INVALID) {
-                        idx = removedRCliqueIdForLeaf.size();
-                        removedRCliqueIdForLeaf.emplace_back();
-                        changedLeaf.push_back(uClique.v);
-                    }
-                    removedRCliqueIdForLeaf[idx].push_back(rmId);
-                });
+        // For each peeled tuple: check if any MC should die
+        for (auto tid : batchTids) {
+            for (auto mi : tupleMCs[tid]) {
+                if (!mcAlive[mi]) continue;
+                // MC dies if ALL its tuples are peeled or have support ≤ minCore
+                // Simplified: MC dies when C(|M|-r, s-r) ≤ minCore
+                // (its unique tuples have this static support)
+                if (nCr[(int)mcs[mi].size() - (int)r][(int)s - (int)r] <= minCore) {
+                    mcAlive[mi] = false;
+                    deadMCs.insert(mi);
+                }
+            }
         }
 
-        // === Phase 2: LeafDeath / BK (same as ST) ===
-        for (daf::Size idx = 0; idx < changedLeaf.size(); ++idx) {
-            auto leafId = changedLeaf[idx];
-            const auto &leaf = tree.adj_list[leafId];
-            if (leaf.empty()) continue;
-            auto &removedR = removedRCliqueIdForLeaf[changedLeafIndex[leafId]];
-
-            int keepC = 0, pivotC = 0;
-            for (const auto &node : leaf) {
-                if (node.isPivot) pivotC++; else keepC++;
-            }
-            int needPivot = s - keepC;
-            int n = (int)leaf.size();
-
-            daf::Size maxRCliquePerVertex = (daf::Size)(nCr[n-1][r-1] + 0.5);
-            vertexConflictDeg.assign(n, 0);
-            for (int i = 0; i < n; ++i) daf::vListMap[leaf[i].v] = (daf::Size)i;
-            for (auto rmId : removedR) {
-                auto rc = cliqueIndex.byId(rmId);
-                for (auto v : rc) {
-                    daf::Size pos = daf::vListMap[v];
-                    if (pos < (daf::Size)n) vertexConflictDeg[pos]++;
+        // Update support for tuples affected by dead MCs
+        if (!deadMCs.empty()) {
+            for (auto mi : deadMCs) {
+                for (auto tid : mcTuples[mi]) {
+                    if (!tuplePeeled[tid]) affectedTuples.insert(tid);
                 }
             }
-
-            bool leafDead = false;
-            int forcedPivotRemove = 0;
-            for (int i = 0; i < n; ++i) {
-                if (vertexConflictDeg[i] >= maxRCliquePerVertex) {
-                    if (!leaf[i].isPivot) { leafDead = true; break; }
-                    forcedPivotRemove++;
-                }
-            }
-            if (!leafDead) {
-                int rp = pivotC - forcedPivotRemove;
-                int rt = n - forcedPivotRemove;
-                if (rt < (int)s || rp < needPivot) leafDead = true;
-            }
-
-            if (leafDead) {
-                cntLeafDeath++;
-                daf::enumerateCombinations(leaf, r,
-                    [&](const daf::StaticVector<TreeGraphNode> &clique) {
-                        auto cid = cliqueIndex.byClique(clique);
-                        if (!rCliqueAlive[cid]) return true;
-                        daf::CliqueSize subP = 0;
-                        for (const auto &nd : clique) if (nd.isPivot) subP++;
-                        countingRClique[cid] -= nCr[pivotC - subP][needPivot - subP];
-                        if (countingRClique[cid] < 0) countingRClique[cid] = 0;
-                        bucketMove(cid);
-                        return true;
-                    });
-                for (const auto &i : leaf)
-                    treeGraphV.removeNbr(i.v, static_cast<TreeGraphNode>(leafId));
-                tree.adj_list[leafId].clear();
-                tree.recycleNode(leafId);
-            } else {
-                cntBK++;
-                for (const auto &lv : leaf) {
-                    if (lv.isPivot) treeGraphV.removeNbr(lv.v, {leafId, true});
-                    else treeGraphV.removeNbr(lv.v, {leafId, false});
-                }
-
-                auto mapped = removedR | std::views::transform(
-                    [&](daf::Size id) { return cliqueIndex.byId(id); });
-
-                bkRmClique::removeRClique(leaf, mapped, r, s,
-                    [&](const bkRmClique::Bitset &c, const bkRmClique::Bitset &pivots) {
-                        auto newLeaf = bkRmClique::coverToVertex(c, pivots, leaf);
-                        auto newId = tree.addNode(newLeaf);
-                        const auto &stored = tree.adj_list[newId];
-                        daf::CliqueSize newPC = 0, newKC = 0;
-                        for (const auto &i : stored) {
-                            if (i.isPivot) { treeGraphV.addNbr(i.v, {newId, true}); newPC++; }
-                            else { treeGraphV.addNbr(i.v, {newId, false}); newKC++; }
-                        }
-                        int np = s - newKC;
-                        daf::enumerateCombinations(stored, r,
-                            [&](const daf::StaticVector<TreeGraphNode> &rclique) {
-                                daf::CliqueSize subP = 0;
-                                for (const auto &nd : rclique) if (nd.isPivot) subP++;
-                                if (subP <= np && newPC - subP < 1001 && np - subP < 401)
-                                    countingRClique[cliqueIndex.byClique(rclique)] += nCr[newPC - subP][np - subP];
-                                return true;
-                            });
-                        if (newId >= changedLeafIndex.size())
-                            changedLeafIndex.resize(newId * 2, INVALID);
-                        // Extend leaf arrays
-                        if (newId >= leafPivotC.size()) {
-                            leafPivotC.resize(newId+1, 0);
-                            leafNeedPivot.resize(newId+1, 0);
-                        }
-                        leafPivotC[newId] = newPC;
-                        leafNeedPivot[newId] = s - newKC;
-                    });
-
-                // Subtract old leaf
-                daf::enumerateCombinations(leaf, r,
-                    [&](const daf::StaticVector<TreeGraphNode> &clique) {
-                        auto cid = cliqueIndex.byClique(clique);
-                        if (!rCliqueAlive[cid]) return true;
-                        daf::CliqueSize subP = 0;
-                        for (const auto &nd : clique) if (nd.isPivot) subP++;
-                        countingRClique[cid] -= nCr[pivotC - subP][needPivot - subP];
-                        if (countingRClique[cid] < 0) countingRClique[cid] = 0;
-                        bucketMove(cid);
-                        return true;
-                    });
-
-                tree.removeNode(leafId);
+            for (auto tid : affectedTuples) {
+                double newSup = computeSupport(tid);
+                support[tid] = newSup;
+                bucketMove(tid);
             }
         }
     }
@@ -500,21 +368,18 @@ NucleusCoreDecompositionRClique_RegionST(
     auto tEnd = std::chrono::high_resolution_clock::now();
     auto peelMs = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tPeel).count();
     auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count();
-    printf("  Peeling: %lld iter, %lld LeafDeath, %lld BK\n", totalIters, cntLeafDeath, cntBK);
+    printf("  Peeling: %lld iter\n", totalIters);
     printf("  Peeling time: %lld ms\n", peelMs);
     printf("  Total time: %lld ms\n", totalMs);
 
     // ================================================================
-    // Result: per-r-clique core values via tuple
+    // Result
     // ================================================================
     std::vector<std::pair<std::vector<daf::Size>, double>> result;
     std::map<double, daf::Size> coreDist;
-    for (daf::Size id = 0; id < cliqueIndex.size(); ++id) {
-        daf::Size tid = rCliqueToTuple[id];
-        double core = (tid != INVALID) ? coreTuple[tid] : 0.0;
-        auto rc = cliqueIndex.byId(id);
-        result.push_back({std::vector<daf::Size>(rc.begin(), rc.end()), core});
-        coreDist[core]++;
+    for (daf::Size tid = 0; tid < tuples.size(); ++tid) {
+        result.push_back({tuples[tid].representative, coreTuple[tid]});
+        coreDist[coreTuple[tid]] += tuples[tid].mult;
     }
     double maxCore = 0;
     for (auto &[c, cnt] : coreDist) maxCore = std::max(maxCore, c);
