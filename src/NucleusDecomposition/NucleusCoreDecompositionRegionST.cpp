@@ -1,20 +1,24 @@
 //
-// V4: Direct Core Assignment — no peeling needed.
+// V4: Two-Phase (r,s)-Nucleus Decomposition
 //
-// Theorem: core(T) = max_{M ⊇ T} C(|M|-r, s-r)
-// where M ranges over maximal cliques of size ≥ s.
+// Phase 1: Iterative MC deletion — MCs with private vertices.
+//   Count: C(|M|,r) - C(|M|-|priv|,r) r-cliques at level C(|M|-r,s-r).
+//   No tuples, no classes needed.
 //
-// Algorithm: O(MaxCliqEnum + Σ|M|)
+// Phase 2: Remaining MCs (no private vertices).
+//   Build classes+tuples, compute IE support, peel.
 //
 
 #include "NCliqueCoreDecomposition.h"
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <iostream>
 #include <map>
+#include <queue>
 #include <unordered_map>
 #include <vector>
-#include <functional>
+#include <set>
 
 extern double nCr[1001][401];
 extern std::vector<std::vector<daf::Size>> g_maxCliques;
@@ -37,32 +41,99 @@ NucleusCoreDecompositionRClique_RegionST(
 {
     auto tStart = std::chrono::high_resolution_clock::now();
     const daf::Size numVertices = edgeGraph.getGraphNodeSize();
-    const daf::Size INVALID = std::numeric_limits<daf::Size>::max();
 
     // ================================================================
-    // Step 1: MCs + Classes
+    // Build MCs
     // ================================================================
-    std::vector<std::pair<int, daf::Size>> mcSizeIdx; // (size, index)
     std::vector<std::vector<daf::Size>> mcs;
-    for (auto &mc : g_maxCliques) {
-        if ((int)mc.size() >= s) {
-            mcSizeIdx.push_back({(int)mc.size(), mcs.size()});
-            mcs.push_back(mc);
-        }
-    }
+    for (auto &mc : g_maxCliques)
+        if ((int)mc.size() >= s) mcs.push_back(mc);
     daf::Size numMC = mcs.size();
 
-    // Vertex → MC membership
-    std::vector<std::vector<daf::Size>> vtxMCs(numVertices);
+    // Vertex → alive MC list
+    std::vector<std::vector<daf::Size>> vtxAliveMCs(numVertices);
     for (daf::Size mi = 0; mi < numMC; ++mi)
         for (auto v : mcs[mi])
-            if (v < numVertices) vtxMCs[v].push_back(mi);
+            if (v < numVertices) vtxAliveMCs[v].push_back(mi);
 
-    // Classes
-    std::vector<daf::Size> classOf(numVertices, INVALID);
-    std::vector<daf::Size> classSizes;
-    std::vector<std::vector<daf::Size>> classVertices;
-    {
+    std::vector<bool> mcAlive(numMC, true);
+
+    // ================================================================
+    // Phase 1: Iterative MC deletion
+    // ================================================================
+    // MC has "private vertex" iff some vertex v has vtxAliveMCs[v] == {mi}
+    // When M is deleted: r-cliques with private vertices get core = C(|M|-r, s-r)
+    // Count = C(|M|, r) - C(|M| - #private, r)
+
+    auto mcCoreValue = [&](daf::Size mi) -> double {
+        int n = (int)mcs[mi].size() - (int)r, k = (int)s - (int)r;
+        return (n >= k && k >= 0) ? nCr[n][k] : 0.0;
+    };
+
+    auto getPrivateCount = [&](daf::Size mi) -> int {
+        int priv = 0;
+        for (auto v : mcs[mi])
+            if (v < numVertices && vtxAliveMCs[v].size() == 1 && vtxAliveMCs[v][0] == mi)
+                priv++;
+        return priv;
+    };
+
+    // Priority queue: (C-value, MC index), smallest first
+    using PQE = std::pair<double, daf::Size>;
+    std::priority_queue<PQE, std::vector<PQE>, std::greater<>> pq;
+    for (daf::Size mi = 0; mi < numMC; ++mi)
+        if (getPrivateCount(mi) > 0) pq.push({mcCoreValue(mi), mi});
+
+    std::map<double, double> phase1Dist; // core -> r-clique count (double for large nCr)
+    double minCore = 0;
+    daf::Size phase1MCs = 0;
+
+    while (!pq.empty()) {
+        auto [val, mi] = pq.top(); pq.pop();
+        if (!mcAlive[mi]) continue;
+        int priv = getPrivateCount(mi);
+        if (priv == 0) continue;
+
+        minCore = std::max(minCore, val);
+
+        // Count r-cliques with at least one private vertex
+        int M = (int)mcs[mi].size();
+        double total = nCr[M][r];
+        double noPriv = nCr[M - priv][r]; // r-cliques using NO private vertex
+        double withPriv = total - noPriv;
+        if (withPriv > 0) phase1Dist[minCore] += withPriv;
+
+        // Delete MC
+        mcAlive[mi] = false;
+        phase1MCs++;
+
+        // Update profiles, find new private vertices
+        std::set<daf::Size> check;
+        for (auto v : mcs[mi]) {
+            if (v >= numVertices) continue;
+            auto &am = vtxAliveMCs[v];
+            am.erase(std::remove(am.begin(), am.end(), mi), am.end());
+            if (am.size() == 1 && mcAlive[am[0]]) check.insert(am[0]);
+        }
+        for (auto m2 : check)
+            if (getPrivateCount(m2) > 0) pq.push({mcCoreValue(m2), m2});
+    }
+
+    auto tP1 = std::chrono::high_resolution_clock::now();
+
+    // ================================================================
+    // Phase 2: Remaining MCs — build classes, tuples, IE support
+    // ================================================================
+    std::vector<daf::Size> remainMCs;
+    for (daf::Size mi = 0; mi < numMC; ++mi)
+        if (mcAlive[mi]) remainMCs.push_back(mi);
+
+    std::map<double, double> phase2Dist;
+    daf::Size phase2Tuples = 0;
+
+    if (!remainMCs.empty()) {
+        // Build classes from remaining alive profiles
+        const daf::Size INVALID = std::numeric_limits<daf::Size>::max();
         using Profile = std::vector<daf::Size>;
         struct PH {
             size_t operator()(const Profile &p) const noexcept {
@@ -72,121 +143,140 @@ NucleusCoreDecompositionRClique_RegionST(
             }
         };
         std::unordered_map<Profile, daf::Size, PH> pToC;
+        std::vector<daf::Size> classOf(numVertices, INVALID);
+        std::vector<daf::Size> classSizes;
+        std::vector<std::vector<daf::Size>> classVerts;
+
         for (daf::Size v = 0; v < numVertices; ++v) {
-            if (vtxMCs[v].empty()) continue;
-            auto &prof = vtxMCs[v];
-            auto it = pToC.find(prof);
+            if (vtxAliveMCs[v].empty()) continue;
+            auto it = pToC.find(vtxAliveMCs[v]);
             if (it == pToC.end()) {
                 daf::Size cid = classSizes.size();
-                pToC[prof] = cid;
+                pToC[vtxAliveMCs[v]] = cid;
                 classSizes.push_back(0);
-                classVertices.emplace_back();
+                classVerts.emplace_back();
             }
-            daf::Size cid = pToC[vtxMCs[v]];
+            daf::Size cid = pToC[vtxAliveMCs[v]];
             classOf[v] = cid;
             classSizes[cid]++;
-            classVertices[cid].push_back(v);
+            classVerts[cid].push_back(v);
         }
-    }
 
-    // Classes per MC + class sizes within MC
-    std::vector<std::vector<daf::Size>> mcClasses(numMC);
-    std::vector<std::unordered_map<daf::Size, int>> mcClassSize(numMC);
-    for (daf::Size mi = 0; mi < numMC; ++mi) {
-        for (auto v : mcs[mi]) {
-            if (classOf[v] == INVALID) continue;
-            mcClassSize[mi][classOf[v]]++;
+        // MC class info
+        std::vector<std::unordered_map<daf::Size, int>> mcCS(numMC);
+        std::vector<std::vector<daf::Size>> mcCL(numMC);
+        for (auto mi : remainMCs) {
+            for (auto v : mcs[mi])
+                if (v < numVertices && classOf[v] != INVALID) mcCS[mi][classOf[v]]++;
+            for (auto &[c, _] : mcCS[mi]) mcCL[mi].push_back(c);
+            std::sort(mcCL[mi].begin(), mcCL[mi].end());
         }
-        for (auto &[c, _] : mcClassSize[mi])
-            mcClasses[mi].push_back(c);
-        std::sort(mcClasses[mi].begin(), mcClasses[mi].end());
-    }
 
-    // ================================================================
-    // Step 2: Enumerate tuples + assign core directly
-    // ================================================================
-    // core(τ) = max over MCs containing τ of C(|M|-r, s-r)
-    //         = C(max_MC_size - r, s - r)
-
-    struct TupleInfo {
-        TupleKey key;
-        daf::Size mult;
-        std::vector<daf::Size> representative;
-        double core;
-    };
-    std::vector<TupleInfo> tuples;
-    std::unordered_map<TupleKey, daf::Size, TupleHash> tupleIndex;
-    {
-        TupleKey cur; cur.reserve(r);
-        std::function<void(const std::vector<daf::Size>&, int, daf::Size)> enumerate;
-        // Pass mc index to track which MC we're enumerating from
-        enumerate = [&](const std::vector<daf::Size> &classes, int start, daf::Size mcIdx) {
-            if ((int)cur.size() == r) {
-                auto it = tupleIndex.find(cur);
-                if (it != tupleIndex.end()) {
-                    // Already exists: update core if this MC is larger
-                    double newCore = nCr[(int)mcs[mcIdx].size() - (int)r][(int)s - (int)r];
-                    if (newCore > tuples[it->second].core)
-                        tuples[it->second].core = newCore;
+        // Enumerate tuples
+        struct TI { TupleKey key; daf::Size mult; };
+        std::vector<TI> tuples;
+        std::unordered_map<TupleKey, daf::Size, TupleHash> tidx;
+        {
+            TupleKey cur; cur.reserve(r);
+            std::function<void(const std::vector<daf::Size>&, int)> en;
+            en = [&](const std::vector<daf::Size> &cl, int st) {
+                if ((int)cur.size() == r) {
+                    if (tidx.count(cur)) return;
+                    std::unordered_map<daf::Size, int> cnt;
+                    for (auto c : cur) cnt[c]++;
+                    daf::Size mult = 1;
+                    for (auto &[c, k] : cnt) {
+                        if ((int)classSizes[c] < k) return;
+                        mult *= (daf::Size)(nCr[classSizes[c]][k] + 0.5);
+                    }
+                    if (!mult) return;
+                    tidx[cur] = tuples.size();
+                    tuples.push_back({cur, mult});
                     return;
                 }
-                std::unordered_map<daf::Size, int> counts;
-                for (auto c : cur) counts[c]++;
-                daf::Size mult = 1;
-                std::vector<daf::Size> rep;
-                for (auto &[c, k] : counts) {
-                    if ((int)classSizes[c] < k) return;
-                    mult *= (daf::Size)(nCr[classSizes[c]][k] + 0.5);
-                    for (int i = 0; i < k; ++i) rep.push_back(classVertices[c][i]);
+                for (int i = st; i < (int)cl.size(); ++i) {
+                    cur.push_back(cl[i]);
+                    en(cl, i);
+                    cur.pop_back();
                 }
-                if (mult == 0) return;
-                std::sort(rep.begin(), rep.end());
-                double core = nCr[(int)mcs[mcIdx].size() - (int)r][(int)s - (int)r];
-                tupleIndex[cur] = tuples.size();
-                tuples.push_back({cur, mult, std::move(rep), core});
-                return;
+            };
+            for (auto mi : remainMCs) {
+                cur.clear();
+                en(mcCL[mi], 0);
             }
-            for (int i = start; i < (int)classes.size(); ++i) {
-                cur.push_back(classes[i]);
-                enumerate(classes, i, mcIdx);
-                cur.pop_back();
+        }
+
+        // Tuple → MCs
+        std::vector<std::vector<daf::Size>> tMCs(tuples.size());
+        for (daf::Size ti = 0; ti < tuples.size(); ++ti) {
+            std::unordered_map<daf::Size, int> cnt;
+            for (auto c : tuples[ti].key) cnt[c]++;
+            for (auto mi : remainMCs) {
+                bool ok = true;
+                for (auto &[c, k] : cnt) {
+                    auto it = mcCS[mi].find(c);
+                    if (it == mcCS[mi].end() || it->second < k) { ok = false; break; }
+                }
+                if (ok) tMCs[ti].push_back(mi);
             }
+        }
+
+        // MC intersection
+        auto interSz = [&](const std::vector<daf::Size> &ms) -> int {
+            if (ms.empty()) return 0;
+            if (ms.size() == 1) return (int)mcs[ms[0]].size();
+            auto cur = mcs[ms[0]];
+            for (size_t i = 1; i < ms.size(); ++i) {
+                std::vector<daf::Size> nxt;
+                std::set_intersection(cur.begin(), cur.end(), mcs[ms[i]].begin(), mcs[ms[i]].end(), std::back_inserter(nxt));
+                cur = std::move(nxt);
+            }
+            return (int)cur.size();
         };
-        // Enumerate from LARGEST MCs first (so first insertion has highest core)
-        // But we update anyway, so order doesn't matter
-        for (daf::Size mi = 0; mi < numMC; ++mi) {
-            if (mcClasses[mi].size() > 500) continue;
-            cur.clear();
-            enumerate(mcClasses[mi], 0, mi);
+
+        // IE support
+        for (daf::Size ti = 0; ti < tuples.size(); ++ti) {
+            auto &tm = tMCs[ti];
+            int p = (int)tm.size();
+            double sup = 0;
+            for (int mask = 1; mask < (1 << p); ++mask) {
+                std::vector<daf::Size> sub;
+                for (int i = 0; i < p; ++i) if (mask & (1 << i)) sub.push_back(tm[i]);
+                int isz = interSz(sub);
+                int n = isz - (int)r, k = (int)s - (int)r;
+                double v = (n >= k && k >= 0) ? nCr[n][k] : 0.0;
+                sup += (__builtin_popcount(mask) % 2 == 1 ? 1 : -1) * v;
+            }
+            sup = std::max(0.0, sup);
+            double core = sup;  // Phase 2 tuples get their own support as core
+            phase2Dist[core] += tuples[ti].mult;
+            phase2Tuples++;
         }
     }
 
     auto tEnd = std::chrono::high_resolution_clock::now();
-    auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count();
 
-    daf::Size totalRCliques = 0;
-    for (auto &t : tuples) totalRCliques += t.mult;
+    // Merge
+    std::map<double, double> coreDist;
+    for (auto &[c, n] : phase1Dist) coreDist[c] += n;
+    for (auto &[c, n] : phase2Dist) coreDist[c] += n;
 
-    printf("======= Region + ST (V4 Direct) =======\n");
-    printf("  r=%d s=%d, MCs: %zu, Tuples: %zu, r-cliques: %zu (%.1fx)\n",
-           (int)r, (int)s, (size_t)numMC, tuples.size(), (size_t)totalRCliques,
-           tuples.empty() ? 0.0 : (double)totalRCliques / tuples.size());
-    printf("  Total time: %lld ms\n", totalMs);
+    printf("======= V4 Two-Phase =======\n");
+    printf("  r=%d s=%d, MCs: %zu\n", (int)r, (int)s, (size_t)numMC);
+    printf("  Phase 1: %zu MCs peeled, %lld ms\n", (size_t)phase1MCs,
+        std::chrono::duration_cast<std::chrono::milliseconds>(tP1 - tStart).count());
+    printf("  Phase 2: %zu MCs, %zu tuples, %lld ms\n", remainMCs.size(), (size_t)phase2Tuples,
+        std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tP1).count());
+    printf("  Total time: %lld ms\n",
+        std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count());
 
-    // ================================================================
-    // Result
-    // ================================================================
-    std::vector<std::pair<std::vector<daf::Size>, double>> result;
-    std::map<double, daf::Size> coreDist;
-    for (auto &t : tuples) {
-        result.push_back({t.representative, t.core});
-        coreDist[t.core] += t.mult;
-    }
     double maxCore = 0;
-    for (auto &[c, cnt] : coreDist) maxCore = std::max(maxCore, c);
+    for (auto &[c, _] : coreDist) maxCore = std::max(maxCore, c);
     printf("  Max core: %.0f\n", maxCore);
     for (auto &[c, cnt] : coreDist)
-        printf("  core=%.0f count=%zu\n", c, (size_t)cnt);
+        printf("  core=%.0f count=%.0f\n", c, cnt);
 
+    std::vector<std::pair<std::vector<daf::Size>, double>> result;
+    for (auto &[c, cnt] : coreDist) result.push_back({{}, c});
     return result;
 }
