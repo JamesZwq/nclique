@@ -18,10 +18,12 @@ def run(path, env_var):
             p = s.split()
             c = float(p[0].split('=')[1])
             cnt = int(float(p[1].split('=')[1]))
-            cores[c] = cores.get(c, 0) + cnt
+            if c in cores:
+                break  # duplicate core level = second block, stop
+            cores[c] = cnt
             found_first = True
         elif found_first and not s.startswith('core='):
-            break  # stop after first block of core= lines
+            break
     return cores
 
 for trial in range(2000):

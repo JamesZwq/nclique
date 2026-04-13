@@ -720,6 +720,7 @@ static bool dispatchR3Plus(
         {"PIVOTER_RUN_REGION_V4", "Region + ST (V4) r>=3", NucleusCoreDecompositionRClique_RegionST},
         {"PIVOTER_RUN_REGION_V3B", "Region CPI V3B (Lazy Split) r>=3", NucleusCoreDecompositionRClique_RegionCPI_V2},
         {"PIVOTER_RUN_REGION_V3", "Region CPI (V3) r>=3", NucleusCoreDecompositionRClique_RegionCPI},
+        {"PIVOTER_RUN_REGION_V2F", "Region V2 Fast r>=3", NucleusCoreDecompositionRClique_RegionV2_Fast},
         {"PIVOTER_RUN_REGION_V2", "Region V2 (general s) r>=3", NucleusCoreDecompositionRClique_RegionV2},
         // {"PIVOTER_RUN_REGION_EXACT", ...},  // Lab: untracked
         {"PIVOTER_RUN_REGION", "Region Decomp r>=3", NucleusCoreDecompositionRClique_Region},
@@ -871,7 +872,7 @@ int main(int argc, char **argv) {
     // Phase 2.5: MaxCliqEnum for V3 (must run before beSingleEdge mutates graph)
     // Pruning: only enumerate cliques with size >= s (skip small branches)
     if (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B")
-        || envSet("PIVOTER_RUN_REGION_V4")) {
+        || envSet("PIVOTER_RUN_REGION_V4") || envSet("PIVOTER_RUN_REGION_V2F")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
             return enumerateMaximalCliques(edgeGraph, s);
         });
