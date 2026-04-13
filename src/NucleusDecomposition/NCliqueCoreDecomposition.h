@@ -247,6 +247,12 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex = nullptr);
 
+// Region + ST (V4): Region tuple compression + ST peeling mechanism
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionST(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
 // RegionCPI (V3): Region Tuple + CPI Counting (no s-tuple enumeration)
 std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,

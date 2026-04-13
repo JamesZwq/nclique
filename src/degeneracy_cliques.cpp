@@ -181,7 +181,8 @@ static SDCTBuildResult buildSDCTWithIndex(
     const bool regionOnly =
         useMaxCliqueTagging && !envSet("PIVOTER_COMPARE") &&
         !envSet("PIVOTER_RUN_ST") && !envSet("PIVOTER_RUN_V20") &&
-        !envSet("PIVOTER_RUN_REGION_V3") && !envSet("PIVOTER_RUN_REGION_V3B");
+        !envSet("PIVOTER_RUN_REGION_V3") && !envSet("PIVOTER_RUN_REGION_V3B") &&
+        !envSet("PIVOTER_RUN_REGION_V4");
 
     DynamicGraphSet<TreeGraphNode> tgv(n);
     tgv.adj_list.resize(n);
@@ -716,6 +717,7 @@ static bool dispatchR3Plus(
     };
 
     static const R3Entry table[] = {
+        {"PIVOTER_RUN_REGION_V4", "Region + ST (V4) r>=3", NucleusCoreDecompositionRClique_RegionST},
         {"PIVOTER_RUN_REGION_V3B", "Region CPI V3B (Lazy Split) r>=3", NucleusCoreDecompositionRClique_RegionCPI_V2},
         {"PIVOTER_RUN_REGION_V3", "Region CPI (V3) r>=3", NucleusCoreDecompositionRClique_RegionCPI},
         {"PIVOTER_RUN_REGION_V2", "Region V2 (general s) r>=3", NucleusCoreDecompositionRClique_RegionV2},
@@ -868,8 +870,9 @@ int main(int argc, char **argv) {
 
     // Phase 2.5: MaxCliqEnum for V3 (must run before beSingleEdge mutates graph)
     // Pruning: only enumerate cliques with size >= s (skip small branches)
-    if (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B")) {
-        g_maxCliques = daf::timeCount("MaxCliqEnum (V3)", [&]() {
+    if (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B")
+        || envSet("PIVOTER_RUN_REGION_V4")) {
+        g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
             return enumerateMaximalCliques(edgeGraph, s);
         });
         printf("MaxCliqEnum (V3): %zu maximal cliques (minSize=%d)\n",
