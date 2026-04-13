@@ -1,75 +1,53 @@
-#!/usr/bin/env python3
-"""
-验证所有 SDCT 版本的正确性
-"""
-import subprocess
-import sys
-import os
-import tempfile
 
-def run_test(binary_path, graph_file):
-    """运行测试并返回结果"""
-    try:
-        result = subprocess.run(
-            [binary_path, graph_file, "2", "3"],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        return result.stdout + result.stderr
-    except subprocess.TimeoutExpired:
-        return "TIMEOUT"
-    except Exception as e:
-        return f"ERROR: {str(e)}"
+import subprocess, os, random, tempfile
 
-def extract_clique_count(output):
-    """从输出中提取 clique count"""
-    for line in output.split('\n'):
-        if 'TreeGraph Clique Count:' in line:
-            # 下一行应该是数字
-            continue
-        if line.strip() and line[0].isdigit():
-            try:
-                return float(line.strip())
-            except:
-                pass
-    return None
+BIN = './build/bin/degeneracy_cliques'
+R, S = 3, 4
+tmpf = tempfile.NamedTemporaryFile(mode='w', suffix='.edges', delete=False)
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: verify_sdct.py <graph_file>")
-        sys.exit(1)
-    
-    graph_file = sys.argv[1]
-    bin_dir = "/Users/zhangwenqian/UNSW/pivoter/build/bin"
-    
-    if not os.path.exists(graph_file):
-        print(f"Error: Graph file not found: {graph_file}")
-        sys.exit(1)
-    
-    print("=" * 60)
-    print("SDCT Correctness Verification")
-    print("=" * 60)
-    print(f"Graph: {graph_file}\n")
-    
-    # 运行 degeneracy_cliques（使用 SDCT_Par）
-    print("Running degeneracy_cliques (uses SDCT_Par)...")
-    output = run_test(f"{bin_dir}/degeneracy_cliques", graph_file)
-    
-    # 查找 TreeGraph Clique Count
-    lines = output.split('\n')
-    for i, line in enumerate(lines):
-        if 'TreeGraph Clique Count:' in line:
-            print(f"Found clique count output at line {i}")
-            # 打印接下来的几行
-            for j in range(i, min(i+10, len(lines))):
-                print(lines[j])
-            break
-    
-    print("\n" + "=" * 60)
-    print("Full output:")
-    print("=" * 60)
-    print(output[:2000])  # 打印前 2000 字符
+def run(path, env_var):
+    env = os.environ.copy()
+    env[env_var] = '1'
+    out = subprocess.run([BIN, path, str(R), str(S)], capture_output=True, text=True, env=env, timeout=60)
+    txt = out.stdout + out.stderr
+    cores = {}
+    found_first = False
+    for line in txt.split('\n'):
+        s = line.strip()
+        if s.startswith('core=') and 'count=' in s:
+            p = s.split()
+            c = float(p[0].split('=')[1])
+            cnt = int(float(p[1].split('=')[1]))
+            cores[c] = cores.get(c, 0) + cnt
+            found_first = True
+        elif found_first and not s.startswith('core='):
+            break  # stop after first block of core= lines
+    return cores
 
-if __name__ == "__main__":
-    main()
+for trial in range(2000):
+    print(f'Trial {trial}...', flush=True)
+    n = random.randint(9, 13)
+    p = random.uniform(0.3, 0.8)
+    edges = [(i,j) for i in range(n) for j in range(i+1,n) if random.random() < p]
+    if not edges: continue
+    with open(tmpf.name, 'w') as f:
+        f.write(f'{n} {len(edges)}\n')
+        for u,v in edges: f.write(f'{u} {v}\n')
+    time_start = os.times()[0]
+    v4 = run(tmpf.name, 'PIVOTER_RUN_REGION_V4')
+    time_end = os.times()[0]
+    print(f'V4 time: {time_end - time_start:.2f} seconds', flush=True)
+    time_start = os.times()[0]
+    st = run(tmpf.name, 'PIVOTER_RUN_ST')
+    time_end = os.times()[0]
+    print(f'ST time: {time_end - time_start:.2f} seconds', flush=True)
+    if v4 != st:
+        print(f'MISMATCH at trial={trial} n={n} m={len(edges)}')
+        print(f'V4: {dict(sorted(v4.items()))}')
+        print(f'ST: {dict(sorted(st.items()))}')
+        with open(tmpf.name) as f: print(f.read()[:500])
+        break
+    if trial % 100 == 0: print(f'{trial} OK (n={n})', flush=True)
+else:
+    print('All 2000 passed!')
+os.unlink(tmpf.name)

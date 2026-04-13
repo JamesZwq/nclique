@@ -47,15 +47,18 @@ def run_algo(graph_path, env_var):
     )
     output = result.stdout + result.stderr
 
-    # Parse core= lines
+    # Parse core= lines — only keep the FIRST block (before "Clique Index" or "Reference")
     cores = {}
     for line in output.split('\n'):
         line = line.strip()
+        # Stop at comparison/reference section
+        if 'Clique Index' in line or 'Reference' in line or 'clique Index' in line:
+            break
         if line.startswith('core='):
             parts = line.split()
             try:
                 c = float(parts[0].split('=')[1])
-                cnt = int(parts[1].split('=')[1])
+                cnt = int(float(parts[1].split('=')[1]))
                 cores[c] = cores.get(c, 0) + cnt
             except:
                 pass

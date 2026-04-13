@@ -128,11 +128,10 @@ NucleusCoreDecompositionRClique_RegionST(
     auto tPhase1 = std::chrono::high_resolution_clock::now();
 
     // ================================================================
-    // Phase 2: Remaining MCs (no private vertices)
+    // Phase 2: Remaining MCs — brute force peeling
     // ================================================================
-    // Build classes + tuples from remaining alive MCs.
-    // Compute support via IE. Assign core = support.
-    // (Simple: no cascading. Correct for symmetric cases like K_{2,2,2,2}.)
+    // Enumerate ALL s-cliques in remaining MCs.
+    // Track alive status. Standard peeling with cascading.
 
     std::vector<daf::Size> remainMCs;
     for (daf::Size mi = 0; mi < numMC; ++mi)
@@ -141,78 +140,100 @@ NucleusCoreDecompositionRClique_RegionST(
     double phase2RCliques = 0;
 
     if (!remainMCs.empty()) {
-        // Build classes from remaining alive profiles
-        using Profile = std::vector<daf::Size>;
-        struct PH { size_t operator()(const Profile &p) const noexcept {
-            size_t h=p.size(); for(auto x:p) h^=std::hash<daf::Size>()(x)+0x9e3779b9ULL+(h<<6)+(h>>2); return h; }};
-        std::unordered_map<Profile, daf::Size, PH> pToC;
-        std::vector<daf::Size> classOf(numVertices, INVALID);
-        std::vector<daf::Size> classSizes;
-
-        for (daf::Size v = 0; v < numVertices; ++v) {
-            if (vtxMCs[v].empty()) continue;
-            auto it = pToC.find(vtxMCs[v]);
-            if (it == pToC.end()) { daf::Size c = classSizes.size(); pToC[vtxMCs[v]] = c; classSizes.push_back(0); }
-            classOf[v] = pToC[vtxMCs[v]]; classSizes[classOf[v]]++;
-        }
-
-        // MC class sizes
-        std::vector<std::unordered_map<daf::Size, int>> mcCS(numMC);
-        std::vector<std::vector<daf::Size>> mcCL(numMC);
+        // Enumerate all s-cliques from remaining MCs (as sorted vertex vectors)
+        std::set<std::vector<daf::Size>> allSCliques;
         for (auto mi : remainMCs) {
-            for (auto v : mcs[mi]) if (v < numVertices && classOf[v] != INVALID) mcCS[mi][classOf[v]]++;
-            for (auto &[c, _] : mcCS[mi]) mcCL[mi].push_back(c);
-            std::sort(mcCL[mi].begin(), mcCL[mi].end());
+            auto &mc = mcs[mi];
+            int n = (int)mc.size();
+            // Enumerate all s-subsets of mc
+            std::vector<int> idx(s);
+            for (int i = 0; i < s; ++i) idx[i] = i;
+            while (true) {
+                std::vector<daf::Size> sc(s);
+                for (int i = 0; i < s; ++i) sc[i] = mc[idx[i]];
+                std::sort(sc.begin(), sc.end());
+                allSCliques.insert(sc);
+                // Next combination
+                int i = s - 1;
+                while (i >= 0 && idx[i] == n - s + i) i--;
+                if (i < 0) break;
+                idx[i]++;
+                for (int j = i + 1; j < s; ++j) idx[j] = idx[j-1] + 1;
+            }
         }
 
-        // Enumerate tuples
-        struct TI { TupleKey key; daf::Size mult; };
-        std::vector<TI> tuples;
-        std::unordered_map<TupleKey, daf::Size, TupleHash> tidx;
-        { TupleKey cur; cur.reserve(r);
-          std::function<void(const std::vector<daf::Size>&, int)> en;
-          en = [&](const std::vector<daf::Size> &cl, int st) {
-            if ((int)cur.size() == r) { if (tidx.count(cur)) return;
-              std::unordered_map<daf::Size, int> cnt; for (auto c : cur) cnt[c]++;
-              daf::Size mult = 1; for (auto &[c, k] : cnt) { if ((int)classSizes[c] < k) return;
-                mult *= (daf::Size)(nCr[classSizes[c]][k] + 0.5); }
-              if (!mult) return; tidx[cur] = tuples.size(); tuples.push_back({cur, mult}); return; }
-            for (int i = st; i < (int)cl.size(); ++i) { cur.push_back(cl[i]); en(cl, i); cur.pop_back(); }
-          };
-          for (auto mi : remainMCs) { cur.clear(); en(mcCL[mi], 0); }
+        // Enumerate all r-cliques from s-cliques
+        std::map<std::vector<daf::Size>, int> rCliqueSupport; // r-clique → support count
+        std::map<std::vector<daf::Size>, std::vector<int>> rCliqueToSCliques; // r-clique → s-clique indices
+
+        std::vector<std::vector<daf::Size>> sCliqueList(allSCliques.begin(), allSCliques.end());
+        std::vector<bool> sAlive(sCliqueList.size(), true);
+
+        for (int si = 0; si < (int)sCliqueList.size(); ++si) {
+            auto &sc = sCliqueList[si];
+            // Enumerate r-subsets
+            std::vector<int> idx(r);
+            for (int i = 0; i < r; ++i) idx[i] = i;
+            while (true) {
+                std::vector<daf::Size> rc(r);
+                for (int i = 0; i < r; ++i) rc[i] = sc[idx[i]];
+                rCliqueSupport[rc]++;
+                rCliqueToSCliques[rc].push_back(si);
+                int i = r - 1;
+                while (i >= 0 && idx[i] == s - r + i) i--;
+                if (i < 0) break;
+                idx[i]++;
+                for (int j = i + 1; j < r; ++j) idx[j] = idx[j-1] + 1;
+            }
         }
 
-        // Tuple → MCs + IE support
-        auto mcInterSz = [&](const std::vector<daf::Size> &ms) -> int {
-            if (ms.empty()) return 0; if (ms.size() == 1) return (int)mcs[ms[0]].size();
-            auto cur = mcs[ms[0]]; for (size_t i = 1; i < ms.size(); ++i) {
-                std::vector<daf::Size> nxt; std::set_intersection(cur.begin(), cur.end(),
-                    mcs[ms[i]].begin(), mcs[ms[i]].end(), std::back_inserter(nxt)); cur = std::move(nxt); }
-            return (int)cur.size();
-        };
+        // Peeling
+        std::map<std::vector<daf::Size>, double> rCliqueCore;
+        double minCore2 = 0;
 
-        for (auto &t : tuples) {
-            // Find MCs containing this tuple
-            std::unordered_map<daf::Size, int> cnt; for (auto c : t.key) cnt[c]++;
-            std::vector<daf::Size> tMCs;
-            for (auto mi : remainMCs) {
-                bool ok = true;
-                for (auto &[c, k] : cnt) { auto it = mcCS[mi].find(c); if (it == mcCS[mi].end() || it->second < k) { ok = false; break; } }
-                if (ok) tMCs.push_back(mi);
+        while (!rCliqueSupport.empty()) {
+            // Find min support
+            double minSup = 1e18;
+            for (auto &[rc, sup] : rCliqueSupport)
+                if (sup < minSup) minSup = sup;
+            minCore2 = std::max(minCore2, minSup);
+
+            // Collect all r-cliques at min support
+            std::vector<std::vector<daf::Size>> batch;
+            for (auto &[rc, sup] : rCliqueSupport)
+                if (sup <= minCore2) batch.push_back(rc);
+
+            // Peel batch
+            for (auto &rc : batch) {
+                rCliqueCore[rc] = minCore2;
+                // Kill s-cliques containing this r-clique
+                for (auto si : rCliqueToSCliques[rc]) {
+                    if (!sAlive[si]) continue;
+                    sAlive[si] = false;
+                    // Decrement support of other r-cliques in this s-clique
+                    auto &sc = sCliqueList[si];
+                    std::vector<int> idx(r);
+                    for (int i = 0; i < r; ++i) idx[i] = i;
+                    while (true) {
+                        std::vector<daf::Size> rc2(r);
+                        for (int i = 0; i < r; ++i) rc2[i] = sc[idx[i]];
+                        if (rc2 != rc && rCliqueSupport.count(rc2))
+                            rCliqueSupport[rc2]--;
+                        int i = r - 1;
+                        while (i >= 0 && idx[i] == s - r + i) i--;
+                        if (i < 0) break;
+                        idx[i]++;
+                        for (int j = i + 1; j < r; ++j) idx[j] = idx[j-1] + 1;
+                    }
+                }
+                rCliqueSupport.erase(rc);
             }
+        }
 
-            // IE support
-            int p = (int)tMCs.size(); double sup = 0;
-            for (int mask = 1; mask < (1 << p); ++mask) {
-                std::vector<daf::Size> sub; for (int i = 0; i < p; ++i) if (mask & (1 << i)) sub.push_back(tMCs[i]);
-                int isz = mcInterSz(sub); int n = isz - (int)r, k = (int)s - (int)r;
-                double v = (n >= k && k >= 0) ? nCr[n][k] : 0.0;
-                sup += (__builtin_popcount(mask) % 2 == 1 ? 1 : -1) * v;
-            }
-            sup = std::max(0.0, sup);
-
-            coreDist[sup] += t.mult;
-            phase2RCliques += t.mult;
+        // Aggregate to core distribution
+        for (auto &[rc, core] : rCliqueCore) {
+            coreDist[core]++;
+            phase2RCliques++;
         }
     }
 
@@ -233,9 +254,11 @@ NucleusCoreDecompositionRClique_RegionST(
     double maxCore = 0;
     for (auto &[c, _] : coreDist) maxCore = std::max(maxCore, c);
     printf("  Max core: %.0f\n", maxCore);
-    for (auto &[c, cnt] : coreDist) printf("  core=%.0f count=%.0f\n", c, cnt);
 
+    // Build result: one entry per r-clique for correct dispatcher output
     std::vector<std::pair<std::vector<daf::Size>, double>> result;
-    for (auto &[c, cnt] : coreDist) result.push_back({{}, c});
+    for (auto &[c, cnt] : coreDist)
+        for (int i = 0; i < (int)cnt; ++i)
+            result.push_back({{}, c});
     return result;
 }
