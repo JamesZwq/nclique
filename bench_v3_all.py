@@ -29,6 +29,7 @@ GRAPHS = ["dblp-core30", "email-Eu-core", "com-dblp",
           "web-Stanford", "com-youtube", "web-it-2004"]
 
 ALGOS = {
+    "REF":   {"env": "PIVOTER_RUN_REF"},
     "ST":    {"env": "PIVOTER_RUN_ST"},
     "V3":    {"env": "PIVOTER_RUN_REGION_V3"},
     "V3_NP": {"env": "PIVOTER_RUN_REGION_V3", "extra": {"PIVOTER_V3_NO_PRIVATE": "1"}},
@@ -315,8 +316,8 @@ def main():
     def propagate_timeout(g, an, ss, rr):
         """ST: propagate along s for same r (cliqueIndex depends on r, not s).
         V3/V3_NP: no propagation (performance depends on both r and s)."""
-        if an == "ST":
-            # ST's cliqueIndex is O(C(n,r)) — if r=K fails, it fails for ALL s
+        if an in ("ST", "REF"):
+            # cliqueIndex is O(C(n,r)) — if r=K fails, it fails for ALL s
             for sf in range(4, max_cliques.get(g, 0) + 1):
                 timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
 
