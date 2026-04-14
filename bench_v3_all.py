@@ -113,14 +113,16 @@ def load_existing():
     return done
 
 def extract_timing(txt):
-    """Extract total_ms and peel_ms from log text."""
+    """Extract total_ms, peel_ms, mem_kB from log text."""
     m_total = re.search(r'NucleusCoreDecomposition took:\s*([\d.]+)', txt)
     m_peel = re.search(r'Peeling time:\s*([\d.]+)', txt)
+    m_mem = re.search(r'\[Memory-\w+\]\s*Final Memory:\s*([\d.]+)\s*kB', txt)
     total_ms = float(m_total.group(1)) if m_total else -1.0
     peel_ms = float(m_peel.group(1)) if m_peel else -1.0
-    return total_ms, peel_ms
+    mem_kB = float(m_mem.group(1)) if m_mem else -1.0
+    return total_ms, peel_ms, mem_kB
 
-def write_result(graph, r, s, algo, status, wall_ms=-1, total_ms=-1, peel_ms=-1):
+def write_result(graph, r, s, algo, status, wall_ms=-1, total_ms=-1, peel_ms=-1, mem_kB=-1):
     """Append one result row to CSV."""
     with open(OUTCSV, "a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=FIELDNAMES)
@@ -129,9 +131,10 @@ def write_result(graph, r, s, algo, status, wall_ms=-1, total_ms=-1, peel_ms=-1)
             "wall_ms": f"{wall_ms:.1f}" if wall_ms >= 0 else "",
             "total_ms": f"{total_ms:.1f}" if total_ms >= 0 else "",
             "peel_ms": f"{peel_ms:.1f}" if peel_ms >= 0 else "",
+            "mem_kB": f"{mem_kB:.0f}" if mem_kB >= 0 else "",
         })
 
-FIELDNAMES = ["graph", "r", "s", "algo", "status", "wall_ms", "total_ms", "peel_ms"]
+FIELDNAMES = ["graph", "r", "s", "algo", "status", "wall_ms", "total_ms", "peel_ms", "mem_kB"]
 
 # ============ Main ============
 def main():
@@ -235,10 +238,11 @@ def main():
                 status = f"ERROR({ret})"
             (LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log").write_text(txt)
             wall_ms = (time.time() - t0) * 1000
-            total_ms, peel_ms = extract_timing(txt)
+            total_ms, peel_ms, mem_kB = extract_timing(txt)
             t_str = f"{wall_ms:.0f}ms" if wall_ms >= 0 else "N/A"
-            print(f"  {an:>6} {g} r={rr} s={ss} {status} wall={t_str}", flush=True)
-            write_result(g, rr, ss, an, status, wall_ms, total_ms, peel_ms)
+            m_str = f"{mem_kB/1024:.0f}MB" if mem_kB >= 0 else ""
+            print(f"  {an:>6} {g} r={rr} s={ss} {status} wall={t_str} {m_str}", flush=True)
+            write_result(g, rr, ss, an, status, wall_ms, total_ms, peel_ms, mem_kB)
             done.add((g, rr, ss, an))
             launched += 1
             if status in ("TIMEOUT", "OOM"):
