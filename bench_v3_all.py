@@ -15,7 +15,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 # ============ Config ============
 BIN = "./build/bin/degeneracy_cliques"
-TIMEOUT = 600          # seconds per job
+TIMEOUT = 3600         # seconds per job (1 hour)
 MAX_WORKERS = 32
 MEM_LIMIT_GB = 300     # don't launch if used > this
 MEM_KILL_GB = 450      # kill newest if used > this
@@ -165,6 +165,9 @@ def main():
     else:
         print("\nProbing max clique sizes (parallel)...")
         graphs_to_probe = [g for g in GRAPHS if os.path.exists(f"graphs/{g}.edges")]
+        if not graphs_to_probe:
+            print("  No graphs found! Check DATADIR and graph files.")
+            sys.exit(1)
         with ProcessPoolExecutor(max_workers=len(graphs_to_probe)) as ex:
             futures = {ex.submit(probe_max_clique, g): g for g in graphs_to_probe}
             for f in futures:
