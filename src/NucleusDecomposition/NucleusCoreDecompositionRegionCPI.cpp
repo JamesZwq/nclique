@@ -168,9 +168,9 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // → directly assign core value, skip all pipeline work.
 
     auto tStep1a = std::chrono::high_resolution_clock::now();
+    daf::Size maxVtxMCs = 0;
+    double totalPairs = 0;
     {
-        daf::Size maxVtxMCs = 0;
-        double totalPairs = 0;
         for (daf::Size v = 0; v < numVertices; ++v) {
             maxVtxMCs = std::max(maxVtxMCs, (daf::Size)vtxMaxPaths[v].size());
             daf::Size k = vtxMaxPaths[v].size();
@@ -186,38 +186,48 @@ NucleusCoreDecompositionRClique_RegionCPI(
     auto tStep1b = std::chrono::high_resolution_clock::now();
 
     // Compute pairwise intersection sizes (via vertex membership)
+    // Skip if too many pairs (power-law graphs) — r-Mergeable is optional
+    const double MAX_PAIRS = 1e8;
     std::unordered_map<uint64_t, int> interSize;
     auto pairKey = [](daf::Size a, daf::Size b) -> uint64_t {
         if (a > b) std::swap(a, b);
         return ((uint64_t)a << 32) | b;
     };
-    for (daf::Size v = 0; v < numVertices; ++v) {
-        auto &rids = vtxMaxPaths[v];
-        for (daf::Size i = 0; i < rids.size(); ++i)
-            for (daf::Size j = i + 1; j < rids.size(); ++j) {
-                auto key = pairKey(rids[i], rids[j]);
-                if (!interSize.count(key)) {
-                    auto &a = regionVerts[rids[i]], &b = regionVerts[rids[j]];
-                    int cnt = 0;
-                    auto ai = a.begin(), bi = b.begin();
-                    while (ai != a.end() && bi != b.end()) {
-                        if (*ai < *bi) ++ai;
-                        else if (*ai > *bi) ++bi;
-                        else { ++cnt; ++ai; ++bi; }
+    bool skipMergeable = (totalPairs > MAX_PAIRS);
+    if (!skipMergeable) {
+        for (daf::Size v = 0; v < numVertices; ++v) {
+            auto &rids = vtxMaxPaths[v];
+            for (daf::Size i = 0; i < rids.size(); ++i)
+                for (daf::Size j = i + 1; j < rids.size(); ++j) {
+                    auto key = pairKey(rids[i], rids[j]);
+                    if (!interSize.count(key)) {
+                        auto &a = regionVerts[rids[i]], &b = regionVerts[rids[j]];
+                        int cnt = 0;
+                        auto ai = a.begin(), bi = b.begin();
+                        while (ai != a.end() && bi != b.end()) {
+                            if (*ai < *bi) ++ai;
+                            else if (*ai > *bi) ++bi;
+                            else { ++cnt; ++ai; ++bi; }
+                        }
+                        interSize[key] = cnt;
                     }
-                    interSize[key] = cnt;
                 }
-            }
+        }
     }
 
     {
         auto t = std::chrono::high_resolution_clock::now();
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t - tStep1b).count();
-        std::cout << "  Step 1b intersection: " << interSize.size() << " pairs, " << ms << " ms" << std::endl;
+        if (skipMergeable)
+            std::cout << "  Step 1b: SKIPPED (totalPairs=" << std::fixed << std::setprecision(0)
+                      << totalPairs << " > " << MAX_PAIRS << ")" << std::endl;
+        else
+            std::cout << "  Step 1b intersection: " << interSize.size() << " pairs, " << ms << " ms" << std::endl;
     }
 
     // Check each region: fully r-mergeable?
     std::vector<bool> fullyMergeable(numRegions, true);
+    if (!skipMergeable) {
     for (daf::Size rid = 0; rid < numRegions; ++rid) {
         for (daf::Size v : regionVerts[rid]) {
             if (v >= numVertices) continue;
@@ -230,6 +240,10 @@ NucleusCoreDecompositionRClique_RegionCPI(
             }
             if (!fullyMergeable[rid]) break;
         }
+    }
+    } else {
+        // Can't determine r-mergeable without intersection data
+        std::fill(fullyMergeable.begin(), fullyMergeable.end(), false);
     }
 
     // Directly assign fully-mergeable regions
