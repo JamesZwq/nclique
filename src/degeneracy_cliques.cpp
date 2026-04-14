@@ -897,8 +897,10 @@ int main(int argc, char **argv) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
             return enumerateMaximalCliques(edgeGraph, s);
         });
-        printf("MaxCliqEnum (V3): %zu maximal cliques (minSize=%d)\n",
-               g_maxCliques.size(), (int)s);
+        size_t maxMCSize = 0;
+        for (auto &mc : g_maxCliques) maxMCSize = std::max(maxMCSize, mc.size());
+        printf("MaxCliqEnum (V3): %zu maximal cliques (minSize=%d, maxSize=%zu)\n",
+               g_maxCliques.size(), (int)s, maxMCSize);
     }
 
     // Phase 3: Pre-mutation work (must run before beSingleEdge)

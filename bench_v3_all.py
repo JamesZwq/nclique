@@ -71,45 +71,31 @@ def get_used_mem_gb():
         return 0
 
 def probe_max_clique(graph):
-    """Find max clique size by binary search on s."""
+    """Find max clique size — single run with V3 mode, parse maxSize from output."""
     gf = f"graphs/{graph}.edges"
     if not os.path.exists(gf):
         return 0
 
-    # Use V2 mode (lightweight) to probe
-    env = {**os.environ, "PIVOTER_RUN_REGION_V2": "1"}
-
-    def has_mc(s_val):
-        try:
-            out = subprocess.run(
-                [BIN, gf, "3", str(s_val)],
-                capture_output=True, text=True, timeout=60, env=env
-            )
-            txt = out.stdout + out.stderr
-            # Check multiple patterns
-            for pat in [r'Maximal cliques: (\d+)', r'maximal cliques.*?(\d+)',
-                        r'(\d+) maximal cliques']:
-                m = re.search(pat, txt)
-                if m and int(m.group(1)) > 0:
-                    return True
-            return False
-        except:
-            return False
-
-    # Quick check: does s=4 work?
-    if not has_mc(4):
-        return 0
-
-    # Binary search for max s
-    lo, hi = 4, 300
-    while lo < hi:
-        mid = (lo + hi + 1) // 2
-        if has_mc(mid):
-            lo = mid
-        else:
-            hi = mid - 1
-
-    return lo
+    # Run V3 with s=4 (minimum). MaxCliqEnum outputs maxSize.
+    env = {**os.environ, "PIVOTER_RUN_REGION_V3": "1", "PIVOTER_V3_NO_PRIVATE": "1"}
+    try:
+        proc = subprocess.Popen(
+            [BIN, gf, "3", "4"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, env=env
+        )
+        # Read until MaxCliqEnum line, then kill (don't wait for full run)
+        for line in proc.stdout:
+            m = re.search(r'maxSize=(\d+)', line)
+            if m:
+                result = int(m.group(1))
+                proc.kill()
+                proc.wait()
+                return result
+        proc.kill()
+        proc.wait()
+    except:
+        pass
+    return 4  # fallback
 
 def load_existing():
     """Load already-completed results to skip."""
