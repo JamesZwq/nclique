@@ -326,55 +326,42 @@ def main():
             kill_newest()
             time.sleep(2)
 
-        # Pick next job: retry queue first, then main queue
-        job = None
-        if retry_queue:
-            job = retry_queue.pop(0)
-        elif ji < len(all_jobs):
-            job = all_jobs[ji]
-            ji += 1
-        else:
-            # No more jobs to launch, just wait for running ones
-            if running:
-                time.sleep(POLL_SEC)
-            continue
+        # Launch as many jobs as capacity allows in a tight loop
+        launched_this_round = 0
+        while not shutdown:
+            # Pick next job: retry queue first, then main queue
+            job = None
+            if retry_queue:
+                job = retry_queue.pop(0)
+            elif ji < len(all_jobs):
+                job = all_jobs[ji]
+                ji += 1
+            else:
+                break  # no more jobs to launch
 
-        g, rr, ss, an = job
+            g, rr, ss, an = job
 
-        # Skip if already done
-        if (g, rr, ss, an) in done:
-            continue
-
-        # Skip if timed out
-        if should_skip(g, rr, ss, an):
-            skipped += 1
-            write_result(g, rr, ss, an, "SKIP_TIMEOUT")
-            done.add((g, rr, ss, an))
-            continue
-
-        # Wait for capacity: workers < MAX and memory < limit
-        while (len(running) >= MAX_WORKERS or get_used_mem_gb() >= MEM_LIMIT_GB) and not shutdown:
-            reap()
-            check_timeouts()
-            while get_used_mem_gb() > MEM_KILL_GB and running:
-                kill_newest()
-                time.sleep(2)
-            if len(running) >= MAX_WORKERS or get_used_mem_gb() >= MEM_LIMIT_GB:
-                time.sleep(POLL_SEC)
-
-        if shutdown:
-            break
-
-        # Re-check skip after waiting (timeout_at may have been updated)
-        if (g, rr, ss, an) in done or should_skip(g, rr, ss, an):
-            if (g, rr, ss, an) not in done:
+            # Skip if already done or timed out
+            if (g, rr, ss, an) in done:
+                continue
+            if should_skip(g, rr, ss, an):
                 skipped += 1
                 write_result(g, rr, ss, an, "SKIP_TIMEOUT")
                 done.add((g, rr, ss, an))
-            continue
+                continue
 
-        launch(g, rr, ss, an)
-        time.sleep(SETTLE_SEC)
+            # Check capacity
+            if len(running) >= MAX_WORKERS or get_used_mem_gb() >= MEM_LIMIT_GB:
+                # Put job back for next round
+                retry_queue.insert(0, (g, rr, ss, an))
+                break
+
+            launch(g, rr, ss, an)
+            launched_this_round += 1
+
+        # If nothing was launched and still have running jobs, wait
+        if launched_this_round == 0 and running:
+            time.sleep(POLL_SEC)
 
     # Drain remaining
     while running and not shutdown:
