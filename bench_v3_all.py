@@ -25,8 +25,30 @@ OUTCSV = "bench_v3_all_results.csv"
 LOGDIR = Path("bench_v3_all_logs")
 DATADIR = "/data/wenqianz"
 
-GRAPHS = ["dblp-core30", "email-Eu-core", "com-dblp",
-          "web-Stanford", "com-youtube", "web-it-2004"]
+ALL_GRAPHS = ["dblp-core30", "email-Eu-core", "com-dblp",
+              "web-Stanford", "com-youtube", "web-it-2004"]
+
+# Split graphs across servers: tods1 gets dense graphs, tods2 gets large/power-law
+SERVER_GRAPHS = {
+    "tods1": ["dblp-core30", "com-dblp", "email-Eu-core"],
+    "tods2": ["web-Stanford", "com-youtube", "web-it-2004"],
+}
+
+import socket
+def get_graphs():
+    """Pick graphs based on hostname or CLI arg."""
+    # CLI: python3 bench_v3_all.py tods1
+    if len(sys.argv) > 1 and sys.argv[1] in SERVER_GRAPHS:
+        return SERVER_GRAPHS[sys.argv[1]]
+    # Auto-detect from hostname
+    hostname = socket.gethostname().lower()
+    for key in SERVER_GRAPHS:
+        if key in hostname:
+            return SERVER_GRAPHS[key]
+    # Default: all graphs
+    return ALL_GRAPHS
+
+GRAPHS = get_graphs()
 
 ALGOS = {
     "REF":   {"env": "PIVOTER_RUN_REF"},
