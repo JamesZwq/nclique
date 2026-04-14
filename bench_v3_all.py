@@ -313,9 +313,12 @@ def main():
         running.append((proc, g, rr, ss, an, time.time()))
 
     def propagate_timeout(g, an, ss, rr):
-        """No propagation — each (r,s) is independent.
-        Small s can be harder than large s (more MCs), larger r can be easier."""
-        pass
+        """ST: propagate along s for same r (cliqueIndex depends on r, not s).
+        V3/V3_NP: no propagation (performance depends on both r and s)."""
+        if an == "ST":
+            # ST's cliqueIndex is O(C(n,r)) — if r=K fails, it fails for ALL s
+            for sf in range(4, max_cliques.get(g, 0) + 1):
+                timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
 
     # ---- Build global job queue: ordered by (graph, s, r, algo) ----
     # This order ensures timeout propagation works (smaller s before larger s)
