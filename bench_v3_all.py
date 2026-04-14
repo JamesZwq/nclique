@@ -227,9 +227,7 @@ def main():
             done.add((g, rr, ss, an))
             launched += 1
             if status in ("TIMEOUT", "OOM"):
-                timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
-                for sf in range(ss + 1, max_cliques.get(g, 0) + 1):
-                    timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
+                propagate_timeout(g, an, ss, rr)
         running.clear()
         running.extend(still)
 
@@ -249,9 +247,7 @@ def main():
                     txt + "\nTIMEOUT by scheduler")
                 write_result(g, rr, ss, an, "TIMEOUT")
                 done.add((g, rr, ss, an))
-                timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
-                for sf in range(ss + 1, max_cliques.get(g, 0) + 1):
-                    timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
+                propagate_timeout(g, an, ss, rr)
                 running.pop(i)
 
     def kill_newest():
@@ -270,9 +266,7 @@ def main():
             # Only job → genuine OOM
             write_result(g, rr, ss, an, "OOM")
             done.add((g, rr, ss, an))
-            timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
-            for sf in range(ss + 1, max_cliques.get(g, 0) + 1):
-                timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
+            propagate_timeout(g, an, ss, rr)
         else:
             # Multiple jobs → re-queue
             retry_queue.append((g, rr, ss, an))
@@ -291,79 +285,84 @@ def main():
         )
         running.append((proc, g, rr, ss, an, time.time()))
 
-    # ---- Main loop: process one graph at a time ----
-    retry_queue = []
+    def propagate_timeout(g, an, ss, rr):
+        """Mark (g, an, s') as timed out for all s' >= ss at r' >= rr."""
+        timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
+        for sf in range(ss + 1, max_cliques.get(g, 0) + 1):
+            timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
 
+    # ---- Build global job queue: ordered by (graph, s, r, algo) ----
+    # This order ensures timeout propagation works (smaller s before larger s)
+    retry_queue = []
+    all_jobs = []
     for graph in GRAPHS:
-        if shutdown:
-            break
         if graph not in max_cliques:
             continue
         max_k = max_cliques[graph]
-        print(f"\n{'='*50}")
-        print(f"  {graph} (max_clique={max_k})")
-        print(f"{'='*50}")
-
         for s in range(4, max_k + 1):
-            if shutdown:
-                break
-
-            # Build job list for this (graph, s)
-            jobs = []
             for r in range(3, s):
                 for algo_name in ALGOS:
-                    key = (graph, r, s, algo_name)
-                    if key in done:
-                        continue
-                    if should_skip(graph, r, s, algo_name):
-                        skipped += 1
-                        write_result(graph, r, s, algo_name, "SKIP_TIMEOUT")
-                        done.add(key)
-                        continue
-                    jobs.append((graph, r, s, algo_name))
+                    all_jobs.append((graph, r, s, algo_name))
 
-            # Add retry queue items for this graph
-            retry_for_s = [(g, r, s2, an) for g, r, s2, an in retry_queue if s2 == s and g == graph]
-            for item in retry_for_s:
-                retry_queue.remove(item)
-                if item not in done:
-                    jobs.append(item)
+    ji = 0
+    while (ji < len(all_jobs) or retry_queue or running) and not shutdown:
+        reap()
+        check_timeouts()
 
-            if not jobs:
-                continue
+        # OOM protection
+        while get_used_mem_gb() > MEM_KILL_GB and running:
+            kill_newest()
+            time.sleep(2)
 
-            ji = 0
-            while ji < len(jobs) or running:
-                if shutdown:
-                    break
+        # Pick next job: retry queue first, then main queue
+        job = None
+        if retry_queue:
+            job = retry_queue.pop(0)
+        elif ji < len(all_jobs):
+            job = all_jobs[ji]
+            ji += 1
+        else:
+            # No more jobs to launch, just wait for running ones
+            if running:
+                time.sleep(POLL_SEC)
+            continue
 
-                reap()
-                check_timeouts()
+        g, rr, ss, an = job
 
-                # OOM protection
-                while get_used_mem_gb() > MEM_KILL_GB and running:
-                    kill_newest()
-                    time.sleep(2)
+        # Skip if already done
+        if (g, rr, ss, an) in done:
+            continue
 
-                # Launch new jobs
-                while (ji < len(jobs)
-                       and len(running) < MAX_WORKERS
-                       and get_used_mem_gb() < MEM_LIMIT_GB
-                       and not shutdown):
-                    g, rr, ss, an = jobs[ji]
-                    ji += 1
-                    if (g, rr, ss, an) in done:
-                        continue
-                    if should_skip(g, rr, ss, an):
-                        skipped += 1
-                        write_result(g, rr, ss, an, "SKIP_TIMEOUT")
-                        done.add((g, rr, ss, an))
-                        continue
-                    launch(g, rr, ss, an)
-                    time.sleep(SETTLE_SEC)
+        # Skip if timed out
+        if should_skip(g, rr, ss, an):
+            skipped += 1
+            write_result(g, rr, ss, an, "SKIP_TIMEOUT")
+            done.add((g, rr, ss, an))
+            continue
 
-                if running:
-                    time.sleep(POLL_SEC)
+        # Wait for capacity: workers < MAX and memory < limit
+        while (len(running) >= MAX_WORKERS or get_used_mem_gb() >= MEM_LIMIT_GB) and not shutdown:
+            reap()
+            check_timeouts()
+            while get_used_mem_gb() > MEM_KILL_GB and running:
+                kill_newest()
+                time.sleep(2)
+            if len(running) >= MAX_WORKERS or get_used_mem_gb() >= MEM_LIMIT_GB:
+                time.sleep(POLL_SEC)
+
+        if shutdown:
+            break
+
+        # Re-check skip after waiting (timeout_at may have been updated)
+        if (g, rr, ss, an) in done or should_skip(g, rr, ss, an):
+            if (g, rr, ss, an) not in done:
+                skipped += 1
+                write_result(g, rr, ss, an, "SKIP_TIMEOUT")
+                done.add((g, rr, ss, an))
+            continue
+
+        launch(g, rr, ss, an)
+        time.sleep(SETTLE_SEC)
 
     # Drain remaining
     while running and not shutdown:
