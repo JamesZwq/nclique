@@ -309,10 +309,8 @@ def main():
         running.append((proc, g, rr, ss, an, time.time()))
 
     def propagate_timeout(g, an, ss, rr):
-        """Mark (g, an, s') as timed out for all s' >= ss at r' >= rr."""
+        """Mark (g, an, ss) as timed out for r' >= rr. Only same s, no cross-s propagation."""
         timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
-        for sf in range(ss + 1, max_cliques.get(g, 0) + 1):
-            timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
 
     # ---- Build global job queue: ordered by (graph, s, r, algo) ----
     # This order ensures timeout propagation works (smaller s before larger s)
