@@ -8,9 +8,10 @@ Usage:
   nohup python3 bench_v3_all.py > bench_v3_all.log 2>&1 &
 """
 
-import subprocess, os, sys, time, re, csv, signal
+import subprocess, os, sys, time, re, csv, signal, json
 from pathlib import Path
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 
 # ============ Config ============
 BIN = "./build/bin/degeneracy_cliques"
@@ -148,18 +149,28 @@ def main():
         with open(OUTCSV, "w", newline="") as f:
             csv.DictWriter(f, fieldnames=FIELDNAMES).writeheader()
 
-    # Probe max clique sizes
-    print("\nProbing max clique sizes...")
+    # Probe max clique sizes (cached to JSON)
+    cache_file = Path("bench_v3_max_cliques.json")
     max_cliques = {}
-    for graph in GRAPHS:
-        if not os.path.exists(f"graphs/{graph}.edges"):
-            print(f"  {graph}: SKIP (not found)")
-            continue
-        mc = probe_max_clique(graph)
-        max_cliques[graph] = mc
-        n_combos = sum(s - 3 for s in range(4, mc + 1))  # total (r,s) pairs
-        print(f"  {graph}: max_clique={mc}, (r,s) combos={n_combos}, "
-              f"jobs={n_combos * len(ALGOS)}")
+    if cache_file.exists():
+        max_cliques = json.loads(cache_file.read_text())
+        print(f"\nLoaded max clique cache: {cache_file}")
+        for g, mc in max_cliques.items():
+            n_combos = sum(s - 3 for s in range(4, mc + 1))
+            print(f"  {g}: max_clique={mc}, jobs={n_combos * len(ALGOS)}")
+    else:
+        print("\nProbing max clique sizes (parallel)...")
+        graphs_to_probe = [g for g in GRAPHS if os.path.exists(f"graphs/{g}.edges")]
+        with ProcessPoolExecutor(max_workers=len(graphs_to_probe)) as ex:
+            futures = {ex.submit(probe_max_clique, g): g for g in graphs_to_probe}
+            for f in futures:
+                g = futures[f]
+                mc = f.result()
+                max_cliques[g] = mc
+                n_combos = sum(s - 3 for s in range(4, mc + 1))
+                print(f"  {g}: max_clique={mc}, jobs={n_combos * len(ALGOS)}")
+        cache_file.write_text(json.dumps(max_cliques, indent=2))
+        print(f"  Saved to {cache_file}")
 
     done = load_existing()
     total_jobs = sum(
