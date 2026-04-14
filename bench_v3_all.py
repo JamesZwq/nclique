@@ -119,17 +119,18 @@ def extract_timing(txt):
     peel_ms = float(m_peel.group(1)) if m_peel else -1.0
     return total_ms, peel_ms
 
-def write_result(graph, r, s, algo, status, total_ms=-1, peel_ms=-1):
+def write_result(graph, r, s, algo, status, wall_ms=-1, total_ms=-1, peel_ms=-1):
     """Append one result row to CSV."""
     with open(OUTCSV, "a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=FIELDNAMES)
         w.writerow({
             "graph": graph, "r": r, "s": s, "algo": algo, "status": status,
+            "wall_ms": f"{wall_ms:.1f}" if wall_ms >= 0 else "",
             "total_ms": f"{total_ms:.1f}" if total_ms >= 0 else "",
             "peel_ms": f"{peel_ms:.1f}" if peel_ms >= 0 else "",
         })
 
-FIELDNAMES = ["graph", "r", "s", "algo", "status", "total_ms", "peel_ms"]
+FIELDNAMES = ["graph", "r", "s", "algo", "status", "wall_ms", "total_ms", "peel_ms"]
 
 # ============ Main ============
 def main():
@@ -222,10 +223,11 @@ def main():
             else:
                 status = f"ERROR({ret})"
             (LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log").write_text(txt)
+            wall_ms = (time.time() - t0) * 1000
             total_ms, peel_ms = extract_timing(txt)
-            t_str = f"{total_ms:.0f}ms" if total_ms >= 0 else "N/A"
-            print(f"  {an:>6} {g} r={rr} s={ss} {status} total={t_str}", flush=True)
-            write_result(g, rr, ss, an, status, total_ms, peel_ms)
+            t_str = f"{wall_ms:.0f}ms" if wall_ms >= 0 else "N/A"
+            print(f"  {an:>6} {g} r={rr} s={ss} {status} wall={t_str}", flush=True)
+            write_result(g, rr, ss, an, status, wall_ms, total_ms, peel_ms)
             done.add((g, rr, ss, an))
             launched += 1
             if status in ("TIMEOUT", "OOM"):
