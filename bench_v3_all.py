@@ -7,15 +7,16 @@ Usage:
   nohup python3 bench_v3_all.py > bench_v3_all.log 2>&1 &
 """
 
-import subprocess, os, sys, time, re, csv, json
+import subprocess, os, sys, time, re, csv, json, signal, threading
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from collections import defaultdict
 
 # ============ Config ============
 BIN = "./build/bin/degeneracy_cliques"
 TIMEOUT = 600  # seconds per job
-MAX_WORKERS = 8
+MAX_WORKERS = 32
+MEM_LIMIT_GB = 300   # don't launch if used > this
+MEM_KILL_GB = 450    # kill newest if used > this
 OUTCSV = "bench_v3_all_results.csv"
 LOGDIR = Path("bench_v3_all_logs")
 DATADIR = "/data/wenqianz"
@@ -125,6 +126,21 @@ def run_job(graph, r, s, algo_name, algo_cfg):
 
     return graph, r, s, algo_name, status, total_ms, peel_ms
 
+def get_used_mem_gb():
+    """Get used memory in GB from /proc/meminfo."""
+    try:
+        with open("/proc/meminfo") as f:
+            info = {}
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 2:
+                    info[parts[0].rstrip(":")] = int(parts[1])
+            total = info.get("MemTotal", 0)
+            avail = info.get("MemAvailable", 0)
+            return (total - avail) / 1024 / 1024
+    except:
+        return 0
+
 def load_existing():
     """Load already-completed results to skip."""
     done = set()
@@ -221,19 +237,31 @@ def main():
             if not batch:
                 continue
 
-            # Run batch in parallel
-            with ProcessPoolExecutor(max_workers=min(MAX_WORKERS, len(batch))) as ex:
-                futures = {}
-                for g, r, s2, an in batch:
-                    f = ex.submit(run_job, g, r, s2, an, ALGOS[an])
-                    futures[f] = (g, r, s2, an)
+            # Memory-aware parallel execution
+            # Track running subprocesses: [(Popen, graph, r, s, algo, start_time)]
+            running = []
+            batch_idx = 0
 
-                for f in as_completed(futures):
-                    g, rr, ss, an, status, total_ms, peel_ms = f.result()
-                    launched += 1
+            def reap_finished():
+                """Check for completed processes, record results."""
+                nonlocal launched
+                still_running = []
+                for proc, g, rr, ss, an, t0 in running:
+                    ret = proc.poll()
+                    if ret is None:
+                        still_running.append((proc, g, rr, ss, an, t0))
+                        continue
+                    # Process finished
+                    txt = proc.stdout.read() if proc.stdout else ""
+                    status = "OK" if ret == 0 else f"ERROR({ret})"
+                    logf = LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log"
+                    logf.write_text(txt)
+                    m_total = re.search(r'NucleusCoreDecomposition took:\s*([\d.]+)', txt)
+                    m_peel = re.search(r'Peeling time:\s*([\d.]+)', txt)
+                    total_ms = float(m_total.group(1)) if m_total else -1
+                    peel_ms = float(m_peel.group(1)) if m_peel else -1
                     t_str = f"{total_ms:.0f}ms" if total_ms > 0 else "N/A"
-                    print(f"  {an:>6} {g} r={rr} s={ss} {status} total={t_str}")
-
+                    print(f"  {an:>6} {g} r={rr} s={ss} {status} total={t_str}", flush=True)
                     with open(OUTCSV, "a", newline="") as f2:
                         w = csv.DictWriter(f2, fieldnames=fieldnames)
                         w.writerow({"graph": g, "r": rr, "s": ss, "algo": an,
@@ -241,14 +269,102 @@ def main():
                                     "total_ms": f"{total_ms:.1f}" if total_ms > 0 else "",
                                     "peel_ms": f"{peel_ms:.1f}" if peel_ms > 0 else ""})
                     done.add((g, rr, ss, an))
-
+                    launched += 1
                     if status in ("TIMEOUT", "OOM"):
                         timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
-                        # Also propagate: if timed out at (r, s), skip (r, s') for s' > s
-                        # (larger s with same r is likely harder)
                         for s_future in range(ss + 1, max_cliques.get(g, 0) + 1):
                             timeout_at[(g, an, s_future)] = min(
                                 timeout_at[(g, an, s_future)], rr)
+                running.clear()
+                running.extend(still_running)
+
+            def kill_newest():
+                """Kill the most recently launched process (OOM protection)."""
+                if not running:
+                    return
+                proc, g, rr, ss, an, t0 = running[-1]
+                proc.kill()
+                proc.wait()
+                running.pop()
+                print(f"  [KILL] {an} {g} r={rr} s={ss} (mem={get_used_mem_gb():.0f}GB)")
+                # Mark as OOM only if it was the only job
+                if len(running) == 0:
+                    with open(OUTCSV, "a", newline="") as f2:
+                        w = csv.DictWriter(f2, fieldnames=fieldnames)
+                        w.writerow({"graph": g, "r": rr, "s": ss, "algo": an,
+                                    "status": "OOM", "total_ms": "", "peel_ms": ""})
+                    done.add((g, rr, ss, an))
+                    timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
+                else:
+                    # Re-queue: not its fault (multiple jobs competing for memory)
+                    batch.append((g, rr, ss, an))
+
+            def check_timeouts():
+                """Kill processes that exceeded TIMEOUT."""
+                now = time.time()
+                for i in range(len(running) - 1, -1, -1):
+                    proc, g, rr, ss, an, t0 = running[i]
+                    if now - t0 > TIMEOUT + 5:
+                        proc.kill()
+                        proc.wait()
+                        txt = proc.stdout.read() if proc.stdout else ""
+                        logf = LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log"
+                        logf.write_text(txt + "\nTIMEOUT by scheduler")
+                        print(f"  {an:>6} {g} r={rr} s={ss} TIMEOUT", flush=True)
+                        with open(OUTCSV, "a", newline="") as f2:
+                            w = csv.DictWriter(f2, fieldnames=fieldnames)
+                            w.writerow({"graph": g, "r": rr, "s": ss, "algo": an,
+                                        "status": "TIMEOUT", "total_ms": "", "peel_ms": ""})
+                        done.add((g, rr, ss, an))
+                        timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
+                        for s_future in range(ss + 1, max_cliques.get(g, 0) + 1):
+                            timeout_at[(g, an, s_future)] = min(
+                                timeout_at[(g, an, s_future)], rr)
+                        running.pop(i)
+
+            while batch_idx < len(batch) or running:
+                reap_finished()
+                check_timeouts()
+
+                # OOM protection
+                used = get_used_mem_gb()
+                while used > MEM_KILL_GB and running:
+                    kill_newest()
+                    time.sleep(2)
+                    used = get_used_mem_gb()
+
+                # Launch new jobs if capacity available
+                while (batch_idx < len(batch)
+                       and len(running) < MAX_WORKERS
+                       and get_used_mem_gb() < MEM_LIMIT_GB):
+                    g, rr, ss, an = batch[batch_idx]
+                    batch_idx += 1
+                    # Re-check skip (might have been updated by completed jobs)
+                    if (g, rr, ss, an) in done:
+                        continue
+                    min_to_r = timeout_at[(g, an, ss)]
+                    if rr >= min_to_r:
+                        skipped_timeout += 1
+                        with open(OUTCSV, "a", newline="") as f2:
+                            w = csv.DictWriter(f2, fieldnames=fieldnames)
+                            w.writerow({"graph": g, "r": rr, "s": ss, "algo": an,
+                                        "status": "SKIP_TIMEOUT", "total_ms": "", "peel_ms": ""})
+                        done.add((g, rr, ss, an))
+                        continue
+
+                    env = {**os.environ, ALGOS[an]["env"]: "1"}
+                    if "extra" in ALGOS[an]:
+                        env.update(ALGOS[an]["extra"])
+                    proc = subprocess.Popen(
+                        [BIN, f"graphs/{g}.edges", str(rr), str(ss)],
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        text=True, env=env
+                    )
+                    running.append((proc, g, rr, ss, an, time.time()))
+                    time.sleep(1)  # brief settle
+
+                if running:
+                    time.sleep(3)
 
     print(f"\nDone. Launched: {launched}, skipped (timeout): {skipped_timeout}")
     print(f"Results: {OUTCSV}")
