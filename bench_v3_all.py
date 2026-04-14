@@ -115,8 +115,8 @@ def extract_timing(txt):
     """Extract total_ms and peel_ms from log text."""
     m_total = re.search(r'NucleusCoreDecomposition took:\s*([\d.]+)', txt)
     m_peel = re.search(r'Peeling time:\s*([\d.]+)', txt)
-    total_ms = float(m_total.group(1)) if m_total else -1
-    peel_ms = float(m_peel.group(1)) if m_peel else -1
+    total_ms = float(m_total.group(1)) if m_total else -1.0
+    peel_ms = float(m_peel.group(1)) if m_peel else -1.0
     return total_ms, peel_ms
 
 def write_result(graph, r, s, algo, status, total_ms=-1, peel_ms=-1):
@@ -125,8 +125,8 @@ def write_result(graph, r, s, algo, status, total_ms=-1, peel_ms=-1):
         w = csv.DictWriter(f, fieldnames=FIELDNAMES)
         w.writerow({
             "graph": graph, "r": r, "s": s, "algo": algo, "status": status,
-            "total_ms": f"{total_ms:.1f}" if total_ms > 0 else "",
-            "peel_ms": f"{peel_ms:.1f}" if peel_ms > 0 else "",
+            "total_ms": f"{total_ms:.1f}" if total_ms >= 0 else "",
+            "peel_ms": f"{peel_ms:.1f}" if peel_ms >= 0 else "",
         })
 
 FIELDNAMES = ["graph", "r", "s", "algo", "status", "total_ms", "peel_ms"]
@@ -223,7 +223,7 @@ def main():
                 status = f"ERROR({ret})"
             (LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log").write_text(txt)
             total_ms, peel_ms = extract_timing(txt)
-            t_str = f"{total_ms:.0f}ms" if total_ms > 0 else "N/A"
+            t_str = f"{total_ms:.0f}ms" if total_ms >= 0 else "N/A"
             print(f"  {an:>6} {g} r={rr} s={ss} {status} total={t_str}", flush=True)
             write_result(g, rr, ss, an, status, total_ms, peel_ms)
             done.add((g, rr, ss, an))
