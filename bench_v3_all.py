@@ -187,6 +187,8 @@ def main():
     running = []
     launched = 0
     skipped = 0
+    retry_count = defaultdict(int)  # (graph, r, s, algo) → how many times re-queued
+    MAX_RETRIES = 2
 
     # Graceful shutdown
     shutdown = False
@@ -268,9 +270,17 @@ def main():
             done.add((g, rr, ss, an))
             propagate_timeout(g, an, ss, rr)
         else:
-            # Multiple jobs → re-queue
-            retry_queue.append((g, rr, ss, an))
-            print(f"    → re-queued (not alone)", flush=True)
+            # Multiple jobs → re-queue (with retry limit)
+            key = (g, rr, ss, an)
+            retry_count[key] += 1
+            if retry_count[key] > MAX_RETRIES:
+                write_result(g, rr, ss, an, "OOM")
+                done.add(key)
+                propagate_timeout(g, an, ss, rr)
+                print(f"    → OOM (retried {MAX_RETRIES} times)", flush=True)
+            else:
+                retry_queue.append(key)
+                print(f"    → re-queued ({retry_count[key]}/{MAX_RETRIES})", flush=True)
 
     def should_skip(g, rr, ss, an):
         return rr >= timeout_at[(g, an, ss)]
