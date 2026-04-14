@@ -309,8 +309,9 @@ def main():
         running.append((proc, g, rr, ss, an, time.time()))
 
     def propagate_timeout(g, an, ss, rr):
-        """Mark (g, an, ss) as timed out for r' >= rr. Only same s, no cross-s propagation."""
-        timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
+        """No propagation — each (r,s) is independent.
+        Small s can be harder than large s (more MCs), larger r can be easier."""
+        pass
 
     # ---- Build global job queue: ordered by (graph, s, r, algo) ----
     # This order ensures timeout propagation works (smaller s before larger s)
