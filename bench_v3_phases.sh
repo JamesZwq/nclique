@@ -38,7 +38,11 @@ if [ "$1" = "--run" ]; then
 
   result=""
   exit_code=0
-  env "${env_var}=1" timeout ${TIMEOUT}s $BIN "graphs/${graph}.edges" "$r" "$s" > "$logfile" 2>&1 &
+  extra_env=""
+  if [ "$algo" = "V3_NP" ]; then
+    extra_env="PIVOTER_V3_NO_PRIVATE=1"
+  fi
+  env "${env_var}=1" $extra_env timeout ${TIMEOUT}s $BIN "graphs/${graph}.edges" "$r" "$s" > "$logfile" 2>&1 &
   CHILD_PID=$!
   wait "$CHILD_PID"
   exit_code=$?
@@ -101,7 +105,7 @@ mkdir -p "$LOGDIR"
 
 # ============ Generate jobs ============
 GRAPHS=(com-dblp web-Stanford web-it-2004 dblp-core30 email-Eu-core com-youtube)
-ALGOS="ST V2 V3"
+ALGOS="ST V3 V3_NP"
 
 JOBFILE=$(mktemp /tmp/bench_v3_jobs.XXXXXX)
 
@@ -111,14 +115,14 @@ for graph in "${GRAPHS[@]}"; do
     continue
   fi
 
-  for rs in "3 4" "3 5" "3 6" "3 8" "3 10" "4 5" "4 6" "5 6"; do
+  for rs in "3 4" "3 5" "3 6" "3 8" "3 10" "4 5" "4 6" "5 6" "6 7" "6 8"; do
     r=${rs% *}; s=${rs#* }
 
     for algo in $ALGOS; do
       case $algo in
-        ST) env_var="PIVOTER_RUN_ST" ;;
-        V2) env_var="PIVOTER_RUN_REGION_V2" ;;
-        V3) env_var="PIVOTER_RUN_REGION_V3" ;;
+        ST)    env_var="PIVOTER_RUN_ST" ;;
+        V3)    env_var="PIVOTER_RUN_REGION_V3" ;;
+        V3_NP) env_var="PIVOTER_RUN_REGION_V3" ;;
       esac
       echo "--run $graph $r $s $algo $env_var" >> "$JOBFILE"
     done

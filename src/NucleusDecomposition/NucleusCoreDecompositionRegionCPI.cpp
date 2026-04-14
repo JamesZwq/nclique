@@ -211,14 +211,14 @@ NucleusCoreDecompositionRClique_RegionCPI(
     }
 
     // Directly assign fully-mergeable regions
-    std::map<daf::Size, int64_t> coreDist;
+    std::map<double, int64_t> coreDist;
     daf::Size numFullyMergeable = 0, mergedRCliques = 0;
 
     for (daf::Size rid = 0; rid < numRegions; ++rid) {
         if (!fullyMergeable[rid]) continue;
         numFullyMergeable++;
         int mSize = (int)regionVerts[rid].size();
-        daf::Size coreVal = (mSize >= (int)s) ? (daf::Size)llround(nCr[mSize - r][s - r]) : 0;
+        double coreVal = (mSize >= (int)s) ? nCr[mSize - r][s - r] : 0.0;
         daf::Size numRC = (daf::Size)llround(nCr[mSize][r]);
         coreDist[coreVal] += numRC;
         mergedRCliques += numRC;
@@ -258,13 +258,17 @@ NucleusCoreDecompositionRClique_RegionCPI(
     if (numRegions == 0) {
         auto tEnd = std::chrono::high_resolution_clock::now();
         auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count();
-        daf::Size maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
+        double maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
         std::cout << "\n  All regions fully r-mergeable. No peeling needed." << std::endl;
         std::cout << "  Max core: " << maxCore << std::endl;
         for (auto &[core, cnt] : coreDist)
             std::cout << "  core=" << core << " count=" << cnt << std::endl;
         std::cout << "  Total time: " << totalMs << " ms" << std::endl;
-        return {};
+        std::vector<std::pair<std::vector<daf::Size>, double>> result;
+        for (auto &[c, cnt] : coreDist)
+            // Compact format: key = {lo32, hi32} encoding int64_t count
+        result.push_back({{(daf::Size)(cnt & 0xFFFFFFFF), (daf::Size)((cnt >> 32) & 0xFFFFFFFF)}, (double)c});
+        return result;
     }
 
     // ============================================================
@@ -313,16 +317,78 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::cout << "  Maximal cliques (≥s): " << numRegions << std::endl;
     std::cout << "  Overlap classes: " << numClasses << std::endl;
 
+    // Private cloud mode:
+    // - do not materialize private classes as active r-tuple dimensions
+    // - count all r-cliques touching private vertices directly into coreDist
+    // - keep private classes only as path-side support dimensions
+    const bool enablePrivateCloud = !getenv("PIVOTER_V3_NO_PRIVATE");
+    const bool enableDebugVerify = getenv("PIVOTER_V3_DEBUG_VERIFY") != nullptr;
+
+    std::vector<bool> isPrivateClass(numClasses, false);
+    std::vector<daf::Size> privateClassMC(numClasses, INVALID);
+    for (daf::Size cid = 0; cid < numClasses; ++cid) {
+        if (classes[cid].regionIds.size() == 1) {
+            isPrivateClass[cid] = true;
+            privateClassMC[cid] = classes[cid].regionIds[0];
+        }
+    }
+
+    auto isActiveTupleClass = [&](daf::Size cid) -> bool {
+        return !enablePrivateCloud || !isPrivateClass[cid];
+    };
+
+    std::vector<std::vector<daf::Size>> activeClassesInRegion(numRegions);
+    for (daf::Size rid = 0; rid < numRegions; ++rid) {
+        for (daf::Size cid : classesInRegion[rid]) {
+            if (isActiveTupleClass(cid))
+                activeClassesInRegion[rid].push_back(cid);
+        }
+    }
+
+    std::vector<double> mcCoreVal(numRegions, 0);
+    std::vector<daf::Size> privateVertexCount(numRegions, 0);
+    daf::Size numPrivateClouds = 0;
+    double privateRCliquesDirect = 0.0;
+
+    for (daf::Size rid = 0; rid < numRegions; ++rid) {
+        int m = (int)regionVerts[rid].size();
+        int n = m - (int)r, k = (int)s - (int)r;
+        mcCoreVal[rid] = (n >= k && k >= 0) ? nCr[n][k] : 0.0;
+    }
+    for (daf::Size cid = 0; cid < numClasses; ++cid) {
+        if (!isPrivateClass[cid]) continue;
+        daf::Size rid = privateClassMC[cid];
+        if (rid == INVALID) continue;
+        privateVertexCount[rid] += classSizes[cid];
+        numPrivateClouds++;
+    }
+    if (enablePrivateCloud) {
+        for (daf::Size rid = 0; rid < numRegions; ++rid) {
+            int m = (int)regionVerts[rid].size();
+            int p = (int)privateVertexCount[rid];
+            if (p == 0 || m < (int)r) continue;
+            int q = m - p;
+            double total = nCr[m][r];
+            double publicOnly = (q >= (int)r) ? nCr[q][r] : 0.0;
+            daf::Size privateTouching = (daf::Size)llround(std::max(0.0, total - publicOnly));
+            if (privateTouching == 0) continue;
+            coreDist[mcCoreVal[rid]] += privateTouching;
+            privateRCliquesDirect += privateTouching;
+        }
+    }
+
     // ============================================================
-    // Step 3: Enumerate r-tuples (same as V2)
+    // Step 3: Enumerate active r-tuples
     // ============================================================
 
     std::unordered_map<TupleKey, daf::Size, TupleHash> rTupleIndex;
     struct RTuple { TupleKey key; daf::Size mult; };
     std::vector<RTuple> rTuples;
+    std::vector<double> tupleMinCore; // per-tuple minCore floor
 
     {
         TupleKey cur; cur.reserve(r);
+        daf::Size curRid = 0;
         auto addRTuple = [&](const TupleKey &key) {
             std::unordered_map<daf::Size, int> counts;
             for (auto c : key) counts[c]++;
@@ -332,14 +398,20 @@ NucleusCoreDecompositionRClique_RegionCPI(
                 mult *= (daf::Size)nCr[classSizes[c]][k];
             }
             if (mult == 0) return;
-            if (rTupleIndex.count(key)) return;
-            rTupleIndex[key] = rTuples.size();
-            rTuples.push_back({key, mult});
+            auto it = rTupleIndex.find(key);
+            if (it == rTupleIndex.end()) {
+                rTupleIndex[key] = rTuples.size();
+                rTuples.push_back({key, mult});
+                tupleMinCore.push_back(enablePrivateCloud ? mcCoreVal[curRid] : 0);
+            } else if (enablePrivateCloud) {
+                tupleMinCore[it->second] = std::max(tupleMinCore[it->second], mcCoreVal[curRid]);
+            }
         };
 
         for (daf::Size rid = 0; rid < numRegions; ++rid) {
-            auto &cids = classesInRegion[rid];
+            const auto &cids = enablePrivateCloud ? activeClassesInRegion[rid] : classesInRegion[rid];
             if (cids.size() > 500) continue;
+            curRid = rid;
             cur.clear();
             std::function<void()> cb = [&]() { addRTuple(cur); };
             enumerateMultisets(cids, r, 0, cur, cb);
@@ -347,7 +419,14 @@ NucleusCoreDecompositionRClique_RegionCPI(
     }
 
     auto tStep3 = std::chrono::high_resolution_clock::now();
-    std::cout << "  r-tuples: " << rTuples.size() << std::endl;
+    std::cout << "  Active r-tuples: " << rTuples.size() << std::endl;
+    if (enablePrivateCloud) {
+        std::cout << "  Private clouds: " << numPrivateClouds << std::endl;
+        std::cout << "  Private-touching r-cliques (direct): "
+                  << std::fixed << std::setprecision(0) << privateRCliquesDirect << std::endl;
+    } else {
+        std::cout << "  Private cloud mode: disabled" << std::endl;
+    }
 
     // ============================================================
     // Step 4: CPI Counting for initial support (THE KEY INNOVATION)
@@ -371,18 +450,26 @@ NucleusCoreDecompositionRClique_RegionCPI(
         int h = 0, p = 0;
         std::unordered_map<daf::Size, std::pair<int,int>> classDistrib; // cid -> (nh, np)
 
+        bool pathHasPrivateHold = false;
         for (const auto &node : leaf) {
             daf::Size v = node.v;
             if (v >= numVertices || classOf[v] == INVALID) continue;
             daf::Size cid = classOf[v];
+            if (enablePrivateCloud && isPrivateClass[cid]) {
+                // Private hold → all s-cliques on this path use a private vertex
+                if (!node.isPivot) pathHasPrivateHold = true;
+                continue; // exclude private vertices from h/p counts
+            }
             if (node.isPivot) { p++; classDistrib[cid].second++; }
             else { h++; classDistrib[cid].first++; }
         }
 
+        // Skip path if it has a private hold (all s-cliques are private-touching)
+        if (pathHasPrivateHold) continue;
         if (h + p < (int)s) continue;
         pathsUsed++;
 
-        // Collect unique classes on this path
+        // Collect unique active classes on this path
         std::vector<daf::Size> pathClasses;
         for (auto &[cid, _] : classDistrib) pathClasses.push_back(cid);
         std::sort(pathClasses.begin(), pathClasses.end());
@@ -464,9 +551,14 @@ NucleusCoreDecompositionRClique_RegionCPI(
         totalSupportTuples += rTuples[i].mult * support[i];
         totalRCliques += rTuples[i].mult;
     }
+    double totalRCliquesWithPrivate = totalRCliques + privateRCliquesDirect;
     std::cout << "  CPI paths used: " << pathsUsed << std::endl;
     std::cout << "  Tuple-path pairs: " << totalTuplesOnPaths << std::endl;
-    std::cout << "  r-cliques: " << std::fixed << std::setprecision(0) << totalRCliques << std::endl;
+    std::cout << "  Active r-cliques: " << std::fixed << std::setprecision(0) << totalRCliques << std::endl;
+    if (enablePrivateCloud) {
+        std::cout << "  Total r-cliques (with private cloud): "
+                  << std::fixed << std::setprecision(0) << totalRCliquesWithPrivate << std::endl;
+    }
     std::cout << "  Support sum (CPI): " << totalSupportTuples << std::endl;
     std::cout << "  CPI counting time: " << step4Ms << " ms" << std::endl;
 
@@ -478,6 +570,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // κ disjoint sub-paths (each a ConstrainedPath), add new contributions.
     // NO s-tuple enumeration. NO inclusion-exclusion. NO BK execution.
 
+    if (enableDebugVerify) {
     auto tStep5 = std::chrono::high_resolution_clock::now();
 
     // --- Constrained Path data structure ---
@@ -595,7 +688,10 @@ NucleusCoreDecompositionRClique_RegionCPI(
 
         // Find tuples on this path (enumerate r-multisets of path's classes)
         std::vector<daf::Size> pathClasses;
-        for (auto &[cid, _] : cp.classes) pathClasses.push_back(cid);
+        for (auto &[cid, _] : cp.classes) {
+            if (isActiveTupleClass(cid))
+                pathClasses.push_back(cid);
+        }
         std::sort(pathClasses.begin(), pathClasses.end());
 
         daf::Size cpid = cpaths.size();
@@ -645,6 +741,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
         }
         std::cout << "  Support sum (CPath): " << std::fixed << std::setprecision(0) << checkSum << std::endl;
         std::cout << "  CPI vs CPath match: " << (mismatches == 0 ? "PASS" : ("MISMATCH(" + std::to_string(mismatches) + ")")) << std::endl;
+    }
     }
 
     // ============================================================
@@ -898,14 +995,20 @@ NucleusCoreDecompositionRClique_RegionCPI(
 
         PathInfo pi;
         pi.h = 0;
+        bool piHasPrivateHold = false;
         std::unordered_map<daf::Size, std::pair<int,int>> cd; // cid -> (nh, np)
         for (const auto &node : leaf) {
             daf::Size v = node.v;
             if (v >= numVertices || classOf[v] == INVALID) continue;
             daf::Size cid = classOf[v];
+            if (enablePrivateCloud && isPrivateClass[cid]) {
+                if (!node.isPivot) piHasPrivateHold = true;
+                continue;
+            }
             if (node.isPivot) cd[cid].second++;
             else { cd[cid].first++; pi.h++; }
         }
+        if (piHasPrivateHold) continue;
         pi.T = s - pi.h;
         if (pi.T < 0) continue;
 
@@ -958,7 +1061,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::cout << "  PathInfo build time: " << pathBuildMs << " ms" << std::endl;
 
     // Verify: weighted feasible on full path should match aggrCountOnCPath
-    {
+    if (enableDebugVerify) {
         std::vector<double> supCheck(rTuples.size(), 0.0);
         for (daf::Size piIdx = 0; piIdx < pathInfos.size(); ++piIdx) {
             auto &pi = pathInfos[piIdx];
@@ -1008,59 +1111,127 @@ NucleusCoreDecompositionRClique_RegionCPI(
         return req;
     };
 
+    std::cout << "  MinCore floor: computed inline during Step 3" << std::endl;
+
     // --- Per-(tuple, path) dead count cache ---
-    daf::Size numTuplesSz = rTuples.size();
     std::unordered_map<uint64_t, double> deadCache;
 
     // --- Bucket queue setup ---
     std::vector<double> dSup = support;
     std::vector<bool> rPeeled(rTuples.size(), false);
 
+    // Profiling counters
+    long long prof_unionCalls = 0, prof_totalRecCalls = 0;
+    long long prof_deadBoxesAdded = 0, prof_tupleUpdates = 0;
+    daf::Size numTuplesSz = rTuples.size();
+
     daf::Size maxSup = 0;
-    for (auto &sv : dSup) maxSup = std::max(maxSup, (daf::Size)llround(sv));
+    for (daf::Size i = 0; i < rTuples.size(); ++i) {
+        daf::Size sv = (daf::Size)llround(std::max(0.0, dSup[i]));
+        maxSup = std::max(maxSup, sv);
+    }
+    // (no maxPrivateEventLevel needed — minCore floor handles it)
     const daf::Size BUCKET_CAP = std::min(maxSup + 2, (daf::Size)1000001);
 
     std::vector<std::vector<daf::Size>> buckets(BUCKET_CAP);
     std::multimap<daf::Size, daf::Size> overflow;
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
-        daf::Size b = (daf::Size)llround(dSup[i]);
+        daf::Size b = (daf::Size)llround(std::max(0.0, dSup[i]));
         if (b < BUCKET_CAP) buckets[b].push_back(i);
         else overflow.insert({b, i});
     }
 
     // Profiling counters
-    long long prof_unionCalls = 0, prof_totalRecCalls = 0;
-    long long prof_deadBoxesAdded = 0, prof_tupleUpdates = 0;
     long long prof_batchCount = 0;
+
+    auto refreshAffectedPaths = [&](const std::unordered_set<daf::Size> &affectedPathSet,
+                                    daf::Size &scanLevel) {
+        for (daf::Size piIdx : affectedPathSet) {
+            auto &pi = pathInfos[piIdx];
+            int m = (int)pi.classIds.size();
+
+            std::vector<daf::Size> alive;
+            alive.reserve(pi.tupleIdxs.size());
+            for (auto tidx : pi.tupleIdxs) {
+                if (!rPeeled[tidx])
+                    alive.push_back(tidx);
+            }
+            pi.tupleIdxs = std::move(alive);
+
+            if (pi.deadBoxes.empty()) continue;
+
+            for (auto tidx : pi.tupleIdxs) {
+                auto &key = rTuples[tidx].key;
+                std::unordered_map<daf::Size, int> counts;
+                for (auto c : key) counts[c]++;
+
+                std::vector<int> base(m), upper(m);
+                for (int i = 0; i < m; ++i) {
+                    int jc = 0;
+                    auto cit = counts.find(pi.classIds[i]);
+                    if (cit != counts.end()) jc = cit->second;
+                    base[i] = std::max(0, jc - pi.nh[i]);
+                    upper[i] = pi.np[i];
+                }
+
+                UnionCtx ctx{m, pi.T, 0, tidx, &pi};
+                double newDead = countUnionRec(base, upper, pi.deadBoxes, ctx);
+                prof_totalRecCalls += ctx.recCalls;
+                prof_unionCalls++;
+
+                uint64_t cacheKey = (uint64_t)piIdx * numTuplesSz + tidx;
+                double oldDead = 0.0;
+                auto dit = deadCache.find(cacheKey);
+                if (dit != deadCache.end()) oldDead = dit->second;
+
+                double delta = newDead - oldDead;
+                if (delta <= 0.5) continue;
+
+                deadCache[cacheKey] = newDead;
+                dSup[tidx] -= delta / rTuples[tidx].mult;
+                if (dSup[tidx] < -0.5) dSup[tidx] = 0;
+                prof_tupleUpdates++;
+
+                daf::Size newBucket = (daf::Size)llround(dSup[tidx]);
+                if (newBucket < BUCKET_CAP) {
+                    buckets[newBucket].push_back(tidx);
+                    if (newBucket < scanLevel) scanLevel = newBucket;
+                } else {
+                    overflow.insert({newBucket, tidx});
+                }
+            }
+        }
+    };
 
     // --- Batch peeling loop ---
     daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
 
     while (numPeeled < rTuples.size()) {
-        // Find next non-empty level
         while (currentLevel < BUCKET_CAP && buckets[currentLevel].empty())
             currentLevel++;
 
-        // Drain ALL tuples at currentLevel (batch)
-        // Use rPeeled to deduplicate (mark during drain, not after)
+        if (currentLevel >= BUCKET_CAP) {
+            if (overflow.empty()) break;
+            currentLevel = overflow.begin()->first;
+        }
+
         std::vector<daf::Size> batch;
         if (currentLevel < BUCKET_CAP) {
             while (!buckets[currentLevel].empty()) {
                 daf::Size idx = buckets[currentLevel].back();
                 buckets[currentLevel].pop_back();
                 if (rPeeled[idx]) continue;
-                daf::Size idxBucket = (daf::Size)llround(dSup[idx]);
+                daf::Size idxBucket = (daf::Size)llround(std::max(0.0, dSup[idx]));
                 if (idxBucket != currentLevel) continue;
-                rPeeled[idx] = true; // mark immediately to avoid duplicates
+                rPeeled[idx] = true;
                 batch.push_back(idx);
             }
         } else if (!overflow.empty()) {
-            currentLevel = overflow.begin()->first;
             auto range = overflow.equal_range(currentLevel);
             for (auto it = range.first; it != range.second; ++it) {
                 daf::Size idx = it->second;
                 if (!rPeeled[idx]) {
-                    daf::Size idxBucket = (daf::Size)llround(dSup[idx]);
+                    daf::Size idxBucket = (daf::Size)llround(std::max(0.0, dSup[idx]));
                     if (idxBucket == currentLevel) {
                         rPeeled[idx] = true;
                         batch.push_back(idx);
@@ -1073,104 +1244,48 @@ NucleusCoreDecompositionRClique_RegionCPI(
         if (batch.empty()) { currentLevel++; continue; }
         prof_batchCount++;
 
-        // Assign core level
+        coreLevel = std::max(coreLevel, currentLevel);
         for (auto idx : batch) {
             numPeeled++;
-            coreLevel = std::max(coreLevel, currentLevel);
-            coreDist[coreLevel] += rTuples[idx].mult;
+            // Apply per-tuple minCore floor (from private cloud)
+            double assignedCore = std::max((double)coreLevel, tupleMinCore[idx]);
+            coreDist[assignedCore] += rTuples[idx].mult;
         }
 
-        // Collect affected paths
-        std::unordered_set<daf::Size> affectedPathSet;
-        for (auto idx : batch)
+        std::unordered_map<daf::Size, std::vector<daf::Size>> newlyDeadByPath;
+        for (auto idx : batch) {
             for (auto piIdx : tupleToPathInfos[idx])
-                affectedPathSet.insert(piIdx);
+                newlyDeadByPath[piIdx].push_back(idx);
+        }
 
-        // Process each affected path ONCE
-        for (daf::Size piIdx : affectedPathSet) {
+        std::unordered_set<daf::Size> affectedPathSet;
+        for (auto &[piIdx, deadTuples] : newlyDeadByPath) {
             auto &pi = pathInfos[piIdx];
-            int m = (int)pi.classIds.size();
-
-            // Add new dead boxes from batch tuples on this path
-            for (auto idx : batch) {
-                // Check if this tuple is actually on this path
-                bool onPath = false;
-                for (auto p : tupleToPathInfos[idx])
-                    if (p == piIdx) { onPath = true; break; }
-                if (!onPath) continue;
-
-                std::vector<int> req = buildReqVec(idx, pi);
-                pi.deadBoxes.push_back(std::move(req));
+            for (auto idx : deadTuples) {
+                pi.deadBoxes.push_back(buildReqVec(idx, pi));
                 prof_deadBoxesAdded++;
             }
-
-            // Collect alive tuples (remove peeled ones)
-            std::vector<daf::Size> alive;
-            alive.reserve(pi.tupleIdxs.size());
-            for (auto tidx : pi.tupleIdxs)
-                if (!rPeeled[tidx])
-                    alive.push_back(tidx);
-            pi.tupleIdxs = std::move(alive);
-
-            if (pi.deadBoxes.empty()) continue;
-
-            for (auto tidx : pi.tupleIdxs) {
-                // Build base (lower bound) and upper for this tuple on this path
-                auto &key = rTuples[tidx].key;
-                std::unordered_map<daf::Size, int> counts;
-                for (auto c : key) counts[c]++;
-                std::vector<int> base(m), upper(m);
-                for (int i = 0; i < m; ++i) {
-                    int jc = 0;
-                    auto cit = counts.find(pi.classIds[i]);
-                    if (cit != counts.end()) jc = cit->second;
-                    base[i] = std::max(0, jc - pi.nh[i]);
-                    upper[i] = pi.np[i];
-                }
-
-                // Compute new dead count via countUnionWeighted
-                UnionCtx ctx{m, pi.T, 0, tidx, &pi};
-                double newDead = countUnionRec(base, upper, pi.deadBoxes, ctx);
-                prof_totalRecCalls += ctx.recCalls;
-                prof_unionCalls++;
-
-                // Look up cached old dead count
-                uint64_t cacheKey = (uint64_t)piIdx * numTuplesSz + tidx;
-                double oldDead = 0.0;
-                auto dit = deadCache.find(cacheKey);
-                if (dit != deadCache.end()) oldDead = dit->second;
-
-                double delta = newDead - oldDead;
-                if (delta > 0.5) {
-                    deadCache[cacheKey] = newDead;
-                    dSup[tidx] -= delta / rTuples[tidx].mult;
-                    if (dSup[tidx] < -0.5) dSup[tidx] = 0;
-                    prof_tupleUpdates++;
-
-                    daf::Size newBucket = (daf::Size)llround(dSup[tidx]);
-                    if (newBucket < BUCKET_CAP) {
-                        buckets[newBucket].push_back(tidx);
-                        if (newBucket < currentLevel) currentLevel = newBucket;
-                    } else {
-                        overflow.insert({newBucket, tidx});
-                    }
-                }
-            }
+            affectedPathSet.insert(piIdx);
         }
+        refreshAffectedPaths(affectedPathSet, currentLevel);
     }
 
     auto tStep6End = std::chrono::high_resolution_clock::now();
     auto step6Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep6End - tStep6).count();
     auto totalMs = std::chrono::duration_cast<std::chrono::milliseconds>(tStep6End - tStart).count();
 
-    daf::Size maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
+    double maxCore = coreDist.empty() ? 0 : coreDist.rbegin()->first;
     std::cout << "\n  --- Cascade Peeling (Batch Union) ---" << std::endl;
-    std::cout << "  Peeled: " << numPeeled << " / " << rTuples.size() << std::endl;
+    std::cout << "  Peeled active tuples: " << numPeeled << " / " << rTuples.size() << std::endl;
     std::cout << "  Batches: " << prof_batchCount << std::endl;
     std::cout << "  Dead boxes added: " << prof_deadBoxesAdded << std::endl;
     std::cout << "  Union calls: " << prof_unionCalls << std::endl;
     std::cout << "  Total recursive calls: " << prof_totalRecCalls << std::endl;
     std::cout << "  Tuple updates: " << prof_tupleUpdates << std::endl;
+    if (enablePrivateCloud) {
+        std::cout << "  Direct private r-cliques: "
+                  << std::fixed << std::setprecision(0) << privateRCliquesDirect << std::endl;
+    }
     std::cout << "  Max core: " << maxCore << std::endl;
     for (auto &[core, cnt] : coreDist)
         std::cout << "  core=" << core << " count=" << cnt << std::endl;
@@ -1178,5 +1293,10 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::cout << "  Total time: " << totalMs << " ms" << std::endl;
     std::cout << "==============================================" << std::endl;
 
-    return {};
+    // Return compact format: one entry per core level, key[0] = count
+    std::vector<std::pair<std::vector<daf::Size>, double>> result;
+    for (auto &[c, cnt] : coreDist)
+        // Compact format: key = {lo32, hi32} encoding int64_t count
+        result.push_back({{(daf::Size)(cnt & 0xFFFFFFFF), (daf::Size)((cnt >> 32) & 0xFFFFFFFF)}, (double)c});
+    return result;
 }

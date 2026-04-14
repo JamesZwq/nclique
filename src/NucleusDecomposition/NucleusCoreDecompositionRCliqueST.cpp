@@ -126,7 +126,7 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     double rawMaxBucket = 0;
     for (daf::Size i = 0; i < cliqueIndex.size(); ++i)
         rawMaxBucket = std::max(rawMaxBucket, countingRClique[i]);
-    int maxBucket = (int)std::min(rawMaxBucket, BUCKET_THRESHOLD);
+    int maxBucket = (int)llround(std::min(rawMaxBucket, BUCKET_THRESHOLD));
 
     std::vector<std::vector<daf::Size>> buckets(maxBucket + 2);
     std::set<std::pair<double, daf::Size>> overflowSet;
@@ -136,7 +136,7 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
 
     for (daf::Size i = 0; i < cliqueIndex.size(); ++i) {
         if (countingRClique[i] <= BUCKET_THRESHOLD) {
-            int b = (int)countingRClique[i];
+            int b = (int)llround(countingRClique[i]);
             bucket_of[i] = b;
             pos_in_bucket[i] = buckets[b].size();
             buckets[b].push_back(i);
@@ -158,7 +158,7 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
         }
 
         if (val <= BUCKET_THRESHOLD) {
-            int newB = (int)val;
+            int newB = (int)llround(val);
             if (oldB >= 0 && newB == oldB) return;
             if (oldB >= 0) {
                 auto &oldVec = buckets[oldB];
@@ -200,7 +200,7 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
             double val = countingRClique[id];
             if (val <= BUCKET_THRESHOLD) {
                 overflowSet.erase(overflowSet.begin());
-                int b = (int)val;
+                int b = (int)llround(val);
                 bucket_of[id] = b;
                 pos_in_bucket[id] = buckets[b].size();
                 buckets[b].push_back(id);

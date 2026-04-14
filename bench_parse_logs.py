@@ -36,7 +36,10 @@ PATTERNS = {
     "fully_merge":   r'Fully mergeable regions:\s*(\d+)',
     "remaining":     r'Remaining regions:\s*(\d+)',
     "classes":       r'Overlap classes:\s*(\d+)',
-    "tuples":        r'r-tuples:\s*(\d+)',
+    "tuples":        r'(?:Active )?r-tuples:\s*(\d+)',
+    "active_rcliques": r'Active r-cliques:\s*(\d+)',
+    "private_clouds":  r'Private clouds:\s*(\d+)',
+    "private_rcliques":r'Private-touching r-cliques \(direct\):\s*(\d+)',
     "recursive":     r'Total recursive calls:\s*(\d+)',
     "v2_stuples":    r's-tuples:\s*(\d+)',
     "maxcliq_count": r'maximal cliques \((?:minSize|≥s)=\d+\):\s*(\d+)',
@@ -53,8 +56,9 @@ FIELDS = [
     "merge_ms", "cpi_ms", "pathinfo_ms", "peel_ms", "v3_total_ms", "st_fused_ms",
     "graph_mem_kB", "index_mem_kB", "final_mem_kB", "rclique_mem_kB",
     "leaf_count", "max_core", "rcliques",
-    "fully_merge", "remaining", "classes", "tuples", "recursive",
-    "v2_stuples", "maxcliq_count", "maxcliq_count2",
+    "fully_merge", "remaining", "classes", "tuples",
+    "active_rcliques", "private_clouds", "private_rcliques",
+    "recursive", "v2_stuples", "maxcliq_count", "maxcliq_count2",
     "cpi_match", "pathinfo_match",
 ]
 

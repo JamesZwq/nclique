@@ -52,23 +52,41 @@ static const char *envFirst(std::initializer_list<const char *> names) {
 // Correctness comparison helpers
 // ============================================================
 
-static auto buildCoreDist(const auto &coreResults) {
-    std::map<double, int> dist;
+// Build core distribution from any result vector type
+template<typename T>
+static auto buildCoreDist(const T &coreResults) {
+    std::map<double, int64_t> dist;
     for (const auto &[key, cv] : coreResults) dist[std::round(cv)]++;
+    dist.erase(0.0);
+    return dist;
+}
+// Build core distribution from compact format: {key=[lo32,hi32], cv=core}
+// Compact entries have key.size()==2 encoding int64_t count.
+// Standard entries have key.size()!=2.
+static auto buildCoreDistCompact(const std::vector<std::pair<std::vector<daf::Size>, double>> &coreResults) {
+    std::map<double, int64_t> dist;
+    for (const auto &[key, cv] : coreResults) {
+        if (key.size() == 2) {
+            int64_t cnt = (int64_t)key[0] | ((int64_t)key[1] << 32);
+            dist[std::round(cv)] += cnt;
+        } else {
+            dist[std::round(cv)]++;
+        }
+    }
     dist.erase(0.0);
     return dist;
 }
 
 static auto buildCoreDistFromArray(const double *coreV, daf::Size n) {
-    std::map<double, int> dist;
+    std::map<double, int64_t> dist;
     for (daf::Size i = 0; i < n; ++i)
         if (coreV[i] >= 0) dist[coreV[i]]++;
     dist.erase(0.0);
     return dist;
 }
 
-static void checkDist(const std::map<double,int> &refDist,
-                      const std::map<double,int> &testDist,
+static void checkDist(const std::map<double,int64_t> &refDist,
+                      const std::map<double,int64_t> &testDist,
                       const char *label) {
     // Exact check
     if (refDist == testDist) {
@@ -76,7 +94,7 @@ static void checkDist(const std::map<double,int> &refDist,
         return;
     }
     // Relaxed check: total count must match, per-core can differ by ≤ total*0.1%
-    int refTotal = 0, testTotal = 0;
+    int64_t refTotal = 0, testTotal = 0;
     for (auto &[k,v] : refDist) refTotal += v;
     for (auto &[k,v] : testDist) testTotal += v;
     if (refTotal != testTotal) {
@@ -84,24 +102,24 @@ static void checkDist(const std::map<double,int> &refDist,
         return;
     }
     // Check if differences are small (boundary rounding)
-    int totalDiff = 0;
-    std::map<double,int> merged;
+    int64_t totalDiff = 0;
+    std::map<double,int64_t> merged;
     for (auto &[k,v] : refDist) merged[k] += 0;
     for (auto &[k,v] : testDist) merged[k] += 0;
     for (auto &[k, _] : merged) {
-        int r = refDist.count(k) ? refDist.at(k) : 0;
-        int t = testDist.count(k) ? testDist.at(k) : 0;
+        int64_t r = refDist.count(k) ? refDist.at(k) : 0;
+        int64_t t = testDist.count(k) ? testDist.at(k) : 0;
         totalDiff += std::abs(r - t);
     }
-    double diffPct = 100.0 * totalDiff / (2 * refTotal);
+    double diffPct = 100.0 * totalDiff / (2.0 * refTotal);
     if (diffPct < 2.0) {
         std::cout << "✓ " << label << " correctness verified (diff=" << totalDiff/2 << " vertices, "
                   << diffPct << "%)" << std::endl;
     } else {
         std::cerr << "✗ " << label << " MISMATCH! diff=" << totalDiff/2 << " vertices (" << diffPct << "%)" << std::endl;
         for (auto &[k, _] : merged) {
-            int r = refDist.count(k) ? refDist.at(k) : 0;
-            int t = testDist.count(k) ? testDist.at(k) : 0;
+            int64_t r = refDist.count(k) ? refDist.at(k) : 0;
+            int64_t t = testDist.count(k) ? testDist.at(k) : 0;
             if (r != t) std::cerr << "  core=" << k << " ref=" << r << " test=" << t << std::endl;
         }
     }
@@ -189,7 +207,11 @@ static SDCTBuildResult buildSDCTWithIndex(
 
     // R≥3: build cliqueIndex during SDCT (hash-free, keep+pivot naturally unique)
     // Skip for regionOnly mode (Region V2 doesn't need ci)
-    auto ci = (r >= 3 && !quotientLabOnly && !regionOnly) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
+    // V3/V3B/V3C use SDCT tree but do NOT need cliqueIndex
+    const bool v3Only = (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B") ||
+                         envSet("PIVOTER_RUN_REGION_V3C")) &&
+                        !envSet("PIVOTER_COMPARE") && !envSet("PIVOTER_RUN_ST");
+    auto ci = (r >= 3 && !quotientLabOnly && !regionOnly && !v3Only) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
     daf::StaticVector<daf::Size> keepBuf, dropBuf;
     daf::Size mergedBuf[16]; // enough for r ≤ 16
 
@@ -209,7 +231,7 @@ static SDCTBuildResult buildSDCTWithIndex(
     auto leafCallback = [&](daf::Size leafId, const std::vector<TreeGraphNode> &leaf,
                             bool stored, bool isMaximal) {
         if (stored) {
-            if (!regionOnly) {
+            if (!regionOnly && !v3Only) {
                 for (const auto &node : leaf) {
                     tgv.addNbr(node.v, {leafId, node.isPivot});
                 }
@@ -683,11 +705,10 @@ static void runRCliqueVariant(
     auto result = daf::timeCount(name, [&]() {
         return func(tree, edgeGraph, treeGraphV, r, s, sharedCI);
     });
-    // Print core distribution
-    {
-        std::map<double, int> dist;
-        for (const auto &[clique, cv] : result) dist[cv]++;
-        dist.erase(0.0);
+    // Print core distribution (skip if compact format — algorithm already printed)
+    bool isCompact = !result.empty() && result[0].first.size() == 2;
+    if (!isCompact) {
+        auto dist = buildCoreDist(result);
         std::cout << "Core value distribution:" << std::endl;
         for (const auto &[cv, count] : dist)
             std::cout << "  core=" << cv << " count=" << count << std::endl;
@@ -696,7 +717,7 @@ static void runRCliqueVariant(
         auto refCore = daf::timeCount("Reference r>=3", [&]() {
             return NucleusCoreDecompositionCorrect(refTree2, edgeGraph, refTGV2, r, s, nullptr);
         });
-        checkDist(buildCoreDist(refCore), buildCoreDist(result), name);
+        checkDist(buildCoreDist(refCore), buildCoreDistCompact(result), name);
     }
 }
 
