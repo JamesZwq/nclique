@@ -167,6 +167,22 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // → all r-cliques in M are only in M → support = C(|M|-r, s-r)
     // → directly assign core value, skip all pipeline work.
 
+    auto tStep1a = std::chrono::high_resolution_clock::now();
+    {
+        daf::Size maxVtxMCs = 0;
+        double totalPairs = 0;
+        for (daf::Size v = 0; v < numVertices; ++v) {
+            maxVtxMCs = std::max(maxVtxMCs, (daf::Size)vtxMaxPaths[v].size());
+            daf::Size k = vtxMaxPaths[v].size();
+            totalPairs += (double)k * (k - 1) / 2;
+        }
+        auto step1aMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - tStep1a).count();
+        std::cout << "  Step 1: " << numRegions << " MCs (≥s), max vtxMCs=" << maxVtxMCs
+                  << ", total pairs=" << std::fixed << std::setprecision(0) << totalPairs
+                  << ", " << step1aMs << " ms" << std::endl;
+    }
+
     auto tStep1b = std::chrono::high_resolution_clock::now();
 
     // Compute pairwise intersection sizes (via vertex membership)
@@ -192,6 +208,12 @@ NucleusCoreDecompositionRClique_RegionCPI(
                     interSize[key] = cnt;
                 }
             }
+    }
+
+    {
+        auto t = std::chrono::high_resolution_clock::now();
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t - tStep1b).count();
+        std::cout << "  Step 1b intersection: " << interSize.size() << " pairs, " << ms << " ms" << std::endl;
     }
 
     // Check each region: fully r-mergeable?

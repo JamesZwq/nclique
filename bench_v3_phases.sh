@@ -104,10 +104,29 @@ fi
 mkdir -p "$LOGDIR"
 
 # ============ Generate jobs ============
-GRAPHS=(com-dblp web-Stanford web-it-2004 dblp-core30 email-Eu-core com-youtube)
+GRAPHS=(com-dblp web-Stanford dblp-core30 email-Eu-core com-youtube)
 ALGOS="ST V3 V3_NP"
 
 JOBFILE=$(mktemp /tmp/bench_v3_jobs.XXXXXX)
+
+# Probe max clique size for each graph via MaxCliqEnum (minSize in output)
+probe_max_clique() {
+  local gf="graphs/${1}.edges"
+  # Run V2 mode (lightweight, no cliqueIndex) with s=4 to get MaxCliqEnum output
+  # MaxCliqEnum prints "N maximal cliques (minSize=K)" where K = min MC size
+  # We need max MC size. Extract from SDCT leaf count or scan output.
+  # Simplest: run with large s and see if any MCs exist
+  local max_s=4
+  for try_s in 200 150 120 100 80 60 50 40 30 25 20 15 12 10 8 7 6 5 4; do
+    local cnt=$(env PIVOTER_RUN_REGION_V2=1 timeout 30s $BIN "$gf" 3 "$try_s" 2>&1 \
+      | grep -oP 'Maximal cliques: \K\d+' | head -1)
+    if [ -n "$cnt" ] && [ "$cnt" -gt 0 ]; then
+      max_s=$try_s
+      break
+    fi
+  done
+  echo "$max_s"
+}
 
 for graph in "${GRAPHS[@]}"; do
   if [ ! -f "graphs/${graph}.edges" ]; then
@@ -115,16 +134,20 @@ for graph in "${GRAPHS[@]}"; do
     continue
   fi
 
-  for rs in "3 4" "3 5" "3 6" "3 8" "3 10" "4 5" "4 6" "5 6" "6 7" "6 8"; do
-    r=${rs% *}; s=${rs#* }
+  max_k=$(probe_max_clique "$graph")
+  echo "  $graph: max_clique_size=$max_k"
 
-    for algo in $ALGOS; do
-      case $algo in
-        ST)    env_var="PIVOTER_RUN_ST" ;;
-        V3)    env_var="PIVOTER_RUN_REGION_V3" ;;
-        V3_NP) env_var="PIVOTER_RUN_REGION_V3" ;;
-      esac
-      echo "--run $graph $r $s $algo $env_var" >> "$JOBFILE"
+  # Generate (r, s) combinations: r from 3 to max_k-1, s from r+1 to max_k
+  for (( r=3; r<max_k; r++ )); do
+    for (( s=r+1; s<=max_k; s++ )); do
+      for algo in $ALGOS; do
+        case $algo in
+          ST)    env_var="PIVOTER_RUN_ST" ;;
+          V3)    env_var="PIVOTER_RUN_REGION_V3" ;;
+          V3_NP) env_var="PIVOTER_RUN_REGION_V3" ;;
+        esac
+        echo "--run $graph $r $s $algo $env_var" >> "$JOBFILE"
+      done
     done
   done
 done
