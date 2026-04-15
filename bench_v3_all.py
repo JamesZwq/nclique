@@ -284,9 +284,11 @@ def main():
             if now - t0 > TIMEOUT + 10:
                 try:
                     proc.kill()
-                    txt, _ = proc.communicate(timeout=5)
+                    txt, _ = proc.communicate(timeout=10)
                 except:
                     txt = ""
+                    try: proc.wait(timeout=5)
+                    except: pass
                 print(f"  {an:>6} {g} r={rr} s={ss} TIMEOUT", flush=True)
                 (LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log").write_text(
                     txt + "\nTIMEOUT by scheduler")
@@ -302,9 +304,10 @@ def main():
         proc, g, rr, ss, an, t0 = running.pop()
         try:
             proc.kill()
-            proc.communicate(timeout=5)
+            proc.communicate(timeout=10)
         except:
-            pass
+            try: proc.wait(timeout=5)
+            except: pass
         mem = get_used_mem_gb()
         print(f"  [KILL] {an} {g} r={rr} s={ss} (mem={mem:.0f}GB)", flush=True)
         if len(running) == 0:
