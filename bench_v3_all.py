@@ -225,16 +225,29 @@ def main():
     # Timeout tracking: (graph, algo, s) → min r that timed out
     timeout_at = defaultdict(lambda: float('inf'))
 
-    # Also load timeout info from existing results
+    # Load timeout info from existing results and re-apply propagation
     if os.path.exists(OUTCSV):
+        # First pass: collect direct timeouts
+        direct_timeouts = []  # (graph, algo, s, r)
         with open(OUTCSV) as f:
             for row in csv.DictReader(f):
-                if row.get("status") in ("TIMEOUT", "OOM", "SKIP_TIMEOUT"):
+                if row.get("status") in ("TIMEOUT", "OOM"):
                     try:
-                        g, r2, s2, an = row["graph"], int(row["r"]), int(row["s"]), row["algo"]
-                        timeout_at[(g, an, s2)] = min(timeout_at[(g, an, s2)], r2)
+                        direct_timeouts.append((
+                            row["graph"], row["algo"],
+                            int(row["s"]), int(row["r"])
+                        ))
                     except:
                         pass
+        # Apply with propagation (ST/REF propagate across all s for same r)
+        for g, an, ss, rr in direct_timeouts:
+            if an in ("ST", "REF"):
+                for sf in range(4, max_cliques.get(g, 0) + 1):
+                    timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
+            else:
+                timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
+        n_skip = sum(1 for k, v in timeout_at.items() if v < float('inf'))
+        print(f"  Loaded {len(direct_timeouts)} timeouts, {n_skip} skip rules")
 
     # Track running processes: [(Popen, graph, r, s, algo, start_time)]
     running = []
