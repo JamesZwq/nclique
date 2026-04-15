@@ -1,0 +1,42 @@
+% \Fn{CountPreClique}{
+%     \KwIn{SCT $\tree$, Clique size $r$, Clique size $s$}
+%     \KwOut{$s$-clique count for every $r$-clique in $\tree$}
+%     initialise $count(C_r)\leftarrow 0$ for all $r$-cliques in $\tree$\;
+%     \ForEach{clique path $\TPath{}$ in $\tree$}{
+%         \ForEach{$r$-clique $C_r$ in $\TPath{}$}{
+%             % let $P$ be the set of pivots and $H$ be the set of holds along $\TPath{}$\;
+%             $V_{p}\gets \{v \in \TPath{} \mid v \text{ is a pivot}\}$;
+
+%             $V_{h}\gets \{v \in \TPath{} \mid v \text{ is a hold}\}$
+
+%             $need\gets s-|V_{h}|$\;
+%             $count(C_r)\gets count(C_r)+\binom{|V_{p}|}{need}$ for every $C_r\in \TPath{}$\;
+%         }
+%     }
+
+%     \Return $count(C_r)$ for all $r$-cliques in $\tree$; 
+% }
+
+\begin{algorithm}[t]
+\small
+\caption{\textsc{$s$-CliqueCount}}
+\label{alg:local_s_clique_count}
+\KwIn{Clique Path Index $\tree$, clique sizes $0<r<s$}
+\KwOut{$count(C_r)$ for every $r$-clique $C_r\subseteq G$}
+
+\BlankLine
+initialise $count(C_r)\gets 0$ for all $r$-cliques in $\tree$\;
+
+\ForEach{clique path $\TPath{}$ in $\tree$}{
+    $V_{h}\gets\{v\in\TPath{}\mid v\text{ is hold}\}$\;
+    $V_{p}\gets\{v\in\TPath{}\mid v\text{ is pivot}\}$\;
+
+    \ForEach{$r$-set $C_r\subseteq \TPath$}{
+        $b\gets |C_r\cap V_{p}|$  
+
+        $count(C_r)\mathrel{+}= \binom{|V_{p}|-b}{\,s-|V_{h}|-b}$\;
+    }
+}
+
+\Return{$count(C_r)$ for all $r$-cliques $C_r$}\;
+\end{algorithm}

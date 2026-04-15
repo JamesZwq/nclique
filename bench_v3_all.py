@@ -30,8 +30,8 @@ ALL_GRAPHS = ["dblp-core30", "email-Eu-core", "com-dblp",
 
 # Split graphs across servers: tods1 gets dense graphs, tods2 gets large/power-law
 SERVER_GRAPHS = {
-    "tods1": ["dblp-core30", "com-dblp", "email-Eu-core"],
-    "tods2": ["web-Stanford", "com-youtube", "web-it-2004"],
+    "tods1": [ "com-dblp", "email-Eu-core", "com-youtube"],
+    "tods2": ["dblp-core30", "web-Stanford","web-it-2004"],
 }
 
 import socket

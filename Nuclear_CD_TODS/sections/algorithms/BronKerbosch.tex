@@ -1,0 +1,178 @@
+% \begin{algorithm}[htbp]
+%     \caption{Bron-Kerbosch Algorithm}
+%     \label{alg:bron_kerbosch}
+%     \KwIn{Graph $G = (V, E)$}
+%     \KwOut{All maximal cliques in $G$}
+%     \SetKwFunction{FMain}{BronKerbosch}
+%     \SetKwProg{Fn}{Function}{:}{}
+%     \Fn{\FMain{$R, P, X$}}{
+%         \If{$P = \emptyset \land X = \emptyset$}{
+%             \Return $R$ \;
+%         }
+%         $u_{piv} \gets \arg\max_{x\in P} |P\cap N_H(x)|$ \;
+%         \ForEach{$v \in P \setminus N(u_{piv})$}{
+%             \FMain{$R \cup \{v\}, P \cap N(v), X \cap N(v)$} \;
+%             $P \gets P \setminus \{v\}$ \;
+%             $X \gets X \cup \{v\}$ \;
+%         }
+%     }
+% \end{algorithm}
+
+% \begin{algorithm}[htbp]
+%     \caption{Bron-Kerbosch Algorithm}
+%     \label{alg:bron_kerbosch}
+%     \LinesNumbered
+%     \KwIn{Undirected graph $G=(V,E)$}
+%     \KwOut{All maximal cliques in $G$}
+%     \SetKwFunction{BKMain}{BronKerbosch}
+%     \SetKwProg{Fn}{Function}{:}{}
+
+%     Compute a degeneracy ordering $(v_1,\dots,v_n)$ of $G$; let $\sigma(v_i)\leftarrow i$\;
+%     Orient every edge from lower to higher rank to obtain $N^{+}(\cdot)$;
+    
+%     \ForEach{$v \in V$ in increasing order of $\sigma$}{
+%         $P \gets N^{+}(v)$,\quad $X \gets N(v)\setminus N^{+}(v)$\;
+%         \BKMain{$\{v\},\; P,\; X$}\;
+%     }
+
+%     \Fn{\BKMain{$R, P, X$}}{
+%         \If{$P=\emptyset \land X=\emptyset$}{
+%             \textbf{output clique }$R$\;
+%             \Return
+%         }
+%         $u_{\text{piv}} \gets \arg\max_{x \in P \cup X} |\,P \cap N(x)\,|$ 
+        
+%         \ForEach{$v \in P \setminus N(u_{\text{piv}})$}{
+%             \BKMain{$R \cup \{v\},\; P \cap N(v),\; X \cap N(v)$}\;
+%             $P \gets P \setminus \{v\}$\;
+%             $X \gets X \cup \{v\}$\;
+%         }
+%     }
+    
+    
+% \end{algorithm}
+
+% \begin{algorithm}[htbp]
+%     \caption{Bron-Kerbosch Algorithm}
+%     \label{alg:bron_kerbosch}
+%     \KwIn{Graph $G=(V,E)$}
+%     \KwOut{All maximal cliques in $G$ (each reported once)}
+%     \SetKwFunction{BKMain}{BronKerbosch}
+%     \SetKwProg{Fn}{Function}{:}{}
+
+%     Compute a degeneracy ordering $(v_1,\dots,v_n)$ of $G$  
+%     Orient every edge from lower to higher rank to obtain $N^{+}(\cdot)$\;
+
+%     \ForEach{$v \in V$ in increasing order of $\sigma$}{
+%         $P \gets N^{+}(v)$\;
+%         \BKMain{$\{v\}, P$}\;
+%     }
+
+%     \Fn{\BKMain{$R, P$}}{
+%         \If{$P=\emptyset$}{
+%             \Return $R$ 
+%         }
+%         $u_{\text{piv}} \gets \arg\max_{x\in P} |P \cap N(x)|$ 
+
+%         \ForEach{$v \in P \setminus N(u_{\text{piv}})$}{
+%             \BKMain{$R \cup \{v\},\;\; P \cap N(v)$}\;
+%             $P \gets P \setminus \{v\}$ 
+%         }
+%     }
+    
+% \end{algorithm}
+
+
+
+
+% \begin{algorithm}[t!]
+%     \caption{\textsc{Build--SCT}$(G,\,s)$}
+%     \label{alg:buildSCT}
+%     \KwIn{Undirected graph $G=(V,E)$, optional size cap $s$}
+%     \KwOut{Succinct Clique Tree of $G$}
+
+%     Compute a degeneracy ordering $(v_1,\dots,v_n)$ of $G$  
+%     Orient every edge from lower to higher rank to obtain $N^{+}(\cdot)$\;
+
+%     \For(\tcp*[f]{one root per vertex}){$i\gets 1$ \KwTo $n$}{
+%         $V_{Hold}\gets\{v_i\}$ $P\gets N^{+}(v_i)$ $V_{Pivot}\gets\emptyset$
+
+%         \textsc{ExpandPath}$(P, V_{Hold}, V_{Pivot})$\;
+%     }
+
+%     \SetKwFunction{Expand}{ExpandPath}
+%     \SetKwProg{Fn}{Function}{:}{}
+
+%     \Fn{\Expand{$P, V_{Hold}, V_{Pivot}$}}{
+%         \If{$P=\emptyset$}{
+%             \textbf{output path }$\{V_{Hold},\,V_{Pivot}\}$\;
+%             \textbf{return}
+%         }
+        
+%         $u_{piv} \gets \arg\max_{x\in P} |P\cap N^+(x)|$ \;
+%         \For(\tcp*[f]{non-neighbors of pivot}){$v\in P\setminus N(u_{piv})$}{
+%             $P\gets P\setminus\{v\}$
+            
+%             \eIf{$v=u_{piv}$}{
+%                 \Expand{$P\cap N(v),\;V_{Hold},\;V_{Pivot}\cup\{v\}$}
+%             }{
+%                 \Expand{$P\cap N(v),\;V_{Hold}\cup\{v\},\;V_{Pivot}$}
+%             }
+%         }
+%     }
+% \end{algorithm}
+
+% Lemma 4.6 (Path pruning). Let P be a path in the CPI and let
+% 𝑠 ≥ 1 be the target clique size. Then P encodes at least one 𝑠-clique iff
+% |𝑉ℎ (P)| ≤ 𝑠 ≤ |𝑉ℎ (P)| + |𝑉𝑝 (P)| .
+% Equivalently, P can be safely pruned for size 𝑠 iff
+% 𝑠 < |𝑉ℎ (P)| or 𝑠 > |𝑉ℎ (P)| + |𝑉𝑝 (P)| .
+% Example 4.7. Considering the CPI shown in Figure 3, if we need
+
+\begin{algorithm}[t!]
+    \caption{\textsc{Build--CPI}$(G,\,s)$}
+    \label{alg:buildCPI}
+    \KwIn{Undirected graph $G=(V,E)$, optional size cap $s$}
+    \KwOut{Clique Path Index (CPI) of $G$}
+
+    Compute a degeneracy ordering $(v_1,\dots,v_n)$ of $G$  
+    Orient every edge from lower to higher rank to obtain $N^{+}(\cdot)$\;
+
+    \For(\tcp*[f]{one root per vertex}){$i\gets 1$ \KwTo $n$}{
+        $V_{Hold}\gets\{v_i\}$ $P\gets N^{+}(v_i)$ $V_{Pivot}\gets\emptyset$
+
+        \textsc{ExpandPath}$(P, V_{Hold}, V_{Pivot})$\;
+    }
+
+    \SetKwFunction{Expand}{ExpandPath}
+    \SetKwProg{Fn}{Function}{:}{}
+
+    \Fn{\Expand{$P, V_{Hold}, V_{Pivot}$}}{
+
+    % path pruning
+        \lIf{$|V_{Hold}| > s$}{
+            \textbf{return}
+        }
+
+        \If{$P=\emptyset$}{
+            %  \textbf{or} $|V_{Hold}| + |V_{Pivot}| < s
+            % \textbf{output path }$\{V_{Hold},\,V_{Pivot}\}$\;
+            % \textbf{return}
+            \If{$|V_{Hold}| + |V_{Pivot}| \ge s$}{
+                \textbf{output path }$\{V_{Hold},\,V_{Pivot}\}$\;
+            }
+            \textbf{return}
+        }
+        
+        $u_{piv} \gets \arg\max_{x\in P} |P\cap N^+(x)|$ \;
+        \For(\tcp*[f]{non-neighbors of pivot}){$v\in P\setminus N(u_{piv})$}{
+            $P\gets P\setminus\{v\}$
+            
+            \eIf{$v=u_{piv}$}{
+                \Expand{$P\cap N(v),\;V_{Hold},\;V_{Pivot}\cup\{v\}$}
+            }{
+                \Expand{$P\cap N(v),\;V_{Hold}\cup\{v\},\;V_{Pivot}$}
+            }
+        }
+    }
+\end{algorithm}

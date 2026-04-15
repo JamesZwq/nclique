@@ -1,0 +1,62 @@
+Graph: /Users/zhangwenqian/UNSW/pivoter/graphs/email-Eu-core.edges
+r=3 s=5 rounds=1 tau_start=1 tau_max=2 lookahead=2 auto_threshold_keys=300000 auto_raw_threshold=1000000
+
+=== Adaptive summary ===
+  Tau start/max:            1 / 2
+  Tau phases used:          1
+  Completed rounds:         1
+  Total exact leaves:       1081
+  Total candidate keys:     6995
+  Total spawned subleaves:  0
+  Max observed round min:   1
+  Total rebuild time:       83 ms
+  Final tau:                1
+  Prototype time:           130 ms
+  Phase tau=1 cap=1 rebuild_ms=83 init_low=1981 init_over=100766 rounds=1 frontier_keys=1981 exact_leaves=1081 cand_keys=6995 spawned=0 max_round_min=1 remain_low=385 kept=45654 evicted=100766 skipped=3100352
+
+=== Buffered summary ===
+  Tau start/max:            1 / 2
+  Lookahead:                2
+  Auto lookahead:           NO
+  Rebuild count:            1
+  Completed rounds:         1
+  Total exact leaves:       1081
+  Total candidate keys:     6995
+  Total spawned subleaves:  0
+  Max observed round min:   1
+  Total rebuild time:       84 ms
+  Final tau:                3
+  Prototype time:           130 ms
+  Phase tau=1 cap=2 lookahead=2 rebuild_ms=84 phase_ms=116 init_low=3013 init_over=99734 rounds=1 frontier_keys=1981 exact_leaves=1081 cand_keys=6995 spawned=0 max_round_min=1 remain_low=849 kept=72344 evicted=99734 skipped=3074694
+
+=== Auto-buffered summary ===
+  Tau start/max:            1 / 2
+  Lookahead:                2
+  Auto lookahead:           YES
+  Auto threshold keys:      300000
+  Auto raw threshold:       1000000
+  Rebuild count:            1
+  Completed rounds:         1
+  Total exact leaves:       1081
+  Total candidate keys:     6995
+  Total spawned subleaves:  0
+  Max observed round min:   1
+  Total rebuild time:       88 ms
+  Final tau:                3
+  Prototype time:           136 ms
+  Phase tau=1 cap=2 lookahead=2 rebuild_ms=88 phase_ms=122 init_low=3013 init_over=99734 rounds=1 frontier_keys=1981 exact_leaves=1081 cand_keys=6995 spawned=0 max_round_min=1 remain_low=849 kept=72344 evicted=99734 skipped=3074694
+
+=== Dynamic summary ===
+  Completed rounds:         1
+  First core>1 round:       0
+  First split round:        0
+  Rounds with split:        0
+  Dead leaves so far:       1081
+  Split leaves so far:      0
+  Single-child leaves:      0
+  Multi-child leaves:       0
+  Spawned leaves so far:    0
+  Max spawned in one round: 0
+  Max observed core:        1
+  Remaining sparse states:  100278
+  Prototype time:           101 ms

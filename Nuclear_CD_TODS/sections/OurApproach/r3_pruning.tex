@@ -1,0 +1,26 @@
+
+\stitle{Pruning the Path Split.}
+Algorithm~\ref{alg:removeRClique} may branch exponentially.
+We observe that path splitting is a \emph{budgeted hitting set}: each $C_i$ induces a conflict set $F_i = C_i \cap V_P$, and a valid split must exclude at least one pivot from every $F_i$ while keeping $\ge s - |V_H|$ pivots.
+This admits exact pruning rules (Lemmas~\ref{lem:unit_prop}--\ref{lem:component}), integrated as a preprocessing step in Algorithm~\ref{alg:prunedUpdateIndex}.
+
+\begin{lemma}[Unit Propagation]\label{lem:unit_prop}
+If $|F_i| = 1$, say $F_i = \{p\}$, then $p$ must be removed in every feasible solution.
+\end{lemma}
+
+\begin{lemma}[Subsumption]\label{lem:subsumption}
+If $F_i \subseteq F_j$, then $F_j$ is redundant.
+\end{lemma}
+
+\begin{lemma}[Packing Lower Bound]\label{lem:packing_lb}
+If $t$ pairwise disjoint conflict sets exist, any solution removes $\ge t$ pivots.
+If $t > |V_P| - (s - |V_H|)$, the path is dead.
+\end{lemma}
+
+\begin{lemma}[Component Decomposition]\label{lem:component}
+Let $G_c$ be the graph on $V_P$ where two pivots are adjacent iff they share a conflict set.
+The per-component packing lower bounds sum to a bound $\ge$ the global one.
+\end{lemma}
+
+\input{sections/algorithms/prunedUpdateIndex}
+

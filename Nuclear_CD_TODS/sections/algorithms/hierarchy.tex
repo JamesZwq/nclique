@@ -1,0 +1,29 @@
+\begin{algorithm}[t]
+\small
+\caption{\textsc{UpdateSupport}(Hierarchy)}
+\label{alg:hierarchy}
+\KwIn{Remove r-clique se $R_{min}$, minimum heap $H_{\min}$, Clique Path Index $\tree$, $s$-support map $support$}
+\KwOut{Updated $support$ and union-find structure}
+\SetKwFunction{RemoveNode}{RemoveNode}
+\SetKwFunction{CountPreEdges}{$s$-CliqueCount}
+\SetKwProg{Fn}{Function}{:}{}
+\SetKwFunction{UniteLevel}{UniteLevel}
+
+\ForEach{clique path $\TPath$ containing $rc \in R_{min}$}{
+    Update $support(c)$ and $H_{\min}$ for all $s$-clique $c \in \TPath$
+    
+    \colorbox{yellow!25}{\strut \UniteLevel{$rc,c,currentK$} for all $s$-clique $c \in \TPath$}
+}
+
+\Fn{\UniteLevel{$a, b, currentK$}}{
+    \For{$k\gets currentK$ \KwTo $0$}{
+        \If{not codeDisjointSets[k].unite(a, b)}{
+            \Return;
+        }
+    }
+}
+
+
+
+\end{algorithm}
+  

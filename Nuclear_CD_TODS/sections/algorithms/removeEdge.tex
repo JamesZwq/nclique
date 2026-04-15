@@ -1,0 +1,69 @@
+\begin{algorithm}[t]
+\small
+\caption{\textsc{UpdateIndex} $(r=2)$}
+\label{alg:removeEdge}
+\KwIn{clique path $\TPath{} = \{V_{H},V_{P}\}$, remove-edge set $E_{\mathrm{rm}},$ $s > 0$}
+\KwOut{All subpaths induced after deleting $E_{\mathrm{rm}}$}
+\SetKwFunction{PLBU}{PathUpdate}
+\SetKwFunction{BK}{PathUpdate}
+\SetKwProg{Fn}{Function}{:}{}
+
+% % 如果包含hold-hold edge，直接删掉整条path
+% % $\exists e \in E_{\mathrm{rm}}$ s.t. $e$ is hold-hold edge on $\TPath{}$
+% \If{$\exists e \in E_{\mathrm{rm}}$ s.t. $e$ is hold-hold edge on $\TPath{}$}{
+%     \Return
+% }
+
+% % 对于所有的hold-pivot edge，删掉pivot
+% \ForEach{$e=\{u,v\} \in E_{\mathrm{rm}}$ s.t. $e$ is hold-pivot edge on $\TPath{}$}{
+%     \If{$u$ is pivot on $\TPath{}$}{remove $u$ from $\TPath{}$}
+%     \ElseIf{$v$ is pivot on $\TPath{}$}{remove $v$ from $\TPath{}$}
+% }
+
+% hold-hold: drop the entire path
+% \If{$\exists\,e\inE_{\mathrm{rm}}:\ e\subseteq V_h(\TPath{})$}{\Return}
+% make return one line
+\lIf{$\exists\,e\in E_{\mathrm{rm}} :\ e\subseteq V_h(\TPath{})$}{\Return}
+
+% hold-pivot: remove the pivot endpoint
+\ForEach{$e\in E_{\mathrm{rm}} :\ |e\cap V_h(\TPath{})|=1$}{
+  remove $(e\cap V_p(\TPath{}))$ from $\TPath{}$
+
+  remove $e$ from $E_{\mathrm{rm}}$
+  }
+
+% $H \gets$ complete graph on $V(\TPath{})$ with edges in $E_{\mathrm{rm}}$
+
+% OR, if you want the whole line in math mode with text inside:
+$H \gets \text{ a residual graph on } V(\TPath{}) \text{ with edges in } E_{\mathrm{rm}} \text{ removed} $
+
+$v_{fixed} \gets \{\,v\in V(H)\mid v \text{ is not incident to any edge of } E_{\mathrm{rm}}\,\}$
+
+$Piv \gets \{\,v\in v_{fixed} \mid v \text{ is a pivot on } \TPath{}\,\}$
+
+$R \gets v_{fixed}$,\quad $P \gets V(H)\setminus v_{fixed}$
+
+\PLBU{$R, P, Piv$}
+
+\Fn{\PLBU{$R,\,P,\,Piv$}}{
+  \lIf{$|R \setminus Piv|>s$}{
+    \Return
+  }
+  \If{$P=\emptyset$}{
+    \lIf{$|R|\leq s$}{\textbf{output path }$\{R,\,Piv\}$}
+    % \textbf{output path }$\{R,\,Piv\}$\;
+    \Return
+  }
+  $u_{piv} \gets \arg\max_{x\in P} |P\cap N_H(x)|$\;
+  \ForEach{$v\in P \setminus N_H(u_{piv})$}{
+    $R' \gets R \cup \{v\}$;\quad $P' \gets P \cap N_H(v)$\;
+
+    \lIf{$v=u_{piv}$}{$Piv' \gets Piv \cup \{v\}$}
+    \lElse{$Piv' \gets Piv$}
+
+    \PLBU{$R',\,P',\,Piv'$}\;
+
+    $P \gets P \setminus \{v\}$\;
+  }
+}
+\end{algorithm}

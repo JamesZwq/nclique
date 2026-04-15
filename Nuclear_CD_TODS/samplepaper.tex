@@ -1,0 +1,294 @@
+% This is samplepaper.tex, a sample chapter demonstrating the
+% LLNCS macro package for Springer Computer Science proceedings;
+% Version 2.21 of 2022/01/12
+%
+\documentclass[acmsmall]{acmart}
+%
+\usepackage[T1]{fontenc}
+% T1 fonts will be used to generate the final print and online PDFs,
+% so please use T1 fonts in your manuscript whenever possible.
+% Other font encondings may result in incorrect characters.
+%
+% \usepackage[switch]{lineno}  % switch: 两栏都显示行号（推
+\usepackage{graphicx}
+\usepackage{xspace} 
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage[font=footnotesize,labelfont=bf]{subcaption}
+\usepackage{comment}
+\usepackage{balance}
+\usepackage{multirow}
+\usepackage[normalem]{ulem}
+\usepackage{cancel}
+\usepackage[skip=4pt]{caption} 
+\usepackage{bm}
+\usepackage{soul}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{subcaption}
+\usepackage{caption}
+% \usepackage{titlesec}
+\usepackage{capt-of}     % 提供 \captionof
+\usepackage{subcaption} 
+\usepackage{placeins}
+\usepackage{afterpage}
+
+\captionsetup[subfigure]{font=small,justification=centering}
+\DeclareCaptionType{panel}[Panel][List of Panels] % 定义独立的面板计数器
+\renewcommand\thepanel{\arabic{panel}}            % 面板编号 1,2,...
+\captionsetup[panel]{name=,labelformat=parens,labelsep=space} % 显示为 (1),(2)
+% 保持小图 (a)(b) 的样式
+\captionsetup[subfigure]{labelformat=parens,labelsep=space}
+
+% \newcommand{\algfontsize}{\fontsize{8pt}{9pt}\selectfont}
+\newcommand{\algfontsize}{\fontsize{7pt}{7.5pt}\selectfont}
+
+% \setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+% \setlength{\floatsep}{8pt plus 2pt minus 2pt}
+% \setlength{\intextsep}{8pt plus 2pt minus 2pt}
+% \setlength{\abovecaptionskip}{4pt}
+% \setlength{\belowcaptionskip}{2pt}
+
+\input{command}
+% ==== ACM metadata (edit for your venue) ====
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+%% Rights management information.  This information is sent to you
+%% when you complete the rights form.  These commands have SAMPLE
+%% values in them; it is your responsibility as an author to replace
+%% the commands and values with those provided to you when you
+%% complete the rights form.
+% \setcopyright{cc}
+% % \copyrightyear{2018}
+% % \acmYear{2018}
+% \acmDOI{10.1145/3802092}
+% \acmJournal{PACMMOD}
+% \acmYear{2026} \acmVolume{4}
+% \acmNumber{3 (SIGMOD)} \acmArticle{215}
+% \acmMonth{6} \acmPrice{}
+
+\setcopyright{none}
+\acmJournal{TODS}
+\acmYear{2026}
+\settopmatter{printacmref=true}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+
+%% These commands are for a PROCEEDINGS abstract or paper.
+% \acmConference[Conference acronym 'XX]{Make sure to enter the correct
+  % conference title from your rights confirmation email}{June 03--05,
+  % 2018}{Woodstock, NY}
+%%
+%%  Uncomment \acmBooktitle if the title of the proceedings is different
+%%  from ``Proceedings of ...''!
+%%
+%%\acmBooktitle{Woodstock '18: ACM Symposium on Neural Gaze Detection,
+%%  June 03--05, 2018, Woodstock, NY}
+% \acmISBN{978-1-4503-XXXX-X/2018/06}
+
+% ============================================
+\begin{document}
+%
+% \title{Efficient Counting-based Nucleus Decomposition}
+\title{Nucleus Decomposition Revisited: Counting-Based Indexing and Differential Path Maintenance}
+%
+%\titlerunning{Abbreviated paper title}
+% If the paper title is too long for the running head, you can set
+% an abbreviated paper title here
+%
+% ACM author block
+\author{Wenqian Zhang}
+\orcid{0009-0004-9999-9084}
+\affiliation{%
+  \institution{The University of New South Wales}
+  \city{Sydney}
+  \country{Australia}
+}
+\email{wenqian.zhang@unsw.edu.au}
+
+\author{Zhengyi Yang}
+\orcid{0000-0002-1825-0097}
+\affiliation{%
+  \institution{The University of New South Wales}
+  \city{Sydney}
+  \country{Australia}
+}
+\email{zhengyi.yang@unsw.edu.au}
+\authornote{Zhengyi Yang is the corresponding author.}
+
+
+\author{Dong Wen}
+\affiliation{%
+  \institution{The University of New South Wales}
+  \city{Sydney}
+  \country{Australia}
+}
+\email{dong.wen@unsw.edu.au}
+
+\author{Yi Ding}
+\affiliation{%
+  \institution{The University of New South Wales}
+  \city{Sydney}
+  \country{Australia}
+}
+\email{yi.k.ding@unsw.edu.au}
+
+\author{Wenjie Zhang}
+% \orcid{0000-0002-1825-0097}
+\affiliation{%
+  \institution{The University of New South Wales}
+  \city{Sydney}
+  \country{Australia}
+}
+\email{wenjie.zhang@unsw.edu.au}
+
+
+\author{Xuemin Lin}
+% \orcid{0000-0002-1825-0097}
+\affiliation{%
+  \institution{Shanghai Jiao Tong University}
+  \city{Shanghai}
+  \country{China}
+}
+\email{xuemin.lin@sjtu.edu.cn}
+
+\renewcommand{\shortauthors}{Wenqian Zhang et al.}
+
+
+
+
+% \renewcommand{\shortauthors}{Zhang et al.}
+
+\begin{abstract}
+Nucleus decomposition is a general model for finding cohesive substructures in graphs. 
+%
+It extends $k$-core and $k$-truss to higher-order $(r,s)$-nucleus. 
+%
+Existing algorithms have a clear bottleneck. 
+%
+They explicitly enumerate all $s$-cliques. 
+%
+The number of $s$-cliques grows combinatorially with $s$. 
+%
+In this paper, we revisit nucleus decomposition through two ideas. 
+%
+The first is a counting-based \textit{Clique Path Index} (\cpi). 
+%
+It avoids explicit $s$-clique enumeration. 
+%
+The second is a new \emph{differential path contribution maintenance} view. 
+%
+It explains how to update exact supports during peeling. 
+%
+The \cpi encodes the $s$-clique search space as compact paths. 
+%
+Under differential path maintenance, the support of each active $r$-clique is the sum of path-local contributions. 
+%
+After each peeling round, we only update paths incident to removed cliques. 
+%
+This view gives exact update rules for three regimes. 
+%
+For $r{=}1$, we use counter-only updates. 
+%
+For $r{=}2$, we use closed-form rules and analytical splits. 
+%
+For $r{\ge}3$, we use dead-path-aware lazy maintenance. 
+%
+Together, these results support exact nucleus decomposition and hierarchy construction without explicit $s$-clique materialization. 
+%
+Experiments on real-world datasets show clear gains over prior methods. 
+%
+On comparable settings, our method is about $4\times$ faster than \arb and about $13\times$ to $27\times$ faster than the \nucleus baselines. 
+%
+On some instances, the speedup exceeds two orders of magnitude. 
+%
+Many baseline runs also time out as $s$ grows. 
+%
+Our method still scales to larger $s$ and denser graphs.
+
+
+% Our approach efficiently performs decomposition and hierarchy construction, scaling to larger $s$ values and revealing denser, more cohesive, and fine-grained structures. 
+
+% \keywords{First keyword  \and Second keyword \and Another keyword.}
+\end{abstract}
+%
+\begin{CCSXML}
+<ccs2012>
+   <concept>
+       <concept_id>10003752.10003809.10003635</concept_id>
+       <concept_desc>Theory of computation~Graph algorithms analysis</concept_desc>
+       <concept_significance>500</concept_significance>
+       </concept>
+   <concept>
+       <concept_id>10002951.10002952.10002953.10010146</concept_id>
+       <concept_desc>Information systems~Graph-based database models</concept_desc>
+       <concept_significance>300</concept_significance>
+       </concept>
+ </ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Theory of computation~Graph algorithms analysis}
+\ccsdesc[300]{Information systems~Graph-based database models}
+
+%%
+%% Keywords. The author(s) should pick words that accurately describe
+%% the work being presented. Separate the keywords with commas.
+\keywords{nucleus decomposition, clique counting, differential maintenance, cohesive subgraphs, hierarchy}
+%% A "teaser" image appears between the author and affiliation
+%% information and the body of the document, and typically spans the
+%% page.
+
+% \received{October 2025}
+% \received[revised]{January 2026}
+% \received[accepted]{February 2026}
+
+%%
+\maketitle              % typeset the header of the contribution
+
+% \linenumbers
+%
+%
+%
+% \cite{HyperCD}
+\input{sections/Introduction}
+\input{sections/Preliminaries}
+% 
+\input{sections/TheSOTAApproach}
+\input{sections/OurBaseIdea}
+\input{sections/DifferentialMaintenance}
+\input{sections/OurApproach/OurApproach}
+\input{sections/Hierarchy}
+\input{sections/Experimental}
+\myaddRA{
+\input{sections/CaseStudy}
+}
+\input{sections/relatedWork}
+% \section{Introduction} \label{sec:introduction}
+
+% \input{sections/OurApproach/opt_r1.tex}
+% \input{sections/OurApproach/opt_r2.tex}
+% \input{sections/OurApproach/opt_r3.tex}
+
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
+% \bibliographystyle{splncs04}
+% \bibliography{mybibliography}
+%
+\FloatBarrier
+
+% \endlinenumbers
+\newpage
+\balance
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

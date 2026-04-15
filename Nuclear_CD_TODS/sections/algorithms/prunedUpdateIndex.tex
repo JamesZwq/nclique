@@ -1,0 +1,35 @@
+
+\begin{algorithm}[t]
+\small
+\caption{\textsc{PrunedUpdateIndex}}
+\label{alg:pathsplit_pruning}
+\KwIn{clique path $\TPath{} = \{V_H, V_P\}$, $r$-cliques to remove $C_{\mathrm{rm}}$, clique size $s$}
+\KwOut{All subpaths after deletion, or $\emptyset$ if dead}
+\SetKwFunction{Split}{PathSplit}
+\SetKwProg{Fn}{Function}{}{}
+
+$F_i \gets C_i \cap V_P$ for each $C_i \in C_{\mathrm{rm}}$\tcp*{conflict sets}
+$B \gets |V_P| - (s - |V_H|)$\tcp*{removal budget}
+
+\tcp{Forced vertex (Lemma~\ref{lem:forced_vertex})}
+\ForEach{$v$ with conflict degree $\ge \binom{|\TPath|-1}{r-1}$}{
+  \lIf{$v \in V_H$}{\Return $\emptyset$}
+  $V_P \gets V_P \setminus \{v\}$; resolve all $F_i \ni v$\;
+}
+
+\tcp{Singleton propagation (Lemma~\ref{lem:singleton})}
+\Repeat{no change}{
+  \ForEach{active $F_i$ with $|F_i| = 1$, say $\{p\}$}{
+    $V_P \gets V_P \setminus \{p\}$; resolve all $F_j \ni p$\;
+    \lIf{$|V_H| + |V_P| < s$}{\Return $\emptyset$}
+  }
+}
+
+\tcp{Component packing LB (Lemmas~\ref{lem:packing},~\ref{lem:component_lb})}
+Build conflict graph $G_c$; find components $C_1, \dots, C_k$\;
+$\mathit{LB} \gets \sum_{j=1}^{k} \textsc{GreedyPacking}(\{F_i \mid F_i \subseteq C_j\})$\;
+\lIf{$\mathit{LB} > B$}{\Return $\emptyset$}
+
+\Return \Split{$V_H, V_P$} with reduced $\mathcal{F}$\tcp*{Alg.~\ref{alg:removeRClique}}
+\end{algorithm}
+

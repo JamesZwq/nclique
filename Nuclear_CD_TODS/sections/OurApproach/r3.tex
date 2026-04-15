@@ -1,0 +1,290 @@
+\myaddRA{\subsection{Instantiation III: Conflict-State DPCM for General \texorpdfstring{$r$}{r}}}
+
+% For $r \ge 3$, updates operate on higher-order structures. 
+
+In this subsection, we generalize the update strategy from vertices and edges to arbitrary $r$-cliques.
+%
+Under Theorem~\ref{thm:dpcm-states}, the sufficient state of an affected path now consists of its current \hold/\pivot partition together with the family of removed $r$-cliques that still conflict with the path.
+%
+Thus the general regime becomes a \emph{conflict-state DPCM}: each affected path maintains enough information to determine whether it survives, whether it must split, and how the surviving subpaths contribute to the remaining $r$-cliques.
+
+
+% For $r\ge 3$, peeling removes the $r$-clique with minimum $s$-support, i.e., it eliminates all $s$-cliques that contain that $r$-clique. To realize this operation on the Succinct Clique Tree(\cpi) without enumerating $r$-cliques, we translate the deletion of an $r$-clique that lies on a single clique path into a split of that path into subpaths that avoid the clique.
+
+
+% defined conflict set which is all verteicse in the clique to be removed -> 不能出现在同一个clique path
+% while in the meantime retain all other cliques uniquely represented by one path
+% each vertex in the clique can be either hold or pivot, when edge (r=2), three cases, r arbitrary number, r+1 possible cases
+% we may split the path into multiple paths 
+% we observed that the number of new path(s) depends on the number of pivot vertice in the clique
+
+
+
+
+% \stitle{From Edges to Cliques.}
+% %
+% For $r \ge 3$, updates operate on higher-order structures, where removing an $r$-clique $R$ simultaneously affects all cliques containing it. 
+
+% \stitle{Conflict Sets and Path Validity.}
+% Updates operate on higher-order structures, where removing an $r$-clique $R$ simultaneously affects all cliques containing it. 
+
+% We define the \emph{conflict set} of a removed $r$-clique $R$ as the set of its vertices; after the update, no path in the \cpi may contain all vertices in this set, while all other cliques remain uniquely represented. 
+% %
+% Each vertex in $R$ serves as a \hold or \pivot within a path, determining the update behavior. 
+% % For $r=2$, we observe three cases (\hold{–}\hold, \hold{–}\pivot, \pivot{–}\pivot); in general, $(r{+}1)$ combinations exist. 
+% %
+% Removing an $r$-clique thus requires resolving these combinations and, when necessary, splitting affected paths to maintain correctness. 
+% The number of new paths generated depends on the number of \pivot vertices in $R$. 
+% This insight underpins our generalized update algorithm, which efficiently supports arbitrary $r$. 
+% %
+% Building on this idea, we extend the \textit{path-splitting} operation to support $r$-clique removals for arbitrary $r$, as formalized in Theorem~\ref{thm:split}.
+
+\stitle{Conflict Sets and Path Validity.}
+Removing an $r$-clique $R$ is a higher-order update.
+It simultaneously affects all $s$-cliques that contain $R$.
+% 
+We define the \emph{conflict set} of $R$ as its vertex set $V(R)$.
+After the update, no clique path may realize all vertices in $V(R)$ at the same time.
+Meanwhile, every remaining $s$-clique must still be encoded by exactly one path.
+% 
+On a path, vertices of $R$ can appear as \hold or \pivot.
+Holds are mandatory, while pivots represent alternative choices.
+Therefore, updating the CPI reduces to removing exactly those realizations that include the whole conflict set.
+If needed, we split the affected path into a small number of new paths to restore validity and uniqueness (Lemma~\ref{lem:clique_count}).
+Crucially, the number of new paths depends only on how many vertices of $R$ act as pivots on that path.
+Building on this observation, Theorem~\ref{thm:split} formalizes the general path-splitting rule for arbitrary $r$.
+
+% Our goal is to update the CPI after removing an $r$-clique $R$,
+% % 
+% Updates operate on higher-order structures is challenging, removing an $r$-clique $R$ simultaneously affects \emph{all} cliques that contain it, and thus cannot be handled by local edge-style updates.
+
+% We define the \emph{conflict set} of the removed $r$-clique $R$ as its vertex set.
+% After the update, no clique path in the \cpi may contain \emph{all} vertices in this conflict set; meanwhile, every remaining clique must still be represented \emph{uniquely} by exactly one path.
+% %
+% Within a clique path, vertices of $R$ may appear as \hold or \pivot, which determines how the path reacts to the removal:
+% holds are mandatory on the path, while pivots represent alternative choices.
+% Therefore, removing $R$ amounts to eliminating exactly those path realizations that include the entire conflict set, while keeping the others intact.
+% %
+% \myadd{
+% To restore validity and uniqueness(Lemma \ref{lem:clique_co bnmunt}), we may need to split an affected path into a small number of new paths that exclude $R$.
+% Crucially, the number of new paths depends only on how many vertices of $R$ act as pivots on that path.
+% %
+% Building on this idea, we generalize the \textit{path-splitting} operation to handle $r$-clique removals for arbitrary $r$, as formalized in Theorem~\ref{thm:split}.
+% }
+
+% For $r=2$, deleting $\{u,v\}$ on one \cpi path has three outcomes: (\hold--\hold) removes the path; (\hold--\pivot) drops the pivot endpoint; (\pivot--\pivot) splits the path into two branches—one forbids $v$, the other mandates $v$ and forbids $u$\, (Theorem~\ref{thm:remove_edge}). 
+% 我们可以换种方法理解, 对于(\pivot--\pivot)的情况, 我们可以把它看作是由两个冲突点引起的路径分割. 给定一个路径$\TPath$和一个包含连个点的conflict set $C=\{u,v\}$, 我们需要将路径$\TPath$分割成多个子路径, 使得每个子路径都不包含这个冲突集$C$, 并且还要确保所有不包含冲突集$C$的clique都被这些子路径唯一的表示出来.
+% We can reinterpret the (\pivot--\pivot) case as a path split induced by two conflict points. Given a path $\TPath$ and a conflict set $C=\{u,v\}$ containing two vertices, we need to split the path $\TPath$ into multiple subpaths such that each subpath excludes the conflict set $C$, while ensuring that all cliques not containing $C$ are uniquely represented by these subpaths.
+
+
+% formalizes this construction and proves its correctness.
+
+% This is the $|C|=2$ instance of a more general split by a \emph{conflict set}.
+
+% For a path $\TPath$ and an $r$-clique $C\subseteq \TPath$, order the pivot vertices of $C$ as $v_0,\ldots,v_{t-1}$. We produce $t$ subpaths that (i) promote $v_0,\ldots,v_{i-1}$ to \holds\ and (ii) exclude $v_i$. Theorem~\ref{thm:split} formalizes this construction and proves that the resulting subpaths are valid, encode no clique containing $C$, and together encode exactly the cliques on $\TPath$ that survive the deletion of $C$.
+% Short/duplicated statement and sketch of Theorem~\ref{thm:split} removed here to avoid conflicting/ambiguous macro usage;
+% the full and braced version of Theorem~\ref{thm:split} appears below.
+
+
+% \begin{theorem}[Path splitting by one conflict set]\label{thm:split}
+% Let $\TPath=(V_p^{\TPath},V_h^{\TPath})$ be a clique path in the \cpi\ of $G$, and let $C=(V_p^C,V_h^C)$ be an $r$-clique with $V_p^C\subseteq V_p^{\TPath}$ and $V_h^C\subseteq V_h^{\TPath}$. Write $V_p^C=\{v_0,\ldots,v_{t-1}\}$ with $t:=|V_p^C|\ge 1$. After removing all cliques that contain $C$, $\TPath$ is replaced by the following set of subpaths:
+% \[
+%   \mathcal{T}'=\{\,\TPath^{\mathrm{sub}}_i=(V_{p,i},V_{h,i}) : i=0,\ldots,t-1\,\},
+% \]
+% where
+% \[
+%   V_{h,i}= V_h^{\TPath} \cup \{v_0,\ldots,v_{i-1}\},\qquad
+%   V_{p,i}= V_p^{\TPath} \setminus \{v_0,\ldots,v_i\},
+% \]
+% For all $s$-cliques encoded by $\TPath$ that do not contain $C$, exactly one subpath in $\mathcal{T}'$ encodes it.
+% For all $s$-cliques $C_s$ encoded by $\TPath$ that $C \not\subseteq C_s$, exactly one subpath in $\mathcal{T}'$ encodes it.
+% For a fixed size $k$, discard any subpath $\TPath^{\mathrm{sub}}_i$ that is infeasible for $k$ (Lemma~\ref{lem:path_pruning}); the number of size-$k$ cliques on any remaining subpath is given by Lemma~\ref{lem:clique_count}.
+% \end{theorem}
+
+\begin{theorem}[Clique Removal]\label{thm:split}
+
+Let $\TPath = (V_p^{\TPath}, V_h^{\TPath})$ be a clique path, and let $C = (V_p^{C}, V_h^{C})$ be an $r$-clique such that $V_p^{C} \subseteq V_p^{\TPath}$ and $V_h^{C} \subseteq V_h^{\TPath}$. 
+Given an ordered set $V_p^{C} = \{v_0, \ldots, v_{t-1}\}$, the updated path set $\TPath'$ is defined as:
+\[
+  \TPath' = \bigl\{\, (V_p^{\TPath} \setminus \{v_0, \ldots, v_i\},\; V_h^{\TPath} \cup \{v_0, \ldots, v_{i-1}\}) \;\big|\; i = 0, \ldots, t-1 \,\bigr\}.
+\]
+% Then, every $s$-clique $C_s$ encoded by $\TPath$ with $C \nsubseteq C_s$ is encoded by exactly one subpath in $\TPath'$, and no subpath encodes a clique containing $C$.
+\end{theorem}
+
+
+\begin{proof}
+On a \cpi\ path, holds are mandatory and pivots optional. For each $i$, promoting $v_0,\ldots,v_{i-1}$ to holds and deleting $v_i$ keeps the path valid and forbids any clique that contains all pivots of $C$, so no subpath encodes $C$ (soundness). For any surviving clique $K$, let $i$ be the first index with $v_i\notin K$; then $K$ contains the promoted prefix and excludes $v_i$, hence is encoded precisely on subpath $i$ and on no other (completeness \& uniqueness).
+\end{proof}
+
+\begin{example}
+\label{ex:split_example}
+
+Assume we have a clique path $\TPath = \langle v_1, v_2, v_3, v_4, v_5, v_6 \rangle$,
+where $V_p = \{v_1, v_2, v_3, v_6\}$ and $V_h = \{v_4, v_5\}$.
+If we have an $r$-clique $C = \{v_1, v_2, v_3, v_4\}$, 
+then $V_p^C = \{v_1, v_2, v_3\}$ and $V_h^C = \{v_4\}$.
+According to Theorem~\ref{thm:split}, we can split $\TPath$ into three subpaths:
+$V_{p,0} = \{v_1, v_2,v_6\},  V_{h,0} = \{v_4,v_5\},$
+$V_{p,1} = \{v_1,v_6\}, V_{h,1} = \{v_3,v_4,v_5\},$
+$V_{p,2} = \{v_6\}, V_{h,2} = \{v_2,v_3,v_4,v_5\}.$
+
+\end{example}
+
+\begin{remark}
+Theorem~\ref{thm:split} allows a clique path $\TPath$ in the \cpi to be split into multiple paths that exclude the $r$-clique $C$. 
+This operation is crucial, as it implicitly removes $r$-cliques—without explicit enumeration—while preserving the correctness of the remaining structure.
+\end{remark}
+
+\stitle{Role in DPCM.}
+Theorem~\ref{thm:split} is the fundamental local state-transition operator for the general regime.
+%
+It is exact but potentially expensive when many conflicting cliques hit the same path.
+%
+The next subsection therefore adds a stronger journal-level refinement: dead-path-aware maintenance, which uses the maintained conflict state to certify that many affected paths can be discarded without recursive splitting.
+
+% 基于此, 我们推出了算法~\ref{alg:r3}来进行对于$r\geq 3$的情况的核心分解.
+% Based on this, we propose Algorithm~\ref{alg:peeling_r3} for the core decomposition in the case of $r \geq 3$.
+
+% \paragraph{Algorithm Description.}
+% 与Algorithm~\ref{alg:r1}和Algorithm~\ref{alg:r2}类似,我们先计算每个r-clqiue的s-support, 然后删除s-support最小的r-clique, 并更新受影响的r-clique的s-support, 直到所有的r-clique都被处理完.
+% Similar to Algorithm~\ref{alg:peeling_r1} and Algorithm~\ref{alg:peeling_r2}, we first compute the s-support of each r-clique, then remove the r-clique with the smallest s-support, and update the s-support of the affected r-cliques, until all r-cliques have been processed.
+
+\input{sections/algorithms/peelr3}
+
+
+% a vertex may appear in many cliques 
+% we grounp the updates by vertices
+% we build an inverted index for mapping vertex->clique
+% update each vertex sequntially  (all cliques containing the vertex) instead of  each clique sequntially
+
+\stitle{Batched Updates.}
+When multiple cliques are removed simultaneously, they often overlap, leading to redundant updates on shared
+vertices and paths. To mitigate this overhead, we aggregate overlap
+ping updates into vertex-centric batches. Specifically, we construct
+an $inverted$ $index$ that maps each vertex to the set of cliques con
+taining it. Instead of processing cliques sequentially, we iterate over
+vertices in this index and update all affected clique paths per ver
+tex. This vertex-grouped strategy effectively merges overlapping
+operations and reduce redundant updates.
+
+% Theorem~\ref{thm:split} shows how deleting a single r-clique on one path induces a structured split. In peeling, however, a single path may need to remove multiple r-cliques at once. We therefore handle them in one pass: sweep the incident family once, branch only on pivots, and commit earlier branch choices as \holds. This yields exactly the subpaths that repeated single-clique splits would produce, while avoiding redundant splits and rebuilds (Algorithm~\ref{alg:removeRClique}).
+
+\stitle{Algorithm.} 
+Algorithm~\ref{alg:removeRClique} maintains a counter $cnt$ to track the number of vertices from each $r$-clique in $C_{\mathrm{rm}}$ that are still present on the current path. When $cnt$ equals $r$, it indicates that the path violates the conflict clique and requires splitting. The splitting process (Function \Split) recursively handles each $r$-clique to be removed.
+First, in Line~6, we prune the path based on Lemma~\ref{lem:path_pruning}; if the current path cannot contain any cliques of size $s$, we return immediately.
+Then, in Line~7, we select the first $r$-clique $C_j$ that needs to be removed.
+If no such $r$-clique exists, it indicates that the current path does not require any deletion operations, so we report the current path as a subpath (Line~8).
+Otherwise, we iterate through each vertex $v$ in the $r$-clique $C_j$, remove it from the path, and decrement the $cnt$ of all $r$-cliques containing $v$ by 1, as one vertex has been removed from these cliques.
+In Lines 15-17, we promote all pivot nodes before $v$ to hold nodes according to Theorem~\ref{thm:split}, remove $v$ from the path, and then recursively call the function $\Split$ to process the updated path.
+Finally, in lines 19-20, we remove $v$ from the path and continue processing the next vertex.
+According to Theorem~\ref{thm:split}, we can ensure that after each path split, the resulting subpaths do not contain the removed $r$-clique, and all size-$s$ cliques that do not contain the removed $r$-clique are uniquely represented.
+
+% \noindent\emph{Implementation note.}
+% We represent vertex sets on clique paths (e.g., holds/pivots and conflict sets) using bitsets, enabling fast membership and set operations; this optimization applies starting from $r=3$ and is used throughout our implementation.
+
+
+% \begin{theorem}[Correctness of Algorithm~\ref{alg:removeRClique}]
+% \label{thm:removeRClique-correct}
+% Let $\TPath=\{V_p^{\TPath},V_h^{\TPath}\}$ be a clique path of the \cpi and
+% $\mathcal C=\{C_0,\dots,C_{t-1}\}$ a family of $r$-cliques contained in $\TPath$.
+% Algorithm~\ref{alg:removeRClique} reports a family of clique subpath denoted as $\TPath^{Out} = [\TPath^{Out}_0,\dots,\TPath^{Out}_k]$, each represented as a pair $\{V_{Hold},V_{Piv}\}$.\
+% The subpaths in $\TPath^{Out}$ satisfy the following properties:
+% \begin{enumerate}
+%   \item \textbf{Soundness.} Every path in $\TPath^{Out}$, does not cover any $r$-clique $C_i\in\mathcal C$.
+%   \item \textbf{Completeness and uniqueness.} Every $s$-clique $C_s$ encoded by $\TPath$ that $C_i \not\subseteq C_s$ for all $C_i\in\mathcal C$ is encoded by exactly one path in $\TPath^{Out}$.
+% \end{enumerate}
+% Consequently, replacing $\TPath$ by the reported subpaths removes precisely the size-$s$ cliques that contain a member of $\mathcal C$.
+% \end{theorem}
+% \begin{proof}
+% \emph{Soundness.}
+% For each $C_i\in\mathcal C$, let $V_p^{C_i}$ be its pivot set.
+% In each invocation of $\Split$, we either report the current path (line 8) or split it by the pivot set of some $C_j\in\mathcal C$ (line 7).
+% In the former case, no $C_i$ can be contained in the reported path, since otherwise we would not have reported it.
+% In the latter case, Theorem~\ref{thm:split} guarantees that none of the resulting subpaths contains $C_j$, and hence none contains any $C_i\in\mathcal C$.
+
+% \emph{Completeness and uniqueness.}
+% Let $C_s$ be any size-$s$ clique encoded by $\TPath$ that does not contain any $C_i\in\mathcal C$.
+% We show that $C_s$ is encoded by exactly one path in $\TPath^{Out}$.
+% Since $C_s$ does not contain any $C_i\in\mathcal C$, it also does not contain the pivot set $V_p^{C_i}$ of any $C_i$.
+% Let $S_i:=C_s\cap V_p^{C_i}$ be the subset of conflict pivots contained in $C_s$.
+% Since $S_i\neq V_p^{C_i}$, define $j_i:=\min\{j\in\{0,\dots,|V_p^{C_i}|-1\}\mid v_j\notin S_i\}$, i.e., the \emph{first missing} conflict pivot of $C_i$.
+% Then $C_s$ contains $v_0,\dots,v_{j_i-1}$ and excludes $v_{j_i}$.
+% In the execution of $\Split$, consider the first invocation that splits by $C_i$ (line 7).
+% At that time, the current path still contains all vertices of $C_s$ (since no prior split could have removed any of them), so $C_s$ is encoded by that path.
+% By Theorem~\ref{thm:split}, $C_s$ is then encoded by exactly one of the resulting subpaths, namely the one that makes $v_0,\dots,v_{j_i-1}$ holds and removes $v_{j_i}$.
+% In subsequent invocations of $\Split$, $C_s$ remains encoded by the current path (since no split can remove any of its vertices), and by Theorem~\ref{thm:split}, it remains encoded by exactly one of the resulting subpaths.
+% Continuing this argument for all $C_i\in\mathcal C$ shows that $C_s$ is encoded by exactly one path in $\TPath^{Out}$.
+% \end{proof}
+
+\stitle{Correctness.} 
+We prove the correctness of Algorithm~\ref{alg:removeRClique} in terms of soundness, completeness, and uniqueness.
+%
+\emph{(Soundness)} 
+The algorithm maintains a counter array $cnt$ to track how many vertices of each removed $r$-clique remain on the current path.
+A path is emitted only when all $cnt$ values are strictly less than $r$, ensuring that the new path encodes no $r$-cliques marked for removal.
+%
+\emph{(Completeness \& Uniqueness)} 
+When removing vertices of an $r$-clique iteratively, at each deletion step, all remaining cliques not containing the removed vertex are re-encoded uniquely in new paths (by Theorem~\ref{thm:split}). 
+Since every vertex is removed exactly once, all valid combinations of remaining vertices are exhaustively enumerated and retained. 
+Therefore, every surviving clique is preserved and encoded by exactly one path in the updated \cpi, ensuring both completeness and uniqueness.
+
+\stitle{Implementation.}
+The size of the residual graph is bounded by the maximum clique size of the input graph, which is typically small for real-world datasets (Table~\ref{tab:graph-stats}). 
+This allows us to represent the residual graph as an adjacency matrix and employ \emph{bitsets} to encode vertex sets on paths, enabling highly efficient set operations (\textsc{and}, \textsc{or}, \textsc{xor}, \textsc{count}) through word-level parallelism~\cite{bitsetClique}.
+
+% Every size-$s$ clique $C_s$ encoded by the original path $\TPath$ that does not contain any $r$-clique from $C_{\mathrm{rm}}$ is encoded by exactly some output paths.
+
+% For losslessness, 
+% % 算法每次递归只删除当前conflict clique $C_j$ 中的一个顶点$v$. 也就意味着在当前路径上, 增加任意一个顶点$v$都会导致有一个conflict clique被完全包含在路径上.
+% The algorithm recursively removes one vertex $v$ from the current conflicting clique $C_j$ at a time. 
+% This implies that adding any vertex $v$ to the current path would result in at least one conflicting clique being fully contained within the path.
+
+% \emph{Uniqueness}: Each size-$s$ clique $C_s$ is encoded by exactly one output path.
+
+% % does not contain any conflicting $r$-cliques, allowing us to output it as a subpath.
+% % 
+% % For losslessness, 假设有一个size-$s$ clique $C_s$ encoded by the original path $\TPath$ that does not包含任何来自$C_{\mathrm{rm}}$的$r$-clique.
+
+% For losslessness, 
+% % 算法每次递归只删除当前conflict clique $C_j$ 中的一个顶点$v$. 也就意味着在当前路径上, 增加任意一个顶点$v$都会导致有一个conflict clique被完全包含在路径上.
+% The algorithm recursively removes one vertex $v$ from the current conflicting clique $C_j$ at a time. 
+% This implies that adding any vertex $v$ to the current path would result in at least one conflicting clique being fully contained within the path.
+% % 
+% % 算法对于每个 conflicting clique会进行分割, 并且会尝试所有可能的分割方式.
+% %  因此, 对于任意一个不包含来自$C_{\mathrm{rm}}$的$r$-clique的size-$s$ clique $C_s$, 它一定会在某次递归中被保留在当前路径上, 并且不会被删除的顶点$v$所影响.
+% The algorithm splits the path for each conflicting clique and explores all possible splitting methods.
+% Therefore, for any size-$s$ clique $C_s$ that does not contain any $r$-clique from $C_{\mathrm{rm}}$, it will inevitably be preserved on the current path during some recursion and will not be affected by the removed vertex $v$.
+% % 
+% % 并且根据Theorem~\ref{thm:split}, 它会被唯一的一个子路径所表示.
+
+% For uniqueness, according to Theorem~\ref{thm:split}, each $s$-clique $C_s$ is represented by exactly one subpath. The algorithm strictly follows Theorem~\ref{thm:split} for each path split, ensuring that each size-$s$ clique $C_s$ is represented by exactly one subpath.
+
+% 那么也就意味着
+
+% \paragraph{Complexity Analysis.}  
+% Let $n=|V|$, $m=|E|$, and let $K_s$ be the set of $s$-cliques. For a given $r < s$, define the $(r,s)$-degree of an $r$-clique $C_r$ as the number of $s$-cliques containing it, denoted $\deg_{r,s}(C_r)$. Then let
+% \[
+% \Sigma_{r,s} = \sum_{C_r} \deg_{r,s}(C_r) = \binom{s}{r} \cdot |K_s|, \qquad
+% \Delta_{r,s} = \max_{C_r} \deg_{r,s}(C_r).
+% \]
+
+% Line 1 computes $s$-clique counts for all $r$-cliques using the CPI representation. Each $s$-clique contributes a constant amount of work along a root-clique path and is charged to all of its $\binom{s}{r}$ constituent $r$-cliques. Therefore, the time complexity is $O(\Sigma_{r,s})$ and the space cost is $O(n+\Sigma_{r,s})$. Line 2 builds a min heap $H_{\min}$ over all $r$-cliques, costing $O(N_r)$ time, where $N_r=\binom{n}{r}$ is the number of $r$-cliques.
+
+% Each iteration extracts the $r$-clique of minimum count (Line 5), which costs $O(\log N_r)$. After extracting $S_{\min}$, the algorithm removes $S_{\min}$ from all root-clique paths in $\mathcal{T}$ that contain it and updates the counts of affected $r$-cliques (Lines 8-12). Across the whole execution, every $s$-clique is processed exactly once for each of its $\binom{s}{r}$ constituent $r$-cliques, so the total number of updates is $\Sigma_{r,s}$. Each update requires constant work on the CPI plus a heap decrease-key on $H_{\min}$, yielding $O(\log N_r)$ per update. Thus, the total cost of all updates is $O(\Sigma_{r,s}\log N_r)$.
+
+% The \textsc{Batch Remove $r$-Cliques} procedure operates on a root-clique path $\mathcal{P}$ and a family of $r$-cliques to remove. Its recursive function \textsc{PathSplit} ensures that each affected $s$-clique on $\mathcal{P}$ is considered once, and each constituent $r$-clique is updated a bounded number of times. Therefore, its complexity is proportional to the number of affected $s$-cliques on $\mathcal{P}$, already accounted for in the $O(\Sigma_{r,s})$ update bound.
+
+% Summing all contributions, the total running time of Algorithm~9 is
+% \[
+% O\big(\underbrace{\Sigma_{r,s}}_{\textsc{$s$-CliqueCount}} + \underbrace{N_r}_{\text{heap build}} +
+% \underbrace{N_r \log N_r}_{\text{all extracts}} + \underbrace{\Sigma_{r,s}\log N_r}_{\text{all updates}}\big)
+% = O\big((N_r + \Sigma_{r,s})\log N_r + \Sigma_{r,s}\big).
+% \]
+% For constant $r$ and $s$, this simplifies to $O\big((\binom{n}{r} + \binom{s}{r}|K_s|)\log \binom{n}{r}\big)$. The space complexity is dominated by the CPI representation and the heap, giving $O(n+\Sigma_{r,s})$ overall.
+
+% \myaddRA{
+\stitle{Complexity.} 
+Let a clique path $\TPath = \{V_p(\TPath), V_h(\TPath)\}$.
+The worst-case time complexity of Algorithm~\ref{alg:removeRClique} is $O(\prod_{C \in C_{\mathrm{rm}}} |C \cap V_p(\TPath)|)$, as it may 
+recursively split for each clique in $C_{\mathrm{rm}}$. However, in practice, due to $s$-pruning and overlap among conflict cliques, the actual number of splits and the running time are significantly lower than this theoretical bound.
+% }

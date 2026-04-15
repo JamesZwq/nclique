@@ -1,0 +1,220 @@
+
+
+\section{Updating the Clique Path Index} 
+\label{sec:update_cpi}
+
+\myaddRA{
+\begin{table}[t]
+\centering
+\scriptsize
+\caption{Instantiation mapping of the unified peeling framework; the CPI/heap data structures are identical across regimes.}
+\label{tab:instantiation}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{c p{0.17\linewidth} p{0.33\linewidth} p{0.33\linewidth}}
+\toprule
+Regime & Peeled unit & $s$-clique support $\deg^{(s)}(\cdot)$ & Affected units for local updates \\
+\midrule
+General &
+$r$-clique &
+$\#\{K_s \mid C_r \subseteq K_s\}$ &
+$r$-cliques on the updated CPI paths \\
+
+$r=2$ &
+edge (2-clique) &
+$\#\{K_s \mid e \subseteq K_s\}$ \;\;(\emph{triangle support} when $s{=}3$) &
+units co-occurring with $e$ on the updated CPI paths \\
+
+$r=1$ &
+vertex (1-clique) &
+$\#\{K_s \mid v \subseteq K_s\}$ \;\;(\emph{deg} when $s{=}2$) &
+units co-occurring with $v$ on the updated CPI paths \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+}
+
+
+In this section, we present how to efficiently update \cpi\ during decomposition, specifically how to remove $r$-cliques (and their corresponding $s$-cliques) during the peeling process. 
+%
+This operation is one of the most challenging aspects of maintaining \cpi, as it must preserve the path semantics defined in Lemma~\ref{lem:clique_count}.
+%
+Building on the differential path contribution maintenance view in Section~\ref{sec:dpcm}, the goal here is to instantiate the exact local update operator for three regimes: general $r{\ge}3$, the edge case $r{=}2$, and the vertex case $r{=}1$.
+% We begin with the simplest case of $r{=}1$, then extend to $r{=}2$, and finally present the complete algorithm that supports $r{\ge}3$.
+\myaddRA{
+% We present a unified \cpi update framework for removing an $r$-clique.
+We first introduce the general path-splitting principle for arbitrary $r$,
+and then show how it simplifies for $r=2$ and $r=1$ as implementation optimizations.
+% 
+Throughout peeling, we maintain the same \cpi state across all $r$, only the instantiated update operator differs
+depending on whether the peeled object is a vertex ($r{=}1$), an edge ($r{=}2$),
+or a general $r$-clique.
+% 
+Table~\ref{tab:instantiation} summarizes how the same peeling/update pipeline instantiates for general $r$, $r=2$, and $r=1$.
+}
+
+We first define the semantics of removing an $r$-clique $R$ from the \cpi. 
+After the update, no path in the \cpi\ contains $R$. 
+Namely, the operation removes exactly those cliques that include $R$, while preserving all others:
+every $s$-clique $S$ with $R\nsubseteq S$ remains encoded by exactly one path in the \cpi.
+
+
+% \myadd{
+% We present a unified \cpi\ update operator for removing an $r$-clique, and use the $r{=}1$ and $r{=}2$ instantiations as concrete entry points before stating the general procedure for arbitrary $r$.
+% }
+
+% We proceed in a step-by-step manner, starting with vertex removal (when $r{=}1$), followed by edge removal (when $r{=}2$), and finally $r$-clique removal (when $r{\ge}3$). 
+% % 
+% In each case, we employ the same method, differing only in the object being removed (vertex when $r{=}1$, edge when $r{=}2$, and an $r$-clique when $r{\ge}3$), we unfold the same method across three settings while keeping one invariant, the same data structures, and the same peeling schedule.
+
+
+% We begin with the basic case of $r=1$ to establish notation and the support/peeling invariant; then extend to $r=2$; and finally present the complete algorithm for $r\ge3$, which incorporates the path-splitting update rule that generalizes the first two cases. The next three subsections follow this progression.
+
+
+\input{sections/OurApproach/r3}
+\input{sections/OurApproach/r2}
+\input{sections/OurApproach/r1}
+\input{sections/OurApproach/optimizations}
+
+
+% \subsection{Complexity Analysis}
+% \stitle{Updating Clique Supports.} 
+% After removing a vertex, edge, or $r$-clique from the \cpi, we update the $s$-clique counts of all affected $r$-cliques (\textsc{UpdateSupport} in Algorithm~\ref{alg:framework}). We omit details as the implementation is straightforward. Let $\TPath_{\text{old}}$ be a \cpi\ path before removing an $r$-clique $R$, and let $\TPath_{\text{new}}$ be the set of paths afterward. We subtract the $s$-clique counts from Lemma~\ref{lem:clique_count} on $\TPath_{\text{old}}$ and add the recomputed counts on all $\TPath_{\text{new}}$, maintaining supports without re-enumerating $s$-cliques.
+% After each path update, we also update the support of every $r$-clique along that path. Updating the min-heap for each such $r$-clique yields total time $O\left(\sum_{\TPath{} \in \cpi} \binom{|\TPath{}|}{r} \log |R|\right)$, where $|R|$ is the total number of $r$-cliques. By Lemma~\ref{lem:path_pruning}, $\sum_{\TPath{} \in \cpi} \binom{|\TPath{}|}{r}$ is less than $\sum_{C_s \in G} \binom{s}{r}$, where $C_s$ is any $s$-clique in the graph.
+
+% \stitle{Overall Complexity.} 
+% The overall time complexity of our algorithm can be decomposed into three components: 
+% (i) \cpi\ construction and initial counting (Algorithms~\ref{alg:local_s_clique_count} and \ref{alg:buildCPI}); 
+% (ii) the total time for updating the \cpi, which varies for $r = 1, 2,$ and $r \ge 3$, as discussed in the previous sections; and 
+% (iii) the total time spent updating supports and the heap, as described in the previous paragraph. 
+% %
+% It is worth noting that the complexity of all three components depends directly on the size of the \cpi, denoted by $|{\cpi}|$, which corresponds to the number of clique paths in the index. 
+% %
+% The size of the \cpi is theoretically bounded by $O(n\,3^{\alpha/3})$~\cite{Pivoter}, where $\alpha$ is the degeneracy of the graph; however, in practice, due to effective path pruning, the actual $|{\cpi}|$ is significantly smaller than this bound, as demonstrated by both Theorem~\ref{thm:path_vs_clique} and our experimental results on real-world graphs (Exp-4 in Section~\ref{sec:exp}). 
+% %
+% This provides a strong foundation for the performance of our approach over existing enumeration-based solutions.
+% \begin{table}[t]
+% \centering
+% \small
+% \setlength{\tabcolsep}{2pt}
+% \renewcommand{\arraystretch}{1.15}
+% \begin{tabular}{lp{0.68\linewidth}}
+% \toprule
+% Method & Complexity (high-level) \\
+% \midrule
+% Enumeration-based &
+% \textbf{Time:} $\Omega(|K_r|+|K_s|)$ \\
+% & \textbf{Space:} $\Theta(|K_r|+|K_s|)$ \\[0.2em]
+
+% Our CPI-based &
+% \textbf{Time:} $O(\min(n3^{\alpha/3},|K_s|) + |K_r|) + T_{\text{UpdateIndex}} + \sum_{P\in\cpi}|P|_r\log|K_r|$ \\
+% & \textbf{Space:} $O(\min(n3^{\alpha/3},|K_s|) + |K_r|)$ \\
+% \bottomrule
+% \end{tabular}
+% % 
+% \caption{High-level complexity comparison. $|K_r|$ and $|K_s|$ are the numbers of $r$-cliques and $s$-cliques.}
+% \label{tab:complexity}
+% 
+% \end{table}
+
+
+% \myadd{
+% \subsection{Complexity.}
+% We summarize the time/space cost and clarify the worst-case behavior.
+% Let $K_r$ and $K_s$ denote the sets of $r$- and $s$-cliques in $G$, and let $\cpi$ be the clique-path index.
+% Our total running time consists of three parts:
+% (i) CPI construction and initial counting;
+% (ii) CPI updates during peeling; and
+% (iii) support and heap maintenance for affected $r$-cliques.
+
+% \emph{(i) CPI construction.}
+% The worst-case time to build the CPI is $O(n\cdot 3^{\alpha/3})$\cite{Pivoter}, where $\alpha$ is the graph degeneracy.
+% The CPI size $|\cpi|$ is upper bounded by $O(n\cdot 3^{\alpha/3})$ and is typically much smaller in practice due to pruning.
+
+% \emph{(ii) CPI updates.}
+% Each peeling step triggers local updates on a set of affected paths.
+% For the general case, updating a path $P=\{V_p(P),V_h(P)\}$ reduces to a local Bron--Kerbosch-like search
+% on the residual graph $H$ over $V(P)$, which costs $O(3^{\omega_H/3})$ time with $O(L^2)$ extra space,
+% where $L=|V_h(P)|+|V_p(P)|$ and $\omega_H$ is the maximum clique size in $H$.
+
+% \emph{(iii) Updating clique supports and the heap.}
+% After each path update, we update the support of every $r$-clique along the changed paths and maintain a min-heap.
+% This yields total time
+% $
+% O\!\left(\sum_{P\in \cpi}\binom{|P|}{r}\log |K_r|\right).
+% $
+% Moreover, by Lemma~3.3, $\sum_{P\in \cpi}\binom{|P|}{r}$ is upper bounded by the total number of $(r,s)$-incidences,
+% i.e., $\sum_{S\in K_s}\binom{s}{r}=|K_s|\binom{s}{r}$.
+
+% \emph{Worst-case collapse.}
+% Although CPI avoids explicit $s$-clique enumeration, in the worst case $|\cpi|$ can be as large as $|K_s|$
+% % 
+% This worst-case occurs when the graph contains many $s$-cliques with no shared edges (e.g., 1-clique),
+% causing the CPI to lose its compression advantage and degenerate to enumerating all $s$-cliques.
+% However, such scenarios are rare in practice, as detailed in our experimental analysis.}
+% % (e.g., near-clique/dense regions where pruning is ineffective), so the overall complexity matches enumeration-based
+% % approaches up to polylog factors.
+% % In contrast, when CPI compresses many $s$-cliques into a small number of paths ($|\cpi|\ll |K_s|$),
+% % the support/heap term becomes substantially smaller than operating on enumerated $s$-cliques.
+
+\myaddRA{
+\subsection{Complexity.}
+Table~\ref{tab:complexity} summarizes time/space.
+Let $K_r$ and $K_s$ be the sets of $r$- and $s$-cliques, and let $\cpi$ be the clique-path index.
+The total time consists of (i) build/initial counting, (ii) CPI maintenance during peeling, and (iii) support/heap maintenance.
+
+\emph{(i) Build.}
+Building $\cpi$ and initializing supports takes $O(|\cpi|+|K_r|)$ (Section~\ref{sec:cpi}).
+
+\emph{(ii) CPI maintenance.}
+Let $T_{\text{UpdateIndex}}$ denote the total cost of maintaining $\cpi$ over all peeling steps; it specializes for general $r$, $r{=}2$, and $r{=}1$ as analyzed in the previous sections.
+
+\stitle{Regime-sensitive maintenance cost.}
+The journal-level role of DPCM is precisely to reduce $T_{\text{UpdateIndex}}$ by replacing reconstructive updates with state-local differential updates.
+%
+For $r{=}1$, Theorem~\ref{thm:r1_delta} shows that path maintenance is counter-only, so each affected path is processed in time linear in the path length.
+%
+For $r{=}2$, Theorems~\ref{thm:r2_pivot_delta} and~\ref{thm:r2_single_split} show that the dominant affected paths are handled in $O(|\TPath|)$ time, and only the residual multi-edge pivot case falls back to local residual-graph search.
+%
+For general $r$, Theorem~\ref{thm:split} gives the exact conflict-state transition, while the dead-path-aware refinement in Section~\ref{sec:opt} removes most paths before recursive splitting.
+%
+Thus the same global complexity form hides three qualitatively different maintenance primitives, which is exactly the regime-specific benefit exposed by DPCM.
+
+\emph{(iii) Supports/heap.}
+Let $l$ be the number of peeling rounds (distinct minimum-support values), and let $|P|_r$ be the number of affected $r$-cliques on path $P$.
+Using a bucketed min-heap over $K_r$, the total time for extracting minima and key updates is
+$
+O\!\left(\bigl(l+\sum_{P\in\cpi}|P|_r\bigr)\log|K_r|\right).
+$
+
+
+\emph{Worst case.}
+By theorem~\ref{thm:path_vs_clique}, $|\cpi|\le |K_s|$ and $\sum_{P\in\cpi}|P|_r \le s|K_s|$ always holds.
+But If $G$ is a disjoint union of $s$-cliques, then $|\cpi|=|K_s|$ and our method degenerates to enumerating all $s$-cliques.
+}
+
+
+\myaddRA{
+\begin{table}[t]
+\centering
+% \footnotesize
+\caption{Complexity summary. $\kappa$ is arboricity, $ct_r(v)=|\{C_r\in K_r: v\in C_r\}|$, and $l$ is the number of peeling rounds.}
+\label{tab:complexity}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{l p{0.70\linewidth}}
+\toprule
+Method & Time = \emph{Build/init} + \emph{Support updates} + \emph{Peel-min} \\
+\midrule
+Enum.~\cite{sotaPrveHierarchy} &
+$O(m\kappa^{r-2}) \;+\; O\!\big(\sum_{v\in V} ct_r(v)\,deg(v)^{s-r}\big) \;+\; O(l\log|K_r|)$ \\
+CPI-based &
+$O(|\cpi|+|K_r|) \;+(\; T_{\text{UpdateIndex}} + O\!\big(\sum_{P\in\cpi}|P|_r\log|K_r|\big) \;)+\; O(l\log|K_r|)$ \\
+\midrule
+Space &
+Enum.: $O(|K_r|)$;\quad CPI: $O(|\cpi|+|K_r|)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+}

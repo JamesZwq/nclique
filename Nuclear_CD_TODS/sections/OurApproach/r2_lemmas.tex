@@ -1,0 +1,54 @@
+% Lemma 1: nCr closed-form delta for pivot removal (Case C)
+\begin{lemma}[Closed-Form Support Update for Pivot Removal]
+\label{lem:ncrDelta}
+Let $\TPath = \{V_H, V_P\}$ be a clique path with $|V_H|=m$ and $|V_P|=n$.
+When $d$ pivot vertices are removed from $\TPath$,
+the change in $s$-clique support for each surviving edge $e$
+can be computed in $O(1)$ time:
+\begin{itemize}
+    \item If $e = \{u, v\} \subseteq V_H$: \quad
+        $\Delta(e) = \binom{n}{s{-}m} - \binom{n{-}d}{s{-}m}$
+    \item If $e = \{u, v\} \subseteq V_P \setminus V_{\mathrm{rm}}$: \quad
+        $\Delta(e) = \binom{n{-}2}{s{-}m{-}2} - \binom{n{-}d{-}2}{s{-}m{-}2}$
+    \item If $e = \{u, v\},\; u \in V_H,\; v \in V_P \setminus V_{\mathrm{rm}}$: \quad
+        $\Delta(e) = \binom{n{-}1}{s{-}m{-}1} - \binom{n{-}d{-}1}{s{-}m{-}1}$
+    \item If $e$ contains a removed pivot: \quad
+        $\Delta(e)$ equals the full original weight.
+\end{itemize}
+\end{lemma}
+
+\begin{proof}
+An $s$-clique from $\TPath$ consists of all $m$ hold vertices and $s{-}m$ pivots
+chosen from $V_P$.
+After removing $d$ pivots, the remaining pivot set has size $n{-}d$.
+For a hold--hold edge $e = \{u,v\} \subseteq V_H$,
+every $s$-clique contains $e$, so the support equals $\binom{|V_P|}{s{-}m}$.
+The delta follows by substituting $n$ with $n{-}d$.
+The other edge types follow analogously by fixing additional endpoints.
+\end{proof}
+
+
+% Lemma 2: Single-edge split for Case B d=1
+\begin{lemma}[Single-Edge Analytic Split]
+\label{lem:singleEdgeSplit}
+Let $\TPath = \{V_H, V_P\}$ be a clique path and let $\{u, v\} \subseteq V_P$
+be a single removed edge between two pivot vertices.
+The set of valid $s$-cliques (those not containing both $u$ and $v$)
+can be partitioned into two disjoint groups,
+each representable as a clique subpath:
+\begin{enumerate}
+    \item $\TPath_1 = \{V_H,\; V_P \setminus \{v\}\}$: \quad
+        $s$-cliques \textbf{not} containing $v$.
+    \item $\TPath_2 = \{V_H \cup \{v\},\; V_P \setminus \{u, v\}\}$: \quad
+        $s$-cliques containing $v$ but \textbf{not} $u$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Every valid $s$-clique either does not contain $v$ (belongs to $\TPath_1$)
+or contains $v$ but not $u$ (belongs to $\TPath_2$).
+These two sets are disjoint ($\TPath_1$ excludes $v$; $\TPath_2$ includes $v$)
+and exhaustive (invalid cliques are exactly those containing both $u$ and $v$).
+In $\TPath_2$, vertex $v$ is moved from $V_P$ to $V_H$
+because every $s$-clique in this group must contain $v$.
+\end{proof}

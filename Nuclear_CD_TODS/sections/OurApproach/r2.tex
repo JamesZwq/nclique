@@ -1,0 +1,242 @@
+\myaddRA{\subsection{Instantiation II: Edge-Contribution DPCM for \texorpdfstring{$r=2$}{r=2}}}
+\label{sec:r2}
+
+For $r{=}2$, DPCM specializes to an \emph{edge-contribution calculus}.
+%
+The sufficient state of an affected path consists of its current \hold/\pivot partition together with the local removal pattern on that path.
+%
+This state induces a small exact case split, and the dominant cases admit closed-form contribution updates rather than general residual-graph reconstruction.
+%
+We start from the structural path-state transition in Theorem~\ref{thm:remove_edge}.
+%
+
+\begin{theorem}[Edge Removal]\label{thm:remove_edge}
+Let $\TPath=(V_p(\TPath),\,V_h(\TPath))$ be a clique path in the \cpi\ of $G$, and let $e=\{u,v\}$ with $u,v\in V(\TPath)$. For any removed $e$ from $G$,  the updated $\TPath'$ satisfies:
+
+\begin{enumerate}[leftmargin=*]
+  \item (\hold-\hold) If $u,v\in V_h(\TPath)$, then $\TPath'=\emptyset$;
+  % \item 没主语, if then
+  \item (\hold-\pivot) If $u\in V_h(\TPath)$ and $v\in V_p(\TPath)$ (or symmetrically), then
+        % \[
+        $
+          \TPath'=\bigl\{\,\bigl(V_p(\TPath)\setminus\{v\},\; V_h(\TPath)\bigr)\,\bigr\};
+        $
+          % \]
+  \item (\pivot-\pivot) If $u,v\in V_p(\TPath)$, then
+        \[
+          \TPath'=\Bigl\{\,
+              \bigl(V_p(\TPath)\setminus\{v\},\; V_h(\TPath)\bigr),\;
+              \bigl(V_p(\TPath)\setminus\{u\},\; V_h(\TPath)\cup\{v\}\bigr)
+            \,\Bigr\}.
+        \]
+\end{enumerate}
+
+% For all $s$-cliques encoded by $\TPath$ that do not contain $e$, exactly one subpath in $\TPath'$ encodes it.
+\end{theorem}
+
+% In all cases, we set $\TPath' = \emptyset$ if $|\TPath'| < s$ according to Lemma~\ref{lem:path_pruning}.
+
+\begin{proof}
+We prove the theorem separately for three distinct cases.  
+%
+(1) If $e$ is a hold-hold edge, every encoded clique would require both endpoints, which becomes impossible after deleting $e$; hence, the path is invalid.  
+%
+(2) If $e$ is a hold-pivot edge, all encoded cliques must retain the hold endpoint. 
+Thus, we update the path with respect to the pivot endpoint.
+%
+(3) If $e$ is a pivot-pivot edge, we split the path into two:  
+(a) $\bigl(V_p(\TPath)\setminus\{v\},\, V_h(\TPath)\bigr)$, which removes all cliques encoded by the path that contain $v$;  
+(b) $\bigl(V_p(\TPath)\setminus\{u\},\, V_h(\TPath)\cup\{v\}\bigr)$, which restores all cliques containing $v$ but not $u$.
+\end{proof}
+
+\stitle{DPCM Case Partition.}
+Theorem~\ref{thm:remove_edge} yields the exact $r{=}2$ case split required by Theorem~\ref{thm:dpcm-states}.
+%
+The \hold-\hold case kills the path immediately.
+%
+The \hold-\pivot and pivot-only removal cases preserve a single path and admit direct support updates.
+%
+The \pivot-\pivot case is the only branching case, and even there the dominant subcases can still be handled analytically.
+
+\begin{theorem}[Closed-Form Support Delta for Pivot Removal]\label{thm:r2_pivot_delta}
+Let $\TPath=(V_p,V_h)$ be an active path with $P=|V_p|$, $K=|V_h|$, and $\mathit{np}=s-K$.
+Suppose a peeling round removes $d$ pivots from $\TPath$ while keeping all holds alive and leaving the path feasible, i.e., $\mathit{np}\le P-d$.
+Then the support change of each surviving edge $e$ contributed by $\TPath$ depends only on its type:
+\[
+\Delta_{\TPath}(e)=
+\begin{cases}
+\binom{P}{\mathit{np}}-\binom{P-d}{\mathit{np}}, & e\subseteq V_h,\\[4pt]
+\binom{P-1}{\mathit{np}-1}-\binom{P-d-1}{\mathit{np}-1}, & |e\cap V_h|=1,\\[4pt]
+\binom{P-2}{\mathit{np}-2}-\binom{P-d-2}{\mathit{np}-2}, & e\subseteq V_p \text{ and both pivots survive.}
+\end{cases}
+\]
+For any edge incident to a removed pivot, the full original contribution of $\TPath$ is subtracted.
+\end{theorem}
+
+\begin{proof}
+By Lemma~\ref{lem:clique_count}, the contribution of an edge on $\TPath$ equals the number of ways to choose the remaining pivots needed to form a size-$s$ clique.
+%
+For a \hold-\hold edge, no pivot is fixed; for a \hold-\pivot edge, one pivot is fixed; for a surviving \pivot-\pivot edge, two pivots are fixed.
+%
+The contribution in each case is therefore a single binomial term before and after the removal of $d$ pivots, and the delta follows by subtraction.
+\end{proof}
+
+\begin{theorem}[Analytical Single-Edge Split]\label{thm:r2_single_split}
+Let $\TPath=(V_p,V_h)$ be an active path and let $\{u,v\}\subseteq V_p$ be the only removed \pivot-\pivot edge on $\TPath$.
+Then the surviving clique space on $\TPath$ is represented exactly by the two subpaths
+\[
+\TPath_1=(V_p\setminus\{v\},V_h), \qquad
+\TPath_2=(V_p\setminus\{u,v\},V_h\cup\{v\}).
+\]
+Moreover, the support contribution on each subpath is obtained directly from Lemma~\ref{lem:clique_count}, so no residual-graph search is needed.
+\end{theorem}
+
+\begin{proof}
+Every surviving size-$s$ clique encoded by $\TPath$ either excludes $v$ or includes $v$ and excludes $u$.
+%
+The first family is encoded exactly by $\TPath_1$.
+%
+The second family is encoded exactly by $\TPath_2$, where $v$ is promoted to a hold because every clique in that family must contain it.
+%
+These two families are disjoint and exhaustive over all cliques on $\TPath$ that avoid the removed edge.
+\end{proof}
+
+% \begin{example}
+% For the \cpi shown in Figure~\ref{fig:pruning_example}, consider the clique path $\TPath{1}$ with
+% $V_{p}(\TPath{1}) = \{v_4, v_5\}$ and
+% $V_{h}(\TPath{1}) = \{v_1, v_6\}$.
+% The three possible updates under edge removal are:
+
+% \begin{itemize}[leftmargin=*]
+%   \item \hold-\hold: Deleting the edge $\{v_1,v_6\}$ removes the entire path, since both endpoints are mandatory.
+%   \item \hold-\pivot: Deleting the edge $\{v_1,v_4\}$ removes the \pivot $v_4$ from the path while keeping the \hold $v_1$. If the residual path is shorter than $k$, it is discarded.
+%   \item \pivot-\pivot: Deleting the edge $\{v_4,v_5\}$ splits $\TPath{1}$ into two disjoint paths:
+%   \[
+%     \TPath{1.1} : V_{h}(\TPath{1.1}) = \{v_1, v_6\}, \; V_{p}(\TPath{1.1}) = \{v_4\},
+%   \]
+%   \[
+%     \TPath{1.2} : V_{h}(\TPath{1.2}) = \{v_1, v_6, v_5\}, \; V_{p}(\TPath{1.2}) = \emptyset.
+%   \]
+% \end{itemize}
+% \end{example}
+
+\stitle{Batched Updates.}
+Theorem~\ref{thm:remove_edge} specifies how a single edge deletion updates one clique path.
+In peeling, many edges are removed together.
+Processing them one by one revisits the same paths repeatedly.
+This is most expensive for pivot--pivot deletions, where each deletion may split a path and trigger cascading updates.
+
+We use a \emph{path-local} batched DPCM strategy.
+For each affected clique path, we first merge all removed edges that touch this path.
+We then handle \hold-\hold deletions by killing the path, and \hold-\pivot / pivot-only deletions through the closed-form update of Theorem~\ref{thm:r2_pivot_delta}.
+If exactly one \pivot-\pivot edge remains, we apply Theorem~\ref{thm:r2_single_split}.
+Only the residual multi-edge \pivot-\pivot case falls back to a residual graph on $V(P)$ after removing these edges.
+Finally, we reconstruct the resulting clique paths from the residual graph in a single pass.
+The residual graph is small (bounded by the maximum clique size), so the reconstruction is efficient.
+
+
+% \todo{we resolve all branchings in a single pass by enumerating only its surviving cliques, while cases with a \hold endpoint remain trivial (removing either the entire path or a single node).}
+
+% \stitle{Key Idea.} \todo{}
+% 我们的思路是构建当前root-leaf路径的邻接子图, 然后在该邻接子图上计算拆分之后的path.
+% Our idea is to construct the adjacency subgraph of the current clique path and then compute the split paths on that subgraph.
+% % 
+% We observe that the maximum clique sizes are relatively small across different real-world graphs (Table~\ref{tab:maxclique_sizes}). 
+% % 这也就意味着CPI中root-leaf路径的长度是较小的
+% which implies that the length of clique paths in the \cpi is small. 
+% 这使得我们可以在构建adjacency subgraph时使用adjacency bitset.
+% Key idea paragraph replacement
+
+\stitle{Key Idea.} 
+%
+We first handle the simple cases (\hold{-}\hold\ removals delete the entire path, and \hold{-}\pivot\ removals exclude the pivot), before addressing the more complex scenario of removing multiple \pivot{-}\pivot paths simultaneously. 
+%
+For \pivot{-}\pivot paths, the core idea is to first construct a \textit{residual graph} from vertices in $V(\TPath)$, retaining only the edges that remain valid within this subgraph.
+%
+We then reconstruct new clique paths from the residual graph. 
+Since the residual graph is small (no larger than the maximum clique in the graph), this reconstruction can be performed efficiently, avoiding redundant computation.
+
+% into a small \textit{residual graph} on $V(\TPath)$ and run a pivot-only, path-local search that enumerates precisely the    (all holds plus some pivots), 
+
+% each directly materializing one updated path. 
+% This replaces repeated edge-by-edge splits with a single pass and avoids enumerating global $s$-cliques; near-cliques collapse to a single pure-pivot path when possible.
+% 
+% Bitwise operations enable efficient computation of intersections, counts, and other set operations.
+
+% 我们发现,  构建tree的算法(Algorithm~\ref{alg:buildCPI}})会保证每一个root-leaf都有至少一个keep节点, 这实际上会造成tree不够紧密. 
+% 在图Figure~\ref{sec:introduction}中, 节点1 2 3 4 5组成了一个5clique, 这实际上可以简单用单个由5个pivot 组成的root-leaf路径来表示.
+% 但是目前的现有的CPI构建算法则需要构建5个path, 分别是$V_{h}(\TPath{1}) = {v_1}$, $V_{p}(\TPath{1}) = {v_2, v_3, v_4, v_5}$. $V_{h}(\TPath{2}) = {v_2}$, $V_{p}(\TPath{2}) = {v_3, v_4, v_5}$. $V_{h}(\TPath{3}) = {v_3}$, $V_{p}(\TPath{3}) = {v_4, v_5}$. $V_{h}(\TPath{4}) = {v_4}$, $V_{p}(\TPath{4}) = {v_5}$. $V_{h}(\TPath{5}) = {v_5}$, $V_{p}(\TPath{5}) = {\emptyset}$.
+% Algorithm~\ref{alg:buildCPI} enforces that every clique path contains at least one \hold. This invariant can make the representation less compact: for example, the 5-clique on nodes 1--5 in Figure~\ref{sec:introduction} could be encoded by a single path of five \pivot nodes, yet Algorithm~\ref{alg:buildCPI} materializes one path per choice of \hold. This difference will matter for our update routine.
+
+
+\input{sections/algorithms/removeEdge}
+
+% \begin{figure*}[t]
+%     \centering
+%     \includegraphics[width=\textwidth]{figure/newTree.eps}
+%     \caption{An example tree produced by the Algorithm~\ref{alg:removeEdge}. White nodes are \pivot vertices, gray nodes are \hold vertices.}
+%     \label{fig:new_tree_example}
+% \end{figure*}
+
+% \begin{figure}[t]
+%     \centering
+%     \includegraphics[width=0.30\textwidth]{figure/CPIlarge.eps}
+%     % 虚线连接的节点是\pivot节点, 实线连接的节点是\hold节点.
+%     \caption{
+%         An example of a \cpi on Figure~\ref{fig:graph_example} (no pruning). Dashed nodes denote pivots, and solid nodes denote holds.
+%     }
+%     \label{fig:new_tree_example}
+% \end{figure}
+
+\stitle{Algorithm.} 
+% 因此我们提出了一个batched path update的算法(Algorithm~\ref{alg:removeEdge}), 来进行对于一条路径上多个edge的删除.
+% The process is listed in Algorithm~\ref{alg:removeEdge}. 
+%
+The algorithm (Algorithm~\ref{alg:removeEdge}) takes as input a clique path $\TPath$, a set $E_{\mathrm{rm}}$ of edges to remove, and the target clique size $s$ (for pruning). 
+It first constructs the residual graph $H$ by deleting all edges in $E_{\mathrm{rm}}$ from the complete graph induced by $V(\TPath)$. 
+Next, it identifies the set of \emph{fixed} vertices $V_{\text{fixed}}$ in $H$ that are not incident to any removed edge, and determines the subset of \pivots\ among these fixed vertices. 
+The sets $R$ and $P$ are then initialized as $R = V_{\text{fixed}}$ and $P = V(\TPath) \setminus V_{\text{fixed}}$, respectively. 
+%
+Finally, a recursive Bron-Kerbosch-like search function, \BK, is invoked to enumerate all valid subpaths from the residual graph. 
+In each recursive call, a pivot vertex connected to the largest number of vertices in $P$ is selected~\cite{BronKerbosch}, and the search expands along its connected candidates to generate the cliques that define the updated path(s).
+
+
+% \begin{remark}
+% A question arises as to why Algorithm~\ref{alg:buildCPI} is not directly reused. 
+% %
+% Algorithm~\ref{alg:buildCPI} constructs a \emph{\hold-anchored} index, where every clique path must contain at least one \hold. 
+% However, our focus in Algorithm~\ref{alg:removeEdge} is primarily on updating \pivot{-}\pivot relations. 
+% The proposed batched path update relaxes this constraint, allowing a path to remain pure-\pivot after updates. 
+% Permitting pure-\pivot paths preserves the same encoding semantics while producing a more compact index and reducing the number of paths that need to be updated—particularly under frequent \pivot-\pivot\ deletions. 
+% As illustrated in Figure~\ref{fig:new_tree_example}, a 5-clique can thus be represented by a single pure-\pivot\ path instead of multiple hold-anchored duplicates.
+% \end{remark}
+
+% 在实现上, 我们使用bitset(Definition~\ref{def:bitset})来表示路径上的节点集合, 以加速集合交集和计数等操作.
+% \stitle{Implementation.}
+% The size of the residual graph is bounded by the maximum clique size of the input graph, which is typically small for real-world datasets (Table~\ref{tab:graph-stats}). 
+% This allows us to represent the residual graph as an adjacency matrix and employ \emph{bitsets} to encode vertex sets on paths, enabling highly efficient set operations (\textsc{and}, \textsc{or}, \textsc{xor}, \textsc{count}) through word-level parallelism~\cite{bitsetClique}. This optimization also applies to cases with $r \ge 3$.
+
+
+% \begin{definition}[Bitset]\label{def:bitset}
+% Given an ordered vertices list $[v_0,$ $\ldots,v_{n-1}]$, a \emph{bitset of length $n$} is the vector $b_{n-1}\ldots b_0$ with $b_i=1$ iff $v_i$ is selected, or $0$ otherwise. Word-level operations (\textsc{and}, \textsc{or}, \textsc{xor}, \textsc{count}) run in constant time and are highly efficient when $n$ is at most a few hundred.
+
+% 该算法的正确性由以下定理来保证. 
+% The following theorem guarantees the correctness of the Algorithm \ref{alg:removeEdge}.
+\stitle{Correctness.} 
+% The correctness of cases (1) and (2) is straightforward. 
+% For case (3), since all \pivot{-}\pivot\ edges marked for removal are deleted from the residual graph, no clique containing any removed edge can be encoded by the reconstructed paths. 
+% Meanwhile, all remaining edges from the original clique path are preserved in the residual graph. 
+% Applying the Bron-Kerbosch search~\cite{Pivoter} on the residual subgraph ensures that all surviving cliques are correctly and uniquely encoded by the new paths.
+% 
+% \noindent\textbf{Correctness.}
+Cases (1)-(2) follow directly from the hold/pivot rules, and case (3) holds because the residual graph deletes exactly the removed pivot--pivot edges while preserving all remaining edges; Bron--Kerbosch enumeration on this residual graph yields all surviving cliques uniquely.
+
+
+
+
+\stitle{Complexity.} 
+Let a clique path $\TPath = \{V_p(\TPath), V_h(\TPath)\}$.
+Let $L=|V_h(\TPath)|+|V_p(\TPath)|$ and let $\omega_H$ be the maximum clique size in the residual graph $H$ on $V(\TPath)$.
+If a \hold-\hold case is triggered, we return in $O(1)$ time.
+If the update falls into the closed-form cases of Theorem~\ref{thm:r2_pivot_delta} or the analytical split of Theorem~\ref{thm:r2_single_split}, the update costs only $O(L)$ time.
+Only the residual multi-edge \pivot-\pivot case requires the local Bron-Kerbosch-like search on $H$, which costs $O(3^{L/3})$ time and $O(L^2)$ space in the worst case.

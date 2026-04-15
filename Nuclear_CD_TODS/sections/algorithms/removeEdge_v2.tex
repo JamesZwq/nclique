@@ -1,0 +1,61 @@
+\begin{algorithm}[t]
+\small
+\caption{\textsc{UpdateIndex} $(r=2)$}
+\label{alg:removeEdge}
+\KwIn{clique path $\TPath{} = \{V_{H},V_{P}\}$, remove-edge set $E_{\mathrm{rm}},$ $s > 0$}
+\KwOut{All subpaths induced after deleting $E_{\mathrm{rm}}$}
+\SetKwFunction{PLBU}{PathUpdate}
+\SetKwProg{Fn}{Function}{:}{}
+
+% Case A: hold-hold edge → path dies
+\lIf{$\exists\,e\in E_{\mathrm{rm}} :\ e\subseteq V_H(\TPath{})$}{\Return}
+
+% Case C: hold-pivot edge → remove pivot, closed-form delta
+\ForEach{$e=\{u,v\}\in E_{\mathrm{rm}} :\ |e\cap V_H(\TPath{})|=1$}{
+  $p \gets e\cap V_P(\TPath{})$\;
+  remove $p$ from $V_P(\TPath{})$;
+  remove $e$ from $E_{\mathrm{rm}}$\;
+  \tcp{Lemma~\ref{lem:ncrDelta}: $\Delta$ for each surviving edge by nCr difference}
+}
+\lIf{$E_{\mathrm{rm}}=\emptyset$}{
+    \textbf{output path }$\{V_{H}(\TPath{}),\;V_{P}(\TPath{})\}$ and \Return
+}
+
+% Case B: pivot-pivot edges remain
+% d=1 closed-form split (Lemma)
+\If(\tcp*[f]{Lemma~\ref{lem:singleEdgeSplit}}){$|E_{\mathrm{rm}}|=1,\ E_{\mathrm{rm}}=\{\{u,v\}\}$}{
+    \textbf{output path }$\{V_{H},\;V_{P}\setminus\{v\}\}$\;
+    \textbf{output path }$\{V_{H}\cup\{v\},\;V_{P}\setminus\{u,v\}\}$\;
+    \Return
+}
+
+% d >= 2: BK on conflict subgraph
+$v_{fixed} \gets \{\,v\in V(\TPath{})\mid v \text{ is not incident to any edge of } E_{\mathrm{rm}}\,\}$
+
+$Piv \gets \{\,v\in v_{fixed} \mid v \in V_P(\TPath{})\,\}$
+
+$R \gets v_{fixed}$,\quad $P \gets V(\TPath{})\setminus v_{fixed}$
+
+\PLBU{$R, P, Piv$}
+
+\Fn{\PLBU{$R,\,P,\,Piv$}}{
+  \lIf{$|R \setminus Piv|>s$}{
+    \Return
+  }
+  \If{$P=\emptyset$}{
+    \lIf{$|R|\geq s$}{\textbf{output path }$\{R\setminus Piv,\,Piv\}$}
+    \Return
+  }
+  $u_{piv} \gets \arg\max_{x\in P} |P\cap N_H(x)|$\;
+  \ForEach{$v\in P \setminus N_H(u_{piv})$}{
+    $R' \gets R \cup \{v\}$;\quad $P' \gets P \cap N_H(v)$\;
+
+    \lIf{$v=u_{piv}$}{$Piv' \gets Piv \cup \{v\}$}
+    \lElse{$Piv' \gets Piv$}
+
+    \PLBU{$R',\,P',\,Piv'$}\;
+
+    $P \gets P \setminus \{v\}$\;
+  }
+}
+\end{algorithm}

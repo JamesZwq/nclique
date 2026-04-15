@@ -1,0 +1,49 @@
+\begin{algorithm}[t]
+\small
+\small
+\caption{\textsc{$(r,s)$-\cbnd (Hierarchy)}}
+\label{alg:hierarchy}
+\KwIn{Graph $G$, clique sizes $0<r<s$}
+\KwOut{Core value $\kappa_s(R)$ for every $r$-clique $R$ and Hierarchy structure}
+\SetKwFunction{RemoveNode}{RemoveNode}
+\SetKwFunction{CountPreEdges}{$s$-CliqueCount}
+\SetKwProg{Fn}{Function}{:}{}
+\SetKwFunction{UniteLevel}{UniteLevel}
+
+
+$\tree \leftarrow \textsc{BuildIndex}(G)$\;
+
+% \tcp{initialize $s$-support for all $r$-cliques}
+
+$support \gets$ \textsc{$s$-CliqueCount}$(\tree , r, s)$ 
+
+build a min-heap $H_{\min}$ using $support$\; $c_{min} \gets 0$\;
+
+\While{$H_{\min}$ is not empty}{
+    $R_{min} \gets \text{ExtractMin}(H_{\min})$\;
+    $c_{min} \gets \max(c_{min}, support(R_{min}))$\;
+    $\kappa_s(R_{min}) \gets c_{min}$\;
+    \textsc{UpdateIndex}($R_{min}$, $\tree $) \tcp*{remove $R_{min}$ from $\tree$}
+
+    \ForEach{clique path $\TPath$ containing $rc \in R_{min}$}{
+        Update $count(c)$ and $H_{\min}$ for all $s$-clique $c \in \TPath$
+        
+        \colorbox{yellow!25}{\strut \UniteLevel{$rc,c,currentK$} for all $s$-clique $c \in \TPath$}
+    }
+
+}
+
+\Return{$\kappa_s(rc)$ for all $r$-cliques $rc$ and Hierarchy structure}\;
+
+\Fn{\UniteLevel{$a, b, currentK$}}{
+    \For{$k\gets currentK$ \KwTo $0$}{
+        \If{not codeDisjointSets[k].unite(a, b)}{
+            \Return;
+        }
+    }
+}
+
+
+
+\end{algorithm}
+  

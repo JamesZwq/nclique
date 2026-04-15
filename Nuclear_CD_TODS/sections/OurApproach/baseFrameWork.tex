@@ -1,0 +1,25 @@
+% \subsection{Base Framework} \label{sec:base_framework}
+
+% % A minimal \emph{base framework} built on an \textbf{CPI tree} (rooted clique tree) and a standard peeling routine to compute $(r,s)$-coreness.
+
+% In this section, we present a \emph{base framework} that combines a \textbf{rooted clique tree (CPI)} with a standard peeling routine to compute $(r,s)$-coreness. It avoids explicit $s$-clique enumeration by performing combinatorial counting on CPI paths. The framework applies to all $r\ge 1$; the only variation with $r$ is the deletion primitive—vertex when $r{=}1$, edge when $r{=}2$, and an $r$-clique when $r{\ge}3$.
+
+% \input{sections/algorithms/ourFrameWork}
+
+% \paragraph{Framework description.}
+% The framework first builds an CPI over $G$ using a degeneracy ordering and pivoted expansion. It then computes the initial counts $\delta(R)$ for every $r$-clique $R$ via Algorithm~\ref{alg:local_s_clique_count}, which evaluates the contribution of each clique path using Lemma~\ref{lem:clique_count} without enumerating $s$-cliques. Next, we initialize a min-heap keyed by $\delta(\cdot)$ and execute a standard peeling loop: repeatedly extract the current minimum $c$, assign $\kappa_s(R){=}c$ to all $r$-cliques with $\delta(R){=}c$, remove these $r$-cliques from the CPI, and decrement affected neighbors using path-level batch updates. The loop terminates when no active $r$-clique remains, and the algorithm outputs $\kappa_s(\cdot)$ for all $r$-cliques.
+
+% % 从
+
+% \paragraph{Complexity analysis.}
+% The time complexity of the framework is $O(|E| + |K_r| \log |K_r| + T_{count} + T_{update})$, where $|E|$ is the number of edges in the graph, $|K_r|$ is the number of $r$-cliques, $T_{count}$ is the time taken to count the number of $s$-cliques containing each $r$-clique, and $T_{update}$ is the time taken to update the counts during the peeling process. The space complexity is $O(|E| + |K_r|)$, which includes the space for storing the graph and the CPI.
+
+% % 该算法框架及其简单, 但是在第11行中, 需要从tree中删除$r$-clique, 这一步会很有挑战
+
+% \paragraph{Challenge (line 11).}
+% The framework is simple; however, the operation at line~11—removing $r$-cliques from the tree—is non-trivial, mainly because we must maintain the path semantics Lemma~\ref{lem:clique_count} after deletions.
+
+% % 我们在后续的三个小节中, 分别介绍$r=1$, $r=2$和$r\ge3$的情况, 以及如何高效地实现第11行的删除操作. 这三种情况分别对应于顶点删除, 边删除和$r$-clique删除.
+% To address this challenge, we proceed in a step-by-step manner in the next three subsections, starting with vertex removal (when $r{=}1$), followed by edge removal (when $r{=}2$), and finally $r$-clique removal (when $r{\ge}3$).
+
+% % In each case, we employ the same method, differing only in the object being removed (vertex when $r{=}1$, edge when $r{=}2$, and an $r$-clique when $r{\ge}3$), we unfold the same method across three settings while keeping one invariant, the same data structures, and the same peeling schedule.

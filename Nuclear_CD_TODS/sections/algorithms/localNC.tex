@@ -1,0 +1,143 @@
+
+
+
+\begin{algorithm}[t]
+\small
+    \small
+\caption{\textsc{ComputeSup}}
+\label{alg:compute_sup_r1}
+\KwIn{Pruned \sct $\tree$, clique size $k$, current $\kappa_s(\cdot)$}
+\KwOut{$\sup_v\!: c, \Delta$ for every vertex $v$}
+
+initialise $\sup_v\leftarrow[\,]$ for all $v$\;
+
+\ForEach{clique path $\TPath{}$}{
+    $V_{p}\gets$ {$v \in \TPath{} \mid v \text{ is a pivot}$}
+
+    $V_{h}\gets$ {$v \in \TPath{} \mid v \text{ is a hold}$}
+
+    $need\gets k-|V_{h}|$
+
+
+    sort $V_{p}$ by $core$ descending
+
+    $c\gets\min\bigl(\min_{V_{h}}core,\;\kappa_s(V_{p}[need-1])\bigr)$
+
+    % ------- first position where all pivots have core ≥ c -------
+
+    $i_0 \gets \min\{\,i \mid i\ge need \land  \kappa_s(V_{p}[i]) < c\}\;$  % first pivot below c
+
+    $h'\gets 0;$ $p'\gets 0;$ $c'\gets c$
+    
+    \For{$i=i_0$ \KwTo $|V_{p}|$}{
+        \If{$\kappa_s(V_{p}[i])<c'$}{
+
+            \ForEach{$v\in V_{h}$}{ 
+                % $\sup[v][c'] \leftarrow \sup[v][c'] + (\binom{i}{need} - h')$ 
+                $\sup[v].append(c', \binom{i}{need} - h')$
+            }
+
+            \For{$j=0$ \KwTo $i-1$}{ $\sup[V_{p}[j]].append(c', \binom{i-1}{need-1} - p')$ }
+
+            $c'\gets \kappa_s(V_{p}[i]);$ $h'\gets\binom{i}{need};$ $p'\gets\binom{i-1}{need-1}$
+        }
+    }
+}
+
+\Return $\sup$
+\end{algorithm}
+
+\begin{algorithm}[t]
+\small
+\caption{\textsc{$(1,s)$-Nucleus Computation}}
+\label{alg:hindex_r1}
+\KwIn{Pruned Succinct Clique Tree $\tree$,\quad clique size $s$}
+\KwOut{$\kappa_s(v)$ for every vertex $v$}
+\SetKwFunction{ComputeSup}{ComputeSup}  
+\SetKwFunction{CountPreVertices}{$s$-CliqueCount}
+\SetKwProg{Fn}{Function}{:}{}
+
+$core\gets \CountPreVertices(\tree,1,s)$\;
+
+
+$update \gets \texttt{true}$\;
+\While{$update$}{
+    $sup \gets \texttt{ComputeSup}(\tree,s,core)$;
+
+    $update \gets \texttt{false}$\;
+
+    \ForEach{$\{v, sup_v\} \in sup$}{
+        
+        $p \gets 0$\;
+        \For{$(c,\Delta)\in sup_v$ \textbf{descending}}{
+            \If{$p+\Delta \ge c$}{
+                $core_{new} \gets \max(c,p)$
+
+                \If{$core_{new} < \kappa_s(v)$}{
+                    $\kappa_s(v)\gets core_{new}$
+
+                    $update\gets \texttt{true}$
+                }
+                \textbf{break}\;
+            }
+            $p \gets p+\Delta$
+        }
+    }
+}
+
+
+
+\Return $\kappa_s(v)$ for all $v$\;
+
+\end{algorithm}
+
+
+
+
+
+% \Fn{\ComputeSup}{
+%     \KwIn{Pruned Succinct Clique Tree $\tree$, clique size $s$, current core values $\kappa_s(\cdot)$}
+%     \KwOut{$\sup[v]\!: c\!\mapsto\!\Delta$ for every vertex $v$}
+
+
+%     initialise $\sup[v]\leftarrow[\,]$ for all $v$\;
+
+%     \ForEach{clique path $\TPath{}$}{
+%         $P\gets$ {$v \in \TPath{} \mid v \text{ is a pivot}$}
+
+%         $H\gets$ {$v \in \TPath{} \mid v \text{ is a hold}$}
+
+%         $need\gets k-|H|$
+
+        
+%         sort $P$ by $core$ descending
+
+%         $c\gets\min\bigl(\min_{H}core,\;\kappa_s(P[need-1])\bigr)$
+        
+%         % ------- first position where all pivots have core ≥ c -------
+        
+%         $i_0 \gets \min\{\,i \mid i\ge need \land  \kappa_s(P[i]) < c\}\;$  % first pivot below c
+
+%         $prevH\gets 0$
+        
+%         $prevP\gets 0$
+        
+%         $prevCore\gets c$
+        
+%         \For{$i=i_0$ \KwTo $|P|$}{
+%             \If{$\kappa_s(P[i])<prevCore$}{
+                
+%                 \ForEach{$v\in H$}{ $\sup[v][prevCore] \leftarrow \sup[v][prevCore] + (\binom{i}{need} - prevH)$ }
+%                 \For{$j=0$ \KwTo $i-1$}{ $\sup[P[j]][prevCore] \leftarrow \sup[P[j]][prevCore] + (\binom{i-1}{need-1} - prevP)$ }
+
+%                 $prevCore\gets \kappa_s(P[i])$
+
+%                 $prevH\gets\binom{i}{need}$
+                
+%                 $prevP\gets\binom{i-1}{need-1}$
+%             }
+%         }
+%     }
+
+%     \Return $\sup$
+% }

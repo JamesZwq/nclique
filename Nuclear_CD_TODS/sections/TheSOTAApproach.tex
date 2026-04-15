@@ -1,0 +1,94 @@
+% \section{Existing Approaches}
+
+% In this section, we review existing approaches for nucleus core decomposition and discuss their limitations. 
+% %
+% We focus on the classical peeling-based framework for nucleus decomposition~\cite{firstNucleus,fastHierarchy,sotaPrveHierarchy,sotaHierarchy, nuclearTWEB}. 
+% Although local update-based methods~\cite{LocalNuclear} have also been proposed to enable parallel computation, they share the same fundamental limitation of explicit $s$-clique enumeration and are therefore not discussed in detail here due to page limit.
+
+% \input{sections/algorithms/peelFramework.tex}
+
+
+% % Peeling是最被广泛使用的Nuclear Core Decomposition方法, 其基本思想是通过逐层剥离（peeling）图中的拥有最少s-clique的r-clique来计算每个r-clique的coreness.在每一轮中，算法都会找到所有的活跃r-clique，并将其剥离，直至没有活跃的r-clique为止。
+% Algorithm~\ref{alg:peel_concept} illustrates the basic paradigm of peeling-based algorithms. 
+% It computes the coreness of each $r$-clique by iteratively peeling off the $r$-cliques with the smallest number of associated $s$-cliques in each round. 
+% In every iteration, the algorithm identifies all active $r$-cliques and removes them until no active $r$-cliques remain.
+% % 算法\ref{alg:peel_concept}展示了Peeling的基本框架.
+
+% The peeling framework comprises two phases: \emph{initial counting} and the \emph{peeling loop}. 
+% In the initial counting phase, all $r$-cliques and $s$-cliques are enumerated and marked as active, and the number of active $s$-cliques containing each active $r$-clique is computed. 
+% In the peeling loop, the algorithm iteratively identifies and removes active $r$-cliques with the smallest number of active $s$-cliques; 
+% the $s$-cliques containing these $r$-cliques are then marked as inactive. 
+% This process continues until no active $r$-cliques remain. 
+% The coreness of each $r$-clique is assigned to the current peeling level, which corresponds to the minimum number of active $s$-cliques containing that $r$-clique.
+
+% % O(|K_r|+|K_s|)
+% \stitle{Complexity.} 
+% The time complexity of the peeling framework is $O(|K_r| + |K_s|)$ \cite{sotaPrveHierarchy}, where $|K_r|$ and $|K_s|$ represent the numbers of $r$-cliques and $s$-cliques in the graph, respectively .
+
+% \stitle{Clique Enumeration in Existing Approaches.}
+% Existing methods have time and space complexities that rely on the total number of $s$-cliques in the graph. 
+% However, the number of $s$-cliques grows combinatorially with $s$, leading to prohibitive computational costs. 
+% As a result, current algorithms fail to scale to larger $s$ values, with state-of-the-art methods handling only small configurations (e.g., $(4,5)$-nucleus decomposition) on small or sparse datasets. 
+% Hence, it is essential to revisit the algorithm design to remove this dependency and avoid explicit enumeration of $s$-cliques.
+\myaddRC{
+Computing these core numbers requires tracking, for each $r$-clique $R$, its \emph{active} $s$-clique support $\deg_{(s)}(R)$ (Definition~\ref{def:r-s-degree}) under a sequence of deletions.
+A widely used approach in prior work is the peeling-based nucleus decomposition~\cite{firstNucleus,fastHierarchy,sotaPrveHierarchy,sotaHierarchy,nuclearTWEB}:
+starting from the full graph, it iteratively removes the active $r$-cliques with the smallest current support and updates the supports of the remaining $r$-cliques.
+We summarize this baseline next to fix terminology and to expose the scalability bottleneck that motivates our index-based design.
+
+\input{sections/algorithms/peelFramework.tex}
+
+\stitle{Baseline: Peeling-Based Nucleus Decomposition.}\label{sec:existing_approaches}
+% 
+Algorithm~\ref{alg:peel_concept} illustrates the peeling paradigm.
+In the \emph{initial counting} phase, all $r$-cliques and $s$-cliques are enumerated and marked active, and each active $r$-clique $R$ is assigned its initial support $\deg_{(s)}(R)$.
+In the peeling loop, the algorithm repeatedly removes the active $r$-cliques with the smallest support;
+then every active $s$-clique that contains a removed $r$-clique is marked inactive, which decreases the support of the remaining $r$-cliques that it contains.
+The coreness $\kappa_s(R)$ of each $r$-clique is the peeling level at which it is removed.
+
+This framework runs in $O(|K_r| + |K_s|)$ time~\cite{sotaPrveHierarchy}, where $|K_r|$ and $|K_s|$ denote the numbers of $r$-cliques and $s$-cliques, respectively.
+However, both time and space critically depend on \emph{explicitly enumerating} $s$-cliques (during initial counting and during support updates).
+Since $|K_s|$ can grow combinatorially with $s$, this dependence quickly becomes prohibitive as $s$ increases, which explains why prior methods typically target only small configurations (e.g., $(4,5)$-nucleus) on small or sparse graphs.
+Local update-based variants have been proposed to improve parallelism~\cite{LocalNuclear}, but they still rely on $s$-clique enumeration and thus inherit the same bottleneck.
+These limitations motivate algorithmic designs that avoid explicit $s$-clique enumeration.
+
+\stitle{Baseline Primitive: Eager Support Maintenance.}
+The reference methods in our experiments differ in implementation details.
+%
+However, they share the same exact peeling skeleton.
+%
+They repeatedly remove minimum-support active $r$-cliques.
+%
+They then maintain exact supports for the surviving $r$-cliques.
+%
+The key difference lies in the \emph{support-maintenance primitive}.
+%
+In prior methods, support maintenance is eager.
+%
+When a peeled unit invalidates incident $s$-cliques, the algorithm either enumerates the affected $s$-cliques or reconstructs the affected local structure.
+%
+It then recomputes the supports.
+%
+This primitive is \emph{reconstructive}.
+%
+It materializes or revisits local clique structure after each update.
+
+\stitle{From Reconstructive to Differential Maintenance.}
+Our journal-level goal is not to replace the exact peeling skeleton.
+%
+Our goal is to replace the reconstructive maintenance primitive.
+%
+The \cpi gives a compact counting representation.
+%
+DPCM shows how to update exact supports by \emph{differential path contribution updates}.
+%
+That is, we update only the local path states incident to removed units.
+%
+We do not re-materialize the affected $s$-clique space.
+%
+This point is important.
+%
+Our novelty is not a new decomposition paradigm.
+%
+Our novelty is a new exact support-maintenance theory under the same decomposition paradigm.
+}

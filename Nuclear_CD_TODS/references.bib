@@ -1,0 +1,1271 @@
+@article{HyperCD,
+author = {Zhang, Wenqian and Yang, Zhengyi and Wen, Dong and Li, Wentao and Zhang, Wenjie and Lin, Xuemin},
+title = {Accelerating Core Decomposition in Billion-Scale Hypergraphs},
+year = {2025},
+issue_date = {February 2025},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {3},
+number = {1},
+url = {https://doi.org/10.1145/3709656},
+doi = {10.1145/3709656},
+abstract = {Hypergraphs provide a versatile framework for modeling complex relationships beyond pairwise interactions, finding applications in various domains. k-core decomposition is a fundamental task in hypergraph analysis that decomposes hypergraphs into cohesive substructures. Existing studies capture the cohesion in hypergraphs based on the vertex neighborhood size. However, such decomposition poses unique challenges, including the efficiency of core value updates, redundant computation, and high memory consumption. We observe that the state-of-the-art algorithms do not fully address the above challenges and are unable to scale to large hypergraphs. In this paper, we propose an efficient approach for hypergraph k-core decomposition. Novel concepts and strategies are developed to compute the core value of each vertex and reduce redundant computation of vertices. Experimental results on real-world and synthetic hypergraphs demonstrate that our approach significantly outperforms the state-of-the-art algorithm by 7 times on average while reducing the average memory usage by 36 times. Moreover, while existing algorithms fail on tens of millions hyperedges, our approach efficiently handles billion-scale hypergraphs in only a single thread.},
+journal = {Proc. ACM Manag. Data},
+month = feb,
+articleno = {6},
+numpages = {27},
+keywords = {core decomposition, hypergraph, k-core}
+}
+
+
+@article{LocalNuclear,
+author = {Sariy\"{u}ce, Ahmet Erdem and Seshadhri, C. and Pinar, Ali},
+title = {Local algorithms for hierarchical dense subgraph discovery},
+year = {2018},
+issue_date = {September 2018},
+publisher = {VLDB Endowment},
+volume = {12},
+number = {1},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3275536.3275540},
+doi = {10.14778/3275536.3275540},
+abstract = {Finding the dense regions of a graph and relations among them is a fundamental problem in network analysis. Core and truss decompositions reveal dense subgraphs with hierarchical relations. The incremental nature of algorithms for computing these decompositions and the need for global information at each step of the algorithm hinders scalable parallelization and approximations since the densest regions are not revealed until the end. In a previous work, Lu et al. proposed to iteratively compute the h-indices of neighbor vertex degrees to obtain the core numbers and prove that the convergence is obtained after a finite number of iterations. This work generalizes the iterative h-index computation for truss decomposition as well as nucleus decomposition which leverages higher-order structures to generalize core and truss decompositions. In addition, we prove convergence bounds on the number of iterations. We present a framework of local algorithms to obtain the core, truss, and nucleus decompositions. Our algorithms are local, parallel, offer high scalability, and enable approximations to explore time and quality trade-offs. Our shared-memory implementation verifies the efficiency, scalability, and effectiveness of our local algorithms on real-world networks.},
+journal = {Proc. VLDB Endow.},
+month = sep,
+pages = {43–56},
+numpages = {14}
+}
+
+@inproceedings{firstNucleus,
+author = {Sariyuce, Ahmet Erdem and Seshadhri, C. and Pinar, Ali and Catalyurek, Umit V.},
+title = {Finding the Hierarchy of Dense Subgraphs using Nucleus Decompositions},
+year = {2015},
+isbn = {9781450334693},
+publisher = {International World Wide Web Conferences Steering Committee},
+address = {Republic and Canton of Geneva, CHE},
+url = {https://doi.org/10.1145/2736277.2741640},
+doi = {10.1145/2736277.2741640},
+abstract = {Finding dense substructures in a graph is a fundamental graph mining operation, with applications in bioinformatics, social networks, and visualization to name a few. Yet most standard formulations of this problem (like clique, quasiclique, k-densest subgraph) are NP-hard. Furthermore, the goal is rarely to find the "true optimum", but to identify many (if not all) dense substructures, understand their distribution in the graph, and ideally determine relationships among them. Current dense subgraph finding algorithms usually optimize some objective, and only find a few such subgraphs without providing any structural relations. We define the nucleus decomposition of a graph, which represents the graph as a forest of nuclei. Each nucleus is a subgraph where smaller cliques are present in many larger cliques. The forest of nuclei is a hierarchy by containment, where the edge density increases as we proceed towards leaf nuclei. Sibling nuclei can have limited intersections, which enables discovering overlapping dense subgraphs. With the right parameters, the nucleus decomposition generalizes the classic notions of k-cores and k-truss decompositions. We give provably efficient algorithms for nucleus decompositions, and empirically evaluate their behavior in a variety of real graphs. The tree of nuclei consistently gives a global, hierarchical snapshot of dense substructures, and outputs dense subgraphs of higher quality than other state-of-the-art solutions. Our algorithm can process graphs with tens of millions of edges in less than an hour.},
+booktitle = {Proceedings of the 24th International Conference on World Wide Web},
+pages = {927–937},
+numpages = {11},
+keywords = {overlapping dense subgraphs, k-truss, k-core, graph decomposition, density hierarchy, dense subgraph discovery},
+location = {Florence, Italy},
+series = {WWW '15}
+}
+
+@article{fastHierarchy,
+author = {Sariy\"{u}ce, Ahmet Erdem and Pinar, Ali},
+title = {Fast hierarchy construction for dense subgraphs},
+year = {2016},
+issue_date = {November 2016},
+publisher = {VLDB Endowment},
+volume = {10},
+number = {3},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3021924.3021927},
+doi = {10.14778/3021924.3021927},
+abstract = {Discovering dense subgraphs and understanding the relations among them is a fundamental problem in graph mining. We want to not only identify dense subgraphs, but also build a hierarchy among them (e.g., larger but sparser subgraphs formed by two smaller dense subgraphs). Peeling algorithms (k-core, k-truss, and nucleus decomposition) have been effective to locate many dense subgraphs. However, constructing a hierarchical representation of density structure, even correctly computing the connected k-cores and k-trusses, have been mostly overlooked. Keeping track of connected components during peeling requires an additional traversal operation, which is as expensive as the peeling process. In this paper, we start with a thorough survey and point to nuances in problem formulations that lead to significant differences in runtimes. We then propose efficient and generic algorithms to construct the hierarchy of dense subgraphs for k-core, k-truss, or any nucleus decomposition. Our algorithms leverage the disjoint-set forest data structure to efficiently construct the hierarchy during traversal. Furthermore, we introduce a new idea to avoid traversal. We construct the subgraphs while visiting neighborhoods in the peeling process, and build the relations to previously constructed subgraphs. We also consider an existing idea to find the k-core hierarchy and adapt for our objectives efficiently. Experiments on different types of large scale real-world networks show significant speedups over naive algorithms and existing alternatives. Our algorithms also outperform the hypothetical limits of any possible traversal-based solution.},
+journal = {Proc. VLDB Endow.},
+month = nov,
+pages = {97–108},
+numpages = {12}
+}
+
+@article{sotaPrveHierarchy,
+author = {Shi, Jessica and Dhulipala, Laxman and Shun, Julian},
+title = {Theoretically and practically efficient parallel nucleus decomposition},
+year = {2021},
+issue_date = {November 2021},
+publisher = {VLDB Endowment},
+volume = {15},
+number = {3},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3494124.3494140},
+doi = {10.14778/3494124.3494140},
+abstract = {This paper studies the nucleus decomposition problem, which has been shown to be useful in finding dense substructures in graphs. We present a novel parallel algorithm that is efficient both in theory and in practice. Our algorithm achieves a work complexity matching the best sequential algorithm while also having low depth (parallel running time), which significantly improves upon the only existing parallel nucleus decomposition algorithm (Sariy\"{u}ce et al., PVLDB 2018). The key to the theoretical efficiency of our algorithm is a new lemma that bounds the amount of work done when peeling cliques from the graph, combined with the use of a theoretically-efficient parallel algorithms for clique listing and bucketing. We introduce several new practical optimizations, including a new multi-level hash table structure to store information on cliques space-efficiently and a technique for traversing this structure cache-efficiently. On a 30-core machine with two-way hyper-threading on real-world graphs, we achieve up to a 55x speedup over the state-of-the-art parallel nucleus decomposition algorithm by Sariy\"{u}ce et al., and up to a 40x self-relative parallel speedup. We are able to efficiently compute larger nucleus decompositions than prior work on several million-scale graphs for the first time.},
+journal = {Proc. VLDB Endow.},
+month = nov,
+pages = {583–596},
+numpages = {14}
+}
+
+@article{sotaHierarchy,
+author = {Shi, Jessica and Dhulipala, Laxman and Shun, Julian},
+title = {Parallel Algorithms for Hierarchical Nucleus Decomposition},
+year = {2024},
+issue_date = {February 2024},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {2},
+number = {1},
+url = {https://doi.org/10.1145/3639287},
+doi = {10.1145/3639287},
+abstract = {Nucleus decompositions have been shown to be a useful tool for finding dense subgraphs. The coreness value of a clique represents its density based on the number of other cliques it is adjacent to. One useful output of nucleus decomposition is to generate a hierarchy among dense subgraphs at different resolutions. However, existing parallel algorithms for nucleus decomposition do not generate this hierarchy, and only compute the coreness values. This paper presents a scalable parallel algorithm for hierarchy construction, with practical optimizations, such as interleaving the coreness computation with hierarchy construction and using a concurrent union-find data structure in an innovative way to generate the hierarchy. We also introduce a parallel approximation algorithm for nucleus decomposition, which achieves much lower span in theory and better performance in practice. We prove strong theoretical bounds on the work and span (parallel time) of our algorithms.On a 30-core machine with two-way hyper-threading, our parallel hierarchy construction algorithm achieves up to a 58.84x speedup over the state-of-the-art sequential hierarchy construction algorithm by Sariyuce et al. and up to a 30.96x self-relative parallel speedup. On the same machine, our approximation algorithm achieves a 3.3x speedup over our exact algorithm, while generating coreness estimates with a multiplicative error of 1.33x on average.},
+journal = {Proc. ACM Manag. Data},
+month = mar,
+articleno = {32},
+numpages = {27},
+keywords = {graph processing, parallel algorithms}
+}
+
+
+@article{hindex,
+ abstract = {I propose the index h, defined as the number of papers with
+scientific output of a researcher.},
+ address = {United States},
+ author = {Hirsch, J E},
+ journal = {Proc Natl Acad Sci U S A},
+ language = {en},
+ number = {46},
+ pages = {16569--16572},
+ title = {An index to quantify an individual's scientific research output},
+ volume = {102},
+ year = {2005}
+}
+
+@inproceedings{Pivoter,
+author = {Jain, Shweta and Seshadhri, C.},
+title = {The Power of Pivoting for Exact Clique Counting},
+year = {2020},
+isbn = {9781450368223},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3336191.3371839},
+doi = {10.1145/3336191.3371839},
+abstract = {Clique counting is a fundamental task in network analysis, and even the simplest setting of $3$-cliques (triangles) has been the center of much recent research. Getting the count of k-cliques for larger k is algorithmically challenging, due to the exponential blowup in the search space of large cliques. But a number of recent applications (especially for community detection or clustering) use larger clique counts. Moreover, one often desires local counts, the number of k-cliques per vertex/edge. Our main contribution is Pivoter, an algorithm that exactly counts the number of k-cliques, for all values of k. It is surprisingly effective in practice, and is able to get clique counts of graphs that were beyond the reach of previous work. For example, Pivoter gets all clique counts in a social network with a 100M edges within two hours on a commodity machine. Previous parallel algorithms do not terminate in days. Pivoter can also feasibly get local per-vertex and per-edge k-clique counts (for all k) for many public data sets with tens of millions of edges. To the best of our knowledge, this is the first algorithm that achieves such results. The main insight is the construction of a Succinct Clique Tree (SCT) that stores a compressed unique representation of all cliques in an input graph. It is built using a technique called pivoting, a classic approach by Bron-Kerbosch to reduce the recursion tree of backtracking algorithms for maximal cliques. Remarkably, the SCT can be built without actually enumerating all cliques, and provides a succinct data structure from which exact clique statistics (k-clique counts, local counts) can be read off efficiently.},
+booktitle = {Proceedings of the 13th International Conference on Web Search and Data Mining},
+pages = {268–276},
+numpages = {9},
+keywords = {clique counting, local clique counting, social network analysis},
+location = {Houston, TX, USA},
+series = {WSDM '20}
+}
+
+@article{BronKerbosch,
+author = {Bron, Coen and Kerbosch, Joep},
+title = {Algorithm 457: finding all cliques of an undirected graph},
+year = {1973},
+issue_date = {Sept. 1973},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {16},
+number = {9},
+issn = {0001-0782},
+url = {https://doi.org/10.1145/362342.362367},
+doi = {10.1145/362342.362367},
+journal = {Commun. ACM},
+month = sep,
+pages = {575–577},
+numpages = {3},
+keywords = {backtracking algorithm, branch and bound technique, cliques, clusters, maximal complete subgraphs, recursion}
+}
+
+@article{bitsetClique,
+author = {Tomita, Etsuji and Tanaka, Akira and Takahashi, Haruhisa},
+title = {The worst-case time complexity for generating all maximal cliques and computational experiments},
+year = {2006},
+issue_date = {25 October 2006},
+publisher = {Elsevier Science Publishers Ltd.},
+address = {GBR},
+volume = {363},
+number = {1},
+issn = {0304-3975},
+url = {https://doi.org/10.1016/j.tcs.2006.06.015},
+doi = {10.1016/j.tcs.2006.06.015},
+abstract = {We present a depth-first search algorithm for generating all maximal cliques of an undirected graph, in which pruning methods are employed as in the Bron-Kerbosch algorithm. All the maximal cliques generated are output in a tree-like form. Subsequently, we prove that its worst-case time complexity is O(3n/3) for an n-vertex graph. This is optimal as a function of n, since there exist up to 3n/3 maximal cliques in an n-vertex graph. The algorithm is also demonstrated to run very fast in practice by computational experiments.},
+journal = {Theor. Comput. Sci.},
+month = oct,
+pages = {28–42},
+numpages = {15},
+keywords = {worst-case time complexity, maximal cliques, enumeration, computational experiments}
+}
+
+@inproceedings{nr,
+     title={The Network Data Repository with Interactive Graph Analytics and Visualization},
+     author={Ryan A. Rossi and Nesreen K. Ahmed},
+     booktitle={AAAI},
+     url={https://networkrepository.com},
+     year={2015}
+}
+
+
+@misc{dblp,
+      title={Defining and Evaluating Network Communities based on Ground-truth}, 
+      author={Jaewon Yang and Jure Leskovec},
+      year={2012},
+      eprint={1205.6233},
+      archivePrefix={arXiv},
+      primaryClass={cs.SI},
+      url={https://arxiv.org/abs/1205.6233}, 
+}
+
+
+@inproceedings{soc-pokec,
+  title={DATA ANALYSIS IN PUBLIC SOCIAL NETWORKS},
+  author={Lubos Takac},
+  year={2012},
+  url={https://api.semanticscholar.org/CorpusID:18659578}
+}
+
+@misc{Stanford,
+      title={Community Structure in Large Networks: Natural Cluster Sizes and the Absence of Large Well-Defined Clusters}, 
+      author={Jure Leskovec and Kevin J. Lang and Anirban Dasgupta and Michael W. Mahoney},
+      year={2008},
+      eprint={0810.1355},
+      archivePrefix={arXiv},
+      primaryClass={cs.DS},
+      url={https://arxiv.org/abs/0810.1355}, 
+}
+
+
+@article{disjointSet,
+author = {Tarjan, Robert Endre},
+title = {Efficiency of a Good But Not Linear Set Union Algorithm},
+year = {1975},
+issue_date = {April 1975},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {22},
+number = {2},
+issn = {0004-5411},
+url = {https://doi.org/10.1145/321879.321884},
+doi = {10.1145/321879.321884},
+journal = {J. ACM},
+month = apr,
+pages = {215–225},
+numpages = {11}
+}
+
+@article{seidman1983network,
+title = {Network structure and minimum degree},
+journal = {Social Networks},
+volume = {5},
+number = {3},
+pages = {269-287},
+year = {1983},
+issn = {0378-8733},
+doi = {https://doi.org/10.1016/0378-8733(83)90028-X},
+url = {https://www.sciencedirect.com/science/article/pii/037887338390028X},
+author = {Stephen B. Seidman}
+}
+
+@article{cohen2008trusses,
+author = {Zhao, Feng and Tung, Anthony K. H.},
+title = {Large scale cohesive subgraphs discovery for social network visual analysis},
+year = {2012},
+issue_date = {December 2012},
+publisher = {VLDB Endowment},
+volume = {6},
+number = {2},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/2535568.2448942},
+doi = {10.14778/2535568.2448942},
+journal = {Proc. VLDB Endow.},
+month = dec,
+pages = {85–96},
+numpages = {12}
+}
+
+@misc{montresor2013distributed,
+      title={Distributed k-Core Decomposition}, 
+      author={Alberto Montresor and Francesco De Pellegrini and Daniele Miorandi},
+      year={2011},
+      eprint={1103.5320},
+      archivePrefix={arXiv},
+      primaryClass={cs.OH},
+      url={https://arxiv.org/abs/1103.5320}, 
+}
+
+@inproceedings{shan2018finding,
+author = {Danisch, Maximilien and Balalau, Oana and Sozio, Mauro},
+title = {Listing k-cliques in Sparse Real-World Graphs*},
+year = {2018},
+isbn = {9781450356398},
+publisher = {International World Wide Web Conferences Steering Committee},
+address = {Republic and Canton of Geneva, CHE},
+url = {https://doi.org/10.1145/3178876.3186125},
+doi = {10.1145/3178876.3186125},
+pages = {589–598},
+numpages = {10},
+keywords = {k-clique listing and counting, real-world graph algorithms},
+location = {Lyon, France},
+series = {WWW '18}
+}
+
+
+
+
+
+@article{girvan2002community,
+author = {M. Girvan  and M. E. J. Newman },
+title = {Community structure in social and biological networks},
+journal = {Proceedings of the National Academy of Sciences},
+volume = {99},
+number = {12},
+pages = {7821-7826},
+year = {2002},
+doi = {10.1073/pnas.122653799},
+URL = {https://www.pnas.org/doi/abs/10.1073/pnas.122653799},
+eprint = {https://www.pnas.org/doi/pdf/10.1073/pnas.122653799}
+}
+
+@inproceedings{kempe2003maximizing,
+author = {Kempe, David and Kleinberg, Jon and Tardos, \'{E}va},
+title = {Maximizing the spread of influence through a social network},
+year = {2003},
+isbn = {1581137370},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/956750.956769},
+doi = {10.1145/956750.956769},
+booktitle = {Proceedings of the Ninth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+pages = {137–146},
+numpages = {10},
+keywords = {viral marketing, social networks, diffusion of innovations, approximation algorithms},
+location = {Washington, D.C.},
+series = {KDD '03}
+}
+
+@article{sharan2006modeling,
+author = {O'Reilly, Francis J and Graziadei, Andrea and Forbrig, Christian and Bremenkamp, Rica and Charles, Kristine and Lenz, Swantje and Elfmann, Christoph and Fischer, Lutz and St\"{u}lke, J\"{o}rg and Rappsilber, Juri},
+title = {Protein complexes in cells by AI\&\#x2010;assisted structural proteomics},
+journal = {Molecular Systems Biology},
+volume = {19},
+number = {4},
+pages = {e11544},
+keywords = {AlphaFold‐Multimer, crosslinking mass spectrometry, protein–protein interactions, pyruvate dehydrogenase, uncharacterized proteins},
+doi = {https://doi.org/10.15252/msb.202311544},
+url = {https://www.embopress.org/doi/abs/10.15252/msb.202311544},
+eprint = {https://www.embopress.org/doi/pdf/10.15252/msb.202311544},
+  year={2023}
+}
+
+@article{akoglu2015graph,
+  title={Graph-based anomaly detection and description: a survey},
+  author={Akoglu, Leman and Tong, Hanghang and Koutra, Danai},
+  journal={Data Mining and Knowledge Discovery},
+  volume={29},
+  number={3},
+  pages={626--688},
+  year={2015}
+}
+
+@inproceedings{huang2014graph,
+author = {Rossi, Ryan A. and Ahmed, Nesreen K. and Zhou, Rong and Eldardiry, Hoda},
+title = {Interactive Visual Graph Mining and Learning},
+year = {2018},
+issue_date = {September 2018},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {9},
+number = {5},
+issn = {2157-6904},
+url = {https://doi.org/10.1145/3200764},
+doi = {10.1145/3200764}
+}
+
+@misc{wang2020efficient,
+      title={Nucleus Decomposition in Probabilistic Graphs: Hardness and Algorithms}, 
+      author={Fatemeh Esfahani and Venkatesh Srinivasan and Alex Thomo and Kui Wu},
+      year={2021},
+      eprint={2006.01958},
+      archivePrefix={arXiv},
+      primaryClass={cs.SI},
+      url={https://arxiv.org/abs/2006.01958}
+}
+
+
+@article{lu2016vital,
+title = {Vital nodes identification in complex networks},
+journal = {Physics Reports},
+volume = {650},
+pages = {1-63},
+year = {2016},
+note = {Vital nodes identification in complex networks},
+issn = {0370-1573},
+doi = {https://doi.org/10.1016/j.physrep.2016.06.007},
+url = {https://www.sciencedirect.com/science/article/pii/S0370157316301570}
+}
+
+
+@misc{ugander2012structural,
+      title={The Anatomy of the Facebook Social Graph}, 
+      author={Johan Ugander and Brian Karrer and Lars Backstrom and Cameron Marlow},
+      year={2011},
+      eprint={1111.4503},
+      archivePrefix={arXiv},
+      primaryClass={cs.SI},
+      url={https://arxiv.org/abs/1111.4503}, 
+}
+
+
+
+@article{luo2019higher,
+   title={Higher-order organization of complex networks},
+   volume={353},
+   ISSN={1095-9203},
+   url={http://dx.doi.org/10.1126/science.aad9029},
+   DOI={10.1126/science.aad9029},
+   number={6295},
+   journal={Science},
+   publisher={American Association for the Advancement of Science (AAAS)},
+   author={Benson, Austin R. and Gleich, David F. and Leskovec, Jure},
+   year={2016},
+   month=jul, pages={163–166} }
+
+
+@misc{gleich2012graph,
+      title={Clustering-based Partitioning for Large Web Graphs}, 
+      author={Deyu Kong and Xike Xie and Zhuoxu Zhang},
+      year={2022},
+      eprint={2201.00472},
+      archivePrefix={arXiv},
+      primaryClass={cs.DC},
+      url={https://arxiv.org/abs/2201.00472}, 
+}
+
+@article{malliaros2013clustering,
+title = {Clustering and community detection in directed networks: A survey},
+journal = {Physics Reports},
+volume = {533},
+number = {4},
+pages = {95-142},
+year = {2013},
+note = {Clustering and Community Detection in Directed Networks: A Survey},
+issn = {0370-1573},
+doi = {https://doi.org/10.1016/j.physrep.2013.08.002},
+url = {https://www.sciencedirect.com/science/article/pii/S0370157313002822},
+author = {Fragkiskos D. Malliaros and Michalis Vazirgiannis}
+}
+
+
+@inproceedings{tsourakakis2013finding,
+  title={Relevant subgraph extraction from random walks in a graph},
+  author={Pierre Dupont and J{\'e}r{\^o}me Callut and Gr{\'e}goire Dooms and Jean-No{\"e}l Monette and Yves Deville},
+  year={2006},
+  url={https://api.semanticscholar.org/CorpusID:15222702}
+}
+
+@article{jiang2016catching,
+author = {Jiang, Meng and Cui, Peng and Beutel, Alex and Faloutsos, Christos and Yang, Shiqiang},
+title = {Catching Synchronized Behaviors in Large Networks: A Graph Mining Approach},
+year = {2016},
+issue_date = {July 2016},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {10},
+number = {4},
+issn = {1556-4681},
+url = {https://doi.org/10.1145/2746403},
+doi = {10.1145/2746403},
+}
+
+
+@article{leskovec2016snap,
+  title={SNAP: A general-purpose network analysis and graph-mining library},
+  author={Leskovec, Jure and Sosi{\v{c}}, Rok},
+  journal={ACM Transactions on Intelligent Systems and Technology},
+  volume={8},
+  number={1},
+  pages={1},
+  year={2016}
+}
+
+@article{ugander2018structural,
+author = {Johan Ugander  and Lars Backstrom  and Cameron Marlow  and Jon Kleinberg },
+title = {Structural diversity in social contagion},
+journal = {Proceedings of the National Academy of Sciences},
+volume = {109},
+number = {16},
+pages = {5962-5966},
+year = {2012},
+doi = {10.1073/pnas.1116502109},
+URL = {https://www.pnas.org/doi/abs/10.1073/pnas.1116502109},
+eprint = {https://www.pnas.org/doi/pdf/10.1073/pnas.1116502109}
+}
+
+
+@misc{you2020graph,
+      title={Graph Structure Learning for Robust Graph Neural Networks}, 
+      author={Wei Jin and Yao Ma and Xiaorui Liu and Xianfeng Tang and Suhang Wang and Jiliang Tang},
+      year={2020},
+      eprint={2005.10203},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2005.10203}, 
+}
+
+@Inbook{xia2017measuring,
+author="Gl{\"a}nzel, Wolfgang
+and Schubert, Andr{\'a}s",
+editor="Moed, Henk F.
+and Gl{\"a}nzel, Wolfgang
+and Schmoch, Ulrich",
+title="Analysing Scientific Networks Through Co-Authorship",
+bookTitle="Handbook of Quantitative Science and Technology Research: The Use of Publication and Patent Statistics in Studies of S{\&}T Systems",
+year="2005",
+publisher="Springer Netherlands",
+address="Dordrecht",
+pages="257--276",
+isbn="978-1-4020-2755-0",
+doi="10.1007/1-4020-2755-9_12",
+url="https://doi.org/10.1007/1-4020-2755-9_12"
+}
+
+
+@article{chen2019linking,
+author = {K. Subramanyam},
+title ={Bibliometric studies of research collaboration: A review},
+journal = {Journal of Information Science},
+volume = {6},
+number = {1},
+pages = {33-38},
+year = {1983},
+doi = {10.1177/016555158300600105},
+URL = {   https://doi.org/10.1177/016555158300600105
+},
+eprint = {    https://doi.org/10.1177/016555158300600105
+}
+}
+
+
+@article{alvarez2021discovering,
+title = {Local community detection based on higher-order structure and edge information},
+journal = {Physica A: Statistical Mechanics and its Applications},
+volume = {587},
+pages = {126513},
+year = {2022},
+issn = {0378-4371},
+doi = {https://doi.org/10.1016/j.physa.2021.126513},
+url = {https://www.sciencedirect.com/science/article/pii/S037843712100786X},
+author = {Ronghua Shang and Weitong Zhang and Jingwen Zhang and Jie Feng and Licheng Jiao},
+keywords = {Local community detection, Network motif, Higher-order structure, Motif-based modularity, Edge information}
+}
+
+
+@article{rossetti2019community,
+author = {Rossetti, Giulio and Cazabet, R\'{e}my},
+title = {Community Discovery in Dynamic Networks: A Survey},
+year = {2018},
+issue_date = {March 2019},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {51},
+number = {2},
+issn = {0360-0300},
+url = {https://doi.org/10.1145/3172867},
+doi = {10.1145/3172867},
+abstract = {Several research studies have shown that complex networks modeling real-world phenomena are characterized by striking properties: (i) they are organized according to community structure, and (ii) their structure evolves with time. Many researchers have worked on methods that can efficiently unveil substructures in complex networks, giving birth to the field of community discovery. A novel and fascinating problem started capturing researcher interest recently: the identification of evolving communities. Dynamic networks can be used to model the evolution of a system: nodes and edges are mutable, and their presence, or absence, deeply impacts the community structure that composes them.This survey aims to present the distinctive features and challenges of dynamic community discovery and propose a classification of published approaches. As a “user manual,” this work organizes state-of-the-art methodologies into a taxonomy, based on their rationale, and their specific instantiation. Given a definition of network dynamics, desired community characteristics, and analytical needs, this survey will support researchers to identify the set of approaches that best fit their needs. The proposed classification could also help researchers choose in which direction to orient their future research.},
+journal = {ACM Comput. Surv.},
+month = feb,
+articleno = {35},
+numpages = {37},
+keywords = {temporal networks, community discovery, Dynamic networks}
+}
+
+
+@inproceedings{gibson1998inferring,
+author = {Gibson, David and Kleinberg, Jon and Raghavan, Prabhakar},
+title = {Inferring Web communities from link topology},
+year = {1998},
+isbn = {0897919726},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/276627.276652},
+doi = {10.1145/276627.276652},
+booktitle = {Proceedings of the Ninth ACM Conference on Hypertext and Hypermedia: Links, Objects, Time and Space---Structure in Hypermedia Systems: Links, Objects, Time and Space---Structure in Hypermedia Systems},
+pages = {225–234},
+numpages = {10},
+location = {Pittsburgh, Pennsylvania, USA},
+series = {HYPERTEXT '98}
+}
+
+
+@article{malliaros2020core2,
+  title={The core decomposition of networks: theory, algorithms and applications},
+  author={Malliaros, Fragkiskos D. and Giatsidis, Christos and Thilikos, Dimitrios M. and Vazirgiannis, Michalis},
+  journal={The VLDB Journal},
+  volume={29},
+  number={1},
+  pages={61--92},
+  year={2020},
+  publisher={Springer},
+  doi={10.1007/s00778-019-00587-4}
+}
+
+@article{batagelj2011fast,
+author = {Batagelj, Vladimir and Zaver\v{s}nik, Matja\v{z}},
+title = {Fast algorithms for determining (generalized) core groups in social networks},
+year = {2011},
+issue_date = {July 2011},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+volume = {5},
+number = {2},
+issn = {1862-5347},
+url = {https://doi.org/10.1007/s11634-010-0079-y},
+doi = {10.1007/s11634-010-0079-y},
+journal = {Adv. Data Anal. Classif.},
+month = jul,
+pages = {129–145},
+numpages = {17},
+keywords = {05C70, 05A18, 05C85, 05C90, 68R10, 68W40, 92G30, 92H30, 93A15, Core, Decomposition, Graph algorithm, Large network}
+}
+
+@article{huang2014triangle,
+author = {Chu, Shumo and Cheng, James},
+title = {Triangle listing in massive networks},
+year = {2012},
+issue_date = {December 2012},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {6},
+number = {4},
+issn = {1556-4681},
+url = {https://doi.org/10.1145/2382577.2382581},
+doi = {10.1145/2382577.2382581},
+journal = {ACM Trans. Knowl. Discov. Data},
+month = dec,
+articleno = {17},
+numpages = {32},
+keywords = {Triangle listing, clustering coefficients, large graphs, massive networks, triangle counting}
+}
+
+@article{zhu2021efficient,
+  title={Efficient truss decomposition for large-scale graphs},
+  author={Zhu, Zhengzhang and Lin, Chen and Song, Xuejian and Cao, Jiuxin and Wang, Wei and Zomaya, Albert Y.},
+  journal={IEEE Transactions on Knowledge and Data Engineering},
+  volume={33},
+  number={10},
+  pages={3343--3356},
+  year={2021},
+  publisher={IEEE},
+  doi={10.1109/TKDE.2020.2978311}
+}
+
+
+@article{nuclearTWEB,
+author = {Sariy\"{u}ce, Ahmet Erdem and Seshadhri, C. and Pinar, Ali and \c{C}ataly\"{u}rek, \"{U}mit V.},
+title = {Nucleus Decompositions for Identifying Hierarchy of Dense Subgraphs},
+year = {2017},
+issue_date = {August 2017},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {11},
+number = {3},
+issn = {1559-1131},
+url = {https://doi.org/10.1145/3057742},
+doi = {10.1145/3057742},
+abstract = {Finding dense substructures in a graph is a fundamental graph mining operation, with applications in bioinformatics, social networks, and visualization to name a few. Yet most standard formulations of this problem (like clique, quasi-clique, densest at-least-k subgraph) are NP-hard. Furthermore, the goal is rarely to find the “true optimum” but to identify many (if not all) dense substructures, understand their distribution in the graph, and ideally determine relationships among them. Current dense subgraph finding algorithms usually optimize some objective and only find a few such subgraphs without providing any structural relations.We define the nucleus decomposition of a graph, which represents the graph as a forest of nuclei. Each nucleus is a subgraph where smaller cliques are present in many larger cliques. The forest of nuclei is a hierarchy by containment, where the edge density increases as we proceed towards leaf nuclei. Sibling nuclei can have limited intersections, which enables discovering overlapping dense subgraphs. With the right parameters, the nucleus decomposition generalizes the classic notions of k-core and k-truss decompositions.We present practical algorithms for nucleus decompositions and empirically evaluate their behavior in a variety of real graphs. The tree of nuclei consistently gives a global, hierarchical snapshot of dense substructures and outputs dense subgraphs of comparable quality with the state-of-the-art solutions that are dense and have non-trivial sizes. Our algorithms can process real-world graphs with tens of millions of edges in less than an hour. We demonstrate how proposed algorithms can be utilized on a citation network. Our analysis showed that dense units identified by our algorithms correspond to coherent articles on a specific area. Our experiments also show that we can identify dense structures that are lost within larger structures by other methods and find further finer grain structure within dense groups.},
+journal = {ACM Trans. Web},
+month = jul,
+articleno = {16},
+numpages = {27},
+keywords = {overlapping dense subgraphs, graph decomposition, density hierarchy, dense subgraph discovery, k-truss, k-core}
+}
+Using Large Cliques for Hierarchical Dense Subgraph Discovery.
+
+@inproceedings{nuclearcsonet20,
+  title={Using Large Cliques for Hierarchical Dense Subgraph Discovery},
+  author={Monir, Md Moniruzzaman and Sar{\i}y{\"u}ce, Ahmet Erdem},
+  booktitle={International Conference on Computational Data and Social Networks},
+  pages={179--192},
+  year={2020},
+  organization={Springer}
+}
+
+
+@inproceedings{zhang2023efficient,
+ author = {Zhang, Wenqian and Yang, Zhengyi and Wen, Dong and Wang, Xiaoyang},
+ booktitle = {2023 IEEE International Conference on Data Mining Workshops (ICDMW)},
+ organization = {IEEE},
+ pages = {1023--1031},
+ title = {Efficient Distributed Core Graph Decomposition},
+ year = {2023}
+}
+
+
+@inproceedings{io-eff,
+ author = {Wen, Dong and Qin, Lu and Zhang, Ying and Lin, Xuemin and Yu, Jeffrey Xu},
+ booktitle = {2016 IEEE 32nd International Conference on Data Engineering (ICDE)},
+ organization = {IEEE},
+ pages = {133--144},
+ title = {I/O efficient core graph decomposition at web scale},
+ year = {2016}
+}
+
+
+@inproceedings{core_res3,
+ abstract = {The k-core of a graph is the largest subgraph in which every vertex is connected to at least k other vertices within the subgraph. Core decomposition finds the k-core of the graph for every possible k. Past studies have shown important applications of core decomposition such as in the study of the properties of large networks (e.g., sustainability, connectivity, centrality, etc.), for solving NP-hard problems efficiently in real networks (e.g., maximum clique finding, densest subgraph approximation, etc.), and for large-scale network fingerprinting and visualization. The k-core is a well accepted concept partly because there exists a simple and efficient algorithm for core decomposition, by recursively removing the lowest degree vertices and their incident edges. However, this algorithm requires random access to the graph and hence assumes the entire graph can be kept in main memory. Nevertheless, real-world networks such as online social networks have become exceedingly large in recent years and still keep growing at a steady rate. In this paper, we propose the first external-memory algorithm for core decomposition in massive graphs. When the memory is large enough to hold the graph, our algorithm achieves comparable performance as the in-memory algorithm. When the graph is too large to be kept in the memory, our algorithm requires only O(kmax) scans of the graph, where kmax is the largest core number of the graph. We demonstrate the efficiency of our algorithm on real networks with up to 52.9 million vertices and 1.65 billion edges.},
+ address = {Hannover},
+ author = {Cheng, James and Ke, Yiping and Chu, Shumo and Özsu, M. Tamer},
+ booktitle = {2011 IEEE 27th International Conference on Data Engineering},
+ doi = {10.1109/ICDE.2011.5767911},
+ issn = {2375-026X},
+ keywords = {},
+ number = {},
+ pages = {51-62},
+ publisher = {International Conference on Data Engineering},
+ title = {Efficient core decomposition in massive networks},
+ volume = {},
+ year = {2011}
+}
+
+
+@article{core_res1,
+ abstract = {Many real-world relationships between entities can be modeled as temporal graphs, where each edge is associated with a timestamp or a time interval representing its occurrence. K-core is a fundamental model used to capture cohesive subgraphs in a simple graph and have drawn much research attention over the last decade. Despite widespread research, none of the existing works support the efficient querying of historical k-cores in temporal graphs. In this paper, given an integer k and a time window, we study the problem of computing all k-cores in the graph snapshot over the time window. We propose an index-based solution and several pruning strategies to reduce the index size. We also design a novel algorithm to construct this index, whose running time is linear to the final index size. Lastly, we conducted extensive experiments on several real-world temporal graphs to show the high effectiveness of our index-based solution.},
+ author = {Yu, Michael and Wen, Dong and Qin, Lu and Zhang, Ying and Zhang, Wenjie and Lin, Xuemin},
+ doi = {10.14778/3476249.3476260},
+ issn = {2150-8097},
+ issue_date = {July 2021},
+ journal = {Proc. VLDB Endow.},
+ number = {11},
+ numpages = {13},
+ pages = {2033–2045},
+ publisher = {VLDB Endowment},
+ title = {On Querying Historical K-Cores},
+ url = {https://doi.org/10.14778/3476249.3476260},
+ volume = {14},
+ year = {2021}
+}
+
+
+@article{peel_cd,
+ abstract = {Studying the topology of a network is critical to inferring underlying dynamics such as tolerance to failure, group behavior and spreading patterns. k-core decomposition is a well-established metric which partitions a graph into layers from external to more central vertices. In this paper we aim to explore whether k-core decomposition of large networks can be computed using a consumer-grade PC. We feature implementations of the "vertex-centric" distributed protocol introduced by Montresor, De Pellegrini and Miorandi on GraphChi and Webgraph. Also, we present an accurate implementation of the Batagelj and Zaversnik algorithm for k-core decomposition in Webgraph. With our implementations, we show that we can efficiently handle networks of billions of edges using a single consumer-level machine within reasonable time and can produce excellent approximations in only a fraction of the execution time. To the best of our knowledge, our biggest graphs are considerably larger than the graphs considered in the literature. Next, we present an optimized implementation of an external-memory algorithm (EMcore) by Cheng, Ke, Chu, and \"{O}zsu. We show that this algorithm also performs well for large datasets, however, it cannot predict whether a given memory budget is sufficient for a new dataset. We present a thorough analysis of all algorithms concluding that it is viable to compute k-core decomposition for large networks in a consumer-grade PC.},
+ author = {Khaouid, Wissam and Barsky, Marina and Srinivasan, Venkatesh and Thomo, Alex},
+ doi = {10.14778/2850469.2850471},
+ issn = {2150-8097},
+ issue_date = {September 2015},
+ journal = {Proc. VLDB Endow.},
+ number = {1},
+ numpages = {11},
+ pages = {13–23},
+ publisher = {VLDB Endowment},
+ title = {K-core decomposition of large networks on a single PC},
+ url = {https://doi.org/10.14778/2850469.2850471},
+ volume = {9},
+ year = {2015}
+}
+
+
+@inproceedings{k-core3,
+ author = {Yang, Bohua and Wen, Dong and Qin, Lu and Zhang, Ying and Chang, Lijun and Li, Rong-Hua},
+ booktitle = {2019 IEEE 35th International Conference on Data Engineering (ICDE)},
+ doi = {10.1109/ICDE.2019.00015},
+ number = {},
+ pages = {64-75},
+ title = {Index-Based Optimal Algorithm for Computing K-Cores in Large Uncertain Graphs},
+ volume = {},
+ year = {2019}
+}
+
+
+
+@article{kcore_4,
+ abstract = {A k-core of a graph is a maximal connected subgraph in which every vertex is connected to at least k vertices in the subgraph. k-core decomposition is often used in large-scale network analysis, such as community detection, protein function prediction, visualization, and solving NP-Hard problems on real networks efficiently, like maximal clique finding. In many real-world applications, networks change over time. As a result, it is essential to develop efficient incremental algorithms for streaming graph data. In this paper, we propose the first incremental k-core decomposition algorithms for streaming graph data. These algorithms locate a small subgraph that is guaranteed to contain the list of vertices whose maximum k-core values have to be updated, and efficiently process this subgraph to update the k-core decomposition. Our results show a significant reduction in run-time compared to non-incremental alternatives. We show the efficiency of our algorithms on different types of real and synthetic graphs, at different scales. For a graph of 16 million vertices, we observe speedups reaching a million times, relative to the non-incremental algorithms.},
+ author = {Sar\'{\i}y\"{u}ce, Ahmet Erdem and Gedik, Bu\u{g}ra and Jacques-Silva, Gabriela and Wu, Kun-Lung and \c{C}ataly\"{u}rek, \"{U}mit V.},
+ doi = {10.14778/2536336.2536344},
+ issn = {2150-8097},
+ issue_date = {April 2013},
+ journal = {Proc. VLDB Endow.},
+ number = {6},
+ numpages = {12},
+ pages = {433–444},
+ publisher = {VLDB Endowment},
+ title = {Streaming algorithms for k-core decomposition},
+ url = {https://doi.org/10.14778/2536336.2536344},
+ volume = {6},
+ year = {2013}
+}
+
+@article{li2015influential,
+author = {Li, Rong-Hua and Qin, Lu and Yu, Jeffrey Xu and Mao, Rui},
+title = {Influential community search in large networks},
+year = {2015},
+issue_date = {January 2015},
+publisher = {VLDB Endowment},
+volume = {8},
+number = {5},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/2735479.2735484},
+doi = {10.14778/2735479.2735484},
+abstract = {Community search is a problem of finding densely connected subgraphs that satisfy the query conditions in a network, which has attracted much attention in recent years. However, all the previous studies on community search do not consider the influence of a community. In this paper, we introduce a novel community model called k-influential community based on the concept of k-core, which can capture the influence of a community. Based on the new community model, we propose a linear-time online search algorithm to find the top-r k-influential communities in a network. To further speed up the influential community search algorithm, we devise a linear-space index structure which supports efficient search of the top-r k-influential communities in optimal time. We also propose an efficient algorithm to maintain the index when the network is frequently updated. We conduct extensive experiments on 7 real-world large networks, and the results demonstrate the efficiency and effectiveness of the proposed methods.},
+journal = {Proc. VLDB Endow.},
+month = jan,
+pages = {509–520},
+numpages = {12}
+}
+
+@article{wang2012truss,
+author = {Wang, Jia and Cheng, James},
+title = {Truss decomposition in massive networks},
+year = {2012},
+issue_date = {May 2012},
+publisher = {VLDB Endowment},
+volume = {5},
+number = {9},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/2311906.2311909},
+doi = {10.14778/2311906.2311909},
+abstract = {The k-truss is a type of cohesive subgraphs proposed recently for the study of networks. While the problem of computing most cohesive subgraphs is NP-hard, there exists a polynomial time algorithm for computing k-truss. Compared with k-core which is also efficient to compute, k-truss represents the "core" of a k-core that keeps the key information of, while filtering out less important information from, the k-core. However, existing algorithms for computing k-truss are inefficient for handling today's massive networks. We first improve the existing in-memory algorithm for computing k-truss in networks of moderate size. Then, we propose two I/O-efficient algorithms to handle massive networks that cannot fit in main memory. Our experiments on real datasets verify the efficiency of our algorithms and the value of k-truss.},
+journal = {Proc. VLDB Endow.},
+month = may,
+pages = {812–823},
+numpages = {12}
+}
+
+@inproceedings{huang2014truss,
+author = {Huang, Xin and Cheng, Hong and Qin, Lu and Tian, Wentao and Yu, Jeffrey Xu},
+title = {Querying k-truss community in large and dynamic graphs},
+year = {2014},
+isbn = {9781450323765},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2588555.2610495},
+doi = {10.1145/2588555.2610495},
+abstract = {Community detection which discovers densely connected structures in a network has been studied a lot. In this paper, we study online community search which is practically useful but less studied in the literature. Given a query vertex in a graph, the problem is to find meaningful communities that the vertex belongs to in an online manner. We propose a novel community model based on the k-truss concept, which brings nice structural and computational properties. We design a compact and elegant index structure which supports the efficient search of k-truss communities with a linear cost with respect to the community size. In addition, we investigate the k-truss community search problem in a dynamic graph setting with frequent insertions and deletions of graph vertices and edges. Extensive experiments on large real-world networks demonstrate the effectiveness and efficiency of our community model and search algorithms.},
+booktitle = {Proceedings of the 2014 ACM SIGMOD International Conference on Management of Data},
+pages = {1311–1322},
+numpages = {12},
+keywords = {k-truss, dynamic graph, community search},
+location = {Snowbird, Utah, USA},
+series = {SIGMOD '14}
+}
+
+@article{akbas2017truss,
+author = {Akbas, Esra and Zhao, Peixiang},
+title = {Truss-based community search: a truss-equivalence based indexing approach},
+year = {2017},
+issue_date = {August 2017},
+publisher = {VLDB Endowment},
+volume = {10},
+number = {11},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3137628.3137640},
+doi = {10.14778/3137628.3137640},
+abstract = {We consider the community search problem defined upon a large graph G: given a query vertex q in G, to find as output all the densely connected subgraphs of G, each of which contains the query v. As an online, query-dependent variant of the well-known community detection problem, community search enables personalized community discovery that has found widely varying applications in real-world, large-scale graphs. In this paper, we study the community search problem in the truss-based model aimed at discovering all dense and cohesive k-truss communities to which the query vertex q belongs. We introduce a novel equivalence relation, k-truss equivalence, to model the intrinsic density and cohesiveness of edges in k-truss communities. Consequently, all the edges of G can be partitioned to a series of k-truss equivalence classes that constitute a space-efficient, truss-preserving index structure, EquiTruss. Community search can be henceforth addressed directly upon EquiTruss without repeated, time-demanding accesses to the original graph, G, which proves to be theoretically optimal. In addition, EquiTruss can be efficiently updated in a dynamic fashion when G evolves with edge insertion and deletion. Experimental studies in real-world, large-scale graphs validate the efficiency and effectiveness of EquiTruss, which has achieved at least an order of magnitude speedup in community search over the state-of-the-art method, TCP-Index.},
+journal = {Proc. VLDB Endow.},
+month = aug,
+pages = {1298–1309},
+numpages = {12}
+}
+
+@article{chen2020truss,
+author = {Che, Yulin and Lai, Zhuohang and Sun, Shixuan and Wang, Yue and Luo, Qiong},
+title = {Accelerating truss decomposition on heterogeneous processors},
+year = {2020},
+issue_date = {June 2020},
+publisher = {VLDB Endowment},
+volume = {13},
+number = {10},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3401960.3401971},
+doi = {10.14778/3401960.3401971},
+abstract = {Truss decomposition is to divide a graph into a hierarchy of subgraphs, or trusses. A subgraph is a k-truss (k ≥ 2) if each edge is in at least k --- 2 triangles in the subgraph. Existing algorithms work by first counting the number of triangles each edge is in and then iteratively incrementing k to peel off the edges that will not appear in (k + 1)-truss. Due to the data and computation intensity, truss decomposition on billion-edge graphs takes hours to complete on a commodity computer.We propose to accelerate in-memory truss decomposition by (1) compacting intermediate results to optimize memory access, (2) dynamically adjusting the computation based on data characteristics, and (3) parallelizing the algorithm on both the multicore CPU and the GPU. In particular, we optimize the triangle enumeration with data skew handling, and determine at runtime whether to pursue peeling or direct triangle counting to obtain a certain k-truss. We further develop a CPU-GPU co-processing strategy in which the CPU first computes intermediate results and sends the compacted results to the GPU for further computation. Our experiments on real-world datasets show that our implementations outperform the state of the art by up to an order of magnitude. Our source code is publicly available at https://github.com/RapidsAtHKUST/AccTrussDecomposition.},
+journal = {Proc. VLDB Endow.},
+month = jun,
+pages = {1751–1764},
+numpages = {14}
+}
+
+@article{wang2022truss,
+author = {Wang, Yue and Xu, Ruiqi and Jian, Xun and Zhou, Alexander and Chen, Lei},
+title = {Towards distributed bitruss decomposition on bipartite graphs},
+year = {2022},
+issue_date = {May 2022},
+publisher = {VLDB Endowment},
+volume = {15},
+number = {9},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3538598.3538610},
+doi = {10.14778/3538598.3538610},
+abstract = {Mining cohesive subgraphs on bipartite graphs is an important task. The k-bitruss is one of many popular cohesive subgraph models, which is the maximal subgraph where each edge is contained in at least k butterflies. The bitruss decomposition problem is to find all k-bitrusses for k ≥ 0. Dealing with large graphs is often beyond the capability of a single machine due to its limited memory and computational power, leading to a need for efficiently processing large graphs in a distributed environment. However, all current solutions are for a single machine and a centralized environment, where processors can access the graph or auxiliary indexes randomly and globally. It is difficult to directly deploy such algorithms on a shared-nothing model. In this paper, we propose distributed algorithms for bitruss decomposition. We first propose SC-HBD as the baseline, which uses H-function to define bitruss numbers and computes them iteratively to a fix point in parallel. We then introduce a subgraph-centric peeling method SC-PBD, which peels edges in batches over different butterfly complete subgraphs. We then introduce local indexes on each fragment, study the butterfly-aware edge partition problem including its hardness, and propose an effective partitioner. Finally we present the bitruss butterfly-complete subgraph concept, and divide and conquer DC-BD method with optimization strategies. Extensive experiments show the proposed methods solve graphs with 30 trillion butterflies in 2.5 hours, while existing parallel methods under shared-memory model fail to scale to such large graphs.},
+journal = {Proc. VLDB Endow.},
+month = may,
+pages = {1889–1901},
+numpages = {13}
+}
+
+@article{xu2022truss,
+author = {Xu, Tianyang and Lu, Zhao and Zhu, Yuanyuan},
+title = {Efficient Triangle-Connected Truss Community Search in Dynamic Graphs},
+year = {2022},
+issue_date = {November 2022},
+publisher = {VLDB Endowment},
+volume = {16},
+number = {3},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3570690.3570701},
+doi = {10.14778/3570690.3570701},
+abstract = {Community search studies the retrieval of certain community structures containing query vertices, which has received lots of attention recently. k-truss is a fundamental community structure where each edge is contained in at least k - 2 triangles. Triangle-connected k-truss community (k-TTC) is a widely-used variant of k-truss, which is a maximal k-truss where edges can reach each other via a series of edge-adjacent triangles. Although existing works have provided indexes and query algorithms for k-TTC search, the cohesiveness of a k-TTC (diameter upper bound) has not been theoretically analyzed and the triangle connectivity has not been efficiently captured. Thus, we revisit the k-TTC search problem in dynamic graphs, aiming to achieve a deeper understanding of k-TTC. First, we prove that the diameter of a k-TTC with n vertices is bounded by [EQUATION]. Then, we encapsulate triangle connectivity with two novel concepts, partial class and truss-precedence, based on which we build our compact index, EquiTree, to support the efficient k-TTC search. We also provide efficient index construction and maintenance algorithms for the dynamic change of graphs. Compared with the state-of-the-art methods, our extensive experiments show that EquiTree can boost search efficiency up to two orders of magnitude at a small cost of index construction and maintenance.},
+journal = {Proc. VLDB Endow.},
+month = nov,
+pages = {519–531},
+numpages = {13}
+}
+
+@article{tian2023truss,
+author = {Tian, Anxin and Zhou, Alexander and Wang, Yue and Chen, Lei},
+title = {Maximal D-Truss Search in Dynamic Directed Graphs},
+year = {2023},
+issue_date = {May 2023},
+publisher = {VLDB Endowment},
+volume = {16},
+number = {9},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3598581.3598592},
+doi = {10.14778/3598581.3598592},
+abstract = {Community search (CS) aims at personalized subgraph discovery which is the key to understanding the organisation of many real-world networks. CS in undirected networks has attracted significant attention from researchers, including many solutions for various cohesive subgraph structures and for different levels of dynamism with edge insertions and deletions, while they are much less considered for directed graphs. In this paper, we propose incremental solutions of CS based on the D-truss in dynamic directed graphs, where the D-truss is a cohesive subgraph structure defined based on two types of triangles in directed graphs. We first analyze the theoretical boundedness of D-truss given edge insertions and deletions, then we present basic single-update algorithms. To improve the efficiency, we propose an order-based D-Index, associated batch-update algorithms and a fully-dynamic query algorithm. Our extensive experiments on real-world graphs show that our proposed solution achieves a significant speedup compared to the SOTA solution, the scalability over updates is also verified.},
+journal = {Proc. VLDB Endow.},
+month = may,
+pages = {2199–2211},
+numpages = {13}
+}
+
+@misc{batagelj2003omalgorithmcoresdecomposition,
+      title={An O(m) Algorithm for Cores Decomposition of Networks}, 
+      author={V. Batagelj and M. Zaversnik},
+      year={2003},
+      eprint={cs/0310049},
+      archivePrefix={arXiv},
+      primaryClass={cs.DS},
+      url={https://arxiv.org/abs/cs/0310049}, 
+}
+
+@inproceedings{alvarez2005kcorevis,
+author = {Alvarez-Hamelin, J. Ignacio and Dall'Asta, Luca and Barrat, Alain and Vespignani, Alessandro},
+title = {Large scale networks fingerprinting and visualization using the k-core decomposition},
+year = {2005},
+publisher = {MIT Press},
+address = {Cambridge, MA, USA},
+abstract = {We use the k-core decomposition to develop algorithms for the analysis of large scale complex networks. This decomposition, based on a recursive pruning of the least connected vertices, allows to disentangle the hierarchical structure of networks by progressively focusing on their central cores. By using this strategy we develop a general visualization algorithm that can be used to compare the structural properties of various networks and highlight their hierarchical structure. The low computational complexity of the algorithm, O(n + e), where n is the size of the network, and e is the number of edges, makes it suitable for the visualization of very large sparse networks. We show how the proposed visualization tool allows to find specific structural fingerprints of networks.},
+booktitle = {Proceedings of the 19th International Conference on Neural Information Processing Systems},
+pages = {41–50},
+numpages = {10},
+location = {Vancouver, British Columbia, Canada},
+series = {NIPS'05}
+}
+
+
+@inproceedings{beutel2013copycatch,
+author = {Beutel, Alex and Xu, Wanhong and Guruswami, Venkatesan and Palow, Christopher and Faloutsos, Christos},
+title = {CopyCatch: stopping group attacks by spotting lockstep behavior in social networks},
+year = {2013},
+isbn = {9781450320351},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2488388.2488400},
+doi = {10.1145/2488388.2488400},
+abstract = {How can web services that depend on user generated content discern fraudulent input by spammers from legitimate input? In this paper we focus on the social network Facebook and the problem of discerning ill-gotten Page Likes, made by spammers hoping to turn a profit, from legitimate Page Likes. Our method, which we refer to as CopyCatch, detects lockstep Page Like patterns on Facebook by analyzing only the social graph between users and Pages and the times at which the edges in the graph (the Likes) were created. We offer the following contributions: (1) We give a novel problem formulation, with a simple concrete definition of suspicious behavior in terms of graph structure and edge constraints. (2) We offer two algorithms to find such suspicious lockstep behavior - one provably-convergent iterative algorithm and one approximate, scalable MapReduce implementation. (3) We show that our method severely limits "greedy attacks" and analyze the bounds from the application of the Zarankiewicz problem to our setting. Finally, we demonstrate and discuss the effectiveness of CopyCatch at Facebook and on synthetic data, as well as potential extensions to anomaly detection problems in other domains. CopyCatch is actively in use at Facebook, searching for attacks on Facebook's social graph of over a billion users, many millions of Pages, and billions of Page Likes.},
+booktitle = {Proceedings of the 22nd International Conference on World Wide Web},
+pages = {119–130},
+numpages = {12},
+keywords = {anomaly detection, bipartite cores, mapreduce, social networks},
+location = {Rio de Janeiro, Brazil},
+series = {WWW '13}
+}
+
+@inproceedings{hooi2016fraudar,
+author = {Hooi, Bryan and Song, Hyun Ah and Beutel, Alex and Shah, Neil and Shin, Kijung and Faloutsos, Christos},
+title = {FRAUDAR: Bounding Graph Fraud in the Face of Camouflage},
+year = {2016},
+isbn = {9781450342322},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2939672.2939747},
+doi = {10.1145/2939672.2939747},
+abstract = {Given a bipartite graph of users and the products that they review, or followers and followees, how can we detect fake reviews or follows? Existing fraud detection methods (spectral, etc.) try to identify dense subgraphs of nodes that are sparsely connected to the remaining graph. Fraudsters can evade these methods using camouflage, by adding reviews or follows with honest targets so that they look "normal". Even worse, some fraudsters use hijacked accounts from honest users, and then the camouflage is indeed organic. Our focus is to spot fraudsters in the presence of camouflage or hijacked accounts. We propose FRAUDAR, an algorithm that (a) is camouflage-resistant, (b) provides upper bounds on the effectiveness of fraudsters, and (c) is effective in real-world data. Experimental results under various attacks show that FRAUDAR outperforms the top competitor in accuracy of detecting both camouflaged and non-camouflaged fraud. Additionally, in real-world experiments with a Twitter follower-followee graph of 1.47 billion edges, FRAUDAR successfully detected a subgraph of more than 4000 detected accounts, of which a majority had tweets showing that they used follower-buying services.},
+booktitle = {Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+pages = {895–904},
+numpages = {10},
+keywords = {content ranking, fraud detection},
+location = {San Francisco, California, USA},
+series = {KDD '16}
+}
+
+@article{linden2003amazon,
+author = {Linden, Greg and Smith, Brent and York, Jeremy},
+title = {Amazon.com Recommendations: Item-to-Item Collaborative Filtering},
+year = {2003},
+issue_date = {January 2003},
+publisher = {IEEE Educational Activities Department},
+address = {USA},
+volume = {7},
+number = {1},
+issn = {1089-7801},
+url = {https://doi.org/10.1109/MIC.2003.1167344},
+doi = {10.1109/MIC.2003.1167344},
+abstract = {By comparing similar items rather than similar customers, item-to-item collaborative filtering scales to very large data sets and produces high-quality recommendations.},
+journal = {IEEE Internet Computing},
+month = jan,
+pages = {76–80},
+numpages = {5}
+}
+
+@article{newman2001structure,
+author = {M. E. J. Newman },
+title = {The structure of scientific collaboration networks},
+journal = {Proceedings of the National Academy of Sciences},
+volume = {98},
+number = {2},
+pages = {404-409},
+year = {2001},
+doi = {10.1073/pnas.98.2.404},
+URL = {https://www.pnas.org/doi/abs/10.1073/pnas.98.2.404},
+eprint = {https://www.pnas.org/doi/pdf/10.1073/pnas.98.2.404},
+abstract = {The structure of scientific collaboration networks is investigated.
+ Two scientists are considered connected if they have authored a paper
+ together and explicit networks of such connections are constructed by
+ using data drawn from a number of databases, including MEDLINE
+ (biomedical research), the Los Alamos e-Print Archive (physics), and
+ NCSTRL (computer science). I show that these collaboration networks
+ form “small worlds,” in which randomly chosen pairs of scientists
+ are typically separated by only a short path of intermediate
+ acquaintances. I further give results for mean and distribution of
+ numbers of collaborators of authors, demonstrate the presence of
+ clustering in the networks, and highlight a number of apparent
+ differences in the patterns of collaboration between the fields
+ studied.}}
+
+
+@book{diestel2000graph,
+  title     = {Graph Theory},
+  author    = {Diestel, Reinhard},
+  edition   = {2},
+  year      = {2000},
+  publisher = {Springer}
+}
+
+
+@article{tian2024abcore,
+author = {Tian, Anxin and Zhou, Alexander and Wang, Yue and Jian, Xun and Chen, Lei},
+title = {Efficient Index for Temporal Core Queries over Bipartite Graphs},
+year = {2024},
+issue_date = {July 2024},
+publisher = {VLDB Endowment},
+volume = {17},
+number = {11},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3681954.3681965},
+doi = {10.14778/3681954.3681965},
+abstract = {Many real-world binary relations can be modelled as bipartite graphs, which can be inherently temporal and each edge is associated with a timestamp. The (α, β)-core, a popular structure that requires minimum degrees over two layers of vertices, is useful for understanding the organisation of bipartite networks. However, the temporal property has rarely been considered in cohesive subgraph mining in bipartite graphs. This gap prevents the finding of time-sensitive (α, β)-cores in real-world applications. In this paper, we aim at finding (α, β)-cores within any time window over a temporal bipartite graph. To address this problem, we propose a novel DAG (Directed Acyclic Graph)-like hierarchy with qualified time windows to describe the temporal containment property of the (α, β)-core. Furthermore, we construct the superior-optimized index which significantly optimizes space complexity and guarantees efficient query performance. We also propose a maintenance approach that can efficiently update the index by removing stale information and incorporating newly inserted temporal edges. Extensive experiments are conducted on eight real-world graphs and the results show the effectiveness and efficiency of our indexes.},
+journal = {Proc. VLDB Endow.},
+month = jul,
+pages = {2813–2825},
+numpages = {13}
+}
+
+@article{viard2016deltaclique,
+author = {Viard, Tiphaine and Latapy, Matthieu and Magnien, Cl\'{e}mence},
+title = {Computing maximal cliques in link streams},
+year = {2016},
+issue_date = {January 2016},
+publisher = {Elsevier Science Publishers Ltd.},
+address = {GBR},
+volume = {609},
+number = {P1},
+issn = {0304-3975},
+url = {https://doi.org/10.1016/j.tcs.2015.09.030},
+doi = {10.1016/j.tcs.2015.09.030},
+abstract = {We introduce delta-cliques, that generalize graph cliques to link streams/time-varying graphs.We provide a greedy algorithm to compute all delta-cliques of a link stream.Implementation available on http://www.github.com/JordanV/delta-cliques. A link stream is a collection of triplets ( t , u , v ) indicating that an interaction occurred between u and v at time t. We generalize the classical notion of cliques in graphs to such link streams: for a given Δ, a Δ-clique is a set of nodes and a time interval such that all pairs of nodes in this set interact at least once during each sub-interval of duration Δ. We propose an algorithm to enumerate all maximal (in terms of nodes or time interval) cliques of a link stream, and illustrate its practical relevance to a real-world contact trace.},
+journal = {Theor. Comput. Sci.},
+month = jan,
+pages = {245–252},
+numpages = {8},
+keywords = {Time-varying graphs, Temporal networks, Link streams, Graphs, Cliques, Algorithms}
+}
+
+@article{Lanciano2024DensestSurvey,
+author = {Lanciano, Tommaso and Miyauchi, Atsushi and Fazzone, Adriano and Bonchi, Francesco},
+title = {A Survey on the Densest Subgraph Problem and its Variants},
+year = {2024},
+issue_date = {August 2024},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {56},
+number = {8},
+issn = {0360-0300},
+url = {https://doi.org/10.1145/3653298},
+doi = {10.1145/3653298},
+abstract = {The Densest Subgraph Problem requires us to find, in a given graph, a subset of vertices whose induced subgraph maximizes a measure of density. The problem has received a great deal of attention in the algorithmic literature since the early 1970s, with many variants proposed and many applications built on top of this basic definition. Recent years have witnessed a revival of research interest in this problem with several important contributions, including some groundbreaking results, published in 2022 and 2023. This survey provides a deep overview of the fundamental results and an exhaustive coverage of the many variants proposed in the literature, with a special attention to the most recent results. The survey also presents a comprehensive overview of applications and discusses some interesting open problems for this evergreen research topic.},
+journal = {ACM Comput. Surv.},
+month = apr,
+articleno = {208},
+numpages = {40},
+keywords = {Graphs, density, densest subgraph, approximation algorithms, applications}
+}
+
+
+@inproceedings{Konar2024OQC,
+author = {Konar, Aritra and Sidiropoulos, Nicholas D.},
+title = {Optimal quasi-clique: hardness, equivalence with densest-k-subgraph, and quasi-partitioned community mining},
+year = {2024},
+isbn = {978-1-57735-887-9},
+publisher = {AAAI Press},
+url = {https://doi.org/10.1609/aaai.v38i8.28705},
+doi = {10.1609/aaai.v38i8.28705},
+abstract = {Dense subgraph discovery (DSD) is a key primitive in graph mining that typically deals with extracting cliques and near-cliques. In this paper, we revisit the optimal quasi-clique (OQC) formulation for DSD and establish that it is NP-hard. In addition, we reveal the hitherto unknown property that OQC can be used to explore the entire spectrum of densest subgraphs of all distinct sizes by appropriately varying a single hyperparameter, thereby forging an intimate link with the classic densest-k-subgraph problem (DkS). We corroborate these findings on real-world graphs by applying the simple greedy algorithm for OQC with improved hyperparameter tuning, to quickly generate high-quality approximations of the size-density frontier. Our findings indicate that OQC not only extracts high quality (near)-cliques, but also large and loosely-connected subgraphs that exhibit well defined local community structure. The latter discovery is particularly intriguing, since OQC is not explicitly geared towards community detection.},
+booktitle = {Proceedings of the Thirty-Eighth AAAI Conference on Artificial Intelligence and Thirty-Sixth Conference on Innovative Applications of Artificial Intelligence and Fourteenth Symposium on Educational Advances in Artificial Intelligence},
+articleno = {957},
+numpages = {9},
+series = {AAAI'24/IAAI'24/EAAI'24}
+}
+
+@inproceedings{SozioGionisKDD2010,
+  author    = {Mauro Sozio and Aristides Gionis},
+  title     = {The Community-search Problem and How to Plan a Successful Cocktail Party},
+  booktitle = {Proceedings of the 16th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD)},
+  year      = {2010},
+  doi       = {10.1145/1835804.1835923}
+}
+
+@article{SunPVLDB2025GICS,
+author = {Sun, Longxu and Huang, Xin and Wang, Jiannan and Xu, Jianliang},
+title = {A Flexible Framework for Query-Oriented Interactive Community Search},
+year = {2025},
+issue_date = {February 2025},
+publisher = {VLDB Endowment},
+volume = {18},
+number = {6},
+issn = {2150-8097},
+url = {https://doi.org/10.14778/3725688.3725720},
+doi = {10.14778/3725688.3725720},
+abstract = {Community search finds query-dependent communities over graphs, which has been investigated broadly. In this work, we focus on the task of returning only a single connected community containing all user input query vertices. Most existing studies in the literature only propose a single and static model based on a particular subgraph (e.g., k-core, k-truss, quasi-clique, and learning-based component). These fixed models are hard to find exact community answers on all datasets and fit with different underlying desires of users and queries. This implies that the community search task needs human-in-loop interactions, which allows users to give feedback and dynamically advise community refinement.To tackle the above issues, we formulate and study the problem of interactive community search, which allows users to add/delete vertices for improving community answers in a few rounds of interactions. We first summarize dozens of existing community models and develop an integrated notation system M(G, M, O, P) to describe them all. Then, we propose a flexible approach to interactive community search over graphs called GICS-framework. The successful principle of GICS-framework lies on three key components: personalized adding/deleting recommendation, parameter auto-tuning, and fast partial refinement. We develop efficient algorithms and successfully deploy three community models on our GICS-framework. We further analyze algorithm complexity of GICS-framework by illustrating one instance model in detail. Extensive experiments on ground-truth communities demonstrate that our interaction of GICS-framework improves F1-score accuracy by 22\% against state-of-the-art competitors, and gives users real-time responses within one second.},
+journal = {Proc. VLDB Endow.},
+month = feb,
+pages = {1977–1990},
+numpages = {14}
+}
+
+@inproceedings{YeSIGMOD2022Lightning,
+author = {Ye, Xiaowei and Li, Rong-Hua and Dai, Qiangqiang and Chen, Hongzhi and Wang, Guoren},
+title = {Lightning Fast and Space Efficient k-clique Counting},
+year = {2022},
+isbn = {9781450390965},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3485447.3512167},
+doi = {10.1145/3485447.3512167},
+abstract = {K-clique counting is a fundamental problem in network analysis which has attracted much attention in recent years. Computing the count of k-cliques in a graph for a large k (e.g., k = 8) is often intractable as the number of k-cliques increases exponentially w.r.t. (with respect to) k. Existing exact k-clique counting algorithms are often hard to handle large dense graphs, while sampling-based solutions either require a huge number of samples or consume very high storage space to achieve a satisfactory accuracy. To overcome these limitations, we propose a new framework to estimate the number of k-cliques which integrates both the exact k-clique counting technique and two novel color-based sampling techniques. The key insight of our framework is that we only apply the exact algorithm to compute the k-clique counts in the sparse regions of a graph, and use the proposed sampling-based techniques to estimate the number of k-cliques in the dense regions of the graph. Specifically, we develop two novel dynamic programming based k-color set sampling techniques to efficiently estimate the k-clique counts, where a k-color set contains k nodes with k different colors. Since a k-color set is often a good approximation of a k-clique in the dense regions of a graph, our sampling-based solutions are extremely efficient and accurate. Moreover, the proposed sampling techniques are space efficient which use near-linear space w.r.t. graph size. We conduct extensive experiments to evaluate our algorithms using 8 real-life graphs. The results show that our best algorithm is at least one order of magnitude faster than the state-of-the-art sampling-based solutions (with the same relative error 0.1\%) and can be up to three orders of magnitude faster than the state-of-the-art exact algorithm on large graphs.},
+booktitle = {Proceedings of the ACM Web Conference 2022},
+pages = {1191–1202},
+numpages = {12},
+keywords = {cohesive subgraphs, graph sampling, k-clique counting},
+location = {Virtual Event, Lyon, France},
+series = {WWW '22}
+}
+
+
+
+
+
+@article{ponomariov2016coauthorship,
+  title        = {What is co-authorship?},
+  author       = {Ponomariov, Branco and Boardman, Craig},
+  journal      = {Scientometrics},
+  volume       = {109},
+  number       = {3},
+  pages        = {1939--1963},
+  year         = {2016},
+  doi          = {10.1007/s11192-016-2127-7}
+}
+
+
+
+
+
+@book{chung1997spectral,
+  author    = {Fan R. K. Chung},
+  title     = {{Spectral Graph Theory}},
+  series    = {CBMS Regional Conference Series in Mathematics},
+  volume    = {92},
+  publisher = {American Mathematical Society},
+  year      = {1997},
+  isbn      = {978-0-8218-0315-8}
+}
+
+@inproceedings{arora2004expander,
+  author    = {Sanjeev Arora and Satish Rao and Umesh Vazirani},
+  title     = {{Expander Flows, Geometric Embeddings and Graph Partitioning}},
+  booktitle = {Proceedings of the 36th Annual ACM Symposium on Theory of Computing (STOC)},
+  pages     = {222--231},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  year      = {2004},
+  doi       = {10.1145/1007352.1007391}
+}
+
+@article{radicchi2004defining,
+  author  = {Filippo Radicchi and Claudio Castellano and Federico Cecconi and Vittorio Loreto and Domenico Parisi},
+  title   = {Defining and identifying communities in networks},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {101},
+  number  = {9},
+  pages   = {2658--2663},
+  year    = {2004},
+  doi     = {10.1073/pnas.0400054101}
+}
+
+@article{fortunato2010community,
+  author  = {Santo Fortunato},
+  title   = {Community detection in graphs},
+  journal = {Physics Reports},
+  volume  = {486},
+  number  = {3--5},
+  pages   = {75--174},
+  year    = {2010},
+  doi     = {10.1016/j.physrep.2009.11.002}
+}
+
+@article{lai2019distributed,
+  title={Distributed subgraph matching on timely dataflow},
+  author={Lai, Longbin and Qing, Zhu and Yang, Zhengyi and Jin, Xin and Lai, Zhengmin and Wang, Ran and Hao, Kongzhang and Lin, Xuemin and Qin, Lu and Zhang, Wenjie and others},
+  journal={Proceedings of the VLDB Endowment},
+  year={2019},
+  publisher={ASSOC COMPUTING MACHINERY}
+}
+
+@inproceedings{yang2021huge,
+  title={Huge: An efficient and scalable subgraph enumeration system},
+  author={Yang, Zhengyi and Lai, Longbin and Lin, Xuemin and Hao, Kongzhang and Zhang, Wenjie},
+  booktitle={Proceedings of the 2021 international conference on management of data},
+  pages={2049--2062},
+  year={2021}
+}
+
+@inproceedings{chen2024compressing,
+  title={On compressing historical cliques in temporal graphs},
+  author={Chen, Kaiyu and Wen, Dong and Li, Wentao and Yang, Zhengyi and Zhang, Wenjie},
+  booktitle={International Conference on Database Systems for Advanced Applications},
+  pages={37--53},
+  year={2024},
+  organization={Springer Nature Singapore Singapore}
+}
+
+@inproceedings{luo2024hierarchical,
+  title={Hierarchical structure construction on hypergraphs},
+  author={Luo, Qi and Zhang, Wenjie and Yang, Zhengyi and Wen, Dong and Wang, Xiaoyang and Yu, Dongxiao and Lin, Xuemin},
+  booktitle={Proceedings of the 33rd ACM International Conference on Information and Knowledge Management},
+  pages={1597--1606},
+  year={2024}
+}
+
+@inproceedings{chen2025covering,
+  title={Covering K-Cliques in Billion-Scale Graphs},
+  author={Chen, Kaiyu and Wen, Dong and Wang, Hanchen and Yang, Zhengyi and Zhang, Wenjie and Lin, Xuemin},
+  booktitle={The Web Conference 2025},
+  year={2025}
+}
+
+
+@article{luo2025efficient,
+  title={Efficient indexing and searching of constrained core in hypergraphs},
+  author={Luo, Qi and Zhang, Wenjie and Yang, Zhengyi and Yu, Dongxiao and Lin, Xuemin and Wang, Liping},
+  journal={The VLDB Journal},
+  volume={34},
+  number={3},
+  pages={34},
+  year={2025},
+  publisher={Springer Berlin Heidelberg Berlin/Heidelberg}
+}

@@ -1,0 +1,63 @@
+
+\subsection{Optimized Peeling for $r=1$}
+\label{sec:opt_r1}
+
+For $r=1$, the baseline algorithm (Algorithm~\ref{alg:RemoveNode}) removes a vertex from the CPI by mutating the tree---deleting pivot entries and updating the hash-based vertex-to-path index.
+We observe that tree mutation is entirely unnecessary for $r=1$: since every update either kills a path or removes a single pivot, the support change for each remaining vertex can be computed \emph{analytically} using a closed-form binomial difference.
+
+\stitle{Key Idea: Immutable Tree.}
+Instead of modifying the tree, we maintain two per-path integer counters:
+\begin{itemize}[leftmargin=*]
+\item $\mathit{rp}(\TPath)$: the number of remaining pivots on path $\TPath$;
+\item $\mathit{np}(\TPath) = s - |V_h(\TPath)|$: the number of pivots needed to complete an $s$-clique (fixed at initialization).
+\end{itemize}
+When a batch of vertices $V_{\mathrm{rm}}$ is peeled, each affected path $\TPath$ either dies (if any $v \in V_{\mathrm{rm}}$ is a hold) or has $\mathit{rp}(\TPath)$ decremented by the number of removed pivots.
+
+\begin{theorem}[Closed-Form Support Delta for $r=1$]\label{thm:r1_delta}
+Let $\TPath = (V_h, V_p)$ be a clique path with $\mathit{rp}$ remaining pivots and $\mathit{np} = s - |V_h|$.
+After removing $d$ pivots from $\TPath$ (with $\mathit{np} \le \mathit{rp} - d$, i.e., the path survives), the support change for each remaining vertex $u$ is:
+\[
+\Delta(u) =
+\begin{cases}
+\binom{\mathit{rp}}{np} - \binom{\mathit{rp}-d}{np} & \text{if } u \in V_h \text{ (hold)}, \\[4pt]
+\binom{\mathit{rp}-1}{np-1} - \binom{\mathit{rp}-d-1}{np-1} & \text{if } u \in V_p \text{ (surviving pivot)}.
+\end{cases}
+\]
+If the path dies ($\mathit{np} > \mathit{rp} - d$ or a hold is removed), the full weight $\binom{\mathit{rp}}{np}$ (resp.\ $\binom{\mathit{rp}-1}{np-1}$) is subtracted.
+Each delta is a single $O(1)$ table lookup.
+\end{theorem}
+
+\begin{proof}
+By Lemma~\ref{lem:clique_count}, the support contribution of a hold vertex $u$ on path $\TPath$ equals $\binom{|V_p|}{np}$, since $u$ participates in every $s$-clique on $\TPath$.
+After removing $d$ pivots, $|V_p|$ decreases to $\mathit{rp} - d$, and the new contribution is $\binom{\mathit{rp}-d}{np}$.
+The delta follows by subtraction.
+For a surviving pivot $u$, the contribution is $\binom{|V_p|-1}{np-1}$ (choosing $np-1$ other pivots), and the argument is analogous.
+\end{proof}
+
+\stitle{Algorithm.}
+The optimized peeling for $r=1$ proceeds as follows.
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Initialization.}
+Build a flat CSR index mapping each vertex to the paths containing it (replacing the hash-based index).
+Initialize per-path counters $\mathit{rp}(\TPath)$ and $\mathit{np}(\TPath)$.
+Compute initial supports via the nCr formula and insert all vertices into a min-heap.
+
+\item \textbf{Peeling loop.}
+In each round, extract all vertices at the current minimum support level.
+For each removed vertex, scan its paths via the CSR index:
+if the vertex is a hold, the path dies; if a pivot, increment the path's removal counter.
+Then apply the closed-form delta (Theorem~\ref{thm:r1_delta}) to all surviving vertices on affected paths,
+and update the heap immediately.
+
+\item \textbf{No tree mutation.}
+The tree structure is never modified.
+Dead paths are marked via a flag and skipped in future rounds.
+The CSR index remains valid throughout the entire peeling process.
+\end{enumerate}
+
+\stitle{Complexity.}
+Each vertex--path pair is processed at most once (when either the vertex is peeled or the path dies).
+The per-pair cost is $O(1)$ (counter update + nCr lookup + heap update).
+Total time: $O\bigl(\sum_{\TPath \in \cpi} |\TPath|\cdot \log |V|\bigr)$, matching the baseline asymptotically but with significantly smaller constants due to eliminating tree mutation, hash-map updates, and re-enumeration.
+
+\input{sections/algorithms/peelr1}

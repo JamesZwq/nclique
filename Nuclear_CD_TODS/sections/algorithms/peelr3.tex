@@ -1,0 +1,49 @@
+
+
+\begin{algorithm}[t]
+\small
+\caption{\textsc{UpdateIndex}}
+\label{alg:removeRClique}
+\KwIn{clique path $\TPath{} = \{V_{H},V_{P}\}$, set of $r$-cliques to remove $C_{\mathrm{rm}}=\{C_0,\dots,C_{t-1}\}$, clique size $s$}
+% \KwOut{All clique subpath produced after deleting $C_{\mathrm{rm}}$}
+\KwOut{All subpaths induced after deleting $C_{\mathrm{rm}}$}
+\SetKwFunction{Split}{PathSplit}
+\SetKwProg{Fn}{Function}{}{}
+
+% $V_{H} \gets$ hold vertices on $\TPath{}$;
+% $V_{P} \gets$ pivot vertices on $\TPath{}$\\
+Build inverted index $I(v) \gets \{\,i \mid v \in C_i\,\}$ for all $v \in \TPath$\\
+
+
+cnt$\gets$ array of size $t$ initialized to $r$\;
+
+\Split{$V_{H},\;V_{P}$}\;
+
+\Fn{\Split{$V_{H},\;V_{P}$}}{
+
+  \lIf{$|V_{H} \cup V_{P}| < s$ or $|V_{H}| > s$}{\Return} % pruning rule
+
+  $C_j \gets$ the first $r$-clique in $C_{\mathrm{rm}}$ with $cnt[j] = r$\;
+  
+  \If{no such $C_j$ exists}{
+     \textbf{output path }$\{V_{H}, V_{P}\}$\;
+     
+     \Return
+  }
+
+  \ForEach{$v \in C_j \cap V_{P}$}{
+    \ForEach{$g \in I(v)$}{$cnt[g] \gets cnt[g]-1$}
+
+    $V_{P} \gets V_{P} \setminus \{v\}$;
+
+    \Split{$V_{H},\;V_{P}$}\;
+
+    $V_{H} \gets V_{H} \cup \{v\}$\;
+
+    \ForEach{$g \in I(v)$}{$cnt[g] \gets cnt[g]+1$}
+  }
+    
+}
+
+\end{algorithm}
+
