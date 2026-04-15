@@ -66,3 +66,23 @@ obj/
 python/
 
 #python/
+
+# Untracked project dirs
+Nuclear_CD_TODS/
+Nuclear CD
+quick-cliques/
+bench_plots/
+benchmark_results/
+lab_files/
+standalone/
+docs/
+scripts/
+pivoter/.vscode/
+.vscode/
+cd
+*.png
+*.pdf
+*.edges
+nohup.out
+claude*.txt
+out.txt
