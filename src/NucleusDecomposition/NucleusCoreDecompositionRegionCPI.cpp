@@ -432,7 +432,11 @@ NucleusCoreDecompositionRClique_RegionCPI(
 
         for (daf::Size rid = 0; rid < numRegions; ++rid) {
             const auto &cids = enablePrivateCloud ? activeClassesInRegion[rid] : classesInRegion[rid];
-            if (cids.size() > 500) continue;
+            if (cids.size() > 500) {
+                std::cerr << "ABORT: MC " << rid << " has " << cids.size()
+                          << " classes (>500), too large for tuple enumeration" << std::endl;
+                exit(1);
+            }
             curRid = rid;
             cur.clear();
             std::function<void()> cb = [&]() { addRTuple(cur); };
