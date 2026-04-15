@@ -1152,19 +1152,21 @@ NucleusCoreDecompositionRClique_RegionCPI(
     daf::Size numTuplesSz = rTuples.size();
 
     daf::Size maxSup = 0;
+    // Effective support = max(dSup, minCore) to ensure tuples aren't peeled
+    // before their private-cloud floor (prevents premature dead box cascade)
+    std::vector<daf::Size> effSup(rTuples.size());
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
         daf::Size sv = (daf::Size)llround(std::max(0.0, dSup[i]));
-        maxSup = std::max(maxSup, sv);
+        effSup[i] = std::max(sv, (daf::Size)llround(tupleMinCore[i]));
+        maxSup = std::max(maxSup, effSup[i]);
     }
-    // (no maxPrivateEventLevel needed — minCore floor handles it)
     const daf::Size BUCKET_CAP = std::min(maxSup + 2, (daf::Size)1000001);
 
     std::vector<std::vector<daf::Size>> buckets(BUCKET_CAP);
     std::multimap<daf::Size, daf::Size> overflow;
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
-        daf::Size b = (daf::Size)llround(std::max(0.0, dSup[i]));
-        if (b < BUCKET_CAP) buckets[b].push_back(i);
-        else overflow.insert({b, i});
+        if (effSup[i] < BUCKET_CAP) buckets[effSup[i]].push_back(i);
+        else overflow.insert({effSup[i], i});
     }
 
     // Profiling counters
@@ -1218,7 +1220,9 @@ NucleusCoreDecompositionRClique_RegionCPI(
                 if (dSup[tidx] < -0.5) dSup[tidx] = 0;
                 prof_tupleUpdates++;
 
-                daf::Size newBucket = (daf::Size)llround(dSup[tidx]);
+                daf::Size newSup = (daf::Size)llround(std::max(0.0, dSup[tidx]));
+                daf::Size newBucket = std::max(newSup, (daf::Size)llround(tupleMinCore[tidx]));
+                effSup[tidx] = newBucket;
                 if (newBucket < BUCKET_CAP) {
                     buckets[newBucket].push_back(tidx);
                     if (newBucket < scanLevel) scanLevel = newBucket;
@@ -1247,8 +1251,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
                 daf::Size idx = buckets[currentLevel].back();
                 buckets[currentLevel].pop_back();
                 if (rPeeled[idx]) continue;
-                daf::Size idxBucket = (daf::Size)llround(std::max(0.0, dSup[idx]));
-                if (idxBucket != currentLevel) continue;
+                if (effSup[idx] != currentLevel) continue;
                 rPeeled[idx] = true;
                 batch.push_back(idx);
             }
@@ -1257,8 +1260,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
             for (auto it = range.first; it != range.second; ++it) {
                 daf::Size idx = it->second;
                 if (!rPeeled[idx]) {
-                    daf::Size idxBucket = (daf::Size)llround(std::max(0.0, dSup[idx]));
-                    if (idxBucket == currentLevel) {
+                    if (effSup[idx] == currentLevel) {
                         rPeeled[idx] = true;
                         batch.push_back(idx);
                     }
@@ -1273,9 +1275,8 @@ NucleusCoreDecompositionRClique_RegionCPI(
         coreLevel = std::max(coreLevel, currentLevel);
         for (auto idx : batch) {
             numPeeled++;
-            // Apply per-tuple minCore floor (from private cloud)
-            double assignedCore = std::max((double)coreLevel, tupleMinCore[idx]);
-            coreDist[assignedCore] += rTuples[idx].mult;
+            // minCore floor already enforced by bucket placement (effSup ≥ minCore)
+            coreDist[coreLevel] += rTuples[idx].mult;
         }
 
         std::unordered_map<daf::Size, std::vector<daf::Size>> newlyDeadByPath;
