@@ -20,7 +20,7 @@ MAX_WORKERS = 32
 MEM_LIMIT_GB = 300     # don't launch if total used > this
 MEM_KILL_GB = 450      # kill newest if total used > this
 PER_PROC_MEM_GB = 250  # kill individual process if RSS > this
-SETTLE_SEC = 0         # no pause between launches (memory check handles throttling)
+SETTLE_SEC = 0.1       # brief pause between launches
 POLL_SEC = 3           # poll interval
 OUTCSV = "bench_v3_all_results.csv"
 LOGDIR = Path("bench_v3_all_logs")
@@ -464,7 +464,14 @@ def main():
             continue
 
         launch(g, rr, ss, an)
-        time.sleep(SETTLE_SEC)
+        # Dynamic throttle: brief pause, longer if memory is climbing
+        mem_now = get_used_mem_gb()
+        if mem_now > MEM_LIMIT_GB * 0.8:    # >240GB: slow down
+            time.sleep(3)
+        elif mem_now > MEM_LIMIT_GB * 0.5:   # >150GB: moderate
+            time.sleep(1)
+        else:
+            time.sleep(SETTLE_SEC)            # low mem: fast launch
 
     # Drain remaining
     while running and not shutdown:
