@@ -17,8 +17,9 @@ from concurrent.futures import ProcessPoolExecutor
 BIN = "./build/bin/degeneracy_cliques"
 TIMEOUT = 3600         # seconds per job (1 hour)
 MAX_WORKERS = 32
-MEM_LIMIT_GB = 300     # don't launch if used > this
-MEM_KILL_GB = 450      # kill newest if used > this
+MEM_LIMIT_GB = 300     # don't launch if total used > this
+MEM_KILL_GB = 450      # kill newest if total used > this
+PER_PROC_MEM_GB = 250  # kill individual process if RSS > this
 SETTLE_SEC = 1         # pause between launches
 POLL_SEC = 3           # poll interval
 OUTCSV = "bench_v3_all_results.csv"
@@ -78,6 +79,17 @@ def build():
         print(f"Build failed:\n{r.stderr[-500:]}")
         sys.exit(1)
     print("  Build OK")
+
+def get_proc_rss_gb(pid):
+    """Get RSS of a process in GB from /proc/[pid]/status."""
+    try:
+        with open(f"/proc/{pid}/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) / 1024 / 1024  # kB → GB
+    except:
+        pass
+    return 0
 
 def get_used_mem_gb():
     """Get used memory in GB from /proc/meminfo."""
@@ -297,6 +309,25 @@ def main():
                 propagate_timeout(g, an, ss, rr)
                 running.pop(i)
 
+    def check_proc_mem():
+        """Kill any process whose RSS exceeds PER_PROC_MEM_GB."""
+        for i in range(len(running) - 1, -1, -1):
+            proc, g, rr, ss, an, t0 = running[i]
+            rss = get_proc_rss_gb(proc.pid)
+            if rss > PER_PROC_MEM_GB:
+                try:
+                    proc.kill()
+                    proc.communicate(timeout=10)
+                except:
+                    try: proc.wait(timeout=5)
+                    except: pass
+                print(f"  [OOM] {an} {g} r={rr} s={ss} RSS={rss:.0f}GB > {PER_PROC_MEM_GB}GB", flush=True)
+                (LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log").write_text(f"OOM: RSS={rss:.0f}GB")
+                write_result(g, rr, ss, an, "OOM")
+                done.add((g, rr, ss, an))
+                propagate_timeout(g, an, ss, rr)
+                running.pop(i)
+
     def kill_newest():
         """Kill most recent process for OOM protection."""
         if not running:
@@ -365,7 +396,7 @@ def main():
     ji = 0
     while (ji < len(all_jobs) or retry_queue or running) and not shutdown:
         reap()
-        check_timeouts()
+        check_timeouts(); check_proc_mem()
 
         # OOM protection
         while get_used_mem_gb() > MEM_KILL_GB and running:
@@ -401,7 +432,7 @@ def main():
         # Wait for capacity: workers < MAX and memory < limit
         while (len(running) >= MAX_WORKERS or get_used_mem_gb() >= MEM_LIMIT_GB) and not shutdown:
             reap()
-            check_timeouts()
+            check_timeouts(); check_proc_mem()
             while get_used_mem_gb() > MEM_KILL_GB and running:
                 kill_newest()
                 time.sleep(2)
@@ -425,7 +456,7 @@ def main():
     # Drain remaining
     while running and not shutdown:
         reap()
-        check_timeouts()
+        check_timeouts(); check_proc_mem()
         time.sleep(POLL_SEC)
     reap()
 
