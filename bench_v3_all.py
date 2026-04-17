@@ -27,7 +27,7 @@ LOGDIR = Path("bench_v3_all_logs")
 DATADIR = "/data/wenqianz"
 # Split graphs across servers: tods1 gets dense graphs, tods2 gets large/power-law
 SERVER_GRAPHS = {
-    "tods1": [ "com-dblp", "email-Eu-core", "com-youtube"],
+    "tods1": ["soc-Epinions1", "com-dblp", "email-Eu-core", "com-youtube"],
     "tods2": ["dblp-core30", "web-Stanford","web-it-2004"],
 }
 
