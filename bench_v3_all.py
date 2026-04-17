@@ -13,6 +13,25 @@ from pathlib import Path
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 
+# Raise stack limit so deep BK recursion (e.g., high-degree hubs in soc-Epinions1)
+# doesn't segfault. Linux default is 8MB; we raise as high as the hard limit allows.
+try:
+    import resource
+    soft, hard = resource.getrlimit(resource.RLIMIT_STACK)
+    # macOS rejects if target == hard exactly; use hard-1 as a safe upper bound.
+    if hard == resource.RLIM_INFINITY:
+        target = resource.RLIM_INFINITY
+    else:
+        target = max(soft, hard - 4096)
+    if target > soft:
+        resource.setrlimit(resource.RLIMIT_STACK, (target, hard))
+    new_soft = resource.getrlimit(resource.RLIMIT_STACK)[0]
+    def _fmt(x):
+        return "unlimited" if x == resource.RLIM_INFINITY else f"{x/1024/1024:.1f}MB"
+    print(f"[stack] RLIMIT_STACK: {_fmt(soft)} -> {_fmt(new_soft)} (hard={_fmt(hard)})", flush=True)
+except Exception as e:
+    print(f"[stack] WARNING: failed to raise stack limit: {e}", flush=True)
+
 # ============ Config ============
 BIN = "./build/bin/degeneracy_cliques"
 TIMEOUT = 3600         # seconds per job (1 hour)
@@ -53,10 +72,16 @@ def get_graphs():
 GRAPHS = get_graphs()
 
 ALGOS = {
-    "REF":   {"env": "PIVOTER_RUN_REF"},
-    "ST":    {"env": "PIVOTER_RUN_ST"},
-    "V3":    {"env": "PIVOTER_RUN_REGION_V3"},
-    "V3_NP": {"env": "PIVOTER_RUN_REGION_V3", "extra": {"PIVOTER_V3_NO_PRIVATE": "1"}},
+    "REF":    {"env": "PIVOTER_RUN_REF"},
+    "ST":     {"env": "PIVOTER_RUN_ST"},
+    # "V3Fast" = current optimized V3 with Private Cloud ON. The legacy "V3"
+    # key (slow, sometimes-wrong due to uint32 overflow) has been retired;
+    # older "V3" rows in the CSV are historical and are NOT re-run.
+    "V3Fast": {"env": "PIVOTER_RUN_REGION_V3FAST"},
+    # V3_NP kept for baseline comparisons (Private Cloud OFF). Not considered
+    # a primary result — private-cloud-off is slower than V3Fast on most
+    # graphs and does not benefit from the new correctness fixes as much.
+    "V3_NP":  {"env": "PIVOTER_RUN_REGION_V3FAST", "extra": {"PIVOTER_V3_NO_PRIVATE": "1"}},
 }
 
 # ============ Helpers ============
@@ -118,31 +143,36 @@ def get_used_mem_gb():
         return 0
 
 def probe_max_clique(graph):
-    """Find max clique size — single run with V3 mode, parse maxSize from output."""
+    """Compute max clique size with NetworkX (authoritative, no C++ probe).
+    Returns 0 on failure so caller can warn rather than cache a wrong value."""
     gf = f"graphs/{graph}.edges"
     if not os.path.exists(gf):
         return 0
-
-    # Run V3 with s=4 (minimum). MaxCliqEnum outputs maxSize.
-    env = {**os.environ, "PIVOTER_RUN_REGION_V3": "1", "PIVOTER_V3_NO_PRIVATE": "1"}
     try:
-        proc = subprocess.Popen(
-            [BIN, gf, "3", "4"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, env=env
-        )
-        # Read until MaxCliqEnum line, then kill (don't wait for full run)
-        for line in proc.stdout:
-            m = re.search(r'maxSize=(\d+)', line)
-            if m:
-                result = int(m.group(1))
-                proc.kill()
-                proc.wait()
-                return result
-        proc.kill()
-        proc.wait()
-    except:
-        pass
-    return 4  # fallback
+        import networkx as nx
+    except ImportError:
+        print(f"  !! networkx not installed — run: pip install networkx")
+        return 0
+    try:
+        G = nx.Graph()
+        with open(gf) as f:
+            header = f.readline().split()
+            # skip the "n m" header; add edges from the rest
+            for ln in f:
+                parts = ln.split()
+                if len(parts) < 2:
+                    continue
+                u, v = int(parts[0]), int(parts[1])
+                if u != v:
+                    G.add_edge(u, v)
+        best = 0
+        for c in nx.find_cliques(G):
+            if len(c) > best:
+                best = len(c)
+        return best
+    except Exception as e:
+        print(f"  !! networkx probe failed for {graph}: {e}")
+        return 0
 
 def load_existing():
     """Load already-completed results to skip."""
@@ -205,7 +235,19 @@ def main():
         max_cliques = json.loads(cache_file.read_text())
         print(f"\nLoaded max clique cache: {cache_file}")
 
-        # 检查是否有新加的图不在缓存中
+        # Invalidate cache entries whose .edges file is newer than the cache
+        # (protects against stale values after edits like dedup / regeneration).
+        cache_mtime = cache_file.stat().st_mtime
+        stale = []
+        for g in list(max_cliques.keys()):
+            p = f"graphs/{g}.edges"
+            if os.path.exists(p) and os.path.getmtime(p) > cache_mtime:
+                stale.append(g)
+                del max_cliques[g]
+        if stale:
+            print(f"  Invalidated stale cache entries (file newer than cache): {stale}")
+
+        # 需要 probe 的图 = GRAPHS 里当前没有 cache 值的
         missing_graphs = [g for g in GRAPHS if g not in max_cliques and os.path.exists(f"graphs/{g}.edges")]
         if missing_graphs:
             print(f"\nProbing missing graphs (incremental): {missing_graphs}")
@@ -214,7 +256,12 @@ def main():
                 for f in futures:
                     g = futures[f]
                     mc = f.result()
-                    max_cliques[g] = mc
+                    if mc == 0:
+                        print(f"  !! probe failed for {g}: no maxSize in output — NOT caching.")
+                        print(f"     Run manually to see the real error:")
+                        print(f"       PIVOTER_RUN_REGION_V3=1 PIVOTER_V3_NO_PRIVATE=1 {BIN} graphs/{g}.edges 3 4 degen")
+                    else:
+                        max_cliques[g] = mc
             # 更新并重新保存缓存
             cache_file.write_text(json.dumps(max_cliques, indent=2))
             print(f"  Updated cache saved to {cache_file}")
@@ -239,6 +286,9 @@ def main():
             for f in futures:
                 g = futures[f]
                 mc = f.result()
+                if mc == 0:
+                    print(f"  !! probe failed for {g}: no maxSize in output — NOT caching.")
+                    continue
                 max_cliques[g] = mc
                 n_combos = sum(s - 3 for s in range(4, mc + 1))
                 print(f"  {g}: max_clique={mc}, jobs={n_combos * len(ALGOS)}")
@@ -318,13 +368,20 @@ def main():
             elif ret == 0:
                 status = "OK"
             else:
-                status = f"ERROR({ret})"
+                # SIGSEGV=-11, SIGBUS=-10, SIGFPE=-8 etc
+                sig_names = {-11: "SIGSEGV", -10: "SIGBUS", -8: "SIGFPE", -6: "SIGABRT", -4: "SIGILL"}
+                status = f"ERROR({ret}{'/' + sig_names[ret] if ret in sig_names else ''})"
             (LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log").write_text(txt)
             wall_ms = (time.time() - t0) * 1000
             total_ms, peel_ms, mem_kB = extract_timing(txt)
             t_str = f"{wall_ms:.0f}ms" if wall_ms >= 0 else "N/A"
             m_str = f"{mem_kB/1024:.0f}MB" if mem_kB >= 0 else ""
             print(f"  {an:>6} {g} r={rr} s={ss} {status} wall={t_str} {m_str}", flush=True)
+            if status.startswith("ERROR") and txt:
+                # Print last few lines of stdout/stderr to help diagnose
+                tail = "\n".join(txt.strip().splitlines()[-5:])
+                if tail:
+                    print(f"         last output: {tail}", flush=True)
             write_result(g, rr, ss, an, status, wall_ms, total_ms, peel_ms, mem_kB)
             done.add((g, rr, ss, an))
             launched += 1
