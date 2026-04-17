@@ -10,6 +10,7 @@
 //
 
 #include "NCliqueCoreDecomposition.h"
+#include "../dataStruct/robin_hood.h"
 #include <algorithm>
 #include <chrono>
 #include <functional>
@@ -397,7 +398,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // Step 3: Enumerate active r-tuples
     // ============================================================
 
-    std::unordered_map<TupleKey, daf::Size, TupleHash> rTupleIndex;
+    robin_hood::unordered_flat_map<TupleKey, daf::Size, TupleHash> rTupleIndex;
     struct RTuple { TupleKey key; daf::Size mult; };
     std::vector<RTuple> rTuples;
     std::vector<double> tupleMinCore; // per-tuple minCore floor
@@ -1146,7 +1147,9 @@ NucleusCoreDecompositionRClique_RegionCPI(
     std::cout << "  MinCore floor: computed inline during Step 3" << std::endl;
 
     // --- Per-(tuple, path) dead count cache ---
-    std::unordered_map<uint64_t, double> deadCache;
+    // robin_hood flat map: ~2-3x faster than std::unordered_map for uint64 keys
+    // on the peeling hot path, where every alive-tuple update queries the cache.
+    robin_hood::unordered_flat_map<uint64_t, double> deadCache;
 
     // --- Bucket queue setup ---
     std::vector<double> dSup = support;
