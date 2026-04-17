@@ -809,15 +809,18 @@ NucleusCoreDecompositionRClique_RegionCPI(
         std::unordered_map<daf::Size, int> classToIdx;
     };
 
-    // --- Weighted feasible count: convolution DP ---
-    // For each class i, weight_i(b) depends on lower[i]..upper[i] and the
-    // class's nh/np and tuple's j_c. We pass per-class weight tables.
-    // weightTables[i][b - lower[i]] = weight for allocation b on class i.
-    // Returns Σ_{b: lower<=b<=upper, Σb=T} Π_i weightTables[i][b_i - lower[i]]
-    auto countFeasibleWeighted = [](const std::vector<int> &lower,
-                                    const std::vector<int> &upper, int T,
-                                    const std::vector<std::vector<double>> &weightTables) -> double {
-        int m = (int)lower.size();
+    // Compile-time bounds for stack-allocated hot-path buffers. m (classes per
+    // path) and T (target pivot count) are small in all workloads we care about
+    // (avg 13-17 and ≤ s-h respectively). If a path exceeds these, we fall
+    // back to assert-abort rather than silently truncating.
+    constexpr int MAX_M = 64;
+    constexpr int MAX_T = 64;
+
+    // --- Weighted feasible count: convolution DP (stack buffers, no allocation) ---
+    // Caller builds a packed weight table: wtsFlat[i*wtStride + k] = weight for
+    // class i at shifted allocation k (k = b_i - lower[i]), valid for 0 ≤ k < wtLen[i].
+    auto countFeasibleWeighted_sb = [](const int *lower, const int *upper, int m, int T,
+                                       const double *wtsFlat, int wtStride, const int *wtLen) -> double {
         int minSum = 0, maxSum = 0;
         for (int i = 0; i < m; ++i) {
             if (lower[i] > upper[i]) return 0.0;
@@ -828,70 +831,76 @@ NucleusCoreDecompositionRClique_RegionCPI(
 
         int target = T - minSum;
         if (target < 0) return 0.0;
+        if (target >= MAX_T + 1) { std::cerr << "countFeasibleWeighted: target=" << target << " exceeds MAX_T\n"; std::abort(); }
 
-        // dp[t] = weighted count of allocations with shifted-sum = t
-        // Process each class: convolve dp with class's weight polynomial
-        std::vector<double> dp(target + 1, 0.0);
+        double dp[MAX_T + 1], next[MAX_T + 1];
+        for (int t = 0; t <= target; ++t) dp[t] = 0.0;
         dp[0] = 1.0;
         for (int i = 0; i < m; ++i) {
-            int cap = upper[i] - lower[i]; // range: 0..cap (shifted)
-            auto &wt = weightTables[i]; // wt[k] = weight for b_i = lower[i] + k
-            std::vector<double> next(target + 1, 0.0);
-            // For each target sum t, next[t] = Σ_{k=0..min(cap,t)} dp[t-k] * wt[k]
+            int cap = upper[i] - lower[i];
+            const double *wt = wtsFlat + (size_t)i * wtStride;
+            int len = wtLen[i];
+            for (int t = 0; t <= target; ++t) next[t] = 0.0;
             for (int t = 0; t <= target; ++t) {
                 double sum = 0.0;
                 int kMax = std::min(cap, t);
-                for (int k = 0; k <= kMax; ++k) {
-                    if (k < (int)wt.size())
-                        sum += dp[t - k] * wt[k];
-                }
+                if (kMax >= len) kMax = len - 1;
+                for (int k = 0; k <= kMax; ++k)
+                    sum += dp[t - k] * wt[k];
                 next[t] = sum;
             }
-            dp.swap(next);
+            std::swap_ranges(dp, dp + target + 1, next);
         }
         return dp[target];
     };
 
-    // --- Build weight tables for tuple τ' on path P with given lower/upper ---
-    // tc = total pivot allocation from class c in the s-clique.
-    // For tuple classes (j'_c > 0): w(tc) = C(np_c, tc) × C(nh_c + tc, j'_c)
-    //   (choose tc pivots, then choose j'_c of the first nh_c + tc vertices for the tuple)
-    // For non-tuple classes (j'_c = 0): w(tc) = C(np_c, tc)
-    // Returns weightTables[i][tc - lower[i]] for each class i
-    auto buildWeightTables = [&](daf::Size tidx, const PathInfo &pi,
-                                 const std::vector<int> &lower,
-                                 const std::vector<int> &upper) -> std::vector<std::vector<double>> {
+    // --- Build weight tables for tuple τ' on path P (stack buffers) ---
+    // Writes into wtsFlat (expected size MAX_M × wtStride). wtLen[i] = range per class.
+    // Uses merge-scan on sorted key + sorted pi.classIds to avoid an unordered_map.
+    auto buildWeightTables_sb = [&](daf::Size tidx, const PathInfo &pi,
+                                    const int *lower, const int *upper,
+                                    double *wtsFlat, int wtStride, int *wtLen) {
         int m = (int)pi.classIds.size();
-        auto &key = rTuples[tidx].key;
-        std::unordered_map<daf::Size, int> counts;
-        for (auto c : key) counts[c]++;
-
-        std::vector<std::vector<double>> wts(m);
-        for (int i = 0; i < m; ++i) {
-            int lo = lower[i], hi = upper[i];
-            int range = hi - lo + 1;
-            if (range <= 0) { wts[i] = {}; continue; }
-            wts[i].resize(range, 0.0);
-
-            auto cit = counts.find(pi.classIds[i]);
-            int jc = (cit != counts.end()) ? cit->second : 0;
-            int nhc = pi.nh[i], npc = pi.np[i];
-
-            for (int k = 0; k < range; ++k) {
-                int tc = lo + k; // total pivots allocated from class i
-                if (tc < 0 || tc > npc) continue;
-                if (jc > 0) {
-                    // tuple class: C(np_c, tc) × C(nh_c + tc, j_c)
-                    int pool = nhc + tc;
-                    if (pool >= jc)
-                        wts[i][k] = nCr[npc][tc] * nCr[pool][jc];
-                } else {
-                    // non-tuple class: C(np_c, tc)
-                    wts[i][k] = nCr[npc][tc];
+        auto &key = rTuples[tidx].key;   // sorted with repetitions
+        // Merge-scan: jvec[i] = j_c(τ) for class pi.classIds[i]
+        int jvec[MAX_M];
+        for (int i = 0; i < m; ++i) jvec[i] = 0;
+        {
+            int ci = 0, ki = 0;
+            while (ci < m && ki < (int)key.size()) {
+                if (pi.classIds[ci] < key[ki]) { ++ci; }
+                else if (pi.classIds[ci] > key[ki]) { ++ki; }
+                else {
+                    int jc = 1;
+                    while (ki + jc < (int)key.size() && key[ki + jc] == key[ki]) ++jc;
+                    jvec[ci] = jc;
+                    ++ci; ki += jc;
                 }
             }
         }
-        return wts;
+        for (int i = 0; i < m; ++i) {
+            int lo = lower[i], hi = upper[i];
+            int range = hi - lo + 1;
+            double *row = wtsFlat + (size_t)i * wtStride;
+            if (range <= 0) { wtLen[i] = 0; continue; }
+            if (range > wtStride) { std::cerr << "buildWeightTables: range > wtStride\n"; std::abort(); }
+            wtLen[i] = range;
+            int jc = jvec[i];
+            int nhc = pi.nh[i], npc = pi.np[i];
+            for (int k = 0; k < range; ++k) {
+                int tc = lo + k;
+                double v = 0.0;
+                if (tc >= 0 && tc <= npc) {
+                    if (jc > 0) {
+                        int pool = nhc + tc;
+                        if (pool >= jc) v = nCr[npc][tc] * nCr[pool][jc];
+                    } else {
+                        v = nCr[npc][tc];
+                    }
+                }
+                row[k] = v;
+            }
+        }
     };
 
     // --- normalizeBoxes ---
@@ -971,10 +980,17 @@ NucleusCoreDecompositionRClique_RegionCPI(
                          const std::vector<std::vector<int>>&, UnionCtx&)> countUnionRec;
 
     // Helper: compute weighted feasible for given lower/upper using tuple weights
+    // Stack-allocated wts buffer; one call per feasWeighted invocation.
     auto feasWeighted = [&](const std::vector<int> &lower, const std::vector<int> &upper,
                             UnionCtx &ctx) -> double {
-        auto wts = buildWeightTables(ctx.tidx, *ctx.pi, lower, upper);
-        return countFeasibleWeighted(lower, upper, ctx.T, wts);
+        int m = (int)ctx.pi->classIds.size();
+        // wtStride is the max "range" per class = max(upper[i] - lower[i] + 1).
+        // Since lower[i] ≥ 0 and upper[i] ≤ np_c ≤ s, bounding by MAX_T+1 is safe.
+        constexpr int wtStride = MAX_T + 1;
+        double wtsFlat[MAX_M * wtStride];
+        int wtLen[MAX_M];
+        buildWeightTables_sb(ctx.tidx, *ctx.pi, lower.data(), upper.data(), wtsFlat, wtStride, wtLen);
+        return countFeasibleWeighted_sb(lower.data(), upper.data(), m, ctx.T, wtsFlat, wtStride, wtLen);
     };
 
     countUnionRec = [&](const std::vector<int> &lower, const std::vector<int> &upper,
@@ -1111,8 +1127,11 @@ NucleusCoreDecompositionRClique_RegionCPI(
                     base[i] = std::max(0, jc - pi.nh[i]);
                     upper[i] = pi.np[i];
                 }
-                auto wts = buildWeightTables(tidx, pi, base, upper);
-                double aggr = countFeasibleWeighted(base, upper, pi.T, wts);
+                constexpr int wtStride = MAX_T + 1;
+                double wtsFlat[MAX_M * wtStride];
+                int wtLen[MAX_M];
+                buildWeightTables_sb(tidx, pi, base.data(), upper.data(), wtsFlat, wtStride, wtLen);
+                double aggr = countFeasibleWeighted_sb(base.data(), upper.data(), m, pi.T, wtsFlat, wtStride, wtLen);
                 supCheck[tidx] += aggr / rTuples[tidx].mult;
             }
         }
@@ -1181,11 +1200,18 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // Profiling counters
     long long prof_batchCount = 0;
 
+    // Hoisted per-path buffers reused across tuples to avoid per-tuple heap
+    // allocations. Also replace the per-tuple unordered_map<cid,int> with a
+    // merge-scan over the sorted key + sorted pi.classIds.
+    std::vector<int> base, upper;
+    base.reserve(MAX_M); upper.reserve(MAX_M);
+
     auto refreshAffectedPaths = [&](const std::unordered_set<daf::Size> &affectedPathSet,
                                     daf::Size &scanLevel) {
         for (daf::Size piIdx : affectedPathSet) {
             auto &pi = pathInfos[piIdx];
             int m = (int)pi.classIds.size();
+            if (m > MAX_M) { std::cerr << "refreshAffectedPaths: m > MAX_M\n"; std::abort(); }
 
             std::vector<daf::Size> alive;
             alive.reserve(pi.tupleIdxs.size());
@@ -1197,18 +1223,25 @@ NucleusCoreDecompositionRClique_RegionCPI(
 
             if (pi.deadBoxes.empty()) continue;
 
-            for (auto tidx : pi.tupleIdxs) {
-                auto &key = rTuples[tidx].key;
-                std::unordered_map<daf::Size, int> counts;
-                for (auto c : key) counts[c]++;
+            // upper is tuple-independent per path: fill once.
+            upper.assign(m, 0);
+            for (int i = 0; i < m; ++i) upper[i] = pi.np[i];
 
-                std::vector<int> base(m), upper(m);
-                for (int i = 0; i < m; ++i) {
-                    int jc = 0;
-                    auto cit = counts.find(pi.classIds[i]);
-                    if (cit != counts.end()) jc = cit->second;
-                    base[i] = std::max(0, jc - pi.nh[i]);
-                    upper[i] = pi.np[i];
+            for (auto tidx : pi.tupleIdxs) {
+                auto &key = rTuples[tidx].key;  // sorted with repetitions
+                // Merge-scan: base[i] = max(0, j_c(τ) - nh_c). Classes not
+                // present in key have j_c = 0 → base[i] = 0.
+                base.assign(m, 0);
+                int ci = 0, ki = 0;
+                while (ci < m && ki < (int)key.size()) {
+                    if (pi.classIds[ci] < key[ki]) { ++ci; }
+                    else if (pi.classIds[ci] > key[ki]) { ++ki; }
+                    else {
+                        int jc = 1;
+                        while (ki + jc < (int)key.size() && key[ki + jc] == key[ki]) ++jc;
+                        base[ci] = std::max(0, jc - pi.nh[ci]);
+                        ++ci; ki += jc;
+                    }
                 }
 
                 UnionCtx ctx{m, pi.T, 0, tidx, &pi};
