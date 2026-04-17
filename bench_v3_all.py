@@ -62,12 +62,22 @@ ALGOS = {
 # ============ Helpers ============
 def link_graphs():
     os.makedirs("graphs", exist_ok=True)
+    missing = []
     for g in GRAPHS:
         f = f"graphs/{g}.edges"
         src = f"{DATADIR}/{g}.edges"
-        if not os.path.exists(f) and os.path.exists(src):
+        if os.path.exists(f):
+            continue
+        if os.path.exists(src):
             os.symlink(src, f)
             print(f"  Linked {g}.edges")
+        else:
+            missing.append((g, f, src))
+    if missing:
+        print("\n!! Missing graph files — these entries will NOT run:")
+        for g, f, src in missing:
+            print(f"    {g}: neither {f} nor {src} exists")
+        print("  Fix: copy/download the .edges file, or remove the entry from SERVER_GRAPHS.\n")
 
 def build():
     print("Building...")
@@ -209,10 +219,15 @@ def main():
             cache_file.write_text(json.dumps(max_cliques, indent=2))
             print(f"  Updated cache saved to {cache_file}")
 
-        for g, mc in max_cliques.items():
-            if g in GRAPHS: # 只打印当前 server 负责的图
+        for g in GRAPHS: # 按 GRAPHS 顺序打印，明确哪些被跳过
+            if g in max_cliques:
+                mc = max_cliques[g]
                 n_combos = sum(s - 3 for s in range(4, mc + 1))
                 print(f"  {g}: max_clique={mc}, jobs={n_combos * len(ALGOS)}")
+            elif not os.path.exists(f"graphs/{g}.edges"):
+                print(f"  {g}: SKIPPED (file missing)")
+            else:
+                print(f"  {g}: SKIPPED (not in cache, probe may have failed)")
     else:
         print("\nProbing max clique sizes (parallel)...")
         graphs_to_probe = [g for g in GRAPHS if os.path.exists(f"graphs/{g}.edges")]
