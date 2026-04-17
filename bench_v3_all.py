@@ -25,15 +25,16 @@ POLL_SEC = 3           # poll interval
 OUTCSV = "bench_v3_all_results.csv"
 LOGDIR = Path("bench_v3_all_logs")
 DATADIR = "/data/wenqianz"
-
-ALL_GRAPHS = ["dblp-core30", "email-Eu-core", "com-dblp",
-              "web-Stanford", "com-youtube", "web-it-2004"]
-
 # Split graphs across servers: tods1 gets dense graphs, tods2 gets large/power-law
 SERVER_GRAPHS = {
     "tods1": [ "com-dblp", "email-Eu-core", "com-youtube"],
     "tods2": ["dblp-core30", "web-Stanford","web-it-2004"],
 }
+
+
+
+ALL_GRAPHS = SERVER_GRAPHS["tods1"] + SERVER_GRAPHS["tods2"]
+
 
 import socket
 def get_graphs():
@@ -193,9 +194,25 @@ def main():
     if cache_file.exists():
         max_cliques = json.loads(cache_file.read_text())
         print(f"\nLoaded max clique cache: {cache_file}")
+
+        # 检查是否有新加的图不在缓存中
+        missing_graphs = [g for g in GRAPHS if g not in max_cliques and os.path.exists(f"graphs/{g}.edges")]
+        if missing_graphs:
+            print(f"\nProbing missing graphs (incremental): {missing_graphs}")
+            with ProcessPoolExecutor(max_workers=len(missing_graphs)) as ex:
+                futures = {ex.submit(probe_max_clique, g): g for g in missing_graphs}
+                for f in futures:
+                    g = futures[f]
+                    mc = f.result()
+                    max_cliques[g] = mc
+            # 更新并重新保存缓存
+            cache_file.write_text(json.dumps(max_cliques, indent=2))
+            print(f"  Updated cache saved to {cache_file}")
+
         for g, mc in max_cliques.items():
-            n_combos = sum(s - 3 for s in range(4, mc + 1))
-            print(f"  {g}: max_clique={mc}, jobs={n_combos * len(ALGOS)}")
+            if g in GRAPHS: # 只打印当前 server 负责的图
+                n_combos = sum(s - 3 for s in range(4, mc + 1))
+                print(f"  {g}: max_clique={mc}, jobs={n_combos * len(ALGOS)}")
     else:
         print("\nProbing max clique sizes (parallel)...")
         graphs_to_probe = [g for g in GRAPHS if os.path.exists(f"graphs/{g}.edges")]
