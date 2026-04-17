@@ -229,15 +229,18 @@ NucleusCoreDecompositionRClique_RegionCPI(
 
     // Directly assign fully-mergeable regions
     std::map<double, int64_t> coreDist;
-    daf::Size numFullyMergeable = 0, mergedRCliques = 0;
+    daf::Size numFullyMergeable = 0;
+    uint64_t mergedRCliques = 0;
 
     for (daf::Size rid = 0; rid < numRegions; ++rid) {
         if (!fullyMergeable[rid]) continue;
         numFullyMergeable++;
         int mSize = (int)regionVerts[rid].size();
         double coreVal = (mSize >= (int)s) ? nCr[mSize - r][s - r] : 0.0;
-        daf::Size numRC = (daf::Size)llround(nCr[mSize][r]);
-        coreDist[coreVal] += numRC;
+        // Cast through uint64 — C(|M|, r) can exceed UINT32_MAX on large MCs
+        // (e.g. com-dblp max MC=114 → C(114, 11) ≈ 6e14).
+        uint64_t numRC = (uint64_t)llround(nCr[mSize][r]);
+        coreDist[coreVal] += (int64_t)numRC;
         mergedRCliques += numRC;
     }
 
@@ -387,10 +390,11 @@ NucleusCoreDecompositionRClique_RegionCPI(
             int q = m - p;
             double total = nCr[m][r];
             double publicOnly = (q >= (int)r) ? nCr[q][r] : 0.0;
-            daf::Size privateTouching = (daf::Size)llround(std::max(0.0, total - publicOnly));
+            // Widen to uint64: C(|M|, r) can exceed UINT32_MAX for large MCs.
+            uint64_t privateTouching = (uint64_t)llround(std::max(0.0, total - publicOnly));
             if (privateTouching == 0) continue;
-            coreDist[mcCoreVal[rid]] += privateTouching;
-            privateRCliquesDirect += privateTouching;
+            coreDist[mcCoreVal[rid]] += (int64_t)privateTouching;
+            privateRCliquesDirect += (double)privateTouching;
         }
     }
 
@@ -399,7 +403,11 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // ============================================================
 
     robin_hood::unordered_flat_map<TupleKey, daf::Size, TupleHash> rTupleIndex;
-    struct RTuple { TupleKey key; daf::Size mult; };
+    // mult = Π_c C(|c|, j_c) can overflow uint32 for r≥5 on graphs with
+    // large class sizes (e.g. r=11 on com-dblp: C(~50, 11) ≈ 4e10). Widen
+    // to uint64 so the multiplicity is represented correctly throughout
+    // peeling and core aggregation.
+    struct RTuple { TupleKey key; uint64_t mult; };
     std::vector<RTuple> rTuples;
     std::vector<double> tupleMinCore; // per-tuple minCore floor
 
@@ -409,10 +417,10 @@ NucleusCoreDecompositionRClique_RegionCPI(
         auto addRTuple = [&](const TupleKey &key) {
             std::unordered_map<daf::Size, int> counts;
             for (auto c : key) counts[c]++;
-            daf::Size mult = 1;
+            uint64_t mult = 1;
             for (auto &[c, k] : counts) {
                 if ((int)classSizes[c] < k) return;
-                mult *= (daf::Size)nCr[classSizes[c]][k];
+                mult *= (uint64_t)llround(nCr[classSizes[c]][k]);
             }
             if (mult == 0) return;
             auto it = rTupleIndex.find(key);
@@ -1180,19 +1188,45 @@ NucleusCoreDecompositionRClique_RegionCPI(
     long long prof_deadBoxesAdded = 0, prof_tupleUpdates = 0;
     daf::Size numTuplesSz = rTuples.size();
 
-    daf::Size maxSup = 0;
-    // Effective support = max(dSup, minCore) to ensure tuples aren't peeled
-    // before their private-cloud floor (prevents premature dead box cascade)
-    std::vector<daf::Size> effSup(rTuples.size());
+    // Bucket levels (support counts, core values) are stored as double
+    // throughout. Rationale:
+    //   - mcCoreVal = C(|M|-r, s-r) can reach 1e20+ on dense graphs (e.g.
+    //     com-dblp max MC=114 gives C(111, 17) ≈ 4.5e19 — overflows uint64's
+    //     full range when r grows further).
+    //   - `llround` returns long long which is signed int64; any value ≥
+    //     2^63 overflows it and wraps to INT64_MIN.
+    //   - Step 1b and Step 3 already store core values as `double` into
+    //     `coreDist`; using uint64 for peel buckets creates two different
+    //     core-value spaces (clamped vs unclamped) that disagree on the
+    //     labels assigned to the same r-cliques in V3 vs V3_NP.
+    // Double loses precision beyond 2^53, but that is intrinsic to the
+    // nCr table anyway. Using double uniformly makes V3 and V3_NP agree,
+    // and agree with ST (which also uses double).
+    // Bucket levels can exceed 2^32 on dense graphs (mcCoreVal ≈ 4.5e19 for
+    // com-dblp max MC=114, r=3, s=20). Use uint64_t to avoid silent uint32
+    // truncation. `llround` returns int64_t and wraps past 2^63; clamp via
+    // INT64_MAX to avoid that trap. Core values above INT64_MAX are labelled
+    // identically in V3/V3_NP (both clamp); Step 1b and Step 3 still store
+    // the unclamped `double` core values into coreDist, so the output still
+    // distinguishes the true large cores for directly-assigned r-cliques.
+    using BigLevel = uint64_t;
+    auto safeToBigLevel = [](double x) -> BigLevel {
+        if (!(x > 0.0)) return 0;
+        if (x >= (double)INT64_MAX) return (BigLevel)INT64_MAX;
+        return (BigLevel)llround(x);
+    };
+
+    BigLevel maxSup = 0;
+    std::vector<BigLevel> effSup(rTuples.size());
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
-        daf::Size sv = (daf::Size)llround(std::max(0.0, dSup[i]));
-        effSup[i] = std::max(sv, (daf::Size)llround(tupleMinCore[i]));
+        BigLevel sv = safeToBigLevel(dSup[i]);
+        effSup[i] = std::max(sv, safeToBigLevel(tupleMinCore[i]));
         maxSup = std::max(maxSup, effSup[i]);
     }
-    const daf::Size BUCKET_CAP = std::min(maxSup + 2, (daf::Size)1000001);
+    const BigLevel BUCKET_CAP = std::min<BigLevel>(maxSup + 2, (BigLevel)1000001);
 
     std::vector<std::vector<daf::Size>> buckets(BUCKET_CAP);
-    std::multimap<daf::Size, daf::Size> overflow;
+    std::multimap<BigLevel, daf::Size> overflow;
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
         if (effSup[i] < BUCKET_CAP) buckets[effSup[i]].push_back(i);
         else overflow.insert({effSup[i], i});
@@ -1208,7 +1242,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
     base.reserve(MAX_M); upper.reserve(MAX_M);
 
     auto refreshAffectedPaths = [&](const std::unordered_set<daf::Size> &affectedPathSet,
-                                    daf::Size &scanLevel) {
+                                    BigLevel &scanLevel) {
         for (daf::Size piIdx : affectedPathSet) {
             auto &pi = pathInfos[piIdx];
             int m = (int)pi.classIds.size();
@@ -1263,8 +1297,8 @@ NucleusCoreDecompositionRClique_RegionCPI(
                 if (dSup[tidx] < -0.5) dSup[tidx] = 0;
                 prof_tupleUpdates++;
 
-                daf::Size newSup = (daf::Size)llround(std::max(0.0, dSup[tidx]));
-                daf::Size newBucket = std::max(newSup, (daf::Size)llround(tupleMinCore[tidx]));
+                BigLevel newSup = safeToBigLevel(dSup[tidx]);
+                BigLevel newBucket = std::max(newSup, safeToBigLevel(tupleMinCore[tidx]));
                 effSup[tidx] = newBucket;
                 if (newBucket < BUCKET_CAP) {
                     buckets[newBucket].push_back(tidx);
@@ -1277,7 +1311,8 @@ NucleusCoreDecompositionRClique_RegionCPI(
     };
 
     // --- Batch peeling loop ---
-    daf::Size numPeeled = 0, currentLevel = 0, coreLevel = 0;
+    daf::Size numPeeled = 0;
+    BigLevel currentLevel = 0, coreLevel = 0;
 
     while (numPeeled < rTuples.size()) {
         while (currentLevel < BUCKET_CAP && buckets[currentLevel].empty())
@@ -1319,7 +1354,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
         for (auto idx : batch) {
             numPeeled++;
             // minCore floor already enforced by bucket placement (effSup ≥ minCore)
-            coreDist[coreLevel] += rTuples[idx].mult;
+            coreDist[(double)coreLevel] += (int64_t)rTuples[idx].mult;
         }
 
         std::unordered_map<daf::Size, std::vector<daf::Size>> newlyDeadByPath;
