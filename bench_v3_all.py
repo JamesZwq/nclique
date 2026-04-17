@@ -72,16 +72,18 @@ def get_graphs():
 GRAPHS = get_graphs()
 
 ALGOS = {
-    "REF":    {"env": "PIVOTER_RUN_REF"},
-    "ST":     {"env": "PIVOTER_RUN_ST"},
+    "REF":       {"env": "PIVOTER_RUN_REF"},
+    "ST":        {"env": "PIVOTER_RUN_ST"},
     # "V3Fast" = current optimized V3 with Private Cloud ON. The legacy "V3"
-    # key (slow, sometimes-wrong due to uint32 overflow) has been retired;
-    # older "V3" rows in the CSV are historical and are NOT re-run.
-    "V3Fast": {"env": "PIVOTER_RUN_REGION_V3FAST"},
-    # V3_NP kept for baseline comparisons (Private Cloud OFF). Not considered
-    # a primary result — private-cloud-off is slower than V3Fast on most
-    # graphs and does not benefit from the new correctness fixes as much.
-    "V3_NP":  {"env": "PIVOTER_RUN_REGION_V3FAST", "extra": {"PIVOTER_V3_NO_PRIVATE": "1"}},
+    # and "V3_NP" keys (slow, sometimes-wrong due to uint32 overflow) have
+    # been retired; older rows under those keys remain in the CSV as
+    # historical data and are NOT re-run.
+    "V3Fast":    {"env": "PIVOTER_RUN_REGION_V3FAST"},
+    # V3Fast_NP: same optimized path as V3Fast but with Private Cloud OFF —
+    # strict ablation study for the Private Cloud optimization. Renamed
+    # from "V3_NP" so the new optimized ablation data is separate from the
+    # legacy V3_NP data that was collected on the pre-optimization code.
+    "V3Fast_NP": {"env": "PIVOTER_RUN_REGION_V3FAST", "extra": {"PIVOTER_V3_NO_PRIVATE": "1"}},
 }
 
 # ============ Helpers ============
