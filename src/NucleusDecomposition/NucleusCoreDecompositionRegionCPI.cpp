@@ -185,51 +185,45 @@ NucleusCoreDecompositionRClique_RegionCPI(
 
     auto tStep1b = std::chrono::high_resolution_clock::now();
 
-    // Compute pairwise intersection sizes (via vertex membership)
-    std::unordered_map<uint64_t, int> interSize;
-    auto pairKey = [](daf::Size a, daf::Size b) -> uint64_t {
-        if (a > b) std::swap(a, b);
-        return ((uint64_t)a << 32) | b;
-    };
-    for (daf::Size v = 0; v < numVertices; ++v) {
-        auto &rids = vtxMaxPaths[v];
-        for (daf::Size i = 0; i < rids.size(); ++i)
-            for (daf::Size j = i + 1; j < rids.size(); ++j) {
-                auto key = pairKey(rids[i], rids[j]);
-                if (!interSize.count(key)) {
-                    auto &a = regionVerts[rids[i]], &b = regionVerts[rids[j]];
-                    int cnt = 0;
-                    auto ai = a.begin(), bi = b.begin();
-                    while (ai != a.end() && bi != b.end()) {
-                        if (*ai < *bi) ++ai;
-                        else if (*ai > *bi) ++bi;
-                        else { ++cnt; ++ai; ++bi; }
-                    }
-                    interSize[key] = cnt;
-                }
+    // Fused fully-mergeable check (replaces the older two-phase
+    // "precompute all pair intersections, then early-exit check" scheme).
+    // For each region M, maintain an overlap counter array indexed by
+    // other region id; increment at each v ∈ M for each other M' ∋ v;
+    // break the moment any counter reaches r. Reset only the touched
+    // entries via a dirty list. Same worst-case complexity, ~10–25×
+    // faster in practice (array vs hashmap, plus early-exit on the
+    // accumulation phase itself — the precompute never finishes pairs
+    // that are irrelevant). See docs/region_cpi_theorems.md §7.
+    std::vector<bool> fullyMergeable(numRegions, true);
+    std::vector<int> overlapCnt(numRegions, 0);
+    std::vector<daf::Size> dirtyList;
+    dirtyList.reserve(256);
+
+    long long fmTotalIter = 0;
+    daf::Size fmExits = 0;
+
+    for (daf::Size rid = 0; rid < numRegions; ++rid) {
+        bool fm = true;
+        for (daf::Size v : regionVerts[rid]) {
+            if (v >= numVertices) continue;
+            for (daf::Size other : vtxMaxPaths[v]) {
+                ++fmTotalIter;
+                if (other == rid) continue;
+                if (overlapCnt[other] == 0) dirtyList.push_back(other);
+                if (++overlapCnt[other] >= (int)r) { fm = false; ++fmExits; break; }
             }
+            if (!fm) break;
+        }
+        fullyMergeable[rid] = fm;
+        for (auto d : dirtyList) overlapCnt[d] = 0;
+        dirtyList.clear();
     }
 
     {
         auto t = std::chrono::high_resolution_clock::now();
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t - tStep1b).count();
-        std::cout << "  Step 1b intersection: " << interSize.size() << " pairs, " << ms << " ms" << std::endl;
-    }
-
-    // Check each region: fully r-mergeable?
-    std::vector<bool> fullyMergeable(numRegions, true);
-    for (daf::Size rid = 0; rid < numRegions; ++rid) {
-        for (daf::Size v : regionVerts[rid]) {
-            if (v >= numVertices) continue;
-            for (daf::Size otherRid : vtxMaxPaths[v]) {
-                if (otherRid == rid) continue;
-                if (interSize[pairKey(rid, otherRid)] >= (int)r) {
-                    fullyMergeable[rid] = false;
-                    break;
-                }
-            }
-            if (!fullyMergeable[rid]) break;
-        }
+        std::cout << "  Step 1b fused-FM: " << fmTotalIter << " counter ops, "
+                  << fmExits << " early exits, " << ms << " ms" << std::endl;
     }
 
     // Directly assign fully-mergeable regions
