@@ -462,14 +462,24 @@ NucleusCoreDecompositionRClique_RegionCPI(
     daf::Size pathsUsed = 0;
     daf::Size totalTuplesOnPaths = 0;
 
+    // Dense per-class counters (replace the per-path unordered_map<cid, (nh, np)>).
+    // Maintained across paths via a dirty list; reset at the top of each iteration.
+    // See docs/region_cpi_theorems.md §7 for the same pattern used in Step 1b.
+    std::vector<int> nhArr(numClasses, 0);
+    std::vector<int> npArr(numClasses, 0);
+    std::vector<daf::Size> classDirty;
+    classDirty.reserve(64);
+
     for (daf::Size pid = 0; pid < numPaths; ++pid) {
+        // Reset dirty counters from previous iteration (if any)
+        for (auto cid : classDirty) { nhArr[cid] = 0; npArr[cid] = 0; }
+        classDirty.clear();
+
         auto &leaf = tree.adj_list[pid];
         if ((int)leaf.size() < (int)s) continue;
 
-        // Compute h, p and class distribution on this path
+        // Compute h, p and per-class (nh, np) distribution on this path
         int h = 0, p = 0;
-        std::unordered_map<daf::Size, std::pair<int,int>> classDistrib; // cid -> (nh, np)
-
         bool pathHasPrivateHold = false;
         for (const auto &node : leaf) {
             daf::Size v = node.v;
@@ -480,8 +490,9 @@ NucleusCoreDecompositionRClique_RegionCPI(
                 if (!node.isPivot) pathHasPrivateHold = true;
                 continue; // exclude private vertices from h/p counts
             }
-            if (node.isPivot) { p++; classDistrib[cid].second++; }
-            else { h++; classDistrib[cid].first++; }
+            if (nhArr[cid] == 0 && npArr[cid] == 0) classDirty.push_back(cid);
+            if (node.isPivot) { p++; npArr[cid]++; }
+            else { h++; nhArr[cid]++; }
         }
 
         // Skip path if it has a private hold (all s-cliques are private-touching)
@@ -489,10 +500,9 @@ NucleusCoreDecompositionRClique_RegionCPI(
         if (h + p < (int)s) continue;
         pathsUsed++;
 
-        // Collect unique active classes on this path
-        std::vector<daf::Size> pathClasses;
-        for (auto &[cid, _] : classDistrib) pathClasses.push_back(cid);
-        std::sort(pathClasses.begin(), pathClasses.end());
+        // classDirty holds the unique classes on this path; sort for canonical
+        // enumeration order (TupleKey is the sorted multiset of class ids).
+        std::sort(classDirty.begin(), classDirty.end());
 
         // Enumerate r-multisets of this path's classes
         TupleKey cur; cur.reserve(r);
@@ -508,12 +518,11 @@ NucleusCoreDecompositionRClique_RegionCPI(
                 if (prev != INVALID) tauClasses.push_back({prev, cnt});
             }
 
-            // Feasibility: for each class c with j_c copies in tau,
-            // need j_c <= n_h^c + n_p^c
+            // Feasibility: each tuple class c is enumerated from classDirty, so
+            // nhArr[c] + npArr[c] > 0 is already guaranteed. We still need the
+            // jc <= nh+np check.
             for (auto &[c, jc] : tauClasses) {
-                auto it = classDistrib.find(c);
-                if (it == classDistrib.end()) return;
-                if (jc > it->second.first + it->second.second) return;
+                if (jc > nhArr[c] + npArr[c]) return;
             }
 
             // Look up this r-tuple
@@ -528,7 +537,7 @@ NucleusCoreDecompositionRClique_RegionCPI(
             std::vector<double> f = {1.0}; // polynomial coefficients, f[0]=1
 
             for (auto &[c, jc] : tauClasses) {
-                auto &[nhc, npc] = classDistrib[c];
+                int nhc = nhArr[c], npc = npArr[c];
                 int bMin = std::max(0, jc - nhc);
                 int bMax = std::min(jc, npc);
                 if (bMin > bMax) return; // infeasible
@@ -560,8 +569,11 @@ NucleusCoreDecompositionRClique_RegionCPI(
                 totalTuplesOnPaths++;
             }
         };
-        enumerateMultisets(pathClasses, r, 0, cur, cb);
+        enumerateMultisets(classDirty, r, 0, cur, cb);
     }
+    // Final cleanup of dirty counters so the scratch is clean for any later user
+    for (auto cid : classDirty) { nhArr[cid] = 0; npArr[cid] = 0; }
+    classDirty.clear();
 
     auto tStep4 = std::chrono::high_resolution_clock::now();
     auto step4Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep4 - tStep3).count();
