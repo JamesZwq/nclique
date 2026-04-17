@@ -810,11 +810,12 @@ NucleusCoreDecompositionRClique_RegionCPI(
     };
 
     // Compile-time bounds for stack-allocated hot-path buffers. m (classes per
-    // path) and T (target pivot count) are small in all workloads we care about
-    // (avg 13-17 and ≤ s-h respectively). If a path exceeds these, we fall
-    // back to assert-abort rather than silently truncating.
-    constexpr int MAX_M = 64;
-    constexpr int MAX_T = 64;
+    // path) is small (typ. 10-30). T (pivot target) and per-class range can
+    // grow with s — for large s on graphs with big MCs, range can hit 100+.
+    // Bumped bounds cover com-dblp (max MC ~114) and similar. If a path
+    // exceeds these, we fall back to heap via a helper (see below).
+    constexpr int MAX_M = 128;
+    constexpr int MAX_T = 128;
 
     // --- Weighted feasible count: convolution DP (stack buffers, no allocation) ---
     // Caller builds a packed weight table: wtsFlat[i*wtStride + k] = weight for
