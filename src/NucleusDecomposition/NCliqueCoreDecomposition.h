@@ -265,6 +265,26 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex = nullptr);
 
+// RegionCPI NoCPI (ablation): replaces Step 4 with direct s-clique enumeration.
+// All other optimizations (region FM, tuple, private cloud, dead-box peeling)
+// unchanged. Used to measure the CPI formula's contribution in isolation.
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI_NoCPI(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
+// RegionCPI Cloud: Vandermonde-Chu + IE support, analytical cloud events
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI_Cloud(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
+// RegionCPI V3 + Hierarchy: outputs per-level connected component counts
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI_Hierarchy(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
 // RegionCPI V3B: Lazy Split optimization (s < 2r: unaffected tuples stay on parent)
 std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI_V2(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,

@@ -84,6 +84,12 @@ ALGOS = {
     # from "V3_NP" so the new optimized ablation data is separate from the
     # legacy V3_NP data that was collected on the pre-optimization code.
     "V3Fast_NP": {"env": "PIVOTER_RUN_REGION_V3FAST", "extra": {"PIVOTER_V3_NO_PRIVATE": "1"}},
+    # V3Fast_NoCPI: ablation for the CPI support formula (Theorem 6.1).
+    # Identical to V3Fast except Step 4 (initial support) enumerates every
+    # s-subset of every region instead of using the CPI convolution.
+    # Expected to time out on graphs with large MC size × large s; that's
+    # the intended evidence of the CPI formula's value.
+    "V3Fast_NoCPI": {"env": "PIVOTER_RUN_REGION_V3NOCPI"},
 }
 
 # ============ Helpers ============
