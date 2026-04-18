@@ -194,7 +194,8 @@ static SDCTBuildResult buildSDCTWithIndex(
         envSet("PIVOTER_RUN_REGION") || envSet("PIVOTER_RUN_REGION_EXACT") ||
         envSet("PIVOTER_RUN_REGION_V2") || envSet("PIVOTER_RUN_REGION_V3") ||
         envSet("PIVOTER_RUN_REGION_V3B") || envSet("PIVOTER_RUN_REGION_V3FAST") ||
-        envSet("PIVOTER_RUN_REGION_V3NOCPI");
+        envSet("PIVOTER_RUN_REGION_V3NOCPI") || envSet("PIVOTER_RUN_REGION_V3H") ||
+        envSet("PIVOTER_RUN_REGION_V3HC");
     // Region V2 only needs tree + maxCliqueTags, skip expensive ci and tgv
     // V3 needs SDCT tree with hold/pivot info — DO NOT use MaxCliqEnum for V3
     const bool regionOnly =
@@ -202,6 +203,7 @@ static SDCTBuildResult buildSDCTWithIndex(
         !envSet("PIVOTER_RUN_ST") && !envSet("PIVOTER_RUN_V20") &&
         !envSet("PIVOTER_RUN_REGION_V3") && !envSet("PIVOTER_RUN_REGION_V3B") &&
         !envSet("PIVOTER_RUN_REGION_V3FAST") && !envSet("PIVOTER_RUN_REGION_V3NOCPI") &&
+        !envSet("PIVOTER_RUN_REGION_V3H") && !envSet("PIVOTER_RUN_REGION_V3HC") &&
         !envSet("PIVOTER_RUN_REGION_V4");
 
     DynamicGraphSet<TreeGraphNode> tgv(n);
@@ -212,7 +214,8 @@ static SDCTBuildResult buildSDCTWithIndex(
     // V3/V3B/V3C use SDCT tree but do NOT need cliqueIndex
     const bool v3Only = (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B") ||
                          envSet("PIVOTER_RUN_REGION_V3C") || envSet("PIVOTER_RUN_REGION_V3FAST") ||
-                         envSet("PIVOTER_RUN_REGION_V3NOCPI")) &&
+                         envSet("PIVOTER_RUN_REGION_V3NOCPI") || envSet("PIVOTER_RUN_REGION_V3H") ||
+                         envSet("PIVOTER_RUN_REGION_V3HC")) &&
                         !envSet("PIVOTER_COMPARE") && !envSet("PIVOTER_RUN_ST");
     auto ci = (r >= 3 && !quotientLabOnly && !regionOnly && !v3Only) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
     daf::StaticVector<daf::Size> keepBuf, dropBuf;
@@ -744,6 +747,8 @@ static bool dispatchR3Plus(
         {"PIVOTER_RUN_REGION_V4", "Region + ST (V4) r>=3", NucleusCoreDecompositionRClique_RegionST},
         {"PIVOTER_RUN_REGION_V3B", "Region CPI V3B (Lazy Split) r>=3", NucleusCoreDecompositionRClique_RegionCPI_V2},
         {"PIVOTER_RUN_REGION_V3FAST", "Region CPI V3 Fast r>=3", NucleusCoreDecompositionRClique_RegionCPI},
+        {"PIVOTER_RUN_REGION_V3H", "Region CPI V3 Fast + Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_Hierarchy},
+        {"PIVOTER_RUN_REGION_V3HC", "Region CPI V3 Fast + Class-based Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_HierarchyClass},
         {"PIVOTER_RUN_REGION_V3NOCPI", "Region CPI V3 NoCPI (ablation) r>=3", NucleusCoreDecompositionRClique_RegionCPI_NoCPI},
         {"PIVOTER_RUN_REGION_V3", "Region CPI (V3) r>=3", NucleusCoreDecompositionRClique_RegionCPI},
         {"PIVOTER_RUN_REGION_V2F", "Region V2 Fast r>=3", NucleusCoreDecompositionRClique_RegionV2_Fast},
@@ -899,6 +904,7 @@ int main(int argc, char **argv) {
     // Pruning: only enumerate cliques with size >= s (skip small branches)
     if (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B")
         || envSet("PIVOTER_RUN_REGION_V3FAST") || envSet("PIVOTER_RUN_REGION_V3NOCPI")
+        || envSet("PIVOTER_RUN_REGION_V3H") || envSet("PIVOTER_RUN_REGION_V3HC")
         || envSet("PIVOTER_RUN_REGION_V4") || envSet("PIVOTER_RUN_REGION_V2F")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
             return enumerateMaximalCliques(edgeGraph, s);
