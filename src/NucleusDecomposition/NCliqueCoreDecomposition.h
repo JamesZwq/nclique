@@ -291,6 +291,14 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex = nullptr);
 
+// RegionCPI V3 low-memory variant (V3LM): replaces tuple->path index with
+// class->path inverted index, reducing aux memory by 50-100x on graphs
+// with poor class compression.
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI_LowMem(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
 // RegionCPI V3B: Lazy Split optimization (s < 2r: unaffected tuples stay on parent)
 std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI_V2(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
