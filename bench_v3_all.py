@@ -46,8 +46,8 @@ LOGDIR = Path("bench_v3_all_logs")
 DATADIR = "/data/wenqianz"
 # Split graphs across servers: tods1 gets dense graphs, tods2 gets large/power-law
 SERVER_GRAPHS = {
-    "tods1": ["com-dblp", "email-Eu-core", "com-youtube", "soc-Epinions1"],
-    "tods2": ["dblp-core30", "web-Stanford", "web-it-2004"],
+    "tods1": ["ca-HepPh", "com-dblp", "email-Eu-core", "com-youtube", "soc-Epinions1"],
+    "tods2": ["dblp-core30", "web-Stanford", "web-it-2004", "twitter_combined", "wiki-Talk"],
 }
 
 
@@ -89,17 +89,17 @@ ALGOS = {
     # s-subset of every region instead of using the CPI convolution.
     # Expected to time out on graphs with large MC size × large s; that's
     # the intended evidence of the CPI formula's value.
-    "V3Fast_NoCPI": {"env": "PIVOTER_RUN_REGION_V3NOCPI"},
+    # "V3Fast_NoCPI": {"env": "PIVOTER_RUN_REGION_V3NOCPI"},
     # V3H: V3Fast + tuple-based hierarchy post-processing. DSU atoms are
     # tuples + region-private-blocks + FM MCs. Matches the baseline's
     # (unordered_set) under-count semantic at top levels where no tuple is
     # yet alive. Kept as an ablation for the class-based variant below.
-    "V3H":       {"env": "PIVOTER_RUN_REGION_V3H"},
+    # "V3H":       {"env": "PIVOTER_RUN_REGION_V3H"},
     # V3HC: V3Fast + class-based hierarchy post-processing. DSU atoms are
     # classes + FM MCs. Produces a strict vertex partition per component
     # and correctly includes non-private region vertices at levels where
     # tuples have not yet activated (Lemma 2.3 + class symmetry).
-    "V3HC":      {"env": "PIVOTER_RUN_REGION_V3HC"},
+    # "V3HC":      {"env": "PIVOTER_RUN_REGION_V3HC"},
 }
 
 # ============ Helpers ============
