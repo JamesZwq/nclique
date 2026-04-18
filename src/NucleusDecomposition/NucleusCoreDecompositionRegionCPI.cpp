@@ -820,10 +820,11 @@ NucleusCoreDecompositionRClique_RegionCPI(
     // Compile-time bounds for stack-allocated hot-path buffers. m (classes per
     // path) is small (typ. 10-30). T (pivot target) and per-class range can
     // grow with s — for large s on graphs with big MCs, range can hit 100+.
-    // Bumped bounds cover com-dblp (max MC ~114) and similar. If a path
-    // exceeds these, we fall back to heap via a helper (see below).
-    constexpr int MAX_M = 128;
-    constexpr int MAX_T = 128;
+    // Bumped bounds cover ca-HepPh (max MC 239), web-it-2004 (max MC 432)
+    // and similar very dense graphs. If a path exceeds these, we fall back
+    // to heap (via _heap helpers below).
+    constexpr int MAX_M = 512;
+    constexpr int MAX_T = 256;
 
     // --- Weighted feasible count: convolution DP (stack buffers, no allocation) ---
     // Caller builds a packed weight table: wtsFlat[i*wtStride + k] = weight for
@@ -1246,7 +1247,14 @@ NucleusCoreDecompositionRClique_RegionCPI(
         for (daf::Size piIdx : affectedPathSet) {
             auto &pi = pathInfos[piIdx];
             int m = (int)pi.classIds.size();
-            if (m > MAX_M) { std::cerr << "refreshAffectedPaths: m > MAX_M\n"; std::abort(); }
+            // MAX_M is the stack-buffer cap for hot paths; bumped to 512.
+            // If an exotic graph violates this, abort with an actionable
+            // message rather than silently overflowing.
+            if (m > MAX_M) {
+                std::cerr << "refreshAffectedPaths: m=" << m << " exceeds MAX_M="
+                          << MAX_M << " (raise MAX_M or add heap fallback)\n";
+                std::abort();
+            }
 
             std::vector<daf::Size> alive;
             alive.reserve(pi.tupleIdxs.size());
