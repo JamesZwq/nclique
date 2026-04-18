@@ -90,6 +90,16 @@ ALGOS = {
     # Expected to time out on graphs with large MC size × large s; that's
     # the intended evidence of the CPI formula's value.
     "V3Fast_NoCPI": {"env": "PIVOTER_RUN_REGION_V3NOCPI"},
+    # V3H: V3Fast + tuple-based hierarchy post-processing. DSU atoms are
+    # tuples + region-private-blocks + FM MCs. Matches the baseline's
+    # (unordered_set) under-count semantic at top levels where no tuple is
+    # yet alive. Kept as an ablation for the class-based variant below.
+    "V3H":       {"env": "PIVOTER_RUN_REGION_V3H"},
+    # V3HC: V3Fast + class-based hierarchy post-processing. DSU atoms are
+    # classes + FM MCs. Produces a strict vertex partition per component
+    # and correctly includes non-private region vertices at levels where
+    # tuples have not yet activated (Lemma 2.3 + class symmetry).
+    "V3HC":      {"env": "PIVOTER_RUN_REGION_V3HC"},
 }
 
 # ============ Helpers ============
@@ -197,16 +207,20 @@ def load_existing():
     return done
 
 def extract_timing(txt):
-    """Extract total_ms, peel_ms, mem_kB from log text."""
+    """Extract total_ms, peel_ms, hier_ms, mem_kB from log text."""
     m_total = re.search(r'NucleusCoreDecomposition took:\s*([\d.]+)', txt)
     m_peel = re.search(r'Peeling time:\s*([\d.]+)', txt)
+    # V3H prints "Hierarchy post-processing: X ms (...)"; V3HC prints
+    # "Hierarchy post-processing (class-based): X ms (...)".
+    m_hier = re.search(r'Hierarchy post-processing(?: \(class-based\))?:\s*([\d.]+)', txt)
     m_mem = re.search(r'\[Memory-\w+\]\s*Final Memory:\s*([\d.]+)\s*kB', txt)
     total_ms = float(m_total.group(1)) if m_total else -1.0
     peel_ms = float(m_peel.group(1)) if m_peel else -1.0
+    hier_ms = float(m_hier.group(1)) if m_hier else -1.0
     mem_kB = float(m_mem.group(1)) if m_mem else -1.0
-    return total_ms, peel_ms, mem_kB
+    return total_ms, peel_ms, hier_ms, mem_kB
 
-def write_result(graph, r, s, algo, status, wall_ms=-1, total_ms=-1, peel_ms=-1, mem_kB=-1):
+def write_result(graph, r, s, algo, status, wall_ms=-1, total_ms=-1, peel_ms=-1, hier_ms=-1, mem_kB=-1):
     """Append one result row to CSV."""
     with open(OUTCSV, "a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=FIELDNAMES)
@@ -215,10 +229,11 @@ def write_result(graph, r, s, algo, status, wall_ms=-1, total_ms=-1, peel_ms=-1,
             "wall_ms": f"{wall_ms:.1f}" if wall_ms >= 0 else "",
             "total_ms": f"{total_ms:.1f}" if total_ms >= 0 else "",
             "peel_ms": f"{peel_ms:.1f}" if peel_ms >= 0 else "",
+            "hier_ms": f"{hier_ms:.1f}" if hier_ms >= 0 else "",
             "mem_kB": f"{mem_kB:.0f}" if mem_kB >= 0 else "",
         })
 
-FIELDNAMES = ["graph", "r", "s", "algo", "status", "wall_ms", "total_ms", "peel_ms", "mem_kB"]
+FIELDNAMES = ["graph", "r", "s", "algo", "status", "wall_ms", "total_ms", "peel_ms", "hier_ms", "mem_kB"]
 
 # ============ Main ============
 def main():
@@ -381,16 +396,17 @@ def main():
                 status = f"ERROR({ret}{'/' + sig_names[ret] if ret in sig_names else ''})"
             (LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log").write_text(txt)
             wall_ms = (time.time() - t0) * 1000
-            total_ms, peel_ms, mem_kB = extract_timing(txt)
+            total_ms, peel_ms, hier_ms, mem_kB = extract_timing(txt)
             t_str = f"{wall_ms:.0f}ms" if wall_ms >= 0 else "N/A"
+            h_str = f" hier={hier_ms:.0f}ms" if hier_ms >= 0 else ""
             m_str = f"{mem_kB/1024:.0f}MB" if mem_kB >= 0 else ""
-            print(f"  {an:>6} {g} r={rr} s={ss} {status} wall={t_str} {m_str}", flush=True)
+            print(f"  {an:>6} {g} r={rr} s={ss} {status} wall={t_str}{h_str} {m_str}", flush=True)
             if status.startswith("ERROR") and txt:
                 # Print last few lines of stdout/stderr to help diagnose
                 tail = "\n".join(txt.strip().splitlines()[-5:])
                 if tail:
                     print(f"         last output: {tail}", flush=True)
-            write_result(g, rr, ss, an, status, wall_ms, total_ms, peel_ms, mem_kB)
+            write_result(g, rr, ss, an, status, wall_ms, total_ms, peel_ms, hier_ms, mem_kB)
             done.add((g, rr, ss, an))
             launched += 1
             if status in ("TIMEOUT", "OOM"):

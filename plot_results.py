@@ -17,13 +17,15 @@ SERVERS = ["tods1", "tods2"]
 LOCAL_CSV = "bench_v3_all_results.csv"
 REMOTE_CSV = "~/nclique/bench_v3_all_results.csv"
 
-ALGOS = ["REF", "ST", "V3Fast", "V3Fast_NP", "V3Fast_NoCPI", "V3", "V3_NP"]
+ALGOS = ["REF", "ST", "V3Fast", "V3Fast_NP", "V3Fast_NoCPI", "V3H", "V3HC", "V3", "V3_NP"]
 ALGO_TITLES = {
     "REF": "REF (baseline)",
     "ST": "ST (CPI peeling)",
     "V3Fast": "V3Fast (optimized + Private Cloud)",
     "V3Fast_NP": "V3Fast (no Private Cloud) — PC ablation",
     "V3Fast_NoCPI": "V3Fast (no CPI, enumerate) — CPI ablation",
+    "V3H": "V3H (V3Fast + tuple-based hierarchy)",
+    "V3HC": "V3HC (V3Fast + class-based hierarchy)",
     "V3": "V3 (legacy, pre-optimization)",
     "V3_NP": "V3_NP (legacy, pre-optimization)",
 }
