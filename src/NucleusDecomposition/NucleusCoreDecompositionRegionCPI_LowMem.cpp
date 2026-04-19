@@ -1171,6 +1171,30 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         std::cout << "  CPI vs PathInfo match: " << (mismatches == 0 ? "PASS" : ("MISMATCH(" + std::to_string(mismatches) + ")")) << std::endl;
     }
 
+    // --- LowMem: free Step-1..5 scaffolding that the peel loop never reads ---
+    // Everything below this comment is referenced only during PathInfo build
+    // and earlier phases; the peel loop uses only rTuples, pathInfos,
+    // classToPaths, support/dSup, and a handful of scalar per-tuple arrays.
+    // Swap-to-empty instead of clear() to actually release the heap buffer
+    // (clear keeps capacity).
+    {
+        robin_hood::unordered_flat_map<TupleKey, daf::Size, TupleHash>().swap(rTupleIndex);
+        std::vector<std::vector<daf::Size>>().swap(regionVerts);
+        std::vector<std::vector<daf::Size>>().swap(vtxMaxPaths);
+        std::vector<ClassInfo>().swap(classes);
+        std::vector<daf::Size>().swap(classOf);
+        std::vector<daf::Size>().swap(classSizes);
+        std::vector<std::vector<daf::Size>>().swap(classesInRegion);
+        std::vector<bool>().swap(isPrivateClass);
+        std::vector<daf::Size>().swap(privateClassMC);
+        std::vector<std::vector<daf::Size>>().swap(activeClassesInRegion);
+        std::vector<double>().swap(mcCoreVal);
+        std::vector<daf::Size>().swap(privateVertexCount);
+        // cpaths / tupleToCPaths live inside the `if (enableDebugVerify)`
+        // block (lines 619-791) and are RAII-freed when that scope closes —
+        // nothing to do here for production runs.
+    }
+
     // --- LowMem: derive tuple->paths on the fly via class->path intersection ---
     //
     // For a tuple tau with distinct key classes {c_1, ..., c_k}, the paths
@@ -1261,6 +1285,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
     // --- Bucket queue setup ---
     std::vector<double> dSup = support;
+    std::vector<double>().swap(support);  // LowMem: `support` is read only to seed dSup
     std::vector<bool> rPeeled(rTuples.size(), false);
 
     // LowMem path-retirement: track alive tuple count per path. When it drops
