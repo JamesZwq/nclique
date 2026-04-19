@@ -817,7 +817,13 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         std::vector<int> nh;         // per-class hold count (parallel to classIds)
         std::vector<int> np;         // per-class pivot count (parallel to classIds)
         std::vector<daf::Size> tupleIdxs;  // alive tuples on this path
-        std::vector<std::vector<int>> deadBoxes;  // accumulated dead requirement vectors
+        // LowMem: flat pool of dead boxes as int16_t. Each box has exactly
+        // |classIds| elements (= m), so box i lives at
+        // deadBoxesFlat[i*m .. i*m + m). Values are req[c] = max(0, jc - nh_c)
+        // where jc ≤ s and nh_c ≥ 0, so req fits comfortably in int16. Peak
+        // savings: kills per-box heap header + capacity rounding (typ. 3–4×
+        // smaller than vector<vector<int>> for the real m=5..15 case).
+        std::vector<int16_t> deadBoxesFlat;
     };
 
     // LowMem: classIds is sorted (see build below), so binary search is O(log k)
@@ -1259,21 +1265,30 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         return out;
     };
 
-    // --- Build requirement vector for tuple τ on path P ---
-    // reqVec[i] = max(0, j_c - nh_c) for each class i on the path
-    auto buildReqVec = [&](daf::Size tidx, const PathInfo &pi) -> std::vector<int> {
+    // --- Append requirement vector for tuple τ on path P to flat pool ---
+    // req[i] = max(0, j_c - nh_c) for each class i on the path.
+    // LowMem: writes m int16_t values directly to pi.deadBoxesFlat.
+    auto appendReqBox = [&](daf::Size tidx, PathInfo &pi) {
         int m = (int)pi.classIds.size();
-        std::vector<int> req(m, 0);
-        auto &key = rTuples[tidx].key;
-        std::unordered_map<daf::Size, int> counts;
-        for (auto c : key) counts[c]++;
-        for (auto &[c, jc] : counts) {
-            int idx2 = findClassIdx(pi, c);
-            if (idx2 >= 0) {
-                req[idx2] = std::max(0, jc - pi.nh[idx2]);
+        size_t off = pi.deadBoxesFlat.size();
+        pi.deadBoxesFlat.resize(off + m, 0);
+        int16_t *req = pi.deadBoxesFlat.data() + off;
+        auto &key = rTuples[tidx].key;  // sorted with repetitions
+        // Merge-scan key (sorted) against pi.classIds (sorted) to avoid
+        // the per-call unordered_map<> construct/destruct.
+        int ci = 0, ki = 0;
+        int klen = (int)key.size();
+        while (ci < m && ki < klen) {
+            if (pi.classIds[ci] < key[ki]) { ++ci; }
+            else if (pi.classIds[ci] > key[ki]) { ++ki; }
+            else {
+                int jc = 1;
+                while (ki + jc < klen && key[ki + jc] == key[ki]) ++jc;
+                int v = jc - pi.nh[ci];
+                if (v > 0) req[ci] = (int16_t)v;
+                ++ci; ki += jc;
             }
         }
-        return req;
     };
 
     std::cout << "  MinCore floor: computed inline during Step 3" << std::endl;
@@ -1356,6 +1371,11 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::vector<int> base, upper;
     base.reserve(MAX_M); upper.reserve(MAX_M);
 
+    // LowMem: scratch box-pack for expanding pi.deadBoxesFlat into the nested
+    // vector<vector<int>> shape that countUnionRec / normalizeBoxes consume.
+    // Capacity accumulates across calls — once warm, resize() is a no-op.
+    std::vector<std::vector<int>> boxesScratch;
+
     auto refreshAffectedPaths = [&](const std::unordered_set<daf::Size> &affectedPathSet,
                                     BigLevel &scanLevel) {
         for (daf::Size piIdx : affectedPathSet) {
@@ -1378,7 +1398,20 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             }
             pi.tupleIdxs = std::move(alive);
 
-            if (pi.deadBoxes.empty()) continue;
+            if (pi.deadBoxesFlat.empty()) continue;
+
+            // Expand flat int16 pool → scratch nested vector<int> for
+            // countUnionRec. Reusing boxesScratch across calls keeps the
+            // outer heap allocation and the inner capacities — after warmup
+            // this is just value copies.
+            size_t nBoxes = pi.deadBoxesFlat.size() / (size_t)m;
+            boxesScratch.resize(nBoxes);
+            for (size_t bi = 0; bi < nBoxes; ++bi) {
+                auto &dst = boxesScratch[bi];
+                dst.resize(m);
+                const int16_t *src = pi.deadBoxesFlat.data() + bi * m;
+                for (int j = 0; j < m; ++j) dst[j] = src[j];
+            }
 
             // upper is tuple-independent per path: fill once.
             upper.assign(m, 0);
@@ -1402,7 +1435,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                 }
 
                 UnionCtx ctx{m, pi.T, 0, tidx, &pi};
-                double newDead = countUnionRec(base, upper, pi.deadBoxes, ctx);
+                double newDead = countUnionRec(base, upper, boxesScratch, ctx);
                 prof_totalRecCalls += ctx.recCalls;
                 prof_unionCalls++;
 
@@ -1503,14 +1536,17 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             if (pathAliveCount[piIdx] == 0) {
                 // Path retired: no surviving tuple consults this path again.
                 // Free its deadBoxes (biggest per-path pot) and tupleIdxs.
-                std::vector<std::vector<int>>().swap(pi.deadBoxes);
+                std::vector<int16_t>().swap(pi.deadBoxesFlat);
                 std::vector<daf::Size>().swap(pi.tupleIdxs);
                 prof_pathsRetired++;
                 // Skip adding to affected set and skip box construction.
                 continue;
             }
+            int m = (int)pi.classIds.size();
+            // Reserve m ints for each new box up-front to avoid repeated grow.
+            pi.deadBoxesFlat.reserve(pi.deadBoxesFlat.size() + deadTuples.size() * m);
             for (auto idx : deadTuples) {
-                pi.deadBoxes.push_back(buildReqVec(idx, pi));
+                appendReqBox(idx, pi);
                 prof_deadBoxesAdded++;
             }
             affectedPathSet.insert(piIdx);
