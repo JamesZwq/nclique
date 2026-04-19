@@ -79,6 +79,14 @@ ALGOS = {
     # been retired; older rows under those keys remain in the CSV as
     # historical data and are NOT re-run.
     "V3Fast":    {"env": "PIVOTER_RUN_REGION_V3FAST"},
+    # V3LM: same algorithm as V3Fast but with memory-focused engineering
+    # (class->path inverted index replaces tuple->path; path retirement
+    # frees deadBoxes once all path tuples are peeled; deadCache evicts
+    # entries for peeled tuples; classToIdx unordered_map dropped for
+    # binary search on sorted classIds). Same correctness, essentially
+    # same wall time, order-of-magnitude peak RSS reduction on dense
+    # graphs (ca-HepPh r=3 s=4: 22.2 GB -> 1.79 GB, 12.4x).
+    "V3LM":      {"env": "PIVOTER_RUN_REGION_V3LM"},
     # V3Fast_NP: same optimized path as V3Fast but with Private Cloud OFF —
     # strict ablation study for the Private Cloud optimization. Renamed
     # from "V3_NP" so the new optimized ablation data is separate from the
