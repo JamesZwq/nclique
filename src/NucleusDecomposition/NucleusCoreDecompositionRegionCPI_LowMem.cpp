@@ -967,6 +967,12 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         if (n == 0) return {false, std::move(effective), 0};
 
         // Sort (lexicographic) and dedup, via index permutation.
+        // Note: dominance pruning below would also remove duplicates
+        // (kept == cand is a dominance match), but the dominance check
+        // is O(|minimal|) per candidate — skipping this dedup could
+        // pay O(D × |minimal|) extra work in pass 2 where D =
+        // number of duplicates. Empirically measured as a net loss on
+        // graphs with box-pattern repetition, so we keep the dedup.
         std::vector<int> idx(n);
         std::iota(idx.begin(), idx.end(), 0);
         auto lexLess = [&](int a, int b) {
@@ -1106,19 +1112,18 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
         double total = feasWeighted(pivot, upper, ctx);
 
-        // Build `remaining` = norm.boxesFlat with the pivot box removed.
-        // One contiguous vector; no per-box allocations.
+        // Zero-copy "remove pivot from boxes": swap pivot box to the last
+        // slot of norm.boxesFlat and pass (numBoxes - 1) to recursion.
+        // norm.boxesFlat is a local vector about to be destroyed on
+        // return, so mutating it is safe. Saves a full allocation +
+        // O(numBoxes * m) copy per recursion depth.
         int remCount = norm.numBoxes - 1;
-        std::vector<int16_t> remaining;
-        remaining.reserve((size_t)remCount * ctx.m);
-        if (pivIdx > 0)
-            remaining.insert(remaining.end(),
-                             norm.boxesFlat.data(),
-                             norm.boxesFlat.data() + (size_t)pivIdx * ctx.m);
-        if (pivIdx < norm.numBoxes - 1)
-            remaining.insert(remaining.end(),
-                             norm.boxesFlat.data() + (size_t)(pivIdx + 1) * ctx.m,
-                             norm.boxesFlat.data() + (size_t)norm.numBoxes * ctx.m);
+        if (pivIdx != remCount) {
+            int16_t *p = norm.boxesFlat.data();
+            int16_t *a = p + (size_t)pivIdx * ctx.m;
+            int16_t *b = p + (size_t)remCount * ctx.m;
+            for (int i = 0; i < ctx.m; ++i) std::swap(a[i], b[i]);
+        }
 
         for (int splitDim = 0; splitDim < ctx.m; ++splitDim) {
             if (pivot[splitDim] <= lower[splitDim]) continue;
@@ -1130,7 +1135,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             nextUpper[splitDim] = std::min(nextUpper[splitDim], pivot[splitDim] - 1);
 
             total += countUnionRec(nextLower, nextUpper,
-                                   remaining.data(), remCount, ctx);
+                                   norm.boxesFlat.data(), remCount, ctx);
         }
         return total;
     };
@@ -1283,60 +1288,80 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     // realize the tuple's multiplicities (same check the original build
     // loop does).  Cost: O(sum |classToPaths[c_i]|) for the sorted-list
     // intersection plus O(|candidates|) for the multiplicity filter.
-    auto pathsCoveringTuple = [&](daf::Size tidx) -> std::vector<daf::Size> {
+    //
+    // Hot-path audit fixes (compared to the naive implementation):
+    //  * `key` is already sorted with repetitions → build (class, mult)
+    //    pairs in one O(k) scan, avoiding std::map allocations.
+    //  * All per-call vectors (counts/cur/next/out) are captured scratch
+    //    reused across calls — zero mallocs on the hot path after warmup.
+    //  * Inside the filter loop the `idx < 0` branch is dead (intersection
+    //    guarantees class-in-pi.classIds), removed.
+    std::vector<std::pair<daf::Size, int>> pct_counts_buf;
+    std::vector<daf::Size> pct_cur_buf, pct_next_buf;
+    auto pathsCoveringTuple = [&](daf::Size tidx,
+                                  std::vector<daf::Size> &out) {
+        out.clear();
         const auto &key = rTuples[tidx].key;
-        if (key.empty()) return {};
-        // Build distinct-class multiplicity map.
-        std::map<daf::Size, int> counts;
-        for (auto c : key) counts[c]++;
+        if (key.empty()) return;
 
-        // Collect pointers to the per-class sorted lists, smallest first.
-        struct ListPtr { const std::vector<daf::Size> *vec; int jc; };
-        std::vector<ListPtr> lists;
-        lists.reserve(counts.size());
-        for (auto &[c, jc] : counts) {
-            // If a required class is absent from classToPaths entirely,
-            // no path can cover tau.
-            if (c >= classToPaths.size() || classToPaths[c].empty())
-                return {};
-            lists.push_back({&classToPaths[c], jc});
+        // Build (class, mult) pairs from sorted key with no heap allocs.
+        auto &counts = pct_counts_buf;
+        counts.clear();
+        for (size_t k = 0; k < key.size(); ) {
+            daf::Size c = key[k];
+            int jc = 1;
+            while (k + jc < key.size() && key[k + jc] == c) ++jc;
+            counts.emplace_back(c, jc);
+            k += jc;
         }
-        std::sort(lists.begin(), lists.end(),
-                  [](const ListPtr &a, const ListPtr &b) {
-                      return a.vec->size() < b.vec->size();
-                  });
 
-        // k-way sorted-list intersection: accumulate into 'cur'.
-        std::vector<daf::Size> cur(lists[0].vec->begin(), lists[0].vec->end());
-        for (size_t i = 1; i < lists.size() && !cur.empty(); ++i) {
-            const auto &rhs = *lists[i].vec;
-            std::vector<daf::Size> next;
-            next.reserve(std::min(cur.size(), rhs.size()));
+        // Find smallest list; abort early if any class is absent.
+        int smallestIdx = -1;
+        size_t smallest = SIZE_MAX;
+        for (int i = 0; i < (int)counts.size(); ++i) {
+            daf::Size c = counts[i].first;
+            if (c >= classToPaths.size() || classToPaths[c].empty()) return;
+            if (classToPaths[c].size() < smallest) {
+                smallest = classToPaths[c].size();
+                smallestIdx = i;
+            }
+        }
+
+        // Seed 'cur' with the smallest list (fewest iterations for
+        // subsequent intersections). assign() reuses capacity.
+        auto &cur = pct_cur_buf;
+        auto &next = pct_next_buf;
+        {
+            const auto &first = classToPaths[counts[smallestIdx].first];
+            cur.assign(first.begin(), first.end());
+        }
+
+        // Sorted-list intersection against the remaining k-1 class lists.
+        for (int i = 0; i < (int)counts.size() && !cur.empty(); ++i) {
+            if (i == smallestIdx) continue;
+            const auto &rhs = classToPaths[counts[i].first];
+            next.clear();
             size_t a = 0, b = 0;
             while (a < cur.size() && b < rhs.size()) {
                 if (cur[a] < rhs[b]) ++a;
                 else if (cur[a] > rhs[b]) ++b;
                 else { next.push_back(cur[a]); ++a; ++b; }
             }
-            cur = std::move(next);
+            std::swap(cur, next);  // preserves both capacities
         }
 
-        // Filter: each candidate path must have enough vertices of each
-        // required class.  Class membership is already guaranteed by the
-        // intersection (classToPaths membership is class-in-path).
-        std::vector<daf::Size> out;
+        // Multiplicity filter. findClassIdx is guaranteed ≥ 0 for every
+        // (piIdx, c) in the intersection, so no null-check needed.
         out.reserve(cur.size());
         for (auto piIdx : cur) {
             const auto &pi = pathInfos[piIdx];
             bool ok = true;
             for (auto &[c, jc] : counts) {
                 int idx = findClassIdx(pi, c);
-                if (idx < 0) { ok = false; break; }
                 if (jc > pi.nh[idx] + pi.np[idx]) { ok = false; break; }
             }
             if (ok) out.push_back(piIdx);
         }
-        return out;
     };
 
     // --- Append requirement vector for tuple τ on path P to flat pool ---
@@ -1445,9 +1470,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::vector<int> base, upper;
     base.reserve(MAX_M); upper.reserve(MAX_M);
 
-    auto refreshAffectedPaths = [&](const std::unordered_set<daf::Size> &affectedPathSet,
+    auto refreshAffectedPaths = [&](const std::vector<daf::Size> &affectedPaths,
                                     BigLevel &scanLevel) {
-        for (daf::Size piIdx : affectedPathSet) {
+        for (daf::Size piIdx : affectedPaths) {
             auto &pi = pathInfos[piIdx];
             int m = (int)pi.classIds.size();
             // MAX_M is the stack-buffer cap for hot paths; bumped to 512.
@@ -1459,13 +1484,12 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                 std::abort();
             }
 
-            std::vector<daf::Size> alive;
-            alive.reserve(pi.tupleIdxs.size());
-            for (auto tidx : pi.tupleIdxs) {
-                if (!rPeeled[tidx])
-                    alive.push_back(tidx);
-            }
-            pi.tupleIdxs = std::move(alive);
+            // In-place filter of peeled tuples; preserves capacity so
+            // subsequent refreshes reuse the same heap allocation.
+            pi.tupleIdxs.erase(
+                std::remove_if(pi.tupleIdxs.begin(), pi.tupleIdxs.end(),
+                               [&](daf::Size t) { return rPeeled[t]; }),
+                pi.tupleIdxs.end());
 
             if (pi.deadBoxesFlat.empty()) continue;
 
@@ -1529,6 +1553,20 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     daf::Size numPeeled = 0;
     BigLevel currentLevel = 0, coreLevel = 0;
 
+    // Audit fix #4: `newlyDeadByPath` and `affectedPathSet` were
+    // rebuilt per batch as hashmap / hashset with per-entry heap allocs
+    // and per-batch bucket-array allocation. Reuse across batches via:
+    //   - `batchDead[piIdx]`  : dead tuples added this batch (inner
+    //     vector capacity preserved across batches).
+    //   - `touchedPaths`      : the list of piIdx with non-empty
+    //     batchDead[piIdx], so we can iterate instead of scanning.
+    // Amortized over the whole peel these structures hold only the
+    // currently-active working set, no repeated hashmap growth.
+    std::vector<std::vector<daf::Size>> batchDead(pathInfos.size());
+    std::vector<daf::Size> touchedPaths;
+    touchedPaths.reserve(64);
+    std::vector<daf::Size> pctPaths;  // pathsCoveringTuple output buffer
+
     while (numPeeled < rTuples.size()) {
         while (currentLevel < BUCKET_CAP && buckets[currentLevel].empty())
             currentLevel++;
@@ -1572,15 +1610,15 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             coreDist[(double)coreLevel] += (int64_t)rTuples[idx].mult;
         }
 
-        std::unordered_map<daf::Size, std::vector<daf::Size>> newlyDeadByPath;
+        // Clear last batch's scratch (capacity kept).
+        for (auto pi : touchedPaths) batchDead[pi].clear();
+        touchedPaths.clear();
+
         for (auto idx : batch) {
-            // LowMem: tupleToPathInfos replaced by pathsCoveringTuple(idx),
-            // which intersects per-class path lists.  Amortised cost is
-            // comparable to the explicit lookup but memory is O(|classes|
-            // * avg paths per class) instead of O(|tuples| * avg paths
-            // per tuple).
-            for (auto piIdx : pathsCoveringTuple(idx)) {
-                newlyDeadByPath[piIdx].push_back(idx);
+            pathsCoveringTuple(idx, pctPaths);
+            for (auto piIdx : pctPaths) {
+                if (batchDead[piIdx].empty()) touchedPaths.push_back(piIdx);
+                batchDead[piIdx].push_back(idx);
                 // Evict stale deadCache entry: once tuple idx is peeled, no
                 // future refresh queries (piIdx, idx).
                 uint64_t cacheKey = (uint64_t)piIdx * numTuplesSz + idx;
@@ -1588,30 +1626,29 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             }
         }
 
-        std::unordered_set<daf::Size> affectedPathSet;
-        for (auto &[piIdx, deadTuples] : newlyDeadByPath) {
+        // Affected-path list built in-place below (retired paths dropped).
+        std::vector<daf::Size> affected;
+        affected.reserve(touchedPaths.size());
+        for (auto piIdx : touchedPaths) {
             auto &pi = pathInfos[piIdx];
-            // Decrement alive-on-path counter for each newly dead tuple.
+            auto &deadTuples = batchDead[piIdx];
             pathAliveCount[piIdx] -= (daf::Size)deadTuples.size();
             if (pathAliveCount[piIdx] == 0) {
                 // Path retired: no surviving tuple consults this path again.
-                // Free its deadBoxes (biggest per-path pot) and tupleIdxs.
                 std::vector<int16_t>().swap(pi.deadBoxesFlat);
                 std::vector<daf::Size>().swap(pi.tupleIdxs);
                 prof_pathsRetired++;
-                // Skip adding to affected set and skip box construction.
                 continue;
             }
             int m = (int)pi.classIds.size();
-            // Reserve m ints for each new box up-front to avoid repeated grow.
             pi.deadBoxesFlat.reserve(pi.deadBoxesFlat.size() + deadTuples.size() * m);
             for (auto idx : deadTuples) {
                 appendReqBox(idx, pi);
                 prof_deadBoxesAdded++;
             }
-            affectedPathSet.insert(piIdx);
+            affected.push_back(piIdx);
         }
-        refreshAffectedPaths(affectedPathSet, currentLevel);
+        refreshAffectedPaths(affected, currentLevel);
     }
 
     auto tStep6End = std::chrono::high_resolution_clock::now();
