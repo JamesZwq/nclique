@@ -818,8 +818,14 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         std::vector<int> np;         // per-class pivot count (parallel to classIds)
         std::vector<daf::Size> tupleIdxs;  // alive tuples on this path
         std::vector<std::vector<int>> deadBoxes;  // accumulated dead requirement vectors
-        // classId -> index in classIds (for fast lookup)
-        std::unordered_map<daf::Size, int> classToIdx;
+    };
+
+    // LowMem: classIds is sorted (see build below), so binary search is O(log k)
+    // with k = |classes on path|, typ. small.  Saves ~48-56 B/entry vs unordered_map.
+    auto findClassIdx = [](const PathInfo &pi, daf::Size cid) -> int {
+        auto it = std::lower_bound(pi.classIds.begin(), pi.classIds.end(), cid);
+        if (it == pi.classIds.end() || *it != cid) return -1;
+        return (int)(it - pi.classIds.begin());
     };
 
     // Compile-time bounds for stack-allocated hot-path buffers. m (classes per
@@ -1085,7 +1091,6 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         pi.nh.resize(pi.classIds.size());
         pi.np.resize(pi.classIds.size());
         for (int i = 0; i < (int)pi.classIds.size(); ++i) {
-            pi.classToIdx[pi.classIds[i]] = i;
             pi.nh[i] = cd[pi.classIds[i]].first;
             pi.np[i] = cd[pi.classIds[i]].second;
         }
@@ -1105,9 +1110,8 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             std::unordered_map<daf::Size, int> counts;
             for (auto c : cur) counts[c]++;
             for (auto &[c, jc] : counts) {
-                auto cit = pi.classToIdx.find(c);
-                if (cit == pi.classToIdx.end()) return;
-                int idx2 = cit->second;
+                int idx2 = findClassIdx(pi, c);
+                if (idx2 < 0) return;
                 if (jc > pi.nh[idx2] + pi.np[idx2]) return;
             }
             pi.tupleIdxs.push_back(tidx);
@@ -1222,9 +1226,8 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             const auto &pi = pathInfos[piIdx];
             bool ok = true;
             for (auto &[c, jc] : counts) {
-                auto it = pi.classToIdx.find(c);
-                if (it == pi.classToIdx.end()) { ok = false; break; }
-                int idx = it->second;
+                int idx = findClassIdx(pi, c);
+                if (idx < 0) { ok = false; break; }
                 if (jc > pi.nh[idx] + pi.np[idx]) { ok = false; break; }
             }
             if (ok) out.push_back(piIdx);
@@ -1241,9 +1244,8 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         std::unordered_map<daf::Size, int> counts;
         for (auto c : key) counts[c]++;
         for (auto &[c, jc] : counts) {
-            auto it = pi.classToIdx.find(c);
-            if (it != pi.classToIdx.end()) {
-                int idx2 = it->second;
+            int idx2 = findClassIdx(pi, c);
+            if (idx2 >= 0) {
                 req[idx2] = std::max(0, jc - pi.nh[idx2]);
             }
         }
@@ -1261,9 +1263,19 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::vector<double> dSup = support;
     std::vector<bool> rPeeled(rTuples.size(), false);
 
+    // LowMem path-retirement: track alive tuple count per path. When it drops
+    // to 0, the path's deadBoxes/tupleIdxs are useless forever (any future
+    // pathsCoveringTuple(t) hit implies t ∈ pi.tupleIdxs at build; if count==0,
+    // all such t are already peeled, so pi is never consulted again).
+    std::vector<daf::Size> pathAliveCount(pathInfos.size());
+    for (daf::Size i = 0; i < pathInfos.size(); ++i)
+        pathAliveCount[i] = (daf::Size)pathInfos[i].tupleIdxs.size();
+
     // Profiling counters
     long long prof_unionCalls = 0, prof_totalRecCalls = 0;
     long long prof_deadBoxesAdded = 0, prof_tupleUpdates = 0;
+    long long prof_pathsRetired = 0;
+    long long prof_deadCacheEvicted = 0;
     daf::Size numTuplesSz = rTuples.size();
 
     // Bucket levels (support counts, core values) are stored as double
@@ -1449,13 +1461,29 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             // comparable to the explicit lookup but memory is O(|classes|
             // * avg paths per class) instead of O(|tuples| * avg paths
             // per tuple).
-            for (auto piIdx : pathsCoveringTuple(idx))
+            for (auto piIdx : pathsCoveringTuple(idx)) {
                 newlyDeadByPath[piIdx].push_back(idx);
+                // Evict stale deadCache entry: once tuple idx is peeled, no
+                // future refresh queries (piIdx, idx).
+                uint64_t cacheKey = (uint64_t)piIdx * numTuplesSz + idx;
+                if (deadCache.erase(cacheKey)) prof_deadCacheEvicted++;
+            }
         }
 
         std::unordered_set<daf::Size> affectedPathSet;
         for (auto &[piIdx, deadTuples] : newlyDeadByPath) {
             auto &pi = pathInfos[piIdx];
+            // Decrement alive-on-path counter for each newly dead tuple.
+            pathAliveCount[piIdx] -= (daf::Size)deadTuples.size();
+            if (pathAliveCount[piIdx] == 0) {
+                // Path retired: no surviving tuple consults this path again.
+                // Free its deadBoxes (biggest per-path pot) and tupleIdxs.
+                std::vector<std::vector<int>>().swap(pi.deadBoxes);
+                std::vector<daf::Size>().swap(pi.tupleIdxs);
+                prof_pathsRetired++;
+                // Skip adding to affected set and skip box construction.
+                continue;
+            }
             for (auto idx : deadTuples) {
                 pi.deadBoxes.push_back(buildReqVec(idx, pi));
                 prof_deadBoxesAdded++;
@@ -1474,6 +1502,10 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::cout << "  Peeled active tuples: " << numPeeled << " / " << rTuples.size() << std::endl;
     std::cout << "  Batches: " << prof_batchCount << std::endl;
     std::cout << "  Dead boxes added: " << prof_deadBoxesAdded << std::endl;
+    std::cout << "  Paths retired (alive=0): " << prof_pathsRetired
+              << " / " << pathInfos.size() << std::endl;
+    std::cout << "  DeadCache evictions (on peel): " << prof_deadCacheEvicted << std::endl;
+    std::cout << "  DeadCache final size: " << deadCache.size() << std::endl;
     std::cout << "  Union calls: " << prof_unionCalls << std::endl;
     std::cout << "  Total recursive calls: " << prof_totalRecCalls << std::endl;
     std::cout << "  Tuple updates: " << prof_tupleUpdates << std::endl;
