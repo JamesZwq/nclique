@@ -74,40 +74,13 @@ GRAPHS = get_graphs()
 ALGOS = {
     "REF":       {"env": "PIVOTER_RUN_REF"},
     "ST":        {"env": "PIVOTER_RUN_ST"},
-    # "V3Fast" = current optimized V3 with Private Cloud ON. The legacy "V3"
-    # and "V3_NP" keys (slow, sometimes-wrong due to uint32 overflow) have
-    # been retired; older rows under those keys remain in the CSV as
-    # historical data and are NOT re-run.
-    "V3Fast":    {"env": "PIVOTER_RUN_REGION_V3FAST"},
-    # V3LM: same algorithm as V3Fast but with memory-focused engineering
-    # (class->path inverted index replaces tuple->path; path retirement
-    # frees deadBoxes once all path tuples are peeled; deadCache evicts
-    # entries for peeled tuples; classToIdx unordered_map dropped for
-    # binary search on sorted classIds). Same correctness, essentially
-    # same wall time, order-of-magnitude peak RSS reduction on dense
-    # graphs (ca-HepPh r=3 s=4: 22.2 GB -> 1.79 GB, 12.4x).
+    # V3LM replaces V3Fast as the production Region CPI variant. Strict
+    # theoretical dominance on memory and empirical dominance on time
+    # (ca-HepPh r=3 s=4: V3Fast 169 s / 25 GB → V3LM 123 s / 1.23 GB;
+    # com-dblp r=3 s=4: V3Fast 2667 ms / 581 MB → V3LM 1882 ms / 253 MB).
+    # V3Fast, V3Fast_NP, V3Fast_NoCPI, V3H, V3HC are retained in
+    # plot_results.py for historical CSV rows but are no longer re-run.
     "V3LM":      {"env": "PIVOTER_RUN_REGION_V3LM"},
-    # V3Fast_NP: same optimized path as V3Fast but with Private Cloud OFF —
-    # strict ablation study for the Private Cloud optimization. Renamed
-    # from "V3_NP" so the new optimized ablation data is separate from the
-    # legacy V3_NP data that was collected on the pre-optimization code.
-    "V3Fast_NP": {"env": "PIVOTER_RUN_REGION_V3FAST", "extra": {"PIVOTER_V3_NO_PRIVATE": "1"}},
-    # V3Fast_NoCPI: ablation for the CPI support formula (Theorem 6.1).
-    # Identical to V3Fast except Step 4 (initial support) enumerates every
-    # s-subset of every region instead of using the CPI convolution.
-    # Expected to time out on graphs with large MC size × large s; that's
-    # the intended evidence of the CPI formula's value.
-    # "V3Fast_NoCPI": {"env": "PIVOTER_RUN_REGION_V3NOCPI"},
-    # V3H: V3Fast + tuple-based hierarchy post-processing. DSU atoms are
-    # tuples + region-private-blocks + FM MCs. Matches the baseline's
-    # (unordered_set) under-count semantic at top levels where no tuple is
-    # yet alive. Kept as an ablation for the class-based variant below.
-    # "V3H":       {"env": "PIVOTER_RUN_REGION_V3H"},
-    # V3HC: V3Fast + class-based hierarchy post-processing. DSU atoms are
-    # classes + FM MCs. Produces a strict vertex partition per component
-    # and correctly includes non-private region vertices at levels where
-    # tuples have not yet activated (Lemma 2.3 + class symmetry).
-    # "V3HC":      {"env": "PIVOTER_RUN_REGION_V3HC"},
 }
 
 # ============ Helpers ============
