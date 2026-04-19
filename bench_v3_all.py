@@ -46,13 +46,32 @@ LOGDIR = Path("bench_v3_all_logs")
 DATADIR = "/data/wenqianz"
 # Split graphs across servers: tods1 gets dense graphs, tods2 gets large/power-law
 SERVER_GRAPHS = {
-    # V3LM sweet-spot candidates (collaboration nets with MC in the 20–250 range,
-    # where the compression ratio ρ = |tuples|/|classes| is large):
+    # V3LM sweet-spot candidates (collaboration nets with MC in the 20-250
+    # range, where the compression ratio rho = |tuples|/|classes| is large):
     #   ca-HepPh (MC=239, gold), ca-AstroPh (MC=57), ca-CondMat (MC=26),
     #   ca-GrQc (MC=44, small but high-MC-per-node).
-    "tods1": ["ca-HepPh", "ca-AstroPh", "ca-CondMat", "ca-GrQc", "com-dblp",
-              "email-Eu-core", "com-youtube", "soc-Epinions1"],
-    "tods2": ["dblp-core30", "web-Stanford", "web-it-2004", "twitter_combined", "wiki-Talk"],
+    # Ordered small-to-large so the driver starts on fast sweet-spot graphs
+    # and the expensive ones (ca-HepPh, com-youtube) are tail-loaded — this
+    # front-loads paper-relevant data into the CSV.
+    "tods1": ["ca-GrQc", "ca-CondMat", "ca-AstroPh", "email-Eu-core",
+              "com-dblp", "soc-Epinions1", "com-youtube", "ca-HepPh"],
+    # tods2: move web-Stanford (a known V3LM negative case — sparse hub-spoke)
+    # to the end so the heavy TIMEOUT / OOM churn doesn't starve other graphs.
+    "tods2": ["dblp-core30", "twitter_combined", "wiki-Talk", "web-it-2004",
+              "web-Stanford"],
+}
+
+# Hardcoded skip regions. These (graph, r, s) blocks are known death zones
+# where V3Fast already OOMs and even V3LM either times out or consumes
+# ~full machine memory, producing no useful comparison data. Skipping keeps
+# cluster time available for sweet-spot configs.
+DEATH_ZONE_SKIP = {
+    # ca-HepPh: s>=22 drives per-worker RSS past 400 GB in parallel with
+    # 32 concurrent workers. V3Fast already OOMed on these in prior runs.
+    "ca-HepPh":      lambda r, s: s >= 22,
+    # web-Stanford: sparse hub-spoke graph is V3LM's documented failure
+    # regime; V3Fast OOMs, V3LM either TIMEOUTs (>1 h) or OOMs on s>=12.
+    "web-Stanford":  lambda r, s: s >= 12,
 }
 
 
@@ -472,7 +491,14 @@ def main():
                 print(f"    → re-queued ({retry_count[key]}/{MAX_RETRIES})", flush=True)
 
     def should_skip(g, rr, ss, an):
-        return rr >= timeout_at[(g, an, ss)]
+        if rr >= timeout_at[(g, an, ss)]:
+            return True
+        # Hardcoded death-zone skip (applies to ALL algos to avoid wasting
+        # cluster time on configs that won't produce comparison data).
+        dz = DEATH_ZONE_SKIP.get(g)
+        if dz is not None and dz(rr, ss):
+            return True
+        return False
 
     def launch(g, rr, ss, an):
         env = {**os.environ, ALGOS[an]["env"]: "1"}
