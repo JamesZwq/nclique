@@ -46,7 +46,12 @@ LOGDIR = Path("bench_v3_all_logs")
 DATADIR = "/data/wenqianz"
 # Split graphs across servers: tods1 gets dense graphs, tods2 gets large/power-law
 SERVER_GRAPHS = {
-    "tods1": ["ca-HepPh", "ca-AstroPh", "com-dblp", "email-Eu-core", "com-youtube", "soc-Epinions1"],
+    # V3LM sweet-spot candidates (collaboration nets with MC in the 20–250 range,
+    # where the compression ratio ρ = |tuples|/|classes| is large):
+    #   ca-HepPh (MC=239, gold), ca-AstroPh (MC=57), ca-CondMat (MC=26),
+    #   ca-GrQc (MC=44, small but high-MC-per-node).
+    "tods1": ["ca-HepPh", "ca-AstroPh", "ca-CondMat", "ca-GrQc", "com-dblp",
+              "email-Eu-core", "com-youtube", "soc-Epinions1"],
     "tods2": ["dblp-core30", "web-Stanford", "web-it-2004", "twitter_combined", "wiki-Talk"],
 }
 
