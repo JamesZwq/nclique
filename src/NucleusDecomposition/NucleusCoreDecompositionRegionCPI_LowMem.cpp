@@ -930,63 +930,120 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         }
     };
 
-    // --- normalizeBoxes ---
-    struct NormResult { bool fullCover; std::vector<std::vector<int>> boxes; };
+    // --- normalizeBoxes (flat int16 in/out) ---
+    // LowMem: boxes flow through the whole branch-and-bound as a single
+    // std::vector<int16_t> of length numBoxes * m (box i at offset i*m).
+    // This is the same storage format as pi.deadBoxesFlat, so the top-level
+    // call uses pi.deadBoxesFlat.data() directly with zero conversion. The
+    // recursion's `remaining` and normalizeBoxes's `effective`/`minimal`
+    // are also int16 flat — so no std::vector<std::vector<int>> ever exists
+    // on the hot path. This closes the theoretical-regression corner case
+    // of the previous scratch-based design (one-dominant-path graphs).
+    struct NormResult { bool fullCover; std::vector<int16_t> boxesFlat; int numBoxes; };
     auto normalizeBoxes = [](const std::vector<int> &lower,
                              const std::vector<int> &upper, int T,
-                             const std::vector<std::vector<int>> &boxes,
+                             const int16_t *boxesIn, int numIn, int m,
                              bool pruneDom) -> NormResult {
-        int m = (int)lower.size();
-        std::vector<std::vector<int>> effective;
-        effective.reserve(boxes.size());
-        for (auto &box : boxes) {
-            std::vector<int> cur(m);
+        std::vector<int16_t> effective;
+        effective.reserve((size_t)numIn * m);
+        int16_t cur[MAX_M];
+        for (int bi = 0; bi < numIn; ++bi) {
+            const int16_t *box = boxesIn + (size_t)bi * m;
             bool impossible = false;
             int lSum = 0;
+            bool equalsLower = true;
             for (int i = 0; i < m; ++i) {
-                cur[i] = std::max(lower[i], box[i]);
-                if (cur[i] > upper[i]) { impossible = true; break; }
-                lSum += cur[i];
+                int v = std::max(lower[i], (int)box[i]);
+                if (v > upper[i]) { impossible = true; break; }
+                cur[i] = (int16_t)v;
+                lSum += v;
+                if (v != lower[i]) equalsLower = false;
             }
             if (impossible || lSum > T) continue;
-            if (cur == lower) return {true, {}};
-            effective.push_back(std::move(cur));
+            if (equalsLower) return {true, {}, 0};
+            effective.insert(effective.end(), cur, cur + m);
         }
-        std::sort(effective.begin(), effective.end());
-        effective.erase(std::unique(effective.begin(), effective.end()), effective.end());
-        if (!pruneDom) return {false, effective};
+        int n = (int)(effective.size() / (size_t)m);
+        if (n == 0) return {false, std::move(effective), 0};
 
-        // Sort by sum ascending for dominance pruning
-        std::sort(effective.begin(), effective.end(), [](const std::vector<int> &a, const std::vector<int> &b) {
-            int sa = 0, sb = 0;
-            for (int x : a) sa += x;
-            for (int x : b) sb += x;
-            return sa != sb ? sa < sb : a < b;
+        // Sort (lexicographic) and dedup, via index permutation.
+        std::vector<int> idx(n);
+        std::iota(idx.begin(), idx.end(), 0);
+        auto lexLess = [&](int a, int b) {
+            const int16_t *pa = effective.data() + (size_t)a * m;
+            const int16_t *pb = effective.data() + (size_t)b * m;
+            for (int i = 0; i < m; ++i)
+                if (pa[i] != pb[i]) return pa[i] < pb[i];
+            return false;
+        };
+        std::sort(idx.begin(), idx.end(), lexLess);
+
+        std::vector<int16_t> sorted;
+        sorted.reserve(effective.size());
+        for (int ii = 0; ii < n; ++ii) {
+            const int16_t *candidate = effective.data() + (size_t)idx[ii] * m;
+            if (!sorted.empty()) {
+                const int16_t *prev = sorted.data() + (sorted.size() - m);
+                bool same = true;
+                for (int i = 0; i < m; ++i)
+                    if (prev[i] != candidate[i]) { same = false; break; }
+                if (same) continue;
+            }
+            sorted.insert(sorted.end(), candidate, candidate + m);
+        }
+        effective = std::move(sorted);
+        n = (int)(effective.size() / (size_t)m);
+        if (!pruneDom) return {false, std::move(effective), n};
+
+        // Dominance pruning: sort by sum asc (ties lex), keep box iff no
+        // already-kept box dominates it componentwise (kept ≤ cand).
+        idx.assign(n, 0);
+        std::iota(idx.begin(), idx.end(), 0);
+        std::vector<int> sums(n, 0);
+        for (int i = 0; i < n; ++i) {
+            const int16_t *p = effective.data() + (size_t)i * m;
+            int s = 0;
+            for (int k = 0; k < m; ++k) s += p[k];
+            sums[i] = s;
+        }
+        std::sort(idx.begin(), idx.end(), [&](int a, int b) {
+            if (sums[a] != sums[b]) return sums[a] < sums[b];
+            return lexLess(a, b);
         });
-        std::vector<std::vector<int>> minimal;
-        for (auto &box : effective) {
+        std::vector<int16_t> minimal;
+        minimal.reserve(effective.size());
+        int minCount = 0;
+        for (int ii = 0; ii < n; ++ii) {
+            const int16_t *cand = effective.data() + (size_t)idx[ii] * m;
             bool dominated = false;
-            for (auto &kept : minimal) {
+            for (int k = 0; k < minCount; ++k) {
+                const int16_t *kept = minimal.data() + (size_t)k * m;
                 bool dom = true;
                 for (int i = 0; i < m; ++i)
-                    if (kept[i] > box[i]) { dom = false; break; }
+                    if (kept[i] > cand[i]) { dom = false; break; }
                 if (dom) { dominated = true; break; }
             }
-            if (!dominated) minimal.push_back(box);
+            if (!dominated) {
+                minimal.insert(minimal.end(), cand, cand + m);
+                ++minCount;
+            }
         }
-        return {false, minimal};
+        return {false, std::move(minimal), minCount};
     };
 
     // --- countUnionWeighted: branch-and-bound ---
-    // choosePivotBox: pick box with fewest active dims (ties: highest sum)
+    // choosePivotBox: pick box with fewest active dims (ties: highest sum).
+    // LowMem: reads from int16 flat boxes array directly.
     auto choosePivot = [](const std::vector<int> &lower,
-                          const std::vector<std::vector<int>> &boxes, int m) -> int {
+                          const int16_t *boxes, int numBoxes, int m) -> int {
         int bestIdx = 0, bestActive = m + 1, bestSum = -1;
-        for (int i = 0; i < (int)boxes.size(); ++i) {
+        for (int i = 0; i < numBoxes; ++i) {
+            const int16_t *b = boxes + (size_t)i * m;
             int active = 0, lsum = 0;
             for (int c = 0; c < m; ++c) {
-                if (boxes[i][c] > lower[c]) ++active;
-                lsum += boxes[i][c];
+                int bv = b[c];
+                if (bv > lower[c]) ++active;
+                lsum += bv;
             }
             if (active < bestActive || (active == bestActive && lsum > bestSum)) {
                 bestIdx = i; bestActive = active; bestSum = lsum;
@@ -1002,9 +1059,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         const PathInfo *pi;       // path being evaluated
     };
 
-    // Forward-declare countUnionRec
+    // Forward-declare countUnionRec (int16-flat boxes).
     std::function<double(const std::vector<int>&, const std::vector<int>&,
-                         const std::vector<std::vector<int>>&, UnionCtx&)> countUnionRec;
+                         const int16_t*, int, UnionCtx&)> countUnionRec;
 
     // Helper: compute weighted feasible for given lower/upper using tuple weights
     // Stack-allocated wts buffer; one call per feasWeighted invocation.
@@ -1021,7 +1078,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     };
 
     countUnionRec = [&](const std::vector<int> &lower, const std::vector<int> &upper,
-                        const std::vector<std::vector<int>> &boxes,
+                        const int16_t *boxes, int numBoxes,
                         UnionCtx &ctx) -> double {
         ctx.recCalls++;
         // Feasibility check
@@ -1034,18 +1091,34 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             if (ctx.T < minS || ctx.T > maxS) return 0.0;
         }
 
-        auto norm = normalizeBoxes(lower, upper, ctx.T, boxes, true);
+        auto norm = normalizeBoxes(lower, upper, ctx.T, boxes, numBoxes, ctx.m, true);
         if (norm.fullCover) return feasWeighted(lower, upper, ctx);
-        if (norm.boxes.empty()) return 0.0;
+        if (norm.numBoxes == 0) return 0.0;
 
-        // Branch on pivot
-        int pivIdx = choosePivot(lower, norm.boxes, ctx.m);
-        std::vector<int> pivot = norm.boxes[pivIdx];
+        // Branch on pivot. Copy pivot into a std::vector<int> because the
+        // lower/upper/pivot axes still flow as `int` through feasWeighted.
+        int pivIdx = choosePivot(lower, norm.boxesFlat.data(), norm.numBoxes, ctx.m);
+        std::vector<int> pivot(ctx.m);
+        {
+            const int16_t *pv = norm.boxesFlat.data() + (size_t)pivIdx * ctx.m;
+            for (int i = 0; i < ctx.m; ++i) pivot[i] = (int)pv[i];
+        }
 
         double total = feasWeighted(pivot, upper, ctx);
 
-        std::vector<std::vector<int>> remaining = norm.boxes;
-        remaining.erase(remaining.begin() + pivIdx);
+        // Build `remaining` = norm.boxesFlat with the pivot box removed.
+        // One contiguous vector; no per-box allocations.
+        int remCount = norm.numBoxes - 1;
+        std::vector<int16_t> remaining;
+        remaining.reserve((size_t)remCount * ctx.m);
+        if (pivIdx > 0)
+            remaining.insert(remaining.end(),
+                             norm.boxesFlat.data(),
+                             norm.boxesFlat.data() + (size_t)pivIdx * ctx.m);
+        if (pivIdx < norm.numBoxes - 1)
+            remaining.insert(remaining.end(),
+                             norm.boxesFlat.data() + (size_t)(pivIdx + 1) * ctx.m,
+                             norm.boxesFlat.data() + (size_t)norm.numBoxes * ctx.m);
 
         for (int splitDim = 0; splitDim < ctx.m; ++splitDim) {
             if (pivot[splitDim] <= lower[splitDim]) continue;
@@ -1056,7 +1129,8 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                 nextLower[earlier] = std::max(nextLower[earlier], pivot[earlier]);
             nextUpper[splitDim] = std::min(nextUpper[splitDim], pivot[splitDim] - 1);
 
-            total += countUnionRec(nextLower, nextUpper, remaining, ctx);
+            total += countUnionRec(nextLower, nextUpper,
+                                   remaining.data(), remCount, ctx);
         }
         return total;
     };
@@ -1371,11 +1445,6 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::vector<int> base, upper;
     base.reserve(MAX_M); upper.reserve(MAX_M);
 
-    // LowMem: scratch box-pack for expanding pi.deadBoxesFlat into the nested
-    // vector<vector<int>> shape that countUnionRec / normalizeBoxes consume.
-    // Capacity accumulates across calls — once warm, resize() is a no-op.
-    std::vector<std::vector<int>> boxesScratch;
-
     auto refreshAffectedPaths = [&](const std::unordered_set<daf::Size> &affectedPathSet,
                                     BigLevel &scanLevel) {
         for (daf::Size piIdx : affectedPathSet) {
@@ -1400,18 +1469,8 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
             if (pi.deadBoxesFlat.empty()) continue;
 
-            // Expand flat int16 pool → scratch nested vector<int> for
-            // countUnionRec. Reusing boxesScratch across calls keeps the
-            // outer heap allocation and the inner capacities — after warmup
-            // this is just value copies.
-            size_t nBoxes = pi.deadBoxesFlat.size() / (size_t)m;
-            boxesScratch.resize(nBoxes);
-            for (size_t bi = 0; bi < nBoxes; ++bi) {
-                auto &dst = boxesScratch[bi];
-                dst.resize(m);
-                const int16_t *src = pi.deadBoxesFlat.data() + bi * m;
-                for (int j = 0; j < m; ++j) dst[j] = src[j];
-            }
+            // LowMem: countUnionRec reads pi.deadBoxesFlat directly.
+            int nBoxes = (int)(pi.deadBoxesFlat.size() / (size_t)m);
 
             // upper is tuple-independent per path: fill once.
             upper.assign(m, 0);
@@ -1435,7 +1494,8 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                 }
 
                 UnionCtx ctx{m, pi.T, 0, tidx, &pi};
-                double newDead = countUnionRec(base, upper, boxesScratch, ctx);
+                double newDead = countUnionRec(base, upper,
+                                               pi.deadBoxesFlat.data(), nBoxes, ctx);
                 prof_totalRecCalls += ctx.recCalls;
                 prof_unionCalls++;
 
