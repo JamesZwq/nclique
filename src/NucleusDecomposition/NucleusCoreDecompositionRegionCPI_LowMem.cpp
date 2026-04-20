@@ -858,9 +858,13 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
         int target = T - minSum;
         if (target < 0) return 0.0;
-        if (target >= MAX_T + 1) { std::cerr << "countFeasibleWeighted: target=" << target << " exceeds MAX_T\n"; std::abort(); }
-
-        double dp[MAX_T + 1], next[MAX_T + 1];
+        // LowMem: dp/next buffers on heap via thread_local scratch so MC=432
+        // graphs (e.g. web-it-2004) no longer abort when target > MAX_T.
+        // Stack buffers were the bottleneck on MC-dominated graphs.
+        thread_local std::vector<double> dpBuf;
+        if ((int)dpBuf.size() < 2 * (target + 1)) dpBuf.resize(2 * (target + 1));
+        double *dp = dpBuf.data();
+        double *next = dp + (target + 1);
         for (int t = 0; t <= target; ++t) dp[t] = 0.0;
         dp[0] = 1.0;
         for (int i = 0; i < m; ++i) {
@@ -881,16 +885,19 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         return dp[target];
     };
 
-    // --- Build weight tables for tuple τ' on path P (stack buffers) ---
-    // Writes into wtsFlat (expected size MAX_M × wtStride). wtLen[i] = range per class.
+    // --- Build weight tables for tuple τ' on path P ---
+    // Writes into wtsFlat (caller-sized to m * wtStride). wtLen[i] = range per class.
     // Uses merge-scan on sorted key + sorted pi.classIds to avoid an unordered_map.
+    // LowMem: jvec moved from stack [MAX_M] to thread_local heap so paths with
+    // m > MAX_M (e.g. web-it-2004 MC=432) no longer overflow.
     auto buildWeightTables_sb = [&](daf::Size tidx, const PathInfo &pi,
                                     const int *lower, const int *upper,
                                     double *wtsFlat, int wtStride, int *wtLen) {
         int m = (int)pi.classIds.size();
         auto &key = rTuples[tidx].key;   // sorted with repetitions
-        // Merge-scan: jvec[i] = j_c(τ) for class pi.classIds[i]
-        int jvec[MAX_M];
+        thread_local std::vector<int> jvecBuf;
+        if ((int)jvecBuf.size() < m) jvecBuf.resize(m);
+        int *jvec = jvecBuf.data();
         for (int i = 0; i < m; ++i) jvec[i] = 0;
         {
             int ci = 0, ki = 0;
@@ -910,7 +917,12 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             int range = hi - lo + 1;
             double *row = wtsFlat + (size_t)i * wtStride;
             if (range <= 0) { wtLen[i] = 0; continue; }
-            if (range > wtStride) { std::cerr << "buildWeightTables: range > wtStride\n"; std::abort(); }
+            // LowMem: range > wtStride used to abort; callers now size
+            // wtStride dynamically (max range across classes) so this
+            // should never trip, but assert for safety during development.
+            if (range > wtStride) { std::cerr << "buildWeightTables: range=" << range
+                << " > wtStride=" << wtStride << " (bug: caller under-sized buffer)\n";
+                std::abort(); }
             wtLen[i] = range;
             int jc = jvec[i];
             int nhc = pi.nh[i], npc = pi.np[i];
@@ -946,7 +958,10 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                              bool pruneDom) -> NormResult {
         std::vector<int16_t> effective;
         effective.reserve((size_t)numIn * m);
-        int16_t cur[MAX_M];
+        // LowMem: cur buffer on thread_local heap for m > MAX_M graphs.
+        thread_local std::vector<int16_t> curBuf;
+        if ((int)curBuf.size() < m) curBuf.resize(m);
+        int16_t *cur = curBuf.data();
         for (int bi = 0; bi < numIn; ++bi) {
             const int16_t *box = boxesIn + (size_t)bi * m;
             bool impossible = false;
@@ -1070,15 +1085,26 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                          const int16_t*, int, UnionCtx&)> countUnionRec;
 
     // Helper: compute weighted feasible for given lower/upper using tuple weights
-    // Stack-allocated wts buffer; one call per feasWeighted invocation.
+    // LowMem: wtsFlat / wtLen moved from stack [MAX_M * (MAX_T+1)] to
+    // thread_local heap so graphs with np_c > MAX_T (e.g. web-it-2004 MC=432,
+    // np_c can be 300+) no longer abort. Per-call cost: two size-check
+    // resizes; after warmup the buffers are at peak size, zero allocation.
     auto feasWeighted = [&](const std::vector<int> &lower, const std::vector<int> &upper,
                             UnionCtx &ctx) -> double {
         int m = (int)ctx.pi->classIds.size();
-        // wtStride is the max "range" per class = max(upper[i] - lower[i] + 1).
-        // Since lower[i] ≥ 0 and upper[i] ≤ np_c ≤ s, bounding by MAX_T+1 is safe.
-        constexpr int wtStride = MAX_T + 1;
-        double wtsFlat[MAX_M * wtStride];
-        int wtLen[MAX_M];
+        // wtStride = max(upper[i] - lower[i] + 1, 1) to fit any class's range.
+        int wtStride = 1;
+        for (int i = 0; i < m; ++i) {
+            int range = upper[i] - lower[i] + 1;
+            if (range > wtStride) wtStride = range;
+        }
+        thread_local std::vector<double> wtsFlatBuf;
+        thread_local std::vector<int> wtLenBuf;
+        size_t need = (size_t)m * wtStride;
+        if (wtsFlatBuf.size() < need) wtsFlatBuf.resize(need);
+        if ((int)wtLenBuf.size() < m) wtLenBuf.resize(m);
+        double *wtsFlat = wtsFlatBuf.data();
+        int *wtLen = wtLenBuf.data();
         buildWeightTables_sb(ctx.tidx, *ctx.pi, lower.data(), upper.data(), wtsFlat, wtStride, wtLen);
         return countFeasibleWeighted_sb(lower.data(), upper.data(), m, ctx.T, wtsFlat, wtStride, wtLen);
     };
@@ -1238,9 +1264,15 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                     base[i] = std::max(0, jc - pi.nh[i]);
                     upper[i] = pi.np[i];
                 }
-                constexpr int wtStride = MAX_T + 1;
-                double wtsFlat[MAX_M * wtStride];
-                int wtLen[MAX_M];
+                int wtStride = 1;
+                for (int i = 0; i < m; ++i) {
+                    int range = upper[i] - base[i] + 1;
+                    if (range > wtStride) wtStride = range;
+                }
+                std::vector<double> wtsFlatV((size_t)m * wtStride);
+                std::vector<int> wtLenV(m);
+                double *wtsFlat = wtsFlatV.data();
+                int *wtLen = wtLenV.data();
                 buildWeightTables_sb(tidx, pi, base.data(), upper.data(), wtsFlat, wtStride, wtLen);
                 double aggr = countFeasibleWeighted_sb(base.data(), upper.data(), m, pi.T, wtsFlat, wtStride, wtLen);
                 supCheck[tidx] += aggr / rTuples[tidx].mult;
@@ -1475,14 +1507,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         for (daf::Size piIdx : affectedPaths) {
             auto &pi = pathInfos[piIdx];
             int m = (int)pi.classIds.size();
-            // MAX_M is the stack-buffer cap for hot paths; bumped to 512.
-            // If an exotic graph violates this, abort with an actionable
-            // message rather than silently overflowing.
-            if (m > MAX_M) {
-                std::cerr << "refreshAffectedPaths: m=" << m << " exceeds MAX_M="
-                          << MAX_M << " (raise MAX_M or add heap fallback)\n";
-                std::abort();
-            }
+            // LowMem: stack-buffer cap (MAX_M/MAX_T) no longer used on the
+            // weight-table hot path (moved to thread_local heap), so no
+            // ceiling to enforce here.
 
             // In-place filter of peeled tuples; preserves capacity so
             // subsequent refreshes reuse the same heap allocation.
