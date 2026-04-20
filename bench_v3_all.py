@@ -102,7 +102,10 @@ GRAPHS = get_graphs()
 
 ALGOS = {
     "REF":       {"env": "PIVOTER_RUN_REF"},
-    "ST":        {"env": "PIVOTER_RUN_ST"},
+    # ST removed: its coverage on hard graphs was identical to REF's (both
+    # TIMEOUT on the same configs), so it added no information beyond REF
+    # and consumed ~1/3 of cluster time. Historical ST rows still render in
+    # plot_results.py.
     # V3LM replaces V3Fast as the production Region CPI variant. Strict
     # theoretical dominance on memory and empirical dominance on time
     # (ca-HepPh r=3 s=4: V3Fast 169 s / 25 GB → V3LM 123 s / 1.23 GB;
