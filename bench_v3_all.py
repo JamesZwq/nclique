@@ -519,12 +519,18 @@ def main():
         running.append((proc, g, rr, ss, an, time.time()))
 
     def propagate_timeout(g, an, ss, rr):
-        """ST/REF: propagate along s for same r (cliqueIndex depends on r, not s).
-        V3LM: same family as ST — initial support build scales with r-clique count,
-        so if r=K at any s times out, r>=K at all s is unlikely to succeed.
-        Without this, a graph like twitter_combined where V3LM times out at r=3 s=10
-        will still try r=3 s=11..max_s and burn 100s of configs."""
-        if an in ("ST", "REF", "V3LM"):
+        """ST/REF: propagate along s for same r — cliqueIndex is O(|r-cliques|),
+        which is monotone in r and independent of s, so if r=K fails at any s,
+        it fails at all s.
+
+        V3LM: do NOT propagate. V3LM's cost depends on BOTH r and s in
+        non-monotone ways (tuple filtering at high s makes peel trivial,
+        while mid-s has the worst combinatorial explosion). Observed on
+        web-it-2004: V3LM timed out at r=8 s=9..16 (mid-s hard zone), but
+        V3 completes r=8..131 s=131 in 160s each. If we propagate, we
+        wrongly SKIP thousands of tractable (r>=8, s>=17) cells — this
+        exact bug cost us 7418 unnecessary skips on web-it-2004 alone."""
+        if an in ("ST", "REF"):
             # cliqueIndex is O(C(n,r)) — if r=K fails, it fails for ALL s
             for sf in range(4, max_cliques.get(g, 0) + 1):
                 timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
