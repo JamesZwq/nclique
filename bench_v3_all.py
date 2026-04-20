@@ -51,7 +51,7 @@ import multiprocessing as _mp
 #   gates throttle us.
 SERVER_MAX_WORKERS = {
     "tods1": 60,
-    "tods2": None,   # None → unlimited (only memory limits)
+    "tods2": 80,
 }
 SERVER_CPU_TARGET = {
     "tods1": 0.85,   # stop launching when loadavg > 96 * 0.85 ≈ 81.6
