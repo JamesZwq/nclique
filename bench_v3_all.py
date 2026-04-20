@@ -36,7 +36,7 @@ except Exception as e:
 BIN = "./build/bin/degeneracy_cliques"
 TIMEOUT = 3600         # seconds per job (1 hour)
 # Concurrency gating:
-#   * MAX_WORKERS: hard ceiling = nproc (server has 96 cores).
+#   * MAX_WORKERS: server-specific hard ceiling (see per-server config).
 #   * CPU_LOAD_TARGET: dynamic gate. Don't launch new workers when the
 #     system's 1-min load average exceeds nproc * CPU_LOAD_TARGET. This
 #     automatically yields to other students sharing the server — their
@@ -44,8 +44,19 @@ TIMEOUT = 3600         # seconds per job (1 hour)
 #     machine is busy.
 #   * Memory gates unchanged.
 import multiprocessing as _mp
-MAX_WORKERS = min(_mp.cpu_count(), 96)  # hard cap (safety)
-CPU_LOAD_TARGET = 0.85 # stop launching when loadavg > nproc * 0.85
+# Per-server policy:
+#   tods1 is SHARED with other students; cap at 60 workers AND use the
+#   CPU load-avg gate (yields to their load).
+#   tods2 is dedicated for us; no CPU cap, no load gate — only the memory
+#   gates throttle us.
+SERVER_MAX_WORKERS = {
+    "tods1": 60,
+    "tods2": None,   # None → unlimited (only memory limits)
+}
+SERVER_CPU_TARGET = {
+    "tods1": 0.85,   # stop launching when loadavg > 96 * 0.85 ≈ 81.6
+    "tods2": None,   # None → CPU gate disabled; run at full tilt
+}
 MEM_LIMIT_GB = 300     # don't launch if total used > this
 MEM_KILL_GB = 450      # kill newest if total used > this
 PER_PROC_MEM_GB = 250  # kill individual process if RSS > this
@@ -95,20 +106,28 @@ ALL_GRAPHS = SERVER_GRAPHS["tods1"] + SERVER_GRAPHS["tods2"]
 
 
 import socket
-def get_graphs():
-    """Pick graphs based on hostname or CLI arg."""
-    # CLI: python3 bench_v3_all.py tods1
+def get_server_name():
+    """Detect server name from CLI arg or hostname. Returns None if unknown."""
     if len(sys.argv) > 1 and sys.argv[1] in SERVER_GRAPHS:
-        return SERVER_GRAPHS[sys.argv[1]]
-    # Auto-detect from hostname
+        return sys.argv[1]
     hostname = socket.gethostname().lower()
     for key in SERVER_GRAPHS:
         if key in hostname:
-            return SERVER_GRAPHS[key]
-    # Default: all graphs
+            return key
+    return None
+
+def get_graphs():
+    """Pick graphs based on hostname or CLI arg."""
+    name = get_server_name()
+    if name is not None:
+        return SERVER_GRAPHS[name]
     return ALL_GRAPHS
 
 GRAPHS = get_graphs()
+_SERVER = get_server_name()
+# Resolve per-server knobs (fall back to conservative defaults).
+MAX_WORKERS = SERVER_MAX_WORKERS.get(_SERVER) or (10**9)   # None → unlimited
+CPU_LOAD_TARGET = SERVER_CPU_TARGET.get(_SERVER)           # may be None
 
 ALGOS = {
     "REF":       {"env": "PIVOTER_RUN_REF"},
@@ -178,17 +197,17 @@ def get_load_avg_1min():
 def cpu_has_headroom(running_count):
     """Can we launch another worker right now?
 
-    True iff the 1-min load avg (which includes other students' processes)
-    is below nproc * CPU_LOAD_TARGET. If other students aren't using the
-    machine we'll fill up to nproc*0.85 workers; if they're busy we'll
-    back off proportionally.
+    Two gates:
+      1. MAX_WORKERS cap (hard limit for the current server)
+      2. CPU load-avg gate (only active if CPU_LOAD_TARGET is not None)
 
-    Caveat: load avg is 1-min averaged and lags. At cold start we may
-    overshoot briefly before the average catches up. MAX_WORKERS acts
-    as the absolute ceiling.
+    On dedicated servers (tods2) CPU_LOAD_TARGET=None disables the load
+    gate entirely — memory is then the only throttle.
     """
     if running_count >= MAX_WORKERS:
         return False
+    if CPU_LOAD_TARGET is None:
+        return True
     target = _mp.cpu_count() * CPU_LOAD_TARGET
     return get_load_avg_1min() < target
 
@@ -371,9 +390,10 @@ def main():
         for g in max_cliques
     )
     print(f"\nTotal jobs: {total_jobs}, already done: {len(done)}")
-    print(f"Max workers: {MAX_WORKERS} (cap), cpu target: {CPU_LOAD_TARGET*100:.0f}% of "
-          f"{_mp.cpu_count()} cores, mem limit: {MEM_LIMIT_GB}GB, kill: {MEM_KILL_GB}GB, "
-          f"timeout: {TIMEOUT}s")
+    cap_str = "unlimited" if MAX_WORKERS >= 10**6 else str(MAX_WORKERS)
+    cpu_str = "disabled" if CPU_LOAD_TARGET is None else f"{CPU_LOAD_TARGET*100:.0f}% of {_mp.cpu_count()}"
+    print(f"Server: {_SERVER or '?'}  Max workers: {cap_str}  cpu target: {cpu_str}  "
+          f"mem limit: {MEM_LIMIT_GB}GB  kill: {MEM_KILL_GB}GB  timeout: {TIMEOUT}s")
 
     # Timeout tracking: (graph, algo, s) → min r that timed out
     timeout_at = defaultdict(lambda: float('inf'))
