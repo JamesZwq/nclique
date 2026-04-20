@@ -72,6 +72,11 @@ DEATH_ZONE_SKIP = {
     # web-Stanford: sparse hub-spoke graph is V3LM's documented failure
     # regime; V3Fast OOMs, V3LM either TIMEOUTs (>1 h) or OOMs on s>=12.
     "web-Stanford":  lambda r, s: s >= 12,
+    # twitter_combined: V3LM measured 211 TIMEOUTs and 0 OK so far on
+    # tods2 — the graph's dense hub structure overwhelms our SDCT build
+    # in the 1 h timeout window. Skip entirely so tods2 can progress to
+    # web-it-2004 and web-Stanford.
+    "twitter_combined": lambda r, s: True,
 }
 
 
@@ -511,9 +516,12 @@ def main():
         running.append((proc, g, rr, ss, an, time.time()))
 
     def propagate_timeout(g, an, ss, rr):
-        """ST: propagate along s for same r (cliqueIndex depends on r, not s).
-        V3/V3_NP: no propagation (performance depends on both r and s)."""
-        if an in ("ST", "REF"):
+        """ST/REF: propagate along s for same r (cliqueIndex depends on r, not s).
+        V3LM: same family as ST — initial support build scales with r-clique count,
+        so if r=K at any s times out, r>=K at all s is unlikely to succeed.
+        Without this, a graph like twitter_combined where V3LM times out at r=3 s=10
+        will still try r=3 s=11..max_s and burn 100s of configs."""
+        if an in ("ST", "REF", "V3LM"):
             # cliqueIndex is O(C(n,r)) — if r=K fails, it fails for ALL s
             for sf in range(4, max_cliques.get(g, 0) + 1):
                 timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
