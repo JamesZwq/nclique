@@ -1167,11 +1167,19 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     };
 
     // --- Build PathInfo structures ---
-    // LowMem: replace tupleToPathInfos (|T| * avg |paths per tuple| pairs)
-    // with classToPaths (|C| * avg |paths per class| pairs), typically
-    // 50-100x smaller on dense graphs with poor class compression.
+    // LowMem-adaptive: build BOTH candidate indices during the PathInfo
+    // loop, then at build-end keep only the cheaper one.
+    //   * classToPaths    : Σ_p |pi.classIds|  (wins on compressible graphs
+    //                                           — ca-HepPh, com-dblp)
+    //   * tupleToPathInfos: Σ_p |pi.tupleIdxs| (wins on mega-clique hubs
+    //                                           — web-it-2004 MC=432, where
+    //                                           a few classes dominate
+    //                                           thousands of paths)
+    // Without this adaptive choice V3LM OOMed on web-it-2004 r=3 s=125+
+    // (V3 works with 188 MB; classToPaths intersection explodes to 250 GB).
     std::vector<PathInfo> pathInfos;
     std::vector<std::vector<daf::Size>> classToPaths(numClasses);
+    std::vector<std::vector<daf::Size>> tupleToPathInfos(rTuples.size());
 
     for (daf::Size pid = 0; pid < numPaths; ++pid) {
         auto &leaf = tree.adj_list[pid];
@@ -1232,13 +1240,28 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
         if (hasTuples) {
             pathInfos.push_back(std::move(pi));
-            // LowMem: populate class->paths index instead of tuple->paths.
-            // piIdx is assigned strictly increasing, so each classToPaths[c]
-            // list is naturally sorted ascending by path id (required for
-            // k-way intersection at peel time).
+            // Populate BOTH candidate indices. piIdx is strictly ascending,
+            // so both lists are naturally sorted by path id.
             for (auto cid : pathInfos.back().classIds)
                 classToPaths[cid].push_back(piIdx);
+            for (auto tidx : pathInfos.back().tupleIdxs)
+                tupleToPathInfos[tidx].push_back(piIdx);
         }
+    }
+
+    // Decide which index is cheaper and free the other.
+    size_t cost_class = 0, cost_tuple = 0;
+    for (auto &v : classToPaths)     cost_class += v.size();
+    for (auto &v : tupleToPathInfos) cost_tuple += v.size();
+    bool use_class_index = (cost_class <= cost_tuple);
+    std::cout << "  classToPaths entries: " << cost_class
+              << "  tupleToPathInfos entries: " << cost_tuple
+              << "  -> using " << (use_class_index ? "classToPaths" : "tupleToPathInfos")
+              << std::endl;
+    if (use_class_index) {
+        std::vector<std::vector<daf::Size>>().swap(tupleToPathInfos);
+    } else {
+        std::vector<std::vector<daf::Size>>().swap(classToPaths);
     }
 
     auto tPathBuild = std::chrono::high_resolution_clock::now();
@@ -1333,6 +1356,14 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     auto pathsCoveringTuple = [&](daf::Size tidx,
                                   std::vector<daf::Size> &out) {
         out.clear();
+        // Fast path (adaptive): when the tuple→path direct index was
+        // selected at build time, just copy that list — no intersection,
+        // no multiplicity filter (tupleToPathInfos already stores only
+        // paths on which tidx is feasible, by construction during build).
+        if (!use_class_index) {
+            out = tupleToPathInfos[tidx];
+            return;
+        }
         const auto &key = rTuples[tidx].key;
         if (key.empty()) return;
 
