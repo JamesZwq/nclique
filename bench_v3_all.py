@@ -35,7 +35,17 @@ except Exception as e:
 # ============ Config ============
 BIN = "./build/bin/degeneracy_cliques"
 TIMEOUT = 3600         # seconds per job (1 hour)
-MAX_WORKERS = 32
+# Concurrency gating:
+#   * MAX_WORKERS: hard ceiling = nproc (server has 96 cores).
+#   * CPU_LOAD_TARGET: dynamic gate. Don't launch new workers when the
+#     system's 1-min load average exceeds nproc * CPU_LOAD_TARGET. This
+#     automatically yields to other students sharing the server — their
+#     processes also show up in load average, so we back off when the
+#     machine is busy.
+#   * Memory gates unchanged.
+import multiprocessing as _mp
+MAX_WORKERS = min(_mp.cpu_count(), 96)  # hard cap (safety)
+CPU_LOAD_TARGET = 0.85 # stop launching when loadavg > nproc * 0.85
 MEM_LIMIT_GB = 300     # don't launch if total used > this
 MEM_KILL_GB = 450      # kill newest if total used > this
 PER_PROC_MEM_GB = 250  # kill individual process if RSS > this
@@ -157,6 +167,30 @@ def get_proc_rss_gb(pid):
     except:
         pass
     return 0
+
+def get_load_avg_1min():
+    """1-min system load average. Reflects OUR workers + other students'."""
+    try:
+        return os.getloadavg()[0]
+    except Exception:
+        return 0.0
+
+def cpu_has_headroom(running_count):
+    """Can we launch another worker right now?
+
+    True iff the 1-min load avg (which includes other students' processes)
+    is below nproc * CPU_LOAD_TARGET. If other students aren't using the
+    machine we'll fill up to nproc*0.85 workers; if they're busy we'll
+    back off proportionally.
+
+    Caveat: load avg is 1-min averaged and lags. At cold start we may
+    overshoot briefly before the average catches up. MAX_WORKERS acts
+    as the absolute ceiling.
+    """
+    if running_count >= MAX_WORKERS:
+        return False
+    target = _mp.cpu_count() * CPU_LOAD_TARGET
+    return get_load_avg_1min() < target
 
 def get_used_mem_gb():
     """Get used memory in GB from /proc/meminfo."""
@@ -337,8 +371,9 @@ def main():
         for g in max_cliques
     )
     print(f"\nTotal jobs: {total_jobs}, already done: {len(done)}")
-    print(f"Max workers: {MAX_WORKERS}, mem limit: {MEM_LIMIT_GB}GB, "
-          f"kill: {MEM_KILL_GB}GB, timeout: {TIMEOUT}s")
+    print(f"Max workers: {MAX_WORKERS} (cap), cpu target: {CPU_LOAD_TARGET*100:.0f}% of "
+          f"{_mp.cpu_count()} cores, mem limit: {MEM_LIMIT_GB}GB, kill: {MEM_KILL_GB}GB, "
+          f"timeout: {TIMEOUT}s")
 
     # Timeout tracking: (graph, algo, s) → min r that timed out
     timeout_at = defaultdict(lambda: float('inf'))
@@ -584,14 +619,20 @@ def main():
             done.add((g, rr, ss, an))
             continue
 
-        # Wait for capacity: workers < MAX and memory < limit
-        while (len(running) >= MAX_WORKERS or get_used_mem_gb() >= MEM_LIMIT_GB) and not shutdown:
+        # Wait for capacity:
+        #   * memory under MEM_LIMIT_GB
+        #   * CPU load average under nproc * CPU_LOAD_TARGET (yields to
+        #     other students' processes sharing the server)
+        #   * len(running) under MAX_WORKERS (hard ceiling)
+        while ((not cpu_has_headroom(len(running)))
+               or get_used_mem_gb() >= MEM_LIMIT_GB) and not shutdown:
             reap()
             check_timeouts(); check_proc_mem()
             while get_used_mem_gb() > MEM_KILL_GB and running:
                 kill_newest()
                 time.sleep(2)
-            if len(running) >= MAX_WORKERS or get_used_mem_gb() >= MEM_LIMIT_GB:
+            if ((not cpu_has_headroom(len(running)))
+                or get_used_mem_gb() >= MEM_LIMIT_GB):
                 time.sleep(POLL_SEC)
 
         if shutdown:
