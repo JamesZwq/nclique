@@ -92,6 +92,47 @@ def parse(rows):
     return data
 
 # ============ Summary ============
+def print_running_servers():
+    """Query each server for currently-running degeneracy_cliques workers,
+    group by graph, and print which dataset each server is working on."""
+    print(f"\n{'Server':>8}  {'Driver':>8}  {'Workers':>8}  Active datasets")
+    print("-" * 60)
+    for server in SERVERS:
+        try:
+            # Driver pid (may return empty → rc=1, that's fine)
+            drv = subprocess.run(
+                ["ssh", "-o", "ConnectTimeout=10", server,
+                 "pgrep -f 'python3 -u bench_v3_all.py' | head -1"],
+                capture_output=True, text=True, timeout=15
+            )
+            driver_pid = drv.stdout.strip() or "—"
+            # Worker command lines
+            w = subprocess.run(
+                ["ssh", "-o", "ConnectTimeout=10", server,
+                 r"pgrep -af '\./build/bin/degeneracy_cliques' | awk '{print $3}'"],
+                capture_output=True, text=True, timeout=15
+            )
+            if w.returncode not in (0, 1):
+                print(f"{server:>8}  — ssh error —")
+                continue
+            graphs = defaultdict(int)
+            for ln in w.stdout.strip().split("\n"):
+                ln = ln.strip()
+                if not ln or not ln.endswith(".edges"):
+                    continue
+                # extract just "graphs/X.edges" → X
+                g = ln.rsplit("/", 1)[-1].removesuffix(".edges")
+                graphs[g] += 1
+            total = sum(graphs.values())
+            if not graphs:
+                print(f"{server:>8}  {driver_pid:>8}  {'0':>8}  (idle)")
+            else:
+                active = ", ".join(f"{g}×{n}" for g, n in
+                                   sorted(graphs.items(), key=lambda x: -x[1]))
+                print(f"{server:>8}  {driver_pid:>8}  {total:>8}  {active}")
+        except Exception as e:
+            print(f"{server:>8}  query failed: {e}")
+
 def print_summary(rows):
     by_ga = defaultdict(lambda: defaultdict(int))
     for row in rows:
@@ -252,6 +293,7 @@ def main():
         return
 
     print_summary(rows)
+    print_running_servers()
 
     print("\n=== Plotting ===")
     data = parse(rows)
