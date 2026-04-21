@@ -118,16 +118,25 @@ def print_summary(rows):
                 max_clique[g] = max(max_clique[g], s)
             except: pass
 
-    # Progress per graph
-    print(f"\n{'Graph':>15} {'MaxClq':>6}  {'Total':>7}  Progress")
-    print("-" * 55)
+    # Progress per graph — use the ACTIVE algo set from the current bench
+    # (REF + V3LM). Historical rows for retired algos (V3, V3Fast, V3_NP,
+    # ST, V3H, V3HC, V3Fast_NP, V3Fast_NoCPI) were inflating both sides of
+    # the ratio and producing misleading "40% done on ca-HepPh" while
+    # actually REF+V3LM coverage was ~100%.
+    ACTIVE_ALGOS = {"REF", "V3LM"}
+    print(f"\n{'Graph':>15} {'MaxClq':>6}  {'Total':>11}  Progress  (active: REF + V3LM)")
+    print("-" * 70)
     for g in sorted(set(row["graph"] for row in rows)):
         mc = max_clique[g]
-        total_jobs = sum(s - 3 for s in range(4, mc + 1)) * len(set(row["algo"] for row in rows if row["graph"] == g))
-        done_jobs = sum(1 for row in rows if row["graph"] == g)
+        if mc <= 3:
+            total_jobs = 0
+        else:
+            total_jobs = sum(s - 3 for s in range(4, mc + 1)) * len(ACTIVE_ALGOS)
+        done_jobs = sum(1 for row in rows
+                        if row["graph"] == g and row["algo"] in ACTIVE_ALGOS)
         pct = 100.0 * done_jobs / total_jobs if total_jobs > 0 else 0
         bar_len = 20
-        filled = int(bar_len * pct / 100)
+        filled = int(bar_len * min(pct, 100) / 100)
         bar = "█" * filled + "░" * (bar_len - filled)
         print(f"{g:>15} {mc:>6}  {done_jobs:>5}/{total_jobs:<5}  {bar} {pct:.1f}%")
 
