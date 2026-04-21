@@ -98,6 +98,11 @@ DEATH_ZONE_SKIP = {
     # in the 1 h timeout window. Skip entirely so tods2 can progress to
     # web-it-2004 and web-Stanford.
     "twitter_combined": lambda r, s: True,
+    # wiki-Talk: 2.4 M nodes, sparse. V3LM measured 6 OK vs 141 TIMEOUT
+    # + 73 OOM (95% failure rate). Large-|V| sparse graph where SDCT
+    # build alone is ~1 h; same failure regime as web-Stanford.
+    # Skip entirely so cluster time goes to tractable graphs.
+    "wiki-Talk":     lambda r, s: True,
 }
 
 
