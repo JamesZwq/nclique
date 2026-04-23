@@ -195,7 +195,8 @@ static SDCTBuildResult buildSDCTWithIndex(
         envSet("PIVOTER_RUN_REGION_V2") || envSet("PIVOTER_RUN_REGION_V3") ||
         envSet("PIVOTER_RUN_REGION_V3B") || envSet("PIVOTER_RUN_REGION_V3FAST") ||
         envSet("PIVOTER_RUN_REGION_V3NOCPI") || envSet("PIVOTER_RUN_REGION_V3H") ||
-        envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM");
+        envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM") ||
+        envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") || envSet("PIVOTER_RUN_REGION_V3LM_HIER");
     // Region V2 only needs tree + maxCliqueTags, skip expensive ci and tgv
     // V3 needs SDCT tree with hold/pivot info — DO NOT use MaxCliqEnum for V3
     const bool regionOnly =
@@ -204,7 +205,8 @@ static SDCTBuildResult buildSDCTWithIndex(
         !envSet("PIVOTER_RUN_REGION_V3") && !envSet("PIVOTER_RUN_REGION_V3B") &&
         !envSet("PIVOTER_RUN_REGION_V3FAST") && !envSet("PIVOTER_RUN_REGION_V3NOCPI") &&
         !envSet("PIVOTER_RUN_REGION_V3H") && !envSet("PIVOTER_RUN_REGION_V3HC") &&
-        !envSet("PIVOTER_RUN_REGION_V3LM") && !envSet("PIVOTER_RUN_REGION_V4");
+        !envSet("PIVOTER_RUN_REGION_V3LM") && !envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") &&
+        !envSet("PIVOTER_RUN_REGION_V3LM_HIER") && !envSet("PIVOTER_RUN_REGION_V4");
 
     DynamicGraphSet<TreeGraphNode> tgv(n);
     tgv.adj_list.resize(n);
@@ -215,7 +217,9 @@ static SDCTBuildResult buildSDCTWithIndex(
     const bool v3Only = (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B") ||
                          envSet("PIVOTER_RUN_REGION_V3C") || envSet("PIVOTER_RUN_REGION_V3FAST") ||
                          envSet("PIVOTER_RUN_REGION_V3NOCPI") || envSet("PIVOTER_RUN_REGION_V3H") ||
-                         envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM")) &&
+                         envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM") ||
+                         envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") ||
+                         envSet("PIVOTER_RUN_REGION_V3LM_HIER")) &&
                         !envSet("PIVOTER_COMPARE") && !envSet("PIVOTER_RUN_ST");
     auto ci = (r >= 3 && !quotientLabOnly && !regionOnly && !v3Only) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
     daf::StaticVector<daf::Size> keepBuf, dropBuf;
@@ -750,6 +754,8 @@ static bool dispatchR3Plus(
         {"PIVOTER_RUN_REGION_V3H", "Region CPI V3 Fast + Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_Hierarchy},
         {"PIVOTER_RUN_REGION_V3HC", "Region CPI V3 Fast + Class-based Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_HierarchyClass},
         {"PIVOTER_RUN_REGION_V3LM", "Region CPI V3 Fast Low-Memory r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem},
+        {"PIVOTER_RUN_REGION_V3LM_NOCPI", "Region CPI V3 Low-Memory NoCPI (ablation) r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem_NoCPI},
+        {"PIVOTER_RUN_REGION_V3LM_HIER", "Region CPI V3 Low-Memory + Class-based Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier},
         {"PIVOTER_RUN_REGION_V3NOCPI", "Region CPI V3 NoCPI (ablation) r>=3", NucleusCoreDecompositionRClique_RegionCPI_NoCPI},
         {"PIVOTER_RUN_REGION_V3", "Region CPI (V3) r>=3", NucleusCoreDecompositionRClique_RegionCPI},
         {"PIVOTER_RUN_REGION_V2F", "Region V2 Fast r>=3", NucleusCoreDecompositionRClique_RegionV2_Fast},
@@ -906,7 +912,8 @@ int main(int argc, char **argv) {
     if (envSet("PIVOTER_RUN_REGION_V3") || envSet("PIVOTER_RUN_REGION_V3B")
         || envSet("PIVOTER_RUN_REGION_V3FAST") || envSet("PIVOTER_RUN_REGION_V3NOCPI")
         || envSet("PIVOTER_RUN_REGION_V3H") || envSet("PIVOTER_RUN_REGION_V3HC")
-        || envSet("PIVOTER_RUN_REGION_V3LM")
+        || envSet("PIVOTER_RUN_REGION_V3LM") || envSet("PIVOTER_RUN_REGION_V3LM_NOCPI")
+        || envSet("PIVOTER_RUN_REGION_V3LM_HIER")
         || envSet("PIVOTER_RUN_REGION_V4") || envSet("PIVOTER_RUN_REGION_V2F")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
             return enumerateMaximalCliques(edgeGraph, s);

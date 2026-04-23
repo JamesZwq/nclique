@@ -68,6 +68,14 @@ set(EXCLUDE_SRCS
 )
 list(REMOVE_ITEM ALL_SOURCES ${EXCLUDE_SRCS})
 set(COMMON_SOURCES ${ALL_SOURCES})
+set(REGION_CPI_VARIANT_SOURCES
+        ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/NucleusCoreDecompositionRegionCPI_HierarchyClass.cpp
+        ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/NucleusCoreDecompositionRegionCPI_LowMem.cpp
+        ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/NucleusCoreDecompositionRegionCPI_LowMem_NoCPI.cpp
+        ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/NucleusCoreDecompositionRegionCPI_LowMem_Hierarchy.cpp
+)
+list(APPEND COMMON_SOURCES ${REGION_CPI_VARIANT_SOURCES})
+list(REMOVE_DUPLICATES COMMON_SOURCES)
 
 #if debug
 if (CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -117,6 +125,11 @@ message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
 # 
 add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp src/SDCT_Parallel_MinimalCritical.cpp)
+# BK recursion on hub vertices (e.g. soc-Epinions1 deg=3079) can exceed 8MB default stack.
+# Raise main-thread stack: 256MB on macOS (linker-set), Linux uses ulimit/setrlimit at runtime.
+if(APPLE)
+    target_link_options(degeneracy_cliques PRIVATE "-Wl,-stack_size,0x20000000")
+endif()
 add_executable(test_ultra_parallel ${COMMON_SOURCES} test_ultra_parallel.cpp)
 add_executable(test_detailed_verification ${COMMON_SOURCES} test_detailed_verification.cpp)
 add_executable(test_sdct_verify ${COMMON_SOURCES} test_sdct_verify.cpp)
