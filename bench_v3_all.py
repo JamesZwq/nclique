@@ -135,18 +135,20 @@ MAX_WORKERS = SERVER_MAX_WORKERS.get(_SERVER) or (10**9)   # None → unlimited
 CPU_LOAD_TARGET = SERVER_CPU_TARGET.get(_SERVER)           # may be None
 
 ALGOS = {
-    "REF":       {"env": "PIVOTER_RUN_REF"},
-    # ST removed: its coverage on hard graphs was identical to REF's (both
-    # TIMEOUT on the same configs), so it added no information beyond REF
-    # and consumed ~1/3 of cluster time. Historical ST rows still render in
-    # plot_results.py.
-    # V3LM replaces V3Fast as the production Region CPI variant. Strict
-    # theoretical dominance on memory and empirical dominance on time
-    # (ca-HepPh r=3 s=4: V3Fast 169 s / 25 GB → V3LM 123 s / 1.23 GB;
-    # com-dblp r=3 s=4: V3Fast 2667 ms / 581 MB → V3LM 1882 ms / 253 MB).
-    # V3Fast, V3Fast_NP, V3Fast_NoCPI, V3H, V3HC are retained in
-    # plot_results.py for historical CSV rows but are no longer re-run.
-    "V3LM":      {"env": "PIVOTER_RUN_REGION_V3LM"},
+    "REF":         {"env": "PIVOTER_RUN_REF"},
+    # ST removed earlier: coverage on hard graphs was identical to REF's, so
+    # it added no information and consumed ~1/3 of cluster time.  Historical
+    # ST rows still render in plot_results.py.
+    #
+    # Active set for the SIGMOD'27 sweep:
+    #   V3LM        — main algorithm (Region CPI + tuple compression + LowMem).
+    #   V3LM_NOCPI  — CPI ablation: direct s-clique enumeration in Step 4.
+    #   V3LM_HIER   — hierarchical output via class-based DSU post-peel.
+    # V3Fast, V3Fast_NP, V3Fast_NoCPI, V3H, V3HC rows are retained for history
+    # but are no longer re-run.
+    "V3LM":        {"env": "PIVOTER_RUN_REGION_V3LM"},
+    "V3LM_NOCPI":  {"env": "PIVOTER_RUN_REGION_V3LM_NOCPI"},
+    "V3LM_HIER":   {"env": "PIVOTER_RUN_REGION_V3LM_HIER"},
 }
 
 # ============ Helpers ============

@@ -17,12 +17,15 @@ SERVERS = ["tods1", "tods2"]
 LOCAL_CSV = "bench_v3_all_results.csv"
 REMOTE_CSV = "~/nclique/bench_v3_all_results.csv"
 
-ALGOS = ["REF", "ST", "V3Fast", "V3LM", "V3Fast_NP", "V3Fast_NoCPI", "V3H", "V3HC", "V3", "V3_NP"]
+ALGOS = ["REF", "ST", "V3Fast", "V3LM", "V3LM_NOCPI", "V3LM_HIER",
+         "V3Fast_NP", "V3Fast_NoCPI", "V3H", "V3HC", "V3", "V3_NP"]
 ALGO_TITLES = {
     "REF": "REF (baseline)",
     "ST": "ST (CPI peeling)",
     "V3Fast": "V3Fast (optimized + Private Cloud)",
     "V3LM": "V3LM (V3Fast, low-memory engineering)",
+    "V3LM_NOCPI": "V3LM_NoCPI (CPI ablation: direct s-enumeration)",
+    "V3LM_HIER":  "V3LM_Hier (V3LM + class-based hierarchy)",
     "V3Fast_NP": "V3Fast (no Private Cloud) — PC ablation",
     "V3Fast_NoCPI": "V3Fast (no CPI, enumerate) — CPI ablation",
     "V3H": "V3H (V3Fast + tuple-based hierarchy)",
@@ -164,8 +167,9 @@ def print_summary(rows):
     # ST, V3H, V3HC, V3Fast_NP, V3Fast_NoCPI) were inflating both sides of
     # the ratio and producing misleading "40% done on ca-HepPh" while
     # actually REF+V3LM coverage was ~100%.
-    ACTIVE_ALGOS = {"REF", "V3LM"}
-    print(f"\n{'Graph':>15} {'MaxClq':>6}  {'Total':>11}  Progress  (active: REF + V3LM)")
+    ACTIVE_ALGOS = {"REF", "V3LM", "V3LM_NOCPI", "V3LM_HIER"}
+    print(f"\n{'Graph':>15} {'MaxClq':>6}  {'Total':>11}  Progress  "
+          f"(active: REF + V3LM + V3LM_NOCPI + V3LM_HIER)")
     print("-" * 70)
     for g in sorted(set(row["graph"] for row in rows)):
         mc = max_clique[g]
