@@ -85,6 +85,29 @@ static auto buildCoreDistFromArray(const double *coreV, daf::Size n) {
     return dist;
 }
 
+// Dump per-vertex core values to file if PIVOTER_DUMP_CORE=<filename> is set.
+// Format: one line per vertex, "<vertex_id>\t<core_value>"
+static void dumpCoreValues(const double *coreV, daf::Size n, const char *label) {
+    const char *path = std::getenv("PIVOTER_DUMP_CORE");
+    if (!path) return;
+    FILE *f = std::fopen(path, "w");
+    if (!f) {
+        std::cerr << "PIVOTER_DUMP_CORE: failed to open " << path << std::endl;
+        return;
+    }
+    std::fprintf(f, "# algorithm=%s  n=%llu\n", label, (unsigned long long)n);
+    std::fprintf(f, "# vertex_id\tcore_value\n");
+    daf::Size written = 0;
+    for (daf::Size i = 0; i < n; ++i) {
+        if (coreV[i] >= 0) {
+            std::fprintf(f, "%llu\t%.0f\n", (unsigned long long)i, coreV[i]);
+            ++written;
+        }
+    }
+    std::fclose(f);
+    std::cerr << "PIVOTER_DUMP_CORE: wrote " << written << " core values to " << path << std::endl;
+}
+
 static void checkDist(const std::map<double,int64_t> &refDist,
                       const std::map<double,int64_t> &testDist,
                       const char *label) {
@@ -455,6 +478,7 @@ static void runR1Variant(
                   buildCoreDistFromArray(coreV, numVertices), name);
         delete[] refV;
     }
+    dumpCoreValues(coreV, numVertices, name);
     delete[] coreV;
 }
 
@@ -503,6 +527,7 @@ static bool dispatchR1(
                       buildCoreDistFromArray(coreV, numVertices), "r=1 ST_V2");
             delete[] refV;
         }
+        dumpCoreValues(coreV, numVertices, "r=1 ST_V2");
         delete[] coreV;
         return true;
     }
