@@ -280,33 +280,47 @@ def load_existing():
     return done
 
 def extract_timing(txt):
-    """Extract total_ms, peel_ms, hier_ms, mem_kB from log text."""
+    """Extract total_ms, step4_ms, peel_ms, hier_ms, mem_kB from log text.
+
+    step4_ms is the algorithm-specific initial-support phase:
+      * V3LM / V3LM_HIER: "CPI counting time: X ms"
+      * V3LM_NOCPI:       "NoCPI enumeration time: X ms"
+    Everything else before peel (graph load, SDCT, region enumeration, class
+    build, etc.) is shared across the V3LM family on the same (graph, r, s),
+    so analyses can take min(total_ms - step4_ms - peel_ms - hier_ms) across
+    algos to neutralise cluster-contention noise on the shared setup cost.
+    """
     m_total = re.search(r'NucleusCoreDecomposition took:\s*([\d.]+)', txt)
     m_peel = re.search(r'Peeling time:\s*([\d.]+)', txt)
-    # V3H prints "Hierarchy post-processing: X ms (...)"; V3HC prints
-    # "Hierarchy post-processing (class-based): X ms (...)".
     m_hier = re.search(r'Hierarchy post-processing(?: \(class-based\))?:\s*([\d.]+)', txt)
+    # "CPI counting time: X ms" (V3LM / V3LM_HIER)
+    # "NoCPI enumeration time: X ms" (V3LM_NOCPI)
+    m_step4 = re.search(r'(?:CPI counting time|NoCPI enumeration time):\s*([\d.]+)', txt)
     m_mem = re.search(r'\[Memory-\w+\]\s*Final Memory:\s*([\d.]+)\s*kB', txt)
     total_ms = float(m_total.group(1)) if m_total else -1.0
-    peel_ms = float(m_peel.group(1)) if m_peel else -1.0
-    hier_ms = float(m_hier.group(1)) if m_hier else -1.0
-    mem_kB = float(m_mem.group(1)) if m_mem else -1.0
-    return total_ms, peel_ms, hier_ms, mem_kB
+    peel_ms  = float(m_peel.group(1))  if m_peel  else -1.0
+    hier_ms  = float(m_hier.group(1))  if m_hier  else -1.0
+    step4_ms = float(m_step4.group(1)) if m_step4 else -1.0
+    mem_kB   = float(m_mem.group(1))   if m_mem   else -1.0
+    return total_ms, step4_ms, peel_ms, hier_ms, mem_kB
 
-def write_result(graph, r, s, algo, status, wall_ms=-1, total_ms=-1, peel_ms=-1, hier_ms=-1, mem_kB=-1):
+def write_result(graph, r, s, algo, status,
+                 wall_ms=-1, total_ms=-1, step4_ms=-1, peel_ms=-1, hier_ms=-1, mem_kB=-1):
     """Append one result row to CSV."""
     with open(OUTCSV, "a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=FIELDNAMES)
         w.writerow({
             "graph": graph, "r": r, "s": s, "algo": algo, "status": status,
-            "wall_ms": f"{wall_ms:.1f}" if wall_ms >= 0 else "",
+            "wall_ms":  f"{wall_ms:.1f}"  if wall_ms  >= 0 else "",
             "total_ms": f"{total_ms:.1f}" if total_ms >= 0 else "",
-            "peel_ms": f"{peel_ms:.1f}" if peel_ms >= 0 else "",
-            "hier_ms": f"{hier_ms:.1f}" if hier_ms >= 0 else "",
-            "mem_kB": f"{mem_kB:.0f}" if mem_kB >= 0 else "",
+            "step4_ms": f"{step4_ms:.1f}" if step4_ms >= 0 else "",
+            "peel_ms":  f"{peel_ms:.1f}"  if peel_ms  >= 0 else "",
+            "hier_ms":  f"{hier_ms:.1f}"  if hier_ms  >= 0 else "",
+            "mem_kB":   f"{mem_kB:.0f}"   if mem_kB   >= 0 else "",
         })
 
-FIELDNAMES = ["graph", "r", "s", "algo", "status", "wall_ms", "total_ms", "peel_ms", "hier_ms", "mem_kB"]
+FIELDNAMES = ["graph", "r", "s", "algo", "status",
+              "wall_ms", "total_ms", "step4_ms", "peel_ms", "hier_ms", "mem_kB"]
 
 # ============ Main ============
 def main():
@@ -319,10 +333,28 @@ def main():
     build()
     LOGDIR.mkdir(exist_ok=True)
 
-    # Setup CSV header
+    # Setup / upgrade CSV header.  If an old CSV exists without `step4_ms`
+    # (pre-2026-04-24 schema), rewrite it in place with the new column
+    # (existing rows get an empty `step4_ms` cell).
     if not os.path.exists(OUTCSV):
         with open(OUTCSV, "w", newline="") as f:
             csv.DictWriter(f, fieldnames=FIELDNAMES).writeheader()
+    else:
+        with open(OUTCSV, "r", newline="") as f:
+            first_line = f.readline()
+        if "step4_ms" not in first_line:
+            # In-place schema upgrade.
+            import shutil
+            shutil.copy(OUTCSV, OUTCSV + ".bak_pre_step4")
+            print(f"  [schema] Upgrading CSV: added step4_ms column "
+                  f"(backup at {OUTCSV}.bak_pre_step4)", flush=True)
+            rows = list(csv.DictReader(open(OUTCSV)))
+            with open(OUTCSV, "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=FIELDNAMES)
+                w.writeheader()
+                for row in rows:
+                    row.setdefault("step4_ms", "")
+                    w.writerow({k: row.get(k, "") for k in FIELDNAMES})
 
     # Probe max clique sizes (cached to JSON)
     cache_file = Path("bench_v3_max_cliques.json")
@@ -471,7 +503,7 @@ def main():
                 status = f"ERROR({ret}{'/' + sig_names[ret] if ret in sig_names else ''})"
             (LOGDIR / f"{g}_r{rr}_s{ss}_{an}.log").write_text(txt)
             wall_ms = (time.time() - t0) * 1000
-            total_ms, peel_ms, hier_ms, mem_kB = extract_timing(txt)
+            total_ms, step4_ms, peel_ms, hier_ms, mem_kB = extract_timing(txt)
             t_str = f"{wall_ms:.0f}ms" if wall_ms >= 0 else "N/A"
             h_str = f" hier={hier_ms:.0f}ms" if hier_ms >= 0 else ""
             m_str = f"{mem_kB/1024:.0f}MB" if mem_kB >= 0 else ""
@@ -481,7 +513,8 @@ def main():
                 tail = "\n".join(txt.strip().splitlines()[-5:])
                 if tail:
                     print(f"         last output: {tail}", flush=True)
-            write_result(g, rr, ss, an, status, wall_ms, total_ms, peel_ms, hier_ms, mem_kB)
+            write_result(g, rr, ss, an, status,
+                         wall_ms, total_ms, step4_ms, peel_ms, hier_ms, mem_kB)
             done.add((g, rr, ss, an))
             launched += 1
             if status in ("TIMEOUT", "OOM"):

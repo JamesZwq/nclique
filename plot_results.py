@@ -76,13 +76,68 @@ def fetch():
     return rows, header
 
 # ============ Parse ============
+# Algorithms that share the same setup phases (graph load + SDCT + Steps 1-3
+# + PathInfo build).  Within this family, min(setup_ms) across algos is the
+# canonical setup cost at a given (graph, r, s), so we can build a
+# contention-neutralised "clean_wall_ms" = min_setup + step4 + peel + hier
+# per-algo.  REF/ST are different codebases and are excluded.
+CLEANABLE_FAMILY = {"V3LM", "V3LM_HIER", "V3LM_NOCPI"}
+
+def _getf(row, key):
+    v = row.get(key, "")
+    if v in ("", "N/A"): return None
+    try: return float(v)
+    except: return None
+
+def compute_clean(rows):
+    """Augment each OK row in the V3LM family with `clean_wall_ms`.
+
+    clean_wall_ms(algo) = min_over_V3LM_family(setup_ms) + step4_ms(algo)
+                          + peel_ms(algo) + hier_ms(algo)
+    where setup_ms = total_ms - step4_ms - peel_ms - hier_ms.
+    Rows that lack step4_ms (pre-schema-upgrade runs) get clean_wall_ms unset.
+    """
+    # First pass: per (g,r,s), find min setup_ms among V3LM family
+    setup_by_cell = {}
+    for row in rows:
+        if row.get("algo") not in CLEANABLE_FAMILY: continue
+        if row.get("status") != "OK": continue
+        total = _getf(row, "total_ms")
+        step4 = _getf(row, "step4_ms")
+        peel  = _getf(row, "peel_ms")
+        hier  = _getf(row, "hier_ms") or 0.0  # hier absent on V3LM / V3LM_NOCPI
+        if total is None or step4 is None or peel is None: continue
+        setup = total - step4 - peel - hier
+        if setup < 0: continue
+        key = (row["graph"], row["r"], row["s"])
+        cur = setup_by_cell.get(key)
+        if cur is None or setup < cur:
+            setup_by_cell[key] = setup
+    # Second pass: write clean_wall_ms back into each row
+    for row in rows:
+        if row.get("algo") not in CLEANABLE_FAMILY: continue
+        if row.get("status") != "OK": continue
+        step4 = _getf(row, "step4_ms")
+        peel  = _getf(row, "peel_ms")
+        hier  = _getf(row, "hier_ms") or 0.0
+        if step4 is None or peel is None: continue
+        setup_min = setup_by_cell.get((row["graph"], row["r"], row["s"]))
+        if setup_min is None: continue
+        row["clean_wall_ms"] = f"{setup_min + step4 + peel + hier:.1f}"
+    return rows
+
 def parse(rows):
+    rows = compute_clean(rows)
     data = {}
     for row in rows:
         try:
             g, r, s, algo = row["graph"], int(row["r"]), int(row["s"]), row["algo"]
             st = row["status"]
-            wall = float(row.get("wall_ms") or -1)
+            # Prefer clean_wall_ms when available (neutralises cluster
+            # contention on shared setup phases); fall back to raw wall_ms
+            # for rows outside the V3LM family or pre-schema-upgrade rows.
+            wall_src = row.get("clean_wall_ms") or row.get("wall_ms") or "-1"
+            wall = float(wall_src)
             mem = float(row.get("mem_kB") or -1)
             if st == "OK" and wall >= 0:
                 data[(g, algo, r, s)] = (wall, mem, "OK")
