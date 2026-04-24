@@ -108,6 +108,42 @@ static void dumpCoreValues(const double *coreV, daf::Size n, const char *label) 
     std::cerr << "PIVOTER_DUMP_CORE: wrote " << written << " core values to " << path << std::endl;
 }
 
+// Dump r-clique core values (r >= 2). Used for case-study cross-r comparison.
+// Format: "v1 v2 ... vr\t<core_value>" per line.
+template<typename ResultVec>
+static void dumpRCliqueCoreValues(const ResultVec &result, const char *label) {
+    const char *path = std::getenv("PIVOTER_DUMP_CORE");
+    if (!path) return;
+    FILE *f = std::fopen(path, "w");
+    if (!f) {
+        std::cerr << "PIVOTER_DUMP_CORE: failed to open " << path << std::endl;
+        return;
+    }
+    std::fprintf(f, "# algorithm=%s  n_rcliques=%zu\n", label, result.size());
+    std::fprintf(f, "# vertex_ids (space-sep)\tcore_value\n");
+    std::size_t written = 0;
+    for (const auto &[key, cv] : result) {
+        // key may be pair<Size,Size> (R=2) or vector<Size> (R>=3)
+        if constexpr (std::is_same_v<std::decay_t<decltype(key)>,
+                                     std::pair<daf::Size, daf::Size>>) {
+            std::fprintf(f, "%llu %llu\t%.0f\n",
+                (unsigned long long)key.first, (unsigned long long)key.second, (double)cv);
+        } else {
+            // vector<Size>
+            bool first = true;
+            for (auto v : key) {
+                if (!first) std::fputc(' ', f);
+                first = false;
+                std::fprintf(f, "%llu", (unsigned long long)v);
+            }
+            std::fprintf(f, "\t%.0f\n", (double)cv);
+        }
+        ++written;
+    }
+    std::fclose(f);
+    std::cerr << "PIVOTER_DUMP_CORE: wrote " << written << " r-clique core values to " << path << std::endl;
+}
+
 static void checkDist(const std::map<double,int64_t> &refDist,
                       const std::map<double,int64_t> &testDist,
                       const char *label) {
@@ -159,10 +195,11 @@ static Graph loadAndSortGraph(const char *fpath, int argc, char **argv) {
     daf::vListMap.resize(g.n + 1);
     memset(daf::vListMap.data(), -1, g.n * sizeof(daf::Size));
 
+    std::vector<daf::Size> sortOrder;  // original_id_at_new_pos[new_id] = old_id
     if (argc >= 5) {
         std::string sortOption = argv[4];
-        if (sortOption == "degen") g.sortByDegeneracyOrder(false);
-        else if (sortOption == "degenR") g.sortByDegeneracyOrder(true);
+        if (sortOption == "degen") sortOrder = g.sortByDegeneracyOrder(false);
+        else if (sortOption == "degenR") sortOrder = g.sortByDegeneracyOrder(true);
         else if (sortOption == "degree") g.sortByDegree(false);
         else if (sortOption == "degreeR") g.sortByDegree(true);
         else if (sortOption == "default") { /* no-op */ }
@@ -173,7 +210,20 @@ static Graph loadAndSortGraph(const char *fpath, int argc, char **argv) {
         }
         std::cout << "Graph sorted by " << sortOption << std::endl;
     } else {
-        g.sortByDegeneracyOrder();
+        sortOrder = g.sortByDegeneracyOrder();
+    }
+    // If PIVOTER_DUMP_MAPPING is set, write the new_id -> original_id mapping.
+    if (const char *mpath = std::getenv("PIVOTER_DUMP_MAPPING"); mpath && !sortOrder.empty()) {
+        FILE *f = std::fopen(mpath, "w");
+        if (f) {
+            std::fprintf(f, "# new_id\toriginal_id\n");
+            for (daf::Size i = 0; i < sortOrder.size(); ++i)
+                std::fprintf(f, "%llu\t%llu\n",
+                             (unsigned long long)i, (unsigned long long)sortOrder[i]);
+            std::fclose(f);
+            std::cerr << "PIVOTER_DUMP_MAPPING: wrote " << sortOrder.size()
+                      << " id mappings to " << mpath << std::endl;
+        }
     }
     daf::log_memory("Graph Memory");
     return g;
@@ -588,6 +638,7 @@ static void runR2Variant(
         auto refCore = refFunc(t2, edgeGraph, tgv2, r, s);
         checkDist(buildCoreDist(refCore), buildCoreDist(result), name);
     }
+    dumpRCliqueCoreValues(result, name);
 }
 
 static bool dispatchR2(
@@ -753,6 +804,9 @@ static void runRCliqueVariant(
             return NucleusCoreDecompositionCorrect(refTree2, edgeGraph, refTGV2, r, s, nullptr);
         });
         checkDist(buildCoreDist(refCore), buildCoreDistCompact(result), name);
+    }
+    if (!isCompact) {
+        dumpRCliqueCoreValues(result, name);
     }
 }
 
