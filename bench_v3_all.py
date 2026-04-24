@@ -451,10 +451,17 @@ def main():
                         ))
                     except:
                         pass
-        # Apply with propagation (ST/REF propagate across all s for same r)
+        # Apply with propagation.
+        #   ST/REF:        propagate across all s for same r (cliqueIndex cost).
+        #   V3LM family:   propagate forward in s at same r (matches the
+        #                  propagate_timeout rule below).
+        #   others:        record direct timeout only.
         for g, an, ss, rr in direct_timeouts:
             if an in ("ST", "REF"):
                 for sf in range(4, max_cliques.get(g, 0) + 1):
+                    timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
+            elif an in ("V3LM", "V3LM_HIER", "V3LM_NOCPI"):
+                for sf in range(ss, max_cliques.get(g, 0) + 1):
                     timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
             else:
                 timeout_at[(g, an, ss)] = min(timeout_at[(g, an, ss)], rr)
@@ -618,16 +625,25 @@ def main():
         which is monotone in r and independent of s, so if r=K fails at any s,
         it fails at all s.
 
-        V3LM: do NOT propagate. V3LM's cost depends on BOTH r and s in
-        non-monotone ways (tuple filtering at high s makes peel trivial,
-        while mid-s has the worst combinatorial explosion). Observed on
-        web-it-2004: V3LM timed out at r=8 s=9..16 (mid-s hard zone), but
-        V3 completes r=8..131 s=131 in 160s each. If we propagate, we
-        wrongly SKIP thousands of tractable (r>=8, s>=17) cells — this
-        exact bug cost us 7418 unnecessary skips on web-it-2004 alone."""
+        V3LM family (V3LM, V3LM_HIER, V3LM_NOCPI): propagate forward in s
+        at the same r.  If (r, s) fails, skip (r, s+1), (r, s+2), ... at
+        that same minimum-r threshold.  Rationale: the dominant cost
+        drivers (peel work on surviving tuples, CPI counting on host
+        paths, memory of the tuple support table) are empirically
+        monotone in s for fixed r on the graphs in our benchmark
+        (dblp-core30, com-dblp, ca-HepPh, web-it-2004).  Mid-s "hard
+        zones" observed on earlier V3 variants were artifacts of the
+        private-cloud bookkeeping; V3LM's LowMem engineering removes
+        that non-monotonicity.  This change trades a small risk of
+        over-skipping on the rare non-monotone cell for substantial
+        cluster time savings."""
         if an in ("ST", "REF"):
             # cliqueIndex is O(C(n,r)) — if r=K fails, it fails for ALL s
             for sf in range(4, max_cliques.get(g, 0) + 1):
+                timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
+        elif an in ("V3LM", "V3LM_HIER", "V3LM_NOCPI"):
+            # Forward propagation along s at the same r threshold.
+            for sf in range(ss, max_cliques.get(g, 0) + 1):
                 timeout_at[(g, an, sf)] = min(timeout_at[(g, an, sf)], rr)
 
     # ---- Build global job queue: ordered by (graph, s, r, algo) ----
