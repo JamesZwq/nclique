@@ -16,6 +16,7 @@
 #endif
 
 #include "misc.h"
+#include "PhaseLogger.h"
 #include "LinkedList.h"
 #include "MemoryManager.h"
 #include "BK/BronKerboschRmEdge.hpp"
@@ -949,8 +950,12 @@ int main(int argc, char **argv) {
     if (r >= s) { printf("r must be less than s\n"); return 0; }
     printf("Dataset: %s, r=%d, s=%d\n", fpath, (int)r, (int)s);
 
+    // Breakdown logger.  No-op unless PIVOTER_BREAKDOWN_LOG is set.
+    daf::phaseStart();
+
     // Phase 1: Load and sort
     Graph edgeGraph = loadAndSortGraph(fpath, argc, argv);
+    daf::phaseMark("loadAndSort");
 
     const bool compareMode = envSet("PIVOTER_COMPARE");
 
@@ -984,6 +989,15 @@ int main(int argc, char **argv) {
             maxCliqueTags = std::move(result.maxCliqueTags);
             g_maxCliqueTags = maxCliqueTags; // copy for Region function access
         }
+        // Tag the SDCT-build phase with the materialised tree size (bytes),
+        // approximated as adj_list.size() * sizeof(TreeGraphNode) when present.
+        long sdctBytes = 0;
+        if (!refTree.adj_list.empty()) {
+            sdctBytes = (long)(refTree.adj_list.size() * sizeof(refTree.adj_list[0]));
+        }
+        daf::phaseMark("buildSDCT", sdctBytes);
+    } else {
+        daf::phaseMark("buildSDCT", 0);
     }
 
     // Phase 2.5: MaxCliqEnum for V3 (must run before beSingleEdge mutates graph)
@@ -1005,9 +1019,11 @@ int main(int argc, char **argv) {
 
     // Phase 3: Pre-mutation work (must run before beSingleEdge)
     auto pmr = preMutationPhase(edgeGraph, r, s);
+    daf::phaseMark("preMutation");
 
     // Phase 4: Prepare graph structures (mutates edgeGraph)
     prepareGraphStructures(edgeGraph, r);
+    daf::phaseMark("prepareGraph");
 
     // Phase 5: Build treeGraphV if not already built in fused phase
     const daf::Size numVertices = edgeGraph.adj_list_offsets.size() - 1;
@@ -1034,6 +1050,8 @@ int main(int argc, char **argv) {
         if (!dispatched)
             dispatchRefOrDefault(refTree, edgeGraph, treeGraphV, r, s, compareMode, sharedCIPtr);
     });
+    daf::phaseMark("dispatch_total");
 
     daf::log_memory("Final Memory");
+    daf::phaseDump();
 }

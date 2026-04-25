@@ -17,6 +17,7 @@
 
 #include "NCliqueCoreDecomposition.h"
 #include "SDCT_Augmented.h"
+#include "../PhaseLogger.h"
 #include <chrono>
 #include <vector>
 #include <algorithm>
@@ -91,6 +92,8 @@ ST_V2_Data NCliqueVertexCoreDecomposition_ST_V2_Build(
     std::cout << "ST_V2: SDCT+callback took "
               << std::chrono::duration_cast<std::chrono::milliseconds>(time_sdct - time_start).count()
               << " ms, leaves=" << d.numLeaves << ", COO entries=" << cooBuf.size() << std::endl;
+    // Mark "Sigma" = total vertex-leaf incidences for this run.
+    daf::phaseMark("STV2_SDCT_walk", (long)(cooBuf.capacity() * sizeof(COOEntry)));
 
     // --- Build dual CSR from COO ---
     d.vtxLeafOff.assign(d.numVertices + 2, 0);
@@ -132,6 +135,16 @@ ST_V2_Data NCliqueVertexCoreDecomposition_ST_V2_Build(
               << std::chrono::duration_cast<std::chrono::milliseconds>(time_csr - time_sdct).count()
               << " ms" << std::endl;
     daf::log_memory("ST_V2 after CSR build");
+
+    // Component-byte attribution for the dual CSR + initial-support array.
+    const long bytesVtxLeaf = (long)(d.vtxLeafOff.capacity() * sizeof(d.vtxLeafOff[0])
+                            + d.vtxLeafData.capacity() * sizeof(d.vtxLeafData[0]));
+    const long bytesLeafVtx = (long)(d.leafVtxOff.capacity() * sizeof(d.leafVtxOff[0])
+                            + d.leafVtxData.capacity() * sizeof(d.leafVtxData[0]));
+    const long bytesSupport = (long)(d.numVertices * sizeof(double));
+    const long bytesLeafMeta = (long)(d.leafPivotCount.capacity() * sizeof(int)
+                            + d.leafNeedPivot.capacity() * sizeof(int));
+    daf::phaseMark("STV2_CSR_build", bytesVtxLeaf + bytesLeafVtx + bytesSupport + bytesLeafMeta);
 
     return d;
 }
@@ -207,6 +220,22 @@ double * NCliqueVertexCoreDecomposition_ST_V2_Peel(ST_V2_Data &d, daf::CliqueSiz
     std::vector<uint8_t> leafAffected(numLeaves, 0);
     std::vector<daf::Size> affectedLeaves;
     affectedLeaves.reserve(4096);
+
+    // Component-byte attribution for the bucket array + per-vertex book-keeping.
+    {
+        long bytesBucket = 0;
+        for (auto &v : buckets) bytesBucket += (long)(v.capacity() * sizeof(daf::Size));
+        bytesBucket += (long)buckets.capacity() * sizeof(buckets[0]);
+        const long bytesVertexAux = (long)(bucket_of.capacity() * sizeof(int)
+                                  + pos_in_bucket.capacity() * sizeof(daf::Size)
+                                  + vertexInHeap.capacity() * sizeof(uint8_t));
+        const long bytesLeafAux = (long)(leafAlive.capacity() * sizeof(uint8_t)
+                                + leafRemainPivots.capacity() * sizeof(int)
+                                + leafRemovedPivots.capacity() * sizeof(int)
+                                + leafDies.capacity() * sizeof(uint8_t)
+                                + leafAffected.capacity() * sizeof(uint8_t));
+        daf::phaseMark("STV2_peel_init", bytesBucket + bytesVertexAux + bytesLeafAux);
+    }
 
     std::vector<uint8_t> dirtyMark(numVertices, 0);
     std::vector<daf::Size> dirtyVertices;
@@ -323,6 +352,8 @@ double * NCliqueVertexCoreDecomposition_ST_V2_Peel(ST_V2_Data &d, daf::CliqueSiz
 
     std::cout << "ST_V2 peeling time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
+
+    daf::phaseMark("STV2_peel_loop");
 
     delete[] countingV;
     currentRemoveVertexIds.free();

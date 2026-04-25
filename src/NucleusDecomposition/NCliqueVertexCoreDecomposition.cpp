@@ -3,6 +3,7 @@
 //
 
 #include "NCliqueCoreDecomposition.h"
+#include "../PhaseLogger.h"
 #include <boost/heap/d_ary_heap.hpp>
 #include <boost/heap/pairing_heap.hpp>
 #include <boost/heap/fibonacci_heap.hpp>
@@ -424,6 +425,8 @@ double *  NCliqueVertexCoreDecomposition(
     auto time_start = std::chrono::high_resolution_clock::now();
 
     auto countingV = VCD::countingPerVertex(tree, edgeGraph, k);
+    daf::phaseMark("REF_initSupports",
+                   (long)(edgeGraph.adj_list_offsets.size() * sizeof(double)));
     auto coreV = new double[edgeGraph.adj_list_offsets.size()];
     memset(coreV, 0, edgeGraph.adj_list_offsets.size() * sizeof(double));
     // std::vector<double> leafCore = VCD::initLeafCore(tree, countingKE, k, edgeGraph);
@@ -456,6 +459,13 @@ double *  NCliqueVertexCoreDecomposition(
     std::vector<VCD::DHeap::handle_type> heapHandles(edgeGraph.adj_list_offsets.size() - 1);
     for (daf::Size i = 0; i < edgeGraph.adj_list_offsets.size() - 1; ++i) {
         heapHandles[i] = heap.push(i);
+    }
+    // Component bytes: heap entries + handle vector + per-leaf removed-flag arrays
+    {
+        const long bytesHeap = (long)(heap.size() * (sizeof(daf::Size) + 16));   // d-ary heap node ~16B per entry
+        const long bytesHandles = (long)(heapHandles.capacity() * sizeof(VCD::DHeap::handle_type));
+        const long bytesLeafRm  = (long)((long)tree.adj_list.size() * (sizeof(daf::Size) + sizeof(VCD::LeafRmInfo)));
+        daf::phaseMark("REF_heapBuild", bytesHeap + bytesHandles + bytesLeafRm);
     }
     // std::cout << "tree: ";
     // tree.printGraphPerV();
@@ -710,6 +720,7 @@ double *  NCliqueVertexCoreDecomposition(
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
 
+    daf::phaseMark("REF_peel_loop");
 
     delete[] countingV;
     // delete[] degreeV;
