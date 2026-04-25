@@ -45,23 +45,31 @@ from statistics import median
 
 # ---------------------------------------------------------------------------
 # Raise stack limit so deep BK recursion (degeneracy ~400 on web-it-2004 at
-# large s) doesn't segfault.  Modeled on bench_v3_all.py.
+# large s) doesn't segfault.  Modeled on bench_v3_all.py, with the bug fix
+# that RLIM_INFINITY is sentinel -1 in Python and must be special-cased.
 # ---------------------------------------------------------------------------
 try:
     import resource
+    _BIG = 1 << 30    # 1 GiB target — plenty for any reasonable recursion
     _soft, _hard = resource.getrlimit(resource.RLIMIT_STACK)
     if _hard == resource.RLIM_INFINITY:
-        _target = resource.RLIM_INFINITY
+        _target = _BIG               # unlimited hard cap → set explicit big soft
+    elif _hard >= _BIG:
+        _target = _BIG               # hard cap is bigger than we need
     else:
-        _target = max(_soft, _hard - 4096)   # macOS rejects target == hard
-    if _target > _soft:
-        resource.setrlimit(resource.RLIMIT_STACK, (_target, _hard))
+        _target = _hard               # hard caps soft tightly; raise to it
+    if _target != _soft:
+        try:
+            resource.setrlimit(resource.RLIMIT_STACK, (_target, _hard))
+        except (ValueError, OSError) as _e:
+            # macOS sometimes rejects target == hard; back off by a page
+            resource.setrlimit(resource.RLIMIT_STACK, (max(_soft, _target - 4096), _hard))
     _new_soft = resource.getrlimit(resource.RLIMIT_STACK)[0]
     def _fmt(x):
         return ("unlimited" if x == resource.RLIM_INFINITY
-                else f"{x/1024/1024:.1f}MB")
-    print(f"[stack] RLIMIT_STACK: {_fmt(_soft)} -> {_fmt(_new_soft)}",
-          flush=True)
+                else f"{x/1024/1024:.0f}MB")
+    print(f"[stack] RLIMIT_STACK: {_fmt(_soft)} -> {_fmt(_new_soft)} "
+          f"(hard={_fmt(_hard)})", flush=True)
 except Exception as e:
     print(f"[stack] WARNING: failed to raise stack limit: {e}", flush=True)
 
