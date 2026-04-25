@@ -43,6 +43,28 @@ from pathlib import Path
 from collections import defaultdict
 from statistics import median
 
+# ---------------------------------------------------------------------------
+# Raise stack limit so deep BK recursion (degeneracy ~400 on web-it-2004 at
+# large s) doesn't segfault.  Modeled on bench_v3_all.py.
+# ---------------------------------------------------------------------------
+try:
+    import resource
+    _soft, _hard = resource.getrlimit(resource.RLIMIT_STACK)
+    if _hard == resource.RLIM_INFINITY:
+        _target = resource.RLIM_INFINITY
+    else:
+        _target = max(_soft, _hard - 4096)   # macOS rejects target == hard
+    if _target > _soft:
+        resource.setrlimit(resource.RLIMIT_STACK, (_target, _hard))
+    _new_soft = resource.getrlimit(resource.RLIMIT_STACK)[0]
+    def _fmt(x):
+        return ("unlimited" if x == resource.RLIM_INFINITY
+                else f"{x/1024/1024:.1f}MB")
+    print(f"[stack] RLIMIT_STACK: {_fmt(_soft)} -> {_fmt(_new_soft)}",
+          flush=True)
+except Exception as e:
+    print(f"[stack] WARNING: failed to raise stack limit: {e}", flush=True)
+
 # Algorithm-key -> dict of (env vars to set) and label
 ALGOS = {
     "ours": {
@@ -334,6 +356,10 @@ def main():
                     help="Output directory")
     ap.add_argument("--skip-run",  action="store_true",
                     help="Skip subprocess execution; just re-aggregate from existing raw TSV")
+    ap.add_argument("--resume",    action="store_true",
+                    help="Resume by skipping (graph,s,algo,run) tuples already in the raw TSV")
+    ap.add_argument("--fresh",     action="store_true",
+                    help="Start fresh: truncate the raw TSV before running (default unless --resume)")
     args = ap.parse_args()
 
     out_dir = Path(args.out)
@@ -352,30 +378,64 @@ def main():
             if p.exists(): return p
         return None
 
-    if not args.skip_run:
-        # Truncate raw log so we don't mix with previous runs.
-        if raw_tsv.exists(): raw_tsv.unlink()
+    # Read which (graph, s, algo, run) tuples are already done in the existing TSV.
+    done_tuples = set()
+    if args.resume and raw_tsv.exists():
+        with raw_tsv.open() as f:
+            f.readline()
+            for line in f:
+                parts = line.rstrip("\n").split("\t")
+                if not parts: continue
+                m = parse_meta(parts[0])
+                key = (m.get("graph"), m.get("s"), m.get("algo"), m.get("run"))
+                done_tuples.add(key)
+        print(f"[resume] {len(done_tuples)} (graph,s,algo,run) phase rows already in TSV; "
+              f"will skip those exact tuples", flush=True)
 
-        # === run loop ===
+    if not args.skip_run:
+        # Truncate raw log unless --resume requested.
+        if not args.resume and raw_tsv.exists():
+            raw_tsv.unlink()
+
+        # === run loop with skip-on-timeout-propagation per (graph, algo) ===
         n_total = len(args.graphs) * len(args.s_list) * len(args.algos) * args.runs
         n_done  = 0
+        # Track for each (graph, algo) pair the smallest s that timed out;
+        # everything s'>= that threshold gets skipped (they only get harder).
+        timeout_floor = {}   # (graph, algo) -> int s
         for g in args.graphs:
             gp = resolve(g)
             if gp is None:
-                print(f"[skip] graph {g}: no file in {graph_dir}")
+                print(f"[skip] graph {g}: no file in {graph_dir}", flush=True)
                 continue
             for s in args.s_list:
                 for algo_key in args.algos:
+                    floor = timeout_floor.get((g, algo_key))
+                    if floor is not None and s >= floor:
+                        for run_id in range(args.runs):
+                            n_done += 1
+                            print(f"[{n_done}/{n_total}] {g} s={s} algo={algo_key}: "
+                                  f"SKIP (earlier s={floor} timed out)", flush=True)
+                        continue
                     for run_id in range(args.runs):
                         n_done += 1
+                        tup = (g, str(s), algo_key, str(run_id))
+                        if tup in done_tuples:
+                            print(f"[{n_done}/{n_total}] {g} s={s} algo={algo_key} run={run_id}: "
+                                  f"SKIP (already in TSV)", flush=True)
+                            continue
                         print(f"[{n_done}/{n_total}] {g} s={s} algo={algo_key} run={run_id} ... ",
                               end="", flush=True)
                         ok, wall_ms, peak_rss = run_one(
                             bin_path, gp, s, algo_key, run_id, raw_tsv, args.timeout)
                         if ok:
-                            print(f"OK  wall={wall_ms:.0f}ms  rss={peak_rss:.0f}kB")
+                            print(f"OK  wall={wall_ms:.0f}ms  rss={peak_rss:.0f}kB", flush=True)
                         else:
-                            print()  # newline already printed by FAIL/TIMEOUT path
+                            # If this run timed out, propagate skip to larger s.
+                            if wall_ms >= args.timeout * 1000 - 100:
+                                timeout_floor[(g, algo_key)] = s
+                                print(f"[skip-floor] {g} {algo_key} s>={s} will be skipped",
+                                      flush=True)
 
     if not raw_tsv.exists():
         sys.exit(f"no raw TSV at {raw_tsv}")
