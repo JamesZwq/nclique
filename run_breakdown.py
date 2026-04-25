@@ -73,39 +73,43 @@ try:
 except Exception as e:
     print(f"[stack] WARNING: failed to raise stack limit: {e}", flush=True)
 
-# Algorithm-key -> dict of (env vars to set) and label
+# Algorithm-key -> dict of (env vars to set) and label.
+# We use PIVOTER_RUN_ST (the immutable-tree variant validated in the 505-
+# config benchmark) as "ours" because PIVOTER_RUN_ST_V2 (tree-free) currently
+# has a peel-phase segfault on web-Stanford at s>=8 that needs separate
+# diagnosis.  ST already implements the immutability + nCr-delta + flat CSR
+# + bucket queue contributions of the paper; only the construction-side
+# tree-free optimization (§5) is missing in ST.
 ALGOS = {
     "ours": {
-        "label":  "Ours (tree-free)",
-        "env":    {"PIVOTER_RUN_ST_V2": "1"},
-        # Phases that should be visualised as the algorithm's own time stack.
-        # Order matters in the stacked plot.
+        "label":  "Ours (PIVOTER_RUN_ST)",
+        "env":    {"PIVOTER_RUN_ST": "1"},
+        # Top-level phases instrumented in degeneracy_cliques.cpp.
+        # ST's internal sub-phases are not separately marked, so its peel
+        # cost rolls into "dispatch_total".  Order matters for the stacked
+        # plot: load -> build -> prep -> peel.
         "phases_time": [
-            "loadAndSort",        # graph load + degeneracy sort
-            "STV2_SDCT_walk",     # Augmented SDCT walk + initial support fill
-            "STV2_CSR_build",     # build dual CSR from COO
-            "preMutation",        # other pre-mutation work (small)
-            "prepareGraph",       # beSingleEdge etc.
-            "STV2_peel_init",     # bucket array setup
-            "STV2_peel_loop",     # peeling main loop
+            "loadAndSort",         # graph load + degeneracy sort
+            "buildSDCT",           # SDCT tree construction (ST consumes the tree)
+            "preMutation",         # any pre-mutation work
+            "prepareGraph",        # beSingleEdge, edge id map
+            "dispatch_total",      # ST internal: counting + CSR + peel
         ],
-        "phases_mem":  [          # phases that contribute component_bytes for memory
-            "STV2_SDCT_walk",
-            "STV2_CSR_build",
-            "STV2_peel_init",
+        "phases_mem":  [           # phases with explicit component_bytes
+            "buildSDCT",           # tree consumed by ST
         ],
     },
     "ref": {
         "label":  "Ref (SOTA mutable tree)",
-        "env":    {},             # no PIVOTER_RUN_* flag → defaults dispatch to ref
+        "env":    {},              # no PIVOTER_RUN_* flag → defaults dispatch to ref
         "phases_time": [
             "loadAndSort",
-            "buildSDCT",          # SDCT tree build (the ref's Phase 2)
+            "buildSDCT",
             "preMutation",
             "prepareGraph",
-            "REF_initSupports",   # initial support computation
-            "REF_heapBuild",      # heap + handle vector + leafRm structures
-            "REF_peel_loop",      # peeling main loop
+            "REF_initSupports",    # initial support computation
+            "REF_heapBuild",       # heap + handle vector + leafRm structures
+            "REF_peel_loop",       # peeling main loop
         ],
         "phases_mem":  [
             "buildSDCT",
@@ -237,10 +241,10 @@ def write_summary(agg, path: Path):
             peak  = max(v["rss_kb"]  for v in phases.values()) if phases else 0
             load  = phases.get("loadAndSort", {}).get("time_ms", 0)
             if a == "ours":
-                build = (phases.get("STV2_SDCT_walk", {}).get("time_ms", 0)
-                         + phases.get("STV2_CSR_build", {}).get("time_ms", 0))
-                peel  = (phases.get("STV2_peel_init", {}).get("time_ms", 0)
-                         + phases.get("STV2_peel_loop", {}).get("time_ms", 0))
+                # ST: build = SDCT tree build; peel = ST internal (counting +
+                # CSR + peel) which is captured in dispatch_total.
+                build = phases.get("buildSDCT", {}).get("time_ms", 0)
+                peel  = phases.get("dispatch_total", {}).get("time_ms", 0)
             else:
                 build = (phases.get("buildSDCT", {}).get("time_ms", 0)
                          + phases.get("REF_initSupports", {}).get("time_ms", 0)
