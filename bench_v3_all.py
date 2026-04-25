@@ -75,11 +75,12 @@ SERVER_GRAPHS = {
     # and the expensive ones (ca-HepPh, com-youtube) are tail-loaded — this
     # front-loads paper-relevant data into the CSV.
     "tods1": ["ca-GrQc", "ca-CondMat", "ca-AstroPh", "email-Eu-core",
-              "com-dblp", "soc-Epinions1", "com-youtube", "ca-HepPh"],
+              "com-dblp", "soc-Epinions1", "com-youtube", "ca-HepPh",
+              "com-lj"],
     # tods2: move web-Stanford (a known V3LM negative case — sparse hub-spoke)
     # to the end so the heavy TIMEOUT / OOM churn doesn't starve other graphs.
     "tods2": ["dblp-core30", "twitter_combined", "wiki-Talk", "web-it-2004",
-              "web-Stanford"],
+              "com-orkut", "web-Stanford"],
 }
 
 # Hardcoded skip regions. These (graph, r, s) blocks are known death zones
