@@ -60,6 +60,13 @@ SERVER_CPU_TARGET = {
 MEM_LIMIT_GB = 300     # don't launch if total used > this
 MEM_KILL_GB = 450      # kill newest if total used > this
 PER_PROC_MEM_GB = 250  # kill individual process if RSS > this
+
+# Graphs whose individual worker can use >= ~250 GB.  We never launch more
+# than one heavy worker concurrently, regardless of MAX_WORKERS, because
+# two concurrent heavy workers blow past MEM_KILL_GB and trigger a kill
+# loop on these very graphs.  See com-lj/com-orkut OOM thrash 2026-04-25.
+HEAVY_GRAPHS = {"com-lj", "com-orkut", "web-it-2004"}
+HEAVY_MAX_CONCURRENT = 1
 SETTLE_SEC = 0.1       # brief pause between launches
 POLL_SEC = 3           # poll interval
 OUTCSV = "bench_v3_all_results.csv"
@@ -701,15 +708,25 @@ def main():
         #   * CPU load average under nproc * CPU_LOAD_TARGET (yields to
         #     other students' processes sharing the server)
         #   * len(running) under MAX_WORKERS (hard ceiling)
+        #   * if g is a HEAVY_GRAPH: at most HEAVY_MAX_CONCURRENT heavy
+        #     workers running (otherwise multiple 250-450 GB workers
+        #     trigger a kill loop on the very graphs we're trying to
+        #     measure).
+        def _heavy_count():
+            return sum(1 for proc, gg, *_ in running if gg in HEAVY_GRAPHS)
+        is_heavy = g in HEAVY_GRAPHS
         while ((not cpu_has_headroom(len(running)))
-               or get_used_mem_gb() >= MEM_LIMIT_GB) and not shutdown:
+               or get_used_mem_gb() >= MEM_LIMIT_GB
+               or (is_heavy and _heavy_count() >= HEAVY_MAX_CONCURRENT)) \
+              and not shutdown:
             reap()
             check_timeouts(); check_proc_mem()
             while get_used_mem_gb() > MEM_KILL_GB and running:
                 kill_newest()
                 time.sleep(2)
             if ((not cpu_has_headroom(len(running)))
-                or get_used_mem_gb() >= MEM_LIMIT_GB):
+                or get_used_mem_gb() >= MEM_LIMIT_GB
+                or (is_heavy and _heavy_count() >= HEAVY_MAX_CONCURRENT)):
                 time.sleep(POLL_SEC)
 
         if shutdown:
