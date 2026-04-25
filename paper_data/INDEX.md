@@ -12,16 +12,14 @@ Numbering reflects approximate order of appearance in the paper.
 
 ## Top-level performance
 
-### `01_main_benchmark_505.csv`
-- **Source:** `tods2:nclique/benchmark_all_results.csv`
+### `01_main_benchmark_762.csv`
+- **Source:** `tods2:nclique/paper_data/01_main_benchmark_all_graphs.csv` (produced by `bench_r1_main.py`)
 - **Used in:** §7.2 end-to-end speedup, §7.3 memory reduction, §7.5 per-graph breakdown, §8.2 CS-1
 - **Schema:** `graph,r,s,algorithm,time_ms,memory_kB,status`
-- **Algorithms in column 4:**
-    - `Ours_ST` (PIVOTER_RUN_ST) — our centralized peel
-    - `Ours_DCLP`, `Ours_V18`, `Ours_V20` — variants for r≥2 (not used in this paper)
-    - `REF_R1`, `REF_R2`, `REF_R3` — SOTA baselines per r
-- **Rows:** 3949 (1 header + 3948 data); 3 graphs × all valid (r,s) × all algos
-- **For r=1 only:** 505 (graph,s) configs × 2 algos (Ours_ST + REF_R1) = 1010 rows
+- **Algorithms:** `Ours_ST` (PIVOTER_RUN_ST=1) and `REF_R1` (no env flag); r=1 only
+- **Rows:** ~1530 data rows = 762 (graph, s) configs × 2 algos
+- **Graphs (10):** com-amazon, com-dblp, twitter, web-Stanford, com-youtube, web-Google, wiki-Talk, web-it-2004, soc-pokec, com-orkut
+- **s ranges per graph:** see Table 2 of the paper (`tab:datasets`)
 
 ### `02_breakdown_summary.csv`
 - **Source:** `tods2:nclique/results/breakdown/breakdown_summary.csv` (ours-side via `PIVOTER_RUN_ST`)
