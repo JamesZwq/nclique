@@ -833,7 +833,7 @@ static bool dispatchR3Plus(
         {"PIVOTER_RUN_REGION_V3FAST", "Region CPI V3 Fast r>=3", NucleusCoreDecompositionRClique_RegionCPI},
         {"PIVOTER_RUN_REGION_V3H", "Region CPI V3 Fast + Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_Hierarchy},
         {"PIVOTER_RUN_REGION_V3HC", "Region CPI V3 Fast + Class-based Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_HierarchyClass},
-        {"PIVOTER_RUN_REGION_V3LM", "Region CPI V3 Fast Low-Memory r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem},
+        {"PIVOTER_RUN_REGION_V3LM", "RegNDC (Region-Tuple Nucleus Decomposition with CPI backend) r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem},
         {"PIVOTER_RUN_REGION_V3LM_NOCPI", "Region CPI V3 Low-Memory NoCPI (ablation) r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem_NoCPI},
         {"PIVOTER_RUN_REGION_V3LM_HIER", "Region CPI V3 Low-Memory + Class-based Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier},
         {"PIVOTER_RUN_REGION_V3NOCPI", "Region CPI V3 NoCPI (ablation) r>=3", NucleusCoreDecompositionRClique_RegionCPI_NoCPI},

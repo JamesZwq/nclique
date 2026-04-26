@@ -951,28 +951,52 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     // are also int16 flat — so no std::vector<std::vector<int>> ever exists
     // on the hot path. This closes the theoretical-regression corner case
     // of the previous scratch-based design (one-dominant-path graphs).
+    // PERF AUDIT REWRITE — normalizeBoxes.
+    // Previous version constructed up to four std::vectors per call
+    // (effective / sorted / idx+sums / minimal). On union-heavy graphs
+    // we hit ~10⁸ normalizeBoxes invocations, each with ≥ 2 small heap
+    // allocs. New version owns one int16_t output buffer (still per-call
+    // alloc, but we keep it short-lived and the recursion uses its
+    // pointer) and routes everything else through depth-aware
+    // thread_local scratch.
+    //
+    // Recursion safety note: countUnionRec recurses with the OUTPUT of
+    // normalizeBoxes (norm.boxesFlat) still live across the recursive
+    // call. Therefore the OUTPUT cannot be a thread_local buffer (the
+    // child's normalizeBoxes call would clobber it). It stays as a
+    // per-frame std::vector. Internal scratch (cur, idx, sums, sorted
+    // workspace, minimal workspace) are thread_local because they are
+    // not read across the recursive boundary.
     struct NormResult { bool fullCover; std::vector<int16_t> boxesFlat; int numBoxes; };
-    auto normalizeBoxes = [](const std::vector<int> &lower,
-                             const std::vector<int> &upper, int T,
+    auto normalizeBoxes = [](const int *lower, const int *upper, int T,
                              const int16_t *boxesIn, int numIn, int m,
                              bool pruneDom) -> NormResult {
-        std::vector<int16_t> effective;
-        effective.reserve((size_t)numIn * m);
-        // LowMem: cur buffer on thread_local heap for m > MAX_M graphs.
+        // Fast exit: no input boxes ⇒ empty output, fast path.
+        if (numIn == 0) return {false, {}, 0};
+
+        // Stage 1 — clamp/feasibility. cur is one row of int16_t scratch.
         thread_local std::vector<int16_t> curBuf;
         if ((int)curBuf.size() < m) curBuf.resize(m);
         int16_t *cur = curBuf.data();
+
+        // effective is the per-frame output that countUnionRec will pass
+        // down into the recursive call → must be a per-call vector
+        // (cannot be thread_local; see comment above).
+        std::vector<int16_t> effective;
+        effective.reserve((size_t)numIn * m);
+
         for (int bi = 0; bi < numIn; ++bi) {
             const int16_t *box = boxesIn + (size_t)bi * m;
             bool impossible = false;
             int lSum = 0;
             bool equalsLower = true;
             for (int i = 0; i < m; ++i) {
-                int v = std::max(lower[i], (int)box[i]);
+                int li = lower[i];
+                int v = (int)box[i] > li ? (int)box[i] : li;
                 if (v > upper[i]) { impossible = true; break; }
                 cur[i] = (int16_t)v;
                 lSum += v;
-                if (v != lower[i]) equalsLower = false;
+                if (v != li) equalsLower = false;
             }
             if (impossible || lSum > T) continue;
             if (equalsLower) return {true, {}, 0};
@@ -981,81 +1005,95 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         int n = (int)(effective.size() / (size_t)m);
         if (n == 0) return {false, std::move(effective), 0};
 
-        // Sort (lexicographic) and dedup, via index permutation.
-        // Note: dominance pruning below would also remove duplicates
-        // (kept == cand is a dominance match), but the dominance check
-        // is O(|minimal|) per candidate — skipping this dedup could
-        // pay O(D × |minimal|) extra work in pass 2 where D =
-        // number of duplicates. Empirically measured as a net loss on
-        // graphs with box-pattern repetition, so we keep the dedup.
-        std::vector<int> idx(n);
-        std::iota(idx.begin(), idx.end(), 0);
-        auto lexLess = [&](int a, int b) {
-            const int16_t *pa = effective.data() + (size_t)a * m;
-            const int16_t *pb = effective.data() + (size_t)b * m;
+        // Stage 2 — sort + dedup (thread_local idx scratch).
+        thread_local std::vector<int> idxBuf;
+        if ((int)idxBuf.size() < n) idxBuf.resize(n);
+        int *idx = idxBuf.data();
+        std::iota(idx, idx + n, 0);
+        const int16_t *eff = effective.data();
+        auto lexLess = [eff, m](int a, int b) {
+            const int16_t *pa = eff + (size_t)a * m;
+            const int16_t *pb = eff + (size_t)b * m;
             for (int i = 0; i < m; ++i)
                 if (pa[i] != pb[i]) return pa[i] < pb[i];
             return false;
         };
-        std::sort(idx.begin(), idx.end(), lexLess);
+        std::sort(idx, idx + n, lexLess);
 
-        std::vector<int16_t> sorted;
-        sorted.reserve(effective.size());
+        // sortedBuf is thread_local scratch — copied INTO effective
+        // (the per-frame output) before normalizeBoxes returns.
+        thread_local std::vector<int16_t> sortedBuf;
+        sortedBuf.clear();
+        sortedBuf.reserve(effective.size());
         for (int ii = 0; ii < n; ++ii) {
             const int16_t *candidate = effective.data() + (size_t)idx[ii] * m;
-            if (!sorted.empty()) {
-                const int16_t *prev = sorted.data() + (sorted.size() - m);
+            if (!sortedBuf.empty()) {
+                const int16_t *prev = sortedBuf.data() + (sortedBuf.size() - m);
                 bool same = true;
                 for (int i = 0; i < m; ++i)
                     if (prev[i] != candidate[i]) { same = false; break; }
                 if (same) continue;
             }
-            sorted.insert(sorted.end(), candidate, candidate + m);
+            sortedBuf.insert(sortedBuf.end(), candidate, candidate + m);
         }
-        effective = std::move(sorted);
+        // Move dedup'd result into the per-frame output buffer.
+        effective.assign(sortedBuf.begin(), sortedBuf.end());
         n = (int)(effective.size() / (size_t)m);
         if (!pruneDom) return {false, std::move(effective), n};
 
-        // Dominance pruning: sort by sum asc (ties lex), keep box iff no
-        // already-kept box dominates it componentwise (kept ≤ cand).
-        idx.assign(n, 0);
-        std::iota(idx.begin(), idx.end(), 0);
-        std::vector<int> sums(n, 0);
+        // Stage 3 — dominance pruning (thread_local sums + minimal scratch).
+        thread_local std::vector<int> sumsBuf;
+        if ((int)sumsBuf.size() < n) sumsBuf.resize(n);
+        int *sums = sumsBuf.data();
         for (int i = 0; i < n; ++i) {
             const int16_t *p = effective.data() + (size_t)i * m;
             int s = 0;
             for (int k = 0; k < m; ++k) s += p[k];
             sums[i] = s;
         }
-        std::sort(idx.begin(), idx.end(), [&](int a, int b) {
+        if ((int)idxBuf.size() < n) idxBuf.resize(n);
+        idx = idxBuf.data();
+        std::iota(idx, idx + n, 0);
+        const int16_t *eff2 = effective.data();
+        std::sort(idx, idx + n, [eff2, sums, m](int a, int b) {
             if (sums[a] != sums[b]) return sums[a] < sums[b];
-            return lexLess(a, b);
+            const int16_t *pa = eff2 + (size_t)a * m;
+            const int16_t *pb = eff2 + (size_t)b * m;
+            for (int i = 0; i < m; ++i)
+                if (pa[i] != pb[i]) return pa[i] < pb[i];
+            return false;
         });
-        std::vector<int16_t> minimal;
-        minimal.reserve(effective.size());
+
+        thread_local std::vector<int16_t> minimalBuf;
+        minimalBuf.clear();
+        minimalBuf.reserve(effective.size());
         int minCount = 0;
         for (int ii = 0; ii < n; ++ii) {
             const int16_t *cand = effective.data() + (size_t)idx[ii] * m;
             bool dominated = false;
             for (int k = 0; k < minCount; ++k) {
-                const int16_t *kept = minimal.data() + (size_t)k * m;
+                const int16_t *kept = minimalBuf.data() + (size_t)k * m;
                 bool dom = true;
                 for (int i = 0; i < m; ++i)
                     if (kept[i] > cand[i]) { dom = false; break; }
                 if (dom) { dominated = true; break; }
             }
             if (!dominated) {
-                minimal.insert(minimal.end(), cand, cand + m);
+                minimalBuf.insert(minimalBuf.end(), cand, cand + m);
                 ++minCount;
             }
         }
-        return {false, std::move(minimal), minCount};
+        // Move dominance result into the per-frame output and return.
+        effective.assign(minimalBuf.begin(), minimalBuf.end());
+        return {false, std::move(effective), minCount};
     };
 
     // --- countUnionWeighted: branch-and-bound ---
     // choosePivotBox: pick box with fewest active dims (ties: highest sum).
     // LowMem: reads from int16 flat boxes array directly.
-    auto choosePivot = [](const std::vector<int> &lower,
+    // PERF: pointer-based signature avoids forcing callers to wrap their
+    // working buffers (often stack arrays) in std::vector.
+    auto choosePivot = [](const int *lower,
                           const int16_t *boxes, int numBoxes, int m) -> int {
         int bestIdx = 0, bestActive = m + 1, bestSum = -1;
         for (int i = 0; i < numBoxes; ++i) {
@@ -1080,16 +1118,14 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         const PathInfo *pi;       // path being evaluated
     };
 
-    // Forward-declare countUnionRec (int16-flat boxes).
-    std::function<double(const std::vector<int>&, const std::vector<int>&,
-                         const int16_t*, int, UnionCtx&)> countUnionRec;
-
     // Helper: compute weighted feasible for given lower/upper using tuple weights
     // LowMem: wtsFlat / wtLen moved from stack [MAX_M * (MAX_T+1)] to
     // thread_local heap so graphs with np_c > MAX_T (e.g. web-it-2004 MC=432,
     // np_c can be 300+) no longer abort. Per-call cost: two size-check
     // resizes; after warmup the buffers are at peak size, zero allocation.
-    auto feasWeighted = [&](const std::vector<int> &lower, const std::vector<int> &upper,
+    // PERF: pointer-based signature (was std::vector<int>&); the caller now
+    // hands in stack arrays without ever constructing a vector.
+    auto feasWeighted = [&](const int *lower, const int *upper,
                             UnionCtx &ctx) -> double {
         int m = (int)ctx.pi->classIds.size();
         // wtStride = max(upper[i] - lower[i] + 1, 1) to fit any class's range.
@@ -1105,15 +1141,30 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         if ((int)wtLenBuf.size() < m) wtLenBuf.resize(m);
         double *wtsFlat = wtsFlatBuf.data();
         int *wtLen = wtLenBuf.data();
-        buildWeightTables_sb(ctx.tidx, *ctx.pi, lower.data(), upper.data(), wtsFlat, wtStride, wtLen);
-        return countFeasibleWeighted_sb(lower.data(), upper.data(), m, ctx.T, wtsFlat, wtStride, wtLen);
+        buildWeightTables_sb(ctx.tidx, *ctx.pi, lower, upper, wtsFlat, wtStride, wtLen);
+        return countFeasibleWeighted_sb(lower, upper, m, ctx.T, wtsFlat, wtStride, wtLen);
     };
 
-    countUnionRec = [&](const std::vector<int> &lower, const std::vector<int> &upper,
-                        const int16_t *boxes, int numBoxes,
-                        UnionCtx &ctx) -> double {
+    // PERF AUDIT REWRITE — countUnionRec.
+    // Previous version used std::function<...> for recursion (vtable-like
+    // dispatch on every call) + per-recursion std::vector allocations for
+    // pivot / nextLower / nextUpper. On union-heavy graphs the function-
+    // call overhead and the heap traffic dominated the peel.
+    //
+    // New version:
+    //   - Self-recursing lambda via Y-combinator style (auto&& self),
+    //     so the call site is a direct lambda invocation, no
+    //     std::function indirection.
+    //   - Stack-allocated arrays for pivot / nextLower / nextUpper
+    //     (sized MAX_M; caller already enforces this cap on path m).
+    //   - Pointer-based signature throughout, no std::vector copying
+    //     across recursion levels.
+    auto countUnionRec_impl = [&](auto&& self,
+                                  const int *lower, const int *upper,
+                                  const int16_t *boxes, int numBoxes,
+                                  UnionCtx &ctx) -> double {
         ctx.recCalls++;
-        // Feasibility check
+        // Feasibility check.
         {
             int minS = 0, maxS = 0;
             for (int i = 0; i < ctx.m; ++i) {
@@ -1127,10 +1178,32 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         if (norm.fullCover) return feasWeighted(lower, upper, ctx);
         if (norm.numBoxes == 0) return 0.0;
 
-        // Branch on pivot. Copy pivot into a std::vector<int> because the
-        // lower/upper/pivot axes still flow as `int` through feasWeighted.
+        // Pivot selection. We need three working arrays of length ctx.m:
+        // pivot, nextLower, nextUpper. The fast path (m ≤ MAX_M) keeps
+        // them on the C stack — zero allocation, ideal for the hot path.
+        // The slow path (m > MAX_M) falls back to std::vector to match
+        // the existing convention in this file (other thread_local
+        // buffers also support m > MAX_M for extreme graphs). Recursion
+        // depth is bounded by the number of normalized dead boxes at
+        // entry (each frame removes one via `remCount = numBoxes - 1`),
+        // and DomPrune keeps that count small; ctx.m × depth × 12 bytes
+        // is the worst-case extra stack pressure on the heap-fallback
+        // path, dominated by other allocations on such graphs.
         int pivIdx = choosePivot(lower, norm.boxesFlat.data(), norm.numBoxes, ctx.m);
-        std::vector<int> pivot(ctx.m);
+
+        int stackPivot[MAX_M], stackNextLower[MAX_M], stackNextUpper[MAX_M];
+        std::vector<int> heapPivot, heapNextLower, heapNextUpper;
+        int *pivot     = stackPivot;
+        int *nextLower = stackNextLower;
+        int *nextUpper = stackNextUpper;
+        if (ctx.m > MAX_M) {
+            heapPivot.resize(ctx.m);
+            heapNextLower.resize(ctx.m);
+            heapNextUpper.resize(ctx.m);
+            pivot     = heapPivot.data();
+            nextLower = heapNextLower.data();
+            nextUpper = heapNextUpper.data();
+        }
         {
             const int16_t *pv = norm.boxesFlat.data() + (size_t)pivIdx * ctx.m;
             for (int i = 0; i < ctx.m; ++i) pivot[i] = (int)pv[i];
@@ -1140,9 +1213,6 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
         // Zero-copy "remove pivot from boxes": swap pivot box to the last
         // slot of norm.boxesFlat and pass (numBoxes - 1) to recursion.
-        // norm.boxesFlat is a local vector about to be destroyed on
-        // return, so mutating it is safe. Saves a full allocation +
-        // O(numBoxes * m) copy per recursion depth.
         int remCount = norm.numBoxes - 1;
         if (pivIdx != remCount) {
             int16_t *p = norm.boxesFlat.data();
@@ -1154,16 +1224,25 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         for (int splitDim = 0; splitDim < ctx.m; ++splitDim) {
             if (pivot[splitDim] <= lower[splitDim]) continue;
 
-            std::vector<int> nextLower = lower;
-            std::vector<int> nextUpper = upper;
+            for (int i = 0; i < ctx.m; ++i) {
+                nextLower[i] = lower[i];
+                nextUpper[i] = upper[i];
+            }
             for (int earlier = 0; earlier < splitDim; ++earlier)
-                nextLower[earlier] = std::max(nextLower[earlier], pivot[earlier]);
+                if (pivot[earlier] > nextLower[earlier])
+                    nextLower[earlier] = pivot[earlier];
             nextUpper[splitDim] = std::min(nextUpper[splitDim], pivot[splitDim] - 1);
 
-            total += countUnionRec(nextLower, nextUpper,
-                                   norm.boxesFlat.data(), remCount, ctx);
+            total += self(self, nextLower, nextUpper,
+                          norm.boxesFlat.data(), remCount, ctx);
         }
         return total;
+    };
+    auto countUnionRec = [&](const int *lower, const int *upper,
+                             const int16_t *boxes, int numBoxes,
+                             UnionCtx &ctx) -> double {
+        return countUnionRec_impl(countUnionRec_impl, lower, upper,
+                                  boxes, numBoxes, ctx);
     };
 
     // --- Build PathInfo structures ---
@@ -1430,11 +1509,49 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     // --- Append requirement vector for tuple τ on path P to flat pool ---
     // req[i] = max(0, j_c - nh_c) for each class i on the path.
     // LowMem: writes m int16_t values directly to pi.deadBoxesFlat.
-    auto appendReqBox = [&](daf::Size tidx, PathInfo &pi) {
+    // Profile counters for DomPrune (paper Alg \textsc{DomPrune}).
+    long long prof_dompruneIncomingSkipped = 0;
+    long long prof_dompruneOldRemoved = 0;
+
+    // Per-batch scratch — declared BEFORE appendReqBox so the lambda's
+    // [&] capture sees the name. They are read/written by both
+    // appendReqBox (for oldBoxSizeByPath) and the peel loop (for the
+    // others). pathInfos is fully built by this point.
+    //   batchDead[piIdx]: peeled tuples on path piIdx in current batch
+    //   newAppendsByPath[piIdx]: count of dead boxes still in suffix
+    //                           after DomPrune accepts/removals (= length
+    //                           of new-box suffix in pi.deadBoxesFlat)
+    //   oldBoxSizeByPath[piIdx]: pre-batch box count, used by
+    //                            appendReqBox pass (ii) as the upper
+    //                            bound of "removable old boxes" so
+    //                            same-batch siblings stay in the suffix
+    //   touchedPaths: unique piIdx with non-empty batchDead[piIdx]
+    std::vector<std::vector<daf::Size>> batchDead(pathInfos.size());
+    std::vector<int> newAppendsByPath(pathInfos.size(), 0);
+    std::vector<int> oldBoxSizeByPath(pathInfos.size(), 0);
+    std::vector<daf::Size> touchedPaths;
+    touchedPaths.reserve(64);
+
+    // Stack scratch for the candidate dead box (avoid per-call heap alloc).
+    // MAX_M is the cap enforced earlier on |classIds| for any path. If a
+    // path exceeds it, we'd silently truncate, so guard with a runtime
+    // check (returns false → no append, which is conservatively wrong only
+    // by including a duplicate-style box; we abort to make the bug loud).
+    // Returns true if the candidate box was appended (DomPrune accepted it).
+    // piIdx is needed so pass (ii) can restrict its old-box-removal scan to
+    // [0, oldBoxSizeByPath[piIdx]) — boxes appended earlier in the SAME
+    // batch must not be displaced, otherwise the new-box suffix invariant
+    // breaks (and so does newAppendsByPath bookkeeping).
+    auto appendReqBox = [&](daf::Size tidx, daf::Size piIdx, PathInfo &pi) -> bool {
         int m = (int)pi.classIds.size();
-        size_t off = pi.deadBoxesFlat.size();
-        pi.deadBoxesFlat.resize(off + m, 0);
-        int16_t *req = pi.deadBoxesFlat.data() + off;
+        // LowMem: stack buffer regression — earlier code was using a
+        // thread_local heap to support paths with m > MAX_M. We restore
+        // that contract here so this code path doesn't abort on dense
+        // graphs (e.g. web-it-2004 leaves with m > MAX_M=512).
+        thread_local std::vector<int16_t> candBuf;
+        if ((int)candBuf.size() < m) candBuf.resize(m);
+        int16_t *cand = candBuf.data();
+        std::memset(cand, 0, (size_t)m * sizeof(int16_t));
         auto &key = rTuples[tidx].key;  // sorted with repetitions
         // Merge-scan key (sorted) against pi.classIds (sorted) to avoid
         // the per-call unordered_map<> construct/destruct.
@@ -1447,10 +1564,91 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                 int jc = 1;
                 while (ki + jc < klen && key[ki + jc] == key[ki]) ++jc;
                 int v = jc - pi.nh[ci];
-                if (v > 0) req[ci] = (int16_t)v;
+                if (v > 0) cand[ci] = (int16_t)v;
                 ++ci; ki += jc;
             }
         }
+
+        // === Bidirectional DomPrune (paper Alg \textsc{DomPrune}):
+        //   (i) If some existing D dominates cand (D[c] ≤ cand[c] ∀c),
+        //       cand's kill region ⊆ D's, so cand contributes nothing
+        //       to the union → reject cand.
+        //   (ii) Conversely, every existing D' dominated by cand
+        //        (cand[c] ≤ D'[c] ∀c) is now redundant — its kill
+        //        region ⊆ cand's. We sweep them out before committing
+        //        cand. This keeps the antichain at the smallest size
+        //        the paper guarantees. The per-call cost is
+        //        O(existing × m), amortized over the peel.
+        // On sparse graphs DomPrune shrinks deadBoxesFlat by 1-2
+        // orders of magnitude (most peeled τ★ have jc(τ★) ≤ nh on
+        // every class, hence cand = 0-vector → dominated by any
+        // earlier accepted box ⇒ rejected after the first append).
+        // ===
+        const int existing = (int)(pi.deadBoxesFlat.size() / (size_t)m);
+        const int oldEnd = oldBoxSizeByPath[piIdx];  // boxes 0..oldEnd are pre-batch
+        // Defensive: oldEnd should never exceed existing.
+        // (existing - oldEnd) is the count of boxes already appended this
+        // batch; we must NOT touch them in pass (ii).
+        // Pass (i) — rejection scan: scan ALL existing (old + this-batch)
+        // because a same-batch sibling might already dominate cand.
+        for (int b = 0; b < existing; ++b) {
+            const int16_t *D = pi.deadBoxesFlat.data() + (size_t)b * m;
+            bool dominates = true;
+            for (int c = 0; c < m; ++c) {
+                if (D[c] > cand[c]) { dominates = false; break; }
+            }
+            if (dominates) {
+                prof_dompruneIncomingSkipped++;
+                return false;
+            }
+        }
+        // Pass (ii) — compaction: only OLD boxes (b < oldEnd) may be
+        // removed if dominated by cand. Same-batch siblings (b >= oldEnd)
+        // stay untouched, preserving the new-box suffix invariant. Old
+        // boxes that survive are written back compactly; same-batch
+        // siblings then shift LEFT by the number of removed old boxes,
+        // but they remain a contiguous suffix.
+        int writeIdx = 0;
+        for (int b = 0; b < oldEnd; ++b) {
+            const int16_t *D = pi.deadBoxesFlat.data() + (size_t)b * m;
+            bool dominated = true;
+            for (int c = 0; c < m; ++c) {
+                if (cand[c] > D[c]) { dominated = false; break; }
+            }
+            if (dominated) {
+                prof_dompruneOldRemoved++;
+                continue;
+            }
+            if (writeIdx != b) {
+                std::memcpy(pi.deadBoxesFlat.data() + (size_t)writeIdx * m,
+                            pi.deadBoxesFlat.data() + (size_t)b * m,
+                            (size_t)m * sizeof(int16_t));
+            }
+            writeIdx++;
+        }
+        if (writeIdx != oldEnd) {
+            // Shift same-batch suffix [oldEnd, existing) left by the
+            // number of removed old boxes (= oldEnd - writeIdx). Use
+            // memmove because source and dest overlap when removed > 0
+            // and the shift is < (existing - oldEnd) bytes.
+            const int removed = oldEnd - writeIdx;
+            const int siblingCount = existing - oldEnd;
+            if (siblingCount > 0) {
+                std::memmove(pi.deadBoxesFlat.data() + (size_t)writeIdx * m,
+                             pi.deadBoxesFlat.data() + (size_t)oldEnd * m,
+                             (size_t)siblingCount * (size_t)m * sizeof(int16_t));
+            }
+            // Update the snapshot so subsequent appendReqBox calls in this
+            // batch see the correct oldEnd.
+            oldBoxSizeByPath[piIdx] = oldEnd - removed;
+            pi.deadBoxesFlat.resize((size_t)(existing - removed) * m);
+        }
+
+        // Commit: append cand to the flat box buffer.
+        size_t off = pi.deadBoxesFlat.size();
+        pi.deadBoxesFlat.resize(off + (size_t)m);
+        std::memcpy(pi.deadBoxesFlat.data() + off, cand, (size_t)m * sizeof(int16_t));
+        return true;
     };
 
     std::cout << "  MinCore floor: computed inline during Step 3" << std::endl;
@@ -1458,6 +1656,12 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     // --- Per-(tuple, path) dead count cache ---
     // robin_hood flat map: ~2-3x faster than std::unordered_map for uint64 keys
     // on the peeling hot path, where every alive-tuple update queries the cache.
+    // PERF AUDIT NOTE: tried per-path map (one small map per path) but
+    // measured a 40-55 % memory regression on cit-HepPh / email-Eu-core
+    // because of the per-map robin_hood bucket-array overhead at the
+    // observed average load (~90 entries per path × ~2 KB minimum bucket
+    // pool × hundreds of thousands of paths). Single global map remains
+    // the Pareto-optimal choice for this peel pattern.
     robin_hood::unordered_flat_map<uint64_t, double> deadCache;
 
     // --- Bucket queue setup ---
@@ -1533,6 +1737,22 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::vector<int> base, upper;
     base.reserve(MAX_M); upper.reserve(MAX_M);
 
+    // batchDead / newAppendsByPath / oldBoxSizeByPath / touchedPaths
+    // are declared earlier (see the appendReqBox lambda comment) so that
+    // appendReqBox's [&] capture and refreshAffectedPaths can both read
+    // them. Nothing additional to declare here.
+
+    // PERF: hoist `affected` out of the per-batch hot loop. Previous
+    // version did `std::vector<daf::Size> affected; affected.reserve(...);`
+    // every batch — one heap alloc per batch. With thousands of batches
+    // on dense graphs this added up to noticeable pure-alloc overhead.
+    // Reused with .clear() (capacity preserved).
+    std::vector<daf::Size> affected;
+    affected.reserve(64);
+
+    // Profile counter for the new affected-predicate short-circuit.
+    long long prof_unionSkippedByAffectedCheck = 0;
+
     auto refreshAffectedPaths = [&](const std::vector<daf::Size> &affectedPaths,
                                     BigLevel &scanLevel) {
         for (daf::Size piIdx : affectedPaths) {
@@ -1553,6 +1773,19 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
             // LowMem: countUnionRec reads pi.deadBoxesFlat directly.
             int nBoxes = (int)(pi.deadBoxesFlat.size() / (size_t)m);
+
+            // Boxes appended in this batch occupy the suffix of deadBoxesFlat.
+            // newAppendsByPath[piIdx] is the *actual* number of boxes added
+            // (DomPrune may have rejected some of the candidates), so the
+            // suffix length equals newAppendsByPath[piIdx], not
+            // batchDead[piIdx].size().
+            // Earlier boxes are already accounted for in deadCache[piIdx,tidx]
+            // (or, if there was no prior cache hit, contribute 0 to newDead
+            // because they were unaffected by τ' at the time and dead-box
+            // contributions are monotone non-negative per box).
+            const int numNewBoxes = newAppendsByPath[piIdx];
+            const int firstNewBoxOffset = (nBoxes - numNewBoxes) * m;
+            const int T = pi.T;
 
             // upper is tuple-independent per path: fill once.
             upper.assign(m, 0);
@@ -1575,8 +1808,39 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                     }
                 }
 
+                // === Affected-predicate short-circuit (Cor. incrdelta) ===
+                // τ' is affected by this batch iff at least one newly-added
+                // dead box D admits a feasible extension k of τ' that lies in
+                // D's kill region: k[c] ≥ max(D[c], base[c]) for every c, and
+                // ∑ k[c] = T. Necessary condition: ∑_c max(D[c], base[c]) ≤ T.
+                // If no new box passes this test for τ', then newDead under
+                // the union over (old ∪ new) equals oldDead under the union
+                // over old alone — delta = 0, no support change. Skip
+                // countUnionRec entirely.
+                if (numNewBoxes > 0) {
+                    bool affected = false;
+                    const int16_t *Dptr = pi.deadBoxesFlat.data() + firstNewBoxOffset;
+                    for (int b = 0; b < numNewBoxes; ++b) {
+                        int s = 0;
+                        bool over = false;
+                        for (int c = 0; c < m; ++c) {
+                            int dv = (int)Dptr[c];
+                            int v = dv > base[c] ? dv : base[c];
+                            s += v;
+                            if (s > T) { over = true; break; }
+                        }
+                        if (!over) { affected = true; break; }
+                        Dptr += m;
+                    }
+                    if (!affected) {
+                        prof_unionSkippedByAffectedCheck++;
+                        continue;
+                    }
+                }
+                // === End affected-predicate short-circuit ===
+
                 UnionCtx ctx{m, pi.T, 0, tidx, &pi};
-                double newDead = countUnionRec(base, upper,
+                double newDead = countUnionRec(base.data(), upper.data(),
                                                pi.deadBoxesFlat.data(), nBoxes, ctx);
                 prof_totalRecCalls += ctx.recCalls;
                 prof_unionCalls++;
@@ -1611,18 +1875,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     daf::Size numPeeled = 0;
     BigLevel currentLevel = 0, coreLevel = 0;
 
-    // Audit fix #4: `newlyDeadByPath` and `affectedPathSet` were
-    // rebuilt per batch as hashmap / hashset with per-entry heap allocs
-    // and per-batch bucket-array allocation. Reuse across batches via:
-    //   - `batchDead[piIdx]`  : dead tuples added this batch (inner
-    //     vector capacity preserved across batches).
-    //   - `touchedPaths`      : the list of piIdx with non-empty
-    //     batchDead[piIdx], so we can iterate instead of scanning.
-    // Amortized over the whole peel these structures hold only the
-    // currently-active working set, no repeated hashmap growth.
-    std::vector<std::vector<daf::Size>> batchDead(pathInfos.size());
-    std::vector<daf::Size> touchedPaths;
-    touchedPaths.reserve(64);
+    // batchDead / newAppendsByPath / touchedPaths are declared earlier so
+    // that refreshAffectedPaths can read newAppendsByPath[piIdx] (suffix
+    // length of newly-appended dead boxes after DomPrune).
     std::vector<daf::Size> pctPaths;  // pathsCoveringTuple output buffer
 
     while (numPeeled < rTuples.size()) {
@@ -1669,7 +1924,10 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         }
 
         // Clear last batch's scratch (capacity kept).
-        for (auto pi : touchedPaths) batchDead[pi].clear();
+        for (auto pi : touchedPaths) {
+            batchDead[pi].clear();
+            newAppendsByPath[pi] = 0;
+        }
         touchedPaths.clear();
 
         for (auto idx : batch) {
@@ -1685,8 +1943,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         }
 
         // Affected-path list built in-place below (retired paths dropped).
-        std::vector<daf::Size> affected;
-        affected.reserve(touchedPaths.size());
+        // `affected` is declared once outside the loop and reused via
+        // .clear() to preserve capacity across batches.
+        affected.clear();
         for (auto piIdx : touchedPaths) {
             auto &pi = pathInfos[piIdx];
             auto &deadTuples = batchDead[piIdx];
@@ -1700,10 +1959,30 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             }
             int m = (int)pi.classIds.size();
             pi.deadBoxesFlat.reserve(pi.deadBoxesFlat.size() + deadTuples.size() * m);
+            // Snapshot pre-batch box count so appendReqBox's pass (ii)
+            // can restrict its old-box-removal scan to [0, oldEnd) and
+            // leave any same-batch siblings in the suffix.
+            const int oldBoxCountBefore = (int)(pi.deadBoxesFlat.size() / (size_t)m);
+            oldBoxSizeByPath[piIdx] = oldBoxCountBefore;
+            int acceptedThisBatch = 0;
             for (auto idx : deadTuples) {
-                appendReqBox(idx, pi);
-                prof_deadBoxesAdded++;
+                if (appendReqBox(idx, piIdx, pi)) {
+                    prof_deadBoxesAdded++;
+                    acceptedThisBatch++;
+                }
             }
+            const int curBoxCount = (int)(pi.deadBoxesFlat.size() / (size_t)m);
+            // If DomPrune rejected every candidate AND removed nothing
+            // from the existing buffer, the union value is unchanged →
+            // skip refresh entirely on this path. (Pass-ii removals
+            // would shrink curBoxCount relative to oldBoxCountBefore;
+            // we re-read curBoxCount post-batch to detect them.)
+            if (acceptedThisBatch == 0 && curBoxCount == oldBoxCountBefore) continue;
+            // Precise new-suffix length: after the batch, the new boxes
+            // form a contiguous suffix of length acceptedThisBatch
+            // (pass ii only displaces them by removing some old boxes,
+            // which keeps them contiguous at the end).
+            newAppendsByPath[piIdx] = acceptedThisBatch;
             affected.push_back(piIdx);
         }
         refreshAffectedPaths(affected, currentLevel);
@@ -1718,11 +1997,17 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::cout << "  Peeled active tuples: " << numPeeled << " / " << rTuples.size() << std::endl;
     std::cout << "  Batches: " << prof_batchCount << std::endl;
     std::cout << "  Dead boxes added: " << prof_deadBoxesAdded << std::endl;
+    std::cout << "  DomPrune incoming skipped: "
+              << prof_dompruneIncomingSkipped << std::endl;
+    std::cout << "  DomPrune old removed: "
+              << prof_dompruneOldRemoved << std::endl;
     std::cout << "  Paths retired (alive=0): " << prof_pathsRetired
               << " / " << pathInfos.size() << std::endl;
     std::cout << "  DeadCache evictions (on peel): " << prof_deadCacheEvicted << std::endl;
     std::cout << "  DeadCache final size: " << deadCache.size() << std::endl;
     std::cout << "  Union calls: " << prof_unionCalls << std::endl;
+    std::cout << "  Union skipped (unaffected by new boxes): "
+              << prof_unionSkippedByAffectedCheck << std::endl;
     std::cout << "  Total recursive calls: " << prof_totalRecCalls << std::endl;
     std::cout << "  Tuple updates: " << prof_tupleUpdates << std::endl;
     if (enablePrivateCloud) {
