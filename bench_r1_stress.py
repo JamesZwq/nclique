@@ -1,42 +1,37 @@
 #!/usr/bin/env python3
 """
-Stress-test on synthetic dense graphs (multi-threaded, resource-aware).
+Stress-test on synthetic dense graphs (parallel, resource-aware).
 
 Reproduces the protocol of Nuclear-CD-TODS §6 (Stress Test), restricted
 to r=1.  N=1000, increasing edge density p; for each p run Ours_ST and
-REF_R1 across a sweep of s.
+REF_R1 across a sweep of s.  Halts when every algorithm has died (i.e.
+failed at the lowest s of args.s_list) at some density.
 
-Density list defaults to {0.01, 0.03, ..., 0.99}; the bench halts when
-every algorithm has died (timed out at the lowest s) at some density.
+Resource scheduling (mirrors bench_v3_all.py):
+  * MAX_WORKERS hard cap (default 32)
+  * Memory gates:
+      - launch gate: do not start a new worker if used > MEM_LIMIT_GB
+      - kill gate: while used > MEM_KILL_GB, kill the most recent running
+        process and re-queue it (capped at MAX_RETRIES)
+      - per-proc gate: kill any individual process whose RSS exceeds
+        PER_PROC_MEM_GB
+  * CPU load-avg gate (--cpu-load-target; disabled by default)
+  * Adaptive throttle: longer sleep between launches when memory rises
 
-Resource scheduling (modeled on bench_v3_all.py):
-  * MAX_WORKERS hard cap (default 32, per --workers flag)
-  * Memory gate: do not launch a new worker if used memory exceeds
-    MEM_LIMIT_GB; kill newest worker if memory exceeds MEM_KILL_GB
-  * CPU load-avg gate: do not launch new worker if loadavg > nproc *
-    CPU_LOAD_TARGET (set to None to disable on dedicated servers)
-  * SETTLE_SEC pause between launches; POLL_SEC poll interval
-
-Per-(density, algo) within-density floor: a timeout at s_t skips s>=s_t.
-Per-algo cross-density death: a timeout at the lowest s for some algo
-at density p marks the algo dead at every p' >= p.
-
-Resume-friendly: skip rows with status=OK already in the output CSV.
+The kill-and-requeue logic prevents the OS OOM-killer from picking
+arbitrary victims and lets older smaller jobs finish.
 
 Usage:
     python3 bench_r1_stress.py \
         --bin ./build/bin/degeneracy_cliques \
-        --n 1000 --workers 32 \
-        --densities 0.01 0.03 0.05 0.08 0.11 0.15 0.20 \
-                    0.25 0.30 0.40 0.50 0.60 0.70 0.80 0.90 0.95 0.99 \
-        --s-list 5 7 9 11 \
-        --timeout 1200 --out paper_data/stress.csv
+        --n 1000 --workers 32 --timeout 1200 \
+        --out paper_data/stress.csv
 """
 from __future__ import annotations
 
 import argparse, csv, math, multiprocessing as _mp, os, random, re, signal
-import subprocess, sys, tempfile, threading, time
-from concurrent.futures import ThreadPoolExecutor
+import subprocess, sys, tempfile, time
+from collections import defaultdict
 from pathlib import Path
 
 # ============ Stack-limit raise ============
@@ -52,20 +47,19 @@ try:
 except Exception:
     pass
 
-# ============ Resource gates (mirroring bench_v3_all.py) ============
-MAX_WORKERS_DEFAULT = 32
-MEM_LIMIT_GB        = 300       # don't launch if used > this
-MEM_KILL_GB         = 450       # warn if used > this
-PER_PROC_MEM_GB     = 250       # warn if a single proc > this
-SETTLE_SEC          = 0.2       # pause between launches
-POLL_SEC            = 3         # poll interval
-CPU_LOAD_TARGET     = None      # tods2 dedicated → disabled; set to e.g. 0.85 to enable
+# ============ Resource limits ============
+MEM_LIMIT_GB    = 300       # gate: don't launch new worker if used > this
+MEM_KILL_GB     = 450       # kill gate: while used > this, kill newest
+PER_PROC_MEM_GB = 250       # kill any single proc whose RSS > this
+SETTLE_SEC      = 0.2
+POLL_SEC        = 3
+MAX_RETRIES     = 2          # kill_newest re-queue cap before declaring OOM
 
 ALGOS = [("Ours_ST", {"PIVOTER_RUN_ST": "1"}), ("REF_R1", {})]
 
 
+# ============ Resource probes ============
 def get_used_mem_gb() -> float:
-    """Used memory in GB from /proc/meminfo."""
     try:
         info = {}
         with open("/proc/meminfo") as f:
@@ -83,14 +77,24 @@ def get_load_avg_1min() -> float:
     except Exception: return 0.0
 
 
-def can_launch(running: int, max_workers: int, cpu_target):
-    if running >= max_workers:
+def get_proc_rss_gb(pid: int) -> float:
+    """RSS of a single PID in GB. Returns 0 if process is gone."""
+    try:
+        with open(f"/proc/{pid}/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) / 1024 / 1024
+    except Exception:
+        pass
+    return 0.0
+
+
+def cpu_has_headroom(running_count: int, max_workers: int, cpu_target):
+    if running_count >= max_workers:
         return False
-    if get_used_mem_gb() >= MEM_LIMIT_GB:
-        return False
-    if cpu_target is not None and get_load_avg_1min() > _mp.cpu_count() * cpu_target:
-        return False
-    return True
+    if cpu_target is None:
+        return True
+    return get_load_avg_1min() < _mp.cpu_count() * cpu_target
 
 
 # ============ Graph generation ============
@@ -106,8 +110,7 @@ def generate_clique_injection(n, p, seed=42, alpha=2.0, max_clique=100):
     rng = random.Random(seed)
     target = int(round(p * n * (n - 1) / 2))
     if target >= n * (n - 1) // 2:
-        edges = [(i, j) for i in range(n) for j in range(i + 1, n)]
-        return edges
+        return [(i, j) for i in range(n) for j in range(i + 1, n)]
     edges = set()
     while len(edges) < target:
         k = truncated_powerlaw(rng, alpha, 3, min(max_clique, n))
@@ -129,30 +132,15 @@ def write_edge_file(path, n, edges):
             f.write(f"{u} {v}\n")
 
 
-# ============ Subprocess runner ============
-def parse_timing(stdout):
+# ============ Subprocess output parsing ============
+def parse_timing(stdout: str):
     m_total = re.search(r'NucleusCoreDecomposition took:\s*([\d.]+)', stdout)
     m_mem   = re.search(r'\[Memory-\w+\]\s*Final Memory:\s*([\d.]+)', stdout)
     return (float(m_total.group(1)) if m_total else -1.0,
             float(m_mem.group(1))   if m_mem   else -1.0)
 
 
-def run_one(bin_path, gpath, s, env_extra, timeout):
-    env = os.environ.copy(); env.update(env_extra)
-    try:
-        proc = subprocess.run([str(bin_path), str(gpath), "1", str(s)],
-                              env=env, capture_output=True, text=True,
-                              timeout=timeout)
-    except subprocess.TimeoutExpired:
-        return ("TIMEOUT", -1.0, -1.0)
-    if proc.returncode != 0:
-        return (f"FAIL({proc.returncode})", -1.0, -1.0)
-    t, m = parse_timing(proc.stdout)
-    return ("OK" if t >= 0 else "PARSE_FAIL", t, m)
-
-
 def parse_existing(csv_path: Path):
-    """Returns the set of (density_str, s, algo) already recorded with status==OK."""
     done = set()
     if not csv_path.exists():
         return done
@@ -173,8 +161,7 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--bin", default="./build/bin/degeneracy_cliques")
     ap.add_argument("--n", type=int, default=1000)
-    ap.add_argument("--workers", type=int, default=MAX_WORKERS_DEFAULT,
-                    help=f"max parallel workers (default {MAX_WORKERS_DEFAULT})")
+    ap.add_argument("--workers", type=int, default=32)
     ap.add_argument("--densities", nargs="+", type=float,
                     default=[0.01, 0.03, 0.05, 0.08, 0.11, 0.15, 0.20,
                              0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80,
@@ -184,31 +171,39 @@ def main():
     ap.add_argument("--max-clique", type=int, default=100)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--timeout", type=int, default=1200)
-    ap.add_argument("--cpu-load-target", type=float, default=None,
-                    help="if set, gate launches when 1-min loadavg > nproc * this")
+    ap.add_argument("--cpu-load-target", type=float, default=None)
     ap.add_argument("--out", default="paper_data/stress.csv")
+    ap.add_argument("--mem-limit-gb", type=float, default=MEM_LIMIT_GB)
+    ap.add_argument("--mem-kill-gb",  type=float, default=MEM_KILL_GB)
+    ap.add_argument("--per-proc-mem-gb", type=float, default=PER_PROC_MEM_GB)
     args = ap.parse_args()
 
     bin_path = Path(args.bin)
     if not bin_path.exists(): sys.exit(f"binary not found: {bin_path}")
 
     cpu_target = args.cpu_load_target
-    max_workers = max(1, min(args.workers, MAX_WORKERS_DEFAULT))
+    max_workers = max(1, min(args.workers, 32))
+    mem_limit = args.mem_limit_gb
+    mem_kill  = args.mem_kill_gb
+    per_proc_mem = args.per_proc_mem_gb
 
     out_csv = Path(args.out); out_csv.parent.mkdir(parents=True, exist_ok=True)
     done = parse_existing(out_csv)
     new_file = not out_csv.exists() or out_csv.stat().st_size == 0
 
-    print(f"[setup] workers={max_workers} mem_limit={MEM_LIMIT_GB}GB "
-          f"cpu_target={cpu_target} timeout={args.timeout}s", flush=True)
-    print(f"[setup] {len(done)} (density,s,algo) already OK in {out_csv}", flush=True)
+    print(f"[setup] workers={max_workers}  mem_limit={mem_limit:.0f}GB  "
+          f"mem_kill={mem_kill:.0f}GB  per_proc={per_proc_mem:.0f}GB  "
+          f"timeout={args.timeout}s  cpu_target={cpu_target}", flush=True)
+    print(f"[setup] {len(done)} (density,s,algo) already OK in {out_csv}",
+          flush=True)
 
     work = Path(tempfile.mkdtemp(prefix="stress_"))
     print(f"[tmp] {work}", flush=True)
 
-    # Generate all graphs upfront (fast).
-    graphs = {}    # density -> (path, m)
-    print(f"[gen] generating {len(args.densities)} synthetic graphs...", flush=True)
+    # Generate all graphs upfront.
+    print(f"[gen] generating {len(args.densities)} synthetic graphs...",
+          flush=True)
+    graphs = {}
     for p in args.densities:
         gpath = work / f"stress_n{args.n}_p{int(p*1000):04d}.edges"
         edges = generate_clique_injection(args.n, p, seed=args.seed,
@@ -218,25 +213,26 @@ def main():
         graphs[p] = (gpath, len(edges))
         print(f"  p={p:.3f}  m={len(edges)}  ({gpath.name})", flush=True)
 
-    # Shared state.
-    lock = threading.Lock()
     fout = out_csv.open("a")
     if new_file:
         fout.write("n,density,m,s,algorithm,time_ms,memory_kB,status\n")
         fout.flush()
+
+    # State.
     sfloor = {}             # (p, algo) -> min s that failed
     algo_dead_from = {}     # algo -> min density at which it died
+    retry_count = defaultdict(int)
+    retry_queue = []        # list of (p, s, algo) to retry
+    n_ok = n_failed = n_skipped_floor = n_skipped_dead = n_oom = 0
 
     def write_row(p, s, algo, status, t, m):
         m_used = graphs[p][1]
         t_str = f"{t:.1f}" if t >= 0 else ""
         m_str = f"{m:.0f}" if m >= 0 else ""
-        with lock:
-            fout.write(f"{args.n},{p},{m_used},{s},{algo},{t_str},{m_str},{status}\n")
-            fout.flush()
+        fout.write(f"{args.n},{p},{m_used},{s},{algo},{t_str},{m_str},{status}\n")
+        fout.flush()
 
     def update_failure(p, s, algo):
-        """Called inside the lock when a worker reports timeout/fail."""
         prev = sfloor.get((p, algo), float("inf"))
         if s < prev:
             sfloor[(p, algo)] = s
@@ -247,133 +243,242 @@ def main():
                 print(f"[dead] {algo} dead at p>={p} (failed lowest s={s})",
                       flush=True)
 
+    def should_skip(p, s, algo):
+        if algo in algo_dead_from and algo_dead_from[algo] <= p:
+            return ("SKIP_DEAD_ALGO", -1, -1)
+        f = sfloor.get((p, algo))
+        if f is not None and s >= f:
+            return ("SKIP_FLOOR", -1, -1)
+        return None
+
+    def launch(p, s, algo, env_extra) -> dict:
+        gpath = graphs[p][0]
+        env = os.environ.copy(); env.update(env_extra)
+        proc = subprocess.Popen([str(bin_path), str(gpath), "1", str(s)],
+                                env=env, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True)
+        return dict(proc=proc, p=p, s=s, algo=algo, env=env_extra,
+                    t0=time.time(), key=(p, s, algo))
+
+    running = []   # list of dicts above
+
+    def reap():
+        nonlocal n_ok, n_failed, n_oom
+        finished = []
+        for r in running:
+            rc = r["proc"].poll()
+            if rc is not None:
+                finished.append(r)
+        for r in finished:
+            running.remove(r)
+            stdout = r["proc"].stdout.read() if r["proc"].stdout else ""
+            r["proc"].stdout.close() if r["proc"].stdout else None
+            elapsed = time.time() - r["t0"]
+            rc = r["proc"].returncode
+            p, s, algo = r["p"], r["s"], r["algo"]
+            if rc == 0:
+                t_ms, m_kb = parse_timing(stdout)
+                if t_ms < 0:
+                    write_row(p, s, algo, "PARSE_FAIL", -1, -1)
+                    n_failed += 1
+                    update_failure(p, s, algo)
+                    print(f"  [p={p:.3f} s={s:2d} {algo:7s}]  PARSE_FAIL "
+                          f"(wall={elapsed:.1f}s)", flush=True)
+                else:
+                    write_row(p, s, algo, "OK", t_ms, m_kb)
+                    n_ok += 1
+                    print(f"  [p={p:.3f} s={s:2d} {algo:7s}]  OK       "
+                          f"t={t_ms:.0f}ms rss={m_kb:.0f}kB "
+                          f"(wall={elapsed:.1f}s)", flush=True)
+            else:
+                # rc != 0: could be OOM kill (-9 / -SIGKILL), other fail, or
+                # timeout (we don't enforce timeout here yet).
+                status = f"FAIL({rc})"
+                write_row(p, s, algo, status, -1, -1)
+                n_failed += 1
+                update_failure(p, s, algo)
+                print(f"  [p={p:.3f} s={s:2d} {algo:7s}]  {status:12s} "
+                      f"(wall={elapsed:.1f}s)", flush=True)
+
+    def check_timeouts():
+        now = time.time()
+        to_kill = [r for r in running if (now - r["t0"]) > args.timeout]
+        for r in to_kill:
+            try:
+                r["proc"].kill()
+                r["proc"].wait(timeout=10)
+            except Exception: pass
+            running.remove(r)
+            p, s, algo = r["p"], r["s"], r["algo"]
+            write_row(p, s, algo, "TIMEOUT", -1, -1)
+            update_failure(p, s, algo)
+            print(f"  [p={p:.3f} s={s:2d} {algo:7s}]  TIMEOUT "
+                  f"(wall={time.time()-r['t0']:.0f}s)", flush=True)
+
+    def check_proc_mem():
+        nonlocal n_failed
+        for r in list(running):
+            rss = get_proc_rss_gb(r["proc"].pid)
+            if rss > per_proc_mem:
+                try:
+                    r["proc"].kill(); r["proc"].wait(timeout=10)
+                except Exception: pass
+                running.remove(r)
+                p, s, algo = r["p"], r["s"], r["algo"]
+                write_row(p, s, algo, "OOM_PER_PROC", -1, -1)
+                n_failed += 1
+                update_failure(p, s, algo)
+                print(f"  [p={p:.3f} s={s:2d} {algo:7s}]  OOM_PER_PROC "
+                      f"RSS={rss:.0f}GB", flush=True)
+
+    def kill_newest():
+        """Kill the most recently launched running process. If only one job
+        was running, mark it OOM; otherwise re-queue with retry budget."""
+        nonlocal n_oom
+        if not running:
+            return
+        # Pick the one launched most recently (largest t0).
+        r = max(running, key=lambda x: x["t0"])
+        running.remove(r)
+        p, s, algo = r["p"], r["s"], r["algo"]
+        try:
+            r["proc"].kill(); r["proc"].wait(timeout=10)
+        except Exception: pass
+        mem = get_used_mem_gb()
+        print(f"  [KILL] p={p:.3f} s={s} {algo}  "
+              f"(used={mem:.0f}GB > {mem_kill:.0f}GB, retry={retry_count[r['key']]})",
+              flush=True)
+        if not running:
+            # We were the only job → record OOM; otherwise re-queue.
+            write_row(p, s, algo, "OOM_GLOBAL", -1, -1)
+            n_oom += 1
+            update_failure(p, s, algo)
+        else:
+            retry_count[r["key"]] += 1
+            if retry_count[r["key"]] > MAX_RETRIES:
+                write_row(p, s, algo, "OOM_GLOBAL_RETRY_EXHAUSTED", -1, -1)
+                n_oom += 1
+                update_failure(p, s, algo)
+            else:
+                retry_queue.append(r["key"])
+
     # Build job list.
     all_jobs = []
     for p in args.densities:
         for s in args.s_list:
             for algo, env in ALGOS:
+                if (f"{p}", s, algo) in done:
+                    continue
                 all_jobs.append((p, s, algo, env))
 
-    # Skip resume.
-    pending = []
-    n_skipped_done = 0
-    for p, s, algo, env in all_jobs:
-        if (f"{p}", s, algo) in done:
-            n_skipped_done += 1
-            continue
-        pending.append((p, s, algo, env))
-    print(f"[setup] {n_skipped_done} jobs already done, {len(pending)} remaining",
-          flush=True)
+    print(f"[setup] {len(all_jobs)} jobs to attempt (after resume)", flush=True)
 
-    # ===== Worker function =====
-    n_done = 0; n_skipped_floor = 0; n_skipped_dead = 0; n_failed = 0; n_ok = 0
-
-    def worker(p, s, algo, env):
-        nonlocal n_done, n_skipped_floor, n_skipped_dead, n_failed, n_ok
-        # Re-check skip conditions inside the worker (state may have changed).
-        with lock:
-            if algo in algo_dead_from and algo_dead_from[algo] <= p:
-                write_row(p, s, algo, "SKIP_DEAD_ALGO", -1, -1)
-                n_skipped_dead += 1
-                n_done += 1
-                return
-            f = sfloor.get((p, algo))
-            if f is not None and s >= f:
-                write_row(p, s, algo, "SKIP_FLOOR", -1, -1)
-                n_skipped_floor += 1
-                n_done += 1
-                return
-
-        gpath, m_edges = graphs[p]
-        t0 = time.time()
-        status, t_ms, m_kb = run_one(bin_path, gpath, s, env, args.timeout)
-        elapsed = time.time() - t0
-        write_row(p, s, algo, status, t_ms, m_kb)
-
-        with lock:
-            n_done += 1
-            if status == "OK":
-                n_ok += 1
-            else:
-                n_failed += 1
-                if status == "TIMEOUT" or status.startswith("FAIL"):
-                    update_failure(p, s, algo)
-
-        tag = f"[p={p:.3f} s={s:2d} {algo:7s}]"
-        if status == "OK":
-            print(f"  {tag} {status:8s} t={t_ms:.0f}ms rss={m_kb:.0f}kB "
-                  f"(wall={elapsed:.1f}s)", flush=True)
-        else:
-            print(f"  {tag} {status:12s} (wall={elapsed:.1f}s)", flush=True)
-
-    # ===== Main scheduling loop =====
-    print(f"[run] starting; {len(pending)} jobs", flush=True)
+    # ===== Main loop =====
+    ji = 0
     t_start = time.time()
-    with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        idx = 0
-        running_futs = []
-        while idx < len(pending) or running_futs:
-            # Reap completed (without blocking).
-            still = []
-            for fut in running_futs:
-                if fut.done():
-                    try: fut.result()
-                    except Exception as e:
-                        print(f"  worker exception: {e}", flush=True)
-                else:
-                    still.append(fut)
-            running_futs = still
+    halt_announced = False
+    while ji < len(all_jobs) or retry_queue or running:
+        reap()
+        check_timeouts()
+        check_proc_mem()
 
-            # Try to launch new jobs.
-            launched_this_round = 0
-            while idx < len(pending) and can_launch(len(running_futs),
-                                                    max_workers, cpu_target):
-                p, s, algo, env = pending[idx]
-                idx += 1
-                # Check skips atomically (cheap pre-filter — worker also
-                # rechecks, but this avoids wasting a slot).
-                with lock:
-                    if algo in algo_dead_from and algo_dead_from[algo] <= p:
-                        write_row(p, s, algo, "SKIP_DEAD_ALGO", -1, -1)
-                        n_skipped_dead += 1
-                        n_done += 1
-                        continue
-                    f = sfloor.get((p, algo))
-                    if f is not None and s >= f:
-                        write_row(p, s, algo, "SKIP_FLOOR", -1, -1)
-                        n_skipped_floor += 1
-                        n_done += 1
-                        continue
-                fut = ex.submit(worker, p, s, algo, env)
-                running_futs.append(fut)
-                launched_this_round += 1
-                time.sleep(SETTLE_SEC)
+        # OOM protection: while memory exceeds kill threshold, kill newest.
+        while get_used_mem_gb() > mem_kill and running:
+            kill_newest()
+            time.sleep(2)
 
-            mem = get_used_mem_gb()
-            load = get_load_avg_1min()
-            elapsed = time.time() - t_start
-            if launched_this_round > 0 or len(running_futs) > 0:
-                print(f"[sched] running={len(running_futs):2d} pending={len(pending)-idx:3d} "
-                      f"done={n_done:3d}/{len(pending)} ok={n_ok} fail={n_failed} "
-                      f"skip(floor/dead)={n_skipped_floor}/{n_skipped_dead}  "
-                      f"mem={mem:.0f}GB load={load:.1f}  "
-                      f"elapsed={elapsed:.0f}s", flush=True)
+        # If every algo is dead, drain and stop.
+        if (not halt_announced
+            and all(a in algo_dead_from for a, _ in ALGOS)):
+            print(f"[stop] all algorithms dead; draining {len(running)} "
+                  f"in-flight jobs", flush=True)
+            halt_announced = True
+            ji = len(all_jobs); retry_queue.clear()
 
-            # Halt if every algo has died.
-            with lock:
-                if all(a in algo_dead_from for a, _ in ALGOS):
-                    pending = pending[:idx]   # don't add more
-                    print(f"[stop] all algos dead — waiting for in-flight jobs",
-                          flush=True)
+        # Pick next job.
+        job = None
+        if retry_queue:
+            key = retry_queue.pop(0)
+            p, s, algo = key
+            env = next(e for a, e in ALGOS if a == algo)
+            job = (p, s, algo, env)
+        elif ji < len(all_jobs):
+            job = all_jobs[ji]
+            ji += 1
+        else:
+            if running: time.sleep(POLL_SEC)
+            continue
+
+        p, s, algo, env_extra = job
+
+        # Skip checks.
+        skip = should_skip(p, s, algo)
+        if skip is not None:
+            status, _, _ = skip
+            write_row(p, s, algo, status, -1, -1)
+            if status == "SKIP_DEAD_ALGO": n_skipped_dead += 1
+            else: n_skipped_floor += 1
+            continue
+
+        # Wait for capacity.
+        wait_start = time.time()
+        while ((not cpu_has_headroom(len(running), max_workers, cpu_target))
+               or get_used_mem_gb() >= mem_limit):
+            reap(); check_timeouts(); check_proc_mem()
+            while get_used_mem_gb() > mem_kill and running:
+                kill_newest()
+                time.sleep(2)
             time.sleep(POLL_SEC)
+            # Status print every minute.
+            if int(time.time() - wait_start) % 60 == 0 and len(running) > 0:
+                mem = get_used_mem_gb()
+                load = get_load_avg_1min()
+                print(f"[wait] running={len(running)} pending={len(all_jobs)-ji} "
+                      f"+queue={len(retry_queue)}  mem={mem:.0f}GB load={load:.1f}",
+                      flush=True)
+
+        # Re-check skip after waiting.
+        skip = should_skip(p, s, algo)
+        if skip is not None:
+            status, _, _ = skip
+            write_row(p, s, algo, status, -1, -1)
+            if status == "SKIP_DEAD_ALGO": n_skipped_dead += 1
+            else: n_skipped_floor += 1
+            continue
+
+        # Launch.
+        running.append(launch(p, s, algo, env_extra))
+
+        # Adaptive throttle: longer pauses when memory is climbing.
+        mem_now = get_used_mem_gb()
+        if   mem_now > mem_limit * 0.85: time.sleep(3)
+        elif mem_now > mem_limit * 0.5:  time.sleep(1)
+        else:                             time.sleep(SETTLE_SEC)
+
+        # Periodic scheduler status.
+        if (ji % 10 == 0 or len(running) >= max_workers):
+            mem = get_used_mem_gb(); load = get_load_avg_1min()
+            print(f"[sched] running={len(running):2d}  pending={len(all_jobs)-ji:3d} "
+                  f"+queue={len(retry_queue)} ok={n_ok} fail={n_failed} oom={n_oom} "
+                  f"skip(floor/dead)={n_skipped_floor}/{n_skipped_dead}  "
+                  f"mem={mem:.0f}GB load={load:.1f}  "
+                  f"elapsed={time.time()-t_start:.0f}s", flush=True)
+
+    # Drain remaining.
+    print(f"[drain] {len(running)} jobs still running", flush=True)
+    while running:
+        reap(); check_timeouts(); check_proc_mem()
+        while get_used_mem_gb() > mem_kill and running:
+            kill_newest()
+            time.sleep(2)
+        time.sleep(POLL_SEC)
 
     fout.close()
     print(f"\n=== final summary ===", flush=True)
-    print(f"  ok={n_ok}  failed={n_failed}  "
-          f"skipped(floor/dead)={n_skipped_floor}/{n_skipped_dead}  "
-          f"total={n_done}", flush=True)
+    print(f"  ok={n_ok}  failed={n_failed}  oom={n_oom}  "
+          f"skip(floor/dead)={n_skipped_floor}/{n_skipped_dead}", flush=True)
     print(f"  algo_dead_from = {algo_dead_from}", flush=True)
-    print(f"  elapsed = {time.time() - t_start:.0f}s", flush=True)
+    print(f"  elapsed = {time.time()-t_start:.0f}s", flush=True)
 
 
 if __name__ == "__main__":
