@@ -103,6 +103,22 @@ def run_one(bin_path: Path, gpath: Path, s: int, env_extra: dict, timeout: int):
     return ("OK" if t >= 0 else "PARSE_FAIL", t, m)
 
 
+def parse_existing(csv_path: Path) -> set:
+    """Return {(density_str, s, algo)} of rows already recorded with status==OK."""
+    done = set()
+    if not csv_path.exists():
+        return done
+    with csv_path.open() as f:
+        for row in csv.DictReader(f):
+            if row.get("status") != "OK":
+                continue
+            try:
+                done.add((row["density"], int(row["s"]), row["algorithm"]))
+            except (KeyError, ValueError):
+                pass
+    return done
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -110,7 +126,9 @@ def main():
     ap.add_argument("--n", type=int, default=1000,
                     help="vertex count of synthetic graphs")
     ap.add_argument("--densities", nargs="+", type=float,
-                    default=[0.01, 0.03, 0.05, 0.08, 0.11, 0.15, 0.20])
+                    default=[0.01, 0.03, 0.05, 0.08, 0.11, 0.15, 0.20,
+                             0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80,
+                             0.90, 0.95, 0.99])
     ap.add_argument("--s-list", nargs="+", type=int,
                     default=[5, 7, 9, 11])
     ap.add_argument("--alpha", type=float, default=2.0,
@@ -125,6 +143,10 @@ def main():
     if not bin_path.exists(): sys.exit(f"binary not found: {bin_path}")
 
     out_csv = Path(args.out); out_csv.parent.mkdir(parents=True, exist_ok=True)
+    done = parse_existing(out_csv)
+    if done:
+        print(f"[resume] {len(done)} (density,s,algo) tuples already OK in {out_csv}",
+              flush=True)
     new_file = not out_csv.exists() or out_csv.stat().st_size == 0
     fout = out_csv.open("a")
     if new_file:
@@ -134,27 +156,49 @@ def main():
     work = Path(tempfile.mkdtemp(prefix="stress_"))
     print(f"[tmp] {work}", flush=True)
 
-    timeout_floor = {}   # (density, algo) -> int s
+    # Per-(density, algo) floor on s within that density.
+    sfloor = {}
+    # Per-algo cross-density floor: once an algo fails at density p,
+    # it's marked dead for every density >= p.
+    algo_dead_from = {}     # algo -> min density at which it died
+    fail_streak = 0          # consecutive algos that have died at current p
+    last_p = None
     for p in args.densities:
+        # If every algo is already dead at <= p, stop the bench.
+        if all(a in algo_dead_from and algo_dead_from[a] <= p for a, _ in ALGOS):
+            print(f"[stop] all algorithms dead at density <= {p}; halting", flush=True)
+            break
         gpath = work / f"stress_n{args.n}_p{int(p*1000):04d}.edges"
         edges = generate_clique_injection(args.n, p, seed=args.seed,
                                           alpha=args.alpha,
                                           max_clique=args.max_clique)
         write_edge_file(gpath, args.n, edges)
         m = len(edges)
-        print(f"[p={p:.2f}] n={args.n} m={m} (target {int(p*args.n*(args.n-1)/2)})",
+        print(f"[p={p:.3f}] n={args.n} m={m} (target {int(p*args.n*(args.n-1)/2)})",
               flush=True)
 
         for s in args.s_list:
             for algo, env_extra in ALGOS:
-                key = (p, algo)
-                floor = timeout_floor.get(key)
+                # Cross-density skip: this algo is dead from a smaller density.
+                if algo in algo_dead_from and algo_dead_from[algo] <= p:
+                    fout.write(f"{args.n},{p},{m},{s},{algo},,,SKIP_DEAD_ALGO\n")
+                    fout.flush()
+                    continue
+                # Already done in a previous run.
+                # Match densities by string to avoid float-format drift.
+                p_str = f"{p}"
+                if (p_str, s, algo) in done:
+                    print(f"  s={s:2d} {algo:7s}  SKIP (already in CSV)", flush=True)
+                    continue
+                # Within-density floor.
+                floor = sfloor.get((p, algo))
                 if floor is not None and s >= floor:
                     fout.write(f"{args.n},{p},{m},{s},{algo},,,SKIP_FLOOR\n")
                     fout.flush()
                     print(f"  s={s:2d} {algo:7s}  SKIP (floor at s={floor})",
                           flush=True)
                     continue
+
                 t0 = time.time()
                 status, t_ms, m_kb = run_one(bin_path, gpath, s, env_extra,
                                               args.timeout)
@@ -166,9 +210,14 @@ def main():
                 print(f"  s={s:2d} {algo:7s}  {status:8s} "
                       f"t={t_ms:.0f}ms rss={m_kb:.0f}kB (wall={elapsed:.1f}s)",
                       flush=True)
-                if status in ("TIMEOUT",) or status.startswith("FAIL"):
-                    timeout_floor[key] = s
-                    print(f"  -> floor: ({p}, {algo}) s>={s}", flush=True)
+                if status == "TIMEOUT" or status.startswith("FAIL"):
+                    sfloor[(p, algo)] = s
+                    # If this is the smallest s and the algo timed out,
+                    # mark the algo dead at this density.
+                    if s == args.s_list[0]:
+                        algo_dead_from[algo] = p
+                        print(f"  -> {algo} dead at p>={p} (failed lowest s)",
+                              flush=True)
 
     fout.close()
     print(f"[done] {out_csv}", flush=True)
