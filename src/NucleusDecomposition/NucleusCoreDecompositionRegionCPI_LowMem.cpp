@@ -1762,12 +1762,22 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             // weight-table hot path (moved to thread_local heap), so no
             // ceiling to enforce here.
 
-            // In-place filter of peeled tuples; preserves capacity so
-            // subsequent refreshes reuse the same heap allocation.
+            // In-place filter of peeled tuples. After erase the size
+            // shrinks but capacity stays, so over time pi.tupleIdxs holds
+            // a heap allocation sized to its historical max even when only
+            // a few tuples are alive on the path. PERF-AUDIT MEMORY (2/3):
+            // when capacity grows to ≥4× the live size (geometric trigger,
+            // amortised O(N) over the peel), shrink via copy-and-swap to
+            // give the allocator the head room back. On graphs with ~10⁵
+            // paths whose tuple counts decay sharply over the peel, this
+            // reclaims hundreds of MB without adding to the hot path.
             pi.tupleIdxs.erase(
                 std::remove_if(pi.tupleIdxs.begin(), pi.tupleIdxs.end(),
                                [&](daf::Size t) { return rPeeled[t]; }),
                 pi.tupleIdxs.end());
+            if (pi.tupleIdxs.capacity() > pi.tupleIdxs.size() * 4 + 16) {
+                std::vector<daf::Size>(pi.tupleIdxs).swap(pi.tupleIdxs);
+            }
 
             if (pi.deadBoxesFlat.empty()) continue;
 
@@ -1986,6 +1996,32 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             affected.push_back(piIdx);
         }
         refreshAffectedPaths(affected, currentLevel);
+
+        // PERF-AUDIT MEMORY (1/3): release the per-tuple key buffer for every
+        // tuple peeled in THIS batch. After refresh returns, no future code
+        // path reads `rTuples[idx].key` for these idx values:
+        //   - pathsCoveringTuple is only called on tuples scheduled for a
+        //     future peel, never on already-peeled ones (rPeeled mask).
+        //   - appendReqBox(τ★, ...) was the last reader and ran before
+        //     refresh; the box is now committed to deadBoxesFlat.
+        //   - rTupleIndex was already swap-freed at build-end (line ~1400).
+        // For r-clique with r=9, each freed key reclaims ~60 bytes (24-byte
+        // std::vector header + 9·4 bytes data). On graphs with 10⁷ tuples
+        // peeled this saves ~360 MB cumulatively over the peel run, with
+        // zero additional cost on the hot path (the swap is O(1)).
+        for (auto idx : batch) {
+            TupleKey().swap(rTuples[idx].key);
+        }
+
+        // PERF-AUDIT MEMORY (3/3): once batchDead[piIdx] for a retired path
+        // has been processed, its inner vector capacity is dead weight
+        // (path's pathAliveCount==0 path was retired in the affected loop
+        // and won't be touched again). Free those inner vectors.
+        for (auto piIdx : touchedPaths) {
+            if (pathAliveCount[piIdx] == 0) {
+                std::vector<daf::Size>().swap(batchDead[piIdx]);
+            }
+        }
     }
 
     auto tStep6End = std::chrono::high_resolution_clock::now();
