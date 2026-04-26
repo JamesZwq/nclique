@@ -11,6 +11,7 @@
 #include <iostream>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/resource.h>  // getrusage / ru_maxrss
 #include <fcntl.h>
 #include <unistd.h>
 #include <numeric>
@@ -70,25 +71,50 @@ namespace daf {
 #if defined(__linux__)
         // ==========================================
         // Linux 实现: 读取 /proc/self/status
+        //
+        // PEAK semantics: prefer VmHWM (high-water mark, kernel-tracked
+        // historical maximum RSS over the process's lifetime) over VmRSS
+        // (CURRENT instantaneous RSS at this call site). The peak is
+        // what's relevant for OOM analysis and apples-to-apples memory
+        // comparison: by the time we print "Final Memory" the program
+        // has already freed peeled-tuple keys, drained deadCache, and
+        // released path scratch — VmRSS is depressed below the actual
+        // working-set peak that the algorithm needed during peel.
+        // VmHWM is exactly that peak, available in /proc/self/status
+        // since Linux 2.6.
+        //
+        // Fallback: if VmHWM is missing for some reason, use VmRSS.
         // ==========================================
         std::ifstream status_file("/proc/self/status");
         std::string line;
+        std::string vmrss_line;     // fallback
+        std::string vmhwm_line;     // preferred
         while (std::getline(status_file, line)) {
-            if (line.substr(0, 6) == "VmRSS:") {
-                // line 格式通常是 "VmRSS:    1234 kB"
-                // 我们提取数字部分
-                std::string val_str = line.substr(7);
-                // 去掉尾部的 " kB" (简单处理，直接打印整行也可以，这里为了统一定义个变量)
-                // 实际上直接打印 line 也是可以的
-                std::cout << "[Memory-Linux] " << label << ": " << line.substr(6) << std::endl;
-                return;
-            }
+            if (line.substr(0, 6) == "VmHWM:") vmhwm_line = line;
+            else if (line.substr(0, 6) == "VmRSS:") vmrss_line = line;
+        }
+        const std::string &chosen = !vmhwm_line.empty() ? vmhwm_line : vmrss_line;
+        if (!chosen.empty()) {
+            std::cout << "[Memory-Linux] " << label << ": " << chosen.substr(6) << std::endl;
+            return;
         }
 
 #elif defined(__APPLE__)
         // ==========================================
-        // macOS (Darwin) 实现: 使用 task_info
+        // macOS (Darwin) 实现:
+        // PEAK semantics: use getrusage(ru_maxrss) which returns the
+        // historical peak RSS in BYTES on macOS (Linux returns KB but we
+        // run only on Linux servers for benchmark; macOS path is for
+        // local dev). Falls back to task_info's CURRENT resident_size if
+        // getrusage fails.
         // ==========================================
+        struct rusage ru;
+        if (getrusage(RUSAGE_SELF, &ru) == 0) {
+            // macOS ru_maxrss is in BYTES (per BSD lineage).
+            long peak_kb = ru.ru_maxrss / 1024;
+            std::cout << "[Memory-Mac] " << label << ": " << peak_kb << " kB" << std::endl;
+            return;
+        }
         struct task_basic_info t_info;
         mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
 
