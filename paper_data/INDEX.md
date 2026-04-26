@@ -100,6 +100,20 @@ Numbering reflects approximate order of appearance in the paper.
 - **Schema:** `method,k,verts,ccs`
 - **Methods:** s ∈ {2, 3, 5, 10, 15, 20, 25}; sweeps k-rank percentile
 
+### `14_scalability_webgoogle.csv`
+- **Source:** `tods2:nclique/paper_data/scalability.csv` produced by `bench_r1_scalability.py`
+- **Used in:** §7.6 scalability test (Fig fig:scal-time)
+- **Schema:** `graph,base_edges,ratio,kept_edges,s,algorithm,run,time_ms,memory_kB,status`
+- **Protocol:** uniform edge subsampling on \texttt{web-Google} at ratios {0.2, 0.4, 0.6, 0.8, 1.0}; sweep s ∈ {2, 3, 5, 7, 9, 11, 13, 15}; algorithms: Ours_ST + REF_R1
+- **Rows:** 80 = 5 ratios × 8 s × 2 algos
+
+### `15_stress_synthetic_dense.csv`
+- **Source:** `tods2:nclique/paper_data/stress.csv` produced by `bench_r1_stress.py`
+- **Used in:** §7.7 stress test (Fig fig:stress-time)
+- **Schema:** `n,density,m,s,algorithm,time_ms,memory_kB,status`
+- **Protocol:** synthetic clique-injection graphs (N=1000, truncated power-law clique sizes max 100); densities p ∈ {0.01, 0.03, 0.05, 0.08, 0.11, 0.15, 0.20}; s ∈ {5, 7, 9, 11}; both algorithms
+- **Rows:** 56 = 7 densities × 4 s × 2 algos
+
 ---
 
 ## Reproduce instructions
