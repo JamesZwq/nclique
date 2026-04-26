@@ -483,7 +483,12 @@ def main():
     launched = 0
     skipped = 0
     retry_count = defaultdict(int)  # (graph, r, s, algo) → how many times re-queued
-    MAX_RETRIES = 2
+    # MAX_RETRIES = 0: do NOT re-queue OOM cells. The PerfAudit branch did
+    # not add architectural memory savings (only minor DomPrune-driven
+    # antichain compaction), so high-(r,s) cells that OOMed before still
+    # OOM now — re-queueing just burns cluster time. Mark as OOM on first
+    # kill and move on.
+    MAX_RETRIES = 0
 
     # Graceful shutdown
     shutdown = False
