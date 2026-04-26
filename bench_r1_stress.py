@@ -7,19 +7,14 @@ to r=1.  N=1000, increasing edge density p; for each p run Ours_ST and
 REF_R1 across a sweep of s.  Halts when every algorithm has died (i.e.
 failed at the lowest s of args.s_list) at some density.
 
-Resource scheduling (mirrors bench_v3_all.py):
+Resource scheduling:
   * MAX_WORKERS hard cap (default 32)
-  * Memory gates:
-      - launch gate: do not start a new worker if used > MEM_LIMIT_GB
-      - kill gate: while used > MEM_KILL_GB, kill the most recent running
-        process and re-queue it (capped at MAX_RETRIES)
-      - per-proc gate: kill any individual process whose RSS exceeds
-        PER_PROC_MEM_GB
+  * Launch gate: do not start a new worker if global used memory exceeds
+    MEM_LIMIT_GB
+  * Per-process OOM: any single process whose RSS exceeds PER_PROC_MEM_GB
+    is killed and recorded as OOM (terminal -- no retry)
   * CPU load-avg gate (--cpu-load-target; disabled by default)
   * Adaptive throttle: longer sleep between launches when memory rises
-
-The kill-and-requeue logic prevents the OS OOM-killer from picking
-arbitrary victims and lets older smaller jobs finish.
 
 Usage:
     python3 bench_r1_stress.py \
@@ -48,12 +43,13 @@ except Exception:
     pass
 
 # ============ Resource limits ============
+# Simple OOM policy: any single process whose RSS exceeds PER_PROC_MEM_GB is
+# killed and its (p, s, algo) is recorded as OOM (terminal — no retry).
+# A launch gate based on global used memory keeps total demand bounded.
 MEM_LIMIT_GB    = 300       # gate: don't launch new worker if used > this
-MEM_KILL_GB     = 450       # kill gate: while used > this, kill newest
-PER_PROC_MEM_GB = 250       # kill any single proc whose RSS > this
+PER_PROC_MEM_GB = 250       # any single proc with RSS > this is OOM-killed
 SETTLE_SEC      = 0.2
 POLL_SEC        = 3
-MAX_RETRIES     = 2          # kill_newest re-queue cap before declaring OOM
 
 ALGOS = [("Ours_ST", {"PIVOTER_RUN_ST": "1"}), ("REF_R1", {})]
 
@@ -174,7 +170,6 @@ def main():
     ap.add_argument("--cpu-load-target", type=float, default=None)
     ap.add_argument("--out", default="paper_data/stress.csv")
     ap.add_argument("--mem-limit-gb", type=float, default=MEM_LIMIT_GB)
-    ap.add_argument("--mem-kill-gb",  type=float, default=MEM_KILL_GB)
     ap.add_argument("--per-proc-mem-gb", type=float, default=PER_PROC_MEM_GB)
     args = ap.parse_args()
 
@@ -184,7 +179,6 @@ def main():
     cpu_target = args.cpu_load_target
     max_workers = max(1, min(args.workers, 32))
     mem_limit = args.mem_limit_gb
-    mem_kill  = args.mem_kill_gb
     per_proc_mem = args.per_proc_mem_gb
 
     out_csv = Path(args.out); out_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -192,8 +186,8 @@ def main():
     new_file = not out_csv.exists() or out_csv.stat().st_size == 0
 
     print(f"[setup] workers={max_workers}  mem_limit={mem_limit:.0f}GB  "
-          f"mem_kill={mem_kill:.0f}GB  per_proc={per_proc_mem:.0f}GB  "
-          f"timeout={args.timeout}s  cpu_target={cpu_target}", flush=True)
+          f"per_proc={per_proc_mem:.0f}GB  timeout={args.timeout}s  "
+          f"cpu_target={cpu_target}", flush=True)
     print(f"[setup] {len(done)} (density,s,algo) already OK in {out_csv}",
           flush=True)
 
@@ -221,8 +215,6 @@ def main():
     # State.
     sfloor = {}             # (p, algo) -> min s that failed
     algo_dead_from = {}     # algo -> min density at which it died
-    retry_count = defaultdict(int)
-    retry_queue = []        # list of (p, s, algo) to retry
     n_ok = n_failed = n_skipped_floor = n_skipped_dead = n_oom = 0
 
     def write_row(p, s, algo, status, t, m):
@@ -316,7 +308,9 @@ def main():
                   f"(wall={time.time()-r['t0']:.0f}s)", flush=True)
 
     def check_proc_mem():
-        nonlocal n_failed
+        """Per-process OOM gate: any single proc with RSS > per_proc_mem is
+        terminally killed and its (p, s, algo) recorded as OOM (no retry)."""
+        nonlocal n_oom
         for r in list(running):
             rss = get_proc_rss_gb(r["proc"].pid)
             if rss > per_proc_mem:
@@ -325,42 +319,11 @@ def main():
                 except Exception: pass
                 running.remove(r)
                 p, s, algo = r["p"], r["s"], r["algo"]
-                write_row(p, s, algo, "OOM_PER_PROC", -1, -1)
-                n_failed += 1
-                update_failure(p, s, algo)
-                print(f"  [p={p:.3f} s={s:2d} {algo:7s}]  OOM_PER_PROC "
-                      f"RSS={rss:.0f}GB", flush=True)
-
-    def kill_newest():
-        """Kill the most recently launched running process. If only one job
-        was running, mark it OOM; otherwise re-queue with retry budget."""
-        nonlocal n_oom
-        if not running:
-            return
-        # Pick the one launched most recently (largest t0).
-        r = max(running, key=lambda x: x["t0"])
-        running.remove(r)
-        p, s, algo = r["p"], r["s"], r["algo"]
-        try:
-            r["proc"].kill(); r["proc"].wait(timeout=10)
-        except Exception: pass
-        mem = get_used_mem_gb()
-        print(f"  [KILL] p={p:.3f} s={s} {algo}  "
-              f"(used={mem:.0f}GB > {mem_kill:.0f}GB, retry={retry_count[r['key']]})",
-              flush=True)
-        if not running:
-            # We were the only job → record OOM; otherwise re-queue.
-            write_row(p, s, algo, "OOM_GLOBAL", -1, -1)
-            n_oom += 1
-            update_failure(p, s, algo)
-        else:
-            retry_count[r["key"]] += 1
-            if retry_count[r["key"]] > MAX_RETRIES:
-                write_row(p, s, algo, "OOM_GLOBAL_RETRY_EXHAUSTED", -1, -1)
+                write_row(p, s, algo, "OOM", -1, -1)
                 n_oom += 1
                 update_failure(p, s, algo)
-            else:
-                retry_queue.append(r["key"])
+                print(f"  [p={p:.3f} s={s:2d} {algo:7s}]  OOM "
+                      f"RSS={rss:.0f}GB > {per_proc_mem:.0f}GB", flush=True)
 
     # Build job list.
     all_jobs = []
@@ -377,15 +340,10 @@ def main():
     ji = 0
     t_start = time.time()
     halt_announced = False
-    while ji < len(all_jobs) or retry_queue or running:
+    while ji < len(all_jobs) or running:
         reap()
         check_timeouts()
         check_proc_mem()
-
-        # OOM protection: while memory exceeds kill threshold, kill newest.
-        while get_used_mem_gb() > mem_kill and running:
-            kill_newest()
-            time.sleep(2)
 
         # If every algo is dead, drain and stop.
         if (not halt_announced
@@ -393,16 +351,11 @@ def main():
             print(f"[stop] all algorithms dead; draining {len(running)} "
                   f"in-flight jobs", flush=True)
             halt_announced = True
-            ji = len(all_jobs); retry_queue.clear()
+            ji = len(all_jobs)
 
-        # Pick next job.
+        # Pick next job from the main queue.
         job = None
-        if retry_queue:
-            key = retry_queue.pop(0)
-            p, s, algo = key
-            env = next(e for a, e in ALGOS if a == algo)
-            job = (p, s, algo, env)
-        elif ji < len(all_jobs):
+        if ji < len(all_jobs):
             job = all_jobs[ji]
             ji += 1
         else:
@@ -425,17 +378,13 @@ def main():
         while ((not cpu_has_headroom(len(running), max_workers, cpu_target))
                or get_used_mem_gb() >= mem_limit):
             reap(); check_timeouts(); check_proc_mem()
-            while get_used_mem_gb() > mem_kill and running:
-                kill_newest()
-                time.sleep(2)
             time.sleep(POLL_SEC)
             # Status print every minute.
             if int(time.time() - wait_start) % 60 == 0 and len(running) > 0:
                 mem = get_used_mem_gb()
                 load = get_load_avg_1min()
                 print(f"[wait] running={len(running)} pending={len(all_jobs)-ji} "
-                      f"+queue={len(retry_queue)}  mem={mem:.0f}GB load={load:.1f}",
-                      flush=True)
+                      f"mem={mem:.0f}GB load={load:.1f}", flush=True)
 
         # Re-check skip after waiting.
         skip = should_skip(p, s, algo)
@@ -459,7 +408,7 @@ def main():
         if (ji % 10 == 0 or len(running) >= max_workers):
             mem = get_used_mem_gb(); load = get_load_avg_1min()
             print(f"[sched] running={len(running):2d}  pending={len(all_jobs)-ji:3d} "
-                  f"+queue={len(retry_queue)} ok={n_ok} fail={n_failed} oom={n_oom} "
+                  f"ok={n_ok} fail={n_failed} oom={n_oom} "
                   f"skip(floor/dead)={n_skipped_floor}/{n_skipped_dead}  "
                   f"mem={mem:.0f}GB load={load:.1f}  "
                   f"elapsed={time.time()-t_start:.0f}s", flush=True)
@@ -468,9 +417,6 @@ def main():
     print(f"[drain] {len(running)} jobs still running", flush=True)
     while running:
         reap(); check_timeouts(); check_proc_mem()
-        while get_used_mem_gb() > mem_kill and running:
-            kill_newest()
-            time.sleep(2)
         time.sleep(POLL_SEC)
 
     fout.close()
