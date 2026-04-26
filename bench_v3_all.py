@@ -67,20 +67,26 @@ LOGDIR = Path("bench_v3_all_logs")
 DATADIR = "/data/wenqianz"
 # Split graphs across servers: tods1 gets dense graphs, tods2 gets large/power-law
 SERVER_GRAPHS = {
-    # V3LM sweet-spot candidates (collaboration nets with MC in the 20-250
-    # range, where the compression ratio rho = |tuples|/|classes| is large):
-    #   ca-HepPh (MC=239, gold), ca-AstroPh (MC=57), ca-CondMat (MC=26),
-    #   ca-GrQc (MC=44, small but high-MC-per-node).
-    # Ordered small-to-large so the driver starts on fast sweet-spot graphs
-    # and the expensive ones (ca-HepPh, com-youtube) are tail-loaded — this
-    # front-loads paper-relevant data into the CSV.
-    "tods1": ["ca-GrQc", "ca-CondMat", "ca-AstroPh", "email-Eu-core",
-              "com-dblp", "soc-Epinions1", "com-youtube", "ca-HepPh",
-              "com-lj"],
-    # tods2: move web-Stanford (a known V3LM negative case — sparse hub-spoke)
-    # to the end so the heavy TIMEOUT / OOM churn doesn't starve other graphs.
-    "tods2": ["dblp-core30", "twitter_combined", "wiki-Talk", "web-it-2004",
-              "com-orkut", "web-Stanford"],
+    # PAPER-6 first: the six datasets used in the SIGMOD'27 main table.
+    # Ordering puts them at the head of each server's queue so the
+    # paper-relevant data lands in the CSV before any extras.
+    #   tods1: ca-GrQc, ca-CondMat, com-dblp, ca-HepPh   (4 of 6)
+    #   tods2: dblp-core30, web-it-2004                  (2 of 6)
+    # Remaining graphs after the divider are extras for ablation /
+    # boundary studies (sparse-social negatives, very-large graphs).
+    "tods1": [
+        # paper-6
+        "ca-GrQc", "ca-CondMat", "com-dblp", "ca-HepPh",
+        # extras
+        "ca-AstroPh", "email-Eu-core",
+        "soc-Epinions1", "com-youtube", "com-lj",
+    ],
+    "tods2": [
+        # paper-6
+        "dblp-core30", "web-it-2004",
+        # extras
+        "twitter_combined", "wiki-Talk", "com-orkut", "web-Stanford",
+    ],
 }
 
 # Hardcoded skip regions. These (graph, r, s) blocks are known death zones
