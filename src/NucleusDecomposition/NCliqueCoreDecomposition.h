@@ -317,6 +317,14 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex = nullptr);
 
+// CCPath: lazy + eager hybrid via threshold antichain and ell/u bound
+// restriction. Faithful port of solved.py (verified by 2000 random tests
+// against brute-force enumeration).
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_CCPath(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
 // RegionExact: exact compressed peeling on r-class / s-class tuples
 std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionExact(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
@@ -483,6 +491,18 @@ double * NCliqueVertexCoreDecomposition_ST_V2_Peel(
 
 // ST V2 interleaved probe: measures feasibility of peeling during construction
 void NCliqueVertexCoreDecomposition_ST_V2_InterleavedProbe(
+    Graph &edgeGraph, daf::CliqueSize k);
+
+// ST V3: V2 + segfault fix (sparse bucket queue keyed by int64_t).  Same
+// data layout, same algorithm; fixes the dense-bucket overflow that
+// crashed V2 on web-Stanford at s>=8.  Build phase is identical to V2,
+// so we typedef ST_V3_Data = ST_V2_Data for binary compatibility.
+using ST_V3_Data = ST_V2_Data;
+ST_V3_Data NCliqueVertexCoreDecomposition_ST_V3_Build(
+    Graph &edgeGraph, daf::CliqueSize k);
+double * NCliqueVertexCoreDecomposition_ST_V3_Peel(
+    ST_V3_Data &d, daf::CliqueSize k);
+double * NCliqueVertexCoreDecomposition_ST_V3(
     Graph &edgeGraph, daf::CliqueSize k);
 
 // Interleaved construction-decomposition: peels vertices during SDCT construction

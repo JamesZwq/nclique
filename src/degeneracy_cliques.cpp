@@ -239,6 +239,7 @@ static Graph loadAndSortGraph(const char *fpath, int argc, char **argv) {
 static bool needsSDCT(daf::CliqueSize r, bool compareMode) {
     if (compareMode) return true;  // need refTree for correctness comparison
     if (r == 1 && (envSet("PIVOTER_RUN_ST_V2") || envSet("PIVOTER_RUN_ST_V2_PROBE")
+                   || envSet("PIVOTER_RUN_ST_V3")
                    || envSet("PIVOTER_RUN_INTERLEAVED") || envSet("PIVOTER_RUN_INTERLEAVED_V2")
                    || envSet("PIVOTER_RUN_ONDEMAND")))
         return false;
@@ -270,7 +271,8 @@ static SDCTBuildResult buildSDCTWithIndex(
         envSet("PIVOTER_RUN_REGION_V3B") || envSet("PIVOTER_RUN_REGION_V3FAST") ||
         envSet("PIVOTER_RUN_REGION_V3NOCPI") || envSet("PIVOTER_RUN_REGION_V3H") ||
         envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM") ||
-        envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") || envSet("PIVOTER_RUN_REGION_V3LM_HIER");
+        envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") || envSet("PIVOTER_RUN_REGION_V3LM_HIER") ||
+        envSet("PIVOTER_RUN_CCPATH");
     // Region V2 only needs tree + maxCliqueTags, skip expensive ci and tgv
     // V3 needs SDCT tree with hold/pivot info — DO NOT use MaxCliqEnum for V3
     const bool regionOnly =
@@ -280,7 +282,8 @@ static SDCTBuildResult buildSDCTWithIndex(
         !envSet("PIVOTER_RUN_REGION_V3FAST") && !envSet("PIVOTER_RUN_REGION_V3NOCPI") &&
         !envSet("PIVOTER_RUN_REGION_V3H") && !envSet("PIVOTER_RUN_REGION_V3HC") &&
         !envSet("PIVOTER_RUN_REGION_V3LM") && !envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") &&
-        !envSet("PIVOTER_RUN_REGION_V3LM_HIER") && !envSet("PIVOTER_RUN_REGION_V4");
+        !envSet("PIVOTER_RUN_REGION_V3LM_HIER") && !envSet("PIVOTER_RUN_REGION_V4") &&
+        !envSet("PIVOTER_RUN_CCPATH");
 
     DynamicGraphSet<TreeGraphNode> tgv(n);
     tgv.adj_list.resize(n);
@@ -293,7 +296,8 @@ static SDCTBuildResult buildSDCTWithIndex(
                          envSet("PIVOTER_RUN_REGION_V3NOCPI") || envSet("PIVOTER_RUN_REGION_V3H") ||
                          envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM") ||
                          envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") ||
-                         envSet("PIVOTER_RUN_REGION_V3LM_HIER")) &&
+                         envSet("PIVOTER_RUN_REGION_V3LM_HIER") ||
+                         envSet("PIVOTER_RUN_CCPATH")) &&
                         !envSet("PIVOTER_COMPARE") && !envSet("PIVOTER_RUN_ST");
     auto ci = (r >= 3 && !quotientLabOnly && !regionOnly && !v3Only) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
     daf::StaticVector<daf::Size> keepBuf, dropBuf;
@@ -455,6 +459,12 @@ static PreMutationResult preMutationPhase(
                 return NCliqueVertexCoreDecomposition_ST_V2_Build(edgeGraph, s);
             }));
     }
+    if (r == 1 && envSet("PIVOTER_RUN_ST_V3")) {
+        result.st_v2_data = std::make_unique<ST_V3_Data>(
+            daf::timeCount("ST_V3 Build", [&]() {
+                return NCliqueVertexCoreDecomposition_ST_V3_Build(edgeGraph, s);
+            }));
+    }
     if (r == 1 && envSet("PIVOTER_RUN_ST_V2_PROBE")) {
         NCliqueVertexCoreDecomposition_ST_V2_InterleavedProbe(edgeGraph, s);
     }
@@ -579,6 +589,24 @@ static bool dispatchR1(
             delete[] refV;
         }
         dumpCoreValues(coreV, numVertices, "r=1 ST_V2");
+        delete[] coreV;
+        return true;
+    }
+
+    // ST_V3: same hookup as ST_V2 but uses sparse-bucket peel (Phase 1a)
+    if (envSet("PIVOTER_RUN_ST_V3") && pmr.st_v2_data) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto coreV = daf::timeCount("ST_V3 r=1 (peel)", [&]() {
+            return NCliqueVertexCoreDecomposition_ST_V3_Peel(*pmr.st_v2_data, s);
+        });
+        if (compareMode) {
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(coreV, numVertices), "r=1 ST_V3");
+            delete[] refV;
+        }
+        dumpCoreValues(coreV, numVertices, "r=1 ST_V3");
         delete[] coreV;
         return true;
     }
@@ -834,6 +862,7 @@ static bool dispatchR3Plus(
         {"PIVOTER_RUN_REGION_V3H", "Region CPI V3 Fast + Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_Hierarchy},
         {"PIVOTER_RUN_REGION_V3HC", "Region CPI V3 Fast + Class-based Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_HierarchyClass},
         {"PIVOTER_RUN_REGION_V3LM", "RegNDC (Region-Tuple Nucleus Decomposition with CPI backend) r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem},
+        {"PIVOTER_RUN_CCPATH", "CCPath (lazy/eager threshold antichain) r>=3", NucleusCoreDecompositionRClique_CCPath},
         {"PIVOTER_RUN_REGION_V3LM_NOCPI", "Region CPI V3 Low-Memory NoCPI (ablation) r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem_NoCPI},
         {"PIVOTER_RUN_REGION_V3LM_HIER", "Region CPI V3 Low-Memory + Class-based Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier},
         {"PIVOTER_RUN_REGION_V3NOCPI", "Region CPI V3 NoCPI (ablation) r>=3", NucleusCoreDecompositionRClique_RegionCPI_NoCPI},
@@ -904,6 +933,10 @@ static void dispatchRefOrDefault(
         std::cout << "Core value distribution:" << std::endl;
         for (const auto &[cv, count] : dist)
             std::cout << "  core=" << cv << " count=" << count << std::endl;
+        // Per-r-clique dump for case-study lookup (PIVOTER_DUMP_CORE=<path>).
+        // REF returns non-compact result (one entry per r-clique with its
+        // core value), so we can dump directly here.
+        dumpRCliqueCoreValues(res, "REF r>=3");
         return;
     }
 
@@ -1007,7 +1040,8 @@ int main(int argc, char **argv) {
         || envSet("PIVOTER_RUN_REGION_V3H") || envSet("PIVOTER_RUN_REGION_V3HC")
         || envSet("PIVOTER_RUN_REGION_V3LM") || envSet("PIVOTER_RUN_REGION_V3LM_NOCPI")
         || envSet("PIVOTER_RUN_REGION_V3LM_HIER")
-        || envSet("PIVOTER_RUN_REGION_V4") || envSet("PIVOTER_RUN_REGION_V2F")) {
+        || envSet("PIVOTER_RUN_REGION_V4") || envSet("PIVOTER_RUN_REGION_V2F")
+        || envSet("PIVOTER_RUN_CCPATH")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
             return enumerateMaximalCliques(edgeGraph, s);
         });
