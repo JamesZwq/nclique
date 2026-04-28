@@ -1,20 +1,42 @@
 //
-// Region Tuple + CPI Counting (V3Fast) — Low-Memory variant (V3LM).
+// CCPath — Faithful C++ port of the Python algorithm in solved.py.
 //
-// Identical algorithmic behavior to V3Fast but replaces the explicit
-// tuple -> path incidence list (tupleToPathInfos) with a class -> path
-// inverted index.  Tuple-to-path lookups at peel time are derived on the
-// fly by intersecting class -> path lists for each distinct class in
-// tau.key.  This cuts the bulk of the auxiliary memory (tuple-path pairs)
-// by 50-100x on graphs with moderate/poor class compression, while adding
-// a small amortised cost per peel for the sorted-list intersection.
+// CCPath maintains, per CPI leaf, a per-class hold (h) / pivot (n) structure
+// plus per-class (ell, u) bounds on the per-class pivot count y[c]. Tuple
+// deletions are encoded as a forbidden-threshold antichain in `forbidden`.
+// Support counting on a path uses count_with_extra_lower DP and IE over
+// the forbidden antichain (see ccpath::support_count in CCPathCore.h).
+// When the antichain grows beyond a kmax threshold, controlled_split
+// absorbs one threshold into the (ell, u) structure, eagerly mutating
+// the path into m=|D| children.
 //
-// Only the "tuple -> paths" direction is eliminated; path -> alive-tuples
-// (pathInfos[p].tupleIdxs) is kept because it shrinks monotonically as
-// tuples peel and is the smallest live-state direction.
+// Phase 1 (done): clone of LowMem with renamed entry point. Validates
+// wiring/build/dispatch. Output matches LowMem exactly on test graphs.
 //
+// Phase 2A (done): per-τ_class wrappers `count_with_extra_lower_pertau`
+// and `support_pertau` defined below, sitting on top of
+// ccpath::inclusion_exclusion_terms (the IE expansion is identical
+// between per-R' and per-τ_class). Activated by PIVOTER_CCPATH_VERIFY=1,
+// which double-checks LowMem's countUnionRec against the new IE wrapper
+// at every call site. Verified 0 mismatches across r∈{3,4} × s∈{5..8} on
+// test_server_huge_10000.edges (10k vertices, max core 120).
+//
+// Phase 2B (TODO): make support_pertau the default, free deadBoxesFlat.
+// Requires re-implementing LowMem's pruning optimizations (zero-base
+// cache, affected-check, normalizeBoxes B&B) on top of the forbidden
+// antichain — Phase 2A measured ~60× slowdown without them.
+//
+// Phase 3 (TODO): controlled_split. The genuinely new contribution from
+// solved.py — when |forbidden| > kmax, absorb one threshold into (ell, u)
+// bounds, splitting the path into m=|D| children. Requires either per-R'
+// tracking (simpler, mult× memory) or extending the per-τ_class DP to
+// honor non-trivial (ell, u) bounds. See task #93 for design notes.
+//
+// Verified core algorithms (CCPathCore.h) pass 6000 random tests against
+// a brute-force enumerator.
 
 #include "NCliqueCoreDecomposition.h"
+#include "CCPathCore.h"
 #include "../dataStruct/robin_hood.h"
 #include <algorithm>
 #include <chrono>
@@ -138,11 +160,113 @@ static double computeExt(const std::vector<std::pair<daf::Size, int>> &sigmaComp
 }
 
 // ============================================================
-// Main function: Region CPI (V3)
+// CCPath: nCr wrapper used by ccpath::support_count under
+// PIVOTER_CCPATH_VERIFY mode (and Phase 2B onwards).
+// Forwards to the global nCr table from NCliqueCoreDecomposition.h.
+// ============================================================
+static double ccpath_nCr_fn(int n, int k) {
+    if (n < 0 || k < 0 || k > n) return 0.0;
+    if (n > 1000 || k > 400) return 0.0;
+    return nCr[n][k];
+}
+
+// ============================================================
+// Per-τ_class wrappers around ccpath::inclusion_exclusion_terms.
+// solved.py / CCPathCore.h is per-R': count_with_extra_lower uses the
+// weight C(n[c]-b[c], y[c]-b[c]) for a SPECIFIC fixed r-clique R'.
+// LowMem's framework is per-τ_class: aggrCountOnCPath sums per-R' counts
+// over all R' realizations of τ_class on path P, equivalent to using
+// the Vandermonde-aggregated weight
+//     weight_c(y) = C(n[c], y) * C(h[c] + y, j[c])
+// (j[c] = τ's class-c count; for j[c]=0 it reduces to C(n[c], y)).
+// We re-use ccpath::inclusion_exclusion_terms verbatim (forbidden-antichain
+// IE expansion is identical between per-R' and per-τ_class), and pair it
+// with a per-τ_class count DP below.
+// ============================================================
+
+static double count_with_extra_lower_pertau(
+    const ccpath::Vec &h, const ccpath::Vec &n, int T,
+    const ccpath::Vec &ell, const ccpath::Vec &u,
+    const ccpath::Vec &j, const ccpath::Vec &extra_lower)
+{
+    const int m = (int)n.size();
+    if ((int)j.size() != m) return 0.0;
+    if ((int)extra_lower.size() != m) return 0.0;
+
+    std::vector<int> L(m), U(m);
+    for (int c = 0; c < m; ++c) {
+        int lo = (int)ell[c];
+        if ((int)extra_lower[c] > lo) lo = (int)extra_lower[c];
+        L[c] = lo;
+        U[c] = (int)u[c];
+        if (L[c] > U[c]) return 0.0;
+    }
+    int sumL = 0, sumU = 0;
+    for (int c = 0; c < m; ++c) { sumL += L[c]; sumU += U[c]; }
+    if (sumL > T || sumU < T) return 0.0;
+
+    std::vector<double> dp((size_t)T + 1, 0.0);
+    std::vector<double> ndp((size_t)T + 1, 0.0);
+    dp[0] = 1.0;
+
+    for (int c = 0; c < m; ++c) {
+        std::fill(ndp.begin(), ndp.end(), 0.0);
+        const int hc = (int)h[c];
+        const int nc = (int)n[c];
+        const int jc = (int)j[c];
+        for (int total = 0; total <= T; ++total) {
+            double w = dp[(size_t)total];
+            if (w == 0.0) continue;
+            int max_y = U[c];
+            if (T - total < max_y) max_y = T - total;
+            for (int y = L[c]; y <= max_y; ++y) {
+                double weight = ccpath_nCr_fn(nc, y);
+                if (jc > 0) weight *= ccpath_nCr_fn(hc + y, jc);
+                if (weight == 0.0) continue;
+                ndp[(size_t)(total + y)] += w * weight;
+            }
+        }
+        dp.swap(ndp);
+    }
+    return dp[(size_t)T];
+}
+
+// support_pertau: per-τ_class equivalent of ccpath::support_count.
+// Returns aggrCountOnCPath when forbidden is non-empty and the path
+// is restricted to (ell, u). With ell=0, u=n, forbidden=empty, it gives
+// LowMem's aggrCountOnCPath_no_box; with the current forbidden, it gives
+// aggrCount_alive = aggrCount_no_box - aggrCount_dead.
+[[maybe_unused]] static double support_pertau(
+    const ccpath::Vec &h, const ccpath::Vec &n, int T,
+    const ccpath::Vec &ell, const ccpath::Vec &u,
+    const std::vector<ccpath::Vec> &forbidden,
+    const ccpath::Vec &j)
+{
+    const int m = (int)j.size();
+    // Threshold for τ_class itself (must NOT be dominated by any forbidden).
+    ccpath::Vec threshold((size_t)m);
+    for (int c = 0; c < m; ++c) {
+        int v = (int)j[c] - (int)h[c];
+        threshold[(size_t)c] = v > 0 ? (int16_t)v : (int16_t)0;
+    }
+    for (const auto &a : forbidden) {
+        if (ccpath::leq(a, threshold)) return 0.0;
+    }
+    auto terms = ccpath::inclusion_exclusion_terms(forbidden, m);
+    double total = 0.0;
+    for (auto &kv : terms) {
+        total += (double)kv.second
+               * count_with_extra_lower_pertau(h, n, T, ell, u, j, kv.first);
+    }
+    return total;
+}
+
+// ============================================================
+// Main function: CCPath (renamed clone of LowMem; Phase 2 in progress)
 // ============================================================
 
 std::vector<std::pair<std::vector<daf::Size>, double>>
-NucleusCoreDecompositionRClique_RegionCPI_LowMem(
+NucleusCoreDecompositionRClique_CCPath(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV,
     daf::CliqueSize r, daf::CliqueSize s,
@@ -851,6 +975,17 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         // savings: kills per-box heap header + capacity rounding (typ. 3–4×
         // smaller than vector<vector<int>> for the real m=5..15 case).
         std::vector<int16_t> deadBoxesFlat;
+        // Phase 3C: per-class (ell, u) bounds on the pivot count vector y.
+        // For default paths (no split applied yet), ell = 0, u = np.
+        // After persistent split, children have non-trivial ell/u that
+        // restrict their y region (see Theorem 1 in docs). The IE call site
+        // uses lower = max(base, ell), upper = u (instead of upper = np).
+        std::vector<int16_t> ell;    // per-class lower bound on y
+        std::vector<int16_t> u;      // per-class upper bound on y
+        // ell-all-zero flag: cached to gate zeroCache optimization. If
+        // ell != 0 vector, the zero-base cache is invalid (its key assumes
+        // lower = 0). Default true; set to false when path is split.
+        bool ellAllZero = true;
     };
 
     // LowMem: classIds is sorted (see build below), so binary search is O(log k)
@@ -1434,6 +1569,13 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             pi.nh[i] = cd[pi.classIds[i]].first;
             pi.np[i] = cd[pi.classIds[i]].second;
         }
+        // Phase 3C: initialize ell = 0 (vector), u = np (per-class).
+        pi.ell.assign(pi.classIds.size(), 0);
+        pi.u.resize(pi.classIds.size());
+        for (int i = 0; i < (int)pi.classIds.size(); ++i) {
+            pi.u[i] = (int16_t)pi.np[i];
+        }
+        pi.ellAllZero = true;
 
         // Find tuples on this path
         TupleKey cur; cur.reserve(r);
@@ -1729,6 +1871,22 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             }
         }
 
+        // Phase 3C: skip if cand is impossible w.r.t. (ell, u) bounds.
+        // Specifically, cand[c] > pi.u[c] for some c means no y in R(pi)
+        // can dominate cand → cand contributes nothing to alive(pi).
+        // For default paths (u = np), cand[c] <= np_c always (τ feasible),
+        // so this branch is a no-op. For split children with tighter u,
+        // it prevents impossible cand from polluting forbidden — which
+        // would otherwise cause infinite recursion in controlled_split
+        // (first_failing_split_by_vector returns {path} on impossible a*).
+        if (!pi.u.empty()) {
+            for (int c = 0; c < m; ++c) {
+                if ((int)cand[c] > (int)pi.u[c]) {
+                    return false;  // skip this dead box append
+                }
+            }
+        }
+
         // Note: when cand = 0 (peeled tuple's class usage fits within
         // hold quotas), Theorem 5 says all alive τ on P have alive=0.
         // We rely on Theorem 1 in refreshAffectedPaths to detect this
@@ -1858,6 +2016,16 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     long long prof_pathsRetired = 0;
     long long prof_deadCacheEvicted = 0;
     daf::Size numTuplesSz = rTuples.size();
+
+    // Phase 3B split-path diagnostics
+    struct SplitStats {
+        long long fires = 0;          // # times split fired
+        long long sumOrigK = 0;       // Σ |forbidden| at split time (avg orig K)
+        long long sumChildren = 0;    // Σ |raw_children| (avg m_D)
+        long long sumChildK = 0;      // Σ |child_forb| over kept children
+        long long droppedChildren = 0;
+        long long emptyChildren = 0;  // children with empty forbidden
+    } splitStats;
 
     // Bucket levels (support counts, core values) are stored as double
     // throughout. Rationale:
@@ -2012,8 +2180,10 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             const int T = pi.T;
 
             // upper is tuple-independent per path: fill once.
+            // Phase 3C: upper = pi.u (which equals pi.np for default paths,
+            // but may be tighter for split children).
             upper.assign(m, 0);
-            for (int i = 0; i < m; ++i) upper[i] = pi.np[i];
+            for (int i = 0; i < m; ++i) upper[i] = (int)pi.u[i];
 
             for (auto tidx : pi.tupleIdxs) {
                 auto key = keyOf(tidx);  // sorted with repetitions
@@ -2034,19 +2204,35 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                         ++ci; ki += jc;
                     }
                 }
+                // Phase 3D opt: fold ell into base so the IE call sees
+                // effective_lower = max(base, pi.ell). Crucially, we keep
+                // baseAllZero meaning "τ's per-class threshold is zero"
+                // (independent of ell). When ell != 0 but τ-base is 0,
+                // base[] becomes pi.ell (constant per path) — zeroCache
+                // can still amortize since the cache key is per-path
+                // and base[] is path-constant within the batch. The
+                // zero-base affected-check below is generalized to use
+                // max(dv, base[c]) instead of hard-coded base=0.
+                if (!pi.ellAllZero) {
+                    for (int c = 0; c < m; ++c) {
+                        int el = (int)pi.ell[c];
+                        if (el > base[c]) base[c] = el;
+                    }
+                    // Note: baseAllZero retains its meaning ("τ-only base = 0").
+                }
 
                 double newDead;
                 UnionCtx ctx{m, pi.T, 0, tidx, &pi};
                 bool unionSkipped = false;
 
                 if (baseAllZero) {
-                    // === Path-level fast path (all-zero base) ===
-                    // base=0 makes both the affected predicate and the top
-                    // normalize+choosePivot path-level (no tuple input
-                    // beyond ctx). Compute once per (path, batch); reuse
-                    // for every all-zero tuple on this path.
+                    // === Path-level fast path (τ-base is all-zero) ===
+                    // Phase 3D: when pi.ellAllZero, base[]=0 throughout —
+                    // the original zero-base shortcut applies. When ell != 0,
+                    // base[]=pi.ell (folded above) — STILL constant per path,
+                    // so zeroCache amortizes across all τ-zero-base tuples.
+                    // Affected check generalized to max(D[c], base[c]).
                     if (!zeroCache.valid) {
-                        // Affected predicate with base=0: max(D[c], 0) = D[c].
                         if (numNewBoxes > 0) {
                             bool affected = false;
                             const int16_t *Dptr = pi.deadBoxesFlat.data() + firstNewBoxOffset;
@@ -2055,7 +2241,8 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                                 bool over = false;
                                 for (int c = 0; c < m; ++c) {
                                     int dv = (int)Dptr[c];
-                                    s += dv;
+                                    int v = dv > base[c] ? dv : base[c];
+                                    s += v;
                                     if (s > T) { over = true; break; }
                                 }
                                 if (!over) { affected = true; break; }
@@ -2134,7 +2321,116 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
                 if (unionSkipped) continue;
 
-                if (baseAllZero) {
+                // === Phase 3B: controlled_split-primary IE method ===
+                // When PIVOTER_CCPATH_SPLIT=1 and nBoxes > kmax, replace
+                // countUnionRec on the full forbidden set with a single-level
+                // split:
+                //     newDead = #y dominating a* (feasWeighted call)
+                //             + Σ over child of countUnionRec(child)
+                // Each child has restricted (ell, u) and a smaller forbidden
+                // subset (a* removed, others surviving via insert_antichain).
+                // This trades one IE over k boxes for ≤ m IEs over ≤ k-1 boxes
+                // each. Wins when k is large and m * (cost of k-1 IE)
+                //                            < cost of k IE.
+                static const bool ccsplit_primary =
+                    (std::getenv("PIVOTER_CCPATH_SPLIT") != nullptr) &&
+                    (std::strcmp(std::getenv("PIVOTER_CCPATH_SPLIT"), "0") != 0);
+                static const int ccsplit_primary_kmax =
+                    []{ const char *v = std::getenv("PIVOTER_CCPATH_KMAX");
+                        return v ? std::max(1, std::atoi(v)) : 8; }();
+                bool used_split = false;
+
+                if (ccsplit_primary && nBoxes > ccsplit_primary_kmax) {
+                    splitStats.fires++;
+                    splitStats.sumOrigK += nBoxes;
+                    // Build CCPath for the split decomposition.
+                    ccpath::Vec hvec_s((size_t)m), nvec_s((size_t)m);
+                    for (int i = 0; i < m; ++i) {
+                        hvec_s[(size_t)i] = (int16_t)pi.nh[i];
+                        nvec_s[(size_t)i] = (int16_t)pi.np[i];
+                    }
+                    ccpath::Vec ellv_s((size_t)m, 0);
+                    ccpath::Vec uvec_s = nvec_s;
+                    std::vector<ccpath::Vec> forb_cc_s;
+                    forb_cc_s.reserve((size_t)nBoxes);
+                    for (int bi = 0; bi < nBoxes; ++bi) {
+                        ccpath::Vec a((size_t)m);
+                        for (int i = 0; i < m; ++i)
+                            a[(size_t)i] = pi.deadBoxesFlat[(size_t)bi * m + i];
+                        forb_cc_s.push_back(std::move(a));
+                    }
+                    ccpath::CCPath p_split;
+                    p_split.h = hvec_s; p_split.n = nvec_s; p_split.T = T;
+                    p_split.ell = ellv_s; p_split.u = uvec_s;
+                    p_split.forbidden = forb_cc_s;
+
+                    // Choose split vector and partition path into m_D children.
+                    ccpath::Vec a_star = ccpath::choose_split_vector(p_split);
+
+                    // count_in_A: #y dominating a* (within base/upper bounds).
+                    std::vector<int> lowerA((size_t)m), upperA((size_t)m);
+                    for (int i = 0; i < m; ++i) {
+                        lowerA[i] = std::max(base[i], (int)a_star[i]);
+                        upperA[i] = upper[i];
+                    }
+                    ctx.recCalls++;  // count this as a top-level IE call
+                    double count_in_A = feasWeighted(lowerA.data(),
+                                                     upperA.data(), ctx);
+
+                    // Single-level first_failing_split (no recursion). Each
+                    // child represents one "first-failing-class" strip of ¬A.
+                    auto raw_children =
+                        ccpath::first_failing_split_by_vector(p_split, a_star);
+
+                    splitStats.sumChildren += (long long)raw_children.size();
+                    double newDead_acc = count_in_A;
+                    std::vector<int> childLower((size_t)m), childUpper((size_t)m);
+                    std::vector<int16_t> child_forb_flat;
+                    for (auto &child : raw_children) {
+                        // Redistribute the OTHER forbidden vectors into child.
+                        std::vector<ccpath::Vec> child_forb;
+                        bool drop_child = false;
+                        for (auto &q : forb_cc_s) {
+                            if (q == a_star) continue;
+                            if (ccpath::impossible(child, q)) continue;
+                            if (ccpath::covers_whole_path(child, q)) {
+                                drop_child = true; break;
+                            }
+                            ccpath::insert_antichain(child_forb, q);
+                        }
+                        if (drop_child) { splitStats.droppedChildren++; continue; }
+                        if (!child.quick_feasible()) { splitStats.droppedChildren++; continue; }
+                        if (child_forb.empty()) {
+                            splitStats.emptyChildren++;
+                            // No forbidden in child → 0 dead from this strip.
+                            continue;
+                        }
+                        splitStats.sumChildK += (long long)child_forb.size();
+
+                        for (int i = 0; i < m; ++i) {
+                            childLower[i] = std::max(base[i], (int)child.ell[i]);
+                            childUpper[i] = (int)child.u[i];
+                        }
+                        // countUnionRec wants flat int16_t storage.
+                        child_forb_flat.resize(child_forb.size() * (size_t)m);
+                        for (size_t bi = 0; bi < child_forb.size(); ++bi) {
+                            for (int i = 0; i < m; ++i)
+                                child_forb_flat[bi * m + i] = child_forb[bi][i];
+                        }
+                        ctx.recCalls++;
+                        newDead_acc += countUnionRec(childLower.data(),
+                                                    childUpper.data(),
+                                                    child_forb_flat.data(),
+                                                    (int)child_forb.size(), ctx);
+                    }
+
+                    newDead = newDead_acc;
+                    used_split = true;
+                }
+
+                if (used_split) {
+                    // newDead already set; skip LowMem branches below.
+                } else if (baseAllZero) {
                     // Apply cached norm+pivot. Recursion below the top
                     // frame still calls standard countUnionRec (it
                     // re-normalizes against new bounds, which differ
@@ -2163,10 +2459,15 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                             nL = heapNL.data(); nU = heapNU.data();
                         }
                         for (int splitDim = 0; splitDim < m; ++splitDim) {
-                            // base[splitDim] = 0 (all-zero base).
-                            if (pivot[splitDim] <= 0) continue;
+                            // Phase 3D: skip dim where pivot doesn't exceed
+                            // base (no constraint added). For pi.ell=0,
+                            // base[splitDim]=0, so this matches the original
+                            // pivot[splitDim]<=0 check. For split paths with
+                            // pi.ell != 0, base[splitDim]=ell[splitDim], we
+                            // need pivot > ell.
+                            if (pivot[splitDim] <= base[splitDim]) continue;
                             for (int i = 0; i < m; ++i) {
-                                nL[i] = base[i];      // 0
+                                nL[i] = base[i];
                                 nU[i] = upper[i];
                             }
                             for (int earlier = 0; earlier < splitDim; ++earlier)
@@ -2186,6 +2487,105 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
                 prof_totalRecCalls += ctx.recCalls;
                 prof_unionCalls++;
+
+                // === CCPath Phase 2 verification ===
+                // Re-compute newDead via ccpath::inclusion_exclusion_terms +
+                // per-τ_class count_with_extra_lower_pertau, and assert the
+                // value matches LowMem's countUnionRec. Activated by
+                // PIVOTER_CCPATH_VERIFY=1 — heavy, ~5x slowdown.
+                static const bool ccverify_enabled =
+                    (std::getenv("PIVOTER_CCPATH_VERIFY") != nullptr) &&
+                    (std::strcmp(std::getenv("PIVOTER_CCPATH_VERIFY"), "0") != 0);
+                static int ccverify_mismatches = 0;
+                if (ccverify_enabled) {
+                    // Build jvec = per-class count of τ on this path.
+                    auto vk = keyOf(tidx);
+                    ccpath::Vec jvec((size_t)m, 0);
+                    {
+                        int ci2 = 0, ki2 = 0;
+                        int klen2 = (int)vk.size();
+                        while (ci2 < m && ki2 < klen2) {
+                            if (pi.classIds[ci2] < vk[ki2]) { ++ci2; }
+                            else if (pi.classIds[ci2] > vk[ki2]) { ++ki2; }
+                            else {
+                                int jc = 1;
+                                while (ki2 + jc < klen2 && vk[ki2 + jc] == vk[ki2]) ++jc;
+                                jvec[(size_t)ci2] = (int16_t)jc;
+                                ++ci2; ki2 += jc;
+                            }
+                        }
+                    }
+                    ccpath::Vec hvec((size_t)m), nvec((size_t)m);
+                    for (int i = 0; i < m; ++i) {
+                        hvec[(size_t)i] = (int16_t)pi.nh[i];
+                        nvec[(size_t)i] = (int16_t)pi.np[i];
+                    }
+                    ccpath::Vec ellv((size_t)m, 0);
+                    ccpath::Vec uvec = nvec;
+                    std::vector<ccpath::Vec> forb_cc;
+                    forb_cc.reserve((size_t)nBoxes);
+                    for (int bi = 0; bi < nBoxes; ++bi) {
+                        ccpath::Vec a((size_t)m);
+                        for (int i = 0; i < m; ++i)
+                            a[(size_t)i] = pi.deadBoxesFlat[(size_t)bi * m + i];
+                        forb_cc.push_back(std::move(a));
+                    }
+                    double alive_cc = support_pertau(hvec, nvec, T, ellv, uvec,
+                                                     forb_cc, jvec);
+                    std::vector<ccpath::Vec> empty_forb;
+                    double total_cc = support_pertau(hvec, nvec, T, ellv, uvec,
+                                                     empty_forb, jvec);
+                    double newDead_cc = total_cc - alive_cc;
+                    if (std::abs(newDead_cc - newDead) > 0.5
+                        && ccverify_mismatches < 5) {
+                        std::cerr << "[CCPath verify] mismatch path=" << piIdx
+                                  << " tuple=" << tidx
+                                  << " m=" << m << " T=" << T
+                                  << " nBoxes=" << nBoxes
+                                  << ": LM newDead=" << newDead
+                                  << " CC newDead=" << newDead_cc
+                                  << " (total_cc=" << total_cc
+                                  << " alive_cc=" << alive_cc << ")\n";
+                        ++ccverify_mismatches;
+                    }
+
+                    // === Phase 3A: ephemeral controlled_split verification ===
+                    // Build a CCPath with current forbidden, run controlled_split
+                    // (which mutates one forbidden vector into (ell, u) bounds
+                    // and partitions the path into m=|D| children). Then sum
+                    // alive(child) via support_pertau across children. By the
+                    // partition argument (#alive in dominating-region = 0
+                    // because the dominator forbidden is in forbidden), this
+                    // sum should equal alive_cc exactly.
+                    static int ccsplit_mismatches = 0;
+                    static const int ccsplit_kmax =
+                        []{ const char *v = std::getenv("PIVOTER_CCPATH_KMAX");
+                            return v ? std::max(1, std::atoi(v)) : 8; }();
+                    if (nBoxes > ccsplit_kmax) {
+                        ccpath::CCPath p;
+                        p.h = hvec; p.n = nvec; p.T = T;
+                        p.ell = ellv; p.u = uvec;
+                        p.forbidden = forb_cc;
+                        auto children = ccpath::controlled_split(p, ccsplit_kmax);
+                        double alive_split = 0.0;
+                        for (auto &child : children) {
+                            alive_split += support_pertau(
+                                child.h, child.n, child.T,
+                                child.ell, child.u, child.forbidden, jvec);
+                        }
+                        if (std::abs(alive_split - alive_cc) > 0.5
+                            && ccsplit_mismatches < 5) {
+                            std::cerr << "[CCPath split-verify] mismatch path=" << piIdx
+                                      << " tuple=" << tidx
+                                      << " m=" << m << " T=" << T
+                                      << " nBoxes=" << nBoxes
+                                      << " #children=" << children.size()
+                                      << ": alive_cc=" << alive_cc
+                                      << " alive_split=" << alive_split << "\n";
+                            ++ccsplit_mismatches;
+                        }
+                    }
+                }
 
                 uint64_t cacheKey = (uint64_t)piIdx * numTuplesSz + tidx;
                 double oldDead = 0.0;
@@ -2262,6 +2662,280 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                 }
             }
         }
+    };
+
+    // ============================================================
+    // Phase 3C: persistent path mutation via controlled_split
+    // ============================================================
+    // When |forbidden| on a path exceeds kmax, replace the path with its
+    // controlled_split children in pathInfos[]. Each child has restricted
+    // (ell, u) bounds and a smaller forbidden antichain. See Theorem 1
+    // and Lemma A in the design doc — the partition preserves alive(P)
+    // and support_τ(P) per Vandermonde-aggregated weight semantics.
+    static const bool ccpersist_split_enabled =
+        (std::getenv("PIVOTER_CCPATH_PERSIST_SPLIT") != nullptr) &&
+        (std::strcmp(std::getenv("PIVOTER_CCPATH_PERSIST_SPLIT"), "0") != 0);
+    static const int ccpersist_kmax =
+        []{ const char *v = std::getenv("PIVOTER_CCPATH_KMAX");
+            return v ? std::max(1, std::atoi(v)) : 8; }();
+
+    long long persist_splitFires = 0;
+    long long persist_splitNewPaths = 0;
+    long long persist_splitWhollyDead = 0;
+    long long persist_avgChildKSum = 0;
+    long long persist_avgChildKCount = 0;
+    long long persist_avgOrigKSum = 0;
+    long long persist_splitTimeNs = 0;
+    // Phase 3D fine-grained sub-phase timers
+    long long persist_buildCCPathNs = 0;     // CCPath struct + forb_cc convert
+    long long persist_chooseSplitNs = 0;     // choose_split_vector
+    long long persist_firstFailingNs = 0;    // first_failing_split_by_vector
+    long long persist_redistributeNs = 0;    // forbidden redistribution per child
+    long long persist_filterTuplesNs = 0;    // tupleIdxs feasibility filtering
+    long long persist_createPINs = 0;        // PathInfo creation + push_back
+    long long persist_invertedIdxNs = 0;     // classToPaths/tupleToPathInfos update
+    long long persist_retireParentNs = 0;    // retire_one helper time
+    long long ie_call_only_ns = 0;           // countUnionRec/feasWeighted only
+    long long base_compute_ns = 0;           // base[] merge-scan + ell fold
+
+    auto split_path = [&](daf::Size piIdx) -> void {
+        // Capture parent data by value so subsequent push_back's into
+        // pathInfos can safely realloc without dangling references.
+        int m;
+        ccpath::CCPath p;
+        std::vector<daf::Size> parent_classIds;
+        std::vector<int> parent_nh, parent_np;
+        std::vector<daf::Size> parent_tupleIdxs;
+        int parent_h, parent_T;
+        auto _t_buildCC0 = std::chrono::steady_clock::now();
+        {
+            auto &pi_old = pathInfos[piIdx];
+            m = (int)pi_old.classIds.size();
+            int nBoxes_pi = (int)(pi_old.deadBoxesFlat.size() / (size_t)m);
+
+            p.h.resize((size_t)m); p.n.resize((size_t)m);
+            p.ell.resize((size_t)m); p.u.resize((size_t)m);
+            for (int i = 0; i < m; ++i) {
+                p.h[(size_t)i] = (int16_t)pi_old.nh[i];
+                p.n[(size_t)i] = (int16_t)pi_old.np[i];
+                p.ell[(size_t)i] = pi_old.ell[i];
+                p.u[(size_t)i] = pi_old.u[i];
+            }
+            p.T = pi_old.T;
+            p.forbidden.reserve((size_t)nBoxes_pi);
+            for (int b = 0; b < nBoxes_pi; ++b) {
+                ccpath::Vec a((size_t)m);
+                for (int i = 0; i < m; ++i)
+                    a[(size_t)i] = pi_old.deadBoxesFlat[(size_t)b * m + i];
+                p.forbidden.push_back(std::move(a));
+            }
+            parent_classIds = pi_old.classIds;
+            parent_nh = pi_old.nh;
+            parent_np = pi_old.np;
+            parent_tupleIdxs = pi_old.tupleIdxs;
+            parent_h = pi_old.h;
+            parent_T = pi_old.T;
+
+            persist_splitFires++;
+            persist_avgOrigKSum += nBoxes_pi;
+        }
+        persist_buildCCPathNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - _t_buildCC0).count();
+
+        // Phase 3D opt: single-level split (no recursion). Each split fire
+        // removes 1 forbidden vector (a*); if a child still has K > kmax,
+        // the next batch's split trigger catches it. Trades ~22-level
+        // recursion with O(m × K) intermediate CCPaths per level into
+        // amortized cost across batches. Per-split overhead drops from
+        // ~1ms to ~0.1ms in dblp-db measurements.
+        std::vector<ccpath::CCPath> leaves;
+        if ((int)p.forbidden.size() <= ccpersist_kmax) {
+            leaves.push_back(p);  // shouldn't happen — caller checks
+        } else {
+            auto _t_chs0 = std::chrono::steady_clock::now();
+            ccpath::Vec a_star = ccpath::choose_split_vector(p);
+            persist_chooseSplitNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - _t_chs0).count();
+
+            auto _t_ffs0 = std::chrono::steady_clock::now();
+            auto raw_children =
+                ccpath::first_failing_split_by_vector(p, a_star);
+            persist_firstFailingNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - _t_ffs0).count();
+
+            auto _t_red0 = std::chrono::steady_clock::now();
+            leaves.reserve(raw_children.size());
+            for (auto &child : raw_children) {
+                bool drop = false;
+                for (const auto &q : p.forbidden) {
+                    if (q == a_star) continue;
+                    if (ccpath::impossible(child, q)) continue;
+                    if (ccpath::covers_whole_path(child, q)) {
+                        drop = true; break;
+                    }
+                    ccpath::insert_antichain(child.forbidden, q);
+                }
+                if (drop) continue;
+                if (!child.quick_feasible()) continue;
+                leaves.push_back(std::move(child));
+            }
+            persist_redistributeNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - _t_red0).count();
+        }
+
+        // Helper: retire a path (free its arrays, mark retired).
+        // Eagerly remove idx from inverted index so subsequent
+        // pathsCoveringTuple iterations don't waste cycles on retired
+        // entries. Without this, on dblp-db r=4 s=6 the classToPaths
+        // grew by ~3× from split-induced retirements + new children,
+        // each pathsCoveringTuple iterating retired entries was the
+        // dominant overhead beyond split itself.
+        auto retire_one = [&](daf::Size idx) {
+            auto &pi = pathInfos[idx];
+            // Remove from classToPaths.
+            for (auto cid : pi.classIds) {
+                if (cid < (daf::Size)classToPaths.size()) {
+                    auto &v = classToPaths[cid];
+                    auto it = std::find(v.begin(), v.end(), idx);
+                    if (it != v.end()) v.erase(it);
+                }
+            }
+            // Remove from tupleToPathInfos (only if that index is in use).
+            if (!use_class_index) {
+                for (auto t : pi.tupleIdxs) {
+                    if (t < (daf::Size)tupleToPathInfos.size()) {
+                        auto &v = tupleToPathInfos[t];
+                        auto it = std::find(v.begin(), v.end(), idx);
+                        if (it != v.end()) v.erase(it);
+                    }
+                }
+            }
+            std::vector<int16_t>().swap(pi.deadBoxesFlat);
+            std::vector<daf::Size>().swap(pi.tupleIdxs);
+            std::vector<daf::Size>().swap(pi.classIds);
+            std::vector<int>().swap(pi.nh);
+            std::vector<int>().swap(pi.np);
+            std::vector<int16_t>().swap(pi.ell);
+            std::vector<int16_t>().swap(pi.u);
+            pathRetired[idx] = true;
+            pathAliveCount[idx] = 0;
+        };
+
+        if (leaves.empty()) {
+            // Wholly dead — Theorem 1 says alive(P) is empty after split.
+            // Per Lemma A, this happens iff some forbidden q causes
+            // covers_whole_path(P, q), which we treat as path retirement.
+            persist_splitWhollyDead++;
+            retire_one(piIdx);
+            return;
+        }
+
+        // For each leaf, build a new PathInfo with feasibility-filtered tupleIdxs.
+        std::vector<daf::Size> kept_new_piIdxs;
+        kept_new_piIdxs.reserve(leaves.size());
+
+        for (auto &leaf : leaves) {
+            auto _t_filt0 = std::chrono::steady_clock::now();
+            std::vector<daf::Size> child_tuples;
+            child_tuples.reserve(parent_tupleIdxs.size());
+            for (auto tidx : parent_tupleIdxs) {
+                auto key = keyOf(tidx);
+                int sumLow = 0, sumHigh = 0;
+                bool feasible = true;
+                int ci = 0, ki = 0;
+                int klen = (int)key.size();
+                std::vector<int> threshold((size_t)m, 0);
+                while (ci < m && ki < klen) {
+                    if (parent_classIds[ci] < key[ki]) { ++ci; }
+                    else if (parent_classIds[ci] > key[ki]) { ++ki; }
+                    else {
+                        int jc = 1;
+                        while (ki + jc < klen && key[ki + jc] == key[ki]) ++jc;
+                        int v = jc - parent_nh[ci];
+                        if (v > 0) threshold[ci] = v;
+                        ++ci; ki += jc;
+                    }
+                }
+                for (int c = 0; c < m; ++c) {
+                    int lo = std::max((int)leaf.ell[c], threshold[c]);
+                    int hi = (int)leaf.u[c];
+                    if (lo > hi) { feasible = false; break; }
+                    sumLow += lo;
+                    sumHigh += hi;
+                }
+                if (!feasible) continue;
+                if (sumLow > parent_T || sumHigh < parent_T) continue;
+                child_tuples.push_back(tidx);
+            }
+            persist_filterTuplesNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - _t_filt0).count();
+
+            if (child_tuples.empty()) continue;
+
+            // Build new PathInfo
+            auto _t_create0 = std::chrono::steady_clock::now();
+            PathInfo newpi;
+            newpi.h = parent_h;
+            newpi.T = parent_T;
+            newpi.classIds = parent_classIds;
+            newpi.nh = parent_nh;
+            newpi.np = parent_np;
+            newpi.tupleIdxs = std::move(child_tuples);
+            newpi.ell.resize((size_t)m);
+            newpi.u.resize((size_t)m);
+            bool zeroEll = true;
+            for (int i = 0; i < m; ++i) {
+                newpi.ell[(size_t)i] = leaf.ell[(size_t)i];
+                newpi.u[(size_t)i] = leaf.u[(size_t)i];
+                if (newpi.ell[(size_t)i] != 0) zeroEll = false;
+            }
+            newpi.ellAllZero = zeroEll;
+            size_t kFb = leaf.forbidden.size();
+            newpi.deadBoxesFlat.resize(kFb * (size_t)m);
+            for (size_t b = 0; b < kFb; ++b) {
+                for (int i = 0; i < m; ++i) {
+                    newpi.deadBoxesFlat[b * m + i] = leaf.forbidden[b][(size_t)i];
+                }
+            }
+
+            persist_avgChildKSum += (long long)kFb;
+            persist_avgChildKCount++;
+
+            daf::Size newIdx = (daf::Size)pathInfos.size();
+            pathInfos.push_back(std::move(newpi));
+            pathRetired.push_back(false);
+            pathAliveCount.push_back((daf::Size)pathInfos.back().tupleIdxs.size());
+            batchDead.emplace_back();
+            newAppendsByPath.push_back(0);
+            oldBoxSizeByPath.push_back(0);
+            kept_new_piIdxs.push_back(newIdx);
+            persist_splitNewPaths++;
+            persist_createPINs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - _t_create0).count();
+
+            auto _t_inv0 = std::chrono::steady_clock::now();
+            const auto &final_pi = pathInfos.back();
+            for (auto cid : final_pi.classIds) {
+                if (cid < (daf::Size)classToPaths.size()) {
+                    classToPaths[cid].push_back(newIdx);
+                }
+            }
+            if (!use_class_index) {
+                for (auto t : final_pi.tupleIdxs) {
+                    if (t < (daf::Size)tupleToPathInfos.size()) {
+                        tupleToPathInfos[t].push_back(newIdx);
+                    }
+                }
+            }
+            persist_invertedIdxNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - _t_inv0).count();
+        }
+
+        // Retire the parent path (its arrays freed).
+        auto _t_ret0 = std::chrono::steady_clock::now();
+        retire_one(piIdx);
+        persist_retireParentNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - _t_ret0).count();
     };
 
     // --- Batch peeling loop ---
@@ -2408,6 +3082,41 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         prof_refreshTotalNs += std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::steady_clock::now() - _t_ref0).count();
 
+        // Phase 3C: persistent split trigger. After this batch's IE work,
+        // check each touched path: if |forbidden| > kmax, split it.
+        // Triggering AFTER refreshAffectedPaths (instead of during) ensures
+        // batch-level deadCache state is consistent — children won't have
+        // stale deadCache entries for tuples not yet processed in this batch.
+        if (ccpersist_split_enabled) {
+            // Min-alive gate: skip split if path has too few alive tuples.
+            // Rationale: split's per-fire bookkeeping cost is fixed, but its
+            // benefit scales with #future IE calls on this path = roughly
+            // O(pathAliveCount). Below this threshold, split is a net loss.
+            // Default 8 (≥ kmax to ensure path has at least kmax-worth of tuples).
+            static const int ccpersist_min_alive =
+                []{ const char *v = std::getenv("PIVOTER_CCPATH_MIN_ALIVE");
+                    return v ? std::max(1, std::atoi(v)) : 8; }();
+            const auto _t_split0 = std::chrono::steady_clock::now();
+            const size_t touchedAtRefresh = touchedPaths.size();
+            for (size_t ti = 0; ti < touchedAtRefresh; ++ti) {
+                daf::Size piIdx = touchedPaths[ti];
+                if (pathRetired[piIdx]) continue;
+                if (pathAliveCount[piIdx] < (daf::Size)ccpersist_min_alive) continue;
+                auto &pi_check = pathInfos[piIdx];
+                int m_check = (int)pi_check.classIds.size();
+                if (m_check == 0) continue;
+                int nBoxes_pi = (int)(pi_check.deadBoxesFlat.size() / (size_t)m_check);
+                if (nBoxes_pi > ccpersist_kmax) {
+                    split_path(piIdx);
+                    // After this, pi_check reference is INVALID (vector may
+                    // have grown). Don't use it.
+                }
+            }
+            persist_splitTimeNs +=
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - _t_split0).count();
+        }
+
         // PERF-AUDIT MEMORY (1/3 → superseded by 7): the per-peel
         // TupleKey().swap() that used to live here has been retired in
         // favour of the flat-key layout. With std::vector<daf::Size>
@@ -2471,6 +3180,47 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     }
     std::cout << "  Tuple updates: " << prof_tupleUpdates << std::endl;
     std::cout << "  Tuple saturated on path (Theorem 1): " << prof_tupleSaturated << std::endl;
+    if (splitStats.fires > 0) {
+        double avgOrigK = (double)splitStats.sumOrigK / splitStats.fires;
+        double avgChildren = (double)splitStats.sumChildren / splitStats.fires;
+        long long keptChildren = splitStats.sumChildren
+                                - splitStats.droppedChildren
+                                - splitStats.emptyChildren;
+        double avgChildK = keptChildren > 0
+            ? (double)splitStats.sumChildK / keptChildren : 0.0;
+        std::cout << "  [Phase 3B split] fires=" << splitStats.fires
+                  << " avgOrigK=" << std::fixed << std::setprecision(1) << avgOrigK
+                  << " avgChildren=" << avgChildren
+                  << " keptChildren=" << keptChildren
+                  << " emptyChildren=" << splitStats.emptyChildren
+                  << " droppedChildren=" << splitStats.droppedChildren
+                  << " avgChildK=" << avgChildK
+                  << " (savings: " << (avgOrigK - avgChildK) << " boxes/child)"
+                  << std::endl;
+    }
+    if (persist_splitFires > 0) {
+        double avgOrigK = (double)persist_avgOrigKSum / persist_splitFires;
+        double avgChildK = persist_avgChildKCount > 0
+            ? (double)persist_avgChildKSum / persist_avgChildKCount : 0.0;
+        std::cout << "  [Phase 3C persist-split] fires=" << persist_splitFires
+                  << " whollyDead=" << persist_splitWhollyDead
+                  << " newPaths=" << persist_splitNewPaths
+                  << " avgOrigK=" << std::fixed << std::setprecision(1) << avgOrigK
+                  << " avgLeafK=" << avgChildK
+                  << " avgLeavesPerSplit=" << ((double)persist_splitNewPaths / persist_splitFires)
+                  << " splitTime=" << (persist_splitTimeNs / 1000000) << "ms"
+                  << std::endl;
+        std::cout << "  [Phase 3D split-breakdown] "
+                  << "buildCC=" << (persist_buildCCPathNs / 1000000) << "ms "
+                  << "chooseSplit=" << (persist_chooseSplitNs / 1000000) << "ms "
+                  << "firstFailing=" << (persist_firstFailingNs / 1000000) << "ms "
+                  << "redistribute=" << (persist_redistributeNs / 1000000) << "ms "
+                  << "filterTuples=" << (persist_filterTuplesNs / 1000000) << "ms "
+                  << "createPI=" << (persist_createPINs / 1000000) << "ms "
+                  << "invertedIdx=" << (persist_invertedIdxNs / 1000000) << "ms "
+                  << "retireParent=" << (persist_retireParentNs / 1000000) << "ms"
+                  << std::endl;
+    }
     if (enablePrivateCloud) {
         std::cout << "  Direct private r-cliques: "
                   << std::fixed << std::setprecision(0) << privateRCliquesDirect << std::endl;
