@@ -56,27 +56,38 @@ int main(int argc, char *argv[]) {
     long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
 
     auto cnt = tree.cliqueCount();
-    long long total_leaves = 0;
-    for (size_t k = 0; k < cnt.c_size; ++k) total_leaves += (long long)cnt.data()[k];
+    // cliqueCount() values are nCr-weighted doubles that easily exceed
+    // int64_t at high s on dense graphs (e.g. com-dblp at s=3 sums to
+    // ~10^33). Keep the running total in double and emit in scientific
+    // notation so the harness regex can parse without overflow.
+    double total_leaves = 0.0;
+    for (size_t k = 0; k < cnt.c_size; ++k) total_leaves += cnt.data()[k];
 
     bool ok = true;
-    long long ref_leaves = -1;
+    double ref_leaves = -1.0;
     if (verify) {
         Graph g2(gpath); g2.sortByDegeneracyOrder();
         DynamicGraph<TreeGraphNode> ref = SDCT(g2, 1000000, s);
         auto rcnt = ref.cliqueCount();
-        ref_leaves = 0;
-        for (size_t k = 0; k < rcnt.c_size; ++k) ref_leaves += (long long)rcnt.data()[k];
+        ref_leaves = 0.0;
+        for (size_t k = 0; k < rcnt.c_size; ++k) ref_leaves += rcnt.data()[k];
         ok = (rcnt.c_size == cnt.c_size);
         if (ok) {
             for (size_t k = 0; k < cnt.c_size; ++k) {
-                if (std::abs(rcnt.data()[k] - cnt.data()[k]) > 1e-6) { ok = false; break; }
+                // Tolerance grows with magnitude — fp adds at large k make
+                // bit-exact comparison meaningless (~10^-12 relative is
+                // already far inside double precision).
+                double diff = std::abs(rcnt.data()[k] - cnt.data()[k]);
+                double mag  = std::abs(rcnt.data()[k]);
+                if (mag > 1.0 ? diff / mag > 1e-9 : diff > 1e-6) { ok = false; break; }
             }
         }
     }
 
     // Single line, easy to grep:
-    //   PAR4 graph=<f> s=<s> T=<t> ms=<ms> leaves=<n> verify=<ok|skip>
+    //   PAR4 graph=<f> s=<s> T=<t> ms=<ms> leaves=<n_double> verify=<...>
+    std::cout.precision(6);
+    std::cout << std::scientific;
     std::cout << "PAR4"
               << " graph=" << gpath
               << " s=" << s

@@ -47,8 +47,9 @@ THREADS = [1, 2, 4, 8, 16, 24]
 RUNS_PER_CFG = 3   # take median across runs
 
 
+_NUM = r"-?[\d.]+(?:e[+-]?\d+)?"
 _PAR4_RE = re.compile(
-    r"PAR4 graph=(\S+) s=(\d+) T=(\d+) ms=(\d+) leaves=(\d+)(?: ref_leaves=(-?\d+))? verify=(\S+)"
+    rf"PAR4 graph=(\S+) s=(\d+) T=(\d+) ms=(\d+) leaves=({_NUM})(?: ref_leaves=({_NUM}))? verify=(\S+)"
 )
 
 
@@ -59,8 +60,8 @@ def parse_par4(txt: str) -> dict | None:
             return {
                 "graph": m.group(1), "s": int(m.group(2)),
                 "threads": int(m.group(3)), "ms": int(m.group(4)),
-                "leaves": int(m.group(5)),
-                "ref_leaves": int(m.group(6)) if m.group(6) else -1,
+                "leaves": float(m.group(5)),
+                "ref_leaves": float(m.group(6)) if m.group(6) else -1.0,
                 "verify": m.group(7),
             }
     return None
