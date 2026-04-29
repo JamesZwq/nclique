@@ -45,13 +45,14 @@ TIMEOUT = 3600         # seconds per job (1 hour)
 #   * Memory gates unchanged.
 import multiprocessing as _mp
 # Per-server policy:
-#   tods1 is SHARED with other students; cap at 60 workers AND use the
+#   tods1 is SHARED with other students; cap at 32 workers AND use the
 #   CPU load-avg gate (yields to their load).
-#   tods2 is dedicated for us; no CPU cap, no load gate — only the memory
-#   gates throttle us.
+#   tods2 is dedicated for us; cap at 32 — empirically 60+ workers cause
+#   excessive contention on the same physical cores and slow individual
+#   cells more than the parallelism saves.
 SERVER_MAX_WORKERS = {
-    "tods1": 60,
-    "tods2": 80,
+    "tods1": 32,
+    "tods2": 32,
 }
 SERVER_CPU_TARGET = {
     "tods1": 0.85,   # stop launching when loadavg > 96 * 0.85 ≈ 81.6
