@@ -13,11 +13,37 @@
 // (pathInfos[p].tupleIdxs) is kept because it shrinks monotonically as
 // tuples peel and is the smallest live-state direction.
 //
+// === Environment-variable registry (all are off unless set) ==================
+// Production-path flags:
+//   PIVOTER_VSAFE_CLOUD       Phase B1: globally-safe class extension of the
+//                             private-cloud (touches multi-MC classes whose
+//                             pairwise overlaps are all < r). Strict superset
+//                             of the existing private cloud; never a perf loss
+//                             on graphs with mixed-overlap structure.
+//   PIVOTER_V3_NO_PRIVATE     Disables private-cloud entirely (regression test).
+// Ablation flags:
+//   PIVOTER_DISABLE_RMERGE    Force-disables Step 1b r-mergeable filter — every
+//                             MC stays in the active region. Used for the
+//                             r-merge ablation in the paper.
+// Tuning knobs:
+//   PIVOTER_V3_FM_PAIR_LIMIT  Pair-count limit for fused-FM precompute.
+//   PIVOTER_V3_FM_FORCE       Force fused-FM even when the precompute is
+//                             estimated too expensive.
+// Debug / verification:
+//   PIVOTER_V3_DEBUG_VERIFY   Enables Step-5 path-bound cross-check.
+// Observation-only probes (defined in LowMemProbes.h):
+//   PIVOTER_VSAFE_PROBE       V_safe potential summary (per-MC).
+//   PIVOTER_VSAFE_GAP_DIAG    B1 vs B2 gap diagnostic (private/globalsafe/permcsafe).
+//   PIVOTER_HOMCC_PROBE       Tuple-level High-Overlap MC Cluster classification.
+// ============================================================================
+//
 
 #include "NCliqueCoreDecomposition.h"
+#include "LowMemProbes.h"
 #include "../dataStruct/robin_hood.h"
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <functional>
 #include <iomanip>
 #include <iostream>
@@ -182,9 +208,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     // → directly assign core value, skip all pipeline work.
 
     auto tStep1a = std::chrono::high_resolution_clock::now();
+    daf::Size maxVtxMCs = 0;
+    double totalPairs = 0;
     {
-        daf::Size maxVtxMCs = 0;
-        double totalPairs = 0;
         for (daf::Size v = 0; v < numVertices; ++v) {
             maxVtxMCs = std::max(maxVtxMCs, (daf::Size)vtxMaxPaths[v].size());
             daf::Size k = vtxMaxPaths[v].size();
@@ -215,29 +241,53 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
     long long fmTotalIter = 0;
     daf::Size fmExits = 0;
+    double fmPairLimit = 5e7;
+    if (const char *env = std::getenv("PIVOTER_V3_FM_PAIR_LIMIT")) {
+        fmPairLimit = std::atof(env);
+    }
+    const bool forceFM = std::getenv("PIVOTER_V3_FM_FORCE") != nullptr;
+    // Ablation: PIVOTER_DISABLE_RMERGE=1 force-disables the r-mergeable
+    // optimization (Step 1b). All MCs stay in the active region; closed-form
+    // shortcut skipped. Used to measure the merging's net contribution.
+    const bool disableRMerge = std::getenv("PIVOTER_DISABLE_RMERGE") != nullptr;
+    const bool skipFM = !forceFM && (disableRMerge || (fmPairLimit >= 0.0 && totalPairs > fmPairLimit));
 
-    for (daf::Size rid = 0; rid < numRegions; ++rid) {
-        bool fm = true;
-        for (daf::Size v : regionVerts[rid]) {
-            if (v >= numVertices) continue;
-            for (daf::Size other : vtxMaxPaths[v]) {
-                ++fmTotalIter;
-                if (other == rid) continue;
-                if (overlapCnt[other] == 0) dirtyList.push_back(other);
-                if (++overlapCnt[other] >= (int)r) { fm = false; ++fmExits; break; }
+    if (skipFM) {
+        std::fill(fullyMergeable.begin(), fullyMergeable.end(), false);
+    } else {
+        for (daf::Size rid = 0; rid < numRegions; ++rid) {
+            bool fm = true;
+            for (daf::Size v : regionVerts[rid]) {
+                if (v >= numVertices) continue;
+                for (daf::Size other : vtxMaxPaths[v]) {
+                    ++fmTotalIter;
+                    if (other == rid) continue;
+                    if (overlapCnt[other] == 0) dirtyList.push_back(other);
+                    if (++overlapCnt[other] >= (int)r) { fm = false; ++fmExits; break; }
+                }
+                if (!fm) break;
             }
-            if (!fm) break;
+            fullyMergeable[rid] = fm;
+            for (auto d : dirtyList) overlapCnt[d] = 0;
+            dirtyList.clear();
         }
-        fullyMergeable[rid] = fm;
-        for (auto d : dirtyList) overlapCnt[d] = 0;
-        dirtyList.clear();
     }
 
     {
         auto t = std::chrono::high_resolution_clock::now();
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t - tStep1b).count();
-        std::cout << "  Step 1b fused-FM: " << fmTotalIter << " counter ops, "
-                  << fmExits << " early exits, " << ms << " ms" << std::endl;
+        if (disableRMerge) {
+            std::cout << "  Step 1b fused-FM: DISABLED (PIVOTER_DISABLE_RMERGE=1, ablation), "
+                      << ms << " ms" << std::endl;
+        } else if (skipFM) {
+            std::cout << "  Step 1b fused-FM: skipped (estimated pairs="
+                      << std::fixed << std::setprecision(0) << totalPairs
+                      << " > limit=" << fmPairLimit << "), "
+                      << ms << " ms" << std::endl;
+        } else {
+            std::cout << "  Step 1b fused-FM: " << fmTotalIter << " counter ops, "
+                      << fmExits << " early exits, " << ms << " ms" << std::endl;
+        }
     }
 
     // Directly assign fully-mergeable regions
@@ -286,6 +336,16 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::cout << "    Fully mergeable regions: " << numFullyMergeable
               << " (" << mergedRCliques << " r-cliques, direct)" << std::endl;
     std::cout << "    Remaining regions: " << numRegions << std::endl;
+
+    // -------- Observation-only probes (no pipeline change). See LowMemProbes.h.
+    // PIVOTER_VSAFE_GAP_DIAG: B1 (globally-safe class) vs B2 (per-MC V_safe) gap.
+    // PIVOTER_VSAFE_PROBE   : V_safe potential summary (safe%/strong%/incremental%).
+    if (std::getenv("PIVOTER_VSAFE_GAP_DIAG") != nullptr)
+        pivoter::lowmem_probes::probe_vsafe_gap_diag(
+            r, numVertices, numRegions, regionVerts, vtxMaxPaths);
+    if (std::getenv("PIVOTER_VSAFE_PROBE") != nullptr)
+        pivoter::lowmem_probes::probe_vsafe(
+            r, numVertices, numRegions, regionVerts, vtxMaxPaths);
 
     // Early exit if all regions handled
     if (numRegions == 0) {
@@ -366,8 +426,71 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         }
     }
 
+    // Phase B1: globally-safe class detection (PIVOTER_VSAFE_CLOUD=1).
+    // A class c is globally-safe iff:
+    //   k=1 (private)  OR  k≥2 AND all pairs of c's MCs have overlap < r.
+    // For multi-MC class with size |c| ≥ r, automatically NOT safe (since
+    // |M_i ∩ M_j| ≥ |c| ≥ r). So we only check pairwise overlap for
+    // classes with |c| < r — these are candidates for "soft private".
+    const bool useVsafeCloud = std::getenv("PIVOTER_VSAFE_CLOUD") != nullptr;
+    std::vector<bool> isGloballySafeClass(numClasses, false);
+    long long vsafe_addedClasses = 0;
+    long long vsafe_addedVertices = 0;
+    if (useVsafeCloud) {
+        // Helper: |M_i ∩ M_j| via sorted-list intersection on regionVerts.
+        // regionVerts[rid] is sorted (set-like). O(|M_i| + |M_j|) per call.
+        auto pairOverlap = [&](daf::Size r1, daf::Size r2) -> int {
+            const auto &A = regionVerts[r1];
+            const auto &B = regionVerts[r2];
+            size_t i = 0, j = 0;
+            int cnt = 0;
+            while (i < A.size() && j < B.size()) {
+                if (A[i] < B[j]) ++i;
+                else if (A[i] > B[j]) ++j;
+                else { ++cnt; ++i; ++j; }
+            }
+            return cnt;
+        };
+
+        for (daf::Size cid = 0; cid < numClasses; ++cid) {
+            const auto &mcs = classes[cid].regionIds;
+            if (mcs.size() == 1) {
+                isGloballySafeClass[cid] = true;  // private case
+                continue;
+            }
+            // |c| ≥ r ⇒ pairwise overlap ≥ r ⇒ not safe
+            if ((int)classSizes[cid] >= (int)r) continue;
+            // Check all pairs of MCs containing c
+            bool allLow = true;
+            for (size_t i = 0; i < mcs.size() && allLow; ++i) {
+                for (size_t j = i + 1; j < mcs.size(); ++j) {
+                    if (pairOverlap(mcs[i], mcs[j]) >= (int)r) {
+                        allLow = false; break;
+                    }
+                }
+            }
+            if (allLow) {
+                isGloballySafeClass[cid] = true;
+                if (!isPrivateClass[cid]) {
+                    ++vsafe_addedClasses;
+                    vsafe_addedVertices += classSizes[cid];
+                }
+            }
+        }
+        std::cout << "  [V_safe Cloud] private classes: "
+                  << std::count(isPrivateClass.begin(), isPrivateClass.end(), true)
+                  << ", globally-safe additions: " << vsafe_addedClasses
+                  << " (extra vertices: " << vsafe_addedVertices << ")"
+                  << std::endl;
+    }
+
+    // Effective "private-like" check: original private OR (V_safe enabled and globally-safe)
+    auto isVsafePrivateClass = [&](daf::Size cid) -> bool {
+        return isPrivateClass[cid] || (useVsafeCloud && isGloballySafeClass[cid]);
+    };
+
     auto isActiveTupleClass = [&](daf::Size cid) -> bool {
-        return !enablePrivateCloud || !isPrivateClass[cid];
+        return !enablePrivateCloud || !isVsafePrivateClass(cid);
     };
 
     std::vector<std::vector<daf::Size>> activeClassesInRegion(numRegions);
@@ -389,10 +512,18 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         mcCoreVal[rid] = (n >= k && k >= 0) ? nCr[n][k] : 0.0;
     }
     for (daf::Size cid = 0; cid < numClasses; ++cid) {
-        if (!isPrivateClass[cid]) continue;
-        daf::Size rid = privateClassMC[cid];
-        if (rid == INVALID) continue;
-        privateVertexCount[rid] += classSizes[cid];
+        // Phase B1: count contribution into EVERY MC the class is in.
+        // For pure private classes (k=1), this matches the original behavior.
+        // For multi-MC globally-safe classes (only when useVsafeCloud=1),
+        // every MC the class is in receives the |class| contribution because
+        // (a) every vertex of the class is in every such MC, and
+        // (b) by touching-safe theorem, an r-clique touching such a vertex
+        //     in MC M_i is uniquely contained in M_i (not shared with M_j).
+        // So summing over MCs counts each unique r-clique once.
+        if (!isVsafePrivateClass(cid)) continue;
+        for (auto rid : classes[cid].regionIds) {
+            privateVertexCount[rid] += classSizes[cid];
+        }
         numPrivateClouds++;
     }
     if (enablePrivateCloud) {
@@ -526,7 +657,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             daf::Size v = node.v;
             if (v >= numVertices || classOf[v] == INVALID) continue;
             daf::Size cid = classOf[v];
-            if (enablePrivateCloud && isPrivateClass[cid]) {
+            if (enablePrivateCloud && isVsafePrivateClass(cid)) {
                 // Private hold → all s-cliques on this path use a private vertex
                 if (!node.isPivot) pathHasPrivateHold = true;
                 continue; // exclude private vertices from h/p counts
@@ -547,16 +678,23 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
         // Enumerate r-multisets of this path's classes
         TupleKey cur; cur.reserve(r);
+        std::vector<std::pair<daf::Size, int>> tauClasses;
+        tauClasses.reserve(r);
+        std::vector<double> fBuf;
+        std::vector<double> nextBuf;
+        std::vector<double> gcBuf;
+        fBuf.reserve((size_t)r + 1);
+        nextBuf.reserve((size_t)r + 1);
+        gcBuf.reserve((size_t)r + 1);
         std::function<void()> cb = [&]() {
             // Build composition: (class, count) pairs
-            std::vector<std::pair<daf::Size, int>> tauClasses;
-            {
-                daf::Size prev = INVALID; int cnt = 0;
-                for (auto c : cur) {
-                    if (c == prev) cnt++;
-                    else { if (prev != INVALID) tauClasses.push_back({prev, cnt}); prev = c; cnt = 1; }
-                }
-                if (prev != INVALID) tauClasses.push_back({prev, cnt});
+            tauClasses.clear();
+            for (size_t k = 0; k < cur.size(); ) {
+                daf::Size c = cur[k];
+                int jc = 1;
+                while (k + jc < cur.size() && cur[k + jc] == c) ++jc;
+                tauClasses.push_back({c, jc});
+                k += jc;
             }
 
             // Feasibility: each tuple class c is enumerated from classDirty, so
@@ -575,7 +713,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             // f[t] = coefficient of x^t in Π_c g_c(x)
             // where g_c(x) = Σ_{b_c} C(nh_c, j_c-b_c) × C(np_c, b_c) × x^{b_c}
 
-            std::vector<double> f = {1.0}; // polynomial coefficients, f[0]=1
+            if (fBuf.empty()) fBuf.resize(1);
+            fBuf[0] = 1.0;
+            int fLen = 1;
 
             for (auto &[c, jc] : tauClasses) {
                 int nhc = nhArr[c], npc = npArr[c];
@@ -584,25 +724,31 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                 if (bMin > bMax) return; // infeasible
 
                 // g_c coefficients
-                std::vector<double> gc(bMax + 1, 0.0);
+                const int gcLen = bMax + 1;
+                if ((int)gcBuf.size() < gcLen) gcBuf.resize(gcLen);
+                std::fill(gcBuf.begin(), gcBuf.begin() + gcLen, 0.0);
                 for (int bc = bMin; bc <= bMax; ++bc)
-                    gc[bc] = nCr[nhc][jc - bc] * nCr[npc][bc];
+                    gcBuf[bc] = nCr[nhc][jc - bc] * nCr[npc][bc];
 
                 // Convolve f with gc
-                std::vector<double> newf(f.size() + gc.size() - 1, 0.0);
-                for (int i = 0; i < (int)f.size(); ++i)
-                    for (int j = 0; j < (int)gc.size(); ++j)
-                        newf[i + j] += f[i] * gc[j];
-                f = std::move(newf);
+                const int nextLen = fLen + gcLen - 1;
+                if ((int)nextBuf.size() < nextLen) nextBuf.resize(nextLen);
+                std::fill(nextBuf.begin(), nextBuf.begin() + nextLen, 0.0);
+                for (int i = 0; i < fLen; ++i)
+                    for (int j = 0; j < gcLen; ++j)
+                        nextBuf[i + j] += fBuf[i] * gcBuf[j];
+                if ((int)fBuf.size() < nextLen) fBuf.resize(nextLen);
+                std::copy(nextBuf.begin(), nextBuf.begin() + nextLen, fBuf.begin());
+                fLen = nextLen;
             }
 
             // AggrCount = Σ_t f[t] × C(p-t, s-h-t)
             double aggr = 0.0;
-            for (int t = 0; t < (int)f.size(); ++t) {
-                if (f[t] == 0.0) continue;
+            for (int t = 0; t < fLen; ++t) {
+                if (fBuf[t] == 0.0) continue;
                 int n = p - t, k = s - h - t;
                 if (n >= 0 && k >= 0 && n >= k)
-                    aggr += f[t] * nCr[n][k];
+                    aggr += fBuf[t] * nCr[n][k];
             }
 
             if (aggr > 0) {
@@ -1403,42 +1549,44 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::vector<std::vector<daf::Size>> tupleToPathInfos(rTuples.size());
 
     for (daf::Size pid = 0; pid < numPaths; ++pid) {
+        for (auto cid : classDirty) { nhArr[cid] = 0; npArr[cid] = 0; }
+        classDirty.clear();
+
         auto &leaf = tree.adj_list[pid];
         if ((int)leaf.size() < (int)s) continue;
 
         PathInfo pi;
         pi.h = 0;
         bool piHasPrivateHold = false;
-        std::unordered_map<daf::Size, std::pair<int,int>> cd; // cid -> (nh, np)
         for (const auto &node : leaf) {
             daf::Size v = node.v;
             if (v >= numVertices || classOf[v] == INVALID) continue;
             daf::Size cid = classOf[v];
-            if (enablePrivateCloud && isPrivateClass[cid]) {
+            if (enablePrivateCloud && isVsafePrivateClass(cid)) {
                 if (!node.isPivot) piHasPrivateHold = true;
                 continue;
             }
-            if (node.isPivot) cd[cid].second++;
-            else { cd[cid].first++; pi.h++; }
+            if (nhArr[cid] == 0 && npArr[cid] == 0) classDirty.push_back(cid);
+            if (node.isPivot) npArr[cid]++;
+            else { nhArr[cid]++; pi.h++; }
         }
         if (piHasPrivateHold) continue;
         pi.T = s - pi.h;
         if (pi.T < 0) continue;
 
         // Build ordered class arrays
-        for (auto &[cid, p] : cd) pi.classIds.push_back(cid);
+        pi.classIds.assign(classDirty.begin(), classDirty.end());
         std::sort(pi.classIds.begin(), pi.classIds.end());
         pi.nh.resize(pi.classIds.size());
         pi.np.resize(pi.classIds.size());
         for (int i = 0; i < (int)pi.classIds.size(); ++i) {
-            pi.nh[i] = cd[pi.classIds[i]].first;
-            pi.np[i] = cd[pi.classIds[i]].second;
+            pi.nh[i] = nhArr[pi.classIds[i]];
+            pi.np[i] = npArr[pi.classIds[i]];
         }
 
         // Find tuples on this path
         TupleKey cur; cur.reserve(r);
-        std::vector<daf::Size> pathClasses;
-        for (auto cid : pi.classIds) pathClasses.push_back(cid);
+        const std::vector<daf::Size> &pathClasses = pi.classIds;
         bool hasTuples = false;
         daf::Size piIdx = pathInfos.size();
 
@@ -1447,12 +1595,14 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             if (it == rTupleIndex.end()) return;
             daf::Size tidx = it->second;
             // Feasibility check
-            std::unordered_map<daf::Size, int> counts;
-            for (auto c : cur) counts[c]++;
-            for (auto &[c, jc] : counts) {
+            for (size_t k = 0; k < cur.size(); ) {
+                daf::Size c = cur[k];
+                int jc = 1;
+                while (k + jc < cur.size() && cur[k + jc] == c) ++jc;
                 int idx2 = findClassIdx(pi, c);
                 if (idx2 < 0) return;
                 if (jc > pi.nh[idx2] + pi.np[idx2]) return;
+                k += jc;
             }
             pi.tupleIdxs.push_back(tidx);
             hasTuples = true;
@@ -1469,6 +1619,14 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                 tupleToPathInfos[tidx].push_back(piIdx);
         }
     }
+    for (auto cid : classDirty) { nhArr[cid] = 0; npArr[cid] = 0; }
+    classDirty.clear();
+
+    // PIVOTER_HOMCC_PROBE: tuple-level High-Overlap-MC-Cluster classification.
+    // See LowMemProbes.h.
+    if (std::getenv("PIVOTER_HOMCC_PROBE") != nullptr)
+        pivoter::lowmem_probes::probe_homcc_tuple(
+            r, regionVerts, classes, rTuples, keyOf);
 
     // Decide which index is cheaper and free the other.
     size_t cost_class = 0, cost_tuple = 0;
