@@ -44,13 +44,12 @@ if [ ! -f "$OUT_CSV" ]; then
     echo "graph,s,algo,status,wall_sec,build_ms,peel_ms,sigma,mem_kB" > "$OUT_CSV"
 fi
 
-# Stage 5: run V3 at s=2,3,4. Each with 1h timeout.
-TIMEOUT=3600
+# Stage 5: run V3 at s=2,3,4. No timeout — run to completion.
 for s in 2 3 4; do
     LOG="$LOG_DIR/friendster_s${s}_V3.log"
     echo "=== [$(date '+%F %T')] running s=$s ==="
     t0=$(date +%s)
-    timeout $TIMEOUT env PIVOTER_RUN_ST_V3=1 OMP_NUM_THREADS=24 \
+    env PIVOTER_RUN_ST_V3=1 OMP_NUM_THREADS=24 \
         "$BIN" "$LINK" 1 "$s" 2>&1 | tee "$LOG" | tail -30
     rc=$?
     t1=$(date +%s)
@@ -62,9 +61,7 @@ for s in 2 3 4; do
     sigma=$(grep -oE "COO entries=[0-9]+" "$LOG" | head -1 | grep -oE "[0-9]+")
     mem=$(grep -oE "Final Memory:[[:space:]]+[0-9.]+ kB" "$LOG" | head -1 | grep -oE "[0-9.]+")
     status=OK
-    if [ "$rc" -eq 124 ]; then status=TIMEOUT
-    elif [ "$rc" -ne 0 ]; then status=ERR_$rc
-    fi
+    if [ "$rc" -ne 0 ]; then status=ERR_$rc; fi
     echo "com-friendster,$s,V3,$status,$wall,${build_ms:-},${peel_ms:-},${sigma:-},${mem:-}" >> "$OUT_CSV"
     echo "[$(date '+%F %T')] s=$s done: $status wall=${wall}s build=${build_ms}ms peel=${peel_ms}ms"
     if [ "$status" != "OK" ]; then break; fi
