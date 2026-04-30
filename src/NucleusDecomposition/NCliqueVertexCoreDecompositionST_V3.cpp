@@ -107,6 +107,8 @@ ST_V2_Data NCliqueVertexCoreDecomposition_ST_V3_Build(
     daf::phaseMark("STV3_SDCT_walk", (long)(cooBuf.capacity() * sizeof(COOEntry)));
 
     // --- Build dual CSR from COO ---
+    // Offsets / per-vertex counts must be size_t: cumulative offset = total Σ
+    // exceeds uint32 max on billion-edge graphs at moderate s.
     d.vtxLeafOff.assign(d.numVertices + 2, 0);
     for (auto &e : cooBuf)
         if (e.vertex < d.numVertices) d.vtxLeafOff[e.vertex + 1]++;
@@ -114,11 +116,11 @@ ST_V2_Data NCliqueVertexCoreDecomposition_ST_V3_Build(
         d.vtxLeafOff[i] += d.vtxLeafOff[i - 1];
     d.vtxLeafData.resize(d.vtxLeafOff[d.numVertices]);
     {
-        std::vector<daf::Size> pos(d.numVertices, 0);
+        std::vector<size_t> pos(d.numVertices, 0);
         for (auto &e : cooBuf) {
             daf::Size v = e.vertex;
             if (v < d.numVertices) {
-                daf::Size p = d.vtxLeafOff[v] + pos[v]++;
+                size_t p = d.vtxLeafOff[v] + pos[v]++;
                 d.vtxLeafData[p] = {e.leafId, e.isPivot};
             }
         }
@@ -131,11 +133,11 @@ ST_V2_Data NCliqueVertexCoreDecomposition_ST_V3_Build(
         d.leafVtxOff[i] += d.leafVtxOff[i - 1];
     d.leafVtxData.resize(d.leafVtxOff[d.numLeaves]);
     {
-        std::vector<daf::Size> pos(d.numLeaves, 0);
+        std::vector<size_t> pos(d.numLeaves, 0);
         for (auto &e : cooBuf) {
             daf::Size L = e.leafId;
             if (L < d.numLeaves) {
-                daf::Size p = d.leafVtxOff[L] + pos[L]++;
+                size_t p = d.leafVtxOff[L] + pos[L]++;
                 d.leafVtxData[p] = {e.vertex, e.isPivot};
             }
         }

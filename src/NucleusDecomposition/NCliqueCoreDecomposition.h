@@ -473,9 +473,14 @@ struct ST_V2_Data {
     daf::Size numVertices = 0;
     size_t numLeaves = 0;
 
-    std::vector<daf::Size> vtxLeafOff;
+    // Offsets are size_t (uint64) because cumulative offset = total Σ can
+    // exceed uint32 max (4.29B) on billion-edge graphs at moderate s.
+    // Friendster: Σ reaches 18.96B at s=5; uint32 wraps to ~700M, causing
+    // OOB writes during dual-CSR fill. Element vectors stay 32-bit since
+    // individual leaf/vertex IDs fit in uint32.
+    std::vector<size_t> vtxLeafOff;
     std::vector<VLeafEntry> vtxLeafData;
-    std::vector<daf::Size> leafVtxOff;
+    std::vector<size_t> leafVtxOff;
     std::vector<LeafVtxEntry> leafVtxData;
 
     std::vector<int> leafPivotCount;

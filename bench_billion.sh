@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Run V3 on friendster (1.8B edges) to demonstrate billion-edge scalability.
-# Targets s=2 (k-core, baseline), s=3 (triangles), and s=4 if memory permits.
+# Run V3 on friendster (1.8B edges) at s=2..S_MAX. No timeout.
+# Captures /usr/bin/time -v stats (wall, user, sys, peak RSS, page faults)
+# and dumps per-vertex core values via PIVOTER_DUMP_CORE for archival.
+# Skips s values already recorded as OK in the CSV (resume support).
 #
-# Usage:  ssh tods2; cd ~/nclique; bash bench_billion.sh
+# Usage:  ssh tods2; cd ~/nclique; nohup bash bench_billion.sh > /tmp/billion.log 2>&1 &
 #
 # Outputs to paper_data/bench_billion.csv and bench_billion_logs/.
 
@@ -14,6 +16,13 @@ GRAPH="$GRAPH_DIR/com-friendster.ungraph.txt"
 BIN="$ROOT/build/bin/degeneracy_cliques"
 OUT_CSV="$ROOT/paper_data/bench_billion.csv"
 LOG_DIR="$ROOT/bench_billion_logs"
+TIME_BIN="/usr/bin/time"
+
+# Practical upper bound; bench stops early on ERR / Σ=0 / mem ceiling.
+S_MIN=${S_MIN:-2}
+S_MAX=${S_MAX:-30}
+# 480 GB ceiling (host has 503 GB).
+MEM_CEILING_KB=${MEM_CEILING_KB:-503316480}
 
 mkdir -p "$LOG_DIR" "$ROOT/paper_data"
 cd "$ROOT"
@@ -27,44 +36,82 @@ if [ ! -f "$GRAPH" ]; then
     echo "ERROR: $GRAPH not found and no .gz to decompress"
     exit 1
 fi
-
 ls -lh "$GRAPH"
 
-# Stage 2: link into local graphs/ dir so V3 can find it.
+# Stage 2: link into local graphs/ dir.
 mkdir -p "$ROOT/graphs"
 LINK="$ROOT/graphs/com-friendster.edges"
 [ -e "$LINK" ] || ln -s "$GRAPH" "$LINK"
 
-# Stage 3: rebuild binary so it's fresh.
+# Stage 3: rebuild.
 cmake -S "$ROOT" -B "$ROOT/build" -DCMAKE_BUILD_TYPE=Release 2>&1 | tail -3
 cmake --build "$ROOT/build" -j 12 --target degeneracy_cliques 2>&1 | tail -3
 
-# Stage 4: write CSV header if new.
-if [ ! -f "$OUT_CSV" ]; then
-    echo "graph,s,algo,status,wall_sec,build_ms,peel_ms,sigma,mem_kB" > "$OUT_CSV"
+if [ ! -x "$TIME_BIN" ]; then
+    echo "ERROR: $TIME_BIN not found (need GNU time, not bash builtin)"
+    exit 1
 fi
 
-# Stage 5: run V3 at s=2,3,4. No timeout — run to completion.
-for s in 2 3 4; do
+# Stage 4: write CSV header if new. Extra columns for /usr/bin/time -v.
+if [ ! -f "$OUT_CSV" ]; then
+    echo "graph,s,algo,status,wall_sec,build_ms,peel_ms,sigma,mem_kB,time_max_rss_kB,time_user_sec,time_sys_sec,time_elapsed,time_pagefaults_major,time_pagefaults_minor" > "$OUT_CSV"
+fi
+
+# Stage 5: loop.
+for s in $(seq "$S_MIN" "$S_MAX"); do
+    # Skip if already OK in CSV.
+    if grep -q "^com-friendster,${s},V3,OK," "$OUT_CSV"; then
+        echo "[$(date '+%F %T')] s=$s already OK, skipping"
+        continue
+    fi
+
     LOG="$LOG_DIR/friendster_s${s}_V3.log"
+    DUMP="$LOG_DIR/friendster_s${s}_V3.cores"
+    CMD_LINE="$TIME_BIN -v env PIVOTER_RUN_ST_V3=1 OMP_NUM_THREADS=24 PIVOTER_DUMP_CORE=$DUMP $BIN $LINK 1 $s"
+
     echo "=== [$(date '+%F %T')] running s=$s ==="
+    echo "[CMD] $CMD_LINE" | tee "$LOG"
+
     t0=$(date +%s)
-    env PIVOTER_RUN_ST_V3=1 OMP_NUM_THREADS=24 \
-        "$BIN" "$LINK" 1 "$s" 2>&1 | tee "$LOG" | tail -30
-    rc=$?
+    "$TIME_BIN" -v env PIVOTER_RUN_ST_V3=1 OMP_NUM_THREADS=24 PIVOTER_DUMP_CORE="$DUMP" \
+        "$BIN" "$LINK" 1 "$s" 2>&1 | tee -a "$LOG"
+    rc=${PIPESTATUS[0]}
     t1=$(date +%s)
     wall=$((t1 - t0))
 
-    # Extract stats
-    build_ms=$(grep -oE "ST_V3 Build took: [0-9.]+ ms" "$LOG" | head -1 | grep -oE "[0-9.]+" | head -1)
-    peel_ms=$(grep -oE "ST_V3 r=1 \(peel\) took: [0-9.]+ ms" "$LOG" | head -1 | grep -oE "[0-9.]+" | head -1)
-    sigma=$(grep -oE "COO entries=[0-9]+" "$LOG" | head -1 | grep -oE "[0-9]+")
-    mem=$(grep -oE "Final Memory:[[:space:]]+[0-9.]+ kB" "$LOG" | head -1 | grep -oE "[0-9.]+")
+    # Extract from log.
+    build_ms=$(awk -F'[: ]+' '/SDCT\+callback took/ {print $4; exit}' "$LOG")
+    peel_ms=$(awk -F'[: ]+' '/ST_V3 r=1 \(peel\) took/ {print $5; exit}' "$LOG")
+    sigma=$(awk -F'=' '/COO entries=/ {gsub(/[^0-9]/, "", $NF); print $NF; exit}' "$LOG")
+    mem=$(awk -F'[: \t]+' '/Final Memory:/ {print $3; exit}' "$LOG")
+
+    # /usr/bin/time -v fields. Match against the verbose output's labels.
+    t_rss=$(awk -F': ' '/Maximum resident set size/ {print $2; exit}' "$LOG")
+    t_user=$(awk -F': ' '/User time \(seconds\)/ {print $2; exit}' "$LOG")
+    t_sys=$(awk -F': ' '/System time \(seconds\)/ {print $2; exit}' "$LOG")
+    t_elapsed=$(awk -F': ' '/Elapsed \(wall clock\) time/ {print $NF; exit}' "$LOG")
+    t_pfmaj=$(awk -F': ' '/Major \(requiring I\/O\) page faults/ {print $2; exit}' "$LOG")
+    t_pfmin=$(awk -F': ' '/Minor \(reclaiming a frame\) page faults/ {print $2; exit}' "$LOG")
+
     status=OK
     if [ "$rc" -ne 0 ]; then status=ERR_$rc; fi
-    echo "com-friendster,$s,V3,$status,$wall,${build_ms:-},${peel_ms:-},${sigma:-},${mem:-}" >> "$OUT_CSV"
-    echo "[$(date '+%F %T')] s=$s done: $status wall=${wall}s build=${build_ms}ms peel=${peel_ms}ms"
-    if [ "$status" != "OK" ]; then break; fi
+
+    echo "com-friendster,$s,V3,$status,$wall,${build_ms:-},${peel_ms:-},${sigma:-},${mem:-},${t_rss:-},${t_user:-},${t_sys:-},${t_elapsed:-},${t_pfmaj:-},${t_pfmin:-}" >> "$OUT_CSV"
+    echo "[$(date '+%F %T')] s=$s done: $status wall=${wall}s build=${build_ms:-?}ms peel=${peel_ms:-?}ms maxRSS=${t_rss:-?}kB"
+
+    # Stop conditions.
+    if [ "$status" != "OK" ]; then
+        echo "[stop] s=$s failed (rc=$rc); aborting"
+        break
+    fi
+    if [ -n "${sigma:-}" ] && [ "${sigma}" -eq 0 ]; then
+        echo "[stop] s=$s yielded sigma=0; higher s vacuous"
+        break
+    fi
+    if [ -n "${t_rss:-}" ] && [ "${t_rss}" -gt "$MEM_CEILING_KB" ]; then
+        echo "[stop] s=$s peak RSS ${t_rss} kB exceeded ceiling ${MEM_CEILING_KB} kB"
+        break
+    fi
 done
 
 echo "=== ALL DONE ==="
