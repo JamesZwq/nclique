@@ -25,8 +25,15 @@ Graph::Graph(const std::string &file_path, bool singleEdge) {
     if (std::getline(input_file, line)) {
         std::istringstream iss(line);
         iss >> n;
-        max_node_id = n - 1;
-        if (n == 0 || n == 1) {
+        // The first line can be either an "n m" header (e.g.\ SNAP-style after
+        // preprocessing) or a comment / data line.  We trust the header only
+        // when n>1; otherwise we scan the file for the true max_node_id.
+        // Note: writing `max_node_id = n - 1` outside this guard would
+        // underflow uint32 to UINT32_MAX when the first line was a comment
+        // and n parsed to 0, leading to a 0-sized degree array later.
+        if (n > 1) {
+            max_node_id = n - 1;
+        } else {
             input_file.clear();
             input_file.seekg(0, std::ios::beg);
             while (std::getline(input_file, line)) {
