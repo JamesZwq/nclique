@@ -1,0 +1,10 @@
+Max OpenMP threads: 24
+Dataset: /home/wenqianz/nclique/graphs/com-friendster.edges, r=1, s=3
+Graph Info: 
+Node Size: 124836180
+Edge Size: 1806067135
+Max Degree: 5214
+Avg Degree: 28.935
+
+[Memory-Linux] Graph Memory: 	35729608 kB
+ST_V3: SDCT+callback took 5607148 ms, leaves=2509641747, COO entries=8940830177

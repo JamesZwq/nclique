@@ -1,0 +1,20 @@
+Max OpenMP threads: 24
+Dataset: /home/wenqianz/nclique/graphs/com-friendster.edges, r=1, s=2
+Graph Info: 
+Node Size: 124836180
+Edge Size: 1806067135
+Max Degree: 5214
+Avg Degree: 28.935
+
+[Memory-Linux] Graph Memory: 	35729672 kB
+ST_V3: SDCT+callback took 5037496 ms, leaves=1669135172, COO entries=3475202307
+ST_V3: dual CSR built in 125429 ms
+[Memory-Linux] ST_V2 after CSR build: 	147490692 kB
+ST_V3 Build took: 5.16395e+06 ms
+[Memory-Linux] Other Index Memory: 	147490692 kB
+=========================begin=========================
+vertices in heap: 65608366
+ST_V2 peeling time: 340597 ms
+ST_V3 r=1 (peel) took: 341061 ms
+NucleusCoreDecomposition took: 341085 ms
+[Memory-Linux] Final Memory: 	147490692 kB

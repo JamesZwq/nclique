@@ -1,0 +1,4 @@
+graph,s,algo,status,wall_sec,build_ms,peel_ms,sigma,mem_kB
+com-friendster,2,V3,OK,7632,,3,3475202307,147490692
+com-friendster,3,V3,OK,7685,,,8940830177,
+com-friendster,4,V3,OK,8260,,,13765649931,

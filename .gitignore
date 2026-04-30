@@ -58,6 +58,7 @@ data
 *.csv
 !paper_data/*.csv
 !paper_data/*.tsv
+!paper_data/friendster_billion/**
 
 #*.py
 
