@@ -106,22 +106,27 @@ ST_V2_Data NCliqueVertexCoreDecomposition_ST_V3_Build(
     // Mark "Sigma" = total vertex-leaf incidences for this run.
     daf::phaseMark("STV3_SDCT_walk", (long)(cooBuf.capacity() * sizeof(COOEntry)));
 
-    // --- Build dual CSR from COO ---
+    // --- Build dual CSR from COO (packed) ---
     // Offsets / per-vertex counts must be size_t: cumulative offset = total Σ
     // exceeds uint32 max on billion-edge graphs at moderate s.
     //
     // Memory-conscious construction order:
     //   (1) build vtxLeafOff via prefix-sum over cooBuf
-    //   (2) fill vtxLeafData while concurrently tallying per-leaf counts
+    //   (2) fill packed vtxLeafIds + vtxLeafIsPivot while tallying per-leaf counts
     //   (3) FREE cooBuf  (saves ~12 bytes per incidence at billion-edge s)
-    //   (4) build leafVtxData by transposing vtxLeafData (no cooBuf needed)
+    //   (4) build packed leafVtxIds + leafVtxIsPivot by transposing vtxLeafIds
+    //
+    // Packed layout: {ids: uint32[Σ], isPivot: bit[Σ]} = 4.125 bytes/incidence,
+    // half of the 8-byte legacy {id, role-byte} struct.
     d.vtxLeafOff.assign(d.numVertices + 2, 0);
     for (auto &e : cooBuf)
         if (e.vertex < d.numVertices) d.vtxLeafOff[e.vertex + 1]++;
     for (daf::Size i = 1; i <= d.numVertices; ++i)
         d.vtxLeafOff[i] += d.vtxLeafOff[i - 1];
 
-    d.vtxLeafData.resize(d.vtxLeafOff[d.numVertices]);
+    const size_t totalIncidence = d.vtxLeafOff[d.numVertices];
+    d.vtxLeafIds.resize(totalIncidence);
+    d.vtxLeafIsPivot.assign((totalIncidence + 63) >> 6, 0);
     d.leafVtxOff.assign(d.numLeaves + 1, 0);
     {
         std::vector<size_t> pos(d.numVertices, 0);
@@ -129,30 +134,33 @@ ST_V2_Data NCliqueVertexCoreDecomposition_ST_V3_Build(
             daf::Size v = e.vertex;
             if (v < d.numVertices) {
                 size_t p = d.vtxLeafOff[v] + pos[v]++;
-                d.vtxLeafData[p] = {e.leafId, e.isPivot};
+                d.vtxLeafIds[p] = e.leafId;
+                if (e.isPivot) STV3_setBit(d.vtxLeafIsPivot, p);
                 if (e.leafId < d.numLeaves) d.leafVtxOff[e.leafId + 1]++;
             }
         }
     }
 
-    // Free cooBuf before allocating leafVtxData. On billion-edge graphs at
+    // Free cooBuf before allocating leafVtx* arrays. On billion-edge graphs at
     // moderate s, this drops the build-phase peak by ~Σ * sizeof(COOEntry).
     std::vector<COOEntry>().swap(cooBuf);
 
     for (size_t i = 1; i <= d.numLeaves; ++i)
         d.leafVtxOff[i] += d.leafVtxOff[i - 1];
-    d.leafVtxData.resize(d.leafVtxOff[d.numLeaves]);
+    const size_t totalLeafIncidence = d.leafVtxOff[d.numLeaves];
+    d.leafVtxIds.resize(totalLeafIncidence);
+    d.leafVtxIsPivot.assign((totalLeafIncidence + 63) >> 6, 0);
     {
         std::vector<size_t> pos(d.numLeaves, 0);
         for (daf::Size v = 0; v < d.numVertices; ++v) {
             const size_t row_begin = d.vtxLeafOff[v];
             const size_t row_end = d.vtxLeafOff[v + 1];
             for (size_t k = row_begin; k < row_end; ++k) {
-                const auto &entry = d.vtxLeafData[k];
-                daf::Size L = entry.leafId;
+                daf::Size L = d.vtxLeafIds[k];
                 if (L < d.numLeaves) {
                     size_t p = d.leafVtxOff[L] + pos[L]++;
-                    d.leafVtxData[p] = {v, entry.isPivot};
+                    d.leafVtxIds[p] = v;
+                    if (STV3_getBit(d.vtxLeafIsPivot, k)) STV3_setBit(d.leafVtxIsPivot, p);
                 }
             }
         }
@@ -166,9 +174,11 @@ ST_V2_Data NCliqueVertexCoreDecomposition_ST_V3_Build(
 
     // Component-byte attribution for the dual CSR + initial-support array.
     const long bytesVtxLeaf = (long)(d.vtxLeafOff.capacity() * sizeof(d.vtxLeafOff[0])
-                            + d.vtxLeafData.capacity() * sizeof(d.vtxLeafData[0]));
+                            + d.vtxLeafIds.capacity() * sizeof(d.vtxLeafIds[0])
+                            + d.vtxLeafIsPivot.capacity() * sizeof(d.vtxLeafIsPivot[0]));
     const long bytesLeafVtx = (long)(d.leafVtxOff.capacity() * sizeof(d.leafVtxOff[0])
-                            + d.leafVtxData.capacity() * sizeof(d.leafVtxData[0]));
+                            + d.leafVtxIds.capacity() * sizeof(d.leafVtxIds[0])
+                            + d.leafVtxIsPivot.capacity() * sizeof(d.leafVtxIsPivot[0]));
     const long bytesSupport = (long)(d.numVertices * sizeof(double));
     const long bytesLeafMeta = (long)(d.leafPivotCount.capacity() * sizeof(int)
                             + d.leafNeedPivot.capacity() * sizeof(int));
@@ -317,17 +327,16 @@ double * NCliqueVertexCoreDecomposition_ST_V3_Peel(ST_V2_Data &d, daf::CliqueSiz
             const daf::Size end = d.vtxLeafOff[v + 1];
             if (vi + 1 < (int)currentRemoveVertexIds.size()) {
                 auto nextV = currentRemoveVertexIds[vi + 1];
-                __builtin_prefetch(&d.vtxLeafData[d.vtxLeafOff[nextV]], 0, 1);
+                __builtin_prefetch(&d.vtxLeafIds[d.vtxLeafOff[nextV]], 0, 1);
             }
             for (daf::Size ei = begin; ei < end; ++ei) {
-                const auto &entry = d.vtxLeafData[ei];
-                daf::Size leafId = entry.leafId;
+                daf::Size leafId = d.vtxLeafIds[ei];
                 if (!leafAlive[leafId]) continue;
                 if (!leafAffected[leafId]) {
                     leafAffected[leafId] = 1;
                     affectedLeaves.push_back(leafId);
                 }
-                if (!entry.isPivot) {
+                if (!STV3_getBit(d.vtxLeafIsPivot, ei)) {
                     leafDies[leafId] = 1;
                 } else {
                     leafRemovedPivots[leafId]++;
@@ -354,15 +363,15 @@ double * NCliqueVertexCoreDecomposition_ST_V3_Peel(ST_V2_Data &d, daf::CliqueSiz
             const daf::Size lBegin = d.leafVtxOff[leafId];
             const daf::Size lEnd = d.leafVtxOff[leafId + 1];
             for (daf::Size li = lBegin; li < lEnd; ++li) {
-                auto &nd = d.leafVtxData[li];
-                if (!vertexInHeap[nd.vertex]) continue;
-                double delta = nd.isPivot ? deltaPivot : deltaKeep;
+                daf::Size vtx = d.leafVtxIds[li];
+                if (!vertexInHeap[vtx]) continue;
+                double delta = STV3_getBit(d.leafVtxIsPivot, li) ? deltaPivot : deltaKeep;
                 if (delta > 0) {
-                    countingV[nd.vertex] -= delta;
-                    if (countingV[nd.vertex] < 0) countingV[nd.vertex] = 0;
-                    if (!dirtyMark[nd.vertex]) {
-                        dirtyMark[nd.vertex] = 1;
-                        dirtyVertices.push_back(nd.vertex);
+                    countingV[vtx] -= delta;
+                    if (countingV[vtx] < 0) countingV[vtx] = 0;
+                    if (!dirtyMark[vtx]) {
+                        dirtyMark[vtx] = 1;
+                        dirtyVertices.push_back(vtx);
                     }
                 }
             }

@@ -479,15 +479,36 @@ struct ST_V2_Data {
     // OOB writes during dual-CSR fill. Element vectors stay 32-bit since
     // individual leaf/vertex IDs fit in uint32.
     std::vector<size_t> vtxLeafOff;
-    std::vector<VLeafEntry> vtxLeafData;
     std::vector<size_t> leafVtxOff;
+
+    // Legacy unpacked layout (8 bytes/incidence including padding).
+    // V2 uses these; V3 leaves them empty and uses the packed layout below.
+    std::vector<VLeafEntry> vtxLeafData;
     std::vector<LeafVtxEntry> leafVtxData;
+
+    // Packed layout used by V3 (4 bytes/incidence + 1 bit/incidence).
+    // Splits the (id, isPivot) pair into two parallel arrays:
+    //   - {vtx,leaf}LeafIds: one uint32 per incidence (the id)
+    //   - {vtx,leaf}LeafIsPivot: 1 bit per incidence, packed into uint64 words
+    // Saves ~50% memory on the dominant CSR arrays at billion-edge scale.
+    std::vector<daf::Size> vtxLeafIds;
+    std::vector<uint64_t>  vtxLeafIsPivot;
+    std::vector<daf::Size> leafVtxIds;
+    std::vector<uint64_t>  leafVtxIsPivot;
 
     std::vector<int> leafPivotCount;
     std::vector<int> leafNeedPivot;
 
     double *countingV = nullptr;
 };
+
+// Bit-array helpers: 1 bit per index, packed into uint64 words.
+inline void STV3_setBit(std::vector<uint64_t>& bits, size_t i) {
+    bits[i >> 6] |= (uint64_t(1) << (i & 63));
+}
+inline bool STV3_getBit(const std::vector<uint64_t>& bits, size_t i) {
+    return (bits[i >> 6] >> (i & 63)) & 1;
+}
 
 ST_V2_Data NCliqueVertexCoreDecomposition_ST_V2_Build(
     Graph &edgeGraph, daf::CliqueSize k);
