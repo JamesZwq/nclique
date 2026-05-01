@@ -20,7 +20,7 @@ TIME_BIN="/usr/bin/time"
 
 # Practical upper bound; bench stops early on ERR / Σ=0 / mem ceiling.
 S_MIN=${S_MIN:-2}
-S_MAX=${S_MAX:-30}
+S_MAX=${S_MAX:-50}
 # 480 GB ceiling (host has 503 GB).
 MEM_CEILING_KB=${MEM_CEILING_KB:-503316480}
 
@@ -59,9 +59,10 @@ fi
 
 # Stage 5: loop.
 for s in $(seq "$S_MIN" "$S_MAX"); do
-    # Skip if already OK in CSV.
-    if grep -q "^com-friendster,${s},V3,OK," "$OUT_CSV"; then
-        echo "[$(date '+%F %T')] s=$s already OK, skipping"
+    # Skip if already attempted (OK or OOM-killed by signal 137).
+    # Other ERRs may be transient (e.g., interrupted) and worth retrying.
+    if grep -qE "^com-friendster,${s},V3,(OK|ERR_137)," "$OUT_CSV"; then
+        echo "[$(date '+%F %T')] s=$s already attempted (OK or OOM), skipping"
         continue
     fi
 
@@ -99,18 +100,16 @@ for s in $(seq "$S_MIN" "$S_MAX"); do
     echo "com-friendster,$s,V3,$status,$wall,${build_ms:-},${peel_ms:-},${sigma:-},${mem:-},${t_rss:-},${t_user:-},${t_sys:-},${t_elapsed:-},${t_pfmaj:-},${t_pfmin:-}" >> "$OUT_CSV"
     echo "[$(date '+%F %T')] s=$s done: $status wall=${wall}s build=${build_ms:-?}ms peel=${peel_ms:-?}ms maxRSS=${t_rss:-?}kB"
 
-    # Stop conditions.
-    if [ "$status" != "OK" ]; then
-        echo "[stop] s=$s failed (rc=$rc); aborting"
-        break
-    fi
+    # Stop only if we have proven there are no more $s$-cliques (sigma=0):
+    # at that point all higher s are vacuous. ERR (incl. OOM) does NOT stop the
+    # loop --- as s grows past the max-clique size, Sigma can shrink again, so
+    # higher s may fit even if a middle s did not.
     if [ -n "${sigma:-}" ] && [ "${sigma}" -eq 0 ]; then
         echo "[stop] s=$s yielded sigma=0; higher s vacuous"
         break
     fi
-    if [ -n "${t_rss:-}" ] && [ "${t_rss}" -gt "$MEM_CEILING_KB" ]; then
-        echo "[stop] s=$s peak RSS ${t_rss} kB exceeded ceiling ${MEM_CEILING_KB} kB"
-        break
+    if [ "$status" != "OK" ]; then
+        echo "[continue] s=$s failed (rc=$rc); trying next s (CPI may shrink past the peak)"
     fi
 done
 
