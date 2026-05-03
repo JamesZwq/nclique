@@ -37,9 +37,20 @@ SERVER_GRAPHS = {
         ("com-youtube",  [3, 5, 8, 12, 16]),
     ],
     "tods2": [
-        ("web-Stanford", [3, 5, 10, 20, 40, 60]),
-        ("dblp-core30",  [3, 5, 10, 20]),
-        ("web-it-2004",  [3, 10, 30, 100, 200, 400]),
+        # collaboration / e-commerce
+        ("com-amazon.ungraph",       [3, 5, 8]),
+        ("com-dblp",                 [3, 5, 8, 10, 15]),
+        # social
+        ("com-youtube",              [3, 5, 8, 12, 16]),
+        ("twitter_combined",         [3, 5, 8, 12]),
+        ("wiki-Talk",                [3, 5, 8, 10]),
+        ("soc-pokec-relationships",  [3, 5, 8]),
+        # web
+        ("web-Google",               [3, 5, 8, 12, 20]),
+        ("web-Stanford",             [3, 5, 10, 20, 40, 60]),
+        ("web-it-2004",              [3, 10, 30, 100, 200, 400]),
+        # tiny sanity
+        ("dblp-core30",              [3, 5, 10, 20]),
     ],
 }
 
