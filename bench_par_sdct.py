@@ -109,6 +109,11 @@ def run_one(graph: str, s: int, T: int, run_idx: int, verify: bool) -> dict:
     log_path = LOGDIR / f"{graph}_s{s}_T{T}_r{run_idx}.log"
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(T)
+    # Pin threads to physical cores. tods2 is 2 sockets × 24 cores × 2 HT.
+    # close+cores gives stable scaling up to 24 (one socket); past that NUMA
+    # crossing is honest and reproducible.
+    env["OMP_PROC_BIND"] = "close"
+    env["OMP_PLACES"]    = "cores"
     args = [BIN, gpath, str(s), str(T)]
     if verify: args.append("verify")
     t0 = time.time()
