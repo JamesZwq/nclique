@@ -274,9 +274,12 @@ DynamicGraph<TreeGraphNode> SDCT_Par4(Graph& edgeGraph,int max_k,int min_k){
     // numNeighbors / neighborsInP are written by fillInPandXArena4 before being
     // read inside recurse4, so no init is needed.
     const size_t perm_ints    = 5 * (size_t)size;
+    // BK scratch: peak per outer iter is ≤ d² (fillInPandX neighbour copies)
+    // + d·max_k (cands stack across recursion). 4 MB = 1M ints handles
+    // d ≤ 700 comfortably; cap at 32 MB (= 8M ints) for very dense graphs.
     const size_t scratch_ints = std::min<size_t>(
-        (size_t)32 * 1024 * 1024,                                        // 128 MB hard cap
-        std::max<size_t>(2u * 1024u * 1024u, (size_t)size * 8u));        // ≥ 8 MB, otherwise 32·size
+        (size_t)8 * 1024 * 1024,
+        std::max<size_t>(1u * 1024u * 1024u, (size_t)size * 2u));
 
     #pragma omp parallel
     {
