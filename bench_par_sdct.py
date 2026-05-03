@@ -54,7 +54,7 @@ SERVER_GRAPHS = {
     ],
 }
 
-THREADS = [1, 2, 4, 8, 16, 24]
+THREADS = [1, 2, 4, 8, 16, 24, 32, 48, 64]
 RUNS_PER_CFG = 3   # take median across runs
 
 
