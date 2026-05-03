@@ -260,12 +260,20 @@ static void recurse4(
     g_arena4.restore(arenaTop);
 }
 
+// Cache-line padded leaf collector to kill false sharing on the hot push_back
+// path. std::vector header is 24 B; in a plain std::vector<...>(nthreads),
+// adjacent thread headers share L1 lines and ping-pong on every push, which
+// shows up as the past-T=8 regression on dense graphs (twitter, wiki-Talk).
+struct alignas(64) ThreadLeafBuf {
+    std::vector<std::vector<TreeGraphNode>> buf;
+};
+
 DynamicGraph<TreeGraphNode> SDCT_Par4(Graph& edgeGraph,int max_k,int min_k){
     auto size=(int)edgeGraph.getGraphNodeSize();
     int nthreads=omp_get_max_threads();
     std::cout<<"SDCT_Par4 "<<nthreads<<" threads"<<std::endl;
 
-    std::vector<std::vector<std::vector<TreeGraphNode>>> thread_bufs(nthreads);
+    std::vector<ThreadLeafBuf> thread_bufs(nthreads);
 
     // Per-thread arena layout (single malloc, no std::vectors → no allocator-lock
     // contention at high T, no zero-fill of unused state):
@@ -297,7 +305,7 @@ DynamicGraph<TreeGraphNode> SDCT_Par4(Graph& edgeGraph,int max_k,int min_k){
         g_arena4.mark_perm();   // restore() will not pop below this point
 
         int beginX=0,beginP=0,beginR=size;
-        thread_bufs[tid].reserve(std::max(1,size/nthreads)*20);
+        thread_bufs[tid].buf.reserve(std::max(1,size/nthreads)*20);
         int keepV[MAX_CSIZE],dropV[MAX_CSIZE];
 
         #pragma omp for schedule(dynamic,8) nowait
@@ -311,18 +319,18 @@ DynamicGraph<TreeGraphNode> SDCT_Par4(Graph& edgeGraph,int max_k,int min_k){
             recurse4(vertexSets,vertexLookup,
                      neighborsInP,numNeighbors,
                      newBeginP,newBeginR,keepV,1,dropV,0,
-                     max_k,min_k,thread_bufs[tid]);
+                     max_k,min_k,thread_bufs[tid].buf);
             g_arena4.restore(arenaBase);
             beginR++;
         }
     }
 
     size_t total=0;
-    for(auto&tb:thread_bufs)total+=tb.size();
+    for(auto&tb:thread_bufs)total+=tb.buf.size();
     DynamicGraph<TreeGraphNode> treeGraph(size);
     treeGraph.adj_list.reserve(total);
     for(auto&tb:thread_bufs)
-        for(auto&leaf:tb)
+        for(auto&leaf:tb.buf)
             treeGraph.adj_list.push_back(std::move(leaf));
     return treeGraph;
 }
