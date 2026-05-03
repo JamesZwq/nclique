@@ -21,13 +21,25 @@
 
 extern double nCr[1001][401];
 
+// Arena holding both permanent per-thread state (vertexSets/vertexLookup/
+// neighborsInP/numNeighbors at the bottom) and BK scratch above. A single
+// malloc per thread eliminates allocator-lock contention at high T.
 struct Arena4 {
-    int* base=nullptr; int top=0; int cap=0;
-    void init(int n){cap=n+16;base=(int*)std::malloc(cap*sizeof(int));top=0;}
-    ~Arena4(){std::free(base);}
-    int* alloc_raw(int n){if(n<=0)n=1;int*p=base+top;top+=n;return p;}
-    int save(){return top;}
-    void restore(int t){top=t;}
+    int* base = nullptr;
+    size_t top = 0;
+    size_t cap = 0;
+    size_t perm_end = 0;          // restore() never drops top below this
+    void init(size_t n_ints) {
+        if (base) std::free(base);                     // re-init safe
+        cap = n_ints + 16;
+        base = (int*)std::malloc(cap * sizeof(int));
+        top = 0; perm_end = 0;
+    }
+    ~Arena4(){ std::free(base); }
+    int* alloc_raw(int n) { if (n <= 0) n = 1; int* p = base + top; top += n; return p; }
+    void mark_perm() { perm_end = top; }
+    size_t save() { return top; }
+    void restore(size_t t) { top = (t < perm_end ? perm_end : t); }
 };
 static thread_local Arena4 g_arena4;
 
@@ -223,7 +235,7 @@ static void recurse4(
     }
 
     int*cands; int nCands;
-    int arenaTop=g_arena4.save();
+    size_t arenaTop=g_arena4.save();
     int pivot=findPivotMark4(&cands,&nCands,
                              vertexSets,vertexLookup,
                              neighborsInP,numNeighbors,beginP,beginR);
@@ -255,34 +267,46 @@ DynamicGraph<TreeGraphNode> SDCT_Par4(Graph& edgeGraph,int max_k,int min_k){
 
     std::vector<std::vector<std::vector<TreeGraphNode>>> thread_bufs(nthreads);
 
+    // Per-thread arena layout (single malloc, no std::vectors → no allocator-lock
+    // contention at high T, no zero-fill of unused state):
+    //   [neighborsInP ptrs (2*size ints) | vertexSets (size) | vertexLookup (size)
+    //    | numNeighbors (size) | BK scratch ...]
+    // numNeighbors / neighborsInP are written by fillInPandXArena4 before being
+    // read inside recurse4, so no init is needed.
+    const size_t perm_ints    = 5 * (size_t)size;
+    const size_t scratch_ints = std::min<size_t>(
+        (size_t)32 * 1024 * 1024,                                        // 128 MB hard cap
+        std::max<size_t>(2u * 1024u * 1024u, (size_t)size * 8u));        // ≥ 8 MB, otherwise 32·size
+
     #pragma omp parallel
     {
         int tid=omp_get_thread_num();
-        g_arena4.init(size*64);
+        g_arena4.init(perm_ints + scratch_ints);
         g_mark4.init(size);
 
-        std::vector<int> vertexSets(size),vertexLookup(size);
-        std::vector<int*> neighborsInP(size,nullptr);
-        std::vector<int> numNeighbors(size,1);
-        for(int i=0;i<size;i++){
-            vertexSets[i]=i; vertexLookup[i]=i;
-            neighborsInP[i]=g_arena4.alloc_raw(1);
-            numNeighbors[i]=1;
-        }
+        // neighborsInP first → 16-byte aligned (malloc returns 16-aligned, top=0).
+        int** neighborsInP = reinterpret_cast<int**>(g_arena4.alloc_raw(2 * size));
+        int*  vertexSets   = g_arena4.alloc_raw(size);
+        int*  vertexLookup = g_arena4.alloc_raw(size);
+        int*  numNeighbors = g_arena4.alloc_raw(size);
+        // Identity permutation: only state read before fillInPandXArena4 touches a vertex.
+        for (int i = 0; i < size; ++i) { vertexSets[i] = i; vertexLookup[i] = i; }
+        g_arena4.mark_perm();   // restore() will not pop below this point
+
         int beginX=0,beginP=0,beginR=size;
         thread_bufs[tid].reserve(std::max(1,size/nthreads)*20);
         int keepV[MAX_CSIZE],dropV[MAX_CSIZE];
 
-        #pragma omp for schedule(dynamic,1) nowait
+        #pragma omp for schedule(dynamic,8) nowait
         for(int vertex=0;vertex<size;vertex++){
-            int arenaBase=g_arena4.save();
+            size_t arenaBase=g_arena4.save();
             int newBeginX,newBeginP,newBeginR;
-            fillInPandXArena4(vertex,vertexSets.data(),vertexLookup.data(),edgeGraph,
-                              neighborsInP.data(),numNeighbors.data(),
+            fillInPandXArena4(vertex,vertexSets,vertexLookup,edgeGraph,
+                              neighborsInP,numNeighbors,
                               &beginX,&beginP,&beginR,&newBeginX,&newBeginP,&newBeginR);
             keepV[0]=vertex;
-            recurse4(vertexSets.data(),vertexLookup.data(),
-                     neighborsInP.data(),numNeighbors.data(),
+            recurse4(vertexSets,vertexLookup,
+                     neighborsInP,numNeighbors,
                      newBeginP,newBeginR,keepV,1,dropV,0,
                      max_k,min_k,thread_bufs[tid]);
             g_arena4.restore(arenaBase);
