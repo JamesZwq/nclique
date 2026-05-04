@@ -49,9 +49,12 @@ SERVER_GRAPHS = {
         ("twitter_combined",         [3, 5, 8, 12]),
         ("wiki-Talk",                [3, 5, 8, 10]),
         ("soc-pokec-relationships",  [3, 5, 8]),
-        # social — large (added for "scaling needs work" demonstration)
-        ("com-lj",                   [3, 5, 8, 12]),
-        ("com-orkut",                [3, 5, 8, 12, 20]),
+        # com-lj (35M edges) and com-orkut (117M edges) were probed but their
+        # SDCT leaf set exceeds the host's memory budget on a shared server:
+        # com-lj s=3 → 335 GB peak RSS, com-lj s=5 → 305 GB peak, both
+        # OOM-killed (probe_logs/com-lj_s{3,5}_T24.log). Excluded from the
+        # sweep — the "very large graph" point in this experiment is
+        # web-it-2004 (1.15B edges, sparse) which is tractable.
         # web
         ("web-Google",               [3, 5, 8, 12, 20]),
         ("web-Stanford",             [3, 5, 10, 20, 40, 60]),
