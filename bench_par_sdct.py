@@ -29,7 +29,11 @@ TIMEOUT = 1800
 OUTCSV = Path("paper_data/bench_par_sdct.csv")
 LOGDIR = Path("bench_par_sdct_logs")
 FIELDNAMES = ["graph", "s", "threads", "status", "wall_ms", "build_ms",
-              "leaves", "ref_leaves", "verify"]
+              "leaves", "ref_leaves", "verify",
+              # /usr/bin/time -v fields, parsed from stderr
+              "time_max_rss_kB", "time_user_sec", "time_sys_sec",
+              "time_elapsed", "time_pagefaults_major", "time_pagefaults_minor",
+              "time_voluntary_ctxt", "time_involuntary_ctxt", "time_exit_status"]
 
 SERVER_GRAPHS = {
     "tods1": [
@@ -107,6 +111,42 @@ def append_row(csv_path: Path, row: dict) -> None:
         w.writerow({k: row.get(k, "") for k in FIELDNAMES})
 
 
+_TIME_BIN = "/usr/bin/time"
+
+
+def parse_time_v(stderr: str) -> dict:
+    """Parse the verbose `/usr/bin/time -v` block out of the binary's stderr.
+
+    Recognises the labels emitted by GNU time-1.7+. Anything missing yields
+    an empty string in the returned dict so the CSV column stays well-formed.
+    """
+    out = {k: "" for k in (
+        "time_max_rss_kB", "time_user_sec", "time_sys_sec", "time_elapsed",
+        "time_pagefaults_major", "time_pagefaults_minor",
+        "time_voluntary_ctxt", "time_involuntary_ctxt", "time_exit_status")}
+    for line in stderr.splitlines():
+        line = line.strip()
+        if line.startswith("Maximum resident set size"):
+            out["time_max_rss_kB"]        = line.split(":")[-1].strip()
+        elif line.startswith("User time (seconds)"):
+            out["time_user_sec"]          = line.split(":")[-1].strip()
+        elif line.startswith("System time (seconds)"):
+            out["time_sys_sec"]           = line.split(":")[-1].strip()
+        elif line.startswith("Elapsed (wall clock) time"):
+            out["time_elapsed"]           = line.split(": ", 1)[-1].strip()
+        elif line.startswith("Major (requiring I/O) page faults"):
+            out["time_pagefaults_major"]  = line.split(":")[-1].strip()
+        elif line.startswith("Minor (reclaiming a frame) page faults"):
+            out["time_pagefaults_minor"]  = line.split(":")[-1].strip()
+        elif line.startswith("Voluntary context switches"):
+            out["time_voluntary_ctxt"]    = line.split(":")[-1].strip()
+        elif line.startswith("Involuntary context switches"):
+            out["time_involuntary_ctxt"]  = line.split(":")[-1].strip()
+        elif line.startswith("Exit status"):
+            out["time_exit_status"]       = line.split(":")[-1].strip()
+    return out
+
+
 def run_one(graph: str, s: int, T: int, run_idx: int, verify: bool) -> dict:
     gpath = f"graphs/{graph}.edges"
     log_path = LOGDIR / f"{graph}_s{s}_T{T}_r{run_idx}.log"
@@ -117,25 +157,50 @@ def run_one(graph: str, s: int, T: int, run_idx: int, verify: bool) -> dict:
     # crossing is honest and reproducible.
     env["OMP_PROC_BIND"] = "close"
     env["OMP_PLACES"]    = "cores"
-    args = [BIN, gpath, str(s), str(T)]
+    # /usr/bin/time -v wrapper: captures peak RSS, page faults, ctxt switches,
+    # and exit status (incl. signals like SIGKILL=137 for OOM).  The verbose
+    # report is written to stderr — we always persist combined stdout+stderr.
+    args = [_TIME_BIN, "-v", BIN, gpath, str(s), str(T)]
     if verify: args.append("verify")
+    cmd_line = " ".join(args)
     t0 = time.time()
     try:
         proc = subprocess.run(args, env=env, capture_output=True, text=True,
                               timeout=TIMEOUT)
         wall_ms = (time.time() - t0) * 1000.0
-        log_path.write_text(proc.stdout + "\n--STDERR--\n" + proc.stderr)
+        # Always persist the full log, regardless of exit status.
+        log_path.write_text(
+            f"[CMD] {cmd_line}\n"
+            f"[ENV] OMP_NUM_THREADS={T} OMP_PROC_BIND=close OMP_PLACES=cores\n"
+            f"[RC]  {proc.returncode}\n\n"
+            f"--STDOUT--\n{proc.stdout}\n"
+            f"--STDERR--\n{proc.stderr}\n"
+        )
+        time_v = parse_time_v(proc.stderr)
         if proc.returncode == 0:
             par = parse_par4(proc.stdout)
             if par is None:
-                return {"status": "PARSE_FAIL", "wall_ms": wall_ms}
+                return {"status": "PARSE_FAIL", "wall_ms": wall_ms, **time_v}
             return {"status": "OK", "wall_ms": wall_ms, "build_ms": par["ms"],
                     "leaves": par["leaves"], "ref_leaves": par["ref_leaves"],
-                    "verify": par["verify"]}
+                    "verify": par["verify"], **time_v}
         else:
-            return {"status": f"ERROR({proc.returncode})", "wall_ms": wall_ms}
-    except subprocess.TimeoutExpired:
-        return {"status": "TIMEOUT", "wall_ms": TIMEOUT * 1000.0}
+            return {"status": f"ERROR({proc.returncode})",
+                    "wall_ms": wall_ms, **time_v}
+    except subprocess.TimeoutExpired as e:
+        # Even on timeout, capture whatever output was produced so we can
+        # see how far the run got and what its memory profile looked like.
+        out = e.stdout.decode("utf-8", "replace") if e.stdout else ""
+        err = e.stderr.decode("utf-8", "replace") if e.stderr else ""
+        log_path.write_text(
+            f"[CMD] {cmd_line}\n"
+            f"[ENV] OMP_NUM_THREADS={T} OMP_PROC_BIND=close OMP_PLACES=cores\n"
+            f"[TIMEOUT after {TIMEOUT}s]\n\n"
+            f"--STDOUT--\n{out}\n"
+            f"--STDERR--\n{err}\n"
+        )
+        return {"status": "TIMEOUT", "wall_ms": TIMEOUT * 1000.0,
+                **parse_time_v(err)}
 
 
 def main():
