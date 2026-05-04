@@ -40,16 +40,19 @@ SERVER_GRAPHS = {
         # collaboration / e-commerce
         ("com-amazon.ungraph",       [3, 5, 8]),
         ("com-dblp",                 [3, 5, 8, 10, 15]),
-        # social
+        # social — small to medium
         ("com-youtube",              [3, 5, 8, 12, 16]),
         ("twitter_combined",         [3, 5, 8, 12]),
         ("wiki-Talk",                [3, 5, 8, 10]),
         ("soc-pokec-relationships",  [3, 5, 8]),
+        # social — large (added for "scaling needs work" demonstration)
+        ("com-lj",                   [3, 5, 8, 12]),
+        ("com-orkut",                [3, 5, 8, 12, 20]),
         # web
         ("web-Google",               [3, 5, 8, 12, 20]),
         ("web-Stanford",             [3, 5, 10, 20, 40, 60]),
         ("web-it-2004",              [3, 10, 30, 100, 200, 400]),
-        # tiny sanity
+        # tiny sanity (kept as "no parallel benefit" reference cell)
         ("dblp-core30",              [3, 5, 10, 20]),
     ],
 }
