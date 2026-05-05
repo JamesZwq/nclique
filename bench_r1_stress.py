@@ -51,7 +51,13 @@ PER_PROC_MEM_GB = 250       # any single proc with RSS > this is OOM-killed
 SETTLE_SEC      = 0.2
 POLL_SEC        = 3
 
-ALGOS = [("Ours_ST", {"PIVOTER_RUN_ST": "1"}), ("REF_R1", {})]
+# Paper §7 calls the static pipeline "Pure" — this is V3 (PIVOTER_RUN_ST_V3),
+# the SOTA with fused SDCT + event-driven PeelH.  The previous stress run
+# stored Ours_ST (the older PIVOTER_RUN_ST without V2/V3 improvements);
+# rerun produces a fresh CSV under a new name so the legacy file stays
+# intact for cross-checking.
+ALGOS = [("Pure",   {"PIVOTER_RUN_ST_V3": "1"}),
+         ("REF_R1", {})]
 
 
 # ============ Resource probes ============
@@ -168,7 +174,9 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--timeout", type=int, default=1200)
     ap.add_argument("--cpu-load-target", type=float, default=None)
-    ap.add_argument("--out", default="paper_data/stress.csv")
+    ap.add_argument("--out", default="paper_data/15_stress_synthetic_dense_v3.csv",
+                    help="default points to the V3-SOTA output CSV; override "
+                         "to keep building on the legacy ST CSV.")
     ap.add_argument("--mem-limit-gb", type=float, default=MEM_LIMIT_GB)
     ap.add_argument("--per-proc-mem-gb", type=float, default=PER_PROC_MEM_GB)
     args = ap.parse_args()

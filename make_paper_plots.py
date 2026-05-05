@@ -56,10 +56,12 @@ REMOTE_ROOT   = f"~/nclique/paper_data"
 CSV_FILES: dict[Path, tuple[str, bool]] = {
     DATA_DIR / "01_main_benchmark_762.csv":              ("01_main_benchmark_762.csv",       True),
     DATA_DIR / "01_main_benchmark_v3.csv":               ("01_main_benchmark_v3.csv",        True),
-    DATA_DIR / "02_breakdown_summary.csv":               ("02_breakdown_summary.csv",        False),
+    DATA_DIR / "02_breakdown_summary.csv":               ("02_breakdown_summary.csv",        True),
+    DATA_DIR / "02_breakdown_summary_v3.csv":            ("02_breakdown_summary_v3.csv",     True),
     DATA_DIR / "03_breakdown_median.csv":                ("03_breakdown_median.csv",         True),
     DATA_DIR / "14_scalability_webgoogle.csv":           ("14_scalability_webgoogle.csv",    True),
-    DATA_DIR / "15_stress_synthetic_dense.csv":          ("15_stress_synthetic_dense.csv",   False),
+    DATA_DIR / "15_stress_synthetic_dense.csv":          ("15_stress_synthetic_dense.csv",   True),
+    DATA_DIR / "15_stress_synthetic_dense_v3.csv":       ("15_stress_synthetic_dense_v3.csv", True),
     DATA_DIR / "bench_par_sdct.csv":                     ("bench_par_sdct.csv",              True),
     DATA_DIR / "bench_local_v4.csv":                     ("bench_local_v4.csv",              True),
     DATA_DIR / "friendster_billion/bench_billion.csv":   ("friendster_billion/bench_billion.csv", True),
@@ -340,16 +342,45 @@ def fig_exp_mem() -> None:
 # Figure 4: fig_phase_breakdown — load/build/peel stack (Pure vs REF)
 
 def fig_phase_breakdown() -> None:
-    rows = load_csv(DATA_DIR / "02_breakdown_summary.csv")
-    if not rows: return
-    # Each row already has load_ms, build_ms, peel_ms.
-    cells = []  # list of (graph, s, algo, [load, build, peel])
-    for r in rows:
-        try:
-            cells.append((r["graph"], int(r["s"]), r["algo"],
-                          [float(r["load_ms"]), float(r["build_ms"]), float(r["peel_ms"])]))
-        except (KeyError, ValueError):
-            continue
+    """V3 vs REF phase stack.  Prefers the V3 CSV (algorithm column =
+    Pure / REF_R1, with 3 runs each — needs median); falls back to the
+    legacy 02_breakdown_summary.csv (algo column = ours / ref, single
+    pre-aggregated row per cell)."""
+    v3_path = DATA_DIR / "02_breakdown_summary_v3.csv"
+    legacy_path = DATA_DIR / "02_breakdown_summary.csv"
+    cells = []
+    if v3_path.exists():
+        rows_v3 = load_csv(v3_path)
+        # Aggregate to median over runs per (graph, s, algo).
+        g: dict = defaultdict(lambda: defaultdict(list))
+        for r in rows_v3:
+            if r.get("status") != "OK": continue
+            algo = "ours" if r.get("algorithm") == "Pure" else "ref"
+            try:
+                key = (r["graph"], int(r["s"]), algo)
+                for col in ("load_ms", "build_ms", "peel_ms"):
+                    if r.get(col):
+                        g[key][col].append(float(r[col]))
+            except (KeyError, ValueError):
+                continue
+        for (graph, s, algo), phases in g.items():
+            if all(k in phases and phases[k] for k in ("load_ms","build_ms","peel_ms")):
+                cells.append((graph, s, algo,
+                              [statistics.median(phases["load_ms"]),
+                               statistics.median(phases["build_ms"]),
+                               statistics.median(phases["peel_ms"])]))
+        if cells:
+            print(f"[csv] using {v3_path.name} (Pure / V3 SOTA, {len(cells)} cells)")
+    if not cells:
+        rows = load_csv(legacy_path)
+        if rows:
+            print(f"[csv] using legacy {legacy_path.name} (ours = ST)")
+        for r in rows:
+            try:
+                cells.append((r["graph"], int(r["s"]), r["algo"],
+                              [float(r["load_ms"]), float(r["build_ms"]), float(r["peel_ms"])]))
+            except (KeyError, ValueError):
+                continue
     if not cells: return
     graphs = ["com-youtube","web-Stanford","web-it-2004"]
     fig, axes = plt.subplots(1, len(graphs), figsize=(13, 3.0), sharey=False)
@@ -406,7 +437,23 @@ def fig_phase_breakdown() -> None:
 # Figure 5 + 6: fig_stress_time / fig_stress_mem — synthetic |V|=1000
 
 def _stress_plot(value_key: str, ylabel: str, fname: str) -> None:
-    rows = load_csv(DATA_DIR / "15_stress_synthetic_dense.csv")
+    """Stress synthetic |V|=1000 panel.  Prefers V3 CSV (algorithm=Pure)
+    and rewrites it to "Ours_ST" so downstream code still works; falls
+    back to legacy 15_stress_synthetic_dense.csv (algorithm=Ours_ST,
+    actually old ST = PIVOTER_RUN_ST)."""
+    v3_path = DATA_DIR / "15_stress_synthetic_dense_v3.csv"
+    rows = []
+    if v3_path.exists():
+        for r in load_csv(v3_path):
+            if r.get("algorithm") == "Pure":
+                r = dict(r); r["algorithm"] = "Ours_ST"
+            rows.append(r)
+        if rows:
+            print(f"[csv] using {v3_path.name} (Pure / V3 SOTA, {len(rows)} rows)")
+    if not rows:
+        rows = load_csv(DATA_DIR / "15_stress_synthetic_dense.csv")
+        if rows:
+            print(f"[csv] using legacy 15_stress_synthetic_dense.csv (Ours_ST = old ST)")
     if not rows: return
     # group by (density, s, algorithm) — n=1000 fixed
     g = defaultdict(list)
@@ -634,25 +681,66 @@ def tab_local() -> None:
     align = "llrrrrr"
     _emit_table("tab_local", header, align, body)
 
-def tab_bd_time() -> None:
-    rows = load_csv(DATA_DIR / "02_breakdown_summary.csv")
-    if not rows: return
-    cells = defaultdict(dict)  # (graph, s) -> { algo: (load, build, peel) }
-    for r in rows:
+def _load_breakdown_cells() -> dict:
+    """Returns {(graph, s): {algo: (load, build, peel, mem_MB)}}, V3 first."""
+    cells: dict = defaultdict(dict)
+    v3_path = DATA_DIR / "02_breakdown_summary_v3.csv"
+    if v3_path.exists():
+        # Aggregate over runs: median per (graph, s, algo) per phase.
+        agg: dict = defaultdict(lambda: defaultdict(list))
+        for r in load_csv(v3_path):
+            if r.get("status") != "OK": continue
+            algo = "ours" if r.get("algorithm") == "Pure" else "ref"
+            try:
+                key = (r["graph"], int(r["s"]), algo)
+                for col in ("load_ms", "build_ms", "peel_ms"):
+                    if r.get(col):  agg[key][col].append(float(r[col]))
+                if r.get("time_max_rss_kB"):
+                    agg[key]["rss_mb"].append(float(r["time_max_rss_kB"]) / 1024.0)
+                elif r.get("memory_kB"):
+                    agg[key]["rss_mb"].append(float(r["memory_kB"]) / 1024.0)
+            except (KeyError, ValueError):
+                continue
+        for (graph, s, algo), phases in agg.items():
+            need = ("load_ms", "build_ms", "peel_ms")
+            if all(k in phases and phases[k] for k in need):
+                cells[(graph, s)][algo] = (
+                    statistics.median(phases["load_ms"]),
+                    statistics.median(phases["build_ms"]),
+                    statistics.median(phases["peel_ms"]),
+                    statistics.median(phases["rss_mb"]) if phases.get("rss_mb") else None,
+                )
+        if cells:
+            print(f"[csv] tab_bd_*: using {v3_path.name} (Pure / V3 SOTA)")
+            return cells
+    # Legacy fallback (single pre-aggregated row, peak_rss_kb column).
+    legacy = DATA_DIR / "02_breakdown_summary.csv"
+    for r in load_csv(legacy):
         try:
+            rss_mb = float(r["peak_rss_kb"]) / 1024.0 if r.get("peak_rss_kb") else None
             cells[(r["graph"], int(r["s"]))][r["algo"]] = (
-                float(r["load_ms"]), float(r["build_ms"]), float(r["peel_ms"]))
+                float(r["load_ms"]), float(r["build_ms"]), float(r["peel_ms"]), rss_mb)
         except (KeyError, ValueError):
             continue
+    if cells:
+        print(f"[csv] tab_bd_*: using legacy {legacy.name} (ours = ST)")
+    return cells
+
+
+def tab_bd_time() -> None:
+    cells = _load_breakdown_cells()
+    if not cells: return
     body = []
     for (g_, s_) in sorted(cells):
         ours = cells[(g_, s_)].get("ours")
         ref  = cells[(g_, s_)].get("ref")
         if not ours: continue
         row = [GRAPH_DISPLAY.get(g_, g_), str(s_)]
-        for v in ours: row.append(f"{v:.0f}")
+        # ours / ref are 4-tuples (load, build, peel, rss_mb); take the
+        # first three for the time table.
+        for v in ours[:3]: row.append(f"{v:.0f}")
         if ref:
-            for v in ref: row.append(f"{v:.0f}")
+            for v in ref[:3]: row.append(f"{v:.0f}")
         else:
             row += ["—", "—", "—"]
         body.append(row)
@@ -662,15 +750,15 @@ def tab_bd_time() -> None:
     align  = "ll" + "r"*6
     _emit_table("tab_bd_time", header, align, body)
 
+
 def tab_bd_mem() -> None:
-    rows = load_csv(DATA_DIR / "02_breakdown_summary.csv")
-    if not rows: return
+    raw_cells = _load_breakdown_cells()
+    if not raw_cells: return
     cells = defaultdict(dict)
-    for r in rows:
-        try:
-            cells[(r["graph"], int(r["s"]))][r["algo"]] = float(r["peak_rss_kb"]) / 1024.0
-        except (KeyError, ValueError):
-            continue
+    for (g_, s_), algos in raw_cells.items():
+        for algo, vals in algos.items():
+            if vals[3] is not None:
+                cells[(g_, s_)][algo] = vals[3]
     body = []
     for (g_, s_) in sorted(cells):
         ours = cells[(g_, s_)].get("ours")
