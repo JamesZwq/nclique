@@ -18,7 +18,7 @@ Usage:
 """
 from __future__ import annotations
 import csv as _csv
-import os, re, subprocess, sys, time
+import os, re, subprocess, sys, threading, time
 from pathlib import Path
 
 # Stack-limit raise (deep BK recursion at large s).
@@ -43,6 +43,28 @@ TIMEOUT      = 3600                          # per-cell ceiling (1 h)
 RUNS_PER_CFG = 3
 OUTCSV       = Path("paper_data/01_main_benchmark_v3.csv")
 LOGDIR       = Path("bench_r1_v3_logs")
+
+# Parallelism (memory-gated).  Each worker is one (graph, s, algo, run)
+# subprocess. tods2 has 503 GB / 96 logical cores; web-it-2004 REF tops
+# ~600 MB peak, twitter REF at high s tops ~30 GB.  Cap at MAX_WORKERS,
+# and refuse to launch a new worker while used_mem > MEM_LIMIT_GB.
+MAX_WORKERS    = int(os.environ.get("BENCH_WORKERS", "16"))
+MEM_LIMIT_GB   = float(os.environ.get("BENCH_MEM_LIMIT_GB", "300"))
+LAUNCH_POLL_S  = 3.0
+SETTLE_AFTER_LAUNCH_S = 0.3
+
+
+def get_used_mem_gb() -> float:
+    try:
+        info = {}
+        with open("/proc/meminfo") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 2:
+                    info[parts[0].rstrip(":")] = int(parts[1])
+        return (info.get("MemTotal", 0) - info.get("MemAvailable", 0)) / 1024 / 1024
+    except Exception:
+        return 0.0
 
 # Per-graph s_max — same as the prior ST run so cells are 1:1 comparable.
 GRAPHS: list[tuple[str, int]] = [
@@ -211,52 +233,103 @@ def main():
           flush=True)
 
     # Skip floor: once a (graph, algo) hits TIMEOUT or signal-9 OOM at some s,
-    # don't keep grinding higher s for that algo.
+    # don't keep grinding higher s for that algo.  Mutated by completion
+    # callbacks; checked when scheduling.
     skip_floor: dict = {}
+    csv_lock = threading.Lock()
 
-    total = sum((smax - 1) for _, smax in avail) * len(ALGOS) * RUNS_PER_CFG
-    done_cnt = 0
+    # Build the full job list as (graph, s, algo, env_extra, run_idx).
+    jobs: list[tuple] = []
     for graph, s_max in avail:
         for s in range(2, s_max + 1):
             for algo, env_extra in ALGOS:
                 already = counts.get((graph, s, algo), 0)
-                if already >= RUNS_PER_CFG:
-                    done_cnt += RUNS_PER_CFG
-                    continue
-                if (graph, algo) in skip_floor and s >= skip_floor[(graph, algo)]:
-                    # Skip-floor: write a SKIP row per missing run for clarity.
-                    for run_idx in range(already, RUNS_PER_CFG):
-                        append_row(OUTCSV, {
-                            "graph": graph, "r": 1, "s": s, "algorithm": algo,
-                            "run": run_idx, "status": "SKIP_FLOOR"})
-                        done_cnt += 1
-                    continue
                 for run_idx in range(already, RUNS_PER_CFG):
-                    r = run_one(graph, s, algo, env_extra, run_idx)
-                    append_row(OUTCSV, {
-                        "graph": graph, "r": 1, "s": s, "algorithm": algo,
-                        "run": run_idx,
-                        "status":  r["status"],
-                        "wall_ms": f"{r['wall_ms']:.1f}",
-                        "took_ms":  r.get("took_ms",  ""),
-                        "build_ms": r.get("build_ms", ""),
-                        "peel_ms":  r.get("peel_ms",  ""),
-                        "memory_kB": r.get("memory_kB", ""),
-                        **{k: r.get(k, "") for k in (
-                            "time_max_rss_kB","time_user_sec","time_sys_sec",
-                            "time_elapsed","time_pagefaults_major",
-                            "time_pagefaults_minor","time_voluntary_ctxt",
-                            "time_involuntary_ctxt","time_exit_status")},
-                    })
-                    done_cnt += 1
-                    print(f"  [{done_cnt}/{total}] {graph} s={s} {algo} run={run_idx} "
-                          f"{r['status']} wall={r['wall_ms']/1000:.2f}s "
-                          f"rss={r.get('time_max_rss_kB','?')}kB",
-                          flush=True)
-                    if r["status"] in ("TIMEOUT",) or r["status"].startswith("FAIL(-9"):
-                        skip_floor[(graph, algo)] = s
-                        print(f"    -> skip-floor: {graph}/{algo} s>={s}", flush=True)
-                        break
+                    jobs.append((graph, s, algo, env_extra, run_idx))
+    print(f"[plan] {len(jobs)} jobs to schedule across ≤{MAX_WORKERS} workers "
+          f"(mem gate {MEM_LIMIT_GB:.0f} GB)", flush=True)
+
+    done_cnt = 0
+    total = len(jobs)
+
+    def _emit(row: dict) -> None:
+        with csv_lock:
+            append_row(OUTCSV, row)
+
+    def _job_callback(job, result):
+        nonlocal done_cnt
+        graph, s, algo, _, run_idx = job
+        row = {
+            "graph": graph, "r": 1, "s": s, "algorithm": algo,
+            "run": run_idx, "status": result["status"],
+            "wall_ms": f"{result['wall_ms']:.1f}",
+            "took_ms":  result.get("took_ms",  ""),
+            "build_ms": result.get("build_ms", ""),
+            "peel_ms":  result.get("peel_ms",  ""),
+            "memory_kB": result.get("memory_kB", ""),
+            **{k: result.get(k, "") for k in (
+                "time_max_rss_kB","time_user_sec","time_sys_sec",
+                "time_elapsed","time_pagefaults_major",
+                "time_pagefaults_minor","time_voluntary_ctxt",
+                "time_involuntary_ctxt","time_exit_status")},
+        }
+        _emit(row)
+        done_cnt += 1
+        print(f"  [{done_cnt}/{total}] {graph} s={s} {algo} run={run_idx} "
+              f"{result['status']} wall={result['wall_ms']/1000:.2f}s "
+              f"rss={result.get('time_max_rss_kB','?')}kB",
+              flush=True)
+        if result["status"] == "TIMEOUT" or result["status"].startswith("FAIL(-9"):
+            with csv_lock:
+                cur = skip_floor.get((graph, algo))
+                if cur is None or s < cur:
+                    skip_floor[(graph, algo)] = s
+                    print(f"    -> skip-floor: {graph}/{algo} s>={s}", flush=True)
+
+    # Schedule via ThreadPoolExecutor: each worker spends ~all its time
+    # waiting on subprocess.run, so threads (with the GIL released across
+    # subprocess calls) are sufficient — no need for full multiprocessing.
+    from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, wait
+
+    pool = ThreadPoolExecutor(max_workers=MAX_WORKERS)
+    inflight: dict = {}  # future -> job tuple
+    job_iter = iter(jobs)
+    pending_job = next(job_iter, None)
+
+    while pending_job is not None or inflight:
+        # Schedule new jobs while there's room and memory headroom.
+        while pending_job is not None and len(inflight) < MAX_WORKERS:
+            graph, s, algo, env_extra, run_idx = pending_job
+            # Skip-floor (this run-and-everything-higher-s for this algo).
+            sf = skip_floor.get((graph, algo))
+            if sf is not None and s >= sf:
+                _emit({"graph": graph, "r": 1, "s": s, "algorithm": algo,
+                       "run": run_idx, "status": "SKIP_FLOOR"})
+                done_cnt += 1
+                pending_job = next(job_iter, None)
+                continue
+            mem = get_used_mem_gb()
+            if mem > MEM_LIMIT_GB:
+                # Memory pressure — wait for someone to finish before launching.
+                break
+            future = pool.submit(run_one, graph, s, algo, env_extra, run_idx)
+            inflight[future] = pending_job
+            time.sleep(SETTLE_AFTER_LAUNCH_S)
+            pending_job = next(job_iter, None)
+        # Wait for at least one job to finish (or poll if nothing in flight).
+        if not inflight:
+            time.sleep(LAUNCH_POLL_S)
+            continue
+        done_set, _ = wait(inflight.keys(), timeout=LAUNCH_POLL_S,
+                           return_when=FIRST_COMPLETED)
+        for fut in done_set:
+            job = inflight.pop(fut)
+            try:
+                result = fut.result()
+            except Exception as exc:
+                result = {"status": f"EXCEPT({exc!r})", "wall_ms": 0.0}
+            _job_callback(job, result)
+    pool.shutdown(wait=True)
     print("\n=== DONE ===", flush=True)
 
 
