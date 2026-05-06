@@ -291,11 +291,15 @@ def main():
     # subprocess calls) are sufficient — no need for full multiprocessing.
     from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, wait
 
+    print(f"[setup] threadpool max_workers={MAX_WORKERS}", flush=True)
     pool = ThreadPoolExecutor(max_workers=MAX_WORKERS)
     inflight: dict = {}  # future -> job tuple
     job_iter = iter(jobs)
     pending_job = next(job_iter, None)
+    print(f"[setup] first pending: {pending_job}", flush=True)
 
+    iter_count = 0
+    last_progress_t = time.time()
     while pending_job is not None or inflight:
         # Schedule new jobs while there's room and memory headroom.
         while pending_job is not None and len(inflight) < MAX_WORKERS:
@@ -314,13 +318,20 @@ def main():
                 break
             future = pool.submit(run_one, graph, s, algo, env_extra, run_idx)
             inflight[future] = pending_job
+            print(f"  [submit] {graph} s={s} {algo} run={run_idx} "
+                  f"(inflight={len(inflight)})", flush=True)
             time.sleep(SETTLE_AFTER_LAUNCH_S)
             pending_job = next(job_iter, None)
         # Wait for at least one job to finish (or poll if nothing in flight).
         if not inflight:
             time.sleep(LAUNCH_POLL_S)
             continue
-        done_set, _ = wait(inflight.keys(), timeout=LAUNCH_POLL_S,
+        # Heartbeat every ~60s while waiting.
+        if time.time() - last_progress_t > 60:
+            print(f"  [heartbeat] inflight={len(inflight)} done={done_cnt}/{total} "
+                  f"mem={get_used_mem_gb():.1f}GB", flush=True)
+            last_progress_t = time.time()
+        done_set, _ = wait(list(inflight.keys()), timeout=LAUNCH_POLL_S,
                            return_when=FIRST_COMPLETED)
         for fut in done_set:
             job = inflight.pop(fut)
@@ -329,6 +340,8 @@ def main():
             except Exception as exc:
                 result = {"status": f"EXCEPT({exc!r})", "wall_ms": 0.0}
             _job_callback(job, result)
+            last_progress_t = time.time()
+        iter_count += 1
     pool.shutdown(wait=True)
     print("\n=== DONE ===", flush=True)
 
