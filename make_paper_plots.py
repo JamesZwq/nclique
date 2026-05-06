@@ -143,7 +143,12 @@ def load_main_benchmark() -> list[dict]:
             # Map V3's "Pure" back onto the legacy "Ours_ST" key the
             # plotter functions still hard-code.  REF_R1 is unchanged.
             if algo == "Pure": algo = "Ours_ST"
-            time_ms = r.get("took_ms") or r.get("wall_ms") or ""
+            # Use peel-only time as the algorithm metric — both V3 and
+            # REF share the same SDCT_Fused build phase, so the speedup
+            # claim is about peel.  Falls back to took_ms (build+peel)
+            # then wall_ms when peel_ms is missing (older CSVs).
+            time_ms = (r.get("peel_ms") or r.get("took_ms")
+                       or r.get("wall_ms") or "")
             mem     = r.get("time_max_rss_kB") or r.get("memory_kB") or ""
             out.append({
                 "graph":     r.get("graph", ""),

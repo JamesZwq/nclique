@@ -65,11 +65,15 @@ ALGOS = [
 
 FIELDNAMES = [
     "graph", "r", "s", "algorithm", "run", "status",
-    "wall_ms", "took_ms", "memory_kB",
+    "wall_ms", "took_ms", "build_ms", "peel_ms", "memory_kB",
     "time_max_rss_kB", "time_user_sec", "time_sys_sec", "time_elapsed",
     "time_pagefaults_major", "time_pagefaults_minor",
     "time_voluntary_ctxt", "time_involuntary_ctxt", "time_exit_status",
 ]
+# Why both build_ms and peel_ms separately: paper §7.2 quotes peel-only
+# speedup (V3 vs REF differ in peel phase only — both share the same
+# SDCT_Fused build). took_ms = build + peel for legacy compatibility but
+# the actual algorithm-vs-algorithm comparison must use peel_ms ratio.
 
 # parse_timing greps the binary's own clock (peel + build); wall_ms is the
 # subprocess.run measurement, max_rss_kB comes from /usr/bin/time -v.
@@ -165,7 +169,9 @@ def run_one(graph: str, s: int, algo: str, env_extra: dict, run_idx: int) -> dic
             build, peel, mem = parse_runtime(proc.stdout)
             took = (build + peel) if (build >= 0 and peel >= 0) else (peel if peel >= 0 else -1)
             return {"status": "OK", "wall_ms": wall_ms,
-                    "took_ms": took if took >= 0 else "",
+                    "took_ms":  took  if took  >= 0 else "",
+                    "build_ms": build if build >= 0 else "",
+                    "peel_ms":  peel  if peel  >= 0 else "",
                     "memory_kB": mem if mem >= 0 else "",
                     **time_v}
         else:
@@ -232,7 +238,9 @@ def main():
                         "run": run_idx,
                         "status":  r["status"],
                         "wall_ms": f"{r['wall_ms']:.1f}",
-                        "took_ms": r.get("took_ms", ""),
+                        "took_ms":  r.get("took_ms",  ""),
+                        "build_ms": r.get("build_ms", ""),
+                        "peel_ms":  r.get("peel_ms",  ""),
                         "memory_kB": r.get("memory_kB", ""),
                         **{k: r.get(k, "") for k in (
                             "time_max_rss_kB","time_user_sec","time_sys_sec",
