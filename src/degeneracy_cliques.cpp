@@ -24,6 +24,7 @@
 #include "dataStruct/disJoinSet.hpp"
 #include "graph/DynamicBipartiteGraph.hpp"
 #include "NucleusDecomposition/NCliqueCoreDecomposition.h"
+#include "NucleusDecomposition/BuildHierarchyR1.h"
 #include "degeneracy_algorithm_cliques_V.h"
 #include "dataStruct/CliqueCSR.hpp"
 #include "dataStruct/CliqueHashMap.h"
@@ -607,6 +608,24 @@ static bool dispatchR1(
             delete[] refV;
         }
         dumpCoreValues(coreV, numVertices, "r=1 ST_V3");
+        // Optional post-peel hierarchy build (paper §5).  Reuses V3's
+        // dual CSR (vtxLeafOff/Ids) — V3's tree-free 10Σ peel-state
+        // budget is preserved; the hier routine takes O(Σ) temporary
+        // scratch and frees it on return.  Strict paper Def 4: leaves
+        // act as DSU connector nodes, so two vertices share a hier
+        // component iff they are s-connected via admissible CPI cliques.
+        if (const char *hpath = std::getenv("PIVOTER_DUMP_HIER")) {
+            const int min_size = []() {
+                if (const char *e = std::getenv("PIVOTER_HIER_MIN_SIZE"))
+                    return std::max(1, std::atoi(e));
+                return 1;
+            }();
+            daf::timeCount("hier r=1 (build via CPI leaves)", [&]() {
+                nucleus_hier::buildAndDumpHierarchyFromCSR(
+                    *pmr.st_v2_data, coreV, numVertices, s, min_size, hpath);
+                return 0;
+            });
+        }
         delete[] coreV;
         return true;
     }
