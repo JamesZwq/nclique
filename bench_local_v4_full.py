@@ -57,6 +57,11 @@ def main():
     print(f"  bench_local_v4_full  {time.strftime('%F %T')}")
     print("=" * 60)
     cfg = ServerConfig.detect(DEFAULT_SERVERS)
+    # SPIN/LOCAL_V4 path-counter memory grows with s; capping concurrency
+    # at 4 keeps worst-case 4 × ~80GB = 320GB well under the 503GB host.
+    # The default mem-gate (300GB) only checks at launch, but per-job
+    # working sets grow over time, so we cannot rely on it alone.
+    cfg.max_workers = 4
     print(f"server: {cfg.name}  max_workers={cfg.max_workers}  "
           f"mem_limit={cfg.mem_limit_gb}GB", flush=True)
 
