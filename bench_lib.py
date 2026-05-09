@@ -176,6 +176,18 @@ class Job:
     extra: dict[str, Any] = None              # passed through to result row
 
 
+def _kill_proc_group(proc):
+    # `time -v` wraps the real binary; proc.kill() only signals time, leaving
+    # the binary as an orphan. Kill the whole process group instead.
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    except (ProcessLookupError, OSError):
+        try: proc.kill()
+        except: pass
+    try: proc.wait(timeout=10)
+    except: pass
+
+
 class ParallelRunner:
     """Lightweight scheduler: poll loop with mem/cpu gates."""
     def __init__(self, cfg: ServerConfig, csv_path: Path, fieldnames: list[str],
@@ -256,9 +268,7 @@ class ParallelRunner:
         for i in range(len(self.running) - 1, -1, -1):
             proc, job, t0 = self.running[i]
             if now - t0 > job.timeout:
-                try:
-                    proc.kill(); proc.wait(timeout=10)
-                except: pass
+                _kill_proc_group(proc)
                 wall_ms = (time.time() - t0) * 1000.0
                 if hasattr(proc, "_log_handle") and proc._log_handle:
                     try: proc._log_handle.close()
@@ -274,9 +284,7 @@ class ParallelRunner:
             proc, job, t0 = self.running[i]
             rss = get_proc_rss_gb(proc.pid)
             if rss > self.cfg.per_proc_mem_gb:
-                try:
-                    proc.kill(); proc.wait(timeout=10)
-                except: pass
+                _kill_proc_group(proc)
                 if hasattr(proc, "_log_handle") and proc._log_handle:
                     try: proc._log_handle.close()
                     except: pass
@@ -289,9 +297,7 @@ class ParallelRunner:
     def _kill_newest(self, on_finish):
         if not self.running: return
         proc, job, t0 = self.running.pop()
-        try:
-            proc.kill(); proc.wait(timeout=10)
-        except: pass
+        _kill_proc_group(proc)
         if hasattr(proc, "_log_handle") and proc._log_handle:
             try: proc._log_handle.close()
             except: pass
