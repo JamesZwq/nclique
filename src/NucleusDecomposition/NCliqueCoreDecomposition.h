@@ -450,10 +450,7 @@ double * NCliqueVertexCoreDecomposition_LocalV3(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
 
-// Local H-index V4: async parallel with in-place updates
-double * NCliqueVertexCoreDecomposition_LocalV4(
-    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k);
+// Local H-index V4 declaration moved below ST_V2_Data definition.
 
 // Single-thread optimized versions (no OMP overhead)
 double * NCliqueVertexCoreDecomposition_ST(
@@ -529,6 +526,15 @@ ST_V3_Data NCliqueVertexCoreDecomposition_ST_V3_Build(
 double * NCliqueVertexCoreDecomposition_ST_V3_Peel(
     ST_V3_Data &d, daf::CliqueSize k);
 double * NCliqueVertexCoreDecomposition_ST_V3(
+    Graph &edgeGraph, daf::CliqueSize k);
+
+// Local H-index V4: async parallel with in-place updates.
+// Reads paths from ST_V2_Data dual CSR (same layout as SPIN★) so the
+// SPIN vs SPIN★ comparison reflects algorithm differences, not data
+// structure overhead.
+double * NCliqueVertexCoreDecomposition_LocalV4_Peel(
+    ST_V2_Data &data, daf::CliqueSize k);
+double * NCliqueVertexCoreDecomposition_LocalV4(
     Graph &edgeGraph, daf::CliqueSize k);
 
 // ST V3 Lean: memory-tighter SPIN★ — drops per-leaf persistent state arrays

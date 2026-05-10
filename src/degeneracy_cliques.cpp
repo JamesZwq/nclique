@@ -241,6 +241,7 @@ static bool needsSDCT(daf::CliqueSize r, bool compareMode) {
     if (compareMode) return true;  // need refTree for correctness comparison
     if (r == 1 && (envSet("PIVOTER_RUN_ST_V2") || envSet("PIVOTER_RUN_ST_V2_PROBE")
                    || envSet("PIVOTER_RUN_ST_V3") || envSet("PIVOTER_RUN_ST_V3_LEAN")
+                   || envSet("PIVOTER_RUN_LOCAL_V4")
                    || envSet("PIVOTER_RUN_INTERLEAVED") || envSet("PIVOTER_RUN_INTERLEAVED_V2")
                    || envSet("PIVOTER_RUN_ONDEMAND")))
         return false;
@@ -472,6 +473,14 @@ static PreMutationResult preMutationPhase(
                 return NCliqueVertexCoreDecomposition_ST_V3_Lean_Build(edgeGraph, s);
             }));
     }
+    if (r == 1 && envSet("PIVOTER_RUN_LOCAL_V4")) {
+        // SPIN reuses SPIN★'s ST_V3 Build (same dual CSR layout) so the
+        // memory comparison reflects algorithmic differences only.
+        result.st_v2_data = std::make_unique<ST_V3_Data>(
+            daf::timeCount("LocalV4 Build", [&]() {
+                return NCliqueVertexCoreDecomposition_ST_V3_Build(edgeGraph, s);
+            }));
+    }
     if (r == 1 && envSet("PIVOTER_RUN_ST_V2_PROBE")) {
         NCliqueVertexCoreDecomposition_ST_V2_InterleavedProbe(edgeGraph, s);
     }
@@ -566,7 +575,6 @@ static bool dispatchR1(
 
     // Table-driven dispatch for standard r=1 variants
     static const R1Entry table[] = {
-        {"PIVOTER_RUN_LOCAL_V4",    "Local H-index V4 r=1",    NCliqueVertexCoreDecomposition_LocalV4},
         {"PIVOTER_RUN_LOCAL_V3",    "Local H-index V3 r=1",    NCliqueVertexCoreDecomposition_LocalV3},
         {"PIVOTER_RUN_LOCAL_V2",    "Local H-index V2 r=1",    NCliqueVertexCoreDecomposition_LocalV2},
         {"PIVOTER_RUN_LOCAL_NAIVE", "Local H-index Naive r=1", NCliqueVertexCoreDecomposition_LocalNaive},
@@ -632,6 +640,24 @@ static bool dispatchR1(
                 return 0;
             });
         }
+        delete[] coreV;
+        return true;
+    }
+
+    // SPIN (LOCAL_V4): same Build pipeline as SPIN★, async-iterative H-index Peel.
+    if (envSet("PIVOTER_RUN_LOCAL_V4") && pmr.st_v2_data) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto coreV = daf::timeCount("Local H-index V4 r=1", [&]() {
+            return NCliqueVertexCoreDecomposition_LocalV4_Peel(*pmr.st_v2_data, s);
+        });
+        if (compareMode) {
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(coreV, numVertices), "r=1 Local H-index V4");
+            delete[] refV;
+        }
+        dumpCoreValues(coreV, numVertices, "r=1 Local H-index V4");
         delete[] coreV;
         return true;
     }

@@ -1,13 +1,20 @@
 //
 // Local H-index V4 — asynchronous parallel for r=1 nucleus decomposition.
 //
+// Reads paths from the same flat dual CSR (ST_V2_Data) used by SPIN★, so
+// the SPIN vs SPIN★ memory comparison reflects algorithmic differences
+// (per-event bookkeeping, peel-order state) rather than data-structure
+// layout overhead. Earlier versions used the legacy DynamicGraph /
+// DynamicGraphSet vector-of-vectors / set-per-vertex structures inherited
+// from the reference baseline; on dense graphs those carried tens of
+// GB of STL container overhead unrelated to the algorithm.
+//
 // Key insight: coreV[] is monotone decreasing. Any thread reading a stale
 // value sees an UPPER bound, which is safe — it may delay convergence by
 // one round but never produces incorrect results.
 //
 // Design:
 //   1. Async in-place updates: threads write coreV[] directly (no double buffer)
-//      → eliminates the doubled re-evaluation cost of V3's synchronous rounds
 //   2. Parallel neighbor enqueuing: per-thread local work lists, merged at round end
 //   3. Core-level enqueue filter: only enqueue neighbor u if oldCore >= coreV[u]
 //   4. Phase 1: parallel initial scan with immediate coreV[] update + parallel enqueue
@@ -15,6 +22,8 @@
 //
 
 #include "NCliqueCoreDecomposition.h"
+#include "SDCT_Augmented.h"
+#include "../PhaseLogger.h"
 #include <chrono>
 #include <algorithm>
 #include <vector>
@@ -23,45 +32,7 @@
 #include <omp.h>
 #include <atomic>
 
-#include "graph/DynamicGraphSet.h"
-
 extern double nCr[1001][401];
-
-namespace VCD_LocalV4 {
-
-static double * countingPerVertex(const DynamicGraph<TreeGraphNode> &treeGraph,
-                                  const Graph &edgeGraph,
-                                  const daf::CliqueSize k) {
-    const daf::Size n = edgeGraph.adj_list_offsets.size();
-    auto *countingV = new double[n];
-    memset(countingV, 0, n * sizeof(double));
-    daf::StaticVector<daf::Size> povit;
-    daf::StaticVector<daf::Size> keepC;
-    for (const auto &clique : treeGraph.adj_list) {
-        povit.clear();
-        keepC.clear();
-        if (clique.size() < k) continue;
-        for (auto &i : clique) {
-            if (i.isPivot) povit.push_back(i.v);
-            else keepC.push_back(i.v);
-        }
-        int needPivot = int(k) - int(keepC.size());
-        double keepVal = nCr[povit.size()][needPivot];
-        for (const auto &v : keepC)
-            countingV[v] += keepVal;
-        double pivotVal = 0;
-        const int npv = needPivot - 1;
-        if (npv >= 0 && npv <= static_cast<int>(povit.size()) - 1)
-            pivotVal = nCr[povit.size() - 1][npv];
-        for (const auto &v : povit)
-            countingV[v] += pivotVal;
-    }
-    povit.free();
-    keepC.free();
-    return countingV;
-}
-
-} // namespace VCD_LocalV4
 
 
 // H-index: merged pass + bucket accumulation. Thread-safe (uses caller's scratch).
@@ -78,10 +49,13 @@ static double * countingPerVertex(const DynamicGraph<TreeGraphNode> &treeGraph,
 // per call are bounded by O(d_Σ(v)) (paths through v), typically <<
 // bucketSize. The sparse map caps memory at the actual number of touched
 // levels — this avoids the multi-GB allocations of the legacy dense vector.
+//
+// CSR PATH ACCESS: paths are read directly from ST_V2_Data's flat dual CSR
+// (vtxLeafIds / leafVtxIds + bit-packed isPivot). No vector-of-vectors,
+// no per-vertex std::set — same compact layout SPIN★ uses.
 static double computeHIndexV4(
     daf::Size v,
-    const DynamicGraph<TreeGraphNode> &tree,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV,
+    const ST_V2_Data &data,
     const double *coreV,
     const std::vector<int> &leafNeedPivot,
     const std::vector<uint8_t> &leafValid,
@@ -89,8 +63,9 @@ static double computeHIndexV4(
     std::vector<double> &pivotCores,
     std::map<int64_t, double> &buckets)
 {
-    const auto &adjCliques = treeGraphV.getNbr(v);
-    if (adjCliques.empty()) return 0.0;
+    const daf::Size vBeg = data.vtxLeafOff[v];
+    const daf::Size vEnd = data.vtxLeafOff[v + 1];
+    if (vBeg == vEnd) return 0.0;
 
     // bucketSize cap on level (= h[v] + 1). int64 avoids the legacy overflow.
     // Keep a finite ceiling so casts stay safe; INT64_MAX/2 is plenty.
@@ -103,9 +78,10 @@ static double computeHIndexV4(
 
     double rawTotalSupport = 0.0;
 
-    for (const auto &clique : adjCliques) {
-        daf::Size leafId = clique.v;
+    for (daf::Size ei = vBeg; ei < vEnd; ++ei) {
+        daf::Size leafId = data.vtxLeafIds[ei];
         if (!leafValid[leafId]) continue;
+        const bool v_isPivot = STV3_getBit(data.vtxLeafIsPivot, ei);
 
         int needPivot = leafNeedPivot[leafId];
 
@@ -113,19 +89,22 @@ static double computeHIndexV4(
         bool anyKeepDead = false;
         pivotCores.clear();
 
-        for (auto &node : tree.adj_list[leafId]) {
-            if (node.v == v) continue;
-            if (node.isPivot) {
-                pivotCores.push_back(coreV[node.v]);
+        const daf::Size lBeg = data.leafVtxOff[leafId];
+        const daf::Size lEnd = data.leafVtxOff[leafId + 1];
+        for (daf::Size lj = lBeg; lj < lEnd; ++lj) {
+            daf::Size u = data.leafVtxIds[lj];
+            if (u == v) continue;
+            if (STV3_getBit(data.leafVtxIsPivot, lj)) {
+                pivotCores.push_back(coreV[u]);
             } else {
-                double c = coreV[node.v];
+                double c = coreV[u];
                 if (c < 1) { anyKeepDead = true; break; }
                 if (c < minKeepCore) minKeepCore = c;
             }
         }
         if (anyKeepDead) continue;
 
-        int effectiveNeedPivot = clique.isPivot ? needPivot - 1 : needPivot;
+        int effectiveNeedPivot = v_isPivot ? needPivot - 1 : needPivot;
         int numOtherPivots = (int)pivotCores.size();
         if (effectiveNeedPivot < 0 || effectiveNeedPivot > numOtherPivots) continue;
 
@@ -199,36 +178,42 @@ static double computeHIndexV4(
 
 // ============================================================
 // Local H-index V4: asynchronous parallel with in-place updates.
+// Reads paths from ST_V2_Data dual CSR (same layout as SPIN★).
 // ============================================================
-double * NCliqueVertexCoreDecomposition_LocalV4(
-    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
-    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize k) {
+double * NCliqueVertexCoreDecomposition_LocalV4_Peel(
+    ST_V2_Data &data, daf::CliqueSize k) {
 
     auto time_start = std::chrono::high_resolution_clock::now();
 
     const int nThreads = omp_get_max_threads();
-    const daf::Size numLeaves = tree.adj_list.size();
-    const daf::Size numVertices = edgeGraph.adj_list_offsets.size() - 1;
+    const daf::Size numLeaves = data.numLeaves;
+    const daf::Size numVertices = data.numVertices;
 
+    // Compute per-leaf needPivot and validity from CSR (single pass over
+    // leaf vertex sets to count pivots vs keeps).
     std::vector<int> leafNeedPivot(numLeaves);
     std::vector<uint8_t> leafValid(numLeaves);
-
     for (daf::Size L = 0; L < numLeaves; ++L) {
         int keeps = 0, pivots = 0;
-        for (auto &node : tree.adj_list[L]) {
-            if (node.isPivot) pivots++;
+        const daf::Size lBeg = data.leafVtxOff[L];
+        const daf::Size lEnd = data.leafVtxOff[L + 1];
+        for (daf::Size lj = lBeg; lj < lEnd; ++lj) {
+            if (STV3_getBit(data.leafVtxIsPivot, lj)) pivots++;
             else keeps++;
         }
         leafNeedPivot[L] = (int)k - keeps;
         leafValid[L] = (leafNeedPivot[L] >= 0 && leafNeedPivot[L] <= pivots) ? 1 : 0;
     }
 
-    auto initSupport = VCD_LocalV4::countingPerVertex(tree, edgeGraph, k);
+    // Initial support comes from data.countingV (already populated by Build).
     auto *coreV = new double[numVertices + 1];
     for (daf::Size i = 0; i <= numVertices; ++i) coreV[i] = 0.0;
-    for (daf::Size i = 0; i < numVertices; ++i)
-        coreV[i] = initSupport[i];
-    delete[] initSupport;
+    if (data.countingV != nullptr) {
+        for (daf::Size i = 0; i < numVertices; ++i)
+            coreV[i] = data.countingV[i];
+        delete[] data.countingV;
+        data.countingV = nullptr;
+    }
 
     // Per-thread scratch buffers. SPARSE buckets: std::map<int64_t,double>
     // instead of dense std::vector<double>(sdeg+1). int64 levels avoid the
@@ -273,7 +258,7 @@ double * NCliqueVertexCoreDecomposition_LocalV4(
             if (coreV[v] <= 0) continue;
 
             double oldCore = coreV[v];
-            double h = computeHIndexV4(v, tree, treeGraphV, coreV,
+            double h = computeHIndexV4(v, data, coreV,
                                         leafNeedPivot, leafValid,
                                         oldCore, pc, bk);
             double newCore = std::min(h, oldCore);
@@ -281,13 +266,16 @@ double * NCliqueVertexCoreDecomposition_LocalV4(
             if (newCore != oldCore) {
                 coreV[v] = newCore;  // in-place update (monotone ↓)
 
-                // Enqueue co-leaf neighbors (core-level filter)
-                auto &adjCliques = treeGraphV.getNbr(v);
-                for (const auto &clique : adjCliques) {
-                    daf::Size leafId = clique.v;
+                // Enqueue co-leaf neighbors (core-level filter) via dual CSR.
+                const daf::Size vBeg = data.vtxLeafOff[v];
+                const daf::Size vEnd = data.vtxLeafOff[v + 1];
+                for (daf::Size ei = vBeg; ei < vEnd; ++ei) {
+                    daf::Size leafId = data.vtxLeafIds[ei];
                     if (!leafValid[leafId]) continue;
-                    for (auto &node : tree.adj_list[leafId]) {
-                        daf::Size u = node.v;
+                    const daf::Size lBeg = data.leafVtxOff[leafId];
+                    const daf::Size lEnd = data.leafVtxOff[leafId + 1];
+                    for (daf::Size lj = lBeg; lj < lEnd; ++lj) {
+                        daf::Size u = data.leafVtxIds[lj];
                         if (u == v) continue;
                         if (coreV[u] <= 0) continue;
                         if (oldCore >= coreV[u]) {
@@ -334,7 +322,7 @@ double * NCliqueVertexCoreDecomposition_LocalV4(
                 double oldCore = coreV[v];
                 if (oldCore <= 0) continue;
 
-                double h = computeHIndexV4(v, tree, treeGraphV, coreV,
+                double h = computeHIndexV4(v, data, coreV,
                                             leafNeedPivot, leafValid,
                                             oldCore, pc, bk);
                 double newCore = std::min(h, oldCore);
@@ -342,13 +330,16 @@ double * NCliqueVertexCoreDecomposition_LocalV4(
                 if (newCore != oldCore) {
                     coreV[v] = newCore;  // in-place update
 
-                    // Enqueue neighbors with core-level filter
-                    auto &adjCliques = treeGraphV.getNbr(v);
-                    for (const auto &clique : adjCliques) {
-                        daf::Size leafId = clique.v;
+                    // Enqueue neighbors with core-level filter via dual CSR.
+                    const daf::Size vBeg = data.vtxLeafOff[v];
+                    const daf::Size vEnd = data.vtxLeafOff[v + 1];
+                    for (daf::Size ei = vBeg; ei < vEnd; ++ei) {
+                        daf::Size leafId = data.vtxLeafIds[ei];
                         if (!leafValid[leafId]) continue;
-                        for (auto &node : tree.adj_list[leafId]) {
-                            daf::Size u = node.v;
+                        const daf::Size lBeg = data.leafVtxOff[leafId];
+                        const daf::Size lEnd = data.leafVtxOff[leafId + 1];
+                        for (daf::Size lj = lBeg; lj < lEnd; ++lj) {
+                            daf::Size u = data.leafVtxIds[lj];
                             if (u == v) continue;
                             if (coreV[u] <= 0) continue;
                             if (oldCore >= coreV[u]) {
@@ -384,4 +375,12 @@ double * NCliqueVertexCoreDecomposition_LocalV4(
 
     delete[] inQueue;
     return coreV;
+}
+
+// Combined entry: build dual CSR + run peel.
+double * NCliqueVertexCoreDecomposition_LocalV4(
+    Graph &edgeGraph, daf::CliqueSize k)
+{
+    auto data = NCliqueVertexCoreDecomposition_ST_V3_Build(edgeGraph, k);
+    return NCliqueVertexCoreDecomposition_LocalV4_Peel(data, k);
 }
