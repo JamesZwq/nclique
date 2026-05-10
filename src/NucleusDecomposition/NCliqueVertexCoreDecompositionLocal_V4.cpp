@@ -18,6 +18,7 @@
 #include <chrono>
 #include <algorithm>
 #include <vector>
+#include <map>
 #include <cstring>
 #include <omp.h>
 #include <atomic>
@@ -65,6 +66,18 @@ static double * countingPerVertex(const DynamicGraph<TreeGraphNode> &treeGraph,
 
 // H-index: merged pass + bucket accumulation. Thread-safe (uses caller's scratch).
 // Reads coreV[] which may be concurrently updated — safe because monotone decreasing.
+//
+// int64 LEVELS: legacy code cast `(int)currentCore + 1` for bucketSize, which
+// silently wrapped to negative when currentCore = sdeg(v) exceeded INT_MAX
+// on dense graphs at moderate s (com-dblp s=8 → sdeg ~ 1e14). The wrap
+// poisoned the iterative h-index, causing infinite-loop non-convergence at
+// high s. We use int64_t throughout for level / bucketSize so the cap is
+// effectively unbounded.
+//
+// SPARSE buckets (std::map<int64_t,double>): distinct contribution levels
+// per call are bounded by O(d_Σ(v)) (paths through v), typically <<
+// bucketSize. The sparse map caps memory at the actual number of touched
+// levels — this avoids the multi-GB allocations of the legacy dense vector.
 static double computeHIndexV4(
     daf::Size v,
     const DynamicGraph<TreeGraphNode> &tree,
@@ -74,17 +87,19 @@ static double computeHIndexV4(
     const std::vector<uint8_t> &leafValid,
     double currentCore,
     std::vector<double> &pivotCores,
-    std::vector<double> &buckets)
+    std::map<int64_t, double> &buckets)
 {
     const auto &adjCliques = treeGraphV.getNbr(v);
     if (adjCliques.empty()) return 0.0;
 
-    int bucketSize = (int)currentCore + 1;
+    // bucketSize cap on level (= h[v] + 1). int64 avoids the legacy overflow.
+    // Keep a finite ceiling so casts stay safe; INT64_MAX/2 is plenty.
+    constexpr int64_t kLevelCap = (int64_t)1 << 60;
+    int64_t bucketSize = (currentCore > (double)kLevelCap)
+                       ? kLevelCap : (int64_t)currentCore + 1;
     if (bucketSize < 1) bucketSize = 1;
 
-    if ((int)buckets.size() < bucketSize + 1)
-        buckets.resize(bucketSize + 1, 0.0);
-    for (int i = 0; i <= bucketSize; ++i) buckets[i] = 0.0;
+    buckets.clear();
 
     double rawTotalSupport = 0.0;
 
@@ -115,7 +130,7 @@ static double computeHIndexV4(
         if (effectiveNeedPivot < 0 || effectiveNeedPivot > numOtherPivots) continue;
 
         if (effectiveNeedPivot == 0) {
-            int level = (int)minKeepCore;
+            int64_t level = (int64_t)minKeepCore;
             if (level > bucketSize) level = bucketSize;
             if (level >= 1) buckets[level] += 1.0;
             rawTotalSupport += 1.0;
@@ -140,7 +155,7 @@ static double computeHIndexV4(
             double support = nCr[countAtThreshold][effectiveNeedPivot];
             double delta = support - prevSupport;
             if (delta > 0) {
-                int level = (int)threshold;
+                int64_t level = (int64_t)threshold;
                 if (level > bucketSize) level = bucketSize;
                 if (level >= 1) buckets[level] += delta;
                 rawTotalSupport += delta;
@@ -152,11 +167,31 @@ static double computeHIndexV4(
 
     if (rawTotalSupport < 1.0) return 0.0;
 
-    double accumulated = 0.0;
-    for (int c = bucketSize; c >= 1; --c) {
-        accumulated += buckets[c];
-        if (accumulated >= (double)c)
-            return (double)c;
+    // SPARSE descending accumulation. Walk non-empty levels high→low; between
+    // two adjacent non-empty levels, the cumulative is constant — so an
+    // intermediate (empty) level k satisfies prev_acc ≥ k iff
+    // k ≤ floor(prev_acc). The "gap check" before processing each level
+    // catches answers in those gaps.
+    double prev_acc = 0.0;
+    int64_t prev_level = bucketSize + 1;
+    for (auto it = buckets.rbegin(); it != buckets.rend(); ++it) {
+        int64_t c = it->first;
+        // Gap (c, prev_level - 1]: cumulative was prev_acc.
+        if (prev_acc >= 1.0) {
+            int64_t gap_ans = (prev_acc >= (double)(prev_level - 1))
+                            ? (prev_level - 1) : (int64_t)prev_acc;
+            if (gap_ans > c && gap_ans >= 1) return (double)gap_ans;
+        }
+        double new_acc = prev_acc + it->second;
+        if (new_acc >= (double)c) return (double)c;
+        prev_acc = new_acc;
+        prev_level = c;
+    }
+    // Tail gap [1, prev_level - 1].
+    if (prev_acc >= 1.0) {
+        int64_t gap_ans = (prev_acc >= (double)(prev_level - 1))
+                        ? (prev_level - 1) : (int64_t)prev_acc;
+        if (gap_ans >= 1) return (double)gap_ans;
     }
     return 0.0;
 }
@@ -195,12 +230,13 @@ double * NCliqueVertexCoreDecomposition_LocalV4(
         coreV[i] = initSupport[i];
     delete[] initSupport;
 
-    // Per-thread scratch buffers
+    // Per-thread scratch buffers. SPARSE buckets: std::map<int64_t,double>
+    // instead of dense std::vector<double>(sdeg+1). int64 levels avoid the
+    // legacy int-overflow that poisoned the iterative h-index at high s.
     std::vector<std::vector<double>> threadPivotCores(nThreads);
-    std::vector<std::vector<double>> threadBuckets(nThreads);
+    std::vector<std::map<int64_t, double>> threadBuckets(nThreads);
     for (int t = 0; t < nThreads; ++t) {
         threadPivotCores[t].reserve(512);
-        threadBuckets[t].reserve(4096);
     }
 
     // Per-thread local work lists for parallel enqueuing
