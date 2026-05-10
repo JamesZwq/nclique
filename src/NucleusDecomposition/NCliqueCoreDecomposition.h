@@ -531,6 +531,17 @@ double * NCliqueVertexCoreDecomposition_ST_V3_Peel(
 double * NCliqueVertexCoreDecomposition_ST_V3(
     Graph &edgeGraph, daf::CliqueSize k);
 
+// ST V3 Lean: memory-tighter SPIN★ — drops per-leaf persistent state arrays
+// (leafPivotCount, leafNeedPivot, leafAlive, leafRemainPivots) and recomputes
+// np / old_rp from per-event leaf scans. Saves ~13 bytes/leaf permanent at
+// the cost of ~1.5-2x peel CPU.
+ST_V2_Data NCliqueVertexCoreDecomposition_ST_V3_Lean_Build(
+    Graph &edgeGraph, daf::CliqueSize k);
+double * NCliqueVertexCoreDecomposition_ST_V3_Lean_Peel(
+    ST_V2_Data &d, daf::CliqueSize k);
+double * NCliqueVertexCoreDecomposition_ST_V3_Lean(
+    Graph &edgeGraph, daf::CliqueSize k);
+
 // Interleaved construction-decomposition: peels vertices during SDCT construction
 // Must be called BEFORE edgeGraph.beSingleEdge() (needs original graph for SDCT)
 double * NCliqueVertexCoreDecomposition_Interleaved(

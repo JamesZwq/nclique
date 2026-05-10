@@ -240,7 +240,7 @@ static Graph loadAndSortGraph(const char *fpath, int argc, char **argv) {
 static bool needsSDCT(daf::CliqueSize r, bool compareMode) {
     if (compareMode) return true;  // need refTree for correctness comparison
     if (r == 1 && (envSet("PIVOTER_RUN_ST_V2") || envSet("PIVOTER_RUN_ST_V2_PROBE")
-                   || envSet("PIVOTER_RUN_ST_V3")
+                   || envSet("PIVOTER_RUN_ST_V3") || envSet("PIVOTER_RUN_ST_V3_LEAN")
                    || envSet("PIVOTER_RUN_INTERLEAVED") || envSet("PIVOTER_RUN_INTERLEAVED_V2")
                    || envSet("PIVOTER_RUN_ONDEMAND")))
         return false;
@@ -466,6 +466,12 @@ static PreMutationResult preMutationPhase(
                 return NCliqueVertexCoreDecomposition_ST_V3_Build(edgeGraph, s);
             }));
     }
+    if (r == 1 && envSet("PIVOTER_RUN_ST_V3_LEAN")) {
+        result.st_v2_data = std::make_unique<ST_V3_Data>(
+            daf::timeCount("ST_V3_Lean Build", [&]() {
+                return NCliqueVertexCoreDecomposition_ST_V3_Lean_Build(edgeGraph, s);
+            }));
+    }
     if (r == 1 && envSet("PIVOTER_RUN_ST_V2_PROBE")) {
         NCliqueVertexCoreDecomposition_ST_V2_InterleavedProbe(edgeGraph, s);
     }
@@ -626,6 +632,24 @@ static bool dispatchR1(
                 return 0;
             });
         }
+        delete[] coreV;
+        return true;
+    }
+
+    // ST_V3 Lean: same Build pipeline, lean Peel (no per-leaf persistent state)
+    if (envSet("PIVOTER_RUN_ST_V3_LEAN") && pmr.st_v2_data) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto coreV = daf::timeCount("ST_V3_Lean r=1 (peel)", [&]() {
+            return NCliqueVertexCoreDecomposition_ST_V3_Lean_Peel(*pmr.st_v2_data, s);
+        });
+        if (compareMode) {
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(coreV, numVertices), "r=1 ST_V3_Lean");
+            delete[] refV;
+        }
+        dumpCoreValues(coreV, numVertices, "r=1 ST_V3_Lean");
         delete[] coreV;
         return true;
     }
