@@ -1,0 +1,339 @@
+\section{\texorpdfstring{Computing Core Values over Static \cpi}{Computing Core Values over Static CPI}}\label{sec:hindex}
+
+Static CPI leaves a support-counting problem instead of an index-maintenance problem.
+%
+Section~\ref{sec:static} showed that the threshold witnesses of a vertex can be counted from unchanged \cpi{} paths and path counters.
+%
+The remaining question is how to turn those support values into final core numbers.
+%
+This section turns the core condition into a vertex update, then derives two solvers from the same update.
+%
+\spin{} applies the update by repeated full passes over the vertices.
+%
+\spinStar{} computes the same result in peel order and revisits only vertices whose path counters changed.
+
+\subsection{Vertex updates from static witnesses}\label{sec:hop}\label{sec:refresh}
+
+The static-\cpi{} invariant tells us how to count witnesses without rebuilding residual paths.
+%
+To compute core values, we also need a rule for lowering a vertex value from the witnesses that remain.
+%
+The rule asks for the largest support level that the queried vertex can still justify.
+%
+At level \(k\), the vertex needs at least \(k\) encoded clique witnesses whose other vertices can also sustain level \(k\).
+%
+For a tentative value vector, define the one-vertex update
+\[
+\Phi_h(v)=\max\{k\ge0\mid W_v(h,k)\ge k\}.
+\]
+Here \(W_v(h,k)\) is the number of encoded \(s\)-clique witnesses through \(v\) whose other vertices have value at least \(k\).
+%
+For clique size two, the witnesses are edges, so the update becomes the standard core fixed-point test over neighbors~\cite{kcoreLocal,lu2016hcore,hindex}.
+%
+For larger clique sizes, the counted items are clique witnesses, not distinct neighbor vertices.
+%
+The next lemma counts \(W_v(h,k)\) from \cpi{} paths without enumerating those witnesses.
+
+\begin{lemma}[Per-path Witness Count]\label{lem:per-path-witness}
+Fix a vertex \(v\), a current vector \(h\), and a threshold \(k\ge1\).
+%
+For a path \(\TPath\) with \(v\in\Vh(\TPath)\cup\Vp(\TPath)\), let \(H_k(\TPath)\) and \(Q_k(\TPath)\) be the number of vertices in \(\Vh(\TPath)\setminus\{v\}\) and \(\Vp(\TPath)\setminus\{v\}\), respectively, whose current \(h\)-value is at least \(k\).
+%
+The number \(W_v(\TPath,h,k)\) of encoded \(s\)-cliques through \(v\) in which every other vertex has \(h\)-value at least \(k\) is:
+\begin{enumerate}[leftmargin=1.3em,itemsep=1pt,topsep=1pt]
+  \item if \(H_k(\TPath)<|\Vh(\TPath)\setminus\{v\}|\), then \(W_v(\TPath,h,k)=0\);
+  \item if \(v\in\Vh(\TPath)\), then \(W_v(\TPath,h,k)=\binom{Q_k(\TPath)}{\eta_{\TPath}}\);
+  \item if \(v\in\Vp(\TPath)\), then \(W_v(\TPath,h,k)=\binom{Q_k(\TPath)}{\eta_{\TPath}-1}\).
+\end{enumerate}
+The total threshold count is \(W_v(h,k)=\sum_{\TPath\ni v}W_v(\TPath,h,k)\).
+%
+\(\Phi_h(v)\) is the largest \(k\) such that \(W_v(h,k)\ge k\).
+\end{lemma}
+
+\begin{proof}
+Each encoded \(s\)-clique through \(v\) has the form \(\Vh(\TPath)\cup P'\), where \(P'\subseteq\Vp(\TPath)\) and \(|P'|=\eta_{\TPath}\).
+%
+If any other hold vertex fails the threshold \(k\), no encoded clique through \(v\) can qualify.
+%
+If \(v\) is a hold, all \(\eta_{\TPath}\) pivot slots must be filled by threshold-passing pivots.
+%
+If \(v\) is a pivot, \(v\) occupies one pivot slot and the remaining \(\eta_{\TPath}-1\) slots must be filled by threshold-passing pivots.
+%
+Summing the qualifying counts over paths gives \(W_v(h,k)\).
+%
+\qed
+\end{proof}
+
+\(\vertexSupport(v,h)\) computes this update for one vertex.
+%
+During one call, the algorithm builds only local threshold state for \(v\).
+%
+After any prefix of the paths through \(v\), that local state contains exactly the witnesses contributed by the scanned paths.
+%
+Scanning the next path adds the binomial counts from Lemma~\ref{lem:per-path-witness}, and the largest threshold with enough witnesses is the updated value.
+%
+Because the call reads the static \cpi{} but never mutates a path, the same witness rule can be used by both solvers below.
+
+\begin{algorithm}[t]
+\algfontsize
+\caption{\(\vertexSupport(v,h)\) --- one-vertex update from static clique witnesses.}
+\label{alg:refresh}
+\KwIn{Vertex \(v\in V\); current \(h\)-value vector \(h\); \cpi{} \(\mathcal{P}\).}
+\KwOut{The threshold-support value \(\Phi_h(v)\).}
+
+\(C[0,\ldots,h[v]]\gets0\) \tcp*{threshold witness counts}
+\ForEach{path \(\TPath\in\mathcal{P}\) \emph{through} \(v\)}{
+    \For{\(k\gets1\) \KwTo \(h[v]\)}{
+        \(C[k]\gets C[k]+W_v(\TPath,h,k)\)\tcp*{Lemma~\ref{lem:per-path-witness}}
+    }
+}
+\For{\(k\gets h[v]\) \KwTo \(1\)}{
+    \lIf{\(C[k]\ge k\)}{\Return{\(k\)}}
+}
+\Return{\(0\)}
+\end{algorithm}
+
+A direct implementation does not enumerate clique witnesses.
+%
+It evaluates the same threshold counts from the values stored on each scanned path, using sorting or buckets.
+%
+In the stated implementation, one call costs \(O(\deg_{\Sig}(v)\log\deg_{\Sig}(v))\).
+%
+The call reads the static \cpi{} and the vector \(h\), and it mutates no path.
+
+\subsection{Direct h-Index Iteration}\label{sec:localh}
+
+\(\vertexSupport\) defines the threshold-support equation for one vertex.
+%
+\spin{} is the most literal solver: it scans all vertices, computes a next value for each vertex from the previous value vector, and repeats until a full scan makes no change.
+%
+Its purpose is to expose the fixed-point computation directly.
+%
+The only mutable data are the current value vector and the next value vector.
+%
+The current vector starts at the initial \(s\)-clique support, so every entry is an upper bound on the final core value.
+%
+Each pass can only lower entries.
+%
+A fixed point means every vertex value is consistent with the witnesses whose other vertices have high enough current value.
+%
+This makes \spin{} the reference formulation for the static-\cpi{} computation, even though repeated full scans can be expensive.
+
+Algorithm~\ref{alg:localH} keeps the implementation close to the equations.
+%
+During one pass, every call to \(\vertexSupport\) reads the old vector and writes into the next vector.
+%
+The swap at the end of the pass avoids order dependence.
+%
+A pass with no changed entry is the certificate that the fixed point has been reached.
+
+\begin{algorithm}[t]
+\algfontsize
+\caption{\spin{} --- direct static-path fixed-point iteration.}
+\label{alg:localH}
+\KwIn{Graph \(G\), clique size \(s\), \cpi{} \(\mathcal{P}\).}
+\KwOut{\(\kappa_s(v)\) for every \(v\in V\).}
+
+\ForEach{\(v\in V\)}{
+    \(h[v]\gets\sdeg(v)\) \tcp*{closed form from Lemma~\ref{lem:supp}}
+}
+\(\mathrm{changed}\gets\textsf{true}\)\;
+\While{\(\mathrm{changed}\)}{
+    \(\mathrm{changed}\gets\textsf{false}\);\quad \(h_{\mathrm{new}}\gets h\)\;
+    \ForEach{\(v\in V\) \emph{in a fixed order}}{
+        \(h_{\mathrm{new}}[v]\gets\vertexSupport(v,h)\)\;
+        \lIf{\(h_{\mathrm{new}}[v]\ne h[v]\)}{\(\mathrm{changed}\gets\textsf{true}\)}
+    }
+    \(h\gets h_{\mathrm{new}}\)\;
+}
+\ForEach{\(v\in V\)}{\(\kappa_s(v)\gets h[v]\)\;}
+\Return{\(\kappa_s\)}
+\end{algorithm}
+
+The proof below connects the fixed point to \((1,s)\)-nucleus core values.
+%
+It is the reason \spin{} can serve as a correctness reference for the event-driven algorithm.
+
+\begin{lemma}[Fixed Point Correctness]\label{lem:hindex-fixed-point}
+Initialised at \(h^{(0)}[v]=\sdeg(v)\), Algorithm~\ref{alg:localH} converges in at most \(1+n\kmax\) passes to \(h[v]=\kappa_s(v)\) for every \(v\in V\).
+%
+The sequence \(h^{(t)}[v]\) is monotonically non-increasing.
+\end{lemma}
+
+\begin{proof}
+At any pass, \(h^{(t+1)}[v]\ge k\) exactly when at least \(k\) incident \(s\)-cliques have all other vertices with \(h^{(t)}\ge k\).
+%
+The initial value \(\sdeg(v)\) is the largest possible support value for \(v\), so the update cannot increase \(h[v]\).
+%
+The values are non-negative integers bounded by \(\kmax\), so the sequence converges.
+%
+At a fixed point \(h^\star\), the set \(\{v\mid h^\star[v]\ge k\}\) is exactly the maximal vertex set in which each vertex has at least \(k\) incident \(s\)-cliques inside the set.
+%
+These sets define the \((1,s)\)-nucleus levels.
+%
+Therefore \(h^\star[v]=\kappa_s(v)\).
+%
+The crude pass bound follows because across all vertices the sum of integer values can decrease at most \(n\kmax\) times before the final no-change pass.
+%
+\qed
+\end{proof}
+
+\begin{theorem}[\spin{} Complexity]\label{thm:localh-complexity}
+Algorithm~\ref{alg:localH} computes \(\kappa_s\) in \(O(T\cdot\Sig\cdot\log d_{\max})\) work, where \(T\le1+n\kmax\) is the number of passes.
+\end{theorem}
+
+\begin{proof}
+Each pass calls \(\vertexSupport(v,h)\) for every vertex \(v\).
+%
+The cost of one call is \(O(\deg_{\Sig}(v)\log\deg_{\Sig}(v))\).
+%
+Summing over vertices gives \(O(\Sig\log d_{\max})\) work per pass.
+%
+Lemma~\ref{lem:hindex-fixed-point} bounds the number of passes.
+%
+\qed
+\end{proof}
+
+\subsection{Eliminating Redundant Sweeps}\label{sec:redundancy}\label{sec:peelh}
+
+\spin{} is useful because it exposes the equations, but its full passes recompute many vertices whose values can no longer change.
+%
+Once a vertex reaches its final peel level, later events cannot increase it.
+%
+\spinStar{} removes this redundancy by using the same nondecreasing peel order as classical core decomposition.
+%
+The algorithm keeps the same value semantics as \spin{}, but it updates them with local path events instead of global passes.
+%
+For each path, it stores whether the path is still live, how many pivot vertices have not been finalized, and the fixed pivot requirement.
+%
+It also keeps a finalized set and a bucket queue keyed by the current value.
+%
+When one minimum vertex is popped, only paths containing that vertex can change.
+%
+Theorem~\ref{thm:vertex-removal} says how each such path changes, and Lemma~\ref{lem:support-delta} gives the exact support loss for the unfinalized path-mates.
+%
+Thus the invariant is local: unfinalized vertex values reflect the current live path-counter contributions, clipped below by the current peel level.
+
+\spinStar{} is an optimization of \spin{}, not a different decomposition objective.
+%
+It keeps the same witness equation but changes the schedule.
+%
+Instead of scanning every vertex after every pass, it updates only the vertices whose path contributions changed.
+%
+Algorithm~\ref{alg:peelH} outputs the core values and emits a sorted deletion log as a byproduct.
+%
+Its running time depends on \(U\), the number of incremental support-update events that actually occur, rather than on the number of full scans.
+
+\begin{algorithm}[t]
+\algfontsize
+\caption{\spinStar{} --- core values via single-pass bucket-queue peeling.}
+\label{alg:peelH}
+\KwIn{Graph \(G\), clique size \(s\), \cpi{} \(\mathcal{P}\).}
+\KwOut{\(\kappa_s(v)\) for every \(v\in V\).}
+
+\ForEach{path \(\TPath\in\mathcal{P}\)}{
+    \(p_{\TPath}\gets|\Vp(\TPath)|\);\quad \(\eta_{\TPath}\gets s-|\Vh(\TPath)|\);\quad \(\mathrm{alive}_{\TPath}\gets(p_{\TPath}\ge\eta_{\TPath})\)\;
+}
+\ForEach{\(v\in V\)}{
+    \(h[v]\gets\sdeg(v)\);\quad insert \(v\) into bucket \(B[h[v]]\)\;
+}
+\(k\gets0\);\quad \(V_{\mathrm{fin}}\gets\emptyset\)\;
+\While{\(|V_{\mathrm{fin}}|<n\)}{
+    advance \(k\) until \(B[k]\ne\emptyset\);\quad pop \(v\) from \(B[k]\)\;
+    \(\kappa_s(v)\gets k\);\quad append \((v,k)\) to the deletion log;\quad \(V_{\mathrm{fin}}\gets V_{\mathrm{fin}}\cup\{v\}\)\;
+    \(\mathrm{Aff}\gets\emptyset\)\;
+    \ForEach{\(\TPath\) with \(\mathrm{alive}_{\TPath}\) and \(v\in\Vh(\TPath)\cup\Vp(\TPath)\)}{
+        \(\mathrm{Aff}\gets\mathrm{Aff}\cup((\Vh(\TPath)\cup\Vp(\TPath))\setminus\{v\})\)\;
+        \uIf{\(v\in\Vh(\TPath)\)}{
+            \(\mathrm{alive}_{\TPath}\gets\textsf{false}\)\tcp*{path death}
+        }
+        \Else{
+            \(p_{\TPath}\gets p_{\TPath}-1\)\;
+            \lIf{\(p_{\TPath}<\eta_{\TPath}\)}{\(\mathrm{alive}_{\TPath}\gets\textsf{false}\)}
+        }
+    }
+    \ForEach{\(u\in\mathrm{Aff}\setminus V_{\mathrm{fin}}\)}{
+        \(y\gets\max\{k,\ \vertexSupport(u,h)\}\) \tcp*{implemented incrementally with Lemma~\ref{lem:support-delta}}
+        \lIf{\(y<h[u]\)}{move \(u\) from \(B[h[u]]\) to \(B[y]\);\quad \(h[u]\gets y\)}
+    }
+}
+\Return{\(\kappa_s\)}
+\end{algorithm}
+
+The pseudocode writes the affected update as \(\vertexSupport\) to keep the fixed-point semantics visible.
+%
+The implementation evaluates the changed path contribution by the closed-form delta from Lemma~\ref{lem:support-delta}.
+%
+The total number of such evaluations is \(U\).
+%
+Buckets maintain the minimum-\(h\) vertex because values only decrease and are bounded by \(\kmax\)~\cite{coreAlg}.
+
+\begin{lemma}[\spinStar{} Equivalence]\label{lem:equivalence}
+Algorithm~\ref{alg:peelH} returns the same \(\kappa_s\) values as Algorithm~\ref{alg:localH}.
+\end{lemma}
+
+\begin{proof}
+The algorithms use the same witness equations.
+%
+\spin{} evaluates them by repeated full passes over the vertex set.
+%
+\spinStar{} evaluates them in the standard nondecreasing peel order.
+%
+The loop invariant for \spinStar{} is that every unfinalized vertex \(u\) has the same value it would obtain from the current live witness multiset under the fixed-point equations, except that values below the current peel level \(k\) are clipped to \(k\).
+%
+The invariant is true initially because \(h[u]=\sdeg(u)\).
+%
+When \(v\) is finalized, only paths containing \(v\) can change any remaining witness multiset.
+%
+Theorem~\ref{thm:vertex-removal} gives the exact state transition for each such path.
+%
+Lemma~\ref{lem:support-delta} gives the exact support loss for every affected path-mate.
+%
+Thus the updates to \(\mathrm{Aff}\) restore the invariant, while vertices outside \(\mathrm{Aff}\) need no update.
+%
+Popping a minimum bucket finalizes the next vertex whose fixed-point value cannot exceed the current level.
+%
+By Lemma~\ref{lem:hindex-fixed-point}, that fixed point is \(\kappa_s\).
+%
+\qed
+\end{proof}
+
+\begin{theorem}[\spinStar{} Complexity]\label{thm:peelh-complexity}
+Algorithm~\ref{alg:peelH} runs in \(O(\Sig+U+\kmax+n)\) time, where \(U\) is the total number of incremental support-refresh events over all affected path-mates.
+\end{theorem}
+
+\begin{proof}
+Initialization of vertex values and path counters costs \(O(n+\Sig)\).
+%
+Each vertex--path incidence is visited when its vertex is finalized, so path-event processing costs \(O(\Sig)\).
+%
+Each affected incremental refresh contributes one unit to \(U\).
+%
+Bucket moves and bucket pops are \(O(1)\) amortized.
+%
+The bucket cursor advances at most \(\kmax\) times.
+%
+The total time is therefore \(O(\Sig+U+\kmax+n)\).
+%
+\qed
+\end{proof}
+
+The mutable baseline pays heap and residual-index maintenance costs on the same logical peel events.
+%
+The experiments in Section~\ref{sec:exp} measure the impact of replacing those operations with static path counters.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig2_peeling.pdf}
+\caption{Incremental peel on the running example.
+%
+Each row gives the popped vertex, its core value, and the path event under Theorem~\ref{thm:vertex-removal}.
+%
+The key distinction is that a hold peel kills a path, while a pivot peel only decreases \(p_{\mathcal{P}}\).
+%
+The \(\Delta_h\) and \(\Delta_p\) columns show the binomial losses from Lemma~\ref{lem:support-delta}.
+%
+The trace shows how mutable residual-index updates become path events and counter deltas.}
+\Description{A peeling trace matrix for the running example, with color-coded path events and a zoomed binomial-delta calculation.}
+\label{fig:peel}
+\end{figure*}

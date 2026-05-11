@@ -1,0 +1,105 @@
+\section{Core-Value Hierarchy Construction}\label{sec:buildhier}
+
+The core numbers define a nested family of vertex sets.
+%
+For any level \(k\), the super-level set is \(V_k=\{v\mid \kappa_s(v)\ge k\}\).
+%
+As \(k\) decreases, vertices enter the set.
+%
+If connectivity is measured by input-graph edges inside \(G[V_k]\), components are born and merge.
+%
+\buildHier{} constructs the elder-rule join tree of this edge-connected core-value filtration.
+%
+This is a useful hierarchy of the computed core values, but it is not claimed to be the exact \(s\)-clique-connected nucleus hierarchy from Definition~\ref{def:nucleus}.
+
+\peelH{} already computes the order needed for this filtration.
+%
+It removes vertices in nondecreasing \(\kappa_s\).
+%
+Scanning that deletion log backward inserts vertices in nonincreasing \(\kappa_s\).
+%
+A union-find structure can then maintain the edge-connected components of the current super-level set.
+
+\stitle{Setup.}
+Let \(L=(v_1,k_1),\ldots,(v_n,k_n)\) be the deletion log produced by \peelH{}.
+%
+Here \(k_i=\kappa_s(v_i)\) and \(k_1\le k_2\le\cdots\le k_n\).
+%
+No explicit sort is needed.
+
+\stitle{Algorithm state.}
+\buildHier{} takes the input graph and the sorted deletion log.
+%
+Its mutable state is a union-find structure, a birth level for each component root, and the output tree.
+%
+Its invariant is that after scanning suffix \(i+1,\ldots,n\), union-find represents the connected components of \(G[\{v_j\mid j>i\}]\).
+%
+The transition inserts \(v_i\), unions it with already-inserted neighbors whose core value is at least \(k_i\), and applies the elder rule when two components merge.
+%
+The output is the elder-rule join tree of the edge-connected super-level filtration.
+
+\begin{algorithm}[t]
+\algfontsize
+\caption{\buildHier}
+\label{alg:buildhier}
+\KwIn{Graph \(G\), deletion log \(L=(v_1,k_1),\ldots,(v_n,k_n)\) with \(k_i\) nondecreasing.}
+\KwOut{Elder-rule join tree \(T\) of the edge-connected super-level filtration \(G[V_k]\).}
+
+initialise union-find with each \(v_i\) as a singleton;\quad \(\text{birth}[v_i]\gets k_i\)\;
+\(T\gets\) empty tree with one leaf per \(v_i\)\;
+\For{\(i\gets n\) \KwTo \(1\)}{
+    \(v\gets v_i\);\quad \(k\gets k_i\)\;
+    mark \(v\) as inserted\;
+    \ForEach{\(u\in N_G(v)\) with \(\kappa_s(u)\ge k\) and \(u\) already inserted}{
+        \(r_v\gets\textsc{Find}(v)\);\quad \(r_u\gets\textsc{Find}(u)\)\;
+        \If{\(r_v\ne r_u\)}{
+            let \(r_{\mathrm{old}}\) and \(r_{\mathrm{young}}\) be the roots with smaller and larger \(\text{birth}\)\tcp*{elder rule}
+            attach \(r_{\mathrm{young}}\) as a child of \(r_{\mathrm{old}}\) in \(T\) at level \(k\)\;
+            \(\textsc{Union}(r_v,r_u)\)\;
+        }
+    }
+}
+\Return{\(T\)}
+\end{algorithm}
+
+\stitle{Correctness.}
+The reverse scan processes the same vertex-insertion events as the super-level filtration.
+%
+When a vertex is inserted, all previously inserted vertices have core value at least the current level.
+%
+Thus every union corresponds to an edge inside the current super-level graph.
+%
+Conversely, every edge of \(G[V_k]\) is examined when the later endpoint in the reverse scan is inserted, so every edge-connected merge at level \(k\) is performed.
+%
+When two components merge, the elder rule preserves the component with earlier birth and attaches the younger component in the join tree~\cite{morozov2007persistence}.
+%
+Because the log is sorted, no later scan step can change a component's birth level.
+
+\stitle{Boundary.}
+The algorithm above uses ordinary graph adjacency.
+%
+Definition~\ref{def:nucleus} uses \(s\)-clique witness connectivity.
+%
+These notions coincide for \(s=2\), but need not coincide for \(s>2\).
+%
+An exact \(s\)-clique-connected hierarchy must union vertices only through surviving \(s\)-clique witnesses, which requires reading the \cpi{} or another compact witness representation.
+%
+Section~\ref{sec:cs-clique} evaluates this clique-coherent variant as an application study.
+
+\stitle{Complexity.}
+The scan touches every vertex once.
+%
+It examines every input edge at most twice, once from each endpoint.
+%
+Each edge visit performs a constant number of union-find operations.
+%
+The total time is \(O((n+m)\alpha(n))\), and the \cpi{} is not read.
+%
+The bound applies to the edge-connected core-value hierarchy, not to the clique-coherent variant.
+
+\stitle{Consequence.}
+The edge-connected core-value hierarchy is not a separate decomposition problem in this pipeline.
+%
+It is a byproduct of the deletion order.
+%
+Methods that produce unsorted core values need a separate sort before the same reverse scan~\cite{nucleusSariyuce14}.

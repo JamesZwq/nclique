@@ -1,0 +1,101 @@
+\documentclass[sigconf]{acmart}
+
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{xspace}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage[font=footnotesize,labelfont=bf]{subcaption}
+\usepackage{comment}
+\usepackage{balance}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{titlesec}
+\usepackage[skip=4pt]{caption}
+
+\titlespacing*{\section}{0pt}{0.3em}{0.25em}
+\titlespacing*{\subsection}{0pt}{0.3em}{0.25em}
+\newlength{\mylen}
+\setlength{\mylen}{0.0em}
+\setlength{\textfloatsep}{\mylen}
+\setlength{\floatsep}{\mylen}
+% \setlength{\intextsep}{\mylen}
+% \setlength{\abovecaptionskip}{\mylen}
+% \setlength{\belowcaptionskip}{\mylen}%
+
+
+\input{command}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2027}
+\acmYear{2027}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmConference[SIGMOD '27]{Proceedings of the 2027 ACM SIGMOD International Conference on Management of Data}{June 2027}{TBD}
+\acmISBN{978-1-XXXX-XXXX-X/27/06}
+
+\begin{document}
+
+\title{Fast \texorpdfstring{\((1,s)\)}{(1,s)}-Nucleus Decomposition via Static Clique Path Index}
+
+\author{Anonymous Authors}
+\affiliation{%
+  \institution{Submission \#XXX}
+  \country{}
+}
+
+\begin{abstract}
+Exact \((1,s)\)-nucleus decomposition ranks vertices by triangle, \(4\)-clique, and larger clique witnesses, but high-\(s\) decomposition is expensive because the number of witnesses can be enormous.
+%
+The Clique Path Index compactly encodes these witnesses, but the general \((r,s)\) framework maintains the index as mutable residual state during peeling.
+%
+We show that this mutability is unnecessary for the vertex-centric case \(r=1\): vertex peeling removes vertices but does not delete edges, so every CPI path remains structurally valid.
+%
+This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spin{}, a direct static-path iteration, \spinStar{}, its event-driven optimization, and a parallel builder designed for the shifted construction bottleneck.
+%
+On \(505\) matched successful configurations, the static pipeline achieves a \(6.16\times\) geometric-mean speedup, a \(39.41\times\) maximum speedup, and lower peak RSS than the mutable baseline.
+%
+The result shows that specializing the state model for \((1,s)\) can make exact high-order vertex-centric decomposition practical without enumerating all \(s\)-cliques.
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+ <concept>
+  <concept_id>10003752.10003809.10003635</concept_id>
+  <concept_desc>Theory of computation~Graph algorithms analysis</concept_desc>
+  <concept_significance>500</concept_significance>
+ </concept>
+ <concept>
+  <concept_id>10002951.10003227.10003351</concept_id>
+  <concept_desc>Information systems~Data mining</concept_desc>
+  <concept_significance>300</concept_significance>
+ </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Theory of computation~Graph algorithms analysis}
+\ccsdesc[300]{Information systems~Data mining}
+
+\keywords{nucleus decomposition, clique counting, cohesive subgraphs, hierarchy}
+
+\maketitle
+
+\input{sections/Introduction}
+\input{sections/Preliminaries}
+\input{sections/StaticCPI}
+\input{sections/HIndex}
+\input{sections/ParaBuild}
+\input{sections/BuildHier}
+\input{sections/Experimental}
+\input{sections/CaseStudies}
+\input{sections/RelatedWork}
+\input{sections/Conclusion}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

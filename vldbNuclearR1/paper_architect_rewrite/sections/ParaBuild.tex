@@ -1,0 +1,89 @@
+\section{Parallel \cpi{} Construction}\label{sec:parabuild}
+
+\peelH{} reduces residual support maintenance to static path-counter updates.
+%
+After this change, construction can become the main cost.
+%
+The phase breakdown in Section~\ref{sec:exp} reports cases where construction is a large fraction of total wall-clock.
+%
+This makes construction part of the algorithmic pipeline rather than a secondary implementation detail.
+
+\stitle{Why the seed loop can be parallel.}
+The \cpi{} builder follows the standard degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.
+%
+Each \(s\)-clique has one owner: the smallest vertex of the clique in the degeneracy order.
+%
+Therefore, the outer loop over seed vertices partitions the emitted \(s\)-clique families.
+%
+No two seeds own the same \(s\)-clique.
+
+Static CPI also changes what construction must produce.
+%
+The mutable baseline builds residual tree state because later peeling may edit that state.
+%
+Our \(r=1\) pipeline never edits the stored hold or pivot sets.
+%
+The builder therefore only has to emit a path list and vertex--path incidence arrays.
+%
+This output can be accumulated in thread-local arenas and merged after all seeds finish.
+
+\stitle{Algorithm state.}
+\paraBuild{} takes \(G\), \(s\), and a thread count.
+%
+Each worker owns a contiguous seed range, a local path arena, and a generation-stamped membership bitmap.
+%
+The local invariant is that the worker arena contains exactly the paths emitted by seeds already processed by that worker.
+%
+The global merge concatenates the arenas in deterministic worker order and then builds the shared incidence CSR.
+%
+The cost driver is the Bron--Kerbosch search work under each seed, plus the linear merge over emitted incidences.
+
+\begin{algorithm}[t]
+\algfontsize
+\caption{\paraBuild}
+\label{alg:parabuild}
+\KwIn{Graph \(G\) in CSR; clique size \(s\); thread count \(T\).}
+\KwOut{Static \cpi{} \(\mathcal{P}\) in shared CSR.}
+
+compute degeneracy ordering \(\sigma\) on \(G\)\;
+launch \(T\) threads and assign each thread \(t\) a contiguous chunk \(\sigma_t\) of seed vertices\;
+\ForEach{thread \(t\in\{1,\ldots,T\}\) \emph{in parallel}}{
+    \(A_t\gets\emptyset\) \tcp*{thread-local path arena}
+    \(b_t\gets\) generation-stamped bitmap over \(V\)\;
+    \ForEach{seed vertex \(v\in\sigma_t\)}{
+        increment generation of \(b_t\)\;
+        \(N^+\gets\{u\in N_G(v)\mid \sigma(u)>\sigma(v)\}\)\;
+        \textsc{BkEmit}\((v,N^+,A_t,b_t)\) \tcp*{pivoted BK on \(G[N^+]\), with \(v\) as a hold}
+    }
+}
+\(\mathcal{P}\gets\) deterministic concat-and-prefix-sum merge of \(\{A_t\}_{t=1}^T\)\;
+build incidence CSR over \(\mathcal{P}\) in parallel\;
+\Return{\(\mathcal{P}\)}
+\end{algorithm}
+
+\textsc{BkEmit} is the same pivot-aware enumeration used by the CPI construction lineage~\cite{Pivoter,NuclearCD}.
+%
+The difference is the output contract.
+%
+It streams each emitted path into \(A_t\) instead of storing a mutable recursion tree for later residual updates.
+
+\stitle{Correctness.}
+\paraBuild{} is a parallel schedule of the same seed-owned enumeration.
+%
+Seed ownership gives disjoint emitted \(s\)-clique families.
+%
+The deterministic merge changes only the storage order, not the represented path families.
+%
+The resulting path set satisfies Definition~\ref{def:path}.
+%
+Therefore, the support formula of Lemma~\ref{lem:supp} applies unchanged.
+
+\stitle{Scope.}
+The design parallelizes construction because construction is the phase exposed by the static-\cpi{} pipeline.
+%
+It does not claim a lower bound showing that \peelH{} cannot be parallelized.
+%
+It also does not claim ideal scaling.
+%
+The scaling evidence is reported in Table~\ref{tab:par}.
+% TODO: verify Table~\ref{tab:par} against the raw parallel-construction source file referenced by the plotting scripts.

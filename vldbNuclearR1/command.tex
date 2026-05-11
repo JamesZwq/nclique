@@ -1,0 +1,76 @@
+% command.tex — macros for vldbNuclearR1
+% Mirrors NuclearCD/command.tex (slim subset)
+
+% --- inline-heading macros (NuclearCD style) ---
+\newcommand{\stitle}[1]{{\noindent\bf{#1}}}
+\newcommand{\sstitle}[1]{{\noindent\textit{\underline{#1}}}}
+\newcommand{\ssstitle}[1]{{\noindent\textit{#1}}}
+
+% --- algorithm name macros (use \kw for sans-serif keyword style) ---
+\newcommand{\kw}[1]{{\ensuremath{\mathsf{#1}}}\xspace}
+\newcommand{\bkw}[1]{{\ensuremath{\mathsf{\textbf{#1}}}}\xspace}
+
+\newcommand{\cpi}{\kw{CPI}}
+\newcommand{\sct}{\kw{SCT}}
+% --- main core-value algorithms ---
+% Umbrella family name SPIN (Static Path Index for Nucleus decomposition):
+%   \spin     = direct fixed-point iteration over the static CPI
+%   \spinStar = the same fixed point computed by single-pass bucket-queue peeling
+\newcommand{\spin}{\kw{SPIN}}
+\newcommand{\spinStar}{\ensuremath{\mathsf{SPIN}^{\star}}\xspace}
+\newcommand{\paraBuild}{\kw{ParaBuild}}
+\newcommand{\buildHier}{\kw{BuildHier}}
+% Per-vertex / per-path support helpers (companion pair, same family).
+\newcommand{\vertexSupport}{\kw{VertexSupport}}
+\newcommand{\pathSupport}{\kw{PathSupport}}
+% Comparison baseline (general (r,s)-nucleus decomposition restricted to r=1)
+\newcommand{\cbnd}{\kw{CND}}
+
+% --- path notation (CPI paths denoted by \TPath, takes optional subscript) ---
+\makeatletter
+\def\TPath{\@ifnextchar\bgroup{\TPathWithArg}{\TPathNoArg}}
+\def\TPathWithArg#1{\mathcal{P}_{#1}}
+\def\TPathNoArg{\mathcal{P}}
+\makeatother
+
+% V_h / V_p as standalone subscript symbols; written inline as V_h(\TPath)
+\newcommand{\Vh}{V_h}
+\newcommand{\Vp}{V_p}
+
+% --- support / index size ---
+\newcommand{\Sig}{\Sigma}
+\newcommand{\sdeg}{\deg^{(s)}}     % s-clique support of a vertex
+\newcommand{\kmax}{\kappa_{\max}}
+
+% --- theorem-like environments (independent counters; reset per section) ---
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\theoremstyle{plain}
+\newtheorem{lemma}{Lemma}[section]
+\theoremstyle{plain}
+\newtheorem{corollary}{Corollary}[section]
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{remark}
+\newtheorem{example}{Example}[section]
+\theoremstyle{remark}
+\newtheorem{observation}{Observation}[section]
+
+% --- reference shorthand ---
+\newcommand{\refsec}[1]{Section~\ref{sec:#1}}
+\newcommand{\reffig}[1]{Fig.~\ref{fig:#1}}
+\newcommand{\reftable}[1]{Table~\ref{tab:#1}}
+\newcommand{\refalg}[1]{Algorithm~\ref{alg:#1}}
+\newcommand{\refdef}[1]{Definition~\ref{def:#1}}
+\newcommand{\refthm}[1]{Theorem~\ref{thm:#1}}
+\newcommand{\reflem}[1]{Lemma~\ref{lem:#1}}
+\newcommand{\refex}[1]{Example~\ref{ex:#1}}
+
+% --- hold/pivot styling (sans-serif, not bold) ---
+\newcommand{\hold}{\textsf{hold}\xspace}
+\newcommand{\pivot}{\textsf{pivot}\xspace}
+\newcommand{\holds}{\textsf{holds}\xspace}
+\newcommand{\pivots}{\textsf{pivots}\xspace}
+
+% --- algorithm pseudocode font size (matches NuclearCD) ---
+\newcommand{\algfontsize}{\fontsize{7pt}{7.5pt}\selectfont}

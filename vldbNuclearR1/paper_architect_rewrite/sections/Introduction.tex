@@ -1,0 +1,114 @@
+\section{Introduction}\label{sec:intro}
+
+Core decomposition ranks vertices by the amount of cohesive structure that still surrounds them after weak vertices are removed~\cite{kcoreSeidman,coreAlg,communityFinder}.
+%
+The classical \(k\)-core uses edges as the witness of cohesion.
+%
+Many graph mining tasks need a stronger witness, because a group may pass an edge-degree threshold while containing few triangles, \(4\)-cliques, or larger coordinated patterns.
+%
+The \emph{\((1,s)\)-nucleus decomposition}~\cite{nucleusSariyuce14} gives this vertex-centric higher-order ranking.
+%
+For a fixed \(s\), it assigns each vertex the largest value \(k\) for which the vertex belongs to a maximal region where every vertex participates in at least \(k\) internal \(s\)-cliques.
+%
+At \(s=2\), this is the \(k\)-core.
+%
+At \(s=3\), it ranks vertices by triangle-supported cohesion.
+%
+At larger \(s\), it exposes progressively tighter clique-based kernels.
+
+Exact high-\(s\) decomposition is hard because the number of \(s\)-cliques can be enormous.
+%
+The current state of the art avoids explicit enumeration with the Clique Path Index, or \cpi{}~\cite{NuclearCD}.
+%
+A \cpi{} path stores a hold set and a pivot set.
+%
+It compactly represents all \(s\)-cliques formed by taking every hold vertex and choosing the remaining vertices from the pivot set.
+%
+This representation made general \((r,s)\)-nucleus decomposition practical, but the general algorithm treats the index as mutable residual state during peeling.
+%
+It stores a mutable recursion tree, per-path vertex sets, reverse maps, and a priority queue.
+%
+This generality is costly.
+%
+It is also necessary for the general case, because when \(r\ge2\), peeling can delete edges or higher-order objects and can break the clique structure that a path stores.
+
+The vertex-centric case has a stronger invariant.
+%
+When \(r=1\), peeling removes vertices but does not delete edges.
+%
+Therefore, a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel.
+%
+The path may stop contributing because a required hold vertex has been removed.
+%
+Or its contribution may shrink because one pivot vertex has been removed.
+%
+But the stored hold and pivot sets do not need to be rewritten.
+%
+The dynamic state of a path is only a liveness bit, its fixed target, and an effective pivot counter.
+
+This observation is the thesis of the paper:
+for \((1,s)\)-nucleus decomposition, vertex peeling preserves the \cpi{} structure, so exact decomposition can be performed over a static clique-path index using only counter updates.
+%
+Theorem~\ref{thm:vertex-removal} proves the static-\cpi{} invariant.
+%
+Lemma~\ref{lem:support-delta} turns each peel event into a closed-form binomial support delta.
+%
+Together they replace mutable residual-index maintenance with arithmetic over a static incidence layout.
+
+Once the index is static, the core computation can be viewed through the usual \(h\)-index characterization of core values~\cite{kcoreLocal,lu2016hcore,hindex}.
+%
+\localH{} is the direct synchronous formulation.
+%
+It repeatedly refreshes every vertex value from the \cpi{} witness counts until the \(h\)-values stop changing.
+%
+\peelH{} is the event-driven realization of the same computation.
+%
+It finalizes vertices in nondecreasing value order and refreshes only vertices whose path counters changed.
+%
+The two algorithms compute the same fixed point, but \peelH{} avoids the global redundancy of synchronous rounds.
+
+Making peeling cheap changes the bottleneck.
+%
+After support maintenance no longer mutates the residual \cpi{}, construction becomes a dominant part of end-to-end time on many benchmark instances.
+%
+This motivates \paraBuild{} as part of the same chain rather than as a separate optimization.
+%
+The degeneracy-ordered seed loop already gives disjoint ownership of \(s\)-cliques.
+%
+Because the downstream consumer needs only a static path list and incidence arrays, each thread can stream emitted paths into a local arena and merge the arenas deterministically.
+
+The same deletion order also gives a core-value hierarchy.
+%
+\peelH{} emits vertices in nondecreasing \(\kappa_s\), because its bucket cursor never retreats.
+%
+Let \(V_k=\{v:\kappa_s(v)\ge k\}\).
+%
+The edge-connected components of \(G[V_k]\) can therefore be recovered by scanning this deletion log in reverse.
+%
+\buildHier{} uses only the input graph and union-find to extract this elder-rule join tree.
+
+The contributions are a dependency chain.
+\begin{itemize}[leftmargin=1.3em,itemsep=1pt,topsep=2pt]
+\item \textbf{Static-\cpi{} state for \((1,s)\).} We prove that \cpi{} paths support exact vertex peeling without modifying their stored hold and pivot sets; every event becomes a path-death or pivot-counter update with a closed-form support delta (Theorem~\ref{thm:vertex-removal}, Lemma~\ref{lem:support-delta}).
+\item \textbf{Two fixed-point realizations over the static index.} We formulate \localH{} as the synchronous \(h\)-index iteration on \cpi{} witness counts, and \peelH{} as the event-driven peel that computes the same fixed point without repeated global refreshes (Algorithms~\ref{alg:localH} and~\ref{alg:peelH}, Lemma~\ref{lem:equivalence}).
+\item \textbf{Bottleneck-shifted static construction.} Once peeling becomes counter-only, \cpi{} construction becomes the dominant remaining cost on many instances; \paraBuild{} exploits the static output contract by streaming paths into thread-local arenas and merging them deterministically without hot-path synchronization (Algorithm~\ref{alg:parabuild}).
+\item \textbf{Core-value hierarchy from the deletion log.} We show that the sorted log produced by \peelH{} is enough to recover the edge-connected super-level join tree in \(O((n+m)\alpha(n))\) time using only the input graph (Algorithm~\ref{alg:buildhier}).
+\item \textbf{Experimental and application evidence.} We compare against the mutable-\cpi{} baseline, test output agreement, report runtime and memory, measure phase behavior and parallel construction, and use case studies to evaluate whether the \(r=1\) specialization is practically useful.
+% TODO: verify the headline ten-graph, 762-configuration speedup and memory claims against the local evidence files in figures/ and the external data referenced by the plotting scripts.
+\end{itemize}
+
+The rest of the paper follows this chain.
+%
+Section~\ref{sec:prelim} defines the problem, the \cpi{}, and the mutable baseline.
+%
+Section~\ref{sec:static} proves the static-\cpi{} invariant.
+%
+Section~\ref{sec:hindex} derives \localH{} and \peelH{} from the same \(h\)-index view.
+%
+Section~\ref{sec:parabuild} parallelizes construction after peeling becomes cheap.
+%
+Section~\ref{sec:buildhier} extracts the hierarchy from the deletion log.
+%
+Sections~\ref{sec:exp} and~\ref{sec:casestudy} report performance and application evidence.
+%
+Sections~\ref{sec:related} and~\ref{sec:conclusion} position and conclude the paper.

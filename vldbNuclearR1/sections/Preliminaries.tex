@@ -1,0 +1,117 @@
+\section{Preliminaries}\label{sec:prelim}
+
+The introduction stated the paper's central invariant in informal terms.
+%
+To prove and use it, we need precise objects: vertex support, \((1,s)\)-nucleus core values, \cpi{} paths, and the mutable baseline that the paper specializes.
+%
+This section fixes that vocabulary and ends at the point where the \(r=1\) simplification can be stated cleanly.
+
+\stitle{Graph notation.}
+We work with a simple undirected graph \(G=(V,E)\).
+%
+For a vertex \(v\), \(N_G(v)=\{u\in V\mid (u,v)\in E\}\) is its neighbor set and \(\deg_G(v)=|N_G(v)|\) is its degree.
+%
+For \(X\subseteq V\), \(G[X]\) is the subgraph induced by \(X\).
+%
+The implementation stores \(G\) in CSR form with an \texttt{offsets} array and an \texttt{edges} array.
+
+\begin{definition}[$k$-Clique]\label{def:k-clique}
+A \emph{\(k\)-clique} is a vertex set \(C\subseteq V\) with \(|C|=k\) such that every two distinct vertices in \(C\) are adjacent.
+\end{definition}
+
+\begin{definition}[$s$-Clique Support]\label{def:s-supp}
+Given \(s\ge2\), the \emph{\(s\)-clique support} of a vertex \(v\) in \(G\) is
+\[
+  \sdeg(v) \;=\; \bigl|\{S\subseteq V\mid v\in S,\ |S|=s,\ S\text{ is a clique in }G\}\bigr|.
+\]
+\end{definition}
+
+Support is always evaluated inside the current induced subgraph when a peel level is being defined.
+%
+When the graph is clear, we write \(\sdeg(v)\) without a subscript.
+
+\begin{definition}[$k$-Admissible $s$-Clique]\label{def:admissible}
+Given \(s\ge2\) and \(k\ge1\), an \(s\)-clique \(S\) in \(G\) is \emph{\(k\)-admissible} if every vertex \(v\in S\) satisfies \(\sdeg(v)\ge k\) in the subgraph under consideration.
+\end{definition}
+
+\begin{definition}[$k$-$(1,s)$-Nucleus]\label{def:nucleus}
+Let \(\mathcal{S}_k\) be the set of \(k\)-admissible \(s\)-cliques of \(G\).
+For any \(\mathcal{S}\subseteq\mathcal{S}_k\), let \(G[\mathcal{S}]=G[\bigcup_{S\in\mathcal{S}}S]\).
+A subgraph \(G_k=G[\mathcal{S}]\) is a \emph{\(k\)-\((1,s)\)-nucleus} if:
+\begin{enumerate}[leftmargin=*]
+  \item \(G_k\) is \emph{\(s\)-connected}: for any two vertices \(u,v\in V(G_k)\), there is a sequence \(u=v_1,\ldots,v_t=v\) such that each pair \(\{v_i,v_{i+1}\}\) is contained in some \(S_i\in\mathcal{S}\);
+  \item \(G_k\) is \emph{maximal}: no proper superset \(\mathcal{S}'\supset\mathcal{S}\) still satisfies the first condition.
+\end{enumerate}
+\end{definition}
+
+Thus a \(k\)-\((1,s)\)-nucleus is a maximal region in which every surviving vertex has at least \(k\) internal \(s\)-clique witnesses and the region is connected through those witnesses.
+
+\begin{definition}[Core Number]\label{def:core}
+Given \(s\ge2\), the \emph{\((1,s)\)-nucleus core number} of a vertex \(v\), denoted \(\kappa_s(v)\), is the largest \(k\) for which \(v\) belongs to some \(k\)-\((1,s)\)-nucleus of \(G\).
+\end{definition}
+
+When \(s=2\), \(\kappa_s\) is the classical core number.
+%
+When \(s=3\), it ranks vertices by triangle-supported cohesion.
+
+\stitle{The Clique Path Index.}\label{sec:prelim-cpi}
+The Clique Path Index, or \cpi{}, compactly represents \(s\)-cliques without listing them one by one~\cite{NuclearCD}.
+
+\begin{definition}[\cpi{} Path]\label{def:path}
+A \emph{\cpi{} path} is a pair \(\TPath=(\Vh(\TPath),\Vp(\TPath))\) of disjoint vertex sets such that \(\Vh(\TPath)\cup\Vp(\TPath)\) is a clique in \(G\) and \(|\Vh(\TPath)|\le s\le|\Vh(\TPath)|+|\Vp(\TPath)|\).
+%
+The set \(\Vh(\TPath)\) is the \emph{hold set}: every encoded \(s\)-clique contains all of these vertices.
+%
+The set \(\Vp(\TPath)\) is the \emph{pivot set}: an encoded \(s\)-clique chooses vertices from this pool.
+%
+The \emph{pivot requirement} of \(\TPath\) is \(\eta_{\TPath}=s-|\Vh(\TPath)|\), the number of pivot vertices needed to complete the hold set into an \(s\)-clique.
+%
+The set of \(s\)-cliques encoded by \(\TPath\) is
+\[
+  \mathcal{C}(\TPath)
+  =
+  \bigl\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath),\ |P'|=\eta_{\TPath}\bigr\}.
+\]
+Its cardinality is \(\binom{|\Vp(\TPath)|}{\eta_{\TPath}}\).
+\end{definition}
+
+The \cpi{} is a set \(\mathcal{P}\) of paths such that every \(s\)-clique is encoded by exactly one path.
+%
+We write
+\[
+  \Sig=\sum_{\TPath\in\mathcal{P}}\bigl(|\Vh(\TPath)|+|\Vp(\TPath)|\bigr)
+\]
+for the vertex--path incidence count.
+%
+We also write \(\deg_{\Sig}(v)=|\{\TPath\mid v\in\Vh(\TPath)\cup\Vp(\TPath)\}|\), \(d_{\max}=\max_v\deg_{\Sig}(v)\), and \(\kmax=\max_v\sdeg(v)\).
+%
+The \cpi{} is built by a degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.
+
+\begin{lemma}[Support Formula~\cite{NuclearCD}]\label{lem:supp}
+For every \(v\in V\),
+\[
+  \sdeg(v)
+  =
+  \sum_{\TPath\,:\,v\in\Vh(\TPath)}\binom{|\Vp(\TPath)|}{\eta_{\TPath}}
+  +
+  \sum_{\TPath\,:\,v\in\Vp(\TPath)}\binom{|\Vp(\TPath)|-1}{\eta_{\TPath}-1}.
+\]
+\end{lemma}
+
+\stitle{The mutable peeling baseline.}\label{sec:prelim-peel}
+The standard peeling loop repeatedly removes a vertex of minimum residual support, assigns its core value, and propagates support losses to the remaining vertices~\cite{coreAlg,NuclearCD}.
+%
+For general \((r,s)\)-nucleus decomposition, the baseline keeps the \cpi{} as mutable residual state.
+%
+Its implementation uses a mutable Bron--Kerbosch recursion tree, per-path vertex hash sets, reverse vertex-to-path maps, and a heap.
+%
+This state is needed in the general setting because removing an \(r\)-clique with \(r\ge2\) may delete edges or higher-order objects that invalidate stored path structure.
+%
+In that baseline, each peel event can pay for hash erases, tree deletion or shrinking, and heap decrease-key operations.
+%
+The next section shows that the \(r=1\) case does not need this mutable state.
+
+\sstitle{Problem statement.}
+Given \(G\) and \(s\ge2\), compute \(\kappa_s(v)\) for every \(v\in V\).
+%
+Section~\ref{sec:buildhier} treats hierarchy construction after the core values have been computed.

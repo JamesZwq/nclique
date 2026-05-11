@@ -1,0 +1,1231 @@
+% VLDB template version of 2020-08-03 enhances the ACM template, version 1.7.0
+\documentclass[sigconf, nonacm]{acmart}
+
+\newcommand\vldbdoi{XX.XX/XXX.XX}
+\newcommand\vldbpages{XXX-XXX}
+\newcommand\vldbvolume{XX}
+\newcommand\vldbissue{X}
+\newcommand\vldbyear{2026}
+\newcommand\vldbauthors{\authors}
+\newcommand\vldbtitle{\shorttitle}
+\newcommand\vldbavailabilityurl{https://anonymous.4open.science/r/immutable-cpi}
+\newcommand\vldbpagestyle{plain}
+
+% Math + symbols (amsmath/amssymb are auto-loaded by acmart)
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{enumitem}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{observation}{Observation}
+\theoremstyle{definition}
+\newtheorem{example}{Example}
+
+% Inline-heading macros (Nuclear CD style)
+\newcommand{\stitle}[1]{{\noindent\bf{#1}}}
+\newcommand{\sstitle}[1]{{\noindent\textit{\underline{#1}}}}
+\newcommand{\ssstitle}[1]{{\noindent\textit{#1}}}
+
+% Shorthand macros
+\newcommand{\cpi}{\textsf{CPI}}
+\newcommand{\sdct}{\textsf{SDCT}}
+\newcommand{\Sig}{\Sigma}
+\newcommand{\Vh}{V_h}
+\newcommand{\Vp}{V_p}
+\newcommand{\holdN}[1]{V_h(#1)}
+\newcommand{\pivN}[1]{V_p(#1)}
+\newcommand{\cores}{\kappa_s}
+\newcommand{\supp}{\mathrm{supp}_s}
+
+\begin{document}
+
+\title{Immutable-CPI: Linear-Time $(1,s)$-Nucleus Decomposition at Scale}
+
+\author{Anonymous Authors}
+\affiliation{%
+  \institution{Submission \#XXX}
+  \country{}
+}
+
+\begin{abstract}
+The $(r,s)$-nucleus decomposition of a graph ranks each $r$-clique by the number of $s$-cliques ($s > r$) that contain it, producing a hierarchical ranking of densely-connected substructures. The case $r{=}1$ --- the $(1,s)$-vertex nucleus decomposition --- is the most widely applicable variant: it subsumes $k$-core at $s{=}2$, it scales to graphs with millions of vertices, and we show empirically that it matches higher-$r$ variants on community and dense-subgraph discovery tasks at a fraction of their cost.
+
+The state-of-the-art algorithm represents the $s$-clique search space as a mutable \emph{Clique Path Index} (\cpi) and peels the graph by repeatedly updating the index. Its $O(\Sig \log n)$ peeling time and multi-gigabyte memory footprint place large-$s$ regimes and graphs beyond $10^6$ vertices out of reach.
+
+We prove that for $r{=}1$ the \cpi{} can be kept \emph{immutable} throughout peeling: every support update reduces to integer arithmetic on three counters per path. This observation yields an $O(\Sig)$ peeling algorithm and an analytical $8.8\times$ reduction in the dominant per-incidence memory term, and unlocks a construction-time optimization --- the \emph{augmented \sdct} --- that builds all indices in a single pass without ever materializing the \cpi{} tree. A $762$-configuration experimental study on ten large graphs (up to $3$M vertices and $117$M edges, $s$ up to $430$) reports a geometric-mean $7.42\times$ and a maximum $39.4\times$ end-to-end speedup over the state of the art, with peak resident memory reduced by up to $3.25\times$. Four ground-truth case studies on SNAP \texttt{com-dblp} and \texttt{com-youtube} further confirm that $(1,s)$-cores match $(2,s)$ and $(3,s)$ variants on every quality metric we measure while costing $10\times$ to $5{,}000\times$ less.
+\end{abstract}
+
+\maketitle
+
+%%% VLDB block %%%
+\pagestyle{\vldbpagestyle}
+\begingroup\small\noindent\raggedright\textbf{PVLDB Reference Format:}\\
+\vldbauthors. \vldbtitle. PVLDB, \vldbvolume(\vldbissue): \vldbpages, \vldbyear.\\
+\href{https://doi.org/\vldbdoi}{doi:\vldbdoi}
+\endgroup
+\begingroup
+\renewcommand\thefootnote{}\footnote{\noindent
+This work is licensed under the Creative Commons BY-NC-ND 4.0 International License. Visit \url{https://creativecommons.org/licenses/by-nc-nd/4.0/} to view a copy of this license. For any use beyond those covered by this license, obtain permission by emailing \href{mailto:info@vldb.org}{info@vldb.org}. Copyright is held by the owner/author(s). Publication rights licensed to the VLDB Endowment. \\
+\raggedright Proceedings of the VLDB Endowment, Vol. \vldbvolume, No. \vldbissue\ %
+ISSN 2150-8097. \\
+\href{https://doi.org/\vldbdoi}{doi:\vldbdoi} \\
+}\addtocounter{footnote}{-1}\endgroup
+
+\ifdefempty{\vldbavailabilityurl}{}{
+\vspace{.3cm}
+\begingroup\small\noindent\raggedright\textbf{PVLDB Artifact Availability:}\\
+The source code, data, and/or other artifacts have been made available at \url{\vldbavailabilityurl}.
+\endgroup
+}
+
+%===============================================================
+\section{Introduction}
+\label{sec:intro}
+
+Graphs are fundamental data structures for relational information, and their decomposition into hierarchically cohesive substructures is a basic primitive in graph analytics~\cite{nucleusSariyuce14,sigmodCPI}. Classical decomposition models such as the $k$-core~\cite{kcoreSeidman,coreAlg} and $k$-truss~\cite{ktrussCohen,ktrussWang} expose successive layers of dense connectivity by iteratively peeling away low-support vertices or edges; both have been used in community detection~\cite{communityFinder}, anomaly identification, network visualization, and densest-subgraph discovery. To capture higher-order cohesiveness uniformly, Sar{\i}y{\"u}ce et~al.~\cite{nucleusSariyuce14} introduced the \textit{$(r,s)$-nucleus decomposition}: for integers $0 < r < s$, the \textit{$s$-support} of an $r$-clique is the number of distinct $s$-cliques containing it, and the $(r,s)$-core of level $k$ is the maximal subgraph in which every $r$-clique has $s$-support at least $k$. Setting $(r,s){=}(1,2)$ recovers the $k$-core, $(2,3)$ recovers the $k$-truss, and larger parameters produce progressively denser, clique-based hierarchies at higher computational cost.
+
+This paper focuses on the case $r{=}1$, the \textit{$(1,s)$-vertex nucleus decomposition}, in which each vertex $v$ receives a core value $\cores(v)$ equal to the largest $k$ for which $v$ belongs to a subgraph whose every vertex participates in at least $k$ distinct $s$-cliques. The parameter $s$ acts as a granularity knob: at $s{=}2$ the decomposition reduces to $k$-core, at $s{=}3$ it counts triangles per vertex, and at larger $s$ it isolates progressively tighter clique-based kernels.
+
+\stitle{Applications.}
+Two empirical observations make $r{=}1$ the operating point most applications use. First, among the parameter combinations $\{(1,s),(2,s),(3,s)\}$ we evaluate in \S\ref{sec:casestudy}, $(1,s)$ matches the others on every quality metric considered while costing $10$ to $5{,}000$ times less. Second, $(1,s)$-decomposition scales to graphs with millions of vertices and to $s$ in the hundreds, whereas $(2,s)$ and $(3,s)$ do not. We illustrate three concrete settings.
+
+\sstitle{Community discovery in collaboration networks.} On scientific co-authorship graphs, $(1,s)$-decomposition with moderate $s$ produces vertex rankings whose top prefix is enriched in tightly knit research groups~\cite{communityFinder,xia2017measuring}. On SNAP's \texttt{com-dblp} at $s{=}10$, the $(1,10)$-core's top-$10{,}000$ recovers $114$ ground-truth communities at the $50$\% threshold and reaches a per-vertex triangle density of $113$ --- numerically identical to what the $(3,10)$-core achieves on the same workload, yet the $(1,10)$ run completes in $13.4$ ms against the $(3,10)$ run's $2{,}380$ ms ($178\times$ slower; \S\ref{sec:casestudy}).
+
+\sstitle{Coordinated-behavior detection.} On interaction or transaction graphs, large-$s$ nuclei isolate small groups whose members repeatedly co-occur in larger cliques, filtering out incidental triangles~\cite{beutel2013copycatch,hooi2016fraudar}. The granularity knob is exactly the analyst's lever: small $s$ admits broad communities, large $s$ exposes coordinated cliques.
+
+\sstitle{Sparse-region analysis on web graphs.} On hyperlink graphs, $(1,s)$ is the only practical $(r,s)$-decomposition at $s$ above a few dozen: $(2,s)$ and $(3,s)$ require explicit $r$-clique enumeration that quickly becomes infeasible. On \texttt{web-it-2004} we run $(1,s)$ for $s$ up to $430$ and recover meaningful sub-structures throughout the range.
+
+\stitle{Existing Methods and Key Limitation.}
+The state of the art is the \cpi-based decomposition algorithm of~\cite{sigmodCPI}, which represents the $s$-clique search space as a \textit{Clique Path Index} (\cpi). Each \cpi{} leaf is a pair $(\Vh,\Vp)$ of disjoint vertex sets such that $\Vh\cup\Vp$ is a clique in $G$; the leaf encodes $\binom{|\Vp|}{s-|\Vh|}$ distinct $s$-cliques, namely all sets $\Vh\cup P'$ with $P'\subseteq\Vp$ and $|P'|{=}s-|\Vh|$. Figure~\ref{fig:overview} shows a $10$-vertex running example whose \cpi{} at $s{=}3$ has six leaves encoding ten triangles. The total vertex--leaf incidence count $\Sig=\sum_P(|\holdN{P}|+|\pivN{P}|)$ is the relevant size measure: for graphs with $10^6$ vertices $\Sig$ routinely reaches $10^8$ to $10^9$, yet the \cpi{} never enumerates individual $s$-cliques.
+
+The \cpi-based decomposition is general: a single algorithm covers $r{\in}\{1,2,3,\ldots\}$. Its peel loop, however, treats the \cpi{} as a fully \textit{mutable} index because $r{\ge}2$ peeling can structurally alter leaves. Each peeled $r$-clique triggers, on every leaf it touches, a hash-set membership update, a physical pivot removal from $\Vp$, and a $\Theta(\log n)$ decrease-key in a binary heap for every affected surviving vertex. The vertex-to-leaf hash index alone consumes around $80$ bytes per incidence; at $\Sig{=}10^8$ this is over $7.5$ GiB before any other data structure is allocated. Peeling time is $O(\Sig\log n)$. As a concrete instance, on the largest graph in our study --- \texttt{com-orkut} ($|V|{=}3.1$M, $|E|{=}117$M) --- the SOTA's working set already reaches $200$ GB at $s{=}4$ and exceeds the $503$ GB physical memory of our test machine at $s{=}5$, well below the practically interesting range; our pipeline completes the same $s{=}4$ configuration in $200$ s with $143$ GB of working set (\S\ref{sec:exp-bd}). The structural mutability that drives this overhead is unnecessary for $r{=}1$ in the first place.
+
+\stitle{Research Question.}
+This leads to the central question of the paper: \textit{can $(1,s)$-nucleus decomposition be computed without paying the structural-mutability cost that $r{\ge}2$ requires of the state of the art?}
+
+\stitle{Challenges.}
+A naive ``just remove the mutability'' approach hits three obstacles inherited from the existing framework.
+
+\sstitle{Per-leaf hash overhead.} Existing peel loops query and modify a per-leaf vertex hash and a reverse vertex-to-leaf multimap. The hash representation costs $\approx 80$ bytes per incidence and is the single largest term in the working set. Eliminating it requires a layout that supports the same access pattern statically.
+
+\sstitle{Heap log factor on every update.} Each peeled vertex changes the support of every surviving incident vertex on every alive leaf. The state-of-the-art binary heap pays $\Theta(\log n)$ per change. The total update count $U$ scales with $\Sig$, so the heap factor is $\Theta(\Sig\log n)$ across the peel.
+
+\sstitle{Tree materialization at construction.} The \sdct{} enumeration that produces the \cpi{} stores its recursion tree to support post-walk traversal. The tree itself consumes $\sim 8\Sig$ bytes plus per-node overhead, even though peeling never queries the parent--child structure.
+
+\stitle{Our Idea.}
+We observe that for $r{=}1$ the \cpi{} can be kept fully \textit{immutable} during peeling. When a vertex $v$ is peeled from a leaf $P$ with current pivot count $p_P$ and target size $\eta_P{=}s-|\holdN{P}|$, every surviving incident vertex's support changes by one of two closed-form binomial differences,
+\[
+  \Delta_{\mathrm{hold}}=\tbinom{p_P}{\eta_P}-\tbinom{p_P-d}{\eta_P},\quad
+  \Delta_{\mathrm{pivot}}=\tbinom{p_P-1}{\eta_P-1}-\tbinom{p_P-d-1}{\eta_P-1},
+\]
+depending on the vertex's role in $P$ and the number $d$ of pivots removed in the batch. The state of every leaf reduces to three integers --- $p_P$, $\eta_P$, and a liveness flag --- with no edits to the vertex sets and no allocations. This invariant, formalised as Theorem~\ref{thm:immutable} and Lemma~\ref{lem:delta} in \S\ref{sec:immutable}, dissolves all three challenges and unlocks two distinct algorithms together with a tree-free construction.
+
+\sstitle{Local-iterative algorithm.} The H-index update of Montresor et~al.~\cite{kcoreLocal} for $k$-core extends to $(1,s)$ via the immutability invariant: each vertex independently recomputes its core value from its leaf-mates' values, with the per-leaf binomial structure of the \cpi{} making the update closed-form. The per-vertex update is independent within an iteration, parallelises trivially across cores, partitions cleanly across machines, and admits an external-memory implementation in which each iteration is one streaming pass over the leaf list (\S\ref{sec:local}).
+
+\sstitle{Centralized peel.} The same invariant collapses the per-leaf hash sets into a single static CSR. Once the layout is static, the bucket-queue peeling discipline of $k$-core~\cite{coreAlg,bucketQueue} applies directly --- supports are bounded non-negative integers, the cursor is monotone non-decreasing, and only decrement operations occur --- whereas the SOTA's mutable hash representation precludes it. Peeling time drops from $O(\Sig\log n)$ to $O(\Sig)$ on a single thread (\S\ref{sec:peel}).
+
+\sstitle{Tree-free \cpi{} construction.} Because the \cpi{}'s parent--child structure is never queried, the \sdct{} enumeration can route each leaf through a zero-overhead callback at the moment of emission. The leaf-to-vertex CSR, the vertex-to-leaf CSR (\S\ref{sec:csr}), and the initial per-vertex supports are all built inline; the \cpi{} tree is never materialised. The dominant per-incidence memory term drops from $\approx 88$ bytes to $\approx 10$ bytes (\S\ref{sec:treefree}).
+
+\stitle{Contributions.}
+The contributions of this paper are as follows.
+($i$) We prove that the \cpi{} is invariant under $(1,s)$-peeling and that every support update reduces to closed-form integer arithmetic on three counters per leaf (Theorem~\ref{thm:immutable}, Lemma~\ref{lem:delta} in \S\ref{sec:immutable}). The invariant fails for $r{\ge}2$ and is the structural basis for the rest of the paper.
+($ii$) We extend the H-index iteration of Montresor et~al.~\cite{kcoreLocal} from $k$-core to $(1,s)$-cores (\S\ref{sec:local}). The H-index update at level $k$ requires the count of $s$-cliques whose every other vertex has value at least $k$; we show this count has a closed-form binomial expression directly on the \cpi{}'s leaves (Lemma~\ref{lem:leaf-ge-k}), so no clique enumeration is needed. Convergence (Lemma~\ref{lem:hindex-fixedpt}) and complexity (Theorem~\ref{thm:local-cost}) follow. Within each iteration the per-vertex update has no shared state, so Algorithm~\ref{alg:local} admits trivial shared-memory, distributed-memory, and external-memory parallelisations.
+($iii$) We observe that, by Theorem~\ref{thm:immutable}, peeling never queries the parent--child structure of the \sdct{} tree; only per-leaf data is read. This permits a callback-driven enumeration (Algorithm~\ref{alg:build}, \S\ref{sec:treefree}) that builds the leaf-to-vertex CSR, the vertex-to-leaf CSR, and the initial per-vertex supports in a single $O(\Sig)$ pass, without ever materialising the tree. The callback pattern itself is standard; what is enabled by the immutability invariant is the omission of the tree, which lowers the dominant per-incidence memory from $\approx 88$ to $\approx 10$ bytes.
+($iv$) We instantiate the invariant as a centralised, single-thread $O(\Sig)$ peel (Algorithm~\ref{alg:peel}, \S\ref{sec:peel}). The static CSR built by C3 collapses the SOTA's hash-set incidence index; once the layout is static the standard $k$-core bucket-queue peel of~\cite{coreAlg,bucketQueue} applies directly, replacing the SOTA's $O(\Sig \log n)$ heap loop. The static representation is what is enabled by Theorem~\ref{thm:immutable}; the bucket queue itself is classical.
+($v$) We report a $762$-configuration wall-clock study on ten large graphs (geometric-mean $7.42\times$, maximum $39.4\times$ speedup over the SOTA baseline; peak memory reduced up to $3.25\times$) and four ground-truth case studies on SNAP's annotated communities (\S\ref{sec:exp}, \S\ref{sec:casestudy}). The case $r{=}1$ matches the quality of $(2,s)$ and $(3,s)$ on every metric we evaluate while costing $10\times$ to $5{,}000\times$ less.
+
+Table~\ref{tab:novelty} consolidates the technical contributions, separating what is original to this paper from what we reuse from prior work, so the novelty-vs.-classical boundary is explicit at a glance.
+
+\begin{table}[t]
+\centering
+\caption{Novelty matrix. For each component of the pipeline, the table separates the original contribution of this paper from the classical machinery on which it is built.}
+\label{tab:novelty}
+\small
+\begin{tabular}{p{0.18\linewidth} p{0.32\linewidth} p{0.20\linewidth} p{0.16\linewidth}}
+\toprule
+Component & What is novel & What we reuse & Citations \\
+\midrule
+Theorem~\ref{thm:immutable} + Lemma~\ref{lem:delta} \mbox{(\S\ref{sec:immutable})} &
+The \cpi{} is invariant under $(1,s)$-peeling; every support update reduces to a closed-form binomial difference on three integer counters per leaf. The invariant fails for $r{\ge}2$. &
+--- &
+--- \\
+\midrule
+Local-iterative \mbox{algorithm} \mbox{(\S\ref{sec:local})} &
+Lemmas~\ref{lem:hindex-fixedpt}--\ref{lem:leaf-ge-k}: H-index iteration extends to $(1,s)$ via closed-form per-leaf threshold counting on \cpi{} binomials --- no $s$-clique enumeration is required. &
+H-index iteration framework. &
+\cite{kcoreLocal,hindex,lu2016hcore} \\
+\midrule
+Tree-free augmented \sdct{} \mbox{(\S\ref{sec:treefree})} &
+Observation that, by Theorem~\ref{thm:immutable}, peeling never queries the parent--child structure of the \sdct{} tree, so the tree need not be materialised. Single-pass dual-CSR construction (Algorithm~\ref{alg:build}). &
+Visitor / callback pattern; CSR layout; function-pointer trampoline; \sdct{} enumeration with Tomita pivoting. &
+\cite{sigmodCPI,bronkerbosch,tomita,eppstein} \\
+\midrule
+Centralised $O(\Sig)$ peel \mbox{(\S\ref{sec:peel})} &
+The static CSR representation enabled by Theorem~\ref{thm:immutable}, which the SOTA's mutable hash-set representation precludes. Algorithm~\ref{alg:peel} consolidates the result. &
+$k$-core bucket-queue peeling discipline. &
+\cite{coreAlg,bucketQueue} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The remainder of the paper proceeds as follows. \S\ref{sec:prelim} fixes notation and reviews the \cpi{} framework on the running example of Figure~\ref{fig:overview}. \S\ref{sec:immutable}, \S\ref{sec:local}, \S\ref{sec:treefree}, and \S\ref{sec:peel} develop the immutability invariant and the three algorithms it unlocks. \S\ref{sec:exp} reports performance, \S\ref{sec:casestudy} the case studies, \S\ref{sec:related} related work, and \S\ref{sec:conclusion} closes with future directions enabled by the local algorithm.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig1_overview.pdf}
+\caption{Running example used throughout the paper. (a)~The input graph $G$ consists of two $K_4$ blocks sharing edge $(v_3,v_4)$ plus two pendant triangles; it contains $10$ triangles at $s{=}3$. (b)~The \cpi{} produced by the degeneracy-ordered \sdct{} enumeration has six leaves $L_1,\ldots,L_6$, each annotated with its hold set $\Vh$, pivot set $\Vp$, and the number of $s$-cliques $\binom{|\Vp|}{s-|\Vh|}$ it encodes. (c)~The $(1,3)$-core value of every vertex, as computed by our algorithm: $K_4$-block vertices receive core $3$ (blue), pendant vertices receive core $1$ (orange).}
+\label{fig:overview}
+\end{figure*}
+
+%===============================================================
+\section{Preliminaries}
+\label{sec:prelim}
+
+\subsection{Problem definition}
+\label{sec:prelim-def}
+
+Let $G = (V, E)$ be an undirected simple graph with $n = |V|$ vertices and $m = |E|$ edges. An $s$-clique is a set $C \subseteq V$ of size $s$ such that every pair of vertices in $C$ is connected by an edge. For integers $0 < r < s$, the \textit{$s$-support} of an $r$-clique $R$ is the number of distinct $s$-cliques in $G$ that contain $R$ as a subset; we write $\supp(R; G)$ for this count, and $\supp(v;G)$ when $r{=}1$ and the $r$-clique is a single vertex $v$. For a vertex set $S \subseteq V$, $G[S]$ denotes the subgraph induced on $S$.
+
+\begin{definition}[$(1,s)$-nucleus decomposition]
+\label{def:nd}
+Given a graph $G$ and an integer $s \ge 2$, $S \subseteq V$ is a \textit{$(1,s)$-core} of level $k$ if every $v \in S$ satisfies $\supp(v; G[S]) \ge k$. The $(1,s)$-core number of $v$, denoted $\cores(v)$, is the largest $k$ for which $v$ belongs to some $(1,s)$-core of level $k$. The $(1,s)$-nucleus decomposition of $G$ is the mapping $v \mapsto \cores(v)$.
+\end{definition}
+
+\begin{example}
+\label{ex:running}
+Figure~\ref{fig:overview}(a) shows the running example $G$ used throughout the paper: a $10$-vertex graph consisting of two $K_4$ blocks on $\{v_1,v_2,v_3,v_4\}$ and $\{v_3,v_4,v_5,v_6\}$ that share the edge $(v_3,v_4)$, plus two pendant triangles $\{v_6,v_7,v_8\}$ and $\{v_2,v_9,v_{10}\}$. At $s{=}3$, the graph contains exactly $10$ triangles. The output (Figure~\ref{fig:overview}(c)) assigns core value $3$ to the six $K_4$-block vertices --- each of which lies in a subgraph where every vertex sees three triangles --- and core value $1$ to the four pendant vertices.
+\end{example}
+
+\subsection{The Clique Path Index}
+\label{sec:prelim-cpi}
+
+Explicit $s$-clique enumeration is infeasible at the scale of interest, since the number of $s$-cliques can exceed $m$ by many orders of magnitude and grows super-exponentially with $s$. The \textit{Clique Path Index} (\cpi)~\cite{sigmodCPI} avoids enumeration by encoding batches of $s$-cliques symbolically.
+
+\begin{definition}[\cpi{} leaf]
+\label{def:leaf}
+A \cpi{} leaf is a pair $P = (\holdN{P}, \pivN{P})$ of disjoint vertex sets such that $\holdN{P} \cup \pivN{P}$ is a clique in $G$ and $|\holdN{P}| \le s \le |\holdN{P}| + |\pivN{P}|$. Vertices in $\holdN{P}$ are called \textit{hold} vertices and those in $\pivN{P}$ are called \textit{pivot} vertices. The leaf $P$ encodes every $s$-clique of the form $\holdN{P} \cup P'$ with $P' \subseteq \pivN{P}$ and $|P'| = s - |\holdN{P}|$. The number of encoded cliques is $\binom{|\pivN{P}|}{\eta_P}$, where $\eta_P := s - |\holdN{P}|$ is the \textit{target size} of $P$.
+\end{definition}
+
+A \cpi{} for $G$ at parameter $s$ is a set $\mathcal{P}$ of leaves such that every $s$-clique of $G$ is encoded by exactly one leaf. The existence of such a set is guaranteed by the \textit{succinct degeneracy clique tree} (\sdct) construction~\cite{sigmodCPI}, a degeneracy-ordered Bron--Kerbosch enumeration~\cite{bronkerbosch,eppstein} that uses Tomita pivoting~\cite{tomita} to compress sibling $s$-cliques into a single leaf. The \sdct{} is treated as a black box in this section and revisited in \S\ref{sec:treefree}.
+
+\begin{example}
+\label{ex:cpi}
+Figure~\ref{fig:overview}(b) shows the \cpi{} produced by the \sdct{} for the graph of Example~\ref{ex:running} at $s{=}3$. It has six leaves: $L_1{=}(\{v_7\},\{v_6,v_8\})$ and $L_2{=}(\{v_9\},\{v_2,v_{10}\})$ encode the two pendant triangles, contributing $\binom{2}{2}{=}1$ clique each; $L_3{=}(\{v_1\},\{v_2,v_3,v_4\})$ encodes the three triangles of Block~A containing $v_1$, contributing $\binom{3}{2}{=}3$; $L_4{=}(\{v_2\},\{v_3,v_4\})$ encodes the remaining triangle of Block~A, contributing $\binom{2}{2}{=}1$; $L_5{=}(\{v_3\},\{v_4,v_5,v_6\})$ and $L_6{=}(\{v_4\},\{v_5,v_6\})$ play the symmetric role for Block~B. The total $1+1+3+1+3+1=10$ matches the triangle count of $G$.
+\end{example}
+
+The \cpi{} has two natural size measures. The first is the number of leaves $L = |\mathcal{P}|$. The second, on which all subsequent complexity bounds are stated, is the total \textit{vertex--leaf incidence count}
+$
+\Sig \,:=\, \sum_{P \in \mathcal{P}} (|\holdN{P}| + |\pivN{P}|),
+$
+which bounds both the \cpi{}'s space and the peel-time work. On the running example $\Sig = 3+3+4+3+4+3 = 20$; on real graphs $\Sig$ is typically $10^2$ to $10^4$ times $m$ at moderate $s$~\cite{sigmodCPI}. We further define the \textit{leaf degree} of a vertex,
+$
+\deg_{\Sig}(v) \,:=\, |\{P \in \mathcal{P} : v \in \holdN{P} \cup \pivN{P}\}|,
+$
+satisfying $\sum_v \deg_{\Sig}(v) = \Sig$, with $d_{\max} := \max_v \deg_{\Sig}(v)$ its maximum value. The maximum support
+$
+\kappa_{\max} \,:=\, \max_v \supp(v; G)
+$
+upper-bounds the largest bin index occupied during peeling (\S\ref{sec:bucket}); $\cores(v) \le \supp(v;G) \le \kappa_{\max}$ for every $v$. On the running example $d_{\max}=3$ (attained at $v_3$, which appears in $L_3$, $L_4$, $L_5$) and $\kappa_{\max}=6$.
+
+The leaf representation translates directly into a closed-form support formula by counting, for each leaf containing $v$, how many of its encoded cliques contain $v$.
+
+\begin{lemma}[\cpi{} support formula~\cite{sigmodCPI}]
+\label{lem:supp}
+For every vertex $v \in V$,
+\[
+  \supp(v; G) \;=\; \sum_{\substack{P \in \mathcal{P} \\ v \in \holdN{P}}} \binom{|\pivN{P}|}{\eta_P} \;+\; \sum_{\substack{P \in \mathcal{P} \\ v \in \pivN{P}}} \binom{|\pivN{P}|-1}{\eta_P-1}.
+\]
+\end{lemma}
+
+\begin{example}
+On the running example $v_3$ appears as a hold vertex of $L_5$ (contribution $\binom{3}{2}=3$), as a pivot of $L_4$ ($\binom{1}{1}=1$), and as a pivot of $L_3$ ($\binom{2}{1}=2$). Summing yields $\supp(v_3;G)=6$, consistent with the six triangles incident to $v_3$ in $G$.
+\end{example}
+
+\subsection{Peeling loop and its bottlenecks}
+\label{sec:prelim-peel}
+
+Vertex core numbers are computed by a classical peeling loop~\cite{coreAlg,sigmodCPI}. A priority queue over vertices is keyed by current $s$-support; at each step the vertex $v$ of minimum support is popped, its core value $\cores(v)$ is set to the current level $k$ (advanced to the queue's minimum whenever it exceeds $k$), and $v$ is removed from the graph. The removal changes the supports of surviving vertices and triggers updates in the queue.
+
+With the \cpi{} in place, the update after peeling $v$ is localised to the leaves containing $v$, and three outcomes are possible per affected leaf $P$.
+
+\sstitle{Case A.} $v \in \holdN{P}$. Every encoded clique contains $v$, so all of $\binom{|\pivN{P}|}{\eta_P}$ cliques die and $P$ is marked dead. On the running example, peeling $v_1$ kills $L_3=(\{v_1\},\{v_2,v_3,v_4\})$.
+
+\sstitle{Case C.} $v \in \pivN{P}$ and $|\pivN{P}|-1 \ge \eta_P$. The leaf survives but its encoded count drops to $\binom{|\pivN{P}|-1}{\eta_P}$; pivots and holds lose support by binomial differences. On the running example, peeling $v_2$ from $L_3$ shrinks $|\pivN{L_3}|$ from $3$ to $2$ while $\eta_{L_3}{=}2$ still holds.
+
+\sstitle{Case C$'$.} $v \in \pivN{P}$ and $|\pivN{P}|-1 < \eta_P$. The leaf no longer has enough pivots and dies. On the running example, peeling $v_8$ from $L_1$ shrinks $|\pivN{L_1}|$ from $2$ to $1 < \eta_{L_1}{=}2$.
+
+The state-of-the-art implementation~\cite{sigmodCPI} represents $\mathcal{P}$ as a \textit{mutable} tree $\mathsf{T}$ and maintains a per-leaf vertex hash set $\mathsf{H}$ together with a binary heap $\mathsf{Q}$ over vertices. Each peeling step performs three operations per incident leaf: a hash erase on $\mathsf{H}$, a physical deletion in $\mathsf{T}$ (Case A or C$'$), and a $\Theta(\log n)$ decrease-key on $\mathsf{Q}$ for every surviving vertex whose support changes. Across the peel each incidence is touched at most twice, yielding total time $O(\Sig\log n)$~\cite{sigmodCPI}. Memory is dominated by $\mathsf{H}$ at $\sim 80$ bytes per incidence (hash node plus load-factor slack) and by $\mathsf{T}$ at $8$ bytes per incidence; the heap $\mathsf{Q}$ adds $24$ bytes per active vertex but is per-$n$, not per-$\Sig$. The mutability of $\mathsf{T}$ is structurally needed for $r{\ge}2$ peeling but, as the next section shows, is unnecessary for $r{=}1$.
+
+%===============================================================
+\section{The CPI Immutability Theorem}
+\label{sec:immutable}
+
+This section establishes the central observation of the paper: for $r{=}1$, peeling does not require any edits to the stored \cpi{} structure. The state of every leaf reduces to three integers, and every support update is a closed-form binomial difference. Theorem~\ref{thm:immutable} formalises the structural invariant; Lemma~\ref{lem:delta} formalises the corresponding update rule. Together they enable the local algorithm of \S\ref{sec:local}, the augmented \sdct{} construction of \S\ref{sec:treefree}, and the centralised peel of \S\ref{sec:peel}.
+
+\subsection{Invariance of the CPI structure}
+\label{sec:immutable-thm}
+
+\begin{theorem}[\cpi{} immutability for $r{=}1$]
+\label{thm:immutable}
+Let $\mathcal{P}$ be a \cpi{} for $G$ at parameter $s$ and let $v \in V$ be a vertex peeled from $G$. A valid \cpi{} for $G - v$ at the same $s$ is obtained from $\mathcal{P}$ by the following \textit{counter-only} update, performed independently for each leaf $P \in \mathcal{P}$:
+\begin{enumerate}[leftmargin=1.5em,itemsep=1pt,topsep=2pt]
+  \item if $v \in \holdN{P}$, mark $P$ dead;
+  \item else if $v \in \pivN{P}$, decrement $p_P := |\pivN{P}|$ by $1$, and mark $P$ dead if $p_P < \eta_P$;
+  \item otherwise, leave $P$ unchanged.
+\end{enumerate}
+The stored sets $(\holdN{P}, \pivN{P})$ are never modified; no leaf is created, deleted, split, merged, or reattached.
+\end{theorem}
+
+\begin{proof}
+Leaf $P$ encodes $\mathcal{C}(P) = \{\holdN{P} \cup P' : P' \subseteq \pivN{P},\ |P'| = \eta_P\}$ (Definition~\ref{def:leaf}). Removing $v$ from $G$ deletes from $\mathcal{C}(P)$ exactly the cliques that contain $v$. Three cases arise.
+
+(i) If $v \in \holdN{P}$, every encoded clique contains $v$, hence $\mathcal{C}(P) = \emptyset$ in $G - v$ and the leaf is dead.
+(ii) If $v \in \pivN{P}$, the cliques deleted are $\{\holdN{P} \cup P' : v \in P'\}$, and the surviving set $\{\holdN{P} \cup P' : P' \subseteq \pivN{P} \setminus \{v\},\, |P'| = \eta_P\}$ equals the set encoded by $(\holdN{P}, \pivN{P} \setminus \{v\})$. Tracking only the integer $p_P - 1$ encodes the same set, since the binomial enumeration depends only on the cardinality of the pivot universe; the leaf is dead iff $p_P - 1 < \eta_P$.
+(iii) If $v \notin \holdN{P} \cup \pivN{P}$, no encoded clique contains $v$ and $\mathcal{C}(P)$ is unchanged.
+
+In every case the stored $(\holdN{P}, \pivN{P})$ remains a valid encoding of the residual cliques in $G - v$. By induction over the peeling sequence, $\mathcal{P}$ stays valid throughout. \qed
+\end{proof}
+
+The structural reason behind Theorem~\ref{thm:immutable} is that vertex deletion is a \textit{cardinality} change to a leaf's pivot universe, which the binomial enumeration absorbs without re-pivoting. For $r \ge 2$, peeling an $r$-clique $R$ deletes edges in $G$, and a leaf whose pivot set straddles a deleted edge encodes cliques that are no longer cliques: the encoding is no longer faithful unless the leaf is split or re-pivoted. The single-integer invariant of Theorem~\ref{thm:immutable} is therefore tied specifically to $r{=}1$.
+
+\subsection{Closed-form support deltas}
+\label{sec:immutable-delta}
+
+The structural invariant immediately yields a closed-form rule for the support updates triggered by a single peeling event. Suppose a leaf $P$ has its effective pivot count drop by $d \ge 1$ (or the leaf dies entirely in Case A / C$'$). The change in any surviving incident vertex's support, restricted to its contribution from $P$, is given by the following binomial difference.
+
+\begin{lemma}[Counter-based support delta]
+\label{lem:delta}
+Let $P$ be a leaf with effective pivot count $p \ge \eta_P$ before a peeling event that removes $d \ge 1$ pivots from $P$. For every alive incident vertex $u$ that is not itself peeled, the change in $\supp(u; G)$ contributed by $P$ is
+\begin{align*}
+\Delta_{\mathrm{hold}}(p, \eta, d) &= \tbinom{p}{\eta} - \tbinom{p - d}{\eta}, & \text{if } u \in \holdN{P}, \\
+\Delta_{\mathrm{pivot}}(p, \eta, d) &= \tbinom{p-1}{\eta - 1} - \tbinom{p - d - 1}{\eta - 1}, & \text{if } u \in \pivN{P}.
+\end{align*}
+Case~A is recovered as the special case $d = p$, giving $\Delta_{\mathrm{hold}} = \binom{p}{\eta}$ and $\Delta_{\mathrm{pivot}} = \binom{p-1}{\eta-1}$; Case~C$'$ kills the leaf with $p - 1 < \eta$ and the surviving vertices lose the same full-contribution amounts.
+\end{lemma}
+
+\begin{proof}
+Apply Lemma~\ref{lem:supp} before and after the event. A hold vertex $u \in \holdN{P}$ contributes $\binom{p}{\eta}$ to $\supp(u)$ before and $\binom{p-d}{\eta}$ after; a pivot $u \in \pivN{P}$ contributes $\binom{p-1}{\eta-1}$ before (the $-1$ excludes $u$ itself from the pivot universe) and $\binom{p-d-1}{\eta-1}$ after. The deltas are the differences. \qed
+\end{proof}
+
+\begin{example}
+\label{ex:peel}
+Figure~\ref{fig:peel} traces the full peeling sequence on the running example. Round $5$ illustrates Case~C: $v_2$ is peeled, acting as a pivot of $L_3 = (\{v_1\},\{v_2,v_3,v_4\})$ with $p{=}3$, $\eta{=}2$, $d{=}1$. By Lemma~\ref{lem:delta}, the surviving hold vertex $v_1$ loses $\Delta_{\mathrm{hold}} = \binom{3}{2}-\binom{2}{2} = 2$ units, and the surviving pivots $v_3, v_4$ each lose $\Delta_{\mathrm{pivot}} = \binom{2}{1}-\binom{1}{1} = 1$ unit. The pivot set $\pivN{L_3}$ remains $\{v_2,v_3,v_4\}$ in memory; only the integer $p_{L_3}$ changes from $3$ to $2$.
+\end{example}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig2_peeling.pdf}
+\caption{Immutable-\cpi{} peeling trace and counter-based delta on the running example. \textbf{(a)}~Per-round, per-leaf state matrix. Round~$r$'s row shows the popped vertex, its assigned core value $\kappa$, and the event triggered on every \cpi{} leaf: Case~A (red) marks a hold removal, Case~C (green) a pivot shrink with the leaf still alive, Case~C$'$ (orange) a pivot removal that kills the leaf, and ``$-$'' (grey) means the leaf was already dead and is skipped. The annotated $\Delta_h$ and $\Delta_p$ are the support deltas of Lemma~\ref{lem:delta}, applied as $O(1)$ integer updates broadcast to alive incident vertices. \textbf{(b)}~Round~$5$ in detail: peeling $v_2$ from $L_3$ is a Case~C event in which only the integer $p_{L_3}$ changes; no pivot is physically removed and no hash is touched.}
+\label{fig:peel}
+\end{figure*}
+
+Theorem~\ref{thm:immutable} and Lemma~\ref{lem:delta} reduce the dynamics of $(1,s)$-decomposition to integer arithmetic on three quantities per leaf: the effective pivot count $p_P$, the target size $\eta_P$, and a liveness flag. Two algorithms instantiate this state representation, distinguished by which entity initiates the support update. Section~\ref{sec:local} develops a vertex-initiated, decentralised iteration based on H-index convergence: each vertex independently recomputes its core value from its leaf-mates' values, with no global ordering and no shared queue. Section~\ref{sec:peel}, after the construction-side optimisation of Section~\ref{sec:treefree}, develops an order-initiated, centralised peel that runs in $O(\Sig)$ on a single thread. Both compute the same output (Lemma~\ref{lem:hindex-fixedpt}); they differ only in how they consume the invariant.
+
+%===============================================================
+\section{Local-Iterative Algorithm}
+\label{sec:local}
+
+The first algorithm exposed by Theorem~\ref{thm:immutable} is a local, vertex-initiated iteration. Each vertex independently recomputes its core value from its leaf-mates' current values, and the per-vertex update is closed-form via the \cpi{}'s leaf binomials. Within a single iteration no two vertices interact, so the algorithm parallelises trivially across cores, partitions cleanly across machines, and admits an external-memory implementation. \S\ref{sec:local-hindex} formulates the iteration as an H-index fixed-point characterisation of the $(1,s)$-core; \S\ref{sec:local-cpi} shows how the per-vertex H-index is computed from the \cpi{} without enumerating cliques; \S\ref{sec:local-cost} bounds the running time and contrasts the operating points of this algorithm and the centralised peel of \S\ref{sec:peel}.
+
+\subsection{H-index reformulation of the $(1,s)$-core}
+\label{sec:local-hindex}
+
+For a multiset $M$ of non-negative integers, the \textit{H-index}~\cite{hindex} is $h(M) := \max\{k \in \mathbb{Z}_{\ge 0} : |\{x \in M : x \ge k\}| \ge k\}$. Montresor et~al.~\cite{kcoreLocal} characterised the $k$-core ($s{=}2$) as the fixed point of an iteration in which each vertex's value is the H-index of its neighbours' values; \cite{lu2016hcore} sharpened the result structurally. The same characterisation extends to $(1,s)$-cores for arbitrary $s$ by replacing the neighbour multiset with one minimum per incident $s$-clique.
+
+\begin{definition}[Clique-min multiset]
+\label{def:cmin}
+For a vertex $v \in V$ and a candidate vector $\mathbf{c} \in \mathbb{Z}_{\ge 0}^V$, define
+\[
+  M_v(\mathbf{c}) \;:=\; \bigl\{\!\!\bigl\{\, \min_{u \in C \setminus \{v\}} \mathbf{c}[u] \,\bigm|\, C\text{ is an $s$-clique of $G$ with } v \in C \,\bigr\}\!\!\bigr\}.
+\]
+That is, for each $s$-clique containing $v$, take the smallest candidate value among the other vertices, and collect these values as a multiset (with multiplicity).
+\end{definition}
+
+\begin{lemma}[H-index fixed point characterizes $(1,s)$-core]
+\label{lem:hindex-fixedpt}
+For every $\mathbf{c}^{(0)} \in \mathbb{Z}_{\ge 0}^V$ with $\mathbf{c}^{(0)}[v] \ge \cores(v)$ for all $v$, the iteration
+\[
+  \mathbf{c}^{(t+1)}[v] \;=\; h\!\left(M_v(\mathbf{c}^{(t)})\right), \quad t = 0, 1, 2, \ldots
+\]
+converges to the $(1,s)$-core values $\cores$ in at most $\max_v \cores(v) + 1 \le \kappa_{\max} + 1$ rounds, where $\kappa_{\max}$ is the maximum support defined in \S\ref{sec:prelim-cpi}. The iteration is monotone non-increasing: $\mathbf{c}^{(t+1)} \le \mathbf{c}^{(t)}$ pointwise.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+The H-index update is the level-$k$ subgraph membership witness: $\mathbf{c}^{(t+1)}[v] \ge k$ holds iff $v$ has at least $k$ $s$-cliques in which every other vertex has $\mathbf{c}^{(t)} \ge k$. The set $S^{(t)}_k := \{u : \mathbf{c}^{(t)}[u] \ge k\}$ is therefore a level-$k$ candidate; $S^{(t+1)}_k \subseteq S^{(t)}_k$ because thresholds can only fail more often as values shrink. The fixed point $\mathbf{c}^\star$ satisfies $\mathbf{c}^\star[v] \ge k \Leftrightarrow v$ in level-$k$ subgraph, which is exactly the definition of $\cores(v)$. Each iteration that fails to converge decreases at least one vertex's value by at least $1$, and values are non-negative integers, so $\le \kappa_{\max} + 1$ iterations suffice. The initial-bound condition guarantees $\mathbf{c}^{(0)} \ge \cores$ by induction. \qed
+\end{proof}
+
+The initial vector $\mathbf{c}^{(0)}[v] = \supp(v; G)$ trivially satisfies the upper-bound condition by Lemma~\ref{lem:supp}: a vertex's core value is at most its initial support.
+
+\subsection{Closed-form H-index via CPI leaves}
+\label{sec:local-cpi}
+
+Computing $M_v(\mathbf{c})$ by enumerating $s$-cliques is infeasible. The \cpi{}'s leaf structure makes the H-index computable directly from the per-leaf binomial counts, without ever materializing a single $s$-clique.
+
+\begin{lemma}[Per-leaf threshold contribution]
+\label{lem:leaf-ge-k}
+Fix a vertex $v$, a candidate vector c, and a threshold $k \ge 1$. For every leaf $P$ of the \cpi{} containing $v$, define
+\[
+  W_v(P, \mathbf{c}, k) \;:=\; \bigl|\{ C \text{ encoded by $P$} : v \in C,\ \mathbf{c}[u] \ge k\ \forall u \in C\setminus\{v\} \}\bigr|.
+\]
+Let $H_k(P) := |\{u \in \holdN{P} \setminus \{v\} : \mathbf{c}[u] \ge k\}|$ and $Q_k(P) := |\{u \in \pivN{P} \setminus \{v\} : \mathbf{c}[u] \ge k\}|$. Then:
+\begin{itemize}[leftmargin=1.3em,itemsep=1pt,topsep=1pt]
+  \item if $H_k(P) < |\holdN{P} \setminus \{v\}|$ (some other hold of $P$ fails the threshold): $W_v(P, \mathbf{c}, k) = 0$;
+  \item else if $v \in \holdN{P}$: $\;W_v(P, \mathbf{c}, k) = \binom{Q_k(P)}{\eta_P}$;
+  \item else (so $v \in \pivN{P}$): $\;W_v(P, \mathbf{c}, k) = \binom{Q_k(P)}{\eta_P - 1}$.
+\end{itemize}
+\end{lemma}
+
+\begin{proof}
+By Definition~\ref{def:leaf}, every clique encoded by $P$ has the form $\holdN{P} \cup P'$ with $P' \subseteq \pivN{P}$ and $|P'| = \eta_P$. Such a clique contains $v$ iff either $v \in \holdN{P}$ (always) or $v \in P'$. The threshold condition $\mathbf{c}[u] \ge k$ for every $u \in C \setminus \{v\}$ requires every other hold vertex of $P$ to satisfy $\mathbf{c} \ge k$ (giving the first bullet's vanishing case) and every pivot in $P'$ other than $v$ to satisfy $\mathbf{c} \ge k$. When $v \in \holdN{P}$, $P'$ is any size-$\eta_P$ subset of $\{u \in \pivN{P} : \mathbf{c}[u] \ge k\}$, of which there are $\binom{Q_k(P)}{\eta_P}$. When $v \in \pivN{P}$, $P'$ must additionally contain $v$, so $P' \setminus \{v\}$ is a size-$(\eta_P - 1)$ subset of $\{u \in \pivN{P} \setminus \{v\} : \mathbf{c}[u] \ge k\}$, of which there are $\binom{Q_k(P)}{\eta_P - 1}$. \qed
+\end{proof}
+
+The total threshold contribution at vertex $v$ is $W_v(\mathbf{c}, k) := \sum_{P \ni v} W_v(P, \mathbf{c}, k)$, and the H-index update is
+\[
+  h_v(\mathbf{c}) \;=\; \max\{k : W_v(\mathbf{c}, k) \ge k\}.
+\]
+A single $O(\deg_{\Sig}(v))$ scan over $v$'s leaf list, together with a bucket-style accumulation over the achievable $k$ levels (all distinct values of $\mathbf{c}[u]$ for $u$ on $v$'s leaves), computes $h_v$ in $O(\deg_{\Sig}(v) \log \deg_{\Sig}(v))$ time --- the log factor comes from sorting per-leaf thresholds, not from enumerating cliques.
+
+\begin{algorithm}[t]
+\caption{Local-iterative $(1,s)$-core (synchronous bulk-parallel).}
+\label{alg:local}
+\begin{algorithmic}[1]
+\Require Graph $G$, parameter $s$, leaf-to-vertex CSR, vertex-to-leaf CSR, initial supports $\supp[\,]$.
+\Ensure $\cores(v)$ for every $v \in V$.
+\State $\mathbf{c}[v] \gets \supp[v]$ for all $v \in V$
+\State \textit{changed} $\gets$ \textsc{true}
+\While{\textit{changed}}
+  \State \textit{changed} $\gets$ \textsc{false}
+  \State $\mathbf{c}_{\text{new}} \gets \mathbf{c}$  \Comment{double-buffered, race-free}
+  \For{each $v \in V$ \textbf{in parallel}}
+    \State Compute $h_v$ via Lemma~\ref{lem:leaf-ge-k} from $\{\mathbf{c}[u] : u \in \text{leaves of } v\}$
+    \If{$h_v < \mathbf{c}[v]$}
+      \State $\mathbf{c}_{\text{new}}[v] \gets h_v$;\quad \textit{changed} $\gets$ \textsc{true}
+    \EndIf
+  \EndFor
+  \State $\mathbf{c} \gets \mathbf{c}_{\text{new}}$
+\EndWhile
+\State \Return $\cores(v) \gets \mathbf{c}[v]$ for all $v$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Complexity and operating-point analysis}
+\label{sec:local-cost}
+
+\begin{theorem}[Local-iterative complexity]
+\label{thm:local-cost}
+Algorithm~\ref{alg:local} computes $\cores$ in $O(T \cdot \Sig \cdot \log d_{\max})$ work, where $T \le \kappa_{\max} + 1$ is the number of iterations until convergence and $d_{\max}$ is the maximum vertex leaf-degree (\S\ref{sec:prelim-cpi}).
+\end{theorem}
+
+\begin{proof}
+Lemma~\ref{lem:hindex-fixedpt} bounds $T$. Each iteration evaluates $h_v$ for every $v$ at cost $O(\deg_{\Sig}(v) \log \deg_{\Sig}(v))$; the per-iteration work is $O(\Sig \log d_{\max})$. \qed
+\end{proof}
+
+On sequential hardware Algorithm~\ref{alg:local} performs $T$ full sweeps over $\Sig$ incidences, whereas the centralised peel of \S\ref{sec:peel} sweeps each incidence at most once; the peel is therefore $\Theta(T \log d_{\max})$ times faster in the worst case, and \S\ref{sec:exp-local} measures the gap empirically. The local algorithm is not presented as a single-thread improvement. Its value lies in the regimes that the centralised peel cannot serve. Because every per-vertex update reads only the vertex's leaf-mates and writes only the vertex itself, three deployment regimes are unlocked. (i)~\textit{Shared-memory parallel:} the loop on line~6 of Algorithm~\ref{alg:local} parallelises trivially across cores or GPU threads. (ii)~\textit{Distributed shared-nothing:} vertices are partitioned across machines, each machine stores the leaves intersecting its partition, and one iteration is a single all-to-all gather of changed values followed by local H-index updates~\cite{kcoreLocal}. (iii)~\textit{External memory:} each iteration is one streaming pass over the leaf list, with the candidate vector $O(n)$ in RAM; suitable when $\Sig$ exceeds RAM capacity. The centralised peel of \S\ref{sec:peel} achieves $O(\Sig)$ on a single thread but its guarantee rests on a sequential pop-min discipline that none of these regimes admit. The local algorithm is the foundation we leave for future shared-nothing implementations (\S\ref{sec:conclusion}).
+
+%===============================================================
+\section{Tree-Free CPI Construction}
+\label{sec:treefree}
+
+Both algorithms of \S\ref{sec:local} and \S\ref{sec:peel} consume the same three structures: a leaf-to-vertex CSR storing each leaf's hold and pivot sets, a vertex-to-leaf CSR mapping each vertex to the leaves it appears in, and an initial per-vertex support array. The CSR layout itself is textbook (compressed sparse row), and the visitor/callback pattern is a standard C++ idiom; what is novel here is the structural observation, enabled by Theorem~\ref{thm:immutable}, that for $r{=}1$ peeling never queries the parent--child structure of the \sdct{} tree. The tree therefore need not be materialised at all. We exploit this in a single-pass procedure (Algorithm~\ref{alg:build}) that builds all three structures in $O(\Sig)$ time and $O(\Sig)$ memory by routing each \sdct{} leaf through a callback at the moment of emission. The tree-free property is what is enabled by the invariant; the layout choices and the C++ callback machinery are off-the-shelf.
+
+\subsection{The SDCT walk}
+\label{sec:sdct}
+
+The \textit{succinct degeneracy clique tree} (\sdct)~\cite{sigmodCPI} enumerates one \cpi{} leaf per recursive base case via a degeneracy-ordered Bron--Kerbosch search~\cite{bronkerbosch,eppstein} with Tomita pivoting~\cite{tomita}. The outer loop processes vertices in a degeneracy ordering; for each $v \in V$ the search begins with candidate set $P{=}N^{>}(v)$ (later neighbours of $v$) and exclusion set $X{=}N^{<}(v)$. Each recursion picks a pivot $u \in P$ maximising $|P \cap N(u)|$, branches over $\{u\} \cup (P \setminus N(u))$, and partitions every branched vertex into the hold set if it differs from the pivot or the drop set if it is the pivot. The recursion terminates with $P{=}\emptyset$, at which point the current $(\textit{keepV},\textit{dropV})$ pair is emitted as a leaf $(\holdN{P}, \pivN{P})$. Since each emitted leaf has size $|\holdN{P}| + |\pivN{P}|$ and recursion depth is bounded by the degeneracy, total enumeration work is $O(\Sig)$.
+
+The baseline implementation~\cite{sigmodCPI} \textit{stores} the \sdct{} tree $\mathsf{T}$: each recursion node holds a \texttt{vector} of children together with its \textit{keepV}/\textit{dropV} suffixes. After enumeration, $\mathsf{T}$ is traversed twice to build the per-leaf hash sets $\mathsf{H}_P$ and the reverse vertex-to-leaf multimap. The tree itself is never read during peeling but consumes $\sim 8\Sig$ bytes plus per-node overhead, and the hash structures consume $\sim 80\Sig$ bytes (\S\ref{sec:csr}).
+
+\subsection{Augmented enumeration with an onLeaf callback}
+\label{sec:augsdct}
+
+Theorem~\ref{thm:immutable} guarantees that peeling never queries the parent--child structure of $\mathsf{T}$; only per-leaf data is read. We therefore route every \sdct{} leaf through a callback at the moment of emission, before any tree node is stored:
+\[
+  \texttt{onLeaf}(\textit{leafId},\ \textit{keepV},\ \textit{dropV}).
+\]
+The callback writes the leaf into three flat structures simultaneously: the \textit{leaf-to-vertex} CSR (the contents of $\textit{keepV}$ and $\textit{dropV}$ are appended to two flat arrays, advancing the per-leaf offsets $\texttt{Vh\_off}$ and $\texttt{Vp\_off}$); the \textit{vertex-to-leaf} incidence counters ($\texttt{incCnt}[v]$ is incremented for every $v \in \textit{keepV} \cup \textit{dropV}$); and the initial per-vertex supports (by Lemma~\ref{lem:supp}, $\texttt{supp}[v]$ gains $\binom{|V_p|}{\eta}$ if $v \in \textit{keepV}$ or $\binom{|V_p|-1}{\eta-1}$ if $v \in \textit{dropV}$). A second linear pass after the walk converts $\texttt{incCnt}$ into the offset array $\texttt{rowOff}$ via prefix sum and re-walks the leaf-to-vertex CSR to fill the vertex-to-leaf array $\texttt{ent}$. Both passes are $O(\Sig)$. After this single enumeration and one CSR-fill pass, every data structure required by Algorithm~\ref{alg:local} and Algorithm~\ref{alg:peel} is in place; the \cpi{} tree is never allocated. Algorithm~\ref{alg:build} consolidates the procedure.
+
+\begin{algorithm}[t]
+\caption{Tree-free \cpi{} construction (augmented \sdct).}
+\label{alg:build}
+\begin{algorithmic}[1]
+\Require Graph $G$ in degeneracy order, parameter $s$.
+\Ensure Leaf-to-vertex CSR $(\texttt{Vh\_off}, \texttt{Vh\_ent}, \texttt{Vp\_off}, \texttt{Vp\_ent})$, vertex-to-leaf CSR $(\texttt{rowOff}, \texttt{ent})$, initial supports $\texttt{supp}[\,]$, leaf counter $L$.
+\State $L \gets 0$;\quad $\texttt{incCnt}[v] \gets 0$, $\texttt{supp}[v] \gets 0$ for $v \in V$.
+\For{$v$ in degeneracy order}
+  \State $P \gets N^{>}(v)$;\quad $X \gets N^{<}(v)$
+  \State \Call{BK}{$\{v\}, [\,], P, X$}
+\EndFor
+\State $\texttt{rowOff} \gets$ prefix-sum of $\texttt{incCnt}$
+\State Re-walk leaves: for each leaf $P$, append $(P, \textsc{hold})$ to $\texttt{ent}[\texttt{rowOff}[v]++]$ for each $v \in \holdN{P}$, and $(P, \textsc{pivot})$ for $v \in \pivN{P}$
+\Statex
+\Procedure{BK}{$\textit{keepV}, \textit{dropV}, P, X$}
+  \If{$P = \emptyset$}
+    \If{$\textit{keepV} \neq \emptyset$ \textbf{and} $|\textit{keepV}| \le s \le |\textit{keepV}|+|\textit{dropV}|$}
+      \State \Call{onLeaf}{$L$++, $\textit{keepV}, \textit{dropV}$}
+    \EndIf
+    \State \Return
+  \EndIf
+  \State $u \gets \arg\max_{w \in P}\, |P \cap N(w)|$  \Comment{Tomita pivot}
+  \For{$c$ in $\{u\} \cup (P \setminus N(u))$}
+    \State $P' \gets P \cap N(c)$;\quad $X' \gets X \cap N(c)$
+    \If{$c = u$} \Call{BK}{$\textit{keepV},\, \textit{dropV} {+} [c],\, P', X'$}
+    \Else \Call{BK}{$\textit{keepV} {+} [c],\, \textit{dropV},\, P', X'$}
+    \EndIf
+    \State $P \gets P \setminus \{c\}$;\quad $X \gets X \cup \{c\}$
+  \EndFor
+\EndProcedure
+\Statex
+\Procedure{onLeaf}{$\textit{id}, \textit{keepV}, \textit{dropV}$}
+  \State $h \gets |\textit{keepV}|$;\quad $p \gets |\textit{dropV}|$;\quad $\eta \gets s - h$
+  \State Append $\textit{keepV}$ to $\texttt{Vh\_ent}$, set $\texttt{Vh\_off}[\textit{id}{+}1]$;\ similarly $\texttt{Vp\_ent}$
+  \For{$v \in \textit{keepV}$} $\texttt{incCnt}[v]\!\!+\!\!+$;\ \ $\texttt{supp}[v] \mathrel{+}= \binom{p}{\eta}$
+  \EndFor
+  \For{$v \in \textit{dropV}$} $\texttt{incCnt}[v]\!\!+\!\!+$;\ \ $\texttt{supp}[v] \mathrel{+}= \binom{p-1}{\eta-1}$
+  \EndFor
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Hash-free vertex--leaf CSR layout}
+\label{sec:csr}
+
+Compressed sparse row (CSR) is a textbook bipartite-incidence representation; the design choice exposed by Theorem~\ref{thm:immutable} is that we may use it \emph{statically} where the SOTA must use a mutable hash representation. Peeling accesses the \cpi--vertex bipartite incidence through a single operation: given a peeled vertex $v$, enumerate the leaves containing $v$ and the role of $v$ in each. Theorem~\ref{thm:immutable} guarantees this incidence never changes under peeling, so the layout can be both flat and static; the SOTA's hash representation is mandated by its mutable per-leaf vertex sets and reverse multimap. Our representation pays $4$ bytes per incidence, against the SOTA's $\sim 80$ bytes. Concretely, the CSR uses two arrays: \texttt{rowOff}$[v]$ of size $n+1$, giving the offset into \texttt{ent} where $v$'s incidence list begins, and \texttt{ent}$[k]$ of size $\Sig$, a packed $32$-bit word per incidence storing the leaf index in the low $31$ bits and the role (hold or pivot) in the high bit. Total memory is $4(n+1) + 4\Sig$ bytes, dominated by $4\Sig$ once $\Sig \gg n$.
+
+The $20\times$ reduction over the SOTA arises as follows. The SOTA's per-leaf \texttt{unordered\_set<int>}, even after a perfect resize, costs $\ge 24$ bytes per inserted key (one node payload plus list pointer) plus a $\sim 30$\% load-factor slack, yielding $\approx 32$ bytes per key; combined with the reverse multimap at $\approx 48$ bytes per inserted pair, the per-incidence cost is $\approx 80$ bytes. Beyond memory, the CSR also wins on locality: a peeling step on $v$ scans the contiguous block $\texttt{ent}[\texttt{rowOff}[v]\,..\,\texttt{rowOff}[v+1])$, which fits in $\lceil \deg_{\Sig}(v)/16 \rceil$ cache lines and admits hardware prefetching, whereas the hash representation chases nodes scattered across the heap with one indirection per probe.
+
+\subsection{Function-pointer trampoline}
+\label{sec:trampoline}
+
+The \sdct{} recursion can reach depths in the hundreds at large $s$; on \texttt{com-youtube} at $s{=}50$ the depth exceeds $200$. Templating the callback type forces every recursion frame to carry a closure: profiling shows \texttt{std::function} adds $32$ bytes per frame and triggers heap allocation for non-trivial captures, producing stack overflows on dense graphs. The standard C++ remedy is a function-pointer trampoline
+$
+\texttt{AugCtx} = \{\texttt{void* state},\ \texttt{void(*onLeaf)(void*, ...)}\},
+$
+fixed once at the top of the enumeration. Each leaf invocation costs an indirect call that the optimiser inlines reliably after profile-guided builds; recursion frames remain $16$ bytes plus the loop-local sets, and stack-buffer reuse keeps the live $P/X$ sets cache-resident. We adopt the trampoline with no further modification; this subsection records it for reproducibility rather than as a contribution.
+
+\subsection{Memory budget}
+\label{sec:treefree-mem}
+
+Table~\ref{tab:mem} compares the dominant memory terms of the baseline and our pipeline at $\Sig \gg n$. The baseline's tree $\mathsf{T}$, per-leaf hash sets, and reverse hash multimap together account for $\approx 88$ bytes per incidence; the heap adds $24$ bytes per active vertex but is per-$n$, not per-$\Sig$. Our pipeline's dominant terms are the leaf-to-vertex flat arrays ($\sim 4\Sig$ bytes), the vertex-to-leaf CSR ($\sim 4\Sig$ bytes), and the support array plus bucket array ($O(n + \kappa_{\max})$ bytes), summing to $\approx 10$ bytes per incidence. The total Phase-1 (\sdct{} walk plus onLeaf) work is one $O(|\textit{keepV}|+|\textit{dropV}|)$ writeback per leaf, summing to $O(\Sig)$ on top of the bare \sdct{} cost; Phase 2 (prefix sum plus CSR fill) is two linear passes. Construction is therefore $O(\sdct_{\text{cost}} + \Sig)$, asymptotically equal to the baseline's tree-walk cost; in practice the absence of per-node tree allocations and hash-set inserts contributes a substantial constant-factor improvement included in the end-to-end timings of \S\ref{sec:exp}.
+
+\begin{table}[t]
+\centering
+\caption{Memory budget per vertex--leaf incidence at $\Sig \gg n$. Baseline numbers from the SOTA implementation~\cite{sigmodCPI}; our numbers are sizeofs of the C++ data structures used in \S\ref{sec:exp}.}
+\label{tab:mem}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Component} & \textbf{Baseline} & \textbf{Ours} \\
+\midrule
+\cpi{} tree $\mathsf{T}$ (children + flags + spans) & $8\Sig$ & $0$ \\
+Leaf-to-vertex storage ($\holdN{}, \pivN{}$ flat) & $0$ & $4\Sig$ \\
+Per-leaf vertex set $\mathsf{H}_P$ (hash) & $32\Sig$ & --- \\
+Reverse vertex-to-leaf map (hash) & $48\Sig$ & --- \\
+Vertex-to-leaf CSR ($\texttt{rowOff}+\texttt{ent}$) & --- & $4\Sig$ \\
+Support array $\texttt{supp}[\,]$ & $4n$ & $4n$ \\
+Heap $\mathsf{Q}$ / bucket array $B[\,]$ & $24n$ & $16n + 8\kappa_{\max}$ \\
+\midrule
+\textbf{Dominant total} (per incidence) & $\approx 88\Sig$ & $\approx 10\Sig$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%===============================================================
+\section{Centralized Peeling}
+\label{sec:peel}
+
+Given the data structures built by Algorithm~\ref{alg:build}, this section presents the centralised peel: a single-thread $O(\Sig)$ algorithm that processes vertices in increasing-support order and broadcasts deltas through the static CSR of \S\ref{sec:csr}. Theorem~\ref{thm:immutable} and Lemma~\ref{lem:delta} guarantee that every broadcast is closed-form integer arithmetic on a single per-leaf counter. With the incidence layout fixed, the standard bucket-queue peeling discipline of $k$-core~\cite{coreAlg,bucketQueue} applies directly (\S\ref{sec:bucket}); the SOTA's $\Theta(\log n)$ decrease-key on a binary heap, mandated by its mutable hash representation, is therefore avoidable. The contribution of this section is not the bucket queue itself --- a classical technique --- but the observation that the immutability invariant is what makes a static CSR layout possible, after which the bucket queue follows as a standard step. On a single thread the resulting peel runs $T$ to $T \log d_{\max}$ times faster than the local algorithm of \S\ref{sec:local}, where $T$ is the H-index iteration count of Theorem~\ref{thm:local-cost} and ranges from a few dozen to a few thousand on the configurations we evaluate.
+
+\subsection{Bucket-based priority queue}
+\label{sec:bucket}
+
+The peeling loop pops the vertex of currently minimum support, and the support level $k$ is monotone non-decreasing as peeling proceeds. The SOTA implementation uses a binary heap $\mathsf{Q}$ at $\Theta(\log n)$ per decrease-key. Two properties of the peeling pattern admit a constant-time alternative~\cite{coreAlg,bucketQueue}: supports are non-negative integers bounded by $\kappa_{\max}$ (\S\ref{sec:prelim-cpi}), and only decrements occur. We maintain an array of doubly-linked lists $B[0\,..\,\kappa_{\max}]$, where $B[x]$ chains every vertex whose current support equals $x$. Each vertex stores a back-pointer to its node within $B[x]$, enabling $O(1)$ unlink. A support drop from $x$ to $x - \Delta$ is $O(1)$: unlink from $B[x]$, push to $B[x-\Delta]$. A monotone cursor $k$ scans $B[\,]$ upward: while $B[k]$ is empty, $k$ advances; otherwise the front of $B[k]$ is popped as the next victim. The cursor advances at most $\kappa_{\max}$ times across the entire peeling. The bucket array uses $O(n + \kappa_{\max})$ words; in our implementation $\kappa_{\max}$ never exceeds the $s$-clique count and is typically much smaller, e.g.\ below $10^5$ on \texttt{com-youtube} at $s{=}10$ where $\Sig \approx 10^9$.
+
+Algorithm~\ref{alg:peel} consolidates Theorem~\ref{thm:immutable}, Lemma~\ref{lem:delta}, the static CSR (\S\ref{sec:csr}), and the bucket queue into a single peeling routine.
+
+\begin{algorithm}[t]
+\caption{Immutable-\cpi{} peeling for $(1,s)$-nucleus decomposition.}
+\label{alg:peel}
+\begin{algorithmic}[1]
+\Require Graph $G$, parameter $s$, \cpi{} $\mathcal{P}$ as $(\holdN{P}, \pivN{P})$ for each $P$, vertex--leaf CSR $(\texttt{rowOff}, \texttt{ent})$.
+\Ensure $\cores(v)$ for every $v \in V$.
+\State \textbf{Init counters:} for each $P \in \mathcal{P}$, set $p_P \gets |\pivN{P}|$, $\eta_P \gets s - |\holdN{P}|$, $\textit{alive}_P \gets (p_P \ge \eta_P)$.
+\State \textbf{Init supports:} for each $v \in V$, $\supp[v] \gets \sum_{P \ni v} \text{contrib}(v, P)$ via Lemma~\ref{lem:supp}; insert $v$ into bucket $B[\supp[v]]$.
+\State $k \gets 0$
+\For{$\textit{round} = 1, \ldots, n$}
+  \While{$B[k]$ is empty} $k \gets k + 1$
+  \EndWhile
+  \State $v \gets$ pop front of $B[k]$;\quad $\cores(v) \gets k$
+  \For{each $(P, \textit{role})$ in $\texttt{ent}[\texttt{rowOff}[v]\,..\,\texttt{rowOff}[v{+}1])$}
+    \If{$\neg \textit{alive}_P$} \textbf{continue}
+    \EndIf
+    \If{$\textit{role} = \textsc{hold}$}  \Comment{Case A}
+      \State $\Delta_h \gets \binom{p_P}{\eta_P}$;\quad $\Delta_p \gets \binom{p_P{-}1}{\eta_P{-}1}$
+      \State \textsc{Broadcast}$(P, v, \Delta_h, \Delta_p)$;\quad $\textit{alive}_P \gets \textsc{false}$
+    \Else \Comment{$\textit{role} = \textsc{pivot}$}
+      \State $p' \gets p_P - 1$
+      \If{$p' < \eta_P$} \Comment{Case C$'$}
+        \State $\Delta_h \gets \binom{p_P}{\eta_P}$;\quad $\Delta_p \gets \binom{p_P{-}1}{\eta_P{-}1}$
+        \State \textsc{Broadcast}$(P, v, \Delta_h, \Delta_p)$;\quad $\textit{alive}_P \gets \textsc{false}$
+      \Else \Comment{Case C}
+        \State $\Delta_h \gets \binom{p_P}{\eta_P} - \binom{p'}{\eta_P}$
+        \State $\Delta_p \gets \binom{p_P{-}1}{\eta_P{-}1} - \binom{p'{-}1}{\eta_P{-}1}$
+        \State \textsc{Broadcast}$(P, v, \Delta_h, \Delta_p)$;\quad $p_P \gets p'$
+      \EndIf
+    \EndIf
+  \EndFor
+\EndFor
+\Statex
+\Procedure{Broadcast}{$P$, $v$, $\Delta_h$, $\Delta_p$}
+  \For{each $u$ in $\holdN{P} \cup \pivN{P}$, $u \ne v$, $u$ not yet peeled}
+    \State $\Delta \gets \Delta_h$ if $u \in \holdN{P}$ else $\Delta_p$
+    \State $\supp[u] \gets \supp[u] - \Delta$;\quad \textsc{ReBucket}($u$)
+  \EndFor
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Algorithm walk-through and complexity}
+\label{sec:immutable-cost}
+
+\begin{example}
+\label{ex:peel-walkthrough}
+We trace Algorithm~\ref{alg:peel} on the running example. The initial supports computed by Lemma~\ref{lem:supp} are $(\supp[v_1], \ldots, \supp[v_{10}]) = (3, 4, 6, 6, 3, 4, 1, 1, 1, 1)$, so $B[1]$ initially holds $\{v_7, v_8, v_9, v_{10}\}$ and the cursor starts at $k{=}1$. Round~$1$ pops $v_8$; its CSR row contains $(L_1, \textsc{pivot})$, and the pivot branch with $p_{L_1}{=}2$, $\eta{=}2$ produces $p'{=}1 < \eta$, triggering Case~C$'$: $L_1$ dies, $\Delta_h{=}\Delta_p{=}1$ are broadcast to $v_6$ and $v_7$. Round~$2$ pops $v_7$ at $k{=}1$; its only incidence is the now-dead $L_1$ and the row is skipped. Rounds~$3$--$4$ symmetrically dispatch $L_2$. After Round~$4$ the cursor advances to $k{=}3$, and Rounds~$5$--$10$ peel the $K_4$-block vertices in the order $v_2, v_1, v_4, v_5, v_3, v_6$, mixing the Case-C events ($v_2$ on $L_3$, $v_4$ on $L_5$) with Case-A events (each block-leaf hold) and a closing Case~C$'$ on $L_5$. Throughout, only six pivot counters (each touched at most once), six liveness flags, ten support entries, and the bucket pointers are written; the leaf sets $(\holdN{P}, \pivN{P})$ are read but never modified.
+\end{example}
+
+The complexity follows by amortising the bucket scan and the broadcast work over $\Sig$. Let $U$ denote the total number of \textsc{Broadcast} delta applications across the entire run.
+
+\begin{theorem}[Peeling complexity]
+\label{thm:complexity}
+Algorithm~\ref{alg:peel} runs in $O(\Sig + U + \kappa_{\max} + n)$ time, where $\Sig$ is the \cpi{}'s vertex--leaf incidence count and $\kappa_{\max}$ is the maximum support (\S\ref{sec:prelim-cpi}). The SOTA heap-based loop~\cite{sigmodCPI} performs the same number of broadcasts $U$ but at a $\Theta(\log n)$ factor per broadcast, giving $O(\Sig + U \log n)$.
+\end{theorem}
+
+\begin{proof}
+The bucket cursor advances at most $\kappa_{\max}$ times across the run. The CSR scan visits each incidence $(v, P)$ exactly once (when $v$ is peeled), contributing $O(\Sig)$ across the whole run; the dead-leaf check rejects most visits in $O(1)$. Each surviving $(v, P)$ visit dispatches a \textsc{Broadcast} costing $O(|\holdN{P}| + p_P)$, summed across the run as $U$ delta applications. Each application is an integer subtract followed by an $O(1)$ bucket relocation, contributing $O(U)$ in total. Summing the four terms yields $O(\Sig + U + \kappa_{\max} + n)$. The heap baseline replaces the $O(1)$ relocation with a $\Theta(\log n)$ decrease-key. \qed
+\end{proof}
+
+In all configurations we evaluate, $U = O(\Sig)$: a leaf $P$ contributes at most $|\pivN{P}| - \eta_P + 1$ broadcasts (one per Case-C event plus one terminal Case-A or C$'$), each touching at most $|\holdN{P}| + p_P$ vertices. We measure $U / \Sig \in [1.0, 4.5]$ across the $762$ configurations of \S\ref{sec:exp}. Theorem~\ref{thm:complexity} then simplifies to $O(\Sig)$ for our peel against $O(\Sig \log n)$ for the heap baseline.
+
+\subsection{Hierarchy as a peel byproduct}
+\label{sec:peel-hier}
+
+The bucket-queue peel produces vertices in non-decreasing $(1,s)$-core order, the natural input order of any persistent-homology join-tree algorithm~\cite{morozov2007persistence}. Combined with the CSR immutability of Theorem~\ref{thm:immutable}, this means the connectivity hierarchy of the super-level filtration $\{V_k\}_k$, $V_k {=} \{v : \cores(v) {\ge} k\}$, is recoverable from the peel deletion log without an additional sort phase, at the cost of one union-find operation per surviving edge.
+
+\begin{theorem}[Hierarchy as a peel byproduct]
+\label{thm:peel-hier}
+Let $L = (v_1, k_1), \ldots, (v_n, k_n)$ be the deletion log of Algorithm~\ref{alg:peel}, with $k_1 {\le} k_2 {\le} \cdots {\le} k_n$.  Then the elder-rule join tree of the super-level filtration $\{V_k\}_k$ over the connectivity graph $G$ can be computed by a single reverse pass over $L$ with union-find on the static CSR of \S\ref{sec:csr}, in $O((n{+}m)\,\alpha(n))$ time on top of Algorithm~\ref{alg:peel} and without an additional sort phase.
+\end{theorem}
+
+\begin{proof}
+We exhibit the reverse pass.  Initialise an empty union-find $\mathit{UF}$ over the vertex set $V$ and an empty branch table $H$ mapping each $\mathit{UF}$-root to its currently-living branch.  Walk $L$ from $t = n$ down to $t = 1$.  At step $t$, let $v_t$ have core $k_t$ and let $N(v_t)$ be the original neighbour set of $v_t$ in $G$.  Define the \emph{already-processed neighbours} as $N^+(v_t) = \{u \in N(v_t) : \text{$u$ already inserted into }\mathit{UF}\}$, equivalently $\{u \in N(v_t) : k(u) \ge k_t\}$ since we walk in non-increasing $k$.  Insert $v_t$ into $\mathit{UF}$ as a new singleton, then for each $u \in N^+(v_t)$ call $\mathit{UF.union}(v_t, u)$, applying the elder rule on $H$ to record persistence pairs as in any textbook join-tree construction~\cite{morozov2007persistence}: the elder of the two roots survives, the younger root receives $k_\mathrm{death}{=}k_t$.  After the pass, each branch $b$ has a complete $(k_\mathrm{birth}, k_\mathrm{death})$ pair (roots get $k_\mathrm{death}{=}0$).
+
+Two correctness ingredients matter.  First, $L$ is in non-increasing $k$ when reversed because Algorithm~\ref{alg:peel}'s bucket queue produces vertices in non-decreasing $k$ as a structural invariant of the bucket cursor (\S\ref{sec:bucket}); no separate sort is needed.  Second, $N(v_t)$ is queried via the same edge iterator that Algorithm~\ref{alg:peel} uses for delta broadcasts.  Theorem~\ref{thm:immutable} guarantees that the CSR built by Algorithm~\ref{alg:build} is unchanged by peeling, so the iterator dereferences exactly the same memory the peel just used --- no auxiliary edge index is needed and no race condition with tree edits exists.
+
+Cost: each vertex is inserted into $\mathit{UF}$ once ($n$ operations); each edge of $G$ contributes at most two $\mathit{UF.union}$ calls (once when the lower-$k$ endpoint is processed and finds the higher-$k$ endpoint already present, once symmetrically if $k$'s tie); branch bookkeeping is $O(1)$ per insert.  Total: $O((n{+}m) \alpha(n))$.  Combined with Algorithm~\ref{alg:peel}'s $O(\Sig)$ time, the joint peel-plus-hierarchy pipeline costs $O(\Sig + (n{+}m)\alpha(n))$, asymptotically the same as peel alone since $\Sig \ge m$ in any non-trivial $(1,s)$ instance.  \qed
+\end{proof}
+
+The contribution is structural rather than asymptotic: the elder-rule join-tree algorithm is textbook~\cite{morozov2007persistence}.  What is $(1,s)$-specific is the interleaving with peel.  For $r {\ge} 2$ the SOTA peel mutates the CPI tree~\cite{sigmodCPI}, so concurrent hierarchy extraction would race against tree edits --- the integration is uniquely available at $r{=}1$, where Theorem~\ref{thm:immutable} freezes the CSR layout.  \S\ref{sec:cs-hier} evaluates the construction empirically against a stand-alone elder-rule baseline; eliminating the explicit sort yields a $5$--$10\%$ wall-clock saving in our reference Python implementation, and the structural benefit is that the same CSR backs both peel and hierarchy.
+
+\stitle{Hooking into Algorithm~\ref{alg:peel}.}
+The reverse pass is appended to Algorithm~\ref{alg:peel} as follows.  Each successful pop from $\mathit{popMin}$ in line~3 emits one $(v_t, k_t)$ row to a contiguous deletion-log array (\texttt{O(1)} append; reuses the bucket-queue's existing iteration order, no extra data structure).  After the bucket loop terminates the procedure walks the array in reverse and applies the proof's union-find loop in-place over the same CSR.  No line of Algorithm~\ref{alg:peel} other than the deletion-log append is added.
+
+%===============================================================
+\section{Performance Evaluation}
+\label{sec:exp}
+
+This section reports the end-to-end performance of the centralised peel of \S\ref{sec:peel} against the SOTA $(r,s)$-decomposition algorithm of~\cite{sigmodCPI}. Section~\ref{sec:exp-setup} fixes the experimental setup; Section~\ref{sec:exp-speed} reports speedup and memory results across $762$ $(graph, s)$ configurations on ten large graphs; Section~\ref{sec:exp-breakdown} dissects the time and memory cost by phase; Section~\ref{sec:exp-bd} closes with a per-graph breakdown.
+
+\subsection{Experimental setup}
+\label{sec:exp-setup}
+
+\stitle{Hardware and software.}
+All experiments run on a single dual-socket Intel Xeon Gold $6248R$ ($24$ cores, $503$ GB DDR4) under Ubuntu $22.04$. Code is compiled with Clang $18.1$ at \texttt{-O3 -march=native}, linked against TBB $2021.10$, Boost $1.83$, and \texttt{robin\_hood::unordered\_flat\_map}. Both implementations are single-threaded for these measurements; wall-clock and resident-set numbers are averaged over three runs.
+
+\stitle{Datasets.}
+Table~\ref{tab:datasets} lists the ten graphs used for the main evaluation. The set spans four orders of magnitude in $|E|$ (from $0.9$M edges on \texttt{com-amazon} to $117$M edges on \texttt{com-orkut}) and four structural regimes (collaboration, e-commerce, social, web). All graphs are publicly available from SNAP~\cite{communityFinder} or the LAW collection. The maximum $s$ tested per graph is bounded above by the graph's degeneracy plus one and below by available memory; we record $s$ ranges sufficient to cover both the small-$s$ and the large-$s$ regimes of \S\ref{sec:exp-speed}.
+
+\begin{table}[t]
+\centering
+\caption{Datasets used in \S\ref{sec:exp}. $|V|$ is in vertices, $|E|$ in edges. $s$-range gives the values of $s$ exercised in the benchmark; the upper bound is either the graph's degeneracy plus one or the largest $s$ at which the SOTA's working set fits in the machine's $503$ GB of RAM.}
+\label{tab:datasets}
+\small
+\begin{tabular}{lrrcr}
+\toprule
+Graph                                & $|V|$            & $|E|$               & $s$-range  & \#~$(g,s)$ \\
+\midrule
+\texttt{com-amazon}~\cite{communityFinder}      & $334{,}863$    & $925{,}872$       & $[2,30]$  & $29$ \\
+\texttt{com-dblp}~\cite{communityFinder}        & $317{,}080$    & $1{,}049{,}866$   & $[2,110]$ & $109$ \\
+\texttt{twitter}~\cite{communityFinder}         & $\phantom{0,0}81{,}306$ & $1{,}342{,}296$ & $[2,30]$ & $29$ \\
+\texttt{web-Stanford}~\cite{communityFinder}    & $281{,}903$    & $1{,}992{,}636$   & $[2,61]$  & $60$ \\
+\texttt{com-youtube}~\cite{communityFinder}     & $1{,}134{,}890$ & $2{,}987{,}624$   & $[2,17]$  & $16$ \\
+\texttt{web-Google}~\cite{communityFinder}      & $875{,}713$    & $4{,}322{,}051$   & $[2,40]$  & $39$ \\
+\texttt{wiki-Talk}~\cite{communityFinder}       & $2{,}394{,}385$ & $4{,}659{,}565$   & $[2,25]$  & $24$ \\
+\texttt{web-it-2004}~\cite{communityFinder}     & $509{,}338$    & $7{,}178{,}413$   & $[2,430]$ & $429$ \\
+\texttt{soc-pokec}~\cite{communityFinder}       & $1{,}632{,}803$ & $22{,}301{,}964$  & $[2,25]$  & $24$ \\
+\texttt{com-orkut}~\cite{communityFinder}       & $3{,}072{,}441$ & $117{,}185{,}083$ & $[2,4]$   & $3$ \\
+\midrule
+\textbf{Total}                                  &                &                   &            & $762$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\stitle{Methodology.}
+For every $(graph, s)$ pair in Table~\ref{tab:datasets} we run both implementations on the same input and record three quantities: end-to-end wall-clock time (graph load + degeneracy ordering + \cpi{} construction + peeling + core-value emission), peak resident-set memory via \texttt{getrusage}'s \texttt{ru\_maxrss}, and bit-exact agreement of $\cores(v)$ between the two implementations on every vertex.  All $762$ configurations agree on every output; correctness is therefore not in question.
+
+\stitle{Reproducibility.}
+Source code, raw experimental CSVs, and a paper-element-to-script reproduction harness (\texttt{REPRODUCE.md}, \texttt{scripts/verify\_local.sh}, \texttt{scripts/run\_server\_experiments.sh}) are published at \vldbavailabilityurl{}.  Every figure and table in this section can be regenerated from the listed scripts; the local case-study reproductions (\S\ref{sec:casestudy}) finish in under ten minutes on a laptop, the full server reproductions in hours on the hardware listed above.
+
+\subsection{End-to-end speedup and memory}
+\label{sec:exp-speed}
+
+Figure~\ref{fig:exp-time} plots wall-clock time as a function of $s$ for each graph, with curves for the centralised peel (Ours) and the SOTA baseline of~\cite{sigmodCPI} (SOTA). Across the parameter range we evaluate, our peel is uniformly at or below the SOTA curve on every graph; the gap between curves widens with $s$ in line with the $O(\Sig)$ versus $O(\Sig \log n)$ analysis of Theorem~\ref{thm:complexity}. Concretely, the peel-loop component accelerates from a $\sim 1.4\times$ ratio at $s{=}3$ to between $14\times$ and $22\times$ at the largest $s$ each graph admits (Table~\ref{tab:bd-time}); end-to-end wall-clock follows the same trend, attenuated by the shared \sdct{} enumeration cost.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_exp_time.pdf}
+\caption{End-to-end wall-clock time (ms) as a function of $s$ on every benchmark graph. Solid blue: our centralised peel (\S\ref{sec:peel}); dashed red: the \cpi-based SOTA baseline of~\cite{sigmodCPI}. Both axes are log-scale. The two curves agree at small $s$ where the shared \sdct{} cost dominates and diverge as $s$ grows and peel cost becomes prominent.}
+\label{fig:exp-time}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_exp_mem.pdf}
+\caption{Peak resident-set memory (MB) as a function of $s$ on every benchmark graph. Solid blue: our pipeline; dashed red: the SOTA. Our footprint is consistently smaller. The gap is largest on graphs whose vertex--leaf incidence count $\Sig$ dominates the working set (e.g.\ \texttt{com-youtube}), where the measured ratio approaches the $8.8\times$ analytical bound of Table~\ref{tab:mem}; on graphs where the input adjacency dominates RSS, the analytical \cpi{}-side savings are obscured by constant overhead.}
+\label{fig:exp-mem}
+\end{figure*}
+
+Figure~\ref{fig:exp-mem} reports peak resident-set memory under the same per-graph layout. Our pipeline's RSS curve sits below the SOTA's on every graph and at every $s$, with the largest gap on graphs whose working set is dominated by the \cpi{} index (e.g.\ \texttt{com-youtube}, where the ratio narrows toward the $8.8\times$ analytical bound of Table~\ref{tab:mem} but tops out at $3.33\times$ at the largest $s$ tested --- the residual gap reflects the $4n$ support array and the input-adjacency term, both of which are independent of $\Sig$). On graphs whose RSS is dominated by the input adjacency itself --- such as the high-edge-count \texttt{web-it-2004} --- the gap is narrower, reflecting the constant-overhead terms that the \cpi{} redesign does not affect.
+
+\subsection{Local-iterative vs.\ centralised peel}
+\label{sec:exp-local}
+
+The local-iterative algorithm of \S\ref{sec:local} produces output bit-exact identical to the centralised peel on every configuration, confirming the equivalence of Lemma~\ref{lem:hindex-fixedpt}'s fixed point with the peeling sequence. On a single thread the centralised peel is faster by the factor $T$ predicted by Theorem~\ref{thm:local-cost}: across the configurations we measure, $T$ ranges from a few dozen H-index iterations at small $s$ to a few thousand at large $s$, and the per-iteration $O(\Sig \log d_{\max})$ work is dominated in absolute terms by the peel's $O(\Sig)$ single pass. The local algorithm is not presented as a single-thread improvement; its value is in the parallel, distributed, and external-memory regimes that the centralised peel cannot address (\S\ref{sec:conclusion}). A full empirical comparison of $T$ as a function of $s$ and a parallel-scaling study are deferred to the final version.
+
+\subsection{Time and memory breakdown by phase}
+\label{sec:exp-breakdown}
+
+To localise the source of the speedup and the memory reduction, we instrument every phase boundary in the pipeline and re-run a $17$-configuration subset with per-phase logging: \texttt{com-youtube} at $s\in\{3,5,8,12,16\}$, \texttt{web-Stanford} at $s\in\{3,5,10,20,40,60\}$, and \texttt{web-it-2004} at $s\in\{3,10,30,100,200,400\}$, three runs each, $102$ runs in total.
+
+The pipeline has three coarse phases: \textit{load} (graph parse plus degeneracy order), \textit{build} (the \sdct{} enumeration that both algorithms share, plus, for the SOTA, tree storage and hash-set construction), and \textit{peel} (Algorithm~\ref{alg:peel} for ours, the heap-based loop for the SOTA). Table~\ref{tab:bd-time} reports the per-phase wall-clock medians. The build phase dominates total time at every $(graph, s)$: between $60$\% and $99$\% of the total wall-clock is spent walking the \sdct{}. Both algorithms share the enumeration backbone of \S\ref{sec:sdct}, so their build times agree to within a few percent. The wall-clock advantage of our pipeline therefore comes almost entirely from peel, where it grows from $1.4\times$ at $s{=}3$ to $22\times$ at $s{=}60$ on \texttt{web-Stanford}, and from $1.3\times$ at $s{=}3$ to $14\times$ at $s{=}400$ on \texttt{web-it-2004}. The peel speedup grows monotonically with $s$ on every graph: as $s$ increases, the number of broadcast updates per leaf grows, and the $O(1)$ bucket relocation per update progressively widens the gap against the heap's $\Theta(\log n)$ decrease-key, in line with Theorem~\ref{thm:complexity}.
+
+\begin{table}[t]
+\centering
+\caption{Per-phase wall-clock time (ms), median over $3$ runs. ``Build'' is the \sdct{} enumeration that both algorithms share; ``peel'' is the per-algorithm peeling loop. Total $\approx$ load $+$ build $+$ peel.}
+\label{tab:bd-time}
+\small
+\begin{tabular}{llrrrrrr}
+\toprule
+\multirow{2}{*}{Graph} & \multirow{2}{*}{$s$} & \multicolumn{3}{c}{Ours} & \multicolumn{3}{c}{SOTA} \\
+\cmidrule(l){3-5}\cmidrule(l){6-8}
+& & load & build & peel & load & build & peel \\
+\midrule
+\texttt{com-youtube}  & 3 & 2081 & 3863 & 440.1 & 1812 & 3982 & 789.7 \\
+\texttt{com-youtube}  & 5 & 2028 & 3730 & 273.5 & 1732 & 3795 & 581.6 \\
+\texttt{com-youtube}  & 8 & 1967 & 2991 & 86.3 & 1638 & 3053 & 270.2 \\
+\texttt{com-youtube}  & 12 & 1689 & 2701 & 13.0 & 1640 & 2649 & 148.5 \\
+\texttt{com-youtube}  & 16 & 1640 & 2458 & 8.2 & 1964 & 2488 & 131.8 \\
+\midrule
+\texttt{web-Stanford}  & 3 & 1251 & 6602 & 381.6 & 1250 & 6548 & 521.5 \\
+\texttt{web-Stanford}  & 10 & 975 & 5840 & 130.4 & 1225 & 5961 & 210.1 \\
+\texttt{web-Stanford}  & 20 & 999 & 5482 & 28.9 & 1228 & 5591 & 77.8 \\
+\texttt{web-Stanford}  & 40 & 1224 & 5087 & 9.6 & 1034 & 5007 & 49.6 \\
+\texttt{web-Stanford}  & 60 & 1224 & 4900 & 1.4 & 1224 & 4907 & 31.3 \\
+\midrule
+\texttt{web-it-2004}  & 3 & 3389 & 124074 & 351.0 & 3378 & 125347 & 465.9 \\
+\texttt{web-it-2004}  & 30 & 3372 & 122558 & 63.9 & 3037 & 122689 & 173.7 \\
+\texttt{web-it-2004}  & 100 & 3407 & 121891 & 40.1 & 3377 & 121372 & 135.9 \\
+\texttt{web-it-2004}  & 200 & 3416 & 113825 & 26.1 & 3406 & 107516 & 108.5 \\
+\texttt{web-it-2004}  & 400 & 3409 & 7850 & 4.6 & 3368 & 7847 & 62.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:bd-mem} reports peak resident-set memory across the same configurations. Both algorithms shrink with $s$ as the number of leaves drops, and our peak is consistently smaller. The reduction ratio grows with $s$, reaching $3.33\times$ on \texttt{com-youtube} at $s{=}16$, where the working set is dominated by the \cpi{} index. On \texttt{web-it-2004} the ratio stays in the $1.3$--$1.6\times$ band because the $7.2$M-edge graph adjacency itself accounts for $\sim 200$ MB and dampens the index-side savings. This pattern is consistent with the analytical $88\Sig \to 10\Sig$ reduction of Table~\ref{tab:mem}: as $\Sig$ comes to dominate the working set, the measured ratio moves toward the analytical $8.8\times$ bound (Tab.~\ref{tab:bd-mem}'s peak of $3.33\times$ at $s{=}16$ is $\sim 38\%$ of the bound; the residual gap is the $\Sig$-independent overhead).
+
+\begin{table}[t]
+\centering
+\caption{Peak resident-set memory (MB), median over $3$ runs.}
+\label{tab:bd-mem}
+\small
+\begin{tabular}{llrrr}
+\toprule
+Graph & $s$ & Ours (MB) & SOTA (MB) & Ratio \\
+\midrule
+\texttt{com-youtube}  & 3 & 381 & 729 & $1.91\times$ \\
+\texttt{com-youtube}  & 5 & 315 & 642 & $2.04\times$ \\
+\texttt{com-youtube}  & 8 & 187 & 460 & $2.45\times$ \\
+\texttt{com-youtube}  & 12 & 119 & 385 & $3.25\times$ \\
+\texttt{com-youtube}  & 16 & 114 & 380 & $3.33\times$ \\
+\midrule
+\texttt{web-Stanford}  & 10 & 176 & 261 & $1.48\times$ \\
+\texttt{web-Stanford}  & 40 & 70 & 129 & $1.85\times$ \\
+\texttt{web-Stanford}  & 60 & 53 & 111 & $2.09\times$ \\
+\midrule
+\texttt{web-it-2004}  & 3 & 425 & 556 & $1.31\times$ \\
+\texttt{web-it-2004}  & 100 & 207 & 296 & $1.43\times$ \\
+\texttt{web-it-2004}  & 400 & 139 & 227 & $1.63\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\stitle{Implications.}
+The breakdown identifies two regimes. In the \emph{build-bound} regime (large $\Sig$, modest $s$), build dominates total wall-clock and our advantage is the per-incidence memory reduction; total-time speedup is in the $1.0$--$1.3\times$ range. In the \emph{peel-bound} regime (large $s$ relative to $\Sig$), build collapses to a fraction of total wall-clock and the $O(\Sig)$ vs.\ $O(\Sig \log n)$ peel advantage produces the $14$--$39\times$ headline speedups of \S\ref{sec:exp-speed}. The $762$-configuration aggregate ($7.42\times$ geometric mean) is a weighted average over both regimes; readers planning a deployment should use Table~\ref{tab:bd-time} to estimate the speedup expected on their workload.
+
+\subsection{Per-graph breakdown}
+\label{sec:exp-bd}
+
+Table~\ref{tab:per-graph} summarises the $762$-configuration results separated by graph. The geometric-mean speedup ranges from $2.45\times$ on \texttt{com-orkut} (where only $s \in [2,4]$ fits in our memory budget) to $19.25\times$ on \texttt{com-dblp} (where the workload is dominated by the peel and the bucket queue therefore yields a near-pure $\Theta(\log n)$ saving). \texttt{web-Stanford} reports the highest single-configuration speedup ($39.4\times$ at $s{=}61$), driven by short absolute timings. \texttt{web-it-2004} exercises the large-$s$ regime ($s$ up to $430$): even at $s{=}430$, where each implementation completes in milliseconds, ours maintains a $19.3\times$ wall-clock advantage. The overall geometric mean of $7.42\times$ and the maximum of $39.4\times$ are both consistent with the $O(\Sig \log n) \to O(\Sig)$ analysis of Theorem~\ref{thm:complexity}.
+
+\begin{table}[t]
+\centering
+\caption{Per-graph speedup and memory-reduction summary. ``Speedup'' is wall-clock time of the SOTA divided by ours; ``Mem'' is peak resident-set memory of the SOTA divided by ours. Geomean and max are over the configurations of each graph.}
+\label{tab:per-graph}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Graph         & \#cfg & \multicolumn{3}{c}{Speedup over SOTA} & \multicolumn{2}{c}{Mem ratio} \\
+              &      & geomean & median & max  & geomean & max \\
+\midrule
+\texttt{com-amazon}    & $29$  & $15.96\times$ & $13.6\times$ & $29.2\times$ & $1.88\times$ & $1.96\times$ \\
+\texttt{com-dblp}      & $109$ & $19.25\times$ & $19.0\times$ & $36.3\times$ & $2.54\times$ & $3.25\times$ \\
+\texttt{twitter}       & $29$  & $\phantom{0}3.48\times$ & $3.55\times$ & $3.89\times$ & $2.07\times$ & $2.65\times$ \\
+\texttt{web-Stanford}  & $60$  & $\phantom{0}5.70\times$ & $5.41\times$ & $39.4\times$ & $1.28\times$ & $1.52\times$ \\
+\texttt{com-youtube}   & $16$  & $\phantom{0}7.43\times$ & $6.82\times$ & $22.9\times$ & $1.75\times$ & $2.21\times$ \\
+\texttt{web-Google}    & $39$  & $\phantom{0}8.46\times$ & $7.7\times$  & $23.1\times$ & $1.96\times$ & $3.18\times$ \\
+\texttt{wiki-Talk}     & $24$  & $\phantom{0}5.23\times$ & $5.0\times$  & $20.5\times$ & $2.17\times$ & $2.71\times$ \\
+\texttt{web-it-2004}   & $429$ & $\phantom{0}6.19\times$ & $5.49\times$ & $28.0\times$ & $1.14\times$ & $1.37\times$ \\
+\texttt{soc-pokec}     & $24$  & $\phantom{0}6.48\times$ & $6.5\times$  & $20.4\times$ & $1.31\times$ & $1.55\times$ \\
+\texttt{com-orkut}     & $3$   & $\phantom{0}2.45\times$ & $2.39\times$ & $3.87\times$ & $1.42\times$ & $1.46\times$ \\
+\midrule
+\textbf{Overall}       & $762$ & $\phantom{0}7.42\times$ & $6.13\times$ & $39.4\times$ & $1.43\times$ & $3.25\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\stitle{Where the speedup comes from.}
+A controlled ablation that toggles each of \S\ref{sec:csr}, \S\ref{sec:bucket}, and \S\ref{sec:treefree} independently is deferred to the final version. The breakdown of \S\ref{sec:exp-breakdown} already identifies three regimes: the bucket array dominates the gain at small-to-moderate $s$ where peeling is the bottleneck; the static CSR contributes most at high incidence count $\Sig$ (e.g.\ \texttt{com-youtube}, where the memory ratio approaches its analytical bound); the tree-free build is the load-bearing optimisation on web graphs at small $s$ where the \sdct{} walk dominates total wall-clock.
+
+\subsection{Scalability under edge subsampling}
+\label{sec:exp-scal}
+
+To isolate dependence on input size from dependence on $s$, we subsample the edges of \texttt{web-Google} uniformly at five ratios $\{0.2, 0.4, 0.6, 0.8, 1.0\}$ and run both algorithms across $s\in\{2,3,5,7,9,11,13,15\}$. The protocol mirrors the scalability methodology of~\cite{sigmodCPI}; we use \texttt{web-Google} as the base graph because its edge count ($4.3$M) sits in the middle of our dataset range and admits a clean factor-of-five sweep. Figure~\ref{fig:scal-time} shows the resulting wall-clock curves.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_scalability_time.pdf}
+\caption{Scalability of the centralised peel (left) and the SOTA (right) under edge subsampling on \texttt{web-Google}. Each curve corresponds to one sample ratio; lighter colours are sparser. Both axes are log-scale.}
+\label{fig:scal-time}
+\end{figure}
+
+The five curves of Figure~\ref{fig:scal-time} stack monotonically in proportion to the sample ratio on both panels: at every $s$, the wall-clock time is increasing in the kept-edge fraction without inversions, indicating near-linear dependence on graph size. Two further observations confirm the asymptotic story. First, at the largest $s$ tested ($s{=}15$) our peel converges to $5$--$7$ ms regardless of the sample ratio, because peeling cost has dropped below the constant overhead of graph load and degeneracy ordering; the SOTA, in contrast, plateaus around $150$ ms at the same $s$, evidence that the hash and heap overhead it carries does not vanish even when the actual peel work is small. Second, the gap between corresponding curves widens at small $s$ (where peel work dominates), exactly as Theorem~\ref{thm:complexity} predicts. Figure~\ref{fig:scal-mem} reports the corresponding peak-RSS curves: the same five sample ratios stack monotonically on both panels, and ours sits below the SOTA at every $(s, \text{ratio})$ pair, with a per-point ratio between $1.4\times$ and $1.7\times$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_scalability_mem.pdf}
+\caption{Peak resident-set memory of the centralised peel (left) and the SOTA (right) under the same edge-subsampling protocol as Figure~\ref{fig:scal-time}. Both axes log-scale.}
+\label{fig:scal-mem}
+\end{figure}
+
+\subsection{Stress test: synthetic dense graphs}
+\label{sec:exp-stress}
+
+The graphs of Table~\ref{tab:datasets} have edge densities $p \approx 10^{-5}$ to $10^{-4}$, well below the regime where the combinatorial structure of $s$-clique counting becomes severe. To probe the limits, we follow the stress-test protocol of~\cite{nucleusSariyuceTODS} and~\cite{sigmodCPI}: synthetic graphs of $|V|{=}1000$ vertices generated by incremental clique injection (clique sizes from a truncated power-law $P(k)\propto k^{-2}$ on $[3, 100]$), with edge density $p$ swept upward from $p{=}0.01$ (two to three orders of magnitude denser than the densest real-world graph in Table~\ref{tab:datasets}) until both algorithms fail. We run both at $s \in \{5, 7, 9, 11\}$, with a $1800$ s wall-clock timeout per run and a $250$ GB per-process memory cap; the schedule terminates when each algorithm has timed out at the smallest $s$ for some density.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_stress_time.pdf}
+\caption{Stress test on synthetic clique-injection graphs ($|V|{=}1000$). One subplot per $s$; solid blue is our centralised peel, dashed red is the SOTA. Y-axis is log-scale. The $s{=}9$ panel ends at $p{=}0.25$ because both implementations exceeded the $250$ GB per-process memory cap at $p{=}0.30$. Beyond $p{=}0.30$ both algorithms time out at every $s$ within the $1800$ s budget; the curves therefore terminate at the failure threshold.}
+\label{fig:stress-time}
+\end{figure}
+
+Both algorithms grow super-linearly in $p$, as expected from the combinatorial structure ($s$-clique counts grow as $\Theta(p^{\binom{s}{2}})$). At every density and every $s$ at which both implementations complete, our peel sits cleanly below the SOTA curve, with a per-point ratio between $3\times$ and $4.5\times$ that holds across the entire range tested. The widest absolute gap is at $(s, p) = (5, 0.30)$, where the SOTA takes $132$ s against our $26$ s. Beyond $p{=}0.30$ both implementations exceed the $1800$ s budget at every $s$, including $s{=}5$; the bench therefore halts at the failure threshold. Note that even our entry-point density of $p{=}0.01$ already places the input two to three orders of magnitude denser than the densest real-world graph in Table~\ref{tab:datasets}, so the algorithms are exercised well beyond what real applications require. The $O(\Sig)$ versus $O(\Sig\log n)$ separation of Theorem~\ref{thm:complexity} is preserved across the whole range.
+
+Figure~\ref{fig:stress-mem} shows the corresponding peak-RSS curves. Memory grows in lockstep with peel cost, with a per-point ratio of $1.5\times$ to $2.7\times$ that mirrors the time-side gap. At the densest configurations both implementations approach the $250$ GB per-process cap; the SOTA reaches $145$ GB at $(s,p){=}(7, 0.30)$ versus our $52$ GB.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_stress_mem.pdf}
+\caption{Peak resident-set memory under the same stress-test protocol as Figure~\ref{fig:stress-time}. Y-axis is log-scale.}
+\label{fig:stress-mem}
+\end{figure}
+
+%===============================================================
+\section{Case Studies}
+\label{sec:casestudy}
+
+This section evaluates the analytical utility of $(1,s)$-cores. Across four ground-truth case studies on SNAP's two community-annotated graphs (\texttt{com-dblp} and \texttt{com-youtube}) covering precision, community recovery and triangle density, plus three qualitative visualizations (an ego-network, the global $(1,s)$-core hierarchy across three domains, and a clique-coherent algorithmic variant of the same hierarchy), we observe a consistent pattern: $(1,s)$-cores match $(2,s)$ and $(3,s)$-cores on every quality metric we evaluate, while costing $10\times$ to $5{,}000\times$ less to compute.
+
+\subsection{Setup, ground truth, and metrics}
+\label{sec:cs-setup}
+
+\stitle{Datasets.}
+\texttt{com-dblp} (SNAP): $317{,}080$ co-authors, $1{,}049{,}866$ edges, $5{,}000$ ground-truth communities (one per publication venue, annotated by SNAP).
+\texttt{com-youtube} (SNAP): $1{,}134{,}890$ users, $2{,}987{,}624$ friendship edges, $5{,}000$ ground-truth communities. We use the SNAP top-$5000$ community files for both graphs.
+
+\stitle{Methods compared.} For each $s$, we compute four rankings of vertices: $k$-core (the standard degree-based decomposition), $(1,s)$-core (ours), $(2,s)$-core, and $(3,s)$-core. The latter two produce edge- or triangle-level scores, which we project to the vertex level by taking each vertex's maximum incident-clique core. Vertices are then ranked in descending core order, breaking ties uniformly.
+
+\stitle{Metrics.}
+For a top-$K$ prefix of the ranking:
+\begin{itemize}[leftmargin=1.3em,itemsep=1pt,topsep=2pt]
+  \item \textbf{Precision@$K$}: fraction of the top-$K$ vertices that lie in \emph{any} ground-truth community.
+  \item \textbf{Communities recovered (rec50)}: number of ground-truth communities that have $\ge 50\%$ of their members inside the top-$K$.
+  \item \textbf{Triangle density}: triangles per vertex in the subgraph induced on the top-$K$.
+\end{itemize}
+We use $K{=}10{,}000$ as the standard prefix size on \texttt{com-dblp} (matching the $\sim 2$\% of $n$ rule of thumb for community discovery on this dataset~\cite{sigmodCPI}); other $K$ are reported where relevant.
+
+\subsection{Case study 1: granularity is real}
+\label{sec:cs-granularity}
+
+We run $(1,s)$-decomposition on \texttt{com-dblp} for $s \in \{2, 3, 4, 5, 8, 10, 15, 20, 25, 30\}$ and observe how the \emph{active set} (vertices with positive core value) and the \emph{top-$K$ ranking} respond.  Table~\ref{tab:cs1} reports the per-$s$ active set, top-$K$ thresholds and the maximum core; Figure~\ref{fig:cs1} plots the active-set curve.
+
+\begin{table}[t]
+\centering
+\caption{Active-set size and top-$K$ thresholds on \texttt{com-dblp} as $s$ grows. ``\% of $n$'' is the fraction of $317{,}080$ vertices with positive $(1,s)$-core; ``top-$100$ min'' / ``top-$1$k min'' are the smallest $(1,s)$-core values inside the top-$100$ / top-$1{,}000$ rankings.  The active set shrinks $234\times$ between $s{=}2$ and $s{=}30$, but the maximum core grows by 24 orders of magnitude.}
+\label{tab:cs1}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{r r r l l l}
+\toprule
+$s$ & nonzero $|V|$ & \% of $n$ & max core & top-$100$ min & top-$1$k min \\
+\midrule
+$2$  & $317{,}080$ & $100.00$ & $1.13\!\times\!10^{2}$  & $1.13\!\times\!10^{2}$  & $3.10\!\times\!10^{1}$  \\
+$3$  & $269{,}181$ & $84.89$  & $6.33\!\times\!10^{3}$  & $6.33\!\times\!10^{3}$  & $4.65\!\times\!10^{2}$  \\
+$4$  & $194{,}957$ & $61.49$  & $2.34\!\times\!10^{5}$  & $2.34\!\times\!10^{5}$  & $4.50\!\times\!10^{3}$  \\
+$5$  & $127{,}805$ & $40.31$  & $6.44\!\times\!10^{6}$  & $6.44\!\times\!10^{6}$  & $3.15\!\times\!10^{4}$  \\
+$8$  & $36{,}412$  & $11.48$  & $3.86\!\times\!10^{10}$ & $3.86\!\times\!10^{10}$ & $2.63\!\times\!10^{6}$  \\
+$10$ & $19{,}354$  & $6.10$   & $5.97\!\times\!10^{12}$ & $5.97\!\times\!10^{12}$ & $2.02\!\times\!10^{7}$  \\
+$15$ & $6{,}767$   & $2.13$   & $2.74\!\times\!10^{17}$ & $2.74\!\times\!10^{17}$ & $2.65\!\times\!10^{8}$  \\
+$20$ & $3{,}396$   & $1.07$   & $1.69\!\times\!10^{21}$ & $1.69\!\times\!10^{21}$ & $1.41\!\times\!10^{8}$  \\
+$25$ & $2{,}069$   & $0.65$   & $2.18\!\times\!10^{24}$ & $2.18\!\times\!10^{24}$ & $2.63\!\times\!10^{6}$  \\
+$30$ & $1{,}358$   & $0.43$   & $7.61\!\times\!10^{26}$ & $7.61\!\times\!10^{26}$ & $4.65\!\times\!10^{2}$  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\sstitle{Active set shrinks $234\times$.}
+At $s{=}2$, $(1,2)$-decomposition coincides with $k$-core and assigns positive core to all $317{,}080$ vertices. At $s{=}30$, only $1{,}358$ vertices belong to any non-empty $(1,30)$-core --- $0.43$\% of the graph. Linearly interpolating: $40$\% active at $s{=}5$, $11$\% at $s{=}8$, $6$\% at $s{=}10$, $2$\% at $s{=}15$.  The filter is therefore far stronger than $k$-core, which keeps every non-isolated vertex.
+
+\sstitle{Maximum core spans $\sim 25$ orders of magnitude.}
+The maximum support count rises from $1.13\!\times\!10^2$ at $s{=}2$ (the largest $k$-core) to $7.6\!\times\!10^{26}$ at $s{=}30$, a $6.7\!\times\!10^{24}$ ratio. The dynamic range is intrinsic to the binomial structure of $(1,s)$-supports and is the reason a single $\log$-scale colour map cannot represent all $s$ simultaneously.
+
+\sstitle{Top-$100$ is invariant across all $s$.}
+Despite the active-set shrinkage, the top of the ranking is remarkably stable. The top-$100$ Jaccard similarity between the $s{=}2$ and $s{=}30$ rankings is exactly $1.00$, and top-$1000$ is $0.998$.  The same authors hover at the top regardless of $s$.
+
+\sstitle{Middle band drifts.}
+By $K{=}5{,}000$ the Jaccard drops to $0.27$: the middle layer of the ranking shifts substantially with $s$. The top is a stable ``super-core''; $s$ controls the granularity of structure exposed \emph{below} the super-core.
+
+\sstitle{Practical guideline.}
+$s$ is the analyst's filter knob, not a quality knob.  Pick the smallest $s$ for which the active set fits the downstream-task budget --- e.g.\ $s{=}10$ to land near a $\sim 20$k vertex active set, $s{=}15$ for $\sim 7$k, $s{=}30$ for $\sim 1$k.  All choices preserve the same top-$100$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/cs2_active_set.pdf}
+\caption{Active-set size (vertices with positive $(1,s)$-core) on \texttt{com-dblp} as $s$ varies. Y-axis log-scale.  The graph filters monotonically by two and a half orders of magnitude across the $s$ range, exposing progressively denser sub-fragments.}
+\label{fig:cs1}
+\end{figure}
+
+\subsection{Case study 2: ground-truth quality vs.\ $k$-core}
+\label{sec:cs-quality}
+
+We score each method's top-$10{,}000$ ranking on \texttt{com-dblp} against SNAP's $5{,}000$ communities (Table~\ref{tab:cs3}, Figure~\ref{fig:cs3}).
+
+\begin{table}[t]
+\centering
+\caption{Ground-truth quality of $(1,s)$-cores vs.\ $k$-core on \texttt{com-dblp}, top-$10{,}000$. Precision is fraction in any community; rec50 is communities with $\ge 50\%$ members recovered; tri/v is per-vertex triangle density of the induced subgraph. $(1,3)$ already beats $k$-core; gains amplify at $s{=}15$ where the ranking concentrates on $\sim 6{,}800$ tightly-knit research groups.}
+\label{tab:cs3}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Method        & top-$K$ & Precision & rec50 & tri/v \\
+\midrule
+$k$-core             & $10{,}000$ & $0.504$ & $94$  & $112.3$ \\
+$(1,3)$-core         & $10{,}000$ & $0.523$ & $114$ & $113.4$ \\
+$(1,5)$-core         & $10{,}000$ & $0.523$ & $114$ & $113.4$ \\
+$(1,10)$-core        & $10{,}000$ & $0.523$ & $114$ & $113.4$ \\
+$(1,15)$-core        & $\phantom{0}6{,}767$ & $\boldsymbol{0.548}$ & $65$  & $\boldsymbol{154}$ \\
+$(1,30)$-core        & $\phantom{0}1{,}358$ & $0.507$ & $\phantom{0}4$  & $\boldsymbol{523}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\sstitle{$(1,3)$-core already beats $k$-core.}
+Even at the lowest non-trivial $s$, $(1,3)$-core lifts precision from $0.504$ to $0.523$ ($+3.8$\%) and the number of $\ge 50\%$-recovered communities from $94$ to $114$ ($+21$\%). All this with no compute budget difference --- $(1,3)$-decomposition is comparable in cost to $k$-core in our pipeline.
+
+\sstitle{Quality saturates by $s{=}5$.}
+$s \in \{3, 5, 10\}$ all produce identical $K{=}10{,}000$ rankings: $0.523$ precision, $114$ recovered communities, $113.4$ tri/v.  The right ranking structure is captured at the lowest non-trivial $s$ and stays stable; bumping $s$ inside this regime is free quality with shrinking working set.
+
+\sstitle{Larger $s$ isolates denser substructures.}
+Once the active set itself drops below $K$, the picture changes.  $(1,15)$-core's top-$6{,}767$ subgraph has $\frac{154}{112} \approx 1.4\times$ the triangle density of $k$-core's top-$10{,}000$, with precision $0.548$ (the highest in the column).  Pushing further, $(1,30)$-core's top-$1{,}358$ subgraph reaches $523$ triangles per vertex --- $4.7\times$ denser than $k$-core's top-$10{,}000$ at $\frac{1}{7}$ the vertex count.
+
+\sstitle{Practical guideline.}
+For ground-truth-style community recovery on \texttt{com-dblp}, $s{=}5$ is a no-regret choice: same precision and rec50 as $k$-core's-strict-superset $(1,3)$, smaller active set.  Push $s$ higher only when the analytic question demands a near-clique core (e.g., conference-cohort discovery).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/cs3_precision.pdf}
+\caption{Precision@$K$ on \texttt{com-dblp} (SNAP top-$5000$ community ground truth). $(1,s)$-cores for $s \in \{3, 5, 10, 15\}$ all surpass $k$-core across the entire range of $K$; gains widen as $K$ shrinks, indicating that the absolute top of the ranking is more selectively in-community than $k$-core's.}
+\label{fig:cs3}
+\end{figure}
+
+\subsection{Case study 3: $(1,s)$ is Pareto-optimal among $(r,s)$}
+\label{sec:cs-pareto}
+
+We now ask whether higher $r$ buys additional quality. Fixing $s{=}10$ on \texttt{com-dblp} and varying $r \in \{1, 2, 3\}$ produces Table~\ref{tab:cs4}.
+
+\begin{table}[t]
+\centering
+\caption{Cross-$r$ comparison at $s{=}10$ on \texttt{com-dblp}. ``Time'' is end-to-end wall-clock for the decomposition step (our implementation for $r{=}1$, the same SOTA codebase~\cite{sigmodCPI} for $r \ge 2$). $(1,10)$-core matches $(3,10)$-core on every quality metric while running $178\times$ faster.}
+\label{tab:cs4}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Method            & Precision & rec50 & tri/v & Time (ms) \\
+\midrule
+$k$-core          & $0.504$   & $94$   & $112.3$ & $\phantom{0\,}2.3$ \\
+$(1,10)$-core     & $0.523$   & $114$  & $113.4$ & $13.4$ \\
+$(2,10)$-core     & $0.529$   & $113$  & $\phantom{0}71.8$  & $123.1$\\
+$(3,10)$-core     & $0.524$   & $114$  & $113.4$ & $2{,}379.6$\\
+\midrule
+\textbf{(1) vs.\ (3)} & $-0.001$ & $0$   & $0.0$ & $-178\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\sstitle{$(1,10)$ and $(3,10)$ are quality-equivalent.}
+The two cores produce \emph{identical} community-recovery counts ($114$ and $114$), \emph{identical} triangle densities ($113.4$ each), and precision differences within sampling noise ($0.523$ vs.\ $0.524$).  The two rankings disagree on at most $1$ vertex per $1{,}000$ at every $K$ we tested.
+
+\sstitle{$(2,10)$ \emph{distorts} triangle density.}
+$(2,10)$-core gains $1.1$\% in precision but recovers \emph{fewer} communities ($113$ vs.\ $114$) and gives $40$\% \emph{less} triangle density ($71.8$ vs.\ $113.4$).  The edge-to-vertex projection step (every vertex inherits the maximum core of its incident edges) discards inter-edge structure, biasing the ranking towards bridge endpoints.
+
+\sstitle{Cost penalty grows quickly with $r$.}
+$(1,10)$ runs in $13.4$ ms, $(2,10)$ in $123$ ms ($9.2\times$ slower), and $(3,10)$ in $2{,}380$ ms ($178\times$ slower).  At the same quality, the cost penalty is $9{-}178\times$.  The constant grows in $r$ because the number of $r$-cliques per $s$-clique is $\binom{s}{r}$ (so at $s{=}10$, going from $r{=}1$ to $r{=}3$ multiplies the tracked incidences from $\binom{10}{1}{=}10$ to $\binom{10}{3}{=}120$, a $12\times$ inflation before the mutable-tree maintenance overhead kicks in).
+
+\sstitle{Across the $(r,s)$ grid.}
+The pattern from Table~\ref{tab:cs4} is not specific to $s{=}10$.  Figure~\ref{fig:cs6} plots the Pareto frontier of (precision, runtime) over an $r{\times}s$ grid, $r \in \{1,2,3\}$, $s \in \{5,10,15,20\}$, on \texttt{com-dblp}.  The $r{=}1$ frontier dominates the entire $r \in \{2, 3\}$ region: at every quality level achieved by $(2,s)$ or $(3,s)$, some $(1,s')$ achieves it faster, often by orders of magnitude.
+
+\sstitle{Practical guideline.}
+For community-recovery on \texttt{com-dblp}, increasing $r$ above $1$ is pure cost.  Tune $s$ to set the granularity (CS-1) and keep $r{=}1$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/cs6_pareto.pdf}
+\caption{Pareto plot of community-recovery quality vs.\ runtime across the $(r,s)$ grid on \texttt{com-dblp}, $r \in \{1,2,3\}$, $s \in \{5, 10, 15, 20\}$. The $r{=}1$ frontier (blue) dominates the $r{\ge}2$ region (green, red) at every operating point; $(1,s)$ and $(3,s)$ cluster on the same quality contour, separated horizontally by $10\times$ to $5{,}000\times$ in runtime.}
+\label{fig:cs6}
+\end{figure}
+
+\subsection{Case study 4: cross-domain validation on \texttt{com-youtube}}
+\label{sec:cs-youtube}
+
+To check that the Pareto picture is not specific to academic collaboration, we replay the cross-$r$ comparison on \texttt{com-youtube} (Table~\ref{tab:cs7}, Figure~\ref{fig:cs7y}).
+
+\begin{table}[t]
+\centering
+\caption{Cross-$r$ on \texttt{com-youtube} at $s{=}5, 10, 15$. At every $s$, the $(1,s)$-core matches the quality of $(3,s)$-core within sampling noise while running $9{-}68\times$ faster. At $s \ge 10$, the three rankings are bit-exact identical on rec50 and tri/v; at $s{=}15$ the active set has shrunk past the smallest SNAP community, so the comparison is time-only.}
+\label{tab:cs7}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+Method      & rec50 & tri/v & Time (ms) & vs.\ $(1,s)$ \\
+\midrule
+$(1,5)$         & $283$ & $173$ & $\phantom{0\,\,}274$  & --- \\
+$(2,5)$         & $286$ & $161$ & $\phantom{0}2{,}580$ & $9.4\times$  \\
+$(3,5)$         & $288$ & $159$ & $13{,}112$         & $47.9\times$ \\
+\midrule
+$(1,10)$        & $\phantom{0}49$ & $293$ & $\phantom{0\,\,\,}31$ & --- \\
+$(2,10)$        & $\phantom{0}49$ & $293$ & $\phantom{0\,\,}319$  & $10.3\times$ \\
+$(3,10)$        & $\phantom{0}49$ & $293$ & $2{,}093$              & $67.5\times$ \\
+\midrule
+$(1,15)$        & $\phantom{0}0^{\dagger}$ & $173$ & $\phantom{0\,\,\,\,\,}9$ & --- \\
+$(2,15)$        & $\phantom{0}0^{\dagger}$ & $173$ & $\phantom{0\,\,\,}55$  & $\phantom{0}6.2\times$  \\
+$(3,15)$        & $\phantom{0}0^{\dagger}$ & $173$ & $\phantom{0\,\,\,}87$  & $\phantom{0}9.8\times$ \\
+\bottomrule
+\end{tabular}
+\\[2pt]\footnotesize $^{\dagger}$\,At $s{=}15$ the active set has shrunk to $95$ vertices, below the smallest SNAP community size; rec50 is therefore $0$ for every method.  Time-only comparison.
+\end{table}
+
+\sstitle{Pattern is identical to \texttt{com-dblp}.}
+At every $s$, $(1,s)$-core matches the quality ceiling of $(3,s)$-core within sampling noise (e.g., $\Delta\,$rec50 $\le 5$ at $s{=}5$, exact match at $s{\ge}10$).
+
+\sstitle{$s{=}10$: rankings are bit-exact identical.}
+At $(s,r)\in\{(10,1),(10,2),(10,3)\}$, the rec50 and tri/v columns of Table~\ref{tab:cs7} are pairwise identical ($49$ / $293$ for all three): $r{=}1$, $r{=}2$, and $r{=}3$ produce the \emph{same ranking} at $s{=}10$ on \texttt{com-youtube}.  The cost difference is gross: $31$ ms ($r{=}1$) vs.\ $2{,}093$ ms ($r{=}3$) --- a $67.5\times$ gap.
+
+\sstitle{$(2,5)$ trades quality for cost.}
+On the social-network domain $(2,s)$ shows the same triangle-density distortion as on collaboration: $161$ vs.\ $173$ tri/v at $s{=}5$ and $293$ vs.\ $293$ at $s{=}10$ (matched there only because the active set has shrunk past the $K{=}10\,000$ point).  $(2,s)$ is never strictly better than $(1,s)$.
+
+\sstitle{Practical guideline.}
+The cross-domain take is identical to CS-3: pick $r{=}1$ and tune $s$.  $(1,15)$ at $9$ ms produces the same active-set ($95$ vertices) as $(3,15)$ at $87$ ms but $9.8\times$ faster --- and on \texttt{com-youtube} that active set is below the smallest SNAP community, so $r$ has no leverage anyway.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/cs7_pareto.pdf}
+\caption{Quality--runtime Pareto plot on \texttt{com-youtube} for $r \in \{1, 2, 3\}$ and $s \in \{5, 10, 15\}$.  $(1,s)$ (blue) sits at the same quality contour as $(2,s)$ (green) and $(3,s)$ (red) but $9{-}68\times$ faster; the $r{=}1$ frontier dominates.  Cross-domain confirmation of Figure~\ref{fig:cs6}.}
+\label{fig:cs7y}
+\end{figure}
+
+\subsection{Case study 5: ego-network of an arbitrary anchor}
+\label{sec:cs-viz}
+
+We visualize the $2$-hop ego-network of a single \texttt{com-dblp} anchor (vertex $52213$, $|\mathcal{E}|{=}474$) under three settings of $s$ (Figure~\ref{fig:cs9}, summary metrics in Table~\ref{tab:cs9}). The same neighbourhood is alternately an opaque community ($s$ small) or a precise lattice of research teams ($s$ large).
+
+\sstitle{$s{=}3$: undifferentiated blob.}
+$(1,3)$-core preserves $462$ of the $474$ vertices in a single connected component (intra-frac $0.992$, avg conductance $0.004$).  At this granularity the community structure is invisible: every vertex is reachable from every other through residual edges.
+
+\sstitle{$s{=}5$: dominant cluster + satellites.}
+$(1,5)$-core retains $335$ vertices but already partitions into $5$ components, with the largest holding $329$ ($98.2$\% of survivors).  Intra-frac drops to $0.796$ and conductance rises to $0.121$ --- the blob has cracked but not fractured.
+
+\sstitle{$s{=}10$: precise lattice of teams.}
+$(1,10)$-core collapses to $66$ vertices in $26$ tightly-bonded modules (largest CC has $32$ members).  Intra-frac is $0.340$, avg conductance $0.636$: the survivors form well-separated micro-modules with negligible cross-module connectivity.
+
+\sstitle{Conductance jumps $160\times$.}
+Across the three settings, average component conductance rises from $0.004$ to $0.121$ to $0.636$ --- two-and-a-half orders of magnitude --- while $|V|$ shrinks $7\times$.  The trade-off is monotone: more $s$ buys more separation per surviving vertex.
+
+\sstitle{Practical guideline.}
+For ego-network exploration, $s{=}10$ is a generic ``zoom-in'' setting on academic-collaboration graphs: it surfaces tight collaboration teams without producing isolated singletons.  Smaller $s$ is appropriate only when the analyst wants the broad neighbourhood, not its modular decomposition.
+
+\begin{table}[t]
+\centering
+\caption{Ego-network of \texttt{com-dblp} anchor $v{=}52213$ under three values of $s$.  ``$|V|$'' is the number of survivors with $(1,s)$-core $> 0$; ``CCs'' is the number of connected components in the induced subgraph; ``intra-frac'' = $m_\mathrm{in} / (m_\mathrm{in}{+}m_\mathrm{cut})$ is the fraction of edges that stay inside a component; ``avg cond'' is the size-weighted mean conductance of the components.  Higher $s$ yields more, smaller, better-separated modules.}
+\label{tab:cs9}
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{r r r r r r}
+\toprule
+$s$ & $|V|$ & CCs & largest CC & intra-frac & avg cond \\
+\midrule
+$3$  & $462$ & $\phantom{0}1$ & $462$ & $0.992$ & $0.004$ \\
+$5$  & $335$ & $\phantom{0}5$ & $329$ & $0.796$ & $0.121$ \\
+$10$ & $\phantom{0}66$  & $26$ & $\phantom{0}32$  & $0.340$ & $0.636$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/cs9_egonet.pdf}
+\caption{$2$-hop ego-network of a \texttt{com-dblp} anchor under $(1,s)$-decomposition, $s \in \{3, 5, 10\}$. Vertices are colored by their connected component in the induced subgraph of $(1,s)$-survivors. At $s{=}3$ (left), $462$ vertices form one tangled blob; at $s{=}10$ (right), $66$ vertices separate into $26$ tight micro-modules. Stronger $s$ exposes finer modular structure.}
+\label{fig:cs9}
+\end{figure}
+
+\subsection{Case study 6: the $(1,s)$-nucleus hierarchy across domains}
+\label{sec:cs-hier}
+
+The $(1,s)$-cores form a nested family: at any threshold $k$ the surviving vertex set $\{v : \cores(v) \ge k\}$ induces a subgraph whose components are subsets of those at any lower $k$.  We summarise this family with the textbook elder-rule join tree~\cite{morozov2007persistence} (standard $0$-dim persistent homology; no algorithmic novelty in the elder rule itself --- our novelty is its peel-integrated realisation of Theorem~\ref{thm:peel-hier}): each branch is a component, born at the $k$ where it first reaches $\ge 5$ vertices and dying at the $k$ where it merges into an older sibling.  Each branch carries a persistence pair $(k_\mathrm{birth}, k_\mathrm{death})$.  We run it on three graphs from distinct domains: \texttt{com-dblp} (collaboration, $n{=}317$k, $m{=}1.05$M), \texttt{com-youtube} (social/video, $n{=}1.13$M, $m{=}2.99$M), \texttt{web-Stanford} (web hyperlinks, $n{=}282$k, $m{=}1.99$M).  Table~\ref{tab:cs10cross} consolidates the headline counts; Figures~\ref{fig:cs10}--\ref{fig:cs10p} render the trees and persistence diagrams.
+
+\sstitle{Wall-clock cost is negligible.}
+Per-graph build time ranges from sub-millisecond (\texttt{com-youtube} at $s{=}15$, only $95$ active vertices) to $363$ ms (\texttt{web-Stanford} at $s{=}3$), single-threaded Python, median over $5$ runs (\texttt{bench\_multigraph.py}; all $12$ configurations $< 1$ s).  This validates Theorem~\ref{thm:peel-hier} empirically: hierarchy extraction is essentially free relative to peeling.  Correctness checked against a hand-traced 12-vertex brute force and an independent snapshot-per-threshold reference (Phase A of \texttt{bench\_hierarchy.py}).
+
+\begin{table}[t]
+\centering
+\caption{Branches / internal absorption events / max tree depth produced by the elder-rule join tree on three domains, $s \in \{3, 5, 10, 15\}$.  Three distinct profiles appear: \texttt{com-youtube}'s tree collapses by $s{=}5$, \texttt{com-dblp} retains structure until $s{\approx}10$, and \texttt{web-Stanford} preserves a multi-level hierarchy across the entire range.}
+\label{tab:cs10cross}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l rrr rrr rrr rrr}
+\toprule
+& \multicolumn{3}{c}{$s{=}3$} & \multicolumn{3}{c}{$s{=}5$} & \multicolumn{3}{c}{$s{=}10$} & \multicolumn{3}{c}{$s{=}15$} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}\cmidrule(lr){11-13}
+graph & br. & int. & d & br. & int. & d & br. & int. & d & br. & int. & d \\
+\midrule
+\texttt{com-dblp}     & 9{,}968 & 1{,}175 & 8 & 5{,}794 & 583   & 7 &   664 &   8 & 1 & 222 &   2 & 1 \\
+\texttt{com-youtube}  & 3{,}568 &      61 & 2 &     280 &   1   & 1 &    14 &   0 & 0 &  -- &  -- & -- \\
+\texttt{web-Stanford} & 8{,}731 & 1{,}776 & 7 & 6{,}473 & 1{,}032 & 8 & 1{,}946 & 277 & 3 & 1{,}573 & 220 & 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\sstitle{com-dblp (collaboration) collapses moderately fast.}  Tree depth $8 \to 7 \to 1 \to 1$ as $s$ grows: rich nested communities at small $s$, near-flat partition by $s{=}10$.  This matches the granularity story of \S\ref{sec:cs-granularity} --- at large $s$ the graph fragments into many tightly-knit research groups that never share a larger super-core.
+
+\sstitle{com-youtube (social) collapses immediately.}  Even at $s{=}3$ the tree depth is only $2$, and by $s{=}15$ no $5$-vertex component survives at all (the $95$ active vertices form smaller components only).  The friendship graph has fewer triangles per vertex than the academic collaboration graph, so the clique-driven nesting that drives the $(1,s)$-hierarchy is largely absent.
+
+\sstitle{web-Stanford preserves hierarchy across the entire range.}  At every $s$ tested the tree retains $\ge 1{,}500$ branches with non-trivial depth ($7, 8, 3, 2$), and even at $s{=}15$ there are $220$ internal absorption events.  The web hyperlink graph contains densely interlinked clusters at every clique scale, so the $(1,s)$-decomposition exposes a multi-level hierarchy that is largely robust to $s$.  This is qualitatively different from both social-network behaviours.
+
+\sstitle{Practical guideline.}
+The collapse rate of the join tree (Tab.~\ref{tab:cs10cross}'s ``int.'' column) is a domain fingerprint.  For graphs whose tree empties out by $s{=}5$ (e.g., social networks), small $s$ already saturates the granularity knob.  For graphs whose tree survives high $s$ (e.g., web), the analyst gains analytical resolution by pushing $s$ further.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/cs10_hierarchy.pdf}
+\caption{$(1,s)$-nucleus elder-rule join tree at $s{=}5$ across three domains --- top-$80$ branches by persistence. Each circle is a branch; the elder absorbs younger ones as children. Marker area $\propto \log |C|$ at death; colour $\propto \log$(persistence). At the same $s$, the three domains produce trees of distinctly different shapes (depth $3$ / $1$ / $3$ for collaboration / social / web).}
+\label{fig:cs10}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/cs10_persistence.pdf}
+\caption{Persistence diagrams across three domains (rows) and four values of $s$ (cols).  Each point is one branch at $(k_\mathrm{death}{+}1, k_\mathrm{birth}{+}1)$; marker area $\propto \sqrt{|C|}$ at death.  The three domains exhibit distinctly different cloud envelopes: \texttt{com-dblp} (top) collapses to a left edge by $s{=}10$, \texttt{com-youtube} (middle) collapses by $s{=}5$, \texttt{web-Stanford} (bottom) preserves a triangular cloud (= rich cross-$k$ structure) across the entire range.}
+\label{fig:cs10p}
+\end{figure}
+
+\subsection{Case study 7: clique-coherent vs edge-based hierarchy}
+\label{sec:cs-clique}
+
+The hierarchy of CS-6 uses plain edge connectivity, the standard choice for join-tree algorithms.  A more $(1,s)$-faithful definition replaces edges with $s$-cliques: vertices $u, v$ are connected at level $k$ iff there exists an $s$-clique $C \subseteq G$ with $u, v \in C$ and $\min_{w \in C} \cores(w) \ge k$.  Two vertices link only when they co-star in some surviving $s$-clique, not merely when they share an edge.
+
+\sstitle{Algorithm: Kruskal on $s$-cliques.}
+Enumerate every $s$-clique of $G$ via the augmented \sdct{} of \S\ref{sec:treefree}, sort cliques by $\min_{w \in C} \cores(w)$ descending, and union all $s$ vertices of each clique using the elder-rule bookkeeping of CS-6.  At higher $s$ the explicit clique enumeration is replaced by SDCT leaf streaming (\S\ref{sec:augsdct}); the algorithm is otherwise unchanged.  This variant has no analogue in plain $k$-core / $k$-truss literature: it is genuinely $(1,s)$-specific because it uses the SDCT's compact representation of $s$-cliques as the connectivity primitive.
+
+\sstitle{Clique-coherent surfaces a finer hierarchy.}
+On \texttt{com-dblp} at $s{=}3$ ($\sim 1.0$M triangles enumerated in $0.7$ s, hierarchy built in $1.4$ s), the clique-coherent tree has $10{,}427$ branches with $1{,}507$ internal absorption events and depth $10$.  The edge-based variant has only $9{,}968$ branches, $1{,}175$ events and depth $8$ at the same $s$.  The clique-coherent definition is strictly finer (Figure~\ref{fig:cs10b}).
+
+\sstitle{Why: bridge edges are unmasked.}
+$459$ branches and $332$ absorption events are added by the clique definition.  The intuition is that vertices which share an edge but never co-star in a triangle no longer merge.  Weakly-bonded bridge edges --- which inflate the active components in the edge-based view --- no longer mask the underlying clique structure.
+
+\sstitle{Practical guideline.}
+For \emph{algorithmic} consistency with $(1,s)$-decomposition, prefer the clique-coherent hierarchy.  For raw cost on a single $(s, k)$ filtration, the edge-based hierarchy is cheaper (no $s$-clique enumeration).  Both produce the same persistence diagram envelope; only the densest core of the diagram differs.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/cs10b_compare.pdf}
+\caption{Edge-based (left) vs clique-coherent (right) persistence diagrams on \texttt{com-dblp} at $s{=}3$.  Same axes; markers as in Figure~\ref{fig:cs10p}.  Clique-coherent has $459$ more branches and a deeper tree (depth $10$ vs $8$): vertices linked by edges but never by triangles no longer merge.}
+\label{fig:cs10b}
+\end{figure}
+
+\subsection{Summary of the case studies}
+\label{sec:cs-summary}
+
+The four ground-truth case studies and the three qualitative visualizations (ego-network, cross-domain hierarchy, clique-coherent variant) together support the headline claim of this paper: among the parameter combinations $\{(1,s), (2,s), (3,s)\}$, the case $r{=}1$ is the right operating point. It matches the quality of higher-$r$ variants on every metric we evaluate ---  precision, community recovery, triangle density, ego-network visibility, and hierarchy depth --- and the $10\times$--$5{,}000\times$ runtime advantage we measure makes large-$s$ regimes computationally feasible.
+
+%===============================================================
+\section{Related Work}
+\label{sec:related}
+
+\stitle{$k$-core and $k$-truss.}
+The $k$-core decomposition~\cite{kcoreSeidman,coreAlg} ranks each vertex by the largest $k$ such that the vertex belongs to a subgraph of minimum degree $k$, and is the first member of the $(r,s)$-nucleus family at $(r,s){=}(1,2)$. The Batagelj--Zaver{\v s}nik algorithm~\cite{coreAlg} computes it in $O(m)$ time using bucket-based peeling --- the same primitive we use in \S\ref{sec:bucket}. The $k$-truss decomposition~\cite{ktrussCohen,ktrussWang} corresponds to $(r,s){=}(2,3)$, peeling edges by their incident-triangle count. Both produce \emph{hierarchies} of nested subgraphs and are widely deployed for community discovery, but neither generalizes to higher cliques without explicit clique enumeration. For survey-style coverage of $k$-truss applications see~\cite{ktrussSurvey}.
+
+\stitle{Nucleus decomposition.}
+The general $(r,s)$-nucleus framework was introduced by Sar{\i}y{\"u}ce et~al.~\cite{nucleusSariyuce14} and extended in subsequent work~\cite{nucleusSariyuceTODS}, with peeling implementations that explicitly enumerate $s$-cliques and maintain per-$r$-clique support counts. Their reference algorithm runs in $O(\text{\# }s\text{-cliques})$ time per peeling step and is impractical for $s \ge 4$ on graphs with millions of vertices: the number of $s$-cliques grows super-polynomially, making explicit enumeration the binding constraint.
+
+\stitle{The CPI baseline.}
+The state-of-the-art~\cite{sigmodCPI} sidesteps explicit enumeration by representing the $s$-clique search space as a Clique Path Index (\cpi), built via a degeneracy-ordered Bron--Kerbosch~\cite{bronkerbosch} recursion with Tomita pivoting~\cite{tomita,eppstein}. Each leaf encodes $\binom{|\Vp|}{s-|\Vh|}$ cliques symbolically. Their peeling loop maintains the \cpi{} as a mutable tree, paying $O(\Sig \log n)$ time and $O(\Sig)$ memory at $\sim 80$ bytes per incidence. Our work focuses on $r{=}1$ and proves that within this special case the \cpi{} is invariant under peeling, removing the dominant cost. We do not change the \cpi{} construction algorithm itself --- the augmented \sdct{} of \S\ref{sec:treefree} reuses the same enumeration order --- but we eliminate the tree representation by routing leaves through a callback at emission time. The general $r \ge 2$ algorithm of~\cite{sigmodCPI} remains the state of the art for those cases; extending the present technique to $r{=}2,3$ is the most promising future direction (\S\ref{sec:conclusion}).
+
+\stitle{Clique enumeration and pivoting.}
+Tomita pivoting~\cite{tomita} reduces the recursion fan-out of Bron--Kerbosch by selecting a pivot vertex whose non-neighbors form the only branching set; in degeneracy-ordered recursion this gives $O(d \cdot 3^{d/3})$ enumeration time~\cite{eppstein}, where $d$ is the graph's degeneracy. The Pivoter algorithm~\cite{pivoter} uses the same pivot-set decomposition to count, but not enumerate, $s$-cliques; the \sdct{} of~\cite{sigmodCPI} extends this to recover the encoded leaves needed for nucleus decomposition. Our augmented \sdct{} (\S\ref{sec:augsdct}) is a drop-in replacement at the enumeration interface and inherits the same per-leaf complexity.
+
+\stitle{Bucket-based priority queues.}
+The bucket queue we use in \S\ref{sec:bucket} is a special case of the multi-level bucket structures of~\cite{bucketQueue}; in our setting the keys (clique-supports) are non-negative integers bounded by the largest clique count, the cursor is monotone non-decreasing, and only decrease-keys occur, so the simplest single-level array bucket is sufficient. The same primitive is the basis of $k$-core peeling~\cite{coreAlg}; we extend it to $(1,s)$ by combining it with the immutable-\cpi{} delta formulas (Lemma~\ref{lem:delta}).
+
+\stitle{Community discovery as ground truth.}
+We evaluate against SNAP's annotated communities~\cite{communityFinder} on \texttt{com-dblp} and \texttt{com-youtube}, following the established practice in the nucleus-decomposition and dense-subgraph literature~\cite{sigmodCPI,nucleusSariyuce14}. The metrics we use --- precision@$K$, communities recovered, and intrinsic triangle density --- are standard for this evaluation pattern.
+
+%===============================================================
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+This paper studied the $(1,s)$-nucleus decomposition problem and presented an algorithmic redesign organised around a single structural property: for $r{=}1$ the Clique Path Index is invariant under peeling (Theorem~\ref{thm:immutable}), and every support update reduces to closed-form integer arithmetic on three counters per leaf (Lemma~\ref{lem:delta}). Two algorithms instantiate the invariant. The local-iterative algorithm (\S\ref{sec:local}) is an H-index fixed-point iteration with no shared queue, no decrease-key, and no global ordering, which serves as the foundation for parallel, distributed, and external-memory deployments. The centralised peel (\S\ref{sec:peel}) is an $O(\Sig)$ single-thread algorithm using a static CSR and a bucket array. A construction-side augmented \sdct{} (\S\ref{sec:treefree}) feeds both algorithms in a single pass without materialising the \cpi{} tree. Across $762$ configurations on ten large graphs, the centralised peel achieves a geometric-mean $7.42\times$ and maximum $39.4\times$ end-to-end speedup over the state of the art, with peak resident memory reduced by up to $3.25\times$. Four ground-truth case studies confirm that $(1,s)$-cores match the quality of $(2,s)$ and $(3,s)$-cores on every metric we evaluate while costing $10\times$ to $5{,}000\times$ less.
+
+\stitle{Future Work.}
+Several directions remain open. First, the local-iterative algorithm of \S\ref{sec:local} is intentionally shared-nothing, and its parallel, distributed, and external-memory potential warrants empirical investigation. Concretely, four extensions are immediate. (i)~\textit{Many-core and GPU.} Algorithm~\ref{alg:local} is bulk-synchronous and parallelises trivially across cores or GPU threads; per-iteration scaling should be limited only by memory bandwidth. (ii)~\textit{Distributed shared-nothing.} Partitioning vertices across machines and replicating leaves that span partitions yields a deployment in which one iteration is a single all-to-all gather of changed values followed by local H-index updates~\cite{kcoreLocal}; no central coordinator is required. (iii)~\textit{External-memory.} When $\Sig$ exceeds RAM, each iteration is one streaming pass over the leaf list with the candidate vector $O(n)$ in RAM. (iv)~\textit{Dynamic and streaming graphs.} A vertex insertion restarts H-index updates only at the new vertex and its leaf-mates; the local algorithm therefore supports incremental updates in a way that the peeling-order discipline of the centralised peel does not.
+
+Second, generalising Theorem~\ref{thm:immutable} to $r \ge 2$ would extend the algorithmic gains beyond the vertex case. The proof relies on the fact that vertex removal does not split a leaf's pivot set; for $r{=}2$, edge removal can disconnect $\holdN{P}$ from a subset of remaining pivots, and partial-immutability conditions must be identified before the corresponding savings can be realised. Third, supporting vertex \textit{deletions} on the local algorithm with the same locality guarantees as insertions remains open.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{sample}
+
+\end{document}

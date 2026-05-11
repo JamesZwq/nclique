@@ -1,0 +1,220 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{14}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{}, \showDOI{}, and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showDOI}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showDOI #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showDOI      \undefined \def \showDOI       #1{#1}\fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[\protect\citeauthoryear{Batagelj and Zaver{\v s}nik}{Batagelj and
+  Zaver{\v s}nik}{2003}]%
+        {coreAlg}
+\bibfield{author}{\bibinfo{person}{Vladimir Batagelj} {and}
+  \bibinfo{person}{Matja{\v z} Zaver{\v s}nik}.}
+  \bibinfo{year}{2003}\natexlab{}.
+\newblock \showarticletitle{An $O(m)$ Algorithm for Cores Decomposition of
+  Networks}.
+\newblock \bibinfo{journal}{\emph{arXiv preprint cs/0310049}}
+  (\bibinfo{year}{2003}).
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Bron and Kerbosch}{Bron and Kerbosch}{1973}]%
+        {BronKerbosch}
+\bibfield{author}{\bibinfo{person}{Coen Bron} {and} \bibinfo{person}{Joep
+  Kerbosch}.} \bibinfo{year}{1973}\natexlab{}.
+\newblock \showarticletitle{Algorithm 457: finding all cliques of an undirected
+  graph}.
+\newblock \bibinfo{journal}{\emph{Commun. ACM}} \bibinfo{volume}{16},
+  \bibinfo{number}{9} (\bibinfo{date}{Sept.} \bibinfo{year}{1973}),
+  \bibinfo{pages}{575–577}.
+\newblock
+\showISSN{0001-0782}
+\urldef\tempurl%
+\url{https://doi.org/10.1145/362342.362367}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Edelsbrunner and Harer}{Edelsbrunner and
+  Harer}{2010}]%
+        {morozov2007persistence}
+\bibfield{author}{\bibinfo{person}{Herbert Edelsbrunner} {and}
+  \bibinfo{person}{John Harer}.} \bibinfo{year}{2010}\natexlab{}.
+\newblock \bibinfo{booktitle}{\emph{Computational Topology: An Introduction}}.
+\newblock \bibinfo{publisher}{American Mathematical Society}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Eppstein, L{\"o}ffler, and Strash}{Eppstein
+  et~al\mbox{.}}{2010}]%
+        {eppstein}
+\bibfield{author}{\bibinfo{person}{David Eppstein}, \bibinfo{person}{Maarten
+  L{\"o}ffler}, {and} \bibinfo{person}{Darren Strash}.}
+  \bibinfo{year}{2010}\natexlab{}.
+\newblock \showarticletitle{Listing All Maximal Cliques in Sparse Graphs in
+  Near-Optimal Time}. In \bibinfo{booktitle}{\emph{Proc. International
+  Symposium on Algorithms and Computation (ISAAC)}}. \bibinfo{pages}{403--414}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Hirsch}{Hirsch}{2005}]%
+        {hindex}
+\bibfield{author}{\bibinfo{person}{J~E Hirsch}.}
+  \bibinfo{year}{2005}\natexlab{}.
+\newblock \showarticletitle{An index to quantify an individual's scientific
+  research output}.
+\newblock \bibinfo{journal}{\emph{Proc Natl Acad Sci U S A}}
+  \bibinfo{volume}{102}, \bibinfo{number}{46} (\bibinfo{year}{2005}),
+  \bibinfo{pages}{16569--16572}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Jain and Seshadhri}{Jain and
+  Seshadhri}{2020}]%
+        {Pivoter}
+\bibfield{author}{\bibinfo{person}{Shweta Jain} {and} \bibinfo{person}{C.
+  Seshadhri}.} \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{The Power of Pivoting for Exact Clique Counting}.
+  In \bibinfo{booktitle}{\emph{Proceedings of the 13th International Conference
+  on Web Search and Data Mining}} (Houston, TX, USA)
+  \emph{(\bibinfo{series}{WSDM '20})}. \bibinfo{publisher}{Association for
+  Computing Machinery}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{268–276}.
+\newblock
+\showISBNx{9781450368223}
+\urldef\tempurl%
+\url{https://doi.org/10.1145/3336191.3371839}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Lu, Zhou, Zhang, and Stanley}{Lu
+  et~al\mbox{.}}{2016}]%
+        {lu2016hcore}
+\bibfield{author}{\bibinfo{person}{Linyuan Lu}, \bibinfo{person}{Tao Zhou},
+  \bibinfo{person}{Qian-Ming Zhang}, {and} \bibinfo{person}{H.~Eugene
+  Stanley}.} \bibinfo{year}{2016}\natexlab{}.
+\newblock \showarticletitle{The $h$-Index of a Network Node and Its Relation to
+  Degree and Coreness}.
+\newblock \bibinfo{journal}{\emph{Nature Communications}}  \bibinfo{volume}{7}
+  (\bibinfo{year}{2016}), \bibinfo{pages}{10168}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Montresor, {De Pellegrini}, and
+  Miorandi}{Montresor et~al\mbox{.}}{2013}]%
+        {kcoreLocal}
+\bibfield{author}{\bibinfo{person}{Alberto Montresor},
+  \bibinfo{person}{Francesco {De Pellegrini}}, {and} \bibinfo{person}{Daniele
+  Miorandi}.} \bibinfo{year}{2013}\natexlab{}.
+\newblock \showarticletitle{Distributed $k$-core Decomposition}. In
+  \bibinfo{booktitle}{\emph{IEEE Trans.\ on Parallel and Distributed Systems}},
+  Vol.~\bibinfo{volume}{24}. \bibinfo{pages}{288--300}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Placeholder}{Placeholder}{2026}]%
+        {NuclearCD}
+\bibfield{author}{\bibinfo{person}{Author Placeholder}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \showarticletitle{Nucleus Decomposition Revisited: An Efficient
+  Counting-Based Approach}. In \bibinfo{booktitle}{\emph{Proc. ACM SIGMOD
+  International Conference on Management of Data}}.
+\newblock
+\newblock
+\shownote{Sibling submission; placeholder bibkey to be updated to real
+  citation.}
+
+
+\bibitem[\protect\citeauthoryear{Sariy{\"u}ce and Pinar}{Sariy{\"u}ce and
+  Pinar}{2018}]%
+        {nucleusSariyuceTODS}
+\bibfield{author}{\bibinfo{person}{Ahmet~Erdem Sariy{\"u}ce} {and}
+  \bibinfo{person}{Ali Pinar}.} \bibinfo{year}{2018}\natexlab{}.
+\newblock \showarticletitle{Peeling Bipartite Networks for Dense Subgraph
+  Discovery}.
+\newblock \bibinfo{journal}{\emph{ACM Trans.\ Knowl.\ Discov.\ Data}}
+  \bibinfo{volume}{12}, \bibinfo{number}{1} (\bibinfo{year}{2018}).
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Sariy{\"u}ce, Seshadhri, Pinar, and
+  {\c{C}}ataly{\"u}rek}{Sariy{\"u}ce et~al\mbox{.}}{2015}]%
+        {nucleusSariyuce14}
+\bibfield{author}{\bibinfo{person}{Ahmet~Erdem Sariy{\"u}ce},
+  \bibinfo{person}{C. Seshadhri}, \bibinfo{person}{Ali Pinar}, {and}
+  \bibinfo{person}{{\"U}mit~V. {\c{C}}ataly{\"u}rek}.}
+  \bibinfo{year}{2015}\natexlab{}.
+\newblock \showarticletitle{Finding the Hierarchy of Dense Subgraphs Using
+  Nucleus Decompositions}. In \bibinfo{booktitle}{\emph{Proc. International
+  Conference on World Wide Web (WWW)}}. \bibinfo{pages}{927--937}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Seidman}{Seidman}{1983}]%
+        {kcoreSeidman}
+\bibfield{author}{\bibinfo{person}{Stephen~B. Seidman}.}
+  \bibinfo{year}{1983}\natexlab{}.
+\newblock \showarticletitle{Network Structure and Minimum Degree}.
+\newblock \bibinfo{journal}{\emph{Social Networks}} \bibinfo{volume}{5},
+  \bibinfo{number}{3}, \bibinfo{pages}{269--287}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Tomita, Tanaka, and Takahashi}{Tomita
+  et~al\mbox{.}}{2006}]%
+        {tomita}
+\bibfield{author}{\bibinfo{person}{Etsuji Tomita}, \bibinfo{person}{Akira
+  Tanaka}, {and} \bibinfo{person}{Haruhisa Takahashi}.}
+  \bibinfo{year}{2006}\natexlab{}.
+\newblock \showarticletitle{The Worst-Case Time Complexity for Generating All
+  Maximal Cliques and Computational Experiments}.
+\newblock \bibinfo{journal}{\emph{Theoretical Computer Science}}
+  \bibinfo{volume}{363}, \bibinfo{number}{1} (\bibinfo{year}{2006}),
+  \bibinfo{pages}{28--42}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Yang and Leskovec}{Yang and Leskovec}{2015}]%
+        {communityFinder}
+\bibfield{author}{\bibinfo{person}{Jaewon Yang} {and} \bibinfo{person}{Jure
+  Leskovec}.} \bibinfo{year}{2015}\natexlab{}.
+\newblock \showarticletitle{Defining and Evaluating Network Communities Based
+  on Ground-Truth}.
+\newblock \bibinfo{journal}{\emph{Knowledge and Information Systems}}
+  \bibinfo{volume}{42}, \bibinfo{number}{1} (\bibinfo{year}{2015}),
+  \bibinfo{pages}{181--213}.
+\newblock
+
+
+\end{thebibliography}

@@ -1,0 +1,158 @@
+\section{\texorpdfstring{Static CPI for \(r=1\)}{Static CPI for r=1}}\label{sec:static}
+
+The previous section ended with the mutable residual-index baseline.
+%
+The question now is whether that residual state is necessary when the peeled object is a vertex.
+%
+For \(r=1\), the answer is no.
+%
+Vertex peeling removes vertices from the active subgraph, but it does not delete edges among the vertices that remain.
+%
+Therefore, the stored clique \(\Vh(\TPath)\cup\Vp(\TPath)\) of every path remains structurally valid for as long as its active vertices are considered.
+%
+Only the contribution of the path changes.
+
+\stitle{Static structure and dynamic counters.}
+A path stores a fixed recipe for its encoded \(s\)-cliques.
+%
+The hold set \(\Vh(\TPath)\) is the part that every encoded clique must contain.
+%
+The pivot set \(\Vp(\TPath)\) is the pool from which the path chooses the remaining vertices.
+%
+The pivot requirement \(\eta_{\TPath}=s-|\Vh(\TPath)|\) says how many still-effective pivots must be chosen from that pool.
+%
+These three objects are static.
+%
+During peeling, the algorithm does not edit the stored hold or pivot sets.
+%
+The dynamic state is only a liveness bit and an integer \(p_{\TPath}\), the number of pivots in \(\Vp(\TPath)\) that have not yet been peeled.
+%
+If a peeled vertex is a hold, every encoded \(s\)-clique contains that vertex, so the path contributes nothing after the event.
+%
+If a peeled vertex is a pivot, the path remains the same symbolic object, but \(p_{\TPath}\) decreases by one.
+%
+This is the whole state transition.
+%
+The next theorem gives the counter form we need: a peel event either kills a path contribution or reduces an effective pivot count.
+
+\begin{theorem}[Vertex Removal on \cpi, Counter Form]\label{thm:vertex-removal}
+Let \(\TPath\) be a path of the \cpi{} of \(G\), and let \(v\in V\) be removed from \(G\).
+\begin{enumerate}[leftmargin=1.5em,itemsep=1pt,topsep=2pt]
+  \item If \(v\in\Vh(\TPath)\), \(\TPath\) encodes no surviving \(s\)-clique.
+  \item If \(v\in\Vp(\TPath)\), the surviving \(s\)-cliques are encoded by the same \(\Vh(\TPath)\) together with \(\Vp(\TPath)\setminus\{v\}\).
+%
+  Their count depends only on \(|\Vp(\TPath)|\).
+%
+  A counter \(p_{\TPath}=|\Vp(\TPath)|\) decremented by one is therefore support-equivalent to deleting \(v\) from \(\Vp(\TPath)\).
+%
+  If \(p_{\TPath}-1<\eta_{\TPath}\), no surviving \(s\)-clique is encoded.
+  \item Otherwise, \(\TPath\) is unaffected.
+\end{enumerate}
+The dynamic state of \(\TPath\) during peeling reduces to an integer counter \(p_{\TPath}\), the fixed pivot requirement \(\eta_{\TPath}\), and a liveness bit.
+%
+The stored sets \(\Vh(\TPath)\) and \(\Vp(\TPath)\) are never modified.
+\end{theorem}
+
+\begin{proof}
+\(\TPath\) encodes \(\mathcal{C}(\TPath)=\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath), |P'|=\eta_{\TPath}\}\).
+%
+If \(v\in\Vh(\TPath)\), every encoded \(s\)-clique contains \(v\), so no encoded clique survives after \(v\) is removed.
+%
+If \(v\in\Vp(\TPath)\), the surviving encoded cliques are exactly
+\[
+\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath)\setminus\{v\}, |P'|=\eta_{\TPath}\}.
+\]
+This family has cardinality \(\binom{|\Vp(\TPath)|-1}{\eta_{\TPath}}\).
+%
+By Lemma~\ref{lem:supp}, every support contribution of the path depends on the pivot set only through this cardinality and the corresponding pivot cardinalities.
+%
+Thus replacing the physical deletion from \(\Vp(\TPath)\) by the counter update \(p_{\TPath}\leftarrow p_{\TPath}-1\) gives the same support arithmetic.
+%
+The family is empty exactly when fewer than \(\eta_{\TPath}\) effective pivots remain.
+%
+If \(v\notin\Vh(\TPath)\cup\Vp(\TPath)\), no encoded clique on \(\TPath\) contains \(v\), so the encoded family is unchanged.
+%
+\qed
+\end{proof}
+
+\stitle{Boundary of the invariant.}
+The theorem is specific to \(r=1\).
+%
+When \(r\ge2\), a peel event removes an edge or a higher-order clique from the residual object.
+%
+That event can break the clique represented by \(\Vh(\TPath)\cup\Vp(\TPath)\).
+%
+In that setting, a path may need to be split, shrunk, or rebuilt.
+%
+The mutable \cpi{} machinery of~\cite{NuclearCD} remains the appropriate general tool, and this paper does not subsume it.
+
+\stitle{Closed-form support delta.}
+Theorem~\ref{thm:vertex-removal} leaves only cardinality changes.
+%
+The support lost by any other live vertex on the path is therefore a binomial difference.
+
+\begin{lemma}[Closed-form Support Delta]\label{lem:support-delta}
+Let \(\TPath\) be a live path with \(p\ge\eta\) before an event that removes \(d\ge1\) live pivots from \(\TPath\).
+%
+For every other alive vertex \(u\) incident to \(\TPath\):
+\begin{align*}
+\Delta_{\hold}(p,\eta,d) &= \tbinom{p}{\eta}-\tbinom{p-d}{\eta} & \text{if }u\in\Vh(\TPath), \\
+\Delta_{\pivot}(p,\eta,d)&= \tbinom{p-1}{\eta-1}-\tbinom{p-d-1}{\eta-1} & \text{if }u\in\Vp(\TPath).
+\end{align*}
+A path-killing event, caused by a hold peel or by \(p-d<\eta\), is the limiting case in which the entire contribution vanishes: \(\binom{p}{\eta}\) for surviving holds and \(\binom{p-1}{\eta-1}\) for surviving pivots.
+\end{lemma}
+
+\begin{proof}
+Apply Lemma~\ref{lem:supp} before and after the event.
+%
+A hold \(u\) contributes \(\binom{p}{\eta}\) before the event and \(\binom{p-d}{\eta}\) after the event.
+%
+A pivot \(u\) occupies one pivot slot.
+%
+It contributes \(\binom{p-1}{\eta-1}\) before the event and \(\binom{p-d-1}{\eta-1}\) after the event.
+%
+Subtracting the after value from the before value gives the two formulas.
+%
+\qed
+\end{proof}
+
+\stitle{Running example.}
+Figure~\ref{fig:overview} shows the running example at \(s=3\).
+%
+The graph has two \(K_4\) blocks sharing edge \((v_3,v_4)\) and two pendant triangles.
+%
+The \cpi{} has six paths whose binomial counts sum to the ten triangles.
+%
+The example shows both possible events under Theorem~\ref{thm:vertex-removal}: path death after a hold removal and counter decrement after a pivot removal.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig1_overview.pdf}
+\caption{Running example for \(s=3\).
+%
+Panel (a) shows the input graph: two \(K_4\) blocks sharing \((v_3,v_4)\) plus two pendant triangles.
+%
+Panel (b) shows that six \cpi{} paths encode the ten triangle witnesses by storing \(\Vh\), \(\Vp\), and \(\binom{|\Vp|}{s-|\Vh|}\).
+%
+Panel (c) shows the resulting \((1,s)\)-core values.
+%
+The point to notice is that the clique witnesses are explicit as path counts, while the stored hold/pivot sets are the objects preserved by the static-\cpi{} invariant.
+%
+The example illustrates why exact clique witnesses can be counted without rewriting the stored path structure.}
+\Description{A three-panel running example showing the input graph, six CPI paths, and the resulting vertex core values.}
+\label{fig:overview}
+\end{figure*}
+
+\begin{example}[Peel Event Walk-through]\label{ex:peel}
+Consider the path \(\TPath_3=(\{v_1\},\{v_2,v_3,v_4\})\) in Figure~\ref{fig:overview}(b), with \(p=3\) and \(\eta=2\).
+%
+Peeling \(v_2\) as a pivot triggers Lemma~\ref{lem:support-delta} with \(d=1\).
+%
+The surviving hold \(v_1\) loses \(\binom{3}{2}-\binom{2}{2}=2\) from its support.
+%
+The surviving pivots \(v_3\) and \(v_4\) each lose \(\binom{2}{1}-\binom{1}{1}=1\).
+%
+The stored set \(\Vp(\TPath_3)\) is not modified.
+%
+Only \(p_{\TPath_3}\) changes from \(3\) to \(2\).
+\end{example}

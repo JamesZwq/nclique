@@ -1,0 +1,37 @@
+\section{Conclusion}\label{sec:conclusion}
+
+The paper began with a tension in general CPI-based nucleus decomposition.
+%
+The index avoids explicit clique enumeration, but the general algorithm keeps it as mutable residual state.
+%
+For \((1,s)\)-nucleus decomposition, that mutability is unnecessary.
+%
+CPI paths do not need to be mutable residual state.
+%
+Vertex peeling removes vertices but does not delete edges, so the path structure built at the beginning remains valid throughout the peel.
+%
+A hold removal kills a path contribution.
+%
+A pivot removal decreases an effective pivot counter.
+%
+This changes exact decomposition from residual-index maintenance to counter maintenance over a static symbolic index.
+
+The algorithmic consequences follow from that state change.
+%
+\spin{} states the fixed-point computation over the static \cpi{}.
+%
+\spinStar{} realizes the same computation in deletion order.
+%
+\paraBuild{} addresses construction after cheap peeling exposes it as the next bottleneck.
+%
+\buildHier{} reads the sorted deletion log in reverse to recover the hierarchy.
+
+The experiments and case studies support the practical value of the specialization.
+%
+The reported matched configurations agree with the mutable baseline, and the measured pipeline reduces runtime and memory on the evaluated benchmarks.
+%
+The case studies show that vertex-centric \((1,s)\) can match higher-\(r\) quality metrics on the reported community tasks at much lower cost.
+%
+The boundary is explicit: the static-\cpi{} invariant is for \(r=1\), not for general \((r,s)\).
+
+A natural next step is to identify restricted \(r\ge2\) settings where enough path structure survives to support counter-only updates.

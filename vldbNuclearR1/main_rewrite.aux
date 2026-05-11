@@ -1,0 +1,196 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{kcoreSeidman,coreAlg,communityFinder}
+\citation{nucleusSariyuce14}
+\citation{NuclearCD}
+\citation{kcoreLocal,lu2016hcore,hindex}
+\providecommand \oddpage@label [2]{}
+\@writefile{toc}{\contentsline {section}{Abstract}{1}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
+\citation{NuclearCD}
+\citation{NuclearCD,BronKerbosch,eppstein,tomita}
+\citation{NuclearCD}
+\citation{coreAlg,NuclearCD}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Preliminaries}{2}{section.2}\protected@file@percent }
+\newlabel{sec:prelim}{{2}{2}{Preliminaries}{section.2}{}}
+\newlabel{def:k-clique}{{2.1}{2}{$k$-Clique}{definition.2.1}{}}
+\newlabel{def:s-supp}{{2.2}{2}{$s$-Clique Support}{definition.2.2}{}}
+\newlabel{def:admissible}{{2.3}{2}{$k$-Admissible $s$-Clique}{definition.2.3}{}}
+\newlabel{def:nucleus}{{2.4}{2}{$k$-$(1,s)$-Nucleus}{definition.2.4}{}}
+\newlabel{def:core}{{2.5}{2}{Core Number}{definition.2.5}{}}
+\newlabel{sec:prelim-cpi}{{2}{2}{Preliminaries}{definition.2.5}{}}
+\newlabel{def:path}{{2.6}{2}{\cpi {} Path}{definition.2.6}{}}
+\newlabel{lem:supp}{{2.1}{2}{Support Formula~\cite {NuclearCD}}{lemma.2.1}{}}
+\newlabel{sec:prelim-peel}{{2}{2}{Preliminaries}{lemma.2.1}{}}
+\citation{NuclearCD}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Static CPI for \(r=1\)}{3}{section.3}\protected@file@percent }
+\newlabel{sec:static}{{3}{3}{\texorpdfstring {Static CPI for \(r=1\)}{Static CPI for r=1}}{section.3}{}}
+\newlabel{thm:vertex-removal}{{3.1}{3}{Vertex Removal on \cpi }{theorem.3.1}{}}
+\newlabel{lem:support-delta}{{3.1}{3}{Closed-form Support Delta}{lemma.3.1}{}}
+\newlabel{ex:peel}{{3.1}{3}{Peel Event Walk-through}{example.3.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}\(h\)-Index Decomposition over a Static {\ensuremath  {\mathsf  {CPI}}}\xspace  }{3}{section.4}\protected@file@percent }
+\newlabel{sec:hindex}{{4}{3}{\texorpdfstring {\(h\)-Index Decomposition over a Static \cpi }{h-Index Decomposition over a Static CPI}}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}The H-Operator}{3}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:hop}{{4.1}{3}{The H-Operator}{subsection.4.1}{}}
+\newlabel{def:hop}{{4.1}{3}{H-Operator}{definition.4.1}{}}
+\newlabel{lem:per-path-witness}{{4.1}{3}{Per-path Witness Count}{lemma.4.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Running example for \(s=3\). Panel (a) shows the input graph: two \(K_4\) blocks sharing \((v_3,v_4)\) plus two pendant triangles. Panel (b) shows that six {\ensuremath  {\mathsf  {CPI}}}\xspace  {} paths encode the ten triangle witnesses by storing \(V_h\), \(V_p\), and \(\binom  {|V_p|}{s-|V_h|}\). Panel (c) shows the resulting \((1,s)\)-core values. The point to notice is that the clique witnesses are explicit as path counts, while the stored hold/pivot sets are the objects preserved by the static-{\ensuremath  {\mathsf  {CPI}}}\xspace  {} invariant. This figure supports the StaticCPI claim that the paper can reason about exact clique witnesses without rewriting the stored path structure.}}{4}{figure.caption.2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:overview}{{1}{4}{Running example for \(s=3\). Panel (a) shows the input graph: two \(K_4\) blocks sharing \((v_3,v_4)\) plus two pendant triangles. Panel (b) shows that six \cpi {} paths encode the ten triangle witnesses by storing \(\Vh \), \(\Vp \), and \(\binom {|\Vp |}{s-|\Vh |}\). Panel (c) shows the resulting \((1,s)\)-core values. The point to notice is that the clique witnesses are explicit as path counts, while the stored hold/pivot sets are the objects preserved by the static-\cpi {} invariant. This figure supports the StaticCPI claim that the paper can reason about exact clique witnesses without rewriting the stored path structure}{figure.caption.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}The Refresh Primitive}{4}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:refresh}{{4.2}{4}{The Refresh Primitive}{subsection.4.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Algorithm {\ensuremath  {\mathsf  {LocalH}}}\xspace  }{4}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:localh}{{4.3}{4}{Algorithm \localH }{subsection.4.3}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces \({\ensuremath  {\mathsf  {Refresh}}}\xspace  (v,h)\) --- per-vertex \(h\)-index over the static {\ensuremath  {\mathsf  {CPI}}}\xspace  .}}{4}{algocf.1}\protected@file@percent }
+\newlabel{alg:refresh}{{1}{4}{The Refresh Primitive}{algocf.1}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces {\ensuremath  {\mathsf  {LocalH}}}\xspace  }}{4}{algocf.2}\protected@file@percent }
+\newlabel{alg:localH}{{2}{4}{Algorithm \localH }{algocf.2}{}}
+\newlabel{lem:hindex-fixed-point}{{4.2}{4}{\(h\)-Index Fixed Point}{lemma.4.2}{}}
+\citation{coreAlg}
+\citation{NuclearCD,BronKerbosch,eppstein,tomita}
+\newlabel{thm:localh-complexity}{{4.1}{5}{\localH {} Complexity}{theorem.4.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}From Synchronous Refresh to Event-Driven Peel}{5}{subsection.4.4}\protected@file@percent }
+\newlabel{sec:redundancy}{{4.4}{5}{From Synchronous Refresh to Event-Driven Peel}{subsection.4.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Algorithm {\ensuremath  {\mathsf  {PeelH}}}\xspace  }{5}{subsection.4.5}\protected@file@percent }
+\newlabel{sec:peelh}{{4.5}{5}{Algorithm \peelH }{subsection.4.5}{}}
+\newlabel{lem:equivalence}{{4.3}{5}{\peelH {} = \localH {} minus redundancy}{lemma.4.3}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces {\ensuremath  {\mathsf  {PeelH}}}\xspace  }}{5}{algocf.3}\protected@file@percent }
+\newlabel{alg:peelH}{{3}{5}{Algorithm \peelH }{algocf.3}{}}
+\newlabel{thm:peelh-complexity}{{4.2}{5}{\peelH {} Complexity}{theorem.4.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Parallel {\ensuremath  {\mathsf  {CPI}}}\xspace  {} Construction}{5}{section.5}\protected@file@percent }
+\newlabel{sec:parabuild}{{5}{5}{Parallel \cpi {} Construction}{section.5}{}}
+\citation{Pivoter,NuclearCD}
+\citation{morozov2007persistence}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Event-driven peel on the running example. Each row gives the popped vertex, its core value, and the path event under Theorem\nonbreakingspace \ref {thm:vertex-removal}. The key distinction is that a hold peel kills a path, while a pivot peel only decreases \(p_{\mathcal  {P}}\). The \(\Delta _h\) and \(\Delta _p\) columns show the binomial losses from Lemma\nonbreakingspace \ref {lem:support-delta}. The figure supports the PeelH claim that mutable residual-index updates can be replaced by path events and counter deltas.}}{6}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:peel}{{2}{6}{Event-driven peel on the running example. Each row gives the popped vertex, its core value, and the path event under Theorem~\ref {thm:vertex-removal}. The key distinction is that a hold peel kills a path, while a pivot peel only decreases \(p_{\mathcal {P}}\). The \(\Delta _h\) and \(\Delta _p\) columns show the binomial losses from Lemma~\ref {lem:support-delta}. The figure supports the PeelH claim that mutable residual-index updates can be replaced by path events and counter deltas}{figure.caption.6}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {4}{\ignorespaces {\ensuremath  {\mathsf  {ParaBuild}}}\xspace  }}{6}{algocf.4}\protected@file@percent }
+\newlabel{alg:parabuild}{{4}{6}{Parallel \cpi {} Construction}{algocf.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Hierarchy Construction}{6}{section.6}\protected@file@percent }
+\newlabel{sec:buildhier}{{6}{6}{Hierarchy Construction}{section.6}{}}
+\citation{nucleusSariyuce14}
+\citation{communityFinder}
+\citation{communityFinder}
+\citation{communityFinder}
+\citation{communityFinder}
+\citation{communityFinder}
+\citation{communityFinder}
+\citation{communityFinder}
+\citation{communityFinder}
+\citation{communityFinder}
+\citation{communityFinder}
+\citation{NuclearCD}
+\citation{NuclearCD}
+\citation{NuclearCD}
+\citation{NuclearCD}
+\citation{NuclearCD}
+\@writefile{loa}{\contentsline {algocf}{\numberline {5}{\ignorespaces {\ensuremath  {\mathsf  {BuildHier}}}\xspace  }}{7}{algocf.5}\protected@file@percent }
+\newlabel{alg:buildhier}{{5}{7}{Hierarchy Construction}{algocf.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Experiments}{7}{section.7}\protected@file@percent }
+\newlabel{sec:exp}{{7}{7}{Experiments}{section.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Datasets used in Section\nonbreakingspace \ref {sec:exp}. \(s\)-range gives the values exercised in the current draft.}}{7}{table.caption.9}\protected@file@percent }
+\newlabel{tab:datasets}{{1}{7}{Datasets used in Section~\ref {sec:exp}. \(s\)-range gives the values exercised in the current draft}{table.caption.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces CSV-backed end-to-end comparison on \texttt  {com-youtube}, \texttt  {web-Stanford}, and \texttt  {web-it-2004}. The source is \texttt  {figures/benchmark\_all\_results.csv}. The key point is that the static pipeline is faster than REF on the matched cells while keeping peak RSS below REF on the plotted ratios. This figure supports the directly reproducible part of RQ2.}}{8}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:exp-endtoend}{{3}{8}{CSV-backed end-to-end comparison on \texttt {com-youtube}, \texttt {web-Stanford}, and \texttt {web-it-2004}. The source is \texttt {figures/benchmark\_all\_results.csv}. The key point is that the static pipeline is faster than REF on the matched cells while keeping peak RSS below REF on the plotted ratios. This figure supports the directly reproducible part of RQ2}{figure.caption.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces End-to-end wall-clock time as a function of \(s\) in the existing ten-graph figure. Solid blue is V3 {\ensuremath  {\mathsf  {PeelH}}}\xspace  {}, and dashed red is the mutable-{\ensuremath  {\mathsf  {CPI}}}\xspace  {} REF baseline of\nonbreakingspace \citep  {NuclearCD}. The key point is whether the blue curve stays below the red curve as \(s\) changes across graph families. This figure supports the qualitative ten-graph part of RQ2; the aggregate headline remains marked for raw-source verification.}}{8}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:exp-time}{{4}{8}{End-to-end wall-clock time as a function of \(s\) in the existing ten-graph figure. Solid blue is V3 \peelH {}, and dashed red is the mutable-\cpi {} REF baseline of~\cite {NuclearCD}. The key point is whether the blue curve stays below the red curve as \(s\) changes across graph families. This figure supports the qualitative ten-graph part of RQ2; the aggregate headline remains marked for raw-source verification}{figure.caption.11}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Memory budget per vertex--path incidence at \(\Sigma \gg n\). Baseline numbers are from the SOTA implementation\nonbreakingspace \citep  {NuclearCD}; our numbers are the sizeof-based accounting used in the current draft.}}{8}{table.caption.13}\protected@file@percent }
+\newlabel{tab:mem}{{2}{8}{Memory budget per vertex--path incidence at \(\Sig \gg n\). Baseline numbers are from the SOTA implementation~\cite {NuclearCD}; our numbers are the sizeof-based accounting used in the current draft}{table.caption.13}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Per-phase wall-clock time in ms, median over three runs.}}{8}{table.caption.14}\protected@file@percent }
+\newlabel{tab:bd-time}{{3}{8}{Per-phase wall-clock time in ms, median over three runs}{table.caption.14}{}}
+\citation{nucleusSariyuceTODS,NuclearCD}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Peak resident-set memory in the existing ten-graph figure. Solid blue is V3, and dashed red is REF. The key point is whether flat static incidence storage reduces peak RSS compared with mutable residual {\ensuremath  {\mathsf  {CPI}}}\xspace  {} state. This figure supports the memory side of RQ2; exact aggregate ratios remain tied to the raw-source TODOs.}}{9}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:exp-mem}{{5}{9}{Peak resident-set memory in the existing ten-graph figure. Solid blue is V3, and dashed red is REF. The key point is whether flat static incidence storage reduces peak RSS compared with mutable residual \cpi {} state. This figure supports the memory side of RQ2; exact aggregate ratios remain tied to the raw-source TODOs}{figure.caption.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Peak resident-set memory in MB, median over three runs.}}{9}{table.caption.15}\protected@file@percent }
+\newlabel{tab:bd-mem}{{4}{9}{Peak resident-set memory in MB, median over three runs}{table.caption.15}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces {\ensuremath  {\mathsf  {ParaBuild}}}\xspace  {} build time in ms, median over three runs. Speedup is \(T=1\) time divided by \(T=24\) time.}}{9}{table.caption.16}\protected@file@percent }
+\newlabel{tab:par}{{5}{9}{\paraBuild {} build time in ms, median over three runs. Speedup is \(T=1\) time divided by \(T=24\) time}{table.caption.16}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Runtime stress test on synthetic clique-injection graphs with \(|V|=1000\). Solid blue is V3, and dashed red is REF. The key point is how quickly runtime grows as density and \(s\) increase. This figure supports RQ6 by testing the static pipeline outside the sparse benchmark regime.}}{9}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:stress-time}{{6}{9}{Runtime stress test on synthetic clique-injection graphs with \(|V|=1000\). Solid blue is V3, and dashed red is REF. The key point is how quickly runtime grows as density and \(s\) increase. This figure supports RQ6 by testing the static pipeline outside the sparse benchmark regime}{figure.caption.17}{}}
+\citation{nucleusSariyuce14}
+\citation{communityFinder}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Peak resident-set memory under the same stress-test protocol as Figure\nonbreakingspace \ref {fig:stress-time}. The key point is whether mutable residual state amplifies memory growth on dense clique-injection instances. This figure supports the memory part of RQ6; exact GB values remain marked for raw-source verification.}}{10}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:stress-mem}{{7}{10}{Peak resident-set memory under the same stress-test protocol as Figure~\ref {fig:stress-time}. The key point is whether mutable residual state amplifies memory growth on dense clique-injection instances. This figure supports the memory part of RQ6; exact GB values remain marked for raw-source verification}{figure.caption.18}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Per-graph speedup and memory-reduction summary from the current draft. Speedup is REF time divided by V3 time; memory ratio is REF peak RSS divided by V3 peak RSS.}}{10}{table.caption.19}\protected@file@percent }
+\newlabel{tab:per-graph}{{6}{10}{Per-graph speedup and memory-reduction summary from the current draft. Speedup is REF time divided by V3 time; memory ratio is REF peak RSS divided by V3 peak RSS}{table.caption.19}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Case Studies}{10}{section.8}\protected@file@percent }
+\newlabel{sec:casestudy}{{8}{10}{Case Studies}{section.8}{}}
+\newlabel{sec:cs-setup}{{8}{10}{Case Studies}{section.8}{}}
+\newlabel{sec:cs-granularity}{{8}{10}{Case Studies}{section.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Active-set size and top-\(K\) thresholds on \texttt  {com-dblp} as \(s\) grows.}}{10}{table.caption.20}\protected@file@percent }
+\newlabel{tab:cs1}{{7}{10}{Active-set size and top-\(K\) thresholds on \texttt {com-dblp} as \(s\) grows}{table.caption.20}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Active-set size on \texttt  {com-dblp} as \(s\) varies. The key point is that larger \(s\) sharply shrinks the vertices with nonzero \((1,s)\)-core value. This figure supports the case-study claim that \(s\) acts as a granularity knob.}}{10}{figure.caption.21}\protected@file@percent }
+\newlabel{fig:cs1}{{8}{10}{Active-set size on \texttt {com-dblp} as \(s\) varies. The key point is that larger \(s\) sharply shrinks the vertices with nonzero \((1,s)\)-core value. This figure supports the case-study claim that \(s\) acts as a granularity knob}{figure.caption.21}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Ground-truth quality of \((1,s)\)-cores versus \(k\)-core on \texttt  {com-dblp}.}}{10}{table.caption.22}\protected@file@percent }
+\newlabel{tab:cs3}{{8}{10}{Ground-truth quality of \((1,s)\)-cores versus \(k\)-core on \texttt {com-dblp}}{table.caption.22}{}}
+\newlabel{sec:cs-quality}{{8}{10}{Case Studies}{figure.caption.21}{}}
+\newlabel{sec:cs-pareto}{{8}{10}{Case Studies}{figure.caption.23}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Precision@\(K\) on \texttt  {com-dblp}. The key point is that the \((1,s)\)-core rankings for \(s\in \{3,5,10,15\}\) stay above the \(k\)-core curve in the plotted range. This figure supports the claim that vertex-centric clique support can improve the DBLP vertex ranking over edge-degree core support.}}{11}{figure.caption.23}\protected@file@percent }
+\newlabel{fig:cs3}{{9}{11}{Precision@\(K\) on \texttt {com-dblp}. The key point is that the \((1,s)\)-core rankings for \(s\in \{3,5,10,15\}\) stay above the \(k\)-core curve in the plotted range. This figure supports the claim that vertex-centric clique support can improve the DBLP vertex ranking over edge-degree core support}{figure.caption.23}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Cross-\(r\) comparison at \(s=10\) on \texttt  {com-dblp}.}}{11}{table.caption.24}\protected@file@percent }
+\newlabel{tab:cs4}{{9}{11}{Cross-\(r\) comparison at \(s=10\) on \texttt {com-dblp}}{table.caption.24}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Quality-runtime Pareto plot on \texttt  {com-dblp} for \(r\in \{1,2,3\}\) and \(s\in \{5,10,15,20\}\). The key point is that the \(r=1\) points lie on the favorable quality-runtime frontier in the reported DBLP settings. This figure supports the scoped claim that higher \(r\) does not buy enough vertex-ranking quality on this task to justify its cost.}}{11}{figure.caption.25}\protected@file@percent }
+\newlabel{fig:cs6}{{10}{11}{Quality-runtime Pareto plot on \texttt {com-dblp} for \(r\in \{1,2,3\}\) and \(s\in \{5,10,15,20\}\). The key point is that the \(r=1\) points lie on the favorable quality-runtime frontier in the reported DBLP settings. This figure supports the scoped claim that higher \(r\) does not buy enough vertex-ranking quality on this task to justify its cost}{figure.caption.25}{}}
+\newlabel{sec:cs-youtube}{{8}{11}{Case Studies}{figure.caption.25}{}}
+\newlabel{sec:cs-viz}{{8}{11}{Case Studies}{figure.caption.27}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Cross-\(r\) comparison on \texttt  {com-youtube}.}}{11}{table.caption.26}\protected@file@percent }
+\newlabel{tab:cs7}{{10}{11}{Cross-\(r\) comparison on \texttt {com-youtube}}{table.caption.26}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Quality-runtime Pareto plot on \texttt  {com-youtube} for \(r\in \{1,2,3\}\) and \(s\in \{5,10,15\}\). The key point is that \(r=1\) reaches the same quality contours as higher-\(r\) settings with lower runtime in the reported runs. This figure supports the cross-dataset relevance claim for the vertex-centric specialization.}}{11}{figure.caption.27}\protected@file@percent }
+\newlabel{fig:cs7y}{{11}{11}{Quality-runtime Pareto plot on \texttt {com-youtube} for \(r\in \{1,2,3\}\) and \(s\in \{5,10,15\}\). The key point is that \(r=1\) reaches the same quality contours as higher-\(r\) settings with lower runtime in the reported runs. This figure supports the cross-dataset relevance claim for the vertex-centric specialization}{figure.caption.27}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Ego-network of \texttt  {com-dblp} anchor \(52213\) under three \(s\) values.}}{11}{table.caption.28}\protected@file@percent }
+\newlabel{tab:cs9}{{11}{11}{Ego-network of \texttt {com-dblp} anchor \(52213\) under three \(s\) values}{table.caption.28}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Two-hop ego-network of a \texttt  {com-dblp} anchor under \((1,s)\)-decomposition. Vertices are colored by connected component among surviving vertices. The key point is that increasing \(s\) splits one large local structure into smaller components. This figure supports the claim that \(s\) also changes local resolution, not only global ranking size.}}{11}{figure.caption.29}\protected@file@percent }
+\newlabel{fig:cs9}{{12}{11}{Two-hop ego-network of a \texttt {com-dblp} anchor under \((1,s)\)-decomposition. Vertices are colored by connected component among surviving vertices. The key point is that increasing \(s\) splits one large local structure into smaller components. This figure supports the claim that \(s\) also changes local resolution, not only global ranking size}{figure.caption.29}{}}
+\newlabel{sec:cs-hier}{{8}{11}{Case Studies}{figure.caption.29}{}}
+\citation{kcoreSeidman}
+\citation{coreAlg}
+\citation{nucleusSariyuce14}
+\citation{BronKerbosch}
+\citation{tomita}
+\citation{eppstein}
+\citation{Pivoter}
+\citation{NuclearCD}
+\citation{lu2016hcore,kcoreLocal,hindex}
+\citation{nucleusSariyuce14}
+\citation{morozov2007persistence}
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Branches, internal absorption events, and maximum tree depth in the elder-rule join tree.}}{12}{table.caption.30}\protected@file@percent }
+\newlabel{tab:cs10cross}{{12}{12}{Branches, internal absorption events, and maximum tree depth in the elder-rule join tree}{table.caption.30}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces \((1,s)\)-nucleus elder-rule join tree at \(s=5\) across three domains. The key point is that the hierarchy shapes differ across collaboration, social, and web graphs. This figure supports the claim that BuildHier exposes domain-level nesting patterns from the deletion log.}}{12}{figure.caption.31}\protected@file@percent }
+\newlabel{fig:cs10}{{13}{12}{\((1,s)\)-nucleus elder-rule join tree at \(s=5\) across three domains. The key point is that the hierarchy shapes differ across collaboration, social, and web graphs. This figure supports the claim that BuildHier exposes domain-level nesting patterns from the deletion log}{figure.caption.31}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Persistence diagrams across three domains and four \(s\) values. The key point is that branch persistence changes with both domain and clique size. This figure supports the claim that the \((1,s)\) hierarchy gives a compact profile of clique-supported structure.}}{12}{figure.caption.32}\protected@file@percent }
+\newlabel{fig:cs10p}{{14}{12}{Persistence diagrams across three domains and four \(s\) values. The key point is that branch persistence changes with both domain and clique size. This figure supports the claim that the \((1,s)\) hierarchy gives a compact profile of clique-supported structure}{figure.caption.32}{}}
+\newlabel{sec:cs-clique}{{8}{12}{Case Studies}{figure.caption.32}{}}
+\newlabel{sec:cs-summary}{{8}{12}{Case Studies}{figure.caption.33}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces Edge-based versus clique-coherent persistence diagrams on \texttt  {com-dblp} at \(s=3\). The key point is that changing the connectivity witness changes the branch profile. This figure supports the claim that the same {\ensuremath  {\mathsf  {CPI}}}\xspace  {} representation can also define a more clique-faithful hierarchy variant.}}{12}{figure.caption.33}\protected@file@percent }
+\newlabel{fig:cs10b}{{15}{12}{Edge-based versus clique-coherent persistence diagrams on \texttt {com-dblp} at \(s=3\). The key point is that changing the connectivity witness changes the branch profile. This figure supports the claim that the same \cpi {} representation can also define a more clique-faithful hierarchy variant}{figure.caption.33}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Related Work}{12}{section.9}\protected@file@percent }
+\newlabel{sec:related}{{9}{12}{Related Work}{section.9}{}}
+\citation{communityFinder,NuclearCD,nucleusSariyuceTODS}
+\bibstyle{ACM-Reference-Format}
+\bibdata{references}
+\bibcite{coreAlg}{{1}{2003}{{Batagelj and Zaver{\v s}nik}}{{Batagelj and Zaver{\v s}nik}}}
+\bibcite{BronKerbosch}{{2}{1973}{{Bron and Kerbosch}}{{Bron and Kerbosch}}}
+\bibcite{morozov2007persistence}{{3}{2010}{{Edelsbrunner and Harer}}{{Edelsbrunner and Harer}}}
+\bibcite{eppstein}{{4}{2010}{{Eppstein et~al\mbox  {.}}}{{Eppstein, L{\"o}ffler, and Strash}}}
+\bibcite{hindex}{{5}{2005}{{Hirsch}}{{Hirsch}}}
+\bibcite{Pivoter}{{6}{2020}{{Jain and Seshadhri}}{{Jain and Seshadhri}}}
+\bibcite{lu2016hcore}{{7}{2016}{{Lu et~al\mbox  {.}}}{{Lu, Zhou, Zhang, and Stanley}}}
+\bibcite{kcoreLocal}{{8}{2013}{{Montresor et~al\mbox  {.}}}{{Montresor, {De Pellegrini}, and Miorandi}}}
+\bibcite{NuclearCD}{{9}{2026}{{Placeholder}}{{Placeholder}}}
+\bibcite{nucleusSariyuceTODS}{{10}{2018}{{Sariy{\"u}ce and Pinar}}{{Sariy{\"u}ce and Pinar}}}
+\bibcite{nucleusSariyuce14}{{11}{2015}{{Sariy{\"u}ce et~al\mbox  {.}}}{{Sariy{\"u}ce, Seshadhri, Pinar, and {\c {C}}ataly{\"u}rek}}}
+\bibcite{kcoreSeidman}{{12}{1983}{{Seidman}}{{Seidman}}}
+\bibcite{tomita}{{13}{2006}{{Tomita et~al\mbox  {.}}}{{Tomita, Tanaka, and Takahashi}}}
+\bibcite{communityFinder}{{14}{2015}{{Yang and Leskovec}}{{Yang and Leskovec}}}
+\newlabel{tocindent-1}{0pt}
+\newlabel{tocindent0}{0pt}
+\newlabel{tocindent1}{0pt}
+\newlabel{tocindent2}{0pt}
+\newlabel{tocindent3}{0pt}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{13}{section.10}\protected@file@percent }
+\newlabel{sec:conclusion}{{10}{13}{Conclusion}{section.10}{}}
+\@writefile{toc}{\contentsline {section}{References}{13}{section*.34}\protected@file@percent }
+\newlabel{TotPages}{{13}{13}{}{page.13}{}}
+\gdef \@abspage@last{13}

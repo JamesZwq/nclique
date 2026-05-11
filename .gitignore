@@ -89,3 +89,14 @@ cd
 nohup.out
 claude*.txt
 out.txt
+# vldbNuclearR1/ stays tracked — see feedback_commit_after_every_change memory
+# Per-build LaTeX intermediates inside the paper dir
+vldbNuclearR1/main.aux
+vldbNuclearR1/main.log
+vldbNuclearR1/main.out
+vldbNuclearR1/main.bbl
+vldbNuclearR1/main.blg
+vldbNuclearR1/main.toc
+vldbNuclearR1/main.fls
+vldbNuclearR1/main.fdb_latexmk
+vldbNuclearR1/main.synctex.gz
