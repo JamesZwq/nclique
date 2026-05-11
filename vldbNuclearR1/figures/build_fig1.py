@@ -33,7 +33,9 @@ pos = {
     9: (-3.8, -1.8), 10: (-3.8, 0.0),
 }
 core = {1:3, 2:3, 3:3, 4:3, 5:3, 6:3, 7:1, 8:1, 9:1, 10:1}
-core_color = {3: "#4c8be8", 1: "#e8a44c"}
+# Monochrome palette to match the paper's figure-style rules: black for
+# the "winner" (high-core) class, light gray for the "secondary" class.
+core_color = {3: "black", 1: "#cccccc"}
 
 # ------- Panel (b): CPI leaves -------
 leaves = [
@@ -56,23 +58,30 @@ block_b = [(3,5),(3,6),(4,5),(4,6),(5,6)]
 t1 = [(6,7),(6,8),(7,8)]
 t2 = [(2,9),(2,10),(9,10)]
 shared_edge = [(3,4)]
-for es, col, lw in [(block_a, "#3a5fcd", 1.7),
-                     (block_b, "#1f8a3a", 1.7),
-                     (t1, "#b05020", 1.3),
-                     (t2, "#b05020", 1.3)]:
-    nx.draw_networkx_edges(G, pos, edgelist=es, edge_color=col, width=lw, alpha=0.85, ax=ax_a)
-nx.draw_networkx_edges(G, pos, edgelist=shared_edge, edge_color="#7a2bb0", width=3.0, ax=ax_a)
+# Distinguish blocks by line style + width rather than color (paper rule:
+# monochrome plus shape/style, not hue).
+for es, style, lw in [(block_a, "solid",  1.6),
+                       (block_b, "dashed", 1.6),
+                       (t1,      "dotted", 1.4),
+                       (t2,      "dotted", 1.4)]:
+    nx.draw_networkx_edges(G, pos, edgelist=es, edge_color="#555555",
+                            style=style, width=lw, alpha=0.9, ax=ax_a)
+nx.draw_networkx_edges(G, pos, edgelist=shared_edge, edge_color="black",
+                        width=2.6, ax=ax_a)
 
 node_colors = [core_color[core[v]] for v in G.nodes()]
+label_colors = {v: ("white" if core_color[core[v]] == "black" else "black")
+                for v in G.nodes()}
 nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=720,
                        edgecolors="black", linewidths=1.1, ax=ax_a)
-nx.draw_networkx_labels(G, pos, labels={v: f"$v_{{{v}}}$" for v in G.nodes()},
-                        font_size=10.5, ax=ax_a)
+for v, (x, y) in pos.items():
+    ax_a.text(x, y, f"$v_{{{v}}}$", ha="center", va="center",
+              fontsize=10.5, color=label_colors[v])
 ax_a.set_title(r"(a) Input graph $G$: $|V|{=}10,\ |E|{=}17,\ 10$ triangles at $s{=}3$",
                fontsize=11)
 ax_a.legend(handles=[
-    mpatches.Patch(facecolor="#4c8be8", edgecolor="black", label=r"$(1,3)$-core $= 3$"),
-    mpatches.Patch(facecolor="#e8a44c", edgecolor="black", label=r"$(1,3)$-core $= 1$"),
+    mpatches.Patch(facecolor="black",   edgecolor="black", label=r"$(1,3)$-core $= 3$"),
+    mpatches.Patch(facecolor="#cccccc", edgecolor="black", label=r"$(1,3)$-core $= 1$"),
 ], loc="upper center", bbox_to_anchor=(0.5, -0.02), ncol=2, fontsize=9, frameon=False)
 ax_a.axis("off")
 
@@ -103,11 +112,11 @@ for (name, h, p, ncliq), (x, y) in zip(leaves, layout):
               f"$V_h{{=}}\\{{{h_str}\\}}$", fontsize=10)
     ax_b.text(x + 0.25, y + hh - 1.65,
               f"$V_p{{=}}\\{{{p_str}\\}}$", fontsize=10)
-    # Cliques count
+    # Cliques count (annotation in black, bold; no green accent)
     eta = 3 - len(h)
     ax_b.text(x + w - 0.25, y + 0.3,
               f"$\\binom{{{len(p)}}}{{{eta}}}{{=}}{ncliq}$ cliques",
-              fontsize=9, ha="right", color="#2e7d32", fontweight="bold")
+              fontsize=9, ha="right", color="black", fontweight="bold")
 
 # -------- Panel (c): core values as horizontal bar chart --------
 ax_c = fig.add_subplot(gs[0, 2])
@@ -115,7 +124,7 @@ vs = list(range(1, 11))
 cs = [core[v] for v in vs]
 colors = [core_color[c] for c in cs]
 bars = ax_c.barh([f"$v_{{{v}}}$" for v in vs], cs, color=colors,
-                 edgecolor="black", linewidth=0.7)
+                 edgecolor="black", linewidth=0.6)
 ax_c.invert_yaxis()
 ax_c.set_xlim(0, 3.5)
 ax_c.set_xticks([0, 1, 2, 3])

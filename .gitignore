@@ -85,6 +85,10 @@ pivoter/.vscode/
 cd
 *.png
 *.pdf
+# Paper figures + compiled main.pdf must be tracked for reproducibility
+!vldbNuclearR1/figures/*.png
+!vldbNuclearR1/figures/*.pdf
+!vldbNuclearR1/main.pdf
 *.edges
 nohup.out
 claude*.txt

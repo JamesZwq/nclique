@@ -67,7 +67,7 @@ gs = fig.add_gridspec(1, 2, width_ratios=[1.4, 1.0], wspace=0.20)
 ax_a = fig.add_subplot(gs[0, 0])
 ax_a.set_xlim(-0.5, L + 0.5); ax_a.set_ylim(R + 0.5, -1.5)
 ax_a.set_xticks([]); ax_a.set_yticks([])
-ax_a.set_title(r"(a) Peeling trace: 10 rounds $\times$ 6 \cpi leaves "
+ax_a.set_title(r"(a) Peeling trace: 10 rounds $\times$ 6 CPI leaves "
                r"(running example, $s{=}3$)", fontsize=11)
 ax_a.axis('off')
 
@@ -164,7 +164,7 @@ ax_b.text(5.2, 6.85, r"peel $v_2$ (a pivot of $L_3$, Case C)",
 # After
 ax_b.text(0.3, 6.0, r"After:", fontsize=10, fontweight='bold')
 ax_b.text(0.3, 5.3,
-          r"$L_3$ \emph{unchanged in memory}; counter $p{:}3{\to}2$, "
+          r"$L_3$ unchanged in memory; counter $p{:}3{\to}2$, "
           r"liveness still alive",
           fontsize=9.5)
 ax_b.text(0.3, 4.6,
@@ -176,7 +176,7 @@ ax_b.text(0.3, 4.6,
 ax_b.add_patch(mpatches.FancyBboxPatch(
     (0.3, 1.6), 9.4, 2.6, boxstyle="round,pad=0.10",
     linewidth=1.0, edgecolor='#3a8a3a', facecolor='#eaf6ea'))
-ax_b.text(0.6, 3.6, r"\textbf{Counter-based delta} (Lemma~2):",
+ax_b.text(0.6, 3.6, "Counter-based delta (Lemma 2):",
           fontsize=10, fontweight='bold', color='#1f5a1f')
 ax_b.text(0.6, 2.9,
           r"$\Delta_{\mathrm{hold}} = \binom{p}{\eta} - \binom{p{-}d}{\eta}$"
@@ -188,11 +188,13 @@ ax_b.text(0.6, 2.2,
           fontsize=10)
 
 # Support updates
-ax_b.text(0.3, 1.0, r"\textbf{Support updates:} "
-          r"$v_1$ (hold) $-2$;\ \ $v_3,v_4$ (pivots) $-1$ each",
+ax_b.text(0.3, 1.0, "Support updates:",
+          fontsize=9.5, fontweight='bold')
+ax_b.text(3.0, 1.0,
+          r"$v_1$ (hold) $-2$;   $v_3,v_4$ (pivots) $-1$ each",
           fontsize=9.5)
 ax_b.text(0.3, 0.3,
-          r"\emph{No tree mutation, no hash op, $O(|V_h|+|V_p|{-}1)$ work}.",
+          r"No tree mutation, no hash op, $O(|V_h|+|V_p|-1)$ work.",
           fontsize=9, style='italic', color='#1f5a1f')
 
 fig.suptitle(r"Figure 2: Peeling trace and counter-based delta on the running example.",
