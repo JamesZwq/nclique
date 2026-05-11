@@ -117,31 +117,48 @@ Subtracting the after value from the before value gives the two formulas.
 \end{proof}
 
 \stitle{Running example.}
-Figure~\ref{fig:overview} shows the running example at \(s=3\).
+Figure~\ref{fig:overview} shows the running example at \(s=3\): two \(K_4\) blocks share edge \((v_3,v_4)\), and two pendant triangles attach at \(v_2\) and \(v_6\).
 %
-The graph has two \(K_4\) blocks sharing edge \((v_3,v_4)\) and two pendant triangles.
+The six \cpi{} paths in Table~\ref{tab:cpi-leaves} encode the ten triangle witnesses through stored \(\Vh,\Vp\) sets and the binomial count \(\binom{|\Vp|}{s-|\Vh|}\).
 %
-The \cpi{} has six paths whose binomial counts sum to the ten triangles.
+The \((1,3)\)-core values fall into two bands: \(\kappa_3(v_i)=3\) for \(i\in\{1,\ldots,6\}\) (the two \(K_4\) blocks) and \(\kappa_3(v_i)=1\) for \(i\in\{7,\ldots,10\}\) (the pendant triangles); this is the partition shown by the node shading in Figure~\ref{fig:overview}.
 %
-The example shows both possible events under Theorem~\ref{thm:vertex-removal}: path death after a hold removal and counter decrement after a pivot removal.
+The example exercises both events of Theorem~\ref{thm:vertex-removal}: a path dies when a hold vertex is removed, and a path's pivot counter shrinks when a pivot vertex is removed.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig1_overview.pdf}
-\caption{Running example for \(s=3\).
+\includegraphics[width=0.7\linewidth]{figures/fig1_overview.pdf}
+\caption{Running example at \(s=3\): two \(K_4\) blocks share edge \((v_3,v_4)\) (heavy black); pendant triangles attach at \(v_2\) and \(v_6\) (dotted edges).
 %
-Panel (a) shows the input graph: two \(K_4\) blocks sharing \((v_3,v_4)\) plus two pendant triangles.
+Black nodes have \((1,3)\)-core value \(3\); light-gray nodes have value \(1\).
 %
-Panel (b) shows that six \cpi{} paths encode the ten triangle witnesses by storing \(\Vh\), \(\Vp\), and \(\binom{|\Vp|}{s-|\Vh|}\).
-%
-Panel (c) shows the resulting \((1,s)\)-core values.
-%
-The point to notice is that the clique witnesses are explicit as path counts, while the stored hold/pivot sets are the objects preserved by the static-\cpi{} invariant.
-%
-The example illustrates why exact clique witnesses can be counted without rewriting the stored path structure.}
-\Description{A three-panel running example showing the input graph, six CPI paths, and the resulting vertex core values.}
+Edge styles distinguish the two \(K_4\) blocks (solid vs.\ dashed) from the pendant triangles (dotted).}
+\Description{Running-example graph topology: 10 vertices, 17 edges, with two K_4 blocks plus two pendant triangles. Node shade indicates (1,3)-core value.}
 \label{fig:overview}
-\end{figure*}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{The six \cpi{} paths for the running example at \(s=3\).
+%
+Total binomial count \(\sum\binom{|\Vp|}{\eta}=10\) matches the ten triangles in the graph.}
+\label{tab:cpi-leaves}
+\small
+\begin{tabular}{cccrr}
+\toprule
+Path & \(\Vh\) & \(\Vp\) & \(\eta=s-|\Vh|\) & \(\binom{|\Vp|}{\eta}\) \\
+\midrule
+\(\TPath_1\) & \(\{v_7\}\)   & \(\{v_6,v_8\}\)        & \(2\) & \(1\) \\
+\(\TPath_2\) & \(\{v_9\}\)   & \(\{v_2,v_{10}\}\)     & \(2\) & \(1\) \\
+\(\TPath_3\) & \(\{v_1\}\)   & \(\{v_2,v_3,v_4\}\)    & \(2\) & \(3\) \\
+\(\TPath_4\) & \(\{v_2\}\)   & \(\{v_3,v_4\}\)        & \(2\) & \(1\) \\
+\(\TPath_5\) & \(\{v_3\}\)   & \(\{v_4,v_5,v_6\}\)    & \(2\) & \(3\) \\
+\(\TPath_6\) & \(\{v_4\}\)   & \(\{v_5,v_6\}\)        & \(2\) & \(1\) \\
+\midrule
+\textbf{Total} & & & & \(\mathbf{10}\) \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{example}[Peel Event Walk-through]\label{ex:peel}
 Consider the path \(\TPath_3=(\{v_1\},\{v_2,v_3,v_4\})\) in Figure~\ref{fig:overview}(b), with \(p=3\) and \(\eta=2\).

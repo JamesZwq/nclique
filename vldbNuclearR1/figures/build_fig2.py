@@ -1,15 +1,14 @@
 """
-Figure 2: Immutable-CPI peeling trace and per-leaf integer state.
+Figure 2: Immutable-CPI peeling trace (state matrix only).
 
-Panel (a): Peeling state matrix --- 10 rounds (rows) by 6 leaves (cols).
-           Each cell shows the case (A/C/C'/skip) and the leaf's pivot
-           count p_P after the round. Color-coded by case.
-Panel (b): nCr delta zoom for Round 5 (peel v2 from L3, Case C):
-           |V_p| 3 -> 2, supports of v1, v3, v4 fall by Dh = 2, Dp = 1.
+The 10 rounds * 6 leaves matrix is the only genuinely visual content:
+each cell shows the case (A / C / C' / skip) at that (round, leaf), and
+the per-row colour pattern lets the reader scan how cases distribute
+over time.  The Round-5 nCr delta worked example (formerly panel b)
+lives inline in the body prose where it belongs.
 
 Trace is the deterministic output of compute_cpi.simulate_peeling on the
-running example. We reuse compute_cpi to keep the figure in lockstep with
-the algorithm description in the paper.
+running example.
 """
 import matplotlib
 matplotlib.rcParams['pdf.fonttype'] = 42  # TrueType -- VLDB/ACM forbid Type 3
@@ -59,16 +58,10 @@ for r_idx, row in enumerate(trace):
     for i in range(L):
         pivot_grid[r_idx][i] = rp_now[i] if alive[i] or case_grid[r_idx][i] else rp_now[i]
 
-# ---- Figure layout ----
-fig = plt.figure(figsize=(15, 4.4))
-gs = fig.add_gridspec(1, 2, width_ratios=[1.4, 1.0], wspace=0.20)
-
-# ============ Panel (a): State matrix ============
-ax_a = fig.add_subplot(gs[0, 0])
+# ---- Figure layout: state matrix only, half-column width ----
+fig, ax_a = plt.subplots(figsize=(3.6, 3.2))
 ax_a.set_xlim(-0.5, L + 0.5); ax_a.set_ylim(R + 0.5, -1.5)
 ax_a.set_xticks([]); ax_a.set_yticks([])
-ax_a.set_title(r"(a) Peeling trace: 10 rounds $\times$ 6 CPI leaves "
-               r"(running example, $s{=}3$)", fontsize=11)
 ax_a.axis('off')
 
 # Color palette
@@ -136,70 +129,8 @@ legend_handles = [
     mpatches.Patch(facecolor=COL['skip'],edgecolor='#888', label='already dead (skip)'),
 ]
 ax_a.legend(handles=legend_handles, loc='lower center',
-            bbox_to_anchor=(0.5, -0.12), ncol=4, fontsize=8.5, frameon=False)
+            bbox_to_anchor=(0.5, -0.12), ncol=2, fontsize=7.5, frameon=False)
 
-# ============ Panel (b): Delta zoom (Round 5) ============
-ax_b = fig.add_subplot(gs[0, 1])
-ax_b.set_xlim(0, 10); ax_b.set_ylim(0, 10)
-ax_b.axis('off')
-ax_b.set_title(r"(b) Delta zoom on Round 5: peel $v_2$ from $L_3$",
-               fontsize=11)
-
-# Top: leaf state before
-ax_b.text(0.3, 9.0, r"Before:", fontsize=10, fontweight='bold')
-ax_b.text(0.3, 8.3,
-          r"$L_3 = (V_h{=}\{v_1\},\ V_p{=}\{v_2,v_3,v_4\}),\ \eta{=}2,\ p{=}3$",
-          fontsize=9.5)
-ax_b.text(0.3, 7.6,
-          r"encodes $\binom{3}{2}{=}3$ triangles "
-          r"$\{v_1{,}v_2{,}v_3\}, \{v_1{,}v_2{,}v_4\}, \{v_1{,}v_3{,}v_4\}$",
-          fontsize=9)
-
-# Arrow
-ax_b.annotate('', xy=(5.0, 6.6), xytext=(5.0, 7.2),
-              arrowprops=dict(arrowstyle='->', lw=1.4, color='#3a3a3a'))
-ax_b.text(5.2, 6.85, r"peel $v_2$ (a pivot of $L_3$, Case C)",
-          fontsize=9, color='#3a3a3a')
-
-# After
-ax_b.text(0.3, 6.0, r"After:", fontsize=10, fontweight='bold')
-ax_b.text(0.3, 5.3,
-          r"$L_3$ unchanged in memory; counter $p{:}3{\to}2$, "
-          r"liveness still alive",
-          fontsize=9.5)
-ax_b.text(0.3, 4.6,
-          r"effective encoding shrinks to $\binom{2}{2}{=}1$ triangle "
-          r"$\{v_1,v_3,v_4\}$",
-          fontsize=9)
-
-# Delta box
-ax_b.add_patch(mpatches.FancyBboxPatch(
-    (0.3, 1.6), 9.4, 2.6, boxstyle="round,pad=0.10",
-    linewidth=1.0, edgecolor='#3a8a3a', facecolor='#eaf6ea'))
-ax_b.text(0.6, 3.6, "Counter-based delta (Lemma 2):",
-          fontsize=10, fontweight='bold', color='#1f5a1f')
-ax_b.text(0.6, 2.9,
-          r"$\Delta_{\mathrm{hold}} = \binom{p}{\eta} - \binom{p{-}d}{\eta}$"
-          r"$= \binom{3}{2}-\binom{2}{2} = 3-1 = 2$",
-          fontsize=10)
-ax_b.text(0.6, 2.2,
-          r"$\Delta_{\mathrm{pivot}} = \binom{p{-}1}{\eta{-}1} - \binom{p{-}d{-}1}{\eta{-}1}$"
-          r"$= \binom{2}{1}-\binom{1}{1} = 2-1 = 1$",
-          fontsize=10)
-
-# Support updates
-ax_b.text(0.3, 1.0, "Support updates:",
-          fontsize=9.5, fontweight='bold')
-ax_b.text(3.0, 1.0,
-          r"$v_1$ (hold) $-2$;   $v_3,v_4$ (pivots) $-1$ each",
-          fontsize=9.5)
-ax_b.text(0.3, 0.3,
-          r"No tree mutation, no hash op, $O(|V_h|+|V_p|-1)$ work.",
-          fontsize=9, style='italic', color='#1f5a1f')
-
-fig.suptitle(r"Figure 2: Peeling trace and counter-based delta on the running example.",
-             fontsize=11.5, y=1.02)
-fig.tight_layout()
 fig.savefig(OUT / "fig2_peeling.pdf", bbox_inches='tight')
-fig.savefig(OUT / "fig2_peeling.png", dpi=170, bbox_inches='tight')
+fig.savefig(OUT / "fig2_peeling.png", dpi=180, bbox_inches='tight')
 print(f"Saved fig2_peeling to {OUT}")

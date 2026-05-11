@@ -322,18 +322,14 @@ The mutable baseline pays heap and residual-index maintenance costs on the same 
 %
 The experiments in Section~\ref{sec:exp} measure the impact of replacing those operations with static path counters.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig2_peeling.pdf}
-\caption{Incremental peel on the running example.
+\includegraphics[width=0.92\linewidth]{figures/fig2_peeling.pdf}
+\caption{Incremental peel trace on the running example: each row is one pop, each column is one \cpi{} leaf, and each cell is the case under Theorem~\ref{thm:vertex-removal} for that (round, leaf).
 %
-Each row gives the popped vertex, its core value, and the path event under Theorem~\ref{thm:vertex-removal}.
+A hold peel kills its leaf (Case A); a pivot peel either shrinks the counter (Case C, alive) or kills the leaf if the counter would fall below \(\eta\) (Case C').
 %
-The key distinction is that a hold peel kills a path, while a pivot peel only decreases \(p_{\mathcal{P}}\).
-%
-The \(\Delta_h\) and \(\Delta_p\) columns show the binomial losses from Lemma~\ref{lem:support-delta}.
-%
-The trace shows how mutable residual-index updates become path events and counter deltas.}
-\Description{A peeling trace matrix for the running example, with color-coded path events and a zoomed binomial-delta calculation.}
+The Round-5 walk-through is in Example~\ref{ex:peel}.}
+\Description{A peeling trace matrix for the running example, with cells colored by case type.}
 \label{fig:peel}
-\end{figure*}
+\end{figure}
