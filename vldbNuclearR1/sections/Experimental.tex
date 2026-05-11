@@ -311,7 +311,9 @@ Both implementations read paths from the same flat dual CSR; the SPIN reference 
 %
 Figure~\ref{fig:spin-vs-spinstar} pairs \spin{} and \spinStar{} on the \(291\) matched \((graph,s)\) cells.
 %
-The geometric-mean peel-time speedup is \(36.2\times\) over the full set; the hardest \(20\) cells (those shown) reach gmean \(2{,}113\times\) and a maximum of \(2{,}369\times\) on \texttt{web-it-2004} at \(s=53\), where \spin{} repeatedly sweeps every vertex while \spinStar{} finishes after a few path-event updates.
+The geometric-mean peel-time speedup is \(36.2\times\) over the full set; the figure shows the top three cells per graph for the six graphs where the largest gaps occur.
+%
+Across this top slice the gmean is \(266\times\) and the maximum is \(2{,}369\times\) on \texttt{web-it-2004} at \(s=53\), where \spin{} repeatedly sweeps every vertex while \spinStar{} finishes after a few path-event updates.
 %
 On the easiest cells \spinStar{} can be slightly slower (minimum ratio \(0.62\times\)) because the bucket-queue setup and live-path bookkeeping add fixed overhead that \spin{}'s tight inner loop avoids when one or two passes already converge.
 %
@@ -320,7 +322,7 @@ On the largest inputs \spin{} hits the \(1\)h cap (\texttt{com-orkut} for \(s\ge
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_spin_vs_spinstar.pdf}
-\caption{Per-cell wall-clock time of \spinStar{} (incremental) versus \spin{} (direct iteration), top \(20\) of the matched \((graph,s)\) cells sorted by speedup.
+\caption{Per-cell wall-clock time of \spinStar{} (incremental) versus \spin{} (direct iteration), showing the top three matched \((graph,s)\) cells by speedup for each of the six graphs where the gap is largest.
 %
 Both algorithms compute the same \((1,s)\)-core values; \spinStar{} avoids redundant full-graph passes by only revisiting vertices whose path counters changed.}
 \Description{Paired horizontal bars per (graph, s) cell comparing SPIN and SPIN* wall-clock time on a log axis.}

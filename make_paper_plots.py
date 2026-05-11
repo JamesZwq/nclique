@@ -195,7 +195,8 @@ def gmean(xs: Iterable[float]) -> float:
 # Plot styling
 
 SPINSTAR_COLOR = "#1f4e9c"  # solid blue
-CND_COLOR  = "#c0392b"  # dashed red
+CND_COLOR      = "#c0392b"  # dashed red
+SPIN_COLOR     = "#2c2c2c"  # dotted near-black
 GRID_KW    = dict(which="both", color="#cccccc", linestyle=":", linewidth=0.5)
 
 plt.rcParams.update({
@@ -256,23 +257,24 @@ def fig_exp_endtoend() -> None:
     m_med = median_by(rows, ("graph","s","algorithm"), "memory_kB",
                       filter_fn=lambda r: r["status"]=="OK")
 
-    # figsize > rendered: LaTeX scales 9.0 → 7.0 ⇒ text ~7pt rendered
-    fig = plt.figure(figsize=(9.0, 3.0))
-    gs = GridSpec(2, 3, figure=fig, height_ratios=[0.22, 1.0],
-                  hspace=0.6, wspace=0.12,
-                  top=0.86, bottom=0.20, left=0.09, right=0.98)
+    fig = plt.figure(figsize=(9.0, 3.4))
+    gs = GridSpec(2, 3, figure=fig, height_ratios=[0.16, 1.0],
+                  hspace=0.55, wspace=0.18,
+                  top=0.88, bottom=0.17, left=0.08, right=0.98)
 
     # Top legend row
     ax_leg = fig.add_subplot(gs[0, :])
     ax_leg.axis("off")
     handles = [
-        Line2D([0], [0], color="black", lw=1.6, marker="o", ms=4,
-               mec="black", mfc="black", label="Speedup (CND / SPIN*)"),
-        Line2D([0], [0], color="#808080", lw=1.4, ls="--", marker="s", ms=4,
-               mec="#808080", mfc="white", mew=1.2, label="RSS ratio (CND / SPIN*)"),
+        Line2D([0], [0], color=SPINSTAR_COLOR, lw=2.0, marker="o", ms=6,
+               mec=SPINSTAR_COLOR, mfc=SPINSTAR_COLOR,
+               label=r"Speedup (CND / SPIN$^\star$)"),
+        Line2D([0], [0], color=CND_COLOR, lw=1.8, ls="--", marker="s", ms=6,
+               mec=CND_COLOR, mfc=CND_COLOR,
+               label=r"RSS ratio (CND / SPIN$^\star$)"),
     ]
     ax_leg.legend(handles=handles, loc="center", ncol=2, frameon=False,
-                  fontsize=10, handlelength=3.2, columnspacing=2.5)
+                  fontsize=11, handlelength=3.0, columnspacing=2.5)
 
     speedup_pool, mem_pool = [], []
     axes = [fig.add_subplot(gs[1, i]) for i in range(3)]
@@ -290,25 +292,24 @@ def fig_exp_endtoend() -> None:
             if m_ours and m_ref and m_ours > 0:
                 mr_xs.append(s); mr_ys.append(m_ref / m_ours)
                 mem_pool.append(m_ref / m_ours)
-        ax.plot(sp_xs, sp_ys, color="black", marker="o", ms=4, lw=1.5,
-                mec="black", mfc="black")
-        ax.plot(mr_xs, mr_ys, color="#808080", marker="s", ms=4, lw=1.3,
-                ls="--", mec="#808080", mfc="white", mew=1.2)
-        # Break-even line at ratio=1
-        ax.axhline(1.0, color="#bbbbbb", ls=":", lw=0.8)
-        ax.text(0.02, 0.04, r"SPIN* beats CND above $1$",
-                transform=ax.transAxes, fontsize=8, color="#666",
-                style="italic")
+        # break-even line first (bottom layer)
+        ax.axhline(1.0, color="#888888", ls=":", lw=1.0, zorder=1)
+        ax.plot(mr_xs, mr_ys, color=CND_COLOR, marker="s", ms=5, lw=1.6,
+                ls="--", mec=CND_COLOR, mfc=CND_COLOR, alpha=0.85, zorder=2)
+        ax.plot(sp_xs, sp_ys, color=SPINSTAR_COLOR, marker="o", ms=5, lw=1.9,
+                mec=SPINSTAR_COLOR, mfc=SPINSTAR_COLOR, zorder=3)
+        ax.text(0.04, 0.06, r"break-even", transform=ax.transAxes,
+                fontsize=8, color="#666", style="italic")
         ax.set_xlabel(r"$s$", fontsize=10)
         if i == 0:
-            ax.set_ylabel("ratio (CND / SPIN*)", fontsize=10)
+            ax.set_ylabel(r"ratio (CND / SPIN$^\star$)", fontsize=10)
         ax.set_yscale("log"); ax.set_xscale("log")
-        ax.set_title(GRAPH_DISPLAY.get(g, g), fontsize=10.5, color="#222")
-        # Skill: no grid, hide top/right spines
-        ax.grid(False)
+        ax.set_title(GRAPH_DISPLAY.get(g, g), fontsize=11, color="#111",
+                     pad=3, fontweight="bold")
+        ax.grid(True, which="major", color="#e8e8e8", lw=0.5, zorder=0)
         for sp in ("top", "right"):
             ax.spines[sp].set_visible(False)
-        ax.tick_params(axis="both", labelsize=9, colors="#444")
+        ax.tick_params(axis="both", labelsize=9, colors="#333")
 
     if speedup_pool:
         sup = (f"{len(speedup_pool)} matched cells   "
@@ -361,30 +362,31 @@ def _grid_plot(rows: list[dict], value_key: str, ylabel: str, fname: str,
     # everything down ⇒ text in figure renders slightly smaller than body
     # (matplotlib's default sans glyphs look heavier than the paper's serif
     # at nominally same pt; the down-scale evens it out).
-    PAGE_W = 9.0
-    fig = plt.figure(figsize=(PAGE_W, 0.6 + 1.5 * rows_n))
+    PAGE_W = 9.5
+    fig = plt.figure(figsize=(PAGE_W, 0.7 + 1.9 * rows_n))
     gs = GridSpec(rows_n + 1, cols, figure=fig,
-                  height_ratios=[0.20] + [1.0] * rows_n,
-                  hspace=1.30, wspace=0.45,
-                  top=0.92, bottom=0.13, left=0.08, right=0.98)
+                  height_ratios=[0.16] + [1.0] * rows_n,
+                  hspace=0.75, wspace=0.40,
+                  top=0.94, bottom=0.09, left=0.07, right=0.98)
 
     # Legend axis (top, spans all columns)
     ax_leg = fig.add_subplot(gs[0, :])
     ax_leg.axis("off")
     handles = [
-        Line2D([0], [0], color="black", lw=1.6, marker="o", ms=4,
-               mec="black", mfc="black", label="SPIN* (ours)"),
-        Line2D([0], [0], color="#808080", lw=1.4, ls="--", marker="s", ms=4,
-               mec="#808080", mfc="white", mew=1.2, label="CND"),
-        Line2D([0], [0], color="#444444", lw=1.4, ls=":", marker="^", ms=4.5,
-               mec="#444444", mfc="white", mew=1.2, label="SPIN (ours)"),
+        Line2D([0], [0], color=SPINSTAR_COLOR, lw=2.0, marker="o", ms=6,
+               mec=SPINSTAR_COLOR, mfc=SPINSTAR_COLOR,
+               label=r"SPIN$^\star$ (ours)"),
+        Line2D([0], [0], color=CND_COLOR, lw=1.8, ls="--", marker="s", ms=6,
+               mec=CND_COLOR, mfc=CND_COLOR, label="CND"),
+        Line2D([0], [0], color=SPIN_COLOR, lw=1.6, ls=":", marker="^", ms=7,
+               mec=SPIN_COLOR, mfc="white", mew=1.4, label="SPIN (ours)"),
     ]
     if spin_timeouts:
         handles.append(
-            Line2D([0], [0], color="#444444", lw=0, marker="x", ms=6, mew=1.6,
-                   label="SPIN $\\geq 1$h"))
+            Line2D([0], [0], color=SPIN_COLOR, lw=0, marker="x", ms=9, mew=2.0,
+                   label=r"SPIN $\geq 1$h"))
     ax_leg.legend(handles=handles, loc="center", ncol=len(handles), frameon=False,
-                  fontsize=11, handlelength=3.2, columnspacing=1.8)
+                  fontsize=12, handlelength=3.0, columnspacing=2.0)
 
     # Data axes
     axes = []
@@ -399,39 +401,42 @@ def _grid_plot(rows: list[dict], value_key: str, ylabel: str, fname: str,
         vy_o = [v for v in ours if v]
         sx_r = [s for s, v in zip(s_set, ref) if v]
         vy_r = [v for v in ref  if v]
-        ax.plot(sx_o, vy_o, color="black", marker="o", ms=3.5, lw=1.4,
-                mec="black", mfc="black")
-        ax.plot(sx_r, vy_r, color="#808080", marker="s", ms=3.5, lw=1.2,
-                ls="--", mec="#808080", mfc="white", mew=1.2)
-        # SPIN (LocalH) OK cells — if data exists for this graph
+        # CND drawn first so SPIN★ sits on top
+        ax.plot(sx_r, vy_r, color=CND_COLOR, marker="s", ms=4.0, lw=1.4,
+                ls="--", mec=CND_COLOR, mfc=CND_COLOR, mew=0.8,
+                alpha=0.85, zorder=2)
+        # SPIN (LocalH) OK cells — drawn before SPIN★ so it sits below
         if spin_rows:
-            sx_sp = []
-            vy_sp = []
+            sx_sp = []; vy_sp = []
             for s in s_set:
                 v = spin_rows.get((g, str(s)))
                 if v is not None:
-                    sx_sp.append(s)
-                    vy_sp.append(v)
+                    sx_sp.append(s); vy_sp.append(v)
             if sx_sp:
-                ax.plot(sx_sp, vy_sp, color="#444444", marker="^", ms=4, lw=1.2,
-                        ls=":", mec="#444444", mfc="white", mew=1.2)
+                ax.plot(sx_sp, vy_sp, color=SPIN_COLOR, marker="^", ms=4.5,
+                        lw=1.3, ls=":", mec=SPIN_COLOR, mfc="white", mew=1.1,
+                        alpha=0.95, zorder=2)
+        # SPIN★ on top
+        ax.plot(sx_o, vy_o, color=SPINSTAR_COLOR, marker="o", ms=4.0, lw=1.7,
+                mec=SPINSTAR_COLOR, mfc=SPINSTAR_COLOR, zorder=3)
         # SPIN TIMEOUT cells: × at the 1h cap (3.6e6 ms) — only on time plot
         if spin_timeouts:
             TIMEOUT_MS = 3.6e6
             sx_to = sorted(int(s) for (g_, s) in spin_timeouts if g_ == g)
             if sx_to:
-                ax.plot(sx_to, [TIMEOUT_MS] * len(sx_to), color="#444444",
-                        marker="x", ms=6, mew=1.6, lw=0)
+                ax.plot(sx_to, [TIMEOUT_MS] * len(sx_to), color=SPIN_COLOR,
+                        marker="x", ms=8, mew=1.8, lw=0, zorder=4)
         ax.set_xscale("log"); ax.set_yscale("log")
-        ax.set_xlabel(r"$s$", fontsize=9)
+        ax.set_xlabel(r"$s$", fontsize=10)
         if idx % cols == 0:
-            ax.set_ylabel(ylabel, fontsize=9)
-        ax.set_title(GRAPH_DISPLAY.get(g, g), fontsize=9, color="#222", pad=2)
+            ax.set_ylabel(ylabel, fontsize=10)
+        ax.set_title(GRAPH_DISPLAY.get(g, g), fontsize=10, color="#111",
+                     pad=3, fontweight="bold")
         # Skill: drop gridlines, drop top/right spines
-        ax.grid(False)
+        ax.grid(True, which="major", color="#e8e8e8", lw=0.5, zorder=0)
         for sp in ("top", "right"):
             ax.spines[sp].set_visible(False)
-        ax.tick_params(axis="both", labelsize=8, colors="#444")
+        ax.tick_params(axis="both", labelsize=9, colors="#333")
         # If only a few s values (e.g. com-orkut s=2..4), force integer ticks
         # instead of log-scientific (2x10^0). Threshold ≤ 5 distinct values.
         all_x = sorted(set(sx_o + sx_r))
@@ -587,8 +592,10 @@ def _stress_plot(value_key: str, ylabel: str, fname: str) -> None:
     rows = []
     if v3_path.exists():
         for r in load_csv(v3_path):
-            if r.get("algorithm") == "Pure":
-                r = dict(r); r["algorithm"] = "SPINSTAR"
+            r = dict(r)
+            algo = r.get("algorithm")
+            if algo == "Pure":      r["algorithm"] = "SPINSTAR"
+            elif algo == "REF_R1":  r["algorithm"] = "CND"
             rows.append(r)
         if rows:
             print(f"[csv] using {v3_path.name} (Pure / V3 SOTA, {len(rows)} rows)")
@@ -613,22 +620,23 @@ def _stress_plot(value_key: str, ylabel: str, fname: str) -> None:
     # figsize > rendered (single column \linewidth ≈ 3.4"): scale down ⇒
     # smaller text in PDF.
     rows_n = math.ceil(n / 2)
-    fig = plt.figure(figsize=(4.5, 0.6 + 1.3 * rows_n))
+    fig = plt.figure(figsize=(4.5, 0.8 + 1.6 * rows_n))
     gs = GridSpec(rows_n + 1, 2, figure=fig,
-                  height_ratios=[0.22] + [1.0] * rows_n,
-                  hspace=1.0, wspace=0.50,
-                  top=0.90, bottom=0.15, left=0.20, right=0.97)
+                  height_ratios=[0.16] + [1.0] * rows_n,
+                  hspace=1.20, wspace=0.45,
+                  top=0.94, bottom=0.10, left=0.18, right=0.97)
 
     # Top legend
     ax_leg = fig.add_subplot(gs[0, :]); ax_leg.axis("off")
     handles = [
-        Line2D([0], [0], color="black", lw=1.6, marker="o", ms=4,
-               mec="black", mfc="black", label="SPINSTAR"),
-        Line2D([0], [0], color="#808080", lw=1.4, ls="--", marker="s", ms=4,
-               mec="#808080", mfc="white", mew=1.2, label="CND"),
+        Line2D([0], [0], color=SPINSTAR_COLOR, lw=2.0, marker="o", ms=6,
+               mec=SPINSTAR_COLOR, mfc=SPINSTAR_COLOR,
+               label=r"SPIN$^\star$ (ours)"),
+        Line2D([0], [0], color=CND_COLOR, lw=1.8, ls="--", marker="s", ms=6,
+               mec=CND_COLOR, mfc=CND_COLOR, label="CND"),
     ]
     ax_leg.legend(handles=handles, loc="center", ncol=2, frameon=False,
-                  fontsize=9, handlelength=2.5, columnspacing=2.0)
+                  fontsize=10, handlelength=2.5, columnspacing=2.0)
 
     for i, s in enumerate(s_vals):
         ax = fig.add_subplot(gs[1 + i // 2, i % 2])
@@ -638,19 +646,20 @@ def _stress_plot(value_key: str, ylabel: str, fname: str) -> None:
         v_o = [v for v in ours if v]
         d_r = [d for d, v in zip(densities, ref) if v]
         v_r = [v for v in ref  if v]
-        ax.plot(d_o, v_o, color="black", marker="o", ms=4, lw=1.5,
-                mec="black", mfc="black")
-        ax.plot(d_r, v_r, color="#808080", marker="s", ms=4, lw=1.3,
-                ls="--", mec="#808080", mfc="white", mew=1.2)
+        ax.plot(d_r, v_r, color=CND_COLOR, marker="s", ms=5, lw=1.6,
+                ls="--", mec=CND_COLOR, mfc=CND_COLOR, alpha=0.85, zorder=2)
+        ax.plot(d_o, v_o, color=SPINSTAR_COLOR, marker="o", ms=5, lw=1.9,
+                mec=SPINSTAR_COLOR, mfc=SPINSTAR_COLOR, zorder=3)
         ax.set_yscale("log")
         ax.set_xlabel("density", fontsize=10)
-        if i == 0:
+        if i == 0 or (i == 2 and rows_n >= 2):
             ax.set_ylabel(ylabel, fontsize=10)
-        ax.set_title(f"$s={s}$", fontsize=10.5, color="#222")
-        ax.grid(False)
+        ax.set_title(f"$s={s}$", fontsize=11, color="#111",
+                     pad=3, fontweight="bold")
+        ax.grid(True, which="major", color="#e8e8e8", lw=0.5, zorder=0)
         for sp in ("top", "right"):
             ax.spines[sp].set_visible(False)
-        ax.tick_params(axis="both", labelsize=9, colors="#444")
+        ax.tick_params(axis="both", labelsize=9, colors="#333")
 
     save(fig, fname)
 
