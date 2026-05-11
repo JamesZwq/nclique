@@ -59,8 +59,10 @@ for r_idx, row in enumerate(trace):
         pivot_grid[r_idx][i] = rp_now[i] if alive[i] or case_grid[r_idx][i] else rp_now[i]
 
 # ---- Figure layout: state matrix only, half-column width ----
-fig, ax_a = plt.subplots(figsize=(3.6, 3.2))
-ax_a.set_xlim(-0.5, L + 0.5); ax_a.set_ylim(R + 0.5, -1.5)
+# xlim must accommodate the 6 leaf columns at x=2.2..7.2 plus the
+# half cell width (0.46) on each side.
+fig, ax_a = plt.subplots(figsize=(3.8, 3.4))
+ax_a.set_xlim(-0.8, 7.8); ax_a.set_ylim(R + 0.5, -1.5)
 ax_a.set_xticks([]); ax_a.set_yticks([])
 ax_a.axis('off')
 
@@ -75,19 +77,19 @@ COL = {
 
 # Header row: round | popped | core | L1..L6
 hdr_y = -0.6
-ax_a.text(-0.45, hdr_y, "round", fontsize=9, fontweight='bold')
-ax_a.text(0.55,  hdr_y, "pop",   fontsize=9, fontweight='bold')
-ax_a.text(1.45,  hdr_y, r"$\kappa$", fontsize=9, fontweight='bold')
+ax_a.text(-0.55, hdr_y, "r",         fontsize=8.5, fontweight='bold')
+ax_a.text( 0.40, hdr_y, "pop",       fontsize=8.5, fontweight='bold')
+ax_a.text( 1.45, hdr_y, r"$\kappa$", fontsize=8.5, fontweight='bold')
 for i in range(L):
-    ax_a.text(2.2 + i, hdr_y, f"$L_{i+1}$", fontsize=9, fontweight='bold',
+    ax_a.text(2.2 + i, hdr_y, f"$L_{i+1}$", fontsize=8.5, fontweight='bold',
               ha='center')
 
 cell_w, cell_h = 0.92, 0.78
 for r_idx, row in enumerate(trace):
     y = r_idx
-    ax_a.text(-0.45, y, f"{row['round']}", fontsize=8.5)
-    ax_a.text( 0.55, y, f"$v_{{{row['victim']}}}$", fontsize=8.5)
-    ax_a.text( 1.45, y, f"{row['core']}", fontsize=8.5, ha='left')
+    ax_a.text(-0.55, y, f"{row['round']}", fontsize=8.0)
+    ax_a.text( 0.45, y, f"$v_{{{row['victim']}}}$", fontsize=8.0)
+    ax_a.text( 1.45, y, f"{row['core']}", fontsize=8.0, ha='left')
     for i in range(L):
         c = case_grid[r_idx][i]
         if c is None:
@@ -110,16 +112,12 @@ for r_idx, row in enumerate(trace):
             cell_w, cell_h, boxstyle="round,pad=0.02",
             linewidth=0.5, edgecolor='#888', facecolor=face)
         ax_a.add_patch(rect)
-        # case letter (top-left)
-        ax_a.text(2.2 + i - 0.32, y + 0.10, text, fontsize=8.5,
-                  fontweight='bold', color='white' if c not in (None, 'skip') else '#555')
-        # delta numbers (right, only for live cases)
-        d = delta_grid[r_idx][i]
-        if d is not None and c in ('A', 'C ', "C'"):
-            ax_a.text(2.2 + i + 0.30, y + 0.10,
-                      f"$\\Delta_h{{=}}{d[0]}$", fontsize=7.0, color='white')
-            ax_a.text(2.2 + i + 0.30, y - 0.18,
-                      f"$\\Delta_p{{=}}{d[1]}$", fontsize=7.0, color='white')
+        # Case label centered in the cell. Per-cell delta numbers
+        # removed — unreadable at half-column; numerical example is
+        # in Example ex:peel.
+        ax_a.text(2.2 + i, y + 0.05, text, fontsize=8.5,
+                  ha='center', va='center', fontweight='bold',
+                  color='white' if c not in (None, 'skip') else '#555')
 
 # Legend
 legend_handles = [
