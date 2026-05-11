@@ -55,7 +55,7 @@ The Clique Path Index compactly encodes these witnesses, but the general \((r,s)
 %
 We show that this mutability is unnecessary for the vertex-centric case \(r=1\): vertex peeling removes vertices but does not delete edges, so every CPI path remains structurally valid.
 %
-This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spin{}, a direct static-path iteration, \spinStar{}, its event-driven optimization, and a parallel builder designed for the shifted construction bottleneck.
+This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spin{}, a direct static-path iteration, \spinStar{}, its incremental optimization, and a parallel builder designed for the shifted construction bottleneck.
 %
 On \(505\) matched successful configurations, the static pipeline achieves a \(6.16\times\) geometric-mean speedup, a \(39.41\times\) maximum speedup, and lower peak RSS than the mutable baseline.
 %

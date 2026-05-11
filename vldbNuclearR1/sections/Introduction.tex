@@ -65,7 +65,7 @@ We call the direct solver \spin{}, for \emph{Static Path Index for Nucleus decom
 %
 This direct form is useful because it states the computation without residual-index mutation, but it still scans the whole graph after each pass.
 
-\spinStar{} is the event-driven optimization of \spin{}.
+\spinStar{} is the incremental optimization of \spin{}.
 %
 It computes the same fixed point, but changes the schedule.
 %
@@ -96,10 +96,10 @@ The edge-connected components of \(G[V_k]\) can therefore be recovered by scanni
 The contributions are a dependency chain.
 \begin{itemize}[leftmargin=1.3em,itemsep=1pt,topsep=2pt]
 \item \textbf{Static-\cpi{} state for \((1,s)\).} We derive a static-counter rule for vertex peeling: exact peeling never rewrites stored hold and pivot sets, and each event becomes a path death or pivot-counter decrement with a closed-form support delta (Theorem~\ref{thm:vertex-removal}, Lemma~\ref{lem:support-delta}).
-\item \textbf{\spin{} and \spinStar{} over the static index.} We formulate \spin{} as the direct threshold-support iteration on \cpi{} witness counts, and \spinStar{} as the event-driven optimization that computes the same fixed point without repeated global recomputations (Algorithms~\ref{alg:localH} and~\ref{alg:peelH}, Lemma~\ref{lem:equivalence}).
+\item \textbf{\spin{} and \spinStar{} over the static index.} We formulate \spin{} as the direct threshold-support iteration on \cpi{} witness counts, and \spinStar{} as the incremental optimization that computes the same fixed point without repeated global recomputations (Algorithms~\ref{alg:localH} and~\ref{alg:peelH}, Lemma~\ref{lem:equivalence}).
 \item \textbf{Bottleneck-shifted static construction.} Once peeling becomes counter-only, \cpi{} construction becomes the dominant remaining cost on many instances; \paraBuild{} exploits the static output contract by streaming paths into thread-local arenas and merging them deterministically without hot-path synchronization (Algorithm~\ref{alg:parabuild}).
 \item \textbf{Core-value hierarchy from the deletion log.} We show that the sorted log produced by \spinStar{} is enough to recover the edge-connected super-level join tree in \(O((n+m)\alpha(n))\) time using only the input graph (Algorithm~\ref{alg:buildhier}).
-\item \textbf{Experimental and application evidence.} We compare against the mutable-\cpi{} baseline, report runtime and memory on \(762\) matched benchmark cells, measure phase behavior and parallel construction, and use case studies to evaluate whether the \(r=1\) specialization is practically useful.
+\item \textbf{Experimental and application evidence.} We compare against the mutable-\cpi{} baseline, report runtime and memory on \(307\) matched benchmark cells, measure phase behavior and parallel construction, and use case studies to evaluate whether the \(r=1\) specialization is practically useful.
 \end{itemize}
 
 The rest of the paper follows this chain.
