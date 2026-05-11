@@ -38,11 +38,11 @@ The set covers collaboration, e-commerce, social, and web graphs.
 %
 The largest graph is \texttt{com-orkut} with \(117\)M edges.
 %
-The benchmark sweep covers \(762\) \((graph,s)\) configurations across the ten graphs (Table~\ref{tab:datasets}); \(307\) of these are matched cells where both \spinStar{} and \cbnd{} produce an OK result, and the headline speedup numbers are reported over the matched subset.
+The benchmark sweep covers \(762\) \((graph,s)\) configurations across the ten graphs (Table~\ref{tab:datasets}); \(307\) of these are matched cells where both \spinStar{} and \cbnd{} complete successfully, and the headline speedup numbers are reported over the matched subset.
 
 \begin{table}[t]
 \centering
-\caption{Datasets used in Section~\ref{sec:exp}. The last column gives the number of matched successful \((graph,s)\) configurations in the benchmark sweep.}
+\caption{Datasets used in Section~\ref{sec:exp}. The last column gives the number of \((graph,s)\) configurations included in the benchmark sweep.}
 \label{tab:datasets}
 \small
 \begin{tabular}{lrrr}
@@ -78,7 +78,9 @@ It constructs the static index, stores flat incidence arrays, and computes core 
 %
 \spin{} is evaluated separately because it is the direct fixed-point formulation rather than the practical implementation.
 %
-All three solvers consume the same input edge list, run on the same hardware, and produce the same \(\kappa_s\) on every matched cell (verified by an offline diff); the comparison isolates the cost of \cpi{} mutability against static-state peeling, not differences in input or correctness.
+All three solvers consume the same input edge list and run on the same hardware.
+%
+The comparison isolates the cost of \cpi{} mutability against static-state peeling, not differences in input processing or execution environment.
 
 For every matched \((graph,s)\) pair, we run \cbnd{} and \spinStar{} on the same input.
 %
@@ -93,7 +95,7 @@ The benchmark has \(307\) matched cells where both \spinStar{} and \cbnd{} compl
 %
 Across the ten graphs, \spinStar{} achieves a peel-time speedup over \cbnd{} of geometric-mean \(13.50\times\) and maximum \(44.76\times\).
 %
-The end-to-end wall-clock speedup is smaller (gmean \(1.10\times\)) because the shared SDCT construction phase dominates total wall time once peeling is cheap --- exactly the bottleneck shift that motivates \paraBuildCPI{} in Section~\ref{sec:parabuild}.
+The end-to-end wall-clock speedup is smaller (gmean \(1.10\times\)) because the shared SDCT construction phase dominates total wall time once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
 %
 The peak-RSS ratio (\cbnd{} over \spinStar{}) has geometric mean \(1.55\times\) and maximum \(3.92\times\).
 %
@@ -131,7 +133,9 @@ Figure~\ref{fig:exp-endtoend} focuses on the three graphs used in the detailed p
 %
 It contains \(130\) matched configurations.
 %
-On those cells, \spinStar{} has \(14.62\times\) geometric-mean peel-time speedup over \cbnd{} and \(44.76\times\) maximum.
+On those cells, the geometric-mean peel-time speedup of \spinStar{} over \cbnd{} is \(14.62\times\).
+%
+The maximum peel-time speedup is \(44.76\times\).
 %
 Peak-RSS ratio has \(1.58\times\) geometric mean and \(2.75\times\) maximum.
 
@@ -184,7 +188,9 @@ Heap / bucket array & \(24n\) & \(16n+8\kmax\) \\
 \stitle{RQ2: where does the time go?}
 The static invariant makes peeling cheap, so the next question is whether construction becomes the dominant cost.
 %
-The phase study uses \(17\) configurations on \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{web-it-2004}, with median times over three runs.
+The phase study uses \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{web-it-2004}.
+%
+It reports median times over three runs.
 %
 Table~\ref{tab:bd-time} reports representative phase medians.
 %
@@ -303,13 +309,13 @@ The two algorithms compute the same core values (Lemma~\ref{lem:equivalence}), s
 %
 Both implementations read paths from the same flat dual CSR; the SPIN reference therefore reflects the algorithmic cost of repeated full-pass fixed-point iteration, not data-structure overhead.
 %
-Figure~\ref{fig:spin-vs-spinstar} pairs \spin{} and \spinStar{} on the matched \((graph,s)\) cells.
+Figure~\ref{fig:spin-vs-spinstar} pairs \spin{} and \spinStar{} on the \(291\) matched \((graph,s)\) cells.
 %
-The geometric-mean peel-time speedup over the full set is two orders of magnitude; the hardest \(20\) cells (those shown) reach gmean above \(96{,}169\times\) and a maximum near \(180{,}000\times\) on \texttt{web-Stanford} at \(s=44\).
+The geometric-mean peel-time speedup is \(36.2\times\) over the full set; the hardest \(20\) cells (those shown) reach gmean \(2{,}113\times\) and a maximum of \(2{,}369\times\) on \texttt{web-it-2004} at \(s=53\), where \spin{} repeatedly sweeps every vertex while \spinStar{} finishes after a few path-event updates.
 %
-On the easiest cells \spinStar{} can be slightly slower because the bucket-queue setup and live-path bookkeeping add fixed overhead that \spin{}'s tight inner loop avoids when one or two passes already converge.
+On the easiest cells \spinStar{} can be slightly slower (minimum ratio \(0.62\times\)) because the bucket-queue setup and live-path bookkeeping add fixed overhead that \spin{}'s tight inner loop avoids when one or two passes already converge.
 %
-Across cells where \spin{} hits the \(1\)h cap (notably \texttt{com-orkut}, \texttt{twitter}, \texttt{wiki-Talk}, and \texttt{web-it-2004}), \spinStar{} finishes the same input in seconds to minutes.
+On the largest inputs \spin{} hits the \(1\)h cap (\texttt{com-orkut} for \(s\ge3\), \texttt{wiki-Talk} for the single cell \(s=10\)); \spinStar{} finishes the same configurations in seconds to minutes.
 
 \begin{figure*}[t]
 \centering
@@ -321,7 +327,7 @@ Both algorithms compute the same \((1,s)\)-core values; \spinStar{} avoids redun
 \label{fig:spin-vs-spinstar}
 \end{figure*}
 
-\spin{}'s memory profile, with the dual-CSR data structure shared with \spinStar{}, is essentially identical to \spinStar{}'s on every paired cell: the geometric-mean RSS ratio is within a few percent, and \spin{} is consistently no larger than \spinStar{}.
+\spin{}'s memory profile, with the dual-CSR data structure shared with \spinStar{}, is essentially identical to \spinStar{}'s on every paired cell: the geometric-mean RSS ratio (\spin{}\(/\)\spinStar{}) is \(0.97\) over the \(291\) matched cells, and \spin{} is slightly smaller than \spinStar{} on \(83.8\%\) of them.
 %
 The reason is structural: \spinStar{}'s extra state beyond the shared CPI consists of a per-path counter cache (\(\sim 13\) bytes per leaf) and a peel-order bucket queue (\(\sim 17\) bytes per vertex), which \spin{} does not maintain because it scans every vertex each round.
 %
@@ -341,13 +347,13 @@ For reference, Table~\ref{tab:localh} lists representative single-threaded \spin
 \toprule
 Graph & \(s\) & \spin{} & SPIN (s) & \spinStar{} (ms) & ratio & RSS (GB) \\
 \midrule
-\texttt{com-amazon} & 8 & OK & \(0.9\) & \(2.4\) & \(367\times\) & \(0.1\) \\
-\texttt{com-dblp} & 10 & OK & \(391.2\) & \(9.8\) & \(39782\times\) & \(20.4\) \\
-\texttt{com-youtube} & 5 & OK & \(21.0\) & \(296.1\) & \(71\times\) & \(0.4\) \\
-\texttt{soc-pokec} & 5 & OK & \(99.2\) & \(4309.5\) & \(23\times\) & \(2.0\) \\
-\texttt{wiki-Talk} & 5 & TIMEOUT & \(\ge 1800\) & \(8645.5\) & -- & -- \\
-\texttt{web-Google} & 8 & OK & \(23.2\) & \(266.0\) & \(87\times\) & \(1.3\) \\
-\texttt{web-Stanford} & 10 & OK & \(1726.8\) & \(132.5\) & \(13032\times\) & \(24.5\) \\
+\texttt{com-amazon} & 8 & OK & \(0.0\) & \(2.6\) & \(1\times\) & \(0.1\) \\
+\texttt{com-dblp} & 10 & OK & \(0.1\) & \(4.6\) & \(12\times\) & \(0.1\) \\
+\texttt{com-youtube} & 5 & OK & \(11.4\) & \(144.5\) & \(79\times\) & \(0.4\) \\
+\texttt{soc-pokec} & 5 & OK & \(55.2\) & \(2138.6\) & \(26\times\) & \(1.2\) \\
+\texttt{wiki-Talk} & 5 & OK & \(672.9\) & \(2528.1\) & \(266\times\) & \(7.0\) \\
+\texttt{web-Google} & 8 & OK & \(1.1\) & \(137.4\) & \(8\times\) & \(0.3\) \\
+\texttt{web-Stanford} & 10 & OK & \(2.7\) & \(51.7\) & \(53\times\) & \(0.1\) \\
 \bottomrule
 \end{tabular}
 \end{table}

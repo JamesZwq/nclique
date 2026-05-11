@@ -125,14 +125,11 @@ def load_main_benchmark() -> list[dict]:
     """Returns the main r=1 benchmark rows in a canonical schema:
         graph, r, s, algorithm, time_ms, memory_kB, status
 
-    Prefers the V3 file (01_main_benchmark_v3.csv) when present — that's
-    the SOTA `Pure` data the paper actually claims.  Falls back to the
-    legacy `01_main_benchmark_762.csv` (algorithm=Ours_ST, the older
-    static variant) so plotting still works while V3 is being collected.
-
-    The V3 file uses richer columns (wall_ms, time_max_rss_kB, etc.) and
-    labels the static algo "Pure"; this loader normalises both so
-    downstream callers see a single legacy schema.
+    Prefers V3 (01_main_benchmark_v3.csv); falls back to legacy
+    01_main_benchmark_762.csv. The CSV `algorithm` column stores legacy
+    bench labels (`Pure` for our event-driven algorithm, `REF_R1` for the
+    NuclearCD baseline). This loader normalises both to the paper-facing
+    names `SPIN*` and `CND` so downstream callers see one schema.
     """
     v3_path = DATA_DIR / "01_main_benchmark_v3.csv"
     out: list[dict] = []
@@ -140,9 +137,11 @@ def load_main_benchmark() -> list[dict]:
         for r in load_csv(v3_path):
             if r.get("status") != "OK": continue
             algo = r.get("algorithm", "")
-            # Map V3's "Pure" back onto the legacy "Ours_ST" key the
-            # plotter functions still hard-code.  REF_R1 is unchanged.
-            if algo == "Pure": algo = "Ours_ST"
+            # CSV stores legacy bench labels ("Pure" for our event-driven
+            # algorithm, "REF_R1" for the baseline). Plotter uses the paper
+            # names "SPINSTAR" and "CND" everywhere downstream, so map here.
+            if algo == "Pure":   algo = "SPINSTAR"
+            elif algo == "REF_R1": algo = "CND"
             # Use peel-only time as the algorithm metric — both V3 and
             # REF share the same SDCT_Fused build phase, so the speedup
             # claim is about peel.  Falls back to took_ms (build+peel)
@@ -165,8 +164,13 @@ def load_main_benchmark() -> list[dict]:
         print(f"[csv] {v3_path.name} present but no OK rows — falling back")
     legacy = DATA_DIR / "01_main_benchmark_762.csv"
     rows = load_csv(legacy)
+    # Legacy CSV has algo values "Ours_ST" / "REF_R1"; normalise to SPIN*/CND.
+    for r in rows:
+        a = r.get("algorithm", "")
+        if a == "Ours_ST":   r["algorithm"] = "SPINSTAR"
+        elif a == "REF_R1":  r["algorithm"] = "CND"
     if rows:
-        print(f"[csv] using legacy {legacy.name} (Ours_ST, {len(rows)} rows)")
+        print(f"[csv] using legacy {legacy.name} ({len(rows)} rows)")
     return rows
 
 def median_by(rows: list[dict], group_keys: tuple[str,...], value_key: str,
@@ -190,8 +194,8 @@ def gmean(xs: Iterable[float]) -> float:
 # ---------------------------------------------------------------------------
 # Plot styling
 
-OURS_COLOR = "#1f4e9c"  # solid blue
-REF_COLOR  = "#c0392b"  # dashed red
+SPINSTAR_COLOR = "#1f4e9c"  # solid blue
+CND_COLOR  = "#c0392b"  # dashed red
 GRID_KW    = dict(which="both", color="#cccccc", linestyle=":", linewidth=0.5)
 
 plt.rcParams.update({
@@ -236,13 +240,13 @@ def save(fig, name: str) -> None:
 # Figure 1: fig_exp_endtoend — 3-graph speedup + RSS ratio panel
 
 def fig_exp_endtoend() -> None:
-    """3-panel: speedup (REF/Pure) and RSS ratio (REF/Pure) on a SHARED log
-    y-axis. Both quantities are dimensionless ratios with 1.0 as the
-    Pure-vs-REF break-even, so plotting on the same axis is the honest
-    representation — the previous twin-axis (linear-mem) layout made the
-    RSS curve look "flat near zero" because it shared visual height with
-    a 40× log-scaled speedup curve, even though every memory ratio was
-    above 1.0."""
+    """3-panel speedup + RSS ratio on shared log y-axis.
+
+    Per skill rules: monochrome (black/gray), legend on a dedicated top row,
+    no gridlines, hidden top/right spines.
+    """
+    from matplotlib.lines import Line2D
+    from matplotlib.gridspec import GridSpec
     rows = load_main_benchmark()
     if not rows: return
     GRAPHS = ["com-youtube", "web-Stanford", "web-it-2004"]
@@ -252,96 +256,229 @@ def fig_exp_endtoend() -> None:
     m_med = median_by(rows, ("graph","s","algorithm"), "memory_kB",
                       filter_fn=lambda r: r["status"]=="OK")
 
-    fig, axes = plt.subplots(1, 3, figsize=(11, 3.2), sharey=True)
-    speedup_pool, mem_pool = [], []
+    # figsize > rendered: LaTeX scales 9.0 → 7.0 ⇒ text ~7pt rendered
+    fig = plt.figure(figsize=(9.0, 3.0))
+    gs = GridSpec(2, 3, figure=fig, height_ratios=[0.22, 1.0],
+                  hspace=0.6, wspace=0.12,
+                  top=0.86, bottom=0.20, left=0.09, right=0.98)
 
-    for ax, g in zip(axes, GRAPHS):
+    # Top legend row
+    ax_leg = fig.add_subplot(gs[0, :])
+    ax_leg.axis("off")
+    handles = [
+        Line2D([0], [0], color="black", lw=1.6, marker="o", ms=4,
+               mec="black", mfc="black", label="Speedup (CND / SPIN*)"),
+        Line2D([0], [0], color="#808080", lw=1.4, ls="--", marker="s", ms=4,
+               mec="#808080", mfc="white", mew=1.2, label="RSS ratio (CND / SPIN*)"),
+    ]
+    ax_leg.legend(handles=handles, loc="center", ncol=2, frameon=False,
+                  fontsize=10, handlelength=3.2, columnspacing=2.5)
+
+    speedup_pool, mem_pool = [], []
+    axes = [fig.add_subplot(gs[1, i]) for i in range(3)]
+    for i, (ax, g) in enumerate(zip(axes, GRAPHS)):
         s_set = sorted({int(k[1]) for k in t_med if k[0]==g})
         sp_xs, sp_ys, mr_xs, mr_ys = [], [], [], []
         for s in s_set:
-            t_ours = t_med.get((g, str(s), "Ours_ST"))
-            t_ref  = t_med.get((g, str(s), "REF_R1"))
-            m_ours = m_med.get((g, str(s), "Ours_ST"))
-            m_ref  = m_med.get((g, str(s), "REF_R1"))
+            t_ours = t_med.get((g, str(s), "SPINSTAR"))
+            t_ref  = t_med.get((g, str(s), "CND"))
+            m_ours = m_med.get((g, str(s), "SPINSTAR"))
+            m_ref  = m_med.get((g, str(s), "CND"))
             if t_ours and t_ref and t_ours > 0:
                 sp_xs.append(s); sp_ys.append(t_ref / t_ours)
                 speedup_pool.append(t_ref / t_ours)
             if m_ours and m_ref and m_ours > 0:
                 mr_xs.append(s); mr_ys.append(m_ref / m_ours)
                 mem_pool.append(m_ref / m_ours)
-        ax.plot(sp_xs, sp_ys, marker="o", ms=3.5, color=OURS_COLOR,
-                label="Speedup (REF / Pure)")
-        ax.plot(mr_xs, mr_ys, marker="s", ms=3.5, color=REF_COLOR,
-                ls="--", label="RSS ratio (REF / Pure)")
-        ax.axhline(1.0, color="gray", ls=":", lw=0.7)
-        ax.text(0.02, 0.06, "Pure beats REF above this line", transform=ax.transAxes,
-                fontsize=7, color="gray", alpha=0.9)
-        ax.set_xlabel(r"$s$")
-        if ax is axes[0]:
-            ax.set_ylabel("ratio (REF / Pure)")
-        ax.set_yscale("log")
-        ax.set_xscale("log")
-        ax.set_title(GRAPH_DISPLAY.get(g, g))
-        ax.grid(**GRID_KW)
-        if ax is axes[0]:
-            ax.legend(loc="upper left", frameon=False, fontsize=8)
+        ax.plot(sp_xs, sp_ys, color="black", marker="o", ms=4, lw=1.5,
+                mec="black", mfc="black")
+        ax.plot(mr_xs, mr_ys, color="#808080", marker="s", ms=4, lw=1.3,
+                ls="--", mec="#808080", mfc="white", mew=1.2)
+        # Break-even line at ratio=1
+        ax.axhline(1.0, color="#bbbbbb", ls=":", lw=0.8)
+        ax.text(0.02, 0.04, r"SPIN* beats CND above $1$",
+                transform=ax.transAxes, fontsize=8, color="#666",
+                style="italic")
+        ax.set_xlabel(r"$s$", fontsize=10)
+        if i == 0:
+            ax.set_ylabel("ratio (CND / SPIN*)", fontsize=10)
+        ax.set_yscale("log"); ax.set_xscale("log")
+        ax.set_title(GRAPH_DISPLAY.get(g, g), fontsize=10.5, color="#222")
+        # Skill: no grid, hide top/right spines
+        ax.grid(False)
+        for sp in ("top", "right"):
+            ax.spines[sp].set_visible(False)
+        ax.tick_params(axis="both", labelsize=9, colors="#444")
+
     if speedup_pool:
         sup = (f"{len(speedup_pool)} matched cells   "
-               f"speedup gmean={gmean(speedup_pool):.2f}× max={max(speedup_pool):.2f}×   "
-               f"RSS ratio gmean={gmean(mem_pool):.2f}× max={max(mem_pool):.2f}×")
-        fig.suptitle(sup, fontsize=9, y=1.02)
-    fig.tight_layout()
+               f"speedup gmean$\\,{{=}}\\,${gmean(speedup_pool):.2f}$\\times$ "
+               f"max$\\,{{=}}\\,${max(speedup_pool):.2f}$\\times$   "
+               f"RSS ratio gmean$\\,{{=}}\\,${gmean(mem_pool):.2f}$\\times$ "
+               f"max$\\,{{=}}\\,${max(mem_pool):.2f}$\\times$")
+        fig.text(0.5, 0.99, sup, ha="center", va="top",
+                 fontsize=9.5, color="#222")
     save(fig, "fig_exp_endtoend")
 
 # ---------------------------------------------------------------------------
 # Figure 2 + 3: fig_exp_time / fig_exp_mem  — 10-graph grid, ours vs ref
 
-def _grid_plot(rows: list[dict], value_key: str, ylabel: str, fname: str) -> None:
+def _grid_plot(rows: list[dict], value_key: str, ylabel: str, fname: str,
+               spin_rows: dict = None, spin_timeouts: set = None) -> None:
+    """7-graph grid with shared legend on a top row, monochrome (black/gray)
+    palette, no gridlines, minimal chart junk."""
     if not rows: return
+    from matplotlib.lines import Line2D
+    from matplotlib.gridspec import GridSpec
+
     med = median_by(rows, ("graph","s","algorithm"), value_key,
                     filter_fn=lambda r: r["status"]=="OK")
-    graphs = sorted({k[0] for k in med})
-    # Stable order: alphabetical inside three families, then orkut last
+    # Count matched (g,s) cells per graph (both algos OK)
+    matched_cells_per_graph: dict = {}
+    for (g, s, a) in med:
+        if a != "SPINSTAR": continue
+        if (g, s, "CND") in med:
+            matched_cells_per_graph[g] = matched_cells_per_graph.get(g, 0) + 1
+    MIN_CELLS = 3
+    graphs = {g for g, n in matched_cells_per_graph.items() if n >= MIN_CELLS}
+    # Stable order: small/medium graphs first, large web graphs last
     order = [g for g in [
         "com-amazon.ungraph","com-dblp","com-youtube","com-orkut",
         "twitter_combined","wiki-Talk","soc-pokec-relationships",
         "web-Google","web-Stanford","web-it-2004"] if g in graphs]
     n = len(order)
-    cols = 5; rows_n = math.ceil(n/cols)
-    fig, axes = plt.subplots(rows_n, cols, figsize=(13.5, 2.4*rows_n), sharey=False)
-    axes = np.array(axes).reshape(rows_n, cols)
+    # Pick a balanced grid: prefer (rows, cols) so rows*cols == n exactly,
+    # else minimize empty cells. For our common counts (8 -> 4x2, 10 -> 5x2).
+    cols = 5 if n >= 10 else (4 if n >= 8 else 3)
+    rows_n = math.ceil(n / cols)
 
-    for idx, g in enumerate(order):
-        ax = axes[idx // cols, idx % cols]
+    # Layout: 1 thin row for legend + rows_n data rows.
+    # figsize tuned so the figure renders at natural size in a two-column
+    # paper (\linewidth ~7in for figure*); each panel ends up ~1.5" wide.
+    # figure* in SIGMOD acmart sigconf is ~7.0" wide. Match figsize so
+    # \includegraphics[width=\linewidth]{...} renders at 1:1 (no font shrink).
+    # figsize larger than rendered (\linewidth in figure* ≈ 7"). LaTeX scales
+    # everything down ⇒ text in figure renders slightly smaller than body
+    # (matplotlib's default sans glyphs look heavier than the paper's serif
+    # at nominally same pt; the down-scale evens it out).
+    PAGE_W = 9.0
+    fig = plt.figure(figsize=(PAGE_W, 0.6 + 1.5 * rows_n))
+    gs = GridSpec(rows_n + 1, cols, figure=fig,
+                  height_ratios=[0.20] + [1.0] * rows_n,
+                  hspace=1.30, wspace=0.45,
+                  top=0.92, bottom=0.13, left=0.08, right=0.98)
+
+    # Legend axis (top, spans all columns)
+    ax_leg = fig.add_subplot(gs[0, :])
+    ax_leg.axis("off")
+    handles = [
+        Line2D([0], [0], color="black", lw=1.6, marker="o", ms=4,
+               mec="black", mfc="black", label="SPIN* (ours)"),
+        Line2D([0], [0], color="#808080", lw=1.4, ls="--", marker="s", ms=4,
+               mec="#808080", mfc="white", mew=1.2, label="CND"),
+        Line2D([0], [0], color="#444444", lw=1.4, ls=":", marker="^", ms=4.5,
+               mec="#444444", mfc="white", mew=1.2, label="SPIN (ours)"),
+    ]
+    if spin_timeouts:
+        handles.append(
+            Line2D([0], [0], color="#444444", lw=0, marker="x", ms=6, mew=1.6,
+                   label="SPIN $\\geq 1$h"))
+    ax_leg.legend(handles=handles, loc="center", ncol=len(handles), frameon=False,
+                  fontsize=11, handlelength=3.2, columnspacing=1.8)
+
+    # Data axes
+    axes = []
+    for idx in range(n):
+        ax = fig.add_subplot(gs[1 + idx // cols, idx % cols])
+        axes.append(ax)
+        g = order[idx]
         s_set = sorted({int(k[1]) for k in med if k[0]==g})
-        ours = [med.get((g, str(s), "Ours_ST")) for s in s_set]
-        ref  = [med.get((g, str(s), "REF_R1"))  for s in s_set]
+        ours = [med.get((g, str(s), "SPINSTAR")) for s in s_set]
+        ref  = [med.get((g, str(s), "CND"))  for s in s_set]
         sx_o = [s for s, v in zip(s_set, ours) if v]
         vy_o = [v for v in ours if v]
         sx_r = [s for s, v in zip(s_set, ref) if v]
         vy_r = [v for v in ref  if v]
-        ax.plot(sx_o, vy_o, color=OURS_COLOR, marker="o", ms=3, label="Pure")
-        ax.plot(sx_r, vy_r, color=REF_COLOR,  marker="s", ms=3, ls="--", label="REF")
+        ax.plot(sx_o, vy_o, color="black", marker="o", ms=3.5, lw=1.4,
+                mec="black", mfc="black")
+        ax.plot(sx_r, vy_r, color="#808080", marker="s", ms=3.5, lw=1.2,
+                ls="--", mec="#808080", mfc="white", mew=1.2)
+        # SPIN (LocalH) OK cells — if data exists for this graph
+        if spin_rows:
+            sx_sp = []
+            vy_sp = []
+            for s in s_set:
+                v = spin_rows.get((g, str(s)))
+                if v is not None:
+                    sx_sp.append(s)
+                    vy_sp.append(v)
+            if sx_sp:
+                ax.plot(sx_sp, vy_sp, color="#444444", marker="^", ms=4, lw=1.2,
+                        ls=":", mec="#444444", mfc="white", mew=1.2)
+        # SPIN TIMEOUT cells: × at the 1h cap (3.6e6 ms) — only on time plot
+        if spin_timeouts:
+            TIMEOUT_MS = 3.6e6
+            sx_to = sorted(int(s) for (g_, s) in spin_timeouts if g_ == g)
+            if sx_to:
+                ax.plot(sx_to, [TIMEOUT_MS] * len(sx_to), color="#444444",
+                        marker="x", ms=6, mew=1.6, lw=0)
         ax.set_xscale("log"); ax.set_yscale("log")
-        ax.set_xlabel(r"$s$")
-        if idx % cols == 0: ax.set_ylabel(ylabel)
-        ax.set_title(GRAPH_DISPLAY.get(g, g), fontsize=9)
-        ax.grid(**GRID_KW)
-        if idx == 0:
-            ax.legend(loc="best", frameon=False)
-    # hide unused axes
-    for j in range(n, rows_n*cols):
-        axes[j // cols, j % cols].set_visible(False)
-    fig.tight_layout()
+        ax.set_xlabel(r"$s$", fontsize=9)
+        if idx % cols == 0:
+            ax.set_ylabel(ylabel, fontsize=9)
+        ax.set_title(GRAPH_DISPLAY.get(g, g), fontsize=9, color="#222", pad=2)
+        # Skill: drop gridlines, drop top/right spines
+        ax.grid(False)
+        for sp in ("top", "right"):
+            ax.spines[sp].set_visible(False)
+        ax.tick_params(axis="both", labelsize=8, colors="#444")
+        # If only a few s values (e.g. com-orkut s=2..4), force integer ticks
+        # instead of log-scientific (2x10^0). Threshold ≤ 5 distinct values.
+        all_x = sorted(set(sx_o + sx_r))
+        if 0 < len(all_x) <= 5:
+            ax.set_xticks(all_x)
+            ax.xaxis.set_major_formatter(mtick.ScalarFormatter())
+            ax.xaxis.set_minor_locator(mtick.NullLocator())
+
     save(fig, fname)
+
+def _load_spin_rows(value_key: str) -> tuple[dict, set]:
+    """Read SPIN (LocalH) rows from bench_local_v4.csv.
+    Returns (ok_values, timeouts) where:
+      - ok_values: {(graph, s_str): value} for OK cells
+      - timeouts: {(graph, s_str)} for cells that hit the 1h wall (only
+        meaningful for the time plot; the mem plot ignores this set).
+    """
+    ok_values, timeouts = {}, set()
+    csv_path = DATA_DIR / "bench_local_v4.csv"
+    if not csv_path.exists(): return ok_values, timeouts
+    for r in load_csv(csv_path):
+        status = r.get("status")
+        if status == "OK":
+            try:
+                if value_key == "time_ms":
+                    raw = r.get("took_ms") or r.get("wall_ms")
+                    v = float(raw)
+                else:  # memory_kB
+                    v = float(r["time_max_rss_kB"])
+                ok_values[(r["graph"], r["s"])] = v
+            except (KeyError, ValueError, TypeError):
+                continue
+        elif status == "TIMEOUT":
+            timeouts.add((r["graph"], r["s"]))
+    return ok_values, timeouts
+
 
 def fig_exp_time() -> None:
     rows = load_main_benchmark()
-    _grid_plot(rows, "time_ms", "wall time (ms)", "fig_exp_time")
+    spin_rows, spin_timeouts = _load_spin_rows("time_ms")
+    _grid_plot(rows, "time_ms", "wall time (ms)", "fig_exp_time",
+               spin_rows, spin_timeouts)
 
 def fig_exp_mem() -> None:
     rows = load_main_benchmark()
-    _grid_plot(rows, "memory_kB", "peak RSS (kB)", "fig_exp_mem")
+    spin_rows, _ = _load_spin_rows("memory_kB")
+    _grid_plot(rows, "memory_kB", "peak RSS (kB)", "fig_exp_mem", spin_rows)
 
 # ---------------------------------------------------------------------------
 # Figure 4: fig_phase_breakdown — load/build/peel stack (Pure vs REF)
@@ -406,9 +543,9 @@ def fig_phase_breakdown() -> None:
         ax.bar(idx - bar_w/2, load_o,                width=bar_w,
                color="#cccccc", label="load")
         ax.bar(idx - bar_w/2, build_o, bottom=load_o, width=bar_w,
-               color=OURS_COLOR, label="build (Pure)")
+               color=SPINSTAR_COLOR, label="build (SPIN*)")
         ax.bar(idx - bar_w/2, peel_o,  bottom=load_o+build_o, width=bar_w,
-               color="#5dade2", label="peel (Pure)")
+               color="#5dade2", label="peel (SPIN*)")
         # ref stack (next to it)
         if ref:
             ref_idx = []
@@ -423,11 +560,11 @@ def fig_phase_breakdown() -> None:
             ax.bar(ref_idx + bar_w/2, load_r,                  width=bar_w,
                    color="#cccccc", hatch="///", edgecolor="white")
             ax.bar(ref_idx + bar_w/2, build_r, bottom=load_r,   width=bar_w,
-                   color=REF_COLOR, hatch="///", edgecolor="white",
-                   label="build (REF)")
+                   color=CND_COLOR, hatch="///", edgecolor="white",
+                   label="build (CND)")
             ax.bar(ref_idx + bar_w/2, peel_r,  bottom=load_r+build_r, width=bar_w,
                    color="#f1948a", hatch="///", edgecolor="white",
-                   label="peel (REF)")
+                   label="peel (CND)")
         ax.set_xticks(idx); ax.set_xticklabels(s_vals)
         ax.set_xlabel(r"$s$"); ax.set_ylabel("time (ms)")
         ax.set_yscale("log")
@@ -442,25 +579,24 @@ def fig_phase_breakdown() -> None:
 # Figure 5 + 6: fig_stress_time / fig_stress_mem — synthetic |V|=1000
 
 def _stress_plot(value_key: str, ylabel: str, fname: str) -> None:
-    """Stress synthetic |V|=1000 panel.  Prefers V3 CSV (algorithm=Pure)
-    and rewrites it to "Ours_ST" so downstream code still works; falls
-    back to legacy 15_stress_synthetic_dense.csv (algorithm=Ours_ST,
-    actually old ST = PIVOTER_RUN_ST)."""
+    """Synthetic |V|=1000 stress test, redesigned per skill rules.
+    One panel per s value, monochrome (black SPIN* + gray CND), legend on top."""
+    from matplotlib.lines import Line2D
+    from matplotlib.gridspec import GridSpec
     v3_path = DATA_DIR / "15_stress_synthetic_dense_v3.csv"
     rows = []
     if v3_path.exists():
         for r in load_csv(v3_path):
             if r.get("algorithm") == "Pure":
-                r = dict(r); r["algorithm"] = "Ours_ST"
+                r = dict(r); r["algorithm"] = "SPINSTAR"
             rows.append(r)
         if rows:
             print(f"[csv] using {v3_path.name} (Pure / V3 SOTA, {len(rows)} rows)")
     if not rows:
         rows = load_csv(DATA_DIR / "15_stress_synthetic_dense.csv")
         if rows:
-            print(f"[csv] using legacy 15_stress_synthetic_dense.csv (Ours_ST = old ST)")
+            print(f"[csv] using legacy 15_stress_synthetic_dense.csv")
     if not rows: return
-    # group by (density, s, algorithm) — n=1000 fixed
     g = defaultdict(list)
     for r in rows:
         if r["status"] != "OK": continue
@@ -472,25 +608,50 @@ def _stress_plot(value_key: str, ylabel: str, fname: str) -> None:
     med = {k: statistics.median(v) for k, v in g.items()}
     densities = sorted({k[0] for k in med})
     s_vals    = sorted({k[1] for k in med})
-    fig, ax = plt.subplots(figsize=(7, 4.0))
-    cmap_o = plt.cm.Blues(np.linspace(0.4, 0.95, len(s_vals)))
-    cmap_r = plt.cm.Reds (np.linspace(0.4, 0.95, len(s_vals)))
-    for ci, s in enumerate(s_vals):
-        ours = [med.get((d, s, "Ours_ST")) for d in densities]
-        ref  = [med.get((d, s, "REF_R1"))  for d in densities]
+    n = len(s_vals)
+
+    # figsize > rendered (single column \linewidth ≈ 3.4"): scale down ⇒
+    # smaller text in PDF.
+    rows_n = math.ceil(n / 2)
+    fig = plt.figure(figsize=(4.5, 0.6 + 1.3 * rows_n))
+    gs = GridSpec(rows_n + 1, 2, figure=fig,
+                  height_ratios=[0.22] + [1.0] * rows_n,
+                  hspace=1.0, wspace=0.50,
+                  top=0.90, bottom=0.15, left=0.20, right=0.97)
+
+    # Top legend
+    ax_leg = fig.add_subplot(gs[0, :]); ax_leg.axis("off")
+    handles = [
+        Line2D([0], [0], color="black", lw=1.6, marker="o", ms=4,
+               mec="black", mfc="black", label="SPINSTAR"),
+        Line2D([0], [0], color="#808080", lw=1.4, ls="--", marker="s", ms=4,
+               mec="#808080", mfc="white", mew=1.2, label="CND"),
+    ]
+    ax_leg.legend(handles=handles, loc="center", ncol=2, frameon=False,
+                  fontsize=9, handlelength=2.5, columnspacing=2.0)
+
+    for i, s in enumerate(s_vals):
+        ax = fig.add_subplot(gs[1 + i // 2, i % 2])
+        ours = [med.get((d, s, "SPINSTAR")) for d in densities]
+        ref  = [med.get((d, s, "CND"))  for d in densities]
         d_o = [d for d, v in zip(densities, ours) if v]
         v_o = [v for v in ours if v]
         d_r = [d for d, v in zip(densities, ref) if v]
         v_r = [v for v in ref  if v]
-        ax.plot(d_o, v_o, color=cmap_o[ci], marker="o", ms=3, label=f"Pure, s={s}")
-        ax.plot(d_r, v_r, color=cmap_r[ci], marker="s", ms=3, ls="--",
-                label=f"REF, s={s}")
-    ax.set_xlabel("density"); ax.set_ylabel(ylabel)
-    ax.set_yscale("log")
-    ax.set_title(r"Synthetic $|V|=1000$ stress")
-    ax.grid(**GRID_KW)
-    ax.legend(loc="best", frameon=False, ncol=2, fontsize=7)
-    fig.tight_layout()
+        ax.plot(d_o, v_o, color="black", marker="o", ms=4, lw=1.5,
+                mec="black", mfc="black")
+        ax.plot(d_r, v_r, color="#808080", marker="s", ms=4, lw=1.3,
+                ls="--", mec="#808080", mfc="white", mew=1.2)
+        ax.set_yscale("log")
+        ax.set_xlabel("density", fontsize=10)
+        if i == 0:
+            ax.set_ylabel(ylabel, fontsize=10)
+        ax.set_title(f"$s={s}$", fontsize=10.5, color="#222")
+        ax.grid(False)
+        for sp in ("top", "right"):
+            ax.spines[sp].set_visible(False)
+        ax.tick_params(axis="both", labelsize=9, colors="#444")
+
     save(fig, fname)
 
 def fig_stress_time() -> None:
@@ -573,14 +734,14 @@ def fig_friendster() -> None:
     s_vals  = [p[0] for p in pts]
     wall    = [p[1] for p in pts]
     rss_gb  = [p[2] for p in pts]
-    axes[0].plot(s_vals, wall, color=OURS_COLOR, marker="o", ms=4)
+    axes[0].plot(s_vals, wall, color=SPINSTAR_COLOR, marker="o", ms=4)
     axes[0].set_xlabel(r"$s$"); axes[0].set_ylabel("wall time (s)")
-    axes[0].set_title("com-friendster, Pure, T=24")
+    axes[0].set_title("com-friendster, SPIN*, T=24")
     axes[0].grid(**GRID_KW)
     if any(r is not None for r in rss_gb):
         s_r = [s for s, r in zip(s_vals, rss_gb) if r is not None]
         v_r = [r for r in rss_gb if r is not None]
-        axes[1].plot(s_r, v_r, color=REF_COLOR, marker="s", ms=4)
+        axes[1].plot(s_r, v_r, color=CND_COLOR, marker="s", ms=4)
         axes[1].set_xlabel(r"$s$"); axes[1].set_ylabel("peak RSS (GB)")
         axes[1].set_title("com-friendster peak memory")
         axes[1].grid(**GRID_KW)
@@ -645,7 +806,7 @@ def tab_local() -> None:
     pure = {
         (r["graph"], r["s"]): float(r["time_ms"])
         for r in main_rows
-        if r.get("algorithm") == "Ours_ST" and r.get("status") == "OK" and r.get("time_ms")
+        if r.get("algorithm") == "SPINSTAR" and r.get("status") == "OK" and r.get("time_ms")
     }
     keep = {
         ("com-amazon.ungraph", "8"),
@@ -682,7 +843,7 @@ def tab_local() -> None:
         "wiki-Talk", "web-Google", "web-Stanford",
     ])}
     body.sort(key=lambda row: order.get(row[0], 999))
-    header = ["Graph", "$s$", "LocalH", "LocalH wall (s)", "Pure wall (ms)", "ratio", "LocalH RSS (GB)"]
+    header = ["Graph", "$s$", "SPIN", "SPIN wall (s)", "SPIN* wall (ms)", "ratio", "SPIN RSS (GB)"]
     align = "llrrrrr"
     _emit_table("tab_local", header, align, body)
 
@@ -750,8 +911,8 @@ def tab_bd_time() -> None:
             row += ["—", "—", "—"]
         body.append(row)
     header = ["Graph", "$s$",
-              "Pure load", "Pure build", "Pure peel",
-              "REF load", "REF build", "REF peel"]
+              "SPIN* load", "SPIN* build", "SPIN* peel",
+              "CND load", "CND build", "CND peel"]
     align  = "ll" + "r"*6
     _emit_table("tab_bd_time", header, align, body)
 
@@ -773,7 +934,7 @@ def tab_bd_mem() -> None:
             GRAPH_DISPLAY.get(g_, g_), str(s_),
             f"{ours:.0f}", f"{ref:.0f}", f"{ref/ours:.2f}×",
         ])
-    header = ["Graph", "$s$", "Pure (MB)", "REF (MB)", "ratio"]
+    header = ["Graph", "$s$", "SPIN* (MB)", "CND (MB)", "ratio"]
     align  = "llrrr"
     _emit_table("tab_bd_mem", header, align, body)
 
