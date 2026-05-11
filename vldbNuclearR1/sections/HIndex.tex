@@ -127,6 +127,16 @@ The swap at the end of the pass avoids order dependence.
 %
 A pass with no changed entry is the certificate that the fixed point has been reached.
 
+\begin{example}[\(h\)-Index Refresh on the Running Example]\label{ex:hop}
+Initialise \(h[v]\gets\sdeg(v)\) using Lemma~\ref{lem:supp}; on the running example \(h[v_4]=7\) (contributions from \(\TPath_3,\TPath_4\) as pivot, \(\TPath_5,\TPath_6\) as hold; see Table~\ref{tab:cpi-leaves}).
+%
+The first call \(\vertexSupport(v_4,h)\) scans the four paths through \(v_4\) and counts threshold witnesses via Lemma~\ref{lem:per-path-witness}.
+%
+At threshold \(k=3\), paths \(\TPath_3\) and \(\TPath_5\) together contribute \(W_{v_4}(h,3)=3\) witnesses with all other path vertices at \(h\ge3\), so the largest \(k\) with \(W_{v_4}(h,k)\ge k\) is \(\Phi_h(v_4)=3\), the final \(\kappa_3(v_4)\).
+%
+\spin{} reaches the fixed point in a small number of synchronous passes, but each pass scans every vertex regardless of whether its value can still change --- the redundancy that \spinStar{} eliminates in Section~\ref{sec:peelh}.
+\end{example}
+
 \begin{algorithm}[t]
 \algfontsize
 \caption{\spin{} --- direct static-path fixed-point iteration.}
