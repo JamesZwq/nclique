@@ -339,21 +339,27 @@ For reference, Table~\ref{tab:localh} lists representative single-threaded \spin
 \centering
 \caption{Representative \spin{} runs.
 %
-\spinStar{} time is end-to-end wall-clock time on the same \((graph,s)\) cell.}
+\spin{} time is the H-index iteration (post-build) reported by the binary; \spinStar{} time is the corresponding peel time.
+%
+Both run single-threaded over the same dual-CSR \cpi{}.}
 \label{tab:localh}
 \tiny
 \setlength{\tabcolsep}{2pt}
 \begin{tabular}{llrrrrr}
 \toprule
-Graph & \(s\) & \spin{} & SPIN (s) & \spinStar{} (ms) & ratio & RSS (GB) \\
+Graph & \(s\) & \spin{} & SPIN (ms) & \spinStar{} (ms) & ratio & SPIN RSS (GB) \\
 \midrule
-\texttt{com-amazon} & 8 & OK & \(0.0\) & \(2.6\) & \(1\times\) & \(0.1\) \\
-\texttt{com-dblp} & 10 & OK & \(0.1\) & \(4.6\) & \(12\times\) & \(0.1\) \\
-\texttt{com-youtube} & 5 & OK & \(11.4\) & \(144.5\) & \(79\times\) & \(0.4\) \\
-\texttt{soc-pokec} & 5 & OK & \(55.2\) & \(2138.6\) & \(26\times\) & \(1.2\) \\
-\texttt{wiki-Talk} & 5 & OK & \(672.9\) & \(2528.1\) & \(266\times\) & \(7.0\) \\
-\texttt{web-Google} & 8 & OK & \(1.1\) & \(137.4\) & \(8\times\) & \(0.3\) \\
-\texttt{web-Stanford} & 10 & OK & \(2.7\) & \(51.7\) & \(53\times\) & \(0.1\) \\
+\texttt{com-amazon}   & 8  & OK      & \(2.5\)         & \(2.6\)    & \(1.0\times\)  & \(0.1\) \\
+\texttt{com-dblp}     & 10 & OK      & \(55.7\)        & \(4.6\)    & \(12\times\)   & \(0.1\) \\
+\texttt{com-youtube}  & 5  & OK      & \(11{,}413\)    & \(144.5\)  & \(79\times\)   & \(0.4\) \\
+\texttt{soc-pokec}    & 5  & OK      & \(55{,}227\)    & \(2{,}138.6\) & \(26\times\) & \(1.2\) \\
+\texttt{web-Google}   & 8  & OK      & \(1{,}111\)     & \(137.4\)  & \(8\times\)    & \(0.3\) \\
+\texttt{web-Stanford} & 10 & OK      & \(2{,}737\)     & \(51.7\)   & \(53\times\)   & \(0.1\) \\
+\texttt{web-it-2004}  & 53 & OK      & \(12{,}160\)    & \(5.1\)    & \(2{,}369\times\) & \(0.2\) \\
+\texttt{wiki-Talk}    & 5  & OK      & \(672{,}872\)   & \(2{,}528.1\) & \(266\times\) & \(7.0\) \\
+\texttt{wiki-Talk}    & 10 & TIMEOUT & \(\ge 3{,}600{,}000\) & \(9{,}836\) & --- & --- \\
+\texttt{com-orkut}    & 3  & TIMEOUT & \(\ge 3{,}600{,}000\) & \(48{,}120\) & --- & --- \\
+\texttt{com-orkut}    & 4  & TIMEOUT & \(\ge 3{,}600{,}000\) & \(87{,}947\) & --- & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
