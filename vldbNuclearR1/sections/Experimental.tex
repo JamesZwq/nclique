@@ -48,7 +48,7 @@ The benchmark sweep on the ten smaller graphs yields \(307\) matched cells where
 
 \begin{table}[t]
 \centering
-\caption{Datasets used in Section~\ref{sec:exp}. Average degree is \(2|E|/|V|\).}
+\caption{Datasets.}
 \label{tab:datasets}
 \small
 \begin{tabular}{lrrr}
@@ -109,13 +109,7 @@ Figure~\ref{fig:exp-time} and Figure~\ref{fig:exp-mem} show where these gains oc
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_exp_time.pdf}
-\caption{End-to-end wall-clock time as a function of \(s\) in the ten-graph comparison.
-%
-Solid blue is \spinStar{}, the incremental realization; dashed red is the mutable-\cpi{} reference baseline \cbnd{}; dotted black is \spin{}, the direct iteration.
-%
-Crosses (\(\times\)) mark cells where \spin{} exceeded the \(1\)h wall-clock cap.
-%
-\spinStar{} is consistently the fastest: peel-time geometric-mean speedup is \(13.50\times\) over \cbnd{} (max \(44.76\times\)) and \(36.2\times\) over \spin{} (max \(2{,}369\times\) on \texttt{web-it-2004} at \(s=53\)); \cbnd{} pays residual-index maintenance cost; \spin{} pays for repeated full-graph passes and times out on the harder graphs.}
+\caption{Wall-clock time across ten graphs.}
 \Description{A grid of log-scale runtime plots over parameter s, with one subplot per benchmark graph.}
 \label{fig:exp-time}
 \end{figure*}
@@ -123,13 +117,7 @@ Crosses (\(\times\)) mark cells where \spin{} exceeded the \(1\)h wall-clock cap
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_exp_mem.pdf}
-\caption{Peak resident-set memory in the ten-graph comparison.
-%
-Solid blue is \spinStar{}; dashed red is \cbnd{}; dotted black is \spin{}.
-%
-The static incidence layout reduces peak RSS when mutable residual path sets dominate memory.
-%
-\spin{} now reads paths from the same flat dual CSR as \spinStar{}, so its curve tracks \spinStar{}'s closely instead of carrying the legacy vector-of-vectors overhead.}
+\caption{Peak RSS across ten graphs.}
 \Description{A grid of log-scale peak-memory plots over parameter s, with one subplot per benchmark graph.}
 \label{fig:exp-mem}
 \end{figure*}
@@ -144,11 +132,7 @@ The analytical per-incidence gap is larger than the observed RSS gap because gra
 
 \begin{table}[t]
 \centering
-\caption{Memory budget per vertex--path incidence at \(\Sig\gg n\).
-%
-Baseline numbers are from the mutable-\cpi{} implementation~\cite{NuclearCD}; \spinStar{} numbers are sizeof-based accounting for the static layout.
-%
-The last two rows juxtapose the analytical \(\Sig\)-coefficient with measured median peak RSS from Table~\ref{tab:breakdown}.}
+\caption{Per-incidence memory budget at \(\Sig\gg n\).}
 \label{tab:mem}
 \small
 \begin{tabular}{lrr}
@@ -183,7 +167,7 @@ Table~\ref{tab:breakdown} reports representative per-phase wall-clock medians (\
 
 \begin{table*}[t]
 \centering
-\caption{Representative per-phase wall-clock time (ms) and peak RSS (MB), median over three runs. The last column gives the RSS ratio \cbnd{}/\spinStar{}.}
+\caption{Per-phase wall time (ms) and peak RSS (MB).}
 \label{tab:breakdown}
 \scriptsize
 \setlength{\tabcolsep}{4pt}
@@ -233,9 +217,7 @@ The table shows strong scaling on large web and social graphs and weaker scaling
 
 \begin{table}[t]
 \centering
-\caption{\paraBuild{} build time in ms, median over three runs.
-%
-Speedup is \(T=1\) time divided by \(T=24\) time.}
+\caption{\paraBuild{} build time vs thread count.}
 \label{tab:par}
 \tiny
 \setlength{\tabcolsep}{2pt}
@@ -305,13 +287,7 @@ Where both implementations finish, \spinStar{} remains below \cbnd{} in time and
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig_stress.pdf}
-\caption{Synthetic clique-injection stress test on \(|V|{=}1000\) graphs.
-%
-Solid blue is \spinStar{}, dashed red is \cbnd{}.
-%
-Top row: wall time grows rapidly with density and \(s\).
-%
-Bottom row: peak RSS under the same protocol; the memory gap widens as mutable residual state amplifies dense-clique growth.}
+\caption{Dense-synthetic stress test.}
 \Description{Two-row log-scale grid showing wall time (top) and peak RSS (bottom) for SPIN* vs CND on synthetic dense graphs across four s values and six densities.}
 \label{fig:stress}
 \end{figure*}
@@ -330,11 +306,7 @@ Construction is what dominates wall time on this graph (about \(5\)--\(7\) thous
 
 \begin{table}[t]
 \centering
-\caption{\spinStar{} on \texttt{com-friendster} (\(65\)M vertices, \(1.806\)B edges) at \(T{=}24\).
-%
-\(\Sig\) is the encoded clique count.
-%
-\cbnd{} cannot complete on this graph at any \(s\).}
+\caption{\spinStar{} on \texttt{com-friendster} (\(1.806\)B edges).}
 \label{tab:friendster}
 \small
 \setlength{\tabcolsep}{3pt}
@@ -374,7 +346,7 @@ The two ideas compound rather than substitute: bucket-queue order without the st
 
 \begin{table}[t]
 \centering
-\caption{Ablation on \(171\) matched cells: median peel time at each pipeline step, with gmean speedup against the previous step.}
+\caption{Pipeline ablation (\(171\) matched cells).}
 \label{tab:ablation}
 \small
 \setlength{\tabcolsep}{4pt}
@@ -410,13 +382,7 @@ On every graph \spinStar{}'s curves are ordered cleanly by ratio at every \(s\) 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_scalability.pdf}
-\caption{Vertex-induced scalability of \spinStar{} on five graphs.
-%
-Top row: wall-clock time as \(s\) varies, one curve per vertex-sample ratio.
-%
-Bottom row: peak RSS under the same protocol.
-%
-Higher ratios consistently take longer and use more RSS; the curves do not cross.}
+\caption{Vertex-induced scalability of \spinStar{}.}
 \Description{Two-row five-column log-scale grid showing wall time (top) and peak RSS (bottom) for SPIN* under five vertex-sample ratios on five graphs.}
 \label{fig:scalability}
 \end{figure*}

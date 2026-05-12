@@ -45,7 +45,7 @@ Table~\ref{tab:cs1} reports the active-set size and top-prefix thresholds.
 
 \begin{table}[t]
 \centering
-\caption{Active-set size and top-\(K\) thresholds on \texttt{com-dblp} as \(s\) grows.}
+\caption{Active set on \texttt{com-dblp} as \(s\) grows.}
 \label{tab:cs1}
 \small
 \setlength{\tabcolsep}{4pt}
@@ -84,7 +84,7 @@ Table~\ref{tab:cs3} reports top-\(10{,}000\) quality.
 
 \begin{table}[t]
 \centering
-\caption{Ground-truth quality of \((1,s)\)-cores versus \(k\)-core on \texttt{com-dblp}.}
+\caption{Ground-truth quality on \texttt{com-dblp}.}
 \label{tab:cs3}
 \small
 \begin{tabular}{lrrrr}
@@ -123,7 +123,7 @@ On \texttt{com-youtube} the same pattern holds for every \(s\in\{5,10,15\}\), wi
 
 \begin{table}[t]
 \centering
-\caption{Cross-\(r\) comparison at \(s=10\) on \texttt{com-dblp}.}
+\caption{Cross-\(r\) on \texttt{com-dblp} (\(s=10\)).}
 \label{tab:cs4}
 \small
 \begin{tabular}{lrrrr}
@@ -151,7 +151,7 @@ Table~\ref{tab:cs7} reports the same cross-\(r\) comparison on \texttt{com-youtu
 
 \begin{table}[t]
 \centering
-\caption{Cross-\(r\) comparison on \texttt{com-youtube}.}
+\caption{Cross-\(r\) on \texttt{com-youtube}.}
 \label{tab:cs7}
 \small
 \begin{tabular}{lrrrr}
@@ -187,7 +187,7 @@ Table~\ref{tab:cs9} reports the component statistics.
 
 \begin{table}[t]
 \centering
-\caption{Ego-network of \texttt{com-dblp} anchor \(52213\) under three \(s\) values.}
+\caption{Ego-network statistics around a \texttt{com-dblp} anchor.}
 \label{tab:cs9}
 \small
 \begin{tabular}{r r r r r r}
@@ -210,11 +210,7 @@ This behavior makes \(s\) a local resolution knob.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/cs9_egonet.pdf}
-\caption{Two-hop ego-network of a \texttt{com-dblp} anchor under \((1,s)\)-decomposition.
-%
-Vertices are colored by connected component among surviving vertices.
-%
-Observe that increasing \(s\) splits one large local structure into smaller components.}
+\caption{Ego-network around a \texttt{com-dblp} anchor under three \(s\) values.}
 \Description{Three ego-network visualizations showing components becoming smaller and more numerous as s increases.}
 \label{fig:cs9}
 \end{figure}
@@ -230,9 +226,7 @@ Figures~\ref{fig:cs10} and~\ref{fig:cs10p} visualize the resulting trees and per
 
 \begin{table}[t]
 \centering
-\caption{Nucleus hierarchy summary.
-%
-The table reports branches, internal absorption events, and maximum tree depth.}
+\caption{Nucleus hierarchy summary.}
 \label{tab:cs10cross}
 \tiny
 \setlength{\tabcolsep}{2pt}
@@ -262,9 +256,7 @@ It gives a domain-level fingerprint of clique-witness nesting.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/cs10_hierarchy.pdf}
-\caption{\((1,s)\)-clique-connected nucleus join tree at \(s=5\) across three domains.
-%
-Observe that the hierarchy shapes differ across collaboration, social, and web graphs.}
+\caption{Nucleus join tree at \(s=5\) across three domains.}
 \Description{Three hierarchy-tree visualizations comparing DBLP, YouTube, and web-Stanford at s equals 5.}
 \label{fig:cs10}
 \end{figure}
@@ -272,9 +264,7 @@ Observe that the hierarchy shapes differ across collaboration, social, and web g
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/cs10_persistence.pdf}
-\caption{Persistence diagrams across three domains and four \(s\) values.
-%
-Observe that branch persistence changes with both domain and clique size.}
+\caption{Persistence diagrams across three domains.}
 \Description{Grid of persistence diagrams for three domains and four clique-size settings.}
 \label{fig:cs10p}
 \end{figure}
