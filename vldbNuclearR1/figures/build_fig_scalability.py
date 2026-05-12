@@ -25,7 +25,7 @@ from pathlib import Path
 OUT = Path(__file__).parent
 CSV = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data/scalability.csv")
 
-ALGOS = [("Ours_ST", "Ours"), ("REF_R1", "SOTA")]
+ALGOS = [("Ours_ST", r"SPIN$^\star$ (ours)"), ("REF_R1", "CND")]
 
 # 5 ratios -> 5 colours from a perceptually ordered palette.
 RATIO_COLORS = {

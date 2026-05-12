@@ -19,6 +19,8 @@ They ask whether the static pipeline changes the cost profile enough to matter.
 \textbf{RQ6} pushes the pipeline to a billion-edge graph (\texttt{com-friendster}, \(1.8\)B edges).
 %
 \textbf{RQ7} isolates the contribution of each pipeline idea.
+%
+\textbf{RQ8} sweeps an edge subsampling ratio to test how runtime and memory scale with input size.
 
 \stitle{Hardware and software.}
 All experiments run on a dual-socket Intel Xeon Gold \(6248R\) machine with \(24\) cores and \(503\) GB DDR4 memory.
@@ -485,6 +487,38 @@ Cumulative \cbnd{} \(\rightarrow\) \spinStar{} & & \(15.00\times\) \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\stitle{RQ8: scaling with input size.}
+\label{sec:exp-scal}
+The benchmark cells fix a graph and sweep \(s\); they do not test how runtime and memory respond to growing the input itself.
+%
+Following the protocol of~\cite{NuclearCD}, we subsample \(20\%\), \(40\%\), \(60\%\), \(80\%\), and \(100\%\) of the edges uniformly at random (the vertex set is preserved) and re-run \spinStar{} and \cbnd{} for \(s\in\{2,3,5,7,9,11,13,15\}\) on the resulting graphs.
+%
+Figure~\ref{fig:scalability-time} reports wall-clock time and Figure~\ref{fig:scalability-mem} reports peak RSS as the sample ratio grows.
+%
+\spinStar{}'s time and memory curves are ordered cleanly by sample ratio at every \(s\): denser subsamples take longer and use more RSS, with no inversions, indicating that the static-\cpi{} pipeline scales smoothly rather than degrading non-monotonically with input size.
+%
+The \cbnd{} curves are also monotone but flatter, which reflects the cap imposed by the mutable residual state: once \cbnd{} pays the residual-index maintenance cost, the additional cost of larger inputs is partially absorbed by the same per-pop work.
+%
+The ratio between \cbnd{} and \spinStar{} therefore widens with input size, in the same direction as the cell-level speedup reported in RQ1.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_scalability_time.pdf}
+\caption{Edge-subsampling scalability on \texttt{web-Google}: wall-clock time of \spinStar{} (left) and \cbnd{} (right) as \(s\) varies, with one curve per edge sample ratio.
+%
+Higher ratios consistently take longer; the curves do not cross.}
+\Description{Two-panel log-scale plot showing wall time vs s for five edge-sample ratios on web-Google for SPIN* and CND.}
+\label{fig:scalability-time}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_scalability_mem.pdf}
+\caption{Edge-subsampling scalability: peak RSS under the same protocol as Figure~\ref{fig:scalability-time}.}
+\Description{Two-panel log-scale plot showing peak RSS vs s for five edge-sample ratios.}
+\label{fig:scalability-mem}
+\end{figure}
 
 \stitle{Limitations.}
 \label{sec:exp-limits}
