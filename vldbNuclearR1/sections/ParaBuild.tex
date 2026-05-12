@@ -69,11 +69,13 @@ build incidence CSR over \(\mathcal{P}\) in parallel\;
 \Return{\(\mathcal{P}\)}
 \end{algorithm}
 
-\textsc{BkEmit} is the same pivot-aware enumeration used by the CPI construction lineage~\cite{Pivoter,NuclearCD}.
+Algorithm~\ref{alg:parabuild} computes the degeneracy ordering \(\sigma\) on \(G\) (Line~1) and partitions the seed range into \(T\) contiguous chunks (Line~2).
 %
-The difference is the output contract.
+Each thread allocates a private path arena and a generation-stamped membership bitmap (Lines~4-5), then walks its seed range (Lines~6-9): for every seed \(v\) it increments the bitmap generation (Line~7), restricts the neighbourhood to vertices later in \(\sigma\) (Line~8), and runs the pivot-aware enumeration \textsc{BkEmit} streaming each emitted path into the thread-local arena (Line~9).
 %
-It streams each emitted path into \(A_t\) instead of storing a mutable recursion tree for later residual updates.
+After all threads finish, a deterministic concat-and-prefix-sum merge concatenates the arenas (Line~10) and builds the shared incidence CSR in parallel (Line~11); the final static \cpi{} is returned (Line~12).
+%
+\textsc{BkEmit} is the same pivot-aware enumeration used by the CPI construction lineage~\cite{Pivoter,NuclearCD}; the difference is that it streams each emitted path into \(A_t\) instead of storing a mutable recursion tree for later residual updates.
 
 \stitle{Correctness.}
 \paraBuild{} is a parallel schedule of the same seed-owned enumeration.
