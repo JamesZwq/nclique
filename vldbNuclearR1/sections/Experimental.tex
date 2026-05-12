@@ -40,17 +40,13 @@ Table~\ref{tab:datasets} lists the benchmark graphs.
 %
 The set covers collaboration, e-commerce, social, and web graphs.
 %
-The ten primary benchmark graphs range from \(\sim\)\(0.9\)M edges (\texttt{com-amazon}) to \(117\)M edges (\texttt{com-orkut}).
+The largest graph is \texttt{com-friendster} with \(1.8\)B edges.
 %
-\texttt{com-friendster} (\(1.806\)B edges) is added separately for the billion-edge scalability study in Section~\ref{sec:exp-friendster}; the ten-graph sweep already costs days of single-thread wall time, and including \texttt{com-friendster} in the matched-cell comparison is infeasible because \cbnd{} cannot complete on it.
-%
-The ten-graph benchmark sweep covers \(762\) \((graph,s)\) configurations (Table~\ref{tab:datasets}); \(307\) of these are matched cells where both \spinStar{} and \cbnd{} complete successfully, and the headline speedup numbers are reported over the matched subset.
+The benchmark sweep covers \(772\) \((graph,s)\) configurations across the eleven graphs (Table~\ref{tab:datasets}); \(307\) of these are matched cells where both \spinStar{} and \cbnd{} complete successfully, and the headline speedup numbers are reported over the matched subset.
 
 \begin{table}[t]
 \centering
-\caption{Datasets used in Section~\ref{sec:exp}. The first ten graphs form the matched-cell sweep; \texttt{com-friendster} is the billion-edge graph used in the standalone scalability study (Section~\ref{sec:exp-friendster}).
-%
-The last column counts \((graph,s)\) configurations exercised on each graph.}
+\caption{Datasets used in Section~\ref{sec:exp}.}
 \label{tab:datasets}
 \small
 \begin{tabular}{lrrr}
@@ -67,10 +63,9 @@ Graph & \(|V|\) & \(|E|\) & \# \((g,s)\) \\
 \texttt{web-it-2004}~\cite{communityFinder}     & \(509{,}338\)    & \(7{,}178{,}413\)   & \(429\) \\
 \texttt{soc-pokec}~\cite{communityFinder}       & \(1{,}632{,}803\) & \(22{,}301{,}964\)  & \(24\) \\
 \texttt{com-orkut}~\cite{communityFinder}       & \(3{,}072{,}441\) & \(117{,}185{,}083\) & \(3\) \\
+\texttt{com-friendster}~\cite{communityFinder}  & \(65{,}608{,}366\) & \(1{,}806{,}067{,}135\) & \(10\) \\
 \midrule
-\textbf{Subtotal} \emph{(matched sweep)} & & & \(\mathbf{762}\) \\
-\midrule
-\texttt{com-friendster}~\cite{communityFinder} & \(65{,}608{,}366\) & \(1{,}806{,}067{,}135\) & \(10\) \\
+\textbf{Total} & & & \(772\) \\
 \bottomrule
 \end{tabular}
 \end{table}
