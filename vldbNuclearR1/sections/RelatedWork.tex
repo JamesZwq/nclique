@@ -52,7 +52,7 @@ Parallel clique search usually tries to distribute the expensive recursive enume
 %
 Its specific role in this paper is tied to the static consumer layout.
 %
-Because the downstream peel never mutates path sets, construction can stream paths into thread-local arenas and merge flat incidence arrays.
+Because the downstream peel never mutates path sets, construction partitions into thread-independent subproblems whose results combine through a deterministic merge.
 %
 This is an engineering consequence of the $r=1$ state model rather than a new clique-enumeration paradigm.
 

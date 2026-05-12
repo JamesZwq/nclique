@@ -79,7 +79,7 @@ The dominant per-pop cost is therefore the residual-index rewrite plus the hash-
 %
 \textbf{\spinStar{}} is the practical static-\cpi{} pipeline.
 %
-It constructs the static index, stores flat incidence arrays, and computes core values by incremental path-counter updates.
+It constructs the static index once and computes core values by incremental path-counter updates.
 %
 \spin{} is evaluated separately because it is the direct fixed-point formulation rather than the practical implementation.
 %
@@ -249,7 +249,7 @@ This lets the expensive enumeration work scale until memory bandwidth and schedu
 %
 The two algorithms compute the same core values (Lemma~\ref{lem:equivalence}), so the comparison isolates the effect of replacing repeated full-graph passes with incremental updates.
 %
-Both implementations read paths from the same flat dual CSR; the SPIN reference therefore reflects the algorithmic cost of repeated full-pass fixed-point iteration, not data-structure overhead.
+Both solvers read paths from the same static index; the \spin{} reference therefore reflects the algorithmic cost of repeated full-pass fixed-point iteration, not a difference in how the index is stored.
 %
 The two curves are already shown in Figure~\ref{fig:exp-time}: \spinStar{} is the solid blue line and \spin{} is the dotted-triangle line on every panel.
 %
@@ -259,7 +259,7 @@ On the easiest cells \spinStar{} can be slightly slower (minimum ratio $0.62\tim
 %
 On the largest inputs \spin{} hits the $1$h cap (\texttt{com-orkut} for $s\ge3$, \texttt{wiki-Talk} for the single cell $s=10$); \spinStar{} finishes the same configurations in seconds to minutes.
 
-\spin{}'s memory profile, with the dual-CSR data structure shared with \spinStar{}, is essentially identical to \spinStar{}'s on every paired cell: the geometric-mean memory-usage ratio (\spin{}$/$\spinStar{}) is $0.97$ over the $291$ matched cells, and \spin{} is slightly smaller than \spinStar{} on $83.8\%$ of them.
+\spin{}'s memory profile is essentially identical to \spinStar{}'s on every paired cell, because both share the same static index: the geometric-mean memory ratio (\spin{}$/$\spinStar{}) is $0.97$ over the $291$ matched cells, and \spin{} is slightly smaller than \spinStar{} on $83.8\%$ of them.
 %
 The reason is structural: \spinStar{}'s extra state beyond the shared CPI consists of a per-path counter cache ($\sim 13$ bytes per leaf) and a peel-order bucket queue ($\sim 17$ bytes per vertex), which \spin{} does not maintain because it scans every vertex each round.
 %
@@ -326,7 +326,7 @@ $11$ & $6470$ & $0.17$  & $1.68\times10^{10}$ & $297$ \\
 
 \stitle{RQ7: where do the gains come from?}
 \label{sec:exp-ablation}
-The \spinStar{} pipeline combines two algorithmic ideas (static \cpi{} state in Section~\ref{sec:static}; bucket-queue peel with per-event support updates in Section~\ref{sec:peelh}) and one engineering choice (a flat dual-CSR incidence layout that replaces the tree-based residual structure).
+The \spinStar{} pipeline combines two algorithmic ideas: the static-\cpi{} invariant (Section~\ref{sec:static}), which removes residual maintenance from the peel loop, and a bucket-queue peel with per-event support updates (Section~\ref{sec:peelh}), which removes redundant full-graph passes.
 %
 We isolate the two algorithmic ideas against the mutable baseline on the same $(graph,s)$ cells.
 %

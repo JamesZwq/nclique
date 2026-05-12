@@ -40,6 +40,6 @@ The most direct is to identify restricted $r\ge2$ settings where enough path str
 %
 A second direction is the streaming and dynamic-graph setting: vertex peeling preserves the static \cpi{}, but vertex insertion or deletion changes which paths exist; the question is whether the new paths can be merged into the static index incrementally.
 %
-A third direction is hardware: \spinStar{}'s peel reads a flat dual CSR and writes only path counters, which maps to GPU and other accelerators, while \paraBuild{}'s thread-local arena pattern is a natural fit for distributed-memory partitions.
+A third direction is hardware: \spinStar{}'s peel reads the static index and writes only path counters, which maps to GPU and other accelerators, while \paraBuild{}'s seed-disjoint structure is a natural fit for distributed-memory partitions.
 %
 A fourth direction is application-driven: extending the case studies into temporal and attributed graphs, where the static-\cpi{} invariant could anchor a sequence of decompositions across snapshots.
