@@ -42,30 +42,28 @@ The set covers collaboration, e-commerce, social, and web graphs.
 %
 The largest graph is \texttt{com-friendster} with \(1.8\)B edges.
 %
-The benchmark sweep covers \(772\) \((graph,s)\) configurations across the eleven graphs (Table~\ref{tab:datasets}); \(307\) of these are matched cells where both \spinStar{} and \cbnd{} complete successfully, and the headline speedup numbers are reported over the matched subset.
+The benchmark sweep on the ten smaller graphs yields \(307\) matched cells where both \spinStar{} and \cbnd{} complete successfully, and the headline speedup numbers are reported over the matched subset; \texttt{com-friendster} is run standalone (Section~\ref{sec:exp-friendster}) because \cbnd{} cannot complete on it.
 
 \begin{table}[t]
 \centering
-\caption{Datasets used in Section~\ref{sec:exp}.}
+\caption{Datasets used in Section~\ref{sec:exp}. Average degree is \(2|E|/|V|\).}
 \label{tab:datasets}
 \small
 \begin{tabular}{lrrr}
 \toprule
-Graph & \(|V|\) & \(|E|\) & \# \((g,s)\) \\
+Graph & \(|V|\) & \(|E|\) & avg.\ deg.\ \\
 \midrule
-\texttt{com-amazon}~\cite{communityFinder}      & \(334{,}863\)    & \(925{,}872\)       & \(29\) \\
-\texttt{com-dblp}~\cite{communityFinder}        & \(317{,}080\)    & \(1{,}049{,}866\)   & \(109\) \\
-\texttt{twitter}~\cite{communityFinder}         & \(\phantom{0,0}81{,}306\) & \(1{,}342{,}296\) & \(29\) \\
-\texttt{web-Stanford}~\cite{communityFinder}    & \(281{,}903\)    & \(1{,}992{,}636\)   & \(60\) \\
-\texttt{com-youtube}~\cite{communityFinder}     & \(1{,}134{,}890\) & \(2{,}987{,}624\)   & \(16\) \\
-\texttt{web-Google}~\cite{communityFinder}      & \(875{,}713\)    & \(4{,}322{,}051\)   & \(39\) \\
-\texttt{wiki-Talk}~\cite{communityFinder}       & \(2{,}394{,}385\) & \(4{,}659{,}565\)   & \(24\) \\
-\texttt{web-it-2004}~\cite{communityFinder}     & \(509{,}338\)    & \(7{,}178{,}413\)   & \(429\) \\
-\texttt{soc-pokec}~\cite{communityFinder}       & \(1{,}632{,}803\) & \(22{,}301{,}964\)  & \(24\) \\
-\texttt{com-orkut}~\cite{communityFinder}       & \(3{,}072{,}441\) & \(117{,}185{,}083\) & \(3\) \\
-\texttt{com-friendster}~\cite{communityFinder}  & \(65{,}608{,}366\) & \(1{,}806{,}067{,}135\) & \(10\) \\
-\midrule
-\textbf{Total} & & & \(772\) \\
+\texttt{com-amazon}~\cite{communityFinder}      & \(334{,}863\)    & \(925{,}872\)            & \(5.5\)  \\
+\texttt{com-dblp}~\cite{communityFinder}        & \(317{,}080\)    & \(1{,}049{,}866\)        & \(6.6\)  \\
+\texttt{twitter}~\cite{communityFinder}         & \(\phantom{0,0}81{,}306\) & \(1{,}342{,}296\) & \(33.0\) \\
+\texttt{web-Stanford}~\cite{communityFinder}    & \(281{,}903\)    & \(1{,}992{,}636\)        & \(14.1\) \\
+\texttt{com-youtube}~\cite{communityFinder}     & \(1{,}134{,}890\) & \(2{,}987{,}624\)       & \(5.3\)  \\
+\texttt{web-Google}~\cite{communityFinder}      & \(875{,}713\)    & \(4{,}322{,}051\)        & \(9.9\)  \\
+\texttt{wiki-Talk}~\cite{communityFinder}       & \(2{,}394{,}385\) & \(4{,}659{,}565\)       & \(3.9\)  \\
+\texttt{web-it-2004}~\cite{communityFinder}     & \(509{,}338\)    & \(7{,}178{,}413\)        & \(28.2\) \\
+\texttt{soc-pokec}~\cite{communityFinder}       & \(1{,}632{,}803\) & \(22{,}301{,}964\)      & \(27.3\) \\
+\texttt{com-orkut}~\cite{communityFinder}       & \(3{,}072{,}441\) & \(117{,}185{,}083\)     & \(76.3\) \\
+\texttt{com-friendster}~\cite{communityFinder}  & \(65{,}608{,}366\) & \(1{,}806{,}067{,}135\) & \(55.1\) \\
 \bottomrule
 \end{tabular}
 \end{table}
