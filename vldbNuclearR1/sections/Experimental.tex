@@ -496,33 +496,29 @@ To probe scaling, we shrink each graph by vertex-induced subsampling: for each r
 %
 The same seed makes the subsamples nested (\(20\%\subset40\%\subset\cdots\subset100\%\)), so runtime and memory are monotone in \(\rho\) by construction.
 %
-We pick vertex-induced rather than random-edge subsampling because both algorithms' work scales with the encoded \(s\)-clique count \(\Sig\); removing edges uniformly drops \(\Sig\) super-linearly because each missing edge can destroy many cliques, producing jagged curves, while a vertex-induced subsample preserves clique structure inside the kept vertex set.
+We pick vertex-induced rather than random-edge subsampling because \spinStar{}'s work scales with the encoded \(s\)-clique count \(\Sig\); removing edges uniformly drops \(\Sig\) super-linearly because each missing edge can destroy many cliques, producing jagged curves, while a vertex-induced subsample preserves clique structure inside the kept vertex set.
 %
-We re-run \spinStar{} and \cbnd{} for \(s\in\{2,3,5,7,9,11,13,15\}\) on each subsample.
+We re-run \spinStar{} on five graphs spanning two orders of magnitude in edge count (\(\texttt{com-dblp},\texttt{com-youtube},\texttt{web-Stanford},\texttt{web-Google},\texttt{soc-pokec}\)) for \(s\in\{2,3,5,7,9,11,13,15\}\) on each subsample.
 %
 Figure~\ref{fig:scalability-time} reports wall-clock time and Figure~\ref{fig:scalability-mem} reports peak RSS as the ratio grows.
 %
-\spinStar{}'s curves are ordered cleanly by ratio at every \(s\): denser subsamples take longer and use more RSS, with no inversions, indicating that the static-\cpi{} pipeline scales smoothly with input size.
-%
-The \cbnd{} curves are also monotone but flatter, which reflects the cap imposed by the mutable residual state: once \cbnd{} pays the residual-index maintenance cost, additional input volume is partially absorbed by the same per-pop work.
-%
-The ratio between \cbnd{} and \spinStar{} therefore widens with input size, in the same direction as the cell-level speedup reported in RQ1.
+On every graph \spinStar{}'s curves are ordered cleanly by ratio at every \(s\): denser subsamples take longer and use more RSS, with no inversions, indicating that the static-\cpi{} pipeline scales smoothly with input size from sparse collaboration graphs to dense social graphs.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.78\linewidth]{figures/fig_scalability_time.pdf}
-\caption{Vertex-induced scalability: wall-clock time of \spinStar{} (left) and \cbnd{} (right) as \(s\) varies, with one curve per vertex-sample ratio.
+\includegraphics[width=\linewidth]{figures/fig_scalability_time.pdf}
+\caption{Vertex-induced scalability of \spinStar{}: wall-clock time as \(s\) varies on five graphs, one curve per vertex-sample ratio.
 %
 Higher ratios consistently take longer; the curves do not cross.}
-\Description{Two-column log-scale grid showing wall time vs s for five vertex-sample ratios across five graphs (rows), one column per algorithm.}
+\Description{Five-panel log-scale row showing wall time vs s for SPIN* under five vertex-sample ratios on five graphs.}
 \label{fig:scalability-time}
 \end{figure*}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.78\linewidth]{figures/fig_scalability_mem.pdf}
-\caption{Vertex-induced scalability: peak RSS under the same protocol as Figure~\ref{fig:scalability-time}.}
-\Description{Two-column log-scale grid showing peak RSS vs s for five vertex-sample ratios across five graphs (rows), one column per algorithm.}
+\includegraphics[width=\linewidth]{figures/fig_scalability_mem.pdf}
+\caption{Vertex-induced scalability of \spinStar{}: peak RSS under the same protocol as Figure~\ref{fig:scalability-time}.}
+\Description{Five-panel log-scale row showing peak RSS vs s for SPIN* under five vertex-sample ratios on five graphs.}
 \label{fig:scalability-mem}
 \end{figure*}
 
