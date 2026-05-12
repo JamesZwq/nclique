@@ -1,12 +1,8 @@
 \section{Core-Value Hierarchy Construction}\label{sec:buildhier}
 
-After \spinStar{}, the pipeline has more than a vector of core values.
+In this section, we extract the \((1,s)\)-clique-connected nucleus hierarchy of Definition~\ref{def:nucleus} from the preserved \cpi{} of Section~\ref{sec:static}, after \spinStar{} has computed the core values.
 %
-The static \cpi{} survives peeling unchanged, so every leaf still names a family of \(s\)-clique witnesses.
-%
-The remaining question is whether these preserved leaves, together with the computed core values, expose the \(s\)-clique-connected nucleus hierarchy of Definition~\ref{def:nucleus} without rebuilding the index or repeating any clique enumeration.
-%
-The answer is yes, in a single descending pass over \cpi{} leaves with a union--find structure.
+We first show that each leaf can be treated as a hyperedge that is born at the minimum core value among its stored vertices, then present \buildHier{} (Algorithm~\ref{alg:buildhier}) as a single descending union--find scan over leaves; the cost is \(O(\Sig\log\Sig)\) and no clique is re-enumerated.
 
 The core numbers define a nested family of vertex sets.
 %

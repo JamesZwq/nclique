@@ -1,8 +1,8 @@
 \section{Parallel \cpi{} Construction}\label{sec:parabuild}
 
-Section~\ref{sec:hindex} reduced residual support maintenance to static path-counter updates.
+In this section, we parallelise the \cpi{} construction phase, which becomes the dominant remaining cost once \spinStar{} makes peeling counter-only.
 %
-Once peeling is cheap, the bottleneck shifts.
+We first explain why the seed loop admits parallel execution and how the static output contract makes the merge cheap, then present \paraBuild{} (Algorithm~\ref{alg:parabuild}); the empirical scaling is reported in Section~\ref{sec:exp} (Table~\ref{tab:par}).
 %
 The phase-breakdown tables in Section~\ref{sec:exp} measure \spinStar{}'s peel time separately from graph loading and \cpi{} construction.
 %

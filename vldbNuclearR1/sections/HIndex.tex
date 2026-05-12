@@ -1,16 +1,10 @@
 \section{\texorpdfstring{Computing Core Values over Static \cpi}{Computing Core Values over Static CPI}}\label{sec:hindex}
 
-Static CPI leaves a support-counting problem instead of an index-maintenance problem.
+In this section, we turn the static-\cpi{} invariant of Section~\ref{sec:static} into a concrete algorithm for computing \(\kappa_s\).
 %
-Section~\ref{sec:static} showed that the threshold witnesses of a vertex can be counted from unchanged \cpi{} paths and path counters.
+We first derive a one-vertex update rule from clique-witness counts (Section~\ref{sec:refresh}, Algorithm~\ref{alg:refresh}), then derive two solvers that share the same update: \spin{} applies it by repeated full passes (Section~\ref{sec:localh}, Algorithm~\ref{alg:localH}), while \spinStar{} schedules it in peel order so unaffected vertices are not revisited (Section~\ref{sec:peelh}, Algorithm~\ref{alg:peelH}).
 %
-The remaining question is how to turn those support values into final core numbers.
-%
-This section turns the core condition into a vertex update, then derives two solvers from the same update.
-%
-\spin{} applies the update by repeated full passes over the vertices.
-%
-\spinStar{} computes the same result in peel order and revisits only vertices whose path counters changed.
+Lemma~\ref{lem:equivalence} proves that the two solvers compute the same fixed point.
 
 \subsection{Vertex updates from static witnesses}\label{sec:hop}\label{sec:refresh}
 
@@ -93,11 +87,9 @@ Because the call reads the static \cpi{} but never mutates a path, the same witn
 \Return{\(0\)}
 \end{algorithm}
 
-A direct implementation does not enumerate clique witnesses.
+Algorithm~\ref{alg:refresh} zeroes the local threshold-count array up to \(h[v]\) (Line~1), accumulates the per-threshold witness count \(W_v(\TPath,h,k)\) into \(C[k]\) for every path through \(v\) using the closed form of Lemma~\ref{lem:per-path-witness} (Lines~2-4), and returns the largest \(k\) at which \(C[k]\ge k\) by scanning \(C\) from \(h[v]\) downward (Lines~5-7); otherwise it returns \(0\).
 %
-It evaluates the same threshold counts from the values stored on each scanned path, using sorting or buckets.
-%
-In the stated implementation, one call costs \(O(\deg_{\Sig}(v)\log\deg_{\Sig}(v))\).
+A direct implementation does not enumerate clique witnesses: it evaluates the same threshold counts from the values stored on each scanned path, using sorting or buckets, so one call costs \(O(\deg_{\Sig}(v)\log\deg_{\Sig}(v))\).
 %
 The call reads the static \cpi{} and the vector \(h\), and it mutates no path.
 
@@ -119,11 +111,13 @@ A fixed point means every vertex value is consistent with the witnesses whose ot
 %
 This makes \spin{} the reference formulation for the static-\cpi{} computation, even though repeated full scans can be expensive.
 
-Algorithm~\ref{alg:localH} keeps the implementation close to the equations.
+Algorithm~\ref{alg:localH} initialises \(h[v]\) to the initial \(s\)-clique support \(\sdeg(v)\) for every vertex via the closed form of Lemma~\ref{lem:supp} (Lines~1-2).
 %
-During one pass, every call to \(\vertexSupport\) reads the old vector and writes into the next vector.
+The main loop (Lines~3-8) iterates until no entry changes in a full pass: it sets a \emph{changed} flag to false (Line~5), copies the current vector into \(h_{\mathrm{new}}\) (Line~5), then calls \(\vertexSupport(v,h)\) for every vertex in a fixed order and stores the result into \(h_{\mathrm{new}}[v]\) (Lines~6-7); if any update lowered an entry the flag is set, otherwise the pass exits.
 %
-The swap at the end of the pass avoids order dependence.
+The swap \(h\gets h_{\mathrm{new}}\) at the end of the pass (Line~8) avoids order dependence inside the pass.
+%
+The final core values are read off the converged vector (Lines~9-10) and returned (Line~11).
 %
 A pass with no changed entry is the certificate that the fixed point has been reached.
 

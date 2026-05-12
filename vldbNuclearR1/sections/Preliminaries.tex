@@ -95,20 +95,9 @@ For every \(v\in V\),
 \]
 \end{lemma}
 
-\stitle{The mutable peeling baseline.}\label{sec:prelim-peel}
-The standard peeling loop repeatedly removes a vertex of minimum residual support, assigns its core value, and propagates support losses to the remaining vertices~\cite{coreAlg,NuclearCD}.
-%
-For general \((r,s)\)-nucleus decomposition, the baseline keeps the \cpi{} as mutable residual state.
-%
-Its implementation uses a mutable Bron--Kerbosch recursion tree, per-path vertex hash sets, reverse vertex-to-path maps, and a heap.
-%
-This state is needed in the general setting because removing an \(r\)-clique with \(r\ge2\) may delete edges or higher-order objects that invalidate stored path structure.
-%
-In that baseline, each peel event can pay for hash erases, tree deletion or shrinking, and heap decrease-key operations.
-%
-The next section shows that the \(r=1\) case does not need this mutable state.
-
 \sstitle{Problem statement.}
 Given \(G\) and \(s\ge2\), compute \(\kappa_s(v)\) for every \(v\in V\).
 %
 Section~\ref{sec:buildhier} treats hierarchy construction after the core values have been computed.
+%
+Section~\ref{sec:baseline} describes the mutable-\cpi{} baseline that this paper compares against; the remaining sections specialise it for \(r=1\).
