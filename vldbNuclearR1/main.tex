@@ -49,23 +49,19 @@
 }
 
 \begin{abstract}
-Cohesive-subgraph mining asks how tightly each vertex is embedded in the surrounding structure, and is foundational for community detection, dense-subgraph search, and role analysis.
+Extracting cohesive substructures from large graphs is a fundamental task in graph mining, with applications in community detection, dense-subgraph search, and role analysis.
 %
-The classical \(k\)-core measures cohesion by neighbor count; many tasks instead need a stronger measure that counts triangles, \(4\)-cliques, or larger clique witnesses per vertex.
+The \emph{\((1,s)\)-nucleus decomposition} is a higher-order generalization of \(k\)-core that ranks each vertex by the \(s\)-clique witnesses surrounding it (triangles for \(s=3\), \(4\)-cliques for \(s=4\), and so on), giving sharper rankings than the standard \(k\)-core but at much higher cost.
 %
-The \emph{\((1,s)\)-nucleus decomposition} provides this clique-based vertex ranking, but it is expensive at high \(s\) because the number of witnesses can be enormous.
+Existing studies compute \((1,s)\)-nucleus inside a general \((r,s)\) framework that encodes the witnesses with a Clique Path Index but maintains the index as mutable residual state during peeling.
 %
-The Clique Path Index compactly encodes these witnesses, but the general \((r,s)\) framework maintains the index as mutable residual state during peeling.
+However, this mutability causes significant overhead in residual-index rewrites, memory consumption, and per-pop work, limiting scalability to large graphs and high \(s\).
 %
-We show that this mutability is unnecessary for the vertex-centric case \(r=1\): vertex peeling removes vertices but does not delete edges, so every CPI path remains structurally valid.
+We observe that the \((1,s)\) special case has a stronger invariant: vertex peeling never deletes edges, so every CPI path remains structurally valid throughout the peel.
 %
 This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spin{}, a direct static-path iteration, \spinStar{}, its incremental optimization, and a parallel builder for the shifted construction bottleneck.
 %
-On \(307\) matched successful configurations, \spinStar{} gives a \(13.50\times\) geometric-mean peel-time speedup and a \(44.76\times\) maximum peel-time speedup over the mutable baseline; end-to-end speedup is \(1.10\times\) because construction becomes the dominant shared cost.
-%
-It also lowers peak RSS with a \(1.55\times\) geometric-mean ratio.
-%
-The result shows that specializing the state model for \((1,s)\) can make exact high-order vertex-centric decomposition practical without enumerating all \(s\)-cliques.
+Experiments on \(307\) matched successful configurations show that \spinStar{} achieves a \(13.50\times\) geometric-mean peel-time speedup and a \(44.76\times\) maximum peel-time speedup over the mutable baseline, while reducing peak RSS by a \(1.55\times\) geometric-mean ratio; end-to-end speedup is \(1.10\times\) because construction becomes the dominant shared cost, which the parallel builder then addresses.
 \end{abstract}
 
 \begin{CCSXML}
