@@ -583,9 +583,9 @@ def fig_phase_breakdown() -> None:
 # ---------------------------------------------------------------------------
 # Figure 5 + 6: fig_stress_time / fig_stress_mem — synthetic |V|=1000
 
-def _stress_plot(value_key: str, ylabel: str, fname: str) -> None:
-    """Synthetic |V|=1000 stress test, redesigned per skill rules.
-    One panel per s value, monochrome (black SPIN* + gray CND), legend on top."""
+def fig_stress() -> None:
+    """Combined stress figure: 2 rows × N s-values, row 1 = time, row 2 = mem.
+    SPIN* in blue (solid) and CND in red (dashed)."""
     from matplotlib.lines import Line2D
     from matplotlib.gridspec import GridSpec
     v3_path = DATA_DIR / "15_stress_synthetic_dense_v3.csv"
@@ -604,29 +604,29 @@ def _stress_plot(value_key: str, ylabel: str, fname: str) -> None:
         if rows:
             print(f"[csv] using legacy 15_stress_synthetic_dense.csv")
     if not rows: return
-    g = defaultdict(list)
+    g_time = defaultdict(list)
+    g_mem  = defaultdict(list)
     for r in rows:
         if r["status"] != "OK": continue
         try:
-            g[(float(r["density"]), int(r["s"]), r["algorithm"])].append(float(r[value_key]))
+            d = float(r["density"]); s = int(r["s"]); a = r["algorithm"]
+            g_time[(d, s, a)].append(float(r["time_ms"]))
+            g_mem[(d, s, a)].append(float(r["memory_kB"]) / 1024.0)
         except (KeyError, ValueError):
             continue
-    if not g: return
-    med = {k: statistics.median(v) for k, v in g.items()}
-    densities = sorted({k[0] for k in med})
-    s_vals    = sorted({k[1] for k in med})
+    if not g_time: return
+    med_t = {k: statistics.median(v) for k, v in g_time.items()}
+    med_m = {k: statistics.median(v) for k, v in g_mem.items()}
+    densities = sorted({k[0] for k in med_t})
+    s_vals    = sorted({k[1] for k in med_t})
     n = len(s_vals)
 
-    # figsize > rendered (single column \linewidth ≈ 3.4"): scale down ⇒
-    # smaller text in PDF.
-    rows_n = math.ceil(n / 2)
-    fig = plt.figure(figsize=(4.5, 0.8 + 1.6 * rows_n))
-    gs = GridSpec(rows_n + 1, 2, figure=fig,
-                  height_ratios=[0.16] + [1.0] * rows_n,
-                  hspace=1.20, wspace=0.45,
-                  top=0.94, bottom=0.10, left=0.18, right=0.97)
+    fig = plt.figure(figsize=(2.05 * n, 4.0))
+    gs = GridSpec(3, n, figure=fig,
+                  height_ratios=[0.12, 1.0, 1.0],
+                  hspace=0.45, wspace=0.40,
+                  top=0.94, bottom=0.10, left=0.07, right=0.98)
 
-    # Top legend
     ax_leg = fig.add_subplot(gs[0, :]); ax_leg.axis("off")
     handles = [
         Line2D([0], [0], color=SPINSTAR_COLOR, lw=2.0, marker="o", ms=6,
@@ -638,36 +638,40 @@ def _stress_plot(value_key: str, ylabel: str, fname: str) -> None:
     ax_leg.legend(handles=handles, loc="center", ncol=2, frameon=False,
                   fontsize=10, handlelength=2.5, columnspacing=2.0)
 
-    for i, s in enumerate(s_vals):
-        ax = fig.add_subplot(gs[1 + i // 2, i % 2])
-        ours = [med.get((d, s, "SPINSTAR")) for d in densities]
-        ref  = [med.get((d, s, "CND"))  for d in densities]
-        d_o = [d for d, v in zip(densities, ours) if v]
-        v_o = [v for v in ours if v]
-        d_r = [d for d, v in zip(densities, ref) if v]
-        v_r = [v for v in ref  if v]
-        ax.plot(d_r, v_r, color=CND_COLOR, marker="s", ms=5, lw=1.6,
-                ls="--", mec=CND_COLOR, mfc=CND_COLOR, alpha=0.85, zorder=2)
-        ax.plot(d_o, v_o, color=SPINSTAR_COLOR, marker="o", ms=5, lw=1.9,
-                mec=SPINSTAR_COLOR, mfc=SPINSTAR_COLOR, zorder=3)
-        ax.set_yscale("log")
-        ax.set_xlabel("density", fontsize=10)
-        if i == 0 or (i == 2 and rows_n >= 2):
-            ax.set_ylabel(ylabel, fontsize=10)
-        ax.set_title(f"$s={s}$", fontsize=11, color="#111",
-                     pad=3, fontweight="bold")
-        ax.grid(True, which="major", color="#e8e8e8", lw=0.5, zorder=0)
-        for sp in ("top", "right"):
-            ax.spines[sp].set_visible(False)
-        ax.tick_params(axis="both", labelsize=9, colors="#333")
+    for row, (med, ylabel) in enumerate([(med_t, "wall time (ms)"),
+                                          (med_m, "peak RSS (MB)")]):
+        for i, s in enumerate(s_vals):
+            ax = fig.add_subplot(gs[1 + row, i])
+            ours = [med.get((d, s, "SPINSTAR")) for d in densities]
+            ref  = [med.get((d, s, "CND"))  for d in densities]
+            d_o = [d for d, v in zip(densities, ours) if v]
+            v_o = [v for v in ours if v]
+            d_r = [d for d, v in zip(densities, ref) if v]
+            v_r = [v for v in ref  if v]
+            ax.plot(d_r, v_r, color=CND_COLOR, marker="s", ms=5, lw=1.6,
+                    ls="--", mec=CND_COLOR, mfc=CND_COLOR, alpha=0.85, zorder=2)
+            ax.plot(d_o, v_o, color=SPINSTAR_COLOR, marker="o", ms=5, lw=1.9,
+                    mec=SPINSTAR_COLOR, mfc=SPINSTAR_COLOR, zorder=3)
+            ax.set_yscale("log")
+            if row == 1:
+                ax.set_xlabel("density", fontsize=10)
+            if i == 0:
+                ax.set_ylabel(ylabel, fontsize=10)
+            if row == 0:
+                ax.set_title(f"$s={s}$", fontsize=11, color="#111",
+                             pad=3, fontweight="bold")
+            ax.grid(True, which="major", color="#e8e8e8", lw=0.5, zorder=0)
+            for sp in ("top", "right"):
+                ax.spines[sp].set_visible(False)
+            ax.tick_params(axis="both", labelsize=9, colors="#333")
+    save(fig, "fig_stress")
 
-    save(fig, fname)
 
-def fig_stress_time() -> None:
-    _stress_plot("time_ms", "wall time (ms)", "fig_stress_time")
+def fig_stress_time() -> None:  # legacy entry — emits combined fig_stress
+    fig_stress()
 
-def fig_stress_mem() -> None:
-    _stress_plot("memory_kB", "peak RSS (kB)", "fig_stress_mem")
+def fig_stress_mem() -> None:   # legacy entry — same combined fig
+    fig_stress()
 
 # ---------------------------------------------------------------------------
 # Figure 7: fig_par_scaling — SDCT_Par4 thread scaling
