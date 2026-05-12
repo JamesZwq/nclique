@@ -49,9 +49,11 @@
 }
 
 \begin{abstract}
-The \(k\)-core ranks each vertex by how many neighbors it retains after weak vertices are peeled away, but many graph-mining tasks need a stronger ranking that counts \emph{cliques} rather than neighbors.
+Cohesive-subgraph mining asks how tightly each vertex is embedded in the surrounding structure, and is foundational for community detection, dense-subgraph search, and role analysis.
 %
-The \emph{\((1,s)\)-nucleus decomposition} provides this: it ranks each vertex by the number of surrounding \(s\)-cliques (triangles for \(s=3\), \(4\)-cliques for \(s=4\), and so on), but it is expensive at high \(s\) because the number of clique witnesses can be enormous.
+The classical \(k\)-core measures cohesion by neighbor count; many tasks instead need a stronger measure that counts triangles, \(4\)-cliques, or larger clique witnesses per vertex.
+%
+The \emph{\((1,s)\)-nucleus decomposition} provides this clique-based vertex ranking, but it is expensive at high \(s\) because the number of witnesses can be enormous.
 %
 The Clique Path Index compactly encodes these witnesses, but the general \((r,s)\) framework maintains the index as mutable residual state during peeling.
 %
