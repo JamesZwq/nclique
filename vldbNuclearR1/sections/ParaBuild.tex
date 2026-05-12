@@ -8,33 +8,33 @@ The phase-breakdown tables in Section~\ref{sec:exp} measure \spinStar{}'s peel t
 %
 They show that after \spinStar{}, peeling is often much smaller than construction.
 %
-On \texttt{web-it-2004} at \(s=3\), \spinStar{} peels in \(351\)\,ms while loading and construction take about \(127\) seconds.
+On \texttt{web-it-2004} at $s=3$, \spinStar{} peels in $351$\,ms while loading and construction take about $127$ seconds.
 %
-On \texttt{web-Stanford} at \(s=60\), peeling takes \(1.4\)\,ms while loading and construction take about \(6.1\) seconds.
+On \texttt{web-Stanford} at $s=60$, peeling takes $1.4$\,ms while loading and construction take about $6.1$ seconds.
 %
 This makes \cpi{} construction the load-bearing cost of the static-state pipeline, so further pipeline-level speedups must address construction.
 
 \stitle{Why the seed loop can be parallel.}
 The \cpi{} builder follows the standard degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.
 %
-Each \(s\)-clique has one owner: the smallest vertex of the clique in the degeneracy order.
+Each $s$-clique has one owner: the smallest vertex of the clique in the degeneracy order.
 %
-Therefore, the outer loop over seed vertices partitions the emitted \(s\)-clique families.
+Therefore, the outer loop over seed vertices partitions the emitted $s$-clique families.
 %
-No two seeds own the same \(s\)-clique.
+No two seeds own the same $s$-clique.
 
 Static CPI also changes what construction must produce.
 %
 The mutable baseline builds residual tree state because later peeling may edit that state.
 %
-Our \(r=1\) pipeline never edits the stored hold or pivot sets.
+Our $r=1$ pipeline never edits the stored hold or pivot sets.
 %
 The builder therefore only has to emit a path list and vertex--path incidence arrays.
 %
 This output can be accumulated in thread-local arenas and merged after all seeds finish.
 
 \stitle{Thread-local construction.}
-\paraBuild{} takes \(G\), \(s\), and a thread count.
+\paraBuild{} takes $G$, $s$, and a thread count.
 %
 Each worker owns a contiguous seed range, a local path arena, and a generation-stamped membership bitmap.
 %
@@ -50,37 +50,37 @@ The expensive work is still the Bron--Kerbosch search under the seeds; the merge
 \algfontsize
 \caption{\paraBuild{} --- parallel \cpi{} construction via per-thread path buffers.}
 \label{alg:parabuild}
-\KwIn{Graph \(G\) in CSR; clique size \(s\); thread count \(T\).}
-\KwOut{Static \cpi{} \(\mathcal{P}\) in shared CSR.}
+\KwIn{Graph $G$ in CSR; clique size $s$; thread count $T$.}
+\KwOut{Static \cpi{} $\mathcal{P}$ in shared CSR.}
 
-compute degeneracy ordering \(\sigma\) on \(G\)\;
-launch \(T\) threads and assign each thread \(t\) a contiguous chunk \(\sigma_t\) of seed vertices\;
-\ForEach{thread \(t\in\{1,\ldots,T\}\) \emph{in parallel}}{
-    \(A_t\gets\emptyset\) \tcp*{thread-local path arena}
-    \(b_t\gets\) generation-stamped bitmap over \(V\)\;
-    \ForEach{seed vertex \(v\in\sigma_t\)}{
-        increment generation of \(b_t\)\;
-        \(N^+\gets\{u\in N_G(v)\mid \sigma(u)>\sigma(v)\}\)\;
-        \textsc{BkEmit}\((v,N^+,A_t,b_t)\) \tcp*{pivoted BK on \(G[N^+]\), with \(v\) as a hold}
+compute degeneracy ordering $\sigma$ on $G$\;
+launch $T$ threads and assign each thread $t$ a contiguous chunk $\sigma_t$ of seed vertices\;
+\ForEach{thread $t\in\{1,\ldots,T\}$ \emph{in parallel}}{
+    $A_t\gets\emptyset$ \tcp*{thread-local path arena}
+    $b_t\gets$ generation-stamped bitmap over $V$\;
+    \ForEach{seed vertex $v\in\sigma_t$}{
+        increment generation of $b_t$\;
+        $N^+\gets\{u\in N_G(v)\mid \sigma(u)>\sigma(v)\}$\;
+        \textsc{BkEmit}$(v,N^+,A_t,b_t)$ \tcp*{pivoted BK on $G[N^+]$, with $v$ as a hold}
     }
 }
-\(\mathcal{P}\gets\) deterministic concat-and-prefix-sum merge of \(\{A_t\}_{t=1}^T\)\;
-build incidence CSR over \(\mathcal{P}\) in parallel\;
-\Return{\(\mathcal{P}\)}
+$\mathcal{P}\gets$ deterministic concat-and-prefix-sum merge of $\{A_t\}_{t=1}^T$\;
+build incidence CSR over $\mathcal{P}$ in parallel\;
+\Return{$\mathcal{P}$}
 \end{algorithm}
 
-Algorithm~\ref{alg:parabuild} computes the degeneracy ordering \(\sigma\) on \(G\) (Line~1) and partitions the seed range into \(T\) contiguous chunks (Line~2).
+Algorithm~\ref{alg:parabuild} computes the degeneracy ordering $\sigma$ on $G$ (Line~1) and partitions the seed range into $T$ contiguous chunks (Line~2).
 %
-Each thread allocates a private path arena and a generation-stamped membership bitmap (Lines~4-5), then walks its seed range (Lines~6-9): for every seed \(v\) it increments the bitmap generation (Line~7), restricts the neighbourhood to vertices later in \(\sigma\) (Line~8), and runs the pivot-aware enumeration \textsc{BkEmit} streaming each emitted path into the thread-local arena (Line~9).
+Each thread allocates a private path arena and a generation-stamped membership bitmap (Lines~4-5), then walks its seed range (Lines~6-9): for every seed $v$ it increments the bitmap generation (Line~7), restricts the neighbourhood to vertices later in $\sigma$ (Line~8), and runs the pivot-aware enumeration \textsc{BkEmit} streaming each emitted path into the thread-local arena (Line~9).
 %
 After all threads finish, a deterministic concat-and-prefix-sum merge concatenates the arenas (Line~10) and builds the shared incidence CSR in parallel (Line~11); the final static \cpi{} is returned (Line~12).
 %
-\textsc{BkEmit} is the same pivot-aware enumeration used by the CPI construction lineage~\cite{Pivoter,NuclearCD}; the difference is that it streams each emitted path into \(A_t\) instead of storing a mutable recursion tree for later residual updates.
+\textsc{BkEmit} is the same pivot-aware enumeration used by the CPI construction lineage~\cite{Pivoter,NuclearCD}; the difference is that it streams each emitted path into $A_t$ instead of storing a mutable recursion tree for later residual updates.
 
 \stitle{Correctness.}
 \paraBuild{} is a parallel schedule of the same seed-owned enumeration.
 %
-Seed ownership gives disjoint emitted \(s\)-clique families.
+Seed ownership gives disjoint emitted $s$-clique families.
 %
 The deterministic merge changes only the storage order, not the represented path families.
 %

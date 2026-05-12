@@ -40,7 +40,7 @@
 
 \begin{document}
 
-\title{Fast \texorpdfstring{\((1,s)\)}{(1,s)}-Nucleus Decomposition via a Static Clique Path Index}
+\title{Fast \texorpdfstring{$(1,s)$}{(1,s)}-Nucleus Decomposition via a Static Clique Path Index}
 
 \author{Anonymous Authors}
 \affiliation{%
@@ -51,17 +51,17 @@
 \begin{abstract}
 Extracting cohesive substructures from large graphs is a fundamental task in graph mining, with applications in community detection, dense-subgraph search, and role analysis.
 %
-The \emph{\((1,s)\)-nucleus decomposition} is a higher-order generalization of \(k\)-core that ranks each vertex by the \(s\)-clique witnesses surrounding it (triangles for \(s=3\), \(4\)-cliques for \(s=4\), and so on), giving sharper rankings than the standard \(k\)-core but at much higher cost.
+The \emph{$(1,s)$-nucleus decomposition} is a higher-order generalization of $k$-core that ranks each vertex by the $s$-clique witnesses surrounding it (triangles for $s=3$, $4$-cliques for $s=4$, and so on), giving sharper rankings than the standard $k$-core but at much higher cost.
 %
-Existing studies compute \((1,s)\)-nucleus inside a general \((r,s)\) framework that encodes the witnesses with a Clique Path Index but maintains the index as mutable residual state during peeling.
+Existing studies compute $(1,s)$-nucleus inside a general $(r,s)$ framework that encodes the witnesses with a Clique Path Index but maintains the index as mutable residual state during peeling.
 %
-However, this mutability causes significant overhead in residual-index rewrites, memory consumption, and per-pop work, limiting scalability to large graphs and high \(s\).
+However, this mutability causes significant overhead in residual-index rewrites, memory consumption, and per-pop work, limiting scalability to large graphs and high $s$.
 %
-We observe that the \((1,s)\) special case has a stronger invariant: vertex peeling never deletes edges, so every CPI path remains structurally valid throughout the peel.
+We observe that the $(1,s)$ special case has a stronger invariant: vertex peeling never deletes edges, so every CPI path remains structurally valid throughout the peel.
 %
 This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spin{}, a direct static-path iteration, \spinStar{}, its incremental optimization, and a parallel builder for the shifted construction bottleneck.
 %
-Experiments on \(307\) matched successful configurations show that \spinStar{} achieves a \(13.50\times\) geometric-mean peel-time speedup and a \(44.76\times\) maximum peel-time speedup over the mutable baseline, while reducing memory usage by a \(1.55\times\) geometric-mean ratio; end-to-end speedup is \(1.10\times\) because construction becomes the dominant shared cost, which the parallel builder then addresses.
+Experiments on $307$ matched successful configurations show that \spinStar{} achieves a $13.50\times$ geometric-mean peel-time speedup and a $44.76\times$ maximum peel-time speedup over the mutable baseline, while reducing memory usage by a $1.55\times$ geometric-mean ratio; end-to-end speedup is $1.10\times$ because construction becomes the dominant shared cost, which the parallel builder then addresses.
 \end{abstract}
 
 \begin{CCSXML}

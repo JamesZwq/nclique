@@ -2,85 +2,85 @@
 
 The experiments measure whether the static pipeline changes cost and scalability.
 %
-They do not by themselves explain whether the specialized \(r=1\) case is worth optimizing.
+They do not by themselves explain whether the specialized $r=1$ case is worth optimizing.
 %
 This section therefore asks a practical question:
-when an analyst wants vertex-level cohesive structure, is \((1,s)\) enough?
+when an analyst wants vertex-level cohesive structure, is $(1,s)$ enough?
 %
-On the ground-truth tasks reported here, \((1,s)\) matches the quality of higher-\(r\) nuclei on the evaluated metrics while costing much less.
+On the ground-truth tasks reported here, $(1,s)$ matches the quality of higher-$r$ nuclei on the evaluated metrics while costing much less.
 %
 The claim is empirical and scoped to these datasets and metrics.
 
 \stitle{Setup.}\label{sec:cs-setup}
-For cross-\(r\) comparisons, we use the standard \((r,s)\)-nucleus parameterization~\cite{nucleusSariyuce14}.
+For cross-$r$ comparisons, we use the standard $(r,s)$-nucleus parameterization~\cite{nucleusSariyuce14}.
 %
-The paper's algorithmic results apply only to \(r=1\).
+The paper's algorithmic results apply only to $r=1$.
 %
-The \(r=2\) and \(r=3\) results are baselines from the same nucleus family.
+The $r=2$ and $r=3$ results are baselines from the same nucleus family.
 %
-Because those baselines score edges or triangles, we project their scores to vertices by assigning each vertex the maximum score of an incident \(r\)-clique.
+Because those baselines score edges or triangles, we project their scores to vertices by assigning each vertex the maximum score of an incident $r$-clique.
 %
 Vertices are ranked by projected score in descending order, with ties broken uniformly.
 
 The ground-truth datasets are \texttt{com-dblp} and \texttt{com-youtube} from SNAP~\cite{communityFinder}.
 %
-\texttt{com-dblp} has \(317{,}080\) vertices, \(1{,}049{,}866\) edges, and \(5{,}000\) venue-based ground-truth communities.
+\texttt{com-dblp} has $317{,}080$ vertices, $1{,}049{,}866$ edges, and $5{,}000$ venue-based ground-truth communities.
 %
-\texttt{com-youtube} has \(1{,}134{,}890\) vertices, \(2{,}987{,}624\) edges, and \(5{,}000\) ground-truth communities.
+\texttt{com-youtube} has $1{,}134{,}890$ vertices, $2{,}987{,}624$ edges, and $5{,}000$ ground-truth communities.
 
 We use three ranking metrics.
 %
-Precision@\(K\) is the fraction of top-\(K\) vertices that belong to at least one ground-truth community.
+Precision@$K$ is the fraction of top-$K$ vertices that belong to at least one ground-truth community.
 %
-rec50 is the number of communities with at least \(50\%\) of their vertices inside the top-\(K\).
+rec50 is the number of communities with at least $50\%$ of their vertices inside the top-$K$.
 %
-Triangle density is the number of triangles per vertex in the induced top-\(K\) subgraph.
+Triangle density is the number of triangles per vertex in the induced top-$K$ subgraph.
 
-\stitle{Case study 1: \(s\) is a granularity knob.}\label{sec:cs-granularity}
-The first question is what \(s\) changes when \(r=1\).
+\stitle{Case study 1: $s$ is a granularity knob.}\label{sec:cs-granularity}
+The first question is what $s$ changes when $r=1$.
 %
-On \texttt{com-dblp}, increasing \(s\) sharply shrinks the active set while preserving the very top of the ranking.
+On \texttt{com-dblp}, increasing $s$ sharply shrinks the active set while preserving the very top of the ranking.
 %
 Table~\ref{tab:cs1} reports the active-set size and top-prefix thresholds.
 
 \begin{table}[t]
 \centering
-\caption{Active set on \texttt{com-dblp} as \(s\) grows.}
+\caption{Active set on \texttt{com-dblp} as $s$ grows.}
 \label{tab:cs1}
 \small
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{r r r l l l}
 \toprule
-\(s\) & nonzero \(|V|\) & \% of \(n\) & max core & top-\(100\) min & top-\(1\)k min \\
+$s$ & nonzero $|V|$ & \% of $n$ & max core & top-$100$ min & top-$1$k min \\
 \midrule
-\(2\)  & \(317{,}080\) & \(100.00\) & \(1.13\!\times\!10^{2}\)  & \(1.13\!\times\!10^{2}\)  & \(3.10\!\times\!10^{1}\)  \\
-\(3\)  & \(269{,}181\) & \(84.89\)  & \(6.33\!\times\!10^{3}\)  & \(6.33\!\times\!10^{3}\)  & \(4.65\!\times\!10^{2}\)  \\
-\(4\)  & \(194{,}957\) & \(61.49\)  & \(2.34\!\times\!10^{5}\)  & \(2.34\!\times\!10^{5}\)  & \(4.50\!\times\!10^{3}\)  \\
-\(5\)  & \(127{,}805\) & \(40.31\)  & \(6.44\!\times\!10^{6}\)  & \(6.44\!\times\!10^{6}\)  & \(3.15\!\times\!10^{4}\)  \\
-\(8\)  & \(36{,}412\)  & \(11.48\)  & \(3.86\!\times\!10^{10}\) & \(3.86\!\times\!10^{10}\) & \(2.63\!\times\!10^{6}\)  \\
-\(10\) & \(19{,}354\)  & \(6.10\)   & \(5.97\!\times\!10^{12}\) & \(5.97\!\times\!10^{12}\) & \(2.02\!\times\!10^{7}\)  \\
-\(15\) & \(6{,}767\)   & \(2.13\)   & \(2.74\!\times\!10^{17}\) & \(2.74\!\times\!10^{17}\) & \(2.65\!\times\!10^{8}\)  \\
-\(20\) & \(3{,}396\)   & \(1.07\)   & \(1.69\!\times\!10^{21}\) & \(1.69\!\times\!10^{21}\) & \(1.41\!\times\!10^{8}\)  \\
-\(25\) & \(2{,}069\)   & \(0.65\)   & \(2.18\!\times\!10^{24}\) & \(2.18\!\times\!10^{24}\) & \(2.63\!\times\!10^{6}\)  \\
-\(30\) & \(1{,}358\)   & \(0.43\)   & \(7.61\!\times\!10^{26}\) & \(7.61\!\times\!10^{26}\) & \(4.65\!\times\!10^{2}\)  \\
+$2$  & $317{,}080$ & $100.00$ & $1.13\!\times\!10^{2}$  & $1.13\!\times\!10^{2}$  & $3.10\!\times\!10^{1}$  \\
+$3$  & $269{,}181$ & $84.89$  & $6.33\!\times\!10^{3}$  & $6.33\!\times\!10^{3}$  & $4.65\!\times\!10^{2}$  \\
+$4$  & $194{,}957$ & $61.49$  & $2.34\!\times\!10^{5}$  & $2.34\!\times\!10^{5}$  & $4.50\!\times\!10^{3}$  \\
+$5$  & $127{,}805$ & $40.31$  & $6.44\!\times\!10^{6}$  & $6.44\!\times\!10^{6}$  & $3.15\!\times\!10^{4}$  \\
+$8$  & $36{,}412$  & $11.48$  & $3.86\!\times\!10^{10}$ & $3.86\!\times\!10^{10}$ & $2.63\!\times\!10^{6}$  \\
+$10$ & $19{,}354$  & $6.10$   & $5.97\!\times\!10^{12}$ & $5.97\!\times\!10^{12}$ & $2.02\!\times\!10^{7}$  \\
+$15$ & $6{,}767$   & $2.13$   & $2.74\!\times\!10^{17}$ & $2.74\!\times\!10^{17}$ & $2.65\!\times\!10^{8}$  \\
+$20$ & $3{,}396$   & $1.07$   & $1.69\!\times\!10^{21}$ & $1.69\!\times\!10^{21}$ & $1.41\!\times\!10^{8}$  \\
+$25$ & $2{,}069$   & $0.65$   & $2.18\!\times\!10^{24}$ & $2.18\!\times\!10^{24}$ & $2.63\!\times\!10^{6}$  \\
+$30$ & $1{,}358$   & $0.43$   & $7.61\!\times\!10^{26}$ & $7.61\!\times\!10^{26}$ & $4.65\!\times\!10^{2}$  \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The active set shrinks from all vertices at \(s=2\) to \(1{,}358\) vertices at \(s=30\).
+The active set shrinks from all vertices at $s=2$ to $1{,}358$ vertices at $s=30$.
 %
-This is a \(234\times\) reduction.
+This is a $234\times$ reduction.
 %
-At the same time, the maximum core value spans many orders of magnitude because high-\(s\) supports are binomial counts.
+At the same time, the maximum core value spans many orders of magnitude because high-$s$ supports are binomial counts.
 %
 The practical interpretation is simple.
 %
-\(s\) controls how aggressively the ranking filters the graph.
+$s$ controls how aggressively the ranking filters the graph.
 
-\stitle{Case study 2: \((1,s)\) improves the \(k\)-core ranking.}\label{sec:cs-quality}
-On \texttt{com-dblp}, the first non-trivial clique support already improves the ground-truth ranking over \(k\)-core.
+\stitle{Case study 2: $(1,s)$ improves the $k$-core ranking.}\label{sec:cs-quality}
+On \texttt{com-dblp}, the first non-trivial clique support already improves the ground-truth ranking over $k$-core.
 %
-Table~\ref{tab:cs3} reports top-\(10{,}000\) quality.
+Table~\ref{tab:cs3} reports top-$10{,}000$ quality.
 
 \begin{table}[t]
 \centering
@@ -89,99 +89,99 @@ Table~\ref{tab:cs3} reports top-\(10{,}000\) quality.
 \small
 \begin{tabular}{lrrrr}
 \toprule
-Method & top-\(K\) & Precision & rec50 & tri/v \\
+Method & top-$K$ & Precision & rec50 & tri/v \\
 \midrule
-\(k\)-core      & \(10{,}000\) & \(0.504\) & \(94\)  & \(112.3\) \\
-\((1,3)\)-core  & \(10{,}000\) & \(0.523\) & \(114\) & \(113.4\) \\
-\((1,5)\)-core  & \(10{,}000\) & \(0.523\) & \(114\) & \(113.4\) \\
-\((1,10)\)-core & \(10{,}000\) & \(0.523\) & \(114\) & \(113.4\) \\
-\((1,15)\)-core & \(6{,}767\)  & \(\boldsymbol{0.548}\) & \(65\) & \(\boldsymbol{154}\) \\
-\((1,30)\)-core & \(1{,}358\)  & \(0.507\) & \(4\) & \(\boldsymbol{523}\) \\
+$k$-core      & $10{,}000$ & $0.504$ & $94$  & $112.3$ \\
+$(1,3)$-core  & $10{,}000$ & $0.523$ & $114$ & $113.4$ \\
+$(1,5)$-core  & $10{,}000$ & $0.523$ & $114$ & $113.4$ \\
+$(1,10)$-core & $10{,}000$ & $0.523$ & $114$ & $113.4$ \\
+$(1,15)$-core & $6{,}767$  & $\boldsymbol{0.548}$ & $65$ & $\boldsymbol{154}$ \\
+$(1,30)$-core & $1{,}358$  & $0.507$ & $4$ & $\boldsymbol{523}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\((1,3)\)-core raises precision from \(0.504\) to \(0.523\) and rec50 from \(94\) to \(114\).
+$(1,3)$-core raises precision from $0.504$ to $0.523$ and rec50 from $94$ to $114$.
 %
-For \(s\in\{3,5,10\}\), the top-\(10{,}000\) quality is identical in this table.
+For $s\in\{3,5,10\}$, the top-$10{,}000$ quality is identical in this table.
 %
-For larger \(s\), the active set drops below \(10{,}000\), so the comparison changes from ranking quality at fixed \(K\) to density of the surviving subgraph.
+For larger $s$, the active set drops below $10{,}000$, so the comparison changes from ranking quality at fixed $K$ to density of the surviving subgraph.
 %
-\((1,30)\)-core reaches \(523\) triangles per vertex on \(1{,}358\) vertices.
+$(1,30)$-core reaches $523$ triangles per vertex on $1{,}358$ vertices.
 
 
-\stitle{Case study 3: higher \(r\) does not buy quality on the studied graphs.}\label{sec:cs-pareto}
+\stitle{Case study 3: higher $r$ does not buy quality on the studied graphs.}\label{sec:cs-pareto}
 Whether edge- or triangle-level nuclei justify their cost is the next question.
 %
-We fix \(s\) and compare \((1,s)\), \((2,s)\), \((3,s)\) on two graphs from different domains: \texttt{com-dblp} (Table~\ref{tab:cs4}) and \texttt{com-youtube} (Table~\ref{tab:cs7}).
+We fix $s$ and compare $(1,s)$, $(2,s)$, $(3,s)$ on two graphs from different domains: \texttt{com-dblp} (Table~\ref{tab:cs4}) and \texttt{com-youtube} (Table~\ref{tab:cs7}).
 %
-Across both graphs the \((1,s)\) ranking matches higher \(r\) on rec50 and triangle density while running \(67\)--\(178\times\) faster.
+Across both graphs the $(1,s)$ ranking matches higher $r$ on rec50 and triangle density while running $67$--$178\times$ faster.
 %
-On \texttt{com-dblp} at \(s{=}10\), \((1,10)\) and \((3,10)\) agree on rec50 (\(114\) vs.\ \(114\)) and triangle density (\(113.4\) vs.\ \(113.4\)) while the former is \(178\times\) faster.
+On \texttt{com-dblp} at $s{=}10$, $(1,10)$ and $(3,10)$ agree on rec50 ($114$ vs.\ $114$) and triangle density ($113.4$ vs.\ $113.4$) while the former is $178\times$ faster.
 %
-On \texttt{com-youtube} the same pattern holds for every \(s\in\{5,10,15\}\), with \(r{=}1\) at most a single rec50 point below \(r{=}3\) and between \(6.2\) and \(67.5\times\) faster.
+On \texttt{com-youtube} the same pattern holds for every $s\in\{5,10,15\}$, with $r{=}1$ at most a single rec50 point below $r{=}3$ and between $6.2$ and $67.5\times$ faster.
 
 \begin{table}[t]
 \centering
-\caption{Cross-\(r\) quality and runtime on \texttt{com-dblp} (\(s=10\)).}
+\caption{Cross-$r$ quality and runtime on \texttt{com-dblp} ($s=10$).}
 \label{tab:cs4}
 \small
 \begin{tabular}{lrrrr}
 \toprule
 Method & Precision & rec50 & tri/v & Time (ms) \\
 \midrule
-\(k\)-core      & \(0.504\) & \(94\)  & \(112.3\) & \(2.3\) \\
-\((1,10)\)-core & \(0.523\) & \(114\) & \(113.4\) & \(13.4\) \\
-\((2,10)\)-core & \(0.529\) & \(113\) & \(71.8\)  & \(123.1\) \\
-\((3,10)\)-core & \(0.524\) & \(114\) & \(113.4\) & \(2{,}379.6\) \\
+$k$-core      & $0.504$ & $94$  & $112.3$ & $2.3$ \\
+$(1,10)$-core & $0.523$ & $114$ & $113.4$ & $13.4$ \\
+$(2,10)$-core & $0.529$ & $113$ & $71.8$  & $123.1$ \\
+$(3,10)$-core & $0.524$ & $114$ & $113.4$ & $2{,}379.6$ \\
 \midrule
-\textbf{(1) vs. (3)} & \(-0.001\) & \(0\) & \(0.0\) & \(-178\times\) \\
+\textbf{(1) vs. (3)} & $-0.001$ & $0$ & $0.0$ & $-178\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Across the broader DBLP grid the \(r=1\) points dominate the \(r\in\{2,3\}\) points on the quality--runtime tradeoff: they match higher-\(r\) rec50 and triangle density while running an order of magnitude faster.
+Across the broader DBLP grid the $r=1$ points dominate the $r\in\{2,3\}$ points on the quality--runtime tradeoff: they match higher-$r$ rec50 and triangle density while running an order of magnitude faster.
 %
-This does not prove higher \(r\) is never useful; it shows that on this vertex-ranking task, increasing \(r\) mostly adds cost.
+This does not prove higher $r$ is never useful; it shows that on this vertex-ranking task, increasing $r$ mostly adds cost.
 
 \label{sec:cs-youtube}
 The DBLP picture is not a collaboration-data artifact.
 %
-Table~\ref{tab:cs7} reports the same cross-\(r\) comparison on \texttt{com-youtube} across three values of \(s\); the speedup factors and quality matches are listed above.
+Table~\ref{tab:cs7} reports the same cross-$r$ comparison on \texttt{com-youtube} across three values of $s$; the speedup factors and quality matches are listed above.
 
 \begin{table}[t]
 \centering
-\caption{Cross-\(r\) quality and runtime on \texttt{com-youtube}.}
+\caption{Cross-$r$ quality and runtime on \texttt{com-youtube}.}
 \label{tab:cs7}
 \small
 \begin{tabular}{lrrrr}
 \toprule
-Method & rec50 & tri/v & Time (ms) & vs. \((1,s)\) \\
+Method & rec50 & tri/v & Time (ms) & vs. $(1,s)$ \\
 \midrule
-\((1,5)\)  & \(283\) & \(173\) & \(274\)    & --- \\
-\((2,5)\)  & \(286\) & \(161\) & \(2{,}580\) & \(9.4\times\) \\
-\((3,5)\)  & \(288\) & \(159\) & \(13{,}112\) & \(47.9\times\) \\
+$(1,5)$  & $283$ & $173$ & $274$    & --- \\
+$(2,5)$  & $286$ & $161$ & $2{,}580$ & $9.4\times$ \\
+$(3,5)$  & $288$ & $159$ & $13{,}112$ & $47.9\times$ \\
 \midrule
-\((1,10)\) & \(49\) & \(293\) & \(31\)     & --- \\
-\((2,10)\) & \(49\) & \(293\) & \(319\)    & \(10.3\times\) \\
-\((3,10)\) & \(49\) & \(293\) & \(2{,}093\) & \(67.5\times\) \\
+$(1,10)$ & $49$ & $293$ & $31$     & --- \\
+$(2,10)$ & $49$ & $293$ & $319$    & $10.3\times$ \\
+$(3,10)$ & $49$ & $293$ & $2{,}093$ & $67.5\times$ \\
 \midrule
-\((1,15)\) & \(0^{\dagger}\) & \(173\) & \(9\)  & --- \\
-\((2,15)\) & \(0^{\dagger}\) & \(173\) & \(55\) & \(6.2\times\) \\
-\((3,15)\) & \(0^{\dagger}\) & \(173\) & \(87\) & \(9.8\times\) \\
+$(1,15)$ & $0^{\dagger}$ & $173$ & $9$  & --- \\
+$(2,15)$ & $0^{\dagger}$ & $173$ & $55$ & $6.2\times$ \\
+$(3,15)$ & $0^{\dagger}$ & $173$ & $87$ & $9.8\times$ \\
 \bottomrule
 \end{tabular}
-\\[2pt]\footnotesize \(^{\dagger}\)At \(s=15\), the active set has \(95\) vertices, below the smallest SNAP community size, so rec50 is zero for every method.
+\\[2pt]\footnotesize $^{\dagger}$At $s=15$, the active set has $95$ vertices, below the smallest SNAP community size, so rec50 is zero for every method.
 \end{table}
 
-Across all three \(s\) values, \(r=1\) reaches the same rec50 and triangle-density contours as higher-\(r\) settings (see Table~\ref{tab:cs7}) with lower runtime; the same pattern holds on \texttt{com-youtube} as on \texttt{com-dblp}.
+Across all three $s$ values, $r=1$ reaches the same rec50 and triangle-density contours as higher-$r$ settings (see Table~\ref{tab:cs7}) with lower runtime; the same pattern holds on \texttt{com-youtube} as on \texttt{com-dblp}.
 
-\stitle{Case study 4: \(s\) changes local resolution.}\label{sec:cs-viz}
+\stitle{Case study 4: $s$ changes local resolution.}\label{sec:cs-viz}
 The previous studies use global rankings.
 %
-The ego-network visualization asks whether \(s\) also changes local interpretability.
+The ego-network visualization asks whether $s$ also changes local interpretability.
 %
-Figure~\ref{fig:cs9} shows the two-hop ego-network of \texttt{com-dblp} vertex \(52213\) under \(s\in\{3,5,10\}\).
+Figure~\ref{fig:cs9} shows the two-hop ego-network of \texttt{com-dblp} vertex $52213$ under $s\in\{3,5,10\}$.
 %
 Table~\ref{tab:cs9} reports the component statistics.
 
@@ -192,31 +192,31 @@ Table~\ref{tab:cs9} reports the component statistics.
 \small
 \begin{tabular}{r r r r r r}
 \toprule
-\(s\) & \(|V|\) & CCs & largest CC & intra-frac & avg cond \\
+$s$ & $|V|$ & CCs & largest CC & intra-frac & avg cond \\
 \midrule
-\(3\)  & \(462\) & \(1\)  & \(462\) & \(0.992\) & \(0.004\) \\
-\(5\)  & \(335\) & \(5\)  & \(329\) & \(0.796\) & \(0.121\) \\
-\(10\) & \(66\)  & \(26\) & \(32\)  & \(0.340\) & \(0.636\) \\
+$3$  & $462$ & $1$  & $462$ & $0.992$ & $0.004$ \\
+$5$  & $335$ & $5$  & $329$ & $0.796$ & $0.121$ \\
+$10$ & $66$  & $26$ & $32$  & $0.340$ & $0.636$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-At \(s=3\), the ego-network remains one large component.
+At $s=3$, the ego-network remains one large component.
 %
-At \(s=10\), it becomes \(26\) smaller components.
+At $s=10$, it becomes $26$ smaller components.
 %
-This behavior makes \(s\) a local resolution knob.
+This behavior makes $s$ a local resolution knob.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/cs9_egonet.pdf}
-\caption{Ego-network around a \texttt{com-dblp} anchor under three \(s\) values.}
+\caption{Ego-network around a \texttt{com-dblp} anchor under three $s$ values.}
 \Description{Three ego-network visualizations showing components becoming smaller and more numerous as s increases.}
 \label{fig:cs9}
 \end{figure}
 
 \stitle{Case study 5: hierarchy profiles differ by domain.}\label{sec:cs-hier}
-\buildHier{} turns the core values into a \((1,s)\)-clique-connected nucleus hierarchy (Definition~\ref{def:nucleus}).
+\buildHier{} turns the core values into a $(1,s)$-clique-connected nucleus hierarchy (Definition~\ref{def:nucleus}).
 %
 This makes it possible to compare how quickly the nucleus hierarchy collapses across domains.
 %
@@ -232,22 +232,22 @@ Figures~\ref{fig:cs10} and~\ref{fig:cs10p} visualize the resulting trees and per
 \setlength{\tabcolsep}{2pt}
 \begin{tabular}{@{}l rrr rrr rrr rrr@{}}
 \toprule
-& \multicolumn{3}{c}{\(s=3\)} & \multicolumn{3}{c}{\(s=5\)} & \multicolumn{3}{c}{\(s=10\)} & \multicolumn{3}{c}{\(s=15\)} \\
+& \multicolumn{3}{c}{$s=3$} & \multicolumn{3}{c}{$s=5$} & \multicolumn{3}{c}{$s=10$} & \multicolumn{3}{c}{$s=15$} \\
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}\cmidrule(lr){11-13}
 graph & br. & int. & d & br. & int. & d & br. & int. & d & br. & int. & d \\
 \midrule
-\texttt{com-dblp}     & \(10{,}900\) & \(426\) & \(4\) & \(6{,}050\) & \(278\) & \(4\) & \(751\) & \(20\) & \(4\) & \(197\) & \(8\) & \(4\) \\
-\texttt{com-youtube}  & \(13{,}507\) & \(353\) & \(4\) & \(714\) & \(4\) & \(3\) & \(12\) & \(1\) & \(2\) & \(1\) & \(0\) & \(1\) \\
-\texttt{web-Stanford} & \(3{,}455\) & \(181\) & \(5\) & \(1{,}093\) & \(20\) & \(3\) & \(228\) & \(7\) & \(3\) & \(90\) & \(2\) & \(2\) \\
+\texttt{com-dblp}     & $10{,}900$ & $426$ & $4$ & $6{,}050$ & $278$ & $4$ & $751$ & $20$ & $4$ & $197$ & $8$ & $4$ \\
+\texttt{com-youtube}  & $13{,}507$ & $353$ & $4$ & $714$ & $4$ & $3$ & $12$ & $1$ & $2$ & $1$ & $0$ & $1$ \\
+\texttt{web-Stanford} & $3{,}455$ & $181$ & $5$ & $1{,}093$ & $20$ & $3$ & $228$ & $7$ & $3$ & $90$ & $2$ & $2$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\texttt{com-youtube} collapses quickly: from \(13{,}507\) branches at \(s=3\) to a single branch at \(s=15\).
+\texttt{com-youtube} collapses quickly: from $13{,}507$ branches at $s=3$ to a single branch at $s=15$.
 %
-\texttt{com-dblp} keeps the largest branch counts and a constant maximum depth across \(s\), reflecting strong nested clique structure.
+\texttt{com-dblp} keeps the largest branch counts and a constant maximum depth across $s$, reflecting strong nested clique structure.
 %
-\texttt{web-Stanford} retains nontrivial branches at every clique size, including \(s=15\).
+\texttt{web-Stanford} retains nontrivial branches at every clique size, including $s=15$.
 %
 The hierarchy is therefore not only an output format.
 %
@@ -256,7 +256,7 @@ It gives a domain-level fingerprint of clique-witness nesting.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/cs10_hierarchy.pdf}
-\caption{Nucleus join tree at \(s=5\) across three domains.}
+\caption{Nucleus join tree at $s=5$ across three domains.}
 \Description{Three hierarchy-tree visualizations comparing DBLP, YouTube, and web-Stanford at s equals 5.}
 \label{fig:cs10}
 \end{figure}
@@ -270,14 +270,14 @@ It gives a domain-level fingerprint of clique-witness nesting.
 \end{figure}
 
 \stitle{Takeaway.}\label{sec:cs-summary}
-These studies support the paper's focus on \((1,s)\).
+These studies support the paper's focus on $(1,s)$.
 %
-The parameter \(s\) changes granularity.
+The parameter $s$ changes granularity.
 %
-On the reported DBLP and YouTube ground-truth tasks, \(r=1\) matches higher-\(r\) quality metrics while running much faster.
+On the reported DBLP and YouTube ground-truth tasks, $r=1$ matches higher-$r$ quality metrics while running much faster.
 %
 The hierarchy and ego-network studies show that the same vertex-centric decomposition also gives interpretable structure beyond a global ranking.
 %
 The evidence is not a universal claim about all graph mining tasks.
 %
-It is a practical justification for optimizing the exact \(r=1\) case.
+It is a practical justification for optimizing the exact $r=1$ case.

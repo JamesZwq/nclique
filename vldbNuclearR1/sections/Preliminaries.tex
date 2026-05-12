@@ -2,25 +2,25 @@
 
 The introduction stated the paper's central invariant in informal terms.
 %
-To prove and use it, we need precise objects: vertex support, \((1,s)\)-nucleus core values, \cpi{} paths, and the mutable baseline that the paper specializes.
+To prove and use it, we need precise objects: vertex support, $(1,s)$-nucleus core values, \cpi{} paths, and the mutable baseline that the paper specializes.
 %
-This section fixes that vocabulary and ends at the point where the \(r=1\) simplification can be stated cleanly.
+This section fixes that vocabulary and ends at the point where the $r=1$ simplification can be stated cleanly.
 
 \stitle{Graph notation.}
-We work with a simple undirected graph \(G=(V,E)\).
+We work with a simple undirected graph $G=(V,E)$.
 %
-For a vertex \(v\), \(N_G(v)=\{u\in V\mid (u,v)\in E\}\) is its neighbor set and \(\deg_G(v)=|N_G(v)|\) is its degree.
+For a vertex $v$, $N_G(v)=\{u\in V\mid (u,v)\in E\}$ is its neighbor set and $\deg_G(v)=|N_G(v)|$ is its degree.
 %
-For \(X\subseteq V\), \(G[X]\) is the subgraph induced by \(X\).
+For $X\subseteq V$, $G[X]$ is the subgraph induced by $X$.
 %
-The implementation stores \(G\) in CSR form with an \texttt{offsets} array and an \texttt{edges} array.
+The implementation stores $G$ in CSR form with an \texttt{offsets} array and an \texttt{edges} array.
 
 \begin{definition}[$k$-Clique]\label{def:k-clique}
-A \emph{\(k\)-clique} is a vertex set \(C\subseteq V\) with \(|C|=k\) such that every two distinct vertices in \(C\) are adjacent.
+A \emph{$k$-clique} is a vertex set $C\subseteq V$ with $|C|=k$ such that every two distinct vertices in $C$ are adjacent.
 \end{definition}
 
 \begin{definition}[$s$-Clique Support]\label{def:s-supp}
-Given \(s\ge2\), the \emph{\(s\)-clique support} of a vertex \(v\) in \(G\) is
+Given $s\ge2$, the \emph{$s$-clique support} of a vertex $v$ in $G$ is
 \[
   \sdeg(v) \;=\; \bigl|\{S\subseteq V\mid v\in S,\ |S|=s,\ S\text{ is a clique in }G\}\bigr|.
 \]
@@ -28,51 +28,51 @@ Given \(s\ge2\), the \emph{\(s\)-clique support} of a vertex \(v\) in \(G\) is
 
 Support is always evaluated inside the current induced subgraph when a peel level is being defined.
 %
-When the graph is clear, we write \(\sdeg(v)\) without a subscript.
+When the graph is clear, we write $\sdeg(v)$ without a subscript.
 
 \begin{definition}[$k$-$(1,s)$-Nucleus]\label{def:nucleus}
-Let \(X\subseteq V\).
+Let $X\subseteq V$.
 %
-The induced subgraph \(G[X]\) is a \emph{\(k\)-\((1,s)\)-nucleus} if:
+The induced subgraph $G[X]$ is a \emph{$k$-$(1,s)$-nucleus} if:
 \begin{enumerate}[leftmargin=*]
-  \item every vertex in \(X\) belongs to at least \(k\) \(s\)-cliques contained in \(G[X]\);
-  \item \(G[X]\) is \emph{\(s\)-connected}: for any two vertices \(u,v\in X\), there is a sequence \(u=v_1,\ldots,v_t=v\) such that each pair \(\{v_i,v_{i+1}\}\) is contained in an \(s\)-clique of \(G[X]\);
-  \item \(G[X]\) is maximal with respect to adding vertices while preserving the first two conditions.
+  \item every vertex in $X$ belongs to at least $k$ $s$-cliques contained in $G[X]$;
+  \item $G[X]$ is \emph{$s$-connected}: for any two vertices $u,v\in X$, there is a sequence $u=v_1,\ldots,v_t=v$ such that each pair $\{v_i,v_{i+1}\}$ is contained in an $s$-clique of $G[X]$;
+  \item $G[X]$ is maximal with respect to adding vertices while preserving the first two conditions.
 \end{enumerate}
 \end{definition}
 
-Thus a \(k\)-\((1,s)\)-nucleus is a maximal region in which every vertex has at least \(k\) internal \(s\)-clique witnesses and the region is connected through those witnesses.
+Thus a $k$-$(1,s)$-nucleus is a maximal region in which every vertex has at least $k$ internal $s$-clique witnesses and the region is connected through those witnesses.
 
 \begin{definition}[Core Number]\label{def:core}
-Given \(s\ge2\), the \emph{\((1,s)\)-nucleus core number} of a vertex \(v\), denoted \(\kappa_s(v)\), is the largest \(k\) for which \(v\) belongs to some \(k\)-\((1,s)\)-nucleus of \(G\).
+Given $s\ge2$, the \emph{$(1,s)$-nucleus core number} of a vertex $v$, denoted $\kappa_s(v)$, is the largest $k$ for which $v$ belongs to some $k$-$(1,s)$-nucleus of $G$.
 \end{definition}
 
-When \(s=2\), \(\kappa_s\) is the classical core number.
+When $s=2$, $\kappa_s$ is the classical core number.
 %
-When \(s=3\), it ranks vertices by triangle-supported cohesion.
+When $s=3$, it ranks vertices by triangle-supported cohesion.
 
 \stitle{The Clique Path Index.}\label{sec:prelim-cpi}
-The Clique Path Index, or \cpi{}, compactly represents \(s\)-cliques without listing them one by one~\cite{NuclearCD}.
+The Clique Path Index, or \cpi{}, compactly represents $s$-cliques without listing them one by one~\cite{NuclearCD}.
 
 \begin{definition}[\cpi{} Path]\label{def:path}
-A \emph{\cpi{} path} is a pair \(\TPath=(\Vh(\TPath),\Vp(\TPath))\) of disjoint vertex sets such that \(\Vh(\TPath)\cup\Vp(\TPath)\) is a clique in \(G\) and \(|\Vh(\TPath)|\le s\le|\Vh(\TPath)|+|\Vp(\TPath)|\).
+A \emph{\cpi{} path} is a pair $\TPath=(\Vh(\TPath),\Vp(\TPath))$ of disjoint vertex sets such that $\Vh(\TPath)\cup\Vp(\TPath)$ is a clique in $G$ and $|\Vh(\TPath)|\le s\le|\Vh(\TPath)|+|\Vp(\TPath)|$.
 %
-The set \(\Vh(\TPath)\) is the \emph{hold set}: every encoded \(s\)-clique contains all of these vertices.
+The set $\Vh(\TPath)$ is the \emph{hold set}: every encoded $s$-clique contains all of these vertices.
 %
-The set \(\Vp(\TPath)\) is the \emph{pivot set}: an encoded \(s\)-clique chooses vertices from this pool.
+The set $\Vp(\TPath)$ is the \emph{pivot set}: an encoded $s$-clique chooses vertices from this pool.
 %
-The \emph{pivot requirement} of \(\TPath\) is \(\eta_{\TPath}=s-|\Vh(\TPath)|\), the number of pivot vertices needed to complete the hold set into an \(s\)-clique.
+The \emph{pivot requirement} of $\TPath$ is $\eta_{\TPath}=s-|\Vh(\TPath)|$, the number of pivot vertices needed to complete the hold set into an $s$-clique.
 %
-The set of \(s\)-cliques encoded by \(\TPath\) is
+The set of $s$-cliques encoded by $\TPath$ is
 \[
   \mathcal{C}(\TPath)
   =
   \bigl\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath),\ |P'|=\eta_{\TPath}\bigr\}.
 \]
-Its cardinality is \(\binom{|\Vp(\TPath)|}{\eta_{\TPath}}\).
+Its cardinality is $\binom{|\Vp(\TPath)|}{\eta_{\TPath}}$.
 \end{definition}
 
-The \cpi{} is a set \(\mathcal{P}\) of paths such that every \(s\)-clique is encoded by exactly one path.
+The \cpi{} is a set $\mathcal{P}$ of paths such that every $s$-clique is encoded by exactly one path.
 %
 We write
 \[
@@ -80,12 +80,12 @@ We write
 \]
 for the vertex--path incidence count.
 %
-We also write \(\deg_{\Sig}(v)=|\{\TPath\mid v\in\Vh(\TPath)\cup\Vp(\TPath)\}|\), \(d_{\max}=\max_v\deg_{\Sig}(v)\), and \(\kmax=\max_v\sdeg(v)\).
+We also write $\deg_{\Sig}(v)=|\{\TPath\mid v\in\Vh(\TPath)\cup\Vp(\TPath)\}|$, $d_{\max}=\max_v\deg_{\Sig}(v)$, and $\kmax=\max_v\sdeg(v)$.
 %
 The \cpi{} is built by a degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.
 
 \begin{lemma}[Support Formula~\cite{NuclearCD}]\label{lem:supp}
-For every \(v\in V\),
+For every $v\in V$,
 \[
   \sdeg(v)
   =
@@ -96,8 +96,8 @@ For every \(v\in V\),
 \end{lemma}
 
 \sstitle{Problem statement.}
-Given \(G\) and \(s\ge2\), compute \(\kappa_s(v)\) for every \(v\in V\).
+Given $G$ and $s\ge2$, compute $\kappa_s(v)$ for every $v\in V$.
 %
 Section~\ref{sec:buildhier} treats hierarchy construction after the core values have been computed.
 %
-Section~\ref{sec:baseline} describes the mutable-\cpi{} baseline that this paper compares against; the remaining sections specialise it for \(r=1\).
+Section~\ref{sec:baseline} describes the mutable-\cpi{} baseline that this paper compares against; the remaining sections specialise it for $r=1$.

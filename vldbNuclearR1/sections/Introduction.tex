@@ -2,51 +2,51 @@
 
 Core decomposition ranks vertices by the amount of cohesive structure that still surrounds them after weak vertices are removed~\cite{kcoreSeidman,coreAlg,communityFinder}.
 %
-The classical \(k\)-core uses edges as the witness of cohesion.
+The classical $k$-core uses edges as the witness of cohesion.
 %
-Many graph mining tasks need a stronger witness, because a group may pass an edge-degree threshold while containing few triangles, \(4\)-cliques, or larger coordinated patterns.
+Many graph mining tasks need a stronger witness, because a group may pass an edge-degree threshold while containing few triangles, $4$-cliques, or larger coordinated patterns.
 %
-The \emph{\((1,s)\)-nucleus decomposition}~\cite{nucleusSariyuce14} gives this vertex-centric higher-order ranking.
+The \emph{$(1,s)$-nucleus decomposition}~\cite{nucleusSariyuce14} gives this vertex-centric higher-order ranking.
 %
-For a fixed \(s\), it assigns each vertex the largest value \(k\) for which the vertex belongs to a maximal region where every vertex participates in at least \(k\) internal \(s\)-cliques.
+For a fixed $s$, it assigns each vertex the largest value $k$ for which the vertex belongs to a maximal region where every vertex participates in at least $k$ internal $s$-cliques.
 %
-At \(s=2\), this is the \(k\)-core.
+At $s=2$, this is the $k$-core.
 %
-At \(s=3\), it ranks vertices by triangle-supported cohesion.
+At $s=3$, it ranks vertices by triangle-supported cohesion.
 %
-At larger \(s\), it exposes progressively tighter clique-based kernels.
+At larger $s$, it exposes progressively tighter clique-based kernels.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.7\linewidth]{figures/fig1_overview.pdf}
-\caption{Running example of \((1,3)\)-nucleus decomposition.}
+\caption{Running example of $(1,3)$-nucleus decomposition.}
 \Description{Running-example graph topology: 10 vertices, 17 edges, with two K_4 blocks plus two pendant triangles. Node shade indicates (1,3)-core value.}
 \label{fig:overview}
 \end{figure}
 
 \begin{example}\label{exa:overview}
-Figure~\ref{fig:overview} shows a \(10\)-vertex graph at \(s=3\).
+Figure~\ref{fig:overview} shows a $10$-vertex graph at $s=3$.
 %
-The six vertices \(v_1,\ldots,v_6\) belong to two triangle-rich \(K_4\) blocks; each of them participates in at least three triangles supported by other vertices of the same value, so all six have \((1,3)\)-core value \(3\).
+The six vertices $v_1,\ldots,v_6$ belong to two triangle-rich $K_4$ blocks; each of them participates in at least three triangles supported by other vertices of the same value, so all six have $(1,3)$-core value $3$.
 %
-The remaining four vertices \(v_7,\ldots,v_{10}\) belong to a single pendant triangle, supporting only one triangle each, so all four have \((1,3)\)-core value \(1\).
+The remaining four vertices $v_7,\ldots,v_{10}$ belong to a single pendant triangle, supporting only one triangle each, so all four have $(1,3)$-core value $1$.
 %
 A formal definition is given in Section~\ref{sec:prelim}; we revisit this graph as a running example throughout the paper.
 \end{example}
 
 \stitle{Challenges.}
-Computing \((1,s)\)-nucleus decomposition at high \(s\) is hard because the number of \(s\)-cliques can be enormous; the current state of the art avoids explicit enumeration with the Clique Path Index, or \cpi{}~\cite{NuclearCD}.
+Computing $(1,s)$-nucleus decomposition at high $s$ is hard because the number of $s$-cliques can be enormous; the current state of the art avoids explicit enumeration with the Clique Path Index, or \cpi{}~\cite{NuclearCD}.
 %
-A \cpi{} path stores a hold set and a pivot set; it compactly represents all \(s\)-cliques formed by taking every hold vertex and choosing the remaining vertices from the pivot set.
+A \cpi{} path stores a hold set and a pivot set; it compactly represents all $s$-cliques formed by taking every hold vertex and choosing the remaining vertices from the pivot set.
 %
-This representation makes general \((r,s)\)-nucleus decomposition practical, but using it efficiently for the vertex-centric case \(r=1\) raises three challenges.
+This representation makes general $(r,s)$-nucleus decomposition practical, but using it efficiently for the vertex-centric case $r=1$ raises three challenges.
 
 \sstitle{Residual state during peeling.}
 Each peel step must update the surviving support of every remaining vertex.
 %
-The general \((r,s)\) algorithm achieves this by maintaining the \cpi{} as mutable residual state: it stores per-path vertex sets, a reverse vertex-to-path index, and a priority queue, and rewrites these structures every time a vertex is popped.
+The general $(r,s)$ algorithm achieves this by maintaining the \cpi{} as mutable residual state: it stores per-path vertex sets, a reverse vertex-to-path index, and a priority queue, and rewrites these structures every time a vertex is popped.
 %
-The challenge is whether this mutability is necessary at \(r=1\), where peeling removes vertices but does not delete edges.
+The challenge is whether this mutability is necessary at $r=1$, where peeling removes vertices but does not delete edges.
 %
 If not, residual maintenance becomes pure arithmetic over a static incidence layout.
 
@@ -63,29 +63,29 @@ Once peeling becomes counter-only, the cost profile shifts: on many real graphs 
 The challenge is to construct the static \cpi{} in parallel without paying the synchronisation cost that the mutable design requires for path rewrites.
 
 \stitle{State-of-the-Art and Limitations.}
-The current state of the art for general \((r,s)\)-nucleus decomposition is \cbnd~\cite{NuclearCD}, the mutable-\cpi{} algorithm.
+The current state of the art for general $(r,s)$-nucleus decomposition is \cbnd~\cite{NuclearCD}, the mutable-\cpi{} algorithm.
 %
-\cbnd{} addresses the general case correctly, but inherits three weaknesses when restricted to \(r=1\).
+\cbnd{} addresses the general case correctly, but inherits three weaknesses when restricted to $r=1$.
 
 \sstitle{Mutable residual-index maintenance.}
 \cbnd{} rewrites path records and updates a hash-indexed reverse map at every peel step.
 %
 This work is intrinsic to the mutable design.
 %
-Our ablation on \(171\) matched cells shows that simply replacing the mutable index with a static one (still using a full-pass solver) already gives a \(3.80\times\) geometric-mean peel-time speedup; the residual rewrites are a real cost, not a constant factor.
+Our ablation on $171$ matched cells shows that simply replacing the mutable index with a static one (still using a full-pass solver) already gives a $3.80\times$ geometric-mean peel-time speedup; the residual rewrites are a real cost, not a constant factor.
 
 \sstitle{Full-graph passes per round.}
-The local \(h\)-index family of solvers~\cite{lu2016hcore,kcoreLocal,hindex} scans every vertex per pass.
+The local $h$-index family of solvers~\cite{lu2016hcore,kcoreLocal,hindex} scans every vertex per pass.
 %
-This is fine on graphs where one or two passes converge, but on the harder graphs the round count grows: on \texttt{web-it-2004} at \(s=53\), the direct fixed-point iteration takes \(12\) seconds while the incremental schedule we develop here finishes in \(5\) milliseconds — a single hard cell where the gap reaches \(2{,}369\times\).
+This is fine on graphs where one or two passes converge, but on the harder graphs the round count grows: on \texttt{web-it-2004} at $s=53$, the direct fixed-point iteration takes $12$ seconds while the incremental schedule we develop here finishes in $5$ milliseconds — a single hard cell where the gap reaches $2{,}369\times$.
 
 \sstitle{Construction as the residual bottleneck.}
-Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} at \(s=3\), construction takes about \(127\) seconds and peeling takes \(351\) milliseconds, so the static index builder dominates total runtime by \(360\times\) on this configuration.
+Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} at $s=3$, construction takes about $127$ seconds and peeling takes $351$ milliseconds, so the static index builder dominates total runtime by $360\times$ on this configuration.
 %
-Without a parallel builder, the end-to-end speedup over \cbnd{} stays at \(1.10\times\) on the matched cells even though the peel-time speedup is \(13.50\times\).
+Without a parallel builder, the end-to-end speedup over \cbnd{} stays at $1.10\times$ on the matched cells even though the peel-time speedup is $13.50\times$.
 
 \stitle{Our Solution and Contributions.}
-For \((1,s)\)-nucleus decomposition we show that vertex peeling preserves the \cpi{} structure: a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel.
+For $(1,s)$-nucleus decomposition we show that vertex peeling preserves the \cpi{} structure: a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel.
 %
 A path stops contributing only when one of its hold vertices is removed; otherwise its only dynamic state is an integer counter of how many of its pivots remain.
 %
@@ -93,7 +93,7 @@ This invariant turns exact decomposition into counter arithmetic over a static i
 %
 We address the three challenges with the following contributions.
 
-\sstitle{Static-\cpi{} state for \((1,s)\).}
+\sstitle{Static-\cpi{} state for $(1,s)$.}
 We prove that vertex peeling never rewrites the stored hold or pivot sets (Theorem~\ref{thm:vertex-removal}) and give a closed-form expression for the support loss caused by each path event (Lemma~\ref{lem:support-delta}).
 %
 The dynamic state of a path collapses to a liveness bit and a single integer counter, so residual maintenance becomes binomial arithmetic over a static dual-CSR layout rather than path rewrites.
@@ -101,22 +101,22 @@ The dynamic state of a path collapses to a liveness bit and a single integer cou
 \sstitle{Direct and incremental solvers over the static index.}
 We formulate \spin{} as the direct threshold-support iteration on \cpi{} witness counts (Algorithm~\ref{alg:localH}) and \spinStar{} as its incremental optimization (Algorithm~\ref{alg:peelH}) that computes the same fixed point in peel order without repeated full-graph passes (Lemma~\ref{lem:equivalence}).
 %
-\spinStar{} delivers a \(36.2\times\) geometric-mean peel-time speedup over \spin{} on \(291\) matched cells and is consistently the fastest of the three solvers on every benchmark graph.
+\spinStar{} delivers a $36.2\times$ geometric-mean peel-time speedup over \spin{} on $291$ matched cells and is consistently the fastest of the three solvers on every benchmark graph.
 
 \sstitle{Parallel static-\cpi{} construction.}
 After peeling becomes counter-only, construction dominates end-to-end time on many instances.
 %
 \paraBuild{} (Algorithm~\ref{alg:parabuild}) exploits the static output contract: each seed thread streams emitted paths into a thread-local arena, and the arenas merge deterministically without hot-path synchronisation.
 %
-This gives up to \(23.4\times\) construction speedup at \(T=24\) threads.
+This gives up to $23.4\times$ construction speedup at $T=24$ threads.
 
 \sstitle{Core-value hierarchy from the static \cpi{}.}
 After peeling, each \cpi{} leaf can be treated as a hyperedge born at the minimum core value among its stored vertices.
 %
-A descending union--find scan over the leaves recovers the \(s\)-clique-connected super-level join tree in \(O(\Sig\log\Sig)\) time without re-enumerating \(s\)-cliques (Algorithm~\ref{alg:buildhier}); the hierarchy is therefore a byproduct of preserving the \cpi{} rather than a separate decomposition problem.
+A descending union--find scan over the leaves recovers the $s$-clique-connected super-level join tree in $O(\Sig\log\Sig)$ time without re-enumerating $s$-cliques (Algorithm~\ref{alg:buildhier}); the hierarchy is therefore a byproduct of preserving the \cpi{} rather than a separate decomposition problem.
 
 \sstitle{Comprehensive experimental evaluation.}
-We compare against \cbnd{} on ten real-world graphs (\(307\) matched configurations, headline peel speedup \(13.50\times\) gmean / \(44.76\times\) max, memory-usage ratio \(1.55\times\) gmean), report phase behaviour and parallel construction, push the pipeline to a \(1.8\)B-edge graph (\texttt{com-friendster}, where \cbnd{} cannot complete), and use case studies to evaluate whether the \(r=1\) specialization is practically useful.
+We compare against \cbnd{} on ten real-world graphs ($307$ matched configurations, headline peel speedup $13.50\times$ gmean / $44.76\times$ max, memory-usage ratio $1.55\times$ gmean), report phase behaviour and parallel construction, push the pipeline to a $1.8$B-edge graph (\texttt{com-friendster}, where \cbnd{} cannot complete), and use case studies to evaluate whether the $r=1$ specialization is practically useful.
 
 The rest of the paper follows this dependency chain.
 %

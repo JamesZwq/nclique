@@ -1,124 +1,124 @@
 \section{Core-Value Hierarchy Construction}\label{sec:buildhier}
 
-In this section, we extract the \((1,s)\)-clique-connected nucleus hierarchy of Definition~\ref{def:nucleus} from the preserved \cpi{} of Section~\ref{sec:static}, after \spinStar{} has computed the core values.
+In this section, we extract the $(1,s)$-clique-connected nucleus hierarchy of Definition~\ref{def:nucleus} from the preserved \cpi{} of Section~\ref{sec:static}, after \spinStar{} has computed the core values.
 %
-We first show that each leaf can be treated as a hyperedge that is born at the minimum core value among its stored vertices, then present \buildHier{} (Algorithm~\ref{alg:buildhier}) as a single descending union--find scan over leaves; the cost is \(O(\Sig\log\Sig)\) and no clique is re-enumerated.
+We first show that each leaf can be treated as a hyperedge that is born at the minimum core value among its stored vertices, then present \buildHier{} (Algorithm~\ref{alg:buildhier}) as a single descending union--find scan over leaves; the cost is $O(\Sig\log\Sig)$ and no clique is re-enumerated.
 
 The core numbers define a nested family of vertex sets.
 %
-For any level \(k\), the super-level set is \(V_k=\{v\mid \kappa_s(v)\ge k\}\).
+For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\ge k\}$.
 %
-As \(k\) decreases, vertices enter the set.
+As $k$ decreases, vertices enter the set.
 %
-Definition~\ref{def:nucleus} measures connectivity inside \(V_k\) through \(s\)-clique witnesses contained in \(V_k\).
+Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-clique witnesses contained in $V_k$.
 %
 \buildHier{} constructs the elder-rule join tree of this clique-witnessed filtration directly from \cpi{} leaves.
 
 \stitle{Leaves as connectors.}
-A \cpi{} leaf \(P\) encodes the family of \(s\)-cliques \(\Vh(P)\cup X\) for every \(\eta_P\)-subset \(X\subseteq\Vp(P)\) (Definition~\ref{def:path}).
+A \cpi{} leaf $P$ encodes the family of $s$-cliques $\Vh(P)\cup X$ for every $\eta_P$-subset $X\subseteq\Vp(P)$ (Definition~\ref{def:path}).
 %
-Define the \emph{birth level} of \(P\) as
+Define the \emph{birth level} of $P$ as
 \[
   k_P \;=\; \min_{v\in\Vh(P)\cup\Vp(P)}\kappa_s(v).
 \]
 %
-At level \(k\le k_P\) every leaf vertex has core value at least \(k\), so every encoded \(s\)-clique is contained in \(V_k\).
+At level $k\le k_P$ every leaf vertex has core value at least $k$, so every encoded $s$-clique is contained in $V_k$.
 %
-Any two vertices of the leaf either lie inside one such clique (when \(\eta_P\ge2\)) or are linked by a length-two path through a vertex of \(\Vh(P)\) (when \(\eta_P=1\) and \(\Vh(P)\) is non-empty); for \(\Vh(P)=\emptyset\) and \(\eta_P\ge2\), any pair appears together in some \(s\)-subset.
+Any two vertices of the leaf either lie inside one such clique (when $\eta_P\ge2$) or are linked by a length-two path through a vertex of $\Vh(P)$ (when $\eta_P=1$ and $\Vh(P)$ is non-empty); for $\Vh(P)=\emptyset$ and $\eta_P\ge2$, any pair appears together in some $s$-subset.
 %
-In every case the leaf vertices form a single \(s\)-connected component the moment \(P\) becomes active.
+In every case the leaf vertices form a single $s$-connected component the moment $P$ becomes active.
 %
 This lets \buildHier{} treat each leaf as a single hyperedge in a union--find structure: the leaf node is unified with every vertex it contains.
 %
-Two vertices then end up in the same component if and only if they are \(s\)-connected through active \cpi{} cliques at the current level.
+Two vertices then end up in the same component if and only if they are $s$-connected through active \cpi{} cliques at the current level.
 
 \stitle{Reverse scan over leaves.}
-\buildHier{} processes leaves in nonincreasing \(k_P\), as the level descends through the filtration.
+\buildHier{} processes leaves in nonincreasing $k_P$, as the level descends through the filtration.
 %
-A union--find structure spans both vertices and leaf identifiers; processing leaf \(P\) at its birth level fires unions \(\textsc{Union}(P,v)\) for every \(v\in\Vh(P)\cup\Vp(P)\).
+A union--find structure spans both vertices and leaf identifiers; processing leaf $P$ at its birth level fires unions $\textsc{Union}(P,v)$ for every $v\in\Vh(P)\cup\Vp(P)$.
 %
 A birth level is recorded for each component root, so a merge applies the elder rule.
 %
-Vertices not appearing in any leaf with \(k_P\ge1\) have \(\kappa_s(v)=0\) and are omitted from the hierarchy.
+Vertices not appearing in any leaf with $k_P\ge1$ have $\kappa_s(v)=0$ and are omitted from the hierarchy.
 
 \begin{algorithm}[t]
 \algfontsize
 \caption{\buildHier{} --- elder-rule join tree atop \spinStar{}.}
 \label{alg:buildhier}
-\KwIn{Graph \(G\), clique size \(s\), \cpi{} \(\mathcal{P}\).}
-\KwOut{Elder-rule join tree \(T\) of the \(s\)-clique-connected super-level filtration.}
+\KwIn{Graph $G$, clique size $s$, \cpi{} $\mathcal{P}$.}
+\KwOut{Elder-rule join tree $T$ of the $s$-clique-connected super-level filtration.}
 
-\(\kappa_s \gets \spinStar{}(G, s, \mathcal{P})\) \tcp*{Algorithm~\ref{alg:peelH}}
-\ForEach{leaf \(P\in\mathcal{P}\)}{
-    \(k_P \gets \min\{\kappa_s(v)\mid v\in\Vh(P)\cup\Vp(P)\}\)\;
+$\kappa_s \gets \spinStar{}(G, s, \mathcal{P})$ \tcp*{Algorithm~\ref{alg:peelH}}
+\ForEach{leaf $P\in\mathcal{P}$}{
+    $k_P \gets \min\{\kappa_s(v)\mid v\in\Vh(P)\cup\Vp(P)\}$\;
 }
-sort \(\mathcal{P}\) by nonincreasing \(k_P\) (ties broken by leaf id)\;
-initialise union-find \(U\) over \(V\cup\{P\mid P\in\mathcal{P}\}\); \(\text{birth}[r]\gets+\infty\) for every root \(r\)\;
-\(T\gets\) empty forest\;
-\ForEach{leaf \(P\) in sorted order}{
-    \(R\gets\{\textsc{Find}(x)\mid x\in\Vh(P)\cup\Vp(P)\cup\{P\}\}\)\;
-    \ForEach{root \(r\in R\)}{
-        \If{\(\text{birth}[r]=+\infty\)}{
-            emit a hierarchy node \(n_r\) with \(k_{\mathrm{birth}}\gets k_P\); \(\text{birth}[r]\gets k_P\)\;
+sort $\mathcal{P}$ by nonincreasing $k_P$ (ties broken by leaf id)\;
+initialise union-find $U$ over $V\cup\{P\mid P\in\mathcal{P}\}$; $\text{birth}[r]\gets+\infty$ for every root $r$\;
+$T\gets$ empty forest\;
+\ForEach{leaf $P$ in sorted order}{
+    $R\gets\{\textsc{Find}(x)\mid x\in\Vh(P)\cup\Vp(P)\cup\{P\}\}$\;
+    \ForEach{root $r\in R$}{
+        \If{$\text{birth}[r]=+\infty$}{
+            emit a hierarchy node $n_r$ with $k_{\mathrm{birth}}\gets k_P$; $\text{birth}[r]\gets k_P$\;
         }
     }
-    \If{\(|R|\ge2\)}{
-        sort \(R\) descending by \((\text{birth}[r], |r|)\); let \(r^\star\) be the elder \tcp*{elder rule}
-        \ForEach{\(r\in R\setminus\{r^\star\}\)}{
-            attach \(n_r\) as child of \(n_{r^\star}\) at level \(k_P\) in \(T\) \tcp*{younger dies}
+    \If{$|R|\ge2$}{
+        sort $R$ descending by $(\text{birth}[r], |r|)$; let $r^\star$ be the elder \tcp*{elder rule}
+        \ForEach{$r\in R\setminus\{r^\star\}$}{
+            attach $n_r$ as child of $n_{r^\star}$ at level $k_P$ in $T$ \tcp*{younger dies}
         }
-        \(\textsc{Union}\) all of \(R\) into a single component\;
+        $\textsc{Union}$ all of $R$ into a single component\;
     }
 }
-\Return{\(T\)}
+\Return{$T$}
 \end{algorithm}
 
-Algorithm~\ref{alg:buildhier} first invokes \spinStar{} to compute the core values (Line~1), then assigns each leaf its birth level \(k_P\) as the minimum core value among its hold and pivot vertices (Lines~2-3).
+Algorithm~\ref{alg:buildhier} first invokes \spinStar{} to compute the core values (Line~1), then assigns each leaf its birth level $k_P$ as the minimum core value among its hold and pivot vertices (Lines~2-3).
 %
-Leaves are sorted by nonincreasing \(k_P\) (Line~4) so they fire in descending peel order, and the union--find structure is initialised over both vertices and leaf identifiers with all roots born at \(+\infty\) (Line~5).
+Leaves are sorted by nonincreasing $k_P$ (Line~4) so they fire in descending peel order, and the union--find structure is initialised over both vertices and leaf identifiers with all roots born at $+\infty$ (Line~5).
 %
-For each leaf \(P\) in sorted order (Lines~7-13), the algorithm collects the current root set \(R\) of every vertex in \(P\) together with the leaf itself (Line~8), emits a fresh hierarchy node for any root that has not been born yet (Lines~9-11), applies the elder rule when \(|R|\ge2\) by selecting the earliest-born root \(r^\star\) and attaching the others as its children at level \(k_P\) (Lines~12-14), and finally unifies all roots into a single component (Line~15).
+For each leaf $P$ in sorted order (Lines~7-13), the algorithm collects the current root set $R$ of every vertex in $P$ together with the leaf itself (Line~8), emits a fresh hierarchy node for any root that has not been born yet (Lines~9-11), applies the elder rule when $|R|\ge2$ by selecting the earliest-born root $r^\star$ and attaching the others as its children at level $k_P$ (Lines~12-14), and finally unifies all roots into a single component (Line~15).
 %
-The returned forest \(T\) is the elder-rule join tree.
+The returned forest $T$ is the elder-rule join tree.
 
 \stitle{Correctness.}
-The descending scan visits each leaf at exactly the level it first contributes \(s\)-cliques contained in the current super-level set.
+The descending scan visits each leaf at exactly the level it first contributes $s$-cliques contained in the current super-level set.
 %
-At that level, every vertex it contains lies in the super-level set, so the leaf witnesses pairwise \(s\)-connectivity for all of them through a common element of \(\Vh(P)\) (or directly within an \(s\)-subset when \(\Vh(P)=\emptyset\)).
+At that level, every vertex it contains lies in the super-level set, so the leaf witnesses pairwise $s$-connectivity for all of them through a common element of $\Vh(P)$ (or directly within an $s$-subset when $\Vh(P)=\emptyset$).
 %
-Conversely, every active \(s\)-clique at level \(k\) belongs to some leaf with \(k_P\ge k\), and that leaf has already fired before the scan reaches level \(k\); so every \(s\)-clique-connected merge of Definition~\ref{def:nucleus} is performed.
+Conversely, every active $s$-clique at level $k$ belongs to some leaf with $k_P\ge k$, and that leaf has already fired before the scan reaches level $k$; so every $s$-clique-connected merge of Definition~\ref{def:nucleus} is performed.
 %
 When two distinct components meet at a leaf, the elder rule preserves the component with earlier birth and attaches the younger one in the join tree~\cite{morozov2007persistence}.
 
 \stitle{Complexity.}
-Computing every \(k_P\) and sorting leaves costs \(O(\Sig+L\log L)\), where \(L=|\mathcal{P}|\).
+Computing every $k_P$ and sorting leaves costs $O(\Sig+L\log L)$, where $L=|\mathcal{P}|$.
 %
-Each leaf fires at most \(|\Vh(P)|+|\Vp(P)|\) union-find operations, summing to \(O(\Sig\,\alpha(n+L))\) over all leaves.
+Each leaf fires at most $|\Vh(P)|+|\Vp(P)|$ union-find operations, summing to $O(\Sig\,\alpha(n+L))$ over all leaves.
 %
-Total time \(O(\Sig\log\Sig)\), dominated by the sort, with no clique re-enumeration: \buildHier{} reads each \cpi{} leaf at most twice (once to compute \(k_P\), once to fire unions).
+Total time $O(\Sig\log\Sig)$, dominated by the sort, with no clique re-enumeration: \buildHier{} reads each \cpi{} leaf at most twice (once to compute $k_P$, once to fire unions).
 
 \stitle{Memory.}
-Beyond the union-find of size \(n+L\), the routine needs a list of vertices per leaf to fire unions.
+Beyond the union-find of size $n+L$, the routine needs a list of vertices per leaf to fire unions.
 %
-\spinStar{}'s vertex-to-leaf inverse CSR (Section~\ref{sec:hindex}) supports a single bucket-CSR pass that materialises the per-leaf lists in \(O(\Sig)\) temporary memory; this scratch is freed on return.
+\spinStar{}'s vertex-to-leaf inverse CSR (Section~\ref{sec:hindex}) supports a single bucket-CSR pass that materialises the per-leaf lists in $O(\Sig)$ temporary memory; this scratch is freed on return.
 %
 The static \cpi{} budget of Section~\ref{sec:exp} therefore holds throughout peeling proper and is only briefly elevated during the hierarchy emit.
 
 \stitle{Consequence.}
 The clique-coherent core-value hierarchy is not a separate decomposition problem in this pipeline.
 %
-It is a byproduct of the static \cpi{} surviving peeling: leaves act as hyperedges of an implicit \(s\)-clique witness graph, and a single descending pass with union--find produces the join tree.
+It is a byproduct of the static \cpi{} surviving peeling: leaves act as hyperedges of an implicit $s$-clique witness graph, and a single descending pass with union--find produces the join tree.
 %
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 
 \stitle{Empirical cost.}
-Table~\ref{tab:buildhier} compares \buildHier{} against a level-by-level snapshot baseline on \texttt{com-dblp} (\(n{=}317\)k vertices, \(m{=}1.05\)M edges), with three runs per cell.
+Table~\ref{tab:buildhier} compares \buildHier{} against a level-by-level snapshot baseline on \texttt{com-dblp} ($n{=}317$k vertices, $m{=}1.05$M edges), with three runs per cell.
 %
 The snapshot baseline runs one \spinStar{} decomposition per requested level and writes the join tree from the snapshots; it is the natural alternative when the static \cpi{} is not preserved.
 %
-\buildHier{} is faster on every reported \(s\) and the gap widens with \(s\): at \(s{=}5\) the speedup is \(3.33\times\) (median \(129.6\)\,ms versus \(432.0\)\,ms), and the absolute cost stays below \(360\)\,ms even at \(s{=}3\) where \(\Sig\) is largest.
+\buildHier{} is faster on every reported $s$ and the gap widens with $s$: at $s{=}5$ the speedup is $3.33\times$ (median $129.6$\,ms versus $432.0$\,ms), and the absolute cost stays below $360$\,ms even at $s{=}3$ where $\Sig$ is largest.
 %
-Scaling at \(s{=}5\) is sublinear in \(|E|\): keeping \(25\%/50\%/75\%/100\%\) of the edges costs \(67/103/123/127\)\,ms, consistent with the \(O(\Sig\log\Sig)\) bound being dominated by the leaf sort.
+Scaling at $s{=}5$ is sublinear in $|E|$: keeping $25\%/50\%/75\%/100\%$ of the edges costs $67/103/123/127$\,ms, consistent with the $O(\Sig\log\Sig)$ bound being dominated by the leaf sort.
 
 \begin{table}[t]
 \centering
@@ -128,12 +128,12 @@ Scaling at \(s{=}5\) is sublinear in \(|E|\): keeping \(25\%/50\%/75\%/100\%\) o
 \setlength{\tabcolsep}{6pt}
 \begin{tabular}{rrrr}
 \toprule
-\(s\) & \buildHier{} (ms) & snapshot (ms) & speedup \\
+$s$ & \buildHier{} (ms) & snapshot (ms) & speedup \\
 \midrule
-\(3\)  & \(358.7\) & \(588.9\) & \(1.64\times\) \\
-\(5\)  & \(129.6\) & \(432.0\) & \(3.33\times\) \\
-\(10\) & \(\phantom{0}13.4\)  & \(\phantom{0}32.7\)  & \(2.44\times\) \\
-\(15\) & \(\phantom{00}4.1\)   & \(\phantom{0}10.0\)  & \(2.44\times\) \\
+$3$  & $358.7$ & $588.9$ & $1.64\times$ \\
+$5$  & $129.6$ & $432.0$ & $3.33\times$ \\
+$10$ & $\phantom{0}13.4$  & $\phantom{0}32.7$  & $2.44\times$ \\
+$15$ & $\phantom{00}4.1$   & $\phantom{0}10.0$  & $2.44\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
