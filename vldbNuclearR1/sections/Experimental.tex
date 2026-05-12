@@ -287,7 +287,7 @@ Where both implementations finish, \spinStar{} remains below \cbnd{} in time and
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig_stress.pdf}
-\caption{Dense-synthetic stress test.}
+\caption{Dense-synthetic stress: wall time (top) and peak RSS (bottom).}
 \Description{Two-row log-scale grid showing wall time (top) and peak RSS (bottom) for SPIN* vs CND on synthetic dense graphs across four s values and six densities.}
 \label{fig:stress}
 \end{figure*}
@@ -306,7 +306,7 @@ Construction is what dominates wall time on this graph (about \(5\)--\(7\) thous
 
 \begin{table}[t]
 \centering
-\caption{\spinStar{} on \texttt{com-friendster} (\(1.806\)B edges).}
+\caption{Build/peel time, encoded clique count, and peak RSS on \texttt{com-friendster} (\(1.806\)B edges).}
 \label{tab:friendster}
 \small
 \setlength{\tabcolsep}{3pt}
@@ -346,7 +346,7 @@ The two ideas compound rather than substitute: bucket-queue order without the st
 
 \begin{table}[t]
 \centering
-\caption{Pipeline ablation (\(171\) matched cells).}
+\caption{Pipeline ablation: median peel time on \(171\) matched cells.}
 \label{tab:ablation}
 \small
 \setlength{\tabcolsep}{4pt}
@@ -382,7 +382,7 @@ On every graph \spinStar{}'s curves are ordered cleanly by ratio at every \(s\) 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_scalability.pdf}
-\caption{Vertex-induced scalability of \spinStar{}.}
+\caption{Vertex-induced scalability: wall time (top) and peak RSS (bottom).}
 \Description{Two-row five-column log-scale grid showing wall time (top) and peak RSS (bottom) for SPIN* under five vertex-sample ratios on five graphs.}
 \label{fig:scalability}
 \end{figure*}
