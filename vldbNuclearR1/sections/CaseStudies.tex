@@ -42,8 +42,6 @@ The first question is what \(s\) changes when \(r=1\).
 On \texttt{com-dblp}, increasing \(s\) sharply shrinks the active set while preserving the very top of the ranking.
 %
 Table~\ref{tab:cs1} reports the active-set size and top-prefix thresholds.
-%
-Figure~\ref{fig:cs1} shows the monotone shrinkage.
 
 \begin{table}[t]
 \centering
@@ -78,16 +76,6 @@ At the same time, the maximum core value spans many orders of magnitude because 
 The practical interpretation is simple.
 %
 \(s\) controls how aggressively the ranking filters the graph.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.95\linewidth]{figures/cs2_active_set.pdf}
-\caption{Active-set size on \texttt{com-dblp} as \(s\) varies.
-%
-Observe that larger \(s\) sharply shrinks the vertices with nonzero \((1,s)\)-core value.}
-\Description{Line plot showing the number of active vertices decreasing as clique size s increases.}
-\label{fig:cs1}
-\end{figure}
 
 \stitle{Case study 2: \((1,s)\) improves the \(k\)-core ranking.}\label{sec:cs-quality}
 On \texttt{com-dblp}, the first non-trivial clique support already improves the ground-truth ranking over \(k\)-core.
@@ -152,23 +140,9 @@ Method & Precision & rec50 & tri/v & Time (ms) \\
 \end{tabular}
 \end{table}
 
-The broader grid in Figure~\ref{fig:cs6} shows the same pattern on the reported DBLP settings.
+Across the broader DBLP grid the \(r=1\) points dominate the \(r\in\{2,3\}\) points on the quality--runtime tradeoff: they match higher-\(r\) rec50 and triangle density while running an order of magnitude faster.
 %
-The \(r=1\) frontier dominates the \(r\in\{2,3\}\) points in the plotted quality-runtime plane.
-%
-This does not prove higher \(r\) is never useful.
-%
-It shows that on this vertex-ranking task, increasing \(r\) mostly adds cost.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/cs6_pareto.pdf}
-\caption{Quality-runtime Pareto plot on \texttt{com-dblp} for \(r\in\{1,2,3\}\) and \(s\in\{5,10,15,20\}\).
-%
-Observe that the \(r=1\) points lie on the favorable quality-runtime frontier in the DBLP settings.}
-\Description{Scatter plot of quality versus runtime for several r and s settings on DBLP.}
-\label{fig:cs6}
-\end{figure}
+This does not prove higher \(r\) is never useful; it shows that on this vertex-ranking task, increasing \(r\) mostly adds cost.
 
 \label{sec:cs-youtube}
 The DBLP picture is not a collaboration-data artifact.
@@ -200,19 +174,7 @@ Method & rec50 & tri/v & Time (ms) & vs. \((1,s)\) \\
 \\[2pt]\footnotesize \(^{\dagger}\)At \(s=15\), the active set has \(95\) vertices, below the smallest SNAP community size, so rec50 is zero for every method.
 \end{table}
 
-Figure~\ref{fig:cs7y} visualizes the same quality-runtime tradeoff.
-%
-The \(r=1\) points sit on the same quality contour as higher-\(r\) points but with lower runtime.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.95\linewidth]{figures/cs7_pareto.pdf}
-\caption{Quality-runtime Pareto plot on \texttt{com-youtube} for \(r\in\{1,2,3\}\) and \(s\in\{5,10,15\}\).
-%
-Observe that \(r=1\) reaches the same quality contours as higher-\(r\) settings with lower runtime.}
-\Description{Scatter plot of quality versus runtime for several r and s settings on YouTube.}
-\label{fig:cs7y}
-\end{figure}
+Across all three \(s\) values, \(r=1\) reaches the same rec50 and triangle-density contours as higher-\(r\) settings (see Table~\ref{tab:cs7}) with lower runtime; the same pattern holds on \texttt{com-youtube} as on \texttt{com-dblp}.
 
 \stitle{Case study 4: \(s\) changes local resolution.}\label{sec:cs-viz}
 The previous studies use global rankings.

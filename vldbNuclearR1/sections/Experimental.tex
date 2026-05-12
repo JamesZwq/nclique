@@ -403,26 +403,22 @@ We pick vertex-induced rather than random-edge subsampling because \spinStar{}'s
 %
 We re-run \spinStar{} on five graphs spanning two orders of magnitude in edge count (\(\texttt{com-dblp},\texttt{com-youtube},\texttt{web-Stanford},\texttt{web-Google},\texttt{soc-pokec}\)) for \(s\in\{2,3,5,7,9,11,13,15\}\) on each subsample.
 %
-Figure~\ref{fig:scalability-time} reports wall-clock time and Figure~\ref{fig:scalability-mem} reports peak RSS as the ratio grows.
+Figure~\ref{fig:scalability} reports wall-clock time (top row) and peak RSS (bottom row) as the ratio grows.
 %
-On every graph \spinStar{}'s curves are ordered cleanly by ratio at every \(s\): denser subsamples take longer and use more RSS, with no inversions, indicating that the static-\cpi{} pipeline scales smoothly with input size from sparse collaboration graphs to dense social graphs.
+On every graph \spinStar{}'s curves are ordered cleanly by ratio at every \(s\) in both metrics: denser subsamples take longer and use more RSS, with no inversions, indicating that the static-\cpi{} pipeline scales smoothly with input size from sparse collaboration graphs to dense social graphs.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_scalability_time.pdf}
-\caption{Vertex-induced scalability of \spinStar{}: wall-clock time as \(s\) varies on five graphs, one curve per vertex-sample ratio.
+\includegraphics[width=\linewidth]{figures/fig_scalability.pdf}
+\caption{Vertex-induced scalability of \spinStar{} on five graphs.
 %
-Higher ratios consistently take longer; the curves do not cross.}
-\Description{Five-panel log-scale row showing wall time vs s for SPIN* under five vertex-sample ratios on five graphs.}
-\label{fig:scalability-time}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/fig_scalability_mem.pdf}
-\caption{Vertex-induced scalability of \spinStar{}: peak RSS under the same protocol as Figure~\ref{fig:scalability-time}.}
-\Description{Five-panel log-scale row showing peak RSS vs s for SPIN* under five vertex-sample ratios on five graphs.}
-\label{fig:scalability-mem}
+Top row: wall-clock time as \(s\) varies, one curve per vertex-sample ratio.
+%
+Bottom row: peak RSS under the same protocol.
+%
+Higher ratios consistently take longer and use more RSS; the curves do not cross.}
+\Description{Two-row five-column log-scale grid showing wall time (top) and peak RSS (bottom) for SPIN* under five vertex-sample ratios on five graphs.}
+\label{fig:scalability}
 \end{figure*}
 
 \stitle{Limitations.}
