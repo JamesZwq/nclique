@@ -729,31 +729,62 @@ def fig_par_scaling() -> None:
 def fig_friendster() -> None:
     rows = load_csv(DATA_DIR / "friendster_billion" / "bench_billion.csv")
     if not rows: return
-    pts = []
+    pts, ooms = [], []
     for r in rows:
-        if r.get("status") != "OK": continue
         try:
-            pts.append((int(r["s"]), float(r["wall_sec"]),
-                       (float(r["mem_kB"])/1024/1024) if r.get("mem_kB") else None))
+            s = int(r["s"])
         except (KeyError, ValueError):
             continue
+        if r.get("status") == "OK":
+            try:
+                wall = float(r["wall_sec"])
+            except (KeyError, ValueError):
+                continue
+            # mem_kB column is sometimes the literal string "Memory" in this
+            # bench; prefer time_max_rss_kB (from /usr/bin/time -v).
+            rss = None
+            for k in ("time_max_rss_kB", "mem_kB"):
+                v = r.get(k)
+                if v and v not in ("Memory", ""):
+                    try:
+                        rss = float(v) / 1024.0 / 1024.0
+                        break
+                    except ValueError: pass
+            pts.append((s, wall, rss))
+        elif r.get("status", "").startswith("ERR_137") or "OOM" in (r.get("status") or ""):
+            ooms.append(s)
     if not pts: return
     pts.sort()
-    fig, axes = plt.subplots(1, 2, figsize=(8, 3.2))
-    s_vals  = [p[0] for p in pts]
-    wall    = [p[1] for p in pts]
-    rss_gb  = [p[2] for p in pts]
-    axes[0].plot(s_vals, wall, color=SPINSTAR_COLOR, marker="o", ms=4)
-    axes[0].set_xlabel(r"$s$"); axes[0].set_ylabel("wall time (s)")
-    axes[0].set_title("com-friendster, SPIN*, T=24")
-    axes[0].grid(**GRID_KW)
+    fig, axes = plt.subplots(1, 2, figsize=(8, 3.0))
+    s_vals = [p[0] for p in pts]
+    wall   = [p[1] for p in pts]
+    rss_gb = [p[2] for p in pts]
+    axes[0].plot(s_vals, wall, color=SPINSTAR_COLOR, marker="o", ms=6, lw=1.8,
+                 mec=SPINSTAR_COLOR, mfc=SPINSTAR_COLOR, zorder=3)
+    if ooms:
+        # Mark OOM cells on the time axis at a sentinel height = max(wall)*1.1
+        sentinel = max(wall) * 1.15
+        axes[0].plot(sorted(set(ooms)), [sentinel]*len(set(ooms)),
+                     color=SPIN_COLOR, marker="x", ms=9, mew=2.0, lw=0,
+                     label="OOM kill", zorder=4)
+        axes[0].legend(loc="lower right", frameon=False, fontsize=9)
+    axes[0].set_xlabel(r"$s$", fontsize=10)
+    axes[0].set_ylabel("wall time (s)", fontsize=10)
+    axes[0].set_title("com-friendster, $|E|{=}1.8$B, $T{=}24$",
+                      fontsize=10.5, fontweight="bold", color="#111")
+    axes[0].grid(True, which="major", color="#e8e8e8", lw=0.5)
+    for sp in ("top","right"): axes[0].spines[sp].set_visible(False)
     if any(r is not None for r in rss_gb):
         s_r = [s for s, r in zip(s_vals, rss_gb) if r is not None]
         v_r = [r for r in rss_gb if r is not None]
-        axes[1].plot(s_r, v_r, color=CND_COLOR, marker="s", ms=4)
-        axes[1].set_xlabel(r"$s$"); axes[1].set_ylabel("peak RSS (GB)")
-        axes[1].set_title("com-friendster peak memory")
-        axes[1].grid(**GRID_KW)
+        axes[1].plot(s_r, v_r, color=CND_COLOR, marker="s", ms=6, lw=1.8,
+                     mec=CND_COLOR, mfc=CND_COLOR, zorder=3)
+        axes[1].set_xlabel(r"$s$", fontsize=10)
+        axes[1].set_ylabel("peak RSS (GB)", fontsize=10)
+        axes[1].set_title("com-friendster peak memory",
+                          fontsize=10.5, fontweight="bold", color="#111")
+        axes[1].grid(True, which="major", color="#e8e8e8", lw=0.5)
+        for sp in ("top","right"): axes[1].spines[sp].set_visible(False)
     else:
         axes[1].set_visible(False)
     fig.tight_layout()

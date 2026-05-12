@@ -43,7 +43,7 @@ The static-\cpi{} counter form answers no.
 %
 The difference from prior local \(h\)-index work is not the operator itself.
 %
-The difference is that the witness multiset is represented by static \cpi{} paths and updated by binomial counter deltas.
+The difference is that the witness multiset is represented by static \cpi{} paths and updated by binomial support-loss formulas.
 
 \stitle{Parallel construction and clique counting.}
 Parallel clique search usually tries to distribute the expensive recursive enumeration work.
@@ -61,11 +61,11 @@ Nucleus decompositions naturally form hierarchies across core levels~\cite{nucle
 %
 Elder-rule join-tree extraction is standard in computational topology~\cite{morozov2007persistence}.
 %
-Prior nucleus pipelines can extract such hierarchies after sorting decomposition output.
+Prior nucleus pipelines can extract such hierarchies after sorting decomposition output or revisiting clique witnesses.
 %
-\buildHier{} avoids the extra sort because \spinStar{} already emits a nondecreasing deletion log.
+\buildHier{} instead reuses the preserved static \cpi{}: after core values are known, each leaf has a birth level and can be processed as a hyperedge.
 %
-The hierarchy result is therefore a byproduct of the chosen peel realization.
+The hierarchy result is therefore a byproduct of preserving the \cpi{} through peeling.
 
 \stitle{Empirical graph mining methodology.}
 The evaluation follows common practice in cohesive-subgraph experiments: SNAP community ground truth, large public graphs, runtime and memory comparisons, and dense synthetic stress tests~\cite{communityFinder,NuclearCD,nucleusSariyuceTODS}.

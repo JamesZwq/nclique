@@ -133,12 +133,16 @@ Observe that the \((1,s)\)-core rankings for \(s\in\{3,5,10,15\}\) stay above th
 \label{fig:cs3}
 \end{figure}
 
-\stitle{Case study 3: higher \(r\) does not buy quality on DBLP.}\label{sec:cs-pareto}
-The next question is whether edge-level or triangle-level nuclei improve the vertex ranking enough to justify their cost.
+\stitle{Case study 3: higher \(r\) does not buy quality on the studied graphs.}\label{sec:cs-pareto}
+Whether edge- or triangle-level nuclei justify their cost is the next question.
 %
-Table~\ref{tab:cs4} fixes \(s=10\) on \texttt{com-dblp}.
+We fix \(s\) and compare \((1,s)\), \((2,s)\), \((3,s)\) on two graphs from different domains: \texttt{com-dblp} (Tables~\ref{tab:cs4} and the Pareto plot in Figure~\ref{fig:cs6}) and \texttt{com-youtube} (Table~\ref{tab:cs7}, Figure~\ref{fig:cs7y}).
 %
-The \((1,10)\)-core and \((3,10)\)-core match on rec50 and triangle density, while \((1,10)\) is \(178\times\) faster in the reported run.
+Across both graphs the \((1,s)\) ranking matches higher \(r\) on rec50 and triangle density while running \(67\)--\(178\times\) faster.
+%
+On \texttt{com-dblp} at \(s{=}10\), \((1,10)\) and \((3,10)\) agree on rec50 (\(114\) vs.\ \(114\)) and triangle density (\(113.4\) vs.\ \(113.4\)) while the former is \(178\times\) faster.
+%
+On \texttt{com-youtube} the same pattern holds for every \(s\in\{5,10,15\}\), with \(r{=}1\) at most a single rec50 point below \(r{=}3\) and between \(6.2\) and \(67.5\times\) faster.
 
 \begin{table}[t]
 \centering
@@ -177,12 +181,10 @@ Observe that the \(r=1\) points lie on the favorable quality-runtime frontier in
 \label{fig:cs6}
 \end{figure}
 
-\stitle{Case study 4: YouTube repeats the pattern.}\label{sec:cs-youtube}
-The cross-\(r\) comparison is not limited to collaboration data.
+\stitle{Case study 3 (continued): YouTube confirmation.}\label{sec:cs-youtube}
+The DBLP picture is not a collaboration-data artifact.
 %
-Table~\ref{tab:cs7} reports the same comparison on \texttt{com-youtube}.
-%
-At \(s=10\), all three \(r\)-values match on rec50 and triangle density, while \(r=1\) is \(67.5\times\) faster than \(r=3\).
+Table~\ref{tab:cs7} reports the same cross-\(r\) comparison on \texttt{com-youtube} across three values of \(s\); the speedup factors and quality matches are listed above.
 
 \begin{table}[t]
 \centering
@@ -223,7 +225,7 @@ Observe that \(r=1\) reaches the same quality contours as higher-\(r\) settings 
 \label{fig:cs7y}
 \end{figure}
 
-\stitle{Case study 5: \(s\) changes local resolution.}\label{sec:cs-viz}
+\stitle{Case study 4: \(s\) changes local resolution.}\label{sec:cs-viz}
 The previous studies use global rankings.
 %
 The ego-network visualization asks whether \(s\) also changes local interpretability.
@@ -266,7 +268,7 @@ Observe that increasing \(s\) splits one large local structure into smaller comp
 \label{fig:cs9}
 \end{figure}
 
-\stitle{Case study 6: hierarchy profiles differ by domain.}\label{sec:cs-hier}
+\stitle{Case study 5: hierarchy profiles differ by domain.}\label{sec:cs-hier}
 \buildHier{} turns the core values into a \((1,s)\)-clique-connected nucleus hierarchy (Definition~\ref{def:nucleus}).
 %
 This makes it possible to compare how quickly the nucleus hierarchy collapses across domains.

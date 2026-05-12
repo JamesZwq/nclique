@@ -4,15 +4,15 @@ Section~\ref{sec:hindex} reduced residual support maintenance to static path-cou
 %
 Once peeling is cheap, the bottleneck shifts.
 %
-The phase-breakdown sample reported in Section~\ref{sec:exp} (Table~\ref{tab:bd-time}, \(38\) matched configurations across \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{web-it-2004}) measures \spinStar{}'s peel time directly: the median peel cost is \(46\)\,ms and the rest of wall-clock --- almost entirely \cpi{} construction plus graph load --- accounts for a median \(99.7\%\) of total time, with no measured cell below \(95.4\%\).
+The phase-breakdown tables in Section~\ref{sec:exp} measure \spinStar{}'s peel time separately from graph loading and \cpi{} construction.
 %
-The split is most extreme on the largest graph: on \texttt{web-it-2004} at \(s=3\), \spinStar{} peels in \(54\)\,ms but the full pipeline takes \(147\) seconds.
+They show that after \spinStar{}, peeling is often much smaller than construction.
 %
-On \texttt{web-Stanford} at \(s=60\), peel is \(2.3\)\,ms out of \(7.1\) seconds.
+On \texttt{web-it-2004} at \(s=3\), \spinStar{} peels in \(351\)\,ms while loading and construction take about \(127\) seconds.
 %
-The pattern is not noise from a few outliers: across the sweep, peel is consistently a sub-percent fraction of wall-clock once \spinStar{} replaces the iterated full scans of \cbnd{}.
+On \texttt{web-Stanford} at \(s=60\), peeling takes \(1.4\)\,ms while loading and construction take about \(6.1\) seconds.
 %
-This makes \cpi{} construction the load-bearing cost of the static-state pipeline, and further pipeline-level speedups must therefore parallelise the builder rather than chase peeling tricks.
+This makes \cpi{} construction the load-bearing cost of the static-state pipeline, so further pipeline-level speedups must address construction.
 
 \stitle{Why the seed loop can be parallel.}
 The \cpi{} builder follows the standard degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.

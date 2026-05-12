@@ -51,7 +51,7 @@ for \((1,s)\)-nucleus decomposition, vertex peeling preserves the \cpi{} structu
 %
 Theorem~\ref{thm:vertex-removal} states the static path-event rule in counter form.
 %
-Lemma~\ref{lem:support-delta} turns each peel event into a closed-form binomial support delta.
+Lemma~\ref{lem:support-delta} computes the exact support loss caused by each peel event.
 %
 Together they replace mutable residual-index maintenance with arithmetic over a static incidence layout.
 
@@ -83,22 +83,36 @@ The degeneracy-ordered seed loop already gives disjoint ownership of \(s\)-cliqu
 %
 Because the downstream consumer needs only a static path list and incidence arrays, each thread can stream emitted paths into a local arena and merge the arenas deterministically.
 
-The same deletion order also gives a core-value hierarchy.
+The static \cpi{} also gives a core-value hierarchy after the core values are known.
 %
-\spinStar{} emits vertices in nondecreasing \(\kappa_s\), because its bucket cursor never retreats.
+\spinStar{} computes the core value of each vertex, and each \cpi{} leaf becomes active at the minimum core value among its stored vertices.
 %
-Let \(V_k=\{v:\kappa_s(v)\ge k\}\).
+Processing these leaves in descending activation level with union--find yields the elder-rule join tree of the \(s\)-clique-connected super-level filtration.
 %
-The edge-connected components of \(G[V_k]\) can therefore be recovered by scanning this deletion log in reverse.
+\buildHier{} performs this descending pass over \cpi{} leaves and does not re-enumerate \(s\)-cliques.
+
+Figure~\ref{fig:teaser} previews the effect.
 %
-\buildHier{} uses only the input graph and union-find to extract this elder-rule join tree.
+On \texttt{com-youtube} (\(1.13\)M vertices, \(2.99\)M edges), \spinStar{} peels every \((1,s)\)-configuration in \(8\)--\(220\) ms, while \cbnd{} stays one to two orders of magnitude slower; the geometric-mean peel-time speedup on this graph alone is \(10.6\times\).
+%
+Section~\ref{sec:exp} reports the same comparison across the full ten-graph benchmark.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/fig_teaser.pdf}
+\caption{Peel time on \texttt{com-youtube}: \spinStar{} (ours) versus the mutable-\cpi{} baseline \cbnd{} as \(s\) varies.
+%
+On this graph alone, \spinStar{} achieves a \(10.6\times\) geometric-mean speedup.}
+\Description{Line plot of peel-time as a function of s for SPIN* and CND on com-youtube.}
+\label{fig:teaser}
+\end{figure}
 
 The contributions are a dependency chain.
 \begin{itemize}[leftmargin=1.3em,itemsep=1pt,topsep=2pt]
-\item \textbf{Static-\cpi{} state for \((1,s)\).} We derive a static-counter rule for vertex peeling: exact peeling never rewrites stored hold and pivot sets, and each event becomes a path death or pivot-counter decrement with a closed-form support delta (Theorem~\ref{thm:vertex-removal}, Lemma~\ref{lem:support-delta}).
+\item \textbf{Static-\cpi{} state for \((1,s)\).} We show that vertex peeling never rewrites stored hold and pivot sets. Each removal is handled as either a path death or a pivot-counter decrement, with the support change given by Theorem~\ref{thm:vertex-removal} and Lemma~\ref{lem:support-delta}.
 \item \textbf{\spin{} and \spinStar{} over the static index.} We formulate \spin{} as the direct threshold-support iteration on \cpi{} witness counts, and \spinStar{} as the incremental optimization that computes the same fixed point without repeated global recomputations (Algorithms~\ref{alg:localH} and~\ref{alg:peelH}, Lemma~\ref{lem:equivalence}).
 \item \textbf{Bottleneck-shifted static construction.} Once peeling becomes counter-only, \cpi{} construction becomes the dominant remaining cost on many instances; \paraBuild{} exploits the static output contract by streaming paths into thread-local arenas and merging them deterministically without hot-path synchronization (Algorithm~\ref{alg:parabuild}).
-\item \textbf{Core-value hierarchy from the deletion log.} We show that the sorted log produced by \spinStar{} is enough to recover the edge-connected super-level join tree in \(O((n+m)\alpha(n))\) time using only the input graph (Algorithm~\ref{alg:buildhier}).
+\item \textbf{Core-value hierarchy from the static \cpi{}.} We show that after peeling, each \cpi{} leaf can be treated as a hyperedge born at its minimum core value; a descending union--find scan recovers the \(s\)-clique-connected super-level join tree in \(O(\Sig\log\Sig)\) time without re-enumerating \(s\)-cliques (Algorithm~\ref{alg:buildhier}).
 \item \textbf{Experimental and application evidence.} We compare against the mutable-\cpi{} baseline, report runtime and memory on \(307\) matched benchmark cells, measure phase behavior and parallel construction, and use case studies to evaluate whether the \(r=1\) specialization is practically useful.
 \end{itemize}
 
@@ -112,7 +126,7 @@ Section~\ref{sec:hindex} derives \spin{} and \spinStar{} from the same threshold
 %
 Section~\ref{sec:parabuild} parallelizes construction after peeling becomes cheap.
 %
-Section~\ref{sec:buildhier} extracts the hierarchy from the deletion log.
+Section~\ref{sec:buildhier} extracts the hierarchy from static \cpi{} leaves after peeling.
 %
 Sections~\ref{sec:exp} and~\ref{sec:casestudy} report performance and application evidence.
 %

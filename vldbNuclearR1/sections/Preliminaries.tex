@@ -30,21 +30,18 @@ Support is always evaluated inside the current induced subgraph when a peel leve
 %
 When the graph is clear, we write \(\sdeg(v)\) without a subscript.
 
-\begin{definition}[$k$-Admissible $s$-Clique]\label{def:admissible}
-Given \(s\ge2\) and \(k\ge1\), an \(s\)-clique \(S\) in \(G\) is \emph{\(k\)-admissible} if every vertex \(v\in S\) satisfies \(\sdeg(v)\ge k\) in the subgraph under consideration.
-\end{definition}
-
 \begin{definition}[$k$-$(1,s)$-Nucleus]\label{def:nucleus}
-Let \(\mathcal{S}_k\) be the set of \(k\)-admissible \(s\)-cliques of \(G\).
-For any \(\mathcal{S}\subseteq\mathcal{S}_k\), let \(G[\mathcal{S}]=G[\bigcup_{S\in\mathcal{S}}S]\).
-A subgraph \(G_k=G[\mathcal{S}]\) is a \emph{\(k\)-\((1,s)\)-nucleus} if:
+Let \(X\subseteq V\).
+%
+The induced subgraph \(G[X]\) is a \emph{\(k\)-\((1,s)\)-nucleus} if:
 \begin{enumerate}[leftmargin=*]
-  \item \(G_k\) is \emph{\(s\)-connected}: for any two vertices \(u,v\in V(G_k)\), there is a sequence \(u=v_1,\ldots,v_t=v\) such that each pair \(\{v_i,v_{i+1}\}\) is contained in some \(S_i\in\mathcal{S}\);
-  \item \(G_k\) is \emph{maximal}: no proper superset \(\mathcal{S}'\supset\mathcal{S}\) still satisfies the first condition.
+  \item every vertex in \(X\) belongs to at least \(k\) \(s\)-cliques contained in \(G[X]\);
+  \item \(G[X]\) is \emph{\(s\)-connected}: for any two vertices \(u,v\in X\), there is a sequence \(u=v_1,\ldots,v_t=v\) such that each pair \(\{v_i,v_{i+1}\}\) is contained in an \(s\)-clique of \(G[X]\);
+  \item \(G[X]\) is maximal with respect to adding vertices while preserving the first two conditions.
 \end{enumerate}
 \end{definition}
 
-Thus a \(k\)-\((1,s)\)-nucleus is a maximal region in which every surviving vertex has at least \(k\) internal \(s\)-clique witnesses and the region is connected through those witnesses.
+Thus a \(k\)-\((1,s)\)-nucleus is a maximal region in which every vertex has at least \(k\) internal \(s\)-clique witnesses and the region is connected through those witnesses.
 
 \begin{definition}[Core Number]\label{def:core}
 Given \(s\ge2\), the \emph{\((1,s)\)-nucleus core number} of a vertex \(v\), denoted \(\kappa_s(v)\), is the largest \(k\) for which \(v\) belongs to some \(k\)-\((1,s)\)-nucleus of \(G\).

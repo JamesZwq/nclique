@@ -86,12 +86,12 @@ In that setting, a path may need to be split, shrunk, or rebuilt.
 %
 The mutable \cpi{} machinery of~\cite{NuclearCD} remains the appropriate general tool, and this paper does not subsume it.
 
-\stitle{Closed-form support delta.}
+\stitle{Support loss from one path event.}
 Theorem~\ref{thm:vertex-removal} leaves only cardinality changes.
 %
 The support lost by any other live vertex on the path is therefore a binomial difference.
 
-\begin{lemma}[Closed-form Support Delta]\label{lem:support-delta}
+\begin{lemma}[Support Loss for a Path Event]\label{lem:support-delta}
 Let \(\TPath\) be a live path with \(p\ge\eta\) before an event that removes \(d\ge1\) live pivots from \(\TPath\).
 %
 For every other alive vertex \(u\) incident to \(\TPath\):
@@ -160,7 +160,7 @@ Path & \(\Vh\) & \(\Vp\) & \(\eta=s-|\Vh|\) & \(\binom{|\Vp|}{\eta}\) \\
 \end{tabular}
 \end{table}
 
-\begin{example}[Peel Event Walk-through]\label{ex:peel}
+\begin{example}[Peel event walk-through]\label{ex:peel}
 Consider the path \(\TPath_3=(\{v_1\},\{v_2,v_3,v_4\})\) in Table~\ref{tab:cpi-leaves}, with \(p=3\) and \(\eta=2\).
 %
 Peeling \(v_2\) as a pivot triggers Lemma~\ref{lem:support-delta} with \(d=1\).

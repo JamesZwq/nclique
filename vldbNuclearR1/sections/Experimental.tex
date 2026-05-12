@@ -15,6 +15,10 @@ They ask whether the static pipeline changes the cost profile enough to matter.
 \textbf{RQ4} measures \spin{} as the direct fixed-point baseline.
 %
 \textbf{RQ5} probes dense synthetic graphs where clique counts grow quickly.
+%
+\textbf{RQ6} pushes the pipeline to a billion-edge graph (\texttt{com-friendster}, \(1.8\)B edges).
+%
+\textbf{RQ7} isolates the contribution of each pipeline idea.
 
 \stitle{Hardware and software.}
 All experiments run on a dual-socket Intel Xeon Gold \(6248R\) machine with \(24\) cores and \(503\) GB DDR4 memory.
@@ -163,9 +167,9 @@ The analytical per-incidence gap is larger than the observed RSS gap because gra
 \centering
 \caption{Memory budget per vertex--path incidence at \(\Sig\gg n\).
 %
-Baseline numbers are from the mutable-\cpi{} implementation~\cite{NuclearCD}.
+Baseline numbers are from the mutable-\cpi{} implementation~\cite{NuclearCD}; \spinStar{} numbers are sizeof-based accounting for the static layout.
 %
-\spinStar{} numbers are sizeof-based accounting for the static layout.}
+The last two rows juxtapose the analytical \(\Sig\)-coefficient with measured median peak RSS from Table~\ref{tab:bd-mem}.}
 \label{tab:mem}
 \small
 \begin{tabular}{lrr}
@@ -180,7 +184,11 @@ Vertex-to-path incidence & --- & \(4\Sig\) \\
 Support array & \(4n\) & \(4n\) \\
 Heap / bucket array & \(24n\) & \(16n+8\kmax\) \\
 \midrule
-\textbf{Dominant total} & \(\approx 88\Sig\) & \(\approx 10\Sig\) \\
+\textbf{Analytical \(\Sig\)-coefficient} & \(\approx 88\Sig\) & \(\approx 10\Sig\) \\
+\midrule
+Measured: \texttt{com-youtube}, \(s{=}5\)        & \(642\) MB  & \(315\) MB  \\
+Measured: \texttt{web-it-2004}, \(s{=}3\)        & \(556\) MB  & \(425\) MB  \\
+Measured: \texttt{web-Stanford}, \(s{=}10\)      & \(261\) MB  & \(176\) MB  \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -406,6 +414,120 @@ The memory gap shows when mutable residual state amplifies dense-clique growth.}
 \Description{Peak-memory plots for synthetic dense graphs across several clique sizes and densities.}
 \label{fig:stress-mem}
 \end{figure}
+
+\stitle{RQ6: scaling to a billion-edge graph.}
+\label{sec:exp-friendster}
+The ten-graph benchmark stops at \texttt{com-orkut} (\(117\)M edges).
+%
+To push the pipeline an order of magnitude further, we run \spinStar{} with \(T{=}24\) on \texttt{com-friendster} (\(65\)M vertices, \(1.806\)B edges, the largest SNAP graph available).
+%
+\cbnd{} cannot complete on this graph because its mutable residual state grows past the available \(503\) GB at construction.
+%
+Table~\ref{tab:friendster} reports the per-phase wall time, the encoded clique count \(\Sig\), and peak RSS for the configurations that finish.
+%
+Figure~\ref{fig:friendster} visualises the same data.
+%
+\spinStar{} decomposes the graph for \(s\in\{2,3,4,5,6,11\}\), reaching \(\Sig\approx 2.26\times 10^{10}\) encoded \(s\)-clique witnesses at \(s{=}6\) and peeling that mass in \(651\) ms.
+%
+At \(s\in\{7,8,9,10\}\) the run is killed by the OOM-killer during construction; the \(s{=}11\) configuration succeeds again because \(\Sig\) drops back to \(1.68\times 10^{10}\).
+%
+Construction dominates wall time on this graph (about \(5\)--\(7\) thousand seconds against under \(0.7\) seconds of peel), so the bottleneck shift remains the right framing at this scale; the parallel builder of Section~\ref{sec:parabuild} is what makes the construction phase tractable on a \(1.8\)B-edge input.
+
+\begin{table}[t]
+\centering
+\caption{\spinStar{} on \texttt{com-friendster} (\(65\)M vertices, \(1.806\)B edges) at \(T{=}24\).
+%
+\(\Sig\) is the encoded clique count.
+%
+\(\cbnd\) cannot complete on this graph at any \(s\); \texttt{OOM} marks \(s\) values where construction exhausts the \(503\) GB machine.}
+\label{tab:friendster}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{rrrrrr}
+\toprule
+\(s\) & status & build (s) & peel (s) & \(\Sig\) & RSS (GB) \\
+\midrule
+\(2\)  & OK  & \(5012\) & \(0.34\)  & \(3.48\times10^{9}\)  & \(153\) \\
+\(3\)  & OK  & \(5579\) & \(0.56\)  & \(8.94\times10^{9}\)  & \(324\) \\
+\(4\)  & OK  & \(5841\) & \(0.68\)  & \(1.38\times10^{10}\) & \(451\) \\
+\(5\)  & OK  & \(6220\) & \(0.62\)  & \(1.90\times10^{10}\) & \(446\) \\
+\(6\)  & OK  & \(6855\) & \(0.65\)  & \(2.26\times10^{10}\) & \(430\) \\
+\(7\)--\(10\) & OOM & --- & --- & --- & --- \\
+\(11\) & OK  & \(6470\) & \(0.17\)  & \(1.68\times10^{10}\) & \(297\) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig_friendster.pdf}
+\caption{\spinStar{} on \texttt{com-friendster} (\(1.806\)B edges) at \(T{=}24\): wall time (left) and peak RSS (right) as \(s\) varies.
+%
+Crosses mark the \(s\) values where construction hit the \(503\) GB cap and the kernel killed the process.
+%
+\spinStar{} peels the static \cpi{} in under one second on every successful configuration; construction dominates wall time at this scale.}
+\Description{Two-panel plot of wall time and peak RSS for SPIN* on com-friendster, with OOM crosses for s=7..10.}
+\label{fig:friendster}
+\end{figure}
+
+\stitle{RQ7: where do the gains come from?}
+\label{sec:exp-ablation}
+The \spinStar{} pipeline combines two algorithmic ideas (static \cpi{} state in Section~\ref{sec:static}; bucket-queue peel with per-event support updates in Section~\ref{sec:peelh}) and one engineering choice (a flat dual-CSR incidence layout that replaces the tree-based residual structure).
+%
+We isolate the two algorithmic ideas against the mutable baseline on the same \((graph,s)\) cells.
+%
+\textbf{ST} runs the same fixed-point solver as \cbnd{} but reads paths from an immutable static \cpi{}; the solver still scans every vertex per round.
+%
+\textbf{ST}\(+\)\textbf{bucket queue}\(+\)\textbf{events} is the full \spinStar{} pipeline (Algorithm~\ref{alg:peelH}).
+%
+Table~\ref{tab:ablation} reports median peel time at each step on the \(171\)-cell matched subset, together with the gmean speedup over the previous step.
+%
+Static state alone already gives a \(3.80\times\) gmean speedup over the mutable baseline: leaving the paths unchanged removes the residual-rewrite work that dominates \cbnd{}.
+%
+Adding bucket-queue order with event-driven updates gives a further \(3.95\times\) over static-only; ordered finalisation eliminates redundant per-round vertex scans.
+%
+The cumulative gmean speedup of the full pipeline over \cbnd{} on these matched cells is \(15.00\times\), consistent with the \(13.50\times\) headline reported in RQ1 over a larger and partly disjoint cell set.
+%
+The two ideas compound rather than substitute: bucket-queue order without the static invariant cannot avoid re-deriving residual support after each peel, and the static invariant without ordered finalisation regresses to the full-pass behaviour measured for \spin{} in RQ4.
+
+\begin{table}[t]
+\centering
+\caption{Ablation on \(171\) matched cells: median peel time at each pipeline step, with gmean speedup against the previous step.}
+\label{tab:ablation}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrr}
+\toprule
+Pipeline step & median peel (ms) & gmean speedup \\
+\midrule
+\cbnd{} (mutable baseline)                & \(464.9\) & --- \\
+\(+\) static \cpi{} (full-pass solver)    & \(105.3\) & \(3.80\times\) \\
+\(+\) bucket queue + events (\spinStar{}) & \(\phantom{0}14.8\) & \(3.95\times\) \\
+\midrule
+Cumulative \cbnd{} \(\rightarrow\) \spinStar{} & & \(15.00\times\) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\stitle{Limitations.}
+\label{sec:exp-limits}
+The static-\cpi{} invariant is specific to \(r{=}1\).
+%
+For general \((r,s)\) with \(r\ge 2\), edge or higher-order peel events can destroy the cliques that a path stores, and the present pipeline does not subsume the mutable-\cpi{} machinery of~\cite{NuclearCD}.
+%
+Memory is the binding resource on the densest graphs: \(\Sig\) grows superpolynomially with \(s\) on dense inputs, and the OOM kills on \texttt{com-friendster} at \(s\in\{7,\ldots,10\}\) illustrate this.
+%
+Support counters use \(\binom{p}{\eta}\) which exceeds \(2^{63}\) at moderate \(p\); the implementation guards the threshold pass with \(128\)-bit accumulators when the count overflows \(64\) bits, but applications that need exact support magnitudes (rather than ranks) must use the same guard.
+%
+Finally, the experiments here run single-machine; distributed-memory deployments and dynamic-graph updates are not evaluated.
+
+\stitle{Reproducibility.}
+\label{sec:exp-repro}
+All experiments are scripted: build commands, dataset URLs, and bench drivers are version-controlled alongside the source.
+%
+Each binary run is wrapped with \texttt{/usr/bin/time~-v} so peak RSS, page faults, and exit status are captured in every CSV row.
+%
+We will release the code, the bench harness, and the result CSVs under an anonymised public archive at submission, and de-anonymise the project repository on acceptance.
 
 \stitle{Takeaway.}
 The experiments support the paper's dependency chain.

@@ -24,7 +24,7 @@ The algorithmic consequences follow from that state change.
 %
 \paraBuild{} addresses construction after cheap peeling exposes it as the next bottleneck.
 %
-\buildHier{} reads the sorted deletion log in reverse to recover the hierarchy.
+\buildHier{} scans static \cpi{} leaves in descending birth level to recover the hierarchy.
 
 The experiments and case studies support the practical value of the specialization.
 %
@@ -34,4 +34,12 @@ The case studies show that vertex-centric \((1,s)\) can match higher-\(r\) quali
 %
 The boundary is explicit: the static-\cpi{} invariant is for \(r=1\), not for general \((r,s)\).
 
-A natural next step is to identify restricted \(r\ge2\) settings where enough path structure survives to support counter-only updates.
+Several directions extend this work.
+%
+The most direct is to identify restricted \(r\ge2\) settings where enough path structure survives to support counter-only updates, for example edge peelings constrained to triangle-only support.
+%
+A second direction is the streaming and dynamic-graph setting: vertex peeling preserves the static \cpi{}, but vertex insertion or deletion changes which paths exist; the question is whether the new paths can be merged into the static index incrementally.
+%
+A third direction is hardware: \spinStar{}'s peel reads a flat dual CSR and writes only path counters, which maps to GPU and other accelerators, while \paraBuild{}'s thread-local arena pattern is a natural fit for distributed-memory partitions.
+%
+A fourth direction is application-driven: extending the case studies into temporal and attributed graphs, where the static-\cpi{} invariant could anchor a sequence of decompositions across snapshots.
