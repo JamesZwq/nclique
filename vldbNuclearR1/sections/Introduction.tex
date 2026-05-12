@@ -39,7 +39,7 @@ Computing $(1,s)$-nucleus decomposition at high $s$ is hard because the number o
 %
 A \cpi{} path stores a hold set and a pivot set; it compactly represents all $s$-cliques formed by taking every hold vertex and choosing the remaining vertices from the pivot set.
 %
-This representation makes general $(r,s)$-nucleus decomposition practical, but using it efficiently for the vertex-centric case $r=1$ raises two challenges.
+This representation makes general $(r,s)$-nucleus decomposition practical, but using it efficiently for the vertex-centric case $r=1$ raises three challenges.
 
 \sstitle{Residual state during peeling.}
 Each peel step must update the surviving support of every remaining vertex.
@@ -50,6 +50,13 @@ The challenge is whether this mutability is necessary at $r=1$, where peeling re
 %
 If not, residual maintenance becomes pure arithmetic over a static incidence layout.
 
+\sstitle{Memory footprint of the residual index.}
+The residual structures that support peeling also dominate memory.
+%
+Per-path vertex hash sets, the reverse vertex-to-path map, and the live Bron--Kerbosch recursion tree together pay constant-factor overhead per vertex--path incidence on top of the clique-encoding cost.
+%
+The challenge is to encode the same $s$-clique witnesses with a layout whose memory grows with the vertex--path incidence count $\Sig$ alone, so that the achievable $s$ on a fixed-memory machine is dictated by $\Sig$ rather than by hash-table overhead.
+
 \sstitle{Construction as the new bottleneck.}
 Once peeling becomes counter-only, the cost profile shifts: on many real graphs the static index takes seconds to minutes to construct while peeling takes milliseconds, so the index builder is the next bottleneck.
 %
@@ -58,7 +65,7 @@ The challenge is to construct the static \cpi{} in parallel without paying the s
 \stitle{State-of-the-Art and Limitations.}
 The current state of the art for general $(r,s)$-nucleus decomposition is \cbnd~\cite{NuclearCD}, the mutable-\cpi{} algorithm.
 %
-\cbnd{} addresses the general case correctly, but inherits two weaknesses when restricted to $r=1$.
+\cbnd{} addresses the general case correctly, but inherits three weaknesses when restricted to $r=1$.
 
 \sstitle{Mutable residual-index maintenance.}
 \cbnd{} rewrites path records and updates a hash-indexed reverse map at every peel step.
@@ -66,6 +73,11 @@ The current state of the art for general $(r,s)$-nucleus decomposition is \cbnd~
 This work is intrinsic to the mutable design.
 %
 Our ablation on $171$ matched cells shows that simply replacing the mutable index with a static one (still using a full-pass solver) already gives a $3.80\times$ geometric-mean peel-time speedup; the residual rewrites are a real cost, not a constant factor.
+
+\sstitle{High memory consumption.}
+\cbnd{}'s per-path vertex hash sets, reverse vertex-to-path map, and live Bron--Kerbosch recursion tree together cost roughly $88\Sig$ bytes (Section~\ref{sec:exp}, Table~\ref{tab:mem}) — close to an order of magnitude more than the $10\Sig$-byte budget of the static layout we develop here.
+%
+The geometric-mean memory-usage ratio (\cbnd{} over \spinStar{}) is $1.55\times$ on the matched cells and $3.92\times$ at maximum; on \texttt{com-friendster} (the largest SNAP graph), the overhead pushes \cbnd{} past the $503$ GB available at every $s$, so the algorithm never completes on that graph.
 
 \sstitle{Construction as the residual bottleneck.}
 Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} at $s=3$, construction takes about $127$ seconds and peeling takes $351$ milliseconds, so the static index builder dominates total runtime by $360\times$ on this configuration.
@@ -79,7 +91,7 @@ A path stops contributing only when one of its hold vertices is removed; otherwi
 %
 This invariant turns exact decomposition into counter arithmetic over a static incidence layout, which in turn unlocks an incremental peel schedule and a parallel builder.
 %
-We address the two challenges with the following contributions, and along the way derive two solvers (\spin{} and \spinStar{}) for computing core values over the static index.
+We address the three challenges with the following contributions, and along the way derive two solvers (\spin{} and \spinStar{}) for computing core values over the static index.
 
 \sstitle{Static-\cpi{} state for $(1,s)$.}
 We prove that vertex peeling never rewrites the stored hold or pivot sets (Theorem~\ref{thm:vertex-removal}) and give a closed-form expression for the support loss caused by each path event (Lemma~\ref{lem:support-delta}).
