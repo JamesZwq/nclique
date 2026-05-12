@@ -78,7 +78,7 @@ Because the call reads the static \cpi{} but never mutates a path, the same witn
 \algfontsize
 \caption{\(\vertexSupport(v,h)\) --- one-vertex update from static clique witnesses.}
 \label{alg:refresh}
-\KwIn{Vertex \(v\in V\); current \(h\)-value vector \(h\); \cpi{} \(\mathcal{P}\).}
+\KwIn{Vertex \(v\in V\); value array \(h\) with \(h[u]\) the running estimate of \(\kappa_s(u)\) for each \(u\in V\); \cpi{} \(\mathcal{P}\).}
 \KwOut{The threshold-support value \(\Phi_h(v)\).}
 
 \(C[0,\ldots,h[v]]\gets0\) \tcp*{threshold witness counts}
@@ -101,7 +101,7 @@ In the stated implementation, one call costs \(O(\deg_{\Sig}(v)\log\deg_{\Sig}(v
 %
 The call reads the static \cpi{} and the vector \(h\), and it mutates no path.
 
-\subsection{Direct h-Index Iteration}\label{sec:localh}
+\subsection{Direct Static-Path Iteration}\label{sec:localh}
 
 \(\vertexSupport\) defines the threshold-support equation for one vertex.
 %
@@ -127,14 +127,14 @@ The swap at the end of the pass avoids order dependence.
 %
 A pass with no changed entry is the certificate that the fixed point has been reached.
 
-\begin{example}[\(h\)-Index Refresh on the Running Example]\label{ex:hop}
+\begin{example}[Static-path update on the running example]\label{ex:hop}
 Initialise \(h[v]\gets\sdeg(v)\) using Lemma~\ref{lem:supp}; on the running example \(h[v_4]=7\) (contributions from \(\TPath_3,\TPath_4\) as pivot, \(\TPath_5,\TPath_6\) as hold; see Table~\ref{tab:cpi-leaves}).
 %
 The first call \(\vertexSupport(v_4,h)\) scans the four paths through \(v_4\) and counts threshold witnesses via Lemma~\ref{lem:per-path-witness}.
 %
 At threshold \(k=3\), paths \(\TPath_3\) and \(\TPath_5\) together contribute \(W_{v_4}(h,3)=3\) witnesses with all other path vertices at \(h\ge3\), so the largest \(k\) with \(W_{v_4}(h,k)\ge k\) is \(\Phi_h(v_4)=3\), the final \(\kappa_3(v_4)\).
 %
-\spin{} reaches the fixed point in a small number of synchronous passes, but each pass scans every vertex regardless of whether its value can still change --- the redundancy that \spinStar{} eliminates in Section~\ref{sec:peelh}.
+\spin{} reaches the fixed point in a small number of full passes, but each pass scans every vertex regardless of whether its value can still change; this is the redundancy that \spinStar{} eliminates in Section~\ref{sec:peelh}.
 \end{example}
 
 \begin{algorithm}[t]
@@ -162,7 +162,7 @@ At threshold \(k=3\), paths \(\TPath_3\) and \(\TPath_5\) together contribute \(
 
 The proof below connects the fixed point to \((1,s)\)-nucleus core values.
 %
-It is the reason \spin{} can serve as a correctness reference for the incremental algorithm of Section~\ref{sec:peelh}.
+It is the reason \spin{} can serve as the semantic reference for the incremental algorithm of Section~\ref{sec:peelh}.
 
 \begin{lemma}[Fixed Point Correctness]\label{lem:hindex-fixed-point}
 Initialised at \(h^{(0)}[v]=\sdeg(v)\), Algorithm~\ref{alg:localH} converges in at most \(1+n\kmax\) passes to \(h[v]=\kappa_s(v)\) for every \(v\in V\).
@@ -272,7 +272,7 @@ Its running time depends on \(U\), the number of incremental support-update even
 
 The pseudocode writes the affected update as \(\vertexSupport\) to keep the fixed-point semantics visible.
 %
-The implementation evaluates the changed path contribution by the closed-form delta from Lemma~\ref{lem:support-delta}.
+The implementation evaluates the changed path contribution with the binomial loss formula from Lemma~\ref{lem:support-delta}.
 %
 The total number of such evaluations is \(U\).
 %
