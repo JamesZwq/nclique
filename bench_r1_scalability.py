@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """
-Scalability benchmark: random edge-subsampling on a fixed graph.
+Scalability benchmark: vertex-induced subsampling on a fixed graph.
 
-Subsamples edges of a base graph to a list of ratios (default 0.2, 0.4,
-0.6, 0.8, 1.0); for each subsampled graph runs Ours_ST + REF_R1 across
-a sweep of s values; reports wall-clock time and peak RSS.
+For each ratio in `ratios`, we keep `round(ratio * n)` vertices selected
+uniformly at random (nested: 20% ⊂ 40% ⊂ 60% ⊂ 80% ⊂ 100% by construction,
+because the same seeded RNG yields the same shuffled vertex order every
+call), then write the induced subgraph (only edges with both endpoints
+kept). For each subsampled graph we run Ours_ST + REF_R1 across a sweep
+of s values and report wall-clock time and peak RSS.
 
-The expected story: time curves stack cleanly in proportion to the
-sample ratio (near-linear scaling in edge count), with no inversions.
+Why vertex-induced rather than random-edge: SPIN★ / CND runtime scales
+with Σ (encoded s-clique count), and random edge removal drops Σ
+super-linearly because each missing edge can destroy many cliques. A
+vertex-induced subsample preserves clique structure inside the kept
+vertex set; the # of s-cliques scales smoothly with the kept vertex
+count, which gives clean monotone time / memory curves.
 
 Usage:
     python3 bench_r1_scalability.py \
@@ -40,11 +47,14 @@ ALGOS = [("Ours_ST", {"PIVOTER_RUN_ST": "1"}), ("REF_R1", {})]
 
 
 def subsample_edges(in_path: Path, ratio: float, out_path: Path, seed: int = 42):
-    """Nested edge subsampling: reproducibly shuffle with `seed`, then write
-    the first ratio*m edges. Because every call uses the same seed and the
-    same input, the 40% sample is a strict superset of the 20% sample, the
-    60% sample is a strict superset of the 40% sample, etc. — runtime and
-    memory curves vs. ratio are therefore monotone by construction."""
+    """Nested vertex-induced subsampling: reproducibly shuffle the vertex set
+    with `seed`, take the first ratio*n vertices, and write the induced
+    subgraph (edges with both endpoints kept). Because every call uses the
+    same seed and the same input, the 40% sample is a strict superset of
+    the 20% sample, etc. Vertex IDs are re-mapped to a contiguous 0..k-1
+    range so the header reports |V'| accurately.
+
+    Returns the number of edges kept (for logging)."""
     rng = random.Random(seed)
     with in_path.open() as fin:
         first = fin.readline().split()
@@ -54,12 +64,18 @@ def subsample_edges(in_path: Path, ratio: float, out_path: Path, seed: int = 42)
             parts = line.split()
             if len(parts) >= 2:
                 edges.append((int(parts[0]), int(parts[1])))
-    rng.shuffle(edges)
-    keep = max(1, int(round(ratio * len(edges))))
+    vertices = list(range(n))
+    rng.shuffle(vertices)
+    keep_n = max(1, int(round(ratio * n)))
+    kept = set(vertices[:keep_n])
+    # Build contiguous remap so the resulting file has vertex ids in [0, keep_n).
+    remap = {v: i for i, v in enumerate(sorted(kept))}
+    out_edges = [(remap[u], remap[v]) for (u, v) in edges if u in kept and v in kept]
     with out_path.open("w") as fout:
-        fout.write(f"{n} {keep}\n")
-        for u, v in edges[:keep]:
+        fout.write(f"{keep_n} {len(out_edges)}\n")
+        for u, v in out_edges:
             fout.write(f"{u} {v}\n")
+    return len(out_edges)
 
 
 def parse_timing(stdout: str):
@@ -122,9 +138,8 @@ def main():
     try:
         for ratio in args.ratios:
             sub_path = work / f"{gp.stem}_{int(ratio*100):03d}.edges"
-            subsample_edges(gp, ratio, sub_path, seed=args.seed)
-            kept = int(round(ratio * base_edges))
-            print(f"[ratio={ratio:.2f}] kept~{kept} edges -> {sub_path.name}",
+            kept = subsample_edges(gp, ratio, sub_path, seed=args.seed)
+            print(f"[ratio={ratio:.2f}] kept={kept} edges -> {sub_path.name}",
                   flush=True)
 
             for s in args.s_list:
