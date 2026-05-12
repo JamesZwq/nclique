@@ -94,7 +94,7 @@ On \texttt{com-dblp}, the first non-trivial clique support already improves the 
 %
 Table~\ref{tab:cs3} reports top-\(10{,}000\) quality.
 %
-Figure~\ref{fig:cs3} shows precision over \(K\).
+Figure~\ref{fig:cs3} plots Precision@\(K\) and the gain of \((1,s)\)-core over the \(k\)-core baseline as \(K\) varies; the gain grows with \(K\) and exceeds \(+4\) percentage points at \(K=10^{4}\) for every \(s\in\{3,5,8,10\}\), reaching \(+5\) pp at \(s{=}5\) and \(K=5\times 10^{4}\).
 
 \begin{table}[t]
 \centering
@@ -126,10 +126,12 @@ For larger \(s\), the active set drops below \(10{,}000\), so the comparison cha
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/cs3_precision.pdf}
-\caption{Precision@\(K\) on \texttt{com-dblp}.
+\caption{Ground-truth ranking quality on \texttt{com-dblp}.
 %
-Observe that the \((1,s)\)-core rankings for \(s\in\{3,5,10,15\}\) stay above the \(k\)-core curve in the plotted range.}
-\Description{Precision-at-K curves comparing k-core and several (1,s)-core rankings on DBLP.}
+Left: absolute Precision@\(K\) — the \((1,s)\)-cores sit above the \(k\)-core baseline at large \(K\).
+%
+Right: gain over the \(k\)-core baseline (\(y{=}0\) line); \((1,s)\)-cores improve Precision by up to \(+5\) percentage points at \(K{=}5\times 10^{4}\).}
+\Description{Two-panel plot. Left shows absolute Precision@K. Right shows the Δ Precision@K gain over the k-core baseline for four (1,s)-cores.}
 \label{fig:cs3}
 \end{figure}
 
