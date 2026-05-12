@@ -91,22 +91,6 @@ Processing these leaves in descending activation level with union--find yields t
 %
 \buildHier{} performs this descending pass over \cpi{} leaves and does not re-enumerate \(s\)-cliques.
 
-Figure~\ref{fig:teaser} previews the effect.
-%
-On \texttt{com-youtube} (\(1.13\)M vertices, \(2.99\)M edges), \spinStar{} peels every \((1,s)\)-configuration in \(8\)--\(220\) ms, while \cbnd{} stays one to two orders of magnitude slower; the geometric-mean peel-time speedup on this graph alone is \(10.6\times\).
-%
-Section~\ref{sec:exp} reports the same comparison across the full ten-graph benchmark.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.7\linewidth]{figures/fig_teaser.pdf}
-\caption{Peel time on \texttt{com-youtube}: \spinStar{} (ours) versus the mutable-\cpi{} baseline \cbnd{} as \(s\) varies.
-%
-On this graph alone, \spinStar{} achieves a \(10.6\times\) geometric-mean speedup.}
-\Description{Line plot of peel-time as a function of s for SPIN* and CND on com-youtube.}
-\label{fig:teaser}
-\end{figure}
-
 The contributions are a dependency chain.
 \begin{itemize}[leftmargin=1.3em,itemsep=1pt,topsep=2pt]
 \item \textbf{Static-\cpi{} state for \((1,s)\).} We show that vertex peeling never rewrites stored hold and pivot sets. Each removal is handled as either a path death or a pivot-counter decrement, with the support change given by Theorem~\ref{thm:vertex-removal} and Lemma~\ref{lem:support-delta}.
