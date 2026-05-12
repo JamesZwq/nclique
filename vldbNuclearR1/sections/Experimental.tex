@@ -508,23 +508,23 @@ The \cbnd{} curves are also monotone but flatter, which reflects the cap imposed
 %
 The ratio between \cbnd{} and \spinStar{} therefore widens with input size, in the same direction as the cell-level speedup reported in RQ1.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_scalability_time.pdf}
+\includegraphics[width=0.78\linewidth]{figures/fig_scalability_time.pdf}
 \caption{Vertex-induced scalability: wall-clock time of \spinStar{} (left) and \cbnd{} (right) as \(s\) varies, with one curve per vertex-sample ratio.
 %
 Higher ratios consistently take longer; the curves do not cross.}
-\Description{Two-panel log-scale plot showing wall time vs s for five vertex-sample ratios for SPIN* and CND.}
+\Description{Two-column log-scale grid showing wall time vs s for five vertex-sample ratios across five graphs (rows), one column per algorithm.}
 \label{fig:scalability-time}
-\end{figure}
+\end{figure*}
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_scalability_mem.pdf}
+\includegraphics[width=0.78\linewidth]{figures/fig_scalability_mem.pdf}
 \caption{Vertex-induced scalability: peak RSS under the same protocol as Figure~\ref{fig:scalability-time}.}
-\Description{Two-panel log-scale plot showing peak RSS vs s for five vertex-sample ratios.}
+\Description{Two-column log-scale grid showing peak RSS vs s for five vertex-sample ratios across five graphs (rows), one column per algorithm.}
 \label{fig:scalability-mem}
-\end{figure}
+\end{figure*}
 
 \stitle{Limitations.}
 \label{sec:exp-limits}
