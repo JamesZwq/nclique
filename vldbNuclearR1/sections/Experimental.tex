@@ -27,7 +27,7 @@ All experiments run on a dual-socket Intel Xeon Gold \(6248R\) machine with \(24
 %
 The operating system is Ubuntu \(22.04\).
 %
-The code is compiled with Clang \(18.1\) using \texttt{-O3 -march=native}.
+The code\footnote{We will release the code, bench harness, and result CSVs under an anonymised public archive at submission and de-anonymise the repository on acceptance.} is compiled with Clang \(18.1\) using \texttt{-O3 -march=native}.
 %
 It is linked against TBB \(2021.10\), Boost \(1.83\), and \texttt{robin\_hood::unordered\_flat\_map}.
 %
@@ -527,8 +527,6 @@ Finally, the experiments here run single-machine; distributed-memory deployments
 All experiments are scripted: build commands, dataset URLs, and bench drivers are version-controlled alongside the source.
 %
 Each binary run is wrapped with \texttt{/usr/bin/time~-v} so peak RSS, page faults, and exit status are captured in every CSV row.
-%
-We will release the code, the bench harness, and the result CSVs under an anonymised public archive at submission, and de-anonymise the project repository on acceptance.
 
 \stitle{Takeaway.}
 The experiments support the paper's dependency chain.
