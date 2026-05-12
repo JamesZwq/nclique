@@ -35,7 +35,7 @@ Single-threaded measurements use one core.
 %
 Parallel-construction measurements use the thread counts reported in Table~\ref{tab:par}.
 %
-Wall-clock and resident-set measurements are averaged or summarized over repeated runs as stated in each experiment.
+Time and memory measurements are averaged or summarized over repeated runs as stated in each experiment.
 
 \stitle{Datasets.}
 Table~\ref{tab:datasets} lists the benchmark graphs.
@@ -89,7 +89,7 @@ The comparison isolates the cost of \cpi{} mutability against static-state peeli
 
 For every matched \((graph,s)\) pair, we run \cbnd{} and \spinStar{} on the same input.
 %
-We record end-to-end wall-clock time and peak resident-set memory from \texttt{getrusage}'s \texttt{ru\_maxrss}.
+We record the end-to-end time and the program's memory usage.
 %
 End-to-end time includes graph loading, degeneracy ordering, \cpi{} construction, peeling, and output emission.
 %
@@ -100,16 +100,16 @@ The benchmark has \(307\) matched cells where both \spinStar{} and \cbnd{} compl
 %
 Across the ten graphs, \spinStar{} achieves a peel-time speedup over \cbnd{} of geometric-mean \(13.50\times\) and maximum \(44.76\times\).
 %
-The end-to-end wall-clock speedup is smaller (gmean \(1.10\times\)) because the shared SDCT construction phase dominates total wall time once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
+The end-to-end speedup is smaller (gmean \(1.10\times\)) because the shared SDCT construction phase dominates total runtime once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
 %
-The peak-RSS ratio (\cbnd{} over \spinStar{}) has geometric mean \(1.55\times\) and maximum \(3.92\times\).
+The memory-usage ratio (\cbnd{} over \spinStar{}) has geometric mean \(1.55\times\) and maximum \(3.92\times\).
 %
 Figure~\ref{fig:exp-time} and Figure~\ref{fig:exp-mem} show where these gains occur.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_exp_time.pdf}
-\caption{Wall-clock time across ten graphs.}
+\caption{End-to-end time across ten graphs.}
 \Description{A grid of log-scale runtime plots over parameter s, with one subplot per benchmark graph.}
 \label{fig:exp-time}
 \end{figure*}
@@ -117,7 +117,7 @@ Figure~\ref{fig:exp-time} and Figure~\ref{fig:exp-mem} show where these gains oc
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_exp_mem.pdf}
-\caption{Peak RSS across ten graphs.}
+\caption{Memory usage across ten graphs.}
 \Description{A grid of log-scale peak-memory plots over parameter s, with one subplot per benchmark graph.}
 \label{fig:exp-mem}
 \end{figure*}
@@ -128,7 +128,7 @@ The mutable baseline stores path hash sets and reverse hash maps.
 %
 \spinStar{} stores flat path-to-vertex and vertex-to-path arrays plus path counters.
 %
-The analytical per-incidence gap is larger than the observed RSS gap because graph adjacency, allocator overhead, and per-vertex structures do not scale with \(\Sig\).
+The analytical per-incidence gap is larger than the observed memory gap because graph adjacency, allocator overhead, and per-vertex structures do not scale with \(\Sig\).
 
 \begin{table}[t]
 \centering
@@ -163,17 +163,17 @@ The phase study uses \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{we
 %
 It reports median times over three runs.
 %
-Table~\ref{tab:breakdown} reports representative per-phase wall-clock medians (\(load/build/peel\) in ms) alongside peak RSS (in MB) for both algorithms, over three runs.
+Table~\ref{tab:breakdown} reports representative per-phase time medians (\(load/build/peel\) in ms) alongside memory usage (in MB) for both algorithms, over three runs.
 
 \begin{table*}[t]
 \centering
-\caption{Per-phase wall time (ms) and peak RSS (MB).}
+\caption{Per-phase time (ms) and memory usage (MB).}
 \label{tab:breakdown}
 \scriptsize
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{llrrrrrrrrr}
 \toprule
-\multirow{2}{*}{Graph} & \multirow{2}{*}{\(s\)} & \multicolumn{3}{c}{\spinStar{} time (ms)} & \multicolumn{3}{c}{\cbnd{} time (ms)} & \multicolumn{2}{c}{peak RSS (MB)} & RSS \\
+\multirow{2}{*}{Graph} & \multirow{2}{*}{\(s\)} & \multicolumn{3}{c}{\spinStar{} time (ms)} & \multicolumn{3}{c}{\cbnd{} time (ms)} & \multicolumn{2}{c}{memory (MB)} & mem \\
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-10}
 & & load & build & peel & load & build & peel & \spinStar{} & \cbnd{} & ratio \\
 \midrule
@@ -259,7 +259,7 @@ On the easiest cells \spinStar{} can be slightly slower (minimum ratio \(0.62\ti
 %
 On the largest inputs \spin{} hits the \(1\)h cap (\texttt{com-orkut} for \(s\ge3\), \texttt{wiki-Talk} for the single cell \(s=10\)); \spinStar{} finishes the same configurations in seconds to minutes.
 
-\spin{}'s memory profile, with the dual-CSR data structure shared with \spinStar{}, is essentially identical to \spinStar{}'s on every paired cell: the geometric-mean RSS ratio (\spin{}\(/\)\spinStar{}) is \(0.97\) over the \(291\) matched cells, and \spin{} is slightly smaller than \spinStar{} on \(83.8\%\) of them.
+\spin{}'s memory profile, with the dual-CSR data structure shared with \spinStar{}, is essentially identical to \spinStar{}'s on every paired cell: the geometric-mean memory-usage ratio (\spin{}\(/\)\spinStar{}) is \(0.97\) over the \(291\) matched cells, and \spin{} is slightly smaller than \spinStar{} on \(83.8\%\) of them.
 %
 The reason is structural: \spinStar{}'s extra state beyond the shared CPI consists of a per-path counter cache (\(\sim 13\) bytes per leaf) and a peel-order bucket queue (\(\sim 17\) bytes per vertex), which \spin{} does not maintain because it scans every vertex each round.
 %
@@ -287,8 +287,8 @@ Where both implementations finish, \spinStar{} remains below \cbnd{} in time and
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.85\linewidth]{figures/fig_stress.pdf}
-\caption{Dense-synthetic stress: wall time (top) and peak RSS (bottom).}
-\Description{Two-row log-scale grid showing wall time (top) and peak RSS (bottom) for SPIN* vs CND on synthetic dense graphs across four s values and six densities.}
+\caption{Dense-synthetic stress: time (top) and memory usage (bottom).}
+\Description{Two-row log-scale grid showing time (top) and memory usage (bottom) for SPIN* vs CND on synthetic dense graphs across four s values and six densities.}
 \label{fig:stress}
 \end{figure*}
 
@@ -298,21 +298,21 @@ The ten-graph benchmark stops at \texttt{com-orkut} (\(117\)M edges); to push th
 %
 \cbnd{} cannot complete on this graph at any \(s\) because its mutable residual state grows past the available \(503\) GB at construction.
 %
-Table~\ref{tab:friendster} reports the per-phase wall time, the encoded clique count \(\Sig\), and peak RSS for the configurations on which \spinStar{} produces a complete decomposition.
+Table~\ref{tab:friendster} reports the per-phase time, the encoded clique count \(\Sig\), and memory usage for the configurations on which \spinStar{} produces a complete decomposition.
 %
 \spinStar{} successfully decomposes the graph for a wide range of \(s\): at \(s{=}6\) it indexes \(\Sig\approx 2.26\times 10^{10}\) encoded \(s\)-clique witnesses and peels that entire witness mass in \(651\) ms; at \(s{=}11\) it indexes \(\Sig\approx 1.68\times 10^{10}\) witnesses and finishes peeling in \(167\) ms.
 %
-Construction is what dominates wall time on this graph (about \(5\)--\(7\) thousand seconds against under one second of peel), confirming that the bottleneck shift carries over to the billion-edge regime; the parallel builder of Section~\ref{sec:parabuild} is what makes the construction phase tractable on a \(1.8\)B-edge input.
+Construction is what dominates total runtime on this graph (about \(5\)--\(7\) thousand seconds against under one second of peel), confirming that the bottleneck shift carries over to the billion-edge regime; the parallel builder of Section~\ref{sec:parabuild} is what makes the construction phase tractable on a \(1.8\)B-edge input.
 
 \begin{table}[t]
 \centering
-\caption{Build/peel time, encoded clique count, and peak RSS on \texttt{com-friendster} (\(1.806\)B edges).}
+\caption{Build/peel time, encoded clique count, and memory usage on \texttt{com-friendster} (\(1.806\)B edges).}
 \label{tab:friendster}
 \small
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{rrrrr}
 \toprule
-\(s\) & build (s) & peel (s) & \(\Sig\) & RSS (GB) \\
+\(s\) & build (s) & peel (s) & \(\Sig\) & memory (GB) \\
 \midrule
 \(2\)  & \(5012\) & \(0.34\)  & \(3.48\times10^{9}\)  & \(153\) \\
 \(3\)  & \(5579\) & \(0.56\)  & \(8.94\times10^{9}\)  & \(324\) \\
@@ -375,15 +375,15 @@ We pick vertex-induced rather than random-edge subsampling because \spinStar{}'s
 %
 We re-run \spinStar{} on five graphs spanning two orders of magnitude in edge count (\(\texttt{com-dblp},\texttt{com-youtube},\texttt{web-Stanford},\texttt{web-Google},\texttt{soc-pokec}\)) for \(s\in\{2,3,5,7,9,11,13,15\}\) on each subsample.
 %
-Figure~\ref{fig:scalability} reports wall-clock time (top row) and peak RSS (bottom row) as the ratio grows.
+Figure~\ref{fig:scalability} reports end-to-end time (top row) and memory usage (bottom row) as the ratio grows.
 %
-On every graph \spinStar{}'s curves are ordered cleanly by ratio at every \(s\) in both metrics: denser subsamples take longer and use more RSS, with no inversions, indicating that the static-\cpi{} pipeline scales smoothly with input size from sparse collaboration graphs to dense social graphs.
+On every graph \spinStar{}'s curves are ordered cleanly by ratio at every \(s\) in both metrics: denser subsamples take longer and use more memory, with no inversions, indicating that the static-\cpi{} pipeline scales smoothly with input size from sparse collaboration graphs to dense social graphs.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_scalability.pdf}
-\caption{Vertex-induced scalability: wall time (top) and peak RSS (bottom).}
-\Description{Two-row five-column log-scale grid showing wall time (top) and peak RSS (bottom) for SPIN* under five vertex-sample ratios on five graphs.}
+\caption{Vertex-induced scalability: time (top) and memory usage (bottom).}
+\Description{Two-row five-column log-scale grid showing time (top) and memory usage (bottom) for SPIN* under five vertex-sample ratios on five graphs.}
 \label{fig:scalability}
 \end{figure*}
 
@@ -403,7 +403,7 @@ Finally, the experiments here run single-machine; distributed-memory deployments
 \label{sec:exp-repro}
 All experiments are scripted: build commands, dataset URLs, and bench drivers are version-controlled alongside the source.
 %
-Each binary run is wrapped with \texttt{/usr/bin/time~-v} so peak RSS, page faults, and exit status are captured in every CSV row.
+Each binary run is wrapped with \texttt{/usr/bin/time~-v} so memory usage, page faults, and exit status are captured in every CSV row.
 
 \stitle{Takeaway.}
 The experiments support the paper's dependency chain.

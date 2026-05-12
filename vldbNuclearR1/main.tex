@@ -61,7 +61,7 @@ We observe that the \((1,s)\) special case has a stronger invariant: vertex peel
 %
 This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spin{}, a direct static-path iteration, \spinStar{}, its incremental optimization, and a parallel builder for the shifted construction bottleneck.
 %
-Experiments on \(307\) matched successful configurations show that \spinStar{} achieves a \(13.50\times\) geometric-mean peel-time speedup and a \(44.76\times\) maximum peel-time speedup over the mutable baseline, while reducing peak RSS by a \(1.55\times\) geometric-mean ratio; end-to-end speedup is \(1.10\times\) because construction becomes the dominant shared cost, which the parallel builder then addresses.
+Experiments on \(307\) matched successful configurations show that \spinStar{} achieves a \(13.50\times\) geometric-mean peel-time speedup and a \(44.76\times\) maximum peel-time speedup over the mutable baseline, while reducing memory usage by a \(1.55\times\) geometric-mean ratio; end-to-end speedup is \(1.10\times\) because construction becomes the dominant shared cost, which the parallel builder then addresses.
 \end{abstract}
 
 \begin{CCSXML}

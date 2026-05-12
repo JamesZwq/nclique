@@ -80,7 +80,7 @@ The local \(h\)-index family of solvers~\cite{lu2016hcore,kcoreLocal,hindex} sca
 This is fine on graphs where one or two passes converge, but on the harder graphs the round count grows: on \texttt{web-it-2004} at \(s=53\), the direct fixed-point iteration takes \(12\) seconds while the incremental schedule we develop here finishes in \(5\) milliseconds — a single hard cell where the gap reaches \(2{,}369\times\).
 
 \sstitle{Construction as the residual bottleneck.}
-Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} at \(s=3\), construction takes about \(127\) seconds and peeling takes \(351\) milliseconds, so the static index builder dominates end-to-end wall time by \(360\times\) on this configuration.
+Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} at \(s=3\), construction takes about \(127\) seconds and peeling takes \(351\) milliseconds, so the static index builder dominates total runtime by \(360\times\) on this configuration.
 %
 Without a parallel builder, the end-to-end speedup over \cbnd{} stays at \(1.10\times\) on the matched cells even though the peel-time speedup is \(13.50\times\).
 
@@ -116,7 +116,7 @@ After peeling, each \cpi{} leaf can be treated as a hyperedge born at the minimu
 A descending union--find scan over the leaves recovers the \(s\)-clique-connected super-level join tree in \(O(\Sig\log\Sig)\) time without re-enumerating \(s\)-cliques (Algorithm~\ref{alg:buildhier}); the hierarchy is therefore a byproduct of preserving the \cpi{} rather than a separate decomposition problem.
 
 \sstitle{Comprehensive experimental evaluation.}
-We compare against \cbnd{} on ten real-world graphs (\(307\) matched configurations, headline peel speedup \(13.50\times\) gmean / \(44.76\times\) max, RSS ratio \(1.55\times\) gmean), report phase behaviour and parallel construction, push the pipeline to a \(1.8\)B-edge graph (\texttt{com-friendster}, where \cbnd{} cannot complete), and use case studies to evaluate whether the \(r=1\) specialization is practically useful.
+We compare against \cbnd{} on ten real-world graphs (\(307\) matched configurations, headline peel speedup \(13.50\times\) gmean / \(44.76\times\) max, memory-usage ratio \(1.55\times\) gmean), report phase behaviour and parallel construction, push the pipeline to a \(1.8\)B-edge graph (\texttt{com-friendster}, where \cbnd{} cannot complete), and use case studies to evaluate whether the \(r=1\) specialization is practically useful.
 
 The rest of the paper follows this dependency chain.
 %
