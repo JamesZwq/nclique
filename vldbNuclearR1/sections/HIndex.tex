@@ -18,15 +18,15 @@ At level $k$, the vertex needs at least $k$ encoded clique witnesses whose other
 %
 For a tentative value vector, define the one-vertex update
 \[
-\Phi_h(v)=\max\{k\ge0\mid W_v(h,k)\ge k\}.
+\Phi_h(v)=\max\Bigl\{k\ge0\,\Big|\,\sum_{\TPath\ni v}W_v(\TPath,h,k)\ge k\Bigr\}.
 \]
-Here $W_v(h,k)$ is the number of encoded $s$-clique witnesses through $v$ whose other vertices have value at least $k$.
+Here $W_v(\TPath,h,k)$ is the number of encoded $s$-cliques on path $\TPath$ through $v$ whose other vertices have value at least $k$, and the sum runs over all paths through $v$.
 %
 For clique size two, the witnesses are edges, so the update becomes the standard core fixed-point test over neighbors~\cite{kcoreLocal,lu2016hcore,hindex}.
 %
 For larger clique sizes, the counted items are clique witnesses, not distinct neighbor vertices.
 %
-The next lemma counts $W_v(h,k)$ from \cpi{} paths without enumerating those witnesses.
+The next lemma counts $\sum_{\TPath\ni v}W_v(\TPath,h,k)$ from \cpi{} paths without enumerating those witnesses.
 
 \begin{lemma}[Per-path Witness Count]\label{lem:per-path-witness}
 Fix a vertex $v$, a current vector $h$, and a threshold $k\ge1$.
@@ -39,9 +39,7 @@ The number $W_v(\TPath,h,k)$ of encoded $s$-cliques through $v$ in which every o
   \item if $v\in\Vh(\TPath)$, then $W_v(\TPath,h,k)=\binom{Q_k(\TPath)}{\eta_{\TPath}}$;
   \item if $v\in\Vp(\TPath)$, then $W_v(\TPath,h,k)=\binom{Q_k(\TPath)}{\eta_{\TPath}-1}$.
 \end{enumerate}
-The total threshold count is $W_v(h,k)=\sum_{\TPath\ni v}W_v(\TPath,h,k)$.
-%
-$\Phi_h(v)$ is the largest $k$ such that $W_v(h,k)\ge k$.
+Summing over the paths through $v$ gives the total threshold count $\sum_{\TPath\ni v}W_v(\TPath,h,k)$, and $\Phi_h(v)$ is the largest $k$ for which this sum is at least $k$.
 \end{lemma}
 
 \begin{proof}
@@ -53,7 +51,7 @@ If $v$ is a hold, all $\eta_{\TPath}$ pivot slots must be filled by threshold-pa
 %
 If $v$ is a pivot, $v$ occupies one pivot slot and the remaining $\eta_{\TPath}-1$ slots must be filled by threshold-passing pivots.
 %
-Summing the qualifying counts over paths gives $W_v(h,k)$.
+Summing the qualifying counts over paths gives $\sum_{\TPath\ni v}W_v(\TPath,h,k)$.
 %
 \qed
 \end{proof}
@@ -126,7 +124,7 @@ Initialise $h[v]\gets\sdeg(v)$ using Lemma~\ref{lem:supp}; on the running exampl
 %
 The first call $\vertexSupport(v_4,h)$ scans the four paths through $v_4$ and counts threshold witnesses via Lemma~\ref{lem:per-path-witness}.
 %
-At threshold $k=3$, paths $\TPath_3$ and $\TPath_5$ together contribute $W_{v_4}(h,3)=3$ witnesses with all other path vertices at $h\ge3$, so the largest $k$ with $W_{v_4}(h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$.
+At threshold $k=3$, paths $\TPath_3$ and $\TPath_5$ together contribute $W_{v_4}(\TPath_3,h,3)+W_{v_4}(\TPath_5,h,3)=3$ witnesses with all other path vertices at $h\ge3$, so the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$.
 %
 \spin{} reaches the fixed point in a small number of full passes, but each pass scans every vertex regardless of whether its value can still change; this is the redundancy that \spinStar{} eliminates in Section~\ref{sec:peelh}.
 \end{example}
