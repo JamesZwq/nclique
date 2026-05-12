@@ -91,29 +91,36 @@ A path stops contributing only when one of its hold vertices is removed; otherwi
 %
 This invariant turns exact decomposition into counter arithmetic over a static incidence layout, which in turn unlocks an incremental peel schedule and a parallel builder.
 %
-We address the three challenges with the following contributions, and along the way derive two solvers (\spin{} and \spinStar{}) for computing core values over the static index.
+Our contributions address the three challenges one-for-one and add two further pieces that follow from the same static-\cpi{} foundation.
 
-\sstitle{Static-\cpi{} state for $(1,s)$.}
+\sstitle{Static-\cpi{} invariant for $(1,s)$ (solves Limitation 1).}
 We prove that vertex peeling never rewrites the stored hold or pivot sets (Theorem~\ref{thm:vertex-removal}) and give a closed-form expression for the support loss caused by each path event (Lemma~\ref{lem:support-delta}).
 %
-The dynamic state of a path collapses to a liveness bit and a single integer counter, so residual maintenance becomes binomial arithmetic over a static dual-CSR layout rather than path rewrites.
+The dynamic state of a path collapses to a liveness bit and a single integer counter, so the per-peel residual rewrites disappear and the ablation in RQ7 confirms a $3.80\times$ geometric-mean peel-time speedup over \cbnd{} from this change alone.
+
+\sstitle{Compact static layout (solves Limitation 2).}
+We replace \cbnd{}'s per-path vertex hash sets, reverse vertex-to-path map, and live Bron--Kerbosch recursion tree with two flat dual-CSR arrays that store the path-to-vertex and vertex-to-path incidences directly, plus one integer counter per path.
+%
+Per-incidence memory drops from $\approx 88\Sig$ bytes to $\approx 10\Sig$ bytes (Table~\ref{tab:mem}); the measured geometric-mean memory-usage ratio \cbnd{}/\spinStar{} is $1.55\times$ over $307$ matched cells, and the new layout makes \texttt{com-friendster} (the largest SNAP graph) tractable on the available $503$ GB at every $s\in\{2,\ldots,6,11\}$ on which \cbnd{} cannot start.
+
+\sstitle{Parallel static-\cpi{} construction (solves Limitation 3).}
+\paraBuild{} (Algorithm~\ref{alg:parabuild}) exploits the static output contract: each seed thread streams emitted paths into a thread-local arena, and the arenas merge deterministically without hot-path synchronisation.
+%
+This gives up to $23.4\times$ construction speedup at $T=24$ threads, eliminating the construction-side bottleneck that remains after peeling becomes counter-only.
+
+The three contributions above address the three limitations one-for-one.
+%
+Two further contributions follow from the same static-\cpi{} foundation:
 
 \sstitle{Direct and incremental solvers over the static index.}
 We formulate \spin{} as the direct threshold-support iteration on \cpi{} witness counts (Algorithm~\ref{alg:localH}) and \spinStar{} as its incremental optimization (Algorithm~\ref{alg:peelH}) that computes the same fixed point in peel order without repeated full-graph passes (Lemma~\ref{lem:equivalence}).
 %
-\spinStar{} delivers a $36.2\times$ geometric-mean peel-time speedup over \spin{} on $291$ matched cells and is consistently the fastest of the three solvers on every benchmark graph.
-
-\sstitle{Parallel static-\cpi{} construction.}
-After peeling becomes counter-only, construction dominates end-to-end time on many instances.
-%
-\paraBuild{} (Algorithm~\ref{alg:parabuild}) exploits the static output contract: each seed thread streams emitted paths into a thread-local arena, and the arenas merge deterministically without hot-path synchronisation.
-%
-This gives up to $23.4\times$ construction speedup at $T=24$ threads.
+\spinStar{} delivers a $36.2\times$ geometric-mean peel-time speedup over \spin{} on $291$ matched cells.
 
 \sstitle{Core-value hierarchy from the static \cpi{}.}
 After peeling, each \cpi{} leaf can be treated as a hyperedge born at the minimum core value among its stored vertices.
 %
-A descending union--find scan over the leaves recovers the $s$-clique-connected super-level join tree in $O(\Sig\log\Sig)$ time without re-enumerating $s$-cliques (Algorithm~\ref{alg:buildhier}); the hierarchy is therefore a byproduct of preserving the \cpi{} rather than a separate decomposition problem.
+A descending union--find scan over the leaves recovers the $s$-clique-connected super-level join tree in $O(\Sig\log\Sig)$ time without re-enumerating $s$-cliques (Algorithm~\ref{alg:buildhier}); the hierarchy is a byproduct of preserving the \cpi{} rather than a separate decomposition problem.
 
 \sstitle{Comprehensive experimental evaluation.}
 We compare against \cbnd{} on ten real-world graphs ($307$ matched configurations, headline peel speedup $13.50\times$ gmean / $44.76\times$ max, memory-usage ratio $1.55\times$ gmean), report phase behaviour and parallel construction, push the pipeline to a $1.8$B-edge graph (\texttt{com-friendster}, where \cbnd{} cannot complete), and use case studies to evaluate whether the $r=1$ specialization is practically useful.
