@@ -132,28 +132,6 @@ The static incidence layout reduces peak RSS when mutable residual path sets dom
 \label{fig:exp-mem}
 \end{figure*}
 
-Figure~\ref{fig:exp-endtoend} focuses on the three graphs used in the detailed phase study.
-%
-It contains \(130\) matched configurations.
-%
-On those cells, the geometric-mean peel-time speedup of \spinStar{} over \cbnd{} is \(14.62\times\).
-%
-The maximum peel-time speedup is \(44.76\times\).
-%
-Peak-RSS ratio has \(1.58\times\) geometric mean and \(2.75\times\) maximum.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/fig_exp_endtoend.pdf}
-\caption{Speedup and peak-RSS ratio on \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{web-it-2004}.
-%
-The curves show \cbnd{} divided by \spinStar{} on matched successful configurations.
-%
-Values above \(1\) mean \spinStar{} is faster or uses less memory.}
-\Description{Three-panel plot comparing speedup and memory ratio between \spinStar{} and the mutable baseline on the matched subset.}
-\label{fig:exp-endtoend}
-\end{figure*}
-
 The memory improvement is explained by the incidence-level budget in Table~\ref{tab:mem}.
 %
 The mutable baseline stores path hash sets and reverse hash maps.
