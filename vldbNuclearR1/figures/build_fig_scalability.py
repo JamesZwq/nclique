@@ -1,15 +1,10 @@
 """
-Scalability figure: time / RSS vs s, one curve per edge subsample ratio.
+Scalability figure: time / RSS vs s, one curve per vertex-induced subsample
+ratio, on multiple graphs.
 
-Two-subplot layout:
-    Left:  Ours wall-clock vs s, 5 curves (20%, 40%, 60%, 80%, 100% edges)
-    Right: SOTA wall-clock vs s, same 5 curves
-
-The curves are expected to stack cleanly in proportion to the sample
-ratio (near-linear scaling in edge count).
-
-Reads: paper_data/scalability.csv with columns
-    graph,base_edges,ratio,kept_edges,s,algorithm,run,time_ms,memory_kB,status
+Layout: rows = graphs, two columns (SPIN★ / CND). Single figure shows time
+or RSS depending on `metric`. Reads
+paper_data/scalability_{graph}.csv for each graph in GRAPHS.
 """
 import matplotlib
 matplotlib.rcParams["pdf.fonttype"] = 42
@@ -22,8 +17,19 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
-OUT = Path(__file__).parent
-CSV = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data/scalability_com-dblp.csv")
+OUT      = Path(__file__).parent
+DATA_DIR = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data")
+
+# Graphs to include, in size order (small → large). Each entry is
+# (csv-stem, display-label).
+GRAPHS = [
+    ("com-dblp",                 "com-dblp"),
+    ("com-youtube",              "com-youtube"),
+    ("web-Stanford",             "web-Stanford"),
+    ("web-Google",               "web-Google"),
+    ("soc-pokec-relationships",  "soc-pokec"),
+    ("com-orkut",                "com-orkut"),
+]
 
 ALGOS = [("Ours_ST", r"SPIN$^\star$ (ours)"), ("REF_R1", "CND")]
 
@@ -37,9 +43,11 @@ RATIO_COLORS = {
 }
 
 
-def load():
+def load(csv_path):
     """Returns {(algo, ratio): [(s, time_ms, mem_kb), ...] sorted}."""
-    rows = list(csv.DictReader(open(CSV)))
+    if not csv_path.exists():
+        return None
+    rows = list(csv.DictReader(open(csv_path)))
     data = defaultdict(list)
     for r in rows:
         if r.get("status") != "OK": continue
@@ -56,37 +64,62 @@ def load():
 
 
 def plot(metric, ylabel, out_pdf, mem=False):
-    data = load()
-    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.7), sharey=True)
-    for ax, (algo_key, algo_label) in zip(axes, ALGOS):
-        for ratio, color in sorted(RATIO_COLORS.items()):
-            rows = data.get((algo_key, ratio), [])
-            if not rows: continue
-            xs = [r[0] for r in rows]
-            ys = [r[2] / 1024.0 if mem else r[1] for r in rows]
-            ax.plot(xs, ys, color=color, marker="o", markersize=3.0,
-                    linewidth=1.3, label=f"{int(ratio*100)}%")
-        ax.set_title(algo_label, fontsize=10)
-        ax.set_xlabel("$s$", fontsize=9)
-        ax.set_xscale("log"); ax.set_yscale("log")
-        ax.xaxis.set_major_formatter(mticker.ScalarFormatter())
-        ax.xaxis.set_minor_formatter(mticker.NullFormatter())
-        ax.tick_params(axis="both", which="major", labelsize=7.5)
-        ax.tick_params(axis="both", which="minor", labelsize=0)
-        ax.grid(True, which="major", alpha=0.25, linestyle=":")
-    axes[0].set_ylabel(ylabel, fontsize=9)
-    handles, labels = axes[0].get_legend_handles_labels()
+    # Load all graphs first; drop any that has no CSV yet.
+    panels = []
+    for stem, label in GRAPHS:
+        d = load(DATA_DIR / f"scalability_{stem}.csv")
+        if d:
+            panels.append((label, d))
+    if not panels: return
+
+    n_rows = len(panels)
+    fig, axes = plt.subplots(
+        n_rows, 2, figsize=(7.0, 1.55 * n_rows + 0.4),
+        sharex=True, sharey="row",
+    )
+    if n_rows == 1:
+        axes = [axes]  # normalise to 2D
+    for row_idx, (graph_label, data) in enumerate(panels):
+        for col_idx, (algo_key, algo_label) in enumerate(ALGOS):
+            ax = axes[row_idx][col_idx]
+            for ratio, color in sorted(RATIO_COLORS.items()):
+                rows = data.get((algo_key, ratio), [])
+                if not rows: continue
+                xs = [r[0] for r in rows]
+                ys = [r[2] / 1024.0 if mem else r[1] for r in rows]
+                ax.plot(xs, ys, color=color, marker="o", markersize=3.0,
+                        linewidth=1.3, label=f"{int(ratio*100)}%")
+            ax.set_xscale("log"); ax.set_yscale("log")
+            ax.xaxis.set_major_formatter(mticker.ScalarFormatter())
+            ax.xaxis.set_minor_formatter(mticker.NullFormatter())
+            ax.tick_params(axis="both", which="major", labelsize=7.5)
+            ax.tick_params(axis="both", which="minor", labelsize=0)
+            ax.grid(True, which="major", alpha=0.25, linestyle=":")
+            for sp in ("top", "right"):
+                ax.spines[sp].set_visible(False)
+            # Column titles only on the first row.
+            if row_idx == 0:
+                ax.set_title(algo_label, fontsize=10, fontweight="bold")
+            # x labels only on bottom row.
+            if row_idx == n_rows - 1:
+                ax.set_xlabel(r"$s$", fontsize=9)
+        # y label only on the left column; combine the graph label into it.
+        axes[row_idx][0].set_ylabel(f"{graph_label}\n{ylabel}", fontsize=9)
+
+    # Single shared legend above the figure.
+    handles, labels = axes[0][0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=len(RATIO_COLORS),
-               fontsize=8, frameon=False, bbox_to_anchor=(0.5, 1.05),
-               title="vertex sample ratio", title_fontsize=8)
-    fig.tight_layout(rect=[0, 0, 1, 0.92])
+               fontsize=9, frameon=False,
+               bbox_to_anchor=(0.5, 1.0 + 0.5/(1.55*n_rows)),
+               title="vertex sample ratio", title_fontsize=9)
+    fig.tight_layout(rect=[0, 0, 1, 1 - 0.5/(1.55*n_rows)])
     fig.savefig(out_pdf, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out_pdf}")
 
 
 if __name__ == "__main__":
-    plot("time_ms", "wall-clock time (ms)", OUT / "fig_scalability_time.pdf",
+    plot("time_ms",   "wall-clock time (ms)", OUT / "fig_scalability_time.pdf",
          mem=False)
-    plot("memory_kB", "peak RSS (MB)",     OUT / "fig_scalability_mem.pdf",
+    plot("memory_kB", "peak RSS (MB)",        OUT / "fig_scalability_mem.pdf",
          mem=True)
