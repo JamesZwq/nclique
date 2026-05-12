@@ -35,12 +35,12 @@
 \copyrightyear{2027}
 \acmYear{2027}
 \acmDOI{XXXXXXX.XXXXXXX}
-\acmConference[SIGMOD '27]{Proceedings of the 2027 ACM SIGMOD International Conference on Management of Data}{June 2027}{TBD}
+\acmConference[SIGMOD '27]{2027 ACM SIGMOD International Conference on Management of Data}{June 2027}{TBD}
 \acmISBN{978-1-XXXX-XXXX-X/27/06}
 
 \begin{document}
 
-\title{Fast \texorpdfstring{\((1,s)\)}{(1,s)}-Nucleus Decomposition via Static Clique Path Index}
+\title{Fast \texorpdfstring{\((1,s)\)}{(1,s)}-Nucleus Decomposition via a Static Clique Path Index}
 
 \author{Anonymous Authors}
 \affiliation{%
@@ -49,15 +49,19 @@
 }
 
 \begin{abstract}
-Exact \((1,s)\)-nucleus decomposition ranks vertices by triangle, \(4\)-clique, and larger clique witnesses, but high-\(s\) decomposition is expensive because the number of witnesses can be enormous.
+The \(k\)-core ranks each vertex by how many neighbors it retains after weak vertices are peeled away, but many graph-mining tasks need a stronger ranking that counts \emph{cliques} rather than neighbors.
+%
+The \emph{\((1,s)\)-nucleus decomposition} provides this: it ranks each vertex by the number of surrounding \(s\)-cliques (triangles for \(s=3\), \(4\)-cliques for \(s=4\), and so on), but it is expensive at high \(s\) because the number of clique witnesses can be enormous.
 %
 The Clique Path Index compactly encodes these witnesses, but the general \((r,s)\) framework maintains the index as mutable residual state during peeling.
 %
 We show that this mutability is unnecessary for the vertex-centric case \(r=1\): vertex peeling removes vertices but does not delete edges, so every CPI path remains structurally valid.
 %
-This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spin{}, a direct static-path iteration, \spinStar{}, its incremental optimization, and a parallel builder designed for the shifted construction bottleneck.
+This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spin{}, a direct static-path iteration, \spinStar{}, its incremental optimization, and a parallel builder for the shifted construction bottleneck.
 %
-On \(505\) matched successful configurations, the static pipeline achieves a \(6.16\times\) geometric-mean speedup, a \(39.41\times\) maximum speedup, and lower peak RSS than the mutable baseline.
+On \(307\) matched successful configurations, \spinStar{} gives a \(13.50\times\) geometric-mean peel-time speedup and a \(44.76\times\) maximum peel-time speedup over the mutable baseline; end-to-end speedup is \(1.10\times\) because construction becomes the dominant shared cost.
+%
+It also lowers peak RSS with a \(1.55\times\) geometric-mean ratio.
 %
 The result shows that specializing the state model for \((1,s)\) can make exact high-order vertex-centric decomposition practical without enumerating all \(s\)-cliques.
 \end{abstract}
