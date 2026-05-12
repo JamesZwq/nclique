@@ -23,7 +23,7 @@ from collections import defaultdict
 from pathlib import Path
 
 OUT = Path(__file__).parent
-CSV = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data/scalability.csv")
+CSV = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data/scalability_com-dblp.csv")
 
 ALGOS = [("Ours_ST", r"SPIN$^\star$ (ours)"), ("REF_R1", "CND")]
 
@@ -78,7 +78,7 @@ def plot(metric, ylabel, out_pdf, mem=False):
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=len(RATIO_COLORS),
                fontsize=8, frameon=False, bbox_to_anchor=(0.5, 1.05),
-               title="edge sample ratio", title_fontsize=8)
+               title="vertex sample ratio", title_fontsize=8)
     fig.tight_layout(rect=[0, 0, 1, 0.92])
     fig.savefig(out_pdf, bbox_inches="tight")
     plt.close(fig)
