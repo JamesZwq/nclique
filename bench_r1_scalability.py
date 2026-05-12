@@ -40,9 +40,11 @@ ALGOS = [("Ours_ST", {"PIVOTER_RUN_ST": "1"}), ("REF_R1", {})]
 
 
 def subsample_edges(in_path: Path, ratio: float, out_path: Path, seed: int = 42):
-    """Read an edge-list (header line: 'n m'), keep `ratio` of edges uniformly,
-    and write a new file with corrected header.  Vertex ids are preserved
-    (so the n in the header is left as-is)."""
+    """Nested edge subsampling: reproducibly shuffle with `seed`, then write
+    the first ratio*m edges. Because every call uses the same seed and the
+    same input, the 40% sample is a strict superset of the 20% sample, the
+    60% sample is a strict superset of the 40% sample, etc. — runtime and
+    memory curves vs. ratio are therefore monotone by construction."""
     rng = random.Random(seed)
     with in_path.open() as fin:
         first = fin.readline().split()
@@ -52,12 +54,11 @@ def subsample_edges(in_path: Path, ratio: float, out_path: Path, seed: int = 42)
             parts = line.split()
             if len(parts) >= 2:
                 edges.append((int(parts[0]), int(parts[1])))
-    keep = max(1, int(round(ratio * len(edges))))
     rng.shuffle(edges)
-    edges = edges[:keep]
+    keep = max(1, int(round(ratio * len(edges))))
     with out_path.open("w") as fout:
-        fout.write(f"{n} {len(edges)}\n")
-        for u, v in edges:
+        fout.write(f"{n} {keep}\n")
+        for u, v in edges[:keep]:
             fout.write(f"{u} {v}\n")
 
 
