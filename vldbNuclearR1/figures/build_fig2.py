@@ -77,9 +77,9 @@ COL = {
 
 # Header row: round | popped | core | L1..L6
 hdr_y = -0.6
-ax_a.text(-0.55, hdr_y, "r",         fontsize=8.5, fontweight='bold')
-ax_a.text( 0.40, hdr_y, "pop",       fontsize=8.5, fontweight='bold')
-ax_a.text( 1.45, hdr_y, r"$\kappa$", fontsize=8.5, fontweight='bold')
+ax_a.text(-0.55, hdr_y, "#Iter",     fontsize=8.5, fontweight='bold')
+ax_a.text( 0.70, hdr_y, "pop",       fontsize=8.5, fontweight='bold')
+ax_a.text( 1.55, hdr_y, r"$\kappa$", fontsize=8.5, fontweight='bold')
 for i in range(L):
     ax_a.text(2.2 + i, hdr_y, f"$L_{i+1}$", fontsize=8.5, fontweight='bold',
               ha='center')
@@ -87,9 +87,9 @@ for i in range(L):
 cell_w, cell_h = 0.92, 0.78
 for r_idx, row in enumerate(trace):
     y = r_idx
-    ax_a.text(-0.55, y, f"{row['round']}", fontsize=8.0)
-    ax_a.text( 0.45, y, f"$v_{{{row['victim']}}}$", fontsize=8.0)
-    ax_a.text( 1.45, y, f"{row['core']}", fontsize=8.0, ha='left')
+    ax_a.text(-0.40, y, f"{row['round']}", fontsize=8.0, ha='center')
+    ax_a.text( 0.75, y, f"$v_{{{row['victim']}}}$", fontsize=8.0)
+    ax_a.text( 1.55, y, f"{row['core']}", fontsize=8.0, ha='left')
     for i in range(L):
         c = case_grid[r_idx][i]
         if c is None:
