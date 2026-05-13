@@ -1,10 +1,10 @@
 \section{Introduction}\label{sec:intro}
 
-Core decomposition ranks vertices by the amount of cohesive structure that still surrounds them after weak vertices are removed~\cite{kcoreSeidman,coreAlg,communityFinder}.
+Core decomposition ranks vertices by the amount of cohesive structure that still surrounds them after weak vertices are removed~\cite{kcoreSeidman,coreAlg,communityFinder,batagelj2003omalgorithmcoresdecomposition} and supports a wide range of graph-mining tasks --- community detection~\cite{communities_dec1,communities_dec2,communities_dec3,girvan2002community}, dense-subgraph discovery~\cite{dense_subgraph}, influential-vertex and role analysis~\cite{Identifying_influential,kempe2003maximizing,lu2016vital}, network visualization~\cite{network_visualization}, and applications in social, biological, and security networks~\cite{cohesive_subgraph_Social_Networks,cohesive_subgraph_protein_networks,apply_cyber}.
 %
-The classical $k$-core uses edges as the witness, but many graph mining tasks need a stronger witness because a group may pass an edge-degree threshold while containing few triangles, $4$-cliques, or larger coordinated patterns.
+The classical $k$-core uses edges as the witness, but many of these tasks need a stronger witness because a group may pass an edge-degree threshold while containing few triangles, $4$-cliques, or larger coordinated patterns~\cite{cohen2008trusses,akbas2017truss,huang2014graph}.
 %
-The \emph{$(1,s)$-nucleus decomposition}~\cite{nucleusSariyuce14} gives this vertex-centric higher-order ranking: for a fixed $s$, it assigns each vertex the largest value $k$ for which the vertex belongs to a maximal region where every vertex participates in at least $k$ internal $s$-cliques.
+The \emph{$(1,s)$-nucleus decomposition}~\cite{nucleusSariyuce14,nucleusSariyuceTODS} gives this vertex-centric higher-order ranking: for a fixed $s$, it assigns each vertex the largest value $k$ for which the vertex belongs to a maximal region where every vertex participates in at least $k$ internal $s$-cliques.
 %
 For $s=2$ it reduces to the $k$-core; for larger $s$ it ranks vertices by progressively tighter clique-supported cohesion.
 

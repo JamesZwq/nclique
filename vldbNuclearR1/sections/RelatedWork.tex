@@ -3,9 +3,11 @@
 This paper uses prior ideas on core peeling, compact clique representations, local fixed-point characterisations, parallel construction, and hierarchy output; the new ingredient is the static-\cpi{} invariant for $r=1$.
 
 \stitle{Enumeration-based core and nucleus decomposition.}
-The $k$-core was introduced by Seidman~\cite{kcoreSeidman}; Batagelj and Zaver\v{s}nik~\cite{coreAlg} gave the linear-time peeling algorithm with a bucket queue.
+The $k$-core was introduced by Seidman~\cite{kcoreSeidman} and is supported by a long line of efficient algorithms~\cite{coreAlg,batagelj2003omalgorithmcoresdecomposition,batagelj2011fast,k-core1,kcore_3,kcore_4,io-eff,peel_cd,DBLP:journals/tkde/WenQZLY19,distributed_k-core,zhang2023efficient}.
 %
-Nucleus decomposition~\cite{nucleusSariyuce14} generalises this from edges to higher-order clique witnesses by peeling $r$-cliques according to their support in $s$-cliques.
+Higher-order extensions strengthen the edge witness: $k$-truss~\cite{cohen2008trusses,akbas2017truss,chen2020truss,huang2014graph} uses triangle support, and \emph{nucleus decomposition}~\cite{nucleusSariyuce14,nucleusSariyuceTODS,firstNucleus} generalises the witness to arbitrary $s$-cliques by peeling $r$-cliques according to their support in $s$-cliques.
+%
+Hypergraph generalisations adopt the same peeling paradigm under different cohesion definitions~\cite{nbr_cd,hyper_kcore,kg-core,kq-core,Clique-core}.
 %
 We specialise to the vertex-centric $r=1$ case and exploit a state invariant that does not hold for general $r$.
 
@@ -15,7 +17,9 @@ Bron--Kerbosch search~\cite{BronKerbosch}, Tomita pivoting~\cite{tomita}, and de
 The static-\cpi{} counter form of this paper shows that for vertex peeling these path edits never need to be materialised.
 
 \stitle{Local and parallel peeling.}
-$h$-index characterisations of core values were studied for local core computation~\cite{lu2016hcore,kcoreLocal,hindex}; \spin{} adapts that fixed-point view to the implicit $s$-clique witnesses encoded by the \cpi{}, and \spinStar{} is its peel-order optimisation.
+$h$-index characterisations of core values~\cite{h-index} were studied for local core computation~\cite{lu2016hcore,kcoreLocal,hindex,LocalNuclear} and extended to distributed and parallel settings~\cite{distributed_k-core,zhang2023efficient}.
+%
+\spin{} adapts that fixed-point view to the implicit $s$-clique witnesses encoded by the \cpi{}, and \spinStar{} is its peel-order optimisation.
 %
 The difference from prior local $h$-index work is not the operator but the representation: the witness multiset is held in static \cpi{} paths and updated by binomial support-loss formulas.
 
@@ -25,9 +29,14 @@ Parallel clique search typically distributes the recursive enumeration work; \pa
 Because the downstream peel never mutates path sets, construction partitions into thread-independent subproblems whose results combine by a deterministic merge --- an engineering consequence of the $r=1$ state model rather than a new clique-enumeration paradigm.
 
 \stitle{Hierarchical cohesive subgraphs.}
-Nucleus decompositions naturally form hierarchies across core levels~\cite{nucleusSariyuce14}, and elder-rule join-tree extraction is standard in computational topology~\cite{morozov2007persistence}.
+Nucleus decompositions naturally form hierarchies across core levels~\cite{nucleusSariyuce14,nucleusSariyuceTODS,fastHierarchy,sotaPrveHierarchy,sotaHierarchy}, and elder-rule join-tree extraction is standard in computational topology~\cite{morozov2007persistence}.
 %
 Prior nucleus pipelines extract such hierarchies by sorting the decomposition output or revisiting clique witnesses; \buildHier{} instead reuses the preserved static \cpi{}, treating each leaf as a hyperedge born at its minimum core value, so the hierarchy is a byproduct of preserving the \cpi{} through peeling.
+
+\stitle{Applications of $k$-core and nucleus decomposition.}
+Core and nucleus decompositions are workhorses for community detection~\cite{communities_dec1,communities_dec2,communities_dec3,girvan2002community}, densest-subgraph discovery~\cite{dense_subgraph}, influential-vertex and role analysis~\cite{Identifying_influential,kempe2003maximizing,lu2016vital}, network visualization~\cite{network_visualization}, and downstream uses in social analysis~\cite{cohesive_subgraph_Social_Networks,apply_social_networks}, biological networks~\cite{cohesive_subgraph_protein_networks,apply_biological_networks_1}, complex-network analysis~\cite{cohesive_subgraph_complex_networks}, anomaly and security applications~\cite{akoglu2015graph,apply_cyber}, and recommendation~\cite{e-shipping_recommendation}.
+%
+This paper inherits the same downstream uses; the contribution is making the vertex-centric $(1,s)$ output cheaper to obtain at higher $s$.
 
 \stitle{Empirical graph mining methodology.}
 The evaluation follows common practice in cohesive-subgraph experiments: SNAP community ground truth, large public graphs, runtime and memory comparisons, and dense synthetic stress tests~\cite{communityFinder,NuclearCD,nucleusSariyuceTODS}.
