@@ -43,19 +43,16 @@
 \newcommand{\sdeg}{\deg^{(s)}}     % s-clique support of a vertex
 \newcommand{\kmax}{\kappa_{\max}}
 
-% --- theorem-like environments (independent counters; reset per section) ---
+% --- theorem-like environments (shared counter, reset per section) ---
 \theoremstyle{plain}
 \newtheorem{theorem}{Theorem}[section]
-\theoremstyle{plain}
-\newtheorem{lemma}{Lemma}[section]
-\theoremstyle{plain}
-\newtheorem{corollary}{Corollary}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
 \theoremstyle{definition}
-\newtheorem{definition}{Definition}[section]
+\newtheorem{definition}[theorem]{Definition}
 \theoremstyle{remark}
-\newtheorem{example}{Example}[section]
-\theoremstyle{remark}
-\newtheorem{observation}{Observation}[section]
+\newtheorem{example}[theorem]{Example}
+\newtheorem{observation}[theorem]{Observation}
 
 % --- reference shorthand ---
 \newcommand{\refsec}[1]{Section~\ref{sec:#1}}
