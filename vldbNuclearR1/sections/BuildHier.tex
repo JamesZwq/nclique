@@ -102,28 +102,70 @@ It is a byproduct of the static \cpi{} surviving peeling: leaves act as hyperedg
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 
 \stitle{Empirical cost.}
-Table~\ref{tab:buildhier} compares \buildHier{} against a level-by-level snapshot baseline on \texttt{com-dblp} ($n{=}317$k vertices, $m{=}1.05$M edges), with three runs per cell.
+We compare four algorithm variants on four representative graphs, sweeping $s\in\{3,5,7,9,11,13,15\}$ (Table~\ref{tab:buildhier}):
+\textbf{\spinStar{}} (static-\cpi{} peel, no hierarchy),
+\textbf{\spinStar{}{+}\buildHier{}} (our post-peel emit, $O(\Sig\log\Sig)$ one pass),
+\textbf{\cbnd{}} (mutable-\cpi{} baseline, no hierarchy), and
+\textbf{\cbnd{}{+}\textsc{Hier}} (NuclearCD's general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, with one disjoint-set forest per peel level).
 %
-The snapshot baseline runs one \spinStar{} decomposition per requested level and writes the join tree from the snapshots; it is the natural alternative when the static \cpi{} is not preserved.
+All four solve the same problem; the comparison isolates the cost of hierarchy emission and of the underlying peel strategy.
 %
-\buildHier{} is faster on every reported $s$ and the gap widens with $s$: at $s{=}5$ the speedup is $3.33\times$ (median $129.6$\,ms versus $432.0$\,ms), and the absolute cost stays below $360$\,ms even at $s{=}3$ where $\Sig$ is largest.
+Three observations follow:
 %
-Scaling at $s{=}5$ is sublinear in $|E|$: keeping $25\%/50\%/75\%/100\%$ of the edges costs $67/103/123/127$\,ms, consistent with the $O(\Sig\log\Sig)$ bound being dominated by the leaf sort.
+(i) \buildHier{} adds at most $1.5\times$ memory on top of \spinStar{}'s peel state, while \cbnd{+}\textsc{Hier}{} carries $K=\kmax$ parallel DSUs and blows up memory by $8$--$43\times$ over \spinStar{+}\buildHier{} on the same configuration.
+%
+(ii) Even \emph{without} emitting a hierarchy, \cbnd{} already uses more memory than \spinStar{+}\buildHier{} (e.g.,\ $50$\,GB vs.\ $32$\,GB on \texttt{wiki-Talk} at $s{=}7$), and at $s\ge 9$ on \texttt{wiki-Talk} both \cbnd{} variants exceed the $503$\,GB budget and never start.
+%
+(iii) The hierarchy build itself is cheaper than the level-DSU baseline: \buildHier{}'s emit-only time is $1.5$--$30\times$ faster than \cbnd{+}\textsc{Hier}{}'s union work across the same cells, consistent with the $O(\Sig\log\Sig)$ vs.\ $O(K\cdot\Sig)$ bounds.
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
-\caption{Hierarchy-extraction time on \texttt{com-dblp}: \buildHier{} vs.\ snapshot baseline.}
+\caption{Memory and hierarchy-build time of four algorithm variants on four representative graphs.}
 \label{tab:buildhier}
-\small
-\setlength{\tabcolsep}{6pt}
-\begin{tabular}{rrrr}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l r r r r r r r}
 \toprule
-$s$ & \buildHier{} (ms) & snapshot (ms) & speedup \\
+\multirow{2}{*}{Graph} & \multirow{2}{*}{$s$} & \multicolumn{4}{c}{peak memory (MB, lower is better)} & \multicolumn{2}{c}{hierarchy build (lower is better)} \\
+\cmidrule(lr){3-6}\cmidrule(lr){7-8}
+& & \spinStar{} & \spinStar{}{+}\buildHier{} & \cbnd{} & \cbnd{}{+}\textsc{Hier} & \buildHier{} & \cbnd{}{+}\textsc{Hier} \\
 \midrule
-$3$  & $358.7$ & $588.9$ & $1.64\times$ \\
-$5$  & $129.6$ & $432.0$ & $3.33\times$ \\
-$10$ & $\phantom{0}13.4$  & $\phantom{0}32.7$  & $2.44\times$ \\
-$15$ & $\phantom{00}4.1$   & $\phantom{0}10.0$  & $2.44\times$ \\
+\multirow{7}{*}{\texttt{com-youtube}}
+& $3$  & $390$    & $596$    & $729$    & $4{,}930$    & $1.24$\,s   & $1.99$\,s   \\
+& $5$  & $387$    & $527$    & $642$    & $14{,}080$   & $861$\,ms   & $6.10$\,s   \\
+& $7$  & $339$    & $403$    & $502$    & $10{,}854$   & $402$\,ms   & $4.80$\,s   \\
+& $9$  & $312$    & $329$    & $428$    & $5{,}969$    & $133$\,ms   & $2.53$\,s   \\
+& $11$ & $300$    & $304$    & $392$    & $2{,}684$    & $\phantom{0}34$\,ms    & $1.02$\,s   \\
+& $13$ & $297$    & $297$    & $382$    & $1{,}059$    & $\phantom{0}10$\,ms    & $288$\,ms   \\
+& $15$ & $294$    & $296$    & $380$    & $\phantom{0,}422$    & $\phantom{00}7$\,ms     & $\phantom{00}7$\,ms     \\
+\midrule
+\multirow{7}{*}{\texttt{web-Google}}
+& $3$  & $336$    & $508$    & $702$    & $2{,}580$    & $1.19$\,s   & $1.95$\,s   \\
+& $5$  & $303$    & $388$    & $544$    & $11{,}873$   & $894$\,ms   & $12.79$\,s  \\
+& $7$  & $285$    & $353$    & $470$    & $12{,}119$   & $474$\,ms   & $12.50$\,s  \\
+& $9$  & $271$    & $313$    & $421$    & $9{,}062$    & $321$\,ms   & $7.65$\,s   \\
+& $11$ & $260$    & $297$    & $377$    & $5{,}977$    & $212$\,ms   & $4.07$\,s   \\
+& $13$ & $252$    & $270$    & $345$    & $3{,}988$    & $129$\,ms   & $2.25$\,s   \\
+& $15$ & $247$    & $252$    & $322$    & $2{,}403$    & $\phantom{0}72$\,ms    & $1.11$\,s   \\
+\midrule
+\multirow{7}{*}{\texttt{soc-pokec}}
+& $3$  & $1{,}443$  & $3{,}493$  & $4{,}674$  & $10{,}200$  & $13.35$\,s  & $8.56$\,s   \\
+& $5$  & $1{,}241$  & $2{,}034$  & $2{,}815$  & $38{,}558$  & $7.07$\,s   & $18.42$\,s  \\
+& $7$  & $\phantom{0,}783$    & $1{,}133$  & $1{,}529$  & $47{,}865$  & $2.55$\,s   & $21.42$\,s  \\
+& $9$  & $\phantom{0,}635$    & $\phantom{0,}764$    & $\phantom{0,}978$    & $32{,}964$  & $864$\,ms   & $13.66$\,s  \\
+& $11$ & $\phantom{0,}581$    & $\phantom{0,}622$    & $\phantom{0,}792$    & $18{,}214$  & $280$\,ms   & $7.36$\,s   \\
+& $13$ & $\phantom{0,}557$    & $\phantom{0,}567$    & $\phantom{0,}722$    & $8{,}785$   & $\phantom{0}97$\,ms    & $3.33$\,s   \\
+& $15$ & $\phantom{0,}548$    & $\phantom{0,}549$    & $\phantom{0,}691$    & $4{,}138$   & $\phantom{0}39$\,ms    & $1.36$\,s   \\
+\midrule
+\multirow{7}{*}{\texttt{wiki-Talk}}
+& $3$  & $\phantom{0,}909$    & $1{,}588$  & $2{,}061$  & $36{,}208$  & $4.15$\,s   & $15.02$\,s  \\
+& $5$  & $7{,}188$  & $12{,}379$ & $19{,}158$ & $95{,}613$  & $47.91$\,s  & $39.95$\,s  \\
+& $7$  & $25{,}816$ & $32{,}236$ & $50{,}734$ & $119{,}919$ & $116.26$\,s & $63.18$\,s  \\
+& $9$  & $27{,}763$ & $36{,}606$ & \textsc{oom} & \textsc{oom}    & $127.94$\,s & ---         \\
+& $11$ & $26{,}448$ & $34{,}329$ & \textsc{oom} & \textsc{oom}    & $118.16$\,s & ---         \\
+& $13$ & $25{,}860$ & $28{,}522$ & \textsc{oom} & \textsc{oom}    & $97.87$\,s  & ---         \\
+& $15$ & $14{,}743$ & $18{,}506$ & \textsc{oom} & \textsc{oom}    & $63.33$\,s  & ---         \\
 \bottomrule
 \end{tabular}
-\end{table}
+\\[2pt]\footnotesize \textsc{oom}: peak memory exceeded the $503$\,GB budget.
+\end{table*}
