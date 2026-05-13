@@ -201,17 +201,17 @@ $10$ & $66$  & $26$ & $32$  & $0.340$ & $0.636$ \\
 \end{tabular}
 \end{table}
 
-At $s=3$, the ego-network remains one large component.
+Figure~\ref{fig:cs9} uses the same spring layout in every panel and colours each vertex by its component identity at $s=10$, so the reader can trace the same vertex across panels.
 %
-At $s=10$, it becomes $26$ smaller components.
+At $s=3$ the colours are scrambled inside one large component; at $s=10$ those same colours form spatially separated modules.
 %
-This behavior makes $s$ a local resolution knob.
+This makes $s$ a local resolution knob: raising $s$ surfaces modular structure that was already latent in the neighbourhood.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/cs9_egonet.pdf}
-\caption{Ego-network around a \texttt{com-dblp} anchor under three $s$ values.}
-\Description{Three ego-network visualizations showing components becoming smaller and more numerous as s increases.}
+\caption{Same ego-network, same layout, three $s$ values; vertex colour fixed by its $s{=}10$ component.}
+\Description{Three ego-network visualizations sharing a layout: at small s the same-colored vertices are scrambled inside one component; at large s they form spatially separated modules.}
 \label{fig:cs9}
 \end{figure}
 
@@ -222,7 +222,7 @@ This makes it possible to compare how quickly the nucleus hierarchy collapses ac
 %
 Table~\ref{tab:cs10cross} reports the three hierarchy statistics used here.
 %
-Figures~\ref{fig:cs10} and~\ref{fig:cs10p} visualize the resulting trees and persistence diagrams.
+Figure~\ref{fig:cs10} visualizes the resulting join trees side by side.
 
 \begin{table}[t]
 \centering
@@ -249,6 +249,8 @@ graph & br. & int. & d & br. & int. & d & br. & int. & d & br. & int. & d \\
 %
 \texttt{web-Stanford} retains nontrivial branches at every clique size, including $s=15$.
 %
+Figure~\ref{fig:cs10} makes the contrast visual at $s=5$ on a shared log-$k$ axis: \texttt{com-dblp}'s tree branches across multiple decades of $k$, \texttt{com-youtube}'s tree collapses to a low-$k$ band, and \texttt{web-Stanford} concentrates near the top of the $k$ range.
+%
 The hierarchy is therefore not only an output format.
 %
 It gives a domain-level fingerprint of clique-witness nesting.
@@ -256,17 +258,9 @@ It gives a domain-level fingerprint of clique-witness nesting.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/cs10_hierarchy.pdf}
-\caption{Nucleus join tree at $s=5$ across three domains.}
-\Description{Three hierarchy-tree visualizations comparing DBLP, YouTube, and web-Stanford at s equals 5.}
+\caption{Join trees at $s{=}5$ on a shared log-$k$ axis: domain fingerprints.}
+\Description{Three side-by-side hierarchy trees on a shared log-k axis: com-dblp spans many decades of k, com-youtube collapses near low k, web-Stanford concentrates near high k.}
 \label{fig:cs10}
-\end{figure}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/cs10_persistence.pdf}
-\caption{Persistence diagrams across three domains.}
-\Description{Grid of persistence diagrams for three domains and four clique-size settings.}
-\label{fig:cs10p}
 \end{figure}
 
 \stitle{Takeaway.}\label{sec:cs-summary}
