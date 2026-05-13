@@ -1,35 +1,15 @@
 \section{\texorpdfstring{Static CPI for $r=1$}{Static CPI for r=1}}\label{sec:static}
 
-In this section, we prove the central invariant of the paper: at $r=1$, the residual state that \cbnd{} maintains (Section~\ref{sec:baseline}) is unnecessary.
-%
-Vertex peeling removes vertices from the active subgraph, but it does not delete edges among the vertices that remain.
-%
-Therefore, the stored clique $\Vh(\TPath)\cup\Vp(\TPath)$ of every path remains structurally valid for as long as its active vertices are considered.
-%
-Only the contribution of the path changes.
+We prove the central invariant of the paper: at $r=1$, vertex peeling never deletes an edge among the surviving vertices, so the stored clique $\Vh(\TPath)\cup\Vp(\TPath)$ of every path remains structurally valid throughout the peel and the residual state that \cbnd{} maintains (Section~\ref{sec:baseline}) is unnecessary.
 
 \stitle{Static structure and dynamic counters.}
-A path stores a fixed recipe for its encoded $s$-cliques.
-%
-The hold set $\Vh(\TPath)$ is the part that every encoded clique must contain.
-%
-The pivot set $\Vp(\TPath)$ is the pool from which the path chooses the remaining vertices.
-%
-The pivot requirement $\eta_{\TPath}=s-|\Vh(\TPath)|$ says how many still-effective pivots must be chosen from that pool.
-%
-These three objects are static.
-%
-During peeling, the algorithm does not edit the stored hold or pivot sets.
+Recall from Section~\ref{sec:prelim} that a path stores the hold set $\Vh(\TPath)$, the pivot set $\Vp(\TPath)$, and the pivot requirement $\eta_{\TPath}=s-|\Vh(\TPath)|$; during peeling none of these three objects is edited.
 %
 The dynamic state is only a liveness bit and an integer $p_{\TPath}$, the number of pivots in $\Vp(\TPath)$ that have not yet been peeled.
 %
-If a peeled vertex is a hold, every encoded $s$-clique contains that vertex, so the path contributes nothing after the event.
+If a peeled vertex is a hold, every encoded $s$-clique contains that vertex, so the path contributes nothing after the event; if a peeled vertex is a pivot, the path remains the same symbolic object and $p_{\TPath}$ decreases by one.
 %
-If a peeled vertex is a pivot, the path remains the same symbolic object, but $p_{\TPath}$ decreases by one.
-%
-This is the whole state transition.
-%
-The next theorem gives the counter form we need: a peel event either kills a path contribution or reduces an effective pivot count.
+The next theorem records this counter form: a peel event either kills a path contribution or reduces an effective pivot count.
 
 \begin{theorem}[Vertex Removal on \cpi, Counter Form]\label{thm:vertex-removal}
 Let $\TPath$ be a path of the \cpi{} of $G$, and let $v\in V$ be removed from $G$.

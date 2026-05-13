@@ -8,11 +8,7 @@ Lemma~\ref{lem:equivalence} proves that the two solvers compute the same fixed p
 
 \subsection{Vertex updates from static witnesses}\label{sec:hop}\label{sec:refresh}
 
-The static-\cpi{} invariant tells us how to count witnesses without rebuilding residual paths.
-%
-To compute core values, we also need a rule for lowering a vertex value from the witnesses that remain.
-%
-The rule asks for the largest support level that the queried vertex can still justify.
+The static-\cpi{} invariant counts witnesses without rebuilding paths; for core values we additionally need a rule for lowering a vertex value from the witnesses that remain.
 %
 At level $k$, the vertex needs at least $k$ encoded clique witnesses whose other vertices can also sustain level $k$.
 %
@@ -93,21 +89,11 @@ The call reads the static \cpi{} and the vector $h$, and it mutates no path.
 
 \subsection{Direct Static-Path Iteration}\label{sec:localh}
 
-$\vertexSupport$ defines the threshold-support equation for one vertex.
+\spin{} is the most literal solver of the threshold-support equation: it scans all vertices, computes a next value for each vertex from the previous value vector via $\vertexSupport$, and repeats until a full scan makes no change.
 %
-\spin{} is the most literal solver: it scans all vertices, computes a next value for each vertex from the previous value vector, and repeats until a full scan makes no change.
+The only mutable data are the current and next value vectors; the current vector starts at the initial $s$-clique support, so every entry is an upper bound on the final core value, and each pass can only lower entries.
 %
-Its purpose is to expose the fixed-point computation directly.
-%
-The only mutable data are the current value vector and the next value vector.
-%
-The current vector starts at the initial $s$-clique support, so every entry is an upper bound on the final core value.
-%
-Each pass can only lower entries.
-%
-A fixed point means every vertex value is consistent with the witnesses whose other vertices have high enough current value.
-%
-This makes \spin{} the reference formulation for the static-\cpi{} computation, even though repeated full scans can be expensive.
+A fixed point means every vertex value is consistent with the witnesses whose other vertices have high enough current value, which makes \spin{} the reference formulation for the static-\cpi{} computation even though repeated full scans can be expensive.
 
 Algorithm~\ref{alg:localH} initialises $h[v]$ to the initial $s$-clique support $\sdeg(v)$ for every vertex via the closed form of Lemma~\ref{lem:supp} (Lines~1-2).
 %

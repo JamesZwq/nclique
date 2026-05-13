@@ -1,30 +1,12 @@
 \section{Conclusion}\label{sec:conclusion}
 
-The paper began with a tension in general CPI-based nucleus decomposition.
+The paper began with a tension in general CPI-based nucleus decomposition: the index avoids explicit clique enumeration, but the general algorithm keeps it as mutable residual state.
 %
-The index avoids explicit clique enumeration, but the general algorithm keeps it as mutable residual state.
+For $(1,s)$-nucleus decomposition that mutability is unnecessary because vertex peeling removes vertices but does not delete edges, so the path structure built at the beginning remains valid throughout the peel: a hold removal kills a path contribution, a pivot removal decreases an effective pivot counter.
 %
-For $(1,s)$-nucleus decomposition, that mutability is unnecessary.
-%
-CPI paths do not need to be mutable residual state.
-%
-Vertex peeling removes vertices but does not delete edges, so the path structure built at the beginning remains valid throughout the peel.
-%
-A hold removal kills a path contribution.
-%
-A pivot removal decreases an effective pivot counter.
-%
-This changes exact decomposition from residual-index maintenance to counter maintenance over a static symbolic index.
+Exact decomposition therefore reduces from residual-index maintenance to counter maintenance over a static symbolic index.
 
-The algorithmic consequences follow from that state change.
-%
-\spin{} states the fixed-point computation over the static \cpi{}.
-%
-\spinStar{} realizes the same computation in deletion order.
-%
-\paraBuild{} addresses construction after cheap peeling exposes it as the next bottleneck.
-%
-\buildHier{} scans static \cpi{} leaves in descending birth level to recover the hierarchy.
+The algorithmic consequences are: \spin{} states the fixed-point computation over the static \cpi{}; \spinStar{} realises the same computation in deletion order; \paraBuild{} addresses construction once cheap peeling exposes it as the next bottleneck; \buildHier{} scans static \cpi{} leaves in descending birth level to recover the hierarchy.
 
 The experiments and case studies support the practical value of the specialization.
 %
