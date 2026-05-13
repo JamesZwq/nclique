@@ -149,19 +149,15 @@ The sequence $h^{(t)}[v]$ is monotonically non-increasing.
 \end{lemma}
 
 \begin{proof}
-At any pass, $h^{(t+1)}[v]\ge k$ exactly when at least $k$ incident $s$-cliques have all other vertices with $h^{(t)}\ge k$.
+By definition, $h^{(t+1)}[v]\ge k$ iff $v$ has at least $k$ incident $s$-cliques whose other vertices all satisfy $h^{(t)}\ge k$.
 %
-The initial value $\sdeg(v)$ is the largest possible support value for $v$, so the update cannot increase $h[v]$.
+The initial value $\sdeg(v)$ is the maximum possible support for $v$, so the update cannot increase $h[v]$; the sequence is monotone non-increasing on the non-negative integers and therefore converges to some $h^\star$.
 %
-The values are non-negative integers bounded by $\kmax$, so the sequence converges.
+At $h^\star$, let $S_k=\{v\mid h^\star[v]\ge k\}$.
 %
-At a fixed point $h^\star$, the set $\{v\mid h^\star[v]\ge k\}$ is exactly the maximal vertex set in which each vertex has at least $k$ incident $s$-cliques inside the set.
+Every $v\in S_k$ has at least $k$ incident $s$-cliques with all other vertices in $S_k$ (by the threshold-support equation), so each $v$ has $\ge k$ internal $s$-cliques in $S_k$; and any superset would force $h^\star<k$ on a new vertex, so $S_k$ is maximal with this property and therefore the $k$-$(1,s)$-nucleus (Definition~\ref{def:nucleus}), giving $h^\star[v]=\kappa_s(v)$.
 %
-These sets define the $(1,s)$-nucleus levels.
-%
-Therefore $h^\star[v]=\kappa_s(v)$.
-%
-The crude pass bound follows because across all vertices the sum of integer values can decrease at most $n\kmax$ times before the final no-change pass.
+Across all vertices the sum of $h$-values can decrease at most $n\kmax$ times before the final no-change pass, bounding $T\le1+n\kmax$.
 %
 \qed
 \end{proof}
@@ -263,27 +259,15 @@ Algorithm~\ref{alg:peelH} returns the same $\kappa_s$ values as Algorithm~\ref{a
 \end{lemma}
 
 \begin{proof}
-The algorithms use the same witness equations.
+Both algorithms apply the same per-vertex threshold-support operator $\Phi$; \spin{} uses full passes, \spinStar{} uses peel order with recomputes restricted to path-mates of the popped vertex (Theorem~\ref{thm:vertex-removal}, Lemma~\ref{lem:support-delta}).
 %
-\spin{} evaluates them by repeated full passes over the vertex set.
+Initial values $h[u]=\sdeg(u)$ are an upper bound on $\kappa_s(u)$, and $\Phi$ never increases an entry, so $h\ge\kappa_s$ is a global invariant.
 %
-\spinStar{} evaluates them in the standard nondecreasing peel order.
+When $v$ is popped at level $k=h[v]$, every unfinalised vertex has $h\ge k$, so the unfinalised set $U$ is a candidate $k$-region: each $u\in U$ has at least $k$ surviving $s$-cliques entirely within $U$, hence at least $k$ internal $s$-cliques in $U$.
 %
-The loop invariant for \spinStar{} is that every unfinalized vertex $u$ has the same value it would obtain from the current live witness multiset under the fixed-point equations, except that values below the current peel level $k$ are clipped to $k$.
+By Definitions~\ref{def:nucleus}--\ref{def:core}, $\kappa_s(u)\ge k$ for every $u\in U$, in particular $\kappa_s(v)\ge k$; combined with $h[v]\ge\kappa_s(v)$ this gives $\kappa_s(v)=k=h[v]$.
 %
-The invariant is true initially because $h[u]=\sdeg(u)$.
-%
-When $v$ is finalized, only paths containing $v$ can change any remaining witness multiset.
-%
-Theorem~\ref{thm:vertex-removal} gives the exact state transition for each such path.
-%
-Lemma~\ref{lem:support-delta} gives the exact support loss for every affected path-mate.
-%
-Thus the updates to $\mathrm{Aff}$ restore the invariant, while vertices outside $\mathrm{Aff}$ need no update.
-%
-Popping a minimum bucket finalizes the next vertex whose fixed-point value cannot exceed the current level.
-%
-By Lemma~\ref{lem:hindex-fixed-point}, that fixed point is $\kappa_s$.
+By Lemma~\ref{lem:hindex-fixed-point} the same value $\kappa_s$ is the fixed point reached by \spin{}.
 %
 \qed
 \end{proof}
