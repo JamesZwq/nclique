@@ -64,21 +64,33 @@ S_MAX = {
     "com-orkut": 15,
 }
 
-# Two algos.  HIER_SINK is a process-local sink file; we don't read it
-# back, only count the post-peel emit time + memory.
+# Four algos.  HIER_SINK is a process-local sink file (per-job, not read
+# back); we only measure the emit time + memory.
+#
+#   ST_V3        : SPIN-star baseline, no hierarchy.
+#   ST_V3_HIER   : SPIN-star + post-peel BuildHier (our O(Sigma log Sigma)
+#                  one-pass routine).
+#   REF_R1       : NuclearCD baseline (mutable-CPI), no hierarchy.
+#   REF_R1_HIER  : NuclearCD baseline + CND-style level-DSU hierarchy
+#                  (paper baseline for Section 7).
 ALGOS = [
-    ("ST_V3",      {"PIVOTER_RUN_ST_V3": "1"}),
-    ("ST_V3_HIER", {"PIVOTER_RUN_ST_V3": "1",
-                    "PIVOTER_DUMP_HIER": "PER_JOB_SINK"}),
+    ("ST_V3",       {"PIVOTER_RUN_ST_V3": "1"}),
+    ("ST_V3_HIER",  {"PIVOTER_RUN_ST_V3": "1",
+                     "PIVOTER_DUMP_HIER":     "PER_JOB_SINK"}),
+    ("REF_R1",      {}),
+    ("REF_R1_HIER", {"PIVOTER_DUMP_HIER_REF": "PER_JOB_SINK"}),
 ]
 
 
-_RE_HIER = re.compile(r"hier r=1[^:]*took:\s*([\d.]+)\s*ms")
+_RE_HIER     = re.compile(r"hier r=1[^:]*took:\s*([\d.]+)\s*ms")
+_RE_HIER_REF = re.compile(r"hier r=1 \(CND level-DSU\) took:\s*([\d.]+)\s*ms")
 
 
 def parse_extra(txt: str) -> dict:
     out = parse_phase_timings(txt)
-    m = _RE_HIER.search(txt)
+    # Prefer the CND-style match if present (its regex is more specific);
+    # otherwise fall back to the generic ST_V3 hier line.
+    m = _RE_HIER_REF.search(txt) or _RE_HIER.search(txt)
     out["hier_ms"] = float(m.group(1)) if m else -1.0
     return out
 
@@ -99,9 +111,10 @@ def gen_jobs(graphs: list[str], done: set):
                     continue
                 # Per-job sink so concurrent jobs don't trample one file.
                 env_copy = dict(env)
-                if env_copy.get("PIVOTER_DUMP_HIER") == "PER_JOB_SINK":
-                    env_copy["PIVOTER_DUMP_HIER"] = tempfile.mktemp(
-                        prefix=f"hier_{graph}_s{s}_", suffix=".tsv")
+                for ek in ("PIVOTER_DUMP_HIER", "PIVOTER_DUMP_HIER_REF"):
+                    if env_copy.get(ek) == "PER_JOB_SINK":
+                        env_copy[ek] = tempfile.mktemp(
+                            prefix=f"hier_{graph}_s{s}_{algo}_", suffix=".tsv")
                 env_copy["OMP_NUM_THREADS"] = "1"
                 yield Job(
                     key=key,
@@ -126,10 +139,11 @@ def on_finish(job: Job, status: str, log_text: str, parsed: dict):
     }
     runner.append_row(row)
     # Clean up per-job sink file if any (we never read it back).
-    sink = job.env.get("PIVOTER_DUMP_HIER")
-    if sink and sink not in ("/dev/null", "PER_JOB_SINK"):
-        try: os.unlink(sink)
-        except OSError: pass
+    for ek in ("PIVOTER_DUMP_HIER", "PIVOTER_DUMP_HIER_REF"):
+        sink = job.env.get(ek)
+        if sink and sink not in ("/dev/null", "PER_JOB_SINK"):
+            try: os.unlink(sink)
+            except OSError: pass
 
 
 def announce(job: Job, status: str, parsed: dict):

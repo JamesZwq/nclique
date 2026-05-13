@@ -487,6 +487,24 @@ double *  NCliqueVertexCoreDecomposition(
     double minCore = 0;
     int numProgress = 0;
     CoreDisJoin hierarchyBuilder(edgeGraph.adj_list_offsets.size() - 1, 20);
+
+    // CND-style hierarchy hook (NuclearCD general (r,s) algorithm specialised
+    // to r=1).  Triggered by PIVOTER_DUMP_HIER_REF=<path>; otherwise zero
+    // overhead.  Maintains K parallel DSUs (one per peel level) and emits
+    // hierarchy to <path>.  Used for §7 baseline comparison against our
+    // BuildHier post-peel routine.
+    const char *cndHierPath  = std::getenv("PIVOTER_DUMP_HIER_REF");
+    const bool   cndHierOn   = cndHierPath && cndHierPath[0];
+    double       prevMinCore = -1.0;
+    double       hierMsTotal = 0.0;
+    auto hierTimerStart = [&]() {
+        return std::chrono::steady_clock::now();
+    };
+    auto hierTimerStop = [&](auto t0) {
+        auto t1 = std::chrono::steady_clock::now();
+        hierMsTotal += std::chrono::duration<double, std::milli>(t1 - t0).count();
+    };
+
     while (!heap.empty()) {
 
         minCore = std::max( countingV[heap.top()], minCore );
@@ -503,6 +521,30 @@ double *  NCliqueVertexCoreDecomposition(
             currentRemoveVertexIds.push_back(id);
             coreV[id] = minCore;
             // daf::printProgress(numProgress++, edgeGraph.adj_list.size());
+        }
+
+        // CND-style hierarchy: advance level + union leaf-mates for every
+        // vertex finalised at this peel level.  All operations are gated
+        // behind cndHierOn so the non-hier path is unchanged.
+        if (cndHierOn) {
+            auto t0 = hierTimerStart();
+            if (minCore != prevMinCore) {
+                hierarchyBuilder.addK(minCore);
+                prevMinCore = minCore;
+            }
+            for (auto v : currentRemoveVertexIds) {
+                auto &adjClique = treeGraphV.getNbr(v);
+                for (const auto &clique : adjClique) {
+                    const auto &members = tree.adj_list[clique.v];
+                    for (const auto &node : members) {
+                        daf::Size u = node.v;
+                        if (u == v) continue;
+                        if (!vertexInHeap[u]) continue;  // already finalised
+                        hierarchyBuilder.unite(v, u);
+                    }
+                }
+            }
+            hierTimerStop(t0);
         }
 
         // std::cout << "currentCore: " << currCore << std::endl;
@@ -721,6 +763,15 @@ double *  NCliqueVertexCoreDecomposition(
         std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
 
     daf::phaseMark("REF_peel_loop");
+
+    // CND-style hierarchy dump (paper §7 baseline).  Reports the running
+    // hier time captured inside the peel loop and writes the level-DSU
+    // structure to the env-supplied path.
+    if (cndHierOn) {
+        std::cout << "hier r=1 (CND level-DSU) took: " << hierMsTotal << " ms" << std::endl;
+        auto identityMapper = [](daf::Size v) { return v; };
+        hierarchyBuilder.print_to_file(cndHierPath, identityMapper);
+    }
 
     delete[] countingV;
     // delete[] degreeV;
