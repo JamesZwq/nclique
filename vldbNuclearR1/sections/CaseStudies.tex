@@ -231,7 +231,13 @@ graph & br. & int. & d & br. & int. & d & br. & int. & d & br. & int. & d \\
 %
 \texttt{web-Stanford} retains nontrivial branches at every clique size, including $s=15$.
 %
-Figure~\ref{fig:cs10} makes the contrast visual at $s=5$ on a shared log-$k$ axis: \texttt{com-dblp}'s tree branches across multiple decades of $k$, \texttt{com-youtube}'s tree collapses to a low-$k$ band, and \texttt{web-Stanford} concentrates near the top of the $k$ range.
+Figure~\ref{fig:cs10} makes the contrast visual at $s=5$ by plotting branch persistence ($k_{\mathrm{birth}}-k_{\mathrm{death}}$) against the rank of each branch when sorted by persistence (log--log).
+%
+\texttt{com-dblp}'s curve is a long flat tail: thousands of branches retain persistence above $10^2$, the signature of a deep nested hierarchy.
+%
+\texttt{com-youtube}'s curve drops sharply after the first few ranks and plateaus near persistence $1$, showing that only a handful of branches carry real depth.
+%
+\texttt{web-Stanford} lies between the two.
 %
 The hierarchy is therefore not only an output format.
 %
@@ -240,8 +246,8 @@ It gives a domain-level fingerprint of clique-witness nesting.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/cs10_hierarchy.pdf}
-\caption{Join trees at $s{=}5$ on a shared log-$k$ axis: domain fingerprints.}
-\Description{Three side-by-side hierarchy trees on a shared log-k axis: com-dblp spans many decades of k, com-youtube collapses near low k, web-Stanford concentrates near high k.}
+\caption{Branch persistence vs.\ rank at $s{=}5$ (log--log): long tail = deep hierarchy.}
+\Description{Single panel with three log-log curves: com-dblp's persistence stays high for thousands of branches; com-youtube drops sharply after a handful; web-Stanford lies between them.}
 \label{fig:cs10}
 \end{figure}
 
