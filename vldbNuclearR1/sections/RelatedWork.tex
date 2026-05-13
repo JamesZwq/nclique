@@ -1,73 +1,33 @@
 \section{Related Work}\label{sec:related}
 
-The preceding sections specialize a known compact-clique framework to a narrower state model.
-%
-The related work is best read through that distinction.
-%
-Prior work explains how to peel cores and nuclei, how to compactly represent cliques, how to update core values locally or in parallel, and how to build hierarchy outputs.
-%
-This paper uses those ideas, but its main difference is the static-\cpi{} invariant for $r=1$.
+This paper uses prior ideas on core peeling, compact clique representations, local fixed-point characterisations, parallel construction, and hierarchy output; the new ingredient is the static-\cpi{} invariant for $r=1$.
 
 \stitle{Enumeration-based core and nucleus decomposition.}
-The $k$-core was introduced by Seidman~\cite{kcoreSeidman}.
+The $k$-core was introduced by Seidman~\cite{kcoreSeidman}; Batagelj and Zaver\v{s}nik~\cite{coreAlg} gave the linear-time peeling algorithm with a bucket queue.
 %
-Batagelj and Zaver\v{s}nik~\cite{coreAlg} gave the linear-time peeling algorithm with a bucket queue.
+Nucleus decomposition~\cite{nucleusSariyuce14} generalises this from edges to higher-order clique witnesses by peeling $r$-cliques according to their support in $s$-cliques.
 %
-Nucleus decomposition generalizes this idea from edges to higher-order clique witnesses~\cite{nucleusSariyuce14}.
-%
-In the general $(r,s)$ setting, peeling removes $r$-cliques according to their support in $s$-cliques.
-%
-That generality is broader than the problem solved here.
-%
-Our work specializes to the vertex-centric $r=1$ case and exploits a state invariant that does not hold for general $r$.
+We specialise to the vertex-centric $r=1$ case and exploit a state invariant that does not hold for general $r$.
 
 \stitle{Compact clique representations.}
-Bron--Kerbosch search~\cite{BronKerbosch}, Tomita pivoting~\cite{tomita}, and degeneracy ordering~\cite{eppstein} are standard tools for clique enumeration.
+Bron--Kerbosch search~\cite{BronKerbosch}, Tomita pivoting~\cite{tomita}, and degeneracy ordering~\cite{eppstein} are standard tools for clique enumeration; Pivoter's succinct clique tree compactly encodes clique counts~\cite{Pivoter}, and the Clique Path Index extends this line to support general nucleus decomposition with mutating hold/pivot updates during peeling~\cite{NuclearCD}.
 %
-Pivoter introduced the succinct clique tree as a compact representation for clique counting~\cite{Pivoter}.
-%
-The Clique Path Index builds on this line to support general nucleus decomposition without explicit $s$-clique enumeration, including mutating hold/pivot update rules during peeling~\cite{NuclearCD}.
-%
-Those representations answer how to compactly encode many cliques.
-%
-This paper asks a narrower question: for vertex peeling, does the implementation need to materialize those path edits?
-%
-The static-\cpi{} counter form answers no.
+The static-\cpi{} counter form of this paper shows that for vertex peeling these path edits never need to be materialised.
 
 \stitle{Local and parallel peeling.}
-$h$-index characterizations of core values were studied for local core computation~\cite{lu2016hcore,kcoreLocal,hindex}.
+$h$-index characterisations of core values were studied for local core computation~\cite{lu2016hcore,kcoreLocal,hindex}; \spin{} adapts that fixed-point view to the implicit $s$-clique witnesses encoded by the \cpi{}, and \spinStar{} is its peel-order optimisation.
 %
-\spin{} adapts that fixed-point view to the implicit $s$-clique witnesses encoded by the \cpi{}.
-%
-\spinStar{} is the peel-order optimization of the same equations.
-%
-The difference from prior local $h$-index work is not the operator itself.
-%
-The difference is that the witness multiset is represented by static \cpi{} paths and updated by binomial support-loss formulas.
+The difference from prior local $h$-index work is not the operator but the representation: the witness multiset is held in static \cpi{} paths and updated by binomial support-loss formulas.
 
 \stitle{Parallel construction and clique counting.}
-Parallel clique search usually tries to distribute the expensive recursive enumeration work.
+Parallel clique search typically distributes the recursive enumeration work; \paraBuild{} follows the same seed-level decomposition.
 %
-\paraBuild{} follows the same seed-level decomposition principle.
-%
-Its specific role in this paper is tied to the static consumer layout.
-%
-Because the downstream peel never mutates path sets, construction partitions into thread-independent subproblems whose results combine through a deterministic merge.
-%
-This is an engineering consequence of the $r=1$ state model rather than a new clique-enumeration paradigm.
+Because the downstream peel never mutates path sets, construction partitions into thread-independent subproblems whose results combine by a deterministic merge --- an engineering consequence of the $r=1$ state model rather than a new clique-enumeration paradigm.
 
 \stitle{Hierarchical cohesive subgraphs.}
-Nucleus decompositions naturally form hierarchies across core levels~\cite{nucleusSariyuce14}.
+Nucleus decompositions naturally form hierarchies across core levels~\cite{nucleusSariyuce14}, and elder-rule join-tree extraction is standard in computational topology~\cite{morozov2007persistence}.
 %
-Elder-rule join-tree extraction is standard in computational topology~\cite{morozov2007persistence}.
-%
-Prior nucleus pipelines can extract such hierarchies after sorting decomposition output or revisiting clique witnesses.
-%
-\buildHier{} instead reuses the preserved static \cpi{}: after core values are known, each leaf has a birth level and can be processed as a hyperedge.
-%
-The hierarchy result is therefore a byproduct of preserving the \cpi{} through peeling.
+Prior nucleus pipelines extract such hierarchies by sorting the decomposition output or revisiting clique witnesses; \buildHier{} instead reuses the preserved static \cpi{}, treating each leaf as a hyperedge born at its minimum core value, so the hierarchy is a byproduct of preserving the \cpi{} through peeling.
 
 \stitle{Empirical graph mining methodology.}
 The evaluation follows common practice in cohesive-subgraph experiments: SNAP community ground truth, large public graphs, runtime and memory comparisons, and dense synthetic stress tests~\cite{communityFinder,NuclearCD,nucleusSariyuceTODS}.
-%
-The case studies use those benchmarks to test whether the $r=1$ specialization remains useful as a vertex-ranking tool.
