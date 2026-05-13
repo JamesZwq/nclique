@@ -176,44 +176,26 @@ $(3,15)$ & $0^{\dagger}$ & $173$ & $87$ & $9.8\times$ \\
 
 Across all three $s$ values, $r=1$ reaches the same rec50 and triangle-density contours as higher-$r$ settings (see Table~\ref{tab:cs7}) with lower runtime; the same pattern holds on \texttt{com-youtube} as on \texttt{com-dblp}.
 
-\stitle{Case study 4: $s$ changes local resolution.}\label{sec:cs-viz}
+\stitle{Case study 4: $s$ distils a neighbourhood into near-clique modules.}\label{sec:cs-viz}
 The previous studies use global rankings.
 %
 The ego-network visualization asks whether $s$ also changes local interpretability.
 %
-Figure~\ref{fig:cs9} shows the two-hop ego-network of \texttt{com-dblp} vertex $52213$ under $s\in\{3,5,10\}$.
-%
-Table~\ref{tab:cs9} reports the component statistics.
+Figure~\ref{fig:cs9} compares the two-hop ego-network of a \texttt{com-dblp} anchor under a loose $(1,3)$-nucleus and a tight $(1,10)$-nucleus, with the top-$5$ surviving components annotated by their member count and internal edge density.
 
-\begin{table}[t]
+At $s{=}3$ the entire neighbourhood collapses into a single loose component of $1{,}404$ members with internal edge density $0.01$, i.e., a coarse coauthor blob with no module structure.
+%
+At $s{=}10$ the neighbourhood breaks into $26$ components; the top-$5$ by quality include two perfect cliques ($K_6$ and $K_5$ at density $1.00$) and a near-clique on $4$ vertices ($0.83$), against a residual loose patch of $206$ members ($0.08$).
+%
+The top-$5$ average density rises from $0.01$ to $0.72$, so raising $s$ does not just shrink the active set --- it distils the same neighbourhood into a few near-clique modules that were latent at $s{=}3$.
+
+\begin{figure*}[t]
 \centering
-\caption{Ego-network statistics around a \texttt{com-dblp} anchor.}
-\label{tab:cs9}
-\small
-\begin{tabular}{r r r r r r}
-\toprule
-$s$ & $|V|$ & CCs & largest CC & intra-frac & avg cond \\
-\midrule
-$3$  & $462$ & $1$  & $462$ & $0.992$ & $0.004$ \\
-$5$  & $335$ & $5$  & $329$ & $0.796$ & $0.121$ \\
-$10$ & $66$  & $26$ & $32$  & $0.340$ & $0.636$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Figure~\ref{fig:cs9} uses the same spring layout in every panel and colours each vertex by its component identity at $s=10$, so the reader can trace the same vertex across panels.
-%
-At $s=3$ the colours are scrambled inside one large component; at $s=10$ those same colours form spatially separated modules.
-%
-This makes $s$ a local resolution knob: raising $s$ surfaces modular structure that was already latent in the neighbourhood.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/cs9_egonet.pdf}
-\caption{Same ego-network, same layout, three $s$ values; vertex colour fixed by its $s{=}10$ component.}
-\Description{Three ego-network visualizations sharing a layout: at small s the same-colored vertices are scrambled inside one component; at large s they form spatially separated modules.}
+\includegraphics[width=0.92\linewidth]{figures/cs9_egonet.pdf}
+\caption{Ego-network at a loose vs.\ a tight $(1,s)$-nucleus: top-$5$ avg density $0.01\rightarrow0.72$.}
+\Description{Two ego-network panels for the same com-dblp anchor: left panel at s=3 shows a single loose component of 1404 members with density 0.01; right panel at s=10 shows 26 components including perfect K_6 and K_5 cliques annotated with density 1.00 callout boxes.}
 \label{fig:cs9}
-\end{figure}
+\end{figure*}
 
 \stitle{Case study 5: hierarchy profiles differ by domain.}\label{sec:cs-hier}
 \buildHier{} turns the core values into a $(1,s)$-clique-connected nucleus hierarchy (Definition~\ref{def:nucleus}).
