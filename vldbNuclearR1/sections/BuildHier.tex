@@ -1,18 +1,8 @@
 \section{Core-Value Hierarchy Construction}\label{sec:buildhier}
 
-In this section, we extract the $(1,s)$-clique-connected nucleus hierarchy of Definition~\ref{def:nucleus} from the preserved \cpi{} of Section~\ref{sec:static}, after \spinStar{} has computed the core values.
+After \spinStar{} computes the core values, we extract the $(1,s)$-clique-connected nucleus hierarchy of Definition~\ref{def:nucleus} from the preserved \cpi{} of Section~\ref{sec:static}.
 %
-We first show that each leaf can be treated as a hyperedge that is born at the minimum core value among its stored vertices, then present \buildHier{} (Algorithm~\ref{alg:buildhier}) as a single descending union--find scan over leaves; the cost is $O(\Sig\log\Sig)$ and no clique is re-enumerated.
-
-The core numbers define a nested family of vertex sets.
-%
-For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\ge k\}$.
-%
-As $k$ decreases, vertices enter the set.
-%
-Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-clique witnesses contained in $V_k$.
-%
-\buildHier{} constructs the elder-rule join tree of this clique-witnessed filtration directly from \cpi{} leaves.
+For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\ge k\}$ and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-clique witnesses contained in $V_k$; \buildHier{} (Algorithm~\ref{alg:buildhier}) constructs the elder-rule join tree of this clique-witnessed filtration directly from \cpi{} leaves in a single descending union--find scan, in $O(\Sig\log\Sig)$ time and without re-enumerating any clique.
 
 \stitle{Leaves as connectors.}
 A \cpi{} leaf $P$ encodes the family of $s$-cliques $\Vh(P)\cup X$ for every $\eta_P$-subset $X\subseteq\Vp(P)$ (Definition~\ref{def:path}).

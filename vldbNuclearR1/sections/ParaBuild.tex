@@ -1,18 +1,8 @@
 \section{Parallel \cpi{} Construction}\label{sec:parabuild}
 
-In this section, we parallelise the \cpi{} construction phase, which becomes the dominant remaining cost once \spinStar{} makes peeling counter-only.
+Once \spinStar{} makes peeling counter-only, \cpi{} construction becomes the load-bearing cost of the pipeline: the phase-breakdown tables of Section~\ref{sec:exp} report \texttt{web-it-2004} at $s=3$ peeling in $351$\,ms against $\approx 127$\,s of loading and construction, and \texttt{web-Stanford} at $s=60$ peeling in $1.4$\,ms against $\approx 6.1$\,s of loading and construction.
 %
-We first explain why the seed loop admits parallel execution and how the static output contract makes the merge cheap, then present \paraBuild{} (Algorithm~\ref{alg:parabuild}); the empirical scaling is reported in Section~\ref{sec:exp} (Table~\ref{tab:par}).
-%
-The phase-breakdown tables in Section~\ref{sec:exp} measure \spinStar{}'s peel time separately from graph loading and \cpi{} construction.
-%
-They show that after \spinStar{}, peeling is often much smaller than construction.
-%
-On \texttt{web-it-2004} at $s=3$, \spinStar{} peels in $351$\,ms while loading and construction take about $127$ seconds.
-%
-On \texttt{web-Stanford} at $s=60$, peeling takes $1.4$\,ms while loading and construction take about $6.1$ seconds.
-%
-This makes \cpi{} construction the load-bearing cost of the static-state pipeline, so further pipeline-level speedups must address construction.
+We parallelise the construction phase by exploiting two properties: the seed loop partitions emitted $s$-clique families along the degeneracy order, and the static output contract makes the merge a pointer-level concatenation.
 
 \stitle{Why the seed loop can be parallel.}
 The \cpi{} builder follows the standard degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.

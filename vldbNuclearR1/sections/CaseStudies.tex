@@ -1,26 +1,13 @@
 \section{Case Studies}\label{sec:casestudy}
 
-The experiments measure whether the static pipeline changes cost and scalability.
+The experiments measure cost; this section asks whether the specialised $r=1$ case is worth optimising in the first place.
 %
-They do not by themselves explain whether the specialized $r=1$ case is worth optimizing.
-%
-This section therefore asks a practical question:
-when an analyst wants vertex-level cohesive structure, is $(1,s)$ enough?
-%
-On the ground-truth tasks reported here, $(1,s)$ matches the quality of higher-$r$ nuclei on the evaluated metrics while costing much less.
-%
-The claim is empirical and scoped to these datasets and metrics.
+On the ground-truth tasks reported here, $(1,s)$ matches the quality of higher-$r$ nuclei on the evaluated metrics at much lower cost, a claim scoped to the datasets and metrics below.
 
 \stitle{Setup.}\label{sec:cs-setup}
-For cross-$r$ comparisons, we use the standard $(r,s)$-nucleus parameterization~\cite{nucleusSariyuce14}.
+For cross-$r$ comparisons we use the standard $(r,s)$-nucleus parameterisation~\cite{nucleusSariyuce14}; the paper's algorithmic results apply only to $r=1$, while the $r=2$ and $r=3$ scores serve as baselines from the same family.
 %
-The paper's algorithmic results apply only to $r=1$.
-%
-The $r=2$ and $r=3$ results are baselines from the same nucleus family.
-%
-Because those baselines score edges or triangles, we project their scores to vertices by assigning each vertex the maximum score of an incident $r$-clique.
-%
-Vertices are ranked by projected score in descending order, with ties broken uniformly.
+Because edge- and triangle-level scores need to be compared with vertex rankings, we project them by assigning each vertex the maximum score of an incident $r$-clique, then rank descending with ties broken uniformly.
 
 The ground-truth datasets are \texttt{com-dblp} and \texttt{com-youtube} from SNAP~\cite{communityFinder}.
 %
@@ -252,14 +239,4 @@ It gives a domain-level fingerprint of clique-witness nesting.
 \end{figure}
 
 \stitle{Takeaway.}\label{sec:cs-summary}
-These studies support the paper's focus on $(1,s)$.
-%
-The parameter $s$ changes granularity.
-%
-On the reported DBLP and YouTube ground-truth tasks, $r=1$ matches higher-$r$ quality metrics while running much faster.
-%
-The hierarchy and ego-network studies show that the same vertex-centric decomposition also gives interpretable structure beyond a global ranking.
-%
-The evidence is not a universal claim about all graph mining tasks.
-%
-It is a practical justification for optimizing the exact $r=1$ case.
+On the DBLP and YouTube ground-truth tasks, $r=1$ matches higher-$r$ quality metrics at much lower cost; the hierarchy and ego-network studies show the same decomposition also yields interpretable local structure and a per-domain fingerprint. The evidence is scoped to these datasets and metrics rather than a universal claim, but it is enough to justify optimising the exact $r=1$ case.

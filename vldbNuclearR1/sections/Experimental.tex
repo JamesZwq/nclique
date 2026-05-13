@@ -1,10 +1,6 @@
 \section{Experiments}\label{sec:exp}
 
-The previous sections prove the static-\cpi{} invariant and derive two ways to compute the same fixed point: the direct \spin{} solver and the practical \spinStar{} realization.
-%
-The comparison with \cbnd{} is therefore a cost comparison, while exactness comes from the invariants and fixed-point equivalence proved earlier.
-%
-They ask whether the static pipeline changes the cost profile enough to matter.
+Exactness comes from the invariants and fixed-point equivalence proved earlier; the experiments measure cost.
 %
 \textbf{RQ1} measures end-to-end time and peak memory for \textbf{\spinStar{}}, the practical static-\cpi{} pipeline.
 %
@@ -71,40 +67,16 @@ Graph & $|V|$ & $|E|$ & avg.\ deg.\ \\
 \end{table}
 
 \stitle{Algorithms and methodology.}
-\textbf{\cbnd{}} is the mutable-\cpi{} implementation of general $(r,s)$-nucleus decomposition~\cite{NuclearCD}, restricted to $r=1$ for this comparison.
+\textbf{\cbnd{}}~\cite{NuclearCD} is the mutable-\cpi{} implementation described in Section~\ref{sec:baseline}, restricted to $r=1$ for this comparison; \textbf{\spinStar{}} is the static-\cpi{} pipeline of this paper; \textbf{\spin{}} is the direct fixed-point reference of Section~\ref{sec:localh}.
 %
-It maintains the \cpi{} as mutable residual state: each peel step deletes the popped vertex from every path that references it, rewrites the affected path records, and updates a hash-indexed reverse map so the next pop can locate its incident paths.
+All three solvers consume the same input edge list and run on the same hardware; the comparison therefore isolates the cost of \cpi{} mutability against static-state peeling.
 %
-The dominant per-pop cost is therefore the residual-index rewrite plus the hash-set rebuild that reflects the deletion; this work is intrinsic to the mutable design and is what \spinStar{} avoids by leaving the \cpi{} unchanged.
-%
-\textbf{\spinStar{}} is the practical static-\cpi{} pipeline.
-%
-It constructs the static index once and computes core values by incremental path-counter updates.
-%
-\spin{} is evaluated separately because it is the direct fixed-point formulation rather than the practical implementation.
-%
-All three solvers consume the same input edge list and run on the same hardware.
-%
-The comparison isolates the cost of \cpi{} mutability against static-state peeling, not differences in input processing or execution environment.
-
-For every matched $(graph,s)$ pair, we run \cbnd{} and \spinStar{} on the same input.
-%
-We record the end-to-end time and the program's memory usage.
-%
-End-to-end time includes graph loading, degeneracy ordering, \cpi{} construction, peeling, and output emission.
-%
-The exactness claim comes from Theorem~\ref{thm:vertex-removal}, Lemma~\ref{lem:hindex-fixed-point}, and Lemma~\ref{lem:equivalence}.
+For each matched $(graph,s)$ pair, we record the end-to-end time (load, degeneracy order, \cpi{} construction, peel, output) and the program's memory usage.
 
 \stitle{RQ1: end-to-end time and memory.}
-The benchmark has $307$ matched cells where both \spinStar{} and \cbnd{} complete.
+Across the ten graphs (Figures~\ref{fig:exp-time}--\ref{fig:exp-mem}), \spinStar{} achieves a peel-time speedup over \cbnd{} of gmean $13.50\times$ / max $44.76\times$, and a memory-usage ratio (\cbnd{}$/$\spinStar{}) of gmean $1.55\times$ / max $3.92\times$.
 %
-Across the ten graphs, \spinStar{} achieves a peel-time speedup over \cbnd{} of geometric-mean $13.50\times$ and maximum $44.76\times$.
-%
-The end-to-end speedup is smaller (gmean $1.10\times$) because the shared SDCT construction phase dominates total runtime once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
-%
-The memory-usage ratio (\cbnd{} over \spinStar{}) has geometric mean $1.55\times$ and maximum $3.92\times$.
-%
-Figure~\ref{fig:exp-time} and Figure~\ref{fig:exp-mem} show where these gains occur.
+The end-to-end speedup is smaller (gmean $1.10\times$) because the shared \cpi{} construction phase dominates total runtime once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
 
 \begin{figure*}[t]
 \centering
@@ -265,13 +237,7 @@ The reason is structural: \spinStar{}'s extra state beyond the shared CPI consis
 %
 The sub-percent memory advantage of \spin{} is therefore the price \spinStar{} pays to avoid repeated full-graph passes; the trade is the textbook ``space for time'' choice, with the time term dominating by orders of magnitude.
 
-The result is not a failure of the fixed-point view.
-%
-It explains why the paper needs both algorithms.
-%
-\spin{} gives the direct semantic formulation.
-%
-\spinStar{} computes the same fixed point by processing only the vertices whose witness counters changed.
+This is why the paper carries both algorithms: \spin{} as the direct semantic formulation and \spinStar{} as its event-driven realisation.
 
 \stitle{RQ5: dense synthetic stress.}
 The benchmark graphs are sparse.
@@ -408,12 +374,4 @@ All experiments are scripted: build commands, dataset URLs, and bench drivers ar
 Each binary run is wrapped with \texttt{/usr/bin/time~-v} so memory usage, page faults, and exit status are captured in every CSV row.
 
 \stitle{Takeaway.}
-The experiments support the paper's dependency chain.
-%
-\spinStar{} is faster and uses less peak memory than \cbnd{} on the $307$ matched benchmark cells.
-%
-The phase breakdown shows that construction becomes a major remaining cost after peeling becomes counter-only.
-%
-\paraBuild{} addresses that shifted bottleneck by parallelizing static construction.
-%
-\spin{} confirms why the direct fixed-point view is useful for semantics but unsuitable as the practical solver.
+\spinStar{} is faster and lighter than \cbnd{} on the $307$ matched cells, the construction phase emerges as the new dominant cost once peeling is counter-only, \paraBuild{} addresses that shift, and \spin{} confirms the direct fixed-point view's role as semantic reference rather than practical solver.
