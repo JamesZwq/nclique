@@ -1,5 +1,5 @@
-"""Combined scalability figure: SPIN★ time (row 1) and peak RSS (row 2) vs s
-on five graphs, one curve per vertex-induced subsample ratio.
+"""Combined scalability figure: SPIN★ time (row 1) and memory usage (row 2) vs s
+on six graphs, one curve per vertex-induced subsample ratio.
 
 Reads paper_data/scalability_{graph}.csv for each graph in GRAPHS.
 """
@@ -23,6 +23,7 @@ GRAPHS = [
     ("web-Stanford",             "web-Stanford"),
     ("web-Google",               "web-Google"),
     ("soc-pokec-relationships",  "soc-pokec"),
+    ("com-orkut",                "com-orkut"),
 ]
 
 ALGO_KEY = "Ours_ST"
@@ -69,8 +70,8 @@ def plot_combined(out_pdf):
     )
     if n_cols == 1: axes = [[axes[0]], [axes[1]]]
 
-    for row, (mem, ylabel) in enumerate([(False, "wall time (ms)"),
-                                          (True,  "peak RSS (MB)")]):
+    for row, (mem, ylabel) in enumerate([(False, "time (ms)"),
+                                          (True,  "memory usage (MB)")]):
         for col, (graph_label, data) in enumerate(panels):
             ax = axes[row][col]
             for ratio, color in sorted(RATIO_COLORS.items()):
