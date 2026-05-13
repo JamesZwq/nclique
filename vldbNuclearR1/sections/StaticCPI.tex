@@ -30,23 +30,13 @@ The stored sets $\Vh(\TPath)$ and $\Vp(\TPath)$ are never modified.
 \end{theorem}
 
 \begin{proof}
-$\TPath$ encodes $\mathcal{C}(\TPath)=\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath), |P'|=\eta_{\TPath}\}$.
+$\TPath$ encodes $\mathcal{C}(\TPath)=\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath),\ |P'|=\eta_{\TPath}\}$.
 %
-If $v\in\Vh(\TPath)$, every encoded $s$-clique contains $v$, so no encoded clique survives after $v$ is removed.
+If $v\in\Vh(\TPath)$, every encoded clique contains $v$ and none survives.
 %
-If $v\in\Vp(\TPath)$, the surviving encoded cliques are exactly
-\[
-\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath)\setminus\{v\}, |P'|=\eta_{\TPath}\}.
-\]
-This family has cardinality $\binom{|\Vp(\TPath)|-1}{\eta_{\TPath}}$.
+If $v\in\Vp(\TPath)$, the surviving cliques are $\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath)\setminus\{v\},\ |P'|=\eta_{\TPath}\}$, a family of size $\binom{|\Vp(\TPath)|-1}{\eta_{\TPath}}$ that depends on $\Vp(\TPath)$ only through its cardinality; by Lemma~\ref{lem:supp} every support contribution of the path depends only on this cardinality, so the counter update $p_{\TPath}\!\leftarrow\!p_{\TPath}\!-\!1$ is support-equivalent to physical deletion, and the family is empty iff $p_{\TPath}\!-\!1<\eta_{\TPath}$.
 %
-By Lemma~\ref{lem:supp}, every support contribution of the path depends on the pivot set only through this cardinality and the corresponding pivot cardinalities.
-%
-Thus replacing the physical deletion from $\Vp(\TPath)$ by the counter update $p_{\TPath}\leftarrow p_{\TPath}-1$ gives the same support arithmetic.
-%
-The family is empty exactly when fewer than $\eta_{\TPath}$ effective pivots remain.
-%
-If $v\notin\Vh(\TPath)\cup\Vp(\TPath)$, no encoded clique on $\TPath$ contains $v$, so the encoded family is unchanged.
+If $v\notin\Vh(\TPath)\cup\Vp(\TPath)$, no encoded clique mentions $v$ and the family is unchanged.
 %
 \qed
 \end{proof}
@@ -79,15 +69,9 @@ A path-killing event, caused by a hold peel or by $p-d<\eta$, is the limiting ca
 \end{lemma}
 
 \begin{proof}
-Apply Lemma~\ref{lem:supp} before and after the event.
+By Lemma~\ref{lem:supp}, a hold $u$ contributes $\binom{p}{\eta}$ before the event and $\binom{p-d}{\eta}$ after; a pivot $u$ occupies one slot and contributes $\binom{p-1}{\eta-1}$ before and $\binom{p-d-1}{\eta-1}$ after.
 %
-A hold $u$ contributes $\binom{p}{\eta}$ before the event and $\binom{p-d}{\eta}$ after the event.
-%
-A pivot $u$ occupies one pivot slot.
-%
-It contributes $\binom{p-1}{\eta-1}$ before the event and $\binom{p-d-1}{\eta-1}$ after the event.
-%
-Subtracting the after value from the before value gives the two formulas.
+Subtracting after from before gives the two formulas.
 %
 \qed
 \end{proof}

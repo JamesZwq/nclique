@@ -39,15 +39,11 @@ Summing over the paths through $v$ gives the total threshold count $\sum_{\TPath
 \end{lemma}
 
 \begin{proof}
-Each encoded $s$-clique through $v$ has the form $\Vh(\TPath)\cup P'$, where $P'\subseteq\Vp(\TPath)$ and $|P'|=\eta_{\TPath}$.
+Each encoded $s$-clique through $v$ has the form $\Vh(\TPath)\cup P'$ with $P'\subseteq\Vp(\TPath)$ and $|P'|=\eta_{\TPath}$.
 %
-If any other hold vertex fails the threshold $k$, no encoded clique through $v$ can qualify.
+If any other hold vertex fails threshold $k$, no such clique qualifies; otherwise, $v\in\Vh(\TPath)$ leaves all $\eta_{\TPath}$ pivot slots to be filled from the $Q_k(\TPath)$ passing pivots and gives $\binom{Q_k(\TPath)}{\eta_{\TPath}}$ qualifying cliques, while $v\in\Vp(\TPath)$ leaves $\eta_{\TPath}-1$ slots to fill and gives $\binom{Q_k(\TPath)}{\eta_{\TPath}-1}$.
 %
-If $v$ is a hold, all $\eta_{\TPath}$ pivot slots must be filled by threshold-passing pivots.
-%
-If $v$ is a pivot, $v$ occupies one pivot slot and the remaining $\eta_{\TPath}-1$ slots must be filled by threshold-passing pivots.
-%
-Summing the qualifying counts over paths gives $\sum_{\TPath\ni v}W_v(\TPath,h,k)$.
+Summing over the paths through $v$ gives the stated total.
 %
 \qed
 \end{proof}
@@ -138,26 +134,18 @@ $\mathrm{changed}\gets\textsf{true}$\;
 \Return{$\kappa_s$}
 \end{algorithm}
 
-The proof below connects the fixed point to $(1,s)$-nucleus core values.
-%
-It is the reason \spin{} can serve as the semantic reference for the incremental algorithm of Section~\ref{sec:peelh}.
-
 \begin{lemma}[Fixed Point Correctness]\label{lem:hindex-fixed-point}
-Initialised at $h^{(0)}[v]=\sdeg(v)$, Algorithm~\ref{alg:localH} converges in at most $1+n\kmax$ passes to $h[v]=\kappa_s(v)$ for every $v\in V$.
-%
-The sequence $h^{(t)}[v]$ is monotonically non-increasing.
+Initialised at $h^{(0)}[v]=\sdeg(v)$, Algorithm~\ref{alg:localH} converges in at most $1+n\kmax$ passes to $h[v]=\kappa_s(v)$ for every $v\in V$, and the sequence $h^{(t)}[v]$ is monotonically non-increasing.
 \end{lemma}
 
 \begin{proof}
-By definition, $h^{(t+1)}[v]\ge k$ iff $v$ has at least $k$ incident $s$-cliques whose other vertices all satisfy $h^{(t)}\ge k$.
+By the operator definition, $h^{(t+1)}[v]\ge k$ iff $v$ has at least $k$ incident $s$-cliques whose other vertices all satisfy $h^{(t)}\ge k$, so $\sdeg(v)$ is the largest possible value and the sequence is monotone non-increasing on the non-negative integers; the total drop across all vertices is bounded by $n\kmax$, giving $T\le1+n\kmax$ passes to a fixed point $h^\star$.
 %
-The initial value $\sdeg(v)$ is the maximum possible support for $v$, so the update cannot increase $h[v]$; the sequence is monotone non-increasing on the non-negative integers and therefore converges to some $h^\star$.
+At $h^\star$, let $S_k=\{v\mid h^\star[v]\ge k\}$; every $v\in S_k$ has at least $k$ incident $s$-cliques entirely inside $S_k$, and each such clique lies in $v$'s $s$-connected component $C\subseteq S_k$ (because the clique itself is the connecting witness), so $C$ satisfies Conditions~(i)--(iii) of Definition~\ref{def:nucleus} and is a $k$-$(1,s)$-nucleus, giving $\kappa_s(v)\ge k$.
 %
-At $h^\star$, let $S_k=\{v\mid h^\star[v]\ge k\}$.
+Conversely, if $v$ lies in a $k$-$(1,s)$-nucleus $C'$, induction on $t$ shows that the threshold-support equation preserves $h^{(t)}[u]\ge k$ for every $u\in C'$, so $h^\star[v]\ge k$.
 %
-Every $v\in S_k$ has at least $k$ incident $s$-cliques with all other vertices in $S_k$ (by the threshold-support equation), so each $v$ has $\ge k$ internal $s$-cliques in $S_k$; and any superset would force $h^\star<k$ on a new vertex, so $S_k$ is maximal with this property and therefore the $k$-$(1,s)$-nucleus (Definition~\ref{def:nucleus}), giving $h^\star[v]=\kappa_s(v)$.
-%
-Across all vertices the sum of $h$-values can decrease at most $n\kmax$ times before the final no-change pass, bounding $T\le1+n\kmax$.
+Hence $h^\star[v]=\kappa_s(v)$.
 %
 \qed
 \end{proof}
@@ -259,15 +247,13 @@ Algorithm~\ref{alg:peelH} returns the same $\kappa_s$ values as Algorithm~\ref{a
 \end{lemma}
 
 \begin{proof}
-Both algorithms apply the same per-vertex threshold-support operator $\Phi$; \spin{} uses full passes, \spinStar{} uses peel order with recomputes restricted to path-mates of the popped vertex (Theorem~\ref{thm:vertex-removal}, Lemma~\ref{lem:support-delta}).
+Both algorithms apply the same per-vertex threshold-support operator $\Phi$: \spin{} uses full passes, while \spinStar{} (by Theorem~\ref{thm:vertex-removal} and Lemma~\ref{lem:support-delta}) restricts recomputes to path-mates of the popped vertex.
 %
-Initial values $h[u]=\sdeg(u)$ are an upper bound on $\kappa_s(u)$, and $\Phi$ never increases an entry, so $h\ge\kappa_s$ is a global invariant.
+Initial values $h[u]=\sdeg(u)$ are an upper bound on $\kappa_s(u)$ and $\Phi$ never increases an entry, so $h\ge\kappa_s$ holds throughout.
 %
-When $v$ is popped at level $k=h[v]$, every unfinalised vertex has $h\ge k$, so the unfinalised set $U$ is a candidate $k$-region: each $u\in U$ has at least $k$ surviving $s$-cliques entirely within $U$, hence at least $k$ internal $s$-cliques in $U$.
+When $v$ is popped at level $k=h[v]$, every unfinalised $u$ has $h[u]\ge k$ and at least $k$ surviving $s$-cliques inside the unfinalised set $U$; each such clique lies in $u$'s $s$-connected component of $U$, which is therefore a $k$-$(1,s)$-nucleus, so $\kappa_s(u)\ge k$, and combined with $h[u]\ge\kappa_s(u)$ this gives $\kappa_s(v)=k=h[v]$.
 %
-By Definitions~\ref{def:nucleus}--\ref{def:core}, $\kappa_s(u)\ge k$ for every $u\in U$, in particular $\kappa_s(v)\ge k$; combined with $h[v]\ge\kappa_s(v)$ this gives $\kappa_s(v)=k=h[v]$.
-%
-By Lemma~\ref{lem:hindex-fixed-point} the same value $\kappa_s$ is the fixed point reached by \spin{}.
+By Lemma~\ref{lem:hindex-fixed-point}, $\kappa_s$ is also the fixed point reached by \spin{}.
 %
 \qed
 \end{proof}
