@@ -209,13 +209,9 @@ This is why the paper carries both algorithms: \spin{} as the direct semantic fo
 \stitle{RQ5: dense synthetic stress.}
 The benchmark graphs are sparse.
 %
-The stress test follows the dense synthetic protocol used in prior nucleus-decomposition studies~\cite{nucleusSariyuceTODS,NuclearCD}.
+The stress test follows the dense synthetic protocol used in prior nucleus-decomposition studies~\cite{nucleusSariyuceTODS,NuclearCD}: $1000$-vertex graphs built by incremental clique injection, sweeping $12$ densities from $0.01$ to $0.60$ for $s\in\{5,7,9,11\}$.
 %
-It generates $1000$-vertex graphs by incremental clique injection and sweeps $12$ densities from $0.01$ to $0.60$ for $s\in\{5,7,9,11\}$.
-%
-Both methods grow quickly as density and $s$ increase.
-%
-Where both implementations finish, \spinStar{} remains below \cbnd{} in time and memory.
+Each curve in Figure~\ref{fig:stress} is drawn up to the highest density at which that algorithm still completes within the $1200$-second budget; both methods run out of resources at roughly the same density frontier, and on every cell where both finish \spinStar{} stays below \cbnd{} in time and memory.
 
 \begin{figure*}[t]
 \centering

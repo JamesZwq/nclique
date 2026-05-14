@@ -1,12 +1,12 @@
-"""
-Stress-test figure: synthetic dense graphs (clique injection, N=1000),
-density p ∈ {0.01..0.20}, time and RSS as functions of p.
+"""Stress-test figure: synthetic dense graphs (clique injection, N=1000)
+across density p and clique size s.
 
-Layout: 1 row × N subplots, one per s value.  Each subplot: time-vs-p
-with two curves (Ours blue solid, SOTA red dashed).  A separate figure
-shows memory-vs-p with the same layout.
+Emits a single fig_stress.pdf in a 2-row x n-col layout (time top,
+memory bottom).  Each curve extends to the highest density at which the
+algorithm still completes; cells with status TIMEOUT or FAIL are simply
+dropped, so the line naturally ends at the limit of that algorithm.
 
-Reads: paper_data/stress.csv with columns
+Reads paper_data/stress.csv with columns
     n,density,m,s,algorithm,time_ms,memory_kB,status
 """
 import matplotlib
@@ -23,8 +23,8 @@ OUT = Path(__file__).parent
 CSV = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data/stress.csv")
 
 ALGOS = [
-    ("Ours_ST", "Ours", "#1f3a8a", "-",  "o", 1.4),
-    ("REF_R1",  "SOTA", "#c0392b", "--", "s", 1.2),
+    ("Ours_ST", r"SPIN$^{\star}$",          "#1f3a8a", "-",  "o", 1.5),
+    ("REF_R1",  r"CND",                     "#c0392b", "--", "s", 1.3),
 ]
 
 
@@ -46,37 +46,47 @@ def load():
     return data
 
 
-def plot(metric, ylabel, out_pdf, mem=False):
+def plot(out_pdf):
     data = load()
     s_values = sorted({k[1] for k in data})
     n = len(s_values)
-    fig, axes = plt.subplots(1, n, figsize=(n * 2.4, 1.9), sharey=False)
-    if n == 1: axes = [axes]
-    for ax, s in zip(axes, s_values):
-        for algo, label, color, ls, marker, lw in ALGOS:
-            rows = data.get((algo, s), [])
-            if not rows: continue
-            xs = [r[0] for r in rows]
-            ys = [r[2] / 1024.0 if mem else r[1] for r in rows]
-            ax.plot(xs, ys, color=color, linestyle=ls, marker=marker,
-                    markersize=3.5, linewidth=lw, label=label)
-        ax.set_title(f"$s{{=}}{s}$", fontsize=9)
-        ax.set_xlabel("density $p$", fontsize=8)
-        ax.set_yscale("log")
-        ax.tick_params(axis="both", which="major", labelsize=7)
-        ax.grid(True, which="major", alpha=0.25, linestyle=":")
-    axes[0].set_ylabel(ylabel, fontsize=8.5)
-    handles, labels = axes[0].get_legend_handles_labels()
+    fig, axes = plt.subplots(2, n, figsize=(n * 2.4, 3.4),
+                             sharex=False, sharey=False)
+    if n == 1: axes = [[axes[0]], [axes[1]]]
+
+    for row, (mem, ylabel) in enumerate([
+        (False, "time (ms)"),
+        (True,  "memory (MB)"),
+    ]):
+        for col, s in enumerate(s_values):
+            ax = axes[row][col]
+            for algo, label, color, ls, marker, lw in ALGOS:
+                rows = data.get((algo, s), [])
+                if not rows: continue
+                xs = [r[0] for r in rows]
+                ys = [r[2] / 1024.0 if mem else r[1] for r in rows]
+                ax.plot(xs, ys, color=color, linestyle=ls, marker=marker,
+                        markersize=4.0, linewidth=lw, label=label)
+            ax.set_yscale("log")
+            ax.tick_params(axis="both", which="major", labelsize=8.0)
+            ax.tick_params(axis="both", which="minor", labelsize=0)
+            ax.grid(True, which="major", alpha=0.25, linestyle=":")
+            for sp in ("top", "right"): ax.spines[sp].set_visible(False)
+            if row == 0:
+                ax.set_title(f"$s{{=}}{s}$", fontsize=10, fontweight="bold")
+            if row == 1:
+                ax.set_xlabel("density $p$", fontsize=10)
+            if col == 0:
+                ax.set_ylabel(ylabel, fontsize=9.5)
+
+    handles, labels = axes[0][0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=len(ALGOS),
-               fontsize=8, frameon=False, bbox_to_anchor=(0.5, 1.05))
-    fig.tight_layout(rect=[0, 0, 1, 0.92])
+               fontsize=9.5, frameon=False, bbox_to_anchor=(0.5, 1.02))
+    fig.tight_layout(rect=[0, 0, 1, 0.94])
     fig.savefig(out_pdf, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out_pdf}")
 
 
 if __name__ == "__main__":
-    plot("time_ms", "wall-clock time (ms)", OUT / "fig_stress_time.pdf",
-         mem=False)
-    plot("memory_kB", "peak RSS (MB)",     OUT / "fig_stress_mem.pdf",
-         mem=True)
+    plot(OUT / "fig_stress.pdf")
