@@ -68,7 +68,49 @@ for the vertex--path incidence count.
 %
 We also write $\deg_{\Sig}(v)=|\{\TPath\mid v\in\Vh(\TPath)\cup\Vp(\TPath)\}|$, $d_{\max}=\max_v\deg_{\Sig}(v)$, and $\kmax=\max_v\sdeg(v)$.
 %
-The \cpi{} is built by a degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.
+The \cpi{} is built by a degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}; we reproduce the construction here as Algorithm~\ref{alg:buildcpi} because the rest of the paper depends on its leaf shape.
+
+\begin{algorithm}[t]
+\algfontsize
+\caption{$\textsc{BuildCPI}(G,\,s)$ --- standard \cpi{} construction~\cite{NuclearCD}.}
+\label{alg:buildcpi}
+\KwIn{Undirected graph $G=(V,E)$, clique size $s$.}
+\KwOut{Clique Path Index $\mathcal{P}$ of $G$ for target size $s$.}
+
+Compute a degeneracy ordering $(v_1,\ldots,v_n)$ of $G$ and orient every edge from lower to higher rank, giving $N^{+}(\cdot)$\;
+$\mathcal{P} \gets \emptyset$\;
+\ForEach{$i \gets 1$ \KwTo $n$}{
+    $\textsc{ExpandPath}(N^{+}(v_i),\ \{v_i\},\ \emptyset)$ \tcp*{one root per vertex}
+}
+\Return{$\mathcal{P}$}
+\SetKwFunction{Expand}{ExpandPath}
+\SetKwProg{Fn}{Function}{:}{}
+\Fn{\Expand{$P,\ \Vh,\ \Vp$}}{
+    \lIf{$|\Vh| > s$}{\Return}
+    \If{$P = \emptyset$}{
+        \lIf{$|\Vh| + |\Vp| \ge s$}{
+            append the path $(\Vh,\Vp)$ to $\mathcal{P}$
+        }
+        \Return
+    }
+    $u_{\mathrm{piv}} \gets \arg\max_{x\in P}\, |P \cap N^{+}(x)|$ \tcp*{Tomita pivot}
+    \ForEach{$v \in P \setminus N(u_{\mathrm{piv}})$}{
+        $P \gets P \setminus \{v\}$\;
+        \uIf{$v = u_{\mathrm{piv}}$}{
+            \Expand{$P\cap N(v),\ \Vh,\ \Vp\cup\{v\}$}\;
+        }
+        \Else{
+            \Expand{$P\cap N(v),\ \Vh\cup\{v\},\ \Vp$}\;
+        }
+    }
+}
+\end{algorithm}
+
+Algorithm~\ref{alg:buildcpi} computes a degeneracy ordering of $G$ and orients edges from lower to higher rank so each $s$-clique has a unique smallest-rank owner (Line~1); for every vertex $v_i$, $\textsc{ExpandPath}$ is invoked with hold set $\{v_i\}$ and forward-neighbour candidate set $N^{+}(v_i)$ (Lines~3-4).
+%
+A recursive call returns immediately when the hold set already exceeds $s$ (Line~7), and emits a path when the candidate set is empty and the hold-plus-pivot size meets $s$ (Lines~8-9).
+%
+Otherwise the Tomita pivot $u_{\mathrm{piv}}$ is the vertex of $P$ with the most forward neighbours inside $P$ (Line~10), and every non-neighbour of $u_{\mathrm{piv}}$ is recursively expanded: branching on the pivot itself extends the pivot set, branching on any other vertex extends the hold set (Lines~11-14).
 
 \begin{lemma}[Support Formula~\cite{NuclearCD}]\label{lem:supp}
 For every $v\in V$,
