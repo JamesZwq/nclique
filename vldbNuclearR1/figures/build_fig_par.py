@@ -77,6 +77,7 @@ def plot(out_pdf):
 
     for col, (stem, label) in enumerate(GRAPHS):
         ax = axes[col]
+        panel_max_T = 1
         for i, s in enumerate(S_PICKS[stem]):
             color = LOW_COLOR if i == 0 else HIGH_COLOR
             marker = "o" if i == 0 else "s"
@@ -94,6 +95,7 @@ def plot(out_pdf):
             pts = pts[: best_T_idx + 1]
             xs = [T for T, _ in pts]
             ys = [ms for _, ms in pts]
+            panel_max_T = max(panel_max_T, max(xs))
             ax.plot(xs, ys, color=color, marker=marker, markersize=4.0,
                     linewidth=1.4, label=f"$s{{=}}{s}$")
         ax.set_xscale("log"); ax.set_yscale("log")
@@ -106,7 +108,12 @@ def plot(out_pdf):
         ax.set_title(label, fontsize=9.5, fontweight="bold")
         ax.set_xlabel("threads", fontsize=9)
         ax.legend(fontsize=8, frameon=False, loc="lower left")
-        ax.set_xticks([1, 4, 16, 64])
+        # Adapt the x-axis to the actual data range so we never leave an
+        # empty right margin past the last plotted point.
+        candidate_ticks = [t for t in [1, 4, 16, 32, 64]
+                           if t <= panel_max_T]
+        ax.set_xticks(candidate_ticks)
+        ax.set_xlim(0.85, panel_max_T * 1.08)
         if col == 0:
             ax.set_ylabel("build time (ms)", fontsize=9)
 
