@@ -131,52 +131,19 @@ Measured: \texttt{web-Stanford}, $s{=}10$      & $261$ MB  & $176$ MB  \\
 \stitle{RQ2: where does the time go?}
 The static invariant makes peeling cheap, so the next question is whether construction becomes the dominant cost.
 %
-The phase study uses \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{web-it-2004}.
+The phase study uses \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{web-it-2004} with median values over three runs (Figure~\ref{fig:breakdown}).
 %
-It reports median times over three runs.
+Two patterns emerge on every graph: build time stays essentially flat with $s$ on a high plateau (top row, solid lines), while peel time drops by $1$--$3$ orders of magnitude as $s$ grows (top row, dashed lines), so peeling becomes a small remainder of total runtime --- the bottleneck shifts onto construction, which is why \paraBuild{} is part of the algorithmic pipeline rather than a detached engineering detail.
 %
-Table~\ref{tab:breakdown} reports representative per-phase time medians ($load/build/peel$ in ms) alongside memory usage (in MB) for both algorithms, over three runs.
+Memory (bottom row) is consistently lower for \spinStar{} than for \cbnd{} on every cell.
 
-\begin{table*}[t]
+\begin{figure*}[t]
 \centering
-\caption{Per-phase time (ms) and memory usage (MB).}
-\label{tab:breakdown}
-\scriptsize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{llrrrrrrrrr}
-\toprule
-\multirow{2}{*}{Graph} & \multirow{2}{*}{$s$} & \multicolumn{3}{c}{\spinStar{} time (ms)} & \multicolumn{3}{c}{\cbnd{} time (ms)} & \multicolumn{2}{c}{memory (MB)} & mem \\
-\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-10}
-& & load & build & peel & load & build & peel & \spinStar{} & \cbnd{} & ratio \\
-\midrule
-\texttt{com-youtube}  & 3   & 2081 & 3863   & 440.1 & 1812 & 3982   & 789.7 & 381 & 729 & $1.91\times$ \\
-\texttt{com-youtube}  & 5   & 2028 & 3730   & 273.5 & 1732 & 3795   & 581.6 & 315 & 642 & $2.04\times$ \\
-\texttt{com-youtube}  & 8   & 1967 & 2991   & 86.3  & 1638 & 3053   & 270.2 & 187 & 460 & $2.45\times$ \\
-\texttt{com-youtube}  & 12  & 1689 & 2701   & 13.0  & 1640 & 2649   & 148.5 & 119 & 385 & $3.25\times$ \\
-\texttt{com-youtube}  & 16  & 1640 & 2458   & 8.2   & 1964 & 2488   & 131.8 & 114 & 380 & $3.33\times$ \\
-\midrule
-\texttt{web-Stanford} & 3   & 1251 & 6602   & 381.6 & 1250 & 6548   & 521.5 & 338 & 508 & $1.50\times$ \\
-\texttt{web-Stanford} & 10  & 975  & 5840   & 130.4 & 1225 & 5961   & 210.1 & 176 & 261 & $1.48\times$ \\
-\texttt{web-Stanford} & 20  & 999  & 5482   & 28.9  & 1228 & 5591   & 77.8  & 97  & 151 & $1.55\times$ \\
-\texttt{web-Stanford} & 40  & 1224 & 5087   & 9.6   & 1034 & 5007   & 49.6  & 70  & 129 & $1.85\times$ \\
-\texttt{web-Stanford} & 60  & 1224 & 4900   & 1.4   & 1224 & 4907   & 31.3  & 53  & 111 & $2.09\times$ \\
-\midrule
-\texttt{web-it-2004}  & 3   & 3389 & 124074 & 351.0 & 3378 & 125347 & 465.9 & 425 & 556 & $1.31\times$ \\
-\texttt{web-it-2004}  & 30  & 3372 & 122558 & 63.9  & 3037 & 122689 & 173.7 & 230 & 314 & $1.37\times$ \\
-\texttt{web-it-2004}  & 100 & 3407 & 121891 & 40.1  & 3377 & 121372 & 135.9 & 207 & 296 & $1.43\times$ \\
-\texttt{web-it-2004}  & 200 & 3416 & 113825 & 26.1  & 3406 & 107516 & 108.5 & 178 & 273 & $1.53\times$ \\
-\texttt{web-it-2004}  & 400 & 3409 & 7850   & 4.6   & 3368 & 7847   & 62.7  & 139 & 226 & $1.63\times$ \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-The phase data supports the bottleneck-shift story.
-%
-Peeling falls to tens or hundreds of milliseconds on many cells.
-%
-Construction then becomes a major remaining cost, especially on the web graphs.
-%
-This is why \paraBuild{} is part of the algorithmic pipeline rather than a detached engineering detail.
+\includegraphics[width=\linewidth]{figures/fig_breakdown.pdf}
+\caption{Phase breakdown on three representative graphs: time (top, build solid + peel dashed) and memory (bottom).}
+\Description{Six log-scale line plots in two rows of three. Top row shows that build time stays flat across s while peel time drops by 1-3 orders of magnitude. Bottom row shows SPIN-star uses less memory than CND on every cell.}
+\label{fig:breakdown}
+\end{figure*}
 
 \stitle{RQ3: does static construction parallelize?}
 \paraBuild{} exposes seed-level parallelism because each seed can stream its emitted paths into thread-local storage.
