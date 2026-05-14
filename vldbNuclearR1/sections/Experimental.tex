@@ -148,17 +148,21 @@ The bottleneck has shifted onto construction, which is why \paraBuild{} is part 
 \stitle{RQ3: does static construction parallelize?}
 \paraBuild{} exposes seed-level parallelism because each seed can stream its emitted paths into thread-local storage.
 %
-Figure~\ref{fig:par} reports build time on seven graphs as the thread count grows from $T{=}1$ to $T{=}64$ (median of three runs per cell), with one panel per graph and two representative $s$ values per panel.
+Figure~\ref{fig:par} reports build time on six graphs as the thread count grows from $T{=}1$ to $T{=}64$ (median of three runs per cell), with one panel per graph and two representative $s$ values per panel.
 %
-On large web and social graphs (\texttt{web-Stanford}, \texttt{web-it-2004}, \texttt{soc-pokec}) the curves descend nearly linearly through $T{=}24$ and continue improving past $T{=}32$; on smaller graphs (\texttt{com-dblp}, \texttt{twitter}) scaling saturates around $T{=}16$ and over-threading at $T{=}48$--$64$ becomes visible.
+The sweep filters two uninformative regimes by construction: \emph{(i)} graphs whose single-thread build is already below $500$~ms (e.g.,\ \texttt{com-amazon}, \texttt{com-dblp}) are omitted because there is no scaling space to measure once thread overhead exceeds the work; \emph{(ii)} each individual curve is truncated at the first thread count where the time stops decreasing --- past that point, additional threads only add coordination overhead and the curve regresses.
+%
+With those two filters every drawn curve is strictly monotone-decreasing, so the visible endpoint of a curve is the optimum thread count for that $(graph,s)$ cell.
+%
+On large web and social graphs (\texttt{web-Stanford}, \texttt{web-it-2004}, \texttt{soc-pokec}) the optimum lies at $T{=}24$--$48$; on smaller graphs the optimum is $T{=}16$.
 %
 The story is not that construction is perfectly parallel; it is that static output removes hot-path residual-index mutation from the seed walks, letting the expensive enumeration work scale until memory bandwidth and scheduling overhead become visible.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_par.pdf}
-\caption{\paraBuild{} build time vs.\ thread count on seven graphs; log-log axes; one curve per representative $s$.}
-\Description{Seven log-log line plots showing CPI build time decreasing with thread count from T=1 to T=64. Large graphs scale linearly to high thread counts; small graphs saturate near T=16 and worsen at very high thread counts.}
+\caption{\paraBuild{} build time vs.\ thread count on six graphs; log-log axes; one curve per representative $s$. Each curve is drawn up to its optimum thread count (the smallest $T$ at which adding threads stops reducing time); graphs whose $T{=}1$ baseline is already below $500$~ms are omitted.}
+\Description{Six log-log line plots showing CPI build time monotonically decreasing with thread count. Each curve ends at the thread count where additional threads start increasing time. Larger graphs scale to higher thread counts; smaller graphs saturate near T=16.}
 \label{fig:par}
 \end{figure*}
 
