@@ -2,21 +2,19 @@
 
 Exactness comes from the invariants and fixed-point equivalence proved earlier; the experiments measure cost.
 %
-\textbf{RQ1} measures end-to-end time and peak memory for \textbf{\spinStar{}}, the practical static-\cpi{} pipeline.
+\textbf{Exp-1} measures end-to-end time and peak memory for \textbf{\spinStar{}}, the practical static-\cpi{} pipeline.
 %
-\textbf{RQ2} separates construction from peeling, because counter-only peeling shifts rather than removes all cost.
+\textbf{Exp-2} separates construction from peeling, because counter-only peeling shifts rather than removes all cost.
 %
-\textbf{RQ3} tests how the static construction contract scales with thread count.
+\textbf{Exp-3} tests how the static construction contract scales with thread count.
 %
-\textbf{RQ4} measures \spin{} as the direct fixed-point baseline.
+\textbf{Exp-4} measures \spin{} as the direct fixed-point baseline.
 %
-% \textbf{RQ5} probes dense synthetic graphs where clique counts grow quickly.
+\textbf{Exp-5} pushes the pipeline to a billion-edge graph (\texttt{com-friendster}, $1.8$B edges).
 %
-\textbf{RQ5} pushes the pipeline to a billion-edge graph (\texttt{com-friendster}, $1.8$B edges).
+\textbf{Exp-6} sweeps a vertex-induced subsampling ratio to test how runtime and memory scale with input size.
 %
-\textbf{RQ6} sweeps a vertex-induced subsampling ratio to test how runtime and memory scale with input size.
-%
-\textbf{RQ7} compares hierarchy emission against NuclearCD's level-DSU baseline.
+\textbf{Exp-7} compares hierarchy emission against NuclearCD's level-DSU baseline.
 
 \stitle{Hardware and software.}
 All experiments run on a dual-socket Intel Xeon Gold $6248R$ machine with $24$ cores and $503$ GB DDR4 memory.
@@ -73,7 +71,7 @@ All three solvers consume the same input edge list and run on the same hardware;
 %
 For each matched $(graph,s)$ pair, we record the end-to-end time (load, degeneracy order, \cpi{} construction, peel, output) and the program's memory usage.
 
-\stitle{RQ1: end-to-end time and memory.}
+\expsection{end-to-end time and memory}
 Across the ten graphs (Figures~\ref{fig:exp-time}--\ref{fig:exp-mem}), \spinStar{} achieves a peel-time speedup over \cbnd{} of gmean $13.50\times$ / max $44.76\times$, and a memory-usage ratio (\cbnd{}$/$\spinStar{}) of gmean $1.55\times$ / max $3.92\times$.
 %
 The end-to-end speedup is smaller (gmean $1.10\times$) because the shared \cpi{} construction phase dominates total runtime once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
@@ -128,7 +126,7 @@ Measured: \texttt{web-Stanford}, $s{=}10$      & $261$ MB  & $176$ MB  \\
 \end{tabular}
 \end{table}
 
-\stitle{RQ2: phase breakdown.}
+\expsection{phase breakdown}
 Counter-only peeling is cheap; we measure how much of the remaining cost lies in CPI construction.
 %
 The phase study sweeps $s\in\{3,5,7,9,11,13,15\}$ on six graphs (Figure~\ref{fig:breakdown}, smallest to largest by edge count).
@@ -145,7 +143,7 @@ The bottleneck has shifted onto construction, which is why \paraBuild{} is part 
 \label{fig:breakdown}
 \end{figure*}
 
-\stitle{RQ3: parallel scaling of CPI construction.}
+\expsection{parallel scaling of CPI construction}
 \paraBuild{} exposes seed-level parallelism because each seed can stream its emitted paths into thread-local storage.
 %
 Figure~\ref{fig:par} reports build time on six graphs as the thread count grows from $T{=}1$ to $T{=}64$ (median of three runs per cell), with one panel per graph and two representative $s$ values per panel; each curve ends at its optimum thread count, and graphs with $T{=}1$ baseline below $500$~ms are omitted as uninformative.
@@ -160,7 +158,7 @@ On large graphs the optimum lies at $T{=}24$--$48$; on smaller graphs it is arou
 \label{fig:par}
 \end{figure*}
 
-\stitle{RQ4: \spinStar{} vs.\ \spin{} on the same fixed point.}
+\expsection{\spinStar{} vs.\ \spin{} on the same fixed point}
 \spin{} is the literal single-thread solver for the same equations that \spinStar{} realizes by deletion events.
 %
 The two algorithms compute the same core values (Lemma~\ref{lem:equivalence}), so the comparison isolates the effect of replacing repeated full-graph passes with incremental updates.
@@ -184,7 +182,7 @@ The sub-percent memory advantage of \spin{} is therefore the price \spinStar{} p
 The paper carries both algorithms because they serve different roles: \spin{} is the direct semantic formulation, \spinStar{} is its event-driven realisation.
 
 \begin{comment}
-\stitle{RQ5: dense synthetic stress.}
+\expsection{dense synthetic stress}
 The benchmark graphs are sparse.
 %
 The stress test follows the dense synthetic protocol used in prior nucleus-decomposition studies~\cite{nucleusSariyuceTODS,NuclearCD}: $1000$-vertex graphs built by incremental clique injection, sweeping $12$ densities from $0.01$ to $0.60$ for $s\in\{5,7,9,11\}$.
@@ -200,7 +198,7 @@ Each curve in Figure~\ref{fig:stress} is drawn up to the highest density at whic
 \end{figure*}
 \end{comment}
 
-\stitle{RQ5: scaling to a billion-edge graph.}
+\expsection{scaling to a billion-edge graph}
 \label{sec:exp-friendster}
 The ten-graph benchmark stops at \texttt{com-orkut} ($117$M edges); to push the pipeline an order of magnitude further, we run \spinStar{} with $T{=}24$ on \texttt{com-friendster} ($65$M vertices, $1.806$B edges, the largest SNAP graph available).
 %
@@ -232,7 +230,7 @@ $11$ & $6470$ & $0.17$  & $1.68\times10^{10}$ & $297$ \\
 \end{tabular}
 \end{table}
 
-\stitle{RQ6: scaling with input size.}
+\expsection{scaling with input size}
 \label{sec:exp-scal}
 The benchmark cells fix a graph and sweep $s$; they do not test how runtime and memory respond to growing the input itself.
 %
@@ -258,7 +256,7 @@ The densest graph, $\texttt{com-orkut}$, also exposes the natural ceiling of ver
 \label{fig:scalability}
 \end{figure*}
 
-\stitle{RQ7: hierarchy emission against the level-DSU baseline.}
+\expsection{hierarchy emission against the level-DSU baseline}
 \label{sec:exp-hier}
 \buildHier{} (Section~\ref{sec:buildhier}) consumes the preserved \cpi{} once peeling finishes; the only available $(1,s)$ baseline that produces the same hierarchy is NuclearCD's general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, which carries $K{=}\kmax$ parallel disjoint-set forests during the peel.
 %

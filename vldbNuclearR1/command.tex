@@ -72,3 +72,18 @@
 
 % --- algorithm pseudocode font size (matches NuclearCD) ---
 \newcommand{\algfontsize}{\fontsize{7pt}{7.5pt}\selectfont}
+
+% --- experimental-section auto-counter (matches NuclearCD's Exp-N style) ---
+\newcounter{expcounter}
+\setcounter{expcounter}{0}
+\newcounter{expsubcounter}[expcounter]
+\setcounter{expsubcounter}{0}
+\newcommand{\expsection}[1]{%
+    \stepcounter{expcounter}%
+    \setcounter{expsubcounter}{0}%
+    \stitle{Exp-\theexpcounter: #1.}%
+}
+\newcommand{\expsubsection}[1]{%
+    \stepcounter{expsubcounter}%
+    \ssstitle{Exp-\theexpcounter.\theexpsubcounter: #1.}%
+}
