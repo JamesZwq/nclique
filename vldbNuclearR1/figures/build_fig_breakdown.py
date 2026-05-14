@@ -53,7 +53,7 @@ CND_COLOR  = "#e31a1c"
 
 
 def plot(out_pdf):
-    fig, axes = plt.subplots(2, len(GRAPHS), figsize=(10, 4.6), sharex=False)
+    fig, axes = plt.subplots(2, len(GRAPHS), figsize=(13, 3.6), sharex=False)
 
     for col, g in enumerate(GRAPHS):
         rows = DATA[g]

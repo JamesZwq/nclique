@@ -66,7 +66,7 @@ def plot_combined(out_pdf):
 
     n_cols = len(panels)
     fig, axes = plt.subplots(
-        2, n_cols, figsize=(2.05 * n_cols, 4.0), sharey=False,
+        2, n_cols, figsize=(2.6 * n_cols, 3.0), sharey=False,
     )
     if n_cols == 1: axes = [[axes[0]], [axes[1]]]
 

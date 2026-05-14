@@ -77,7 +77,7 @@ def make_grid(metric, ylabel, out_pdf, log_y=True, mem=False):
     ncols = min(5, n)
     nrows = math.ceil(n / ncols)
     fig, axes = plt.subplots(nrows, ncols,
-                             figsize=(ncols * 1.85, nrows * 1.55),
+                             figsize=(ncols * 2.4, nrows * 1.2),
                              sharey=False)
     axes = axes.flatten() if nrows > 1 or ncols > 1 else [axes]
 

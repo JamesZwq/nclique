@@ -98,7 +98,7 @@ def series(rows, graph, algo, metric):
 
 def plot(out_pdf):
     rows = load()
-    fig, axes = plt.subplots(2, len(GRAPHS), figsize=(11.5, 4.6), sharex=True)
+    fig, axes = plt.subplots(2, len(GRAPHS), figsize=(14.5, 3.8), sharex=True)
 
     for col, (stem, lbl) in enumerate(GRAPHS):
         for row, (metric, ylabel) in enumerate([

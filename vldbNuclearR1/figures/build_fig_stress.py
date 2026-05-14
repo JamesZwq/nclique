@@ -50,7 +50,7 @@ def plot(metric, ylabel, out_pdf, mem=False):
     data = load()
     s_values = sorted({k[1] for k in data})
     n = len(s_values)
-    fig, axes = plt.subplots(1, n, figsize=(n * 1.85, 2.4), sharey=False)
+    fig, axes = plt.subplots(1, n, figsize=(n * 2.4, 1.9), sharey=False)
     if n == 1: axes = [axes]
     for ax, s in zip(axes, s_values):
         for algo, label, color, ls, marker, lw in ALGOS:
