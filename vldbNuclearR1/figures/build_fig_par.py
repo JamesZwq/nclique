@@ -36,14 +36,15 @@ GRAPHS = [
     ("web-it-2004",              "web-it-2004"),
 ]
 
-# Pick at most two s values per graph: low and high, to keep panels readable.
+# Only s=3 per graph: the high-s curves were qualitatively identical
+# (shifted along y) and added no information about thread scaling.
 S_PICKS = {
-    "com-youtube":              [3, 16],
-    "twitter_combined":         [3, 12],
-    "web-Google":               [3, 20],
-    "web-Stanford":             [3, 60],
-    "soc-pokec-relationships":  [3, 8],
-    "web-it-2004":              [3, 400],
+    "com-youtube":              [3],
+    "twitter_combined":         [3],
+    "web-Google":               [3],
+    "web-Stanford":             [3],
+    "soc-pokec-relationships":  [3],
+    "web-it-2004":              [3],
 }
 
 # Skip a graph entirely if its lowest s curve never breaks 500ms at T=1.
