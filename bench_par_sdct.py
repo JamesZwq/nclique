@@ -37,6 +37,9 @@ FIELDNAMES = ["graph", "s", "threads", "status", "wall_ms", "build_ms",
 
 SERVER_GRAPHS = {
     "tods1": [
+        # Big-graph thread-scaling sweep: the largest graph in the benchmark
+        # set, where parallel speedup should be most pronounced.
+        ("com-orkut",    [3, 5, 7]),
         ("com-dblp",     [3, 5, 8, 10, 15]),
         ("com-youtube",  [3, 5, 8, 12, 16]),
     ],
