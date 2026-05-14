@@ -14,9 +14,9 @@ Exactness comes from the invariants and fixed-point equivalence proved earlier; 
 %
 \textbf{RQ6} pushes the pipeline to a billion-edge graph (\texttt{com-friendster}, $1.8$B edges).
 %
-\textbf{RQ7} isolates the contribution of each pipeline idea.
+\textbf{RQ7} sweeps a vertex-induced subsampling ratio to test how runtime and memory scale with input size.
 %
-\textbf{RQ8} sweeps a vertex-induced subsampling ratio to test how runtime and memory scale with input size.
+\textbf{RQ8} compares hierarchy emission against NuclearCD's level-DSU baseline.
 
 \stitle{Hardware and software.}
 All experiments run on a dual-socket Intel Xeon Gold $6248R$ machine with $24$ cores and $503$ GB DDR4 memory.
@@ -257,46 +257,7 @@ $11$ & $6470$ & $0.17$  & $1.68\times10^{10}$ & $297$ \\
 \end{tabular}
 \end{table}
 
-\stitle{RQ7: where do the gains come from?}
-\label{sec:exp-ablation}
-The \spinStar{} pipeline combines two algorithmic ideas: the static-\cpi{} invariant (Section~\ref{sec:static}), which removes residual maintenance from the peel loop, and a bucket-queue peel with per-event support updates (Section~\ref{sec:peelh}), which removes redundant full-graph passes.
-%
-We isolate the two algorithmic ideas against the mutable baseline on the same $(graph,s)$ cells.
-%
-\textbf{ST} runs the same fixed-point solver as \cbnd{} but reads paths from an immutable static \cpi{}; the solver still scans every vertex per round.
-%
-\textbf{ST}$+$\textbf{bucket queue}$+$\textbf{events} is the full \spinStar{} pipeline (Algorithm~\ref{alg:peelH}).
-%
-Table~\ref{tab:ablation} reports median peel time at each step on the $171$-cell matched subset, together with the gmean speedup over the previous step.
-%
-Static state alone already gives a $3.80\times$ gmean speedup over the mutable baseline: leaving the paths unchanged removes the residual-rewrite work that dominates \cbnd{}.
-%
-Adding bucket-queue order with event-driven updates gives a further $3.95\times$ over static-only; ordered finalisation eliminates redundant per-round vertex scans.
-%
-The cumulative gmean speedup of the full pipeline over \cbnd{} on these matched cells is $15.00\times$, consistent with the $13.50\times$ headline reported in RQ1 over a larger and partly disjoint cell set.
-%
-The two ideas compound rather than substitute: bucket-queue order without the static invariant cannot avoid re-deriving residual support after each peel, and the static invariant without ordered finalisation regresses to the full-pass behaviour measured for \spin{} in RQ4.
-
-\begin{table}[t]
-\centering
-\caption{Pipeline ablation: median peel time on $171$ matched cells.}
-\label{tab:ablation}
-\small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lrr}
-\toprule
-Pipeline step & median peel (ms) & gmean speedup \\
-\midrule
-\cbnd{} (mutable baseline)                & $464.9$ & --- \\
-$+$ static \cpi{} (full-pass solver)    & $105.3$ & $3.80\times$ \\
-$+$ bucket queue + events (\spinStar{}) & $\phantom{0}14.8$ & $3.95\times$ \\
-\midrule
-Cumulative \cbnd{} $\rightarrow$ \spinStar{} & & $15.00\times$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\stitle{RQ8: scaling with input size.}
+\stitle{RQ7: scaling with input size.}
 \label{sec:exp-scal}
 The benchmark cells fix a graph and sweep $s$; they do not test how runtime and memory respond to growing the input itself.
 %
@@ -322,7 +283,7 @@ The densest graph, $\texttt{com-orkut}$, also exposes the natural ceiling of ver
 \label{fig:scalability}
 \end{figure*}
 
-\stitle{RQ9: hierarchy emission against the level-DSU baseline.}
+\stitle{RQ8: hierarchy emission against the level-DSU baseline.}
 \label{sec:exp-hier}
 \buildHier{} (Section~\ref{sec:buildhier}) consumes the preserved \cpi{} once peeling finishes; the only available $(1,s)$ baseline that produces the same hierarchy is NuclearCD's general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, which carries $K{=}\kmax$ parallel disjoint-set forests during the peel.
 %

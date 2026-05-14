@@ -80,7 +80,7 @@ This invariant turns exact decomposition into counter arithmetic over a static i
 \sstitle{Static-\cpi{} invariant for $(1,s)$.}
 We prove that vertex peeling never rewrites the stored hold or pivot sets (Theorem~\ref{thm:vertex-removal}) and give a closed-form expression for the support loss caused by each path event (Lemma~\ref{lem:support-delta}).
 %
-The dynamic state of a path collapses to a liveness bit and a single integer counter, so the per-peel residual rewrites disappear and the ablation in RQ7 confirms a $3.80\times$ geometric-mean peel-time speedup over \cbnd{} from this change alone.
+The dynamic state of a path collapses to a liveness bit and a single integer counter, so the per-peel residual rewrites disappear; the headline RQ1 peel speedup over \cbnd{} on $307$ matched cells is $13.50\times$ in the geometric mean.
 
 \sstitle{Elimination of residual structures.}
 A corollary of Theorem~\ref{thm:vertex-removal} is that three of \cbnd{}'s residual structures cease to carry information once the invariant is established: (i) the per-path vertex hash sets, because membership in a path is already determined by the path's fixed hold/pivot sets; (ii) the reverse vertex-to-path map, because the vertex-to-path relation is fixed at construction and never edited; and (iii) the mutable Bron--Kerbosch recursion tree, because no path is ever rewritten during peeling.
