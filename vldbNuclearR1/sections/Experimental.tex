@@ -29,7 +29,7 @@ It is linked against TBB $2021.10$, Boost $1.83$, and \texttt{robin\_hood::unord
 %
 Single-threaded measurements use one core.
 %
-Parallel-construction measurements use the thread counts reported in Table~\ref{tab:par}.
+Parallel-construction measurements use the thread counts reported in Figure~\ref{fig:par}.
 %
 Time and memory measurements are averaged or summarized over repeated runs as stated in each experiment.
 
@@ -148,40 +148,19 @@ The bottleneck has shifted onto construction, which is why \paraBuild{} is part 
 \stitle{RQ3: does static construction parallelize?}
 \paraBuild{} exposes seed-level parallelism because each seed can stream its emitted paths into thread-local storage.
 %
-Table~\ref{tab:par} reports build time as the thread count grows from $1$ to $24$.
+Figure~\ref{fig:par} reports build time on seven graphs as the thread count grows from $T{=}1$ to $T{=}64$ (median of three runs per cell), with one panel per graph and two representative $s$ values per panel.
 %
-Each cell is the median of three runs.
+On large web and social graphs (\texttt{web-Stanford}, \texttt{web-it-2004}, \texttt{soc-pokec}) the curves descend nearly linearly through $T{=}24$ and continue improving past $T{=}32$; on smaller graphs (\texttt{com-dblp}, \texttt{twitter}) scaling saturates around $T{=}16$ and over-threading at $T{=}48$--$64$ becomes visible.
 %
-The table shows strong scaling on large web and social graphs and weaker scaling on smaller overhead-dominated cases.
+The story is not that construction is perfectly parallel; it is that static output removes hot-path residual-index mutation from the seed walks, letting the expensive enumeration work scale until memory bandwidth and scheduling overhead become visible.
 
-\begin{table}[t]
+\begin{figure*}[t]
 \centering
-\caption{\paraBuild{} build time vs thread count.}
-\label{tab:par}
-\tiny
-\setlength{\tabcolsep}{2pt}
-\begin{tabular}{@{}llrrrrrrr@{}}
-\toprule
-Graph & $s$ & $T=1$ & $T=2$ & $T=4$ & $T=8$ & $T=16$ & $T=24$ & sp. \\
-\midrule
-\texttt{com-dblp}      & 3   & 205   & 131   & 84    & 61    & 56   & 58   & $3.5\times$ \\
-\texttt{com-dblp}      & 15  & 182   & 115   & 73    & 51    & 43   & 45   & $4.0\times$ \\
-\texttt{dblp-core30}   & 3   & 47    & 36    & 28    & 25    & 22   & 22   & $2.1\times$ \\
-\texttt{com-youtube}   & 3   & 2644  & 1516  & 833   & 465   & 275  & 214  & $12.4\times$ \\
-\texttt{com-youtube}   & 16  & 2418  & 1367  & 744   & 399   & 224  & 168  & $14.4\times$ \\
-\texttt{web-Stanford}  & 3   & 5357  & 2776  & 1538  & 834   & 458  & 331  & $16.2\times$ \\
-\texttt{web-Stanford}  & 60  & 5196  & 2697  & 1483  & 793   & 422  & 297  & $17.5\times$ \\
-\texttt{web-it-2004}   & 3   & 92312 & 49798 & 26304 & 13048 & 5789 & 3946 & $23.4\times$ \\
-\texttt{web-it-2004}   & 400 & 83795 & 45977 & 24673 & 10935 & 5863 & 3930 & $21.3\times$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The correct interpretation is not that construction is perfectly parallel.
-%
-It is that static output removes hot-path residual-index mutation from the seed walks.
-%
-This lets the expensive enumeration work scale until memory bandwidth and scheduling overhead become visible.
+\includegraphics[width=\linewidth]{figures/fig_par.pdf}
+\caption{\paraBuild{} build time vs.\ thread count on seven graphs; log-log axes; one curve per representative $s$.}
+\Description{Seven log-log line plots showing CPI build time decreasing with thread count from T=1 to T=64. Large graphs scale linearly to high thread counts; small graphs saturate near T=16 and worsen at very high thread counts.}
+\label{fig:par}
+\end{figure*}
 
 \stitle{\texorpdfstring{RQ4: how much does \spinStar{} optimize over \spin{}?}{RQ4: how much does SPIN* optimize over SPIN?}}
 \spin{} is the literal single-thread solver for the same equations that \spinStar{} realizes by deletion events.
