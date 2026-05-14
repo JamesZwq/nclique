@@ -47,13 +47,48 @@ def load():
 
 
 def series(rows, graph, algo, metric):
-    """Return (xs, ys) of valid OK cells for this algo on this graph."""
+    """Return (xs, ys) of valid OK cells for this algo on this graph.
+
+    For metric == 'postbuild_ms' we report the algorithm's true post-CPI
+    cost (excluding graph load and CPI build, which are common to all
+    four algos and would otherwise dilute the comparison):
+
+      ST_V3        -> peel_ms
+      ST_V3_HIER   -> peel_ms + hier_ms
+      REF_R1       -> total_ms (REF's "time: X ms" print of its own
+                                function wall, post-build)
+      REF_R1_HIER  -> total_ms (same; CND's union work is fused in)
+
+    A few REF rows on wiki-Talk have a bogus total_ms (~1 ms while wall
+    is several minutes) due to a stdout-flush race during the giant
+    print_to_file dump; we fall back to wall_ms - build_ms there.
+    """
     xs, ys = [], []
     for (g, s), cells in sorted(rows.items()):
         if g != graph: continue
         r = cells.get(algo)
         if not r or r.get("status") != "OK": continue
-        try: y = float(r[metric])
+        try:
+            if metric == "postbuild_ms":
+                wall  = float(r.get("wall_ms",  -1) or -1)
+                build = float(r.get("build_ms", -1) or -1)
+                peel  = float(r.get("peel_ms",  -1) or -1)
+                hier  = float(r.get("hier_ms",  -1) or -1)
+                total = float(r.get("total_ms", -1) or -1)
+
+                if algo.startswith("ST_V3"):
+                    if peel < 0:
+                        continue
+                    y = peel + (hier if (algo.endswith("_HIER") and hier > 0) else 0.0)
+                else:  # REF_R1 / REF_R1_HIER
+                    if total >= 1.0 and (wall < 0 or total >= 0.005 * wall):
+                        y = total
+                    elif wall >= 0 and build >= 0:
+                        y = max(wall - build, 0.0)
+                    else:
+                        continue
+            else:
+                y = float(r[metric])
         except (TypeError, ValueError): continue
         if y < 0: continue
         xs.append(s)
@@ -67,8 +102,8 @@ def plot(out_pdf):
 
     for col, (stem, lbl) in enumerate(GRAPHS):
         for row, (metric, ylabel) in enumerate([
-            ("wall_ms", "wall time (ms)"),
-            ("mem_kB",  "memory (MB)"),
+            ("postbuild_ms", "peel + hier time (ms)"),
+            ("mem_kB",       "memory (MB)"),
         ]):
             ax = axes[row][col]
             for algo, plbl, color, marker in ALGOS:
