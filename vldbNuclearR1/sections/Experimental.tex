@@ -6,7 +6,7 @@ Exactness comes from the invariants and fixed-point equivalence proved earlier; 
 %
 \textbf{RQ2} separates construction from peeling, because counter-only peeling shifts rather than removes all cost.
 %
-\textbf{RQ3} asks whether the static construction contract gives useful parallelism.
+\textbf{RQ3} tests how the static construction contract scales with thread count.
 %
 \textbf{RQ4} measures \spin{} as the direct fixed-point baseline.
 %
@@ -128,8 +128,8 @@ Measured: \texttt{web-Stanford}, $s{=}10$      & $261$ MB  & $176$ MB  \\
 \end{tabular}
 \end{table}
 
-\stitle{RQ2: where does the time go?}
-The static invariant makes peeling cheap, so the next question is whether construction becomes the dominant cost.
+\stitle{RQ2: phase breakdown.}
+Counter-only peeling is cheap; we measure how much of the remaining cost lies in CPI construction.
 %
 The phase study sweeps $s\in\{3,5,7,9,11,13,15\}$ on six graphs (Figure~\ref{fig:breakdown}, smallest to largest by edge count).
 %
@@ -145,7 +145,7 @@ The bottleneck has shifted onto construction, which is why \paraBuild{} is part 
 \label{fig:breakdown}
 \end{figure*}
 
-\stitle{RQ3: does static construction parallelize?}
+\stitle{RQ3: parallel scaling of CPI construction.}
 \paraBuild{} exposes seed-level parallelism because each seed can stream its emitted paths into thread-local storage.
 %
 Figure~\ref{fig:par} reports build time on six graphs as the thread count grows from $T{=}1$ to $T{=}64$ (median of three runs per cell), with one panel per graph and two representative $s$ values per panel; each curve ends at its optimum thread count, and graphs with $T{=}1$ baseline below $500$~ms are omitted as uninformative.
@@ -160,7 +160,7 @@ On large graphs the optimum lies at $T{=}24$--$48$; on smaller graphs it is arou
 \label{fig:par}
 \end{figure*}
 
-\stitle{\texorpdfstring{RQ4: how much does \spinStar{} optimize over \spin{}?}{RQ4: how much does SPIN* optimize over SPIN?}}
+\stitle{RQ4: \spinStar{} vs.\ \spin{} on the same fixed point.}
 \spin{} is the literal single-thread solver for the same equations that \spinStar{} realizes by deletion events.
 %
 The two algorithms compute the same core values (Lemma~\ref{lem:equivalence}), so the comparison isolates the effect of replacing repeated full-graph passes with incremental updates.
@@ -181,7 +181,7 @@ The reason is structural: \spinStar{}'s extra state beyond the shared CPI consis
 %
 The sub-percent memory advantage of \spin{} is therefore the price \spinStar{} pays to avoid repeated full-graph passes; the trade is the textbook ``space for time'' choice, with the time term dominating by orders of magnitude.
 
-This is why the paper carries both algorithms: \spin{} as the direct semantic formulation and \spinStar{} as its event-driven realisation.
+The paper carries both algorithms because they serve different roles: \spin{} is the direct semantic formulation, \spinStar{} is its event-driven realisation.
 
 \stitle{RQ5: dense synthetic stress.}
 The benchmark graphs are sparse.

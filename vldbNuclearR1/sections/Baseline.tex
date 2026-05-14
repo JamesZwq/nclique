@@ -1,8 +1,8 @@
 \section{The Mutable-\cpi{} Baseline}\label{sec:baseline}
 
-In this section we describe \cbnd{}~\cite{NuclearCD}, the state-of-the-art exact algorithm for general $(r,s)$-nucleus decomposition.
+\cbnd{}~\cite{NuclearCD} is the state-of-the-art exact algorithm for general $(r,s)$-nucleus decomposition.
 %
-We first walk through its peeling loop, then enumerate the residual structures it maintains, and finally pinpoint the operations that this paper specialises away when restricted to $r=1$.
+The remainder of this section walks through its peeling loop, the residual structures it maintains, and the operations this paper specialises away when restricted to $r=1$.
 
 \stitle{The peeling loop.}
 \cbnd{} follows the standard core-decomposition template~\cite{coreAlg}: it maintains the residual support of every alive $r$-clique in a priority queue, repeatedly pops the $r$-clique of minimum residual support, assigns it the current peel level as its core value, and propagates the support loss to the remaining alive $r$-cliques.
@@ -23,28 +23,13 @@ A heap (or bucket queue) keeps every alive vertex ordered by current residual su
 Finally, the Bron--Kerbosch recursion tree that produced the \cpi{} is kept mutable: when a peel event invalidates a path, the algorithm walks into the tree and rewrites or removes the affected nodes.
 
 \stitle{Per-peel work.}
-The following proposition records the cost of one peel event under the residual layout above; it is a direct consequence of the pseudocode in~\cite{NuclearCD} restricted to $r=1$, and is the quantity that the static-\cpi{} invariant of Section~\ref{sec:static} replaces by counter arithmetic.
-
-\begin{proposition}[\cbnd{} Per-Peel Cost at $r=1$]\label{prop:cbnd-cost}
-Let \cbnd{} peel a vertex $v$ at residual support $k$. The event performs, for each path $\TPath$ containing $v$:
-(i) an $O(1)$ hash query to decide whether $v\in\Vh(\TPath)$ or $v\in\Vp(\TPath)$;
-(ii) a path rewrite that erases the reverse-map entries of every other vertex in $\Vh(\TPath)\cup\Vp(\TPath)$, in time $\Theta(|\Vh(\TPath)|+|\Vp(\TPath)|)$;
-(iii) a support recompute over the surviving encoded $s$-cliques on $\TPath$ followed by a heap decrease-key for every affected path-mate.
-%
-Summed over paths through $v$, the per-peel cost is $\Theta\bigl(M_{\TPath}(v)+R(v)+\log n\bigr)$, where $M_{\TPath}(v)=\sum_{\TPath\ni v}\!|\Vh(\TPath)\cup\Vp(\TPath)|$ is the vertex--path incidence touched and $R(v)$ is the total support-recompute cost for $v$'s path-mates.
-%
-The whole peel therefore runs in $\Theta(\Sig+R+n\log n)$ time, with $R=\sum_v R(v)$.
-\end{proposition}
-
-\begin{proof}
-Items~(i)--(iii) read off the pseudocode of~\cite{NuclearCD} specialised to $r=1$: the hash query is a single reverse-map lookup; rewriting $\TPath$ visits each $u\in\Vh(\TPath)\cup\Vp(\TPath)\setminus\{v\}$ once to erase the $(u,\TPath)$ reverse-map entry, so the rewrite is $\Theta(|\Vh(\TPath)\cup\Vp(\TPath)|)$; the recompute and heap decrease-key together cost $R$ summed over the peel plus one $O(\log n)$ priority-queue operation per popped vertex.
-%
-Summing (i)--(iii) over the $\deg_{\Sig}(v)$ paths through $v$ gives the per-peel bound, and aggregating over all vertices gives the global bound by $\sum_v M_{\TPath}(v)=\Sig$.
-%
-\qed
-\end{proof}
-
-The two dominant components are $M_{\TPath}$ (vertex--path incidence rewrites) and $R$ (support recomputes); both are intrinsic to maintaining the \cpi{} as mutable state.
+A single peel of vertex $v$ costs:
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt,topsep=2pt]
+\item a reverse-map lookup of $v$'s path list, then for every such path $\TPath$ a constant-time hash-set query to determine whether $v$ is a hold or a pivot;
+\item a path rewrite: if $v$ is a hold, the path is deleted from the recursion tree and its reverse-map entries for all other vertices in $\Vh(\TPath)\cup\Vp(\TPath)$ are erased; if $v$ is a pivot, the path's pivot set shrinks by one and the reverse-map entry for $v$ on this path is erased;
+\item a support recompute for every path-mate $u$ using a freshly enumerated set of $s$-cliques that survive the rewrite, followed by a decrease-key on $u$ in the heap.
+\end{itemize}
+The dominant components are the path rewrites and the reverse-map erases; together they scale with the number of vertex--path incidences touched by the event, which is what gives \cbnd{} its observed cost profile.
 
 \stitle{Why this state is needed in the general case.}
 The mutable design is not over-engineering for the general $(r,s)$ setting.

@@ -1,6 +1,6 @@
 \section{Case Studies}\label{sec:casestudy}
 
-The experiments measure cost; this section asks whether the specialised $r=1$ case is worth optimising in the first place.
+The experiments quantify cost; the case studies establish that the $r=1$ specialisation is worth optimising in the first place.
 %
 On the ground-truth tasks reported here, $(1,s)$ matches the quality of higher-$r$ nuclei on the evaluated metrics at much lower cost, a claim scoped to the datasets and metrics below.
 
@@ -98,7 +98,7 @@ $(1,30)$-core reaches $523$ triangles per vertex on $1{,}358$ vertices.
 
 
 \stitle{Case study 3: higher $r$ does not buy quality on the studied graphs.}\label{sec:cs-pareto}
-Whether edge- or triangle-level nuclei justify their cost is the next question.
+Edge- and triangle-level nuclei sit between $(1,s)$ and explicit clique enumeration on the cost axis; whether they buy quality at that cost is an open question on the same datasets.
 %
 We fix $s$ and compare $(1,s)$, $(2,s)$, $(3,s)$ on two graphs from different domains: \texttt{com-dblp} (Table~\ref{tab:cs4}) and \texttt{com-youtube} (Table~\ref{tab:cs7}).
 %
@@ -166,7 +166,7 @@ Across all three $s$ values, $r=1$ reaches the same rec50 and triangle-density c
 \stitle{Case study 4: $s$ distils a neighbourhood into near-clique modules.}\label{sec:cs-viz}
 The previous studies use global rankings.
 %
-The ego-network visualization asks whether $s$ also changes local interpretability.
+The ego-network visualisation tests whether the same $s$ knob also controls local interpretability.
 %
 Figure~\ref{fig:cs9} compares the two-hop ego-network of a \texttt{com-dblp} anchor under a loose $(1,3)$-nucleus and a tight $(1,10)$-nucleus, with the top-$5$ surviving components annotated by their member count and internal edge density.
 

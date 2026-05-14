@@ -1,10 +1,8 @@
 \section{\texorpdfstring{Computing Core Values over Static \cpi}{Computing Core Values over Static CPI}}\label{sec:hindex}
 
-In this section, we turn the static-\cpi{} invariant of Section~\ref{sec:static} into a concrete algorithm for computing $\kappa_s$.
+The static-\cpi{} invariant of Section~\ref{sec:static} becomes a concrete algorithm for $\kappa_s$ through a one-vertex update rule built directly on clique-witness counts (Section~\ref{sec:refresh}, Algorithm~\ref{alg:refresh}).
 %
-We first derive a one-vertex update rule from clique-witness counts (Section~\ref{sec:refresh}, Algorithm~\ref{alg:refresh}), then derive two solvers that share the same update: \spin{} applies it by repeated full passes (Section~\ref{sec:localh}, Algorithm~\ref{alg:localH}), while \spinStar{} schedules it in peel order so unaffected vertices are not revisited (Section~\ref{sec:peelh}, Algorithm~\ref{alg:peelH}).
-%
-Lemma~\ref{lem:equivalence} proves that the two solvers compute the same fixed point.
+Two solvers share the same update: \spin{} applies it by repeated full passes (Section~\ref{sec:localh}, Algorithm~\ref{alg:localH}); \spinStar{} schedules it in peel order so unaffected vertices are not revisited (Section~\ref{sec:peelh}, Algorithm~\ref{alg:peelH}), and Lemma~\ref{lem:equivalence} proves the two reach the same fixed point.
 
 \subsection{Vertex updates from static witnesses}\label{sec:hop}\label{sec:refresh}
 
