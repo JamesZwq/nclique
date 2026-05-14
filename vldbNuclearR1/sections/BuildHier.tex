@@ -103,26 +103,4 @@ It is a byproduct of the static \cpi{} surviving peeling: leaves act as hyperedg
 %
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 
-\stitle{Empirical cost.}
-We compare four algorithm variants on four representative graphs (Figure~\ref{fig:hier}), sweeping $s\in\{3,5,7,9,11,13,15\}$:
-\textbf{\spinStar{}} (static-\cpi{} peel, no hierarchy),
-\textbf{\spinStar{}{+}\buildHier{}} (our post-peel emit, $O(\Sig\log\Sig)$ one pass),
-\textbf{\cbnd{}} (mutable-\cpi{} baseline, no hierarchy), and
-\textbf{\cbnd{}{+}\textsc{Hier}} (NuclearCD's general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, with one disjoint-set forest per peel level).
-%
-All four solve the same problem; the comparison isolates the cost of hierarchy emission and of the underlying peel strategy.
-%
-The top row of Figure~\ref{fig:hier} reports wall time and the bottom row reports peak memory, both on log scale.
-%
-Three observations follow:
-(i) \buildHier{} adds at most $1.5\times$ memory on top of \spinStar{}'s peel state (blue and green curves nearly overlap on every panel), while \cbnd{+}\textsc{Hier}{} carries $K=\kmax$ parallel DSUs and uses $8$--$43\times$ more memory than \spinStar{+}\buildHier{} on the same configuration (orange far above green);
-(ii) even \emph{without} emitting a hierarchy, \cbnd{} (red) already uses more memory than \spinStar{+}\buildHier{} (green), and on \texttt{wiki-Talk} at $s\ge9$ both \cbnd{} variants exceed the $503$\,GB budget and never start, while ours finishes the entire sweep;
-(iii) the hierarchy emit is also cheaper: \buildHier{}'s wall time is $1.5$--$30\times$ faster than \cbnd{+}\textsc{Hier}{}'s union work across matched cells, consistent with the $O(\Sig\log\Sig)$ vs.\ $O(K\cdot\Sig)$ bounds.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/fig_hier.pdf}
-\caption{Hierarchy bench on four graphs: wall time (top) and peak memory (bottom).}
-\Description{Eight log-scale line plots arranged as two rows of four. Each panel shows four algorithms (SPIN*, SPIN*+BuildHier, CND, CND+Hier) sweeping s from 3 to 15. CND+Hier sits an order of magnitude above SPIN*+BuildHier on both time and memory across all four graphs; CND+Hier disappears at s>=9 on wiki-Talk due to OOM.}
-\label{fig:hier}
-\end{figure*}
+Section~\ref{sec:exp} (RQ9) compares \buildHier{} against the only feasible baseline at $r{=}1$ --- NuclearCD's general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- and confirms that \buildHier{} uses $8$--$43\times$ less memory and $1.5$--$30\times$ less wall time on matched cells.
