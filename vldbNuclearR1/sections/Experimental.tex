@@ -133,13 +133,15 @@ The static invariant makes peeling cheap, so the next question is whether constr
 %
 The phase study uses \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{web-it-2004} with median values over three runs (Figure~\ref{fig:breakdown}).
 %
-On every graph, \spinStar{}'s build time (solid) stays essentially flat with $s$ on a high plateau, while peel time (dashed) drops by $1$--$3$ orders of magnitude as $s$ grows, so peeling becomes a small remainder of total runtime; the bottleneck shifts onto construction, which is why \paraBuild{} is part of the algorithmic pipeline rather than a detached engineering detail.
+On every graph and every $s$, the peel slice on top of each bar is a thin sliver of total time: peel is $10.2\%$ of total at \texttt{com-youtube}, $s{=}3$ and falls below $1\%$ by $s{=}8$; on \texttt{web-it-2004} peel never exceeds $0.3\%$.
+%
+The bottleneck has shifted onto construction, which is why \paraBuild{} is part of the algorithmic pipeline rather than a detached engineering detail.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_breakdown.pdf}
-\caption{\spinStar{} phase breakdown on three graphs: build (solid) vs peel (dashed).}
-\Description{Three log-scale line plots showing SPIN-star build (solid) and peel (dashed) times. Build stays roughly flat across s while peel drops by 1-3 orders of magnitude, illustrating the bottleneck shift onto construction.}
+\caption{\spinStar{} phase breakdown: build (blue, bottom) vs peel (orange, top). Linear scale; the peel share is printed above each bar.}
+\Description{Three side-by-side stacked-bar charts. Each bar shows build time as a tall blue base with peel time as a thin orange sliver on top. The peel share is below 11\% on com-youtube, below 6\% on web-Stanford, and below 0.3\% on web-it-2004 --- peeling is a small fraction of total runtime everywhere.}
 \label{fig:breakdown}
 \end{figure*}
 

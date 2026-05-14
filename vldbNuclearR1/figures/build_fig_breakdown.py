@@ -1,14 +1,13 @@
-"""Phase-breakdown figure: 1 row x 3 cols.
+"""Phase-breakdown figure: 1 row x 3 cols of stacked bars.
 
 Each column is one graph (com-youtube, web-Stanford, web-it-2004).
-Each panel shows two SPIN-star lines on a log-time axis:
-  - build (solid)  -- CPI construction time
-  - peel (dashed)  -- post-build peel time
+Each bar stacks build (bottom) and peel (top); the y-axis is linear so
+the visual ratio matches the time ratio.  peel is a thin sliver on top
+of a tall build base, making the "construction dominates total time"
+story obvious without reading numbers off a log axis.
 
-The story is the bottleneck-shift inside SPIN-star itself: build stays
-near-flat across s while peel drops by 1-3 orders of magnitude.
-CND comparison is reported separately in fig:exp-time / fig:hier;
-memory in fig:exp-mem.  Data hardcoded from tab:breakdown medians.
+CND comparison lives in fig:exp-time / fig:hier; memory in fig:exp-mem.
+Data hardcoded from tab:breakdown medians.
 """
 from pathlib import Path
 
@@ -50,8 +49,8 @@ DATA = {
 
 GRAPHS = ["com-youtube", "web-Stanford", "web-it-2004"]
 
-SPIN_COLOR = "#1f78b4"
-CND_COLOR  = "#e31a1c"
+BUILD_COLOR = "#9ecae1"  # light blue (the bulk)
+PEEL_COLOR  = "#ef6548"  # orange-red (the sliver on top)
 
 
 def plot(out_pdf):
@@ -62,17 +61,28 @@ def plot(out_pdf):
         ss     = [r[0] for r in rows]
         spin_b = [r[1] for r in rows]
         spin_p = [r[2] for r in rows]
+        x_pos  = list(range(len(ss)))
 
         ax = axes[col]
-        ax.plot(ss, spin_b, color=SPIN_COLOR, marker="o", markersize=4.5,
-                linewidth=1.6, linestyle="-",  label="build")
-        ax.plot(ss, spin_p, color=SPIN_COLOR, marker="o", markersize=4.5,
-                linewidth=1.4, linestyle="--", label="peel")
-        ax.set_yscale("log")
-        ax.grid(True, which="major", alpha=0.25, linestyle=":")
+        ax.bar(x_pos, spin_b, color=BUILD_COLOR, edgecolor="white",
+               linewidth=0.4, label="build")
+        ax.bar(x_pos, spin_p, bottom=spin_b, color=PEEL_COLOR,
+               edgecolor="white", linewidth=0.4, label="peel")
+
+        # Annotate peel share at the top of each bar.
+        for i, (b, p) in enumerate(zip(spin_b, spin_p)):
+            pct = 100.0 * p / (b + p)
+            ax.text(x_pos[i], b + p, f"{pct:.1f}%", ha="center", va="bottom",
+                    fontsize=7.5, color="#404040")
+
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels([str(s) for s in ss])
         ax.tick_params(axis="both", which="major", labelsize=8.5)
-        ax.tick_params(axis="both", which="minor", labelsize=0)
         for sp in ("top", "right"): ax.spines[sp].set_visible(False)
+        ax.grid(True, axis="y", which="major", alpha=0.25, linestyle=":")
+        # Headroom for the percentage label.
+        top = max(b + p for b, p in zip(spin_b, spin_p))
+        ax.set_ylim(0, top * 1.18)
         ax.set_title(g, fontsize=10.5, fontweight="bold")
         ax.set_xlabel(r"$\boldsymbol{s}$", fontsize=10.5, fontweight="bold")
         if col == 0:
