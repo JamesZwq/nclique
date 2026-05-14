@@ -131,17 +131,17 @@ Measured: \texttt{web-Stanford}, $s{=}10$      & $261$ MB  & $176$ MB  \\
 \stitle{RQ2: where does the time go?}
 The static invariant makes peeling cheap, so the next question is whether construction becomes the dominant cost.
 %
-The phase study uses \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{web-it-2004} with median values over three runs (Figure~\ref{fig:breakdown}).
+The phase study sweeps $s\in\{3,5,7,9,11,13,15\}$ on six graphs (Figure~\ref{fig:breakdown}, smallest to largest by edge count).
 %
-On every graph and every $s$, the peel slice on top of each bar is a thin sliver of total time: peel is $10.2\%$ of total at \texttt{com-youtube}, $s{=}3$ and falls below $1\%$ by $s{=}8$; on \texttt{web-it-2004} peel never exceeds $0.3\%$.
+On every graph, the orange peel slice on top of each bar shrinks as $s$ grows: on the medium and large graphs peel falls below $1\%$ of total time by $s{=}9$ and stays below $0.1\%$ on \texttt{web-it-2004} throughout the sweep.
 %
 The bottleneck has shifted onto construction, which is why \paraBuild{} is part of the algorithmic pipeline rather than a detached engineering detail.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_breakdown.pdf}
-\caption{\spinStar{} phase breakdown: build (blue, bottom) vs peel (orange, top). Linear scale; the peel share is printed above each bar.}
-\Description{Three side-by-side stacked-bar charts. Each bar shows build time as a tall blue base with peel time as a thin orange sliver on top. The peel share is below 11\% on com-youtube, below 6\% on web-Stanford, and below 0.3\% on web-it-2004 --- peeling is a small fraction of total runtime everywhere.}
+\caption{\spinStar{} phase breakdown on six graphs: build (blue, bottom) vs peel (orange, top). Linear scale; the peel share is printed above each bar.}
+\Description{Six side-by-side stacked-bar charts. Each bar shows build time as a tall blue base with peel time as a thin orange sliver on top. The peel share falls below 1\% by s=9 on the medium and large graphs and stays below 0.1\% on web-it-2004 across the entire sweep --- peeling is a small fraction of total runtime everywhere.}
 \label{fig:breakdown}
 \end{figure*}
 
