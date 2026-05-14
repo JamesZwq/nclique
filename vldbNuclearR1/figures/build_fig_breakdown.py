@@ -1,12 +1,14 @@
-"""Phase-breakdown figure: 2 rows x 3 cols.
-
-  Row 1 = build + peel time (ms, log y), 4 lines per panel
-  Row 2 = peak memory (MB, log y), 2 lines per panel
+"""Phase-breakdown figure: 1 row x 3 cols.
 
 Each column is one graph (com-youtube, web-Stanford, web-it-2004).
-Data hardcoded from the medians reported in tab:breakdown so the figure
-is consistent with the prose; CSV bench_breakdown.csv is the source of
-truth for these numbers.
+Each panel shows two SPIN-star lines on a log-time axis:
+  - build (solid)  -- CPI construction time
+  - peel (dashed)  -- post-build peel time
+
+The story is the bottleneck-shift inside SPIN-star itself: build stays
+near-flat across s while peel drops by 1-3 orders of magnitude.
+CND comparison is reported separately in fig:exp-time / fig:hier;
+memory in fig:exp-mem.  Data hardcoded from tab:breakdown medians.
 """
 from pathlib import Path
 
@@ -53,56 +55,33 @@ CND_COLOR  = "#e31a1c"
 
 
 def plot(out_pdf):
-    fig, axes = plt.subplots(2, len(GRAPHS), figsize=(13, 3.6), sharex=False)
+    fig, axes = plt.subplots(1, len(GRAPHS), figsize=(13, 2.4), sharex=False)
 
     for col, g in enumerate(GRAPHS):
         rows = DATA[g]
-        ss        = [r[0] for r in rows]
-        spin_b    = [r[1] for r in rows]
-        spin_p    = [r[2] for r in rows]
-        spin_mem  = [r[3] for r in rows]
-        cnd_b     = [r[4] for r in rows]
-        cnd_p     = [r[5] for r in rows]
-        cnd_mem   = [r[6] for r in rows]
+        ss     = [r[0] for r in rows]
+        spin_b = [r[1] for r in rows]
+        spin_p = [r[2] for r in rows]
 
-        # ----- top row: build + peel time -----
-        ax = axes[0][col]
+        ax = axes[col]
         ax.plot(ss, spin_b, color=SPIN_COLOR, marker="o", markersize=4.5,
-                linewidth=1.6, linestyle="-",  label=r"SPIN$^{\star}$ build")
+                linewidth=1.6, linestyle="-",  label="build")
         ax.plot(ss, spin_p, color=SPIN_COLOR, marker="o", markersize=4.5,
-                linewidth=1.4, linestyle="--", label=r"SPIN$^{\star}$ peel")
-        ax.plot(ss, cnd_b,  color=CND_COLOR,  marker="^", markersize=4.5,
-                linewidth=1.6, linestyle="-",  label=r"CND build")
-        ax.plot(ss, cnd_p,  color=CND_COLOR,  marker="^", markersize=4.5,
-                linewidth=1.4, linestyle="--", label=r"CND peel")
+                linewidth=1.4, linestyle="--", label="peel")
         ax.set_yscale("log")
         ax.grid(True, which="major", alpha=0.25, linestyle=":")
         ax.tick_params(axis="both", which="major", labelsize=8.5)
         ax.tick_params(axis="both", which="minor", labelsize=0)
         for sp in ("top", "right"): ax.spines[sp].set_visible(False)
         ax.set_title(g, fontsize=10.5, fontweight="bold")
-        if col == 0:
-            ax.set_ylabel("time (ms)", fontsize=10)
-
-        # ----- bottom row: memory -----
-        ax = axes[1][col]
-        ax.plot(ss, spin_mem, color=SPIN_COLOR, marker="o", markersize=4.5,
-                linewidth=1.6, label=r"SPIN$^{\star}$")
-        ax.plot(ss, cnd_mem,  color=CND_COLOR,  marker="^", markersize=4.5,
-                linewidth=1.6, label="CND")
-        ax.set_yscale("log")
-        ax.grid(True, which="major", alpha=0.25, linestyle=":")
-        ax.tick_params(axis="both", which="major", labelsize=8.5)
-        ax.tick_params(axis="both", which="minor", labelsize=0)
-        for sp in ("top", "right"): ax.spines[sp].set_visible(False)
         ax.set_xlabel(r"$\boldsymbol{s}$", fontsize=10.5, fontweight="bold")
         if col == 0:
-            ax.set_ylabel("memory (MB)", fontsize=10)
+            ax.set_ylabel(r"SPIN$^{\star}$ time (ms)", fontsize=10)
 
-    handles, labels = axes[0][0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=4, fontsize=9.5,
-               frameon=False, bbox_to_anchor=(0.5, 1.02))
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", ncol=2, fontsize=9.5,
+               frameon=False, bbox_to_anchor=(0.5, 1.04))
+    fig.tight_layout(rect=[0, 0, 1, 0.92])
     fig.savefig(out_pdf, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out_pdf}")

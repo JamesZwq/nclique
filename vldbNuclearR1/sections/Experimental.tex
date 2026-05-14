@@ -133,15 +133,13 @@ The static invariant makes peeling cheap, so the next question is whether constr
 %
 The phase study uses \texttt{com-youtube}, \texttt{web-Stanford}, and \texttt{web-it-2004} with median values over three runs (Figure~\ref{fig:breakdown}).
 %
-Two patterns emerge on every graph: build time stays essentially flat with $s$ on a high plateau (top row, solid lines), while peel time drops by $1$--$3$ orders of magnitude as $s$ grows (top row, dashed lines), so peeling becomes a small remainder of total runtime --- the bottleneck shifts onto construction, which is why \paraBuild{} is part of the algorithmic pipeline rather than a detached engineering detail.
-%
-Memory (bottom row) is consistently lower for \spinStar{} than for \cbnd{} on every cell.
+On every graph, \spinStar{}'s build time (solid) stays essentially flat with $s$ on a high plateau, while peel time (dashed) drops by $1$--$3$ orders of magnitude as $s$ grows, so peeling becomes a small remainder of total runtime; the bottleneck shifts onto construction, which is why \paraBuild{} is part of the algorithmic pipeline rather than a detached engineering detail.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_breakdown.pdf}
-\caption{Phase breakdown on three representative graphs: time (top, build solid + peel dashed) and memory (bottom).}
-\Description{Six log-scale line plots in two rows of three. Top row shows that build time stays flat across s while peel time drops by 1-3 orders of magnitude. Bottom row shows SPIN-star uses less memory than CND on every cell.}
+\caption{\spinStar{} phase breakdown on three graphs: build (solid) vs peel (dashed).}
+\Description{Three log-scale line plots showing SPIN-star build (solid) and peel (dashed) times. Build stays roughly flat across s while peel drops by 1-3 orders of magnitude, illustrating the bottleneck shift onto construction.}
 \label{fig:breakdown}
 \end{figure*}
 
