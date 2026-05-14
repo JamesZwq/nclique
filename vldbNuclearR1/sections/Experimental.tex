@@ -10,13 +10,13 @@ Exactness comes from the invariants and fixed-point equivalence proved earlier; 
 %
 \textbf{RQ4} measures \spin{} as the direct fixed-point baseline.
 %
-\textbf{RQ5} probes dense synthetic graphs where clique counts grow quickly.
+% \textbf{RQ5} probes dense synthetic graphs where clique counts grow quickly.
 %
-\textbf{RQ6} pushes the pipeline to a billion-edge graph (\texttt{com-friendster}, $1.8$B edges).
+\textbf{RQ5} pushes the pipeline to a billion-edge graph (\texttt{com-friendster}, $1.8$B edges).
 %
-\textbf{RQ7} sweeps a vertex-induced subsampling ratio to test how runtime and memory scale with input size.
+\textbf{RQ6} sweeps a vertex-induced subsampling ratio to test how runtime and memory scale with input size.
 %
-\textbf{RQ8} compares hierarchy emission against NuclearCD's level-DSU baseline.
+\textbf{RQ7} compares hierarchy emission against NuclearCD's level-DSU baseline.
 
 \stitle{Hardware and software.}
 All experiments run on a dual-socket Intel Xeon Gold $6248R$ machine with $24$ cores and $503$ GB DDR4 memory.
@@ -183,6 +183,7 @@ The sub-percent memory advantage of \spin{} is therefore the price \spinStar{} p
 
 The paper carries both algorithms because they serve different roles: \spin{} is the direct semantic formulation, \spinStar{} is its event-driven realisation.
 
+\begin{comment}
 \stitle{RQ5: dense synthetic stress.}
 The benchmark graphs are sparse.
 %
@@ -197,8 +198,9 @@ Each curve in Figure~\ref{fig:stress} is drawn up to the highest density at whic
 \Description{Two-row log-scale grid showing time (top) and memory usage (bottom) for SPIN* vs CND on synthetic dense graphs across four s values and six densities.}
 \label{fig:stress}
 \end{figure*}
+\end{comment}
 
-\stitle{RQ6: scaling to a billion-edge graph.}
+\stitle{RQ5: scaling to a billion-edge graph.}
 \label{sec:exp-friendster}
 The ten-graph benchmark stops at \texttt{com-orkut} ($117$M edges); to push the pipeline an order of magnitude further, we run \spinStar{} with $T{=}24$ on \texttt{com-friendster} ($65$M vertices, $1.806$B edges, the largest SNAP graph available).
 %
@@ -230,7 +232,7 @@ $11$ & $6470$ & $0.17$  & $1.68\times10^{10}$ & $297$ \\
 \end{tabular}
 \end{table}
 
-\stitle{RQ7: scaling with input size.}
+\stitle{RQ6: scaling with input size.}
 \label{sec:exp-scal}
 The benchmark cells fix a graph and sweep $s$; they do not test how runtime and memory respond to growing the input itself.
 %
@@ -256,7 +258,7 @@ The densest graph, $\texttt{com-orkut}$, also exposes the natural ceiling of ver
 \label{fig:scalability}
 \end{figure*}
 
-\stitle{RQ8: hierarchy emission against the level-DSU baseline.}
+\stitle{RQ7: hierarchy emission against the level-DSU baseline.}
 \label{sec:exp-hier}
 \buildHier{} (Section~\ref{sec:buildhier}) consumes the preserved \cpi{} once peeling finishes; the only available $(1,s)$ baseline that produces the same hierarchy is NuclearCD's general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, which carries $K{=}\kmax$ parallel disjoint-set forests during the peel.
 %
