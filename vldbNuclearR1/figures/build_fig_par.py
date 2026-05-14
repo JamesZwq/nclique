@@ -24,12 +24,12 @@ OUT      = Path(__file__).parent
 DATA_CSV = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data/bench_par_sdct.csv")
 
 # Graphs selected for the figure (smallest-to-largest by edge count).
-# dblp-core30 (overhead-dominated) and com-amazon are omitted: their
-# build is too short for thread scaling to be informative.
+# com-amazon, com-dblp, dblp-core30 are excluded: their T=1 baseline is
+# under 500ms so there is no meaningful scaling space (thread overhead
+# dominates beyond T~8 and the curve flattens or regresses).
 GRAPHS = [
-    ("com-dblp",                 "com-dblp"),
-    ("twitter_combined",         "twitter"),
     ("com-youtube",              "com-youtube"),
+    ("twitter_combined",         "twitter"),
     ("web-Google",               "web-Google"),
     ("web-Stanford",             "web-Stanford"),
     ("soc-pokec-relationships",  "soc-pokec"),
@@ -38,14 +38,16 @@ GRAPHS = [
 
 # Pick at most two s values per graph: low and high, to keep panels readable.
 S_PICKS = {
-    "com-dblp":                 [3, 15],
-    "twitter_combined":         [3, 12],
     "com-youtube":              [3, 16],
+    "twitter_combined":         [3, 12],
     "web-Google":               [3, 20],
     "web-Stanford":             [3, 60],
     "soc-pokec-relationships":  [3, 8],
     "web-it-2004":              [3, 400],
 }
+
+# Skip a graph entirely if its lowest s curve never breaks 500ms at T=1.
+MIN_BASELINE_MS = 500.0
 
 LOW_COLOR  = "#1f78b4"
 HIGH_COLOR = "#e31a1c"
@@ -81,6 +83,15 @@ def plot(out_pdf):
             pts = sorted([(T, ms) for (g, ss, T), ms in data.items()
                           if g == stem and ss == s])
             if not pts: continue
+            # Drop the entire curve if even T=1 is below the noise floor.
+            baseline = next((ms for T, ms in pts if T == 1), None)
+            if baseline is None or baseline < MIN_BASELINE_MS:
+                continue
+            # Truncate the curve at the minimum point: once thread overhead
+            # makes time go back up, stop drawing.  Always keep at least
+            # T=1 plus everything up to and including the best T.
+            best_T_idx = min(range(len(pts)), key=lambda i: pts[i][1])
+            pts = pts[: best_T_idx + 1]
             xs = [T for T, _ in pts]
             ys = [ms for _, ms in pts]
             ax.plot(xs, ys, color=color, marker=marker, markersize=4.0,
