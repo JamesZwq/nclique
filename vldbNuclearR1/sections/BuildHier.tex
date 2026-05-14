@@ -1,8 +1,10 @@
 \section{Core-Value Hierarchy Construction}\label{sec:buildhier}
 
-After \spinStar{} computes the core values, we extract the $(1,s)$-clique-connected nucleus hierarchy of Definition~\ref{def:nucleus} from the preserved \cpi{} of Section~\ref{sec:static}.
+Because the static-\cpi{} invariant of Section~\ref{sec:static} keeps every leaf intact through peeling, the hierarchy is no longer a separate decomposition problem: every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel, so the elder-rule join tree of Definition~\ref{def:nucleus} can be emitted by a single descending union--find scan over the preserved leaves, in $O(\Sig\log\Sig)$ time, without re-enumerating a single clique.
 %
-For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\ge k\}$ and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-clique witnesses contained in $V_k$; \buildHier{} (Algorithm~\ref{alg:buildhier}) constructs the elder-rule join tree of this clique-witnessed filtration directly from \cpi{} leaves in a single descending union--find scan, in $O(\Sig\log\Sig)$ time and without re-enumerating any clique.
+Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose: they must either re-run $s$-clique enumeration at each level or maintain $K{=}\kmax$ parallel disjoint-set forests during peeling, which blows up memory by an order of magnitude (Section~\ref{sec:exp}, Figure~\ref{fig:hier}).
+%
+For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\ge k\}$ and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-clique witnesses contained in $V_k$; \buildHier{} (Algorithm~\ref{alg:buildhier}) materialises that filtration from the preserved leaves.
 
 \stitle{Leaves as connectors.}
 A \cpi{} leaf $P$ encodes the family of $s$-cliques $\Vh(P)\cup X$ for every $\eta_P$-subset $X\subseteq\Vp(P)$ (Definition~\ref{def:path}).

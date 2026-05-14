@@ -29,7 +29,7 @@ A formal definition is given in Section~\ref{sec:prelim}; we revisit this graph 
 \stitle{Challenges.}
 Computing $(1,s)$-nucleus decomposition at high $s$ is hard because the number of $s$-cliques can be enormous; the current state of the art avoids explicit enumeration with the Clique Path Index, or \cpi{}~\cite{NuclearCD}.
 %
-Using the \cpi{} efficiently for the vertex-centric case $r=1$ raises three challenges.
+Using the \cpi{} efficiently for the vertex-centric case $r=1$ raises four challenges.
 
 \sstitle{Residual state during peeling.}
 The general $(r,s)$ algorithm maintains the \cpi{} as mutable residual state, storing per-path vertex sets, a reverse vertex-to-path index, and a priority queue, and rewriting these structures every time a vertex is popped.
@@ -44,8 +44,13 @@ A layout whose memory grows with the vertex--path incidence count $\Sig$ alone w
 \sstitle{Construction as the new bottleneck.}
 Once peeling becomes counter-only, the static index builder takes seconds to minutes while peeling takes milliseconds, so construction is the next bottleneck and must be parallelised without paying the synchronisation cost of mutable path rewrites.
 
+\sstitle{Hierarchy emission from a mutating index.}
+The clique-coherent nucleus hierarchy of Definition~\ref{def:nucleus} witnesses $s$-connectivity through $s$-cliques contained in each super-level set, so emitting it requires access to the $s$-cliques themselves.
+%
+If the \cpi{} is mutated during peeling, those cliques are no longer available afterwards and the hierarchy needs either a second clique-enumeration pass or per-peel-level state, both of which can dominate total cost.
+
 \stitle{State-of-the-Art and Limitations.}
-The current state of the art for general $(r,s)$-nucleus decomposition is \cbnd~\cite{NuclearCD}, which maintains the \cpi{} as mutable residual state and inherits three weaknesses when restricted to $r=1$.
+The current state of the art for general $(r,s)$-nucleus decomposition is \cbnd~\cite{NuclearCD}, which maintains the \cpi{} as mutable residual state and inherits four weaknesses when restricted to $r=1$.
 
 \sstitle{Mutable residual-index maintenance.}
 \cbnd{} rewrites path records and updates a hash-indexed reverse map at every peel step.
@@ -61,6 +66,11 @@ The geometric-mean memory ratio \cbnd{}/\spinStar{} is $1.55\times$ on the match
 Even after cheap peeling, \cbnd{} pays the full construction cost; on the densest benchmark graph at $s=3$, construction takes about $127$ seconds and peeling takes $351$ milliseconds, so the static index builder dominates total runtime by $360\times$ on this configuration.
 %
 Without a parallel builder, the end-to-end speedup over \cbnd{} stays at $1.10\times$ on the matched cells even though the peel-time speedup is $13.50\times$.
+
+\sstitle{Hierarchy emission re-enumerates or replicates.}
+Because \cbnd{} edits the \cpi{} during peeling, its $s$-clique witnesses are gone when the hierarchy is requested.
+%
+The natural workaround --- the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- maintains $K{=}\kmax$ disjoint-set forests during the peel and exceeds the available $503$ GB on \texttt{wiki-Talk} at $s\!\ge\!9$ where our pipeline finishes (Figure~\ref{fig:hier}); even where it fits, it uses $8$--$43\times$ more memory than emitting the same hierarchy from a preserved \cpi{}.
 
 \stitle{Our Solution and Contributions.}
 For $(1,s)$-nucleus decomposition we show that vertex peeling preserves the \cpi{} structure: a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel, and a path's only dynamic state is an integer counter of how many of its pivots remain.
