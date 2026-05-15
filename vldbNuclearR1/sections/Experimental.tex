@@ -202,38 +202,19 @@ Each curve in Figure~\ref{fig:stress} is drawn up to the highest density at whic
 \label{sec:exp-friendster}
 The ten-graph benchmark stops at \texttt{com-orkut} ($117$M edges); to push the pipeline an order of magnitude further, we run \spinStar{} with $T{=}24$ on \texttt{com-friendster} ($65$M vertices, $1.806$B edges, the largest SNAP graph available).
 %
-\cbnd{} completes only at $s{=}2$ on this graph, using $400$\,GB of peak memory and $\approx30$ minutes of peel against \spinStar{}'s $147$\,GB and $0.34$\,s ($\approx5200\times$ peel speedup, $2.7\times$ less memory on the matched cell); for $s\ge3$ it exceeds the $503$\,GB budget during construction and is OOM-killed.
-%
-Table~\ref{tab:friendster} reports the per-phase time, the encoded clique count $\Sig$, and memory usage for both algorithms.
+\cbnd{} completes only at $s{=}2$, using $400$\,GB of peak memory and $\approx30$ minutes of peel against \spinStar{}'s $147$\,GB and $0.34$\,s (Figure~\ref{fig:friendster}: $\approx5200\times$ peel speedup, $2.7\times$ less memory on the matched cell); for $s\ge3$ it exceeds the $503$\,GB budget during construction and is OOM-killed.
 %
 \spinStar{} decomposes the graph for a wide range of $s$: at $s{=}6$ it indexes $\Sig\approx 2.26\times 10^{10}$ encoded $s$-clique witnesses and peels that entire witness mass in $651$ ms; at $s{=}11$ it indexes $\Sig\approx 1.68\times 10^{10}$ witnesses and finishes peeling in $167$ ms.
 %
-Construction dominates total runtime (about $5$--$7$ thousand seconds against under one second of peel), confirming that the bottleneck shift carries over to the billion-edge regime; the parallel builder of Section~\ref{sec:parabuild} is what makes the construction phase tractable on a $1.8$B-edge input.
+Construction dominates total runtime ($5$--$7$ thousand seconds against under one second of peel), confirming that the bottleneck shift carries over to the billion-edge regime; the parallel builder of Section~\ref{sec:parabuild} is what makes the construction phase tractable on a $1.8$B-edge input.
 
-\begin{table}[t]
+\begin{figure}[t]
 \centering
-\caption{Build/peel time, encoded clique count, and memory usage on \texttt{com-friendster} ($1.806$B edges); \cbnd{} completes only at $s{=}2$, \textsc{oom} for $s\ge3$.}
-\label{tab:friendster}
-\small
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{rrrrr}
-\toprule
-$s$ \,/\, algo & build (s) & peel (s) & $\Sig$ & memory (GB) \\
-\midrule
-$2$ \,/\, \spinStar{}  & $5012$ & $\phantom{0\,}0.34$ & $3.48\times10^{9}$  & $153$ \\
-$2$ \,/\, \cbnd{}      & $5731$ & $1774.84$ & --- & $400$ \\
-$3$ \,/\, \spinStar{}  & $5579$ & $\phantom{0\,}0.56$ & $8.94\times10^{9}$  & $324$ \\
-$3$ \,/\, \cbnd{}      & ---    & \multicolumn{3}{l}{\textsc{oom} at build ($524$\,GB)} \\
-$4$ \,/\, \spinStar{}  & $5841$ & $\phantom{0\,}0.68$ & $1.38\times10^{10}$ & $451$ \\
-$4$ \,/\, \cbnd{}      & ---    & \multicolumn{3}{l}{\textsc{oom} at build ($524$\,GB)} \\
-$5$ \,/\, \spinStar{}  & $6220$ & $\phantom{0\,}0.62$ & $1.90\times10^{10}$ & $446$ \\
-$5$ \,/\, \cbnd{}      & ---    & \multicolumn{3}{l}{\textsc{oom} ($524$\,GB)} \\
-$6$ \,/\, \spinStar{}  & $6855$ & $\phantom{0\,}0.65$ & $2.26\times10^{10}$ & $430$ \\
-$6$ \,/\, \cbnd{}      & ---    & \multicolumn{3}{l}{\textsc{oom} ($524$\,GB)} \\
-$11$\,/\, \spinStar{}  & $6470$ & $\phantom{0\,}0.17$ & $1.68\times10^{10}$ & $297$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+\includegraphics[width=\linewidth]{figures/fig_friendster.pdf}
+\caption{\texttt{com-friendster} ($1.806$B edges): peel time (left) and peak memory (right). \cbnd{} completes only at $s{=}2$; for $s\ge3$ it exceeds the $503$\,GB budget.}
+\Description{Two bar-chart panels with x-axis s in {2,3,4,5,6,11}. Left (peel time, log y): SPIN-star bars are 0.17-0.68 s; CND at s=2 is 1775 s (about 5200 times higher), s>=3 marked OOM. Right (peak memory): SPIN-star bars range 153-451 GB; CND s=2 is 400 GB, s>=3 hatched bars hit 524 GB above the 503 GB dotted budget line.}
+\label{fig:friendster}
+\end{figure}
 
 \expsection{scaling with input size}
 \label{sec:exp-scal}
