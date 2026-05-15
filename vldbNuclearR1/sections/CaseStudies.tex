@@ -100,68 +100,19 @@ $(1,30)$-core reaches $523$ triangles per vertex on $1{,}358$ vertices.
 \stitle{Case study 3: higher $r$ does not buy quality on the studied graphs.}\label{sec:cs-pareto}
 Edge- and triangle-level nuclei sit between $(1,s)$ and explicit clique enumeration on the cost axis; whether they buy quality at that cost is an open question on the same datasets.
 %
-We fix $s$ and compare $(1,s)$, $(2,s)$, $(3,s)$ on two graphs from different domains: \texttt{com-dblp} (Table~\ref{tab:cs4}) and \texttt{com-youtube} (Table~\ref{tab:cs7}).
+Fixing $s$ and comparing $r\in\{1,2,3\}$ across \texttt{com-dblp} ($s{=}10$) and \texttt{com-youtube} ($s\in\{5,10,15\}$), Figure~\ref{fig:crossr} shows the answer at a glance: within each cell the three quality bars are nearly equal heights (left panel), while the time bars span $1$--$3$ orders of magnitude (right panel, log scale).
 %
-Across both graphs the $(1,s)$ ranking matches higher $r$ on rec50 and triangle density while running $67$--$178\times$ faster.
+On \texttt{com-dblp} at $s{=}10$, $(1,10)$ and $(3,10)$ agree on rec50 ($114$ vs.\ $114$) while $r{=}1$ is $178\times$ faster ($13$\,ms vs.\ $2380$\,ms); on \texttt{com-youtube} the same pattern repeats for every $s$, with $r{=}1$ at most a single rec50 point below $r{=}3$ and between $6.2$ and $67.5\times$ faster.
 %
-On \texttt{com-dblp} at $s{=}10$, $(1,10)$ and $(3,10)$ agree on rec50 ($114$ vs.\ $114$) and triangle density ($113.4$ vs.\ $113.4$) while the former is $178\times$ faster.
-%
-On \texttt{com-youtube} the same pattern holds for every $s\in\{5,10,15\}$, with $r{=}1$ at most a single rec50 point below $r{=}3$ and between $6.2$ and $67.5\times$ faster.
+$r{=}1$ therefore dominates $r\in\{2,3\}$ on the quality--runtime tradeoff for vertex ranking on these graphs; this does not prove higher $r$ is never useful, only that increasing $r$ here mostly adds cost.\footnote{At \texttt{com-youtube} $s{=}15$ the active set has $95$ vertices, below the smallest SNAP community size, so rec50 is zero for every method.}
 
-\begin{table}[t]
+\begin{figure}[t]
 \centering
-\caption{Cross-$r$ quality and runtime on \texttt{com-dblp} ($s=10$).}
-\label{tab:cs4}
-\small
-\begin{tabular}{lrrrr}
-\toprule
-Method & Precision & rec50 & tri/v & Time (ms) \\
-\midrule
-$k$-core      & $0.504$ & $94$  & $112.3$ & $2.3$ \\
-$(1,10)$-core & $0.523$ & $114$ & $113.4$ & $13.4$ \\
-$(2,10)$-core & $0.529$ & $113$ & $71.8$  & $123.1$ \\
-$(3,10)$-core & $0.524$ & $114$ & $113.4$ & $2{,}379.6$ \\
-\midrule
-\textbf{(1) vs. (3)} & $-0.001$ & $0$ & $0.0$ & $-178\times$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Across the broader DBLP grid the $r=1$ points dominate the $r\in\{2,3\}$ points on the quality--runtime tradeoff: they match higher-$r$ rec50 and triangle density while running an order of magnitude faster.
-%
-This does not prove higher $r$ is never useful; it shows that on this vertex-ranking task, increasing $r$ mostly adds cost.
-
-\label{sec:cs-youtube}
-The DBLP picture is not a collaboration-data artifact.
-%
-Table~\ref{tab:cs7} reports the same cross-$r$ comparison on \texttt{com-youtube} across three values of $s$; the speedup factors and quality matches are listed above.
-
-\begin{table}[t]
-\centering
-\caption{Cross-$r$ quality and runtime on \texttt{com-youtube}.}
-\label{tab:cs7}
-\small
-\begin{tabular}{lrrrr}
-\toprule
-Method & rec50 & tri/v & Time (ms) & vs. $(1,s)$ \\
-\midrule
-$(1,5)$  & $283$ & $173$ & $274$    & --- \\
-$(2,5)$  & $286$ & $161$ & $2{,}580$ & $9.4\times$ \\
-$(3,5)$  & $288$ & $159$ & $13{,}112$ & $47.9\times$ \\
-\midrule
-$(1,10)$ & $49$ & $293$ & $31$     & --- \\
-$(2,10)$ & $49$ & $293$ & $319$    & $10.3\times$ \\
-$(3,10)$ & $49$ & $293$ & $2{,}093$ & $67.5\times$ \\
-\midrule
-$(1,15)$ & $0^{\dagger}$ & $173$ & $9$  & --- \\
-$(2,15)$ & $0^{\dagger}$ & $173$ & $55$ & $6.2\times$ \\
-$(3,15)$ & $0^{\dagger}$ & $173$ & $87$ & $9.8\times$ \\
-\bottomrule
-\end{tabular}
-\\[2pt]\footnotesize $^{\dagger}$At $s=15$, the active set has $95$ vertices, below the smallest SNAP community size, so rec50 is zero for every method.
-\end{table}
-
-Across all three $s$ values, $r=1$ reaches the same rec50 and triangle-density contours as higher-$r$ settings (see Table~\ref{tab:cs7}) with lower runtime; the same pattern holds on \texttt{com-youtube} as on \texttt{com-dblp}.
+\includegraphics[width=\linewidth]{figures/fig_crossr.pdf}
+\caption{Cross-$r$ comparison on \texttt{com-dblp} ($s{=}10$) and \texttt{com-youtube} ($s\in\{5,10,15\}$). Left: ranking quality (rec50, higher is better) is nearly identical across $r$. Right: decomposition time (log scale, lower is better) is $1$--$3$ orders of magnitude smaller at $r{=}1$.}
+\Description{Two side-by-side bar charts. Left panel shows rec50 bars within each cell are nearly equal across r=1, 2, 3. Right panel shows decomposition time on a log scale where r=1 bars are dramatically shorter than r=2 and r=3 bars in every cell, with the gap reaching about 178 times on dblp s=10.}
+\label{fig:crossr}
+\end{figure}
 
 \stitle{Case study 4: $s$ distils a neighbourhood into near-clique modules.}\label{sec:cs-viz}
 The previous studies use global rankings.
