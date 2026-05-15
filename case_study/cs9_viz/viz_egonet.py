@@ -139,9 +139,12 @@ for s in S_VALUES:
                       if it["dens"] >= 0.999 and it["n"] >= 2), default=1)
     # Vertices peeled out of the original ego-net.
     n_peeled = EGO_SIZE - sum(it["n"] for it in info)
-    # Rank callouts by (density desc, size desc), restricted to n>=3 so
-    # singletons and trivial K_2's don't clutter the callouts.
-    callout_pool = [it for it in info if it["n"] >= MIN_CALLOUT_N]
+    # Rank callouts by (density desc, size desc), restricted to dense
+    # modules (d>=0.5, n>=3) so the loose residual blob never steals a
+    # callout slot from a near-clique.  The residual is drawn in the
+    # background gray; the callouts are reserved for "story" cliques.
+    callout_pool = [it for it in info
+                    if it["n"] >= MIN_CALLOUT_N and it["dens"] >= 0.5]
     callout_pool = sorted(callout_pool,
                           key=lambda x: (-x["dens"], -x["n"]))
     info_ranked  = callout_pool[:TOP_K]
@@ -210,26 +213,25 @@ def render_panel(ax, panel):
     topK_verts = set()
     for it in topK: topK_verts |= it["comp"]
 
-    # Survivors outside the top-K: medium gray.  We keep them larger than
-    # peeled so the reader sees "alive but not a story component".
-    other_surv = survive_verts - topK_verts - {anchor}
-    if other_surv:
-        ox = [pos[v][0] for v in other_surv]; oy = [pos[v][1] for v in other_surv]
-        ax.scatter(ox, oy, s=22, c="#9aa0a6", linewidths=0.3,
-                   edgecolors="white", alpha=0.9, zorder=2)
-
-    # Top-K colored.  In the two loose panels (s=3, 5) "top-K" is just the
-    # single giant blob, so colouring it the same blue gives a clean
-    # before-and-after read against the s=10, 15 mosaic.
+    # In the two loose panels (s=3, 5) every survivor goes the same blue:
+    # there are no clique modules yet to extract, so the panel just shows
+    # "still one big diffuse blob".  In the two callout panels the
+    # survivors outside the highlighted cliques go medium gray (alive but
+    # not a story component).
     if not callouts:
-        col_loose = "#4a90d9"
-        for it in topK:
-            c = it["comp"]
-            if len(c) < 2: continue
-            cx = [pos[v][0] for v in c]; cy = [pos[v][1] for v in c]
-            ax.scatter(cx, cy, s=22, c=col_loose, edgecolors="white",
+        loose_surv = survive_verts - {anchor}
+        if loose_surv:
+            ox = [pos[v][0] for v in loose_surv]
+            oy = [pos[v][1] for v in loose_surv]
+            ax.scatter(ox, oy, s=22, c="#4a90d9", edgecolors="white",
                        linewidths=0.3, alpha=0.85, zorder=3)
     else:
+        other_surv = survive_verts - topK_verts - {anchor}
+        if other_surv:
+            ox = [pos[v][0] for v in other_surv]
+            oy = [pos[v][1] for v in other_surv]
+            ax.scatter(ox, oy, s=22, c="#9aa0a6", linewidths=0.3,
+                       edgecolors="white", alpha=0.9, zorder=2)
         for i, it in enumerate(topK):
             c     = it["comp"]
             color = PALETTE[i]
@@ -240,7 +242,7 @@ def render_panel(ax, panel):
             ang = 2 * np.pi * (i + 0.5) / len(topK)
             lx  = RING_R * np.cos(ang)
             ly  = RING_R * np.sin(ang)
-            label = f"{it['tag']}\n($n{{=}}{it['n']}$, $d{{=}}${it['dens']:.2f})"
+            label = f"{it['tag']}\n($n{{=}}{it['n']}$)"
             ax.annotate(label,
                         xy=(bx, by),
                         xytext=(lx, ly),
@@ -262,7 +264,7 @@ def render_panel(ax, panel):
     if not callouts:
         biggest = max(comps, key=lambda x: x["n"])
         ax.text(0.04, 0.96,
-                f"single component\n$n{{=}}{biggest['n']}$, $d{{=}}{biggest['dens']:.2f}$",
+                f"loose aggregation\n($n{{=}}{biggest['n']}$)",
                 transform=ax.transAxes, ha="left", va="top",
                 fontsize=8.5, color="#202020",
                 bbox=dict(boxstyle="round,pad=0.3", fc="white",

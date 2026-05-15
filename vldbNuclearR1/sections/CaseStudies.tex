@@ -121,21 +121,23 @@ The ego-network visualisation tests whether the same $s$ knob also controls loca
 %
 Figure~\ref{fig:cs9} draws the two-hop ego-network of a \texttt{com-dblp} anchor on a shared spring layout under four successive $(1,s)$-nuclei ($s=3,5,7,10$), so the reader watches the same spatial points drop out as $s$ grows.
 
-At $s{=}3$ only $48$ vertices have been peeled and the neighbourhood is still a single loose component of $1{,}404$ members at density $0.01$ --- a coarse coauthor blob with no clique structure ($K_3$ has not even emerged yet).
+At $s{=}3$ only $48$ vertices have been peeled and the neighbourhood is still a single loose component of $1{,}404$ members; no $K_3$ clique has even emerged.
 %
-At $s{=}5$ a further $421$ vertices peel; the picture is still one diffuse component of $982$ at $d{=}0.01$, so the $(1,s)$ knob is so far just eroding the periphery.
+At $s{=}5$ a further $421$ vertices peel; the picture is still one diffuse component of $982$, so the $(1,s)$ knob is so far just eroding the periphery.
 %
 The structural collapse happens at $s{=}7$: $1{,}199$ vertices have been peeled, a $K_5$ clique surfaces, and four perfect $K_3$ cliques separate from the loose residual.
 %
-Pushing one step further to $s{=}10$ deepens the same kernel: the largest clique grows to $K_6$ and a near-clique on $4$ vertices ($d{=}0.83$) appears alongside the $K_5$.
+Pushing one step further to $s{=}10$ deepens the same kernel: the largest clique grows to $K_6$ alongside a $K_5$, a near-clique on $4$ vertices, and a dense module of $3$.
 %
 Across the four panels the peeled count grows monotonically ($48 \rightarrow 469 \rightarrow 1{,}199 \rightarrow 1{,}204$) and so does the largest emerging clique ($K_1 \rightarrow K_1 \rightarrow K_5 \rightarrow K_6$): the same ego-network distils from a single diffuse blob into a kernel of near-clique modules that were latent at low $s$.
+%
+We stop at $s{=}10$ because past it the $K_6$ and $K_5$ cliques are themselves peeled --- they have clique-support only up to $s=6$ and $s=5$ respectively --- so the kernel would regress.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/cs9_egonet.pdf}
-\caption{Same ego-network under four $(1,s)$-nuclei ($s=3,5,7,10$) on a shared spring layout. Useless (gray) vertices accumulate as $s$ grows and the surviving structure distils from one diffuse blob into a kernel of near-clique modules. Both monotone headline numbers grow with $s$: peeled vertex count $48 \rightarrow 469 \rightarrow 1199 \rightarrow 1204$ and the largest emerging clique $K_1 \rightarrow K_1 \rightarrow K_5 \rightarrow K_6$.}
-\Description{Four ego-network panels for the same com-dblp anchor on a shared spring layout. s=3: 48 vertices peeled, single blue component of 1404 at d=0.01, no clique yet. s=5: 469 peeled, single blue component of 982 still at d=0.01, no clique yet. s=7: 1199 peeled, mostly gray with one K_5 clique and several K_3 cliques highlighted in colour with callout boxes. s=10: 1204 peeled, K_6 / K_5 / K_4 cliques and a dense module on 3 vertices highlighted with callouts against a residual loose patch of 206 members at d=0.08.}
+\caption{Same ego-network under four $(1,s)$-nuclei ($s=3,5,7,10$) on a shared spring layout. Peeled (gray) vertices accumulate as $s$ grows and the surviving structure distils from one diffuse blob into a kernel of near-clique modules. Both monotone headline numbers grow with $s$: peeled vertex count $48 \rightarrow 469 \rightarrow 1199 \rightarrow 1204$ and the largest emerging clique $K_1 \rightarrow K_1 \rightarrow K_5 \rightarrow K_6$. The loose residual at $s{=}10$ stays as background gray rather than getting a callout, so the callouts read only the ``story'' clique modules.}
+\Description{Four ego-network panels for the same com-dblp anchor on a shared spring layout. s=3: 48 vertices peeled, single blue blob of 1404 members, no clique yet. s=5: 469 peeled, single blue blob of 982, no clique yet. s=7: 1199 peeled, mostly gray background with one K_5 clique and four K_3 cliques highlighted in colour with callout boxes. s=10: 1204 peeled, K_6, K_5, a near-clique on 4 vertices, and a dense module on 3 vertices highlighted with callouts; the residual loose patch is drawn as background gray.}
 \label{fig:cs9}
 \end{figure*}
 
