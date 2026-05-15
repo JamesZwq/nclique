@@ -119,19 +119,23 @@ The previous studies use global rankings.
 %
 The ego-network visualisation tests whether the same $s$ knob also controls local interpretability.
 %
-Figure~\ref{fig:cs9} compares the two-hop ego-network of a \texttt{com-dblp} anchor under a loose $(1,3)$-nucleus and a tight $(1,10)$-nucleus on a shared spring layout, with the top-$5$ surviving components annotated by their member count and internal edge density.
+Figure~\ref{fig:cs9} draws the two-hop ego-network of a \texttt{com-dblp} anchor on a shared spring layout under four successive $(1,s)$-nuclei ($s=3,5,10,15$), so the reader watches the same spatial points drop out as $s$ grows.
 
-At $s{=}3$ the entire neighbourhood collapses into a single loose component of $1{,}404$ members with internal edge density $0.01$, i.e., a coarse coauthor blob with no module structure.
+At $s{=}3$ the neighbourhood is a single loose component of $1{,}404$ members at density $0.01$ --- a coarse coauthor blob with no module structure.
 %
-At $s{=}10$ the neighbourhood breaks into $26$ components; the top-$5$ by quality include two perfect cliques ($K_6$ and $K_5$ at density $1.00$) and a near-clique on $4$ vertices ($0.83$), against a residual loose patch of $206$ members ($0.08$).
+At $s{=}5$ only $48$ further vertices peel off; the picture is still one diffuse component of $982$ at $d{=}0.01$, so up to here the $(1,s)$ knob mostly erodes the periphery.
 %
-The top-$5$ average density rises from $0.01$ to $0.72$, so raising $s$ does not just shrink the active set --- it distils the same neighbourhood into a few near-clique modules that were latent at $s{=}3$.
+The structural collapse happens at $s{=}10$: the blob breaks into $26$ components and the top-$5$ by quality include two perfect cliques ($K_6$ and $K_5$ at $d{=}1.00$) and a near-clique on $4$ vertices ($0.83$) against a residual loose patch of $206$ members ($0.08$) --- top-$5$ avg density jumps from $0.01$ to $0.72$.
+%
+Pushing further to $s{=}15$ continues to densify the residual: the loose patch shrinks to $107$ members at $d{=}0.20$ (more than doubling its density), while the $K_5$ and $K_6$ cliques have themselves been peeled, leaving a smaller dense module and a $K_2$ at the kernel.
+%
+The same ego-network thus carries a monotone progression of $(1,s)$-nuclei, from a single diffuse blob to a kernel of near-clique modules that were latent at low $s$.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/cs9_egonet.pdf}
-\caption{Ego-network at a loose vs.\ a tight $(1,s)$-nucleus: top-$5$ avg density $0.01\rightarrow0.72$.}
-\Description{Two ego-network panels for the same com-dblp anchor on a shared spring layout: left panel at s=3 shows a single dense blue cluster of 1404 members with density 0.01; right panel at s=10 shows 26 components with five top-quality clusters highlighted by colour --- a K_6 clique, a K_5 clique, a near-clique on 4 vertices (d=0.83), a dense module of 3 (d=0.67), and a residual loose component of 206 vertices (d=0.08) --- each with a callout box giving its size and density.}
+\caption{Same ego-network under four $(1,s)$-nuclei ($s=3,5,10,15$) on a shared spring layout: useless (gray) vertices accumulate as $s$ grows and the surviving structure distils from one diffuse blob into a kernel of near-clique modules. Top-$5$ avg density progresses $0.01 \rightarrow 0.01 \rightarrow 0.72 \rightarrow 0.37$, with the loose residual at $s{=}10$ ($n{=}206$, $d{=}0.08$) tightening to $n{=}107$, $d{=}0.20$ at $s{=}15$.}
+\Description{Four ego-network panels for the same com-dblp anchor on a shared spring layout. s=3: a single dense blue cluster of 1404 members at d=0.01. s=5: same layout with the periphery thinned, single component of 982 still at d=0.01. s=10: 26 components, K_6 / K_5 / K_4 cliques highlighted in colour with callout boxes against a residual loose patch of 206 members at d=0.08. s=15: 11 components, the loose patch has shrunk to 107 members at d=0.20 with a K_2 and a dense module of 3 surviving.}
 \label{fig:cs9}
 \end{figure*}
 
