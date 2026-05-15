@@ -119,25 +119,21 @@ The previous studies use global rankings.
 %
 The ego-network visualisation tests whether the same $s$ knob also controls local interpretability.
 %
-Figure~\ref{fig:cs9} draws the two-hop ego-network of a \texttt{com-dblp} anchor on a shared spring layout under four successive $(1,s)$-nuclei ($s=3,5,7,10$), so the reader watches the same spatial points drop out as $s$ grows.
+Figure~\ref{fig:cs9} draws the two-hop ego-network of a \texttt{com-dblp} anchor on a shared spring layout under four successive $(1,s)$-nuclei ($s=3,5,7,10$).  A vertex of the ego is considered alive at $s$ iff it participates in at least one $s$-clique entirely within the ego subgraph, so every alive vertex at $s$ sits in a real $K_s$ of the local (1,s)-nucleus.  The four largest maximal cliques fully contained in the ego ($K_{31}, K_{25}, K_{19}, K_{18}$) are highlighted in colour with callouts.
 
-At $s{=}3$ only $48$ vertices have been peeled and the neighbourhood is still a single loose component of $1{,}404$ members; no $K_3$ clique has even emerged.
+These four cliques are alive at every $s$ in $\{3,5,7,10\}$ (their sizes are all at least $10$), so they form a backbone that persists across all four panels.
 %
-At $s{=}5$ a further $421$ vertices peel; the picture is still one diffuse component of $982$, so the $(1,s)$ knob is so far just eroding the periphery.
+What changes from panel to panel is the peripheral alive set: vertices alive only because of smaller cliques peel off as $s$ grows.
 %
-The structural collapse happens at $s{=}7$: $1{,}199$ vertices have been peeled, a $K_5$ clique surfaces, and four perfect $K_3$ cliques separate from the loose residual.
+Alive vertex count shrinks monotonically ($1{,}356 \rightarrow 721 \rightarrow 370 \rightarrow 165$ out of $1{,}452$): from "most of the neighbourhood is in some triangle" at $s{=}3$, to "only the four backbone cliques and their immediate clique-shared periphery survive" at $s{=}10$.
 %
-Pushing one step further to $s{=}10$ deepens the same kernel: the largest clique grows to $K_6$ alongside a $K_5$, a near-clique on $4$ vertices, and a dense module of $3$.
-%
-Across the four panels the peeled count grows monotonically ($48 \rightarrow 469 \rightarrow 1{,}199 \rightarrow 1{,}204$) and so does the largest emerging clique ($K_1 \rightarrow K_1 \rightarrow K_5 \rightarrow K_6$): the same ego-network distils from a single diffuse blob into a kernel of near-clique modules that were latent at low $s$.
-%
-We stop at $s{=}10$ because past it the $K_6$ and $K_5$ cliques are themselves peeled --- they have clique-support only up to $s=6$ and $s=5$ respectively --- so the kernel would regress.
+The ego thus distils from a coauthor neighbourhood into a few large, tightly-coordinated coauthor communities --- the same cliques are visible throughout, but the larger $s$ stripes away the loose periphery and isolates them.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/cs9_egonet.pdf}
-\caption{Same ego-network under four $(1,s)$-nuclei ($s=3,5,7,10$) on a shared spring layout. Peeled (gray) vertices accumulate as $s$ grows and the surviving structure distils from one diffuse blob into a kernel of near-clique modules. Both monotone headline numbers grow with $s$: peeled vertex count $48 \rightarrow 469 \rightarrow 1199 \rightarrow 1204$ and the largest emerging clique $K_1 \rightarrow K_1 \rightarrow K_5 \rightarrow K_6$. The loose residual at $s{=}10$ stays as background gray rather than getting a callout, so the callouts read only the ``story'' clique modules.}
-\Description{Four ego-network panels for the same com-dblp anchor on a shared spring layout. s=3: 48 vertices peeled, single blue blob of 1404 members, no clique yet. s=5: 469 peeled, single blue blob of 982, no clique yet. s=7: 1199 peeled, mostly gray background with one K_5 clique and four K_3 cliques highlighted in colour with callout boxes. s=10: 1204 peeled, K_6, K_5, a near-clique on 4 vertices, and a dense module on 3 vertices highlighted with callouts; the residual loose patch is drawn as background gray.}
+\caption{Same ego-network under four locally-restricted $(1,s)$-nuclei ($s=3,5,7,10$) on a shared spring layout. The four largest maximal cliques fully contained in the ego ($K_{31}, K_{25}, K_{19}, K_{18}$) form a backbone visible in every panel. As $s$ grows the surrounding alive periphery shrinks from $1356 \rightarrow 721 \rightarrow 370 \rightarrow 165$ out of $1452$, while the backbone cliques themselves remain intact --- the local $(1,s)$-nucleus distils a loose coauthor neighbourhood into a few tight coauthor communities.}
+\Description{Four ego-network panels for the same com-dblp anchor on a shared spring layout. The K_31, K_25, K_19, and K_18 maximal cliques are highlighted in distinct colors with callout labels in every panel. As s grows from 3 to 5 to 7 to 10, peeled (light gray) vertices grow from 96 to 731 to 1082 to 1287 out of 1452, while the highlighted backbone cliques remain visible throughout.}
 \label{fig:cs9}
 \end{figure*}
 
