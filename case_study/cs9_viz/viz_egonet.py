@@ -1,15 +1,21 @@
 """
-CS9 ego-net case study, 4-panel progression:
-Same com-dblp ego-network drawn under (1,s)-nucleus at s=3, 5, 10, 15.
+CS9 ego-net case study, 4-panel monotone progression:
+Same com-dblp ego-network drawn under (1,s)-nucleus at s=3, 5, 7, 10.
 Shared spring layout, so the reader watches the same spatial points
 drop out as s grows:
 
   s=3  -> one diffuse blob (48 peeled out of 1452, d=0.01)
   s=5  -> blob shrinks, periphery gone (469 peeled, still 1 component)
-  s=10 -> structural collapse: K_6 / K_5 / K_4 / K_3 modules emerge
-  s=15 -> kernel densifies further (residual loose patch tightens)
+  s=7  -> structural collapse: K_5 clique and several K_3 modules
+          emerge from the residual (top-5 avg d ~ 0.67)
+  s=10 -> kernel deepens: K_6 / K_5 / K_4 / K_3 modules
+          (top-5 avg d = 0.72)
 
-Callout boxes are reserved for the two interesting panels (s=10, s=15);
+We stop at s=10 because past it (e.g. s=15) the K_6 and K_5 cliques are
+themselves peeled, so the top-5 quality drops --- not the monotone
+"better and better" story we want to tell.
+
+Callout boxes are reserved for the two interesting panels (s=7, s=10);
 the two loose panels carry a single inline summary instead, to keep the
 4-up layout readable.
 """
@@ -29,9 +35,9 @@ GT_ROOT  = ROOT.parent / "cs3_groundtruth"
 CS6_ROOT = ROOT.parent / "cs6_grid"
 N_SNAP   = 425957
 
-# 4-panel progression.
-S_VALUES   = (3, 5, 10, 15)
-S_CALLOUTS = {10, 15}              # panels that get the callout-box treatment
+# 4-panel monotone progression: top-5 avg density is non-decreasing.
+S_VALUES   = (3, 5, 7, 10)
+S_CALLOUTS = {7, 10}               # panels that get the callout-box treatment
 ANCHOR = 3813          # selected via find_anchor search (clean cliques at s=10)
 TOP_K  = 5             # number of components to annotate per panel
 
@@ -113,9 +119,12 @@ def shape_label(c, dens, m_in):
 
 
 # ---- Per-panel data ----
-# For panel labels we rank by  size * density  (the "quality x scale" score)
-# rather than by raw size, because at large s the largest component is the
-# loose residual background; the *story* components are the small cliques.
+# For callout panels we rank by  density first, size second  with a
+# min-size threshold of 3, so the K-cliques get the callout boxes instead
+# of the loose residual background.  For loose panels we keep the largest
+# component (which is the single blob) as the headline.
+EGO_SIZE = len(egonet)
+MIN_CALLOUT_N = 3
 panels = []
 for s in S_VALUES:
     alive = set(int(i) for i in np.where(cores[s] > 0)[0])
@@ -124,18 +133,26 @@ for s in S_VALUES:
     for c in comps:
         d, m_in = density(c)
         info.append({"comp": c, "n": len(c), "m_in": m_in, "dens": d,
-                     "tag":  shape_label(c, d, m_in),
-                     "qscore": d * len(c) if len(c) >= 3 else 0})
-    # rank for annotation: panel (a) shows the one big loose component, so
-    # the "top by quality" reduces to that. Panel (b) reranks by qscore so
-    # the dense cliques get the callouts.
-    info_ranked = sorted(info, key=lambda x: -x["qscore"])
-    top = info_ranked[:TOP_K]
-    avgd = sum(it["dens"] for it in top) / max(len(top), 1)
+                     "tag":  shape_label(c, d, m_in)})
+    # Largest clique (perfect-density component) actually present at this s.
+    max_clique = max((it["n"] for it in info
+                      if it["dens"] >= 0.999 and it["n"] >= 2), default=1)
+    # Vertices peeled out of the original ego-net.
+    n_peeled = EGO_SIZE - sum(it["n"] for it in info)
+    # Rank callouts by (density desc, size desc), restricted to n>=3 so
+    # singletons and trivial K_2's don't clutter the callouts.
+    callout_pool = [it for it in info if it["n"] >= MIN_CALLOUT_N]
+    callout_pool = sorted(callout_pool,
+                          key=lambda x: (-x["dens"], -x["n"]))
+    info_ranked  = callout_pool[:TOP_K]
     panels.append({"s": s, "comps": info, "comps_ranked": info_ranked,
-                   "alive": alive, "avgd_top": avgd})
-    print(f"s={s}: {len(comps)} components, top-{TOP_K} avg density = {avgd:.2f}")
-    for it in top:
+                   "alive": alive,
+                   "max_clique": max_clique,
+                   "n_peeled":   n_peeled,
+                   "n_alive":    EGO_SIZE - n_peeled})
+    print(f"s={s}: {len(comps)} comps, peeled={n_peeled}, "
+          f"max_clique=K_{max_clique}")
+    for it in info_ranked:
         print(f"    n={it['n']:3d}  d={it['dens']:.2f}  {it['tag']}")
 
 
@@ -240,23 +257,25 @@ def render_panel(ax, panel):
                s=240, c="#d62728", edgecolors="white",
                linewidths=0.8, zorder=4)
 
-    # For the two loose panels, drop one inline corner label that says
-    # "single n=X loose component, d=Y" so the reader does not need a
-    # ring of identical callouts.
-    if not callouts and topK:
-        big = topK[0]
+    # For the two loose panels, label the largest (single blob) component
+    # in the corner so the reader doesn't need a ring of identical callouts.
+    if not callouts:
+        biggest = max(comps, key=lambda x: x["n"])
         ax.text(0.04, 0.96,
-                f"single component\n$n{{=}}{big['n']}$, $d{{=}}{big['dens']:.2f}$",
+                f"single component\n$n{{=}}{biggest['n']}$, $d{{=}}{biggest['dens']:.2f}$",
                 transform=ax.transAxes, ha="left", va="top",
                 fontsize=8.5, color="#202020",
                 bbox=dict(boxstyle="round,pad=0.3", fc="white",
                           ec="#4a90d9", lw=0.9, alpha=0.92))
 
-    quality_word = "loose"    if panel["avgd_top"] < 0.30 else \
-                   "moderate" if panel["avgd_top"] < 0.60 else "dense"
+    # Monotone headline numbers: peeled count (non-decreasing) and
+    # largest emerging clique (non-decreasing).
+    n_peeled = panel["n_peeled"]; n_alive = panel["n_alive"]
+    kmax     = panel["max_clique"]
+    clique_tag = (f"max clique $K_{{{kmax}}}$" if kmax >= 3
+                  else "no $K_3$ yet")
     ax.set_title(
-        f"$s={s}$: {len(comps)} comp., top-{TOP_K} avg $d{{=}}{panel['avgd_top']:.2f}$"
-        f"  ({quality_word})",
+        f"$s={s}$: peeled ${n_peeled}/{EGO_SIZE}$, {clique_tag}",
         fontsize=10, fontweight="bold")
     ax.axis("off")
     pad = RING_R * 0.32
