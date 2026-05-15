@@ -119,7 +119,7 @@ The previous studies use global rankings.
 %
 The ego-network visualisation tests whether the same $s$ knob also controls local interpretability.
 %
-Figure~\ref{fig:cs9} compares the two-hop ego-network of a \texttt{com-dblp} anchor under a loose $(1,3)$-nucleus and a tight $(1,10)$-nucleus, with the top-$5$ surviving components annotated by their member count and internal edge density.
+Figure~\ref{fig:cs9} renders the two-hop ego-network of a \texttt{com-dblp} anchor under a loose $(1,3)$-nucleus and a tight $(1,10)$-nucleus as a treemap, with one rectangle per surviving component (area proportional to member count, colour encoding internal edge density).
 
 At $s{=}3$ the entire neighbourhood collapses into a single loose component of $1{,}404$ members with internal edge density $0.01$, i.e., a coarse coauthor blob with no module structure.
 %
@@ -131,7 +131,7 @@ The top-$5$ average density rises from $0.01$ to $0.72$, so raising $s$ does not
 \centering
 \includegraphics[width=0.92\linewidth]{figures/cs9_egonet.pdf}
 \caption{Ego-network at a loose vs.\ a tight $(1,s)$-nucleus: top-$5$ avg density $0.01\rightarrow0.72$.}
-\Description{Two ego-network panels for the same com-dblp anchor: left panel at s=3 shows a single loose component of 1404 members with density 0.01; right panel at s=10 shows 26 components including perfect K_6 and K_5 cliques annotated with density 1.00 callout boxes.}
+\Description{Two treemap panels for the same com-dblp anchor ego-network: left panel at s=3 is a single light-blue rectangle (n=1404, d=0.01); right panel at s=10 is a mosaic of one large light-blue rectangle (n=206, d=0.08) plus four red/orange clique rectangles (K_6 d=1.00, K_5 d=1.00, n=4 d=0.83, n=3 d=0.67) and a grey ``other'' rectangle. Colour bar at bottom maps density from loose (light blue) to near-clique (deep red).}
 \label{fig:cs9}
 \end{figure*}
 

@@ -136,91 +136,82 @@ for s in (S_LO, S_HI):
         print(f"    n={it['n']:3d}  d={it['dens']:.2f}  {it['tag']}")
 
 
-# ---- Shared spring layout from the union of survivors + ego ----
-union_verts = set(egonet)
-union_verts.add(anchor)
-G_all = nx.Graph()
-for v in union_verts:
-    G_all.add_node(v)
-    for u in adj[v]:
-        if u in union_verts and u != v:
-            G_all.add_edge(u, v)
-pos = nx.spring_layout(G_all, seed=42, iterations=150,
-                      k=1.6 / max(np.sqrt(len(G_all)), 1))
-# Centre the anchor.
-ax_pos = pos[anchor]
-shift  = np.array([0.0, 0.0]) - np.array(ax_pos)
-for v in pos: pos[v] = (pos[v][0] + shift[0], pos[v][1] + shift[1])
+# ---- Render: treemap, one rectangle per component, area proportional
+#     to member count, fill colour encoding internal edge density.
+import squarify
+from matplotlib.colors import LinearSegmentedColormap
 
+# Loose -> dense colour gradient.  Light blue at d=0, orange-red at d=1.
+DENSITY_CMAP = LinearSegmentedColormap.from_list(
+    "loose_to_dense", ["#cfe5f5", "#f6c277", "#ef6548", "#a50f15"])
 
-# ---- Render ----
-fig, axes = plt.subplots(1, 2, figsize=(13, 6.2))
+# Show at most this many ranked components per panel; the remainder
+# collapse into one "other" rectangle so the visual stays compact.
+MAX_RECTS = 6
 
-PALETTE = plt.cm.tab10(np.linspace(0, 1, TOP_K))
+fig, axes = plt.subplots(1, 2, figsize=(11, 4.0))
+
 
 def render_panel(ax, panel):
     s     = panel["s"]
     comps = panel["comps"]
-    survive_verts = set()
-    for it in comps: survive_verts |= it["comp"]
-    survive_verts.add(anchor)
+    ranked = panel["comps_ranked"]
 
-    # Edges among survivors.
-    el = [(u, v) for u, v in G_all.edges()
-          if u in survive_verts and v in survive_verts]
-    nx.draw_networkx_edges(G_all, pos, edgelist=el, ax=ax,
-                           alpha=0.25, width=0.5, edge_color="#888")
+    # Pick the top-MAX_RECTS rectangles; collapse the rest into "other".
+    head = ranked[:MAX_RECTS]
+    tail = ranked[MAX_RECTS:]
+    sizes = [it["n"] for it in head]
+    if tail:
+        sizes.append(sum(it["n"] for it in tail))
+    # Squarify needs sizes in non-increasing order; head is already by
+    # quality but treemap looks neater sorted by raw size.
+    order = sorted(range(len(sizes)), key=lambda i: -sizes[i])
+    sizes = [sizes[i] for i in order]
+    labels_head = list(head) + ([{"n": sum(it["n"] for it in tail),
+                                  "dens": 0.0,
+                                  "tag":  "other"}] if tail else [])
+    labels_ordered = [labels_head[i] for i in order]
 
-    # Peeled vertices: gray dots in place.
-    peeled = union_verts - survive_verts - {anchor}
-    if peeled:
-        px = [pos[v][0] for v in peeled]; py = [pos[v][1] for v in peeled]
-        ax.scatter(px, py, s=4, c="#dddddd", linewidths=0, zorder=1)
+    # Layout the treemap inside a unit square.
+    norm_sizes = squarify.normalize_sizes(sizes, 1.0, 1.0)
+    rects      = squarify.squarify(norm_sizes, 0, 0, 1.0, 1.0)
 
-    # Survivors not in top-K-by-quality: light gray.
-    topK = panel["comps_ranked"][:TOP_K]
-    topK_verts = set()
-    for it in topK: topK_verts |= it["comp"]
-    other_surv = survive_verts - topK_verts - {anchor}
-    if other_surv:
-        ox = [pos[v][0] for v in other_surv]; oy = [pos[v][1] for v in other_surv]
-        ax.scatter(ox, oy, s=14, c="#bbbbbb", linewidths=0.3,
-                   edgecolors="white", alpha=0.85, zorder=2)
-
-    # Top-K components: colored. Callouts placed on a ring around the panel
-    # centre to prevent overlap, with a leader line back to each centroid.
-    n_top   = len(topK)
-    ring_r  = 1.05 * max(abs(x) for x, _ in pos.values()) + 0.05
-    for i, it in enumerate(topK):
-        c     = it["comp"]
-        color = PALETTE[i]
-        cx = [pos[v][0] for v in c]; cy = [pos[v][1] for v in c]
-        ax.scatter(cx, cy, s=46, c=[color], edgecolors="white",
-                   linewidths=0.5, alpha=0.95, zorder=3)
-        bx = float(np.mean(cx)); by = float(np.mean(cy))
-        # Place the box on a ring; angle distributes evenly so boxes don't pile.
-        ang = 2 * np.pi * (i + 0.5) / n_top
-        lx  = ring_r * np.cos(ang)
-        ly  = ring_r * np.sin(ang)
-        label = f"{it['tag']}\n({it['n']} members, $d{{=}}${it['dens']:.2f})"
-        ax.annotate(label,
-                    xy=(bx, by),
-                    xytext=(lx, ly),
-                    fontsize=9, ha="center", va="center",
-                    color="#202020",
-                    bbox=dict(boxstyle="round,pad=0.35",
-                              fc="white", ec=color, lw=1.3, alpha=0.97),
-                    arrowprops=dict(arrowstyle="-",
-                                    color=color, lw=1.0, alpha=0.9,
-                                    connectionstyle="arc3,rad=0.05"))
-
-    # Anchor.
-    ax.scatter([pos[anchor][0]], [pos[anchor][1]], marker="*",
-               s=360, c="#d62728", edgecolors="white",
-               linewidths=1.0, zorder=4)
-    ax.annotate("anchor", pos[anchor],
-                xytext=(8, 8), textcoords="offset points",
-                fontsize=9.5, color="#d62728", weight="bold")
+    for it, r in zip(labels_ordered, rects):
+        x, y, w, h = r["x"], r["y"], r["dx"], r["dy"]
+        # "other" rectangle stays neutral grey to keep visual focus on
+        # the top components.
+        if it["tag"] == "other":
+            face = "#e7e7e7"
+        else:
+            face = DENSITY_CMAP(min(it["dens"], 1.0))
+        ax.add_patch(plt.Rectangle((x, y), w, h, facecolor=face,
+                                   edgecolor="white", linewidth=1.2))
+        # In-rectangle label: only if the rectangle is large enough to
+        # fit text.  Use white text on dark fills, dark on light.
+        txt_color = "#101010" if (face == "#e7e7e7" or it["dens"] < 0.35) else "white"
+        if w > 0.18 and h > 0.10:
+            primary = f"$n{{=}}{it['n']}$"
+            if it["tag"] != "other":
+                secondary = f"$d{{=}}${it['dens']:.2f}"
+            else:
+                secondary = ""
+            ax.text(x + w/2, y + h/2 + 0.012, primary,
+                    ha="center", va="center", fontsize=10.5,
+                    color=txt_color, fontweight="bold")
+            if secondary:
+                ax.text(x + w/2, y + h/2 - 0.040, secondary,
+                        ha="center", va="center", fontsize=8.5,
+                        color=txt_color)
+        elif w > 0.08 and h > 0.05:
+            # Tight rectangle: single-line "n=N (d=X)".
+            tag = f"$n{{=}}{it['n']}$"
+            if it["tag"] != "other":
+                tag += f", $d{{=}}${it['dens']:.2f}"
+            ax.text(x + w/2, y + h/2, tag,
+                    ha="center", va="center", fontsize=8,
+                    color=txt_color, fontweight="bold")
+        # Smaller rectangles get no label - the colour already carries
+        # the density signal and the legend below decodes it.
 
     quality_word = "loose"    if panel["avgd_top"] < 0.30 else \
                    "moderate" if panel["avgd_top"] < 0.60 else "dense"
@@ -228,19 +219,25 @@ def render_panel(ax, panel):
         f"$s={s}$: {len(comps)} components, top-{TOP_K} avg density "
         f"$= {panel['avgd_top']:.2f}$  ({quality_word})",
         fontsize=11.5, fontweight="bold")
-    ax.axis("off")
-    # Leave room for the ring of callout boxes.
-    pad = ring_r * 0.35
-    xs = [x for x, _ in pos.values()]; ys = [y for _, y in pos.values()]
-    ax.set_xlim(min(xs) - pad, max(xs) + pad)
-    ax.set_ylim(min(ys) - pad, max(ys) + pad)
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
     ax.set_aspect("equal")
+    ax.set_xticks([]); ax.set_yticks([])
+    for sp in ax.spines.values(): sp.set_visible(False)
 
 
 for ax, p in zip(axes, panels):
     render_panel(ax, p)
 
-fig.tight_layout()
+# Density legend bar at the bottom of the figure.
+import matplotlib as mpl
+cax = fig.add_axes([0.20, 0.04, 0.60, 0.025])
+sm  = mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(0, 1), cmap=DENSITY_CMAP)
+cbar = fig.colorbar(sm, cax=cax, orientation="horizontal")
+cbar.set_label("internal edge density $d$ (loose $\\rightarrow$ near-clique)",
+               fontsize=9)
+cbar.ax.tick_params(labelsize=8)
+
+fig.tight_layout(rect=[0, 0.10, 1, 1])
 fig.savefig(ROOT / "cs9_egonet.png", dpi=180, bbox_inches="tight")
 fig.savefig(ROOT / "cs9_egonet.pdf", bbox_inches="tight")
 print(f"\nFigures saved to {ROOT}")
