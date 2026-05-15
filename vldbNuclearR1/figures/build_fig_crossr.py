@@ -53,7 +53,6 @@ def plot(out_pdf):
     ax.tick_params(axis="both", which="major", labelsize=8.5)
     for sp in ("top", "right"): ax.spines[sp].set_visible(False)
     ax.grid(True, axis="y", which="major", alpha=0.25, linestyle=":")
-    ax.legend(fontsize=9, frameon=False, loc="upper right", ncol=3)
 
     # ---- panel 2: time ----
     ax = axes[1]
@@ -70,9 +69,11 @@ def plot(out_pdf):
     ax.tick_params(axis="both", which="major", labelsize=8.5)
     for sp in ("top", "right"): ax.spines[sp].set_visible(False)
     ax.grid(True, axis="y", which="major", alpha=0.25, linestyle=":")
-    ax.legend(fontsize=9, frameon=False, loc="upper right", ncol=3)
 
-    fig.tight_layout()
+    handles, labels_ = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels_, loc="upper center", ncol=3,
+               fontsize=10, frameon=False, bbox_to_anchor=(0.5, 1.04))
+    fig.tight_layout(rect=[0, 0, 1, 0.94])
     fig.savefig(out_pdf, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out_pdf}")
