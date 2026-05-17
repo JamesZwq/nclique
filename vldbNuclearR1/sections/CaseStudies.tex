@@ -102,7 +102,7 @@ Edge- and triangle-level nuclei sit between $(1,s)$ and explicit clique enumerat
 %
 Fixing $s$ and comparing $r\in\{1,2,3\}$ across \texttt{com-dblp} ($s{=}10$) and \texttt{com-youtube} ($s\in\{5,10,15\}$), Figure~\ref{fig:crossr} shows the answer at a glance: within each cell the three quality bars are nearly equal heights (left panel), while the time bars span $1$--$3$ orders of magnitude (right panel, log scale).
 %
-On \texttt{com-dblp} at $s{=}10$, $(1,10)$ and $(3,10)$ agree on rec50 ($114$ vs.\ $114$) while $r{=}1$ is $178\times$ faster ($13$\,ms vs.\ $2380$\,ms); on \texttt{com-youtube} the same pattern repeats for every $s$, with $r{=}1$ at most a single rec50 point below $r{=}3$ and between $6.2$ and $67.5\times$ faster.
+On \texttt{com-dblp} at $s{=}10$, $(1,10)$ and $(3,10)$ agree on rec50 ($114$ vs.\ $114$) while $r{=}1$ is $178\times$ faster ($13$\,ms vs.\ $2380$\,ms); on \texttt{com-youtube} the same pattern repeats for every $s$, with $r{=}1$ within $5$ rec50 points of $r{=}3$ (at $s{=}5$: $283$ vs.\ $288$; at $s{=}10$ and $s{=}15$: identical) and between $9.8\times$ and $68\times$ faster than $r{=}3$ (and $6.2$--$10.3\times$ faster than $r{=}2$).
 %
 $r{=}1$ therefore dominates $r\in\{2,3\}$ on the quality--runtime tradeoff for vertex ranking on these graphs; this does not prove higher $r$ is never useful, only that increasing $r$ here mostly adds cost.\footnote{At \texttt{com-youtube} $s{=}15$ the active set has $95$ vertices, below the smallest SNAP community size, so rec50 is zero for every method.}
 

@@ -63,14 +63,14 @@ The residual structures that \cbnd{} must keep mutable in the general $(r,s)$ se
 The geometric-mean memory ratio \cbnd{}/\spinStar{} is $1.55\times$ on the matched cells and $3.92\times$ at maximum; on a billion-scale graph \cbnd{} completes only at $s{=}2$ (using $400$\,GB of $503$\,GB) and exceeds the budget for every $s\ge3$, while \spinStar{} finishes the full $s$ sweep.
 
 \sstitle{Construction as the residual bottleneck.}
-Even after cheap peeling, \cbnd{} pays the full construction cost; on the densest benchmark graph at $s=3$, construction takes about $127$ seconds and peeling takes $351$ milliseconds, so the static index builder dominates total runtime by $360\times$ on this configuration.
+Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} (our highest CPI-build-cost benchmark) at $s=3$, construction takes about $127$ seconds and peeling takes $351$ milliseconds, so the static index builder dominates total runtime by $360\times$ on this configuration.
 %
 Without a parallel builder, the end-to-end speedup over \cbnd{} stays at $1.10\times$ on the matched cells even though the peel-time speedup is $13.50\times$.
 
 \sstitle{Hierarchy emission re-enumerates or replicates.}
 Because \cbnd{} edits the \cpi{} during peeling, its $s$-clique witnesses are gone when the hierarchy is requested.
 %
-The natural workaround --- the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- maintains one disjoint-set forest per core level during the peel and exceeds the available $503$ GB on \texttt{wiki-Talk} at $s\!\ge\!9$ where our pipeline finishes (Figure~\ref{fig:hier}); even where it fits, it uses up to $28\times$ more memory (gmean $7.5\times$ over $24$ matched cells) than emitting the same hierarchy from a preserved \cpi{}.
+The natural workaround --- the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- maintains one disjoint-set forest per core level during the peel and exceeds the available $503$ GB on \texttt{wiki-Talk} at $s\!\ge\!9$ where our pipeline finishes (Figure~\ref{fig:hier}); even where it fits, it uses up to $43\times$ more memory (gmean $13\times$ over $24$ matched cells) than emitting the same hierarchy from a preserved \cpi{}.
 
 \stitle{Our Solution and Contributions.}
 For $(1,s)$-nucleus decomposition we show that vertex peeling preserves the \cpi{} structure: a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel, and a path's only dynamic state is an integer counter of how many of its pivots remain.

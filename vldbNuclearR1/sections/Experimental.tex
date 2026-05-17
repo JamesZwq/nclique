@@ -165,8 +165,6 @@ The two algorithms compute the same core values (Lemma~\ref{lem:equivalence}), s
 %
 Both solvers read paths from the same static index; the \spin{} reference therefore reflects the algorithmic cost of repeated full-pass fixed-point iteration, not a difference in how the index is stored.
 %
-The two curves are already shown in Figure~\ref{fig:exp-time}: \spinStar{} is the solid blue line and \spin{} is the dotted-triangle line on every panel.
-%
 Across the $272$ matched $(graph,s)$ cells, \spinStar{} delivers a $30.4\times$ geometric-mean peel-time speedup over \spin{}, with maximum $2{,}369\times$ on \texttt{web-it-2004} at $s=53$, where \spin{} repeatedly sweeps every vertex while \spinStar{} finishes after a few path-event updates.
 %
 On the easiest cells \spinStar{} can be slightly slower (minimum ratio $0.62\times$) because the bucket-queue setup and live-path bookkeeping add fixed overhead that \spin{}'s tight inner loop avoids when one or two passes already converge.
@@ -251,15 +249,15 @@ We compare four algorithm variants on four representative graphs (Figure~\ref{fi
 All four solve the same problem; the comparison isolates the cost of hierarchy emission and of the underlying peel strategy.
 %
 Three observations follow:
-(i) \buildHier{} adds at most $1.5\times$ memory on top of \spinStar{}'s peel state (blue and green curves nearly overlap on every panel), while \cbnd{+}\textsc{Hier}{} uses up to $28\times$ more memory than \spinStar{+}\buildHier{} on matched cells (gmean $7.5\times$ over $24$ cells; orange far above green);
+(i) \buildHier{} adds at most $1.5\times$ memory on top of \spinStar{}'s peel state (blue and green curves nearly overlap on every panel), while \cbnd{+}\textsc{Hier}{} uses up to $43\times$ more memory than \spinStar{+}\buildHier{} on matched cells (gmean $13\times$ over $24$ cells; orange far above green);
 (ii) even \emph{without} emitting a hierarchy, \cbnd{} (red) already uses more memory than \spinStar{+}\buildHier{} (green), and on \texttt{wiki-Talk} at $s\ge9$ both \cbnd{} variants exceed the $503$\,GB budget and never start, while ours finishes the entire sweep;
-(iii) the hierarchy emit is also cheaper at the larger-$s$ cells where the witness mass dominates: \buildHier{} is up to $29\times$ faster than \cbnd{+}\textsc{Hier}{}'s union work; on the smallest-$s$ cells where the hierarchy emit is already sub-second the two are comparable, consistent with the $O(\Sig\log\Sig)$ vs.\ $O(K\cdot\Sig)$ bounds.
+(iii) the hierarchy emit is also cheaper at the larger-$s$ cells where the witness mass dominates: \buildHier{} is up to $35\times$ faster than \cbnd{+}\textsc{Hier}{}'s union work (gmean $7.7\times$ over the $24$ cells); on the smallest-$s$ cells where the hierarchy emit is already sub-second the two are comparable, consistent with the $O(\Sig\log\Sig)$ vs.\ $O(K\cdot\Sig)$ bounds.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_hier.pdf}
 \caption{Hierarchy bench on four graphs: wall time (top) and peak memory (bottom).}
-\Description{Eight log-scale line plots arranged as two rows of four. Each panel shows four algorithms (SPIN*, SPIN*+BuildHier, CND, CND+Hier) sweeping s from 3 to 15. CND+Hier sits an order of magnitude above SPIN*+BuildHier on both time and memory across all four graphs; CND+Hier disappears at s>=9 on wiki-Talk due to OOM.}
+\Description{Eight log-scale line plots arranged as two rows of four. Each panel shows four algorithms (SPIN-star, SPIN-star+BuildHier, CND, CND+Hier) sweeping s from 3 to 15. CND+Hier sits an order of magnitude above SPIN-star+BuildHier on both time and memory across all four graphs; both CND variants disappear at s>=9 on wiki-Talk due to OOM.}
 \label{fig:hier}
 \end{figure*}
 
