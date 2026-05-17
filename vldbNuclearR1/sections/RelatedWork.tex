@@ -17,7 +17,7 @@ Bron--Kerbosch search~\cite{BronKerbosch}, Tomita pivoting~\cite{tomita}, and de
 The static-\cpi{} counter form of this paper shows that for vertex peeling these path edits never need to be materialised.
 
 \stitle{Local and parallel peeling.}
-$h$-index characterisations of core values~\cite{hindex} were studied for local core computation~\cite{lu2016hcore,LocalNuclear} and extended to distributed and parallel settings~\cite{distributed_k-core,zhang2023efficient}.
+$h$-index characterisations of core values~\cite{hindex} were studied for local core computation~\cite{lu2016hindex,LocalNuclear} and extended to distributed and parallel settings~\cite{distributed_k-core,zhang2023efficient}.
 %
 \spin{} adapts that fixed-point view to the implicit $s$-clique witnesses encoded by the \cpi{}, and \spinStar{} is its peel-order optimisation.
 %
@@ -29,7 +29,7 @@ Parallel clique search typically distributes the recursive enumeration work; \pa
 Because the downstream peel never mutates path sets, construction partitions into thread-independent subproblems whose results combine by a deterministic merge --- an engineering consequence of the $r=1$ state model rather than a new clique-enumeration paradigm.
 
 \stitle{Hierarchical cohesive subgraphs.}
-Nucleus decompositions naturally form hierarchies across core levels~\cite{nucleusSariyuce14,nuclearTWEB,fastHierarchy,sotaPrveHierarchy,sotaHierarchy}, and elder-rule join-tree extraction is standard in computational topology~\cite{morozov2007persistence}.
+Nucleus decompositions naturally form hierarchies across core levels~\cite{nucleusSariyuce14,nuclearTWEB,fastHierarchy,sotaPrveHierarchy,sotaHierarchy}, and elder-rule join-tree extraction is standard in computational topology~\cite{edelsbrunner2010topology}.
 %
 Prior nucleus pipelines extract such hierarchies by sorting the decomposition output or revisiting clique witnesses; \buildHier{} instead reuses the preserved static \cpi{}, treating each leaf as a hyperedge born at its minimum core value, so the hierarchy is a byproduct of preserving the \cpi{} through peeling.
 
