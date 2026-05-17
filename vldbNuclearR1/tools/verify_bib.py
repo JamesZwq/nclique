@@ -47,7 +47,9 @@ USER_AGENT = (
 )
 
 TITLE_SIM_FAIL = 0.55
-TITLE_SIM_WARN = 0.80
+TITLE_SIM_WARN = 0.99   # near-exact normalized match required to be OK;
+                        # catches single-letter typos (sim ~0.98) and
+                        # dropped subtitles (sim ~0.85)
 
 
 # ---------------------------------------------------------------------- bib
@@ -245,6 +247,13 @@ def normalize_title(t: str) -> str:
     if not t:
         return ""
     t = t.lower()
+    # HTML entities (Crossref sometimes returns &apos; &amp; etc.).
+    t = re.sub(r"&apos;?", "'", t)
+    t = re.sub(r"&amp;?", "and", t)
+    t = re.sub(r"&quot;?", '"', t)
+    t = re.sub(r"&lt;?", "<", t)
+    t = re.sub(r"&gt;?", ">", t)
+    t = re.sub(r"&#\d+;?", " ", t)   # numeric entities
     # Strip embedded MathML (Crossref sometimes returns it).
     t = re.sub(r"<\s*mml:[^>]*>", " ", t)
     t = re.sub(r"<\s*/\s*mml:[^>]*>", " ", t)
@@ -332,10 +341,17 @@ def verdict(bib_fields: dict, auth: dict | None):
                 f"first author: bib={bib_sur[0]!r} authoritative={auth_sur[:3]}"
             )
         else:
-            # check author count plausibility
-            if len(bib_sur) < len(auth_sur) - 1:
+            # author count: any drop signals a possibly truncated list
+            if len(bib_sur) < len(auth_sur):
                 issues.append(
-                    f"author count: bib={len(bib_sur)} authoritative={len(auth_sur)}"
+                    f"author count: bib lists {len(bib_sur)}, "
+                    f"authoritative has {len(auth_sur)} "
+                    f"(missing: {auth_sur[len(bib_sur):]})"
+                )
+            elif len(bib_sur) > len(auth_sur):
+                issues.append(
+                    f"author count: bib lists {len(bib_sur)}, "
+                    f"authoritative has only {len(auth_sur)} (extras in bib)"
                 )
     # title similarity
     bt = normalize_title(bib_fields.get("title", ""))
