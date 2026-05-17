@@ -171,7 +171,7 @@ On the easiest cells \spinStar{} can be slightly slower (minimum ratio $0.62\tim
 %
 On the largest inputs \spin{} hits the $1$h cap (\texttt{com-orkut} for $s\ge3$, \texttt{wiki-Talk} for the single cell $s=10$); \spinStar{} finishes the same configurations in seconds to minutes.
 
-\spin{}'s memory profile is essentially identical to \spinStar{}'s on every paired cell, because both share the same static index: the geometric-mean memory ratio (\spin{}$/$\spinStar{}) is $0.97$ over the $291$ matched cells, and \spin{} is slightly smaller than \spinStar{} on $83.8\%$ of them.
+\spin{}'s memory profile is essentially identical to \spinStar{}'s on every paired cell, because both share the same static index: the geometric-mean memory ratio (\spin{}$/$\spinStar{}) is $0.97$ over the $291$ memory-paired cells (more than the $272$ time-paired cells because some non-finishing \spin{} runs still recorded a peak-RSS value), and \spin{} is slightly smaller than \spinStar{} on $83.8\%$ of them.
 %
 The reason is structural: \spinStar{}'s extra state beyond the shared CPI consists of a per-path counter cache ($\sim 13$ bytes per leaf) and a peel-order bucket queue ($\sim 17$ bytes per vertex), which \spin{} does not maintain because it scans every vertex each round.
 %
