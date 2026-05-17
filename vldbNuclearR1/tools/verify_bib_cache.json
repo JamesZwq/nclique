@@ -1,0 +1,980 @@
+{
+  "BronKerbosch": {
+    "source": "crossref",
+    "doi": "10.1145/362342.362367",
+    "authors": [
+      [
+        "Coen",
+        "Bron"
+      ],
+      [
+        "Joep",
+        "Kerbosch"
+      ]
+    ],
+    "title": "Algorithm 457: finding all cliques of an undirected graph",
+    "venue": "Communications of the ACM",
+    "year": "1973"
+  },
+  "DBLP:journals/tkde/WenQZLY19": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Dong",
+        "Wen"
+      ],
+      [
+        "Lu",
+        "Qin"
+      ],
+      [
+        "Ying",
+        "Zhang"
+      ],
+      [
+        "Xuemin",
+        "Lin"
+      ],
+      [
+        "Jeffrey Xu",
+        "Yu"
+      ]
+    ],
+    "title": "I/O Efficient Core Graph Decomposition: Application to Degeneracy Ordering.",
+    "venue": "IEEE Trans. Knowl. Data Eng.",
+    "year": "2019"
+  },
+  "Identifying_influential": {
+    "source": "crossref",
+    "doi": "10.1016/j.physa.2011.09.017",
+    "authors": [
+      [
+        "Duanbing",
+        "Chen"
+      ],
+      [
+        "Linyuan",
+        "Lü"
+      ],
+      [
+        "Ming-Sheng",
+        "Shang"
+      ],
+      [
+        "Yi-Cheng",
+        "Zhang"
+      ],
+      [
+        "Tao",
+        "Zhou"
+      ]
+    ],
+    "title": "Identifying influential nodes in complex networks",
+    "venue": "Physica A: Statistical Mechanics and its Applications",
+    "year": "2012"
+  },
+  "LocalNuclear": {
+    "source": "crossref",
+    "doi": "10.14778/3275536.3275540",
+    "authors": [
+      [
+        "Ahmet Erdem",
+        "Sariyüce"
+      ],
+      [
+        "C.",
+        "Seshadhri"
+      ],
+      [
+        "Ali",
+        "Pinar"
+      ]
+    ],
+    "title": "Local algorithms for hierarchical dense subgraph discovery",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2018"
+  },
+  "Pivoter": {
+    "source": "crossref",
+    "doi": "10.1145/3336191.3371839",
+    "authors": [
+      [
+        "Shweta",
+        "Jain"
+      ],
+      [
+        "C.",
+        "Seshadhri"
+      ]
+    ],
+    "title": "The Power of Pivoting for Exact Clique Counting",
+    "venue": "Proceedings of the 13th International Conference on Web Search and Data Mining",
+    "year": "2020"
+  },
+  "akbas2017truss": {
+    "source": "crossref",
+    "doi": "10.14778/3137628.3137640",
+    "authors": [
+      [
+        "Esra",
+        "Akbas"
+      ],
+      [
+        "Peixiang",
+        "Zhao"
+      ]
+    ],
+    "title": "Truss-based community search",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2017"
+  },
+  "akoglu2015graph": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Leman",
+        "Akoglu"
+      ],
+      [
+        "Hanghang",
+        "Tong"
+      ],
+      [
+        "Danai",
+        "Koutra"
+      ]
+    ],
+    "title": "Graph based anomaly detection and description: a survey.",
+    "venue": "Data Min. Knowl. Discov.",
+    "year": "2015"
+  },
+  "apply_biological_networks_1": {
+    "source": "crossref",
+    "doi": "10.1371/journal.pcbi.1000385",
+    "authors": [
+      [
+        "Steffen",
+        "Klamt"
+      ],
+      [
+        "Utz-Uwe",
+        "Haus"
+      ],
+      [
+        "Fabian",
+        "Theis"
+      ]
+    ],
+    "title": "Hypergraphs and Cellular Networks",
+    "venue": "PLoS Computational Biology",
+    "year": "2009"
+  },
+  "apply_cyber": {
+    "source": "crossref",
+    "doi": "10.1145/3655693.3661300",
+    "authors": [
+      [
+        "Juan Manuel",
+        "Matalobos Veiga"
+      ],
+      [
+        "Regino",
+        "Criado"
+      ],
+      [
+        "Miguel",
+        "Romance Del Rio"
+      ],
+      [
+        "Sergio",
+        "Iglesias Perez"
+      ],
+      [
+        "Alberto",
+        "Partida Rodriguez"
+      ],
+      [
+        "Karan Kabbur",
+        "Hanumanthappa Manjunatha"
+      ]
+    ],
+    "title": "A Hypergraph-based Model for Cyberincident-related Data Analysis",
+    "venue": "European Interdisciplinary Cybersecurity Conference",
+    "year": "2024"
+  },
+  "apply_social_networks": null,
+  "batagelj2011fast": {
+    "source": "crossref",
+    "doi": "10.1007/s11634-010-0079-y",
+    "authors": [
+      [
+        "Vladimir",
+        "Batagelj"
+      ],
+      [
+        "Matjaž",
+        "Zaveršnik"
+      ]
+    ],
+    "title": "Fast algorithms for determining (generalized) core groups in social networks",
+    "venue": "Advances in Data Analysis and Classification",
+    "year": "2011"
+  },
+  "chen2020truss": {
+    "source": "crossref",
+    "doi": "10.14778/3401960.3401971",
+    "authors": [
+      [
+        "Yulin",
+        "Che"
+      ],
+      [
+        "Zhuohang",
+        "Lai"
+      ],
+      [
+        "Shixuan",
+        "Sun"
+      ],
+      [
+        "Yue",
+        "Wang"
+      ],
+      [
+        "Qiong",
+        "Luo"
+      ]
+    ],
+    "title": "Accelerating truss decomposition on heterogeneous processors",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2020"
+  },
+  "cohesive_subgraph_Social_Networks": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "J. Ignacio",
+        "Alvarez-Hamelin"
+      ],
+      [
+        "Luca",
+        "Dall&apos;Asta"
+      ],
+      [
+        "Alain",
+        "Barrat"
+      ],
+      [
+        "Alessandro",
+        "Vespignani"
+      ]
+    ],
+    "title": "Large scale networks fingerprinting and visualization using the k-core decomposition.",
+    "venue": "NIPS",
+    "year": "2005"
+  },
+  "cohesive_subgraph_protein_networks": null,
+  "communities_dec1": {
+    "source": "crossref",
+    "doi": "10.1145/2588555.2612179",
+    "authors": [
+      [
+        "Wanyun",
+        "Cui"
+      ],
+      [
+        "Yanghua",
+        "Xiao"
+      ],
+      [
+        "Haixun",
+        "Wang"
+      ],
+      [
+        "Wei",
+        "Wang"
+      ]
+    ],
+    "title": "Local search of communities in large graphs",
+    "venue": "Proceedings of the 2014 ACM SIGMOD International Conference on Management of Data",
+    "year": "2014"
+  },
+  "communities_dec2": {
+    "source": "crossref",
+    "doi": "10.1109/asonam.2011.65",
+    "authors": [
+      [
+        "Christos",
+        "Giatsidis"
+      ],
+      [
+        "Dimitrios M.",
+        "Thilikos"
+      ],
+      [
+        "Michalis",
+        "Vazirgiannis"
+      ]
+    ],
+    "title": "Evaluating Cooperation in Communities with the k-Core Structure",
+    "venue": "2011 International Conference on Advances in Social Networks Analysis and Mining",
+    "year": "2011"
+  },
+  "communities_dec3": {
+    "source": "crossref",
+    "doi": "10.1016/j.physrep.2009.11.002",
+    "authors": [
+      [
+        "Santo",
+        "Fortunato"
+      ]
+    ],
+    "title": "Community detection in graphs",
+    "venue": "Physics Reports",
+    "year": "2010"
+  },
+  "communityFinder": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Jaewon",
+        "Yang"
+      ],
+      [
+        "Jure",
+        "Leskovec"
+      ]
+    ],
+    "title": "Defining and evaluating network communities based on ground-truth.",
+    "venue": "Knowl. Inf. Syst.",
+    "year": "2015"
+  },
+  "coreAlg": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Vladimir",
+        "Batagelj"
+      ],
+      [
+        "Matjaz",
+        "Zaversnik"
+      ]
+    ],
+    "title": "An O(m) Algorithm for Cores Decomposition of Networks",
+    "venue": "CoRR",
+    "year": "2003"
+  },
+  "dense_subgraph": {
+    "source": "crossref",
+    "doi": "10.1145/2783258.2789987",
+    "authors": [
+      [
+        "Aristides",
+        "Gionis"
+      ],
+      [
+        "Charalampos E.",
+        "Tsourakakis"
+      ]
+    ],
+    "title": "Dense Subgraph Discovery",
+    "venue": "Proceedings of the 21th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining",
+    "year": "2015"
+  },
+  "distributed_k-core": {
+    "source": "crossref",
+    "doi": "10.1109/tpds.2012.124",
+    "authors": [
+      [
+        "Alberto",
+        "Montresor"
+      ],
+      [
+        "Francesco",
+        "De Pellegrini"
+      ],
+      [
+        "Daniele",
+        "Miorandi"
+      ]
+    ],
+    "title": "Distributed k-Core Decomposition",
+    "venue": "IEEE Transactions on Parallel and Distributed Systems",
+    "year": "2013"
+  },
+  "e-shipping_recommendation": {
+    "source": "crossref",
+    "doi": "10.1016/j.ins.2018.07.029",
+    "authors": [
+      [
+        "Mingsong",
+        "Mao"
+      ],
+      [
+        "Jie",
+        "Lu"
+      ],
+      [
+        "Jialin",
+        "Han"
+      ],
+      [
+        "Guangquan",
+        "Zhang"
+      ]
+    ],
+    "title": "Multiobjective e-commerce recommendations based on hypergraph ranking",
+    "venue": "Information Sciences",
+    "year": "2019"
+  },
+  "edelsbrunner2010topology": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Herbert",
+        "Edelsbrunner"
+      ],
+      [
+        "John",
+        "Harer"
+      ]
+    ],
+    "title": "Computational Topology - an Introduction.",
+    "venue": "",
+    "year": "2010"
+  },
+  "eppstein": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "David",
+        "Eppstein"
+      ],
+      [
+        "Maarten",
+        "Löffler"
+      ],
+      [
+        "Darren",
+        "Strash"
+      ]
+    ],
+    "title": "Listing All Maximal Cliques in Sparse Graphs in Near-Optimal Time.",
+    "venue": "ISAAC",
+    "year": "2010"
+  },
+  "fastHierarchy": {
+    "source": "crossref",
+    "doi": "10.14778/3021924.3021927",
+    "authors": [
+      [
+        "Ahmet Erdem",
+        "Sariyüce"
+      ],
+      [
+        "Ali",
+        "Pinar"
+      ]
+    ],
+    "title": "Fast hierarchy construction for dense subgraphs",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2016"
+  },
+  "girvan2002community": {
+    "source": "crossref",
+    "doi": "10.1073/pnas.122653799",
+    "authors": [
+      [
+        "M.",
+        "Girvan"
+      ],
+      [
+        "M. E. J.",
+        "Newman"
+      ]
+    ],
+    "title": "Community structure in social and biological networks",
+    "venue": "Proceedings of the National Academy of Sciences",
+    "year": "2002"
+  },
+  "hindex": {
+    "source": "dblp",
+    "score": 1.006,
+    "authors": [
+      [
+        "Jorge E.",
+        "Hirsch"
+      ]
+    ],
+    "title": "An index to quantify an individual&apos;s scientific research output.",
+    "venue": "Proc. Natl. Acad. Sci. USA",
+    "year": "2005"
+  },
+  "huang2014truss": {
+    "source": "crossref",
+    "doi": "10.1145/2588555.2610495",
+    "authors": [
+      [
+        "Xin",
+        "Huang"
+      ],
+      [
+        "Hong",
+        "Cheng"
+      ],
+      [
+        "Lu",
+        "Qin"
+      ],
+      [
+        "Wentao",
+        "Tian"
+      ],
+      [
+        "Jeffrey Xu",
+        "Yu"
+      ]
+    ],
+    "title": "Querying k-truss community in large and dynamic graphs",
+    "venue": "Proceedings of the 2014 ACM SIGMOD International Conference on Management of Data",
+    "year": "2014"
+  },
+  "hyper_kcore": null,
+  "io-eff": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Dong",
+        "Wen"
+      ],
+      [
+        "Lu",
+        "Qin"
+      ],
+      [
+        "Ying",
+        "Zhang"
+      ],
+      [
+        "Xuemin",
+        "Lin"
+      ],
+      [
+        "Jeffrey Xu",
+        "Yu"
+      ]
+    ],
+    "title": "I/O efficient Core Graph Decomposition at web scale.",
+    "venue": "ICDE",
+    "year": "2016"
+  },
+  "k-core1": {
+    "source": "crossref",
+    "doi": "10.1109/tkde.2020.3023925",
+    "authors": [
+      [
+        "Dong",
+        "Wen"
+      ],
+      [
+        "Bohua",
+        "Yang"
+      ],
+      [
+        "Lu",
+        "Qin"
+      ],
+      [
+        "Ying",
+        "Zhang"
+      ],
+      [
+        "Lijun",
+        "Chang"
+      ],
+      [
+        "Ronghua",
+        "Li"
+      ]
+    ],
+    "title": "Computing K-Cores in Large Uncertain Graphs: An Index-based Optimal Approach",
+    "venue": "IEEE Transactions on Knowledge and Data Engineering",
+    "year": "2020"
+  },
+  "kcoreSeidman": null,
+  "kcore_3": {
+    "source": "crossref",
+    "doi": "10.1145/2623330.2623655",
+    "authors": [
+      [
+        "Francesco",
+        "Bonchi"
+      ],
+      [
+        "Francesco",
+        "Gullo"
+      ],
+      [
+        "Andreas",
+        "Kaltenbrunner"
+      ],
+      [
+        "Yana",
+        "Volkovich"
+      ]
+    ],
+    "title": "Core decomposition of uncertain graphs",
+    "venue": "Proceedings of the 20th ACM SIGKDD international conference on Knowledge discovery and data mining",
+    "year": "2014"
+  },
+  "kcore_4": {
+    "source": "crossref",
+    "doi": "10.14778/2536336.2536344",
+    "authors": [
+      [
+        "Ahmet Erdem",
+        "Saríyüce"
+      ],
+      [
+        "Buğra",
+        "Gedik"
+      ],
+      [
+        "Gabriela",
+        "Jacques-Silva"
+      ],
+      [
+        "Kun-Lung",
+        "Wu"
+      ],
+      [
+        "Ümit V.",
+        "Çatalyürek"
+      ]
+    ],
+    "title": "Streaming algorithms for k-core decomposition",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2013"
+  },
+  "kempe2003maximizing": {
+    "source": "crossref",
+    "doi": "10.1145/956750.956769",
+    "authors": [
+      [
+        "David",
+        "Kempe"
+      ],
+      [
+        "Jon",
+        "Kleinberg"
+      ],
+      [
+        "Éva",
+        "Tardos"
+      ]
+    ],
+    "title": "Maximizing the spread of influence through a social network",
+    "venue": "Proceedings of the ninth ACM SIGKDD international conference on Knowledge discovery and data mining",
+    "year": "2003"
+  },
+  "kg-core": {
+    "source": "crossref",
+    "doi": "10.1145/3583780.3615275",
+    "authors": [
+      [
+        "Dahee",
+        "Kim"
+      ],
+      [
+        "Junghoon",
+        "Kim"
+      ],
+      [
+        "Sungsu",
+        "Lim"
+      ],
+      [
+        "Hyun Ji",
+        "Jeong"
+      ]
+    ],
+    "title": "Exploring Cohesive Subgraphs in Hypergraphs: The (k,g)-core Approach",
+    "venue": "Proceedings of the 32nd ACM International Conference on Information and Knowledge Management",
+    "year": "2023"
+  },
+  "kq-core": {
+    "source": "crossref",
+    "doi": "10.1016/j.chaos.2023.113645",
+    "authors": [
+      [
+        "Jongshin",
+        "Lee"
+      ],
+      [
+        "Kwang-Il",
+        "Goh"
+      ],
+      [
+        "Deok-Sun",
+        "Lee"
+      ],
+      [
+        "B.",
+        "Kahng"
+      ]
+    ],
+    "title": "<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" altimg=\"si178.svg\" display=\"inline\" id=\"d1e3412\"><mml:mrow><mml:mo>(</mml:mo><mml:mi>k</mml:mi><mml:mo>,</mml:mo><mml:mi>q</mml:mi><mml:mo>)</mml:mo></mml:mrow></mml:math>-core decomposition of hypergraphs",
+    "venue": "Chaos, Solitons &amp; Fractals",
+    "year": "2023"
+  },
+  "ktrussCohen": null,
+  "lu2016hindex": null,
+  "lu2016vital": {
+    "source": "crossref",
+    "doi": "10.1016/j.physrep.2016.06.007",
+    "authors": [
+      [
+        "Linyuan",
+        "Lü"
+      ],
+      [
+        "Duanbing",
+        "Chen"
+      ],
+      [
+        "Xiao-Long",
+        "Ren"
+      ],
+      [
+        "Qian-Ming",
+        "Zhang"
+      ],
+      [
+        "Yi-Cheng",
+        "Zhang"
+      ],
+      [
+        "Tao",
+        "Zhou"
+      ]
+    ],
+    "title": "Vital nodes identification in complex networks",
+    "venue": "Physics Reports",
+    "year": "2016"
+  },
+  "nbr_cd": {
+    "source": "crossref",
+    "doi": "10.14778/3598581.3598582",
+    "authors": [
+      [
+        "Naheed Anjum",
+        "Arafat"
+      ],
+      [
+        "Arijit",
+        "Khan"
+      ],
+      [
+        "Arpit Kumar",
+        "Rai"
+      ],
+      [
+        "Bishwamittra",
+        "Ghosh"
+      ]
+    ],
+    "title": "Neighborhood-Based Hypergraph Core Decomposition",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2023"
+  },
+  "network_visualization": {
+    "source": "crossref",
+    "doi": "10.14778/2535568.2448942",
+    "authors": [
+      [
+        "Feng",
+        "Zhao"
+      ],
+      [
+        "Anthony K. H.",
+        "Tung"
+      ]
+    ],
+    "title": "Large scale cohesive subgraphs discovery for social network visual analysis",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2012"
+  },
+  "nuclearTWEB": {
+    "source": "crossref",
+    "doi": "10.1145/3057742",
+    "authors": [
+      [
+        "Ahmet Erdem",
+        "Sariyüce"
+      ],
+      [
+        "C.",
+        "Seshadhri"
+      ],
+      [
+        "Ali",
+        "Pinar"
+      ],
+      [
+        "Ümit V.",
+        "Çatalyürek"
+      ]
+    ],
+    "title": "Nucleus Decompositions for Identifying Hierarchy of Dense Subgraphs",
+    "venue": "ACM Transactions on the Web",
+    "year": "2017"
+  },
+  "nucleusSariyuce14": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Ahmet Erdem",
+        "Sariyüce"
+      ],
+      [
+        "C.",
+        "Seshadhri"
+      ],
+      [
+        "Ali",
+        "Pinar"
+      ],
+      [
+        "Ümit V.",
+        "Çatalyürek"
+      ]
+    ],
+    "title": "Finding the Hierarchy of Dense Subgraphs using Nucleus Decompositions.",
+    "venue": "WWW",
+    "year": "2015"
+  },
+  "peel_cd": {
+    "source": "crossref",
+    "doi": "10.14778/2850469.2850471",
+    "authors": [
+      [
+        "Wissam",
+        "Khaouid"
+      ],
+      [
+        "Marina",
+        "Barsky"
+      ],
+      [
+        "Venkatesh",
+        "Srinivasan"
+      ],
+      [
+        "Alex",
+        "Thomo"
+      ]
+    ],
+    "title": "K-core decomposition of large networks on a single PC",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2015"
+  },
+  "sotaHierarchy": {
+    "source": "crossref",
+    "doi": "10.1145/3639287",
+    "authors": [
+      [
+        "Jessica",
+        "Shi"
+      ],
+      [
+        "Laxman",
+        "Dhulipala"
+      ],
+      [
+        "Julian",
+        "Shun"
+      ]
+    ],
+    "title": "Parallel Algorithms for Hierarchical Nucleus Decomposition",
+    "venue": "Proceedings of the ACM on Management of Data",
+    "year": "2024"
+  },
+  "sotaPrveHierarchy": {
+    "source": "crossref",
+    "doi": "10.14778/3494124.3494140",
+    "authors": [
+      [
+        "Jessica",
+        "Shi"
+      ],
+      [
+        "Laxman",
+        "Dhulipala"
+      ],
+      [
+        "Julian",
+        "Shun"
+      ]
+    ],
+    "title": "Theoretically and practically efficient parallel nucleus decomposition",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2021"
+  },
+  "tomita": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Etsuji",
+        "Tomita"
+      ],
+      [
+        "Akira",
+        "Tanaka"
+      ],
+      [
+        "Haruhisa",
+        "Takahashi"
+      ]
+    ],
+    "title": "The worst-case time complexity for generating all maximal cliques and computational experiments.",
+    "venue": "Theor. Comput. Sci.",
+    "year": "2006"
+  },
+  "zhang2023efficient": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Wenqian",
+        "Zhang"
+      ],
+      [
+        "Zhengyi",
+        "Yang"
+      ],
+      [
+        "Dong",
+        "Wen"
+      ],
+      [
+        "Xiaoyang",
+        "Wang"
+      ]
+    ],
+    "title": "Efficient Distributed Core Graph Decomposition.",
+    "venue": "ICDM",
+    "year": "2023"
+  },
+  "cohesive_subgraph_complex_networks": null
+}
