@@ -2,7 +2,7 @@
 
 Because the static-\cpi{} invariant of Section~\ref{sec:static} keeps every leaf intact through peeling, the hierarchy is no longer a separate decomposition problem: every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel, so the elder-rule join tree of Definition~\ref{def:nucleus} can be emitted by a single descending union--find scan over the preserved leaves, in $O(\Sig\log\Sig)$ time, without re-enumerating a single clique.
 %
-Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose: they must either re-run $s$-clique enumeration at each level or maintain $K{=}\kmax$ parallel disjoint-set forests during peeling, which blows up memory by an order of magnitude (Section~\ref{sec:exp}, Figure~\ref{fig:hier}).
+Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose: they must either re-run $s$-clique enumeration at each level or maintain one parallel disjoint-set forest per core level during peeling, which blows up memory by an order of magnitude (Section~\ref{sec:exp}, Figure~\ref{fig:hier}).
 %
 For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\ge k\}$ and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-clique witnesses contained in $V_k$; \buildHier{} (Algorithm~\ref{alg:buildhier}) materialises that filtration from the preserved leaves.
 
@@ -92,7 +92,7 @@ Total time $O(\Sig\log\Sig)$, dominated by the sort, with no clique re-enumerati
 \stitle{Memory.}
 Beyond the union-find of size $n+L$, the routine needs a list of vertices per leaf to fire unions.
 %
-\spinStar{}'s vertex-to-leaf inverse CSR (Section~\ref{sec:hindex}) supports a single bucket-CSR pass that materialises the per-leaf lists in $O(\Sig)$ temporary memory; this scratch is freed on return.
+\spinStar{}'s vertex-to-path inverse CSR (Section~\ref{sec:hindex}) supports a single bucket-CSR pass that materialises the per-leaf lists in $O(\Sig)$ temporary memory; this scratch is freed on return.
 %
 The static \cpi{} budget of Section~\ref{sec:exp} therefore holds throughout peeling proper and is only briefly elevated during the hierarchy emit.
 
@@ -103,4 +103,4 @@ It is a byproduct of the static \cpi{} surviving peeling: leaves act as hyperedg
 %
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 
-Section~\ref{sec:exp} (Exp-7) compares \buildHier{} against the only feasible baseline at $r{=}1$ --- NuclearCD's general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- and confirms that \buildHier{} uses up to $28\times$ less memory (gmean $7.5\times$ over $24$ matched cells) and up to $29\times$ less hierarchy-emission wall time, with the gap growing at larger $s$ where the witness mass dominates.
+Section~\ref{sec:exp} (Exp-7) compares \buildHier{} against the only feasible baseline at $r{=}1$ --- \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- and confirms that \buildHier{} uses up to $28\times$ less memory (gmean $7.5\times$ over $24$ matched cells) and up to $29\times$ less hierarchy-emission wall time, with the gap growing at larger $s$ where the witness mass dominates.

@@ -1,6 +1,6 @@
 \section{Parallel \cpi{} Construction}\label{sec:parabuild}
 
-Once \spinStar{} makes peeling counter-only, \cpi{} construction becomes the load-bearing cost of the pipeline: the phase-breakdown tables of Section~\ref{sec:exp} report \texttt{web-it-2004} at $s=3$ peeling in $351$\,ms against $\approx 127$\,s of loading and construction, and \texttt{web-Stanford} at $s=60$ peeling in $1.4$\,ms against $\approx 6.1$\,s of loading and construction.
+Once \spinStar{} makes peeling counter-only, \cpi{} construction becomes the load-bearing cost of the pipeline: the phase-breakdown tables of Section~\ref{sec:exp} report \texttt{web-it-2004} at $s=3$ peeling in $351$\,ms against $\approx 127$\,s of construction, and \texttt{web-Stanford} at $s=60$ peeling in $1.4$\,ms against $\approx 5.8$\,s of construction.
 %
 We parallelise the construction phase by exploiting two properties: the seed loop partitions emitted $s$-clique families along the degeneracy order, and the static output contract makes the merge a pointer-level concatenation.
 

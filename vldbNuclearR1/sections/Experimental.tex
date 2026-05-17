@@ -14,7 +14,7 @@ Exactness comes from the invariants and fixed-point equivalence proved earlier; 
 %
 \textbf{Exp-6} sweeps a vertex-induced subsampling ratio to test how runtime and memory scale with input size.
 %
-\textbf{Exp-7} compares hierarchy emission against NuclearCD's level-DSU baseline.
+\textbf{Exp-7} compares hierarchy emission against \cbnd{}'s level-DSU baseline.
 
 \stitle{Hardware and software.}
 All experiments run on a dual-socket Intel Xeon Gold $6248R$ machine with $24$ cores and $503$ GB DDR4 memory.
@@ -117,7 +117,7 @@ Vertex-to-path incidence & --- & $4\Sig$ \\
 Support array & $4n$ & $4n$ \\
 Heap / bucket array & $24n$ & $16n+8\kmax$ \\
 \midrule
-\textbf{Analytical $\Sig$-coefficient} & $\approx 88\Sig$ & $\approx 10\Sig$ \\
+\textbf{Analytical $\Sig$-coefficient} & $\approx 88\Sig$ & $\approx 8\Sig$ \\
 \midrule
 Measured: \texttt{com-youtube}, $s{=}5$        & $642$ MB  & $387$ MB  \\
 Measured: \texttt{web-it-2004}, $s{=}3$        & $556$ MB  & $270$ MB  \\
@@ -148,7 +148,7 @@ The bottleneck has shifted onto construction, which is why \paraBuild{} is part 
 %
 Figure~\ref{fig:par} reports build time on six graphs as the thread count grows from $T{=}1$ to $T{=}64$ (median of three runs per cell), with one panel per graph showing the representative $s{=}3$ curve; each curve ends at its optimum thread count, and graphs with $T{=}1$ baseline below $500$~ms are omitted as uninformative.
 %
-On large graphs the optimum lies at $T{=}24$--$48$; on smaller graphs it is around $T{=}16$.
+On large graphs the optimum lies at $T{=}24$--$48$; on smaller graphs it is around $T{=}16$.  The headline single-cell speedup is $23.4\times$ at $T{=}24$ on \texttt{web-it-2004} $s{=}3$ ($92.3$\,s $\rightarrow$ $3.95$\,s).
 
 \begin{figure*}[t]
 \centering
@@ -244,7 +244,7 @@ The densest graph, $\texttt{com-orkut}$, also exposes the natural ceiling of ver
 
 \expsection{hierarchy emission against the level-DSU baseline}
 \label{sec:exp-hier}
-\buildHier{} (Section~\ref{sec:buildhier}) consumes the preserved \cpi{} once peeling finishes; the only available $(1,s)$ baseline that produces the same hierarchy is NuclearCD's general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, which carries $K{=}\kmax$ parallel disjoint-set forests during the peel.
+\buildHier{} (Section~\ref{sec:buildhier}) consumes the preserved \cpi{} once peeling finishes; the only available $(1,s)$ baseline that produces the same hierarchy is \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, which carries one parallel disjoint-set forest per core level (denoted $K$ in the $O(K\cdot\Sig)$ bound below) during the peel.
 %
 We compare four algorithm variants on four representative graphs (Figure~\ref{fig:hier}), sweeping $s\in\{3,5,7,9,11,13,15\}$: \textbf{\spinStar{}} (no hierarchy), \textbf{\spinStar{}{+}\buildHier{}} (our $O(\Sig\log\Sig)$ post-peel emit), \textbf{\cbnd{}} (no hierarchy), and \textbf{\cbnd{}{+}\textsc{Hier}} (level-DSU hierarchy during peel).
 %

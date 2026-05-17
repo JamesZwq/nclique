@@ -119,7 +119,7 @@ The previous studies use global rankings.
 %
 The ego-network visualisation tests whether the same $s$ knob also controls local interpretability.
 %
-Figure~\ref{fig:cs9} draws the two-hop ego-network of a \texttt{com-dblp} anchor on a shared spring layout under four successive $(1,s)$-nuclei ($s=3,5,7,10$).  A vertex of the ego is considered alive at $s$ iff it participates in at least one $s$-clique entirely within the ego subgraph, so every alive vertex at $s$ sits in a real $K_s$ of the local (1,s)-nucleus.  The four largest maximal cliques fully contained in the ego ($K_{31}, K_{25}, K_{19}, K_{18}$) are highlighted in colour with callouts.
+Figure~\ref{fig:cs9} draws the two-hop ego-network of a \texttt{com-dblp} anchor on a shared spring layout under four successive $(1,s)$-nuclei ($s=3,5,7,10$).  A vertex of the ego is considered alive at $s$ iff it participates in at least one $s$-clique entirely within the ego subgraph, so every alive vertex at $s$ sits in a real $K_s$ of the local $(1,s)$-nucleus.  The four largest maximal cliques fully contained in the ego ($K_{31}, K_{25}, K_{19}, K_{18}$) are highlighted in colour with callouts.
 
 These four cliques are alive at every $s$ in $\{3,5,7,10\}$ (their sizes are all at least $10$), so they form a backbone that persists across all four panels.
 %
@@ -127,7 +127,7 @@ What changes from panel to panel is the peripheral alive set: vertices alive onl
 %
 Alive vertex count shrinks monotonically ($1{,}356 \rightarrow 721 \rightarrow 370 \rightarrow 165$ out of $1{,}452$): from "most of the neighbourhood is in some triangle" at $s{=}3$, to "only the four backbone cliques and their immediate clique-shared periphery survive" at $s{=}10$.
 %
-The ego thus distils from a coauthor neighbourhood into a few large, tightly-coordinated coauthor communities --- the same cliques are visible throughout, but the larger $s$ stripes away the loose periphery and isolates them.
+The ego thus distils from a coauthor neighbourhood into a few large, tightly-coordinated coauthor communities --- the same cliques are visible throughout, but the larger $s$ strips away the loose periphery and isolates them.
 
 \begin{figure*}[t]
 \centering

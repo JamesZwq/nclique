@@ -70,7 +70,7 @@ Without a parallel builder, the end-to-end speedup over \cbnd{} stays at $1.10\t
 \sstitle{Hierarchy emission re-enumerates or replicates.}
 Because \cbnd{} edits the \cpi{} during peeling, its $s$-clique witnesses are gone when the hierarchy is requested.
 %
-The natural workaround --- the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- maintains $K{=}\kmax$ disjoint-set forests during the peel and exceeds the available $503$ GB on \texttt{wiki-Talk} at $s\!\ge\!9$ where our pipeline finishes (Figure~\ref{fig:hier}); even where it fits, it uses up to $28\times$ more memory (gmean $7.5\times$ over $24$ matched cells) than emitting the same hierarchy from a preserved \cpi{}.
+The natural workaround --- the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- maintains one disjoint-set forest per core level during the peel and exceeds the available $503$ GB on \texttt{wiki-Talk} at $s\!\ge\!9$ where our pipeline finishes (Figure~\ref{fig:hier}); even where it fits, it uses up to $28\times$ more memory (gmean $7.5\times$ over $24$ matched cells) than emitting the same hierarchy from a preserved \cpi{}.
 
 \stitle{Our Solution and Contributions.}
 For $(1,s)$-nucleus decomposition we show that vertex peeling preserves the \cpi{} structure: a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel, and a path's only dynamic state is an integer counter of how many of its pivots remain.
@@ -85,7 +85,7 @@ The dynamic state of a path collapses to a liveness bit and a single integer cou
 \sstitle{Elimination of residual structures.}
 A corollary of Theorem~\ref{thm:vertex-removal} is that three of \cbnd{}'s residual structures cease to carry information once the invariant is established: (i) the per-path vertex hash sets, because membership in a path is already determined by the path's fixed hold/pivot sets; (ii) the reverse vertex-to-path map, because the vertex-to-path relation is fixed at construction and never edited; and (iii) the mutable Bron--Kerbosch recursion tree, because no path is ever rewritten during peeling.
 %
-This collapses the per-incidence space cost from $\approx 88\Sig$ bytes to $\approx 10\Sig$ bytes (Table~\ref{tab:mem}); the measured geometric-mean memory ratio \cbnd{}/\spinStar{} is $1.55\times$ over $307$ matched cells, and on a billion-scale graph \spinStar{} decomposes the full $s$ sweep while \cbnd{} OOMs for every $s\ge3$.
+This collapses the per-incidence space cost from $\approx 88\Sig$ bytes to $\approx 8\Sig$ bytes (Table~\ref{tab:mem}); the measured geometric-mean memory ratio \cbnd{}/\spinStar{} is $1.55\times$ over $307$ matched cells, and on a billion-scale graph \spinStar{} decomposes the full $s$ sweep while \cbnd{} OOMs for every $s\ge3$.
 
 \sstitle{Parallel static-\cpi{} construction.}
 Because the static-\cpi{} output is invariant under the order in which seed vertices are processed and contains no mutable shared state, seed enumeration partitions into independent subproblems.
