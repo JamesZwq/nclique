@@ -1,10 +1,10 @@
 \section{Introduction}\label{sec:intro}
 
-Core decomposition ranks vertices by the amount of cohesive structure that still surrounds them after weak vertices are removed~\cite{kcoreSeidman,coreAlg,communityFinder,batagelj2003omalgorithmcoresdecomposition} and supports a wide range of graph-mining tasks --- community detection~\cite{communities_dec1,communities_dec2,communities_dec3,girvan2002community}, dense-subgraph discovery~\cite{dense_subgraph}, influential-vertex and role analysis~\cite{Identifying_influential,kempe2003maximizing,lu2016vital}, network visualization~\cite{network_visualization}, and applications in social, biological, and security networks~\cite{cohesive_subgraph_Social_Networks,cohesive_subgraph_protein_networks,apply_cyber}.
+Core decomposition ranks vertices by the amount of cohesive structure that still surrounds them after weak vertices are removed~\cite{kcoreSeidman,coreAlg,communityFinder} and supports a wide range of graph-mining tasks --- community detection~\cite{communities_dec1,communities_dec2,communities_dec3,girvan2002community}, dense-subgraph discovery~\cite{dense_subgraph}, influential-vertex and role analysis~\cite{Identifying_influential,kempe2003maximizing,lu2016vital}, network visualization~\cite{network_visualization}, and applications in social, biological, and security networks~\cite{cohesive_subgraph_Social_Networks,cohesive_subgraph_protein_networks,apply_cyber}.
 %
-The classical $k$-core uses edges as the witness, but many of these tasks need a stronger witness because a group may pass an edge-degree threshold while containing few triangles, $4$-cliques, or larger coordinated patterns~\cite{cohen2008trusses,akbas2017truss,huang2014graph}.
+The classical $k$-core uses edges as the witness, but many of these tasks need a stronger witness because a group may pass an edge-degree threshold while containing few triangles, $4$-cliques, or larger coordinated patterns~\cite{ktrussCohen,akbas2017truss,huang2014truss}.
 %
-The \emph{$(1,s)$-nucleus decomposition}~\cite{nucleusSariyuce14,nucleusSariyuceTODS} gives this vertex-centric higher-order ranking: for a fixed $s$, it assigns each vertex the largest value $k$ for which the vertex belongs to a maximal region where every vertex participates in at least $k$ internal $s$-cliques.
+The \emph{$(1,s)$-nucleus decomposition}~\cite{nucleusSariyuce14,nuclearTWEB} gives this vertex-centric higher-order ranking: for a fixed $s$, it assigns each vertex the largest value $k$ for which the vertex belongs to a maximal region where every vertex participates in at least $k$ internal $s$-cliques.
 %
 For $s=2$ it reduces to the $k$-core; for larger $s$ it ranks vertices by progressively tighter clique-supported cohesion.
 
@@ -55,7 +55,7 @@ The current state of the art for general $(r,s)$-nucleus decomposition is \cbnd~
 \sstitle{Mutable residual-index maintenance.}
 \cbnd{} rewrites path records and updates a hash-indexed reverse map at every peel step.
 %
-Our ablation on $171$ matched cells shows that replacing the mutable index with a static one already gives a $3.80\times$ geometric-mean peel-time speedup with a full-pass solver, so the rewrites are a real cost rather than a constant factor.
+These rewrites are a real cost rather than a constant factor: \spinStar{}, which replaces them with closed-form counter updates over a static index, delivers a $13.50\times$ geometric-mean peel-time speedup over \cbnd{} on $307$ matched cells (Section~\ref{sec:exp}).
 
 \sstitle{High memory consumption.}
 The residual structures that \cbnd{} must keep mutable in the general $(r,s)$ setting — per-path membership queries, reverse vertex-to-path lookup, and the live recursion tree used to rewrite paths — together cost roughly $88\Sig$ bytes per incidence (Section~\ref{sec:exp}, Table~\ref{tab:mem}), close to an order of magnitude more than what a static encoding of the same witnesses requires.
@@ -70,7 +70,7 @@ Without a parallel builder, the end-to-end speedup over \cbnd{} stays at $1.10\t
 \sstitle{Hierarchy emission re-enumerates or replicates.}
 Because \cbnd{} edits the \cpi{} during peeling, its $s$-clique witnesses are gone when the hierarchy is requested.
 %
-The natural workaround --- the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- maintains $K{=}\kmax$ disjoint-set forests during the peel and exceeds the available $503$ GB on \texttt{wiki-Talk} at $s\!\ge\!9$ where our pipeline finishes (Figure~\ref{fig:hier}); even where it fits, it uses $8$--$43\times$ more memory than emitting the same hierarchy from a preserved \cpi{}.
+The natural workaround --- the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- maintains $K{=}\kmax$ disjoint-set forests during the peel and exceeds the available $503$ GB on \texttt{wiki-Talk} at $s\!\ge\!9$ where our pipeline finishes (Figure~\ref{fig:hier}); even where it fits, it uses up to $28\times$ more memory (gmean $7.5\times$ over $24$ matched cells) than emitting the same hierarchy from a preserved \cpi{}.
 
 \stitle{Our Solution and Contributions.}
 For $(1,s)$-nucleus decomposition we show that vertex peeling preserves the \cpi{} structure: a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel, and a path's only dynamic state is an integer counter of how many of its pivots remain.
@@ -95,7 +95,7 @@ Because the static-\cpi{} output is invariant under the order in which seed vert
 \sstitle{Direct and incremental solvers over the static index.}
 We formulate \spin{} as the direct threshold-support iteration on \cpi{} witness counts (Algorithm~\ref{alg:localH}) and \spinStar{} as its incremental optimization (Algorithm~\ref{alg:peelH}) that computes the same fixed point in peel order without repeated full-graph passes (Lemma~\ref{lem:equivalence}).
 %
-\spinStar{} delivers a $36.2\times$ geometric-mean peel-time speedup over \spin{} on $291$ matched cells.
+\spinStar{} delivers a $30.4\times$ geometric-mean peel-time speedup over \spin{} on $272$ matched cells.
 
 \sstitle{Core-value hierarchy from the static \cpi{}.}
 After peeling, each \cpi{} leaf can be treated as a hyperedge born at the minimum core value among its stored vertices.

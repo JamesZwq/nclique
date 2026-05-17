@@ -19,14 +19,18 @@ import numpy as np
 
 OUT = Path(__file__).parent
 
-# s, SPIN-star peel(s), SPIN-star mem(GB), CND peel(s)/'oom', CND mem(GB)
+# s, SPIN-star peel(s), SPIN-star mem(GB, 10^6 base), CND peel(s)/'oom', CND mem(GB)
+# Source: paper_data/friendster_billion/bench_billion.csv (V3) and
+# bench_billion_ref.csv (REF). peel_ms / 1000 -> seconds; time_max_rss_kB
+# * 1000 / 1024 / 10^6 (kB-to-GB conversion: time-v outputs in kB=1000B by GNU).
+# To avoid mixing GiB/GB conventions we use 10^6 GB throughout.
 DATA = [
-    ( 2, 0.34,  153, 1774.84, 400),
-    ( 3, 0.56,  324, "oom",   524),
-    ( 4, 0.68,  451, "oom",   524),
-    ( 5, 0.62,  446, "oom",   524),
-    ( 6, 0.65,  430, "oom",   524),
-    (11, 0.17,  297, None,    None),
+    ( 2,  344,  160, 1774.84, 400),
+    ( 3,  562,  340, "oom",   523),
+    ( 4,  676,  472, "oom",   524),
+    ( 5,  624,  467, "oom",   524),
+    ( 6,  651,  451, "oom",   524),
+    (11,  167,  312, None,    None),
 ]
 
 SPIN_COLOR = "#1f78b4"
@@ -56,7 +60,7 @@ def plot(out_pdf):
                    edgecolor="white", linewidth=0.4,
                    label="CND" if i == 0 else None)
         elif v == "oom":
-            ax.text(xs[i] + width/2, 0.8, "OOM", ha="center", va="bottom",
+            ax.text(xs[i] + width/2, 80, "OOM", ha="center", va="bottom",
                     fontsize=8, color=OOM_COLOR, rotation=90)
     ax.set_yscale("log")
     ax.set_xticks(xs); ax.set_xticklabels(s_labels)
