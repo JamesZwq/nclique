@@ -976,5 +976,2240 @@
     "venue": "ICDM",
     "year": "2023"
   },
-  "cohesive_subgraph_complex_networks": null
+  "cohesive_subgraph_complex_networks": null,
+  "1555162": {
+    "source": "crossref",
+    "doi": "10.1016/j.inffus.2009.01.002",
+    "authors": [
+      [
+        "Mauro",
+        "Conti"
+      ],
+      [
+        "Roberto Di",
+        "Pietro"
+      ],
+      [
+        "Luigi V.",
+        "Mancini"
+      ],
+      [
+        "Alessandro",
+        "Mei"
+      ]
+    ],
+    "title": "Distributed data source verification in wireless sensor networks",
+    "venue": "Information Fusion",
+    "year": "2009"
+  },
+  "1984:1040142": null,
+  "2004:ITE:1009386.1010128": {
+    "_error": "crossref: HTTP Error 404: Not Found"
+  },
+  "384253": {
+    "source": "crossref",
+    "doi": "http://doi.acm.org/10.1145/351827.384253",
+    "authors": [
+      [
+        "Renato",
+        "Werneck"
+      ],
+      [
+        "João",
+        "Setubal"
+      ],
+      [
+        "Arlindo",
+        "da Conceicão"
+      ]
+    ],
+    "title": "Finding minimum congestion spanning trees",
+    "venue": "ACM Journal of Experimental Algorithmics",
+    "year": "2000"
+  },
+  "6:1:1": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "James E. Archer",
+        "Jr."
+      ],
+      [
+        "Richard",
+        "Conway"
+      ],
+      [
+        "Fred B.",
+        "Schneider"
+      ]
+    ],
+    "title": "User Recovery and Reversal in Interactive Systems.",
+    "venue": "ACM Trans. Program. Lang. Syst.",
+    "year": "1984"
+  },
+  "6:3:380": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Ephraim",
+        "Korach"
+      ],
+      [
+        "Doron",
+        "Rotem"
+      ],
+      [
+        "Nicola",
+        "Santoro"
+      ]
+    ],
+    "title": "Distributed Algorithms for Finding Centers and Medians in Networks.",
+    "venue": "ACM Trans. Program. Lang. Syst.",
+    "year": "1984"
+  },
+  "7:1:137": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Douglas D.",
+        "Dunlop"
+      ],
+      [
+        "Victor R.",
+        "Basili"
+      ]
+    ],
+    "title": "Generalizing Specifications for Uniformly Implemented Loops.",
+    "venue": "ACM Trans. Program. Lang. Syst.",
+    "year": "1985"
+  },
+  "7:2:183": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Jan",
+        "Heering"
+      ],
+      [
+        "Paul",
+        "Klint"
+      ]
+    ],
+    "title": "Towards Monolingual Programming Environments.",
+    "venue": "ACM Trans. Program. Lang. Syst.",
+    "year": "1985"
+  },
+  "7:3:359": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Flemming",
+        "Nielson"
+      ]
+    ],
+    "title": "Program Transformations in a Denotational Setting.",
+    "venue": "ACM Trans. Program. Lang. Syst.",
+    "year": "1985"
+  },
+  "897367": {
+    "source": "dblp",
+    "score": 1.0,
+    "authors": [
+      [
+        "Jonathan F.",
+        "Buss"
+      ],
+      [
+        "Arnold L.",
+        "Rosenberg"
+      ],
+      [
+        "Judson D.",
+        "Knott"
+      ]
+    ],
+    "title": "Vertex Types in Book-Embeddings.",
+    "venue": "SIAM J. Discret. Math.",
+    "year": "1989"
+  },
+  "Ablamowicz07": null,
+  "Abril07": {
+    "source": "crossref",
+    "doi": "10.1145/1188913.1188915",
+    "authors": [
+      [
+        "Patricia S.",
+        "Abril"
+      ],
+      [
+        "Robert",
+        "Plant"
+      ]
+    ],
+    "title": "The patent holder's dilemma",
+    "venue": "Communications of the ACM",
+    "year": "2007"
+  },
+  "Adya-01": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Atul",
+        "Adya"
+      ],
+      [
+        "Paramvir",
+        "Bahl"
+      ],
+      [
+        "Jitendra",
+        "Padhye"
+      ],
+      [
+        "Alec",
+        "Wolman"
+      ],
+      [
+        "Lidong",
+        "Zhou"
+      ]
+    ],
+    "title": "A Multi-Radio Unification Protocol for IEEE 802.11 Wireless Networks.",
+    "venue": "BROADNETS",
+    "year": "2004"
+  },
+  "Akyildiz-01": null,
+  "Akyildiz-02": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Ian F.",
+        "Akyildiz"
+      ],
+      [
+        "Tommaso",
+        "Melodia"
+      ],
+      [
+        "Kaushik R.",
+        "Chowdhury"
+      ]
+    ],
+    "title": "A survey on wireless multimedia sensor networks.",
+    "venue": "Comput. Networks",
+    "year": "2007"
+  },
+  "Amsthm15": null,
+  "Andler79": {
+    "source": "crossref",
+    "doi": "10.1145/567752.567774",
+    "authors": [
+      [
+        "Sten",
+        "Andler"
+      ]
+    ],
+    "title": "Predicate path expressions",
+    "venue": "Proceedings of the 6th ACM SIGACT-SIGPLAN symposium on Principles of programming languages  - POPL '79",
+    "year": "1979"
+  },
+  "Bahl-02": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Paramvir",
+        "Bahl"
+      ],
+      [
+        "Ranveer",
+        "Chandra"
+      ],
+      [
+        "John",
+        "Dunagan"
+      ]
+    ],
+    "title": "SSCH: slotted seeded channel hopping for capacity improvement in IEEE 802.11 ad-hoc wireless networks.",
+    "venue": "MobiCom",
+    "year": "2004"
+  },
+  "Buss:1987:VTB:897367": {
+    "source": "dblp",
+    "score": 1.0,
+    "authors": [
+      [
+        "Jonathan F.",
+        "Buss"
+      ],
+      [
+        "Arnold L.",
+        "Rosenberg"
+      ],
+      [
+        "Judson D.",
+        "Knott"
+      ]
+    ],
+    "title": "Vertex Types in Book-Embeddings.",
+    "venue": "SIAM J. Discret. Math.",
+    "year": "1989"
+  },
+  "CROSSBOW": null,
+  "CTANacmart": null,
+  "Clarkson85": null,
+  "Clarkson:1985:ACP:911891": null,
+  "Clique-core": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Vladimir",
+        "Batagelj"
+      ],
+      [
+        "Matjaz",
+        "Zaversnik"
+      ]
+    ],
+    "title": "Fast algorithms for determining (generalized) core groups in social networks.",
+    "venue": "Adv. Data Anal. Classif.",
+    "year": "2011"
+  },
+  "Cohen07": {
+    "source": "crossref",
+    "doi": "10.1145/1219092.1219093",
+    "authors": [
+      [
+        "Sara",
+        "Cohen"
+      ],
+      [
+        "Werner",
+        "Nutt"
+      ],
+      [
+        "Yehoshua",
+        "Sagiv"
+      ]
+    ],
+    "title": "Deciding equivalences among conjunctive aggregate queries",
+    "venue": "Journal of the ACM",
+    "year": "2007"
+  },
+  "Conti:2009:DDS:1555009.1555162": {
+    "source": "crossref",
+    "doi": "10.1016/j.inffus.2009.01.002",
+    "authors": [
+      [
+        "Mauro",
+        "Conti"
+      ],
+      [
+        "Roberto Di",
+        "Pietro"
+      ],
+      [
+        "Luigi V.",
+        "Mancini"
+      ],
+      [
+        "Alessandro",
+        "Mei"
+      ]
+    ],
+    "title": "Distributed data source verification in wireless sensor networks",
+    "venue": "Information Fusion",
+    "year": "2009"
+  },
+  "Culler-01": {
+    "source": "dblp",
+    "score": 0.738,
+    "authors": [
+      [
+        "Sameh",
+        "El-Ansary"
+      ],
+      [
+        "Seif",
+        "Haridi"
+      ]
+    ],
+    "title": "An Overview of Structured P2P Overlay Networks.",
+    "venue": "Handbook on Theoretical and Algorithmic Aspects of Sensor, Ad Hoc Wireless, and Peer-to-Peer Networks",
+    "year": "2005"
+  },
+  "Czerwinski:2008:1358628": null,
+  "Dijkstra:1979:GSC:1241515.1241518": null,
+  "Douglass98": {
+    "source": "crossref",
+    "doi": "10.1007/3-540-65193-4_29",
+    "authors": [
+      [
+        "Bruce Powel",
+        "Douglass"
+      ],
+      [
+        "David",
+        "Harel"
+      ],
+      [
+        "Mark",
+        "Trakhtenbrot"
+      ]
+    ],
+    "title": "Statecharts in use: structured analysis and object-orientation",
+    "venue": "Lecture Notes in Computer Science",
+    "year": "1998"
+  },
+  "Editor00": {
+    "source": "crossref",
+    "doi": "10.1007/3-540-09237-4",
+    "authors": [],
+    "title": "First-Order Dynamic Logic",
+    "venue": "Lecture Notes in Computer Science",
+    "year": "1979"
+  },
+  "Editor00a": {
+    "source": "crossref",
+    "doi": "10.1007/3-540-09237-4",
+    "authors": [],
+    "title": "First-Order Dynamic Logic",
+    "venue": "Lecture Notes in Computer Science",
+    "year": "1979"
+  },
+  "Fear05": null,
+  "GM05": null,
+  "Goossens:1999:LWC:553897": null,
+  "Harel78": null,
+  "Harel79": {
+    "source": "crossref",
+    "doi": "10.1007/3-540-09237-4",
+    "authors": [],
+    "title": "First-Order Dynamic Logic",
+    "venue": "Lecture Notes in Computer Science",
+    "year": "1979"
+  },
+  "Harvard-01": null,
+  "Hoare:1972:CIN:1243380.1243382": null,
+  "Hollis:1999:VBD:519964": null,
+  "HyperCD": {
+    "source": "crossref",
+    "doi": "10.1145/3709656",
+    "authors": [
+      [
+        "Wenqian",
+        "Zhang"
+      ],
+      [
+        "Zhengyi",
+        "Yang"
+      ],
+      [
+        "Dong",
+        "Wen"
+      ],
+      [
+        "Wentao",
+        "Li"
+      ],
+      [
+        "Wenjie",
+        "Zhang"
+      ],
+      [
+        "Xuemin",
+        "Lin"
+      ]
+    ],
+    "title": "Accelerating Core Decomposition in Billion-Scale Hypergraphs",
+    "venue": "Proceedings of the ACM on Management of Data",
+    "year": "2025"
+  },
+  "JCohen96": null,
+  "JoeScientist001": null,
+  "KA:2001": null,
+  "KAGM:2001": null,
+  "Kirschmer:2010:AEI:1958016.1958018": {
+    "source": "crossref",
+    "doi": "10.1137/080734467",
+    "authors": [
+      [
+        "Markus",
+        "Kirschmer"
+      ],
+      [
+        "John",
+        "Voight"
+      ]
+    ],
+    "title": "Algorithmic Enumeration of Ideal Classes for Quaternion Orders",
+    "venue": "SIAM Journal on Computing",
+    "year": "2010"
+  },
+  "Knuth97": null,
+  "Knuth98": null,
+  "Konar2024OQC": {
+    "source": "crossref",
+    "doi": "10.1609/aaai.v38i8.28705",
+    "authors": [
+      [
+        "Aritra",
+        "Konar"
+      ],
+      [
+        "Nicholas D.",
+        "Sidiropoulos"
+      ]
+    ],
+    "title": "Optimal Quasi-clique: Hardness, Equivalence with Densest-k-Subgraph, and Quasi-partitioned Community Mining",
+    "venue": "Proceedings of the AAAI Conference on Artificial Intelligence",
+    "year": "2024"
+  },
+  "Kong:2002:IEC:887006.887010": null,
+  "Kong:2003:IEC:887006.887011": null,
+  "Kong:2004:IEC:123456.887010": null,
+  "Kong:2005:IEC:887006.887010": null,
+  "Kong:2006:IEC:887006.887010": null,
+  "Kosiur01": null,
+  "Lanciano2024DensestSurvey": {
+    "source": "crossref",
+    "doi": "10.1145/3653298",
+    "authors": [
+      [
+        "Tommaso",
+        "Lanciano"
+      ],
+      [
+        "Atsushi",
+        "Miyauchi"
+      ],
+      [
+        "Adriano",
+        "Fazzone"
+      ],
+      [
+        "Francesco",
+        "Bonchi"
+      ]
+    ],
+    "title": "A Survey on the Densest Subgraph Problem and its Variants",
+    "venue": "ACM Computing Surveys",
+    "year": "2024"
+  },
+  "Lee05": {
+    "source": "crossref",
+    "doi": "10.1145/1057270.1057278",
+    "authors": [
+      [
+        "Newton",
+        "Lee"
+      ],
+      [
+        "Bill",
+        "Kinder"
+      ]
+    ],
+    "title": "Interview with Bill Kinder",
+    "venue": "Computers in Entertainment",
+    "year": "2005"
+  },
+  "Lee:1978:TQA:800025.1198348": {
+    "source": "crossref",
+    "doi": "http://doi.acm.org/10.1145/800025.1198348",
+    "authors": [
+      [
+        "Jan",
+        "Lee"
+      ]
+    ],
+    "title": "Transcript of question and answer session",
+    "venue": "History of programming languages",
+    "year": "1978"
+  },
+  "Li:2008:PUC:1358628.1358946": {
+    "source": "crossref",
+    "doi": "10.1145/1358628.1358946",
+    "authors": [
+      [
+        "Cheng-Lun",
+        "Li"
+      ],
+      [
+        "Ayse G.",
+        "Buyuktur"
+      ],
+      [
+        "David K.",
+        "Hutchful"
+      ],
+      [
+        "Natasha B.",
+        "Sant"
+      ],
+      [
+        "Satyendra K.",
+        "Nainwal"
+      ]
+    ],
+    "title": "Portalis",
+    "venue": "CHI '08 Extended Abstracts on Human Factors in Computing Systems",
+    "year": "2008"
+  },
+  "MR781536": null,
+  "MR781537": null,
+  "McCracken:1990:SSC:575315": null,
+  "Mullender:1993:DS(:302430": null,
+  "Mumford:1987:MES:54905.54911": null,
+  "Natarajan-01": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Anirudh",
+        "Natarajan"
+      ],
+      [
+        "Mehul",
+        "Motani"
+      ],
+      [
+        "Buddhika de",
+        "Silva"
+      ],
+      [
+        "Kok-Kiong",
+        "Yap"
+      ],
+      [
+        "Kee Chaing",
+        "Chua"
+      ]
+    ],
+    "title": "Investigating network architectures for body sensor networks.",
+    "venue": "HealthNet",
+    "year": "2007"
+  },
+  "Novak03": {
+    "_error": "crossref: HTTP Error 404: Not Found"
+  },
+  "Obama08": null,
+  "Petrie:1986:NAD:12345": null,
+  "Petrie:1986:NAD:899644": null,
+  "Poker06": null,
+  "R": null,
+  "Rous08": null,
+  "SaeediJETC10": null,
+  "SaeediMEJ10": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Mehdi",
+        "Saeedi"
+      ],
+      [
+        "Mehdi",
+        "Sedighi"
+      ],
+      [
+        "Morteza Saheb",
+        "Zamani"
+      ]
+    ],
+    "title": "A library-based synthesis methodology for reversible logic.",
+    "venue": "Microelectron. J.",
+    "year": "2010"
+  },
+  "Smith10": {
+    "source": "crossref",
+    "doi": "10.1038/nphys1170",
+    "authors": [
+      [
+        "Markus",
+        "Aspelmeyer"
+      ]
+    ],
+    "title": "Measured measurement",
+    "venue": "Nature Physics",
+    "year": "2009"
+  },
+  "SozioGionisKDD2010": {
+    "source": "crossref",
+    "doi": "10.1145/1835804.1835923",
+    "authors": [
+      [
+        "Mauro",
+        "Sozio"
+      ],
+      [
+        "Aristides",
+        "Gionis"
+      ]
+    ],
+    "title": "The community-search problem and how to plan a successful cocktail party",
+    "venue": "Proceedings of the 16th ACM SIGKDD international conference on Knowledge discovery and data mining",
+    "year": "2010"
+  },
+  "Spector90": {
+    "source": "crossref",
+    "doi": "10.1145/90417.90738",
+    "authors": [
+      [
+        "A. Z.",
+        "Spector"
+      ]
+    ],
+    "title": "Achieving application requirements",
+    "venue": "Distributed systems",
+    "year": "1990"
+  },
+  "Stanford": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Jure",
+        "Leskovec"
+      ],
+      [
+        "Kevin J.",
+        "Lang"
+      ],
+      [
+        "Anirban",
+        "Dasgupta"
+      ],
+      [
+        "Michael W.",
+        "Mahoney"
+      ]
+    ],
+    "title": "Community Structure in Large Networks: Natural Cluster Sizes and the Absence of Large Well-Defined Clusters",
+    "venue": "CoRR",
+    "year": "2008"
+  },
+  "SunPVLDB2025GICS": {
+    "source": "crossref",
+    "doi": "10.14778/3725688.3725720",
+    "authors": [
+      [
+        "Longxu",
+        "Sun"
+      ],
+      [
+        "Xin",
+        "Huang"
+      ],
+      [
+        "Jiannan",
+        "Wang"
+      ],
+      [
+        "Jianliang",
+        "Xu"
+      ]
+    ],
+    "title": "A Flexible Framework for Query-Oriented Interactive Community Search",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2025"
+  },
+  "TUGInstmem": null,
+  "Thornburg01": null,
+  "Tzamaloukas-01": null,
+  "UMassCitations": null,
+  "VanGundy07": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Matthew Van",
+        "Gundy"
+      ],
+      [
+        "Davide",
+        "Balzarotti"
+      ],
+      [
+        "Giovanni",
+        "Vigna"
+      ]
+    ],
+    "title": "Catch Me, If You Can: Evading Network Signatures with Web-based Polymorphic Worms.",
+    "venue": "WOOT",
+    "year": "2007"
+  },
+  "VanGundy08": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Matthew Van",
+        "Gundy"
+      ],
+      [
+        "Davide",
+        "Balzarotti"
+      ],
+      [
+        "Giovanni",
+        "Vigna"
+      ]
+    ],
+    "title": "Catch Me, If You Can: Evading Network Signatures with Web-based Polymorphic Worms.",
+    "venue": "WOOT",
+    "year": "2007"
+  },
+  "VanGundy09": {
+    "source": "dblp",
+    "score": 1.0,
+    "authors": [
+      [
+        "Matthew Van",
+        "Gundy"
+      ],
+      [
+        "Davide",
+        "Balzarotti"
+      ],
+      [
+        "Giovanni",
+        "Vigna"
+      ]
+    ],
+    "title": "Catch Me, If You Can: Evading Network Signatures with Web-based Polymorphic Worms.",
+    "venue": "WOOT",
+    "year": "2007"
+  },
+  "Wenzel:1992:TVA:146022.146089": {
+    "source": "crossref",
+    "doi": "10.1145/146022.146089",
+    "authors": [
+      [
+        "Elizabeth M.",
+        "Wenzel"
+      ]
+    ],
+    "title": "Three-dimensional virtual acoustic displays",
+    "venue": "Multimedia interface design",
+    "year": "1992"
+  },
+  "Werneck:2000:FMC:351827.384253": {
+    "source": "crossref",
+    "doi": "10.1145/351827.384253",
+    "authors": [
+      [
+        "Renato",
+        "Werneck"
+      ],
+      [
+        "João",
+        "Setubal"
+      ],
+      [
+        "Arlindo",
+        "da Conceicão"
+      ]
+    ],
+    "title": "Finding minimum congestion spanning trees",
+    "venue": "ACM Journal of Experimental Algorithmics",
+    "year": "2000"
+  },
+  "YeSIGMOD2022Lightning": {
+    "source": "crossref",
+    "doi": "10.1145/3485447.3512167",
+    "authors": [
+      [
+        "Xiaowei",
+        "Ye"
+      ],
+      [
+        "Rong-Hua",
+        "Li"
+      ],
+      [
+        "Qiangqiang",
+        "Dai"
+      ],
+      [
+        "Hongzhi",
+        "Chen"
+      ],
+      [
+        "Guoren",
+        "Wang"
+      ]
+    ],
+    "title": "Lightning Fast and Space Efficient k-clique Counting",
+    "venue": "Proceedings of the ACM Web Conference 2022",
+    "year": "2022"
+  },
+  "Zhou-06": null,
+  "Zhou:2010:MMS:1721695.1721705": {
+    "source": "crossref",
+    "doi": "10.1145/1721695.1721705",
+    "authors": [
+      [
+        "Gang",
+        "Zhou"
+      ],
+      [
+        "Yafeng",
+        "Wu"
+      ],
+      [
+        "Ting",
+        "Yan"
+      ],
+      [
+        "Tian",
+        "He"
+      ],
+      [
+        "Chengdu",
+        "Huang"
+      ],
+      [
+        "John A.",
+        "Stankovic"
+      ],
+      [
+        "Tarek F.",
+        "Abdelzaher"
+      ]
+    ],
+    "title": "A multifrequency MAC specially designed for wireless sensor network applications",
+    "venue": "ACM Transactions on Embedded Computing Systems",
+    "year": "2010"
+  },
+  "alvarez2005kcorevis": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "J. Ignacio",
+        "Alvarez-Hamelin"
+      ],
+      [
+        "Luca",
+        "Dall&apos;Asta"
+      ],
+      [
+        "Alain",
+        "Barrat"
+      ],
+      [
+        "Alessandro",
+        "Vespignani"
+      ]
+    ],
+    "title": "Large scale networks fingerprinting and visualization using the k-core decomposition.",
+    "venue": "NIPS",
+    "year": "2005"
+  },
+  "alvarez2021discovering": {
+    "source": "crossref",
+    "doi": "10.1016/j.physa.2021.126513",
+    "authors": [
+      [
+        "Ronghua",
+        "Shang"
+      ],
+      [
+        "Weitong",
+        "Zhang"
+      ],
+      [
+        "Jingwen",
+        "Zhang"
+      ],
+      [
+        "Jie",
+        "Feng"
+      ],
+      [
+        "Licheng",
+        "Jiao"
+      ]
+    ],
+    "title": "Local community detection based on higher-order structure and edge information",
+    "venue": "Physica A: Statistical Mechanics and its Applications",
+    "year": "2022"
+  },
+  "anisi03": null,
+  "arora2004expander": {
+    "source": "crossref",
+    "doi": "10.1145/1007352.1007391",
+    "authors": [
+      [
+        "Jianer",
+        "Chen"
+      ],
+      [
+        "Xiuzhen",
+        "Huang"
+      ],
+      [
+        "Iyad A.",
+        "Kanj"
+      ],
+      [
+        "Ge",
+        "Xia"
+      ]
+    ],
+    "title": "Linear FPT reductions and computational lower bounds",
+    "venue": "Proceedings of the thirty-sixth annual ACM symposium on Theory of computing",
+    "year": "2004"
+  },
+  "batagelj2003omalgorithmcoresdecomposition": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Vladimir",
+        "Batagelj"
+      ],
+      [
+        "Matjaz",
+        "Zaversnik"
+      ]
+    ],
+    "title": "An O(m) Algorithm for Cores Decomposition of Networks",
+    "venue": "CoRR",
+    "year": "2003"
+  },
+  "beutel2013copycatch": {
+    "source": "crossref",
+    "doi": "10.1145/2488388.2488400",
+    "authors": [
+      [
+        "Alex",
+        "Beutel"
+      ],
+      [
+        "Wanhong",
+        "Xu"
+      ],
+      [
+        "Venkatesan",
+        "Guruswami"
+      ],
+      [
+        "Christopher",
+        "Palow"
+      ],
+      [
+        "Christos",
+        "Faloutsos"
+      ]
+    ],
+    "title": "CopyCatch",
+    "venue": "Proceedings of the 22nd international conference on World Wide Web",
+    "year": "2013"
+  },
+  "bitsetClique": {
+    "source": "crossref",
+    "doi": "10.1016/j.tcs.2006.06.015",
+    "authors": [
+      [
+        "Etsuji",
+        "Tomita"
+      ],
+      [
+        "Akira",
+        "Tanaka"
+      ],
+      [
+        "Haruhisa",
+        "Takahashi"
+      ]
+    ],
+    "title": "The worst-case time complexity for generating all maximal cliques and computational experiments",
+    "venue": "Theoretical Computer Science",
+    "year": "2006"
+  },
+  "book-minimal": null,
+  "bowman:reasoning": {
+    "source": "crossref",
+    "doi": "10.1145/161468.161471",
+    "authors": [
+      [
+        "Mic",
+        "Bowman"
+      ],
+      [
+        "Saumya K.",
+        "Debray"
+      ],
+      [
+        "Larry L.",
+        "Peterson"
+      ]
+    ],
+    "title": "Reasoning about naming systems",
+    "venue": "ACM Transactions on Programming Languages and Systems",
+    "year": "1993"
+  },
+  "braams:babel": null,
+  "bron1973algorithm": {
+    "source": "crossref",
+    "doi": "10.1145/362342.362367",
+    "authors": [
+      [
+        "Coen",
+        "Bron"
+      ],
+      [
+        "Joep",
+        "Kerbosch"
+      ]
+    ],
+    "title": "Algorithm 457: finding all cliques of an undirected graph",
+    "venue": "Communications of the ACM",
+    "year": "1973"
+  },
+  "bucketQueue": null,
+  "chen2019linking": {
+    "source": "crossref",
+    "doi": "10.1177/016555158300600105",
+    "authors": [
+      [
+        "K.",
+        "Subramanyam"
+      ]
+    ],
+    "title": "Bibliometric studies of research collaboration: A review",
+    "venue": "Journal of Information Science",
+    "year": "1983"
+  },
+  "chung1997spectral": null,
+  "clark:pct": null,
+  "cohen2008trusses": {
+    "source": "crossref",
+    "doi": "10.14778/2535568.2448942",
+    "authors": [
+      [
+        "Feng",
+        "Zhao"
+      ],
+      [
+        "Anthony K. H.",
+        "Tung"
+      ]
+    ],
+    "title": "Large scale cohesive subgraphs discovery for social network visual analysis",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2012"
+  },
+  "core_res1": {
+    "source": "crossref",
+    "doi": "10.14778/3476249.3476260",
+    "authors": [
+      [
+        "Michael",
+        "Yu"
+      ],
+      [
+        "Dong",
+        "Wen"
+      ],
+      [
+        "Lu",
+        "Qin"
+      ],
+      [
+        "Ying",
+        "Zhang"
+      ],
+      [
+        "Wenjie",
+        "Zhang"
+      ],
+      [
+        "Xuemin",
+        "Lin"
+      ]
+    ],
+    "title": "On querying historical k-cores",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2021"
+  },
+  "core_res3": {
+    "source": "crossref",
+    "doi": "10.1109/icde.2011.5767911",
+    "authors": [
+      [
+        "James",
+        "Cheng"
+      ],
+      [
+        "Yiping",
+        "Ke"
+      ],
+      [
+        "Shumo",
+        "Chu"
+      ],
+      [
+        "M. Tamer",
+        "Ozsu"
+      ]
+    ],
+    "title": "Efficient core decomposition in massive networks",
+    "venue": "2011 IEEE 27th International Conference on Data Engineering",
+    "year": "2011"
+  },
+  "dblp": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Jaewon",
+        "Yang"
+      ],
+      [
+        "Jure",
+        "Leskovec"
+      ]
+    ],
+    "title": "Defining and Evaluating Network Communities Based on Ground-Truth.",
+    "venue": "ICDM",
+    "year": "2012"
+  },
+  "diestel2000graph": null,
+  "disjointSet": {
+    "source": "crossref",
+    "doi": "10.1145/321879.321884",
+    "authors": [
+      [
+        "Robert Endre",
+        "Tarjan"
+      ]
+    ],
+    "title": "Efficiency of a Good But Not Linear Set Union Algorithm",
+    "venue": "Journal of the ACM",
+    "year": "1975"
+  },
+  "firstNucleus": {
+    "source": "crossref",
+    "doi": "10.1145/2736277.2741640",
+    "authors": [
+      [
+        "Ahmet Erdem",
+        "Sariyuce"
+      ],
+      [
+        "C.",
+        "Seshadhri"
+      ],
+      [
+        "Ali",
+        "Pinar"
+      ],
+      [
+        "Umit V.",
+        "Catalyurek"
+      ]
+    ],
+    "title": "Finding the Hierarchy of Dense Subgraphs using Nucleus Decompositions",
+    "venue": "Proceedings of the 24th International Conference on World Wide Web",
+    "year": "2015"
+  },
+  "fortunato2010community": {
+    "source": "crossref",
+    "doi": "10.1016/j.physrep.2009.11.002",
+    "authors": [
+      [
+        "Santo",
+        "Fortunato"
+      ]
+    ],
+    "title": "Community detection in graphs",
+    "venue": "Physics Reports",
+    "year": "2010"
+  },
+  "frist-kcore": null,
+  "gerndt:89": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Hans Michael",
+        "Gerndt"
+      ]
+    ],
+    "title": "Automatic parallelization for distributed-memory multiprocessing systems.",
+    "venue": "",
+    "year": "1989"
+  },
+  "gibson1998inferring": {
+    "source": "crossref",
+    "doi": "10.1145/276627.276652",
+    "authors": [
+      [
+        "David",
+        "Gibson"
+      ],
+      [
+        "Jon",
+        "Kleinberg"
+      ],
+      [
+        "Prabhakar",
+        "Raghavan"
+      ]
+    ],
+    "title": "Inferring Web communities from link topology",
+    "venue": "Proceedings of the ninth ACM conference on Hypertext and hypermedia : links, objects, time and space---structure in hypermedia systems links, objects, time and space---structure in hypermedia systems - HYPERTEXT '98",
+    "year": "1998"
+  },
+  "gleich2012graph": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Deyu",
+        "Kong"
+      ],
+      [
+        "Xike",
+        "Xie"
+      ],
+      [
+        "Zhuoxu",
+        "Zhang"
+      ]
+    ],
+    "title": "Clustering-based Partitioning for Large Web Graphs.",
+    "venue": "ICDE",
+    "year": "2022"
+  },
+  "h-index": null,
+  "herlihy:methodology": {
+    "source": "crossref",
+    "doi": "10.1145/161468.161469",
+    "authors": [
+      [
+        "Maurice",
+        "Herlihy"
+      ]
+    ],
+    "title": "A methodology for implementing highly concurrent data objects",
+    "venue": "ACM Transactions on Programming Languages and Systems",
+    "year": "1993"
+  },
+  "hooi2016fraudar": {
+    "source": "crossref",
+    "doi": "10.1145/2939672.2939747",
+    "authors": [
+      [
+        "Bryan",
+        "Hooi"
+      ],
+      [
+        "Hyun Ah",
+        "Song"
+      ],
+      [
+        "Alex",
+        "Beutel"
+      ],
+      [
+        "Neil",
+        "Shah"
+      ],
+      [
+        "Kijung",
+        "Shin"
+      ],
+      [
+        "Christos",
+        "Faloutsos"
+      ]
+    ],
+    "title": "FRAUDAR",
+    "venue": "Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining",
+    "year": "2016"
+  },
+  "huang2014graph": {
+    "source": "crossref",
+    "doi": "10.1145/3200764",
+    "authors": [
+      [
+        "Ryan A.",
+        "Rossi"
+      ],
+      [
+        "Nesreen K.",
+        "Ahmed"
+      ],
+      [
+        "Rong",
+        "Zhou"
+      ],
+      [
+        "Hoda",
+        "Eldardiry"
+      ]
+    ],
+    "title": "Interactive Visual Graph Mining and Learning",
+    "venue": "ACM Transactions on Intelligent Systems and Technology",
+    "year": "2018"
+  },
+  "huang2014triangle": {
+    "source": "crossref",
+    "doi": "10.1145/2382577.2382581",
+    "authors": [
+      [
+        "Shumo",
+        "Chu"
+      ],
+      [
+        "James",
+        "Cheng"
+      ]
+    ],
+    "title": "Triangle listing in massive networks",
+    "venue": "ACM Transactions on Knowledge Discovery from Data",
+    "year": "2012"
+  },
+  "jiang2016catching": {
+    "source": "crossref",
+    "doi": "10.1145/2746403",
+    "authors": [
+      [
+        "Meng",
+        "Jiang"
+      ],
+      [
+        "Peng",
+        "Cui"
+      ],
+      [
+        "Alex",
+        "Beutel"
+      ],
+      [
+        "Christos",
+        "Faloutsos"
+      ],
+      [
+        "Shiqiang",
+        "Yang"
+      ]
+    ],
+    "title": "Catching Synchronized Behaviors in Large Networks",
+    "venue": "ACM Transactions on Knowledge Discovery from Data",
+    "year": "2016"
+  },
+  "k-core3": {
+    "source": "crossref",
+    "doi": "10.1109/icde.2019.00015",
+    "authors": [
+      [
+        "Bohua",
+        "Yang"
+      ],
+      [
+        "Dong",
+        "Wen"
+      ],
+      [
+        "Lu",
+        "Qin"
+      ],
+      [
+        "Ying",
+        "Zhang"
+      ],
+      [
+        "Lijun",
+        "Chang"
+      ],
+      [
+        "Rong-Hua",
+        "Li"
+      ]
+    ],
+    "title": "Index-Based Optimal Algorithm for Computing K-Cores in Large Uncertain Graphs",
+    "venue": "2019 IEEE 35th International Conference on Data Engineering (ICDE)",
+    "year": "2019"
+  },
+  "kcoreLocal": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Alberto",
+        "Montresor"
+      ],
+      [
+        "Francesco De",
+        "Pellegrini"
+      ],
+      [
+        "Daniele",
+        "Miorandi"
+      ]
+    ],
+    "title": "Distributed k-Core Decomposition.",
+    "venue": "IEEE Trans. Parallel Distributed Syst.",
+    "year": "2013"
+  },
+  "knuth:texbook": null,
+  "ko94": null,
+  "ktrussSurvey": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Xin",
+        "Huang"
+      ],
+      [
+        "Hong",
+        "Cheng"
+      ],
+      [
+        "Lu",
+        "Qin"
+      ],
+      [
+        "Wentao",
+        "Tian"
+      ],
+      [
+        "Jeffrey Xu",
+        "Yu"
+      ]
+    ],
+    "title": "Querying k-truss community in large and dynamic graphs.",
+    "venue": "SIGMOD Conference",
+    "year": "2014"
+  },
+  "ktrussWang": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Jia",
+        "Wang"
+      ],
+      [
+        "James",
+        "Cheng"
+      ]
+    ],
+    "title": "Truss Decomposition in Massive Networks.",
+    "venue": "Proc. VLDB Endow.",
+    "year": "2012"
+  },
+  "lamport:latex": null,
+  "leskovec2009community": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Jure",
+        "Leskovec"
+      ],
+      [
+        "Kevin J.",
+        "Lang"
+      ],
+      [
+        "Anirban",
+        "Dasgupta"
+      ],
+      [
+        "Michael W.",
+        "Mahoney"
+      ]
+    ],
+    "title": "Community Structure in Large Networks: Natural Cluster Sizes and the Absence of Large Well-Defined Clusters",
+    "venue": "CoRR",
+    "year": "2008"
+  },
+  "leskovec2016snap": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Jure",
+        "Leskovec"
+      ],
+      [
+        "Rok",
+        "Sosic"
+      ]
+    ],
+    "title": "SNAP: A General Purpose Network Analysis and Graph Mining Library.",
+    "venue": "CoRR",
+    "year": "2016"
+  },
+  "li2015influential": {
+    "source": "crossref",
+    "doi": "10.14778/2735479.2735484",
+    "authors": [
+      [
+        "Rong-Hua",
+        "Li"
+      ],
+      [
+        "Lu",
+        "Qin"
+      ],
+      [
+        "Jeffrey Xu",
+        "Yu"
+      ],
+      [
+        "Rui",
+        "Mao"
+      ]
+    ],
+    "title": "Influential community search in large networks",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2015"
+  },
+  "linden2003amazon": {
+    "source": "crossref",
+    "doi": "10.1109/mic.2003.1167344",
+    "authors": [
+      [
+        "G.",
+        "Linden"
+      ],
+      [
+        "B.",
+        "Smith"
+      ],
+      [
+        "J.",
+        "York"
+      ]
+    ],
+    "title": "Amazon.com recommendations: item-to-item collaborative filtering",
+    "venue": "IEEE Internet Computing",
+    "year": "2003"
+  },
+  "luo2019higher": {
+    "source": "crossref",
+    "doi": "10.1126/science.aad9029",
+    "authors": [
+      [
+        "Austin R.",
+        "Benson"
+      ],
+      [
+        "David F.",
+        "Gleich"
+      ],
+      [
+        "Jure",
+        "Leskovec"
+      ]
+    ],
+    "title": "Higher-order organization of complex networks",
+    "venue": "Science",
+    "year": "2016"
+  },
+  "malliaros2013clustering": {
+    "source": "crossref",
+    "doi": "10.1016/j.physrep.2013.08.002",
+    "authors": [
+      [
+        "Fragkiskos D.",
+        "Malliaros"
+      ],
+      [
+        "Michalis",
+        "Vazirgiannis"
+      ]
+    ],
+    "title": "Clustering and community detection in directed networks: A survey",
+    "venue": "Physics Reports",
+    "year": "2013"
+  },
+  "malliaros2020core2": {
+    "source": "crossref",
+    "doi": "10.1007/s00778-019-00587-4",
+    "authors": [
+      [
+        "Fragkiskos D.",
+        "Malliaros"
+      ],
+      [
+        "Christos",
+        "Giatsidis"
+      ],
+      [
+        "Apostolos N.",
+        "Papadopoulos"
+      ],
+      [
+        "Michalis",
+        "Vazirgiannis"
+      ]
+    ],
+    "title": "The core decomposition of networks: theory, algorithms and applications",
+    "venue": "The VLDB Journal",
+    "year": "2020"
+  },
+  "montresor2013distributed": {
+    "source": "dblp",
+    "score": 1.0,
+    "authors": [
+      [
+        "Alberto",
+        "Montresor"
+      ],
+      [
+        "Francesco De",
+        "Pellegrini"
+      ],
+      [
+        "Daniele",
+        "Miorandi"
+      ]
+    ],
+    "title": "Distributed k-Core Decomposition.",
+    "venue": "IEEE Trans. Parallel Distributed Syst.",
+    "year": "2013"
+  },
+  "newman2001structure": {
+    "source": "crossref",
+    "doi": "10.1073/pnas.98.2.404",
+    "authors": [
+      [
+        "M. E. J.",
+        "Newman"
+      ]
+    ],
+    "title": "The structure of scientific collaboration networks",
+    "venue": "Proceedings of the National Academy of Sciences",
+    "year": "2001"
+  },
+  "nr": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Ryan A.",
+        "Rossi"
+      ],
+      [
+        "Nesreen K.",
+        "Ahmed"
+      ]
+    ],
+    "title": "The Network Data Repository with Interactive Graph Analytics and Visualization.",
+    "venue": "AAAI",
+    "year": "2015"
+  },
+  "nuclearcsonet20": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Md Moniruzzaman",
+        "Monir"
+      ],
+      [
+        "Ahmet Erdem",
+        "Sariyüce"
+      ]
+    ],
+    "title": "Using Large Cliques for Hierarchical Dense Subgraph Discovery.",
+    "venue": "CSoNet",
+    "year": "2020"
+  },
+  "nucleusSariyuceTODS": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Ahmet Erdem",
+        "Sariyüce"
+      ],
+      [
+        "Ali",
+        "Pinar"
+      ]
+    ],
+    "title": "Peeling Bipartite Networks for Dense Subgraph Discovery.",
+    "venue": "WSDM",
+    "year": "2018"
+  },
+  "ponomariov2016coauthorship": {
+    "source": "crossref",
+    "doi": "10.1007/s11192-016-2127-7",
+    "authors": [
+      [
+        "Branco",
+        "Ponomariov"
+      ],
+      [
+        "Craig",
+        "Boardman"
+      ]
+    ],
+    "title": "What is co-authorship?",
+    "venue": "Scientometrics",
+    "year": "2016"
+  },
+  "radicchi2004defining": {
+    "source": "crossref",
+    "doi": "10.1073/pnas.0400054101",
+    "authors": [
+      [
+        "Filippo",
+        "Radicchi"
+      ],
+      [
+        "Claudio",
+        "Castellano"
+      ],
+      [
+        "Federico",
+        "Cecconi"
+      ],
+      [
+        "Vittorio",
+        "Loreto"
+      ],
+      [
+        "Domenico",
+        "Parisi"
+      ]
+    ],
+    "title": "Defining and identifying communities in networks",
+    "venue": "Proceedings of the National Academy of Sciences",
+    "year": "2004"
+  },
+  "reid:scribe": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Brian K.",
+        "Reid"
+      ]
+    ],
+    "title": "A High-Level Approach to Computer Document Formatting.",
+    "venue": "POPL",
+    "year": "1980"
+  },
+  "rossetti2019community": {
+    "source": "crossref",
+    "doi": "10.1145/3172867",
+    "authors": [
+      [
+        "Giulio",
+        "Rossetti"
+      ],
+      [
+        "Rémy",
+        "Cazabet"
+      ]
+    ],
+    "title": "Community Discovery in Dynamic Networks",
+    "venue": "ACM Computing Surveys",
+    "year": "2019"
+  },
+  "salas:calculus": null,
+  "seidman1983network": {
+    "source": "crossref",
+    "doi": "10.1016/0378-8733(83)90028-x",
+    "authors": [
+      [
+        "Stephen B.",
+        "Seidman"
+      ]
+    ],
+    "title": "Network structure and minimum degree",
+    "venue": "Social Networks",
+    "year": "1983"
+  },
+  "shan2018finding": {
+    "source": "crossref",
+    "doi": "10.1145/3178876.3186125",
+    "authors": [
+      [
+        "Maximilien",
+        "Danisch"
+      ],
+      [
+        "Oana",
+        "Balalau"
+      ],
+      [
+        "Mauro",
+        "Sozio"
+      ]
+    ],
+    "title": "Listing k-cliques in Sparse Real-World Graphs*",
+    "venue": "Proceedings of the 2018 World Wide Web Conference on World Wide Web - WWW '18",
+    "year": "2018"
+  },
+  "sharan2006modeling": {
+    "source": "crossref",
+    "doi": "10.15252/msb.202311544",
+    "authors": [
+      [
+        "Francis J",
+        "O'Reilly"
+      ],
+      [
+        "Andrea",
+        "Graziadei"
+      ],
+      [
+        "Christian",
+        "Forbrig"
+      ],
+      [
+        "Rica",
+        "Bremenkamp"
+      ],
+      [
+        "Kristine",
+        "Charles"
+      ],
+      [
+        "Swantje",
+        "Lenz"
+      ],
+      [
+        "Christoph",
+        "Elfmann"
+      ],
+      [
+        "Lutz",
+        "Fischer"
+      ],
+      [
+        "Jörg",
+        "Stülke"
+      ],
+      [
+        "Juri",
+        "Rappsilber"
+      ]
+    ],
+    "title": "Protein complexes in cells by\n                    <scp>AI</scp>\n                    ‐assisted structural proteomics",
+    "venue": "Molecular Systems Biology",
+    "year": "2023"
+  },
+  "soc-pokec": null,
+  "subramanyam1983collab": {
+    "source": "crossref",
+    "doi": "10.1177/016555158300600105",
+    "authors": [
+      [
+        "K.",
+        "Subramanyam"
+      ]
+    ],
+    "title": "Bibliometric studies of research collaboration: A review",
+    "venue": "Journal of Information Science",
+    "year": "1983"
+  },
+  "test": null,
+  "tian2023truss": {
+    "source": "crossref",
+    "doi": "10.14778/3598581.3598592",
+    "authors": [
+      [
+        "Anxin",
+        "Tian"
+      ],
+      [
+        "Alexander",
+        "Zhou"
+      ],
+      [
+        "Yue",
+        "Wang"
+      ],
+      [
+        "Lei",
+        "Chen"
+      ]
+    ],
+    "title": "Maximal D-Truss Search in Dynamic Directed Graphs",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2023"
+  },
+  "tian2024abcore": {
+    "source": "crossref",
+    "doi": "10.14778/3681954.3681965",
+    "authors": [
+      [
+        "Anxin",
+        "Tian"
+      ],
+      [
+        "Alexander",
+        "Zhou"
+      ],
+      [
+        "Yue",
+        "Wang"
+      ],
+      [
+        "Xun",
+        "Jian"
+      ],
+      [
+        "Lei",
+        "Chen"
+      ]
+    ],
+    "title": "Efficient Index for Temporal Core Queries over Bipartite Graphs",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2024"
+  },
+  "tsourakakis2013finding": null,
+  "ugander2012structural": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Johan",
+        "Ugander"
+      ],
+      [
+        "Brian",
+        "Karrer"
+      ],
+      [
+        "Lars",
+        "Backstrom"
+      ],
+      [
+        "Cameron",
+        "Marlow"
+      ]
+    ],
+    "title": "The Anatomy of the Facebook Social Graph",
+    "venue": "CoRR",
+    "year": "2011"
+  },
+  "ugander2018structural": {
+    "source": "crossref",
+    "doi": "10.1073/pnas.1116502109",
+    "authors": [
+      [
+        "Johan",
+        "Ugander"
+      ],
+      [
+        "Lars",
+        "Backstrom"
+      ],
+      [
+        "Cameron",
+        "Marlow"
+      ],
+      [
+        "Jon",
+        "Kleinberg"
+      ]
+    ],
+    "title": "Structural diversity in social contagion",
+    "venue": "Proceedings of the National Academy of Sciences",
+    "year": "2012"
+  },
+  "viard2016deltaclique": {
+    "source": "crossref",
+    "doi": "10.1016/j.tcs.2015.09.030",
+    "authors": [
+      [
+        "Tiphaine",
+        "Viard"
+      ],
+      [
+        "Matthieu",
+        "Latapy"
+      ],
+      [
+        "Clémence",
+        "Magnien"
+      ]
+    ],
+    "title": "Computing maximal cliques in link streams",
+    "venue": "Theoretical Computer Science",
+    "year": "2016"
+  },
+  "wang2012truss": {
+    "source": "crossref",
+    "doi": "10.14778/2311906.2311909",
+    "authors": [
+      [
+        "Jia",
+        "Wang"
+      ],
+      [
+        "James",
+        "Cheng"
+      ]
+    ],
+    "title": "Truss decomposition in massive networks",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2012"
+  },
+  "wang2020efficient": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Fatemeh",
+        "Esfahani"
+      ],
+      [
+        "Venkatesh",
+        "Srinivasan"
+      ],
+      [
+        "Alex",
+        "Thomo"
+      ],
+      [
+        "Kui",
+        "Wu"
+      ]
+    ],
+    "title": "Nucleus Decomposition in Probabilistic Graphs: Hardness and Algorithms.",
+    "venue": "ICDE",
+    "year": "2022"
+  },
+  "wang2022truss": {
+    "source": "crossref",
+    "doi": "10.14778/3538598.3538610",
+    "authors": [
+      [
+        "Yue",
+        "Wang"
+      ],
+      [
+        "Ruiqi",
+        "Xu"
+      ],
+      [
+        "Xun",
+        "Jian"
+      ],
+      [
+        "Alexander",
+        "Zhou"
+      ],
+      [
+        "Lei",
+        "Chen"
+      ]
+    ],
+    "title": "Towards distributed bitruss decomposition on bipartite graphs",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2022"
+  },
+  "xia2017measuring": {
+    "source": "crossref",
+    "doi": "10.1007/1-4020-2755-9_12",
+    "authors": [
+      [
+        "Wolfgang",
+        "Glänzel"
+      ],
+      [
+        "András",
+        "Schubert"
+      ]
+    ],
+    "title": "Analysing Scientific Networks Through Co-Authorship",
+    "venue": "Handbook of Quantitative Science and Technology Research",
+    "year": "None"
+  },
+  "xu2022truss": {
+    "source": "crossref",
+    "doi": "10.14778/3570690.3570701",
+    "authors": [
+      [
+        "Tianyang",
+        "Xu"
+      ],
+      [
+        "Zhao",
+        "Lu"
+      ],
+      [
+        "Yuanyuan",
+        "Zhu"
+      ]
+    ],
+    "title": "Efficient Triangle-Connected Truss Community Search in Dynamic Graphs",
+    "venue": "Proceedings of the VLDB Endowment",
+    "year": "2022"
+  },
+  "yang2012groundtruth": {
+    "source": "crossref",
+    "doi": "10.1145/2350190.2350193",
+    "authors": [
+      [
+        "Jaewon",
+        "Yang"
+      ],
+      [
+        "Jure",
+        "Leskovec"
+      ]
+    ],
+    "title": "Defining and evaluating network communities based on ground-truth",
+    "venue": "Proceedings of the ACM SIGKDD Workshop on Mining Data Semantics",
+    "year": "2012"
+  },
+  "you2020graph": {
+    "source": "dblp",
+    "score": 1.05,
+    "authors": [
+      [
+        "Wei",
+        "Jin"
+      ],
+      [
+        "Yao",
+        "Ma"
+      ],
+      [
+        "Xiaorui",
+        "Liu"
+      ],
+      [
+        "Xianfeng",
+        "Tang"
+      ],
+      [
+        "Suhang",
+        "Wang"
+      ],
+      [
+        "Jiliang",
+        "Tang"
+      ]
+    ],
+    "title": "Graph Structure Learning for Robust Graph Neural Networks.",
+    "venue": "KDD",
+    "year": "2020"
+  },
+  "zhu2021efficient": {
+    "_error": "crossref: HTTP Error 404: Not Found"
+  }
 }

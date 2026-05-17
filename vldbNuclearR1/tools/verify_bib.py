@@ -290,6 +290,103 @@ def normalize_surname(s: str) -> str:
     return s.strip()
 
 
+VENUE_ALIASES = [
+    # (lowercase short, lowercase long-substring)
+    ("arxiv", "corr"),
+    ("corr", "arxiv"),
+    ("preprint", "corr"),
+]
+
+
+def _acronym_match(short: str, long: str) -> bool:
+    """True if `short` is the initial-letter acronym of a contiguous run
+    of content words in `long`.  Example: 'nips' matches 'neural
+    information processing systems'."""
+    if not short or len(short) < 2 or len(short) > 8:
+        return False
+    if not short.isalpha():
+        return False
+    long_words = [w for w in long.split() if w.isalpha() and len(w) > 1]
+    if len(long_words) < len(short):
+        return False
+    for i in range(len(long_words) - len(short) + 1):
+        initials = "".join(w[0] for w in long_words[i : i + len(short)])
+        if initials == short:
+            return True
+    return False
+
+
+_VENUE_NOISE = {"proceedings", "proc", "the", "of", "on", "in", "at",
+                "and", "for", "to", "by", "ieee", "acm", "association",
+                "international", "national", "annual"}
+_MONTHS = {"january", "february", "march", "april", "may", "june",
+           "july", "august", "september", "october", "november",
+           "december", "jan", "feb", "mar", "apr", "jun", "jul",
+           "aug", "sep", "sept", "oct", "nov", "dec"}
+
+
+def _venue_tokens(v: str) -> list[str]:
+    """Strip years, location noise, months, and short stopwords."""
+    out = []
+    for w in v.split():
+        if w.isdigit():
+            continue
+        if w in _VENUE_NOISE or w in _MONTHS:
+            continue
+        if len(w) <= 2:
+            continue
+        out.append(w)
+    return out
+
+
+def _word_prefix_subset(short_words, long_words) -> bool:
+    """Bag-semantics: every content word in short_words has SOME
+    prefix-overlap (>=3 chars) match in long_words.  Order does not
+    matter; each long word can match at most one short word."""
+    if not short_words:
+        return False
+    remaining = list(long_words)
+    for sw in short_words:
+        matched_idx = None
+        for i, lw in enumerate(remaining):
+            n = min(len(sw), len(lw))
+            if n >= 3 and sw[:n] == lw[:n]:
+                matched_idx = i
+                break
+        if matched_idx is None:
+            return False
+        remaining.pop(matched_idx)
+    return True
+
+
+def venue_equivalent(bv: str, av: str) -> bool:
+    """Loose venue match: substring either way, word-prefix subset
+    either way, acronym either way, or hardcoded arXiv/CoRR alias."""
+    if bv == av:
+        return True
+    if bv in av or av in bv:
+        return True
+    sim = SequenceMatcher(None, bv, av).ratio()
+    if sim >= 0.85:
+        return True
+    # word-prefix subset either direction (handles abbreviations);
+    # strip year / location / month noise first so SIGMOD-with-dateloc
+    # matches the bare conference name.
+    bw, aw = _venue_tokens(bv), _venue_tokens(av)
+    if _word_prefix_subset(bw, aw) or _word_prefix_subset(aw, bw):
+        return True
+    # acronym match either direction
+    short, long = (bv, av) if len(bv) < len(av) else (av, bv)
+    short_token = short.replace(" ", "")
+    if _acronym_match(short_token, long):
+        return True
+    # hardcoded aliases
+    for a, b in VENUE_ALIASES:
+        if (a in bv and b in av) or (a in av and b in bv):
+            return True
+    return False
+
+
 def extract_surnames(author_field: str) -> list[str]:
     if not author_field:
         return []
@@ -353,33 +450,33 @@ def verdict(bib_fields: dict, auth: dict | None):
                     f"author count: bib lists {len(bib_sur)}, "
                     f"authoritative has only {len(auth_sur)} (extras in bib)"
                 )
-    # title similarity
+    # title similarity, with substring tolerance for the "subtitle"
+    # pattern --- bib "X: Y" vs authoritative "X" should not warn.
     bt = normalize_title(bib_fields.get("title", ""))
     at = normalize_title(auth.get("title", ""))
-    sim = SequenceMatcher(None, bt, at).ratio() if (bt and at) else 0
     if bt and at:
-        if sim < TITLE_SIM_FAIL:
-            issues.append(
-                f"title sim={sim:.2f}: bib={bt[:60]!r} authoritative={at[:60]!r}"
-            )
-        elif sim < TITLE_SIM_WARN:
-            issues.append(
-                f"title sim={sim:.2f} (warning, may be rephrased): "
-                f"bib={bt[:60]!r} authoritative={at[:60]!r}"
-            )
-    # venue
+        if bt == at or bt in at or at in bt:
+            pass  # equivalent (subtitle / suffix difference)
+        else:
+            sim = SequenceMatcher(None, bt, at).ratio()
+            if sim < TITLE_SIM_FAIL:
+                issues.append(
+                    f"title sim={sim:.2f}: bib={bt[:60]!r} authoritative={at[:60]!r}"
+                )
+            elif sim < TITLE_SIM_WARN:
+                issues.append(
+                    f"title sim={sim:.2f} (warning, may be rephrased): "
+                    f"bib={bt[:60]!r} authoritative={at[:60]!r}"
+                )
+    # venue, with acronym tolerance:
+    #   "NIPS"  matches "neural information processing systems"
+    #   "CoRR"  matches "arxiv preprint ..."
     bv = normalize_title(
         bib_fields.get("journal") or bib_fields.get("booktitle") or ""
     )
     av = normalize_title(auth.get("venue", ""))
-    if bv and av:
-        v_sim = SequenceMatcher(None, bv, av).ratio()
-        # accept any short-substring overlap (e.g. "pvldb" inside "pvldbendowment")
-        bv_short = "".join(w[0] for w in bv.split())
-        av_short = "".join(w[0] for w in av.split())
-        if (v_sim < 0.40 and bv_short != av_short and
-                bv not in av and av not in bv):
-            issues.append(f"venue: bib={bv!r} authoritative={av!r}")
+    if bv and av and not venue_equivalent(bv, av):
+        issues.append(f"venue: bib={bv!r} authoritative={av!r}")
 
     if any("first author" in i or "year" in i or "title sim" in i
            and "warning" not in i for i in issues):
@@ -404,6 +501,11 @@ def main():
                     help="seconds between live HTTP requests")
     ap.add_argument("--only", default=None,
                     help="only verify keys matching this regex")
+    ap.add_argument("--used-only", action="store_true",
+                    help="verify only cite-used entries (not orphans)")
+    ap.add_argument("--lenient", action="store_true",
+                    help="treat WARN as non-fatal (default is strict: "
+                         "WARN -> exit 1)")
     args = ap.parse_args()
 
     if args.clear and CACHE.exists():
@@ -417,7 +519,11 @@ def main():
             cache = {}
 
     bib = {k: (etype, fields) for k, etype, fields in parse_bib(BIB)}
-    used = sorted(collect_cites() & set(bib))
+    cited = collect_cites() & set(bib)
+    if args.used_only:
+        used = sorted(cited)
+    else:
+        used = sorted(bib.keys())  # all entries by default
     if args.only:
         used = [k for k in used if re.search(args.only, k)]
 
@@ -475,7 +581,12 @@ def main():
     for s in ("OK", "WARN", "FAIL", "SKIP"):
         print(f"  {s:4s}: {counts[s]}")
 
-    return 1 if counts["FAIL"] else 0
+    fail = counts["FAIL"] > 0
+    if not args.lenient and counts["WARN"] > 0:
+        fail = True
+        print(f"\nstrict mode: {counts['WARN']} WARN(s) treated as failures "
+              f"(pass --lenient to allow WARNs)")
+    return 1 if fail else 0
 
 
 if __name__ == "__main__":

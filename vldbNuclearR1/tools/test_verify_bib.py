@@ -78,9 +78,9 @@ TESTS = [
             "title = {Truss-based community search: a truss-equivalence based indexing approach},\n"
             "year = {2018},",
         ),
-        # we expect this NOT to fail on year (within +/-2 tolerance) but
-        # the existing benign subtitle WARN still fires
-        "WARN",
+        # within +/-2 year tolerance the entry should report OK with no
+        # issues at all (verifier prints no per-entry line for OK)
+        "OK",
         None,
     ),
     (
