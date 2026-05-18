@@ -2,7 +2,7 @@
 
 Because the static-\cpi{} invariant of Section~\ref{sec:static} keeps every leaf intact through peeling, the hierarchy is no longer a separate decomposition problem.
 %
-After the core values are known, every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel, so the elder-rule join tree of Definition~\ref{def:nucleus} can be emitted by enumerating one merge event per encoded $s$-clique birth from the preserved leaves and scanning those events in descending level with a union--find, in $O(\Sig\log\Sig)$ time, without re-enumerating a single clique.
+After the core values are known, every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel, so the elder-rule join tree of Definition~\ref{def:nucleus} can be emitted by generating a short list of merge events per leaf that tracks the levels at which its encoded $s$-cliques become alive and scanning those events in descending level with a union--find, in $O(\Sig\log\Sig)$ time, without re-enumerating a single clique.
 %
 Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose: they must either re-run $s$-clique enumeration at each level or maintain one parallel disjoint-set forest per core level during peeling, which blows up memory by an order of magnitude (Section~\ref{sec:exp}, Figure~\ref{fig:hier}).
 %
@@ -75,7 +75,7 @@ $T\gets$ empty forest\;
 
 Algorithm~\ref{alg:buildhier} runs in two phases.  Phase~1 (Lines~1--10) generates merge events: for each leaf with at least one encoded $s$-clique, the algorithm sorts its pivot set by $\kappa_s$ in descending order and emits one event for the highest-birth encoded clique (size $|\Vh|+\eta_P$) followed by a series of unit events that each splice one lower-$\kappa$ pivot into the leaf's already-formed component.
 %
-Phase~2 (Lines~13--19) processes events in nonincreasing level: for each event $(k,S)$, the union--find returns the root set $R$ of $S$, emits a new hierarchy node for any root born here for the first time (Lines~15--17), and applies the elder rule to merge multiple roots into the eldest (Lines~18--22).
+Phase~2 (Lines~11--23) processes events in nonincreasing level: for each event $(k,S)$, the union--find returns the root set $R$ of $S$, emits a new hierarchy node for any root born here for the first time (Lines~16--18), and applies the elder rule to merge multiple roots into the eldest (Lines~19--23).
 %
 The returned forest $T$ is the elder-rule join tree of the $s$-clique-connected super-level filtration of $(V,\kappa_s)$.
 
@@ -109,7 +109,7 @@ The static \cpi{} budget of Section~\ref{sec:exp} therefore holds throughout pee
 \stitle{Consequence.}
 The clique-coherent core-value hierarchy is not a separate decomposition problem in this pipeline.
 %
-It is a byproduct of the static \cpi{} surviving peeling: each preserved leaf contributes one merge event per encoded $s$-clique birth, and a single descending pass with union--find over those events produces the join tree.
+It is a byproduct of the static \cpi{} surviving peeling: each preserved leaf contributes a short sequence of merge events tracking when its encoded cliques become alive, and a single descending union--find pass over those events produces the join tree.
 %
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 

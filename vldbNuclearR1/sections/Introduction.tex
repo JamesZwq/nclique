@@ -98,9 +98,9 @@ We formulate \spin{} as the direct threshold-support iteration on \cpi{} witness
 \spinStar{} delivers a $30.4\times$ geometric-mean peel-time speedup over \spin{} on $272$ matched cells.
 
 \sstitle{Core-value hierarchy from the static \cpi{}.}
-Because vertex peeling never rewrites paths --- the recursion tree, hold sets, and pivot sets are all preserved --- the \cpi{} that produced the core values is still intact at the moment peeling finishes.
+Because vertex peeling never rewrites paths --- the path set, the hold sets, and the pivot sets are all preserved --- the \cpi{} that produced the core values is still intact at the moment peeling finishes.
 %
-We exploit this to run hierarchy emission as a strict post-processing pass: \buildHier{} (Algorithm~\ref{alg:buildhier}) consumes the unchanged \cpi{} and the core-value vector from \spinStar{}, generates one merge event per encoded $s$-clique birth, and recovers the $s$-clique-connected super-level join tree by a single descending union--find scan over those events in $O(\Sig\log\Sig)$ time, without re-enumerating a single $s$-clique.
+We exploit this to run hierarchy emission as a strict post-processing pass: \buildHier{} (Algorithm~\ref{alg:buildhier}) consumes the unchanged \cpi{} and the core-value vector from \spinStar{}, generates a short list of merge events per leaf that tracks the levels at which its encoded $s$-cliques become alive, and recovers the $s$-clique-connected super-level join tree by a single descending union--find scan over those events in $O(\Sig\log\Sig)$ time, without re-enumerating a single $s$-clique.
 %
 The two-stage pipeline (peel then emit) is not available to the mutable baseline, which has already destroyed the path structure by the end of peeling and must rebuild it --- or carry redundant per-level union--find forests --- to produce the same hierarchy.
 
