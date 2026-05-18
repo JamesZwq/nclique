@@ -77,7 +77,7 @@ $C[0,\ldots,h[v]]\gets0$ \tcp*{threshold witness counts}
 
 Algorithm~\ref{alg:refresh} zeroes the local threshold-count array up to $h[v]$ (Line~1), accumulates the per-threshold witness count $W_v(\TPath,h,k)$ into $C[k]$ for every path through $v$ using the closed form of Lemma~\ref{lem:per-path-witness} (Lines~2-4), and returns the largest $k$ at which $C[k]\ge k$ by scanning $C$ from $h[v]$ downward (Lines~5-7); otherwise it returns $0$.
 %
-The pseudocode is shown in its semantic form for clarity; the implemented version replaces the inner $k$-loop with a single pass per scanned path that sorts the path's vertex values once and computes $W_v(\TPath,h,\cdot)$ at every threshold via prefix sums, yielding $O(\deg_{\Sig}(v)\log\deg_{\Sig}(v))$ work per call (the literal pseudocode is $O(\deg_{\Sig}(v)\cdot h[v])$ in the worst case).
+The pseudocode is shown in its semantic form for clarity; the implementation never materialises a dense $C[0,\ldots,h[v]]$ array (which would be infeasible when $h[v]$ approaches $\sdeg(v)$, easily $10^{10}$+ on dense graphs) but instead replaces the inner $k$-loop with a single pass per scanned path that sorts the path's vertex values once and computes $W_v(\TPath,h,\cdot)$ at every threshold via prefix sums, yielding $O\bigl((\sum_{\TPath\ni v}|\Vh(\TPath)|+|\Vp(\TPath)|)\log d_{\max}\bigr)$ work per call, where $d_{\max}=\max_{\TPath}(|\Vh(\TPath)|+|\Vp(\TPath)|)$.
 %
 The call reads the static \cpi{} and the vector $h$, and it mutates no path.
 
@@ -133,15 +133,15 @@ $\mathrm{changed}\gets\textsf{true}$\;
 \end{algorithm}
 
 \begin{lemma}[Fixed Point Correctness]\label{lem:hindex-fixed-point}
-Initialised at $h^{(0)}[v]=\sdeg(v)$, Algorithm~\ref{alg:localH} converges in at most $1+n\kmax$ passes to $h[v]=\kappa_s(v)$ for every $v\in V$, and the sequence $h^{(t)}[v]$ is monotonically non-increasing.
+Initialised at $h^{(0)}[v]=\sdeg(v)$, Algorithm~\ref{alg:localH} converges in at most $n+1$ passes to $h[v]=\kappa_s(v)$ for every $v\in V$, and the sequence $h^{(t)}[v]$ is monotonically non-increasing.
 \end{lemma}
 
 \begin{proof}
-By the operator definition, $h^{(t+1)}[v]\ge k$ iff $v$ has at least $k$ incident $s$-cliques whose other vertices all satisfy $h^{(t)}\ge k$, so $\sdeg(v)$ is the largest possible value and the sequence is monotone non-increasing on the non-negative integers; the total drop across all vertices is bounded by $n\kmax$, giving $T\le1+n\kmax$ passes to a fixed point $h^\star$.
+By the operator definition, $h^{(t+1)}[v]\ge k$ iff $v$ has at least $k$ incident $s$-cliques whose other vertices all satisfy $h^{(t)}\ge k$, so $\sdeg(v)$ is the largest possible value and the sequence is monotone non-increasing on the non-negative integers.  Once a vertex's value equals its final $\kappa_s(v)$, the operator never lowers it further (by the converse direction below).  Each pass that is not already a fixed point lowers the value of at least one not-yet-finalised vertex, so at most $n$ such passes occur before the fixed point $h^\star$ is reached and one more pass certifies it.
 %
 At $h^\star$, let $S_k=\{v\mid h^\star[v]\ge k\}$; every $v\in S_k$ has at least $k$ incident $s$-cliques entirely inside $S_k$, and each such clique lies in $v$'s $s$-connected component $C\subseteq S_k$ (because the clique itself is the connecting witness), so $C$ satisfies Conditions~(i)--(iii) of Definition~\ref{def:nucleus} and is a $k$-$(1,s)$-nucleus, giving $\kappa_s(v)\ge k$.
 %
-Conversely, if $v$ lies in a $k$-$(1,s)$-nucleus $C'$, induction on $t$ shows that the threshold-support equation preserves $h^{(t)}[u]\ge k$ for every $u\in C'$, so $h^\star[v]\ge k$.
+Conversely, if $v$ lies in a $k$-$(1,s)$-nucleus $C'$, we show by induction on $t$ that $h^{(t)}[u]\ge k$ for every $u\in C'$. The base case $t=0$ holds since each $u\in C'$ is in at least $k$ $s$-cliques inside $C'$ (by Definition~\ref{def:nucleus}), so $\sdeg(u)\ge k=h^{(0)}[u]$. For the inductive step, assume $h^{(t)}[u']\ge k$ for every $u'\in C'$; then $u$ has at least $k$ $s$-cliques inside $C'$ whose other vertices all satisfy $h^{(t)}\ge k$, so the threshold-support operator yields $h^{(t+1)}[u]\ge k$. Therefore $h^\star[v]\ge k$.
 %
 Hence $h^\star[v]=\kappa_s(v)$.
 %
@@ -149,7 +149,7 @@ Hence $h^\star[v]=\kappa_s(v)$.
 \end{proof}
 
 \begin{theorem}[\spin{} Complexity]\label{thm:localh-complexity}
-Algorithm~\ref{alg:localH} computes $\kappa_s$ in $O(T\cdot\Sig\cdot\log d_{\max})$ work, where $T\le1+n\kmax$ is the number of passes.
+Algorithm~\ref{alg:localH} computes $\kappa_s$ in $O(T\cdot\Sig\cdot\log d_{\max})$ work, where $T\le n+1$ is the number of passes (Lemma~\ref{lem:hindex-fixed-point}).
 \end{theorem}
 
 \begin{proof}

@@ -18,7 +18,7 @@ Define the \emph{birth level} of $P$ as
 %
 At level $k\le k_P$ every leaf vertex has core value at least $k$, so every encoded $s$-clique is contained in $V_k$.
 %
-Any two vertices of the leaf either lie inside one such clique (when $\eta_P\ge2$) or are linked by a length-two path through a vertex of $\Vh(P)$ (when $\eta_P=1$ and $\Vh(P)$ is non-empty); for $\Vh(P)=\emptyset$ and $\eta_P\ge2$, any pair appears together in some $s$-subset.
+For $\eta_P\ge1$ the leaf's member set is $\Vh(P)\cup\Vp(P)$: any two members either lie inside one encoded $s$-clique (when $\eta_P\ge2$) or are linked by a length-two path through a vertex of $\Vh(P)$ (when $\eta_P=1$ and $\Vh(P)$ is non-empty); when $\Vh(P)=\emptyset$ and $\eta_P\ge2$, any pair appears together in some $s$-subset.  The boundary case $\eta_P=0$ (i.e.\ $|\Vh(P)|=s$) encodes the single $s$-clique $\Vh(P)$ itself; the leaf's member set is then $\Vh(P)$ alone, and $\Vp(P)$ vertices are not unified through this path.
 %
 In every case the leaf vertices form a single $s$-connected component the moment $P$ becomes active.
 %
@@ -49,14 +49,15 @@ sort $\mathcal{P}$ by nonincreasing $k_P$ (ties broken by leaf id)\;
 initialise union-find $U$ over $V\cup\{P\mid P\in\mathcal{P}\}$; $\text{birth}[r]\gets+\infty$ for every root $r$\;
 $T\gets$ empty forest\;
 \ForEach{leaf $P$ in sorted order}{
-    $R\gets\{\textsc{Find}(x)\mid x\in\Vh(P)\cup\Vp(P)\cup\{P\}\}$\;
+    $M_P\gets\Vh(P)\cup\bigl(\Vp(P)\text{ \rm{if} }\eta_P\ge1\bigr)$ \tcp*{members in some encoded $s$-clique}
+    $R\gets\{\textsc{Find}(x)\mid x\in M_P\cup\{P\}\}$\;
     \ForEach{root $r\in R$}{
         \If{$\text{birth}[r]=+\infty$}{
             emit a hierarchy node $n_r$ with $k_{\mathrm{birth}}\gets k_P$; $\text{birth}[r]\gets k_P$\;
         }
     }
     \If{$|R|\ge2$}{
-        sort $R$ descending by $(\text{birth}[r], |r|)$; let $r^\star$ be the elder \tcp*{elder rule}
+        sort $R$ descending by $(\text{birth}[r], \text{id}(r))$; let $r^\star$ be the elder \tcp*{elder rule; ties broken by root id}
         \ForEach{$r\in R\setminus\{r^\star\}$}{
             attach $n_r$ as child of $n_{r^\star}$ at level $k_P$ in $T$ \tcp*{younger dies}
         }

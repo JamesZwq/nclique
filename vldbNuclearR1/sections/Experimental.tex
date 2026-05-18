@@ -248,7 +248,7 @@ The densest graph, $\texttt{com-orkut}$, also exposes the natural ceiling of ver
 
 \expsection{hierarchy emission against the level-DSU baseline}
 \label{sec:exp-hier}
-\buildHier{} (Section~\ref{sec:buildhier}) consumes the preserved \cpi{} once peeling finishes; the only available $(1,s)$ baseline that produces the same hierarchy is \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, which carries one parallel disjoint-set forest per core level (denoted $K$ in the $O(K\cdot\Sig)$ bound below) during the peel.
+\buildHier{} (Section~\ref{sec:buildhier}) consumes the preserved \cpi{} once peeling finishes; the only available $(1,s)$ baseline that produces the same hierarchy is \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, which carries one parallel disjoint-set forest per distinct attained core value ($K\!=\!|\{\kappa_s(v):v\in V\}|$, typically $\le n$ and orders of magnitude smaller than the per-vertex clique count $\kmax$; denoted $K$ in the $O(K\cdot\Sig)$ bound below) during the peel.
 %
 We compare four algorithm variants on four representative graphs (Figure~\ref{fig:hier}), sweeping $s\in\{3,5,7,9,11,13,15\}$: \textbf{\spinStar{}} (no hierarchy), \textbf{\spinStar{}{+}\buildHier{}} (our $O(\Sig\log\Sig)$ post-peel emit), \textbf{\cbnd{}} (no hierarchy), and \textbf{\cbnd{}{+}\textsc{Hier}} (level-DSU hierarchy during peel).
 %
