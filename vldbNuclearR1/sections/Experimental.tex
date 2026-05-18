@@ -202,16 +202,20 @@ Each curve in Figure~\ref{fig:stress} is drawn up to the highest density at whic
 \label{sec:exp-friendster}
 The ten-graph benchmark stops at \texttt{com-orkut} ($117$M edges); to push the pipeline an order of magnitude further, we run \spinStar{} with $T{=}24$ on \texttt{com-friendster} ($65$M vertices, $1.806$B edges, the largest SNAP graph available).
 %
-\cbnd{} completes only at $s{=}2$, using $400$\,GB of peak memory and $\approx30$ minutes of peel against \spinStar{}'s $160$\,GB and $344$\,s (Figure~\ref{fig:friendster}: $\approx 5.2\times$ peel speedup, $2.5\times$ less memory on the matched cell); on the tested \cbnd{} cells with $s\ge3$, it exceeds the $503$\,GB budget during construction and is OOM-killed.
+The headline result is coverage: \spinStar{} completes the $(1,s)$-nucleus decomposition at every $s\in\{2,3,4,5,6,11\}$ we tested, whereas \cbnd{} succeeds only at $s{=}2$ and is OOM-killed (exceeds the $503$\,GB budget during \cpi{} construction) at every $s\ge3$ we tested (Figure~\ref{fig:friendster}).
 %
-\spinStar{} decomposes the graph for a wide range of $s$: at $s{=}6$ it stores $\Sig\approx 2.26\times 10^{10}$ vertex--path incidences and peels the resulting static index in $651$\,s; at $s{=}11$ it stores $\Sig\approx 1.68\times 10^{10}$ incidences and finishes peeling in $167$\,s.
+On the one matched cell ($s{=}2$), \spinStar{} peels in $344$\,s against \cbnd{}'s $1{,}775$\,s ($5.2\times$ faster) and uses $160$\,GB against $400$\,GB ($2.5\times$ less); the memory headroom is what lets \spinStar{} continue past the budget where \cbnd{} cannot.
 %
-Construction dominates total runtime ($5$--$7$ thousand seconds of build vs.\ $167$--$676$ seconds of peel), confirming that the bottleneck shift carries over to the billion-edge regime; the parallel builder of Section~\ref{sec:parabuild} is what makes the construction phase tractable on a $1.8$B-edge input.
+At higher $s$ the static index stays tractable: at $s{=}6$ it stores $\Sig\approx 2.26\times 10^{10}$ vertex--path incidences and peels the resulting structure in $651$\,s; at $s{=}11$, $\Sig\approx 1.68\times 10^{10}$ and the peel finishes in $167$\,s.
+%
+For practical $(1,s)$ analysis at $s\ge3$ --- the regime where higher-order cohesion measures separate from the $k$-core --- \spinStar{} is the only one of the two solvers that runs at all on this graph.
+%
+End-to-end runtime is build-dominated ($5$--$7$ thousand seconds of construction vs.\ $167$--$676$ seconds of peel), confirming that the bottleneck shift carries over to the billion-edge regime and that the parallel builder of Section~\ref{sec:parabuild} is what makes the pipeline usable at this scale.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_friendster.pdf}
-\caption{\texttt{com-friendster} ($1.806$B edges): peel time (left) and peak memory (right). \cbnd{} completes only at $s{=}2$; on the tested cells with $s\ge3$, it exceeds the $503$\,GB budget.}
+\caption{\texttt{com-friendster} ($1.806$B edges, the largest SNAP graph): \spinStar{} completes the $(1,s)$ decomposition at every tested $s\in\{2,3,4,5,6,11\}$ while \cbnd{} only completes at $s{=}2$ and exceeds the $503$\,GB budget at every $s\ge3$ tested. On the one matched cell, \spinStar{} peels in $344$\,s vs.\ $1{,}775$\,s ($5.2\times$) using $160$\,GB vs.\ $400$\,GB ($2.5\times$ less).}
 \Description{Two bar-chart panels with x-axis s in {2,3,4,5,6,11}. Left (peel time, log y): SPIN-star bars are 167-676 s; CND at s=2 is 1775 s (about 5.2 times higher), s>=3 marked OOM. Right (peak memory): SPIN-star bars range 160-472 GB; CND s=2 is 400 GB, s>=3 hatched bars hit 523-524 GB above the 503 GB dotted budget line.}
 \label{fig:friendster}
 \end{figure}
