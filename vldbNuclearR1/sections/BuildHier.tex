@@ -100,7 +100,7 @@ Phase~2 (event processing) performs $\sum_P(|\Vh(P)|+\eta_P)+\sum_P 2(|\Vp(P)|-\
 Total time $O(\Sig\log\Sig)$, with no clique re-enumeration: \buildHier{} touches each \cpi{} incidence a constant number of times.
 
 \stitle{Memory.}
-Beyond the union-find of size $n+L$, the routine needs a list of vertices per leaf to fire unions.
+Beyond the union-find of size $n+|\mathcal{P}|$ (the implementation uses each \cpi{} leaf as an auxiliary connector node so that one union per event suffices to bind every member of $S$), the routine needs a list of vertices per leaf to fire unions.
 %
 \spinStar{}'s vertex-to-path inverse CSR (Section~\ref{sec:hindex}) supports a single bucket-CSR pass that materialises the per-leaf lists in $O(\Sig)$ temporary memory; this scratch is freed on return.
 %
