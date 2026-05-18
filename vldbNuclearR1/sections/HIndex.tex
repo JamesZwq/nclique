@@ -269,7 +269,7 @@ By Lemma~\ref{lem:hindex-fixed-point}, $\kappa_s$ is also the fixed point reache
 \end{proof}
 
 \begin{theorem}[\spinStar{} Complexity]\label{thm:peelh-complexity}
-Algorithm~\ref{alg:peelH} runs in $O(\Sig+U+\kmax+n)$ time, where $U$ is the total number of incremental support-refresh events over all affected path-mates.
+Algorithm~\ref{alg:peelH} runs in $O(\Sig+U+n)$ time, where $U$ is the total number of incremental support-refresh events over all affected path-mates.
 \end{theorem}
 
 \begin{proof}
@@ -281,9 +281,9 @@ Each affected incremental refresh contributes one unit to $U$.
 %
 Bucket moves and bucket pops are $O(1)$ amortized.
 %
-The bucket cursor advances at most $\kmax$ times.
+The bucket cursor advances through at most the distinct $h$-values that are ever stored, which is bounded by $n$ since at most one value is associated with each vertex at any time.
 %
-The total time is therefore $O(\Sig+U+\kmax+n)$.
+The total time is therefore $O(\Sig+U+n)$.
 %
 \qed
 \end{proof}
