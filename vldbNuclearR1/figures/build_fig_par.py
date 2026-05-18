@@ -1,11 +1,14 @@
 """Parallel CPI construction figure: thread scaling per graph.
 
 1 row x N cols.  Each panel shows wall-clock build time vs thread count
-on a log-log axis; one line per s value tested for that graph.  Lines
-extend to T=64 (the deepest sweep run); the slope on a log-log axis is
-the speedup exponent.
+on a log-log axis, with one representative s curve per graph (s=3,
+hardcoded in S_PICKS below; the high-s curves were qualitatively
+identical, just shifted along y).  Each line ends at its optimal thread
+count.  Graphs with T=1 baseline below MIN_BASELINE_MS=500 ms are
+dropped as uninformative.
 
-Reads paper_data/bench_par_sdct.csv (status==OK rows).
+Reads paper_data/bench_par_sdct.csv (status==OK rows); median across
+runs per (graph, s, threads).
 """
 import csv
 import statistics

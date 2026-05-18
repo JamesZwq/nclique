@@ -1,15 +1,16 @@
 """
 End-to-end experiment figure in Nuclear-CD-TODS style.
 
-Per-graph subplot: one subplot per graph, each plotting wall-clock time
-(or peak RSS) vs s, with two curves --- Ours (solid blue) and REF (dashed
-red).  Output:
+Per-graph subplot: one subplot per graph, each plotting end-to-end
+wall-clock time (or peak RSS) vs s, with two curves: SPIN-star (solid
+blue, csv-key 'Pure') and CND (dashed red, csv-key 'REF_R1').  Output:
     fig_exp_time.pdf  -- time across all graphs (one row of subplots, may wrap)
     fig_exp_mem.pdf   -- peak RSS across all graphs (same layout)
 
-Reads paper_data/01_main_benchmark_all_graphs.csv  (single source of truth
-for r=1).  Filters status=OK; expects columns
-    graph,r,s,algorithm,time_ms,memory_kB,status
+Reads paper_data/01_main_benchmark_v3.csv (single source of truth for
+r=1, three runs per cell; expects columns graph,r,s,algorithm,
+wall_ms,...,time_max_rss_kB,...).  Filters status=OK; median across
+runs per (graph, s, algorithm).
 
 Type 42 fonts (VLDB/ACM compliant).
 """
