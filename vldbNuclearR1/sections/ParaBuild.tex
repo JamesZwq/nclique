@@ -69,7 +69,7 @@ Each thread allocates a private path arena and a generation-stamped membership b
 %
 After all threads finish, a deterministic concat-and-prefix-sum merge concatenates the arenas (Line~10) and builds the shared incidence CSR in parallel (Line~11); the final static \cpi{} is returned (Line~12).
 %
-\textsc{BkEmit} is the same pivot-aware enumeration used by the CPI construction lineage~\cite{Pivoter,NuclearCD}; the difference is that it streams each emitted path into $A_t$ instead of storing a mutable recursion tree for later residual updates.
+\textsc{BkEmit} is the per-seed pivot-aware enumeration used by the CPI construction lineage~\cite{Pivoter,NuclearCD}; structurally it is Algorithm~\ref{alg:buildcpi}'s \textsc{ExpandPath} subroutine restricted to a single seed and writing into the thread-local arena $A_t$ instead of storing a mutable recursion tree for later residual updates.
 
 \stitle{Correctness.}
 \paraBuild{} is a parallel schedule of the same seed-owned enumeration.
