@@ -149,11 +149,11 @@ Hence $h^\star[v]=\kappa_s(v)$.
 \end{proof}
 
 \begin{theorem}[\spin{} Complexity]\label{thm:localh-complexity}
-Algorithm~\ref{alg:localH} computes $\kappa_s$ in $O(T\cdot\Sig\cdot L_{\max}\cdot\log L_{\max})$ work, where $T\le n+1$ is the number of passes (Lemma~\ref{lem:hindex-fixed-point}) and $L_{\max}=\max_{\TPath}(|\Vh(\TPath)|+|\Vp(\TPath)|)$ is the maximum path size.
+Algorithm~\ref{alg:localH} computes $\kappa_s$ in $O(T\cdot\Sig\cdot L_{\max}\cdot\log L_{\max})$ work, where $T\le n+1$ is the number of passes (Lemma~\ref{lem:hindex-fixed-point}) and $L_{\max}$ is the maximum path size (Section~\ref{sec:refresh}).
 \end{theorem}
 
 \begin{proof}
-Each pass calls $\vertexSupport(v,h)$ for every $v\in V$ at per-call cost $O(W_v\log L_{\max})$ (Section~\ref{sec:refresh}), where $W_v=\sum_{\TPath\ni v}|\TPath|$ and $|\TPath|:=|\Vh(\TPath)|+|\Vp(\TPath)|$ is path size.  Summing, $\sum_v W_v=\sum_{\TPath}|\TPath|^2\le L_{\max}\cdot\Sig$, so a pass costs $O(\Sig\cdot L_{\max}\cdot\log L_{\max})$.  Lemma~\ref{lem:hindex-fixed-point} bounds the number of passes by $n+1$.
+Each pass calls $\vertexSupport(v,h)$ for every $v\in V$ at per-call cost $O(W_v\log L_{\max})$ (Section~\ref{sec:refresh}).  Summing, $\sum_v W_v=\sum_{\TPath}|\TPath|^2\le L_{\max}\cdot\Sig$, so a pass costs $O(\Sig\cdot L_{\max}\cdot\log L_{\max})$.  Lemma~\ref{lem:hindex-fixed-point} bounds the number of passes by $n+1$.
 \qed
 \end{proof}
 

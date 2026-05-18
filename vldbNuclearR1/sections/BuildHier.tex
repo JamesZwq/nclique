@@ -2,7 +2,7 @@
 
 Because the static-\cpi{} invariant of Section~\ref{sec:static} keeps every leaf intact through peeling, the hierarchy is no longer a separate decomposition problem.
 %
-After the core values are known, every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel, so the elder-rule join tree of Definition~\ref{def:nucleus} can be emitted by a single descending union--find scan over the preserved leaves, in $O(\Sig\log\Sig)$ time, without re-enumerating a single clique.
+After the core values are known, every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel, so the elder-rule join tree of Definition~\ref{def:nucleus} can be emitted by enumerating one merge event per encoded $s$-clique birth from the preserved leaves and scanning those events in descending level with a union--find, in $O(\Sig\log\Sig)$ time, without re-enumerating a single clique.
 %
 Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose: they must either re-run $s$-clique enumeration at each level or maintain one parallel disjoint-set forest per core level during peeling, which blows up memory by an order of magnitude (Section~\ref{sec:exp}, Figure~\ref{fig:hier}).
 %
@@ -91,7 +91,7 @@ Either way the vertices of $C$ are in one component at level $\min_{v\in C}\kapp
 The elder rule preserves the component with earlier birth and attaches the younger one in the join tree~\cite{edelsbrunner2010topology}.
 
 \stitle{Complexity.}
-Phase~1 (event generation) scans each leaf once and sorts its pivot set: $O(\Sig+\sum_{P}|\Vp(P)|\log|\Vp(P)|)\subseteq O(\Sig\log L_{\max})$ where $L_{\max}=\max_P(|\Vh(P)|+|\Vp(P)|)$.
+Phase~1 (event generation) scans each leaf once and sorts its pivot set: $O(\Sig+\sum_{P}|\Vp(P)|\log|\Vp(P)|)\subseteq O(\Sig\log L_{\max})$ ($L_{\max}$ = maximum path size, Section~\ref{sec:refresh}).
 %
 The number of events $|\mathcal{E}|$ is at most $\sum_P\max(1,|\Vp(P)|-\eta_P+1)\le\Sig$, and sorting them by level costs $O(\Sig\log\Sig)$.
 %
@@ -109,7 +109,7 @@ The static \cpi{} budget of Section~\ref{sec:exp} therefore holds throughout pee
 \stitle{Consequence.}
 The clique-coherent core-value hierarchy is not a separate decomposition problem in this pipeline.
 %
-It is a byproduct of the static \cpi{} surviving peeling: leaves act as hyperedges of an implicit $s$-clique witness graph, and a single descending pass with union--find produces the join tree.
+It is a byproduct of the static \cpi{} surviving peeling: each preserved leaf contributes one merge event per encoded $s$-clique birth, and a single descending pass with union--find over those events produces the join tree.
 %
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 
