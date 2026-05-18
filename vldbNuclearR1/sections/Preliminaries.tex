@@ -108,9 +108,9 @@ $\mathcal{P} \gets \emptyset$\;
 
 Algorithm~\ref{alg:buildcpi} computes a degeneracy ordering of $G$ and orients edges from lower to higher rank so each $s$-clique has a unique smallest-rank owner (Line~1); for every vertex $v_i$, $\textsc{ExpandPath}$ is invoked with hold set $\{v_i\}$ and forward-neighbour candidate set $N^{+}(v_i)$ (Lines~3-4).
 %
-A recursive call returns immediately when the hold set already exceeds $s$ (Line~7), and emits a path when the candidate set is empty and the hold-plus-pivot size meets $s$ (Lines~8-9).
+A recursive call returns immediately when the hold set already exceeds $s$ (Line~6), and emits a path when the candidate set is empty and the hold-plus-pivot size meets $s$ (Lines~8-9).
 %
-Otherwise the Tomita pivot $u_{\mathrm{piv}}$ is the vertex of $P$ with the most forward neighbours inside $P$ (Line~10), and every non-neighbour of $u_{\mathrm{piv}}$ is recursively expanded: branching on the pivot itself extends the pivot set, branching on any other vertex extends the hold set (Lines~11-14).
+Otherwise the Tomita pivot $u_{\mathrm{piv}}$ is the vertex of $P$ with the most forward neighbours inside $P$ (Line~10), and every non-neighbour of $u_{\mathrm{piv}}$ is recursively expanded: branching on the pivot itself extends the pivot set, branching on any other vertex extends the hold set (Lines~11-16).
 
 \begin{lemma}[Support Formula~\cite{NuclearCD}]\label{lem:supp}
 For every $v\in V$,

@@ -91,11 +91,11 @@ A fixed point means every vertex value is consistent with the witnesses whose ot
 
 Algorithm~\ref{alg:localH} initialises $h[v]$ to the initial $s$-clique support $\sdeg(v)$ for every vertex via the closed form of Lemma~\ref{lem:supp} (Lines~1-2).
 %
-The main loop (Lines~3-8) iterates until no entry changes in a full pass: it sets a \emph{changed} flag to false (Line~5), copies the current vector into $h_{\mathrm{new}}$ (Line~5), then calls $\vertexSupport(v,h)$ for every vertex in a fixed order and stores the result into $h_{\mathrm{new}}[v]$ (Lines~6-7); if any update lowered an entry the flag is set, otherwise the pass exits.
+The main loop (Lines~3-9) iterates until no entry changes in a full pass: it sets a \emph{changed} flag to false (Line~5), copies the current vector into $h_{\mathrm{new}}$ (Line~5), then calls $\vertexSupport(v,h)$ for every vertex in a fixed order and stores the result into $h_{\mathrm{new}}[v]$ (Lines~6-7); if any update lowered an entry the flag is set, otherwise the pass exits.
 %
-The swap $h\gets h_{\mathrm{new}}$ at the end of the pass (Line~8) avoids order dependence inside the pass.
+The swap $h\gets h_{\mathrm{new}}$ at the end of the pass (Line~9) avoids order dependence inside the pass.
 %
-The final core values are read off the converged vector (Lines~9-10) and returned (Line~11).
+The final core values are read off the converged vector (Lines~10-11) and returned (Line~12).
 %
 A pass with no changed entry is the certificate that the fixed point has been reached.
 
@@ -225,9 +225,9 @@ $k\gets0$;\quad $V_{\mathrm{fin}}\gets\emptyset$\;
 
 Algorithm~\ref{alg:peelH} first initialises every path's pivot count $p_{\TPath}$, pivot requirement $\eta_{\TPath}$, and liveness bit (Lines~1-2), then sets each vertex's working value $h[v]$ to its initial $s$-clique support and inserts $v$ into the corresponding bucket (Lines~3-4).
 %
-The main loop (Lines~6-15) advances the peel level $k$ to the smallest non-empty bucket and pops the next vertex $v$ (Line~7), finalises $\kappa_s(v)\gets k$ (Line~8), and walks every live path that contains $v$ (Lines~10-13): if $v$ is a hold, the path dies (Line~11); if $v$ is a pivot, the path's pivot counter decrements and the path also dies once $p_{\TPath}<\eta_{\TPath}$ (Lines~12-13).
+The main loop (Lines~6-19) advances the peel level $k$ to the smallest non-empty bucket and pops the next vertex $v$ (Line~7), finalises $\kappa_s(v)\gets k$ (Line~8), and walks every live path that contains $v$ (Lines~10-16): if $v$ is a hold, the path dies (Line~13); if $v$ is a pivot, the path's pivot counter decrements and the path also dies once $p_{\TPath}<\eta_{\TPath}$ (Lines~15-16).
 %
-Affected path-mates that have not been finalised are recomputed via Lemma~\ref{lem:support-delta} (Line~14) and moved to a lower bucket if their value dropped (Line~15).
+Affected path-mates that have not been finalised are recomputed via Lemma~\ref{lem:support-delta} (Line~18) and moved to a lower bucket if their value dropped (Line~19).
 %
 The pseudocode writes the affected update as $\vertexSupport$ to keep the fixed-point semantics visible; the implementation evaluates the changed contribution with the binomial loss formula rather than recomputing from scratch, so the total work scales with the number of incremental update events $U$ rather than with the number of full scans.
 %

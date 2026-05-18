@@ -53,9 +53,9 @@ $\mathcal{P}\gets\bigcup_{t=1}^T\mathcal{P}_t$\;
 \Return{$\mathcal{P}$}
 \end{algorithm}
 
-Algorithm~\ref{alg:parabuild} runs the same seed-rooted \textsc{ExpandPath} enumeration as Algorithm~\ref{alg:buildcpi}, but partitions the $n$ seed vertices into $T$ contiguous chunks (Line~2) and processes each chunk in its own thread (Lines~3--7).
+Algorithm~\ref{alg:parabuild} runs the same seed-rooted \textsc{ExpandPath} enumeration as Algorithm~\ref{alg:buildcpi}, but partitions the $n$ seed vertices into $T$ contiguous chunks (Line~2) and processes each chunk in its own thread (Lines~3--6).
 %
-Because every $s$-clique has a unique smallest-rank owner under $\sigma$, the chunks induce a partition of $\mathcal{P}$: each path is emitted by exactly one thread, so the per-thread outputs $\mathcal{P}_t$ are pairwise disjoint and their union $\bigcup_t\mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially (Line~8).
+Because every $s$-clique has a unique smallest-rank owner under $\sigma$, the chunks induce a partition of $\mathcal{P}$: each path is emitted by exactly one thread, so the per-thread outputs $\mathcal{P}_t$ are pairwise disjoint and their union $\bigcup_t\mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially (Line~7).
 %
 The choice of $T$, the partition of seeds, and the in-memory layout used to store $\mathcal{P}$ are implementation knobs; they affect throughput but not the output set.
 
