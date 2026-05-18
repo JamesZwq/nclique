@@ -36,7 +36,7 @@ A vertex first appearing in some event with $k_{\mathrm{event}}\ge1$ is born at 
 \algfontsize
 \caption{\buildHier{} --- elder-rule join tree from a static \cpi{}.}
 \label{alg:buildhier}
-\KwIn{Static \cpi{} $\mathcal{P}$; core values $\kappa_s(v)$ for every $v\in V$.}
+\KwIn{Static \cpi{} $\mathcal{P}$ and core values $\kappa_s(v)$ for every $v\in V$, both produced by Algorithm~\ref{alg:peelH} (\spinStar{}).}
 \KwOut{Elder-rule join tree $T$ of the $s$-clique-connected super-level filtration.}
 
 $\mathcal{E}\gets[\,]$ \tcp*{merge events $(k,S)$: unify the vertex set $S$ at level $k$}
