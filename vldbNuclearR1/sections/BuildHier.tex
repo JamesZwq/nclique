@@ -85,11 +85,13 @@ Conversely, every active $s$-clique at level $k$ belongs to some leaf with $k_P\
 When two distinct components meet at a leaf, the elder rule preserves the component with earlier birth and attaches the younger one in the join tree~\cite{edelsbrunner2010topology}.
 
 \stitle{Complexity.}
-Computing every $k_P$ and sorting leaves costs $O(\Sig+L\log L)$, where $L=|\mathcal{P}|$.
+Computing every $k_P$ scans each leaf's members once, costing $O(\Sig)$.
 %
-Each leaf fires at most $|\Vh(P)|+|\Vp(P)|$ union-find operations, summing to $O(\Sig\,\alpha(n+L))$ over all leaves.
+Sorting the $L=|\mathcal{P}|$ leaves by $k_P$ costs $O(L\log L)$.
 %
-Total time $O(\Sig\log\Sig)$, dominated by the sort, with no clique re-enumeration: \buildHier{} reads each \cpi{} leaf at most twice (once to compute $k_P$, once to fire unions).
+Each leaf fires at most $|M_P|\le|\Vh(P)|+|\Vp(P)|$ union-find operations, summing to $O(\Sig\,\alpha(n+L))$ across all leaves, where $\alpha$ is the inverse Ackermann function.
+%
+Total time $O(\Sig\,\alpha(n+L)+L\log L)$, with no clique re-enumeration: \buildHier{} reads each \cpi{} leaf at most twice (once to compute $k_P$, once to fire unions).
 
 \stitle{Memory.}
 Beyond the union-find of size $n+L$, the routine needs a list of vertices per leaf to fire unions.
