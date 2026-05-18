@@ -23,7 +23,7 @@ When $\eta_P\ge1$, the first event fires at level $k^{(\eta_P)}=\min(h_{\min},\k
 %
 For each $i=\eta_P+1,\ldots,m$ a follow-up event fires at level $k^{(i)}=\min(h_{\min},\kappa_s(p_i))$ and unifies the new pivot $p_i$ into the leaf's already-formed component (concretely with $p_1$ as anchor), because adding $p_i$ activates the encoded cliques that contain $p_i$ together with $\eta_P-1$ already-active pivots.
 %
-The list of events from a single leaf has length $\max(1,|\Vp(P)|-\eta_P+1)$, and the events fire at strictly nonincreasing levels.
+The list of events from a single leaf has length $|\Vp(P)|-\eta_P+1$ when $\eta_P\ge1$, and length $1$ when $\eta_P=0$ (the leaf encodes the single clique $\Vh(P)$ regardless of $\Vp(P)$); in both cases the events fire at strictly nonincreasing levels.
 
 \stitle{Reverse scan over events.}
 \buildHier{} concatenates events across all leaves and processes them in nonincreasing level.
