@@ -80,7 +80,7 @@ This invariant turns exact decomposition into counter arithmetic over a static i
 \sstitle{Static-\cpi{} invariant for $(1,s)$.}
 We prove that vertex peeling never rewrites the stored hold or pivot sets (Theorem~\ref{thm:vertex-removal}) and give a closed-form expression for the support loss caused by each path event (Lemma~\ref{lem:support-delta}).
 %
-The dynamic state of a path collapses to a liveness bit and a single integer counter, so the per-peel residual rewrites disappear; the headline Exp-1 peel speedup over \cbnd{} on $307$ matched cells is $13.50\times$ in the geometric mean.
+The dynamic state of a path collapses to a liveness bit and a single integer counter; we realize this counter-only peel as \spinStar{} (Algorithm~\ref{alg:peelH}), which delivers a $13.50\times$ geometric-mean peel-time speedup over \cbnd{} on $307$ matched cells in Exp-1.
 
 \sstitle{Elimination of residual structures.}
 A corollary of Theorem~\ref{thm:vertex-removal} is that three of \cbnd{}'s residual structures cease to carry information once the invariant is established: (i) the per-path vertex hash sets, because membership in a path is already determined by the path's fixed hold/pivot sets; (ii) the reverse vertex-to-path map, because the vertex-to-path relation is fixed at construction and never edited; and (iii) the mutable Bron--Kerbosch recursion tree, because no path is ever rewritten during peeling.
@@ -91,11 +91,6 @@ This collapses the per-incidence space cost from $\approx 88\Sig$ bytes to $\app
 Because the static-\cpi{} output is invariant under the order in which seed vertices are processed and contains no mutable shared state, seed enumeration partitions into independent subproblems.
 %
 \paraBuild{} (Algorithm~\ref{alg:parabuild}) constructs the index by running these subproblems in parallel and combining their outputs by a deterministic merge whose result does not depend on the schedule; the empirical scaling reaches $23.4\times$ at $T{=}24$ threads.
-
-\sstitle{Direct and incremental solvers over the static index.}
-We formulate \spin{} as the direct threshold-support iteration on \cpi{} witness counts (Algorithm~\ref{alg:localH}) and \spinStar{} as its incremental optimization (Algorithm~\ref{alg:peelH}) that computes the same fixed point in peel order without repeated full-graph passes (Lemma~\ref{lem:equivalence}).
-%
-\spinStar{} delivers a $30.4\times$ geometric-mean peel-time speedup over \spin{} on $272$ matched cells.
 
 \sstitle{Core-value hierarchy from the static \cpi{}.}
 Because vertex peeling never rewrites paths --- the path set, the hold sets, and the pivot sets are all preserved --- the \cpi{} that produced the core values is still intact at the moment peeling finishes.
