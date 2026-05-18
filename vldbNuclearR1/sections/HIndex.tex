@@ -77,7 +77,7 @@ $C[0,\ldots,h[v]]\gets0$ \tcp*{threshold witness counts}
 
 Algorithm~\ref{alg:refresh} zeroes the local threshold-count array up to $h[v]$ (Line~1), accumulates the per-threshold witness count $W_v(\TPath,h,k)$ into $C[k]$ for every path through $v$ using the closed form of Lemma~\ref{lem:per-path-witness} (Lines~2-4), and returns the largest $k$ at which $C[k]\ge k$ by scanning $C$ from $h[v]$ downward (Lines~5-7); otherwise it returns $0$.
 %
-The pseudocode is shown in its semantic form for clarity; the implementation never materialises a dense $C[0,\ldots,h[v]]$ array (which would be infeasible when $h[v]$ approaches $\sdeg(v)$, easily $10^{10}$+ on dense graphs) but instead replaces the inner $k$-loop with a single pass per scanned path that sorts the path's vertex values once and computes $W_v(\TPath,h,\cdot)$ at every threshold via prefix sums, yielding $O\bigl((\sum_{\TPath\ni v}|\Vh(\TPath)|+|\Vp(\TPath)|)\log d_{\max}\bigr)$ work per call, where $d_{\max}=\max_{\TPath}(|\Vh(\TPath)|+|\Vp(\TPath)|)$.
+The pseudocode is shown in its semantic form for clarity; the implementation never materialises a dense $C[0,\ldots,h[v]]$ array (which would be infeasible when $h[v]$ approaches $\sdeg(v)$, easily $10^{10}$+ on dense graphs) but instead replaces the inner $k$-loop with a single pass per scanned path that sorts the path's vertex values once and computes $W_v(\TPath,h,\cdot)$ at every threshold via prefix sums.  Let $W_v=\sum_{\TPath\ni v}(|\Vh(\TPath)|+|\Vp(\TPath)|)$ denote the total incidence weight at $v$ and $L_{\max}=\max_{\TPath}(|\Vh(\TPath)|+|\Vp(\TPath)|)$ the maximum path size.  Per-call cost is $O(W_v\log L_{\max})$.
 %
 The call reads the static \cpi{} and the vector $h$, and it mutates no path.
 
@@ -149,18 +149,11 @@ Hence $h^\star[v]=\kappa_s(v)$.
 \end{proof}
 
 \begin{theorem}[\spin{} Complexity]\label{thm:localh-complexity}
-Algorithm~\ref{alg:localH} computes $\kappa_s$ in $O(T\cdot\Sig\cdot\log d_{\max})$ work, where $T\le n+1$ is the number of passes (Lemma~\ref{lem:hindex-fixed-point}).
+Algorithm~\ref{alg:localH} computes $\kappa_s$ in $O(T\cdot\Sig\cdot L_{\max}\cdot\log L_{\max})$ work, where $T\le n+1$ is the number of passes (Lemma~\ref{lem:hindex-fixed-point}) and $L_{\max}=\max_{\TPath}(|\Vh(\TPath)|+|\Vp(\TPath)|)$ is the maximum path size.
 \end{theorem}
 
 \begin{proof}
-Each pass calls $\vertexSupport(v,h)$ for every vertex $v$.
-%
-The cost of one call is $O(\deg_{\Sig}(v)\log\deg_{\Sig}(v))$.
-%
-Summing over vertices gives $O(\Sig\log d_{\max})$ work per pass.
-%
-Lemma~\ref{lem:hindex-fixed-point} bounds the number of passes.
-%
+Each pass calls $\vertexSupport(v,h)$ for every $v\in V$ at per-call cost $O(W_v\log L_{\max})$ (Section~\ref{sec:refresh}), where $W_v=\sum_{\TPath\ni v}|\TPath|$.  Summing, $\sum_v W_v=\sum_{\TPath}|\TPath|^2\le L_{\max}\cdot\Sig$, so a pass costs $O(\Sig\cdot L_{\max}\cdot\log L_{\max})$.  Lemma~\ref{lem:hindex-fixed-point} bounds the number of passes by $n+1$.
 \qed
 \end{proof}
 
