@@ -73,28 +73,18 @@ Because \cbnd{} edits the \cpi{} during peeling, its $s$-clique witnesses are go
 The natural workaround --- the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- maintains one disjoint-set forest per core level during the peel and exceeds the available $503$ GB on \texttt{wiki-Talk} at $s\!\ge\!9$ where our pipeline finishes (Figure~\ref{fig:hier}); even where it fits, it uses up to $43\times$ more memory (gmean $13\times$ over $24$ matched cells) than emitting the same hierarchy from a preserved \cpi{}.
 
 \stitle{Our Solution and Contributions.}
-For $(1,s)$-nucleus decomposition we show that vertex peeling preserves the \cpi{} structure: a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel, and a path's only dynamic state is an integer counter of how many of its pivots remain.
-%
-This invariant turns exact decomposition into counter arithmetic over a static incidence layout, which unlocks an incremental peel schedule and a parallel builder.
+For $(1,s)$-nucleus decomposition we exploit a static-\cpi{} invariant (Theorem~\ref{thm:vertex-removal}) to deliver a single pipeline that addresses all four challenges above.
 
 \sstitle{Static-\cpi{} invariant for $(1,s)$.}
-We prove that vertex peeling never rewrites the stored hold or pivot sets (Theorem~\ref{thm:vertex-removal}) and give a closed-form expression for the support loss caused by each path event (Lemma~\ref{lem:support-delta}).
-%
-The dynamic state of a path collapses to a liveness bit and a single integer counter; we realize this counter-only peel as \spinStar{} (Algorithm~\ref{alg:peelH}), which replaces \cbnd{}'s mutable residual structures with a read-only static index and drops per-incidence space from $\approx 88\Sig$ bytes to $\approx 8\Sig$ bytes (Table~\ref{tab:mem}).
+We prove that vertex peeling preserves every \cpi{} path (Theorem~\ref{thm:vertex-removal}) and realize the resulting counter-only peel as \spinStar{} (Algorithm~\ref{alg:peelH}), which drops per-incidence space from $\approx 88\Sig$ bytes to $\approx 8\Sig$ bytes (Table~\ref{tab:mem}).
 %
 On $307$ matched cells, \spinStar{} achieves a $13.50\times$ geometric-mean peel-time speedup and a $1.55\times$ geometric-mean memory reduction over \cbnd{}, and on a billion-scale graph \spinStar{} decomposes the full $s$ sweep while \cbnd{} OOMs for every $s\ge3$.
 
-\sstitle{Parallel static-\cpi{} construction.}
-Because the static-\cpi{} output is invariant under the order in which seed vertices are processed and contains no mutable shared state, seed enumeration partitions into independent subproblems.
-%
-\paraBuild{} (Algorithm~\ref{alg:parabuild}) constructs the index by running these subproblems in parallel and combining their outputs by a deterministic merge whose result does not depend on the schedule; the empirical scaling reaches $23.4\times$ at $T{=}24$ threads.
+\sstitle{Parallel \cpi{} construction.}
+\paraBuild{} (Algorithm~\ref{alg:parabuild}) parallelises \cpi{} construction across seed vertices, removing the construction bottleneck at $r=1$; empirical scaling reaches $23.4\times$ at $T{=}24$ threads.
 
 \sstitle{Core-value hierarchy from the static \cpi{}.}
-Because vertex peeling never rewrites paths --- the path set, the hold sets, and the pivot sets are all preserved --- the \cpi{} that produced the core values is still intact at the moment peeling finishes.
-%
-We exploit this to run hierarchy emission as a strict post-processing pass: \buildHier{} (Algorithm~\ref{alg:buildhier}) consumes the unchanged \cpi{} and the core-value vector from \spinStar{}, generates a short list of merge events per leaf that tracks the levels at which its encoded $s$-cliques become alive, and recovers the $s$-clique-connected super-level join tree by a single descending union--find scan over those events in $O(\Sig\log\Sig)$ time, without re-enumerating a single $s$-clique.
-%
-The two-stage pipeline (peel then emit) is not available to the mutable baseline, which has already destroyed the path structure by the end of peeling and must rebuild it --- or carry redundant per-level union--find forests --- to produce the same hierarchy.
+\buildHier{} (Algorithm~\ref{alg:buildhier}) emits the $s$-clique-connected super-level join tree from the preserved \cpi{} in $O(\Sig\log\Sig)$ time without re-enumerating any $s$-clique, using up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) than the level-DSU baseline.
 
 \sstitle{Comprehensive experimental evaluation.}
 We compare against \cbnd{} on ten real-world graphs ($307$ matched configurations, headline peel speedup $13.50\times$ gmean / $44.76\times$ max, memory-usage ratio $1.55\times$ gmean), report phase behaviour and parallel construction, push the pipeline to a billion-scale graph (where \cbnd{} only completes at $s{=}2$), and use case studies to evaluate whether the $r=1$ specialization is practically useful.
