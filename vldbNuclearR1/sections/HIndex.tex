@@ -283,6 +283,8 @@ The total time is therefore $O(\Sig+U+n)$.
 
 The mutable baseline pays heap and residual-index maintenance costs on the same logical peel events.
 %
+Figure~\ref{fig:peel} traces \spinStar{} on the running example: each row records one pop, and each cell marks the case (hold death, pivot shrink, or pivot-to-death) that the popped vertex triggers on the path indicated by the column header.
+%
 The experiments in Section~\ref{sec:exp} measure the impact of replacing those operations with static path counters.
 
 \begin{figure}[t]
