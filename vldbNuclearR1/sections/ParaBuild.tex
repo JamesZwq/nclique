@@ -23,53 +23,41 @@ The mutable baseline builds residual tree state because later peeling may edit t
 %
 Our $r=1$ pipeline never edits the stored hold or pivot sets.
 %
-The builder therefore only has to emit a path list and vertex--path incidence arrays.
-%
-This output can be accumulated in thread-local arenas and merged after all seeds finish.
+The builder therefore only has to emit the path set $\mathcal{P}$; no per-path mutation contract has to be maintained across the parallel boundary.
 
-\stitle{Thread-local construction.}
-\paraBuild{} takes $G$, $s$, and a thread count.
+\stitle{Independent per-thread enumeration.}
+\paraBuild{} takes $G$, $s$, and a thread count $T$.
 %
-Each worker owns a contiguous seed range, a local path arena, and a generation-stamped membership bitmap.
+Each thread owns a contiguous range of seed vertices and runs the same seed-rooted enumeration as the sequential builder on each of its seeds, accumulating the emitted paths into its own output set $\mathcal{P}_t$.
 %
-This ownership is enough because seed ranges partition the emitted clique families.
+Because the degeneracy ordering gives every $s$-clique a unique smallest-rank owner, the sets $\{\mathcal{P}_t\}_t$ are pairwise disjoint, so the parallel output is the disjoint union $\mathcal{P}=\bigcup_t\mathcal{P}_t$ and the merge is purely the set union --- no synchronisation across threads is needed during enumeration, and no path needs to be deduplicated or rewritten after enumeration.
 %
-While a worker processes its seeds, it writes only to its own arena.
-%
-After all workers finish, a deterministic merge concatenates the arenas and builds the shared incidence CSR.
-%
-The expensive work is still the Bron--Kerbosch search under the seeds; the merge is linear in the emitted incidences.
+The expensive work is the Bron--Kerbosch search under each seed; the merge contributes no per-path arithmetic.
 
 \begin{algorithm}[t]
 \algfontsize
-\caption{\paraBuild{} --- parallel \cpi{} construction via per-thread path buffers.}
+\caption{\paraBuild{} --- parallel \cpi{} construction.}
 \label{alg:parabuild}
-\KwIn{Graph $G$ in CSR; clique size $s$; thread count $T$.}
-\KwOut{Static \cpi{} $\mathcal{P}$ in shared CSR.}
+\KwIn{Graph $G=(V,E)$; clique size $s$; thread count $T$.}
+\KwOut{Static \cpi{} $\mathcal{P}$.}
 
-compute degeneracy ordering $\sigma$ on $G$\;
-launch $T$ threads and assign each thread $t$ a contiguous chunk $\sigma_t$ of seed vertices\;
+compute degeneracy ordering $\sigma$ on $G$ and orient every edge from lower to higher rank\;
+partition the seed sequence $(v_1,\ldots,v_n)$ into $T$ contiguous chunks $\sigma_1,\ldots,\sigma_T$\;
 \ForEach{thread $t\in\{1,\ldots,T\}$ \emph{in parallel}}{
-    $A_t\gets\emptyset$ \tcp*{thread-local path arena}
-    $b_t\gets$ generation-stamped bitmap over $V$\;
+    $\mathcal{P}_t\gets\emptyset$\;
     \ForEach{seed vertex $v\in\sigma_t$}{
-        increment generation of $b_t$\;
-        $N^+\gets\{u\in N_G(v)\mid \sigma(u)>\sigma(v)\}$\;
-        \textsc{BkEmit}$(v,N^+,A_t,b_t)$ \tcp*{pivoted BK on $G[N^+]$, with $v$ as a hold}
+        $\mathcal{P}_t\gets\mathcal{P}_t\,\cup\,\textsc{ExpandPath}(N^{+}(v),\{v\},\emptyset)$ \tcp*{Algorithm~\ref{alg:buildcpi}, seed $v$}
     }
 }
-$\mathcal{P}\gets$ deterministic concat-and-prefix-sum merge of $\{A_t\}_{t=1}^T$\;
-build incidence CSR over $\mathcal{P}$ in parallel\;
+$\mathcal{P}\gets\bigcup_{t=1}^T\mathcal{P}_t$\;
 \Return{$\mathcal{P}$}
 \end{algorithm}
 
-Algorithm~\ref{alg:parabuild} computes the degeneracy ordering $\sigma$ on $G$ (Line~1) and partitions the seed range into $T$ contiguous chunks (Line~2).
+Algorithm~\ref{alg:parabuild} runs the same seed-rooted \textsc{ExpandPath} enumeration as Algorithm~\ref{alg:buildcpi}, but partitions the $n$ seed vertices into $T$ contiguous chunks (Line~2) and processes each chunk in its own thread (Lines~3--7).
 %
-Each thread allocates a private path arena and a generation-stamped membership bitmap (Lines~4-5), then walks its seed range (Lines~6-9): for every seed $v$ it increments the bitmap generation (Line~7), restricts the neighbourhood to vertices later in $\sigma$ (Line~8), and runs the pivot-aware enumeration \textsc{BkEmit} streaming each emitted path into the thread-local arena (Line~9).
+Because every $s$-clique has a unique smallest-rank owner under $\sigma$, the chunks induce a partition of $\mathcal{P}$: each path is emitted by exactly one thread, so the per-thread outputs $\mathcal{P}_t$ are pairwise disjoint and their union $\bigcup_t\mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially (Line~8).
 %
-After all threads finish, a deterministic concat-and-prefix-sum merge concatenates the arenas (Line~10) and builds the shared incidence CSR in parallel (Line~11); the final static \cpi{} is returned (Line~12).
-%
-\textsc{BkEmit} is the per-seed pivot-aware enumeration used by the CPI construction lineage~\cite{Pivoter,NuclearCD}; structurally it is Algorithm~\ref{alg:buildcpi}'s \textsc{ExpandPath} subroutine restricted to a single seed and writing into the thread-local arena $A_t$ instead of storing a mutable recursion tree for later residual updates.
+The choice of $T$, the partition of seeds, and the in-memory layout used to store $\mathcal{P}$ are implementation knobs; they affect throughput but not the output set.
 
 \stitle{Correctness.}
 \paraBuild{} is a parallel schedule of the same seed-owned enumeration.
