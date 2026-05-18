@@ -22,14 +22,15 @@ import matplotlib.pyplot as plt
 OUT      = Path(__file__).parent
 DATA_CSV = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data/bench_r1_hierarchy.csv")
 
-# Six representative graphs, smallest to largest by edge count.
+# Six representative graphs, smallest to largest by edge count:
+# 0.93M / 1.05M / 1.99M / 2.99M / 7.18M / 22.3M.
 GRAPHS = [
     ("com-amazon.ungraph",      "com-amazon"),
     ("com-dblp",                "com-dblp"),
-    ("com-youtube",             "com-youtube"),
     ("web-Stanford",            "web-Stanford"),
-    ("soc-pokec-relationships", "soc-pokec"),
+    ("com-youtube",             "com-youtube"),
     ("web-it-2004",             "web-it-2004"),
+    ("soc-pokec-relationships", "soc-pokec"),
 ]
 S_VALUES = [3, 5, 7, 9, 11, 13, 15]
 
