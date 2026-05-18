@@ -63,7 +63,7 @@ The residual structures that \cbnd{} must keep mutable in the general $(r,s)$ se
 The geometric-mean memory ratio \cbnd{}/\spinStar{} is $1.55\times$ on the matched cells and $3.92\times$ at maximum; on a billion-scale graph \cbnd{} completes only at $s{=}2$ (using $400$\,GB of $503$\,GB) and exceeds the budget for every $s\ge3$, while \spinStar{} finishes the full $s$ sweep.
 
 \sstitle{Construction as the residual bottleneck.}
-Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} (our highest CPI-build-cost benchmark) at $s=3$, construction takes about $127$ seconds and peeling takes $351$ milliseconds, so the static index builder dominates total runtime by $360\times$ on this configuration.
+Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} (our highest CPI-build-cost benchmark) at $s=3$, construction takes about $137$ seconds and peeling takes about $59$ milliseconds, so the static index builder dominates total runtime by more than $2{,}000\times$ on this configuration.
 %
 Without a parallel builder, the end-to-end speedup over \cbnd{} stays at $1.10\times$ on the matched cells even though the peel-time speedup is $13.50\times$.
 
