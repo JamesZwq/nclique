@@ -98,9 +98,11 @@ We formulate \spin{} as the direct threshold-support iteration on \cpi{} witness
 \spinStar{} delivers a $30.4\times$ geometric-mean peel-time speedup over \spin{} on $272$ matched cells.
 
 \sstitle{Core-value hierarchy from the static \cpi{}.}
-After peeling, each \cpi{} leaf can be treated as a hyperedge born at the minimum core value among its stored vertices.
+Because vertex peeling never rewrites paths --- the recursion tree, hold sets, and pivot sets are all preserved --- the \cpi{} that produced the core values is still intact at the moment peeling finishes.
 %
-A descending union--find scan over the leaves recovers the $s$-clique-connected super-level join tree in $O(\Sig\log\Sig)$ time without re-enumerating $s$-cliques (Algorithm~\ref{alg:buildhier}); the hierarchy is a byproduct of preserving the \cpi{} rather than a separate decomposition problem.
+We exploit this to run hierarchy emission as a strict post-processing pass: \buildHier{} (Algorithm~\ref{alg:buildhier}) consumes the unchanged \cpi{} and the core-value vector from \spinStar{}, then performs a single descending union--find scan over the leaves to recover the $s$-clique-connected super-level join tree in $O(\Sig\log\Sig)$ time, without re-enumerating a single $s$-clique.
+%
+The two-stage pipeline (peel then emit) is not available to the mutable baseline, which has already destroyed the path structure by the end of peeling and must rebuild it --- or carry redundant per-level union--find forests --- to produce the same hierarchy.
 
 \sstitle{Comprehensive experimental evaluation.}
 We compare against \cbnd{} on ten real-world graphs ($307$ matched configurations, headline peel speedup $13.50\times$ gmean / $44.76\times$ max, memory-usage ratio $1.55\times$ gmean), report phase behaviour and parallel construction, push the pipeline to a billion-scale graph (where \cbnd{} only completes at $s{=}2$), and use case studies to evaluate whether the $r=1$ specialization is practically useful.
