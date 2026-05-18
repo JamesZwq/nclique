@@ -102,9 +102,9 @@ Edge- and triangle-level nuclei sit between $(1,s)$ and explicit clique enumerat
 %
 Fixing $s$ and comparing $r\in\{1,2,3\}$ across \texttt{com-dblp} ($s{=}10$) and \texttt{com-youtube} ($s\in\{5,10,15\}$), Figure~\ref{fig:crossr} shows the answer at a glance: within each cell the three quality bars are nearly equal heights (left panel), while the time bars span $1$--$3$ orders of magnitude (right panel, log scale).
 %
-On \texttt{com-dblp} at $s{=}10$, $(1,10)$ and $(3,10)$ agree on rec50 ($114$ vs.\ $114$) while $r{=}1$ is $178\times$ faster ($13$\,ms vs.\ $2380$\,ms); on \texttt{com-youtube} the same pattern repeats for every $s$, with $r{=}1$ within $5$ rec50 points of $r{=}3$ (at $s{=}5$: $283$ vs.\ $288$; at $s{=}10$ and $s{=}15$: identical) and between $9.8\times$ and $68\times$ faster than $r{=}3$ (and $6.2$--$10.3\times$ faster than $r{=}2$).
+On \texttt{com-dblp} at $s{=}10$, $(1,10)$ and $(3,10)$ agree on rec50 ($114$ vs.\ $114$) while $r{=}1$ is $178\times$ faster ($13.4$\,ms vs.\ $2380$\,ms); on \texttt{com-youtube} the same pattern repeats for every $s$, with $r{=}1$ within $5$ rec50 points of $r{=}3$ (at $s{=}5$: $283$ vs.\ $288$; at $s{=}10$ and $s{=}15$: identical) and between $9.8\times$ and $68\times$ faster than $r{=}3$ (and $6.2$--$10.3\times$ faster than $r{=}2$).
 %
-$r{=}1$ therefore dominates $r\in\{2,3\}$ on the quality--runtime tradeoff for vertex ranking on these graphs; this does not prove higher $r$ is never useful, only that increasing $r$ here mostly adds cost.\footnote{At \texttt{com-youtube} $s{=}15$ the active set has $95$ vertices, below the smallest SNAP community size, so rec50 is zero for every method.}
+$r{=}1$ therefore gives the best observed quality--runtime tradeoff for vertex ranking on these graphs; this does not prove higher $r$ is never useful, only that increasing $r$ here mostly adds cost.\footnote{At \texttt{com-youtube} $s{=}15$ the active set has $95$ vertices, below the smallest SNAP community size, so rec50 is zero for every method.}
 
 \begin{figure}[t]
 \centering
@@ -119,7 +119,13 @@ The previous studies use global rankings.
 %
 The ego-network visualisation tests whether the same $s$ knob also controls local interpretability.
 %
-Figure~\ref{fig:cs9} draws the two-hop ego-network of a \texttt{com-dblp} anchor on a shared spring layout under four successive $(1,s)$-nuclei ($s=3,5,7,10$).  A vertex of the ego is considered alive at $s$ iff it participates in at least one $s$-clique entirely within the ego subgraph, so every alive vertex at $s$ sits in a real $K_s$ of the local $(1,s)$-nucleus.  The four largest maximal cliques fully contained in the ego ($K_{31}, K_{25}, K_{19}, K_{18}$) are highlighted in colour with callouts.
+Figure~\ref{fig:cs9} draws the two-hop ego-network of a \texttt{com-dblp} anchor on a shared spring layout under four successive local $s$-clique witness views ($s=3,5,7,10$).
+%
+A vertex of the ego is shown alive at $s$ iff it participates in at least one $s$-clique entirely within the ego subgraph.
+%
+This local view visualizes the clique witness condition that drives $(1,s)$-nucleus decomposition; it is not used as a separate correctness claim.
+%
+The four largest maximal cliques fully contained in the ego ($K_{31}, K_{25}, K_{19}, K_{18}$) are highlighted in colour with callouts.
 
 These four cliques are alive at every $s$ in $\{3,5,7,10\}$ (their sizes are all at least $10$), so they form a backbone that persists across all four panels.
 %
@@ -132,7 +138,7 @@ The ego thus distils from a coauthor neighbourhood into a few large, tightly-coo
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/cs9_egonet.pdf}
-\caption{Same ego-network under four locally-restricted $(1,s)$-nuclei ($s=3,5,7,10$) on a shared spring layout. The four largest maximal cliques fully contained in the ego ($K_{31}, K_{25}, K_{19}, K_{18}$) form a backbone visible in every panel. As $s$ grows the surrounding alive periphery shrinks from $1356 \rightarrow 721 \rightarrow 370 \rightarrow 165$ out of $1452$, while the backbone cliques themselves remain intact --- the local $(1,s)$-nucleus distils a loose coauthor neighbourhood into a few tight coauthor communities.}
+\caption{Same ego-network under four local $s$-clique witness views ($s=3,5,7,10$) on a shared spring layout. The four largest maximal cliques fully contained in the ego ($K_{31}, K_{25}, K_{19}, K_{18}$) form a backbone visible in every panel. As $s$ grows the surrounding alive periphery shrinks from $1356 \rightarrow 721 \rightarrow 370 \rightarrow 165$ out of $1452$, while the backbone cliques themselves remain intact.}
 \Description{Four ego-network panels for the same com-dblp anchor on a shared spring layout. The K_31, K_25, K_19, and K_18 maximal cliques are highlighted in distinct colors with callout labels in every panel. As s grows from 3 to 5 to 7 to 10, peeled (light gray) vertices grow from 96 to 731 to 1082 to 1287 out of 1452, while the highlighted backbone cliques remain visible throughout.}
 \label{fig:cs9}
 \end{figure*}
@@ -173,7 +179,7 @@ graph & br. & int. & d & br. & int. & d & br. & int. & d & br. & int. & d \\
 %
 Figure~\ref{fig:cs10} makes the contrast visual at $s=5$ by plotting branch persistence ($k_{\mathrm{birth}}-k_{\mathrm{death}}$) against the rank of each branch when sorted by persistence (log--log).
 %
-\texttt{com-dblp}'s curve is a long flat tail: thousands of branches retain persistence above $10^2$, the signature of a deep nested hierarchy.
+\texttt{com-dblp}'s curve is a long flat tail: hundreds of branches retain persistence above $10^2$ and thousands above $10^1$, the signature of a deep nested hierarchy.
 %
 \texttt{com-youtube}'s curve drops sharply after the first few ranks and plateaus near persistence $1$, showing that only a handful of branches carry real depth.
 %
@@ -192,4 +198,6 @@ It gives a domain-level fingerprint of clique-witness nesting.
 \end{figure}
 
 \stitle{Takeaway.}\label{sec:cs-summary}
-On the DBLP and YouTube ground-truth tasks, $r=1$ matches higher-$r$ quality metrics at much lower cost; the hierarchy and ego-network studies show the same decomposition also yields interpretable local structure and a per-domain fingerprint. The evidence is scoped to these datasets and metrics rather than a universal claim, but it is enough to justify optimising the exact $r=1$ case.
+On the DBLP and YouTube ground-truth tasks, $r=1$ matches higher-$r$ quality metrics at much lower cost; the hierarchy and ego-network studies show the same decomposition also yields interpretable local structure and a per-domain fingerprint.
+%
+The evidence is scoped to these datasets and metrics rather than a universal claim, but it is enough to justify optimising the exact $r=1$ case.

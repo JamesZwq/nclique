@@ -27,11 +27,13 @@
 % Comparison baseline (general (r,s)-nucleus decomposition restricted to r=1)
 \newcommand{\cbnd}{\kw{CND}}
 
-% --- path notation (CPI paths denoted by \TPath, takes optional subscript) ---
+% --- path notation: single CPI path denoted by \TPath (italic P), optional subscript ---
+% Plain italic P (not \mathcal{P}) so a single path differs visibly from
+% the CPI set \mathcal{P} used in sums like \sum_{\TPath\in\mathcal{P}}.
 \makeatletter
 \def\TPath{\@ifnextchar\bgroup{\TPathWithArg}{\TPathNoArg}}
-\def\TPathWithArg#1{\mathcal{P}_{#1}}
-\def\TPathNoArg{\mathcal{P}}
+\def\TPathWithArg#1{P_{#1}}
+\def\TPathNoArg{P}
 \makeatother
 
 % V_h / V_p as standalone subscript symbols; written inline as V_h(\TPath)

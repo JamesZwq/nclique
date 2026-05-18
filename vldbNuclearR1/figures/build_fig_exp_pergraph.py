@@ -25,7 +25,7 @@ from collections import defaultdict
 from pathlib import Path
 
 OUT  = Path(__file__).parent
-CSV  = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data/01_main_benchmark_all_graphs.csv")
+CSV  = Path("/Users/zhangwenqian/UNSW/pivoter/paper_data/01_main_benchmark_v3.csv")
 
 # Graph display order + short labels (Nuclear-CD-style abbreviations).
 GRAPH_ORDER = [
@@ -42,14 +42,15 @@ GRAPH_ORDER = [
 ]
 
 ALGOS = [
-    ("Ours_ST", "Ours",  "#1f3a8a", "-",  "o", 1.4),
-    ("REF_R1",  "SOTA",  "#c0392b", "--", "s", 1.2),
+    # csv-key,  paper-label,                  colour,   linestyle, marker, lw
+    ("Pure",    r"SPIN$^{\star}$",            "#1f3a8a", "-",  "o", 1.4),
+    ("REF_R1",  r"CND",                       "#c0392b", "--", "s", 1.2),
 ]
 
 
 def load_data():
-    """Returns {(graph, algo): [(s, time_ms, mem_kb), ...] sorted}."""
-    data = defaultdict(list)
+    """Returns {(graph, algo): [(s, time_ms, mem_kb), ...] sorted (median per s)}."""
+    raw = defaultdict(lambda: defaultdict(list))
     if not CSV.exists():
         raise SystemExit(f"missing CSV: {CSV}")
     with CSV.open() as f:
@@ -58,13 +59,21 @@ def load_data():
             if r.get("status") != "OK":   continue
             try:
                 s   = int(r["s"])
-                t   = float(r["time_ms"])
-                m   = float(r["memory_kB"])
+                # End-to-end time = wall_ms (the whole program: load, sort,
+                # build, peel, output).  This is what the prose's "end-to-end"
+                # claim refers to.
+                t   = float(r["wall_ms"])
+                m   = float(r["time_max_rss_kB"])
             except (ValueError, KeyError):
                 continue
-            data[(r["graph"], r["algorithm"])].append((s, t, m))
-    for k in data:
-        data[k].sort()
+            raw[(r["graph"], r["algorithm"])][s].append((t, m))
+    data = defaultdict(list)
+    import statistics
+    for key, per_s in raw.items():
+        for s in sorted(per_s):
+            ts = [x[0] for x in per_s[s]]
+            ms = [x[1] for x in per_s[s]]
+            data[key].append((s, statistics.median(ts), statistics.median(ms)))
     return data
 
 

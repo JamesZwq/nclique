@@ -27,7 +27,7 @@ A single peel of vertex $v$ costs:
 \begin{itemize}[leftmargin=1.5em,itemsep=1pt,topsep=2pt]
 \item a reverse-map lookup of $v$'s path list, then for every such path $\TPath$ a constant-time hash-set query to determine whether $v$ is a hold or a pivot;
 \item a path rewrite: if $v$ is a hold, the path is deleted from the recursion tree and its reverse-map entries for all other vertices in $\Vh(\TPath)\cup\Vp(\TPath)$ are erased; if $v$ is a pivot, the path's pivot set shrinks by one and the reverse-map entry for $v$ on this path is erased;
-\item a support recompute for every path-mate $u$ using a freshly enumerated set of $s$-cliques that survive the rewrite, followed by a decrease-key on $u$ in the heap.
+\item a support recompute for every path-mate $u$ using the encoded $s$-clique family that survives the rewrite, followed by a decrease-key on $u$ in the heap.
 \end{itemize}
 The dominant components are the path rewrites and the reverse-map erases; together they scale with the number of vertex--path incidences touched by the event, which is what gives \cbnd{} its observed cost profile.
 

@@ -99,9 +99,9 @@ def plot_combined(out_pdf):
 
     handles, labels = axes[0][0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=len(RATIO_COLORS),
-               fontsize=9, frameon=False, bbox_to_anchor=(0.5, 1.03),
+               fontsize=9, frameon=False, bbox_to_anchor=(0.5, 1.08),
                title="vertex sample ratio", title_fontsize=9)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout(rect=[0, 0, 1, 0.92])
     fig.savefig(out_pdf, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out_pdf}")

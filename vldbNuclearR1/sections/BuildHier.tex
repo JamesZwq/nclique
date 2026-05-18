@@ -1,6 +1,8 @@
 \section{Core-Value Hierarchy Construction}\label{sec:buildhier}
 
-Because the static-\cpi{} invariant of Section~\ref{sec:static} keeps every leaf intact through peeling, the hierarchy is no longer a separate decomposition problem: every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel, so the elder-rule join tree of Definition~\ref{def:nucleus} can be emitted by a single descending union--find scan over the preserved leaves, in $O(\Sig\log\Sig)$ time, without re-enumerating a single clique.
+Because the static-\cpi{} invariant of Section~\ref{sec:static} keeps every leaf intact through peeling, the hierarchy is no longer a separate decomposition problem.
+%
+After the core values are known, every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel, so the elder-rule join tree of Definition~\ref{def:nucleus} can be emitted by a single descending union--find scan over the preserved leaves, in $O(\Sig\log\Sig)$ time, without re-enumerating a single clique.
 %
 Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose: they must either re-run $s$-clique enumeration at each level or maintain one parallel disjoint-set forest per core level during peeling, which blows up memory by an order of magnitude (Section~\ref{sec:exp}, Figure~\ref{fig:hier}).
 %
@@ -35,12 +37,11 @@ Vertices not appearing in any leaf with $k_P\ge1$ have $\kappa_s(v)=0$ and are o
 
 \begin{algorithm}[t]
 \algfontsize
-\caption{\buildHier{} --- elder-rule join tree atop \spinStar{}.}
+\caption{\buildHier{} --- elder-rule join tree from a static \cpi{}.}
 \label{alg:buildhier}
-\KwIn{Graph $G$, clique size $s$, \cpi{} $\mathcal{P}$.}
+\KwIn{Static \cpi{} $\mathcal{P}$; core values $\kappa_s(v)$ for every $v\in V$.}
 \KwOut{Elder-rule join tree $T$ of the $s$-clique-connected super-level filtration.}
 
-$\kappa_s \gets \spinStar{}(G, s, \mathcal{P})$ \tcp*{Algorithm~\ref{alg:peelH}}
 \ForEach{leaf $P\in\mathcal{P}$}{
     $k_P \gets \min\{\kappa_s(v)\mid v\in\Vh(P)\cup\Vp(P)\}$\;
 }
@@ -65,11 +66,11 @@ $T\gets$ empty forest\;
 \Return{$T$}
 \end{algorithm}
 
-Algorithm~\ref{alg:buildhier} first invokes \spinStar{} to compute the core values (Line~1), then assigns each leaf its birth level $k_P$ as the minimum core value among its hold and pivot vertices (Lines~2-3).
+Algorithm~\ref{alg:buildhier} assumes the peel has already produced the core values, then assigns each leaf its birth level $k_P$ as the minimum core value among its hold and pivot vertices (Lines~1-2).
 %
-Leaves are sorted by nonincreasing $k_P$ (Line~4) so they fire in descending peel order, and the union--find structure is initialised over both vertices and leaf identifiers with all roots born at $+\infty$ (Line~5).
+Leaves are sorted by nonincreasing $k_P$ (Line~3) so they fire in descending peel order, and the union--find structure is initialised over both vertices and leaf identifiers with all roots born at $+\infty$ (Line~4).
 %
-For each leaf $P$ in sorted order (Lines~7-13), the algorithm collects the current root set $R$ of every vertex in $P$ together with the leaf itself (Line~8), emits a fresh hierarchy node for any root that has not been born yet (Lines~9-11), applies the elder rule when $|R|\ge2$ by selecting the earliest-born root $r^\star$ and attaching the others as its children at level $k_P$ (Lines~12-14), and finally unifies all roots into a single component (Line~15).
+For each leaf $P$ in sorted order (Lines~6-12), the algorithm collects the current root set $R$ of every vertex in $P$ together with the leaf itself (Line~7), emits a fresh hierarchy node for any root that has not been born yet (Lines~8-10), applies the elder rule when $|R|\ge2$ by selecting the earliest-born root $r^\star$ and attaching the others as its children at level $k_P$ (Lines~11-13), and finally unifies all roots into a single component (Line~14).
 %
 The returned forest $T$ is the elder-rule join tree.
 
