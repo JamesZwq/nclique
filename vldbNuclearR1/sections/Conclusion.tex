@@ -1,8 +1,8 @@
 \section{Conclusion}\label{sec:conclusion}
 
-For $(1,s)$-nucleus decomposition, vertex peeling never deletes edges, so the path structure of the \cpi{} stays valid throughout the peel and exact decomposition reduces to counter maintenance over a static symbolic index.
+For $(1,s)$-nucleus decomposition, vertex peeling preserves every edge among surviving vertices, so the path structure of the \cpi{} stays valid throughout the peel and exact decomposition reduces to counter maintenance over a static symbolic index.
 %
-\spin{} states this fixed point, \spinStar{} realises it in deletion order, \paraBuild{} parallelises the construction that is now the bottleneck, and \buildHier{} recovers the nucleus hierarchy from the static index.
+\spinStar{} realises this fixed point in deletion order, \paraBuild{} parallelises the construction that is now the bottleneck, and \buildHier{} recovers the nucleus hierarchy from the static index.
 %
 The matched configurations agree with the mutable baseline while reducing runtime and memory on the evaluated benchmarks, and the case studies show that vertex-centric $(1,s)$ matches higher-$r$ quality metrics on community tasks at a fraction of the cost.
 %

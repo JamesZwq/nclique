@@ -58,7 +58,7 @@ Theorem~\ref{thm:vertex-removal} leaves only cardinality changes.
 The support lost by any other live vertex on the path is therefore a binomial difference.
 
 \begin{lemma}[Support Loss for a Path Event]\label{lem:support-delta}
-Let $\TPath$ be a live path with $p\ge\eta$ before an event that removes $d\ge1$ live pivots from $\TPath$.
+Let $\TPath$ be a live path with pivot count $p=|\Vp(\TPath)|\ge\eta$, where $\eta=\eta_{\TPath}$ is the pivot requirement, and let an event remove $d\ge1$ live pivots from $\TPath$.
 %
 For every other alive vertex $u$ incident to $\TPath$:
 \begin{align*}
