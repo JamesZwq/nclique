@@ -114,11 +114,32 @@ def load_spin_csv():
 
 
 def load_data():
-    """Returns {(graph, internal-key): [(s, time_ms, mem_kb), ...] sorted}."""
-    raw = load_main_csv()
-    for key, per_s in load_spin_csv().items():
-        for s, vals in per_s.items():
-            raw[key][s].extend(vals)
+    """Returns {(graph, internal-key): [(s, time_ms, mem_kb), ...] sorted}.
+
+    Clips SPIN to <= max(s) of SPIN-star on the same graph: the SPIN bench
+    was swept to higher s on web-it-2004 (s up to 430 vs SPIN-star's 56)
+    purely to feed Exp-4's max-speedup claim. Showing that extended tail
+    in the headline Exp-1 figure makes SPIN-star/CND look like they "didn't
+    finish" on the right edge. Cap SPIN to wherever SPIN-star reaches so
+    all three curves stop at the same x.
+    """
+    raw_main = load_main_csv()
+    raw_spin = load_spin_csv()
+    # Per-graph cap = max s where SPIN-star has data.
+    spinstar_max = {}
+    for (g, k), per_s in raw_main.items():
+        if k == "SPIN_STAR":
+            spinstar_max[g] = max(per_s.keys())
+    raw = dict(raw_main)
+    for (g, k), per_s in raw_spin.items():
+        cap = spinstar_max.get(g)
+        if cap is None:
+            # Graph has no SPIN-star coverage; skip SPIN too so the figure
+            # doesn't show a lonely curve.
+            continue
+        filtered = {s: vals for s, vals in per_s.items() if s <= cap}
+        if filtered:
+            raw[(g, k)] = filtered
     data = defaultdict(list)
     for key, per_s in raw.items():
         for s in sorted(per_s):
