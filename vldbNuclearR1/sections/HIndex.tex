@@ -132,6 +132,8 @@ $\mathrm{changed}\gets\textsf{true}$\;
 \Return{$\kappa_s$}
 \end{algorithm}
 
+We next establish that this iteration terminates and that the fixed point it reaches is the $(1,s)$-nucleus core number of Definition~\ref{def:core}.
+
 \begin{lemma}[Fixed Point Correctness]\label{lem:hindex-fixed-point}
 Initialised at $h^{(0)}[v]=\sdeg(v)$, Algorithm~\ref{alg:localH} converges in at most $n+1$ passes to $h[v]=\kappa_s(v)$ for every $v\in V$, and the sequence $h^{(t)}[v]$ is monotonically non-increasing.
 \end{lemma}
@@ -147,6 +149,8 @@ Hence $h^\star[v]=\kappa_s(v)$.
 %
 \qed
 \end{proof}
+
+The cost is the per-pass work (one $\vertexSupport$ call per vertex) times the number of passes:
 
 \begin{theorem}[\spin{} Complexity]\label{thm:localh-complexity}
 Algorithm~\ref{alg:localH} computes $\kappa_s$ in $O(T\cdot\Sig\cdot L_{\max}\cdot\log L_{\max})$ work, where $T\le n+1$ is the number of passes (Lemma~\ref{lem:hindex-fixed-point}) and $L_{\max}$ is the maximum path size (Section~\ref{sec:refresh}).
@@ -233,6 +237,8 @@ The pseudocode writes the affected update as $\vertexSupport$ to keep the fixed-
 %
 Buckets maintain the minimum-$h$ vertex because values only decrease and are bounded by $\kmax$~\cite{coreAlg}.
 
+The schedule is different from \spin{}, but the fixed point it reaches is the same:
+
 \begin{lemma}[\spinStar{} Equivalence]\label{lem:equivalence}
 Algorithm~\ref{alg:peelH} returns the same $\kappa_s$ values as Algorithm~\ref{alg:localH}.
 \end{lemma}
@@ -260,6 +266,8 @@ By Lemma~\ref{lem:hindex-fixed-point}, $\kappa_s$ is also the fixed point reache
 %
 \qed
 \end{proof}
+
+The runtime decomposes into the initialisation, the path-event walk on each peel, and the incremental support-refresh events the walk triggers:
 
 \begin{theorem}[\spinStar{} Complexity]\label{thm:peelh-complexity}
 Algorithm~\ref{alg:peelH} runs in $O(\Sig+U+n)$ time, where $U$ is the total number of incremental support-refresh events over all affected path-mates.
