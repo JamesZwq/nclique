@@ -71,24 +71,26 @@ All three solvers consume the same input edge list and run on the same hardware;
 %
 For each matched $(graph,s)$ pair, we record the end-to-end time (load, degeneracy order, \cpi{} construction, peel, output) and the program's memory usage.
 
-\expsection{end-to-end time and memory}
-Across the ten graphs (Figures~\ref{fig:exp-time}--\ref{fig:exp-mem}), \spinStar{} achieves a peel-time speedup over \cbnd{} of gmean $13.50\times$ / max $44.76\times$, and a memory-usage ratio (\cbnd{}$/$\spinStar{}) of gmean $1.55\times$ / max $3.92\times$.
+\expsection{peel time and memory}
+Across the ten graphs (Figures~\ref{fig:exp-time}--\ref{fig:exp-mem}), \spinStar{} achieves a peel-time speedup over \cbnd{} of gmean $13.50\times$ / max $44.76\times$, and a memory-usage ratio (\cbnd{}$/$\spinStar{}) of gmean $1.55\times$ / max $3.92\times$; \spinStar{} sits below \cbnd{} on every cell of the peel-time plot.
 %
-The end-to-end speedup is smaller (gmean $1.10\times$) because the shared \cpi{} construction phase dominates total runtime once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
+\spin{} (Section~\ref{sec:localh}) is included as the reference fixed-point solver; \spinStar{} beats it as well on all but the easiest cells, with the full comparison in Exp-4 below.
+%
+The end-to-end (wall-clock) gap is smaller (gmean $1.10\times$) because the shared \cpi{} construction phase dominates total runtime once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_exp_time.pdf}
-\caption{End-to-end time across ten graphs.}
-\Description{A grid of log-scale runtime plots over parameter s, with one subplot per benchmark graph.}
+\caption{Peel time across ten graphs (three algorithms: \spinStar{}, \spin{}, \cbnd{}).}
+\Description{A grid of log-scale peel-time plots over parameter s, with one subplot per benchmark graph. Three curves per subplot: SPIN-star (solid blue), SPIN (dotted green), and CND (dashed red); SPIN-star sits below CND on every cell.}
 \label{fig:exp-time}
 \end{figure*}
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_exp_mem.pdf}
-\caption{Memory usage across ten graphs.}
-\Description{A grid of log-scale peak-memory plots over parameter s, with one subplot per benchmark graph.}
+\caption{Peak memory across ten graphs (three algorithms: \spinStar{}, \spin{}, \cbnd{}).}
+\Description{A grid of log-scale peak-memory plots over parameter s, with one subplot per benchmark graph. Three curves per subplot: SPIN-star (solid blue), SPIN (dotted green), and CND (dashed red); SPIN-star sits at or below the other two on every cell.}
 \label{fig:exp-mem}
 \end{figure*}
 
