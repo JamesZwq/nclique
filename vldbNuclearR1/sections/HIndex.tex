@@ -225,6 +225,14 @@ The pseudocode writes the affected update as $\vertexSupport$ to keep the fixed-
 %
 Buckets maintain the minimum-$h$ vertex because values only decrease and are bounded by $\kmax$~\cite{coreAlg}.
 
+\begin{example}[Peel iteration on the running example]\label{ex:peelh}
+Initialise $h[v]\gets\sdeg(v)$ as in Example~\ref{ex:hop} and place every $v$ in bucket $B[h[v]]$; on the running example $v_7,v_8,v_9,v_{10}$ sit in $B[1]$ and pop first at peel level $k=1$, retiring $\TPath_1$ and $\TPath_2$ through Case~C$'$ of Theorem~\ref{thm:vertex-removal}.
+%
+At iteration~$7$ the cursor has advanced to $k=3$ and $v_4$ pops; the algorithm walks the two live paths through $v_4$ (Table~\ref{tab:cpi-leaves}): $\TPath_5=(\{v_3\},\{v_4,v_5,v_6\})$ has $v_4$ as a pivot, so $p_{\TPath_5}$ shrinks $3\to2$ (Case~C; by Lemma~\ref{lem:support-delta} $v_3$ loses $\binom{3}{2}-\binom{2}{2}=2$ from its bucket key and $v_5,v_6$ each lose $\binom{2}{1}-\binom{1}{1}=1$); $\TPath_6=(\{v_4\},\{v_5,v_6\})$ has $v_4$ as a hold and dies (Case~A; surviving pivots $v_5,v_6$ each lose $\binom{1}{1}=1$).
+%
+After ten pops the peel completes with $\kappa_3(v_i)=3$ for $i\in\{1,\ldots,6\}$ and $\kappa_3(v_i)=1$ for $i\in\{7,\ldots,10\}$; Figure~\ref{fig:peel} traces every iteration as a leaf lifeline.
+\end{example}
+
 The converged vector is the fixed point of the specification in Section~\ref{sec:localh}:
 
 \begin{lemma}[\spinStar{} Equivalence]\label{lem:equivalence}
