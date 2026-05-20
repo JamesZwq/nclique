@@ -104,30 +104,24 @@ Initialise $h[v]\gets\sdeg(v)$ using Lemma~\ref{lem:supp}; on the running exampl
 %
 The first call $\vertexSupport(v_4,h)$ scans the four paths through $v_4$ and counts threshold witnesses via Lemma~\ref{lem:per-path-witness}.
 %
-At threshold $k=3$, every other vertex on each of the four paths has $h\ge3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$. The full $h$-value trajectory across passes is shown in Table~\ref{tab:spinex}: pass~0 carries the initial $\sdeg$, pass~1 drops the $K_4$ vertices $v_1{,}\ldots{,}v_6$ to $3$, and pass~2 reproduces pass~1 to certify the fixed point.
+At threshold $k=3$, every other vertex on each of the four paths has $h\ge3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$. The full $h$-value trajectory across interactions is shown in Table~\ref{tab:spinex}: interaction~$0$ carries the initial $\sdeg$, interaction~$1$ drops the $K_4$ vertices $v_1{,}\ldots{,}v_6$ to $3$, and interaction~$2$ reproduces interaction~$1$ to certify the fixed point.
 %
 The converged vector $h^\star=\kappa_s$ is the semantic target that any static-\cpi{} core-value algorithm must reach; Section~\ref{sec:peelh} delivers \spinStar{}, which reaches that target in a single deletion pass.
 \end{example}
 
 \begin{table}[t]
 \centering
-\caption{\spin{} on the running example: per-vertex $h$-value across full passes. Pass~$0$ is the initial $s$-clique support $\sdeg(v)$ (Lemma~\ref{lem:supp}); pass~$1$ already coincides with $\kappa_3(v)$; pass~$2$ reproduces pass~$1$, certifying the fixed point.}
+\caption{\spin{} on the running example: each row is one full-graph interaction; each column is one vertex. Interaction~$0$ is the initial $s$-clique support $\sdeg(v)$ (Lemma~\ref{lem:supp}); interaction~$1$ already coincides with $\kappa_3(v)$; interaction~$2$ reproduces interaction~$1$, certifying the fixed point.}
 \label{tab:spinex}
 \small
-\begin{tabular}{c|ccc}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l|cccccccccc}
 \toprule
-$v$ & pass $0$ ($\sdeg$) & pass $1$ & pass $2 = \kappa_3(v)$ \\
+interaction $t$ & $v_1$ & $v_2$ & $v_3$ & $v_4$ & $v_5$ & $v_6$ & $v_7$ & $v_8$ & $v_9$ & $v_{10}$ \\
 \midrule
-$v_1$    & $3$ & $3$ & $\mathbf{3}$ \\
-$v_2$    & $4$ & $3$ & $\mathbf{3}$ \\
-$v_3$    & $6$ & $3$ & $\mathbf{3}$ \\
-$v_4$    & $6$ & $3$ & $\mathbf{3}$ \\
-$v_5$    & $3$ & $3$ & $\mathbf{3}$ \\
-$v_6$    & $4$ & $3$ & $\mathbf{3}$ \\
-$v_7$    & $1$ & $1$ & $\mathbf{1}$ \\
-$v_8$    & $1$ & $1$ & $\mathbf{1}$ \\
-$v_9$    & $1$ & $1$ & $\mathbf{1}$ \\
-$v_{10}$ & $1$ & $1$ & $\mathbf{1}$ \\
+$t\!=\!0$ ($\sdeg$)         & $3$ & $4$ & $6$ & $6$ & $3$ & $4$ & $1$ & $1$ & $1$ & $1$ \\
+$t\!=\!1$                   & $3$ & $3$ & $3$ & $3$ & $3$ & $3$ & $1$ & $1$ & $1$ & $1$ \\
+$t\!=\!2$ ($\kappa_3$)      & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{1}$ & $\mathbf{1}$ & $\mathbf{1}$ & $\mathbf{1}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -253,7 +247,7 @@ Initialise $h[v]\gets\sdeg(v)$ as in Example~\ref{ex:hop} and place every $v$ in
 %
 At iteration~$7$ the cursor has advanced to $k=3$ and $v_4$ pops; the algorithm walks the two live paths through $v_4$ (Table~\ref{tab:cpi-leaves}): $\TPath_5=(\{v_3\},\{v_4,v_5,v_6\})$ has $v_4$ as a pivot, so $p_{\TPath_5}$ shrinks $3\to2$ (Case~C; by Lemma~\ref{lem:support-delta} $v_3$ loses $\binom{3}{2}-\binom{2}{2}=2$ from its bucket key and $v_5,v_6$ each lose $\binom{2}{1}-\binom{1}{1}=1$); $\TPath_6=(\{v_4\},\{v_5,v_6\})$ has $v_4$ as a hold and dies (Case~A; surviving pivots $v_5,v_6$ each lose $\binom{1}{1}=1$).
 %
-After ten pops the peel completes with $\kappa_3(v_i)=3$ for $i\in\{1,\ldots,6\}$ and $\kappa_3(v_i)=1$ for $i\in\{7,\ldots,10\}$; Table~\ref{tab:peel} shows every vertex's $h$-value across all ten iterations.
+After ten pops the peel completes with $\kappa_3(v_i)=3$ for $i\in\{1,\ldots,6\}$ and $\kappa_3(v_i)=1$ for $i\in\{7,\ldots,10\}$; Table~\ref{tab:peel} shows every vertex's $h$-value across all ten interactions.
 \end{example}
 
 The converged vector is the fixed point of the specification in Section~\ref{sec:localh}:
@@ -310,37 +304,31 @@ The total time is therefore $O(\Sig+U+n)$.
 
 The mutable baseline pays heap and residual-index maintenance costs on the same logical peel events.
 %
-Table~\ref{tab:peel} traces \spinStar{} on the running example: row $v$ records $v$'s residual threshold-support after each iteration, the column header names the popped vertex and assigned $\kappa_3$, and the bold $\kappa{=}\!K$ entry on row $v$ marks the iteration at which $v$ itself is popped (cells to the right of that entry are blank because $v$ no longer participates).
+Table~\ref{tab:peel} traces \spinStar{} on the running example: each row is one deletion interaction (labelled with the popped vertex and the assigned $\kappa_3$), each column is one vertex, and the bold $\kappa{=}\!K$ entry in row $t$, column $v$ marks the interaction at which $v$ itself is popped (cells past that pop in the same column are blank because $v$ no longer participates).
 %
 The experiments in Section~\ref{sec:exp} measure the impact of replacing those operations with static path counters.
 
-\begin{table*}[t]
+\begin{table}[t]
 \centering
-\caption{\spinStar{} on the running example: per-vertex $h$-value across the ten deletion iterations. Each cell is $v$'s current residual threshold-support; the bold $\kappa{=}K$ entry on row $v$ marks the iteration at which $v$ is popped (and assigned $\kappa_3(v)=K$); cells right of that entry are blank because $v$ has already been finalised.}
+\caption{\spinStar{} on the running example: each row is one deletion interaction; each column is one vertex. The bold $\kappa{=}K$ entry in row $t$, column $v$ marks the interaction at which $v$ is popped and assigned $\kappa_3(v)=K$; cells past that pop in the same column are blank because $v$ has been finalised.}
 \label{tab:peel}
 \small
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{c|c|cccccccccc}
+\begin{tabular}{l|cccccccccc}
 \toprule
-& iter $0$ & iter $1$ & iter $2$ & iter $3$ & iter $4$ & iter $5$ & iter $6$ & iter $7$ & iter $8$ & iter $9$ & iter $10$ \\
-$v$ & (init)
-    & pop $v_8$   & pop $v_7$   & pop $v_{10}$ & pop $v_9$
-    & pop $v_2$   & pop $v_1$   & pop $v_4$    & pop $v_5$
-    & pop $v_3$   & pop $v_6$ \\
-& & $\kappa{=}1$ & $\kappa{=}1$ & $\kappa{=}1$ & $\kappa{=}1$
-   & $\kappa{=}3$ & $\kappa{=}3$ & $\kappa{=}3$ & $\kappa{=}3$
-   & $\kappa{=}3$ & $\kappa{=}3$ \\
+interaction $t$ & $v_1$ & $v_2$ & $v_3$ & $v_4$ & $v_5$ & $v_6$ & $v_7$ & $v_8$ & $v_9$ & $v_{10}$ \\
 \midrule
-$v_1$    & $3$ & $3$ & $3$ & $3$ & $3$ & $1$ & $\boldsymbol{\kappa\!=\!3}$ &  &  &  &  \\
-$v_2$    & $4$ & $4$ & $4$ & $3$ & $3$ & $\boldsymbol{\kappa\!=\!3}$ &  &  &  &  &  \\
-$v_3$    & $6$ & $6$ & $6$ & $6$ & $6$ & $4$ & $3$ & $1$ & $0$ & $\boldsymbol{\kappa\!=\!3}$ &  \\
-$v_4$    & $6$ & $6$ & $6$ & $6$ & $6$ & $4$ & $3$ & $\boldsymbol{\kappa\!=\!3}$ &  &  &  \\
-$v_5$    & $3$ & $3$ & $3$ & $3$ & $3$ & $3$ & $3$ & $1$ & $\boldsymbol{\kappa\!=\!3}$ &  &  \\
-$v_6$    & $4$ & $3$ & $3$ & $3$ & $3$ & $3$ & $3$ & $1$ & $0$ & $0$ & $\boldsymbol{\kappa\!=\!3}$ \\
-$v_7$    & $1$ & $0$ & $\boldsymbol{\kappa\!=\!1}$ &  &  &  &  &  &  &  &  \\
-$v_8$    & $1$ & $\boldsymbol{\kappa\!=\!1}$ &  &  &  &  &  &  &  &  &  \\
-$v_9$    & $1$ & $1$ & $1$ & $0$ & $\boldsymbol{\kappa\!=\!1}$ &  &  &  &  &  &  \\
-$v_{10}$ & $1$ & $1$ & $1$ & $\boldsymbol{\kappa\!=\!1}$ &  &  &  &  &  &  &  \\
+$t\!=\!0$ (init)                 & $3$ & $4$ & $6$ & $6$ & $3$ & $4$ & $1$ & $1$ & $1$ & $1$ \\
+$t\!=\!1$, pop $v_8$, $\kappa\!=\!1$    & $3$ & $4$ & $6$ & $6$ & $3$ & $3$ & $0$ & $\boldsymbol{\kappa\!=\!1}$ & $1$ & $1$ \\
+$t\!=\!2$, pop $v_7$, $\kappa\!=\!1$    & $3$ & $4$ & $6$ & $6$ & $3$ & $3$ & $\boldsymbol{\kappa\!=\!1}$ &  & $1$ & $1$ \\
+$t\!=\!3$, pop $v_{10}$, $\kappa\!=\!1$ & $3$ & $3$ & $6$ & $6$ & $3$ & $3$ &  &  & $0$ & $\boldsymbol{\kappa\!=\!1}$ \\
+$t\!=\!4$, pop $v_9$, $\kappa\!=\!1$    & $3$ & $3$ & $6$ & $6$ & $3$ & $3$ &  &  & $\boldsymbol{\kappa\!=\!1}$ &  \\
+$t\!=\!5$, pop $v_2$, $\kappa\!=\!3$    & $1$ & $\boldsymbol{\kappa\!=\!3}$ & $4$ & $4$ & $3$ & $3$ &  &  &  &  \\
+$t\!=\!6$, pop $v_1$, $\kappa\!=\!3$    & $\boldsymbol{\kappa\!=\!3}$ &  & $3$ & $3$ & $3$ & $3$ &  &  &  &  \\
+$t\!=\!7$, pop $v_4$, $\kappa\!=\!3$    &  &  & $1$ & $\boldsymbol{\kappa\!=\!3}$ & $1$ & $1$ &  &  &  &  \\
+$t\!=\!8$, pop $v_5$, $\kappa\!=\!3$    &  &  & $0$ &  & $\boldsymbol{\kappa\!=\!3}$ & $0$ &  &  &  &  \\
+$t\!=\!9$, pop $v_3$, $\kappa\!=\!3$    &  &  & $\boldsymbol{\kappa\!=\!3}$ &  &  & $0$ &  &  &  &  \\
+$t\!=\!10$, pop $v_6$, $\kappa\!=\!3$   &  &  &  &  &  & $\boldsymbol{\kappa\!=\!3}$ &  &  &  &  \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
