@@ -106,9 +106,9 @@ for i in range(L):
     y0 = TOP + i * (cell_h + gap_y)
     y_mid = y0 + cell_h / 2
 
-    # Left label: leaf id + composition
-    hold_str  = ','.join(f"v_{{{v}}}" for v in h)
-    pivot_str = ','.join(f"v_{{{v}}}" for v in p)
+    # Left label: leaf id + composition (sort to match Table 4.1)
+    hold_str  = ','.join(f"v_{{{v}}}" for v in sorted(h))
+    pivot_str = ','.join(f"v_{{{v}}}" for v in sorted(p))
     label = (rf"$L_{i+1}$: $V_h\!=\!\{{{hold_str}\}}$, "
              rf"$V_p\!=\!\{{{pivot_str}\}}$, $\eta\!=\!{eta[i]}$")
     ax.text(-0.05, y_mid, label, ha='right', va='center', fontsize=7.4)
