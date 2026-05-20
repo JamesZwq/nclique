@@ -163,11 +163,9 @@ The headline single-cell speedup is $23.4\times$ at $T{=}24$ on \texttt{web-it-2
 \end{figure*}
 
 \expsection{\spinStar{} vs.\ \spin{} on the same fixed point}
-\spin{} is the literal single-thread solver for the same equations that \spinStar{} realizes by deletion events.
+\spin{} (Algorithm~\ref{alg:localH}) iterates the threshold-support fixed point by full passes over the static \cpi{}; \spinStar{} (Algorithm~\ref{alg:peelH}) reaches the same fixed point by deletion-ordered events.
 %
-The two algorithms compute the same core values (Lemma~\ref{lem:equivalence}), so the comparison isolates the effect of replacing repeated full-graph passes with incremental updates.
-%
-Both solvers read paths from the same static index; the \spin{} reference therefore reflects the algorithmic cost of repeated full-pass fixed-point iteration, not a difference in how the index is stored.
+Both target the same core values (Lemma~\ref{lem:equivalence}) and read the same static index; the comparison therefore isolates the cost of the two schedules, not a difference in how the index is stored.
 %
 Across the $272$ matched $(graph,s)$ cells, \spinStar{} delivers a $30.4\times$ geometric-mean peel-time speedup over \spin{}, with maximum $2{,}369\times$ on \texttt{web-it-2004} at $s=53$, where \spin{} repeatedly sweeps every vertex while \spinStar{} finishes after a few path-event updates.
 %
@@ -177,9 +175,9 @@ On the largest inputs \spin{} hits the $1$h cap (\texttt{com-orkut} for $s\ge3$,
 
 \spin{}'s memory profile is essentially identical to \spinStar{}'s on every paired cell, because both share the same static index: the geometric-mean memory ratio (\spin{}$/$\spinStar{}) is $0.97$ over the $291$ memory-paired cells (more than the $272$ time-paired cells because some non-finishing \spin{} runs still recorded a peak-RSS value), and \spin{} is slightly smaller than \spinStar{} on $83.8\%$ of them.
 %
-The reason is structural: \spinStar{}'s extra state beyond the shared CPI consists of a per-path counter cache ($\sim 13$ bytes per leaf) and a peel-order bucket queue ($\sim 17$ bytes per vertex), which \spin{} does not maintain because it scans every vertex each round.
+The reason is structural: the deletion-order schedule needs a per-path counter cache ($\sim 13$ bytes per leaf) and a peel-order bucket queue ($\sim 17$ bytes per vertex) that the full-pass schedule omits.
 %
-The sub-percent memory advantage of \spin{} is therefore the price \spinStar{} pays to avoid repeated full-graph passes; the trade is the textbook ``space for time'' choice, with the time term dominating by orders of magnitude.
+The sub-percent memory premium of the deletion-order schedule is the textbook ``space for time'' choice, with the time term dominating by orders of magnitude.
 
 The paper carries both algorithms because they serve different roles: \spin{} is the direct semantic formulation, \spinStar{} is its event-driven realisation.
 

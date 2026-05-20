@@ -2,7 +2,7 @@
 
 The static-\cpi{} invariant of Section~\ref{sec:static} becomes a concrete algorithm for $\kappa_s$ through a one-vertex update rule built directly on clique-witness counts (Section~\ref{sec:refresh}, Algorithm~\ref{alg:refresh}).
 %
-Two solvers share the same update: \spin{} applies it by repeated full passes (Section~\ref{sec:localh}, Algorithm~\ref{alg:localH}); \spinStar{} schedules it in peel order so unaffected vertices are not revisited (Section~\ref{sec:peelh}, Algorithm~\ref{alg:peelH}), and Lemma~\ref{lem:equivalence} proves the two reach the same fixed point.
+Section~\ref{sec:peelh} delivers \spinStar{} (Algorithm~\ref{alg:peelH}), a single-pass bucket-queue solver that assigns core values in nondecreasing peel order through local path-counter updates. Section~\ref{sec:localh} states the same threshold-support condition as a fixed-point specification, denoted \spin{} (Algorithm~\ref{alg:localH}); the specification is what Lemma~\ref{lem:equivalence} appeals to when certifying \spinStar{}'s correctness.
 
 \subsection{Vertex updates from static witnesses}\label{sec:refresh}
 
@@ -81,13 +81,13 @@ The pseudocode is shown in its semantic form for clarity; the implementation nev
 %
 The call reads the static \cpi{} and the vector $h$, and it mutates no path.
 
-\subsection{Direct Static-Path Iteration}\label{sec:localh}
+\subsection{Fixed-Point Specification}\label{sec:localh}
 
-\spin{} is the most literal solver of the threshold-support equation: it scans all vertices, computes a next value for each vertex from the previous value vector via $\vertexSupport$, and repeats until a full scan makes no change.
+We state the threshold-support condition as a fixed-point specification on the value vector, denoted \spin{}: starting from the initial $s$-clique support, repeatedly apply $\vertexSupport$ to every vertex until no entry changes.
 %
-The only mutable data are the current and next value vectors; the current vector starts at the initial $s$-clique support, so every entry is an upper bound on the final core value, and each pass can only lower entries.
+The only mutable data are the current and next value vectors; the initial vector dominates the final core value pointwise, and each pass can only lower entries.
 %
-A fixed point means every vertex value is consistent with the witnesses whose other vertices have high enough current value, which makes \spin{} the reference formulation for the static-\cpi{} computation even though repeated full scans can be expensive.
+A fixed point means every vertex value is consistent with the witnesses whose other vertices have high enough current value, which makes the converged vector the canonical semantic anchor for any static-\cpi{} core-value solver.
 
 Algorithm~\ref{alg:localH} initialises $h[v]$ to the initial $s$-clique support $\sdeg(v)$ for every vertex via the closed form of Lemma~\ref{lem:supp} (Lines~1-2).
 %
@@ -106,7 +106,7 @@ The first call $\vertexSupport(v_4,h)$ scans the four paths through $v_4$ and co
 %
 At threshold $k=3$, every other vertex on each of the four paths has $h\ge3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$.
 %
-\spin{} reaches the fixed point in a small number of full passes, but each pass scans every vertex regardless of whether its value can still change; this is the redundancy that \spinStar{} eliminates in Section~\ref{sec:peelh}.
+The converged vector $h^\star=\kappa_s$ is the semantic target that any static-\cpi{} core-value algorithm must reach; Section~\ref{sec:peelh} delivers \spinStar{}, which reaches that target in a single deletion pass.
 \end{example}
 
 \begin{algorithm}[t]
@@ -161,25 +161,19 @@ Each pass calls $\vertexSupport(v,h)$ for every $v\in V$ at per-call cost $O(w_v
 \qed
 \end{proof}
 
-\subsection{Eliminating Redundant Sweeps}\label{sec:peelh}
+\subsection{Deletion-Order Peel Solver}\label{sec:peelh}
 
-\spin{} is useful because it exposes the equations, but its full passes recompute many vertices whose values can no longer change.
+\spinStar{} is a single-pass bucket-queue peel solver over the static \cpi{}.
 %
-Once a vertex reaches its final peel level, later events cannot increase it.
+For each path, it maintains a liveness bit, an integer pivot counter (the number of pivot vertices not yet finalised), and the fixed pivot requirement.
 %
-\spinStar{} removes this redundancy by using the same nondecreasing peel order as classical core decomposition.
+For each unfinalised vertex, it maintains a bucket-queue key equal to that vertex's current threshold-support value over the live path counters.
 %
-The algorithm keeps the same value semantics as \spin{}, but it updates them with local path events instead of global passes.
+Each iteration pops a minimum-key vertex, assigns it its peel level as core value, and walks the paths incident to it: hold removals retire the path, pivot removals decrement the counter and retire the path once $p_{\TPath}<\eta_{\TPath}$ (Theorem~\ref{thm:vertex-removal}).
 %
-For each path, it stores whether the path is still live, how many pivot vertices have not been finalized, and the fixed pivot requirement.
+Path-mates whose support drops are re-keyed via the binomial loss formula of Lemma~\ref{lem:support-delta} and moved to a lower bucket.
 %
-It also keeps a finalized set and a bucket queue keyed by the current value.
-%
-When one minimum vertex is popped, only paths containing that vertex can change.
-%
-Theorem~\ref{thm:vertex-removal} says how each such path changes, and Lemma~\ref{lem:support-delta} gives the exact support loss for the unfinalized path-mates.
-%
-Thus the invariant is local: unfinalized vertex values reflect the current live path-counter contributions, clipped from below by the current peel level.
+The peel terminates after $n$ pops and the assigned $\kappa_s(v)$ is final at the moment of the pop.
 
 Algorithm~\ref{alg:peelH} outputs the core values $\kappa_s(v)$ for every $v\in V$, and emits a sorted deletion log as a byproduct.
 %
@@ -227,11 +221,11 @@ The main loop (Lines~6-19) advances the peel level $k$ to the smallest non-empty
 %
 Affected path-mates that have not been finalised are recomputed via Lemma~\ref{lem:support-delta} (Line~18) and moved to a lower bucket if their value dropped (Line~19).
 %
-The pseudocode writes the affected update as $\vertexSupport$ to keep the fixed-point semantics visible; the implementation evaluates the changed contribution with the binomial loss formula rather than recomputing from scratch, so the total work scales with the number of incremental update events $U$ rather than with the number of full scans.
+The pseudocode writes the affected update as $\vertexSupport$ to keep the fixed-point semantics visible; the implementation evaluates the changed contribution with the binomial loss formula of Lemma~\ref{lem:support-delta} rather than recomputing from scratch, so the total work scales with the number of incremental update events $U$.
 %
 Buckets maintain the minimum-$h$ vertex because values only decrease and are bounded by $\kmax$~\cite{coreAlg}.
 
-The schedule is different from \spin{}, but the fixed point it reaches is the same:
+The converged vector is the fixed point of the specification in Section~\ref{sec:localh}:
 
 \begin{lemma}[\spinStar{} Equivalence]\label{lem:equivalence}
 Algorithm~\ref{alg:peelH} returns the same $\kappa_s$ values as Algorithm~\ref{alg:localH}.
