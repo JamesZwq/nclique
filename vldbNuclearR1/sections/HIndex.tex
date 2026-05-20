@@ -248,7 +248,7 @@ Both algorithms apply the same per-vertex threshold-support condition.
 %
 The difference is only the schedule: \spin{} recomputes the condition by full passes, while \spinStar{} uses Theorem~\ref{thm:vertex-removal} and Lemma~\ref{lem:support-delta} to update exactly the path contributions changed by the popped vertex.
 %
-The path counters of \spinStar{} are support-equivalent to physically deleting finalised vertices from the \cpi{}, so the bucket key of every unfinalised vertex is its residual threshold-support value clipped below by the current peel level.
+The path counters of \spinStar{} are support-equivalent to physically deleting finalised vertices from the \cpi{}, so the bucket key of every unfinalised vertex is its residual threshold-support value clipped from below by the current peel level.
 %
 Initial values $h[u]=\sdeg(u)$ are upper bounds, and every update only decreases a key, so no vertex is ever assigned a value larger than its current residual threshold support above the current peel level.
 %
@@ -282,7 +282,7 @@ Each affected incremental refresh contributes one unit to $U$.
 %
 Bucket moves and bucket pops are $O(1)$ amortized.
 %
-The bucket cursor advances through at most the distinct $h$-values that are ever stored, which is bounded by $n$ since at most one value is associated with each vertex at any time.
+The bucket cursor advances through at most $n$ distinct values (one key per vertex at any time).
 %
 The total time is therefore $O(\Sig+U+n)$.
 %
