@@ -38,7 +38,7 @@ The set covers collaboration, e-commerce, social, and web graphs.
 %
 The largest graph is \texttt{com-friendster} with $1.806$B edges.
 %
-The benchmark sweep on the ten smaller graphs yields $307$ matched cells where both \spinStar{} and \cbnd{} complete successfully, and the headline speedup numbers are reported over the matched subset; \texttt{com-friendster} is run standalone (Section~\ref{sec:exp-friendster}) because \cbnd{} cannot complete on it.
+The benchmark sweep on the ten smaller graphs yields $451$ matched cells where both \spinStar{} and \cbnd{} complete successfully, and the headline speedup numbers are reported over the matched subset; \texttt{com-friendster} is run standalone (Section~\ref{sec:exp-friendster}) because \cbnd{} cannot complete on it.
 
 \begin{table}[t]
 \centering
@@ -72,11 +72,11 @@ All three solvers consume the same input edge list and run on the same hardware;
 For each matched $(graph,s)$ pair, we record the end-to-end time (load, degeneracy order, \cpi{} construction, peel, output) and the program's memory usage.
 
 \expsection{peel time and memory}
-Across the ten graphs (Figures~\ref{fig:exp-time}--\ref{fig:exp-mem}), \spinStar{} achieves a peel-time speedup over \cbnd{} of gmean $13.50\times$ / max $44.76\times$, and a memory-usage ratio (\cbnd{}$/$\spinStar{}) of gmean $1.55\times$ / max $3.92\times$; \spinStar{} sits below \cbnd{} on every cell of the peel-time plot.
+Across the ten graphs (Figures~\ref{fig:exp-time}--\ref{fig:exp-mem}), \spinStar{} achieves a peel-time speedup over \cbnd{} of gmean $17.90\times$ / max $49.48\times$, and a memory-usage ratio (\cbnd{}$/$\spinStar{}) of gmean $1.55\times$ / max $3.92\times$; \spinStar{} sits below \cbnd{} on every cell of the peel-time plot.
 %
 \spin{} (Section~\ref{sec:localh}) is included as the reference fixed-point solver; \spinStar{} beats it as well on all but the easiest cells, with the full comparison in Exp-4 below.
 %
-The end-to-end (wall-clock) gap is smaller (gmean $1.10\times$) because the shared \cpi{} construction phase dominates total runtime once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
+The end-to-end (wall-clock) gap is smaller (gmean $1.05\times$) because the shared \cpi{} construction phase dominates total runtime once peeling is cheap; this is the bottleneck shift that motivates \paraBuild{} in Section~\ref{sec:parabuild}.
 
 \begin{figure*}[t]
 \centering
@@ -288,4 +288,4 @@ All experiments are scripted: build commands, dataset URLs, and bench drivers ar
 Each binary run is wrapped with \texttt{/usr/bin/time~-v} so memory usage, page faults, and exit status are captured in every CSV row.
 
 \stitle{Takeaway.}
-\spinStar{} is faster and lighter than \cbnd{} on the $307$ matched cells, the construction phase emerges as the new dominant cost once peeling is counter-only, \paraBuild{} addresses that shift, and \spin{} confirms the direct fixed-point view's role as semantic reference rather than practical solver.
+\spinStar{} is faster and lighter than \cbnd{} on the $451$ matched cells, the construction phase emerges as the new dominant cost once peeling is counter-only, \paraBuild{} addresses that shift, and \spin{} confirms the direct fixed-point view's role as semantic reference rather than practical solver.

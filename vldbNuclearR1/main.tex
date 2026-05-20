@@ -61,7 +61,7 @@ We observe that the $(1,s)$ special case has a stronger invariant: vertex peelin
 %
 This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spinStar{} (a single-pass bucket-queue peel solver), \paraBuild{} (a parallel \cpi{} constructor, now the dominant phase once peeling is cheap), and \buildHier{} (a post-peel hierarchy emitter that reuses the preserved index).
 %
-Experiments on $307$ matched successful configurations show that \spinStar{} achieves a $13.50\times$ geometric-mean peel-time speedup and a $44.76\times$ maximum peel-time speedup over the mutable baseline, while reducing memory usage by a $1.55\times$ geometric-mean ratio; the static-state pipeline also scales to a billion-edge graph for which the mutable baseline completes only at $s{=}2$.
+Experiments on $451$ matched successful configurations show that \spinStar{} achieves a $17.90\times$ geometric-mean peel-time speedup and a $49.48\times$ maximum peel-time speedup over the mutable baseline, while reducing memory usage by a $1.55\times$ geometric-mean ratio; the static-state pipeline also scales to a billion-edge graph for which the mutable baseline completes only at $s{=}2$.
 \end{abstract}
 
 \begin{CCSXML}

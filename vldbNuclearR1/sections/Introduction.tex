@@ -55,7 +55,7 @@ The current state of the art for general $(r,s)$-nucleus decomposition is \cbnd~
 \sstitle{Mutable residual-index maintenance.}
 \cbnd{} rewrites path records and updates a hash-indexed reverse map at every peel step.
 %
-These rewrites are a real cost rather than a constant factor: \spinStar{}, which replaces them with closed-form counter updates over a static index, delivers a $13.50\times$ geometric-mean peel-time speedup over \cbnd{} on $307$ matched cells (Section~\ref{sec:exp}).
+These rewrites are a real cost rather than a constant factor: \spinStar{}, which replaces them with closed-form counter updates over a static index, delivers a $17.90\times$ geometric-mean peel-time speedup over \cbnd{} on $451$ matched cells (Section~\ref{sec:exp}).
 
 \sstitle{High memory consumption.}
 The residual structures that \cbnd{} must keep mutable in the general $(r,s)$ setting — per-path membership queries, reverse vertex-to-path lookup, and the live recursion tree used to rewrite paths — together cost roughly $88\Sig$ bytes per incidence (Section~\ref{sec:exp}, Table~\ref{tab:mem}), an order of magnitude more than what a static encoding of the same witnesses requires.
@@ -65,7 +65,7 @@ The geometric-mean memory ratio \cbnd{}/\spinStar{} is $1.55\times$ on the match
 \sstitle{Construction as the residual bottleneck.}
 Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} (our highest CPI-build-cost benchmark) at $s=3$, construction takes about $137$ seconds and peeling takes about $59$ milliseconds, so the static index builder dominates total runtime by more than $2{,}000\times$ on this configuration.
 %
-Without a parallel builder, the end-to-end speedup over \cbnd{} stays at $1.10\times$ on the matched cells even though the peel-time speedup is $13.50\times$.
+Without a parallel builder, the end-to-end speedup over \cbnd{} stays at $1.05\times$ on the matched cells even though the peel-time speedup is $17.90\times$.
 
 \sstitle{Hierarchy emission re-enumerates or replicates.}
 Because \cbnd{} edits the \cpi{} during peeling, its $s$-clique witnesses are gone when the hierarchy is requested.
@@ -78,7 +78,7 @@ For $(1,s)$-nucleus decomposition we exploit a static-\cpi{} invariant (Theorem~
 \sstitle{Static-\cpi{} invariant for $(1,s)$.}
 We prove that vertex peeling never rewrites any \cpi{} path's stored hold or pivot sets (Theorem~\ref{thm:vertex-removal}) and realize the resulting counter-only peel as \spinStar{} (Algorithm~\ref{alg:peelH}), which drops per-incidence space from $\approx 88\Sig$ bytes to $\approx 8\Sig$ bytes (Table~\ref{tab:mem}).
 %
-On $307$ matched cells, \spinStar{} achieves a $13.50\times$ geometric-mean peel-time speedup and a $1.55\times$ geometric-mean memory reduction over \cbnd{}, and on a billion-scale graph \spinStar{} decomposes the full $s$ sweep while \cbnd{} OOMs for every $s\ge3$.
+On $451$ matched cells, \spinStar{} achieves a $17.90\times$ geometric-mean peel-time speedup and a $1.55\times$ geometric-mean memory reduction over \cbnd{}, and on a billion-scale graph \spinStar{} decomposes the full $s$ sweep while \cbnd{} OOMs for every $s\ge3$.
 
 \sstitle{Parallel \cpi{} construction.}
 \paraBuild{} (Algorithm~\ref{alg:parabuild}) parallelises \cpi{} construction across seed vertices, addressing the construction phase that dominates total runtime once peeling is counter-only; empirical scaling reaches $23.4\times$ at $T{=}24$ threads.
@@ -87,4 +87,4 @@ On $307$ matched cells, \spinStar{} achieves a $13.50\times$ geometric-mean peel
 \buildHier{} (Algorithm~\ref{alg:buildhier}) emits the $s$-clique-connected super-level join tree from the preserved \cpi{} in $O(\Sig\log\Sig)$ time without re-enumerating any $s$-clique, using up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) than the level-DSU baseline.
 
 \sstitle{Comprehensive experimental evaluation.}
-We compare against \cbnd{} on ten real-world graphs ($307$ matched configurations, headline peel speedup $13.50\times$ gmean / $44.76\times$ max, memory-usage ratio $1.55\times$ gmean), report phase behaviour and parallel construction, push the pipeline to a billion-scale graph (where \cbnd{} only completes at $s{=}2$), and use case studies to evaluate whether the $r=1$ specialization is practically useful.
+We compare against \cbnd{} on ten real-world graphs ($451$ matched configurations, headline peel speedup $17.90\times$ gmean / $49.48\times$ max, memory-usage ratio $1.55\times$ gmean), report phase behaviour and parallel construction, push the pipeline to a billion-scale graph (where \cbnd{} only completes at $s{=}2$), and use case studies to evaluate whether the $r=1$ specialization is practically useful.
