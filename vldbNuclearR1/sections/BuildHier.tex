@@ -113,4 +113,4 @@ It is a byproduct of the static \cpi{} surviving peeling: each preserved leaf co
 %
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 
-Section~\ref{sec:exp} (Exp-7) compares \buildHier{} against the only feasible baseline at $r{=}1$ --- \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- and confirms that \buildHier{} uses up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) and up to $35\times$ less hierarchy-emission wall time, with the gap growing at larger $s$ where the witness mass dominates.
+Section~\ref{sec:exp} (Exp-7) compares \buildHier{} against the only feasible baseline at $r{=}1$ --- \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- and confirms that \buildHier{} uses up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) and up to $35\times$ less hierarchy-emission wall time (gmean $7.7\times$ over the same $24$ cells), with the gap growing at larger $s$ where the witness mass dominates.

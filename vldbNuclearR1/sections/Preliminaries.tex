@@ -47,7 +47,7 @@ The set $\Vh(\TPath)$ is the \emph{hold set}: every encoded $s$-clique contains 
 %
 The set $\Vp(\TPath)$ is the \emph{pivot set}: an encoded $s$-clique chooses vertices from this pool.
 %
-The \emph{pivot requirement} of $\TPath$ is $\eta_{\TPath}=s-|\Vh(\TPath)|$, the number of pivot vertices needed to complete the hold set into an $s$-clique.  The boundary case $\eta_{\TPath}=0$ (i.e.\ $|\Vh(\TPath)|=s$) encodes exactly one $s$-clique --- the hold set itself --- and we adopt the standard convention $\binom{m}{-1}=0$ so the support-loss formula of Lemma~\ref{lem:support-delta} returns $0$ for any pivot-removal event on such a path.
+The \emph{pivot requirement} of $\TPath$ is $\eta_{\TPath}=s-|\Vh(\TPath)|$, the number of pivot vertices needed to complete the hold set into an $s$-clique.  The boundary case $\eta_{\TPath}=0$ (i.e.\ $|\Vh(\TPath)|=s$) encodes exactly one $s$-clique --- the hold set itself; we adopt the standard convention $\binom{m}{-1}=0$ so that the binomial-difference support formulas used later in the paper return $0$ for any pivot-removal event on such a path.
 %
 The set of $s$-cliques encoded by $\TPath$ is
 \[
@@ -68,7 +68,7 @@ for the vertex--path incidence count.
 %
 We also write $\kmax=\max_v\sdeg(v)$.
 %
-The \cpi{} is built by a degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}; we reproduce the construction here as Algorithm~\ref{alg:buildcpi} because the rest of the paper depends on its leaf shape.
+The \cpi{} is built by a degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}; we reproduce the construction here as Algorithm~\ref{alg:buildcpi} because the rest of the paper operates over the emitted paths.
 
 \begin{algorithm}[t]
 \algfontsize
