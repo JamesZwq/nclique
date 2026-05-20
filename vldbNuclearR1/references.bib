@@ -1,3 +1,6 @@
+% This file contains high-confidence corrections made after online metadata verification on 2026-05-20.
+% Two entries remain noted in the audit report rather than force-corrected: sotaPrveHierarchy (year-source discrepancy) and NuclearCD (future/partially unverified DOI metadata).
+
 
 
 
@@ -69,7 +72,7 @@ url = {https://doi.org/10.1145/3639287},
 doi = {10.1145/3639287},
 abstract = {Nucleus decompositions have been shown to be a useful tool for finding dense subgraphs. The coreness value of a clique represents its density based on the number of other cliques it is adjacent to. One useful output of nucleus decomposition is to generate a hierarchy among dense subgraphs at different resolutions. However, existing parallel algorithms for nucleus decomposition do not generate this hierarchy, and only compute the coreness values. This paper presents a scalable parallel algorithm for hierarchy construction, with practical optimizations, such as interleaving the coreness computation with hierarchy construction and using a concurrent union-find data structure in an innovative way to generate the hierarchy. We also introduce a parallel approximation algorithm for nucleus decomposition, which achieves much lower span in theory and better performance in practice. We prove strong theoretical bounds on the work and span (parallel time) of our algorithms.On a 30-core machine with two-way hyper-threading, our parallel hierarchy construction algorithm achieves up to a 58.84x speedup over the state-of-the-art sequential hierarchy construction algorithm by Sariyuce et al. and up to a 30.96x self-relative parallel speedup. On the same machine, our approximation algorithm achieves a 3.3x speedup over our exact algorithm, while generating coreness estimates with a multiplicative error of 1.33x on average.},
 journal = {Proc. ACM Manag. Data},
-month = mar,
+month = feb,
 articleno = {32},
 numpages = {27},
 keywords = {graph processing, parallel algorithms}
@@ -77,8 +80,7 @@ keywords = {graph processing, parallel algorithms}
 
 
 @article{hindex,
- abstract = {I propose the index h, defined as the number of papers with
-scientific output of a researcher.},
+ abstract = {I propose the index h, defined as the number of papers with citation number >= h, as a useful index to characterize the scientific output of a researcher.},
  address = {United States},
  author = {Hirsch, J E},
  journal = {Proc Natl Acad Sci U S A},
@@ -87,6 +89,7 @@ scientific output of a researcher.},
  pages = {16569--16572},
  title = {An index to quantify an individual's scientific research output},
  volume = {102},
+ doi = {10.1073/pnas.0507655102},
  year = {2005}
 }
 
@@ -160,13 +163,14 @@ series = {KDD '03}
 
 
 @article{akoglu2015graph,
-  title={Graph-based anomaly detection and description: a survey},
+  title={Graph based anomaly detection and description: A survey},
   author={Akoglu, Leman and Tong, Hanghang and Koutra, Danai},
   journal={Data Mining and Knowledge Discovery},
   volume={29},
   number={3},
   pages={626--688},
-  year={2015}
+  year={2015},
+  doi={10.1007/s10618-014-0365-y}
 }
 
 
@@ -206,7 +210,7 @@ keywords = {05C70, 05A18, 05C85, 05C90, 68R10, 68W40, 92G30, 92H30, 93A15, Core,
 author = {Sariy\"{u}ce, Ahmet Erdem and Seshadhri, C. and Pinar, Ali and \c{C}ataly\"{u}rek, \"{U}mit V.},
 title = {Nucleus Decompositions for Identifying Hierarchy of Dense Subgraphs},
 year = {2017},
-issue_date = {August 2017},
+issue_date = {July 2017},
 publisher = {Association for Computing Machinery},
 address = {New York, NY, USA},
 volume = {11},
@@ -221,26 +225,30 @@ articleno = {16},
 numpages = {27},
 keywords = {overlapping dense subgraphs, graph decomposition, density hierarchy, dense subgraph discovery, k-truss, k-core}
 }
-Using Large Cliques for Hierarchical Dense Subgraph Discovery.
+% Removed stray non-BibTeX line (not a reference entry): Using Large Cliques for Hierarchical Dense Subgraph Discovery.
 
 
 @inproceedings{zhang2023efficient,
  author = {Zhang, Wenqian and Yang, Zhengyi and Wen, Dong and Wang, Xiaoyang},
  booktitle = {2023 IEEE International Conference on Data Mining Workshops (ICDMW)},
- organization = {IEEE},
+ publisher = {IEEE},
+ address = {Piscataway, NJ, USA},
  pages = {1023--1031},
  title = {Efficient Distributed Core Graph Decomposition},
- year = {2023}
+ year = {2023},
+ doi = {10.1109/ICDMW60847.2023.00135}
 }
 
 
 @inproceedings{io-eff,
  author = {Wen, Dong and Qin, Lu and Zhang, Ying and Lin, Xuemin and Yu, Jeffrey Xu},
  booktitle = {2016 IEEE 32nd International Conference on Data Engineering (ICDE)},
- organization = {IEEE},
+ publisher = {IEEE},
+ address = {Piscataway, NJ, USA},
  pages = {133--144},
  title = {I/O efficient core graph decomposition at web scale},
- year = {2016}
+ year = {2016},
+ doi = {10.1109/ICDE.2016.7498235}
 }
 
 
@@ -756,6 +764,7 @@ numpages = {14}
 %testing
 
 
+% NOTE: Title/authors for this 2026 SIGMOD/PACMMOD paper were verified, but DOI/volume/article metadata could not be independently confirmed online on 2026-05-20.
 @article{NuclearCD,
   author    = {Zhang, Wenqian and Yang, Zhengyi and Wen, Dong and Ding, Yi and Zhang, Wenjie and Lin, Xuemin},
   title     = {Nucleus Decomposition Revisited: An Efficient Counting-Based Approach},
@@ -772,11 +781,13 @@ numpages = {14}
   articleno = {215},
   numpages  = {26}
 }
-@article{coreAlg,
-  author    = {Batagelj, Vladimir and Zaver{\v s}nik, Matja{\v z}},
-  title     = {An $O(m)$ Algorithm for Cores Decomposition of Networks},
-  journal   = {arXiv preprint cs/0310049},
-  year      = {2003}
+@misc{coreAlg,
+  author        = {Batagelj, Vladimir and Zaver{\v s}nik, Matja{\v z}},
+  title         = {An $O(m)$ Algorithm for Cores Decomposition of Networks},
+  year          = {2003},
+  eprint        = {cs/0310049},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.DS}
 }
 @article{kcoreSeidman,
   author    = {Seidman, Stephen B.},
@@ -785,7 +796,8 @@ numpages = {14}
   volume    = {5},
   number    = {3},
   pages     = {269--287},
-  year      = {1983}
+  year      = {1983},
+  doi       = {10.1016/0378-8733(83)90028-X}
 }
 @techreport{ktrussCohen,
   author    = {Cohen, Jonathan},
@@ -799,7 +811,10 @@ numpages = {14}
   title     = {Finding the Hierarchy of Dense Subgraphs Using Nucleus Decompositions},
   booktitle = {Proc. International Conference on World Wide Web (WWW)},
   pages     = {927--937},
-  year      = {2015}
+  year      = {2015},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  doi       = {10.1145/2736277.2741640}
 }
 
 @article{tomita,
@@ -809,14 +824,20 @@ numpages = {14}
   volume    = {363},
   number    = {1},
   pages     = {28--42},
-  year      = {2006}
+  year      = {2006},
+  doi       = {10.1016/j.tcs.2006.06.015}
 }
 @inproceedings{eppstein,
   author    = {Eppstein, David and L{\"o}ffler, Maarten and Strash, Darren},
   title     = {Listing All Maximal Cliques in Sparse Graphs in Near-Optimal Time},
-  booktitle = {Proc. International Symposium on Algorithms and Computation (ISAAC)},
+  booktitle = {Proc. 21st International Symposium on Algorithms and Computation (ISAAC)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {6506},
   pages     = {403--414},
-  year      = {2010}
+  year      = {2010},
+  publisher = {Springer},
+  address   = {Berlin, Heidelberg},
+  doi       = {10.1007/978-3-642-17517-6_36}
 }
 
 
@@ -826,7 +847,8 @@ numpages = {14}
   journal   = {Nature Communications},
   volume    = {7},
   pages     = {10168},
-  year      = {2016}
+  year      = {2016},
+  doi       = {10.1038/ncomms10168}
 }
 @article{communityFinder,
   author    = {Yang, Jaewon and Leskovec, Jure},
@@ -835,13 +857,16 @@ numpages = {14}
   volume    = {42},
   number    = {1},
   pages     = {181--213},
-  year      = {2015}
+  year      = {2015},
+  doi       = {10.1007/s10115-013-0693-z}
 }
 @book{edelsbrunner2010topology,
   author    = {Edelsbrunner, Herbert and Harer, John},
   title     = {Computational Topology: An Introduction},
   publisher = {American Mathematical Society},
-  year      = {2010}
+  address   = {Providence, RI, USA},
+  year      = {2010},
+  doi       = {10.1090/mbk/069}
 }
 
 % --- Hypergraph core decomposition (PLACEHOLDER bib keys --- update before submission) ---
@@ -861,6 +886,7 @@ Feifei Li and
 M. Tamer {\"{O}}zsu},
  pages = {991--1002},
  publisher = {{ACM}},
+ address = {New York, NY, USA},
  timestamp = {Tue, 06 Nov 2018 00:00:00 +0100},
  title = {Local search of communities in large graphs},
  url = {https://doi.org/10.1145/2588555.2612179},
@@ -878,6 +904,7 @@ Mining, {ASONAM} 2011, Kaohsiung, Taiwan, 25-27 July 2011},
  doi = {10.1109/ASONAM.2011.65},
  pages = {87--93},
  publisher = {{IEEE} Computer Society},
+ address = {Washington, DC, USA},
  timestamp = {Tue, 23 May 2017 01:00:00 +0200},
  title = {Evaluating Cooperation in Communities with the k-Core Structure},
  url = {https://doi.org/10.1109/ASONAM.2011.65},
@@ -887,12 +914,12 @@ Mining, {ASONAM} 2011, Kaohsiung, Taiwan, 25-27 July 2011},
 @article{communities_dec3,
  abstract = {The modern science of networks has brought significant advances to our understanding of complex systems. One of the most relevant features of graphs representing real systems is community structure, or clustering, i.e. the organization of vertices in clusters, with many edges joining vertices of the same cluster and comparatively few edges joining vertices of different clusters. Such clusters, or communities, can be considered as fairly independent compartments of a graph, playing a similar role like, e.g., the tissues or the organs in the human body. Detecting communities is of great importance in sociology, biology and computer science, disciplines where systems are often represented as graphs. This problem is very hard and not yet satisfactorily solved, despite the huge effort of a large interdisciplinary community of scientists working on it over the past few years. We will attempt a thorough exposition of the topic, from the definition of the main elements of the problem, to the presentation of most methods developed, with a special focus on techniques designed by statistical physicists, from the discussion of crucial issues like the significance of clustering and how methods should be tested and compared against each other, to the description of applications to real networks.},
  author = {Santo Fortunato},
- doi = {https://doi.org/10.1016/j.physrep.2009.11.002},
+ doi = {10.1016/j.physrep.2009.11.002},
  issn = {0370-1573},
  journal = {Physics Reports},
  keywords = {Graphs, Clusters, Statistical physics},
- number = {3},
- pages = {75-174},
+ number = {3--5},
+ pages = {75--174},
  title = {Community detection in graphs},
  url = {https://www.sciencedirect.com/science/article/pii/S0370157309002841},
  volume = {486},
@@ -916,6 +943,7 @@ Dragos D. Margineantu and
 Graham Williams},
  pages = {2313--2314},
  publisher = {{ACM}},
+ address = {New York, NY, USA},
  timestamp = {Tue, 06 Nov 2018 00:00:00 +0100},
  title = {Dense Subgraph Discovery: {KDD} 2015 tutorial},
  url = {https://doi.org/10.1145/2783258.2789987},
@@ -925,12 +953,12 @@ Graham Williams},
 @article{Identifying_influential,
  abstract = {Identifying influential nodes that lead to faster and wider spreading in complex networks is of theoretical and practical significance. The degree centrality method is very simple but of little relevance. Global metrics such as betweenness centrality and closeness centrality can better identify influential nodes, but are incapable to be applied in large-scale networks due to the computational complexity. In order to design an effective ranking method, we proposed a semi-local centrality measure as a tradeoff between the low-relevant degree centrality and other time-consuming measures. We use the Susceptible–Infected–Recovered (SIR) model to evaluate the performance by using the spreading rate and the number of infected nodes. Simulations on four real networks show that our method can well identify influential nodes.},
  author = {Duanbing Chen and Linyuan Lü and Ming-Sheng Shang and Yi-Cheng Zhang and Tao Zhou},
- doi = {https://doi.org/10.1016/j.physa.2011.09.017},
+ doi = {10.1016/j.physa.2011.09.017},
  issn = {0378-4371},
  journal = {Physica A: Statistical Mechanics and its Applications},
  keywords = {Complex networks, Centrality measures, Influential nodes, Spreading, SIR model},
  number = {4},
- pages = {1777-1787},
+ pages = {1777--1787},
  title = {Identifying influential nodes in complex networks},
  url = {https://www.sciencedirect.com/science/article/pii/S0378437111007333},
  volume = {391},
@@ -976,7 +1004,8 @@ series = {NIPS'05}
  publisher = {American Association for the Advancement of Science},
  title = {Specificity and stability in topology of protein networks},
  volume = {296},
- year = {2002}
+ year = {2002},
+ doi = {10.1126/science.1065103}
 }
 
 @article{cohesive_subgraph_complex_networks,
@@ -987,7 +1016,8 @@ series = {NIPS'05}
  publisher = {Nature Publishing Group UK London},
  title = {Identification of influential spreaders in complex networks},
  volume = {6},
- year = {2010}
+ year = {2010},
+ doi = {10.1038/nphys1746}
 }
 
 @article{k-core1,
@@ -1013,7 +1043,8 @@ series = {NIPS'05}
   volume       = {31},
   number       = {1},
   pages        = {75--90},
-  year         = {2019}
+  year         = {2019},
+  doi          = {10.1109/TKDE.2018.2833070}
 }
 
 @inproceedings{kcore_3,
@@ -1072,7 +1103,8 @@ series = {KDD '14}
  publisher = {APS},
  title = {Nature of hypergraph k-core percolation problems},
  volume = {109},
- year = {2024}
+ year = {2024},
+ doi = {10.1103/PhysRevE.109.014307}
 }
 
 @inproceedings{kg-core,
@@ -1096,7 +1128,7 @@ series = {KDD '14}
 @article{kq-core,
  abstract = {In complex networks, many elements interact with each other in different ways. A hypergraph is a network in which group interactions occur among more than two elements. In this study, first, we propose a method to identify influential subgroups in hypergraphs, named (k,q)-core decomposition. The (k,q)-core is defined as the maximal subgraph in which each vertex has at least k hypergraph degrees and each hyperedge contains at least q vertices. The method contains a repeated pruning process until reaching the (k,q)-core, which shares similarities with a widely used k-core decomposition technique in a graph. Second, we analyze the pruning dynamics and the percolation transition with theoretical and numerical methods in random hypergraphs. We set up evolution equations for the pruning process, and self-consistency equations for the percolation properties. Based on our theory, we find that the pruning process generates a hybrid percolation transition for either k≥3 or q≥3. The critical exponents obtained theoretically are confirmed with finite-size scaling analysis. Next, when k=q=2, we obtain a unconventional degree-dependent critical relaxation dynamics analytically and numerically. Finally, we apply the (k,q)-core decomposition to a real coauthorship dataset and recognize the leading groups at an early stage.},
  author = {Jongshin Lee and Kwang-Il Goh and Deok-Sun Lee and B. Kahng},
- doi = {https://doi.org/10.1016/j.chaos.2023.113645},
+ doi = {10.1016/j.chaos.2023.113645},
  issn = {0960-0779},
  journal = {Chaos, Solitons \& Fractals},
  keywords = {Hypergraph, Higher-order networks, Percolation, Hybrid phase transition, Critical dynamics},
@@ -1108,11 +1140,13 @@ series = {KDD '14}
 }
 
 
-@article{apply_social_networks,
-  title={Complex networks as hypergraphs},
-  author={Estrada, Ernesto and Rodriguez-Velazquez, Juan A},
-  journal={arXiv preprint physics/0505137},
-  year={2005}
+@misc{apply_social_networks,
+  author        = {Estrada, Ernesto and Rodriguez-Velazquez, Juan A.},
+  title         = {Complex networks as hypergraphs},
+  year          = {2005},
+  eprint        = {physics/0505137},
+  archiveprefix = {arXiv},
+  primaryclass  = {physics.soc-ph}
 }
 
 @article{apply_biological_networks_1,
@@ -1125,8 +1159,7 @@ series = {KDD '14}
     month = {05},
     volume = {5},
     url = {https://doi.org/10.1371/journal.pcbi.1000385},
-    pages = {1-6},
-    abstract = {null},
+    pages = {e1000385},
     number = {5},
 
 }
@@ -1152,11 +1185,11 @@ series = {EICC '24}
 @article{e-shipping_recommendation,
  abstract = {Recommender systems are emerging in e-commerce as important promotion tools to assist customers to discover potentially interesting items. Currently, most of these are single-objective and search for items that fit the overall preference of a particular user. In real applications, such as restaurant recommendations, however, users often have multiple objectives such as group preferences and restaurant ambiance. This paper highlights the need for multi-objective recommendations and provides a solution using hypergraph ranking. A general User–Item–Attribute–Context data model is proposed to summarize different information resources and high-order relationships for the construction of a multipartite hypergraph. This study develops an improved balanced hypergraph ranking method to rank different types of objects in hypergraph data. An overall framework is then proposed as a guideline for the implementation of multi-objective recommender systems. Empirical experiments are conducted with the dataset from a review site Yelp.com, and the outcomes demonstrate that the proposed model performs very well for multi-objective recommendations. The experiments also demonstrate that this framework is still compatible for traditional single-objective recommendations and can improve accuracy significantly. In conclusion, the proposed multi-objective recommendation framework is able to handle complex and changing demands for e-commerce customers.},
  author = {Mingsong Mao and Jie Lu and Jialin Han and Guangquan Zhang},
- doi = {https://doi.org/10.1016/j.ins.2018.07.029},
+ doi = {10.1016/j.ins.2018.07.029},
  issn = {0020-0255},
  journal = {Information Sciences},
  keywords = {Recommender systems, E-commerce, User personalization, Hypergraph},
- pages = {269-287},
+ pages = {269--287},
  title = {Multiobjective e-commerce recommendations based on hypergraph ranking},
  url = {https://www.sciencedirect.com/science/article/pii/S0020025518305437},
  volume = {471},
