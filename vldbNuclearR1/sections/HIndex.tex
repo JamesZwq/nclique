@@ -279,14 +279,14 @@ The total time is therefore $O(\Sig+U+n)$.
 
 The mutable baseline pays heap and residual-index maintenance costs on the same logical peel events.
 %
-Figure~\ref{fig:peel} traces \spinStar{} on the running example: each row records one pop, and each cell marks the case (hold death, pivot shrink, or pivot-to-death) that the popped vertex triggers on the path indicated by the column header.
+Figure~\ref{fig:peel} traces \spinStar{} on the running example as six leaf lifelines: each row is one path of Table~\ref{tab:cpi-leaves}, the header columns name the popped vertex and the assigned $\kappa_s$ at every iteration, and an event badge appears in a leaf's lifeline at the iteration where the popped vertex acts on that leaf (hold death A, pivot shrink C, or pivot-to-death C$'$).
 %
 The experiments in Section~\ref{sec:exp} measure the impact of replacing those operations with static path counters.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/fig2_peeling.pdf}
-\caption{Incremental peel trace on the running example.}
-\Description{A peeling trace matrix for the running example, with cells colored by case type.}
+\caption{\spinStar{} peel trace on the running example, drawn as six leaf lifelines. Header columns record the popped vertex and assigned $\kappa_s$ per iteration; event badges (C, C$'$, A) appear in a lifeline only at the iteration where the popped vertex acts on that leaf; the hatched grey strip after a leaf's death shows the iterations on which \spinStar{} skips the leaf.}
+\Description{Six horizontal lifelines, one per CPI leaf of the running example. A header bar at the top labels each of the ten iterations with the popped vertex and its assigned core value. Event badges --- green C, orange C-prime, red A --- mark the iterations at which each leaf experiences a pivot shrink, pivot-to-death, or hold removal respectively. A hatched grey strip extends each lifeline rightward from the death iteration to indicate that subsequent peels skip it.}
 \label{fig:peel}
 \end{figure}

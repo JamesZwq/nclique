@@ -1,14 +1,20 @@
 """
-Figure 2: Immutable-CPI peeling trace (state matrix only).
+Figure 2: SPIN* peel trace on the running example, as leaf lifelines.
 
-The 10 rounds * 6 leaves matrix is the only genuinely visual content:
-each cell shows the case (A / C / C' / skip) at that (round, leaf), and
-the per-row colour pattern lets the reader scan how cases distribute
-over time.  The Round-5 nCr delta worked example (formerly panel b)
-lives inline in the body prose where it belongs.
+Each leaf gets one horizontal lifeline showing its state across the 10
+iterations. Iteration columns at the top carry the popped vertex and
+the kappa value. Each cell in a lifeline is either:
+  - blank (the iteration's popped vertex is not on this leaf)
+  - a coloured tick marking which case fired:
+       C  (pivot shrink, alive)        -> green
+       C' (pivot -> death)             -> orange
+       A  (hold removed -> path dies)  -> red
+  - a grey strip after the leaf has died
 
-Trace is the deterministic output of compute_cpi.simulate_peeling on the
-running example.
+The leaf's pivot-count trajectory is annotated to the right.
+
+Trace is the deterministic output of compute_cpi.simulate_peeling on
+the running example.
 """
 import matplotlib
 matplotlib.rcParams['pdf.fonttype'] = 42  # TrueType -- VLDB/ACM forbid Type 3
@@ -21,7 +27,6 @@ from compute_cpi import build_graph, sdct_cpi, simulate_peeling
 
 OUT = Path(__file__).parent
 
-# ---- Replay peeling trace ----
 adj = build_graph()
 s = 3
 leaves, _ = sdct_cpi(adj, s)
@@ -30,104 +35,146 @@ trace, core = simulate_peeling(adj, leaves, s, verbose=False)
 L = len(leaves)
 R = len(trace)
 
-# Per-(round, leaf) state matrix
-case_grid     = [[None] * L for _ in range(R)]
-delta_grid    = [[None] * L for _ in range(R)]
-pivot_grid    = [[None] * L for _ in range(R)]
-
-# Track pivot count over time
-rp_now = [len(leaves[i][1]) for i in range(L)]
-alive  = [True] * L
-
+# case_grid[i][r] = case label on leaf i at iteration r, or None
+# 'A' / 'C' / "C'" / 'skip'
+case_grid = [[None] * R for _ in range(L)]
 for r_idx, row in enumerate(trace):
-    # Apply events to update rp_now
     for e in row['events']:
         i = e['leaf'] - 1
         if e.get('status') == 'skip (dead)':
-            case_grid[r_idx][i] = 'skip'
+            case_grid[i][r_idx] = 'skip'
         else:
-            case_grid[r_idx][i]  = e['case'][0:2]  # 'A ', 'C ', "C'"
-            delta_grid[r_idx][i] = (e.get('Dh', 0), e.get('Dp', 0))
-            if e['case'].startswith('C') and 'p' in e:
-                # parse '3->2'
-                new_p = int(e['p'].split('\u2192')[1])
-                rp_now[i] = new_p
-            if e.get('path_dies'):
-                alive[i] = False
-    # snapshot pivot counts at end of round
-    for i in range(L):
-        pivot_grid[r_idx][i] = rp_now[i] if alive[i] or case_grid[r_idx][i] else rp_now[i]
+            tag = e['case'].split(' ')[0]   # "A" / "C" / "C'"
+            case_grid[i][r_idx] = tag
 
-# ---- Figure layout: state matrix only, half-column width ----
-# xlim must accommodate the 6 leaf columns at x=2.2..7.2 plus the
-# half cell width (0.46) on each side.
-fig, ax_a = plt.subplots(figsize=(3.8, 3.4))
-ax_a.set_xlim(-0.8, 7.8); ax_a.set_ylim(R + 0.5, -1.5)
-ax_a.set_xticks([]); ax_a.set_yticks([])
-ax_a.axis('off')
+# Lifeline metadata: pivot trajectory (initial pivot count -> per-step)
+init_p = [len(p) for h, p in leaves]
+eta    = [s - len(h) for h, p in leaves]
 
-# Color palette
-COL = {
-    'A':    '#d94545',  # hold removed -> path dies
-    'C ':   '#3a8a3a',  # pivot shrink, alive
-    "C'":   '#e58a2a',  # pivot -> death
-    'skip': '#cfcfcf',  # already dead
-    None:   '#fafafa',  # leaf not touched
-}
+# ---- Layout ----
+# 6 lifelines, each with R=10 cells of width 1.
+# Header height: 2 rows (pop, kappa); top of plot.
+fig, ax = plt.subplots(figsize=(7.0, 2.6))
 
-# Header row: round | popped | core | L1..L6
-hdr_y = -0.6
-ax_a.text(-0.55, hdr_y, "#Iter",     fontsize=8.5, fontweight='bold')
-ax_a.text( 0.70, hdr_y, "pop",       fontsize=8.5, fontweight='bold')
-ax_a.text( 1.55, hdr_y, r"$\kappa$", fontsize=8.5, fontweight='bold')
-for i in range(L):
-    ax_a.text(2.2 + i, hdr_y, f"$L_{i+1}$", fontsize=8.5, fontweight='bold',
-              ha='center')
+cell_w = 1.0
+cell_h = 0.62
+gap_y  = 0.25
 
-cell_w, cell_h = 0.92, 0.78
+# Colours
+RED    = '#d94545'   # Case A
+GREEN  = '#3a8a3a'   # Case C (pivot shrink)
+ORANGE = '#e58a2a'   # Case C' (pivot -> death)
+GREY   = '#d0d0d0'   # already-dead strip
+LIVE   = '#fafafa'   # alive but no event this iter
+HOLDV  = '#fff3d6'   # hold-vertex band (subtle)
+
+ax.set_xlim(-2.4, R + 0.4)
+# total height: header (~1.4) + 6 lifelines (each cell_h + gap_y)
+TOP = 1.4
+total_h = TOP + L * (cell_h + gap_y)
+ax.set_ylim(total_h, -0.2)
+ax.axis('off')
+
+# --- Header: iteration columns ---
 for r_idx, row in enumerate(trace):
-    y = r_idx
-    ax_a.text(-0.40, y, f"{row['round']}", fontsize=8.0, ha='center')
-    ax_a.text( 0.75, y, f"$v_{{{row['victim']}}}$", fontsize=8.0)
-    ax_a.text( 1.55, y, f"{row['core']}", fontsize=8.0, ha='left')
-    for i in range(L):
-        c = case_grid[r_idx][i]
-        if c is None:
-            face = COL[None]
-            text = ''
-        else:
-            face = COL.get(c, '#ffffff')
-            if c == 'skip':
-                text = '\u2014'
-            elif c == 'A':
-                text = 'A'
-            elif c == 'C ':
-                text = 'C'
-            elif c == "C'":
-                text = "C\u2032"
-            else:
-                text = c
-        rect = mpatches.FancyBboxPatch(
-            (2.2 + i - cell_w/2, y - cell_h/2 + 0.05),
-            cell_w, cell_h, boxstyle="round,pad=0.02",
-            linewidth=0.5, edgecolor='#888', facecolor=face)
-        ax_a.add_patch(rect)
-        # Case label centered in the cell. Per-cell delta numbers
-        # removed — unreadable at half-column; numerical example is
-        # in Example ex:peel.
-        ax_a.text(2.2 + i, y + 0.05, text, fontsize=8.5,
-                  ha='center', va='center', fontweight='bold',
-                  color='white' if c not in (None, 'skip') else '#555')
+    x = r_idx + 0.5
+    # iter number
+    ax.text(x, 0.05, f"{row['round']}", ha='center', va='center',
+            fontsize=7.5, color='#666')
+    # popped vertex
+    ax.text(x, 0.45, f"$v_{{{row['victim']}}}$", ha='center', va='center',
+            fontsize=8.5, fontweight='bold')
+    # kappa
+    ax.text(x, 0.90, f"{row['core']}", ha='center', va='center',
+            fontsize=8.0, color='#1f3a8a')
 
-# Legend
+# Header row labels
+ax.text(-0.05, 0.05, "iter", ha='right', va='center',
+        fontsize=7.5, fontweight='bold', color='#666')
+ax.text(-0.05, 0.45, "pop",  ha='right', va='center',
+        fontsize=8.0, fontweight='bold')
+ax.text(-0.05, 0.90, r"$\kappa_s$", ha='right', va='center',
+        fontsize=8.0, fontweight='bold', color='#1f3a8a')
+
+# Divider line under header
+ax.plot([-2.2, R + 0.2], [TOP - 0.15, TOP - 0.15],
+        linewidth=0.6, color='#999')
+
+# --- Leaf lifelines ---
+for i in range(L):
+    h, p = leaves[i]
+    y0 = TOP + i * (cell_h + gap_y)
+    y_mid = y0 + cell_h / 2
+
+    # Left label: leaf id + composition
+    hold_str  = ','.join(f"v_{{{v}}}" for v in h)
+    pivot_str = ','.join(f"v_{{{v}}}" for v in p)
+    label = (rf"$L_{i+1}$: $V_h\!=\!\{{{hold_str}\}}$, "
+             rf"$V_p\!=\!\{{{pivot_str}\}}$, $\eta\!=\!{eta[i]}$")
+    ax.text(-0.05, y_mid, label, ha='right', va='center', fontsize=7.4)
+
+    # Has the leaf died yet?
+    died_at = None
+    for r_idx in range(R):
+        c = case_grid[i][r_idx]
+        if c in ('A', "C'"):
+            died_at = r_idx
+            break
+
+    # Background strip: alive (light) until death, grey after
+    if died_at is None:
+        ax.add_patch(mpatches.Rectangle((0, y0), R, cell_h,
+                     facecolor=LIVE, edgecolor='#bbb', linewidth=0.3))
+    else:
+        ax.add_patch(mpatches.Rectangle((0, y0), died_at + 1, cell_h,
+                     facecolor=LIVE, edgecolor='#bbb', linewidth=0.3))
+        if died_at + 1 < R:
+            ax.add_patch(mpatches.Rectangle((died_at + 1, y0),
+                         R - died_at - 1, cell_h,
+                         facecolor=GREY, edgecolor='#bbb', linewidth=0.3,
+                         hatch='///', alpha=0.55))
+
+    # Event markers
+    for r_idx in range(R):
+        c = case_grid[i][r_idx]
+        x = r_idx + 0.5
+        if c == 'C':
+            ax.add_patch(mpatches.Circle((x, y_mid), 0.20,
+                         facecolor=GREEN, edgecolor='white', linewidth=0.6))
+            ax.text(x, y_mid, 'C', ha='center', va='center',
+                    fontsize=7.5, fontweight='bold', color='white')
+        elif c == "C'":
+            ax.add_patch(mpatches.FancyBboxPatch(
+                (x - 0.28, y_mid - 0.22), 0.56, 0.44,
+                boxstyle="round,pad=0.01",
+                facecolor=ORANGE, edgecolor='white', linewidth=0.6))
+            ax.text(x, y_mid, "C$'$", ha='center', va='center',
+                    fontsize=7.5, fontweight='bold', color='white')
+        elif c == 'A':
+            ax.add_patch(mpatches.FancyBboxPatch(
+                (x - 0.28, y_mid - 0.22), 0.56, 0.44,
+                boxstyle="round,pad=0.01",
+                facecolor=RED, edgecolor='white', linewidth=0.6))
+            ax.text(x, y_mid, 'A', ha='center', va='center',
+                    fontsize=7.5, fontweight='bold', color='white')
+        # 'skip' cells render as part of the grey post-death strip; no marker
+        # None (vertex not on this leaf) renders as background
+
+# --- Legend ---
 legend_handles = [
-    mpatches.Patch(facecolor=COL['A'],   edgecolor='#888', label='Case A: hold removed (dies)'),
-    mpatches.Patch(facecolor=COL['C '],  edgecolor='#888', label='Case C: pivot shrinks (alive)'),
-    mpatches.Patch(facecolor=COL["C'"],  edgecolor='#888', label="Case C$'$: pivot $\\to$ death"),
-    mpatches.Patch(facecolor=COL['skip'],edgecolor='#888', label='already dead (skip)'),
+    mpatches.Patch(facecolor=GREEN,  edgecolor='white',
+                   label="C: pivot shrinks (leaf alive)"),
+    mpatches.Patch(facecolor=ORANGE, edgecolor='white',
+                   label=r"C$'$: pivot $\to$ death"),
+    mpatches.Patch(facecolor=RED,    edgecolor='white',
+                   label='A: hold removed (death)'),
+    mpatches.Patch(facecolor=GREY,   edgecolor='#bbb',
+                   hatch='///', alpha=0.55,
+                   label='leaf already dead'),
 ]
-ax_a.legend(handles=legend_handles, loc='lower center',
-            bbox_to_anchor=(0.5, -0.12), ncol=2, fontsize=7.5, frameon=False)
+ax.legend(handles=legend_handles, loc='lower center',
+          bbox_to_anchor=(0.42, -0.14), ncol=4, fontsize=7.2,
+          frameon=False, handlelength=1.2, columnspacing=1.0)
 
 fig.savefig(OUT / "fig2_peeling.pdf", bbox_inches='tight')
 fig.savefig(OUT / "fig2_peeling.png", dpi=180, bbox_inches='tight')
