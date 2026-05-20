@@ -104,7 +104,7 @@ Initialise $h[v]\gets\sdeg(v)$ using Lemma~\ref{lem:supp}; on the running exampl
 %
 The first call $\vertexSupport(v_4,h)$ scans the four paths through $v_4$ and counts threshold witnesses via Lemma~\ref{lem:per-path-witness}.
 %
-At threshold $k=3$, every other vertex on each of the four paths has $h\ge3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$ (Figure~\ref{fig:spinex}).
+At threshold $k=3$, every other vertex on each of the four paths has $h\ge3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$. The full $h$-value trajectory across passes is shown in Figure~\ref{fig:spinex}: pass~0 carries the initial $\sdeg$, pass~1 drops the $K_4$ vertices $v_1{,}\ldots{,}v_6$ to $3$, and pass~2 reproduces pass~1 to certify the fixed point.
 %
 The converged vector $h^\star=\kappa_s$ is the semantic target that any static-\cpi{} core-value algorithm must reach; Section~\ref{sec:peelh} delivers \spinStar{}, which reaches that target in a single deletion pass.
 \end{example}
@@ -112,8 +112,8 @@ The converged vector $h^\star=\kappa_s$ is the semantic target that any static-\
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.78\linewidth]{figures/fig_spin_example.pdf}
-\caption{\spin{} threshold-support computation for $v_4$ on the running example. Each row is a path through $v_4$; columns are thresholds $k=1,\ldots,h[v_4]=6$; the green digit in cell $(P,k)$ is $W_{v_4}(P,h,k)$ from Lemma~\ref{lem:per-path-witness}, the count of $s$-cliques through $v_4$ on $P$ whose other vertices all clear threshold $k$. A hatched grey strip extends from the threshold at which the witness count drops to zero. The bottom row aggregates $\sum_{P\ni v_4}W_{v_4}(P,h,k)$; the highlighted cell is $\Phi_h(v_4)=3=\kappa_3(v_4)$, the largest $k$ at which the sum meets the threshold.}
-\Description{A grid with four rows -- one per CPI leaf through v_4 -- and six threshold columns. Cells carry the per-path witness count W. Once W drops to zero the rest of the row is shown as a hatched grey strip. A bottom row sums the W values across paths at each threshold; the cell at threshold 3 is highlighted, identifying it as Phi_h(v_4) and as kappa_3(v_4).}
+\caption{\spin{} on the running example: per-vertex $h$-value across full passes. Row $v$ shows $h^{(t)}[v]$ at $t=0,1,2$; cell shade encodes the value. Pass~0 is the initial $s$-clique support $\sdeg(v)$; pass~1 already coincides with $\kappa_3(v)$; pass~2 reproduces pass~1, certifying the fixed point.}
+\Description{A 10-row table with one row per vertex v_1..v_10 and three columns labelled pass 0, pass 1, pass 2. Pass 0 carries the initial s-clique supports; pass 1 collapses all six K_4 vertices to value 3 and leaves the four pendant-triangle vertices at value 1; pass 2 is identical to pass 1, which certifies convergence.}
 \label{fig:spinex}
 \end{figure}
 
@@ -238,7 +238,7 @@ Initialise $h[v]\gets\sdeg(v)$ as in Example~\ref{ex:hop} and place every $v$ in
 %
 At iteration~$7$ the cursor has advanced to $k=3$ and $v_4$ pops; the algorithm walks the two live paths through $v_4$ (Table~\ref{tab:cpi-leaves}): $\TPath_5=(\{v_3\},\{v_4,v_5,v_6\})$ has $v_4$ as a pivot, so $p_{\TPath_5}$ shrinks $3\to2$ (Case~C; by Lemma~\ref{lem:support-delta} $v_3$ loses $\binom{3}{2}-\binom{2}{2}=2$ from its bucket key and $v_5,v_6$ each lose $\binom{2}{1}-\binom{1}{1}=1$); $\TPath_6=(\{v_4\},\{v_5,v_6\})$ has $v_4$ as a hold and dies (Case~A; surviving pivots $v_5,v_6$ each lose $\binom{1}{1}=1$).
 %
-After ten pops the peel completes with $\kappa_3(v_i)=3$ for $i\in\{1,\ldots,6\}$ and $\kappa_3(v_i)=1$ for $i\in\{7,\ldots,10\}$; Figure~\ref{fig:peel} traces every iteration as a leaf lifeline.
+After ten pops the peel completes with $\kappa_3(v_i)=3$ for $i\in\{1,\ldots,6\}$ and $\kappa_3(v_i)=1$ for $i\in\{7,\ldots,10\}$; Figure~\ref{fig:peel} shows every vertex's $h$-value across all ten iterations.
 \end{example}
 
 The converged vector is the fixed point of the specification in Section~\ref{sec:localh}:
@@ -302,7 +302,7 @@ The experiments in Section~\ref{sec:exp} measure the impact of replacing those o
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/fig2_peeling.pdf}
-\caption{\spinStar{} peel trace on the running example, drawn as six leaf lifelines. Header columns record the popped vertex and assigned $\kappa_s$ per iteration; event badges (C, C$'$, A) appear in a lifeline only at the iteration where the popped vertex acts on that leaf; the hatched grey strip after a leaf's death shows the iterations on which \spinStar{} skips the leaf.}
-\Description{Six horizontal lifelines, one per CPI leaf of the running example. A header bar at the top labels each of the ten iterations with the popped vertex and its assigned core value. Event badges --- green C, orange C-prime, red A --- mark the iterations at which each leaf experiences a pivot shrink, pivot-to-death, or hold removal respectively. A hatched grey strip extends each lifeline rightward from the death iteration to indicate that subsequent peels skip it.}
+\caption{\spinStar{} on the running example: per-vertex $h$-value across the ten deletion iterations. Row $v$ shows the residual threshold-support of $v$ after each pop, shaded by value. The header records the popped vertex and the assigned $\kappa_3$ per iteration. The highlighted cell on row $v$ marks the iteration at which $v$ is popped and is labelled with its final $\kappa_3(v)$; subsequent cells on that row are blank because $v$ no longer participates.}
+\Description{A 10-row table with one row per vertex v_1..v_10 and 11 columns: iter 0 plus iters 1 through 10. The header for each non-zero iteration shows which vertex is popped and the kappa value it is assigned. Each row's cells carry the vertex's current residual threshold-support; the cell at the iteration where the vertex is popped is highlighted and labelled with kappa, and cells to the right of that highlight are blank.}
 \label{fig:peel}
 \end{figure}
