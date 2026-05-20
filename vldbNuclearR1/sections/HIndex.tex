@@ -104,18 +104,33 @@ Initialise $h[v]\gets\sdeg(v)$ using Lemma~\ref{lem:supp}; on the running exampl
 %
 The first call $\vertexSupport(v_4,h)$ scans the four paths through $v_4$ and counts threshold witnesses via Lemma~\ref{lem:per-path-witness}.
 %
-At threshold $k=3$, every other vertex on each of the four paths has $h\ge3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$. The full $h$-value trajectory across passes is shown in Figure~\ref{fig:spinex}: pass~0 carries the initial $\sdeg$, pass~1 drops the $K_4$ vertices $v_1{,}\ldots{,}v_6$ to $3$, and pass~2 reproduces pass~1 to certify the fixed point.
+At threshold $k=3$, every other vertex on each of the four paths has $h\ge3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$. The full $h$-value trajectory across passes is shown in Table~\ref{tab:spinex}: pass~0 carries the initial $\sdeg$, pass~1 drops the $K_4$ vertices $v_1{,}\ldots{,}v_6$ to $3$, and pass~2 reproduces pass~1 to certify the fixed point.
 %
 The converged vector $h^\star=\kappa_s$ is the semantic target that any static-\cpi{} core-value algorithm must reach; Section~\ref{sec:peelh} delivers \spinStar{}, which reaches that target in a single deletion pass.
 \end{example}
 
-\begin{figure}[t]
+\begin{table}[t]
 \centering
-\includegraphics[width=0.78\linewidth]{figures/fig_spin_example.pdf}
-\caption{\spin{} on the running example: per-vertex $h$-value across full passes. Row $v$ shows $h^{(t)}[v]$ at $t=0,1,2$; cell shade encodes the value. Pass~0 is the initial $s$-clique support $\sdeg(v)$; pass~1 already coincides with $\kappa_3(v)$; pass~2 reproduces pass~1, certifying the fixed point.}
-\Description{A 10-row table with one row per vertex v_1..v_10 and three columns labelled pass 0, pass 1, pass 2. Pass 0 carries the initial s-clique supports; pass 1 collapses all six K_4 vertices to value 3 and leaves the four pendant-triangle vertices at value 1; pass 2 is identical to pass 1, which certifies convergence.}
-\label{fig:spinex}
-\end{figure}
+\caption{\spin{} on the running example: per-vertex $h$-value across full passes. Pass~$0$ is the initial $s$-clique support $\sdeg(v)$ (Lemma~\ref{lem:supp}); pass~$1$ already coincides with $\kappa_3(v)$; pass~$2$ reproduces pass~$1$, certifying the fixed point.}
+\label{tab:spinex}
+\small
+\begin{tabular}{c|ccc}
+\toprule
+$v$ & pass $0$ ($\sdeg$) & pass $1$ & pass $2 = \kappa_3(v)$ \\
+\midrule
+$v_1$    & $3$ & $3$ & $\mathbf{3}$ \\
+$v_2$    & $4$ & $3$ & $\mathbf{3}$ \\
+$v_3$    & $6$ & $3$ & $\mathbf{3}$ \\
+$v_4$    & $6$ & $3$ & $\mathbf{3}$ \\
+$v_5$    & $3$ & $3$ & $\mathbf{3}$ \\
+$v_6$    & $4$ & $3$ & $\mathbf{3}$ \\
+$v_7$    & $1$ & $1$ & $\mathbf{1}$ \\
+$v_8$    & $1$ & $1$ & $\mathbf{1}$ \\
+$v_9$    & $1$ & $1$ & $\mathbf{1}$ \\
+$v_{10}$ & $1$ & $1$ & $\mathbf{1}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{algorithm}[t]
 \algfontsize
@@ -238,7 +253,7 @@ Initialise $h[v]\gets\sdeg(v)$ as in Example~\ref{ex:hop} and place every $v$ in
 %
 At iteration~$7$ the cursor has advanced to $k=3$ and $v_4$ pops; the algorithm walks the two live paths through $v_4$ (Table~\ref{tab:cpi-leaves}): $\TPath_5=(\{v_3\},\{v_4,v_5,v_6\})$ has $v_4$ as a pivot, so $p_{\TPath_5}$ shrinks $3\to2$ (Case~C; by Lemma~\ref{lem:support-delta} $v_3$ loses $\binom{3}{2}-\binom{2}{2}=2$ from its bucket key and $v_5,v_6$ each lose $\binom{2}{1}-\binom{1}{1}=1$); $\TPath_6=(\{v_4\},\{v_5,v_6\})$ has $v_4$ as a hold and dies (Case~A; surviving pivots $v_5,v_6$ each lose $\binom{1}{1}=1$).
 %
-After ten pops the peel completes with $\kappa_3(v_i)=3$ for $i\in\{1,\ldots,6\}$ and $\kappa_3(v_i)=1$ for $i\in\{7,\ldots,10\}$; Figure~\ref{fig:peel} shows every vertex's $h$-value across all ten iterations.
+After ten pops the peel completes with $\kappa_3(v_i)=3$ for $i\in\{1,\ldots,6\}$ and $\kappa_3(v_i)=1$ for $i\in\{7,\ldots,10\}$; Table~\ref{tab:peel} shows every vertex's $h$-value across all ten iterations.
 \end{example}
 
 The converged vector is the fixed point of the specification in Section~\ref{sec:localh}:
@@ -295,14 +310,37 @@ The total time is therefore $O(\Sig+U+n)$.
 
 The mutable baseline pays heap and residual-index maintenance costs on the same logical peel events.
 %
-Figure~\ref{fig:peel} traces \spinStar{} on the running example as six leaf lifelines: each row is one path of Table~\ref{tab:cpi-leaves}, the header columns name the popped vertex and the assigned $\kappa_s$ at every iteration, and an event badge appears in a leaf's lifeline at the iteration where the popped vertex acts on that leaf (hold death A, pivot shrink C, or pivot-to-death C$'$).
+Table~\ref{tab:peel} traces \spinStar{} on the running example: row $v$ records $v$'s residual threshold-support after each iteration, the column header names the popped vertex and assigned $\kappa_3$, and the bold $\kappa{=}\!K$ entry on row $v$ marks the iteration at which $v$ itself is popped (cells to the right of that entry are blank because $v$ no longer participates).
 %
 The experiments in Section~\ref{sec:exp} measure the impact of replacing those operations with static path counters.
 
-\begin{figure}[t]
+\begin{table*}[t]
 \centering
-\includegraphics[width=0.92\linewidth]{figures/fig2_peeling.pdf}
-\caption{\spinStar{} on the running example: per-vertex $h$-value across the ten deletion iterations. Row $v$ shows the residual threshold-support of $v$ after each pop, shaded by value. The header records the popped vertex and the assigned $\kappa_3$ per iteration. The highlighted cell on row $v$ marks the iteration at which $v$ is popped and is labelled with its final $\kappa_3(v)$; subsequent cells on that row are blank because $v$ no longer participates.}
-\Description{A 10-row table with one row per vertex v_1..v_10 and 11 columns: iter 0 plus iters 1 through 10. The header for each non-zero iteration shows which vertex is popped and the kappa value it is assigned. Each row's cells carry the vertex's current residual threshold-support; the cell at the iteration where the vertex is popped is highlighted and labelled with kappa, and cells to the right of that highlight are blank.}
-\label{fig:peel}
-\end{figure}
+\caption{\spinStar{} on the running example: per-vertex $h$-value across the ten deletion iterations. Each cell is $v$'s current residual threshold-support; the bold $\kappa{=}K$ entry on row $v$ marks the iteration at which $v$ is popped (and assigned $\kappa_3(v)=K$); cells right of that entry are blank because $v$ has already been finalised.}
+\label{tab:peel}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{c|c|cccccccccc}
+\toprule
+& iter $0$ & iter $1$ & iter $2$ & iter $3$ & iter $4$ & iter $5$ & iter $6$ & iter $7$ & iter $8$ & iter $9$ & iter $10$ \\
+$v$ & (init)
+    & pop $v_8$   & pop $v_7$   & pop $v_{10}$ & pop $v_9$
+    & pop $v_2$   & pop $v_1$   & pop $v_4$    & pop $v_5$
+    & pop $v_3$   & pop $v_6$ \\
+& & $\kappa{=}1$ & $\kappa{=}1$ & $\kappa{=}1$ & $\kappa{=}1$
+   & $\kappa{=}3$ & $\kappa{=}3$ & $\kappa{=}3$ & $\kappa{=}3$
+   & $\kappa{=}3$ & $\kappa{=}3$ \\
+\midrule
+$v_1$    & $3$ & $3$ & $3$ & $3$ & $3$ & $1$ & $\boldsymbol{\kappa\!=\!3}$ &  &  &  &  \\
+$v_2$    & $4$ & $4$ & $4$ & $3$ & $3$ & $\boldsymbol{\kappa\!=\!3}$ &  &  &  &  &  \\
+$v_3$    & $6$ & $6$ & $6$ & $6$ & $6$ & $4$ & $3$ & $1$ & $0$ & $\boldsymbol{\kappa\!=\!3}$ &  \\
+$v_4$    & $6$ & $6$ & $6$ & $6$ & $6$ & $4$ & $3$ & $\boldsymbol{\kappa\!=\!3}$ &  &  &  \\
+$v_5$    & $3$ & $3$ & $3$ & $3$ & $3$ & $3$ & $3$ & $1$ & $\boldsymbol{\kappa\!=\!3}$ &  &  \\
+$v_6$    & $4$ & $3$ & $3$ & $3$ & $3$ & $3$ & $3$ & $1$ & $0$ & $0$ & $\boldsymbol{\kappa\!=\!3}$ \\
+$v_7$    & $1$ & $0$ & $\boldsymbol{\kappa\!=\!1}$ &  &  &  &  &  &  &  &  \\
+$v_8$    & $1$ & $\boldsymbol{\kappa\!=\!1}$ &  &  &  &  &  &  &  &  &  \\
+$v_9$    & $1$ & $1$ & $1$ & $0$ & $\boldsymbol{\kappa\!=\!1}$ &  &  &  &  &  &  \\
+$v_{10}$ & $1$ & $1$ & $1$ & $\boldsymbol{\kappa\!=\!1}$ &  &  &  &  &  &  &  \\
+\bottomrule
+\end{tabular}
+\end{table*}
