@@ -181,15 +181,9 @@ Theorem~\ref{thm:vertex-removal} says how each such path changes, and Lemma~\ref
 %
 Thus the invariant is local: unfinalized vertex values reflect the current live path-counter contributions, clipped from below by the current peel level.
 
-\spinStar{} is an optimization of \spin{}, not a different decomposition objective.
+Algorithm~\ref{alg:peelH} outputs the core values $\kappa_s(v)$ for every $v\in V$, and emits a sorted deletion log as a byproduct.
 %
-It keeps the same witness equation but changes the schedule.
-%
-Instead of scanning every vertex after every pass, it updates only the vertices whose path contributions changed.
-%
-Algorithm~\ref{alg:peelH} outputs the core values and emits a sorted deletion log as a byproduct.
-%
-Its running time depends on $U$, the number of incremental support-update events that actually occur, rather than on the number of full scans.
+Its running time depends on $U$, the number of incremental support-update events triggered along the peel.
 
 \begin{algorithm}[t]
 \algfontsize
