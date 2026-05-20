@@ -111,17 +111,19 @@ The converged vector $h^\star=\kappa_s$ is the semantic target that any static-\
 
 \begin{table}[t]
 \centering
-\caption{\spin{} trace on the running example.}
+\caption{\spin{} trace on the running example. An \emph{interaction} is one full-graph $h$-update; the \emph{core value} $\kappa_3(v)$ (bold row) is $h^{(t)}[v]$ at the fixed point.}
 \label{tab:spinex}
 \small
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{l|cccccccccc}
 \toprule
-interaction $t$ & $v_1$ & $v_2$ & $v_3$ & $v_4$ & $v_5$ & $v_6$ & $v_7$ & $v_8$ & $v_9$ & $v_{10}$ \\
+\multirow{2}{*}{interaction $t$} & \multicolumn{10}{c}{$h$-value $h^{(t)}[v]$ per vertex} \\
+\cmidrule(lr){2-11}
+                                 & $v_1$ & $v_2$ & $v_3$ & $v_4$ & $v_5$ & $v_6$ & $v_7$ & $v_8$ & $v_9$ & $v_{10}$ \\
 \midrule
-$t\!=\!0$ ($\sdeg$)         & $3$ & $4$ & $6$ & $6$ & $3$ & $4$ & $1$ & $1$ & $1$ & $1$ \\
-$t\!=\!1$                   & $3$ & $3$ & $3$ & $3$ & $3$ & $3$ & $1$ & $1$ & $1$ & $1$ \\
-$t\!=\!2$ ($\kappa_3$)      & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{1}$ & $\mathbf{1}$ & $\mathbf{1}$ & $\mathbf{1}$ \\
+$0$ (initial $\sdeg$)            & $3$ & $4$ & $6$ & $6$ & $3$ & $4$ & $1$ & $1$ & $1$ & $1$ \\
+$1$                              & $3$ & $3$ & $3$ & $3$ & $3$ & $3$ & $1$ & $1$ & $1$ & $1$ \\
+$2$ (fixed point $=\kappa_3$)    & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{1}$ & $\mathbf{1}$ & $\mathbf{1}$ & $\mathbf{1}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -310,25 +312,27 @@ The experiments in Section~\ref{sec:exp} measure the impact of replacing those o
 
 \begin{table}[t]
 \centering
-\caption{\spinStar{} trace on the running example.}
+\caption{\spinStar{} trace on the running example. An \emph{interaction} is one deletion event; the bold entry in row $t$, column $v$ is the \emph{core value} $\kappa_3(v)$ assigned when $v$ is popped.}
 \label{tab:peel}
 \small
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{c|cccccccccc}
 \toprule
-$t$ & $v_1$ & $v_2$ & $v_3$ & $v_4$ & $v_5$ & $v_6$ & $v_7$ & $v_8$ & $v_9$ & $v_{10}$ \\
+\multirow{2}{*}{interaction $t$} & \multicolumn{10}{c}{$h$-value $h^{(t)}[v]$ per vertex \quad (bold $=\kappa_3(v)$)} \\
+\cmidrule(lr){2-11}
+                                 & $v_1$ & $v_2$ & $v_3$ & $v_4$ & $v_5$ & $v_6$ & $v_7$ & $v_8$ & $v_9$ & $v_{10}$ \\
 \midrule
-$0$  & $3$ & $4$ & $6$ & $6$ & $3$ & $4$ & $1$ & $1$ & $1$ & $1$ \\
-$1$  & $3$ & $4$ & $6$ & $6$ & $3$ & $3$ & $0$ & $\boldsymbol{1}$ & $1$ & $1$ \\
-$2$  & $3$ & $4$ & $6$ & $6$ & $3$ & $3$ & $\boldsymbol{1}$ &  & $1$ & $1$ \\
-$3$  & $3$ & $3$ & $6$ & $6$ & $3$ & $3$ &  &  & $0$ & $\boldsymbol{1}$ \\
-$4$  & $3$ & $3$ & $6$ & $6$ & $3$ & $3$ &  &  & $\boldsymbol{1}$ &  \\
-$5$  & $1$ & $\boldsymbol{3}$ & $4$ & $4$ & $3$ & $3$ &  &  &  &  \\
-$6$  & $\boldsymbol{3}$ &  & $3$ & $3$ & $3$ & $3$ &  &  &  &  \\
-$7$  &  &  & $1$ & $\boldsymbol{3}$ & $1$ & $1$ &  &  &  &  \\
-$8$  &  &  & $0$ &  & $\boldsymbol{3}$ & $0$ &  &  &  &  \\
-$9$  &  &  & $\boldsymbol{3}$ &  &  & $0$ &  &  &  &  \\
-$10$ &  &  &  &  &  & $\boldsymbol{3}$ &  &  &  &  \\
+$0$ (init) & $3$ & $4$ & $6$ & $6$ & $3$ & $4$ & $1$ & $1$ & $1$ & $1$ \\
+$1$        & $3$ & $4$ & $6$ & $6$ & $3$ & $3$ & $0$ & $\boldsymbol{1}$ & $1$ & $1$ \\
+$2$        & $3$ & $4$ & $6$ & $6$ & $3$ & $3$ & $\boldsymbol{1}$ &  & $1$ & $1$ \\
+$3$        & $3$ & $3$ & $6$ & $6$ & $3$ & $3$ &  &  & $0$ & $\boldsymbol{1}$ \\
+$4$        & $3$ & $3$ & $6$ & $6$ & $3$ & $3$ &  &  & $\boldsymbol{1}$ &  \\
+$5$        & $1$ & $\boldsymbol{3}$ & $4$ & $4$ & $3$ & $3$ &  &  &  &  \\
+$6$        & $\boldsymbol{3}$ &  & $3$ & $3$ & $3$ & $3$ &  &  &  &  \\
+$7$        &  &  & $1$ & $\boldsymbol{3}$ & $1$ & $1$ &  &  &  &  \\
+$8$        &  &  & $0$ &  & $\boldsymbol{3}$ & $0$ &  &  &  &  \\
+$9$        &  &  & $\boldsymbol{3}$ &  &  & $0$ &  &  &  &  \\
+$10$       &  &  &  &  &  & $\boldsymbol{3}$ &  &  &  &  \\
 \bottomrule
 \end{tabular}
 \end{table}
