@@ -104,10 +104,18 @@ Initialise $h[v]\gets\sdeg(v)$ using Lemma~\ref{lem:supp}; on the running exampl
 %
 The first call $\vertexSupport(v_4,h)$ scans the four paths through $v_4$ and counts threshold witnesses via Lemma~\ref{lem:per-path-witness}.
 %
-At threshold $k=3$, every other vertex on each of the four paths has $h\ge3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$.
+At threshold $k=3$, every other vertex on each of the four paths has $h\ge3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\ge k$ is $\Phi_h(v_4)=3$, the final $\kappa_3(v_4)$ (Figure~\ref{fig:spinex}).
 %
 The converged vector $h^\star=\kappa_s$ is the semantic target that any static-\cpi{} core-value algorithm must reach; Section~\ref{sec:peelh} delivers \spinStar{}, which reaches that target in a single deletion pass.
 \end{example}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\linewidth]{figures/fig_spin_example.pdf}
+\caption{\spin{} threshold-support computation for $v_4$ on the running example. Each row is a path through $v_4$; columns are thresholds $k=1,\ldots,h[v_4]=6$; the green digit in cell $(P,k)$ is $W_{v_4}(P,h,k)$ from Lemma~\ref{lem:per-path-witness}, the count of $s$-cliques through $v_4$ on $P$ whose other vertices all clear threshold $k$. A hatched grey strip extends from the threshold at which the witness count drops to zero. The bottom row aggregates $\sum_{P\ni v_4}W_{v_4}(P,h,k)$; the highlighted cell is $\Phi_h(v_4)=3=\kappa_3(v_4)$, the largest $k$ at which the sum meets the threshold.}
+\Description{A grid with four rows -- one per CPI leaf through v_4 -- and six threshold columns. Cells carry the per-path witness count W. Once W drops to zero the rest of the row is shown as a hatched grey strip. A bottom row sums the W values across paths at each threshold; the cell at threshold 3 is highlighted, identifying it as Phi_h(v_4) and as kappa_3(v_4).}
+\label{fig:spinex}
+\end{figure}
 
 \begin{algorithm}[t]
 \algfontsize
