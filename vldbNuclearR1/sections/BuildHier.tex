@@ -95,7 +95,7 @@ Phase~1 (event generation) scans each leaf once and sorts its pivot set: $O(\Sig
 %
 The number of events $|\mathcal{E}|$ is at most $\sum_P\max(1,|\Vp(P)|-\eta_P+1)\le\Sig$, and sorting them by level costs $O(\Sig\log\Sig)$.
 %
-Phase~2 (event processing) performs at most $\sum_P(|\Vh(P)|+\eta_P)+\sum_{P:\eta_P\ge1} 2(|\Vp(P)|-\eta_P)\le 2\Sig$ union-find operations in total (the first event of each leaf unifies $|\Vh|+\eta_P$ elements; for $\eta_P\ge1$ leaves each of the $|\Vp(P)|-\eta_P$ follow-up events unifies a pair), costing $O(\Sig\,\alpha(n))$.
+Phase~2 (event processing) performs at most $\sum_P(|\Vh(P)|+\eta_P)+\sum_{P:\eta_P\ge1} 2(|\Vp(P)|-\eta_P)\le 2\Sig$ union-find operations in total (the first event of each leaf unifies $|\Vh(P)|+\eta_P$ elements; for $\eta_P\ge1$ leaves each of the $|\Vp(P)|-\eta_P$ follow-up events unifies a pair), costing $O(\Sig\,\alpha(n+|\mathcal{P}|))$ over the DSU's $n+|\mathcal{P}|$ elements.
 %
 Total time $O(\Sig\log\Sig)$, with no clique re-enumeration: \buildHier{} touches each \cpi{} incidence a constant number of times.
 

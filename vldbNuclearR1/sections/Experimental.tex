@@ -204,11 +204,11 @@ Each curve in Figure~\ref{fig:stress} is drawn up to the highest density at whic
 \label{sec:exp-friendster}
 The ten-graph benchmark stops at \texttt{com-orkut} ($117$M edges); to push the pipeline an order of magnitude further, we run \spinStar{} with $T{=}24$ on \texttt{com-friendster} ($65$M vertices, $1.806$B edges, the largest SNAP graph available).
 %
-The headline result is coverage: \spinStar{} completes the $(1,s)$-nucleus decomposition at every $s\in\{2,3,4,5,6,11\}$ we tested, whereas \cbnd{} succeeds only at $s{=}2$ and is OOM-killed (exceeds the $503$\,GB budget during \cpi{} construction) at every $s\ge3$ we tested (Figure~\ref{fig:friendster}).
+The headline result is coverage: \spinStar{} completes the $(1,s)$-nucleus decomposition at every $s\in\{2,3,4,5,6,11\}$ we tested (chosen to span the small-$s$ regime plus a high-$s$ sample that exercises the binomial overflow guard), whereas \cbnd{} succeeds only at $s{=}2$ and is OOM-killed (exceeds the $503$\,GB budget during \cpi{} construction) at every $s\ge3$ we tested (Figure~\ref{fig:friendster}).
 %
 On the one matched cell ($s{=}2$), \spinStar{} peels in $344$\,s against \cbnd{}'s $1{,}775$\,s ($5.2\times$ faster) and uses $160$\,GB against $400$\,GB ($2.5\times$ less); the memory headroom is what lets \spinStar{} continue past the budget where \cbnd{} cannot.
 %
-At higher $s$ the static index stays tractable: at $s{=}6$ it stores $\Sig\approx 2.26\times 10^{10}$ vertex--path incidences and peels the resulting structure in $651$\,s; at $s{=}11$, $\Sig\approx 1.68\times 10^{10}$ and the peel finishes in $167$\,s.
+At higher $s$ the static index stays tractable: at $s{=}6$ it stores $\Sig\approx 2.26\times 10^{10}$ vertex--path incidences and peels the resulting structure in $651$\,s; at $s{=}11$, $\Sig\approx 1.68\times 10^{10}$ and the peel finishes in $167$\,s (the surviving subgraph at higher $s$ is small enough that the total incidence count drops despite the larger clique size).
 %
 For practical $(1,s)$ analysis at $s\ge3$ --- the regime where higher-order cohesion measures separate from the $k$-core --- \spinStar{} is the only one of the two solvers that runs at all on this graph.
 %

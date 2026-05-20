@@ -42,10 +42,10 @@ The expensive work is the Bron--Kerbosch search under each seed; the merge contr
 \KwOut{Static \cpi{} $\mathcal{P}$.}
 
 compute degeneracy ordering $\sigma$ on $G$ and orient every edge from lower to higher rank\;
-partition the seed sequence $(v_1,\ldots,v_n)$ into $T$ contiguous chunks $\sigma_1,\ldots,\sigma_T$\;
+partition the seed sequence $(v_1,\ldots,v_n)$ into $T$ contiguous chunks $C_1,\ldots,C_T$\;
 \ForEach{thread $t\in\{1,\ldots,T\}$ \emph{in parallel}}{
     $\mathcal{P}_t\gets\emptyset$\;
-    \ForEach{seed vertex $v\in\sigma_t$}{
+    \ForEach{seed vertex $v\in C_t$}{
         $\mathcal{P}_t\gets\mathcal{P}_t\,\cup\,\textsc{ExpandPath}(N^{+}(v),\{v\},\emptyset)$ \tcp*{Algorithm~\ref{alg:buildcpi}, seed $v$}
     }
 }
@@ -55,7 +55,7 @@ $\mathcal{P}\gets\bigcup_{t=1}^T\mathcal{P}_t$\;
 
 Algorithm~\ref{alg:parabuild} runs the same seed-rooted \textsc{ExpandPath} enumeration as Algorithm~\ref{alg:buildcpi}, but partitions the $n$ seed vertices into $T$ contiguous chunks (Line~2) and processes each chunk in its own thread (Lines~3--6).
 %
-Because every $s$-clique has a unique smallest-rank owner under $\sigma$, the chunks induce a partition of $\mathcal{P}$: each path is emitted by exactly one thread, so the per-thread outputs $\mathcal{P}_t$ are pairwise disjoint and their union $\bigcup_t\mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially (Line~7).
+Because every $s$-clique has a unique smallest-rank owner under $\sigma$, the chunks $C_1,\ldots,C_T$ induce a partition of $\mathcal{P}$: each path is emitted by exactly one thread, so the per-thread outputs $\mathcal{P}_t$ are pairwise disjoint and their union $\bigcup_t\mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially (Line~7).
 %
 The choice of $T$, the partition of seeds, and the in-memory layout used to store $\mathcal{P}$ are implementation knobs; they affect throughput but not the output set.
 

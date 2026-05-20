@@ -143,7 +143,7 @@ By the operator definition, $h^{(t+1)}[v]\ge k$ iff $v$ has at least $k$ inciden
 %
 At $h^\star$, let $S_k=\{v\mid h^\star[v]\ge k\}$; every $v\in S_k$ has at least $k$ incident $s$-cliques entirely inside $S_k$, and each such clique lies in $v$'s $s$-connected component $C\subseteq S_k$ (because the clique itself is the connecting witness), so $C$ satisfies Conditions~(i)--(iii) of Definition~\ref{def:nucleus} and is a $k$-$(1,s)$-nucleus, giving $\kappa_s(v)\ge k$.
 %
-Conversely, if $v$ lies in a $k$-$(1,s)$-nucleus $C'$, we show by induction on $t$ that $h^{(t)}[u]\ge k$ for every $u\in C'$. The base case $t=0$ holds since each $u\in C'$ is in at least $k$ $s$-cliques inside $C'$ (by Definition~\ref{def:nucleus}), so $\sdeg(u)\ge k=h^{(0)}[u]$. For the inductive step, assume $h^{(t)}[u']\ge k$ for every $u'\in C'$; then $u$ has at least $k$ $s$-cliques inside $C'$ whose other vertices all satisfy $h^{(t)}\ge k$, so the threshold-support operator yields $h^{(t+1)}[u]\ge k$. Therefore $h^\star[v]\ge k$.
+Conversely, if $v$ lies in a $k$-$(1,s)$-nucleus $C'$, we show by induction on $t$ that $h^{(t)}[u]\ge k$ for every $u\in C'$. The base case $t=0$ holds since each $u\in C'$ is in at least $k$ $s$-cliques inside $C'$ (by Definition~\ref{def:nucleus}), so $h^{(0)}[u]=\sdeg(u)\ge k$. For the inductive step, assume $h^{(t)}[u']\ge k$ for every $u'\in C'$; then $u$ has at least $k$ $s$-cliques inside $C'$ whose other vertices all satisfy $h^{(t)}\ge k$, so the threshold-support operator yields $h^{(t+1)}[u]\ge k$. Therefore $h^\star[v]\ge k$.
 %
 Hence $h^\star[v]=\kappa_s(v)$.
 %
@@ -179,7 +179,7 @@ When one minimum vertex is popped, only paths containing that vertex can change.
 %
 Theorem~\ref{thm:vertex-removal} says how each such path changes, and Lemma~\ref{lem:support-delta} gives the exact support loss for the unfinalized path-mates.
 %
-Thus the invariant is local: unfinalized vertex values reflect the current live path-counter contributions, clipped below by the current peel level.
+Thus the invariant is local: unfinalized vertex values reflect the current live path-counter contributions, clipped from below by the current peel level.
 
 \spinStar{} is an optimization of \spin{}, not a different decomposition objective.
 %
