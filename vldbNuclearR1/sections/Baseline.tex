@@ -2,7 +2,7 @@
 
 \cbnd{}~\cite{NuclearCD} is the state-of-the-art exact algorithm for general $(r,s)$-nucleus decomposition.
 %
-The remainder of this section walks through its peeling loop, the residual structures it maintains, and the operations this paper specialises away when restricted to $r=1$.
+This section walks through its peeling loop, the residual structures it maintains, and the operations this paper specialises away when restricted to $r=1$.
 
 \stitle{The peeling loop.}
 \cbnd{} follows the standard core-decomposition template~\cite{coreAlg}: it maintains the residual support of every alive $r$-clique in a priority queue, repeatedly pops the $r$-clique of minimum residual support, assigns it the current peel level as its core value, and propagates the support loss to the remaining alive $r$-cliques.
