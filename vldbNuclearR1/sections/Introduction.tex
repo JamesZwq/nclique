@@ -58,7 +58,7 @@ The current state of the art for general $(r,s)$-nucleus decomposition is \cbnd~
 These rewrites are a real cost rather than a constant factor: \spinStar{}, which replaces them with closed-form counter updates over a static index, delivers a $17.90\times$ geometric-mean peel-time speedup over \cbnd{} on $451$ matched cells (Section~\ref{sec:exp}).
 
 \sstitle{High memory consumption.}
-The residual structures that \cbnd{} must keep mutable in the general $(r,s)$ setting — per-path membership queries, reverse vertex-to-path lookup, and the live recursion tree used to rewrite paths — together cost roughly $88\Sig$ bytes per incidence (Section~\ref{sec:exp}, Table~\ref{tab:mem}), an order of magnitude more than what a static encoding of the same witnesses requires.
+The residual structures that \cbnd{} must keep mutable in the general $(r,s)$ setting --- per-path membership queries, reverse vertex-to-path lookup, and the live recursion tree used to rewrite paths --- together cost roughly $88\Sig$ bytes per incidence (Section~\ref{sec:exp}, Table~\ref{tab:mem}), an order of magnitude more than what a static encoding of the same witnesses requires.
 %
 The geometric-mean memory ratio \cbnd{}/\spinStar{} is $1.55\times$ on the matched cells and $3.92\times$ at maximum; on a billion-scale graph \cbnd{} completes only at $s{=}2$ (using $400$\,GB of $503$\,GB) and exceeds the budget for every $s\ge3$, while \spinStar{} finishes the full $s$ sweep.
 
