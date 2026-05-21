@@ -130,7 +130,7 @@ The first sum is over paths with $v$ in the hold: every choice of $\eta_{\TPath}
 %
 The second sum is over paths with $v$ in the pivot set: $v$ fills one of the $\eta_{\TPath}$ pivot slots, and the remaining $\eta_{\TPath}-1$ are chosen from the other $|\Vp(\TPath)|-1$ pivots, giving $\binom{|\Vp(\TPath)|-1}{\eta_{\TPath}-1}$ cliques per path.
 %
-Every $\sdeg(v)$ in the rest of the paper is evaluated through this formula, never by listing cliques.
+By using this formula we obtain the exact $s$-clique support of every vertex in $O(\Sig)$ time --- one constant-work binomial per vertex--path incidence --- without ever enumerating an $s$-clique, even though the total number of $s$-cliques in $G$ can be exponential in $s$. Every $\sdeg(v)$ in the rest of the paper is evaluated through this formula, never by listing cliques.
 
 \sstitle{Problem statement.}
 Given $G$ and $s\ge2$, compute $\kappa_s(v)$ for every $v\in V$; the nucleus hierarchy is constructed afterwards (Section~\ref{sec:buildhier}).
