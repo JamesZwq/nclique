@@ -1,12 +1,8 @@
 \section{Parallel \cpi{} Construction}\label{sec:parabuild}
 
-Once \spinStar{} makes peeling counter-only, \cpi{} construction becomes the load-bearing cost of the pipeline.
+Once \spinStar{} makes peeling counter-only, \cpi{} construction becomes the load-bearing cost of the pipeline (Figure~\ref{fig:breakdown}); this bottleneck shift is why construction is part of the algorithmic pipeline rather than a detached implementation detail.
 %
-The phase breakdown in Figure~\ref{fig:breakdown} shows that build time dominates the remaining runtime across the six-graph sweep, while peeling becomes a small slice of total time.
-%
-This bottleneck shift is why construction is part of the algorithmic pipeline rather than a detached implementation detail.
-%
-We parallelise the construction phase by exploiting two properties: the seed loop partitions emitted $s$-clique families along the degeneracy order, and the static output contract makes the merge a pointer-level concatenation.
+We observe that the static-\cpi{} invariant makes construction embarrassingly parallel: with no mutation contract crossing threads and each $s$-clique uniquely owned by its smallest-rank seed, the standard degeneracy-ordered Bron--Kerbosch template runs lock-free across $T$ threads.
 
 \stitle{Why the seed loop can be parallel.}
 The \cpi{} builder follows the standard degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.
