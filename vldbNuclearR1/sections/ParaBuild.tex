@@ -41,21 +41,44 @@ The expensive work is the Bron--Kerbosch search under each seed; the merge contr
 \KwIn{Graph $G=(V,E)$; clique size $s$; thread count $T$.}
 \KwOut{Static \cpi{} $\mathcal{P}$.}
 
-compute degeneracy ordering $\sigma$ on $G$ and orient every edge from lower to higher rank\;
-partition the seed sequence $(v_1,\ldots,v_n)$ into $T$ contiguous chunks $C_1,\ldots,C_T$\;
+Compute a degeneracy ordering $(v_1,\ldots,v_n)$ of $G$ and orient every edge from lower to higher rank, giving $N^{+}(\cdot)$\;
+Partition the seed sequence $(v_1,\ldots,v_n)$ into $T$ contiguous chunks $C_1,\ldots,C_T$\;
 \ForEach{thread $t\in\{1,\ldots,T\}$ \emph{in parallel}}{
-    $\mathcal{P}_t\gets\emptyset$\;
-    \ForEach{seed vertex $v\in C_t$}{
-        $\mathcal{P}_t\gets\mathcal{P}_t\,\cup\,\textsc{ExpandPath}(N^{+}(v),\{v\},\emptyset)$ \tcp*{Algorithm~\ref{alg:buildcpi}, seed $v$}
+    $\mathcal{P}_t \gets \emptyset$\;
+    \ForEach{seed vertex $v \in C_t$}{
+        $\textsc{ExpandPath}_t(N^{+}(v),\ \{v\},\ \emptyset)$ \tcp*{one root per vertex}
     }
 }
-$\mathcal{P}\gets\bigcup_{t=1}^T\mathcal{P}_t$\;
+$\mathcal{P} \gets \bigcup_{t=1}^{T} \mathcal{P}_t$\;
 \Return{$\mathcal{P}$}
+\SetKwFunction{Expand}{ExpandPath\textsubscript{$t$}}
+\SetKwProg{Fn}{Function}{:}{}
+\Fn{\Expand{$P,\ \Vh,\ \Vp$}}{
+    \lIf{$|\Vh| > s$}{\Return}
+    \If{$P = \emptyset$}{
+        \lIf{$|\Vh| + |\Vp| \ge s$}{
+            append the path $(\Vh,\Vp)$ to $\mathcal{P}_t$
+        }
+        \Return
+    }
+    $u_{\mathrm{piv}} \gets \arg\max_{x\in P}\, |P \cap N^{+}(x)|$ \tcp*{Tomita pivot}
+    \ForEach{$v \in P \setminus N(u_{\mathrm{piv}})$}{
+        $P \gets P \setminus \{v\}$\;
+        \uIf{$v = u_{\mathrm{piv}}$}{
+            \Expand{$P\cap N(v),\ \Vh,\ \Vp\cup\{v\}$}\;
+        }
+        \Else{
+            \Expand{$P\cap N(v),\ \Vh\cup\{v\},\ \Vp$}\;
+        }
+    }
+}
 \end{algorithm}
 
-Algorithm~\ref{alg:parabuild} runs the same seed-rooted \textsc{ExpandPath} enumeration as Algorithm~\ref{alg:buildcpi}, but partitions the $n$ seed vertices into $T$ contiguous chunks (Line~2) and processes each chunk in its own thread (Lines~3--6).
+Algorithm~\ref{alg:parabuild} mirrors Algorithm~\ref{alg:buildcpi} line-for-line: Line~1 computes the same degeneracy ordering and edge orientation; the function body $\textsc{ExpandPath}_t$ at the bottom is identical to Algorithm~\ref{alg:buildcpi}'s $\textsc{ExpandPath}$ except that it appends to the thread-local output $\mathcal{P}_t$ instead of the global $\mathcal{P}$.
 %
-Because every $s$-clique has a unique smallest-rank owner under $\sigma$, the chunks $C_1,\ldots,C_T$ induce a partition of $\mathcal{P}$: each path is emitted by exactly one thread, so the per-thread outputs $\mathcal{P}_t$ are pairwise disjoint and their union $\bigcup_t\mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially (Line~7).
+The only structural change is at the driver loop: Algorithm~\ref{alg:buildcpi}'s sequential \emph{for} over seeds is replaced by Line~2 partitioning the seed sequence into $T$ chunks and Lines~3--7 running one chunk per thread, with Line~8 merging the thread-local outputs.
+%
+Because every $s$-clique has a unique smallest-rank owner under the degeneracy ordering, the chunks $C_1,\ldots,C_T$ induce a partition of $\mathcal{P}$: each path is emitted by exactly one thread, so the per-thread outputs are pairwise disjoint and $\bigcup_t \mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially.
 %
 The choice of $T$, the partition of seeds, and the in-memory layout used to store $\mathcal{P}$ are implementation knobs; they affect throughput but not the output set.
 
