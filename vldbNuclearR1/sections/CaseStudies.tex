@@ -117,35 +117,31 @@ $r{=}1$ therefore gives the best observed quality--runtime tradeoff for vertex r
 \stitle{Case study 4: identifying ego network on DBLP --- $(r,s)$ grid on Han's 1-hop ego.}\label{sec:cs-viz}
 We build a fresh coauthor graph from the official DBLP XML dump (April 2024, $3.4$M authors and $23.0$M coauthorship edges), anchor on Jiawei Han (DBLP key \texttt{Jiawei Han 0001}), and take his $1$-hop coauthor ego ($1{,}358$ vertices).
 %
-Figure~\ref{fig:cs9} shows four decompositions of the same ego at $(r,s)\!\in\!\{(1,4),(3,4),(1,10),(3,10)\}$, with $(3,s)$ computed via the NuclearCD~\cite{NuclearCD} reference implementation.
+Figure~\ref{fig:cs9} shows the same ego decomposed under four parameter settings, $(r,s)\!\in\!\{(1,4),(3,4),(1,10),(3,10)\}$, with $(3,s)$ obtained via the NuclearCD~\cite{NuclearCD} reference implementation.
 %
-Because a vertex is in some $s$-clique iff some triangle through it is in that $s$-clique, the $(1,s)$- and $(3,s)$-alive vertex sets coincide; the panels differ in how the alive subgraph is \emph{partitioned}:
-$(1,s)$ uses dense modules (greedy near-cliques of size $\ge 10$, internal density $\ge 0.85$ — the natural unit for a vertex-centric decomposition), and $(3,s)$ uses triangle-connected nuclei (NuclearCD's native unit).
-For each module / nucleus $C$ we report its semantic label (dominant non-CoRR DBLP venue across its $\ge 3$-co-author papers), member count, the number of \emph{collaborative} papers ($\ge 3$ within-$C$ authors), and the \emph{active ratio} (fraction of members appearing in any such paper)~\cite{NuclearCD}.
+For each $(r,s)$ we keep the \emph{top $50\%$ high-core vertices} (the upper half of the nucleus hierarchy, with the per-vertex core defined as the vertex's $(1,s)$ core for $r\!=\!1$, and the max containing-triangle's $(3,s)$ core for $r\!=\!3$), then partition that filtered set into dense modules (greedy near-cliques of size $\ge 10$, internal density $\ge 0.85$).
+%
+For each module $C$ we report a semantic label (dominant non-CoRR DBLP venue across its $\ge 3$-co-author papers), member count, the number of \emph{collaborative} papers ($\ge 3$ within-$C$ authors), and the \emph{active ratio} (fraction of members appearing in any such paper) following NuclearCD~\cite{NuclearCD}.
 
-\sstitle{$(1,s)$ extracts fine-grained, fully active working groups.}
-At $(1,4)$ the alive subgraph ($1{,}323$ vertices) breaks into $14$ dense modules; the top five — Data Mining ($90$ members, $133$ papers), IR/Web ($64$, $172$), AI/ML ($51$, $98$), Multimodal NLP ($21$, $26$), and a second Data Mining sub-team ($19$, $12$) — each map to a clearly identifiable research focus of Han, and every one is $100\%$ active.
+\sstitle{$(1,s)$ identifies the same high-core vertices as $(3,s)$ on this ego.}
+The absolute core thresholds for the top-$50\%$ cut differ by orders of magnitude across $(r,s)$ --- $84$ at $(1,4)$ vs.\ $6$ at $(3,4)$, $293{,}930$ at $(1,10)$ vs.\ $50{,}388$ at $(3,10)$ --- yet the surviving vertex sets are essentially identical between $(1,s)$ and $(3,s)$ at the same $s$, and the dense modules extracted on top of them coincide as well.
 %
-At $(1,10)$ the alive subgraph shrinks to $590$ vertices and consolidates into $4$ dense modules: Data Mining ($47$), ML Safety ($30$), IR/Web ($23$), and an NLP working group ($10$).
+At $s\!=\!4$ both $(1,4)$ and $(3,4)$ surface the same four working groups: Data Mining ($\sim\!51$ members), ML Safety ($\sim\!32$), IR/Web ($\sim\!25$), and an NLP group ($11$); module sizes match within $1$--$2$ vertices and the labels and representative members are identical (Yu Zhang 0044, Zhikun Zhang, Peng Wu, etc.).
 %
-All four are still $100\%$ active --- increasing $s$ does not introduce loose-collaboration noise, it just sharpens which working groups survive.
+At $s\!=\!10$ the agreement is exact: both $(1,10)$ and $(3,10)$ surface ML Safety ($18$), Multimodal Web ($17$), and an NLP group ($11$); the size-$3$ vertex sets coincide.
+%
+On this ego the two decompositions rank vertices the same way, so the cheap $(1,s)$ vertex-centric core captures exactly what the more expensive $(3,s)$ triangle-centric core captures.
 
-\sstitle{$(3,s)$ at the same ego scope yields a much coarser decomposition.}
-At $(3,4)$, NuclearCD groups the $1{,}323$ alive vertices into only $4$ triangle-connected nuclei: a single Data Mining super-nucleus ($1{,}309$ members, $5{,}096$ collaborative papers, $99\%$ active) that fuses essentially the entire ego, plus three tiny fringe nuclei (sizes $8$, $5$, $4$) with $0\%$ active ratio.
+\sstitle{What does change is $s$.}
+Raising $s$ from $4$ to $10$ moves the top-$50\%$ filter from core $\ge\!84$ down to a much sparser $295$-vertex slice ($r\!=\!1$ side), and the surviving working groups change accordingly: Data Mining and IR/Web disappear (they have many size-$4$ cliques but few size-$10$ cliques), and ML Safety, Multimodal Web, and an LLM-era NLP group dominate (they routinely co-author papers with $\ge\!10$ authors).
 %
-At $(3,10)$ the $590$ alive vertices fragment into only $2$ triangle-connected nuclei: a $570$-vertex Data Mining super-nucleus ($75\%$ active) and a $21$-vertex fringe.
-%
-On a one-hop ego, all of Han's frequent coauthors form triangles through him, so triangle-connectedness collapses essentially the entire ego into one nucleus regardless of $s$, leaving NuclearCD only loose fringe structure to fragment.
-%
-The takeaway is that $(1,s)$ and $(r\!>\!1,s)$ explore the ego at complementary granularities: $(1,s)$ at moderate $s$ surfaces interpretable working groups within Han's collaboration neighbourhood, while $(r,s)$ at $r\!>\!1$ captures the global triangle-connected backbone but is too coarse to separate working groups at this scope.
-%
-This matches the broader picture in Table~\ref{tab:dblp-gt}: $(1,s)$ achieves community-detection quality matching higher-$r$ baselines while being substantially cheaper to compute (Tables \ref{tab:r1-runtime},~\ref{tab:mem}).
+The semantic shift is the substantive content of the case study: $s$ controls \emph{which} working groups survive, while $r$ controls only the cost of computing them. Our $(1,s)$ pipeline obtains the same surviving groups as $(3,s)$ at a fraction of the time and memory (Tables \ref{tab:r1-runtime},~\ref{tab:mem}).
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.95\linewidth]{figures/cs9_egonet.pdf}
-\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Jiawei Han $0001$ in red) under four parameter settings $(r,s)$. \textbf{Top row} ($s\!=\!4$, alive $=\!1{,}323$): \textbf{(left)} our $(1,4)$ extracts $14$ dense modules — top-$5$ are Data Mining, IR/Web, AI/ML, Multimodal NLP, and a Data Mining sub-team (all $100\%$ active); \textbf{(right)} NuclearCD $(3,4)$ collapses essentially the entire alive subgraph into a single $1{,}309$-vertex Data Mining triangle-connected nucleus plus three tiny fringes ($0\%$ active). \textbf{Bottom row} ($s\!=\!10$, alive $=\!590$): \textbf{(left)} our $(1,10)$ consolidates into $4$ dense modules (Data Mining, ML Safety, IR/Web, NLP); \textbf{(right)} NuclearCD $(3,10)$ keeps a $570$-vertex super-nucleus plus a $21$-vertex fringe. Peeled vertices in light gray; alive-but-not-in-top-$K$ in dark gray.}
-\Description{Four ego-network panels in a 2x2 grid. Top row shows s=4 results: the (1,4) panel has five colored dense modules spread around the layout, while the (3,4) panel shows one large blue triangle-connected blob covering most of the layout plus three tiny fringe clusters. Bottom row shows s=10 results: the (1,10) panel has four smaller colored modules, while the (3,10) panel shows one large blue blob and one small fringe.}
+\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Jiawei Han $0001$ in red) under four parameter settings $(r,s)$. For each panel we keep the top-$50\%$ high-core vertices and extract dense modules (size $\ge\!10$, internal density $\ge\!0.85$). \textbf{Top row} ($s\!=\!4$, top-$50\%$ $=\!662/1323$): both $(1,4)$ and $(3,4)$ surface the \emph{same} four working groups --- Data Mining ($\sim\!51$ members), ML Safety ($\sim\!32$), IR/Web ($\sim\!25$), NLP ($11$) --- despite very different absolute core thresholds (core $\!\ge\!84$ for $r\!=\!1$ vs.\ core $\!\ge\!6$ for $r\!=\!3$). \textbf{Bottom row} ($s\!=\!10$, top-$50\%$ $=\!295/590$): both $(1,10)$ and $(3,10)$ surface the \emph{exact same} three groups --- ML Safety ($18$), Multimodal Web ($17$), NLP ($11$). The two decompositions rank vertices the same way on this ego; the substantive content is the $s\!=\!4\!\to\!s\!=\!10$ shift, which replaces Data Mining and IR/Web with ML Safety and Multimodal Web (the working groups whose papers routinely have $\ge\!10$ co-authors).}
+\Description{A 2x2 grid of ego-network panels. Top row: (1,4) and (3,4) both show four colored dense modules (Data Mining, ML Safety, IR/Web, NLP) in similar positions around the layout. Bottom row: (1,10) and (3,10) both show three colored dense modules (ML Safety, Multimodal Web, NLP) in nearly identical positions. r=1 and r=3 panels at the same s are visually nearly indistinguishable.}
 \label{fig:cs9}
 \end{figure*}
 
