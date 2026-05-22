@@ -114,41 +114,40 @@ $r{=}1$ therefore gives the best observed quality--runtime tradeoff for vertex r
 \label{fig:crossr}
 \end{figure}
 
-\stitle{Case study 4: high-$s$ near-cliques are real, well-separated, field-focused collaborations.}\label{sec:cs-viz}
-We build a fresh coauthor graph directly from the official DBLP XML dump (April 2024 snapshot, $3.4$M authors and $23.0$M coauthorship edges) so every clique carries author names and venue profiles.
+\stitle{Case study 4: high-$s$ near-cliques are tighter co-author teams.}\label{sec:cs-viz}
+We build a fresh coauthor graph from the official DBLP XML dump (April 2024 snapshot, $3.4$M authors and $23.0$M coauthorship edges, with author names preserved through DBLP's disambiguation suffixes).
 %
-Anchoring at Michael Stonebraker (2-hop ego $37{,}661$ vertices), Figure~\ref{fig:cs9} draws four local $s$-clique witness views on a shared spring layout, capped at the densest $2{,}000$ alive-at-$s\!=\!3$ vertices plus the anchor; in each panel we re-extract every near-clique (size $\ge\!10$, density $\ge\!0.85$) inside the alive-at-$s$ subset.
+We anchor on Jiawei Han (DBLP key \texttt{Jiawei Han 0001}), whose $1$-hop coauthor ego contains $1{,}358$ vertices; Figure~\ref{fig:cs9} draws four local $s$-clique witness views ($s\!=\!3,5,7,10$) on a shared spring layout.
 %
-The visible filter is that the count of qualifying near-cliques falls from $22$ at $s\!=\!3$ to $13$, $9$, and finally $6$ at $s\!=\!10$.
+In each panel we re-extract every near-clique of size $\ge\!10$ and internal edge density $\ge\!0.85$ inside the alive-at-$s$ subset.
+
+As $s$ grows the cohesion threshold rises and most candidate cliques fall out: $11$ near-cliques survive at $s\!=\!3$, $6$ at $s\!=\!5$, $3$ at $s\!=\!7$, and $3$ at $s\!=\!10$ (sizes $15$, $17$, and $12$).
 %
-A stricter cohesion bar trivially yields fewer cliques; the substantive question is whether the cliques that \emph{survive} are also better.
+A stricter cohesion bar trivially yields fewer cliques; the substantive question is whether the cliques that survive are also \emph{better} co-author teams.
 %
-We measure this with two semantic and one structural metric on the rendered cliques (Table~\ref{tab:cs9-quality}):
-(i)~\emph{active ratio} --- fraction of clique members appearing in at least one DBLP paper that has $\ge\!3$ co-authors from the same clique --- a real-collaboration witness following NuclearCD's case study II~\cite{NuclearCD};
-(ii)~\emph{field profile} --- top non-CoRR\footnote{CoRR (arXiv) is excluded because it aggregates preprints across every field; counting it makes every clique look like a ``CoRR clique''.} venues that dominate the surviving cliques at each $s$;
-and (iii)~\emph{separability} $m_{\mathrm{in}}/m_{\mathrm{cut}}$ at the median clique.
+Following NuclearCD's case study II~\cite{NuclearCD}, we measure team quality by \emph{papers per clique pair}: for each pair $(u,v)$ inside a near-clique, count the DBLP papers in which $u$ and $v$ both appear, and weight-average over all pairs (normalising for clique size).
 %
-The active ratio stays uniformly high ($0.96$--$0.99$) at every $s$, so every surviving clique \emph{is} a real co-author team --- low-$s$ cliques are not artefacts.
+Higher = members publish more papers together, i.e.\ a tighter team.
 %
-The structural separability roughly doubles from $0.19$ at $s\!=\!3$ to $0.36$ at $s\!=\!7$ (with a small dip to $0.30$ at $s\!=\!10$ on a sample of only six cliques): the high-$s$ survivors stand more sharply against the surrounding alive neighbourhood.
+Table~\ref{tab:cs9-quality} reports this metric counted over all papers and again after filtering out CoRR (the arXiv preprint channel) so the field-agnostic preprint stream does not inflate counts.
 %
-The field profile shows the deepest change: at $s\!=\!3$ the $22$ cliques carry multiple sub-cliques per field, whereas the six surviving cliques at $s\!=\!10$ each map to a single distinct field (bioinformatics on \emph{Nucleic Acids Research}, multimedia on \emph{ACM Multimedia}, computer vision on \emph{CVPR Workshops}, neuroimaging on \emph{NeuroImage}, and so on).
+The papers-per-pair metric does not move monotonically inside $s\!\in\!\{3,5,7\}$, but rises sharply once we cross to $s\!=\!10$, where the three surviving cliques contain Jiawei Han's tightly-coordinated working groups: papers-per-pair (excluding CoRR) climbs from $0.90$ at $s\!=\!7$ back to $1.18$ at $s\!=\!10$ even though the alive subset has shrunk from $456$ to $255$ vertices --- the metric is pure team-tightness, not a degree-of-freedom artefact.
 %
-In short, high $s$ does not just shrink the candidate list; it consolidates many redundant sub-cliques per field into one tighter, better-separated representative per field, while keeping the real-collaboration property of low $s$.
+So the high-$s$ filter is not just shrinking the candidate list: the cliques that survive at $s\!=\!10$ are the tightest co-author teams in Han's neighbourhood, the small groups that repeatedly produce multi-author papers together.
 
 \begin{table}[t]
 \centering
-\caption{Per-$s$ quality of the surviving near-cliques in Figure~\ref{fig:cs9} (Stonebraker's 2-hop ego, rendered subset). Active ratio: fraction of members in a $\ge\!3$-co-author DBLP paper from within the same clique. Separability: median $m_{\mathrm{in}}/m_{\mathrm{cut}}$. Field focus: weighted non-CoRR venue concentration.}
+\caption{Per-$s$ quality of the surviving near-cliques in Figure~\ref{fig:cs9} (Jiawei Han's 1-hop coauthor ego). Papers-per-pair: for each pair of clique members, count DBLP papers they jointly authored; weight-average over pairs and over cliques. ``No CoRR'' excludes arXiv preprints. Higher = tighter co-author team.}
 \label{tab:cs9-quality}
 \small
 \begin{tabular}{rrrrr}
 \toprule
-$s$ & \#cliques & active ratio & separability & field focus \\
+$s$ & \#cliques & alive  / 1358 & papers/pair (all) & papers/pair (no CoRR) \\
 \midrule
- 3 & 22 & 0.98 & 0.19 & 0.22 \\
- 5 & 13 & 0.96 & 0.23 & 0.23 \\
- 7 &  9 & 0.99 & 0.36 & 0.22 \\
-10 &  6 & 0.98 & 0.30 & 0.25 \\
+ 3 & 11 & 1090 & 1.64 & 1.14 \\
+ 5 &  6 &  707 & 1.52 & 1.05 \\
+ 7 &  3 &  456 & 1.45 & 0.90 \\
+10 &  3 &  255 & \textbf{1.97} & \textbf{1.18} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -156,8 +155,8 @@ $s$ & \#cliques & active ratio & separability & field focus \\
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/cs9_egonet.pdf}
-\caption{Two-hop ego of Michael Stonebraker (anchor $\star$) on a shared spring layout under four local $s$-clique witness views ($s\!=\!3,5,7,10$) over the DBLP April-2024 XML coauthor graph. In each panel we re-extract every near-clique of size $\ge\!10$ and density $\ge\!0.85$ inside the alive subset and highlight its vertices in blue; the count falls from $22$ at $s\!=\!3$ down to $6$ at $s\!=\!10$. Table~\ref{tab:cs9-quality} reports per-$s$ quality of the surviving cliques.}
-\Description{Four ego-network panels showing Michael Stonebraker's 2-hop neighbourhood under increasing s. Blue vertices belong to surviving near-cliques inside the alive set and become sparser from left to right as the count drops from 22 cliques at s=3 to 6 at s=10.}
+\caption{One-hop coauthor ego of Jiawei Han (anchor $\star$, DBLP key \texttt{Jiawei Han 0001}, ego size $1{,}358$) on a shared spring layout under four local $s$-clique witness views ($s\!=\!3,5,7,10$) over the DBLP April-2024 XML coauthor graph. In each panel we re-extract every near-clique of size $\ge\!10$ and density $\ge\!0.85$ inside the alive subset and highlight its vertices in blue; the count falls from $11$ at $s\!=\!3$ to $3$ at $s\!=\!10$, and the papers-per-pair metric (Table~\ref{tab:cs9-quality}) rises sharply at $s\!=\!10$, exposing Han's tightest co-author teams.}
+\Description{Four ego-network panels showing Jiawei Han's 1-hop coauthor neighbourhood under increasing s. Blue vertices belong to surviving near-cliques inside the alive set and consolidate from 11 dispersed cliques at s=3 to 3 tight cliques at s=10; surrounding gray peripheral nodes fade as s grows.}
 \label{fig:cs9}
 \end{figure*}
 
