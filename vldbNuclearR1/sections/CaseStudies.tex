@@ -97,7 +97,7 @@ For larger $s$, the active set drops below $10{,}000$, so the comparison changes
 $(1,30)$-core reaches $523$ triangles per vertex on $1{,}358$ vertices.
 
 
-\stitle{Case study 3: higher $r$ does not buy quality on the studied graphs.}\label{sec:cs-pareto}
+\stitle{Case study 3: higher $r$ does not buy quality.}\label{sec:cs-pareto}
 Edge- and triangle-level nuclei sit between $(1,s)$ and explicit clique enumeration on the cost axis; whether they buy quality at that cost is an open question on the same datasets.
 %
 Fixing $s$ and comparing $r\in\{1,2,3\}$ across \texttt{com-dblp} ($s{=}10$) and \texttt{com-youtube} ($s\in\{5,10\}$), Figure~\ref{fig:crossr} shows the answer at a glance: within each cell the three quality bars are nearly equal heights (left panel), while the time bars span $1$--$3$ orders of magnitude (right panel, log scale).
@@ -109,12 +109,12 @@ $r{=}1$ therefore gives the best observed quality--runtime tradeoff for vertex r
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_crossr.pdf}
-\caption{Cross-$r$ comparison on \texttt{com-dblp} ($s{=}10$) and \texttt{com-youtube} ($s\in\{5,10,15\}$). Left: ranking quality (rec50, higher is better) is nearly identical across $r$. Right: decomposition time (log scale, lower is better) is $1$--$3$ orders of magnitude smaller at $r{=}1$.}
+\caption{Cross-$r$ comparison on \texttt{com-dblp} and \texttt{com-youtube}. Quality (left) is nearly identical across $r$; time (right, log scale) is $1$--$3$ orders of magnitude smaller at $r{=}1$.}
 \Description{Two side-by-side bar charts. Left panel shows rec50 bars within each cell are nearly equal across r=1, 2, 3. Right panel shows decomposition time on a log scale where r=1 bars are dramatically shorter than r=2 and r=3 bars in every cell, with the gap reaching about 178 times on dblp s=10.}
 \label{fig:crossr}
 \end{figure}
 
-\stitle{Case study 4: identifying ego network on DBLP --- $(r,s)$ grid on Han's 1-hop ego.}\label{sec:cs-viz}
+\stitle{Case study 4: identifying ego network on DBLP.}\label{sec:cs-viz}
 We build a fresh coauthor graph from the official DBLP XML dump (April 2024, $3.4$M authors and $23.0$M coauthorship edges), anchor on Jiawei Han (DBLP key \texttt{Jiawei Han 0001}), and take his $1$-hop coauthor ego ($1{,}358$ vertices).
 %
 Figure~\ref{fig:cs9} shows the same ego decomposed under four parameter settings, $(r,s)\!\in\!\{(1,4),(3,4),(1,10),(3,10)\}$, with $(3,s)$ obtained via the NuclearCD~\cite{NuclearCD} reference implementation.
@@ -123,14 +123,14 @@ For each $(r,s)$ we partition the alive subgraph ($v$ with $k_{r,s}(v)\!\ge\!1$,
 %
 For each module $C$ we report a semantic label, member count, the number of \emph{$\ge\!5$-co-author collaborative papers}, and the \emph{active ratio} (fraction of members appearing in at least one such paper), following NuclearCD~\cite{NuclearCD} adapted with a stricter $\ge\!5$ within-module co-author threshold so that loose modules at small $s$ remain discriminable from tight modules at large $s$.
 
-\sstitle{Increasing $s$ tightens the modules and lifts the active ratio toward $100\%$.}
+\sstitle{Raising $s$ tightens the modules.}
 At $(1,4)$ the alive subgraph contains $1{,}323$ vertices and the loose partition surfaces $6$ modules ranging from a $150$-member loose IR/Web cluster (density $0.43$, active $93\%$) down to two tighter $32$- and $37$-vertex groups (NLP and a Data Mining sub-team) whose active ratios drop to $69\%$ and $76\%$ --- the long-tail behaviour NuclearCD~\cite{NuclearCD} observed under the same protocol.
 %
 At $(1,10)$ the alive subgraph shrinks to $590$ vertices, and the same partition surfaces only $3$ modules, all densities $0.74$--$0.94$ and active ratios $85\%$--$97\%$: ML Safety ($32$, $97\%$), Data Mining ($49$, $96\%$), IR/Web ($26$, $85\%$).
 %
 So raising $s$ filters out loose, weakly-collaborating groups and retains compact, strongly-collaborating teams: the size-weighted average active ratio rises from $91\%$ at $s\!=\!4$ to $93\%$ at $s\!=\!10$ in our setting and would saturate further at $s\!=\!15$ or higher (a few of the $s\!=\!4$ modules are already at $100\%$).
 
-\sstitle{Raising $r$ from $1$ to $3$ does not change the result.}
+\sstitle{Raising $r$ does not help.}
 Crucially, at each $s$ the $(1,s)$ and $(3,s)$ panels are pairwise identical --- same module count, same sizes, same labels, same representative members, same active ratios --- even though the per-vertex absolute core thresholds differ by orders of magnitude.
 %
 The two decompositions \emph{rank} vertices the same way on this ego, so the more expensive triangle-centric $r\!=\!3$ delivers no extra resolution beyond what the cheap vertex-centric $r\!=\!1$ already provides.
@@ -156,7 +156,7 @@ Figure~\ref{fig:cs10} visualizes the resulting join trees side by side.
 
 \begin{table}[t]
 \centering
-\caption{Nucleus hierarchy summary: number of leaf branches and maximum tree depth at each $s$.}
+\caption{Nucleus hierarchy: leaf branches and depth at each $s$.}
 \label{tab:cs10cross}
 \tiny
 \setlength{\tabcolsep}{4pt}
