@@ -24,11 +24,13 @@ rec50 is the number of communities with at least $50\%$ of their vertices inside
 Triangle density is the number of triangles per vertex in the induced top-$K$ subgraph.
 
 \stitle{Case study 1: $s$ is a granularity knob.}\label{sec:cs-granularity}
-The first question is what $s$ changes when $r=1$.
+$k$-core ($s\!=\!2$) is known to be too coarse on dense graphs: $80$--$100\%$ of vertices share a handful of small core values, so the ranking cannot separate dense pockets from the bulk~\cite{nucleusSariyuce14,nuclearTWEB}.
 %
-On \texttt{com-dblp}, increasing $s$ sharply shrinks the active set while preserving the very top of the ranking.
+The $(r,s)$-nucleus generalisation~\cite{nucleusSariyuce14} fixes this by replacing edge-support with $s$-clique-support; for $r{=}1$, the support of $v$ is the number of $s$-cliques containing $v$.
 %
-Table~\ref{tab:cs1} reports the active-set size and top-prefix thresholds.
+Table~\ref{tab:cs1} measures the resulting granularity on \texttt{com-dblp} by sweeping $s$ from $2$ (the $k$-core baseline) to $30$.
+%
+``Nonzero $|V|$'' is the alive set (vertices with $k_{1,s}(v)\!\ge\!1$), ``max core'' is the largest attained core, and ``top-$K$ min'' is the smallest core value among the top-$K$ ranked vertices --- the threshold that separates the top-$K$ from the bulk.
 
 \begin{table}[t]
 \centering
@@ -54,15 +56,17 @@ $30$ & $1{,}358$   & $0.43$   & $7.61\!\times\!10^{26}$ & $7.61\!\times\!10^{26}
 \end{tabular}
 \end{table}
 
-The active set shrinks from all vertices at $s=2$ to $1{,}358$ vertices at $s=30$.
+At $s\!=\!2$ ($k$-core), the alive set is the whole graph and max core is only $113$ --- the entire ranking compresses into a two-digit dynamic range, which is exactly the collapse \cite{nucleusSariyuce14} observed.
 %
-This is a $234\times$ reduction.
+Each step up in $s$ enlarges the dynamic range and shrinks the alive set monotonically: max core grows from $113$ at $s\!=\!2$ to $6.3{\times}10^{3}$ at $s\!=\!3$ ($56{\times}$), to $6.0{\times}10^{12}$ at $s\!=\!10$ (ten orders of magnitude), and to $7.6{\times}10^{26}$ at $s\!=\!30$.
 %
-At the same time, the maximum core value spans many orders of magnitude because high-$s$ supports are binomial counts.
+The top-$K$ thresholds widen in step: at $s\!=\!10$ the top-$100$ vertices all have core $\ge 6.0{\times}10^{12}$ while the rest of the alive set drops below $2.0{\times}10^{7}$, a five-decade gap that makes the top-$100$ unambiguously identifiable.
 %
-The practical interpretation is simple.
+The alive set shrinks $234{\times}$ ($317$k$\to$$1{,}358$) across the same sweep.
 %
-$s$ controls how aggressively the ranking filters the graph.
+The headline is that the same $r{=}1$ primitive serves a spectrum of analytics tasks at different scales: $s\!\le\!3$ gives a community-scale ranking compatible with the ground-truth recall metric used in Case study 2 below; $s\!\in\![5,10]$ isolates the few thousand densest vertices, the natural prefix size for downstream dense-subgraph and team-formation tasks~\cite{dense_subgraph,communities_dec1,communities_dec2}; $s\!\ge\!15$ shrinks to a few thousand candidates suitable for influence-maximisation seeding~\cite{kempe2003maximizing,Identifying_influential}.
+%
+$s$ is the knob that picks the regime.
 
 \stitle{Case study 2: $(1,s)$ improves the $k$-core ranking.}\label{sec:cs-quality}
 On \texttt{com-dblp}, the first non-trivial clique support already improves the ground-truth ranking over $k$-core.
