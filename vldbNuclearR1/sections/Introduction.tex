@@ -78,7 +78,7 @@ For $(1,s)$-nucleus decomposition we exploit a static-\cpi{} invariant (Theorem~
 \sstitle{Static-\cpi{} invariant for $(1,s)$.}
 We prove that vertex peeling never rewrites any \cpi{} path's stored hold or pivot sets (Theorem~\ref{thm:vertex-removal}) and realize the resulting counter-only peel as \spinStar{} (Algorithm~\ref{alg:peelH}), which drops per-incidence space from $\approx 88\Sig$ bytes to $\approx 8\Sig$ bytes (Table~\ref{tab:mem}).
 %
-On $451$ matched cells, \spinStar{} achieves a $17.90\times$ geometric-mean peel-time speedup and a $1.55\times$ geometric-mean memory reduction over \cbnd{}, and on a billion-scale graph \spinStar{} decomposes the full $s$ sweep while \cbnd{} OOMs for every $s\ge3$.
+On $451$ matched cells, \spinStar{} achieves a $17.90\times$ geometric-mean peel-time speedup and a $1.55\times$ geometric-mean memory reduction over \cbnd{}, and on a billion-scale graph \spinStar{} decomposes the full $s$ sweep while \cbnd{} runs out of memory for every $s\ge3$.
 
 \sstitle{Parallel \cpi{} construction.}
 \paraBuild{} (Algorithm~\ref{alg:parabuild}) parallelises \cpi{} construction across seed vertices, addressing the construction phase that dominates total runtime once peeling is counter-only; empirical scaling reaches $23.4\times$ at $T{=}24$ threads.
