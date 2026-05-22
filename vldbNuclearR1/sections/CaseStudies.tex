@@ -114,30 +114,32 @@ $r{=}1$ therefore gives the best observed quality--runtime tradeoff for vertex r
 \label{fig:crossr}
 \end{figure}
 
-\stitle{Case study 4: $s$ distils a neighbourhood into venue-coherent near-clique modules.}\label{sec:cs-viz}
+\stitle{Case study 4: $s$ is a cohesion filter on a researcher's neighbourhood.}\label{sec:cs-viz}
 The previous studies use global rankings; this study tests whether the same $s$ knob also controls \emph{local} interpretability.
 %
-We build a fresh coauthor graph directly from the official DBLP XML dump (April 2024 snapshot), with author names preserved, so that every clique we surface carries a venue profile from real co-authorship data.
+We build a fresh coauthor graph directly from the official DBLP XML dump (April 2024 snapshot, $3.4$M authors and $23.0$M coauthorship edges), keeping author names and venue profiles intact.
 %
-The graph has $3.4$M authors and $23.0$M coauthorship edges; we anchor the visualisation at Michael Stonebraker, whose $2$-hop ego contains $37{,}661$ vertices.
+We anchor the visualisation at Michael Stonebraker, whose $2$-hop ego contains $37{,}661$ vertices.
 %
-Figure~\ref{fig:cs9} draws this ego under four successive local $s$-clique witness views ($s\!=\!3,5,7,10$) on a shared spring layout, with the layout subset capped at $2{,}000$ vertices (the densest alive-at-$s\!=\!3$ vertices, plus the four near-cliques and the anchor, all forcibly included).
+Figure~\ref{fig:cs9} draws four local $s$-clique witness views ($s\!=\!3,5,7,10$) on a shared spring layout; for tractability we cap the rendered subset to the densest $2{,}000$ alive-at-$s\!=\!3$ vertices plus the anchor.
 %
-A vertex is shown alive at $s$ iff $\kappa_s(v)\ge s$ inside the ego.
+In each panel we re-extract all surviving near-cliques (size $\ge\!10$, internal edge density $\ge\!0.85$) inside the alive-at-$s$ subset of the layout, and highlight every vertex contained in any such near-clique.
 
-As $s$ grows from $3$ to $10$, the alive count in the rendered subset shrinks $2000\rightarrow1300\rightarrow858\rightarrow507$ (and in the full ego from $29{,}215$ down to $6{,}022$), and four near-cliques --- of sizes $58$, $22$, $15$, and $15$ --- emerge as a backbone visible in every panel.
+The visible message is that high $s$ \emph{filters} a noisy candidate list down to a few elite communities, rather than merely re-displaying the same cliques.
 %
-We label each clique by its dominant DBLP venue: a bioinformatics community centred on \emph{Nucleic Acids Research}, a computer-vision community centred on \emph{CVPR / NeurIPS}, a remote-sensing community centred on \emph{Sensors / Remote Sensing}, and a KDD / multimedia community.
+At $s\!=\!3$ the cohesion threshold is permissive and the algorithm exposes $22$ candidate near-cliques inside the rendered subset.
 %
-These communities are reached from the anchor via second-degree coauthor bridges; the algorithm does not claim they are the anchor's personal collaborations, but rather that they are the densest \emph{venue-coherent} subgraphs surviving in his neighbourhood at high $s$.
+As $s$ grows the bar rises and most candidates fall out: $13$ survive at $s\!=\!5$, $9$ at $s\!=\!7$, and only $6$ at $s\!=\!10$.
 %
-The same $s$ knob therefore acts as a tunable filter on local structure: low $s$ shows a diffuse neighbourhood, while high $s$ exposes a small number of internally cliquey, venue-coherent research communities.
+The $s\!=\!10$ survivors include a dominant $57$-vertex coauthor block alongside five mid-sized blocks of $10$ to $15$ vertices; venue-profile aggregation over their members maps them to four distinct DBLP venue clusters (bioinformatics, computer vision, remote sensing, and a KDD / multimedia line), reached from the anchor through second-degree coauthor bridges.
+%
+The $s$ knob therefore acts as a tunable cohesion filter on local structure: low $s$ surfaces many candidate sub-communities, while high $s$ promotes only those whose internal connectivity remains dense under stricter $s$-clique-witness budgets.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/cs9_egonet.pdf}
-\caption{Two-hop ego of Michael Stonebraker (anchor $\star$) on a shared spring layout under four local $s$-clique witness views ($s\!=\!3,5,7,10$) over the DBLP April-2024 XML coauthor graph. Four near-cliques labelled by dominant DBLP venue (bioinformatics, computer vision, remote sensing, KDD + multimedia) form a backbone visible across every panel; the alive periphery shrinks from $2000$ to $507$ vertices in the rendered subset as $s$ grows.}
-\Description{Four ego-network panels for Michael Stonebraker's 2-hop neighbourhood under increasing s. Four near-cliques colour-coded blue (bioinformatics), green (computer vision), red (remote sensing), and orange (KDD/multimedia) remain visible in every panel; the surrounding gray periphery progressively dims as s grows from 3 to 10.}
+\caption{Two-hop ego of Michael Stonebraker (anchor $\star$) on a shared spring layout under four local $s$-clique witness views ($s\!=\!3,5,7,10$) over the DBLP April-2024 XML coauthor graph. In each panel we re-extract every near-clique of size $\ge\!10$ and density $\ge\!0.85$ inside the alive subset and highlight its vertices in blue; the count shown in each title falls from $22$ at $s\!=\!3$ down to $6$ at $s\!=\!10$ as the cohesion threshold tightens.}
+\Description{Four ego-network panels showing Michael Stonebraker's 2-hop neighbourhood under increasing s. The blue vertices, which belong to surviving near-cliques inside the alive set, become sparser from left to right: 22 cliques at s=3 fall to 6 at s=10.}
 \label{fig:cs9}
 \end{figure*}
 
