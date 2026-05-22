@@ -114,34 +114,38 @@ $r{=}1$ therefore gives the best observed quality--runtime tradeoff for vertex r
 \label{fig:crossr}
 \end{figure}
 
-\stitle{Case study 4: identifying ego network on DBLP --- our $(1,3)$ vs.\ NuclearCD $(3,4)$.}\label{sec:cs-viz}
+\stitle{Case study 4: identifying ego network on DBLP --- $(r,s)$ grid on Han's 1-hop ego.}\label{sec:cs-viz}
 We build a fresh coauthor graph from the official DBLP XML dump (April 2024, $3.4$M authors and $23.0$M coauthorship edges), anchor on Jiawei Han (DBLP key \texttt{Jiawei Han 0001}), and take his $1$-hop coauthor ego ($1{,}358$ vertices).
 %
-Figure~\ref{fig:cs9} compares two decompositions on the \emph{same} ego: our $(1,3)$-nucleus and NuclearCD's $(3,4)$-nucleus computed via the reference implementation.
-
-\sstitle{Setup.}
-A vertex is \emph{alive} if its $(r,s)$-nucleus core number is at least $1$.
-At $(1,3)$ the alive subgraph is naturally one giant connected component (every coauthor of Han is reachable through a shared collaborator), so we partition the alive subgraph into disjoint dense \emph{modules} via greedy near-clique extraction (size $\ge 10$, internal edge density $\ge 0.85$).
-At $(3,4)$ we use the standard nucleus-hierarchy partition --- on a one-hop ego the alive nucleus is also one giant blob at level $1$, so we report the level-$10$ shell of the $(3,4)$ hierarchy, the deepest level where multiple triangle-connected nuclei coexist.
-For each module / nucleus $C$ we report its semantic label (dominant non-CoRR DBLP venue across its $\ge 3$-co-author papers), member count, the number of \emph{collaborative} papers (those containing $\ge 3$ within-$C$ authors), and the \emph{active ratio} (fraction of members appearing in at least one collaborative paper), following NuclearCD~\cite{NuclearCD}.
-
-\sstitle{$(1,3)$ extracts fine-grained, fully active working groups.}
-The five largest $(1,3)$ modules each map to a clearly identifiable research focus of Han --- Data Mining ($90$ members, $133$ papers), IR/Web ($62$, $170$), AI/ML ($51$, $98$), Multimodal NLP ($20$, $23$), and a newer NLP cohort ($18$, $4$) --- and every one is $100\%$ active under the $\ge 3$ within-module co-author threshold.
-The structural quality is uniformly high: size-weighted average separability $m_{\mathrm{in}}/m_{\mathrm{cut}}=1.55$, average conductance $\phi=0.37$, $40\%$ of edges intra-module.
-
-\sstitle{$(3,4)$ at the same ego scope yields a coarser decomposition.}
-At the level-$10$ shell, $(3,4)$ produces five triangle-connected nuclei: a large Data Mining super-nucleus ($415$ members, $425$ papers, $66\%$ active) plus four smaller fringe nuclei (sizes $20$, $17$, $13$, $13$) whose active ratios drop to $0$--$15\%$.
-The super-nucleus is a single triangle-connected blob that fuses Han's Data Mining, IR/Web, and AI/ML coauthors, and the fringes carry few internal collaborative papers.
+Figure~\ref{fig:cs9} shows four decompositions of the same ego at $(r,s)\!\in\!\{(1,4),(3,4),(1,10),(3,10)\}$, with $(3,s)$ computed via the NuclearCD~\cite{NuclearCD} reference implementation.
 %
-The takeaway is that $(1,s)$ and $(r,s)$ with $r\!>\!1$ explore the ego at different granularities: high $r$ groups Han's collaborators into a single triangle-connected core plus loose periphery, whereas $(1,s)$ at a moderate $s$ pulls out the interpretable working-group structure beneath that core.
+Because a vertex is in some $s$-clique iff some triangle through it is in that $s$-clique, the $(1,s)$- and $(3,s)$-alive vertex sets coincide; the panels differ in how the alive subgraph is \emph{partitioned}:
+$(1,s)$ uses dense modules (greedy near-cliques of size $\ge 10$, internal density $\ge 0.85$ — the natural unit for a vertex-centric decomposition), and $(3,s)$ uses triangle-connected nuclei (NuclearCD's native unit).
+For each module / nucleus $C$ we report its semantic label (dominant non-CoRR DBLP venue across its $\ge 3$-co-author papers), member count, the number of \emph{collaborative} papers ($\ge 3$ within-$C$ authors), and the \emph{active ratio} (fraction of members appearing in any such paper)~\cite{NuclearCD}.
+
+\sstitle{$(1,s)$ extracts fine-grained, fully active working groups.}
+At $(1,4)$ the alive subgraph ($1{,}323$ vertices) breaks into $14$ dense modules; the top five — Data Mining ($90$ members, $133$ papers), IR/Web ($64$, $172$), AI/ML ($51$, $98$), Multimodal NLP ($21$, $26$), and a second Data Mining sub-team ($19$, $12$) — each map to a clearly identifiable research focus of Han, and every one is $100\%$ active.
 %
-This matches the broader picture in Table~\ref{tab:dblp-gt}: $(1,s)$ achieves community-detection quality matching higher-$r$ baselines, while being substantially cheaper to compute (Tables \ref{tab:r1-runtime},~\ref{tab:mem}).
+At $(1,10)$ the alive subgraph shrinks to $590$ vertices and consolidates into $4$ dense modules: Data Mining ($47$), ML Safety ($30$), IR/Web ($23$), and an NLP working group ($10$).
+%
+All four are still $100\%$ active --- increasing $s$ does not introduce loose-collaboration noise, it just sharpens which working groups survive.
+
+\sstitle{$(3,s)$ at the same ego scope yields a much coarser decomposition.}
+At $(3,4)$, NuclearCD groups the $1{,}323$ alive vertices into only $4$ triangle-connected nuclei: a single Data Mining super-nucleus ($1{,}309$ members, $5{,}096$ collaborative papers, $99\%$ active) that fuses essentially the entire ego, plus three tiny fringe nuclei (sizes $8$, $5$, $4$) with $0\%$ active ratio.
+%
+At $(3,10)$ the $590$ alive vertices fragment into only $2$ triangle-connected nuclei: a $570$-vertex Data Mining super-nucleus ($75\%$ active) and a $21$-vertex fringe.
+%
+On a one-hop ego, all of Han's frequent coauthors form triangles through him, so triangle-connectedness collapses essentially the entire ego into one nucleus regardless of $s$, leaving NuclearCD only loose fringe structure to fragment.
+%
+The takeaway is that $(1,s)$ and $(r\!>\!1,s)$ explore the ego at complementary granularities: $(1,s)$ at moderate $s$ surfaces interpretable working groups within Han's collaboration neighbourhood, while $(r,s)$ at $r\!>\!1$ captures the global triangle-connected backbone but is too coarse to separate working groups at this scope.
+%
+This matches the broader picture in Table~\ref{tab:dblp-gt}: $(1,s)$ achieves community-detection quality matching higher-$r$ baselines while being substantially cheaper to compute (Tables \ref{tab:r1-runtime},~\ref{tab:mem}).
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.95\linewidth]{figures/cs9_egonet.pdf}
-\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Jiawei Han $0001$ in red). \textbf{Left:} our $(r,s)\!=\!(1,3)$ — the five largest dense modules (Data Mining, IR/Web, AI/ML, Multimodal NLP, NLP) are coloured and annotated with member count and paper count; all five are $100\%$ active under the $\ge 3$ within-module co-author threshold. \textbf{Right:} NuclearCD $(r,s)\!=\!(3,4)$ at the level-$10$ shell of its triangle-connected nucleus hierarchy --- one large Data Mining super-nucleus ($415$ members, $66\%$ active) plus four smaller fringe nuclei (sizes $13$--$20$ with active ratio $0\%$--$15\%$). Peeled vertices in light gray; alive-but-not-in-top-$K$ in dark gray. The two decompositions explore the ego at complementary granularities: $(1,s)$ at moderate $s$ exposes fine-grained working groups beneath the single $(r\!=\!3)$ triangle-connected core.}
-\Description{Two side-by-side ego-network panels. The left panel shows our (1,3)-nucleus result: five distinctly colored dense modules each labeled with a research-area name. The right panel shows NuclearCD's (3,4)-nucleus result at level 10: one large blue Data Mining super-nucleus dominates while four small fringe nuclei sit around the periphery.}
+\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Jiawei Han $0001$ in red) under four parameter settings $(r,s)$. \textbf{Top row} ($s\!=\!4$, alive $=\!1{,}323$): \textbf{(left)} our $(1,4)$ extracts $14$ dense modules — top-$5$ are Data Mining, IR/Web, AI/ML, Multimodal NLP, and a Data Mining sub-team (all $100\%$ active); \textbf{(right)} NuclearCD $(3,4)$ collapses essentially the entire alive subgraph into a single $1{,}309$-vertex Data Mining triangle-connected nucleus plus three tiny fringes ($0\%$ active). \textbf{Bottom row} ($s\!=\!10$, alive $=\!590$): \textbf{(left)} our $(1,10)$ consolidates into $4$ dense modules (Data Mining, ML Safety, IR/Web, NLP); \textbf{(right)} NuclearCD $(3,10)$ keeps a $570$-vertex super-nucleus plus a $21$-vertex fringe. Peeled vertices in light gray; alive-but-not-in-top-$K$ in dark gray.}
+\Description{Four ego-network panels in a 2x2 grid. Top row shows s=4 results: the (1,4) panel has five colored dense modules spread around the layout, while the (3,4) panel shows one large blue triangle-connected blob covering most of the layout plus three tiny fringe clusters. Bottom row shows s=10 results: the (1,10) panel has four smaller colored modules, while the (3,10) panel shows one large blue blob and one small fringe.}
 \label{fig:cs9}
 \end{figure*}
 
