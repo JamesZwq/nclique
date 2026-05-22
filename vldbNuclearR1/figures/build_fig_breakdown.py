@@ -84,8 +84,9 @@ def plot(out_pdf):
 
         for i, (b, p) in enumerate(zip(spin_b, spin_p)):
             pct = 100.0 * p / (b + p) if (b + p) > 0 else 0.0
-            ax.text(x_pos[i], b + p, fmt_pct(pct), ha="center", va="bottom",
-                    fontsize=7.0, color="#404040")
+            ax.text(x_pos[i], b + p, fmt_pct(pct),
+                    ha="center", va="bottom", rotation=90,
+                    fontsize=6.5, color="#404040")
 
         ax.set_xticks(x_pos)
         ax.set_xticklabels([str(s) for s in ss])
@@ -93,7 +94,7 @@ def plot(out_pdf):
         for sp in ("top", "right"): ax.spines[sp].set_visible(False)
         ax.grid(True, axis="y", which="major", alpha=0.25, linestyle=":")
         top = max(b + p for b, p in zip(spin_b, spin_p))
-        ax.set_ylim(0, top * 1.22)
+        ax.set_ylim(0, top * 1.50)   # extra headroom for vertical labels
         ax.set_title(label, fontsize=10, fontweight="bold")
         ax.set_xlabel(r"$\boldsymbol{s}$", fontsize=10, fontweight="bold")
         if col == 0:
