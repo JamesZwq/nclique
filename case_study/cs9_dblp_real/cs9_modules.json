@@ -2,96 +2,93 @@
   "3": {
     "n_alive": 1293,
     "n_modules": 14,
-    "edges_alive": 20294,
     "intra_frac": 0.404,
     "avg_sep": 1.553,
     "avg_cond": 0.368,
-    "topK_avg_active": 1.0,
-    "topK_avg_active_unw": 1.0,
     "top": [
       {
-        "module_id": 1,
+        "ci": 1,
         "size": 90,
         "m_in": 4005,
         "m_cut": 1142,
-        "sep": 3.507,
-        "cond": 0.125,
+        "sep": 3.51,
+        "cond": 0.12,
+        "papers": 133,
         "active": 1.0,
-        "collab_papers": 133,
+        "label": "Data Mining",
         "reps": [
           "Krishnaram Kenthapadi",
           "Ke Yang 0003",
           "Yu Zhang 0044",
-          "Devesh Parekh",
-          "Qi Zhang 0020"
+          "Devesh Parekh"
         ]
       },
       {
-        "module_id": 3,
+        "ci": 3,
         "size": 62,
         "m_in": 1891,
         "m_cut": 873,
-        "sep": 2.166,
-        "cond": 0.188,
+        "sep": 2.17,
+        "cond": 0.19,
+        "papers": 170,
         "active": 1.0,
-        "collab_papers": 170,
+        "label": "IR / Web",
         "reps": [
           "Peng Wu 0012",
           "Hans Chalupsky",
           "Friedhelm Victor",
-          "Milan Dojchinovski",
-          "Jan Forberg"
+          "Milan Dojchinovski"
         ]
       },
       {
-        "module_id": 0,
+        "ci": 0,
         "size": 51,
         "m_in": 1235,
         "m_cut": 2026,
         "sep": 0.61,
-        "cond": 0.451,
+        "cond": 0.45,
+        "papers": 98,
         "active": 1.0,
-        "collab_papers": 98,
+        "label": "AI / ML",
         "reps": [
           "Pin-Yu Chen",
           "Philip S. Yu",
           "Heng Ji",
-          "Xiang Li 0001",
-          "Meng Jiang 0001"
+          "Xiang Li 0001"
         ]
       },
       {
-        "module_id": 5,
+        "ci": 5,
         "size": 20,
         "m_in": 180,
         "m_cut": 432,
-        "sep": 0.417,
-        "cond": 0.545,
+        "sep": 0.42,
+        "cond": 0.55,
+        "papers": 23,
         "active": 1.0,
-        "collab_papers": 23,
+        "label": "Multimodal NLP",
         "reps": [
           "Manling Li",
           "Ying Lin",
           "Brian Chen 0001",
-          "Xudong Lin 0003",
-          "Zhenhailong Wang"
+          "Xudong Lin 0003"
         ]
       },
       {
-        "module_id": 10,
+        "ci": 10,
         "size": 18,
         "m_in": 153,
         "m_cut": 257,
-        "sep": 0.595,
-        "cond": 0.456,
+        "sep": 0.6,
+        "cond": 0.46,
+        "papers": 4,
         "active": 1.0,
-        "collab_papers": 4,
+        "label": "NLP (newer)",
         "reps": [
           "Haoran Zhang",
           "Cynthia Schneider",
           "Qingyun Wang 0005",
-          "Xiangchen Song",
-          "Weili Liu"
+          "Xiangchen Song"
         ]
       }
     ]
@@ -99,62 +96,59 @@
   "10": {
     "n_alive": 301,
     "n_modules": 3,
-    "edges_alive": 971,
     "intra_frac": 0.414,
     "avg_sep": 2.779,
     "avg_cond": 0.163,
-    "topK_avg_active": 1.0,
-    "topK_avg_active_unw": 1.0,
     "top": [
       {
-        "module_id": 1,
+        "ci": 1,
         "size": 19,
         "m_in": 171,
         "m_cut": 44,
-        "sep": 3.886,
-        "cond": 0.114,
+        "sep": 3.89,
+        "cond": 0.11,
+        "papers": 2,
         "active": 1.0,
-        "collab_papers": 2,
+        "label": "ML Safety",
         "reps": [
           "Zhikun Zhang",
           "Suman Jana",
           "Xiner Li",
-          "Yan Liu",
-          "Yixin Huang"
+          "Yan Liu"
         ]
       },
       {
-        "module_id": 0,
+        "ci": 0,
         "size": 18,
         "m_in": 153,
         "m_cut": 78,
-        "sep": 1.962,
-        "cond": 0.203,
+        "sep": 1.96,
+        "cond": 0.2,
+        "papers": 1,
         "active": 1.0,
-        "collab_papers": 1,
+        "label": "Multimodal Web",
         "reps": [
           "Yu-Che Tsai",
           "Ying Li",
           "Soyeon Caren Han",
-          "Siqu Long",
-          "Wenwu Zhu 0001"
+          "Siqu Long"
         ]
       },
       {
-        "module_id": 2,
+        "ci": 2,
         "size": 13,
         "m_in": 78,
         "m_cut": 34,
-        "sep": 2.294,
-        "cond": 0.179,
+        "sep": 2.29,
+        "cond": 0.18,
+        "papers": 10,
         "active": 1.0,
-        "collab_papers": 10,
+        "label": "NLP Group",
         "reps": [
           "Vidhisha Balachandran",
           "Stefan Neumann 0003",
           "Yulia Tsvetkov",
-          "Shrestha Ghosh",
-          "Wenjie Wang 0007"
+          "Shrestha Ghosh"
         ]
       }
     ]

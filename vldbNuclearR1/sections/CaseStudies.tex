@@ -160,13 +160,13 @@ $s$ & alive & \#mods & intra-frac & $m_{\mathrm{in}}/m_{\mathrm{cut}}$ & $\phi$ 
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/cs9_egonet.pdf}
-\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Han $\star$) under $s\!=\!3$ vs.\ $s\!=\!10$ on a shared spring layout. Vertices coloured by dense module (top-$K$ largest distinct colours per panel); peeled vertices in light gray, alive-but-not-in-top-$K$ in dark gray. Increasing $s$ consolidates $14$ modules into $3$, nearly doubles the size-weighted average separability ($1.55\!\to\!2.78$), and more than halves the conductance ($0.37\!\to\!0.16$); see Table~\ref{tab:cs9-quality}.}
-\Description{Two side-by-side ego-network panels showing Han's 1-hop coauthor neighbourhood at s=3 and s=10. At s=3, five large colored clusters spread across the spring layout. At s=10, three smaller and more isolated colored clusters remain, while the rest of the ego has been peeled away into light gray.}
+\includegraphics[width=0.95\linewidth]{figures/cs9_egonet.pdf}
+\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Jiawei Han $0001$ in red) under $s\!=\!3$ (left) vs.\ $s\!=\!10$ (right) on a shared spring layout. Vertices coloured by their dense module (top-$5$ at $s\!=\!3$, top-$3$ at $s\!=\!10$, each labelled with a representative research focus inferred from the dominant non-CoRR venue of its $\ge\!3$-co-author papers); peeled vertices in light gray, alive-but-not-in-top-$K$ in dark gray. Increasing $s$ consolidates $14$ modules into $3$, nearly doubles the size-weighted average separability ($m_{\mathrm{in}}/m_{\mathrm{cut}}:1.55\!\to\!2.78$), and more than halves the average conductance ($\phi:0.37\!\to\!0.16$); every annotated module is $100\%$ active (every member appears on a paper with $\ge\!3$ within-module co-authors). See Table~\ref{tab:cs9-quality}.}
+\Description{Two side-by-side ego-network panels showing Han's 1-hop coauthor neighbourhood at s=3 and s=10. At s=3, five large colored clusters (Data Mining, IR/Web, AI/ML, Multimodal NLP, NLP) spread across the spring layout, each labeled with a callout box giving its member count and paper count. At s=10, three smaller and more isolated colored clusters (ML Safety, Multimodal Web, NLP) remain, while the rest of the ego has been peeled away into light gray.}
 \label{fig:cs9}
-\end{figure}
+\end{figure*}
 
 \stitle{Case study 5: hierarchy profiles differ by domain.}\label{sec:cs-hier}
 \buildHier{} turns the core values into a $(1,s)$-clique-connected nucleus hierarchy (Definition~\ref{def:nucleus}).
