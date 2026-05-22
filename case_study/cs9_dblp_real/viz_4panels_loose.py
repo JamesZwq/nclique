@@ -203,89 +203,105 @@ for r, s in PANELS_SPEC:
         print(f"    |C|={d['size']:>3d} dens={d['density']:.2f} P={d['papers']:>3d} act={d['active']:.2f}  "
               f"{d['label']}  reps={', '.join(d['reps'][:3])}")
 
-# ---- layout ----
+# ---- layout (more separation for clearer cluster visuals) ----
 stamp("layout...")
 G = nx.Graph(); G.add_nodes_from(hop1)
 for u in hop1:
     for v in adj_hop1[u]:
         if u<v: G.add_edge(u,v)
-pos = nx.spring_layout(G, seed=42, iterations=120, k=1.6/(len(hop1)**0.5))
+pos = nx.spring_layout(G, seed=42, iterations=200, k=2.8/(len(hop1)**0.5))
 stamp("layout done")
 
-PALETTE = ["#1f78b4", "#e31a1c", "#33a02c", "#ff7f00", "#6a3d9a",
-           "#b15928", "#a6cee3", "#fb9a99"]
+# Color palette tuned for visibility (colorblind-friendly, saturated)
+PALETTE = ["#1f77b4", "#d62728", "#2ca02c", "#ff7f0e", "#9467bd",
+           "#8c564b", "#17becf", "#e377c2"]
+
+# Mapping module label -> color, kept CONSISTENT across panels so the
+# same working group appears in the same colour everywhere.
+LABEL_COLOR = {}
+def color_for_label(lbl, k_idx):
+    if lbl not in LABEL_COLOR:
+        LABEL_COLOR[lbl] = PALETTE[len(LABEL_COLOR) % len(PALETTE)]
+    return LABEL_COLOR[lbl]
 
 def render_panel(ax, r, s, data):
     A = data["alive_set"]; top = data["top"]; info = data["info"]
     peeled = hop1_set - A
+    # very faint peeled nodes
     nx.draw_networkx_nodes(G, pos, nodelist=peeled, ax=ax,
-        node_color="#ededed", node_size=3, alpha=0.45, linewidths=0)
+        node_color="#d8d8d8", node_size=3, alpha=0.30, linewidths=0)
+    # alive-but-not-in-top
     top_set = set().union(*top) if top else set()
     others = (A - top_set) - {ANCHOR}
     nx.draw_networkx_nodes(G, pos, nodelist=others, ax=ax,
-        node_color="#a8a8a8", node_size=6, alpha=0.6, linewidths=0)
+        node_color="#9a9a9a", node_size=8, alpha=0.55, linewidths=0)
+    # top-K modules with larger markers + consistent colour by label
     centroids = []
     for k_idx, C in enumerate(top):
-        color = PALETTE[k_idx % len(PALETTE)]
+        color = color_for_label(info[k_idx]["label"], k_idx)
         nodes = [v for v in C if v != ANCHOR]
         nx.draw_networkx_nodes(G, pos, nodelist=nodes, ax=ax,
-            node_color=color, node_size=14, alpha=0.92,
-            edgecolors="white", linewidths=0.3)
+            node_color=color, node_size=42, alpha=0.95,
+            edgecolors="white", linewidths=0.7)
         xs = np.array([pos[v][0] for v in nodes])
         ys = np.array([pos[v][1] for v in nodes])
         centroids.append((xs.mean(), ys.mean()))
+    # anchor: clean red ring + italic label below
     if ANCHOR in A:
         ax.scatter([pos[ANCHOR][0]], [pos[ANCHOR][1]], marker="o",
-                   s=140, facecolor="#e6e6e6", edgecolors="#cc0000",
-                   linewidths=1.5, zorder=8)
-        ax.text(pos[ANCHOR][0], pos[ANCHOR][1] - 0.04, "Jiawei Han 0001",
-                ha="center", va="top", fontsize=6.5, style="italic",
-                color="#cc0000", zorder=9,
-                bbox=dict(boxstyle="round,pad=0.14", fc="white",
-                          ec="#cc0000", lw=0.6))
-    n = len(top)
-    if n > 0:
-        angles = np.linspace(40, 400, n+1)[:-1] * np.pi/180
+                   s=220, facecolor="white", edgecolors="#cc0000",
+                   linewidths=2.0, zorder=8)
+        ax.text(pos[ANCHOR][0], pos[ANCHOR][1] - 0.055,
+                "Jiawei Han 0001",
+                ha="center", va="top", fontsize=8.5, style="italic",
+                color="#cc0000", zorder=9)
+    # inline labels: place each label NEAR its cluster centroid
+    # offset radially outward from the global figure center so labels
+    # don't sit inside the cluster.
+    if centroids:
         xs_a = np.array([pos[v][0] for v in hop1])
         ys_a = np.array([pos[v][1] for v in hop1])
-        cx = (xs_a.min()+xs_a.max())/2; cy = (ys_a.min()+ys_a.max())/2
-        rx = (xs_a.max()-xs_a.min())*0.68
-        ry = (ys_a.max()-ys_a.min())*0.68
-        for k_idx, d in enumerate(info):
-            a = angles[k_idx]
-            bx, by = cx + rx*np.cos(a), cy + ry*np.sin(a)
-            color = PALETTE[k_idx % len(PALETTE)]
-            text = (f"{d['label']}\n({d['size']} M)\n"
-                    f"({d['papers']} P, {int(d['active']*100)}%)")
-            ax.text(bx, by, text, ha="center", va="center", fontsize=6.6,
-                    family="serif", linespacing=1.1,
-                    bbox=dict(boxstyle="round,pad=0.22",
-                              fc="white", ec=color, lw=1.0), zorder=10)
-            ctx, cty = centroids[k_idx]
-            ax.annotate("", xy=(ctx, cty), xytext=(bx, by),
-                arrowprops=dict(arrowstyle="-", color=color, lw=0.6, alpha=0.7),
-                zorder=4)
+        cx_g = (xs_a.min()+xs_a.max())/2; cy_g = (ys_a.min()+ys_a.max())/2
+        span_x = xs_a.max()-xs_a.min(); span_y = ys_a.max()-ys_a.min()
+        for k_idx, (cx, cy) in enumerate(centroids):
+            d = info[k_idx]; color = color_for_label(d["label"], k_idx)
+            # radial offset outward from global centre
+            dx, dy = cx - cx_g, cy - cy_g
+            norm = (dx**2 + dy**2)**0.5 + 1e-9
+            offx = (dx/norm) * span_x * 0.18
+            offy = (dy/norm) * span_y * 0.18
+            lx, ly = cx + offx, cy + offy
+            text = (f"{d['label']}\n"
+                    f"{d['size']} m, {int(d['active']*100)}% active")
+            ax.text(lx, ly, text, ha="center", va="center", fontsize=8.5,
+                    family="serif", linespacing=1.2, fontweight="bold",
+                    color=color, zorder=10,
+                    bbox=dict(boxstyle="round,pad=0.30",
+                              fc="white", ec=color, lw=1.3, alpha=0.95))
     avg_act = (sum(d['active']*d['size'] for d in info) / max(sum(d['size'] for d in info), 1)) if info else 0
-    ax.set_title(f"$(r,s)=({r},{s})$:   {len(A)} alive,   "
-                 f"{data['n_mods']} modules,   "
-                 f"avg active = {int(avg_act*100)}%",
-                 fontsize=10)
+    method = "ours" if r == 1 else "NuclearCD"
+    ax.set_title(f"$(r,s)\\!=\\!({r},{s})$ ({method}):  "
+                 f"{len(A)} alive,  {data['n_mods']} modules,  "
+                 f"avg active = {int(avg_act*100)}\\%",
+                 fontsize=11.5, pad=6)
     ax.axis("off")
 
-fig, axes = plt.subplots(2, 2, figsize=(14, 11))
+# 2x2 grid with breathing room
+fig, axes = plt.subplots(2, 2, figsize=(14.5, 12),
+                         gridspec_kw={"hspace":0.16, "wspace":0.05})
 xs_all = np.array([pos[v][0] for v in hop1])
 ys_all = np.array([pos[v][1] for v in hop1])
-xr = (xs_all.min()-0.04, xs_all.max()+0.04)
-yr = (ys_all.min()-0.04, ys_all.max()+0.04)
+xr = (xs_all.min()-0.06, xs_all.max()+0.06)
+yr = (ys_all.min()-0.06, ys_all.max()+0.06)
 for ax_row in axes:
     for ax in ax_row:
         ax.set_xlim(*xr); ax.set_ylim(*yr)
 for ax, (r,s) in zip(axes.flatten(), PANELS_SPEC):
     render_panel(ax, r, s, panel[(r,s)])
 
-fig.tight_layout()
+fig.subplots_adjust(left=0.02, right=0.99, top=0.96, bottom=0.02)
 fig.savefig(DIR/"cs9_egonet.pdf", bbox_inches="tight")
-fig.savefig(DIR/"cs9_egonet.png", bbox_inches="tight", dpi=170)
+fig.savefig(DIR/"cs9_egonet.png", bbox_inches="tight", dpi=180)
 stamp("wrote cs9_egonet.pdf")
 
 summary = {f"r{r}_s{s}": {
