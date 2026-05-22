@@ -104,7 +104,7 @@ The analytical per-incidence gap is larger than the observed memory gap because 
 
 \begin{table}[t]
 \centering
-\caption{Per-incidence memory budget at $\Sig\gg n$, where $\Sig=\sum_{P\in\mathcal{P}}\bigl(|V_h(P)|+|V_p(P)|\bigr)$ is the total vertex--path incidence count (Section~\ref{sec:prelim}) and $B$ is the number of distinct $h$-values that ever appear in a bucket (sparse buckets, $B\le n$).}
+\caption{Per-incidence memory budget at $\Sig\gg n$.}
 \label{tab:mem}
 \small
 \begin{tabular}{lrr}
@@ -215,7 +215,7 @@ End-to-end runtime is build-dominated ($5$--$7$ thousand seconds of construction
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_friendster.pdf}
-\caption{\texttt{com-friendster} ($1.806$B edges, the largest SNAP graph): \spinStar{} completes the $(1,s)$ decomposition at every tested $s\in\{2,3,4,5,6,11\}$ while \cbnd{} only completes at $s{=}2$ and exceeds the $503$\,GB budget at every $s\ge3$ tested. On the one matched cell, \spinStar{} peels in $344$\,s vs.\ $1{,}775$\,s ($5.2\times$) using $160$\,GB vs.\ $400$\,GB ($2.5\times$ less).}
+\caption{\texttt{com-friendster} ($1.806$B edges): \spinStar{} completes at every tested $s$; \cbnd{} OOMs at $s\ge3$.}
 \Description{Two bar-chart panels with x-axis s in {2,3,4,5,6,11}. Left (peel time, log y): SPIN-star bars are 167-676 s; CND at s=2 is 1775 s (about 5.2 times higher), s>=3 marked OOM. Right (peak memory): SPIN-star bars range 160-472 GB; CND s=2 is 400 GB, s>=3 hatched bars hit 523-524 GB above the 503 GB dotted budget line.}
 \label{fig:friendster}
 \end{figure}
