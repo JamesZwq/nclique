@@ -154,19 +154,19 @@ Figure~\ref{fig:cs10} visualizes the resulting join trees side by side.
 
 \begin{table}[t]
 \centering
-\caption{Nucleus hierarchy summary: number of leaf branches, number of internal merge nodes, and maximum tree depth at each $s$.}
+\caption{Nucleus hierarchy summary: number of leaf branches and maximum tree depth at each $s$.}
 \label{tab:cs10cross}
-\tiny
-\setlength{\tabcolsep}{2pt}
-\begin{tabular}{@{}l rrr rrr rrr rrr@{}}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}l rr rr rr rr@{}}
 \toprule
-& \multicolumn{3}{c}{$s=3$} & \multicolumn{3}{c}{$s=5$} & \multicolumn{3}{c}{$s=10$} & \multicolumn{3}{c}{$s=15$} \\
-\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}\cmidrule(lr){11-13}
-graph & \#branches & \#internal & depth & \#branches & \#internal & depth & \#branches & \#internal & depth & \#branches & \#internal & depth \\
+& \multicolumn{2}{c}{$s=3$} & \multicolumn{2}{c}{$s=5$} & \multicolumn{2}{c}{$s=10$} & \multicolumn{2}{c}{$s=15$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+graph & \#branches & depth & \#branches & depth & \#branches & depth & \#branches & depth \\
 \midrule
-\texttt{com-dblp}     & $10{,}900$ & $426$ & $4$ & $6{,}050$ & $278$ & $4$ & $751$ & $20$ & $4$ & $197$ & $8$ & $4$ \\
-\texttt{com-youtube}  & $13{,}507$ & $353$ & $4$ & $714$ & $4$ & $3$ & $12$ & $1$ & $2$ & $1$ & $0$ & $1$ \\
-\texttt{web-Stanford} & $3{,}455$ & $181$ & $5$ & $1{,}093$ & $20$ & $3$ & $228$ & $7$ & $3$ & $90$ & $2$ & $2$ \\
+\texttt{com-dblp}     & $10{,}900$ & $4$ & $6{,}050$ & $4$ & $751$ & $4$ & $197$ & $4$ \\
+\texttt{com-youtube}  & $13{,}507$ & $4$ & $714$ & $3$ & $12$ & $2$ & $1$ & $1$ \\
+\texttt{web-Stanford} & $3{,}455$ & $5$ & $1{,}093$ & $3$ & $228$ & $3$ & $90$ & $2$ \\
 \bottomrule
 \end{tabular}
 \end{table}
