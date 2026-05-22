@@ -64,7 +64,7 @@ def fmt_pct(pct):
 def plot(out_pdf):
     data = load()
     n = len(GRAPHS)
-    fig, axes = plt.subplots(1, n, figsize=(n * 2.1, 2.4), sharex=False)
+    fig, axes = plt.subplots(1, n, figsize=(n * 2.1, 1.7), sharex=False)
     if n == 1: axes = [axes]
 
     for col, (stem, label) in enumerate(GRAPHS):

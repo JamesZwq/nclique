@@ -76,7 +76,7 @@ def load():
 def plot(out_pdf):
     data = load()
     n = len(GRAPHS)
-    fig, axes = plt.subplots(1, n, figsize=(n * 2.0, 2.0), sharex=False)
+    fig, axes = plt.subplots(1, n, figsize=(n * 2.0, 1.5), sharex=False)
     if n == 1: axes = [axes]
 
     for col, (stem, label) in enumerate(GRAPHS):
