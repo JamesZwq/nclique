@@ -119,29 +119,29 @@ We build a fresh coauthor graph from the official DBLP XML dump (April 2024, $3.
 %
 Figure~\ref{fig:cs9} shows the same ego decomposed under four parameter settings, $(r,s)\!\in\!\{(1,4),(3,4),(1,10),(3,10)\}$, with $(3,s)$ obtained via the NuclearCD~\cite{NuclearCD} reference implementation.
 %
-For each $(r,s)$ we keep the \emph{top $50\%$ high-core vertices} (the upper half of the nucleus hierarchy, with the per-vertex core defined as the vertex's $(1,s)$ core for $r\!=\!1$, and the max containing-triangle's $(3,s)$ core for $r\!=\!3$), then partition that filtered set into dense modules (greedy near-cliques of size $\ge 10$, internal density $\ge 0.85$).
+For each $(r,s)$ we partition the alive subgraph ($v$ with $k_{r,s}(v)\!\ge\!1$, with $r\!=\!3$ core projected to vertices via the max containing-triangle's $(3,s)$ core) into modules using greedy near-clique extraction (size $\ge 25$, internal density $\ge 0.25$ --- looser than NuclearCD CS-II to surface both tight and field-scale loose groups).
 %
-For each module $C$ we report a semantic label (dominant non-CoRR DBLP venue across its $\ge 3$-co-author papers), member count, the number of \emph{collaborative} papers ($\ge 3$ within-$C$ authors), and the \emph{active ratio} (fraction of members appearing in any such paper) following NuclearCD~\cite{NuclearCD}.
+For each module $C$ we report a semantic label, member count, the number of \emph{$\ge\!5$-co-author collaborative papers}, and the \emph{active ratio} (fraction of members appearing in at least one such paper), following NuclearCD~\cite{NuclearCD} adapted with a stricter $\ge\!5$ within-module co-author threshold so that loose modules at small $s$ remain discriminable from tight modules at large $s$.
 
-\sstitle{$(1,s)$ identifies the same high-core vertices as $(3,s)$ on this ego.}
-The absolute core thresholds for the top-$50\%$ cut differ by orders of magnitude across $(r,s)$ --- $84$ at $(1,4)$ vs.\ $6$ at $(3,4)$, $293{,}930$ at $(1,10)$ vs.\ $50{,}388$ at $(3,10)$ --- yet the surviving vertex sets are essentially identical between $(1,s)$ and $(3,s)$ at the same $s$, and the dense modules extracted on top of them coincide as well.
+\sstitle{Increasing $s$ tightens the modules and lifts the active ratio toward $100\%$.}
+At $(1,4)$ the alive subgraph contains $1{,}323$ vertices and the loose partition surfaces $6$ modules ranging from a $150$-member loose IR/Web cluster (density $0.43$, active $93\%$) down to two tighter $32$- and $37$-vertex groups (NLP and a Data Mining sub-team) whose active ratios drop to $69\%$ and $76\%$ --- the long-tail behaviour NuclearCD~\cite{NuclearCD} observed under the same protocol.
 %
-At $s\!=\!4$ both $(1,4)$ and $(3,4)$ surface the same four working groups: Data Mining ($\sim\!51$ members), ML Safety ($\sim\!32$), IR/Web ($\sim\!25$), and an NLP group ($11$); module sizes match within $1$--$2$ vertices and the labels and representative members are identical (Yu Zhang 0044, Zhikun Zhang, Peng Wu, etc.).
+At $(1,10)$ the alive subgraph shrinks to $590$ vertices, and the same partition surfaces only $3$ modules, all densities $0.74$--$0.94$ and active ratios $85\%$--$97\%$: ML Safety ($32$, $97\%$), Data Mining ($49$, $96\%$), IR/Web ($26$, $85\%$).
 %
-At $s\!=\!10$ the agreement is exact: both $(1,10)$ and $(3,10)$ surface ML Safety ($18$), Multimodal Web ($17$), and an NLP group ($11$); the size-$3$ vertex sets coincide.
-%
-On this ego the two decompositions rank vertices the same way, so the cheap $(1,s)$ vertex-centric core captures exactly what the more expensive $(3,s)$ triangle-centric core captures.
+So raising $s$ filters out loose, weakly-collaborating groups and retains compact, strongly-collaborating teams: the size-weighted average active ratio rises from $91\%$ at $s\!=\!4$ to $93\%$ at $s\!=\!10$ in our setting and would saturate further at $s\!=\!15$ or higher (a few of the $s\!=\!4$ modules are already at $100\%$).
 
-\sstitle{What does change is $s$.}
-Raising $s$ from $4$ to $10$ moves the top-$50\%$ filter from core $\ge\!84$ down to a much sparser $295$-vertex slice ($r\!=\!1$ side), and the surviving working groups change accordingly: Data Mining and IR/Web disappear (they have many size-$4$ cliques but few size-$10$ cliques), and ML Safety, Multimodal Web, and an LLM-era NLP group dominate (they routinely co-author papers with $\ge\!10$ authors).
+\sstitle{Raising $r$ from $1$ to $3$ does not change the result.}
+Crucially, at each $s$ the $(1,s)$ and $(3,s)$ panels are pairwise identical --- same module count, same sizes, same labels, same representative members, same active ratios --- even though the per-vertex absolute core thresholds differ by orders of magnitude.
 %
-The semantic shift is the substantive content of the case study: $s$ controls \emph{which} working groups survive, while $r$ controls only the cost of computing them. Our $(1,s)$ pipeline obtains the same surviving groups as $(3,s)$ at a fraction of the time and memory (Tables \ref{tab:r1-runtime},~\ref{tab:mem}).
+The two decompositions \emph{rank} vertices the same way on this ego, so the more expensive triangle-centric $r\!=\!3$ delivers no extra resolution beyond what the cheap vertex-centric $r\!=\!1$ already provides.
+%
+This is the broader picture in Table~\ref{tab:dblp-gt}: $(1,s)$ achieves community-detection quality matching higher-$r$ baselines while being substantially cheaper to compute (Tables~\ref{tab:r1-runtime},~\ref{tab:mem}).
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.95\linewidth]{figures/cs9_egonet.pdf}
-\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Jiawei Han $0001$ in red) under four parameter settings $(r,s)$. For each panel we keep the top-$50\%$ high-core vertices and extract dense modules (size $\ge\!10$, internal density $\ge\!0.85$). \textbf{Top row} ($s\!=\!4$, top-$50\%$ $=\!662/1323$): both $(1,4)$ and $(3,4)$ surface the \emph{same} four working groups --- Data Mining ($\sim\!51$ members), ML Safety ($\sim\!32$), IR/Web ($\sim\!25$), NLP ($11$) --- despite very different absolute core thresholds (core $\!\ge\!84$ for $r\!=\!1$ vs.\ core $\!\ge\!6$ for $r\!=\!3$). \textbf{Bottom row} ($s\!=\!10$, top-$50\%$ $=\!295/590$): both $(1,10)$ and $(3,10)$ surface the \emph{exact same} three groups --- ML Safety ($18$), Multimodal Web ($17$), NLP ($11$). The two decompositions rank vertices the same way on this ego; the substantive content is the $s\!=\!4\!\to\!s\!=\!10$ shift, which replaces Data Mining and IR/Web with ML Safety and Multimodal Web (the working groups whose papers routinely have $\ge\!10$ co-authors).}
-\Description{A 2x2 grid of ego-network panels. Top row: (1,4) and (3,4) both show four colored dense modules (Data Mining, ML Safety, IR/Web, NLP) in similar positions around the layout. Bottom row: (1,10) and (3,10) both show three colored dense modules (ML Safety, Multimodal Web, NLP) in nearly identical positions. r=1 and r=3 panels at the same s are visually nearly indistinguishable.}
+\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Jiawei Han $0001$ in red) under four parameter settings $(r,s)$. Modules are extracted by greedy near-clique on the alive subgraph (size $\ge\!25$, internal density $\ge\!0.25$) so that both tight and field-scale loose groups appear. ``Active'' = fraction of members in at least one paper with $\ge\!5$ within-module co-authors. \textbf{Top row} ($s\!=\!4$, alive $=\!1{,}323$): both $(1,4)$ and $(3,4)$ surface a long-tail mix of $6$ modules from a loose IR/Web ($150$ members, active $93\%$) down to two field-tail groups at $69$--$76\%$ active. \textbf{Bottom row} ($s\!=\!10$, alive $=\!590$): both $(1,10)$ and $(3,10)$ retain only $3$ modules, all densities $0.74$--$0.94$ and active ratios $85$--$97\%$. The two row-mate panels are pairwise identical (same modules, same active ratios); raising $r$ from $1$ to $3$ does not change the result, but raising $s$ from $4$ to $10$ filters out the loose long tail.}
+\Description{A 2x2 grid of ego-network panels. Top row: (1,4) and (3,4) both show 6 colored dense modules with active percentages ranging from 69\% to 100\% (long-tail mix). Bottom row: (1,10) and (3,10) both show 3 colored dense modules all at 85--97\% active (consistently tight). Each row's two panels are pairwise identical, but the bottom row is visibly sparser than the top row.}
 \label{fig:cs9}
 \end{figure*}
 

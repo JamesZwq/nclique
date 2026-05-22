@@ -1,228 +1,264 @@
 {
   "r1_s4": {
-    "alive_full": 1323,
-    "n_top": 662,
-    "thr_core": 84,
-    "n_mods": 4,
+    "alive_size": 1323,
+    "n_mods": 6,
     "top": [
       {
-        "size": 50,
-        "m_in": 1225,
-        "m_cut": 369,
+        "size": 150,
+        "m_in": 4792,
+        "m_cut": 3724,
+        "density": 0.43,
+        "active": 0.93,
+        "papers": 20,
+        "label": "IR / Web",
+        "reps": [
+          "Heng Ji",
+          "Jiliang Tang",
+          "Lingfei Wu",
+          "Xuan Wang 0008"
+        ]
+      },
+      {
+        "size": 83,
+        "m_in": 3403,
+        "m_cut": 1313,
+        "density": 1.0,
         "active": 1.0,
-        "papers": 28,
+        "papers": 3,
         "label": "Data Mining",
         "reps": [
-          "Quoc Truong",
-          "Yu Zhang 0044",
-          "Quan Gan",
+          "Krishnaram Kenthapadi",
+          "Ke Yang 0003",
+          "Devesh Parekh",
           "Qi Zhang 0020"
         ]
       },
       {
-        "size": 33,
-        "m_in": 528,
-        "m_cut": 171,
-        "active": 1.0,
-        "papers": 37,
-        "label": "ML Safety",
-        "reps": [
-          "Zhikun Zhang",
-          "Pin-Yu Chen",
-          "Suman Jana",
-          "Xuyu Wang"
-        ]
-      },
-      {
-        "size": 27,
-        "m_in": 351,
-        "m_cut": 237,
-        "active": 1.0,
-        "papers": 14,
-        "label": "IR / Web",
-        "reps": [
-          "Peng Wu 0012",
-          "Preslav Nakov",
-          "Wenjie Wang 0007",
-          "Thanasis Vergoulis"
-        ]
-      },
-      {
-        "size": 11,
-        "m_in": 55,
-        "m_cut": 74,
+        "size": 39,
+        "m_in": 387,
+        "m_cut": 490,
+        "density": 0.52,
         "active": 1.0,
         "papers": 5,
+        "label": "Multimodal NLP",
+        "reps": [
+          "Manling Li",
+          "Ying Lin",
+          "Martha Palmer",
+          "Brian Chen 0001"
+        ]
+      },
+      {
+        "size": 37,
+        "m_in": 301,
+        "m_cut": 1128,
+        "density": 0.45,
+        "active": 0.76,
+        "papers": 6,
+        "label": "Data Mining",
+        "reps": [
+          "Chi Wang 0001",
+          "Jialu Liu",
+          "Fangbo Tao",
+          "Cindy Xide Lin"
+        ]
+      },
+      {
+        "size": 32,
+        "m_in": 209,
+        "m_cut": 883,
+        "density": 0.42,
+        "active": 0.69,
+        "papers": 8,
         "label": "NLP Group",
         "reps": [
-          "Xudong Lin 0003",
-          "Susan Windisch Brown",
-          "Piyush Mishra",
-          "Tuan Manh Lai"
+          "Yuning Mao",
+          "Christos Faloutsos",
+          "Chenwei Zhang",
+          "Xian Li"
         ]
       }
     ]
   },
   "r3_s4": {
-    "alive_full": 1323,
-    "n_top": 662,
-    "thr_core": 6,
-    "n_mods": 4,
+    "alive_size": 1323,
+    "n_mods": 6,
     "top": [
       {
-        "size": 52,
-        "m_in": 1326,
-        "m_cut": 351,
+        "size": 150,
+        "m_in": 4792,
+        "m_cut": 3724,
+        "density": 0.43,
+        "active": 0.93,
+        "papers": 20,
+        "label": "IR / Web",
+        "reps": [
+          "Heng Ji",
+          "Jiliang Tang",
+          "Lingfei Wu",
+          "Xuan Wang 0008"
+        ]
+      },
+      {
+        "size": 83,
+        "m_in": 3403,
+        "m_cut": 1313,
+        "density": 1.0,
         "active": 1.0,
-        "papers": 50,
+        "papers": 3,
         "label": "Data Mining",
         "reps": [
-          "Quoc Truong",
-          "Yu Zhang 0044",
-          "Quan Gan",
+          "Krishnaram Kenthapadi",
+          "Ke Yang 0003",
+          "Devesh Parekh",
           "Qi Zhang 0020"
         ]
       },
       {
-        "size": 31,
-        "m_in": 465,
-        "m_cut": 180,
+        "size": 39,
+        "m_in": 387,
+        "m_cut": 490,
+        "density": 0.52,
         "active": 1.0,
-        "papers": 3,
-        "label": "ML Safety",
+        "papers": 5,
+        "label": "Multimodal NLP",
         "reps": [
-          "Zhikun Zhang",
-          "Pin-Yu Chen",
-          "Suman Jana",
-          "Xuyu Wang"
+          "Manling Li",
+          "Ying Lin",
+          "Martha Palmer",
+          "Brian Chen 0001"
         ]
       },
       {
-        "size": 23,
-        "m_in": 253,
-        "m_cut": 194,
-        "active": 1.0,
-        "papers": 14,
-        "label": "IR / Web",
+        "size": 37,
+        "m_in": 301,
+        "m_cut": 1128,
+        "density": 0.45,
+        "active": 0.76,
+        "papers": 6,
+        "label": "Data Mining",
         "reps": [
-          "Peng Wu 0012",
-          "Wenjie Wang 0007",
-          "Thanasis Vergoulis",
-          "Sachin Kumar 0009"
+          "Chi Wang 0001",
+          "Jialu Liu",
+          "Fangbo Tao",
+          "Cindy Xide Lin"
         ]
       },
       {
-        "size": 11,
-        "m_in": 55,
-        "m_cut": 53,
-        "active": 1.0,
-        "papers": 1,
+        "size": 32,
+        "m_in": 209,
+        "m_cut": 883,
+        "density": 0.42,
+        "active": 0.69,
+        "papers": 8,
         "label": "NLP Group",
         "reps": [
-          "Hongming Zhang 0009",
-          "Xudong Lin 0003",
-          "Susan Windisch Brown",
-          "Piyush Mishra"
+          "Yuning Mao",
+          "Christos Faloutsos",
+          "Chenwei Zhang",
+          "Xian Li"
         ]
       }
     ]
   },
   "r1_s10": {
-    "alive_full": 590,
-    "n_top": 295,
-    "thr_core": 293930,
+    "alive_size": 590,
     "n_mods": 3,
     "top": [
       {
-        "size": 18,
-        "m_in": 153,
-        "m_cut": 43,
-        "active": 1.0,
-        "papers": 2,
+        "size": 49,
+        "m_in": 1090,
+        "m_cut": 382,
+        "density": 0.93,
+        "active": 0.96,
+        "papers": 1,
+        "label": "Data Mining",
+        "reps": [
+          "Yu Zhang 0044",
+          "Yu Meng 0001",
+          "Xin Luna Dong",
+          "Wenqi Fan"
+        ]
+      },
+      {
+        "size": 32,
+        "m_in": 466,
+        "m_cut": 196,
+        "density": 0.94,
+        "active": 0.97,
+        "papers": 1,
         "label": "ML Safety",
         "reps": [
+          "Quanquan Gu",
           "Zhikun Zhang",
-          "Xiang Li 0001",
-          "Yue Huang",
-          "Xing Xie"
+          "Pin-Yu Chen",
+          "Suman Jana"
         ]
       },
       {
-        "size": 17,
-        "m_in": 136,
-        "m_cut": 106,
-        "active": 1.0,
-        "papers": 3,
-        "label": "Multimodal Web",
+        "size": 26,
+        "m_in": 241,
+        "m_cut": 256,
+        "density": 0.74,
+        "active": 0.85,
+        "papers": 1,
+        "label": "IR / Web",
         "reps": [
-          "Yu-Che Tsai",
-          "Ying Li",
-          "Xin Luna Dong",
-          "Usha Lokala"
-        ]
-      },
-      {
-        "size": 11,
-        "m_in": 55,
-        "m_cut": 57,
-        "active": 1.0,
-        "papers": 10,
-        "label": "NLP Group",
-        "reps": [
-          "Vidhisha Balachandran",
-          "Yulia Tsvetkov",
-          "Yunyao Li 0001",
-          "Wenjie Wang 0007"
+          "Yu Chen",
+          "Ruiming Tang",
+          "Xiangnan He 0001",
+          "Yiqi Wang 0001"
         ]
       }
     ]
   },
   "r3_s10": {
-    "alive_full": 590,
-    "n_top": 295,
-    "thr_core": 50388,
+    "alive_size": 590,
     "n_mods": 3,
     "top": [
       {
-        "size": 18,
-        "m_in": 153,
-        "m_cut": 43,
-        "active": 1.0,
-        "papers": 2,
+        "size": 49,
+        "m_in": 1090,
+        "m_cut": 382,
+        "density": 0.93,
+        "active": 0.96,
+        "papers": 1,
+        "label": "Data Mining",
+        "reps": [
+          "Yu Zhang 0044",
+          "Yu Meng 0001",
+          "Xin Luna Dong",
+          "Wenqi Fan"
+        ]
+      },
+      {
+        "size": 32,
+        "m_in": 466,
+        "m_cut": 196,
+        "density": 0.94,
+        "active": 0.97,
+        "papers": 1,
         "label": "ML Safety",
         "reps": [
+          "Quanquan Gu",
           "Zhikun Zhang",
-          "Xiang Li 0001",
-          "Yue Huang",
-          "Xing Xie"
+          "Pin-Yu Chen",
+          "Suman Jana"
         ]
       },
       {
-        "size": 17,
-        "m_in": 136,
-        "m_cut": 106,
-        "active": 1.0,
-        "papers": 3,
-        "label": "Multimodal Web",
+        "size": 26,
+        "m_in": 241,
+        "m_cut": 256,
+        "density": 0.74,
+        "active": 0.85,
+        "papers": 1,
+        "label": "IR / Web",
         "reps": [
-          "Yu-Che Tsai",
-          "Ying Li",
-          "Xin Luna Dong",
-          "Usha Lokala"
-        ]
-      },
-      {
-        "size": 11,
-        "m_in": 55,
-        "m_cut": 57,
-        "active": 1.0,
-        "papers": 10,
-        "label": "NLP Group",
-        "reps": [
-          "Vidhisha Balachandran",
-          "Yulia Tsvetkov",
-          "Yunyao Li 0001",
-          "Wenjie Wang 0007"
+          "Yu Chen",
+          "Ruiming Tang",
+          "Xiangnan He 0001",
+          "Yiqi Wang 0001"
         ]
       }
     ]
