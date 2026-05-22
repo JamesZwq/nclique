@@ -249,12 +249,12 @@ def render_panel(ax, r, s, data):
     # anchor: clean red ring + italic label below
     if ANCHOR in A:
         ax.scatter([pos[ANCHOR][0]], [pos[ANCHOR][1]], marker="o",
-                   s=220, facecolor="white", edgecolors="#cc0000",
-                   linewidths=2.0, zorder=8)
-        ax.text(pos[ANCHOR][0], pos[ANCHOR][1] - 0.055,
+                   s=260, facecolor="white", edgecolors="#cc0000",
+                   linewidths=2.4, zorder=8)
+        ax.text(pos[ANCHOR][0], pos[ANCHOR][1] - 0.06,
                 "Jiawei Han 0001",
-                ha="center", va="top", fontsize=8.5, style="italic",
-                color="#cc0000", zorder=9)
+                ha="center", va="top", fontsize=12, style="italic",
+                color="#cc0000", zorder=9, fontweight="bold")
     # inline labels: place each label NEAR its cluster centroid
     # offset radially outward from the global figure center so labels
     # don't sit inside the cluster.
@@ -272,34 +272,33 @@ def render_panel(ax, r, s, data):
             offy = (dy/norm) * span_y * 0.18
             lx, ly = cx + offx, cy + offy
             text = (f"{d['label']}\n"
-                    f"{d['size']} m, {int(d['active']*100)}% active")
-            ax.text(lx, ly, text, ha="center", va="center", fontsize=8.5,
-                    family="serif", linespacing=1.2, fontweight="bold",
+                    f"{d['size']}m, {int(d['active']*100)}%")
+            ax.text(lx, ly, text, ha="center", va="center", fontsize=12,
+                    family="serif", linespacing=1.15, fontweight="bold",
                     color=color, zorder=10,
                     bbox=dict(boxstyle="round,pad=0.30",
-                              fc="white", ec=color, lw=1.3, alpha=0.95))
+                              fc="white", ec=color, lw=1.5, alpha=0.95))
     avg_act = (sum(d['active']*d['size'] for d in info) / max(sum(d['size'] for d in info), 1)) if info else 0
     method = "ours" if r == 1 else "NuclearCD"
-    ax.set_title(f"$(r,s)\\!=\\!({r},{s})$ ({method}):  "
-                 f"{len(A)} alive,  {data['n_mods']} modules,  "
-                 f"avg active = {int(avg_act*100)}\\%",
-                 fontsize=11.5, pad=6)
+    ax.set_title(f"$(r,s)\\!=\\!({r},{s})$ ({method})\n"
+                 f"{len(A)} alive, {data['n_mods']} mods, "
+                 f"avg active $\\!=\\!{int(avg_act*100)}\\%$",
+                 fontsize=15, pad=6)
     ax.axis("off")
 
-# 2x2 grid with breathing room
-fig, axes = plt.subplots(2, 2, figsize=(14.5, 12),
-                         gridspec_kw={"hspace":0.16, "wspace":0.05})
+# 1x4 single row
+fig, axes = plt.subplots(1, 4, figsize=(20, 5.6),
+                         gridspec_kw={"wspace":0.03})
 xs_all = np.array([pos[v][0] for v in hop1])
 ys_all = np.array([pos[v][1] for v in hop1])
 xr = (xs_all.min()-0.06, xs_all.max()+0.06)
 yr = (ys_all.min()-0.06, ys_all.max()+0.06)
-for ax_row in axes:
-    for ax in ax_row:
-        ax.set_xlim(*xr); ax.set_ylim(*yr)
-for ax, (r,s) in zip(axes.flatten(), PANELS_SPEC):
+for ax in axes:
+    ax.set_xlim(*xr); ax.set_ylim(*yr)
+for ax, (r,s) in zip(axes, PANELS_SPEC):
     render_panel(ax, r, s, panel[(r,s)])
 
-fig.subplots_adjust(left=0.02, right=0.99, top=0.96, bottom=0.02)
+fig.subplots_adjust(left=0.01, right=0.99, top=0.92, bottom=0.02)
 fig.savefig(DIR/"cs9_egonet.pdf", bbox_inches="tight")
 fig.savefig(DIR/"cs9_egonet.png", bbox_inches="tight", dpi=180)
 stamp("wrote cs9_egonet.pdf")
