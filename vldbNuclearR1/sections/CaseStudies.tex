@@ -145,61 +145,63 @@ This is the broader picture in Table~\ref{tab:dblp-gt}: $(1,s)$ achieves communi
 \label{fig:cs9}
 \end{figure*}
 
-\stitle{Case study 5: hierarchy profiles differ by domain.}\label{sec:cs-hier}
-\buildHier{} turns the core values into a $(1,s)$-clique-connected nucleus hierarchy (Definition~\ref{def:nucleus}).
+%% --- Case study 5 commented out per user request -----------------------------
+% \stitle{Case study 5: hierarchy profiles differ by domain.}\label{sec:cs-hier}
+% \buildHier{} turns the core values into a $(1,s)$-clique-connected nucleus hierarchy (Definition~\ref{def:nucleus}).
+% %
+% This makes it possible to compare how quickly the nucleus hierarchy collapses across domains.
+% %
+% Table~\ref{tab:cs10cross} reports the three hierarchy statistics used here.
+% %
+% Figure~\ref{fig:cs10} visualizes the resulting join trees side by side.
 %
-This makes it possible to compare how quickly the nucleus hierarchy collapses across domains.
+% \begin{table}[t]
+% \centering
+% \caption{Nucleus hierarchy summary: number of leaf branches and maximum tree depth at each $s$.}
+% \label{tab:cs10cross}
+% \tiny
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{@{}l rr rr rr rr@{}}
+% \toprule
+% & \multicolumn{2}{c}{$s=3$} & \multicolumn{2}{c}{$s=5$} & \multicolumn{2}{c}{$s=10$} & \multicolumn{2}{c}{$s=15$} \\
+% \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+% graph & \#branches & depth & \#branches & depth & \#branches & depth & \#branches & depth \\
+% \midrule
+% \texttt{com-dblp}     & $10{,}900$ & $4$ & $6{,}050$ & $4$ & $751$ & $4$ & $197$ & $4$ \\
+% \texttt{com-youtube}  & $13{,}507$ & $4$ & $714$ & $3$ & $12$ & $2$ & $1$ & $1$ \\
+% \texttt{web-Stanford} & $3{,}455$ & $5$ & $1{,}093$ & $3$ & $228$ & $3$ & $90$ & $2$ \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
 %
-Table~\ref{tab:cs10cross} reports the three hierarchy statistics used here.
+% \texttt{com-youtube} collapses quickly: from $13{,}507$ branches at $s=3$ to a single branch at $s=15$.
+% %
+% \texttt{com-dblp} keeps the largest branch counts and a constant maximum depth across $s$, reflecting strong nested clique structure.
+% %
+% \texttt{web-Stanford} retains nontrivial branches at every clique size, including $s=15$.
+% %
+% Figure~\ref{fig:cs10} makes the contrast visual at $s=5$ by plotting branch persistence ($k_{\mathrm{birth}}-k_{\mathrm{death}}$) against the rank of each branch when sorted by persistence (log--log).
+% %
+% \texttt{com-dblp}'s curve is a long flat tail: hundreds of branches retain persistence above $10^2$ and thousands above $10^1$, which is characteristic of a deeply nested hierarchy.
+% %
+% \texttt{com-youtube}'s curve drops sharply after the first few ranks and plateaus near persistence $1$, showing that only a handful of branches carry real depth.
+% %
+% \texttt{web-Stanford} lies between the two.
+% %
+% The hierarchy is therefore not only an output format.
+% %
+% It gives a domain-level profile of clique-witness nesting.
 %
-Figure~\ref{fig:cs10} visualizes the resulting join trees side by side.
-
-\begin{table}[t]
-\centering
-\caption{Nucleus hierarchy summary: number of leaf branches and maximum tree depth at each $s$.}
-\label{tab:cs10cross}
-\tiny
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}l rr rr rr rr@{}}
-\toprule
-& \multicolumn{2}{c}{$s=3$} & \multicolumn{2}{c}{$s=5$} & \multicolumn{2}{c}{$s=10$} & \multicolumn{2}{c}{$s=15$} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
-graph & \#branches & depth & \#branches & depth & \#branches & depth & \#branches & depth \\
-\midrule
-\texttt{com-dblp}     & $10{,}900$ & $4$ & $6{,}050$ & $4$ & $751$ & $4$ & $197$ & $4$ \\
-\texttt{com-youtube}  & $13{,}507$ & $4$ & $714$ & $3$ & $12$ & $2$ & $1$ & $1$ \\
-\texttt{web-Stanford} & $3{,}455$ & $5$ & $1{,}093$ & $3$ & $228$ & $3$ & $90$ & $2$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\texttt{com-youtube} collapses quickly: from $13{,}507$ branches at $s=3$ to a single branch at $s=15$.
-%
-\texttt{com-dblp} keeps the largest branch counts and a constant maximum depth across $s$, reflecting strong nested clique structure.
-%
-\texttt{web-Stanford} retains nontrivial branches at every clique size, including $s=15$.
-%
-Figure~\ref{fig:cs10} makes the contrast visual at $s=5$ by plotting branch persistence ($k_{\mathrm{birth}}-k_{\mathrm{death}}$) against the rank of each branch when sorted by persistence (log--log).
-%
-\texttt{com-dblp}'s curve is a long flat tail: hundreds of branches retain persistence above $10^2$ and thousands above $10^1$, which is characteristic of a deeply nested hierarchy.
-%
-\texttt{com-youtube}'s curve drops sharply after the first few ranks and plateaus near persistence $1$, showing that only a handful of branches carry real depth.
-%
-\texttt{web-Stanford} lies between the two.
-%
-The hierarchy is therefore not only an output format.
-%
-It gives a domain-level profile of clique-witness nesting.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/cs10_hierarchy.pdf}
-\caption{Branch persistence vs.\ rank at $s{=}5$ (log--log).}
-\Description{Single panel with three log-log curves: com-dblp's persistence stays high for thousands of branches; com-youtube drops sharply after a handful; web-Stanford lies between them.}
-\label{fig:cs10}
-\end{figure}
+% \begin{figure}[t]
+% \centering
+% \includegraphics[width=\linewidth]{figures/cs10_hierarchy.pdf}
+% \caption{Branch persistence vs.\ rank at $s{=}5$ (log--log).}
+% \Description{Single panel with three log-log curves: com-dblp's persistence stays high for thousands of branches; com-youtube drops sharply after a handful; web-Stanford lies between them.}
+% \label{fig:cs10}
+% \end{figure}
+%% --- end commented-out case study 5 ------------------------------------------
 
 \stitle{Takeaway.}\label{sec:cs-summary}
-On the DBLP and YouTube community-ranking tasks, $r=1$ matches higher-$r$ quality metrics at much lower cost; the hierarchy and ego-network studies show the same decomposition also yields interpretable local structure and a per-domain hierarchy profile.
+On the DBLP and YouTube community-ranking tasks, $r=1$ matches higher-$r$ quality metrics at much lower cost; the ego-network study (Figure~\ref{fig:cs9}) shows the same decomposition also yields interpretable local structure.
 %
 The evidence is scoped to these datasets and metrics rather than a universal claim, but it is enough to justify optimising the exact $r=1$ case.
