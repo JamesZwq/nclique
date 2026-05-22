@@ -26,7 +26,9 @@ DATA = [
     ("dblp\n$s{=}10$",     114, 113, 114,   13.4,  123.1, 2379.6),
     ("youtube\n$s{=}5$",   283, 286, 288,  274.0, 2580.0, 13112.0),
     ("youtube\n$s{=}10$",   49,  49,  49,   31.0,  319.0,  2093.0),
-    ("youtube\n$s{=}15$",    0,   0,   0,    9.0,   55.0,    87.0),
+    # youtube s=15 dropped: rec50 is 0 across all r (active set 95 < smallest
+    # SNAP community size), so the column is uninformative on the quality
+    # panel; the time savings of r=1 are already visible in the s=5/10 columns.
 ]
 
 R_COLORS = {1: "#1f78b4", 2: "#ff7f00", 3: "#e31a1c"}
