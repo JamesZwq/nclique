@@ -172,7 +172,7 @@ Hence $h^\star[v]=\kappa_s(v)$.
 The cost is the per-pass work (one $\vertexSupport$ call per vertex) times the number of passes:
 
 \begin{theorem}[\spin{} Complexity]\label{thm:localh-complexity}
-Algorithm~\ref{alg:localH} computes $\kappa_s$ in $O(T\cdot\Sig\cdot L_{\max}\cdot\log L_{\max})$ work, where $T\le n+1$ is the number of passes (Lemma~\ref{lem:hindex-fixed-point}) and $L_{\max}$ is the maximum path size (Section~\ref{sec:refresh}).
+Algorithm~\ref{alg:localH} computes $\kappa_s$ in $O(T\cdot\Sig\cdot L_{\max}\cdot\log L_{\max})$ work, where $\Sig$ is the static \cpi{}'s total vertex--path incidence count (Section~\ref{sec:prelim}), $T\le n+1$ is the number of passes (Lemma~\ref{lem:hindex-fixed-point}), and $L_{\max}$ is the maximum path size (Section~\ref{sec:refresh}).
 \end{theorem}
 
 \begin{proof}
@@ -285,7 +285,7 @@ By Lemma~\ref{lem:hindex-fixed-point}, $\kappa_s$ is also the fixed point reache
 The runtime decomposes into the initialisation, the path-event walk on each peel, and the incremental support-refresh events the walk triggers:
 
 \begin{theorem}[\spinStar{} Complexity]\label{thm:peelh-complexity}
-Algorithm~\ref{alg:peelH} runs in $O(\Sig+U+n)$ time, where $U$ is the total number of incremental support-refresh events over all affected path-mates.
+Algorithm~\ref{alg:peelH} runs in $O(\Sig+U+n)$ time, where $\Sig$ is the total vertex--path incidence count of the static \cpi{} (Section~\ref{sec:prelim}) and $U$ is the total number of incremental support-refresh events over all affected path-mates.
 \end{theorem}
 
 \begin{proof}
