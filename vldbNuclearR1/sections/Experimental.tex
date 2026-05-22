@@ -50,23 +50,17 @@ Graph & $|V|$ & $|E|$ & avg.\ deg.\ \\
 \cbnd{}~\cite{NuclearCD} is the mutable-\cpi{} baseline (Section~\ref{sec:baseline}) restricted to $r{=}1$; \spinStar{} is this paper's static-\cpi{} pipeline; \spin{} is the direct fixed-point reference (Section~\ref{sec:localh}). All three consume the same edge list on the same hardware, so the comparison isolates mutability vs.\ static-state peeling. For each $(graph,s)$ cell we record end-to-end time (load + degeneracy + \cpi{} build + peel + output) and peak memory.
 
 \expsection{peel time and memory}
-Across the ten graphs (Figures~\ref{fig:exp-time}--\ref{fig:exp-mem}), \spinStar{} sits below \cbnd{} on every peel-time cell with a gmean $17.90\times$ / max $49.48\times$ speedup and a gmean $1.55\times$ / max $3.92\times$ memory reduction. The end-to-end (wall-clock) gap is smaller (gmean $1.05\times$) because the shared \cpi{} construction phase dominates once peeling is cheap --- the bottleneck shift that motivates \paraBuild{} (Section~\ref{sec:parabuild}). \spin{} is also dominated by \spinStar{} on all but the easiest cells; the full comparison is in Exp-4 below.
+Across the ten graphs (Figure~\ref{fig:exp-time}), \spinStar{} sits below \cbnd{} on every peel-time cell with a gmean $17.90\times$ / max $49.48\times$ speedup and a gmean $1.55\times$ / max $3.92\times$ memory reduction. The end-to-end (wall-clock) gap is smaller (gmean $1.05\times$) because the shared \cpi{} construction phase dominates once peeling is cheap --- the bottleneck shift that motivates \paraBuild{} (Section~\ref{sec:parabuild}). \spin{} is also dominated by \spinStar{} on all but the easiest cells; the full comparison is in Exp-4 below.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_exp_time.pdf}
-\caption{Peel time across ten graphs (three algorithms: \spinStar{}, \spin{}, \cbnd{}).}
-\Description{A grid of log-scale peel-time plots over parameter s, with one subplot per benchmark graph. Three curves per subplot: SPIN-star (solid blue), SPIN (dotted green), and CND (dashed red); SPIN-star sits below CND on every cell.}
+\includegraphics[width=0.95\linewidth]{figures/fig_exp_time.pdf}\\[-2pt]
+\includegraphics[width=0.95\linewidth]{figures/fig_exp_mem.pdf}
+\caption{Peel time (top) and peak memory (bottom) across ten graphs for \spinStar{}, \spin{}, and \cbnd{}.}
+\Description{Two stacked grids of log-scale plots over parameter s, one subplot per benchmark graph. Top row: peel time; bottom row: peak memory. Three curves per subplot (SPIN-star solid blue, SPIN dotted green, CND dashed red); SPIN-star sits below or at the others on every cell.}
 \label{fig:exp-time}
 \end{figure*}
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/fig_exp_mem.pdf}
-\caption{Peak memory across ten graphs (three algorithms: \spinStar{}, \spin{}, \cbnd{}).}
-\Description{A grid of log-scale peak-memory plots over parameter s, with one subplot per benchmark graph. Three curves per subplot: SPIN-star (solid blue), SPIN (dotted green), and CND (dashed red); SPIN-star sits at or below the other two on every cell.}
-\label{fig:exp-mem}
-\end{figure*}
 
 The memory improvement is explained by the incidence-level budget in Table~\ref{tab:mem}.
 %
@@ -107,7 +101,7 @@ Sweeping $s\in\{3,5,7,9,11,13,15\}$ on six graphs (Figure~\ref{fig:breakdown}), 
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_breakdown.pdf}
+\includegraphics[width=0.95\linewidth]{figures/fig_breakdown.pdf}
 \caption{\spinStar{} phase breakdown on six graphs: build (blue, bottom) vs peel (orange, top). Linear scale; the peel share is printed above each bar.}
 \Description{Six side-by-side stacked-bar charts. Each bar shows build time as a tall blue base with peel time as a thin orange sliver on top. The peel share falls to a few percent by s=9 and below 1\% by s=11 on the medium and large graphs, and stays below 0.1\% on web-it-2004 across the entire sweep --- peeling is a small fraction of total runtime everywhere.}
 \label{fig:breakdown}
@@ -118,7 +112,7 @@ Sweeping $s\in\{3,5,7,9,11,13,15\}$ on six graphs (Figure~\ref{fig:breakdown}), 
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_par.pdf}
+\includegraphics[width=0.95\linewidth]{figures/fig_par.pdf}
 \caption{\paraBuild{} build time vs.\ thread count; one curve per representative $s$, ending at its optimum $T$.}
 \Description{Six log-log line plots showing CPI build time monotonically decreasing with thread count. Each curve ends at the thread count where additional threads stop reducing time. Larger graphs scale to higher thread counts; smaller graphs saturate near T=16.}
 \label{fig:par}
@@ -156,7 +150,7 @@ On the matched cell $s{=}2$, \spinStar{} peels in $344$\,s vs.\ \cbnd{}'s $1{,}7
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_friendster.pdf}
+\includegraphics[width=0.95\linewidth]{figures/fig_friendster.pdf}
 \caption{\texttt{com-friendster} ($1.806$B edges): \spinStar{} completes at every tested $s$; \cbnd{} OOMs at $s\ge3$.}
 \Description{Two bar-chart panels with x-axis s in {2,3,4,5,6,11}. Left (peel time, log y): SPIN-star bars are 167-676 s; CND at s=2 is 1775 s (about 5.2 times higher), s>=3 marked OOM. Right (peak memory): SPIN-star bars range 160-472 GB; CND s=2 is 400 GB, s>=3 hatched bars hit 523-524 GB above the 503 GB dotted budget line.}
 \label{fig:friendster}
@@ -170,7 +164,7 @@ Figure~\ref{fig:scalability} re-runs \spinStar{} for $s\in\{2,3,5,7,9,11,13,15\}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_scalability.pdf}
+\includegraphics[width=0.95\linewidth]{figures/fig_scalability.pdf}
 \caption{Vertex-induced scalability: time (top) and memory usage (bottom).}
 \Description{Two-row six-column log-scale grid showing time (top) and memory usage (bottom) for SPIN-star under five vertex-sample ratios on six graphs (com-dblp, com-youtube, web-Stanford, web-Google, soc-pokec, com-orkut).}
 \label{fig:scalability}
@@ -184,7 +178,7 @@ Figure~\ref{fig:scalability} re-runs \spinStar{} for $s\in\{2,3,5,7,9,11,13,15\}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_hier.pdf}
+\includegraphics[width=0.95\linewidth]{figures/fig_hier.pdf}
 \caption{Hierarchy bench on four graphs: wall time (top) and peak memory (bottom).}
 \Description{Eight log-scale line plots arranged as two rows of four. Each panel shows four algorithms (SPIN-star, SPIN-star+BuildHier, CND, CND+Hier) sweeping s from 3 to 15. CND+Hier sits an order of magnitude above SPIN-star+BuildHier on both time and memory across all four graphs; both CND variants disappear at s>=9 on wiki-Talk due to OOM.}
 \label{fig:hier}
