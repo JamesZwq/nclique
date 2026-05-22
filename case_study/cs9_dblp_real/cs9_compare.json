@@ -1,0 +1,155 @@
+{
+  "ours_1_3": {
+    "n_alive": 1293,
+    "n_modules": 14,
+    "top": [
+      {
+        "size": 90,
+        "m_in": 4005,
+        "m_cut": 1142,
+        "active": 1.0,
+        "papers": 133,
+        "label": "Data Mining",
+        "reps": [
+          "Krishnaram Kenthapadi",
+          "Ke Yang 0003",
+          "Yu Zhang 0044",
+          "Devesh Parekh"
+        ]
+      },
+      {
+        "size": 62,
+        "m_in": 1891,
+        "m_cut": 873,
+        "active": 1.0,
+        "papers": 170,
+        "label": "IR / Web",
+        "reps": [
+          "Peng Wu 0012",
+          "Hans Chalupsky",
+          "Friedhelm Victor",
+          "Milan Dojchinovski"
+        ]
+      },
+      {
+        "size": 51,
+        "m_in": 1235,
+        "m_cut": 2026,
+        "active": 1.0,
+        "papers": 98,
+        "label": "AI / ML",
+        "reps": [
+          "Pin-Yu Chen",
+          "Philip S. Yu",
+          "Heng Ji",
+          "Xiang Li 0001"
+        ]
+      },
+      {
+        "size": 20,
+        "m_in": 180,
+        "m_cut": 432,
+        "active": 1.0,
+        "papers": 23,
+        "label": "Multimodal NLP",
+        "reps": [
+          "Manling Li",
+          "Ying Lin",
+          "Brian Chen 0001",
+          "Xudong Lin 0003"
+        ]
+      },
+      {
+        "size": 18,
+        "m_in": 153,
+        "m_cut": 257,
+        "active": 1.0,
+        "papers": 4,
+        "label": "NLP (newer)",
+        "reps": [
+          "Haoran Zhang",
+          "Cynthia Schneider",
+          "Qingyun Wang 0005",
+          "Xiangchen Song"
+        ]
+      }
+    ]
+  },
+  "nuclearcd_3_4": {
+    "n_alive": 1323,
+    "n_comps": 5,
+    "n_comps_ge4": 5,
+    "top": [
+      {
+        "size": 415,
+        "m_in": 1917,
+        "m_cut": 576,
+        "active": 0.66,
+        "papers": 425,
+        "label": "Data Mining",
+        "reps": [
+          "Yu Zhang 0044",
+          "Lingfei Wu",
+          "Yu Meng 0001",
+          "Xiangyu Zhao 0001"
+        ]
+      },
+      {
+        "size": 20,
+        "m_in": 4,
+        "m_cut": 213,
+        "active": 0.15,
+        "papers": 1,
+        "label": "IR / Web",
+        "reps": [
+          "Simon Razniewski",
+          "Stefan Neumann 0003",
+          "Srinivasan H. Sengamedu",
+          "Steven Pemberton"
+        ]
+      },
+      {
+        "size": 17,
+        "m_in": 2,
+        "m_cut": 198,
+        "active": 0.0,
+        "papers": 0,
+        "label": "Research Cluster",
+        "reps": [
+          "Prateek Mittal",
+          "Pin-Yu Chen",
+          "Qiang Yang 0001",
+          "Qiming Chen"
+        ]
+      },
+      {
+        "size": 13,
+        "m_in": 1,
+        "m_cut": 124,
+        "active": 0.0,
+        "papers": 0,
+        "label": "Research Cluster",
+        "reps": [
+          "Latifur Khan",
+          "Kevin W. Hamlen",
+          "Lara Winstone",
+          "Kangsheng Zeng"
+        ]
+      },
+      {
+        "size": 13,
+        "m_in": 0,
+        "m_cut": 105,
+        "active": 0.0,
+        "papers": 0,
+        "label": "Research Cluster",
+        "reps": [
+          "Meike Zehlike",
+          "Teresa Mah",
+          "Victor O. K. Li",
+          "Toshiharu Hasegawa"
+        ]
+      }
+    ]
+  }
+}

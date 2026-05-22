@@ -114,57 +114,34 @@ $r{=}1$ therefore gives the best observed quality--runtime tradeoff for vertex r
 \label{fig:crossr}
 \end{figure}
 
-\stitle{Case study 4: identifying ego network on DBLP.}\label{sec:cs-viz}
-We build a fresh coauthor graph from the official DBLP XML dump (April 2024 snapshot, $3.4$M authors and $23.0$M coauthorship edges), anchor on Jiawei Han (DBLP key \texttt{Jiawei Han 0001}), and take his $1$-hop coauthor ego ($1{,}358$ vertices).
+\stitle{Case study 4: identifying ego network on DBLP --- our $(1,3)$ vs.\ NuclearCD $(3,4)$.}\label{sec:cs-viz}
+We build a fresh coauthor graph from the official DBLP XML dump (April 2024, $3.4$M authors and $23.0$M coauthorship edges), anchor on Jiawei Han (DBLP key \texttt{Jiawei Han 0001}), and take his $1$-hop coauthor ego ($1{,}358$ vertices).
 %
-Following NuclearCD's case study II~\cite{NuclearCD}, we compare $s\!=\!3$ vs.\ $s\!=\!10$ under $r\!=\!1$.
-%
-A vertex is \emph{alive} at $s$ iff it participates in at least one $(1,s)$-nucleus (i.e., $k_{1,s}(v)\!\ge\!1$).
-%
-At $r\!=\!1$ the alive subgraph is naturally one giant connected component (every coauthor of Han is reachable through some shared collaborator), so we partition it into disjoint dense \emph{modules} via greedy near-clique extraction (size $\ge\!10$, internal edge density $\ge\!0.85$); these modules play the role of NuclearCD CS-II's ``nucleus components''.
-%
-For each module $C$ let $m_{\mathrm{in}}$ be the internal edges and $m_{\mathrm{cut}}$ the edges from $C$ to other alive vertices.
-%
-We report conductance $\phi(C)\!=\!m_{\mathrm{cut}}/(2m_{\mathrm{in}}\!+\!m_{\mathrm{cut}})$ and separability $m_{\mathrm{in}}/m_{\mathrm{cut}}$; lower $\phi(C)$ and higher $m_{\mathrm{in}}/m_{\mathrm{cut}}$ indicate better separation.
-%
-A paper is \emph{collaborative} for $C$ if it contains $\ge\!3$ authors from $C$, and the \emph{active ratio} is the fraction of members appearing in at least one collaborative paper.
-%
-Figure~\ref{fig:cs9} colours each vertex by its module (top-$K$ largest distinct colours per panel, others gray); Table~\ref{tab:cs9-quality} reports the per-$s$ statistics.
+Figure~\ref{fig:cs9} compares two decompositions on the \emph{same} ego: our $(1,3)$-nucleus and NuclearCD's $(3,4)$-nucleus computed via the reference implementation.
 
-\sstitle{Larger $s$ yields compact and better-separated modules.}
-Increasing $s$ from $3$ to $10$ shrinks the alive subgraph from $1{,}293$ to $301$ vertices and reduces the module count from $14$ to $3$.
-%
-The intra-module edge fraction (edges inside any module / total edges in the alive subgraph) holds steady at $0.40$--$0.41$, but the size-weighted average separability nearly doubles ($1.55\!\to\!2.78$) and the size-weighted average conductance more than halves ($0.368\!\to\!0.163$).
-%
-So the modules that survive at $s\!=\!10$ stand more sharply against the rest of the ego than the larger and looser modules at $s\!=\!3$.
+\sstitle{Setup.}
+A vertex is \emph{alive} if its $(r,s)$-nucleus core number is at least $1$.
+At $(1,3)$ the alive subgraph is naturally one giant connected component (every coauthor of Han is reachable through a shared collaborator), so we partition the alive subgraph into disjoint dense \emph{modules} via greedy near-clique extraction (size $\ge 10$, internal edge density $\ge 0.85$).
+At $(3,4)$ we use the standard nucleus-hierarchy partition --- on a one-hop ego the alive nucleus is also one giant blob at level $1$, so we report the level-$10$ shell of the $(3,4)$ hierarchy, the deepest level where multiple triangle-connected nuclei coexist.
+For each module / nucleus $C$ we report its semantic label (dominant non-CoRR DBLP venue across its $\ge 3$-co-author papers), member count, the number of \emph{collaborative} papers (those containing $\ge 3$ within-$C$ authors), and the \emph{active ratio} (fraction of members appearing in at least one collaborative paper), following NuclearCD~\cite{NuclearCD}.
 
-\sstitle{Larger $s$ preserves the strong-collaboration property.}
-Within-module collaboration is uniformly strong at every $s$ we test: the top-$5$ modules at $s\!=\!3$ have an average active ratio of $100\%$, and the three surviving modules at $s\!=\!10$ are also $100\%$ active.
-%
-The high-$s$ filter therefore retains, not discards, the strong-collaboration property of low $s$: every member of every surviving module appears on a paper with $\ge\!2$ other within-module co-authors.
-%
-The discriminator between low and high $s$ is structural separation (separability and conductance), not semantic correctness --- high-$s$ modules are real, but they are also \emph{tighter and more cleanly isolated} working groups within Han's collaboration neighbourhood.
+\sstitle{$(1,3)$ extracts fine-grained, fully active working groups.}
+The five largest $(1,3)$ modules each map to a clearly identifiable research focus of Han --- Data Mining ($90$ members, $133$ papers), IR/Web ($62$, $170$), AI/ML ($51$, $98$), Multimodal NLP ($20$, $23$), and a newer NLP cohort ($18$, $4$) --- and every one is $100\%$ active under the $\ge 3$ within-module co-author threshold.
+The structural quality is uniformly high: size-weighted average separability $m_{\mathrm{in}}/m_{\mathrm{cut}}=1.55$, average conductance $\phi=0.37$, $40\%$ of edges intra-module.
 
-\begin{table}[t]
-\centering
-\caption{Per-$s$ module quality on Han's $1$-hop coauthor ego (Figure~\ref{fig:cs9}). ``Alive'' = vertices in at least one $(1,s)$-nucleus. ``Modules'' = greedy dense partition (size $\ge\!10$, density $\ge\!0.85$). $m_{\mathrm{in}}/m_{\mathrm{cut}}$ and $\phi$ are size-weighted averages over all modules. Active = top-$K$ avg fraction of members in $\ge\!3$-within-module-co-author papers.}
-\label{tab:cs9-quality}
-\small
-\begin{tabular}{rrrcccc}
-\toprule
-$s$ & alive & \#mods & intra-frac & $m_{\mathrm{in}}/m_{\mathrm{cut}}$ & $\phi$ & top-$K$ active \\
-\midrule
- 3 & 1293 & 14 & 0.40 & 1.55 & 0.37 & 1.00 (K=5) \\
-10 &  301 &  3 & 0.41 & \textbf{2.78} & \textbf{0.16} & 1.00 (K=3) \\
-\bottomrule
-\end{tabular}
-\end{table}
+\sstitle{$(3,4)$ at the same ego scope yields a coarser decomposition.}
+At the level-$10$ shell, $(3,4)$ produces five triangle-connected nuclei: a large Data Mining super-nucleus ($415$ members, $425$ papers, $66\%$ active) plus four smaller fringe nuclei (sizes $20$, $17$, $13$, $13$) whose active ratios drop to $0$--$15\%$.
+The super-nucleus is a single triangle-connected blob that fuses Han's Data Mining, IR/Web, and AI/ML coauthors, and the fringes carry few internal collaborative papers.
+%
+The takeaway is that $(1,s)$ and $(r,s)$ with $r\!>\!1$ explore the ego at different granularities: high $r$ groups Han's collaborators into a single triangle-connected core plus loose periphery, whereas $(1,s)$ at a moderate $s$ pulls out the interpretable working-group structure beneath that core.
+%
+This matches the broader picture in Table~\ref{tab:dblp-gt}: $(1,s)$ achieves community-detection quality matching higher-$r$ baselines, while being substantially cheaper to compute (Tables \ref{tab:r1-runtime},~\ref{tab:mem}).
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.95\linewidth]{figures/cs9_egonet.pdf}
-\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Jiawei Han $0001$ in red) under $s\!=\!3$ (left) vs.\ $s\!=\!10$ (right) on a shared spring layout. Vertices coloured by their dense module (top-$5$ at $s\!=\!3$, top-$3$ at $s\!=\!10$, each labelled with a representative research focus inferred from the dominant non-CoRR venue of its $\ge\!3$-co-author papers); peeled vertices in light gray, alive-but-not-in-top-$K$ in dark gray. Increasing $s$ consolidates $14$ modules into $3$, nearly doubles the size-weighted average separability ($m_{\mathrm{in}}/m_{\mathrm{cut}}:1.55\!\to\!2.78$), and more than halves the average conductance ($\phi:0.37\!\to\!0.16$); every annotated module is $100\%$ active (every member appears on a paper with $\ge\!3$ within-module co-authors). See Table~\ref{tab:cs9-quality}.}
-\Description{Two side-by-side ego-network panels showing Han's 1-hop coauthor neighbourhood at s=3 and s=10. At s=3, five large colored clusters (Data Mining, IR/Web, AI/ML, Multimodal NLP, NLP) spread across the spring layout, each labeled with a callout box giving its member count and paper count. At s=10, three smaller and more isolated colored clusters (ML Safety, Multimodal Web, NLP) remain, while the rest of the ego has been peeled away into light gray.}
+\caption{Han's $1$-hop coauthor ego ($1{,}358$ vertices, anchor Jiawei Han $0001$ in red). \textbf{Left:} our $(r,s)\!=\!(1,3)$ — the five largest dense modules (Data Mining, IR/Web, AI/ML, Multimodal NLP, NLP) are coloured and annotated with member count and paper count; all five are $100\%$ active under the $\ge 3$ within-module co-author threshold. \textbf{Right:} NuclearCD $(r,s)\!=\!(3,4)$ at the level-$10$ shell of its triangle-connected nucleus hierarchy --- one large Data Mining super-nucleus ($415$ members, $66\%$ active) plus four smaller fringe nuclei (sizes $13$--$20$ with active ratio $0\%$--$15\%$). Peeled vertices in light gray; alive-but-not-in-top-$K$ in dark gray. The two decompositions explore the ego at complementary granularities: $(1,s)$ at moderate $s$ exposes fine-grained working groups beneath the single $(r\!=\!3)$ triangle-connected core.}
+\Description{Two side-by-side ego-network panels. The left panel shows our (1,3)-nucleus result: five distinctly colored dense modules each labeled with a research-area name. The right panel shows NuclearCD's (3,4)-nucleus result at level 10: one large blue Data Mining super-nucleus dominates while four small fringe nuclei sit around the periphery.}
 \label{fig:cs9}
 \end{figure*}
 
