@@ -101,7 +101,7 @@ def plot(out_pdf):
             ys = [ms for _, ms in pts]
             panel_max_T = max(panel_max_T, max(xs))
             ax.plot(xs, ys, color=color, marker=marker, markersize=4.0,
-                    linewidth=1.4, label=f"$s{{=}}{s}$")
+                    linewidth=1.4)
         ax.set_xscale("log"); ax.set_yscale("log")
         ax.xaxis.set_major_formatter(mticker.ScalarFormatter())
         ax.xaxis.set_minor_formatter(mticker.NullFormatter())
@@ -111,7 +111,6 @@ def plot(out_pdf):
         for sp in ("top", "right"): ax.spines[sp].set_visible(False)
         ax.set_title(label, fontsize=9.5, fontweight="bold")
         ax.set_xlabel("threads", fontsize=9)
-        ax.legend(fontsize=8, frameon=False, loc="lower left")
         # Adapt the x-axis to the actual data range so we never leave an
         # empty right margin past the last plotted point.
         candidate_ticks = [t for t in [1, 4, 16, 32, 64]
