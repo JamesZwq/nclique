@@ -36,9 +36,10 @@ A vertex first appearing in some event with $k_{\mathrm{event}}\ge1$ is born at 
 \algfontsize
 \caption{\buildHier{} --- elder-rule join tree from a static \cpi{}.}
 \label{alg:buildhier}
-\KwIn{Static \cpi{} $\mathcal{P}$ and core values $\kappa_s(v)$ for every $v\in V$, both produced by Algorithm~\ref{alg:peelH} (\spinStar{}).}
+\KwIn{Graph $G=(V,E)$; clique size $s$.}
 \KwOut{Elder-rule join tree $T$ of the $s$-clique-connected super-level filtration.}
 
+$(\mathcal{P},\, \kappa_s) \gets \textsc{spinStar}(G, s)$ \tcp*{Algorithm~\ref{alg:peelH}: static \cpi{} (preserved) + core values}
 $\mathcal{E}\gets[\,]$ \tcp*{merge events $(k,S)$: unify the vertex set $S$ at level $k$}
 \ForEach{leaf $P\in\mathcal{P}$ with $|\Vh(P)|+|\Vp(P)|\ge s$}{
     $h_{\min}\gets\min\{\kappa_s(v)\mid v\in\Vh(P)\}$ \tcp*{$+\infty$ if $\Vh(P)=\emptyset$}
@@ -73,9 +74,9 @@ $T\gets$ empty forest\;
 \Return{$T$}
 \end{algorithm}
 
-Algorithm~\ref{alg:buildhier} runs in two phases.  Phase~1 (Lines~1--10) generates merge events: for each leaf with at least one encoded $s$-clique, the algorithm sorts its pivot set by $\kappa_s$ in descending order and emits one event for the highest-birth encoded clique (size $|\Vh|+\eta_P$) followed by a series of unit events that each splice one lower-$\kappa$ pivot into the leaf's already-formed component.
+Algorithm~\ref{alg:buildhier} invokes \spinStar{} once (Line~1) to obtain the static \cpi{} $\mathcal{P}$ and the core-value vector $\kappa_s$, then runs in two phases.  Phase~1 (Lines~2--11) generates merge events: for each leaf with at least one encoded $s$-clique, the algorithm sorts its pivot set by $\kappa_s$ in descending order and emits one event for the highest-birth encoded clique (size $|\Vh|+\eta_P$) followed by a series of unit events that each splice one lower-$\kappa$ pivot into the leaf's already-formed component.
 %
-Phase~2 (Lines~11--23) processes events in nonincreasing level: for each event $(k,S)$, the union--find returns the root set $R$ of $S$, emits a new hierarchy node for any root born here for the first time (Lines~16--18), and applies the elder rule to merge multiple roots into the eldest (Lines~19--23).
+Phase~2 (Lines~12--24) processes events in nonincreasing level: for each event $(k,S)$, the union--find returns the root set $R$ of $S$, emits a new hierarchy node for any root born here for the first time (Lines~17--19), and applies the elder rule to merge multiple roots into the eldest (Lines~20--24).
 %
 The returned forest $T$ is the elder-rule join tree of the $s$-clique-connected super-level filtration of $(V,\kappa_s)$.
 
