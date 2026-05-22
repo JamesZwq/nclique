@@ -39,7 +39,7 @@ A vertex first appearing in some event with $k_{\mathrm{event}}\ge1$ is born at 
 \KwIn{Graph $G=(V,E)$; clique size $s$.}
 \KwOut{Elder-rule join tree $T$ of the $s$-clique-connected super-level filtration.}
 
-$(\mathcal{P},\, \kappa_s) \gets \textsc{spinStar}(G, s)$ \tcp*{Algorithm~\ref{alg:peelH}: static \cpi{} (preserved) + core values}
+$(\mathcal{P},\, \kappa_s) \gets \spinStar{}(G, s)$ \tcp*{Algorithm~\ref{alg:peelH}: static \cpi{} (preserved) + core values}
 $\mathcal{E}\gets[\,]$ \tcp*{merge events $(k,S)$: unify the vertex set $S$ at level $k$}
 \ForEach{leaf $P\in\mathcal{P}$ with $|\Vh(P)|+|\Vp(P)|\ge s$}{
     $h_{\min}\gets\min\{\kappa_s(v)\mid v\in\Vh(P)\}$ \tcp*{$+\infty$ if $\Vh(P)=\emptyset$}
