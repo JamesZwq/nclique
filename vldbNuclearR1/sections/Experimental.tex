@@ -1,20 +1,6 @@
 \section{Experiments}\label{sec:exp}
 
-Exactness comes from the invariants and fixed-point equivalence proved earlier; the experiments measure cost.
-%
-\textbf{Exp-1} measures end-to-end time and peak memory for \textbf{\spinStar{}}, the practical static-\cpi{} pipeline.
-%
-\textbf{Exp-2} separates construction from peeling, because counter-only peeling shifts rather than removes all cost.
-%
-\textbf{Exp-3} tests how the static construction contract scales with thread count.
-%
-\textbf{Exp-4} measures \spin{} as the direct fixed-point baseline.
-%
-\textbf{Exp-5} pushes the pipeline to a billion-edge graph (\texttt{com-friendster}, $1.806$B edges).
-%
-\textbf{Exp-6} sweeps a vertex-induced subsampling ratio to test how runtime and memory scale with input size.
-%
-\textbf{Exp-7} compares hierarchy emission against \cbnd{}'s level-DSU baseline.
+Exactness follows from the invariants and fixed-point equivalence proved earlier; the experiments measure cost. We report (Exp-1)~end-to-end time and memory for \spinStar{}, (Exp-2)~build-vs-peel phase breakdown, (Exp-3)~parallel build scaling, (Exp-4)~\spin{} as the direct fixed-point baseline, (Exp-5)~billion-edge \texttt{com-friendster}, (Exp-6)~vertex-induced subsampling scalability, and (Exp-7)~hierarchy emission against \cbnd{}'s level-DSU baseline.
 
 \stitle{Hardware and software.}
 All experiments run on an Intel Xeon Gold $6248R$ server with $503$\,GB DDR4 RAM under Ubuntu $22.04$. The code\footnote{Code, bench harness, and result CSVs will be released under an anonymised archive at submission.} is compiled with Clang $18.1$ (\texttt{-O3 -march=native}) and linked against TBB $2021.10$, Boost $1.83$, and \texttt{robin\_hood}. Single-threaded measurements use one core; parallel runs use the thread counts in Figure~\ref{fig:par}.
