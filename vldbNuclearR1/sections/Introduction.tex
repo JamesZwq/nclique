@@ -72,7 +72,7 @@ Because \cbnd{} edits the \cpi{} during peeling, its $s$-clique witnesses are go
 %
 The natural workaround --- the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- maintains one disjoint-set forest per core level during the peel and exceeds the available $503$ GB on \texttt{wiki-Talk} at $s\!\ge\!9$ where our pipeline finishes (Figure~\ref{fig:hier}); even where it fits, it uses up to $43\times$ more memory (gmean $13\times$ over $24$ matched cells) than emitting the same hierarchy from a preserved \cpi{}.
 
-\stitle{Our Solution and Contributions.}
+\stitle{Our Contributions.}
 For $(1,s)$-nucleus decomposition we exploit a static-\cpi{} invariant (Theorem~\ref{thm:vertex-removal}) to deliver a single pipeline that addresses all four challenges above.
 
 \sstitle{Static-\cpi{} invariant for $(1,s)$.}
@@ -86,5 +86,5 @@ On $451$ matched cells, \spinStar{} achieves a $17.90\times$ geometric-mean peel
 \sstitle{Core-value hierarchy from the static \cpi{}.}
 \buildHier{} (Algorithm~\ref{alg:buildhier}) emits the $s$-clique-connected super-level join tree from the preserved \cpi{} in $O(\Sig\log\Sig)$ time without re-enumerating any $s$-clique, using up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) than the level-DSU baseline.
 
-\sstitle{Comprehensive experimental evaluation.}
+\sstitle{Experimental evaluation.}
 We compare against \cbnd{} on ten real-world graphs ($451$ matched configurations, headline peel speedup $17.90\times$ gmean / $49.48\times$ max, memory-usage ratio $1.55\times$ gmean), report phase behaviour and parallel construction, push the pipeline to a billion-scale graph (where \cbnd{} only completes at $s{=}2$), and use case studies to evaluate whether the $r=1$ specialization is practically useful.

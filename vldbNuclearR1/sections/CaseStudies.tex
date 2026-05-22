@@ -179,7 +179,7 @@ graph & br. & int. & d & br. & int. & d & br. & int. & d & br. & int. & d \\
 %
 Figure~\ref{fig:cs10} makes the contrast visual at $s=5$ by plotting branch persistence ($k_{\mathrm{birth}}-k_{\mathrm{death}}$) against the rank of each branch when sorted by persistence (log--log).
 %
-\texttt{com-dblp}'s curve is a long flat tail: hundreds of branches retain persistence above $10^2$ and thousands above $10^1$, the signature of a deep nested hierarchy.
+\texttt{com-dblp}'s curve is a long flat tail: hundreds of branches retain persistence above $10^2$ and thousands above $10^1$, which is characteristic of a deeply nested hierarchy.
 %
 \texttt{com-youtube}'s curve drops sharply after the first few ranks and plateaus near persistence $1$, showing that only a handful of branches carry real depth.
 %
@@ -187,7 +187,7 @@ Figure~\ref{fig:cs10} makes the contrast visual at $s=5$ by plotting branch pers
 %
 The hierarchy is therefore not only an output format.
 %
-It gives a domain-level fingerprint of clique-witness nesting.
+It gives a domain-level profile of clique-witness nesting.
 
 \begin{figure}[t]
 \centering
@@ -198,6 +198,6 @@ It gives a domain-level fingerprint of clique-witness nesting.
 \end{figure}
 
 \stitle{Takeaway.}\label{sec:cs-summary}
-On the DBLP and YouTube ground-truth tasks, $r=1$ matches higher-$r$ quality metrics at much lower cost; the hierarchy and ego-network studies show the same decomposition also yields interpretable local structure and a per-domain fingerprint.
+On the DBLP and YouTube community-ranking tasks, $r=1$ matches higher-$r$ quality metrics at much lower cost; the hierarchy and ego-network studies show the same decomposition also yields interpretable local structure and a per-domain hierarchy profile.
 %
 The evidence is scoped to these datasets and metrics rather than a universal claim, but it is enough to justify optimising the exact $r=1$ case.
