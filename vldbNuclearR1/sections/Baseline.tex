@@ -5,22 +5,32 @@
 This section walks through its peeling loop, the residual structures it maintains, and the operations this paper specialises away when restricted to $r=1$.
 
 \stitle{The peeling loop.}
-\cbnd{} follows the standard core-decomposition template~\cite{coreAlg}: it maintains the residual support of every alive $r$-clique in a priority queue, repeatedly pops the $r$-clique of minimum residual support, assigns it the current peel level as its core value, and propagates the support loss to the remaining alive $r$-cliques.
+\cbnd{} follows the standard core-decomposition template~\cite{coreAlg}.
 %
-At $r=1$ the queue items are vertices, so each iteration pops a vertex $v$, records $\kappa_s(v)$, and decrements the residual support of every vertex that loses an $s$-clique witness because of $v$'s removal.
+It maintains the residual support of every alive $r$-clique in a priority queue, repeatedly pops the $r$-clique of minimum residual support, assigns it the current peel level as its core value, and propagates the support loss to the remaining alive $r$-cliques.
 %
-The non-trivial work happens during this support-loss propagation, because the \cpi{} that encodes the witnesses must be brought into a state consistent with $v$ being gone before the next pop.
+At $r{=}1$ the queue items are vertices.
+%
+Each iteration pops a vertex $v$, records $\kappa_s(v)$, and decrements the residual support of every vertex that loses an $s$-clique witness because of $v$'s removal.
+%
+The non-trivial work happens during this support-loss propagation.
+%
+The \cpi{} that encodes the witnesses must be brought into a state consistent with $v$ being gone before the next pop.
 
 \stitle{Residual state.}
 To keep the witness counts consistent across peels, \cbnd{} maintains the \cpi{} as mutable residual state.
 %
 For each path $\TPath$ it stores the hold and pivot vertex sets as hash sets so that the test ``does $v$ belong to this path?'' is constant time.
 %
-A separate reverse map sends every vertex $u$ to the list of paths that contain it, so that when $u$ is popped the algorithm can find the affected paths without scanning all of $\mathcal{P}$.
+A separate reverse map sends every vertex $u$ to the list of paths that contain it.
+%
+When $u$ is popped, the algorithm uses this map to find the affected paths without scanning all of $\mathcal{P}$.
 %
 A heap (or bucket queue) keeps every alive vertex ordered by current residual support, with decrease-key operations for the support drops triggered at each peel event.
 %
-Finally, the Bron--Kerbosch recursion tree that produced the \cpi{} is kept mutable: when a peel event invalidates a path, the algorithm walks into the tree and rewrites or removes the affected nodes.
+Finally, the Bron--Kerbosch recursion tree that produced the \cpi{} is kept mutable.
+%
+When a peel event invalidates a path, the algorithm walks into the tree and rewrites or removes the affected nodes.
 
 \stitle{Per-peel work.}
 A single peel of vertex $v$ costs:
@@ -29,22 +39,40 @@ A single peel of vertex $v$ costs:
 \item a path rewrite: if $v$ is a hold, the path is deleted from the recursion tree and its reverse-map entries for all other vertices in $\Vh(\TPath)\cup\Vp(\TPath)$ are erased; if $v$ is a pivot, the path's pivot set shrinks by one and the reverse-map entry for $v$ on this path is erased;
 \item a support recompute for every path-mate $u$ using the encoded $s$-clique family that survives the rewrite, followed by a decrease-key on $u$ in the heap.
 \end{itemize}
-The dominant components are the path rewrites and the reverse-map erases; together they scale with the number of vertex--path incidences touched by the event, which is what gives \cbnd{} its observed cost profile.
+The dominant components are the path rewrites and the reverse-map erases.
+%
+Together they scale with the number of vertex--path incidences touched by the event, which is what gives \cbnd{} its observed cost profile.
 
 \stitle{Why this state is needed in the general case.}
 The mutable design is not over-engineering for the general $(r,s)$ setting.
 %
-When the peeled object is an edge ($r=2$) or a higher-order clique ($r\ge3$), the removal can destroy edges among vertices that remain alive; some of the cliques that a path encodes therefore cease to exist as cliques.
+When the peeled object is an edge ($r{=}2$) or a higher-order clique ($r\!\ge\!3$), the removal can destroy edges among vertices that remain alive.
 %
-In that setting, the stored hold and pivot sets of $\TPath$ no longer define a valid encoded clique family, so the path must be split, shrunk, or deleted by walking back into the recursion tree.
+Some of the cliques that a path encodes therefore cease to exist as cliques.
+%
+In that setting, the stored hold and pivot sets of $\TPath$ no longer define a valid encoded clique family.
+%
+The path must be split, shrunk, or deleted by walking back into the recursion tree.
 %
 The reverse map and the per-path hash sets exist precisely to support that surgery efficiently.
 
 \stitle{Why this state is wasteful at $r=1$.}
-The $(1,s)$ case has a stronger invariant: vertex peeling removes vertices but does not delete edges, so a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel (we prove this in Section~\ref{sec:static}).
+The $(1,s)$ case has a stronger invariant.
+%
+Vertex peeling removes vertices but does not delete edges, so a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel (we prove this in Section~\ref{sec:static}).
 %
 A path's encoded clique family therefore stays structurally valid; only the question of whether a particular vertex of $\Vh(\TPath)\cup\Vp(\TPath)$ is still alive changes.
 %
-This means the path rewrites, the reverse-map erases, and the recursion-tree surgery in the per-peel cost above are all unnecessary at $r=1$ --- they maintain a mutable residual state that is logically equivalent to a static incidence layout plus a single integer counter per path.
+The path rewrites, the reverse-map erases, and the recursion-tree surgery in the per-peel cost above are therefore all unnecessary at $r{=}1$.
 %
-The next four sections cash in this observation: Section~\ref{sec:static} states the static-\cpi{} invariant in counter form; Section~\ref{sec:hindex} derives \spinStar{} as the peel solver over the resulting static index; Section~\ref{sec:parabuild} parallelises construction once peeling becomes counter-only; and Section~\ref{sec:buildhier} extracts the nucleus hierarchy from the preserved \cpi{} without any clique re-enumeration.
+They maintain a mutable residual state that is logically equivalent to a static incidence layout plus a single integer counter per path.
+%
+The next four sections cash in this observation.
+%
+Section~\ref{sec:static} states the static-\cpi{} invariant in counter form.
+%
+Section~\ref{sec:hindex} derives \spinStar{} as the peel solver over the resulting static index.
+%
+Section~\ref{sec:parabuild} parallelises construction once peeling becomes counter-only.
+%
+Section~\ref{sec:buildhier} extracts the nucleus hierarchy from the preserved \cpi{} without any clique re-enumeration.
