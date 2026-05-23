@@ -2,19 +2,11 @@
 
 Because the static-\cpi{} invariant of Section~\ref{sec:static} keeps every leaf intact through peeling, the hierarchy is no longer a separate decomposition problem.
 %
-After the core values are known, every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel.
+After the core values are known, every \cpi{} leaf encodes the same family of $s$-cliques both before and after the peel; the elder-rule join tree of Definition~\ref{def:nucleus} can therefore be emitted in $O(\Sig\log\Sig)$ time without re-enumerating a single clique --- generate a short list of merge events per leaf that tracks the levels at which its encoded $s$-cliques become alive, and scan those events in descending level with a union--find.
 %
-The elder-rule join tree of Definition~\ref{def:nucleus} can therefore be emitted by generating a short list of merge events per leaf that tracks the levels at which its encoded $s$-cliques become alive, and scanning those events in descending level with a union--find.
+Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose: they must either re-run $s$-clique enumeration at each level or maintain one parallel disjoint-set forest per core level during peeling, which blows up memory by an order of magnitude (Figure~\ref{fig:hier}).
 %
-This costs $O(\Sig\log\Sig)$ time and re-enumerates no clique.
-%
-Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose.
-%
-They must either re-run $s$-clique enumeration at each level or maintain one parallel disjoint-set forest per core level during peeling, which blows up memory by an order of magnitude (Section~\ref{sec:exp}, Figure~\ref{fig:hier}).
-%
-For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\ge k\}$, and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-clique witnesses contained in $V_k$.
-%
-\buildHier{} (Algorithm~\ref{alg:buildhier}) materialises that filtration from the preserved leaves.
+For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\!\ge\!k\}$, and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-clique witnesses contained in $V_k$; \buildHier{} (Algorithm~\ref{alg:buildhier}) materialises that filtration from the preserved leaves.
 
 \stitle{Per-clique events from each leaf.}
 A \cpi{} leaf $P$ encodes the family $\{\Vh(P)\cup X\mid X\subseteq\Vp(P),\,|X|=\eta_P\}$ of $s$-cliques (Definition~\ref{def:path}).
@@ -29,24 +21,16 @@ When $\eta_P=0$ the leaf encodes the single clique $\Vh(P)$, fired at level $h_{
 %
 When $\eta_P\!\ge\!1$, the first event fires at level $k^{(\eta_P)}=\min(h_{\min},\kappa_s(p_{\eta_P}))$ and unifies $\Vh(P)\cup\{p_1,\ldots,p_{\eta_P}\}$ --- the highest-birth encoded clique.
 %
-For each $i=\eta_P+1,\ldots,m$ a follow-up event fires at level $k^{(i)}=\min(h_{\min},\kappa_s(p_i))$.
+For each $i=\eta_P+1,\ldots,m$ a follow-up event fires at level $k^{(i)}=\min(h_{\min},\kappa_s(p_i))$ and unifies the new pivot $p_i$ into the leaf's already-formed component (concretely with $p_1$ as anchor), because adding $p_i$ activates the encoded cliques that contain $p_i$ together with $\eta_P\!-\!1$ already-active pivots.
 %
-It unifies the new pivot $p_i$ into the leaf's already-formed component (concretely with $p_1$ as anchor), because adding $p_i$ activates the encoded cliques that contain $p_i$ together with $\eta_P\!-\!1$ already-active pivots.
-%
-The list of events from a single leaf has length $|\Vp(P)|-\eta_P+1$ when $\eta_P\!\ge\!1$, and length $1$ when $\eta_P\!=\!0$ (the leaf encodes the single clique $\Vh(P)$ regardless of $\Vp(P)$).
-%
-In both cases the events fire at nonincreasing levels.
+The list of events from a single leaf has length $|\Vp(P)|-\eta_P+1$ when $\eta_P\!\ge\!1$, and length $1$ when $\eta_P\!=\!0$; in both cases the events fire at nonincreasing levels.
 
 \stitle{Reverse scan over events.}
 \buildHier{} concatenates events across all leaves and processes them in nonincreasing level.
 %
-Each event $(k,S)$ unifies the vertices in $S$ via union--find with the elder rule.
+Each event $(k,S)$ unifies the vertices in $S$ via union--find with the elder rule: the earliest-born component absorbs the others, and each younger component dies into the elder at level $k$.
 %
-The earliest-born component absorbs the others, and each younger component dies into the elder at level $k$.
-%
-A vertex first appearing in some event with $k_{\mathrm{event}}\!\ge\!1$ is born at the highest level at which it is unified.
-%
-Vertices that never appear ($\kappa_s(v)\!=\!0$) are omitted from the hierarchy.
+A vertex first appearing in some event with $k_{\mathrm{event}}\!\ge\!1$ is born at the highest level at which it is unified; vertices that never appear ($\kappa_s(v)\!=\!0$) are omitted from the hierarchy.
 
 \begin{algorithm}[t]
 \algfontsize
@@ -92,13 +76,9 @@ $T\gets$ empty forest\;
 
 Algorithm~\ref{alg:buildhier} invokes \spinStar{} once (Line~1) to obtain the static \cpi{} $\mathcal{P}$ and the core-value vector $\kappa_s$, then runs in two phases.
 %
-Phase~1 (Lines~2--11) generates merge events.
+Phase~1 (Lines~2--11) generates merge events: for each leaf with at least one encoded $s$-clique, it sorts the pivot set by $\kappa_s$ in descending order and emits one event for the highest-birth encoded clique (size $|\Vh|\!+\!\eta_P$), followed by unit events that each splice one lower-$\kappa$ pivot into the leaf's already-formed component.
 %
-For each leaf with at least one encoded $s$-clique, it sorts the pivot set by $\kappa_s$ in descending order and emits one event for the highest-birth encoded clique (size $|\Vh|\!+\!\eta_P$), followed by a series of unit events that each splice one lower-$\kappa$ pivot into the leaf's already-formed component.
-%
-Phase~2 (Lines~12--24) processes events in nonincreasing level.
-%
-For each event $(k,S)$, the union--find returns the root set $R$ of $S$, emits a new hierarchy node for any root born here for the first time (Lines~17--19), and applies the elder rule to merge multiple roots into the eldest (Lines~20--24).
+Phase~2 (Lines~12--24) processes events in nonincreasing level: for each event $(k,S)$, the union--find returns the root set $R$ of $S$, emits a new hierarchy node for any root born here for the first time (Lines~17--19), and applies the elder rule to merge multiple roots into the eldest (Lines~20--24).
 %
 The returned forest $T$ is the elder-rule join tree of the $s$-clique-connected super-level filtration of $(V,\kappa_s)$.
 
@@ -107,11 +87,9 @@ Fix a level $k$ and let $C$ be any $s$-clique alive in $V_k$.
 %
 Uniqueness of the \cpi{} encoding (Definition~\ref{def:path}) gives the leaf $P$ such that $C=\Vh(P)\cup X$ with $X\subseteq\Vp(P)$, $|X|=\eta_P$.
 %
-All members of $X$ are in $V_k$, so each is among the top $|X|\!=\!\eta_P$ pivots of $P$ once $\Vp(P)$ is restricted to $V_k$.
+All members of $X$ are in $V_k$, so each is among the top $|X|\!=\!\eta_P$ pivots of $P$ once $\Vp(P)$ is restricted to $V_k$; hence at the moment $C$ enters the filtration (level $\min_{v\in C}\kappa_s(v)$), the corresponding event has either already fired (if $C$ uses only the top $\eta_P$ pivots) or fires at exactly that level (when $C$ uses the new pivot $p_i$, the event $(k^{(i)},\{p_1,p_i\})$ joins $p_i$ to the leaf's component).
 %
-At the moment $C$ enters the filtration (level $\min_{v\in C}\kappa_s(v)$), the corresponding event has either already fired (if $C$ uses only the top $\eta_P$ pivots) or fires at exactly that level: when $C$ uses the new pivot $p_i$, the event $(k^{(i)},\{p_1,p_i\})$ joins $p_i$ to the leaf's component.
-%
-Either way, the vertices of $C$ are in one component at level $\min_{v\in C}\kappa_s(v)$, so every Definition~\ref{def:nucleus} merge is performed at the correct level.
+Either way the vertices of $C$ are in one component at level $\min_{v\in C}\kappa_s(v)$, so every Definition~\ref{def:nucleus} merge is performed at the correct level.
 %
 The elder rule preserves the component with earlier birth and attaches the younger one in the join tree~\cite{edelsbrunner2010topology}.
 
@@ -120,32 +98,20 @@ Phase~1 (event generation) scans each leaf once and sorts its pivot set in $O(\S
 %
 The number of events $|\mathcal{E}|$ is at most $\sum_P\max(1,|\Vp(P)|-\eta_P+1)\!\le\!\Sig$, and sorting them by level costs $O(\Sig\log\Sig)$.
 %
-Phase~2 (event processing) performs at most $\sum_P(|\Vh(P)|+\eta_P)+\sum_{P:\eta_P\ge1} 2(|\Vp(P)|-\eta_P)\!\le\!2\Sig$ union-find operations in total.
-%
-The first event of each leaf unifies $|\Vh(P)|+\eta_P$ elements; for $\eta_P\!\ge\!1$ leaves each of the $|\Vp(P)|-\eta_P$ follow-up events unifies a pair.
-%
-The DSU has $n+|\mathcal{P}|$ elements, so the cost is $O(\Sig\,\alpha(n+|\mathcal{P}|))$.
+Phase~2 (event processing) performs at most $\sum_P(|\Vh(P)|+\eta_P)+\sum_{P:\eta_P\ge1} 2(|\Vp(P)|-\eta_P)\!\le\!2\Sig$ union-find operations in total --- the first event of each leaf unifies $|\Vh(P)|+\eta_P$ elements; for $\eta_P\!\ge\!1$ leaves each of the $|\Vp(P)|-\eta_P$ follow-up events unifies a pair --- and costs $O(\Sig\,\alpha(n+|\mathcal{P}|))$ over the DSU's $n+|\mathcal{P}|$ elements.
 %
 Total time is $O(\Sig\log\Sig)$ with no clique re-enumeration: \buildHier{} touches each \cpi{} incidence a constant number of times.
 
 \stitle{Memory.}
 Beyond the union-find of size $n+|\mathcal{P}|$ (the implementation uses each \cpi{} leaf as an auxiliary connector node, so that one union per event suffices to bind every member of $S$), the routine needs a list of vertices per leaf to fire unions.
 %
-\spinStar{}'s vertex-to-path inverse CSR (Section~\ref{sec:hindex}) supports a single bucket-CSR pass that materialises the per-leaf lists in $O(\Sig)$ temporary memory.
-%
-This scratch is freed on return.
+\spinStar{}'s vertex-to-path inverse CSR (Section~\ref{sec:hindex}) supports a single bucket-CSR pass that materialises the per-leaf lists in $O(\Sig)$ temporary memory, freed on return.
 %
 The static \cpi{} budget of Section~\ref{sec:exp} therefore holds throughout peeling proper and is only briefly elevated during the hierarchy emit.
 
 \stitle{Consequence.}
-The clique-coherent core-value hierarchy is not a separate decomposition problem in this pipeline.
-%
-It is a byproduct of the static \cpi{} surviving peeling.
-%
-Each preserved leaf contributes a short sequence of merge events tracking when its encoded cliques become alive, and a single descending union--find pass over those events produces the join tree.
+The clique-coherent core-value hierarchy is not a separate decomposition problem in this pipeline: it is a byproduct of the static \cpi{} surviving peeling --- each preserved leaf contributes a short sequence of merge events tracking when its encoded cliques become alive, and a single descending union--find pass over those events produces the join tree.
 %
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 
-Section~\ref{sec:exp} (Exp-7) compares \buildHier{} against the only feasible baseline at $r{=}1$: \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$.
-%
-\buildHier{} uses up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) and up to $35\times$ less hierarchy-emission wall time (gmean $7.7\times$ over the same cells), with the gap growing at larger $s$ where the witness mass dominates.
+Section~\ref{sec:exp} (Exp-7) compares \buildHier{} against the only feasible baseline at $r{=}1$ --- \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$ --- and confirms that \buildHier{} uses up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) and up to $35\times$ less hierarchy-emission wall time (gmean $7.7\times$ over the same cells), with the gap growing at larger $s$ where the witness mass dominates.

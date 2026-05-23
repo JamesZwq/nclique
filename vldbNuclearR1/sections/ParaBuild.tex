@@ -28,13 +28,9 @@ The builder therefore only has to emit the path set $\mathcal{P}$; no per-path m
 \stitle{Independent per-thread enumeration.}
 \paraBuild{} takes $G$, $s$, and a thread count $T$.
 %
-Each thread owns a contiguous range of seed vertices.
+Each thread owns a contiguous range of seed vertices and runs the same seed-rooted enumeration as the sequential builder on each of its seeds, accumulating the emitted paths into its own output set $\mathcal{P}_t$.
 %
-On each of its seeds it runs the same seed-rooted enumeration as the sequential builder, accumulating the emitted paths into its own output set $\mathcal{P}_t$.
-%
-The degeneracy ordering gives every $s$-clique a unique smallest-rank owner, so the sets $\{\mathcal{P}_t\}_t$ are pairwise disjoint.
-%
-The parallel output is therefore the disjoint union $\mathcal{P}=\bigcup_t\mathcal{P}_t$, and the merge is purely the set union: no synchronisation across threads during enumeration, and no path needs to be deduplicated or rewritten after enumeration.
+The degeneracy ordering gives every $s$-clique a unique smallest-rank owner, so the sets $\{\mathcal{P}_t\}_t$ are pairwise disjoint; the parallel output is therefore the disjoint union $\mathcal{P}=\bigcup_t\mathcal{P}_t$, and the merge is purely the set union --- no synchronisation across threads during enumeration, no deduplication or rewrite after.
 %
 The expensive work is the Bron--Kerbosch search under each seed; the merge contributes no per-path arithmetic.
 
@@ -78,23 +74,13 @@ $\mathcal{P} \gets \bigcup_{t=1}^{T} \mathcal{P}_t$\;
 }
 \end{algorithm}
 
-Algorithm~\ref{alg:parabuild} mirrors Algorithm~\ref{alg:buildcpi} line-for-line.
+Algorithm~\ref{alg:parabuild} mirrors Algorithm~\ref{alg:buildcpi} line-for-line: Line~1 computes the same degeneracy ordering and edge orientation, and the function body $\textsc{ExpandPath}_t$ at the bottom is identical to Algorithm~\ref{alg:buildcpi}'s $\textsc{ExpandPath}$ except that it appends to the thread-local output $\mathcal{P}_t$ instead of the global $\mathcal{P}$.
 %
-Line~1 computes the same degeneracy ordering and edge orientation.
+The only structural change is at the driver loop: Algorithm~\ref{alg:buildcpi}'s sequential \emph{for} over seeds is replaced by Line~2 partitioning the seed sequence into $T$ chunks and Lines~3--7 running one chunk per thread, with Line~8 merging the thread-local outputs.
 %
-The function body $\textsc{ExpandPath}_t$ at the bottom is identical to Algorithm~\ref{alg:buildcpi}'s $\textsc{ExpandPath}$, except that it appends to the thread-local output $\mathcal{P}_t$ instead of the global $\mathcal{P}$.
+Every $s$-clique has a unique smallest-rank owner under the degeneracy ordering, so the chunks $C_1,\ldots,C_T$ induce a partition of $\mathcal{P}$: each path is emitted by exactly one thread, so the per-thread outputs are pairwise disjoint and $\bigcup_t \mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially.
 %
-The only structural change is at the driver loop.
-%
-Algorithm~\ref{alg:buildcpi}'s sequential \emph{for} over seeds is replaced by Line~2 partitioning the seed sequence into $T$ chunks and Lines~3--7 running one chunk per thread, with Line~8 merging the thread-local outputs.
-%
-Every $s$-clique has a unique smallest-rank owner under the degeneracy ordering, so the chunks $C_1,\ldots,C_T$ induce a partition of $\mathcal{P}$.
-%
-Each path is emitted by exactly one thread, so the per-thread outputs are pairwise disjoint and $\bigcup_t \mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially.
-%
-The choice of $T$, the partition of seeds, and the in-memory layout used to store $\mathcal{P}$ are implementation knobs.
-%
-They affect throughput but not the output set.
+The choice of $T$, the partition of seeds, and the in-memory layout used to store $\mathcal{P}$ are implementation knobs; they affect throughput but not the output set.
 
 \stitle{Correctness.}
 \paraBuild{} is a parallel schedule of the same seed-owned enumeration.
