@@ -26,7 +26,7 @@ The difference from prior local $h$-index work is not the operator but the repre
 \stitle{Parallel construction and clique counting.}
 Parallel clique search typically distributes the recursive enumeration work; \paraBuild{} follows the same seed-level decomposition.
 %
-Because the downstream peel never mutates path sets, construction partitions into thread-independent subproblems whose results combine by a deterministic merge --- an engineering consequence of the $r{=}1$ state model rather than a new clique-enumeration paradigm.
+Because the downstream peel never mutates path sets, construction partitions into thread-independent subproblems whose results combine by a deterministic merge; this is an engineering consequence of the $r{=}1$ state model rather than a new clique-enumeration paradigm.
 
 \stitle{Hierarchical cohesive subgraphs.}
 Nucleus decompositions naturally form hierarchies across core levels~\cite{nucleusSariyuce14,nuclearTWEB,fastHierarchy,sotaPrveHierarchy,sotaHierarchy}, and elder-rule join-tree extraction is standard in computational topology~\cite{edelsbrunner2010topology}.

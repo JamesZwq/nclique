@@ -60,7 +60,7 @@ The call reads the static \cpi{} but never mutates a path, so the same witness r
 
 \begin{algorithm}[t]
 \algfontsize
-\caption{$\vertexSupport(v,h)$ --- one-vertex update from static clique witnesses.}
+\caption{$\vertexSupport(v,h)$: one-vertex update from static clique witnesses.}
 \label{alg:refresh}
 \KwIn{Vertex $v\in V$; value array $h$ with $h[u]$ the running estimate of $\kappa_s(u)$ for each $u\in V$; \cpi{} $\mathcal{P}$.}
 \KwOut{The threshold-support value $\Phi_h(v)$.}
@@ -134,7 +134,7 @@ $2$ (fixed point $=\kappa_3$)    & $\mathbf{3}$ & $\mathbf{3}$ & $\mathbf{3}$ & 
 
 \begin{algorithm}[t]
 \algfontsize
-\caption{\spin{} --- direct static-path fixed-point iteration.}
+\caption{\spin{}: direct static-path fixed-point iteration.}
 \label{alg:localH}
 \KwIn{Graph $G$, clique size $s$, \cpi{} $\mathcal{P}$.}
 \KwOut{$\kappa_s(v)$ for every $v\in V$.}
@@ -208,7 +208,7 @@ Its running time depends on $U$, the number of incremental support-update events
 
 \begin{algorithm}[t]
 \algfontsize
-\caption{\spinStar{} --- core values via single-pass bucket-queue peeling.}
+\caption{\spinStar{}: core values via single-pass bucket-queue peeling.}
 \label{alg:peelH}
 \KwIn{Graph $G$, clique size $s$, \cpi{} $\mathcal{P}$.}
 \KwOut{$\kappa_s(v)$ for every $v\in V$.}
