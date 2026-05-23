@@ -1,12 +1,22 @@
 \section{Experiments}\label{sec:exp}
 
-Exactness follows from the invariants and fixed-point equivalence proved earlier; the experiments measure cost. We report (Exp-1)~end-to-end time and memory for \spinStar{}, (Exp-2)~build-vs-peel phase breakdown, (Exp-3)~parallel build scaling, (Exp-4)~\spin{} as the direct fixed-point baseline, (Exp-5)~billion-edge \texttt{com-friendster}, (Exp-6)~vertex-induced subsampling scalability, and (Exp-7)~hierarchy emission against \cbnd{}'s level-DSU baseline.
+Exactness follows from the invariants and fixed-point equivalence proved earlier; the experiments measure cost.
+%
+We report (Exp-1)~end-to-end time and memory for \spinStar{}, (Exp-2)~build-vs-peel phase breakdown, (Exp-3)~parallel build scaling, (Exp-4)~\spin{} as the direct fixed-point baseline, (Exp-5)~billion-edge \texttt{com-friendster}, (Exp-6)~vertex-induced subsampling scalability, and (Exp-7)~hierarchy emission against \cbnd{}'s level-DSU baseline.
 
 \stitle{Hardware and software.}
-All experiments run on an Intel Xeon Gold $6248R$ server with $503$\,GB DDR4 RAM under Ubuntu $22.04$. The code\footnote{Code, bench harness, and result CSVs will be released under an anonymised archive at submission.} is compiled with Clang $18.1$ (\texttt{-O3 -march=native}) and linked against TBB $2021.10$, Boost $1.83$, and \texttt{robin\_hood}. Single-threaded measurements use one core; parallel runs use the thread counts in Figure~\ref{fig:par}.
+All experiments run on an Intel Xeon Gold $6248R$ server with $503$\,GB DDR4 RAM under Ubuntu $22.04$.
+%
+The code\footnote{Code, bench harness, and result CSVs will be released under an anonymised archive at submission.} is compiled with Clang $18.1$ (\texttt{-O3 -march=native}) and linked against TBB $2021.10$, Boost $1.83$, and \texttt{robin\_hood}.
+%
+Single-threaded measurements use one core; parallel runs use the thread counts in Figure~\ref{fig:par}.
 
 \stitle{Datasets.}
-Table~\ref{tab:datasets} lists the benchmark graphs (collaboration, e-commerce, social, web). The sweep on the ten smaller graphs yields $451$ matched cells where both \spinStar{} and \cbnd{} complete; the headline speedup numbers are over this matched subset. \texttt{com-friendster} is run standalone (Section~\ref{sec:exp-friendster}) because \cbnd{} cannot complete on it.
+Table~\ref{tab:datasets} lists the benchmark graphs (collaboration, e-commerce, social, web).
+%
+The sweep on the ten smaller graphs yields $451$ matched cells where both \spinStar{} and \cbnd{} complete; the headline speedup numbers are over this matched subset.
+%
+\texttt{com-friendster} is run standalone (Section~\ref{sec:exp-friendster}) because \cbnd{} cannot complete on it.
 
 \begin{table}[t]
 \centering
@@ -33,10 +43,22 @@ Graph & $|V|$ & $|E|$ & avg.\ deg.\ \\
 \end{table}
 
 \stitle{Algorithms and methodology.}
-\cbnd{}~\cite{NuclearCD} is the mutable-\cpi{} baseline (Section~\ref{sec:baseline}) restricted to $r{=}1$; \spinStar{} is this paper's static-\cpi{} pipeline; \spin{} is the direct fixed-point reference (Section~\ref{sec:localh}). All three consume the same edge list on the same hardware, so the comparison isolates mutability vs.\ static-state peeling. For each $(graph,s)$ cell we record end-to-end time (load + degeneracy + \cpi{} build + peel + output) and peak memory.
+\cbnd{}~\cite{NuclearCD} is the mutable-\cpi{} baseline (Section~\ref{sec:baseline}) restricted to $r{=}1$.
+%
+\spinStar{} is this paper's static-\cpi{} pipeline; \spin{} is the direct fixed-point reference (Section~\ref{sec:localh}).
+%
+All three consume the same edge list on the same hardware, so the comparison isolates mutability vs.\ static-state peeling.
+%
+For each $(graph,s)$ cell we record end-to-end time (load + degeneracy + \cpi{} build + peel + output) and peak memory.
 
 \expsection{peel time and memory}
-Across the ten graphs (Figure~\ref{fig:exp-time}), \spinStar{} sits below \cbnd{} on every peel-time cell with a gmean $17.90\times$ / max $49.48\times$ speedup and a gmean $1.55\times$ / max $3.92\times$ memory reduction. The end-to-end (wall-clock) gap is smaller (gmean $1.05\times$) because the shared \cpi{} construction phase dominates once peeling is cheap --- the bottleneck shift that motivates \paraBuild{} (Section~\ref{sec:parabuild}). \spin{} is also dominated by \spinStar{} on all but the easiest cells; the full comparison is in Exp-4 below.
+Across the ten graphs (Figure~\ref{fig:exp-time}), \spinStar{} sits below \cbnd{} on every peel-time cell.
+%
+The peel-time speedup is gmean $17.90\times$ / max $49.48\times$, and the memory reduction is gmean $1.55\times$ / max $3.92\times$.
+%
+The end-to-end (wall-clock) gap is smaller (gmean $1.05\times$) because the shared \cpi{} construction phase dominates once peeling is cheap --- the bottleneck shift that motivates \paraBuild{} (Section~\ref{sec:parabuild}).
+%
+\spin{} is also dominated by \spinStar{} on all but the easiest cells; the full comparison is in Exp-4 below.
 
 \begin{figure*}[t]
 \centering
@@ -54,7 +76,9 @@ The mutable baseline stores path hash sets and reverse hash maps.
 %
 \spinStar{} stores flat path-to-vertex and vertex-to-path arrays plus path counters.
 %
-The analytical per-incidence gap is larger than the observed memory gap because graph adjacency, allocator overhead, and per-vertex structures do not scale with $\Sig$.
+The analytical per-incidence gap is larger than the observed memory gap.
+%
+Graph adjacency, allocator overhead, and per-vertex structures do not scale with $\Sig$.
 
 \begin{table}[t]
 \centering
@@ -83,7 +107,11 @@ Measured: \texttt{web-Stanford}, $s{=}10$      & $261$ MB  & $146$ MB  \\
 \end{table}
 
 \expsection{phase breakdown}
-Sweeping $s\in\{3,5,7,9,11,13,15\}$ on six graphs (Figure~\ref{fig:breakdown}), the peel slice shrinks with $s$: it falls below $1\%$ of total time by $s{=}11$ on medium and large graphs, and stays under $0.1\%$ on \texttt{web-it-2004} throughout. The bottleneck has shifted onto construction, which is why \paraBuild{} is part of the algorithmic pipeline.
+Sweeping $s\!\in\!\{3,5,7,9,11,13,15\}$ on six graphs (Figure~\ref{fig:breakdown}), the peel slice shrinks with $s$.
+%
+It falls below $1\%$ of total time by $s{=}11$ on medium and large graphs, and stays under $0.1\%$ on \texttt{web-it-2004} throughout.
+%
+The bottleneck has shifted onto construction, which is why \paraBuild{} is part of the algorithmic pipeline.
 
 \begin{figure*}[t]
 \centering
@@ -94,7 +122,13 @@ Sweeping $s\in\{3,5,7,9,11,13,15\}$ on six graphs (Figure~\ref{fig:breakdown}), 
 \end{figure*}
 
 \expsection{parallel scaling of CPI construction}
-\paraBuild{} streams each seed's emitted paths into thread-local storage. Figure~\ref{fig:par} reports build time on six graphs as $T$ grows from $1$ to $64$ ($s{=}3$, median of three runs). The optimum lies at $T{=}24$--$48$ on dense large graphs and at $T{=}16$ on smaller or sparser inputs. The headline single-cell speedup is $23.4\times$ at $T{=}24$ on \texttt{web-it-2004} $s{=}3$ ($92.3$\,s $\rightarrow$ $3.95$\,s).
+\paraBuild{} streams each seed's emitted paths into thread-local storage.
+%
+Figure~\ref{fig:par} reports build time on six graphs as $T$ grows from $1$ to $64$ ($s{=}3$, median of three runs).
+%
+The optimum lies at $T{=}24$--$48$ on dense large graphs and at $T{=}16$ on smaller or sparser inputs.
+%
+The headline single-cell speedup is $23.4\times$ at $T{=}24$ on \texttt{web-it-2004} $s{=}3$ ($92.3$\,s $\rightarrow$ $3.95$\,s).
 
 \begin{figure*}[t]
 \centering
@@ -105,11 +139,23 @@ Sweeping $s\in\{3,5,7,9,11,13,15\}$ on six graphs (Figure~\ref{fig:breakdown}), 
 \end{figure*}
 
 \expsection{\spinStar{} vs.\ \spin{} on the same fixed point}
-\spin{} (Algorithm~\ref{alg:localH}) iterates the fixed point by full passes; \spinStar{} (Algorithm~\ref{alg:peelH}) reaches the same point by deletion-ordered events. Both read the same static index (Lemma~\ref{lem:equivalence}), so the comparison isolates the schedule cost.
+\spin{} (Algorithm~\ref{alg:localH}) iterates the fixed point by full passes.
 %
-Across the $272$ matched cells, \spinStar{} delivers a $30.4\times$ geometric-mean peel-time speedup, max $2{,}369\times$ on \texttt{web-it-2004} at $s{=}53$; the worst case is $0.62\times$ on easy cells where \spin{}'s tight loop converges in one or two passes. \spin{} hits the $1$h cap on \texttt{com-orkut} ($s\ge3$) and \texttt{wiki-Talk} ($s{=}10$); \spinStar{} finishes both in seconds to minutes.
+\spinStar{} (Algorithm~\ref{alg:peelH}) reaches the same point by deletion-ordered events.
 %
-The memory profiles are essentially identical (gmean ratio $0.97$ over $291$ memory-paired cells): the bucket queue and per-leaf counter cache that \spinStar{} adds amount to a sub-percent premium against the shared static index, a textbook ``space for time''. The paper carries both algorithms because they serve different roles --- \spin{} as the direct semantic formulation, \spinStar{} as its event-driven realisation.
+Both read the same static index (Lemma~\ref{lem:equivalence}), so the comparison isolates the schedule cost.
+%
+Across the $272$ matched cells, \spinStar{} delivers a $30.4\times$ geometric-mean peel-time speedup, max $2{,}369\times$ on \texttt{web-it-2004} at $s{=}53$.
+%
+The worst case is $0.62\times$ on easy cells where \spin{}'s tight loop converges in one or two passes.
+%
+\spin{} hits the $1$h cap on \texttt{com-orkut} ($s\!\ge\!3$) and \texttt{wiki-Talk} ($s{=}10$); \spinStar{} finishes both in seconds to minutes.
+%
+The memory profiles are essentially identical (gmean ratio $0.97$ over $291$ memory-paired cells).
+%
+The bucket queue and per-leaf counter cache that \spinStar{} adds amount to a sub-percent premium against the shared static index, a textbook ``space for time''.
+%
+The paper carries both algorithms because they serve different roles: \spin{} as the direct semantic formulation, \spinStar{} as its event-driven realisation.
 
 \begin{comment}
 \expsection{dense synthetic stress}
@@ -130,9 +176,19 @@ Each curve in Figure~\ref{fig:stress} is drawn up to the highest density at whic
 
 \expsection{scaling to a billion-edge graph}
 \label{sec:exp-friendster}
-To push an order of magnitude past \texttt{com-orkut} ($117$M edges), we run \spinStar{} with $T{=}24$ on \texttt{com-friendster} ($65$M vertices, $1.806$B edges; the largest SNAP graph). \spinStar{} completes at every tested $s\in\{2,3,4,5,6,11\}$, whereas \cbnd{} OOM-kills (exceeds the $503$\,GB budget during \cpi{} construction) at every $s\ge3$ (Figure~\ref{fig:friendster}).
+To push an order of magnitude past \texttt{com-orkut} ($117$M edges), we run \spinStar{} with $T{=}24$ on \texttt{com-friendster} ($65$M vertices, $1.806$B edges; the largest SNAP graph).
 %
-On the matched cell $s{=}2$, \spinStar{} peels in $344$\,s vs.\ \cbnd{}'s $1{,}775$\,s ($5.2\times$) using $160$\,GB vs.\ $400$\,GB ($2.5\times$ less); the memory headroom is what lets \spinStar{} continue past the budget. At higher $s$ the static index stays tractable ($\Sig\!\approx\!2.26\!\times\!10^{10}$ at $s{=}6$, $651$\,s peel; $\Sig\!\approx\!1.68\!\times\!10^{10}$ at $s{=}11$, $167$\,s peel). End-to-end runtime is build-dominated ($5$--$7$\,k\,s construction vs.\ $167$--$676$\,s peel), confirming that the bottleneck shift carries over to the billion-edge regime and that the parallel builder of Section~\ref{sec:parabuild} is what makes the pipeline usable at this scale.
+\spinStar{} completes at every tested $s\!\in\!\{2,3,4,5,6,11\}$.
+%
+\cbnd{} OOM-kills (exceeds the $503$\,GB budget during \cpi{} construction) at every $s\!\ge\!3$ (Figure~\ref{fig:friendster}).
+%
+On the matched cell $s{=}2$, \spinStar{} peels in $344$\,s vs.\ \cbnd{}'s $1{,}775$\,s ($5.2\times$) using $160$\,GB vs.\ $400$\,GB ($2.5\times$ less); the memory headroom is what lets \spinStar{} continue past the budget.
+%
+At higher $s$ the static index stays tractable ($\Sig\!\approx\!2.26\!\times\!10^{10}$ at $s{=}6$, $651$\,s peel; $\Sig\!\approx\!1.68\!\times\!10^{10}$ at $s{=}11$, $167$\,s peel).
+%
+End-to-end runtime is build-dominated ($5$--$7$\,k\,s construction vs.\ $167$--$676$\,s peel).
+%
+This confirms that the bottleneck shift carries over to the billion-edge regime, and that the parallel builder of Section~\ref{sec:parabuild} is what makes the pipeline usable at this scale.
 
 \begin{figure}[t]
 \centering
@@ -144,9 +200,17 @@ On the matched cell $s{=}2$, \spinStar{} peels in $344$\,s vs.\ \cbnd{}'s $1{,}7
 
 \expsection{scaling with input size}
 \label{sec:exp-scal}
-To probe scaling with the input itself we vertex-induce subsamples at ratios $\rho\in\{0.2,0.4,0.6,0.8,1.0\}$ from a fixed-seed random vertex set (nested across $\rho$). Vertex-induced subsampling is the natural choice because \spinStar{}'s work scales with the encoded $s$-clique count $\Sig$; uniform edge removal collapses $\Sig$ super-linearly and produces jagged curves.
+To probe scaling with the input itself, we vertex-induce subsamples at ratios $\rho\!\in\!\{0.2,0.4,0.6,0.8,1.0\}$ from a fixed-seed random vertex set (nested across $\rho$).
 %
-Figure~\ref{fig:scalability} re-runs \spinStar{} for $s\in\{2,3,5,7,9,11,13,15\}$ on six graphs spanning two orders of magnitude in edge count (\texttt{com-dblp}, \texttt{com-youtube}, \texttt{web-Stanford}, \texttt{web-Google}, \texttt{soc-pokec}, \texttt{com-orkut}). On every graph the per-$\rho$ curves are cleanly ordered with no inversions on the log scale, indicating that the static-\cpi{} pipeline scales smoothly from sparse collaboration graphs to dense social graphs. \texttt{com-orkut} exposes the natural ceiling at high $s$: its $100\%$ curve cuts off near $s{=}5$ because the encoded clique count exceeds the $30$-minute budget.
+Vertex-induced subsampling is the natural choice because \spinStar{}'s work scales with $\Sig$; uniform edge removal collapses $\Sig$ super-linearly and produces jagged curves.
+%
+Figure~\ref{fig:scalability} re-runs \spinStar{} for $s\!\in\!\{2,3,5,7,9,11,13,15\}$ on six graphs spanning two orders of magnitude in edge count (\texttt{com-dblp}, \texttt{com-youtube}, \texttt{web-Stanford}, \texttt{web-Google}, \texttt{soc-pokec}, \texttt{com-orkut}).
+%
+On every graph the per-$\rho$ curves are cleanly ordered with no inversions on the log scale.
+%
+The static-\cpi{} pipeline therefore scales smoothly from sparse collaboration graphs to dense social graphs.
+%
+\texttt{com-orkut} exposes the natural ceiling at high $s$: its $100\%$ curve cuts off near $s{=}5$ because the encoded clique count exceeds the $30$-minute budget.
 
 \begin{figure*}[t]
 \centering
@@ -158,9 +222,21 @@ Figure~\ref{fig:scalability} re-runs \spinStar{} for $s\in\{2,3,5,7,9,11,13,15\}
 
 \expsection{hierarchy emission against the level-DSU baseline}
 \label{sec:exp-hier}
-\buildHier{} (Section~\ref{sec:buildhier}) consumes the preserved \cpi{} once peeling finishes; the only available $(1,s)$ baseline producing the same hierarchy is \cbnd{}'s level-DSU emit (specialised to $r{=}1$, $O(K\!\cdot\!\Sig)$ with $K$ the number of distinct core values). Figure~\ref{fig:hier} compares four variants on four graphs across $s\in\{3,5,7,9,11,13,15\}$: \spinStar{}, \spinStar{}{+}\buildHier{}, \cbnd{}, \cbnd{}{+}\textsc{Hier}.
+\buildHier{} (Section~\ref{sec:buildhier}) consumes the preserved \cpi{} once peeling finishes.
 %
-\buildHier{} adds modest overhead on top of \spinStar{}'s peel state (gmean memory $1.26\times$, max $2.41\times$; blue and green curves nearly overlap), while \cbnd{+}\textsc{Hier} uses up to $43\times$ more memory ($13\times$ gmean over $24$ cells). Even without a hierarchy, \cbnd{} already uses more memory than \spinStar{+}\buildHier{}, and on \texttt{wiki-Talk} at $s\ge9$ both \cbnd{} variants exceed the $503$\,GB budget before producing a result while ours finishes the entire sweep. On time, \buildHier{} is up to $35\times$ faster than \cbnd{+}\textsc{Hier}'s union work (gmean $7.7\times$), consistent with the $O(\Sig\log\Sig)$ vs.\ $O(K\!\cdot\!\Sig)$ bounds.
+The only available $(1,s)$ baseline producing the same hierarchy is \cbnd{}'s level-DSU emit (specialised to $r{=}1$, $O(K\!\cdot\!\Sig)$ with $K$ the number of distinct core values).
+%
+Figure~\ref{fig:hier} compares four variants on four graphs across $s\!\in\!\{3,5,7,9,11,13,15\}$: \spinStar{}, \spinStar{}{+}\buildHier{}, \cbnd{}, \cbnd{}{+}\textsc{Hier}.
+%
+\buildHier{} adds modest overhead on top of \spinStar{}'s peel state (gmean memory $1.26\times$, max $2.41\times$; blue and green curves nearly overlap).
+%
+\cbnd{+}\textsc{Hier} uses up to $43\times$ more memory ($13\times$ gmean over $24$ cells).
+%
+Even without a hierarchy, \cbnd{} already uses more memory than \spinStar{+}\buildHier{}.
+%
+On \texttt{wiki-Talk} at $s\!\ge\!9$, both \cbnd{} variants exceed the $503$\,GB budget before producing a result, while ours finishes the entire sweep.
+%
+On time, \buildHier{} is up to $35\times$ faster than \cbnd{+}\textsc{Hier}'s union work (gmean $7.7\times$), consistent with the $O(\Sig\log\Sig)$ vs.\ $O(K\!\cdot\!\Sig)$ bounds.
 
 \begin{figure*}[t]
 \centering
@@ -172,11 +248,27 @@ Figure~\ref{fig:scalability} re-runs \spinStar{} for $s\in\{2,3,5,7,9,11,13,15\}
 
 \stitle{Limitations.}
 \label{sec:exp-limits}
-The static-\cpi{} invariant is specific to $r{=}1$: for $r\!\ge\!2$, edge- or triangle-level peel events can destroy cliques a path stores, and our pipeline does not subsume the mutable-\cpi{} machinery of~\cite{NuclearCD}. Memory is the binding resource on dense inputs --- $\Sig$ grows superpolynomially with $s$, so the largest reachable $s$ is RAM-bounded, not algorithm-bounded. Support counters $\binom{p}{\eta}$ exceed $2^{63}$ at moderate $p$; the implementation guards the threshold pass with $128$-bit accumulators on overflow, but applications needing exact magnitudes must do the same. The experiments are single-machine; distributed deployments and dynamic updates are out of scope.
+The static-\cpi{} invariant is specific to $r{=}1$.
+%
+For $r\!\ge\!2$, edge- or triangle-level peel events can destroy cliques a path stores, and our pipeline does not subsume the mutable-\cpi{} machinery of~\cite{NuclearCD}.
+%
+Memory is the binding resource on dense inputs --- $\Sig$ grows superpolynomially with $s$, so the largest reachable $s$ is RAM-bounded, not algorithm-bounded.
+%
+Support counters $\binom{p}{\eta}$ exceed $2^{63}$ at moderate $p$.
+%
+The implementation guards the threshold pass with $128$-bit accumulators on overflow; applications needing exact magnitudes must do the same.
+%
+The experiments are single-machine; distributed deployments and dynamic updates are out of scope.
 
 \stitle{Reproducibility.}
 \label{sec:exp-repro}
-Build commands, dataset URLs, and bench drivers are version-controlled with the source; each binary run is wrapped in \texttt{/usr/bin/time~-v} so peak memory, page faults, and exit status are captured per CSV row.
+Build commands, dataset URLs, and bench drivers are version-controlled with the source.
+%
+Each binary run is wrapped in \texttt{/usr/bin/time~-v}, so peak memory, page faults, and exit status are captured per CSV row.
 
 \stitle{Takeaway.}
-\spinStar{} is faster and lighter than \cbnd{} on the $451$ matched cells, the construction phase emerges as the new dominant cost once peeling is counter-only, \paraBuild{} addresses that shift, and \spin{} confirms the direct fixed-point view's role as semantic reference rather than practical solver.
+\spinStar{} is faster and lighter than \cbnd{} on the $451$ matched cells.
+%
+The construction phase emerges as the new dominant cost once peeling is counter-only, and \paraBuild{} addresses that shift.
+%
+\spin{} confirms the direct fixed-point view's role as semantic reference rather than practical solver.
