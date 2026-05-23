@@ -1,21 +1,13 @@
 \section{Case Studies}\label{sec:casestudy}
 
-The experiments quantify cost.
+The experiments quantify cost; the case studies establish that the $r{=}1$ specialisation is worth optimising in the first place.
 %
-The case studies establish that the $r{=}1$ specialisation is worth optimising in the first place.
-%
-On the ground-truth tasks reported here, $(1,s)$ matches the quality of higher-$r$ nuclei on the evaluated metrics at much lower cost.
-%
-The claim is scoped to the datasets and metrics below.
+On the ground-truth tasks reported here, $(1,s)$ matches the quality of higher-$r$ nuclei on the evaluated metrics at much lower cost --- a claim scoped to the datasets and metrics below.
 
 \stitle{Setup.}\label{sec:cs-setup}
-For cross-$r$ comparisons we use the standard $(r,s)$-nucleus parameterisation~\cite{nucleusSariyuce14}.
+For cross-$r$ comparisons we use the standard $(r,s)$-nucleus parameterisation~\cite{nucleusSariyuce14}; the paper's algorithmic results apply only to $r{=}1$, while the $r{=}2$ and $r{=}3$ scores serve as baselines from the same family.
 %
-The paper's algorithmic results apply only to $r{=}1$; the $r{=}2$ and $r{=}3$ scores serve as baselines from the same family.
-%
-Edge- and triangle-level scores must be compared with vertex rankings.
-%
-We project them by assigning each vertex the maximum score of an incident $r$-clique, then rank descending with ties broken uniformly.
+Edge- and triangle-level scores must be compared with vertex rankings, so we project them by assigning each vertex the maximum score of an incident $r$-clique, then rank descending with ties broken uniformly.
 
 The ground-truth datasets are \texttt{com-dblp} and \texttt{com-youtube} from SNAP~\cite{communityFinder}.
 %
@@ -32,21 +24,13 @@ rec50 is the number of communities with at least $50\%$ of their vertices inside
 Triangle density is the number of triangles per vertex in the induced top-$K$ subgraph.
 
 \stitle{Case study 1: $s$ is a granularity knob.}\label{sec:cs-granularity}
-$k$-core ($s\!=\!2$) is known to be too coarse on dense graphs.
+$k$-core ($s\!=\!2$) is known to be too coarse on dense graphs: $80$--$100\%$ of vertices share a handful of small core values, so the ranking cannot separate dense pockets from the bulk~\cite{nucleusSariyuce14,nuclearTWEB}.
 %
-$80$--$100\%$ of vertices share a handful of small core values, so the ranking cannot separate dense pockets from the bulk~\cite{nucleusSariyuce14,nuclearTWEB}.
-%
-The $(r,s)$-nucleus generalisation~\cite{nucleusSariyuce14} fixes this by replacing edge-support with $s$-clique-support.
-%
-For $r{=}1$, the support of $v$ is the number of $s$-cliques containing $v$.
+The $(r,s)$-nucleus generalisation~\cite{nucleusSariyuce14} fixes this by replacing edge-support with $s$-clique-support; for $r{=}1$, the support of $v$ is the number of $s$-cliques containing $v$.
 %
 Table~\ref{tab:cs1} measures the resulting granularity on \texttt{com-dblp} by sweeping $s$ from $2$ to $30$.
 %
-``Nonzero $|V|$'' is the alive set (vertices with $k_{1,s}(v)\!\ge\!1$).
-%
-``Max core'' is the largest attained core.
-%
-``Top-$K$ min'' is the smallest core value among the top-$K$ ranked vertices --- the threshold that separates the top-$K$ from the bulk.
+``Nonzero $|V|$'' is the alive set (vertices with $k_{1,s}(v)\!\ge\!1$), ``max core'' is the largest attained core, and ``top-$K$ min'' is the smallest core value among the top-$K$ ranked vertices --- the threshold that separates the top-$K$ from the bulk.
 
 \begin{table}[t]
 \centering
@@ -72,27 +56,15 @@ $30$ & $1{,}358$   & $0.43$   & $7.61\!\times\!10^{26}$ & $7.61\!\times\!10^{26}
 \end{tabular}
 \end{table}
 
-At $s\!=\!2$ ($k$-core), the alive set is the whole graph and max core is only $113$.
+At $s\!=\!2$ ($k$-core), the alive set is the whole graph and max core is only $113$ --- the entire ranking compresses into a two-digit dynamic range, exactly the collapse \cite{nucleusSariyuce14} observed.
 %
-The entire ranking compresses into a two-digit dynamic range --- exactly the collapse \cite{nucleusSariyuce14} observed.
+Each step up in $s$ enlarges the dynamic range and shrinks the alive set monotonically: max core grows from $113$ at $s\!=\!2$ to $6.3{\times}10^{3}$ at $s\!=\!3$ ($56{\times}$), to $6.0{\times}10^{12}$ at $s\!=\!10$, and to $7.6{\times}10^{26}$ at $s\!=\!30$ (ten-plus orders of magnitude).
 %
-Each step up in $s$ enlarges the dynamic range and shrinks the alive set monotonically.
-%
-Max core grows from $113$ at $s\!=\!2$ to $6.3{\times}10^{3}$ at $s\!=\!3$ ($56{\times}$), to $6.0{\times}10^{12}$ at $s\!=\!10$, and to $7.6{\times}10^{26}$ at $s\!=\!30$ (ten-plus orders of magnitude).
-%
-The top-$K$ thresholds widen in step.
-%
-At $s\!=\!10$ the top-$100$ vertices all have core $\ge\!6.0{\times}10^{12}$, while the rest of the alive set drops below $2.0{\times}10^{7}$ --- a five-decade gap that makes the top-$100$ unambiguously identifiable.
+The top-$K$ thresholds widen in step: at $s\!=\!10$ the top-$100$ vertices all have core $\ge\!6.0{\times}10^{12}$ while the rest of the alive set drops below $2.0{\times}10^{7}$ --- a five-decade gap that makes the top-$100$ unambiguously identifiable.
 %
 The alive set shrinks $234{\times}$ ($317$k$\to$$1{,}358$) across the same sweep.
 %
-The headline is that the same $r{=}1$ primitive serves analytics tasks at different scales.
-%
-$s\!\le\!3$ gives a community-scale ranking compatible with the ground-truth recall metric used in Case study 2.
-%
-$s\!\in\![5,10]$ isolates the few thousand densest vertices, the natural prefix size for downstream dense-subgraph and team-formation tasks~\cite{dense_subgraph,communities_dec1,communities_dec2}.
-%
-$s\!\ge\!15$ shrinks to a few thousand candidates suitable for influence-maximisation seeding~\cite{kempe2003maximizing,Identifying_influential}.
+The headline is that the same $r{=}1$ primitive serves analytics tasks at different scales: $s\!\le\!3$ gives a community-scale ranking compatible with the ground-truth recall metric used in Case study 2; $s\!\in\![5,10]$ isolates the few thousand densest vertices, the natural prefix size for downstream dense-subgraph and team-formation tasks~\cite{dense_subgraph,communities_dec1,communities_dec2}; $s\!\ge\!15$ shrinks to a few thousand candidates suitable for influence-maximisation seeding~\cite{kempe2003maximizing,Identifying_influential}.
 %
 $s$ is the knob that picks the regime.
 
@@ -124,29 +96,19 @@ $(1,3)$-core raises precision from $0.504$ to $0.523$ and rec50 from $94$ to $11
 %
 For $s\in\{3,5,10\}$, the top-$10{,}000$ quality is identical in this table.
 %
-For larger $s$, the active set drops below $10{,}000$.
-%
-The comparison then changes from ranking quality at fixed $K$ to density of the surviving subgraph.
+For larger $s$, the active set drops below $10{,}000$, so the comparison changes from ranking quality at fixed $K$ to density of the surviving subgraph.
 %
 $(1,30)$-core reaches $523$ triangles per vertex on $1{,}358$ vertices.
 
 
 \stitle{Case study 3: higher $r$ does not buy quality on the studied graphs.}\label{sec:cs-pareto}
-Edge- and triangle-level nuclei sit between $(1,s)$ and explicit clique enumeration on the cost axis.
+Edge- and triangle-level nuclei sit between $(1,s)$ and explicit clique enumeration on the cost axis; whether they buy quality at that cost is an open question on the same datasets.
 %
-Whether they buy quality at that cost is an open question on the same datasets.
+Fixing $s$ and comparing $r\in\{1,2,3\}$ across \texttt{com-dblp} ($s{=}10$) and \texttt{com-youtube} ($s\in\{5,10\}$), Figure~\ref{fig:crossr} shows the answer at a glance: within each cell the three quality bars are nearly equal (left panel), while the time bars span $1$--$3$ orders of magnitude (right panel, log scale).
 %
-Fix $s$ and compare $r\in\{1,2,3\}$ across \texttt{com-dblp} ($s{=}10$) and \texttt{com-youtube} ($s\in\{5,10\}$).
+On \texttt{com-dblp} at $s{=}10$, $(1,10)$ and $(3,10)$ agree on rec50 ($114$ vs.\ $114$) while $r{=}1$ is $178\times$ faster ($13.4$\,ms vs.\ $2380$\,ms); on \texttt{com-youtube} the same pattern repeats at every $s$ we compared, with $r{=}1$ within $5$ rec50 points of $r{=}3$ (at $s{=}5$: $283$ vs.\ $288$; at $s{=}10$: $49$ vs.\ $49$) and between $9.8\times$ and $68\times$ faster than $r{=}3$ (and $6.2$--$10.3\times$ faster than $r{=}2$).
 %
-Figure~\ref{fig:crossr} shows the answer at a glance: within each cell the three quality bars are nearly equal (left panel), while the time bars span $1$--$3$ orders of magnitude (right panel, log scale).
-%
-On \texttt{com-dblp} at $s{=}10$, $(1,10)$ and $(3,10)$ agree on rec50 ($114$ vs.\ $114$) while $r{=}1$ is $178\times$ faster ($13.4$\,ms vs.\ $2380$\,ms).
-%
-On \texttt{com-youtube} the same pattern repeats at every $s$ we compared, with $r{=}1$ within $5$ rec50 points of $r{=}3$ (at $s{=}5$: $283$ vs.\ $288$; at $s{=}10$: $49$ vs.\ $49$) and between $9.8\times$ and $68\times$ faster than $r{=}3$ (and $6.2$--$10.3\times$ faster than $r{=}2$).
-%
-$r{=}1$ therefore gives the best observed quality--runtime tradeoff for vertex ranking on these graphs.
-%
-This does not prove higher $r$ is never useful, only that increasing $r$ here mostly adds cost.\footnote{Above $s{=}10$ on \texttt{com-youtube} the active set falls below the smallest SNAP community size (e.g., $95$ vertices at $s{=}15$), so rec50 becomes uninformative for any $r$; we cap the cross-$r$ comparison at $s{=}10$.}
+$r{=}1$ therefore gives the best observed quality--runtime tradeoff for vertex ranking on these graphs; this does not prove higher $r$ is never useful, only that increasing $r$ here mostly adds cost.\footnote{Above $s{=}10$ on \texttt{com-youtube} the active set falls below the smallest SNAP community size (e.g., $95$ vertices at $s{=}15$), so rec50 becomes uninformative for any $r$; we cap the cross-$r$ comparison at $s{=}10$.}
 
 \begin{figure}[t]
 \centering
@@ -157,35 +119,23 @@ This does not prove higher $r$ is never useful, only that increasing $r$ here mo
 \end{figure}
 
 \stitle{Case study 4: identifying ego network on DBLP --- $(r,s)$ grid on Han's 1-hop ego.}\label{sec:cs-viz}
-We build a fresh coauthor graph from the official DBLP XML dump (April 2024, $3.4$M authors and $23.0$M coauthorship edges).
-%
-We anchor on Jiawei Han (DBLP key \texttt{Jiawei Han 0001}) and take his $1$-hop coauthor ego ($1{,}358$ vertices).
+We build a fresh coauthor graph from the official DBLP XML dump (April 2024, $3.4$M authors and $23.0$M coauthorship edges), anchor on Jiawei Han (DBLP key \texttt{Jiawei Han 0001}), and take his $1$-hop coauthor ego ($1{,}358$ vertices).
 %
 Figure~\ref{fig:cs9} decomposes the ego under four settings $(r,s)\!\in\!\{(1,4),(3,4),(1,10),(3,10)\}$, with $(3,s)$ obtained via the NuclearCD~\cite{NuclearCD} reference implementation.
 %
-For each $(r,s)$ we partition the alive subgraph (vertices with $k_{r,s}(v)\!\ge\!1$; for $r{=}3$ we project to vertices via the max containing-triangle's $(3,s)$ core) into modules.
+For each $(r,s)$ we partition the alive subgraph (vertices with $k_{r,s}(v)\!\ge\!1$; for $r{=}3$ we project to vertices via the max containing-triangle's $(3,s)$ core) into modules using greedy near-clique extraction (size $\ge\!25$, internal density $\ge\!0.25$ --- looser than NuclearCD CS-II so that both tight and field-scale loose groups surface).
 %
-We use greedy near-clique extraction (size $\ge\!25$, internal density $\ge\!0.25$) --- looser than NuclearCD CS-II so that both tight and field-scale loose groups surface.
-%
-For each module $C$ we report a semantic label, member count, the number of \emph{$\ge\!5$-co-author collaborative papers}, and the \emph{active ratio} (fraction of members appearing in at least one such paper), following NuclearCD~\cite{NuclearCD}.
-%
-We use a stricter $\ge\!5$ within-module co-author threshold so that loose modules at small $s$ remain discriminable from tight modules at large $s$.
+For each module $C$ we report a semantic label, member count, the number of \emph{$\ge\!5$-co-author collaborative papers}, and the \emph{active ratio} (fraction of members appearing in at least one such paper), following NuclearCD~\cite{NuclearCD} but with a stricter $\ge\!5$ within-module co-author threshold so loose modules at small $s$ remain discriminable from tight modules at large $s$.
 
 \sstitle{Increasing $s$ tightens the modules and lifts the active ratio toward $100\%$.}
-At $(1,4)$ the alive subgraph contains $1{,}323$ vertices, and the loose partition surfaces $6$ modules.
-%
-They range from a $150$-member loose IR/Web cluster (density $0.43$, active $93\%$) down to two tighter $32$- and $37$-vertex groups (NLP and a Data Mining sub-team) whose active ratios drop to $69\%$ and $76\%$ --- the long-tail behaviour NuclearCD~\cite{NuclearCD} observed.
+At $(1,4)$ the alive subgraph contains $1{,}323$ vertices and the loose partition surfaces $6$ modules, ranging from a $150$-member loose IR/Web cluster (density $0.43$, active $93\%$) down to two tighter $32$- and $37$-vertex groups (NLP and a Data Mining sub-team) whose active ratios drop to $69\%$ and $76\%$ --- the long-tail behaviour NuclearCD~\cite{NuclearCD} observed.
 %
 At $(1,10)$ the alive subgraph shrinks to $590$ vertices, and the same partition surfaces only $3$ modules, all densities $0.74$--$0.94$ and active ratios $85\%$--$97\%$: ML Safety ($32$, $97\%$), Data Mining ($49$, $96\%$), IR/Web ($26$, $85\%$).
 %
-So raising $s$ filters out loose, weakly-collaborating groups and retains compact, strongly-collaborating teams.
-%
-The size-weighted average active ratio rises from $91\%$ at $s\!=\!4$ to $93\%$ at $s\!=\!10$ in our setting, and would saturate further at $s\!=\!15$ or higher (a few of the $s\!=\!4$ modules are already at $100\%$).
+Raising $s$ therefore filters out loose, weakly-collaborating groups and retains compact, strongly-collaborating teams: the size-weighted average active ratio rises from $91\%$ at $s\!=\!4$ to $93\%$ at $s\!=\!10$ in our setting, and would saturate further at $s\!=\!15$ or higher (a few of the $s\!=\!4$ modules are already at $100\%$).
 
 \sstitle{Raising $r$ from $1$ to $3$ does not change the result.}
-At each $s$ the $(1,s)$ and $(3,s)$ panels are pairwise identical --- same module count, sizes, labels, representative members, and active ratios.
-%
-This holds even though the per-vertex absolute core thresholds differ by orders of magnitude.
+At each $s$ the $(1,s)$ and $(3,s)$ panels are pairwise identical --- same module count, sizes, labels, representative members, and active ratios --- even though the per-vertex absolute core thresholds differ by orders of magnitude.
 %
 The two decompositions \emph{rank} vertices the same way on this ego, so the more expensive triangle-centric $r\!=\!3$ delivers no extra resolution beyond what the cheap vertex-centric $r\!=\!1$ already provides.
 %
@@ -256,8 +206,6 @@ This is the broader picture in Table~\ref{tab:dblp-gt}: $(1,s)$ achieves communi
 %% --- end commented-out case study 5 ------------------------------------------
 
 \stitle{Takeaway.}\label{sec:cs-summary}
-On the DBLP and YouTube community-ranking tasks, $r{=}1$ matches higher-$r$ quality metrics at much lower cost.
-%
-The ego-network study (Figure~\ref{fig:cs9}) shows the same decomposition also yields interpretable local structure.
+On the DBLP and YouTube community-ranking tasks, $r{=}1$ matches higher-$r$ quality metrics at much lower cost; the ego-network study (Figure~\ref{fig:cs9}) shows the same decomposition also yields interpretable local structure.
 %
 The evidence is scoped to these datasets and metrics rather than a universal claim, but it is enough to justify optimising the exact $r{=}1$ case.
