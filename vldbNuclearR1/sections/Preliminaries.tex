@@ -49,9 +49,7 @@ The set $\Vp(\TPath)$ is the \emph{pivot set}: an encoded $s$-clique chooses ver
 %
 The \emph{pivot requirement} of $\TPath$ is $\eta_{\TPath}=s-|\Vh(\TPath)|$, the number of pivot vertices needed to complete the hold set into an $s$-clique.
 %
-The boundary case $\eta_{\TPath}=0$ (i.e.\ $|\Vh(\TPath)|=s$) encodes exactly one $s$-clique --- the hold set itself.
-%
-We adopt the convention $\binom{m}{-1}=0$ so the binomial-difference support formulas used later return $0$ for any pivot-removal event on such a path.
+The boundary case $\eta_{\TPath}\!=\!0$ (i.e.\ $|\Vh(\TPath)|\!=\!s$) encodes exactly one $s$-clique --- the hold set itself; we adopt the convention $\binom{m}{-1}=0$ so the binomial-difference formulas used later return $0$ for any pivot-removal event on such a path.
 %
 The set of $s$-cliques encoded by $\TPath$ is
 \[
@@ -68,15 +66,11 @@ We write
 \[
   \Sig=\sum_{\TPath\in\mathcal{P}}\bigl(|\Vh(\TPath)|+|\Vp(\TPath)|\bigr)
 \]
-for the \emph{vertex--path incidence count} of the \cpi{}.
-%
-$\Sig$ is the cost of reading the whole \cpi{} once, and every runtime and memory bound in this paper is expressed in it.
+for the \emph{vertex--path incidence count} of the \cpi{} --- the cost of reading the whole \cpi{} once, in which every runtime and memory bound in this paper is expressed.
 %
 We also write $\kmax=\max_v\sdeg(v)$.
 %
-The \cpi{} is built by a degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.
-%
-We reproduce the construction as Algorithm~\ref{alg:buildcpi} because the rest of the paper operates over the emitted paths.
+The \cpi{} is built by a degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}; we reproduce the construction as Algorithm~\ref{alg:buildcpi} because the rest of the paper operates over the emitted paths.
 
 \begin{algorithm}[t]
 \algfontsize
@@ -118,20 +112,12 @@ Algorithm~\ref{alg:buildcpi} computes a degeneracy ordering of $G$ and orients e
 %
 For every vertex $v_i$, $\textsc{ExpandPath}$ is invoked with hold set $\{v_i\}$ and forward-neighbour candidate set $N^{+}(v_i)$ (Lines~3-4).
 %
-A recursive call returns immediately when the hold set already exceeds $s$ (Line~6).
+A recursive call returns immediately when the hold set already exceeds $s$ (Line~6), and emits a path when the candidate set is empty and the hold-plus-pivot size meets $s$ (Lines~8-9).
 %
-It emits a path when the candidate set is empty and the hold-plus-pivot size meets $s$ (Lines~8-9).
-%
-Otherwise the Tomita pivot $u_{\mathrm{piv}}$ is the vertex of $P$ with the most forward neighbours inside $P$ (Line~10).
-%
-Every non-neighbour of $u_{\mathrm{piv}}$ is then recursively expanded: branching on the pivot itself extends the pivot set, branching on any other vertex extends the hold set (Lines~11-16).
+Otherwise the Tomita pivot $u_{\mathrm{piv}}$ is the vertex of $P$ with the most forward neighbours inside $P$ (Line~10), and every non-neighbour of $u_{\mathrm{piv}}$ is recursively expanded: branching on the pivot itself extends the pivot set, branching on any other vertex extends the hold set (Lines~11-16).
 
 \stitle{Reading clique counts off the \cpi.}
-Once the \cpi{} is built, each vertex's exact $s$-clique support is a sum over the paths through it.
-%
-Every $s$-clique through $v$ is encoded by exactly one path, with $v$ either in the hold set or in the pivot set.
-%
-The count in each case is a single binomial in the path's pivot size.
+Once the \cpi{} is built, each vertex's exact $s$-clique support is a sum over the paths through it: every $s$-clique through $v$ is encoded by exactly one path with $v$ either in the hold or in the pivot set, and the count in each case is a single binomial in the path's pivot size.
 
 \begin{lemma}[Support Formula~\cite{NuclearCD}]\label{lem:supp}
 For every $v\in V$,
@@ -144,13 +130,9 @@ For every $v\in V$,
 \]
 \end{lemma}
 
-The first sum in Lemma~\ref{lem:supp} is over paths with $v$ in the hold.
+The first sum is over paths with $v$ in the hold: every choice of $\eta_{\TPath}$ pivots from $\Vp(\TPath)$ completes $\Vh(\TPath)$ into a distinct $s$-clique through $v$, giving $\binom{|\Vp(\TPath)|}{\eta_{\TPath}}$ cliques per path.
 %
-Every choice of $\eta_{\TPath}$ pivots from $\Vp(\TPath)$ completes $\Vh(\TPath)$ into a distinct $s$-clique through $v$, giving $\binom{|\Vp(\TPath)|}{\eta_{\TPath}}$ cliques per path.
-%
-The second sum is over paths with $v$ in the pivot set.
-%
-$v$ fills one of the $\eta_{\TPath}$ pivot slots, and the remaining $\eta_{\TPath}-1$ are chosen from the other $|\Vp(\TPath)|-1$ pivots, giving $\binom{|\Vp(\TPath)|-1}{\eta_{\TPath}-1}$ cliques per path.
+The second sum is over paths with $v$ in the pivot set: $v$ fills one of the $\eta_{\TPath}$ pivot slots, and the remaining $\eta_{\TPath}\!-\!1$ are chosen from the other $|\Vp(\TPath)|\!-\!1$ pivots, giving $\binom{|\Vp(\TPath)|-1}{\eta_{\TPath}-1}$ cliques per path.
 %
 Every $\sdeg(v)$ in the rest of the paper is evaluated through Lemma~\ref{lem:supp}, never by listing cliques.
 

@@ -4,16 +4,8 @@ For $(1,s)$-nucleus decomposition, vertex peeling preserves every edge among sur
 %
 The path structure of the \cpi{} therefore stays valid throughout the peel, and exact decomposition reduces to counter maintenance over a static symbolic index.
 %
-\spinStar{} realises this fixed point in deletion order.
+\spinStar{} realises this fixed point in deletion order, \paraBuild{} parallelises the construction that is now the bottleneck, and \buildHier{} recovers the nucleus hierarchy from the static index.
 %
-\paraBuild{} parallelises the construction that is now the bottleneck.
+The matched configurations agree with the mutable baseline while reducing runtime and memory on the evaluated benchmarks, and the case studies show that vertex-centric $(1,s)$ matches higher-$r$ quality metrics on community tasks at a fraction of the cost.
 %
-\buildHier{} recovers the nucleus hierarchy from the static index.
-%
-The matched configurations agree with the mutable baseline while reducing runtime and memory on the evaluated benchmarks.
-%
-The case studies show that vertex-centric $(1,s)$ matches higher-$r$ quality metrics on community tasks at a fraction of the cost.
-%
-The static-\cpi{} invariant is specific to $r{=}1$.
-%
-Extending it to restricted $r\!\ge\!2$ settings, to streaming and dynamic graphs, and to GPU/distributed execution are the natural next steps.
+The static-\cpi{} invariant is specific to $r{=}1$; extending it to restricted $r\!\ge\!2$ settings, to streaming and dynamic graphs, and to GPU/distributed execution are the natural next steps.
