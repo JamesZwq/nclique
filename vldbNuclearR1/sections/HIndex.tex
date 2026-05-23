@@ -1,16 +1,16 @@
 \section{\texorpdfstring{Computing Core Values over Static \cpi}{Computing Core Values over Static CPI}}\label{sec:hindex}
 
-The static-\cpi{} invariant of Section~\ref{sec:static} becomes a concrete algorithm for $\kappa_s$ through a one-vertex update rule built directly on clique-witness counts (Section~\ref{sec:refresh}, Algorithm~\ref{alg:refresh}).
+The static-\cpi{} invariant of Section~\ref{sec:static} becomes a concrete algorithm for $\kappa_s$ through a one-vertex update rule built directly on the encoded $s$-clique counts (Section~\ref{sec:refresh}, Algorithm~\ref{alg:refresh}).
 %
 Section~\ref{sec:peelh} delivers \spinStar{} (Algorithm~\ref{alg:peelH}), a single-pass bucket-queue solver that assigns core values in nondecreasing peel order through local path-counter updates.
 %
 Section~\ref{sec:localh} states the same threshold-support condition as a fixed-point specification, denoted \spin{} (Algorithm~\ref{alg:localH}); the specification is what Lemma~\ref{lem:equivalence} appeals to when certifying \spinStar{}'s correctness.
 
-\subsection{Vertex updates from static witnesses}\label{sec:refresh}
+\subsection{Vertex updates from static clique counts}\label{sec:refresh}
 
-The static-\cpi{} invariant counts witnesses without rebuilding paths; for core values we additionally need a rule for lowering a vertex value from the witnesses that remain.
+The static-\cpi{} invariant counts $s$-cliques without rebuilding paths; for core values we additionally need a rule for lowering a vertex value from the cliques that remain.
 %
-At level $k$, the vertex needs at least $k$ encoded clique witnesses whose other vertices can also sustain level $k$.
+At level $k$, the vertex needs at least $k$ encoded $s$-cliques whose other vertices can also sustain level $k$.
 %
 For a tentative value vector, define the one-vertex update
 \[
@@ -18,11 +18,11 @@ For a tentative value vector, define the one-vertex update
 \]
 Here $W_v(\TPath,h,k)$ is the number of encoded $s$-cliques on path $\TPath$ through $v$ whose other vertices have value at least $k$, and the sum runs over all paths through $v$.
 %
-For clique size two, the witnesses are edges, so the update becomes the standard core fixed-point test over neighbors~\cite{lu2016hindex,hindex}.
+For clique size two, the supporting cliques are edges, so the update becomes the standard core fixed-point test over neighbors~\cite{lu2016hindex,hindex}.
 %
-For larger clique sizes, the counted items are clique witnesses, not distinct neighbor vertices.
+For larger clique sizes, the counted items are $s$-cliques, not distinct neighbor vertices.
 %
-The next lemma counts $\sum_{\TPath\ni v}W_v(\TPath,h,k)$ from \cpi{} paths without enumerating those witnesses.
+The next lemma counts $\sum_{\TPath\ni v}W_v(\TPath,h,k)$ from \cpi{} paths without enumerating those cliques.
 
 \begin{lemma}[Per-path Witness Count]\label{lem:per-path-witness}
 Fix a vertex $v$, a current vector $h$, and a threshold $k\ge1$.
@@ -52,20 +52,20 @@ $\vertexSupport(v,h)$ computes this update for one vertex.
 %
 During one call, the algorithm builds only local threshold state for $v$.
 %
-After any prefix of the paths through $v$, that local state contains exactly the witnesses contributed by the scanned paths.
+After any prefix of the paths through $v$, that local state contains exactly the cliques contributed by the scanned paths.
 %
-Scanning the next path adds the binomial counts from Lemma~\ref{lem:per-path-witness}, and the largest threshold with enough witnesses is the updated value.
+Scanning the next path adds the binomial counts from Lemma~\ref{lem:per-path-witness}, and the largest threshold with enough cliques is the updated value.
 %
-The call reads the static \cpi{} but never mutates a path, so the same witness rule can be used by both solvers below.
+The call reads the static \cpi{} but never mutates a path, so the same update rule can be used by both solvers below.
 
 \begin{algorithm}[t]
 \algfontsize
-\caption{$\vertexSupport(v,h)$: one-vertex update from static clique witnesses.}
+\caption{$\vertexSupport(v,h)$: one-vertex update from static clique counts.}
 \label{alg:refresh}
 \KwIn{Vertex $v\in V$; value array $h$ with $h[u]$ the running estimate of $\kappa_s(u)$ for each $u\in V$; \cpi{} $\mathcal{P}$.}
 \KwOut{The threshold-support value $\Phi_h(v)$.}
 
-$C[0,\ldots,h[v]]\gets0$ \tcp*{threshold witness counts}
+$C[0,\ldots,h[v]]\gets0$ \tcp*{threshold clique counts}
 \ForEach{path $\TPath\in\mathcal{P}$ \emph{through} $v$}{
     \For{$k\gets1$ \KwTo $h[v]$}{
         $C[k]\gets C[k]+W_v(\TPath,h,k)$\tcp*{Lemma~\ref{lem:per-path-witness}}
@@ -77,7 +77,7 @@ $C[0,\ldots,h[v]]\gets0$ \tcp*{threshold witness counts}
 \Return{$0$}
 \end{algorithm}
 
-Algorithm~\ref{alg:refresh} zeroes the local threshold-count array up to $h[v]$ (Line~1), accumulates the per-threshold witness count $W_v(\TPath,h,k)$ into $C[k]$ for every path through $v$ using the closed form of Lemma~\ref{lem:per-path-witness} (Lines~2-4), and returns the largest $k$ at which $C[k]\ge k$ by scanning $C$ from $h[v]$ downward (Lines~5-7), or $0$ if none.
+Algorithm~\ref{alg:refresh} zeroes the local threshold-count array up to $h[v]$ (Line~1), accumulates the per-threshold count $W_v(\TPath,h,k)$ into $C[k]$ for every path through $v$ using the closed form of Lemma~\ref{lem:per-path-witness} (Lines~2-4), and returns the largest $k$ at which $C[k]\ge k$ by scanning $C$ from $h[v]$ downward (Lines~5-7), or $0$ if none.
 %
 The pseudocode is shown in semantic form for clarity; the implementation never materialises a dense $C[0,\ldots,h[v]]$ array (infeasible when $h[v]$ approaches $\sdeg(v)$, easily $10^{10}$+ on dense graphs) and instead replaces the inner $k$-loop with a single pass per scanned path that sorts the path's vertex values once and computes $W_v(\TPath,h,\cdot)$ at every threshold via prefix sums.
 %
@@ -91,7 +91,7 @@ We state the threshold-support condition as a fixed-point specification on the v
 %
 The only mutable data are the current and next value vectors; the initial vector dominates the final core value pointwise, and each pass can only lower entries.
 %
-A fixed point means every vertex value is consistent with the witnesses whose other vertices have high enough current value, which makes the converged vector the canonical semantic anchor for any static-\cpi{} core-value solver.
+A fixed point means every vertex value is consistent with the cliques whose other vertices have high enough current value, which makes the converged vector the canonical semantic anchor for any static-\cpi{} core-value solver.
 
 Algorithm~\ref{alg:localH} initialises $h[v]$ to $\sdeg(v)$ for every vertex via the closed form of Lemma~\ref{lem:supp} (Lines~1-2).
 %
@@ -104,9 +104,9 @@ The final core values are read off the converged vector (Lines~10-11) and return
 \begin{example}[Static-path update on the running example]\label{ex:hop}
 Initialise $h[v]\gets\sdeg(v)$ using Lemma~\ref{lem:supp}; on the running example $h[v_4]\!=\!6$ (contributions $2{+}1{+}2$ from $\TPath_3,\TPath_4,\TPath_5$ as pivot and $1$ from $\TPath_6$ as hold; see Table~\ref{tab:cpi-leaves}).
 %
-The first call $\vertexSupport(v_4,h)$ scans the four paths through $v_4$ and counts threshold witnesses via Lemma~\ref{lem:per-path-witness}.
+The first call $\vertexSupport(v_4,h)$ scans the four paths through $v_4$ and counts qualifying cliques per threshold via Lemma~\ref{lem:per-path-witness}.
 %
-At threshold $k\!=\!3$, every other vertex on each of the four paths has $h\!\ge\!3$, so the witness sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\!\ge\!k$ is $\Phi_h(v_4)\!=\!3$, the final $\kappa_3(v_4)$.
+At threshold $k\!=\!3$, every other vertex on each of the four paths has $h\!\ge\!3$, so the count sums are $2{+}1{+}2{+}1=6$; the largest $k$ with $\sum_{\TPath\ni v_4}W_{v_4}(\TPath,h,k)\!\ge\!k$ is $\Phi_h(v_4)\!=\!3$, the final $\kappa_3(v_4)$.
 %
 Table~\ref{tab:spinex} shows the full $h$-value trajectory: interaction~$0$ carries the initial $\sdeg$, interaction~$1$ drops the $K_4$ vertices $v_1{,}\ldots{,}v_6$ to $3$, and interaction~$2$ reproduces interaction~$1$ to certify the fixed point.
 %
@@ -166,7 +166,7 @@ By the operator definition, $h^{(t+1)}[v]\!\ge\!k$ iff $v$ has at least $k$ inci
 %
 Once a vertex's value equals its final $\kappa_s(v)$, the operator never lowers it further (by the converse direction below); each pass that is not already a fixed point lowers the value of at least one not-yet-finalised vertex, so at most $n$ such passes occur before the fixed point $h^\star$ is reached and one more pass certifies it.
 %
-At $h^\star$, let $S_k=\{v\mid h^\star[v]\!\ge\!k\}$; every $v\!\in\!S_k$ has at least $k$ incident $s$-cliques entirely inside $S_k$, and each such clique lies in $v$'s $s$-connected component $C\!\subseteq\!S_k$ (the clique itself is the connecting witness), so $C$ satisfies Conditions~(i)--(iii) of Definition~\ref{def:nucleus} and is a $k$-$(1,s)$-nucleus, giving $\kappa_s(v)\!\ge\!k$.
+At $h^\star$, let $S_k=\{v\mid h^\star[v]\!\ge\!k\}$; every $v\!\in\!S_k$ has at least $k$ incident $s$-cliques entirely inside $S_k$, and each such clique lies in $v$'s $s$-connected component $C\!\subseteq\!S_k$ (the clique itself provides the connection), so $C$ satisfies Conditions~(i)--(iii) of Definition~\ref{def:nucleus} and is a $k$-$(1,s)$-nucleus, giving $\kappa_s(v)\!\ge\!k$.
 %
 Conversely, if $v$ lies in a $k$-$(1,s)$-nucleus $C'$, we show by induction on $t$ that $h^{(t)}[u]\!\ge\!k$ for every $u\!\in\!C'$.
 %
@@ -277,7 +277,7 @@ The path counters of \spinStar{} are support-equivalent to physically deleting f
 %
 Initial values $h[u]\!=\!\sdeg(u)$ are upper bounds and every update only decreases a key, so no vertex is ever assigned a value larger than its current residual threshold support above the current peel level.
 %
-Consider the moment when the bucket cursor first reaches level $k$: the remaining vertices with key at least $k$ form a super-level set in which each vertex has at least $k$ qualifying $s$-clique witnesses, so each $s$-connected component of that set is a $k$-$(1,s)$-nucleus and every vertex later popped while the cursor stays at level $k$ has core value at least $k$.
+Consider the moment when the bucket cursor first reaches level $k$: the remaining vertices with key at least $k$ form a super-level set in which each vertex has at least $k$ qualifying $s$-cliques, so each $s$-connected component of that set is a $k$-$(1,s)$-nucleus and every vertex later popped while the cursor stays at level $k$ has core value at least $k$.
 %
 When a vertex $v$ is popped from bucket $B[k]$, it cannot belong to any $(k\!+\!1)$-$(1,s)$-nucleus, since otherwise the exact residual threshold-support count at threshold $k\!+\!1$ would keep its key at least $k\!+\!1$ until it was removed.
 %

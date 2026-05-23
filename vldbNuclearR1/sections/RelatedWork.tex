@@ -19,9 +19,9 @@ The static-\cpi{} counter form of this paper shows that for vertex peeling these
 \stitle{Local and parallel peeling.}
 $h$-index characterisations of core values~\cite{hindex} were studied for local core computation~\cite{lu2016hindex,LocalNuclear} and extended to distributed and parallel settings~\cite{distributed_k-core,zhang2023efficient}.
 %
-In this paper, the fixed-point view is adapted to the implicit $s$-clique witnesses encoded by the \cpi{}, and \spinStar{} provides its peel-order realisation.
+In this paper, the fixed-point view is adapted to the implicit $s$-cliques encoded by the \cpi{}, and \spinStar{} provides its peel-order realisation.
 %
-The difference from prior local $h$-index work is not the operator but the representation: the witness multiset is held in static \cpi{} paths and updated by binomial support-loss formulas.
+The difference from prior local $h$-index work is not the operator but the representation: the supporting cliques are held in static \cpi{} paths and updated by binomial support-loss formulas.
 
 \stitle{Parallel construction and clique counting.}
 Parallel clique search typically distributes the recursive enumeration work; \paraBuild{} follows the same seed-level decomposition.
@@ -31,7 +31,7 @@ Because the downstream peel never mutates path sets, construction partitions int
 \stitle{Hierarchical cohesive subgraphs.}
 Nucleus decompositions naturally form hierarchies across core levels~\cite{nucleusSariyuce14,nuclearTWEB,fastHierarchy,sotaPrveHierarchy,sotaHierarchy}, and elder-rule join-tree extraction is standard in computational topology~\cite{edelsbrunner2010topology}.
 %
-Prior nucleus pipelines extract such hierarchies by sorting the decomposition output or revisiting clique witnesses; \buildHier{} instead reuses the preserved static \cpi{}, treating each leaf as a hyperedge born at its minimum core value, so the hierarchy is a byproduct of preserving the \cpi{} through peeling.
+Prior nucleus pipelines extract such hierarchies by sorting the decomposition output or revisiting the cliques; \buildHier{} instead reuses the preserved static \cpi{}, treating each leaf as a hyperedge born at its minimum core value, so the hierarchy is a byproduct of preserving the \cpi{} through peeling.
 
 \stitle{Applications of $k$-core and nucleus decomposition.}
 Core and nucleus decompositions are workhorses for community detection~\cite{communities_dec1,communities_dec2,communities_dec3,girvan2002community}, densest-subgraph discovery~\cite{dense_subgraph}, influential-vertex and role analysis~\cite{Identifying_influential,kempe2003maximizing,lu2016vital}, network visualization~\cite{network_visualization}, and downstream uses in social analysis~\cite{cohesive_subgraph_Social_Networks,apply_social_networks}, biological networks~\cite{cohesive_subgraph_protein_networks,apply_biological_networks_1}, complex-network analysis~\cite{cohesive_subgraph_complex_networks}, anomaly and security applications~\cite{akoglu2015graph,apply_cyber}, and recommendation~\cite{e-shipping_recommendation}.

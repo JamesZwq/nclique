@@ -6,7 +6,7 @@ After the core values are known, every \cpi{} leaf encodes the same family of $s
 %
 Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose: they must either re-run $s$-clique enumeration at each level or maintain one parallel disjoint-set forest per core level during peeling, which blows up memory by an order of magnitude (Figure~\ref{fig:hier}).
 %
-For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\!\ge\!k\}$, and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-clique witnesses contained in $V_k$; \buildHier{} (Algorithm~\ref{alg:buildhier}) materialises that filtration from the preserved leaves.
+For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\!\ge\!k\}$, and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-cliques contained in $V_k$; \buildHier{} (Algorithm~\ref{alg:buildhier}) materialises that filtration from the preserved leaves.
 
 \stitle{Per-clique events from each leaf.}
 A \cpi{} leaf $P$ encodes the family $\{\Vh(P)\cup X\mid X\subseteq\Vp(P),\,|X|=\eta_P\}$ of $s$-cliques (Definition~\ref{def:path}).
@@ -114,4 +114,4 @@ The clique-coherent core-value hierarchy is not a separate decomposition problem
 %
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 
-Section~\ref{sec:exp} (Exp-7) compares \buildHier{} against the only feasible baseline at $r{=}1$, namely \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, and confirms that \buildHier{} uses up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) and up to $35\times$ less hierarchy-emission wall time (gmean $7.7\times$ over the same cells), with the gap growing at larger $s$ where the witness mass dominates.
+Section~\ref{sec:exp} (Exp-7) compares \buildHier{} against the only feasible baseline at $r{=}1$, namely \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, and confirms that \buildHier{} uses up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) and up to $35\times$ less hierarchy-emission wall time (gmean $7.7\times$ over the same cells), with the gap growing at larger $s$ where the encoded-clique mass dominates.
