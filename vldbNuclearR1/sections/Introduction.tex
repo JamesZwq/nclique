@@ -42,7 +42,9 @@ The residual structures dominate memory: per-path vertex hash sets, the reverse 
 A layout whose memory grows with the vertex--path incidence count $\Sig$ alone would let the achievable $s$ on a fixed-memory machine be dictated by $\Sig$ rather than by hash-table overhead.
 
 \sstitle{Construction as the new bottleneck.}
-On dense graphs at high $s$, \cpi{} construction takes seconds to minutes per (graph, $s$) configuration and dominates total runtime in any static-index pipeline; parallelising it must avoid the synchronisation cost of mutable path rewrites.
+On the prior mutable-\cpi{} pipeline, peeling itself was expensive enough to hide \cpi{} construction; under the static-\cpi{} pipeline of this paper, where the peel is reduced to counter updates and runs orders of magnitude faster, construction inherits the bottleneck and dominates the total runtime on dense graphs at high $s$.
+%
+Parallelising it must avoid the synchronisation cost of mutable path rewrites.
 
 \sstitle{Hierarchy emission from a mutating index.}
 The clique-coherent nucleus hierarchy of Definition~\ref{def:nucleus} witnesses $s$-connectivity through $s$-cliques contained in each super-level set, so emitting it requires access to the $s$-cliques themselves.
