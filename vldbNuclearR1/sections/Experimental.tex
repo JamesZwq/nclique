@@ -228,4 +228,8 @@ The experiments are single-machine; distributed deployments and dynamic updates 
 Build commands, dataset URLs, and bench drivers are version-controlled with the source; each binary run is wrapped in \texttt{/usr/bin/time~-v} so peak memory, page faults, and exit status are captured per CSV row.
 
 \stitle{Takeaway.}
-\spinStar{} is faster and lighter than \cbnd{} across the benchmark graphs; the construction phase emerges as the new dominant cost once peeling is counter-only, \paraBuild{} addresses that shift, and \spin{} confirms the direct iterative view's role as semantic reference rather than practical solver.
+\spinStar{} is faster and lighter than \cbnd{} across the benchmark graphs.
+%
+Once peeling becomes counter-only the construction phase emerges as the new dominant cost, and \paraBuild{} addresses that shift.
+%
+\spin{} confirms the direct iterative view's role as semantic reference rather than practical solver.
