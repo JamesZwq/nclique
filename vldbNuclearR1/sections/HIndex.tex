@@ -69,31 +69,16 @@ The call reads the static \cpi{} but never mutates a path, so the same update ru
 \KwIn{Vertex $v\in V$; value array $h$ with $h[u]$ the running estimate of $\kappa_s(u)$ for each $u\in V$; \cpi{} $\mathcal{P}$.}
 \KwOut{The threshold-support value $\Phi_h(v)$.}
 
-$C[0,\ldots,h[v]]\gets0$ \tcp*{threshold clique counts}
-\ForEach{path $\TPath\in\mathcal{P}$ \emph{through} $v$}{
-    \For{$k\gets1$ \KwTo $h[v]$}{
-        $C[k]\gets C[k]+W_v(\TPath,h,k)$\tcp*{Lemma~\ref{lem:per-path-count}}
-    }
+\For{$k\gets h[v]$ \KwTo $0$}{
+    \lIf{$\sum_{\TPath\ni v}W_v(\TPath,h,k)\ge k$}{\Return{$k$}}\tcp*{Lemma~\ref{lem:per-path-count}}
 }
-\For{$k\gets h[v]$ \KwTo $1$}{
-    \lIf{$C[k]\ge k$}{\Return{$k$}}
-}
-\Return{$0$}
 \end{algorithm}
 
-Algorithm~\ref{alg:refresh} clears the local threshold-count array up to $h[v]$ (Line~1).
+Algorithm~\ref{alg:refresh} is one descending scan over $k$: at each candidate $k$, it tests whether the threshold-filtered clique count $\sum_{\TPath\ni v}W_v(\TPath,h,k)$ (closed form of Lemma~\ref{lem:per-path-count}) is at least $k$, and returns the first hit; $k\!=\!0$ always succeeds.
 %
-It then accumulates the per-threshold count $W_v(\TPath,h,k)$ into $C[k]$ for every path through $v$, using the closed form of Lemma~\ref{lem:per-path-count} (Lines~2-4).
+The sum is evaluated path by path: each path contributes $\pathContrib(\TPath,v,Q_k(\TPath))$ when the threshold filter passes, and $0$ otherwise.
 %
-Finally, it returns the largest $k$ at which $C[k]\ge k$ by scanning $C$ from $h[v]$ downward (Lines~5-7), or $0$ if none.
-%
-The pseudocode is shown in semantic form for clarity.
-%
-The implementation never materialises a dense $C[0,\ldots,h[v]]$ array, which is infeasible when $h[v]$ approaches $\sdeg(v)$, easily $10^{10}$+ on dense graphs.
-%
-Instead, it replaces the inner $k$-loop with a single pass per scanned path that sorts the path's vertex values once and computes $W_v(\TPath,h,\cdot)$ at every threshold via prefix sums.
-%
-Let $w_v=\sum_{\TPath\ni v}(|\Vh(\TPath)|+|\Vp(\TPath)|)$ denote the total incidence weight at $v$, and $L_{\max}=\max_{\TPath}(|\Vh(\TPath)|+|\Vp(\TPath)|)$ the maximum path size; per-call cost is $O(w_v\log L_{\max})$.
+Sorting each scanned path's vertex values once and reading $W_v(\TPath,h,\cdot)$ off prefix sums computes the contributions at every $k$ in one pass per path, giving per-call cost $O(w_v\log L_{\max})$ with $w_v=\sum_{\TPath\ni v}(|\Vh(\TPath)|+|\Vp(\TPath)|)$ and $L_{\max}=\max_{\TPath}(|\Vh(\TPath)|+|\Vp(\TPath)|)$.
 %
 The call reads the static \cpi{} and the vector $h$, and it mutates no path.
 
