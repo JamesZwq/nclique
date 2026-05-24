@@ -275,11 +275,11 @@ $Q\gets$ min-priority queue with key $\keyArr[\cdot]$; insert each $v\in V$\;
 
 Algorithm~\ref{alg:peelH} initialises $R\!=\!V$, $\supArr[v]\!=\!\setSup_V(v)\!=\!\sdeg(v)$, and seeds the priority queue with $\keyArr[\cdot]$ (Lines~1-3).
 %
-The peel loop (Lines~4-9) extracts the minimum-key vertex $v$ at peel level $k$, finalizes $\kappa_s(v)\!\gets\!k$, removes $v$ from $R$, and propagates the change-only delta $\Delta_v$ to every affected unfinalised $u$ (Line~7); each $\supArr[u]$ is decremented (Line~8) and $u$'s priority-queue key is lifted via $\textsc{decrease-key}$ when the clipped value drops (Line~9).
+The peel loop (Lines~4-9) extracts the minimum-key vertex $v$ at peel level $k$, finalizes $\kappa_s(v)\!\gets\!k$, removes $v$ from $R$, and propagates the change-only loss $\Delta_v$ to every affected unfinalised $u$ (Line~7); each $\supArr[u]$ is decremented (Line~8) and $u$'s priority-queue key is lifted via $\textsc{decrease-key}$ when the clipped value drops (Line~9).
 %
 Because $\keyArr[u]\ge k$ for every unfinalised $u$ and $k$ is non-decreasing across extractions, the extracted-key sequence is monotone, so each pop assigns its final $\kappa_s$ value~\cite{coreAlg}.
 
-We trace one pop on the running example to make the change-only delta concrete.
+We trace one pop on the running example to make the change-only loss concrete.
 
 \begin{example}\label{ex:peelh}
 Same setup as Example~\ref{ex:hop}.
@@ -288,7 +288,7 @@ At iteration~$1$ the four pendant-triangle vertices $v_7,v_8,v_9,v_{10}$ tie at 
 %
 Removing $v_8$ from $R$ retires $\TPath_1$ (since $\Vp(\TPath_1)\cap R$ loses its only spare pivot, killing the path); the affected co-path vertices are $v_7$ (hold of $\TPath_1$, loses $\binom{2}{2}\!=\!1$) and $v_6$ (pivot of $\TPath_1$, loses $\binom{1}{1}\!=\!1$).
 %
-At iteration~$7$ the extracted key reaches $k\!=\!3$ and $v_4$ pops, sending change-only deltas through the two live paths $\TPath_5$ and $\TPath_6$ as in Lemma~\ref{lem:changeonly-cpi}.
+At iteration~$7$ the extracted key reaches $k\!=\!3$ and $v_4$ pops, sending change-only losses through the two live paths $\TPath_5$ and $\TPath_6$ as in Lemma~\ref{lem:changeonly-cpi}.
 %
 After ten pops, $\kappa_3(v_i)\!=\!3$ for $i\!\in\!\{1,\ldots,6\}$ and $\kappa_3(v_i)\!=\!1$ for $i\!\in\!\{7,\ldots,10\}$; Table~\ref{tab:peel} traces $\supArr$ across the ten iterations.
 \end{example}
@@ -417,18 +417,18 @@ Each $\Delta_v(u)$ decomposes into a sum over the shared paths.
 %
 Every per-path term is a binomial difference computable in $O(1)$.
 
-\begin{lemma}[\cpi{} realization of the change-only delta]\label{lem:changeonly-cpi}
+\begin{lemma}[\cpi{} realization of change-only losses]\label{lem:changeonly-cpi}
 Let $v\in R$ be popped and $u\in R\setminus\{v\}$.
 %
 Then
 \[
-  \Delta_v(u) \;=\; \sum_{\substack{\TPath\ni v,u \\ \TPath \text{ alive in } G[R]}} \pathDelta(\TPath, u, v),
+  \Delta_v(u) \;=\; \sum_{\substack{\TPath\ni v,u \\ \TPath \text{ alive in } G[R]}} \pathLoss(\TPath, u, v),
 \]
 where for a path $\TPath$ alive in $G[R]$ with pre-pop pivot scope $p_{\mathrm{old}}=|\Vp(\TPath)\cap R|\ge\eta_{\TPath}$ and post-pop scope $p_{\mathrm{new}}=p_{\mathrm{old}}-\mathbf{1}[v\in\Vp(\TPath)]$, the event \emph{kills} $\TPath$ when $v\in\Vh(\TPath)$ or $p_{\mathrm{new}}<\eta_{\TPath}$, and otherwise leaves $\TPath$ alive.
 %
 The per-path contribution to $\Delta_v(u)$ is
 \[
-  \pathDelta(\TPath,u,v) =
+  \pathLoss(\TPath,u,v) =
   \begin{cases}
     \pathContrib(\TPath,u,q_{\mathrm{old}}), & \TPath \text{ killed}, \\
     \pathContrib(\TPath,u,q_{\mathrm{old}}) - \pathContrib(\TPath,u,q_{\mathrm{new}}), & \TPath \text{ alive},
@@ -436,7 +436,7 @@ The per-path contribution to $\Delta_v(u)$ is
 \]
 with $u$-aware scopes $q_{\bullet}=p_{\bullet}-\mathbf{1}[u\in\Vp(\TPath)]$ for $\bullet\in\{\mathrm{old},\mathrm{new}\}$.
 %
-Each $\pathDelta$ evaluates in $O(1)$ via a precomputed binomial table, so applying all $\Delta_v(\cdot)$ updates for one pop costs $O\bigl(\sum_{\TPath\ni v}|\TPath|\bigr)$.
+Each $\pathLoss$ evaluates in $O(1)$ via a precomputed binomial table, so applying all $\Delta_v(\cdot)$ updates for one pop costs $O\bigl(\sum_{\TPath\ni v}|\TPath|\bigr)$.
 \end{lemma}
 
 \begin{proof}
