@@ -1,25 +1,25 @@
 \section{Related Work}\label{sec:related}
 
-This paper uses prior ideas on core peeling, compact clique representations, local fixed-point characterisations, parallel construction, and hierarchy output; the new ingredient is the static-\cpi{} invariant for $r{=}1$.
+This paper uses prior ideas on core peeling, compact clique representations, local fixed-point characterizations, parallel construction, and hierarchy output; the new ingredient is the static-\cpi{} invariant for $r{=}1$.
 
 \stitle{Enumeration-based core and nucleus decomposition.}
 The $k$-core was introduced by Seidman~\cite{kcoreSeidman} and is supported by a long line of efficient algorithms~\cite{coreAlg,batagelj2011fast,k-core1,kcore_3,kcore_4,io-eff,peel_cd,DBLP:journals/tkde/WenQZLY19,distributed_k-core,zhang2023efficient}.
 %
-Higher-order extensions strengthen the edge witness: $k$-truss~\cite{ktrussCohen,akbas2017truss,chen2020truss,huang2014truss} uses triangle support, and \emph{nucleus decomposition}~\cite{nucleusSariyuce14,nuclearTWEB} generalises the witness to arbitrary $s$-cliques by peeling $r$-cliques according to their support in $s$-cliques.
+Higher-order extensions tighten the cohesion requirement beyond the edge: $k$-truss~\cite{ktrussCohen,akbas2017truss,chen2020truss,huang2014truss} uses triangle support, and \emph{nucleus decomposition}~\cite{nucleusSariyuce14,nuclearTWEB} generalizes this to arbitrary $s$-cliques by peeling $r$-cliques according to their $s$-clique support.
 %
-Hypergraph generalisations adopt the same peeling paradigm under different cohesion definitions~\cite{nbr_cd,hyper_kcore,kg-core,kq-core}.
+Hypergraph generalizations adopt the same peeling paradigm under different cohesion definitions~\cite{nbr_cd,hyper_kcore,kg-core,kq-core}.
 %
-We specialise to the vertex-centric $r=1$ case and exploit a state invariant that does not hold for general $r$.
+We specialize to the vertex-centric $r=1$ case and exploit a state invariant that does not hold for general $r$.
 
 \stitle{Compact clique representations.}
 Bron--Kerbosch search~\cite{BronKerbosch}, Tomita pivoting~\cite{tomita}, and degeneracy ordering~\cite{eppstein} are standard tools for clique enumeration; Pivoter's succinct clique tree compactly encodes clique counts~\cite{Pivoter}, and the Clique Path Index extends this line to support general nucleus decomposition with mutating hold/pivot updates during peeling~\cite{NuclearCD}.
 %
-The static-\cpi{} counter form of this paper shows that for vertex peeling these path edits never need to be materialised.
+The static-\cpi{} counter form of this paper shows that for vertex peeling these path edits never need to be materialized.
 
 \stitle{Local and parallel peeling.}
-$h$-index characterisations of core values~\cite{hindex} were studied for local core computation~\cite{lu2016hindex,LocalNuclear} and extended to distributed and parallel settings~\cite{distributed_k-core,zhang2023efficient}.
+$h$-index characterizations of core values~\cite{hindex} were studied for local core computation~\cite{lu2016hindex,LocalNuclear} and extended to distributed and parallel settings~\cite{distributed_k-core,zhang2023efficient}.
 %
-In this paper, the fixed-point view is adapted to the implicit $s$-cliques encoded by the \cpi{}, and \spinStar{} provides its peel-order realisation.
+In this paper, the fixed-point view is adapted to the implicit $s$-cliques encoded by the \cpi{}, and \spinStar{} provides its peel-order realization.
 %
 The difference from prior local $h$-index work is not the operator but the representation: the supporting cliques are held in static \cpi{} paths and updated by binomial support-loss formulas.
 

@@ -10,7 +10,7 @@ We generate a short list of merge events per leaf, tracking when its encoded $s$
 %
 Algorithms that mutate the \cpi{} during peeling cannot reuse it for this purpose: they must either re-run $s$-clique enumeration at each level or maintain one parallel disjoint-set forest per core level during peeling, which inflates memory by an order of magnitude (Figure~\ref{fig:hier}).
 %
-For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\!\ge\!k\}$, and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-cliques contained in $V_k$; \buildHier{} (Algorithm~\ref{alg:buildhier}) materialises that filtration from the preserved leaves.
+For any level $k$, the super-level set is $V_k=\{v\mid \kappa_s(v)\!\ge\!k\}$, and Definition~\ref{def:nucleus} measures connectivity inside $V_k$ through $s$-cliques contained in $V_k$; \buildHier{} (Algorithm~\ref{alg:buildhier}) materializes that filtration from the preserved leaves.
 
 \stitle{Per-clique events from each leaf.}
 A \cpi{} leaf $P$ encodes the family $\{\Vh(P)\cup X\mid X\subseteq\Vp(P),\,|X|=\eta_P\}$ of $s$-cliques (Definition~\ref{def:path}).
@@ -140,6 +140,6 @@ The clique-coherent core-value hierarchy is not a separate decomposition problem
 %
 Methods that mutate the \cpi{} during peeling cannot reuse it for hierarchy emit and need a second clique-enumeration pass~\cite{nucleusSariyuce14}.
 
-Section~\ref{sec:exp} (Exp-\ref{exp:hier}) compares \buildHier{} against \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$.
+Section~\ref{sec:exp} (Exp-\ref{exp:hier}) compares \buildHier{} against \cbnd{}'s general $(r,s)$ level-DSU hierarchy specialized to $r{=}1$.
 %
 \buildHier{} uses up to $43\times$ less memory (gmean $13\times$) and up to $35\times$ less hierarchy-emission wall time (gmean $7.7\times$); the gap grows at larger $s$ where the encoded-clique mass dominates.

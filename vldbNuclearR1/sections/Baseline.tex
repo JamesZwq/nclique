@@ -2,7 +2,7 @@
 
 \cbnd{}~\cite{NuclearCD} is the state-of-the-art exact algorithm for general $(r,s)$-nucleus decomposition.
 %
-This section walks through its peeling loop, the residual structures it maintains, and the operations this paper specialises away when restricted to $r=1$.
+This section walks through its peeling loop, the residual structures it maintains, and the operations this paper specializes away when restricted to $r=1$.
 
 \stitle{The peeling loop.}
 \cbnd{} follows the standard core-decomposition template~\cite{coreAlg}: it maintains the residual support of every alive $r$-clique in a priority queue, repeatedly pops the $r$-clique of minimum residual support, assigns it the current peel level as its core value, and propagates the support loss to the remaining alive $r$-cliques.
@@ -14,20 +14,20 @@ The non-trivial work happens during this support-loss propagation: the \cpi{} th
 \stitle{Residual state.}
 To keep the support counts consistent across peels, \cbnd{} maintains the \cpi{} as mutable residual state.
 %
-For each path $\TPath$ it stores the hold and pivot vertex sets as hash sets so that the test ``does $v$ belong to this path?'' is constant time.
+For each path $\TPath$ it stores the hold and pivot vertex sets as hash sets so that membership can be tested in constant time.
 %
 A separate reverse map sends every vertex $u$ to the list of paths that contain it, so when $u$ is popped the algorithm can find the affected paths without scanning all of $\mathcal{P}$.
 %
-A heap (or bucket queue) keeps every alive vertex ordered by current residual support, with decrease-key operations for the support drops triggered at each peel event.
+A min-priority queue keeps every alive vertex ordered by current residual support, with decrease-key operations for the support drops triggered at each peel event.
 %
-Finally, the Bron--Kerbosch recursion tree that produced the \cpi{} is kept mutable: when a peel event invalidates a path, the algorithm walks into the tree and rewrites or removes the affected nodes.
+Finally, the Bron--Kerbosch~\cite{BronKerbosch} recursion tree that produced the \cpi{} is kept mutable: when a peel event invalidates a path, the algorithm walks into the tree and rewrites or removes the affected nodes.
 
 \stitle{Per-peel work.}
 A single peel of vertex $v$ costs:
 \begin{itemize}[leftmargin=1.5em,itemsep=1pt,topsep=2pt]
 \item a reverse-map lookup of $v$'s path list, then for every such path $\TPath$ a constant-time hash-set query to determine whether $v$ is a hold or a pivot;
 \item a path rewrite: if $v$ is a hold, the path is deleted from the recursion tree and its reverse-map entries for all other vertices in $\Vh(\TPath)\cup\Vp(\TPath)$ are erased; if $v$ is a pivot, the path's pivot set shrinks by one and the reverse-map entry for $v$ on this path is erased;
-\item a support recompute for every path-mate $u$ using the encoded $s$-clique family that survives the rewrite, followed by a decrease-key on $u$ in the heap.
+\item a support recompute for every co-path vertex $u$ using the encoded $s$-clique family that survives the rewrite, followed by a decrease-key on $u$ in the heap.
 \end{itemize}
 The dominant components are the path rewrites and the reverse-map erases; together they scale with the number of vertex--path incidences touched by the event, which is what gives \cbnd{} its observed cost profile.
 
@@ -36,15 +36,15 @@ The mutable design is not over-engineering for the general $(r,s)$ setting.
 %
 When the peeled object is an edge ($r{=}2$) or a higher-order clique ($r\!\ge\!3$), the removal can destroy edges among vertices that remain alive, so some of the cliques that a path encodes cease to exist as cliques.
 %
-In that setting, the stored hold and pivot sets of $\TPath$ no longer define a valid encoded clique family, and the path must be split, shrunk, or deleted by walking back into the recursion tree.
+In that setting, the stored hold and pivot sets of $\TPath$ no longer define a valid encoded clique family, and the path must be split, shrunk, or deleted by traversing back into the recursion tree.
 %
-The reverse map and the per-path hash sets exist precisely to support that surgery efficiently.
+The reverse map and the per-path hash sets exist precisely to support those edits efficiently.
 
 \stitle{Why this state is wasteful at $r=1$.}
 The $(1,s)$ case has a stronger invariant: vertex peeling removes vertices but does not delete edges, so a set of vertices that formed a clique when the \cpi{} was built remains a clique throughout the peel (Section~\ref{sec:static}).
 %
 A path's encoded clique family therefore stays structurally valid; only the question of whether a particular vertex of $\Vh(\TPath)\cup\Vp(\TPath)$ is still alive changes.
 %
-The path rewrites, the reverse-map erases, and the recursion-tree surgery in the per-peel cost above are therefore all unnecessary at $r{=}1$: they maintain a mutable residual state that is logically equivalent to a static incidence layout plus a single integer counter per path.
+The path rewrites, the reverse-map erases, and the recursion-tree edits in the per-peel cost above are therefore all unnecessary at $r{=}1$: they maintain a mutable residual state that is logically equivalent to a static incidence layout plus a single integer counter per path.
 %
-The next four sections cash in this observation. Section~\ref{sec:static} states the static-\cpi{} invariant in counter form; Section~\ref{sec:hindex} derives \spinStar{} as the peel solver over the resulting static index; Section~\ref{sec:parabuild} parallelises construction once peeling becomes counter-only; Section~\ref{sec:buildhier} extracts the nucleus hierarchy from the preserved \cpi{} without any clique re-enumeration.
+The next four sections exploit this observation. Section~\ref{sec:static} states the static-\cpi{} invariant in counter form; Section~\ref{sec:hindex} derives \spinStar{} as the peel solver over the resulting static index; Section~\ref{sec:parabuild} parallelizes construction once peeling becomes counter-only; Section~\ref{sec:buildhier} extracts the nucleus hierarchy from the preserved \cpi{} without any clique re-enumeration.

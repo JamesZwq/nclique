@@ -6,8 +6,6 @@ We work with a simple undirected graph $G=(V,E)$.
 For a vertex $v$, $N_G(v)=\{u\in V\mid (u,v)\in E\}$ is its neighbor set and $\deg_G(v)=|N_G(v)|$ is its degree.
 %
 For $X\subseteq V$, $G[X]$ is the subgraph induced by $X$.
-%
-The implementation stores $G$ in CSR form with an \texttt{offsets} array and an \texttt{edges} array.
 
 \begin{definition}[$k$-Clique]\label{def:k-clique}
 A \emph{$k$-clique} is a vertex set $C\subseteq V$ with $|C|=k$ such that every two distinct vertices in $C$ are adjacent.
@@ -110,11 +108,11 @@ $\mathcal{P} \gets \emptyset$\;
 
 Algorithm~\ref{alg:buildcpi} computes a degeneracy ordering of $G$ and orients edges from lower to higher rank, so each $s$-clique has a unique smallest-rank owner (Line~1).
 %
-For every vertex $v_i$, $\textsc{ExpandPath}$ is invoked with hold set $\{v_i\}$ and forward-neighbour candidate set $N^{+}(v_i)$ (Lines~3-4).
+For every vertex $v_i$, $\textsc{ExpandPath}$ is invoked with hold set $\{v_i\}$ and forward-neighbor candidate set $N^{+}(v_i)$ (Lines~3-4).
 %
 A recursive call returns immediately when the hold set already exceeds $s$ (Line~6), and emits a path when the candidate set is empty and the hold-plus-pivot size meets $s$ (Lines~8-9).
 %
-Otherwise the Tomita pivot $u_{\mathrm{piv}}$ is the vertex of $P$ with the most forward neighbours inside $P$ (Line~10), and every non-neighbour of $u_{\mathrm{piv}}$ is recursively expanded: branching on the pivot itself extends the pivot set, branching on any other vertex extends the hold set (Lines~11-16).
+Otherwise the Tomita pivot $u_{\mathrm{piv}}$ is the vertex of $P$ with the most forward neighbors inside $P$ (Line~10), and every non-neighbor of $u_{\mathrm{piv}}$ is recursively expanded: branching on the pivot itself extends the pivot set, branching on any other vertex extends the hold set (Lines~11-16).
 
 \stitle{Reading clique counts off the \cpi.}
 Once the \cpi{} is built, each vertex's exact $s$-clique support is a sum over the paths through it: every $s$-clique through $v$ is encoded by exactly one path with $v$ either in the hold or in the pivot set, and the count in each case is a single binomial in the path's pivot size.

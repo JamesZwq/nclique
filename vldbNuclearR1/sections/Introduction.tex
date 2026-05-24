@@ -2,7 +2,7 @@
 
 Graphs are a fundamental data model for relational information: vertices represent entities and edges represent pairwise connections between them.
 %
-They are widely used in social network analysis~\cite{cohesive_subgraph_Social_Networks}, bioinformatics~\cite{cohesive_subgraph_protein_networks}, knowledge-graph modelling, and security analytics~\cite{apply_cyber}.
+They are widely used in social network analysis~\cite{cohesive_subgraph_Social_Networks}, bioinformatics~\cite{cohesive_subgraph_protein_networks}, knowledge-graph modeling, and security analytics~\cite{apply_cyber}.
 %
 A central task in graph mining is decomposing a graph into hierarchically cohesive substructures, supporting community detection~\cite{communities_dec1,communities_dec2,communities_dec3,girvan2002community}, dense-subgraph discovery~\cite{dense_subgraph}, influential-vertex and role analysis~\cite{Identifying_influential,kempe2003maximizing,lu2016vital}, and network visualization~\cite{network_visualization}.
 %
@@ -48,7 +48,7 @@ The residual structures dominate memory: per-path vertex hash sets, the reverse 
 A layout whose memory grows only with the unavoidable cost of encoding all $s$-cliques in the index, and not with hash-table or recursion-tree overhead on top of it, would push the achievable $s$ on a fixed-memory machine to the algorithmic limit.
 
 \sstitle{Construction as the new bottleneck.}
-On dense graphs at high $s$, \cpi{} construction takes seconds to minutes per (graph, $s$) configuration and dominates total runtime in any static-index pipeline; parallelising it must avoid the synchronisation cost of mutable path rewrites.
+On dense graphs at high $s$, \cpi{} construction takes seconds to minutes per (graph, $s$) configuration and dominates total runtime in any static-index pipeline; parallelizing it must avoid the synchronization cost of mutable path rewrites.
 
 \sstitle{Hierarchy emission from a mutating index.}
 The clique-coherent nucleus hierarchy of Definition~\ref{def:nucleus} captures $s$-connectivity through $s$-cliques contained in each super-level set, so emitting it requires access to the $s$-cliques themselves.
@@ -76,7 +76,7 @@ Without a parallel builder, this construction phase becomes the dominant cost on
 \sstitle{Hierarchy emission re-enumerates or replicates.}
 Because \cbnd{} edits the \cpi{} during peeling, its $s$-cliques are gone when the hierarchy is requested.
 %
-The natural workaround, the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, maintains one union--find structure~\cite{TarjanUnionFind} per core level during the peel.
+The natural workaround, the general $(r,s)$ level-DSU hierarchy specialized to $r{=}1$, maintains one union--find structure~\cite{TarjanUnionFind} per core level during the peel.
 %
 It exceeds the available $503$\,GB on \texttt{wiki-Talk} at $s\!\ge\!9$, where our pipeline finishes (Figure~\ref{fig:hier}).
 %
@@ -92,12 +92,12 @@ We formulate core computation through a common set-support operator $\setSup_R(v
 %
 We then introduce change-only peeling: instead of recomputing $\setSup$ from scratch, maintain it on a residual set and update only the support losses caused by each single-vertex deletion.
 %
-Applying this optimisation to the static-\cpi{} invariant yields \spinStar{} (Algorithm~\ref{alg:peelH}), a single-pass priority-queue algorithm that walks the paths through the popped vertex and applies the closed-form binomial losses of Lemma~\ref{lem:changeonly-cpi}.
+Applying this optimization to the static-\cpi{} invariant yields \spinStar{} (Algorithm~\ref{alg:peelH}), a single-pass priority-queue algorithm that walks the paths through the popped vertex and applies the closed-form binomial losses of Lemma~\ref{lem:changeonly-cpi}.
 %
 \spinStar{} is on average $17.9\times$ (up to $49\times$) faster at peeling and noticeably lighter on memory than the prior \cbnd{} baseline, and it scales to a billion-edge graph that \cbnd{} cannot complete.
 
 \sstitle{Parallel \cpi{} construction.}
-\paraBuild{} (Algorithm~\ref{alg:parabuild}) parallelises \cpi{} construction across seed vertices.
+\paraBuild{} (Algorithm~\ref{alg:parabuild}) parallelizes \cpi{} construction across seed vertices.
 %
 This addresses the construction phase that dominates total runtime once peeling is counter-only; empirical scaling reaches $23.4\times$ at $T{=}24$ threads.
 
@@ -109,4 +109,4 @@ It uses up to $43\times$ less memory (gmean $13\times$) than the level-DSU basel
 \sstitle{Experimental evaluation.}
 We compare against \cbnd{} on ten real-world graphs, with a headline peel-time speedup of $17.90\times$ gmean ($49.48\times$ max) and a memory-usage ratio of $1.55\times$ gmean.
 %
-We also report phase behaviour and parallel construction, push the pipeline to a billion-scale graph where \cbnd{} only completes at $s{=}2$, and use case studies to evaluate whether the $r{=}1$ specialisation is practically useful.
+We also report phase behavior and parallel construction, push the pipeline to a billion-scale graph where \cbnd{} only completes at $s{=}2$, and use case studies to evaluate whether the $r{=}1$ specialization is practically useful.

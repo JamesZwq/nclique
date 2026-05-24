@@ -28,7 +28,7 @@ The builder therefore only has to emit the path set $\mathcal{P}$; no per-path m
 %
 Each thread owns a contiguous range of seed vertices and runs the same seed-rooted enumeration as the sequential builder on each of its seeds, accumulating the emitted paths into its own output set $\mathcal{P}_t$.
 %
-The degeneracy ordering gives every $s$-clique a unique smallest-rank owner, so the sets $\{\mathcal{P}_t\}_t$ are pairwise disjoint; the parallel output is therefore the disjoint union $\mathcal{P}=\bigcup_t\mathcal{P}_t$, and the merge is purely the set union, with no synchronisation across threads during enumeration and no deduplication or rewrite after.
+The degeneracy ordering gives every $s$-clique a unique smallest-rank owner, so the sets $\{\mathcal{P}_t\}_t$ are pairwise disjoint; the parallel output is therefore the disjoint union $\mathcal{P}=\bigcup_t\mathcal{P}_t$, and the merge is purely the set union, with no synchronization across threads during enumeration and no deduplication or rewrite after.
 %
 The expensive work is the Bron--Kerbosch search under each seed; the merge contributes no per-path arithmetic.
 
@@ -94,9 +94,9 @@ The resulting path set satisfies Definition~\ref{def:path}.
 Therefore, the support formula of Lemma~\ref{lem:supp} applies unchanged.
 
 \stitle{Scope.}
-The design parallelises construction because construction is the phase exposed by the static-\cpi{} pipeline.
+The design parallelizes construction because construction is the phase exposed by the static-\cpi{} pipeline.
 %
-It does not claim a lower bound showing that \spinStar{} cannot be parallelised.
+It does not claim a lower bound showing that \spinStar{} cannot be parallelized.
 %
 It also does not claim ideal scaling.
 %
