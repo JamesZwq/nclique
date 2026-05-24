@@ -86,11 +86,13 @@ Even where it fits, it uses up to $43\times$ more memory (gmean $13\times$) than
 For $(1,s)$-nucleus decomposition we exploit a static-\cpi{} invariant (Theorem~\ref{thm:vertex-removal}) to deliver a single pipeline that addresses all four challenges above.
 
 \sstitle{Change-only peeling for $(1,s)$-nucleus decomposition.}
-We formulate the core computation through a common set-support operator $\setSup_R(v)$ (the number of $s$-cliques containing $v$ whose other vertices lie in $R$) and state \spin{} as the direct fixed-point specification that queries $\setSup$ on threshold-induced sets.
+We formulate core computation through a common set-support operator $\setSup_R(v)$, which counts the $s$-cliques containing $v$ whose other vertices lie in $R$.
+%
+\spin{} is the direct fixed-point specification, querying $\setSup_R$ on threshold-induced sets.
 %
 We then introduce change-only peeling: instead of recomputing $\setSup$ from scratch, maintain it on a residual set and update only the support losses caused by each single-vertex deletion.
 %
-Applying this optimisation to the static-\cpi{} invariant (Theorem~\ref{thm:vertex-removal}) yields \spinStar{} (Algorithm~\ref{alg:peelH}), a single-pass priority-queue algorithm whose per-pop work is the closed-form binomial loss of Lemma~\ref{lem:changeonly-cpi} along each path through the popped vertex.
+Applying this optimisation to the static-\cpi{} invariant yields \spinStar{} (Algorithm~\ref{alg:peelH}), a single-pass priority-queue algorithm that walks the paths through the popped vertex and applies the closed-form binomial losses of Lemma~\ref{lem:changeonly-cpi}.
 %
 \spinStar{} is on average $17.9\times$ (up to $49\times$) faster at peeling and noticeably lighter on memory than the prior \cbnd{} baseline, and it scales to a billion-edge graph that \cbnd{} cannot complete.
 

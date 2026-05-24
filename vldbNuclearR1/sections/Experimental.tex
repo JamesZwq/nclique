@@ -55,11 +55,23 @@ OOT and OOM cells are excluded from geometric means; the \spinStar{} vs.\ \cbnd{
 \expsection{peel time and memory}\label{exp:peelmem}
 Figure~\ref{fig:exp-time} reports peel time (top) and peak memory (bottom) across the ten graphs, and Table~\ref{tab:mem} reports the per-incidence memory breakdown.
 %
-\spinStar{} sits below \cbnd{} on every peel-time cell, with a peel-time speedup of gmean $17.90\times$ / max $49.48\times$ and a memory reduction of gmean $1.55\times$ / max $3.92\times$.
+\spinStar{} is faster than \cbnd{} on every peel-time cell.
+%
+Its peel-time speedup is $17.90\times$ in geometric mean and $49.48\times$ at maximum.
+%
+Its memory reduction is $1.55\times$ in geometric mean and $3.92\times$ at maximum.
 %
 The shared \cpi{} construction phase dominates once peeling is cheap; this bottleneck shift motivates \paraBuild{} (Section~\ref{sec:parabuild}).
 %
-The same figure also shows \spin{} (dotted): \spinStar{} is $30.4\times$ faster gmean (max $2{,}369\times$ on \texttt{web-it-2004} $s{=}53$) over the $272$ cells where \spin{} completes, and \spin{} hits the $1$h cap on \texttt{com-orkut} $s\!\ge\!3$ and \texttt{wiki-Talk} $s{=}10$ while \spinStar{} finishes in seconds to minutes; memory profiles are essentially identical (gmean ratio $0.97$ over $291$ memory-paired cells).
+The same figure also shows \spin{} as dotted curves.
+%
+Over the $272$ cells where \spin{} completes, \spinStar{} is $30.4\times$ faster in geometric mean.
+%
+The maximum speedup is $2{,}369\times$ on \texttt{web-it-2004} at $s{=}53$.
+%
+\spin{} hits the $1$h cap on \texttt{com-orkut} at $s\!\ge\!3$ and \texttt{wiki-Talk} at $s{=}10$, where \spinStar{} finishes in seconds to minutes.
+%
+The two methods have essentially identical memory profiles (gmean ratio $0.97$ over $291$ memory-paired cells).
 
 \begin{figure*}[t]
 \centering

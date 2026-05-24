@@ -10,7 +10,9 @@ The next two subsections exercise $\setSup_R$ in complementary ways.
 %
 \spin{} (Section~\ref{sec:localh}) is the direct fixed-point specification: it recomputes $\setSup_R$ from scratch every pass on a sequence of threshold-induced sets and lifts the core values out of the converged vector.
 %
-\spinStar{} (Section~\ref{sec:peelh}) is what the specification becomes once we notice that most of that recomputation is redundant: maintain $\setSup_R$ on a single mutable residual set and update only the support losses caused by each deletion.
+\spinStar{} (Section~\ref{sec:peelh}) is the change-only version of this specification.
+%
+It maintains $\setSup_R$ on a single mutable residual set, and updates only the support losses caused by each deletion.
 %
 Section~\ref{sec:changeonly-impl} closes the loop by showing how the static \cpi{} delivers those losses in closed form.
 
@@ -28,13 +30,21 @@ The focal vertex $v$ is anchored: only the \emph{other} $s\!-\!1$ vertices of ea
 When $v\in R$, $\setSup_R(v)$ equals $v$'s usual $s$-clique support inside the induced subgraph $G[R]$; the full-graph case recovers $s$-degree, $\setSup_V(v)=\sdeg(v)$.
 \end{definition}
 
-Anchoring $v$ outside $R$ is what lets a single operator serve both algorithms: \spin{} queries $\setSup_R$ on threshold-induced sets where $v$ may sit on the boundary, and \spinStar{} maintains $\setSup_R$ on a residual set where $v$ always lies in $R$.
+Anchoring $v$ is what lets one operator serve both algorithms.
+%
+\spin{} queries $\setSup_R$ on threshold-induced sets, where $v$ may sit on the boundary.
+%
+\spinStar{} maintains $\setSup_R$ on a residual set, where every unfinalised vertex lies in $R$.
 %
 What remains is to evaluate $\setSup_R(v)$ without enumerating cliques.
 
 The static \cpi{} delivers the evaluation locally.
 %
-Every encoded $s$-clique sits on a unique path $\TPath$, and that clique counts toward $\setSup_R(v)$ exactly when its other $s\!-\!1$ vertices lie in $R$, i.e.\ the path's hold set excluding $v$ is in $R$ and the $\eta_{\TPath}$ pivots (excluding $v$, if $v$ is itself a pivot) are drawn from $\Vp(\TPath)\cap R$.
+Every encoded $s$-clique sits on a unique path $\TPath$.
+%
+It counts toward $\setSup_R(v)$ exactly when its other $s\!-\!1$ vertices lie in $R$.
+%
+Equivalently, the path's hold set excluding $v$ must lie in $R$, and the required pivots must be drawn from $\Vp(\TPath)\cap R$, excluding $v$ if $v$ is itself a pivot.
 %
 The next lemma turns this observation into a closed sum of binomials, one term per path through $v$.
 
@@ -67,7 +77,7 @@ Either regime touches the static \cpi{} read-only.
 
 \subsection{\texorpdfstring{\spin{}: direct fixed-point specification}{SPIN: direct fixed-point specification}}\label{sec:localh}
 
-The most direct route from $\setSup_R$ to $\kappa_s$ is self-referential: vertex $v$ deserves level $k$ exactly when $k$ of its $s$-cliques are supported by other vertices that also deserve level $k$.
+The direct route from $\setSup_R$ to $\kappa_s$ is self-referential: vertex $v$ deserves level $k$ exactly when it has $k$ supporting $s$-cliques whose other vertices also sustain level $k$.
 %
 We make the self-reference precise and let the fixed point do the rest.
 
@@ -81,7 +91,11 @@ collects every vertex that currently sustains level $k$, and the one-vertex upda
 \]
 \spin{} initialises $h[v]\gets\setSup_V(v)=\sdeg(v)$ and repeatedly applies $\Phi_h$ to every vertex until the vector stops changing.
 %
-The initial vector pointwise dominates the final core values and each pass only lowers entries, so the iteration is monotone, terminates, and converges to a vector that serves as the canonical semantic anchor for any static-\cpi{} core-value solver.
+The initial vector pointwise dominates the final core values, and each pass only lowers entries.
+%
+The iteration is therefore monotone and terminates.
+%
+The converged vector serves as the canonical semantic anchor for any static-\cpi{} core-value solver.
 
 \begin{algorithm}[t]
 \algfontsize
@@ -188,20 +202,26 @@ Two patterns of waste in this cost motivate the next subsection.
 \begin{remark}[Inefficiencies of \spin{}]\label{rem:spin-ineff}
 \spin{} pays two kinds of redundant work.
 %
-First, it re-evaluates $\Phi_h$ on every vertex per pass for up to $T$ passes, so a vertex whose final value is reached at pass~$1$ is still refreshed in passes $2,3,\ldots,T$.
+First, it re-evaluates $\Phi_h$ on every vertex in every pass.
 %
-Second, each evaluation recomputes $\setSup_{R_h(k)}$ from scratch over all paths through $v$ at every threshold $k$, repeating the binomial counts the previous pass already produced.
+A vertex may reach its final value in the first pass, yet still be refreshed in later passes.
+%
+Second, each evaluation recomputes $\setSup_{R_h(k)}$ from scratch over all paths through $v$.
+%
+It repeats this work across thresholds, and often repeats binomial counts from earlier passes.
 \end{remark}
 
 \subsection{\texorpdfstring{\spinStar{}: change-only peeling}{SPIN-star: change-only peeling}}\label{sec:peelh}
 
-\spin{} is clean as a specification but wasteful as an algorithm.
+\spin{} is clean as a specification but wasteful as an algorithm (Remark~\ref{rem:spin-ineff}).
 %
-Between two passes, most vertex values barely move, yet \spin{} re-derives every $\setSup_{R_h(k)}(v)$ from scratch on a freshly induced set (Remark~\ref{rem:spin-ineff}).
+The waste has a local structure: a support value can change only when vertices leave the supporting set, and such departures affect only the cliques sitting on paths through the departing vertices.
 %
-The redundant work has a sharp structure: the only changes between passes are the lowerings of a few vertex values, and each such change touches only the cliques sitting on paths through the demoted vertex.
+This locality suggests a different execution schedule.
 %
-\spinStar{} converts that observation into an algorithm by replacing the recompute-and-replace cycle with \emph{change-only peeling} on a single mutable set.
+Rather than recomputing all set supports each pass, update only the support lost after each deletion.
+%
+\spinStar{} turns this locality into \emph{change-only peeling} on a single mutable residual set.
 
 \stitle{Single mutable residual.}
 Instead of induced sets that come and go, \spinStar{} tracks one set throughout: the \emph{residual set} $R$, initialised to $V$ and shrunk by one vertex per pop in deletion order.
@@ -220,7 +240,11 @@ Section~\ref{sec:changeonly-impl} shows how the static \cpi{} delivers $\Delta_x
 \stitle{Peel-order schedule.}
 Pops are ordered by the priority-queue key $\keyArr[v]=\max(k_{\mathrm{cur}},\supArr[v])$, where $k_{\mathrm{cur}}$ is the current peel level.
 %
-The clip lifts the queue value when the residual support has already fallen below the current level, keeping the extracted-key sequence monotone non-decreasing; each pop's $k$ is therefore the popped vertex's final $\kappa_s$, and the whole peel completes in a single pass.
+The clip lifts the queue value when the residual support has already fallen below the current level.
+%
+This keeps the extracted-key sequence monotone non-decreasing.
+%
+Each pop's $k$ is therefore the popped vertex's final $\kappa_s$, and the whole peel completes in a single deletion pass.
 
 \begin{algorithm}[t]
 \algfontsize
@@ -289,9 +313,13 @@ After the iteration, $\supArr[u]=\setSup_{R\setminus\{v\}}(u)$ on the new residu
 
 \smallskip
 \noindent\emph{(iii) Peel correctness.}
-Algorithm~\ref{alg:peelH} is the standard deletion-order peeling template of $(1,s)$-core decomposition~\cite{coreAlg,nucleusSariyuce14}: at each iteration the unfinalised vertex of minimum $\max\{k_{\mathrm{cur}},\supArr[u]\}$ is finalised, and its set-support contribution is removed from every other vertex.
+Algorithm~\ref{alg:peelH} follows the standard deletion-order peeling template for $(1,s)$-core decomposition~\cite{coreAlg,nucleusSariyuce14}.
 %
-The clip $\keyArr[u]\gets\max\{k,\supArr[u]\}$ (Line~9) does not alter $\supArr[u]$; it enforces non-decreasing extraction by lifting the queue key when the residual support has already fallen below the current peel level.
+At each iteration it finalises the unfinalised vertex of minimum clipped support $\max\{k_{\mathrm{cur}},\supArr[u]\}$, then removes that vertex's set-support contribution from the residual graph.
+%
+The clip $\keyArr[u]\gets\max\{k,\supArr[u]\}$ (Line~9) does not alter $\supArr[u]$; it only changes the priority-queue key.
+%
+It enforces non-decreasing extraction when residual support falls below the current peel level.
 %
 By the standard correctness of counting-based core decomposition for $(r,s)$-nucleus~\cite{nucleusSariyuce14}, each popped vertex's $k$ equals its $(1,s)$-nucleus core number.
 
@@ -308,7 +336,9 @@ Algorithm~\ref{alg:peelH} runs in $O(\Sig+(U+n)\log n)$ time, where $\Sig$ is th
 \end{theorem}
 
 \begin{proof}
-Initialisation evaluates $\setSup_V$ for every $v$ at total cost $O(n+\Sig)$ (Lemma~\ref{lem:set-support-eval} amortised, since each vertex--path incidence is touched once), plus $n$ priority-queue insertions at $O(\log n)$ each.
+Initialisation evaluates $\setSup_V$ for every $v$ at total cost $O(n+\Sig)$, by the amortised bound of Lemma~\ref{lem:set-support-eval} (each vertex--path incidence is touched once).
+%
+The $n$ priority-queue insertions cost $O(n\log n)$.
 %
 Walking the incident path lists across all pops costs $O(\Sig)$, because each vertex--path incidence is scanned exactly once when its vertex pops.
 %
@@ -374,7 +404,11 @@ The answer is local.
 %
 The cliques that disappear from $u$'s support when $v$ leaves $R$ are exactly those encoded by a path containing both $v$ and $u$, alive in $G[R]$.
 %
-So the affected $u$ are the co-path neighbours of $v$ in the static \cpi{}, each $\Delta_v(u)$ decomposes into a sum over the shared paths, and every per-path term is a binomial difference computable in $O(1)$.
+Thus the affected vertices are the co-path neighbours of $v$ in the static \cpi{}.
+%
+Each $\Delta_v(u)$ decomposes into a sum over the shared paths.
+%
+Every per-path term is a binomial difference computable in $O(1)$.
 
 \begin{lemma}[\cpi{} realisation of the change-only delta]\label{lem:changeonly-cpi}
 Let $v\in R$ be popped and $u\in R\setminus\{v\}$.
@@ -414,4 +448,6 @@ The total cost claim follows because each $(\TPath,u)$ incidence with $\TPath\ni
 \qed
 \end{proof}
 
-In Algorithm~\ref{alg:peelH}, the iteration over ``$u\in R$ with $\Delta_v(u)\ne 0$'' (Line~7) is realised by walking every alive path $\TPath\ni v$ and visiting its co-path vertices; the per-path bookkeeping is the integer pivot counter $p_{\TPath}$ alongside the fixed $\eta_{\TPath}$, with the path alive iff $p_{\TPath}\ge\eta_{\TPath}$ (a derived predicate, with $p_{\TPath}\gets-1$ marking a hold-peeled path).
+In Algorithm~\ref{alg:peelH}, the iteration over ``$u\in R$ with $\Delta_v(u)\ne 0$'' (Line~7) is realised by walking every alive path $\TPath\ni v$ and visiting its co-path vertices.
+%
+The only mutable per-path state is the pivot counter $p_{\TPath}$; the requirement $\eta_{\TPath}$ is fixed, and the path is alive iff $p_{\TPath}\ge\eta_{\TPath}$, with $p_{\TPath}\gets-1$ marking a hold-peeled path.
