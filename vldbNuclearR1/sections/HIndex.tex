@@ -10,40 +10,46 @@ Section~\ref{sec:peelh} derives \spinStar{} (Algorithm~\ref{alg:peelH}) by maint
 
 \subsection{Set support over the static \cpi}\label{sec:setsupport}
 
-\begin{definition}[Set support]\label{def:set-support}
-For a vertex set $R\subseteq V$ and a vertex $v\in R$, the \emph{set support} of $v$ in $R$ is
+\begin{definition}[Anchored set support]\label{def:set-support}
+For an anchor vertex $v\in V$ and a vertex set $R\subseteq V$, the \emph{set support} of $v$ relative to $R$ is
 \[
-  \setSup_R(v) \;=\; \bigl|\{S\subseteq R : v\in S,\ |S|=s,\ S\text{ is a clique in } G[R]\}\bigr|.
+  \setSup_R(v) \;=\; \bigl|\{C\subseteq V : v\in C,\ |C|=s,\ C\text{ is a clique in } G,\ C\setminus\{v\}\subseteq R\}\bigr|.
 \]
-The full-graph case recovers $s$-degree: $\setSup_V(v)=\sdeg(v)$.
+The focal vertex $v$ is anchored: only the \emph{other} $s\!-\!1$ vertices of each counted clique are required to lie in $R$, and $v$ itself need not belong to $R$.
+%
+When $v\in R$, $\setSup_R(v)$ equals $v$'s usual $s$-clique support inside the induced subgraph $G[R]$; the full-graph case recovers $s$-degree, $\setSup_V(v)=\sdeg(v)$.
 \end{definition}
 
 Both algorithms below are written over $\setSup_R$ alone.
 %
 \spin{} queries it on threshold-induced sets that change every pass; \spinStar{} maintains it on a residual set that shrinks by one vertex per pop.
 
-The static \cpi{} evaluates $\setSup_R(v)$ as a sum of per-path contributions: every encoded $s$-clique sits on a unique path $\TPath$, and that clique lies inside $G[R]$ iff $\Vh(\TPath)\subseteq R$ and its $\eta_{\TPath}$ pivots are drawn from $\Vp(\TPath)\cap R$.
+The static \cpi{} evaluates $\setSup_R(v)$ as a sum of per-path contributions: every encoded $s$-clique sits on a unique path $\TPath$, and that clique counts iff its other $s\!-\!1$ vertices lie in $R$, i.e.\ the path's hold set excluding $v$ is in $R$ and the $\eta_{\TPath}$ pivots (excluding $v$, if $v$ is itself a pivot) are drawn from $\Vp(\TPath)\cap R$.
 
 \begin{lemma}[\cpi{} evaluation of set support]\label{lem:set-support-eval}
-For any $R\subseteq V$ and $v\in R$,
+For any $v\in V$ and $R\subseteq V$,
 \[
-  \setSup_R(v) \;=\; \sum_{\TPath\ni v} \mathbf{1}[\Vh(\TPath)\subseteq R]\cdot\pathContrib(\TPath,v,|\Vp(\TPath)\cap R|).
+  \setSup_R(v) \;=\; \sum_{\TPath\ni v} \mathbf{1}\bigl[\Vh(\TPath)\setminus\{v\}\subseteq R\bigr]\cdot\pathContrib\bigl(\TPath,v,|(\Vp(\TPath)\setminus\{v\})\cap R|\bigr).
 \]
 \end{lemma}
 
 \begin{proof}
 Every $s$-clique containing $v$ is encoded by a unique path $\TPath$ as $\Vh(\TPath)\cup P'$ with $P'\subseteq\Vp(\TPath)$ and $|P'|=\eta_{\TPath}$ (Definition~\ref{def:path}).
 %
-Such a clique lies in $G[R]$ iff $\Vh(\TPath)\subseteq R$ and $P'\subseteq\Vp(\TPath)\cap R$; conditioned on the hold inclusion, the count of qualifying $P'$ is $\pathContrib(\TPath,v,|\Vp(\TPath)\cap R|)$ by Definition~\ref{def:path-contrib}.
+Such a clique counts toward $\setSup_R(v)$ iff its other $s\!-\!1$ vertices lie in $R$, i.e.\ $\Vh(\TPath)\setminus\{v\}\subseteq R$ and $P'\setminus\{v\}\subseteq R$.
 %
-Summing over paths through $v$ gives the stated total.
+Conditioned on the hold inclusion, the count of qualifying $P'$ is $\pathContrib(\TPath,v,|(\Vp(\TPath)\setminus\{v\})\cap R|)$ by Definition~\ref{def:path-contrib}: when $v\in\Vp(\TPath)$, $v$ itself fills one of the $\eta_{\TPath}$ pivot slots and the remaining $\eta_{\TPath}\!-\!1$ are chosen from the pivot scope excluding $v$.
+%
+Summing over the paths through $v$ gives the stated total.
 %
 \qed
-\end{proof}
+\end{proof>
 
-Sorting each scanned path's vertex values once and reading the per-path contribution off prefix sums computes $\setSup_R(v)$ at per-call cost $O(w_v\log L_{\max})$, with $w_v=\sum_{\TPath\ni v}(|\Vh(\TPath)|+|\Vp(\TPath)|)$ and $L_{\max}=\max_{\TPath}(|\Vh(\TPath)|+|\Vp(\TPath)|)$.
+For a fixed $R$ represented by membership bits, Lemma~\ref{lem:set-support-eval} evaluates $\setSup_R(v)$ in time $O(w_v)$ by scanning each path through $v$ once, where $w_v=\sum_{\TPath\ni v}(|\Vh(\TPath)|+|\Vp(\TPath)|)$.
 %
-The call reads the static \cpi{} and the set $R$, and it mutates no path.
+\spin{} (Section~\ref{sec:localh}) needs many threshold counts $\setSup_{R_h(k)}(v)$ in one call to $\Phi_h(v)$; sorting the vertex values on each scanned path once and reading the threshold counts off prefix sums produces all of $\setSup_{R_h(0)}(v),\ldots,\setSup_{R_h(h[v])}(v)$ in a single pass per path, at per-call cost $O(w_v\log L_{\max})$ with $L_{\max}=\max_{\TPath}(|\Vh(\TPath)|+|\Vp(\TPath)|)$.
+%
+Either evaluation reads the static \cpi{} and the set $R$ without mutating any path.
 
 \subsection{\texorpdfstring{\spin{}: direct fixed-point specification}{SPIN: direct fixed-point specification}}\label{sec:localh}
 
@@ -124,9 +130,11 @@ At $h^\star$, let $S_k=R_{h^\star}(k)$, and let $C\subseteq S_k$ be $v$'s $s$-co
 %
 Every $v\!\in\!S_k$ has $\setSup_{S_k}(v)\ge k$, and each such clique places $v$ in $C$ (the clique itself provides the link), giving Conditions~(i) and (ii) of Definition~\ref{def:nucleus}.
 %
-For (iii), suppose for contradiction that some $w\!\notin\!C$ could be added to $C$ while preserving (i) and (ii); then $w$ has at least $k$ $s$-cliques entirely inside $C\cup\{w\}\subseteq S_k\cup\{w\}$, so $\setSup_{S_k\cup\{w\}}(w)\ge k$ and hence $h^\star[w]\ge k$, placing $w\in S_k$.
+For (iii), suppose for contradiction that some $w\!\notin\!C$ could be added to $C$ while preserving (i) and (ii); then $w$ has at least $k$ $s$-cliques whose other vertices lie in $C\subseteq S_k$.
 %
-Moreover each such clique links $w$ to $C$-vertices, so $w\in C$, a contradiction.
+By the anchored support of Definition~\ref{def:set-support}, $\setSup_{S_k}(w)\ge k$, so $\Phi_{h^\star}(w)\ge k$ and hence $h^\star[w]\ge k$, placing $w\in S_k$.
+%
+Moreover each such clique links $w$ to $C$-vertices inside $S_k$, so $w\in C$, a contradiction.
 %
 Hence $C$ is a $k$-$(1,s)$-nucleus, giving $\kappa_s(v)\!\ge\!k$.
 %
@@ -197,7 +205,7 @@ $Q\gets$ min-priority queue with key $\keyArr[\cdot]$; insert each $v\in V$\;
     $(v,k)\gets Q.\textsc{extract-min}()$\;
     $\kappa_s(v)\gets k$;\quad $R\gets R\setminus\{v\}$\;
     \ForEach{$u\in R$ \emph{with} $\Delta_v(u)\ne 0$}{
-        $\supArr[u]\gets\supArr[u]-\Delta_v(u)$\tcp*{Lemma~\ref{lem:changeonly-cpi}, $O(1)$ per path}
+        $\supArr[u]\gets\supArr[u]-\Delta_v(u)$\tcp*{$\Delta_v(u)$ realised by per-path losses (Lemma~\ref{lem:changeonly-cpi})}
         $y\gets\max\{k,\,\supArr[u]\}$\;
         \lIf{$y<\keyArr[u]$}{$Q.\textsc{decrease-key}(u,y)$;\quad $\keyArr[u]\gets y$}
     }
@@ -265,11 +273,13 @@ Algorithm~\ref{alg:peelH} runs in $O(\Sig+(U+n)\log n)$ time, where $\Sig$ is th
 \begin{proof}
 Initialisation evaluates $\setSup_V$ for every $v$ at total cost $O(n+\Sig)$ (Lemma~\ref{lem:set-support-eval} amortised, since each vertex--path incidence is touched once), plus $n$ priority-queue insertions at $O(\log n)$ each.
 %
-Each subsequent pop walks the alive paths through the popped vertex once, contributing $O(\Sig_v)$ work for delta propagation (Lemma~\ref{lem:changeonly-cpi}); summing over the $n$ pops gives $O(\Sig)$ total.
+Walking the incident path lists across all pops costs $O(\Sig)$, because each vertex--path incidence is scanned exactly once when its vertex pops.
 %
-The $n$ extractions plus $U$ decrease-keys contribute $O((U+n)\log n)$.
+For each changed co-path incidence, Lemma~\ref{lem:changeonly-cpi} performs one constant-time binomial loss computation, contributing $O(U)$ arithmetic work in total.
 %
-The total time is therefore $O(\Sig+(U+n)\log n)$.
+The $n$ extract-min operations and at most $U$ decrease-key operations cost $O((U+n)\log n)$.
+%
+The total is $O(\Sig+U+(U+n)\log n)=O(\Sig+(U+n)\log n)$.
 %
 \qed
 \end{proof}
