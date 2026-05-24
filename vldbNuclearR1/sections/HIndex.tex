@@ -215,7 +215,7 @@ It repeats this work across thresholds, and often repeats binomial counts from e
 
 \spin{} is clean as a specification but wasteful as an algorithm (Remark~\ref{rem:spin-ineff}).
 %
-The waste has a local structure: a support value changes only when vertices are removed from the relevant supporting set, and such removals affect only the cliques sitting on paths through the removed vertices.
+The waste has a local structure: support changes are caused by vertices leaving the relevant supporting set, and each such change affects only cliques on paths through those vertices.
 %
 This locality suggests a different execution schedule.
 %
@@ -451,7 +451,7 @@ For such a path with $v\in\Vh(\TPath)$, deleting $v$ from $R$ breaks the hold-in
 %
 For $v\in\Vp(\TPath)$, the hold-inclusion check is unaffected, and the $u$-aware pivot scope drops from $q_{\mathrm{old}}$ to $q_{\mathrm{new}}=q_{\mathrm{old}}-1$; the differential is $\pathContrib(\TPath,u,q_{\mathrm{old}})-\pathContrib(\TPath,u,q_{\mathrm{new}})$, with the second term vanishing by the binomial convention $\binom{m}{j}=0$ for $j>m$ when $p_{\mathrm{new}}<\eta_{\TPath}$.
 %
-The total cost claim follows because each $(\TPath,u)$ incidence with $\TPath\ni v$ is visited once per pop, and each visit triggers one $O(1)$ binomial lookup.
+The cost claim follows because each co-path incidence $(\TPath,u)$ with $\TPath\ni v$ is visited once for this pop, and each visit performs one $O(1)$ binomial evaluation.
 %
 \qed
 \end{proof}
