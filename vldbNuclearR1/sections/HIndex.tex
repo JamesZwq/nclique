@@ -197,21 +197,26 @@ First, it calls $\thresholdUpdate$ on every vertex per pass and runs up to $T$ p
 Second, each refresh recomputes the threshold-support sum from scratch over all paths through $v$ at every threshold, repeating the binomial counts the previous pass already produced.
 \end{remark}
 
-\subsection{\texorpdfstring{\spinStar{}: a faster deletion-order algorithm}{SPIN-star: a faster deletion-order algorithm}}\label{sec:peelh}
+\subsection{\texorpdfstring{\spinStar{}: deletion-order implementation of \spin}{SPIN-star: deletion-order implementation of SPIN}}\label{sec:peelh}
 
-\spin{} and \spinStar{} share the same path-local counting kernel of Definition~\ref{def:path-contrib}, but invoke it in different modes.
+\spinStar{} should be read as an optimisation of \spin{}, not as a separate specification.
 %
-\spin{} (Algorithm~\ref{alg:localH}) calls $\thresholdUpdate$, which sums threshold-filtered \pathContrib{} values to recompute $\Phi_h(v)$ from scratch every pass; this is the fixed-point specification.
+\spin{} gives the direct fixed-point semantics: repeatedly recompute each vertex's threshold support from the static \cpi{} until no value changes.
 %
-\spinStar{} (Algorithm~\ref{alg:peelH}) invokes the same kernel in differential form via Lemma~\ref{lem:support-delta}.
+The cost of this direct specification comes from recomputing many quantities that are unchanged from pass to pass.
 %
-When one path event changes the pivot count, the cliques disappearing from each co-path vertex's support are a $\pathContrib$ differential, subtracted in $O(1)$ per affected vertex.
+A peel of vertex $v$ alters only the paths incident to $v$, and on each such path the change in any co-path vertex's contribution is completely determined by the pivot scope before and after the event.
+%
+\spinStar{} exploits exactly this observation.
+%
+It keeps the \spin{} fixed point but changes two things: the execution schedule, from synchronous global passes to deletion order; and the update rule, from a full $\thresholdUpdate$ recomputation to a local path-contribution difference.
 
-This addresses both inefficiencies of \spin{} (Remark~\ref{rem:spin-ineff}).
-%
-First, \spinStar{} adopts a \emph{peel-order schedule}: it finalises the minimum-key vertex first, so each vertex's residual support is recomputed at most once, at finalisation.
-%
-Second, the differential form of the kernel realises the \emph{incremental support delta}: a single binomial subtraction per path event replaces a full $\thresholdUpdate$ recomputation.
+This addresses the inefficiencies of \spin{} (Remark~\ref{rem:spin-ineff}) along three axes:
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=1pt]
+\item \emph{From global passes to local affected updates.} \spin{} refreshes every vertex per pass; \spinStar{} finalises the minimum-key vertex once and propagates its effect only to co-path vertices.
+\item \emph{From full $\thresholdUpdate$ to a path-contribution difference.} \spin{} recomputes $\Phi_h(u)$ from scratch each pass; \spinStar{} subtracts, for every affected $u$, the $\pathContrib$ differential of one path event (Lemma~\ref{lem:counting-bridge}).
+\item \emph{From mutable to static \cpi{}.} \spin{} (and \cbnd{}) rewrite path records during peeling; \spinStar{} keeps the same \cpi{} throughout and updates only an integer pivot counter per path (Theorem~\ref{thm:vertex-removal}).
+\end{enumerate}
 
 Concretely, \spinStar{} maintains two integer arrays over unfinalised vertices.
 %
@@ -225,7 +230,18 @@ Each iteration pops the minimum-key vertex, assigns its peel level as core value
 %
 The peel terminates after $n$ pops, and the assigned $\kappa_s(v)$ is final at the moment of the pop.
 
-Its running time depends on $U$, the number of $\pathContrib$ differential evaluations triggered along the peel; we bound $U$ in Corollary~\ref{cor:U-bound}.
+\stitle{From a single \spin{} decrease to a \spinStar{} update.}
+A decrease in the \spin{} vector at vertex $u$ can only be caused by some encoded $s$-clique containing $u$ disappearing.
+%
+Under vertex peeling, an $s$-clique disappears exactly when its first finalised vertex is popped.
+%
+Since the \cpi{} encodes every surviving $s$-clique on a unique path, the support loss caused by finalising $v$ can be charged locally to each alive $\TPath\ni v$.
+%
+\spinStar{} therefore does not recompute $\Phi_h(u)$ from scratch: for every affected co-path vertex $u$ it subtracts the difference between $\TPath$'s contribution before and after the event.
+%
+This per-event difference is exactly the summand that $\thresholdUpdate(u,h)$ would remove if it were recomputed after the event, evaluated in $O(1)$ closed form by Lemma~\ref{lem:counting-bridge} below.
+%
+Its running time depends on $U$, the number of such differential evaluations triggered along the peel; we bound $U$ in Corollary~\ref{cor:U-bound}.
 
 \begin{algorithm}[t]
 \algfontsize
@@ -275,8 +291,10 @@ The clipped value $\max\{k,\supArr[u]\}$ updates $u$'s priority-queue key via $\
 %
 Because $\keyArr[u]\ge k$ for every unfinalised $u$ and $k$ is non-decreasing across extractions, the extracted-key sequence is monotone, so each vertex pop assigns its final $\kappa_s$ value~\cite{coreAlg}.
 
-\begin{lemma}[Constant-time path-event delta]\label{lem:counting-bridge}
-For a live \cpi{} path $\TPath$ with pre-event pivot count $p_{\mathrm{old}}$ and post-event pivot count $p_{\mathrm{new}}$ (set to any value satisfying $p_{\mathrm{new}}<\eta_{\TPath}$ when $\mathit{killed}$ is true), and an unfinalised co-path vertex $u$, the support loss is the kernel call
+\begin{lemma}[Incremental form of $\thresholdUpdate$]\label{lem:counting-bridge}
+$\pathDelta$ is the contribution that $\thresholdUpdate(u,h)$ (Algorithm~\ref{alg:refresh}) would remove from $u$'s threshold-support sum if recomputed after the event, evaluated in closed form per path event.
+%
+For a live \cpi{} path $\TPath$ with pre-event pivot count $p_{\mathrm{old}}$ and post-event pivot count $p_{\mathrm{new}}$ (set to any value satisfying $p_{\mathrm{new}}<\eta_{\TPath}$ when $\mathit{killed}$ is true), and an unfinalised co-path vertex $u$,
 \[
   \pathDelta(\TPath,u,p_{\mathrm{old}},p_{\mathrm{new}},\mathit{killed})=
   \begin{cases}
@@ -290,9 +308,9 @@ With a precomputed binomial table indexed by $(q,\eta)$, the call evaluates in $
 \end{lemma}
 
 \begin{proof}
-This is the closed form of Lemma~\ref{lem:support-delta} restated as a kernel evaluation.
+$\thresholdUpdate(u,h)$ sums $W_u(\TPath',h,k)=\pathContrib(\TPath',u,Q_k(\TPath'))$ over paths $\TPath'\ni u$ that pass the threshold filter (Lemma~\ref{lem:per-path-count}).
 %
-The differential of $\pathContrib$ in $q$ equals the support lost from one event by the second part of Theorem~\ref{thm:vertex-removal}.
+Across one event on $\TPath$ only the summand for $\TPath$ changes, by the difference of $\pathContrib(\TPath,u,\cdot)$ between the pre- and post-event pivot scopes; the differential of $\pathContrib$ in $q$ equals the support lost from this event by Theorem~\ref{thm:vertex-removal}.
 %
 Under the $\mathit{killed}$ case, $p_{\mathrm{new}}<\eta_{\TPath}$ makes the second term vanish by the binomial convention.
 %
@@ -305,9 +323,11 @@ Each branch is one subtraction of two table lookups, so the call is $O(1)$.
 Same setup as Example~\ref{ex:hop} (Figure~\ref{fig:overview}, Table~\ref{tab:cpi-leaves}), so \spinStar{} and \spin{} can be compared directly. With $\supArr[v]\gets\sdeg(v)$ and $\keyArr[v]\gets\supArr[v]$, the four pendant-triangle vertices $v_7,v_8,v_9,v_{10}$ have minimum key $1$ and pop first at peel level $k\!=\!1$, retiring $\TPath_1$ and $\TPath_2$ via Theorem~\ref{thm:vertex-removal} (case 2 with $p-1\!<\!\eta$). At iteration~$7$ the extracted key reaches $k\!=\!3$ and $v_4$ pops, walking the two live paths through $v_4$: in $\TPath_5\!=\!(\{v_3\},\{v_4,v_5,v_6\})$, $v_4$ is a pivot so $p_{\TPath_5}$ drops $3\!\to\!2$ (alive, not killed), and Lemma~\ref{lem:counting-bridge} gives $v_3$ losing $\binom{3}{2}\!-\!\binom{2}{2}\!=\!2$ while $v_5,v_6$ each lose $\binom{2}{1}\!-\!\binom{1}{1}\!=\!1$; in $\TPath_6\!=\!(\{v_4\},\{v_5,v_6\})$, $v_4$ is a hold so $\TPath_6$ is killed and $v_5,v_6$ each lose $\binom{1}{1}\!=\!1$. After ten pops the peel completes with $\kappa_3(v_i)\!=\!3$ for $i\!\in\!\{1,\ldots,6\}$ and $\kappa_3(v_i)\!=\!1$ for $i\!\in\!\{7,\ldots,10\}$; Table~\ref{tab:peel} traces every $\supArr$-value across the ten iterations.
 \end{example}
 
-The converged vector is the value the iterative specification in Section~\ref{sec:localh} reaches:
+\spinStar{} differs from \spin{} only in schedule and update granularity: \spin{} applies $\thresholdUpdate$ globally and repeatedly until the vector stops changing, while \spinStar{} applies the same support changes lazily and locally in deletion order.
+%
+The next lemma confirms that the two schedules reach the same fixed point.
 
-\begin{lemma}[\spinStar{} Equivalence]\label{lem:equivalence}
+\begin{lemma}[\spinStar{} computes the \spin{} fixed point]\label{lem:equivalence}
 Algorithm~\ref{alg:peelH} returns the same $\kappa_s$ values as Algorithm~\ref{alg:localH}.
 \end{lemma}
 
