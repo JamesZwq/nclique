@@ -51,8 +51,13 @@ The next lemma turns this observation into a closed sum of binomials, one term p
 \begin{lemma}[\cpi{} evaluation of set support]\label{lem:set-support-eval}
 For any $v\in V$ and $R\subseteq V$,
 \[
-  \setSup_R(v) \;=\; \sum_{\TPath\ni v} \mathbf{1}\bigl[\Vh(\TPath)\setminus\{v\}\subseteq R\bigr]\cdot\pathContrib\bigl(\TPath,v,|(\Vp(\TPath)\setminus\{v\})\cap R|\bigr).
+  \setSup_R(v) \;=\; \sum_{\TPath\ni v} W_{\TPath}^{R}(v),
 \]
+where the anchored per-path contribution is
+\[
+  W_{\TPath}^{R}(v) \;=\; \mathbf{1}\bigl[\Vh(\TPath)\setminus\{v\}\subseteq R\bigr]\cdot\pathContrib\bigl(\TPath,v,\,q_v^R\bigr),
+\]
+with $u$-aware pivot scope $q_v^R=|(\Vp(\TPath)\setminus\{v\})\cap R|$.
 \end{lemma}
 
 \begin{proof}
@@ -65,7 +70,7 @@ Conditioned on the hold inclusion, the count of qualifying $P'$ is $\pathContrib
 Summing over the paths through $v$ gives the stated total.
 %
 \qed
-\end{proof>
+\end{proof}
 
 Two evaluation regimes follow from this lemma.
 %
@@ -260,7 +265,7 @@ $Q\gets$ min-priority queue with key $\keyArr[\cdot]$; insert each $v\in V$\;
     $(v,k)\gets Q.\textsc{extract-min}()$\;
     $\kappa_s(v)\gets k$;\quad $R\gets R\setminus\{v\}$\;
     \ForEach{$u\in R$ \emph{with} $\Delta_v(u)\ne 0$}{
-        $\supArr[u]\gets\supArr[u]-\Delta_v(u)$\tcp*{$\Delta_v(u)$ realized by per-path losses (Lemma~\ref{lem:changeonly-cpi})}
+        $\supArr[u]\gets\supArr[u]-\Delta_v(u)$\tcp*{Lemma~\ref{lem:changeonly-cpi}}
         $y\gets\max\{k,\,\supArr[u]\}$\;
         \lIf{$y<\keyArr[u]$}{$Q.\textsc{decrease-key}(u,y)$;\quad $\keyArr[u]\gets y$}
     }
@@ -419,31 +424,25 @@ Then
 \[
   \Delta_v(u) \;=\; \sum_{\substack{\TPath\ni v,u \\ \TPath \text{ alive in } G[R]}} \pathDelta(\TPath, u, v),
 \]
-where for a path $\TPath$ alive in $G[R]$ with pre-pop pivot scope $p_{\mathrm{old}}=|\Vp(\TPath)\cap R|\ge\eta_{\TPath}$ and post-pop scope $p_{\mathrm{new}}=p_{\mathrm{old}}-\mathbf{1}[v\in\Vp(\TPath)]$, the per-path contribution is the binomial differential
+where for a path $\TPath$ alive in $G[R]$ with pre-pop pivot scope $p_{\mathrm{old}}=|\Vp(\TPath)\cap R|\ge\eta_{\TPath}$ and post-pop scope $p_{\mathrm{new}}=p_{\mathrm{old}}-\mathbf{1}[v\in\Vp(\TPath)]$, the event \emph{kills} $\TPath$ when $v\in\Vh(\TPath)$ or $p_{\mathrm{new}}<\eta_{\TPath}$, and otherwise leaves $\TPath$ alive.
+%
+The per-path contribution to $\Delta_v(u)$ is
 \[
-  \pathDelta(\TPath,u,v) \;=\;
+  \pathDelta(\TPath,u,v) =
   \begin{cases}
-    \pathContrib(\TPath,u,q_{\mathrm{old}}), & v\in\Vh(\TPath) \text{ or } p_{\mathrm{new}}<\eta_{\TPath}, \\
-    \pathContrib(\TPath,u,q_{\mathrm{old}}) - \pathContrib(\TPath,u,q_{\mathrm{new}}), & v\in\Vp(\TPath) \text{ and } p_{\mathrm{new}}\ge\eta_{\TPath},
+    \pathContrib(\TPath,u,q_{\mathrm{old}}), & \TPath \text{ killed}, \\
+    \pathContrib(\TPath,u,q_{\mathrm{old}}) - \pathContrib(\TPath,u,q_{\mathrm{new}}), & \TPath \text{ alive},
   \end{cases}
 \]
-with the $u$-aware scopes
-\[
-  q_{\mathrm{old}}=p_{\mathrm{old}}-\mathbf{1}[u\in\Vp(\TPath)],\qquad
-  q_{\mathrm{new}}=p_{\mathrm{new}}-\mathbf{1}[u\in\Vp(\TPath)].
-\]
+with $u$-aware scopes $q_{\bullet}=p_{\bullet}-\mathbf{1}[u\in\Vp(\TPath)]$ for $\bullet\in\{\mathrm{old},\mathrm{new}\}$.
 %
-Each $\pathDelta$ evaluates in $O(1)$ via a precomputed binomial table, so applying all $\Delta_v(\cdot)$ updates for one pop costs $O\bigl(\sum_{\TPath\ni v}(|\Vh(\TPath)|+|\Vp(\TPath)|)\bigr)$.
+Each $\pathDelta$ evaluates in $O(1)$ via a precomputed binomial table, so applying all $\Delta_v(\cdot)$ updates for one pop costs $O\bigl(\sum_{\TPath\ni v}|\TPath|\bigr)$.
 \end{lemma}
 
 \begin{proof}
-By Lemma~\ref{lem:set-support-eval} applied at $R$ and $R\setminus\{v\}$,
+By Lemma~\ref{lem:set-support-eval} applied at $R$ and at $R\setminus\{v\}$,
 \[
-  \Delta_v(u)=\setSup_R(u)-\setSup_{R\setminus\{v\}}(u)=\sum_{\TPath\ni u}\bigl[W_{\TPath}^{R}(u)-W_{\TPath}^{R\setminus\{v\}}(u)\bigr],
-\]
-where the anchored per-path contribution is
-\[
-  W_{\TPath}^{R}(u)=\mathbf{1}\bigl[\Vh(\TPath)\setminus\{u\}\subseteq R\bigr]\cdot\pathContrib\bigl(\TPath,u,|(\Vp(\TPath)\setminus\{u\})\cap R|\bigr).
+  \Delta_v(u)=\sum_{\TPath\ni u}\bigl[W_{\TPath}^{R}(u)-W_{\TPath}^{R\setminus\{v\}}(u)\bigr].
 \]
 A path $\TPath$ with $v\notin\TPath$ has identical hold inclusion and pivot scope in $R$ and $R\setminus\{v\}$, contributing $0$; the sum reduces to paths through both $v$ and $u$.
 %
