@@ -1,12 +1,10 @@
 \section{Parallel \cpi{} Construction}\label{sec:parabuild}
 
-Once \spinStar{} makes peeling counter-only, \cpi{} construction becomes the load-bearing cost of the pipeline (Figure~\ref{fig:breakdown}).
+Once \spinStar{} makes peeling counter-only, \cpi{} construction becomes the dominant cost of the pipeline (Figure~\ref{fig:breakdown}).
 %
 This bottleneck shift is why construction is part of the algorithmic pipeline rather than a detached implementation detail.
 %
-We observe that the static-\cpi{} invariant makes construction embarrassingly parallel.
-%
-With no mutation contract crossing threads and each $s$-clique uniquely owned by its smallest-rank seed, the standard degeneracy-ordered Bron--Kerbosch template runs lock-free across $T$ threads.
+We observe that the static-\cpi{} invariant makes construction embarrassingly parallel: with no shared mutable state across threads and each $s$-clique uniquely owned by its smallest-rank seed, the standard degeneracy-ordered Bron--Kerbosch template runs lock-free across $T$ threads.
 
 \stitle{Why the seed loop can be parallel.}
 The \cpi{} builder follows the standard degeneracy-ordered Bron--Kerbosch search with Tomita pivoting~\cite{NuclearCD,BronKerbosch,eppstein,tomita}.
@@ -23,7 +21,7 @@ The mutable baseline builds residual tree state because later peeling may edit t
 %
 Our $r=1$ pipeline never edits the stored hold or pivot sets.
 %
-The builder therefore only has to emit the path set $\mathcal{P}$; no per-path mutation contract has to be maintained across the parallel boundary.
+The builder therefore only has to emit the path set $\mathcal{P}$; no per-path mutation needs to be coordinated across threads.
 
 \stitle{Independent per-thread enumeration.}
 \paraBuild{} takes $G$, $s$, and a thread count $T$.
@@ -78,9 +76,11 @@ Algorithm~\ref{alg:parabuild} mirrors Algorithm~\ref{alg:buildcpi} line-for-line
 %
 The only structural change is at the driver loop: Algorithm~\ref{alg:buildcpi}'s sequential \emph{for} over seeds is replaced by Line~2 partitioning the seed sequence into $T$ chunks and Lines~3--7 running one chunk per thread, with Line~8 merging the thread-local outputs.
 %
-Every $s$-clique has a unique smallest-rank owner under the degeneracy ordering, so the chunks $C_1,\ldots,C_T$ induce a partition of $\mathcal{P}$: each path is emitted by exactly one thread, so the per-thread outputs are pairwise disjoint and $\bigcup_t \mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially.
+Every $s$-clique has a unique smallest-rank owner under the degeneracy ordering, so the chunks $C_1,\ldots,C_T$ induce a partition of $\mathcal{P}$.
 %
-The choice of $T$, the partition of seeds, and the in-memory layout used to store $\mathcal{P}$ are implementation knobs; they affect throughput but not the output set.
+Each path is therefore emitted by exactly one thread, so the per-thread outputs are pairwise disjoint and $\bigcup_t \mathcal{P}_t$ is the same set of paths Algorithm~\ref{alg:buildcpi} would have produced sequentially.
+%
+The choice of $T$, the partition of seeds, and the in-memory layout used to store $\mathcal{P}$ are implementation parameters; they affect throughput but not the output set.
 
 \stitle{Correctness.}
 \paraBuild{} is a parallel schedule of the same seed-owned enumeration.
@@ -94,9 +94,9 @@ The resulting path set satisfies Definition~\ref{def:path}.
 Therefore, the support formula of Lemma~\ref{lem:supp} applies unchanged.
 
 \stitle{Scope.}
-The design parallelizes construction because construction is the phase exposed by the static-\cpi{} pipeline.
+The design parallelises construction because construction is the phase exposed by the static-\cpi{} pipeline.
 %
-It does not claim a lower bound showing that \spinStar{} cannot be parallelized.
+It does not claim a lower bound showing that \spinStar{} cannot be parallelised.
 %
 It also does not claim ideal scaling.
 %

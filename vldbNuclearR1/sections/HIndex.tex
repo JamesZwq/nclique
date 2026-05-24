@@ -218,7 +218,9 @@ Second, each refresh recomputes the threshold-support sum from scratch over all 
 %
 \spin{} (Algorithm~\ref{alg:localH}) calls $\thresholdUpdate$, which sums threshold-filtered \pathContrib{} values to recompute $\Phi_h(v)$ from scratch every pass; this is the fixed-point specification.
 %
-\spinStar{} (Algorithm~\ref{alg:peelH}) invokes the same kernel in differential form via Lemma~\ref{lem:support-delta}: when one path event changes the pivot count, the cliques disappearing from each co-path vertex's support are a $\pathContrib$ differential, subtracted in $O(1)$ per affected vertex.
+\spinStar{} (Algorithm~\ref{alg:peelH}) invokes the same kernel in differential form via Lemma~\ref{lem:support-delta}.
+%
+When one path event changes the pivot count, the cliques disappearing from each co-path vertex's support are a $\pathContrib$ differential, subtracted in $O(1)$ per affected vertex.
 
 This addresses both inefficiencies of \spin{} (Remark~\ref{rem:spin-ineff}).
 %
@@ -303,7 +305,11 @@ With a precomputed binomial table indexed by $(q,\eta)$, the call evaluates in $
 \end{lemma}
 
 \begin{proof}
-This is the closed form of Lemma~\ref{lem:support-delta} restated as a kernel evaluation: the differential of $\pathContrib$ in $q$ equals the support lost from one event by the second part of Theorem~\ref{thm:vertex-removal}, and the $\mathit{killed}$ case takes the limit $p_{\mathrm{new}}<\eta_{\TPath}$ which makes the binomial convention vanish the second term.
+This is the closed form of Lemma~\ref{lem:support-delta} restated as a kernel evaluation.
+%
+The differential of $\pathContrib$ in $q$ equals the support lost from one event by the second part of Theorem~\ref{thm:vertex-removal}.
+%
+Under the $\mathit{killed}$ case, $p_{\mathrm{new}}<\eta_{\TPath}$ makes the second term vanish by the binomial convention.
 %
 Each branch is one subtraction of two table lookups, so the call is $O(1)$.
 %
