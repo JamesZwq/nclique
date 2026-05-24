@@ -122,7 +122,7 @@ Tied levels across leaves are processed in any order: union--find operations com
 The elder rule preserves the component with earlier birth and attaches the younger one in the join tree~\cite{edelsbrunner2010topology}.
 
 \stitle{Complexity.}
-Phase~1 (event generation) scans each leaf once and sorts its pivot set in $O(\Sig+\sum_{P}|\Vp(P)|\log|\Vp(P)|)\!\subseteq\!O(\Sig\log L_{\max})$ ($L_{\max}$ = maximum path size, Section~\ref{sec:refresh}).
+Phase~1 (event generation) scans each leaf once and sorts its pivot set in $O(\Sig+\sum_{P}|\Vp(P)|\log|\Vp(P)|)\!\subseteq\!O(\Sig\log L_{\max})$ ($L_{\max}$ = maximum path size, Section~\ref{sec:setsupport}).
 %
 The number of events $|\mathcal{E}|$ is at most $\sum_P\max(1,|\Vp(P)|-\eta_P+1)\!\le\!\Sig$, and sorting them by level costs $O(\Sig\log\Sig)$.
 %

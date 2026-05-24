@@ -21,13 +21,14 @@
 \newcommand{\paraBuild}{\kw{ParaBuild}}
 \newcommand{\paraBuildCPI}{\paraBuild}  % legacy alias
 \newcommand{\buildHier}{\kw{BuildHier}}
-% Shared path-local counting kernel (used by both SPIN and SPIN*).
+% Set support: the primary high-level operator shared by SPIN and SPIN*.
+% S_R(v) = number of s-cliques containing v in G[R].
+\newcommand{\setSup}{S}
+% Low-level path-local binomial primitive used by the CPI evaluation lemma.
 \newcommand{\pathContrib}{\kw{PathContrib}}
-% Differential form of the kernel: support loss for one path event.
+% Per-path differential used in the implementation lemma for change-only updates.
 \newcommand{\pathDelta}{\kw{PathDelta}}
-% SPIN's full threshold-support recomputation per vertex.
-\newcommand{\thresholdUpdate}{\kw{ThresholdUpdate}}
-% Residual-support array maintained by SPIN*.
+% Residual-support and priority-queue-key arrays maintained by SPIN*.
 \newcommand{\supArr}{\mathrm{sup}}
 \newcommand{\keyArr}{\mathrm{key}}
 % Comparison baseline (general (r,s)-nucleus decomposition restricted to r=1)
