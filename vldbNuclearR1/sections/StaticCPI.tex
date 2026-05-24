@@ -34,7 +34,9 @@ $\TPath$ encodes $\mathcal{C}(\TPath)=\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\T
 %
 If $v\in\Vh(\TPath)$, every encoded clique contains $v$ and none survives.
 %
-If $v\in\Vp(\TPath)$, the surviving cliques are $\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath)\setminus\{v\},\ |P'|=\eta_{\TPath}\}$, a family of size $\binom{|\Vp(\TPath)|-1}{\eta_{\TPath}}$ that depends on $\Vp(\TPath)$ only through its cardinality; by Lemma~\ref{lem:supp} every support contribution of the path depends only on this cardinality, so the counter update $p_{\TPath}\!\leftarrow\!p_{\TPath}\!-\!1$ is support-equivalent to physical deletion, and the family is empty iff $p_{\TPath}\!-\!1<\eta_{\TPath}$.
+If $v\in\Vp(\TPath)$, the surviving cliques are $\{\Vh(\TPath)\cup P'\mid P'\subseteq\Vp(\TPath)\setminus\{v\},\ |P'|=\eta_{\TPath}\}$, a family of size $\binom{|\Vp(\TPath)|-1}{\eta_{\TPath}}$ that depends on $\Vp(\TPath)$ only through its cardinality.
+%
+By Lemma~\ref{lem:supp}, every support contribution of $\TPath$ also depends only on this cardinality, so the counter update $p_{\TPath}\!\leftarrow\!p_{\TPath}\!-\!1$ is support-equivalent to physical deletion; the family is empty iff $p_{\TPath}\!-\!1<\eta_{\TPath}$.
 %
 If $v\notin\Vh(\TPath)\cup\Vp(\TPath)$, no encoded clique mentions $v$ and the family is unchanged.
 %
@@ -68,7 +70,11 @@ For a \cpi{} path $\TPath$, a vertex $u\in\Vh(\TPath)\cup\Vp(\TPath)$, and an in
 \]
 with the convention $\binom{m}{j}=0$ when $j<0$ or $j>m$.
 %
-The parameter $q$ is the number of pivots on $\TPath$ that are in scope for $u$: when $u\in\Vh(\TPath)$ this is the alive-pivot count of $\TPath$; when $u\in\Vp(\TPath)$ this is the alive-pivot count of $\TPath$ excluding $u$ itself, so $u$ fills one of the $\eta_{\TPath}$ pivot slots and the remaining $\eta_{\TPath}-1$ are chosen from $q$.
+The parameter $q$ is the number of pivots on $\TPath$ in scope for $u$.
+%
+When $u\in\Vh(\TPath)$, $q$ is the alive-pivot count of $\TPath$.
+%
+When $u\in\Vp(\TPath)$, $q$ is the alive-pivot count of $\TPath$ excluding $u$ itself: $u$ fills one of the $\eta_{\TPath}$ pivot slots, and the remaining $\eta_{\TPath}-1$ are chosen from $q$.
 \end{definition}
 
 Lemma~\ref{lem:supp} is then a sum of $\pathContrib$ values: with $p=|\Vp(\TPath)|$, every vertex $v$ has $\sdeg(v)=\sum_{\TPath\ni v}\pathContrib(\TPath,v,q_v(\TPath))$, where $q_v(\TPath)=p$ for $v\in\Vh(\TPath)$ and $q_v(\TPath)=p-1$ for $v\in\Vp(\TPath)$.

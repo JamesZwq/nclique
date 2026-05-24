@@ -224,9 +224,13 @@ This addresses both inefficiencies of \spin{} (Remark~\ref{rem:spin-ineff}).
 %
 First, \spinStar{} adopts a \emph{peel-order schedule}: it finalises the minimum-key vertex first, so each vertex's residual support is recomputed at most once, at finalisation.
 %
-Second, the kernel's differential mode is the \emph{incremental support delta}, replacing full $\thresholdUpdate$ recomputes with a single subtraction per path event.
+Second, the differential form of the kernel realises the \emph{incremental support delta}: a single binomial subtraction per path event replaces a full $\thresholdUpdate$ recomputation.
 
-Concretely, \spinStar{} maintains two integer arrays over unfinalised vertices: $\supArr[u]$, the exact residual $s$-clique support of $u$ over $G[V\setminus V_{\mathrm{fin}}]$, and $\keyArr[u]$, the priority-queue key value at $u$, related by the monotone clip $\keyArr[u]\ge\max(k_{\mathrm{cur}},\supArr[u])$ where $k_{\mathrm{cur}}$ is the current peel level.
+Concretely, \spinStar{} maintains two integer arrays over unfinalised vertices.
+%
+$\supArr[u]$ is the exact residual $s$-clique support of $u$ over $G[V\setminus V_{\mathrm{fin}}]$.
+%
+$\keyArr[u]$ is the priority-queue key value at $u$, related to $\supArr[u]$ by the monotone clip $\keyArr[u]\ge\max(k_{\mathrm{cur}},\supArr[u])$, where $k_{\mathrm{cur}}$ is the current peel level.
 %
 For each path it also maintains the integer pivot counter $p_{\TPath}$ and the fixed pivot requirement $\eta_{\TPath}$; the path is alive iff $p_{\TPath}\ge\eta_{\TPath}$, a derived predicate, with $p_{\TPath}\gets-1$ marking a hold-peeled path.
 %
@@ -274,7 +278,9 @@ Algorithm~\ref{alg:peelH} initialises every path's counter pair $(p_{\TPath},\et
 %
 The peel loop (Lines~4-16) extracts the minimum-key vertex $v$ at peel level $k$ (Line~5), finalises $\kappa_s(v)\gets k$ (Line~6), and walks the alive paths through $v$ (Lines~7-16).
 %
-For each such path $\TPath$, the pre-event pivot count $p_{\mathrm{old}}\gets p_{\TPath}$ is snapshotted (Line~8) before the counter is updated: a hold peel sets $p_{\TPath}\gets-1$ and marks the path as killed (Line~10); a pivot peel decrements $p_{\TPath}$ and marks the path as killed iff the new count falls below $\eta_{\TPath}$ (Line~12).
+For each such path $\TPath$, the pre-event pivot count $p_{\mathrm{old}}\gets p_{\TPath}$ is captured (Line~8) before the counter is updated.
+%
+A hold peel sets $p_{\TPath}\gets-1$ and marks the path as killed (Line~10); a pivot peel decrements $p_{\TPath}$ and marks the path as killed iff the new count falls below $\eta_{\TPath}$ (Line~12).
 %
 For every unfinalised co-path vertex $u$, the support loss is the kernel call $\pathDelta(\TPath,u,p_{\mathrm{old}},p_{\TPath},\mathit{killed})$, evaluated in $O(1)$ (Lemma~\ref{lem:counting-bridge}); subtracting it from $\supArr[u]$ maintains $u$'s residual $s$-clique support exactly (Line~14).
 %
