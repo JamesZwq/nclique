@@ -57,11 +57,11 @@ Existing studies compute $(1,s)$-nucleus inside a general $(r,s)$ framework that
 %
 However, this mutability causes significant overhead in residual-index rewrites, memory consumption, and per-pop work, limiting scalability to large graphs and high $s$.
 %
-We observe that the $(1,s)$ special case has a stronger invariant: vertex peeling preserves every edge among surviving vertices, so every CPI path stays structurally valid throughout the peel.
+We observe that the $(1,s)$ special case admits a counter-form residual update: each peel event reduces a path's state to a single integer decrement over the static CPI, with per-vertex support changes given in closed form.
 %
-This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spinStar{} (a single-pass bucket-queue peel solver), \paraBuild{} (a parallel \cpi{} constructor, now the dominant phase once peeling is cheap), and \buildHier{} (a post-peel hierarchy emitter that reuses the preserved index).
+This invariant turns exact decomposition into counter maintenance over a static CPI, which yields \spinStar{} (a single-pass priority-queue peel solver), \paraBuild{} (a parallel \cpi{} constructor, now the dominant phase once peeling is cheap), and \buildHier{} (a post-peel hierarchy emitter that reuses the preserved index).
 %
-Experiments on $451$ matched successful configurations show that \spinStar{} achieves a $17.90\times$ geometric-mean peel-time speedup and a $49.48\times$ maximum peel-time speedup over the mutable baseline, while reducing memory usage by a $1.55\times$ geometric-mean ratio; the static-state pipeline also scales to a billion-edge graph for which the mutable baseline completes only at $s{=}2$.
+Experiments on ten real-world graphs show that \spinStar{} achieves a $17.90\times$ geometric-mean peel-time speedup and a $49.48\times$ maximum peel-time speedup over the mutable baseline, while reducing memory usage by a $1.55\times$ geometric-mean ratio; the static-state pipeline also scales to a billion-edge graph for which the mutable baseline completes only at $s{=}2$.
 \end{abstract}
 
 \begin{CCSXML}

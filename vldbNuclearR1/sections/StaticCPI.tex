@@ -5,7 +5,7 @@ We prove the central invariant of the paper: at $r{=}1$, vertex peeling never de
 \stitle{Static structure and dynamic counters.}
 Recall from Section~\ref{sec:prelim} that a path stores the hold set $\Vh(\TPath)$, the pivot set $\Vp(\TPath)$, and the pivot requirement $\eta_{\TPath}=s-|\Vh(\TPath)|$; none of these three objects is edited during peeling.
 %
-The dynamic state is only a liveness bit and an integer $p_{\TPath}$, the number of pivots in $\Vp(\TPath)$ that have not yet been peeled.
+The dynamic state is a single integer $p_{\TPath}$, the number of pivots in $\Vp(\TPath)$ that have not yet been peeled.
 %
 If a peeled vertex is a hold, every encoded $s$-clique contains that vertex, and the path contributes nothing after the event; if a peeled vertex is a pivot, the path remains the same symbolic object and $p_{\TPath}$ decreases by one.
 %
@@ -24,7 +24,7 @@ Let $\TPath$ be a path of the \cpi{} of $G$, and let $v\in V$ be removed from $G
   If $p_{\TPath}-1<\eta_{\TPath}$, no surviving $s$-clique is encoded.
   \item Otherwise, $\TPath$ is unaffected.
 \end{enumerate}
-The dynamic state of $\TPath$ during peeling reduces to an integer counter $p_{\TPath}$, the fixed pivot requirement $\eta_{\TPath}$, and a liveness bit.
+The dynamic state of $\TPath$ during peeling reduces to a single integer counter $p_{\TPath}$ alongside the fixed pivot requirement $\eta_{\TPath}$; the path is alive iff $p_{\TPath}\ge\eta_{\TPath}$, a derived predicate rather than separately stored state.
 %
 The stored sets $\Vh(\TPath)$ and $\Vp(\TPath)$ are never modified.
 \end{theorem}
@@ -52,29 +52,51 @@ In that setting, a path may need to be split, shrunk, or rebuilt.
 %
 The mutable \cpi{} machinery of~\cite{NuclearCD} remains the appropriate general tool, and this paper does not subsume it.
 
-\stitle{Support loss from one path event.}
-Theorem~\ref{thm:vertex-removal} leaves only cardinality changes.
+\stitle{A shared path-local counting kernel.}
+Both the initial support of Lemma~\ref{lem:supp} and the per-event support loss below depend on a single path-local quantity: the number of $s$-cliques a path contributes to one of its incident vertices at a given pivot scope.
 %
-The support lost by any other live vertex on the path is therefore a binomial difference.
+We name this kernel and reuse it throughout.
+
+\begin{definition}[Path-local clique count]\label{def:path-contrib}
+For a \cpi{} path $\TPath$, a vertex $u\in\Vh(\TPath)\cup\Vp(\TPath)$, and an integer $q\ge0$, the \emph{path-local clique count} of $u$ at pivot scope $q$ on $\TPath$ is
+\[
+  \pathContrib(\TPath,u,q)=
+  \begin{cases}
+    \binom{q}{\eta_{\TPath}}, & u\in\Vh(\TPath), \\
+    \binom{q}{\eta_{\TPath}-1}, & u\in\Vp(\TPath),
+  \end{cases}
+\]
+with the convention $\binom{m}{j}=0$ when $j<0$ or $j>m$.
+%
+The parameter $q$ is the number of pivots on $\TPath$ that are in scope for $u$: when $u\in\Vh(\TPath)$ this is the alive-pivot count of $\TPath$; when $u\in\Vp(\TPath)$ this is the alive-pivot count of $\TPath$ excluding $u$ itself, so $u$ fills one of the $\eta_{\TPath}$ pivot slots and the remaining $\eta_{\TPath}-1$ are chosen from $q$.
+\end{definition}
+
+Lemma~\ref{lem:supp} is then a sum of $\pathContrib$ values: with $p=|\Vp(\TPath)|$, every vertex $v$ has $\sdeg(v)=\sum_{\TPath\ni v}\pathContrib(\TPath,v,q_v(\TPath))$, where $q_v(\TPath)=p$ for $v\in\Vh(\TPath)$ and $q_v(\TPath)=p-1$ for $v\in\Vp(\TPath)$.
+%
+The next lemma uses the same kernel in differential form: a single path event reduces $p$, and the support lost by every other alive vertex is the corresponding $\pathContrib$ differential.
+
+\stitle{Support loss from one path event.}
+Theorem~\ref{thm:vertex-removal} leaves only the pivot cardinality changed; the support lost by every other alive vertex on the path is therefore a $\pathContrib$ differential in this cardinality.
 
 \begin{lemma}[Support Loss for a Path Event]\label{lem:support-delta}
-Let $\TPath$ be a live path with pivot count $p=|\Vp(\TPath)|\ge\eta$, where $\eta=\eta_{\TPath}$ is the pivot requirement, and let an event remove $d\ge1$ live pivots from $\TPath$.
+Let $\TPath$ be a live path with pre-event pivot count $p_{\mathrm{old}}\ge\eta_{\TPath}$, and let one peel event either (i) decrease its pivot count to $p_{\mathrm{new}}=p_{\mathrm{old}}-d$ with $d\ge1$ and $p_{\mathrm{new}}\ge\eta_{\TPath}$ (path stays alive), or (ii) kill $\TPath$ entirely (hold peel, or pivot peel with $p_{\mathrm{new}}<\eta_{\TPath}$).
 %
-For every other alive vertex $u$ incident to $\TPath$:
-\begin{align*}
-\Delta_{\hold}(p,\eta,d) &= \tbinom{p}{\eta}-\tbinom{p-d}{\eta} & \text{if }u\in\Vh(\TPath), \\
-\Delta_{\pivot}(p,\eta,d)&= \tbinom{p-1}{\eta-1}-\tbinom{p-d-1}{\eta-1} & \text{if }u\in\Vp(\TPath).
-\end{align*}
-A path-killing event, caused by a hold peel or by $p-d<\eta$, is the limiting case in which the entire contribution vanishes: $\binom{p}{\eta}$ for surviving holds and $\binom{p-1}{\eta-1}$ for surviving pivots.
+For every other alive vertex $u$ incident to $\TPath$, the support lost by $u$ from this event is
+\[
+  \Delta_{\TPath}(u)=\pathContrib(\TPath,u,q_{\mathrm{old}})-\pathContrib(\TPath,u,q_{\mathrm{new}}),
+\]
+with $q_{\mathrm{old}}=p_{\mathrm{old}}$, $q_{\mathrm{new}}=p_{\mathrm{new}}$ for $u\in\Vh(\TPath)$, and $q_{\mathrm{old}}=p_{\mathrm{old}}-1$, $q_{\mathrm{new}}=p_{\mathrm{new}}-1$ for $u\in\Vp(\TPath)$.
+%
+Under (ii) the second term vanishes by the binomial convention, so $\Delta_{\TPath}(u)=\pathContrib(\TPath,u,q_{\mathrm{old}})$.
 \end{lemma}
 
 \begin{proof}
-By Lemma~\ref{lem:supp}, a hold $u$ contributes $\binom{p}{\eta}$ before the event and $\binom{p-d}{\eta}$ after; a pivot $u$ occupies one slot and contributes $\binom{p-1}{\eta-1}$ before and $\binom{p-d-1}{\eta-1}$ after.
+By Lemma~\ref{lem:supp}, the contribution of $\TPath$ to $u$'s $s$-clique support is $\pathContrib(\TPath,u,q)$ at any current pivot scope $q$.
 %
-Subtracting after from before gives the two formulas.
+The event changes only the pivot cardinality from $p_{\mathrm{old}}$ to $p_{\mathrm{new}}$ (Theorem~\ref{thm:vertex-removal}); subtracting after from before gives the stated differential.
 %
 \qed
-\end{proof}
+\end{proof>
 
 \stitle{Running example.}
 Figure~\ref{fig:overview} shows the running example at $s=3$: two $K_4$ blocks share edge $(v_3,v_4)$, and two pendant triangles attach at $v_2$ and $v_6$.
@@ -87,7 +109,7 @@ The example exercises both events of Theorem~\ref{thm:vertex-removal}: a path di
 
 \begin{table}[t]
 \centering
-\caption{\cpi{} paths for the running example at $s=3$.}
+\caption{\cpi{} paths for the running example of Figure~\ref{fig:overview} at $s=3$.}
 \label{tab:cpi-leaves}
 \tiny
 \begin{tabular}{cccrr}
@@ -106,16 +128,6 @@ $\TPath_6$ & $\{v_4\}$   & $\{v_5,v_6\}$        & $2$ & $1$ \\
 \end{tabular}
 \end{table}
 
-\begin{example}[Peel event walk-through]\label{ex:peel}
-Consider the path $\TPath_3=(\{v_1\},\{v_2,v_3,v_4\})$ in Table~\ref{tab:cpi-leaves}, with $p=3$ and $\eta=2$.
-%
-Peeling $v_2$ as a pivot triggers Lemma~\ref{lem:support-delta} with $d=1$.
-%
-The surviving hold $v_1$ loses $\binom{3}{2}-\binom{2}{2}=2$ from its support.
-%
-The surviving pivots $v_3$ and $v_4$ each lose $\binom{2}{1}-\binom{1}{1}=1$.
-%
-The stored set $\Vp(\TPath_3)$ is not modified.
-%
-Only $p_{\TPath_3}$ changes from $3$ to $2$.
+\begin{example}\label{ex:peel}
+Consider the path $\TPath_3=(\{v_1\},\{v_2,v_3,v_4\})$ in Table~\ref{tab:cpi-leaves}, with $p_{\mathrm{old}}=3$ and $\eta=2$. Peeling pivot $v_2$ triggers Lemma~\ref{lem:support-delta} with $p_{\mathrm{new}}=2$: hold $v_1$ loses $\pathContrib(\TPath_3,v_1,3)-\pathContrib(\TPath_3,v_1,2)=\binom{3}{2}-\binom{2}{2}=2$, and pivots $v_3, v_4$ each lose $\pathContrib(\TPath_3,v_i,2)-\pathContrib(\TPath_3,v_i,1)=\binom{2}{1}-\binom{1}{1}=1$. The stored set $\Vp(\TPath_3)$ is unchanged; only the counter $p_{\TPath_3}$ drops from $3$ to $2$.
 \end{example}

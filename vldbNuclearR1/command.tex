@@ -21,9 +21,15 @@
 \newcommand{\paraBuild}{\kw{ParaBuild}}
 \newcommand{\paraBuildCPI}{\paraBuild}  % legacy alias
 \newcommand{\buildHier}{\kw{BuildHier}}
-% Per-vertex / per-path support helpers (companion pair, same family).
-\newcommand{\vertexSupport}{\kw{VertexSupport}}
-\newcommand{\pathSupport}{\kw{PathSupport}}
+% Shared path-local counting kernel (used by both SPIN and SPIN*).
+\newcommand{\pathContrib}{\kw{PathContrib}}
+% Differential form of the kernel: support loss for one path event.
+\newcommand{\pathDelta}{\kw{PathDelta}}
+% SPIN's full threshold-support recomputation per vertex.
+\newcommand{\thresholdUpdate}{\kw{ThresholdUpdate}}
+% Residual-support array maintained by SPIN*.
+\newcommand{\supArr}{\mathrm{sup}}
+\newcommand{\keyArr}{\mathrm{key}}
 % Comparison baseline (general (r,s)-nucleus decomposition restricted to r=1)
 \newcommand{\cbnd}{\kw{CND}}
 
@@ -58,6 +64,7 @@
 \theoremstyle{remark}
 \newtheorem{example}[theorem]{Example}
 \newtheorem{observation}[theorem]{Observation}
+\newtheorem{remark}[theorem]{Remark}
 
 % --- reference shorthand ---
 \newcommand{\refsec}[1]{Section~\ref{sec:#1}}
@@ -84,7 +91,7 @@
 \newcounter{expsubcounter}[expcounter]
 \setcounter{expsubcounter}{0}
 \newcommand{\expsection}[1]{%
-    \stepcounter{expcounter}%
+    \refstepcounter{expcounter}%
     \setcounter{expsubcounter}{0}%
     \stitle{Exp-\theexpcounter: #1.}%
 }

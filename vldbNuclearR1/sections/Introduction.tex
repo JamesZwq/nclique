@@ -1,10 +1,14 @@
 \section{Introduction}\label{sec:intro}
 
-Core decomposition ranks vertices by the amount of cohesive structure that still surrounds them after weak vertices are removed~\cite{kcoreSeidman,coreAlg,communityFinder}.
+Graphs are a fundamental data model for relational information: vertices represent entities and edges represent pairwise connections between them.
 %
-It supports a wide range of graph-mining tasks, including community detection~\cite{communities_dec1,communities_dec2,communities_dec3,girvan2002community}, dense-subgraph discovery~\cite{dense_subgraph}, influential-vertex and role analysis~\cite{Identifying_influential,kempe2003maximizing,lu2016vital}, network visualization~\cite{network_visualization}, and applications in social, biological, and security networks~\cite{cohesive_subgraph_Social_Networks,cohesive_subgraph_protein_networks,apply_cyber}.
+They are widely used in social network analysis~\cite{cohesive_subgraph_Social_Networks}, bioinformatics~\cite{cohesive_subgraph_protein_networks}, knowledge-graph modelling, and security analytics~\cite{apply_cyber}.
 %
-The classical $k$-core uses edges as the witness, but many of these tasks need a stronger witness because a group may pass an edge-degree threshold while containing few triangles, $4$-cliques, or larger coordinated patterns~\cite{ktrussCohen,akbas2017truss,huang2014truss}.
+A central task in graph mining is decomposing a graph into hierarchically cohesive substructures, supporting community detection~\cite{communities_dec1,communities_dec2,communities_dec3,girvan2002community}, dense-subgraph discovery~\cite{dense_subgraph}, influential-vertex and role analysis~\cite{Identifying_influential,kempe2003maximizing,lu2016vital}, and network visualization~\cite{network_visualization}.
+%
+The classical $k$-core ranks vertices by the amount of edge-based cohesion that survives weak-vertex removal~\cite{kcoreSeidman,coreAlg,communityFinder}.
+%
+Many of these tasks, however, need a stronger cohesion requirement, because a group may pass an edge-degree threshold while containing few triangles, $4$-cliques, or larger coordinated patterns~\cite{ktrussCohen,akbas2017truss,huang2014truss}.
 %
 The \emph{$(1,s)$-nucleus decomposition}~\cite{nucleusSariyuce14,nuclearTWEB} gives this vertex-centric higher-order ranking: for a fixed $s$, it assigns each vertex the largest $k$ for which the vertex belongs to a maximal region where every vertex participates in at least $k$ internal $s$-cliques.
 %
@@ -18,7 +22,7 @@ For $s=2$ it reduces to the $k$-core; for larger $s$ it ranks vertices by progre
 \label{fig:overview}
 \end{figure}
 
-\begin{example}\label{exa:overview}
+\begin{example}\label{ex:overview}
 Figure~\ref{fig:overview} shows a $10$-vertex graph at $s=3$.
 %
 The six vertices $v_1,\ldots,v_6$ belong to two triangle-rich $K_4$ blocks; each participates in at least three triangles supported by other vertices of the same value, so all six have $(1,3)$-core value $3$.
@@ -39,7 +43,7 @@ The general $(r,s)$ algorithm maintains the \cpi{} as mutable residual state, st
 At $r{=}1$, peeling removes vertices but never deletes edges, so it is not obvious that the same residual maintenance is necessary.
 
 \sstitle{Memory footprint of the residual index.}
-The residual structures dominate memory: per-path vertex hash sets, the reverse vertex-to-path map, and the live Bron--Kerbosch recursion tree together pay constant-factor overhead per vertex--path incidence on top of the clique-encoding cost.
+The residual structures dominate memory: per-path vertex hash sets, the reverse vertex-to-path map, and the live Bron--Kerbosch~\cite{BronKerbosch} recursion tree together pay constant-factor overhead per vertex--path incidence on top of the clique-encoding cost.
 %
 A layout whose memory grows only with the unavoidable cost of encoding all $s$-cliques in the index, and not with hash-table or recursion-tree overhead on top of it, would push the achievable $s$ on a fixed-memory machine to the algorithmic limit.
 
@@ -47,7 +51,7 @@ A layout whose memory grows only with the unavoidable cost of encoding all $s$-c
 On dense graphs at high $s$, \cpi{} construction takes seconds to minutes per (graph, $s$) configuration and dominates total runtime in any static-index pipeline; parallelising it must avoid the synchronisation cost of mutable path rewrites.
 
 \sstitle{Hierarchy emission from a mutating index.}
-The clique-coherent nucleus hierarchy of Definition~\ref{def:nucleus} witnesses $s$-connectivity through $s$-cliques contained in each super-level set, so emitting it requires access to the $s$-cliques themselves.
+The clique-coherent nucleus hierarchy of Definition~\ref{def:nucleus} captures $s$-connectivity through $s$-cliques contained in each super-level set, so emitting it requires access to the $s$-cliques themselves.
 %
 If the \cpi{} is mutated during peeling, those cliques are no longer available afterwards, and the hierarchy needs either a second clique-enumeration pass or per-peel-level state, both of which can dominate total cost.
 
@@ -57,26 +61,26 @@ The current state of the art for general $(r,s)$-nucleus decomposition is \cbnd~
 \sstitle{Mutable residual-index maintenance.}
 \cbnd{} rewrites path records and updates a hash-indexed reverse map at every peel step.
 %
-These rewrites are a real cost rather than a constant factor: \spinStar{}, which replaces them with closed-form counter updates over a static index, delivers a $17.90\times$ geometric-mean peel-time speedup over \cbnd{} on the matched benchmark cells (Section~\ref{sec:exp}).
+These rewrites are a real cost rather than a constant factor: \spinStar{}, which replaces them with closed-form counter updates over a static index, delivers a $17.90\times$ geometric-mean peel-time speedup over \cbnd{} (Section~\ref{sec:exp}).
 
 \sstitle{High memory consumption.}
 The residual structures that \cbnd{} must keep mutable in the general $(r,s)$ setting (per-path membership queries, reverse vertex-to-path lookup, and the live recursion tree used to rewrite paths) carry roughly an order of magnitude more bytes per encoded vertex--path incidence than a static encoding of the same $s$-cliques requires (Table~\ref{tab:mem}).
 %
-The geometric-mean memory ratio \cbnd{}/\spinStar{} is $1.55\times$ on the matched cells and $3.92\times$ at maximum; on a billion-scale graph, \cbnd{} completes only at $s{=}2$ (using $400$\,GB of $503$\,GB) and exceeds the budget for every $s\!\ge\!3$, while \spinStar{} finishes the full $s$ sweep.
+The memory ratio \cbnd{}/\spinStar{} is $1.55\times$ in geometric mean and $3.92\times$ at maximum; on a billion-scale graph, \cbnd{} completes only at $s{=}2$ (using $400$\,GB of $503$\,GB) and exceeds the budget for every $s\!\ge\!3$, while \spinStar{} runs on the same graph.
 
 \sstitle{Construction as the residual bottleneck.}
 Even after cheap peeling, \cbnd{} pays the full construction cost; on \texttt{web-it-2004} (our highest \cpi{}-build-cost benchmark) at $s{=}3$, construction takes about $137$ seconds and peeling takes about $59$ milliseconds, so the static index builder dominates total runtime by more than $2{,}000\times$ on this configuration.
 %
-Without a parallel builder, the end-to-end speedup over \cbnd{} stays at $1.05\times$ on the matched cells even though the peel-time speedup is $17.90\times$.
+Without a parallel builder, this construction phase becomes the dominant cost once peeling is cheap.
 
 \sstitle{Hierarchy emission re-enumerates or replicates.}
 Because \cbnd{} edits the \cpi{} during peeling, its $s$-cliques are gone when the hierarchy is requested.
 %
-The natural workaround, the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, maintains one disjoint-set forest per core level during the peel.
+The natural workaround, the general $(r,s)$ level-DSU hierarchy specialised to $r{=}1$, maintains one union--find structure~\cite{TarjanUnionFind} per core level during the peel.
 %
 It exceeds the available $503$\,GB on \texttt{wiki-Talk} at $s\!\ge\!9$, where our pipeline finishes (Figure~\ref{fig:hier}).
 %
-Even where it fits, it uses up to $43\times$ more memory (gmean $13\times$ over $24$ matched cells) than emitting the same hierarchy from a preserved \cpi{}.
+Even where it fits, it uses up to $43\times$ more memory (gmean $13\times$) than emitting the same hierarchy from a preserved \cpi{}.
 
 \stitle{Our Contributions.}
 For $(1,s)$-nucleus decomposition we exploit a static-\cpi{} invariant (Theorem~\ref{thm:vertex-removal}) to deliver a single pipeline that addresses all four challenges above.
@@ -84,7 +88,7 @@ For $(1,s)$-nucleus decomposition we exploit a static-\cpi{} invariant (Theorem~
 \sstitle{A new $(1,s)$-nucleus decomposition algorithm.}
 We propose \spinStar{} (Algorithm~\ref{alg:peelH}), a new $(1,s)$-nucleus decomposition algorithm that computes the core values \emph{without ever modifying the \cpi{}}.
 %
-A static-\cpi{} invariant (Theorem~\ref{thm:vertex-removal}) guarantees that every path's hold and pivot sets stay valid throughout the peel, so \spinStar{} only maintains a few per-path counters instead of mutating the entire index.
+A counter-form residual update (Theorem~\ref{thm:vertex-removal}) reduces each peel event to a single integer decrement on a static \cpi{} path; \spinStar{} exploits this with closed-form binomial support deltas (Lemma~\ref{lem:support-delta}) to assign core values in a single peel pass.
 %
 \spinStar{} is on average $17.9\times$ (up to $49\times$) faster at peeling and noticeably lighter on memory than the prior \cbnd{} baseline, and it scales to a billion-edge graph that \cbnd{} cannot complete.
 
@@ -96,7 +100,9 @@ This addresses the construction phase that dominates total runtime once peeling 
 \sstitle{Core-value hierarchy from the static \cpi{}.}
 \buildHier{} (Algorithm~\ref{alg:buildhier}) emits the $s$-clique-connected super-level join tree from the preserved \cpi{} in time near-linear in the static index size, without re-enumerating any $s$-clique.
 %
-It uses up to $43\times$ less memory (gmean $13\times$ over $24$ matched cells) than the level-DSU baseline.
+It uses up to $43\times$ less memory (gmean $13\times$) than the level-DSU baseline.
 
 \sstitle{Experimental evaluation.}
-We compare against \cbnd{} on ten real-world graphs ($451$ matched configurations, headline peel speedup $17.90\times$ gmean / $49.48\times$ max, memory-usage ratio $1.55\times$ gmean), report phase behaviour and parallel construction, push the pipeline to a billion-scale graph where \cbnd{} only completes at $s{=}2$, and use case studies to evaluate whether the $r{=}1$ specialization is practically useful.
+We compare against \cbnd{} on ten real-world graphs, with a headline peel-time speedup of $17.90\times$ gmean ($49.48\times$ max) and a memory-usage ratio of $1.55\times$ gmean.
+%
+We also report phase behaviour and parallel construction, push the pipeline to a billion-scale graph where \cbnd{} only completes at $s{=}2$, and use case studies to evaluate whether the $r{=}1$ specialisation is practically useful.
