@@ -48,8 +48,8 @@ PAPER6_LABELS = {
 # the caption, panel labels remain plain text).
 PAPER6_PLAIN = {g: g for g in PAPER6}
 
-ALGO_ALIAS = {"REF": "Nucleus", "RegNDC": "Nuclear CD", "V3LM": "RegND"}
-ALGOS_HEAT = ["REF", "RegNDC", "V3LM"]
+ALGO_ALIAS = {"REF": "Nuclear CD", "RegNDC": "RegND"}
+ALGOS_HEAT = ["REF", "RegNDC"]
 
 # Paper's r-values for the memory ratio curves.
 R_VALUES = [3, 4, 5, 7, 10, 15]
@@ -248,14 +248,16 @@ def make_memory_ratio(rows: list[dict], out_path: Path) -> None:
     one panel per paper-6 graph that has any matched cell."""
     idx = index_rows(rows)
 
-    # Build per-graph data: data[graph][r] = list of (s, ratio)
+    # Build per-graph data: data[graph][r] = list of (s, ratio).
+    # Use RegNDC label (newer bench snapshot of the RegND algorithm);
+    # fall back to V3LM for cells only present under the older label.
     data = defaultdict(lambda: defaultdict(list))
     for (g, r, s, a), row in idx.items():
         if g not in PAPER6 or a != "REF" or row["status"] != "OK":
             continue
         if r not in R_VALUES:
             continue
-        v3 = idx.get((g, r, s, "V3LM"))
+        v3 = idx.get((g, r, s, "RegNDC")) or idx.get((g, r, s, "V3LM"))
         if v3 is None or v3["status"] != "OK":
             continue
         try:
@@ -303,7 +305,7 @@ def make_memory_ratio(rows: list[dict], out_path: Path) -> None:
         ax.set_title(PAPER6_PLAIN[g], fontsize=10)
         ax.set_xlabel("s", fontsize=9)
         if idx_g % cols == 0:
-            ax.set_ylabel(r"$M_{\mathrm{Nucleus}} / M_{\mathrm{RegND}}$", fontsize=9)
+            ax.set_ylabel(r"$M_{\mathrm{NuclearCD}} / M_{\mathrm{RegND}}$", fontsize=9)
         ax.tick_params(axis="both", labelsize=7)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
@@ -339,7 +341,7 @@ def numerical_summary(rows: list[dict]) -> None:
     for (g, r, s, a), row in idx.items():
         if g not in PAPER6 or a != "REF" or row["status"] != "OK":
             continue
-        v3 = idx.get((g, r, s, "V3LM"))
+        v3 = idx.get((g, r, s, "RegNDC")) or idx.get((g, r, s, "V3LM"))
         if v3 is None or v3["status"] != "OK":
             continue
         try:
