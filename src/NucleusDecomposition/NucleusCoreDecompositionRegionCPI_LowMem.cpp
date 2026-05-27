@@ -40,6 +40,7 @@
 
 #include "NCliqueCoreDecomposition.h"
 #include "LowMemProbes.h"
+#include "../PhaseLogger.h"
 #include "../dataStruct/robin_hood.h"
 #include <algorithm>
 #include <chrono>
@@ -222,6 +223,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                   << ", total pairs=" << std::fixed << std::setprecision(0) << totalPairs
                   << ", " << step1aMs << " ms" << std::endl;
     }
+    daf::phaseMark("MCEnum");
 
     auto tStep1b = std::chrono::high_resolution_clock::now();
 
@@ -611,6 +613,10 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     }
 
     auto tStep3 = std::chrono::high_resolution_clock::now();
+    auto step2Ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        tStep3 - tStep2).count();
+    std::cout << "  Step 2+3 time (classes + tuples): " << step2Ms << " ms" << std::endl;
+    daf::phaseMark("Index");
     std::cout << "  Active r-tuples: " << rTuples.size() << std::endl;
     if (enablePrivateCloud) {
         std::cout << "  Private clouds: " << numPrivateClouds << std::endl;
@@ -780,6 +786,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     }
     std::cout << "  Support sum (CPI): " << totalSupportTuples << std::endl;
     std::cout << "  CPI counting time: " << step4Ms << " ms" << std::endl;
+    daf::phaseMark("Support");
 
     // ============================================================
     // Step 5+6: Constrained Path Peeling (Analytical Split)
@@ -2639,6 +2646,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     std::cout << "  Peeling time: " << step6Ms << " ms" << std::endl;
     std::cout << "  Total time: " << totalMs << " ms" << std::endl;
     std::cout << "==============================================" << std::endl;
+    daf::phaseMark("Peel");
 
     // Return compact format: one entry per core level, key[0] = count
     std::vector<std::pair<std::vector<daf::Size>, double>> result;
