@@ -100,6 +100,71 @@ static void bkRecurse_NoTree(
 }
 
 // ---------------------------------------------------------------------------
+//  Recursive BK — NO tree storage, UNIVERSAL (emit every maximal leaf)
+//  Differs from bkRecurse_NoTree only in the leaf rule: no max_k depth prune
+//  (line "keepV.size() > max_k") and no "cSize >= max_k" emission filter, so
+//  EVERY maximal clique (beginP>=beginR) with cSize>=min_k is emitted with its
+//  full (keepV=H, dropV=P) decomposition.  Pivot selection is identical, so
+//  the tree topology is the full (unpruned) Pivoter SCT.
+// ---------------------------------------------------------------------------
+static void bkRecurse_NoTree_Universal(
+    int *vertexSets, int *vertexLookup,
+    int **neighborsInP, int *numNeighbors,
+    int beginP, int beginR,
+    daf::StaticVector<int> &keepV, daf::StaticVector<int> &dropV,
+    int min_k,
+    size_t &leafCounter,
+    AugCtx &ctx)
+{
+    if (beginP >= beginR) {
+        int cSize = (int)keepV.size() + (int)dropV.size();
+        if (cSize < min_k) return;
+        daf::Size leafId = static_cast<daf::Size>(leafCounter++);
+        ctx.invoke(leafId, keepV, dropV);
+        return;
+    }
+
+    int *myCandidatesToIterateThrough;
+    int numCandidatesToIterateThrough;
+
+    int pivot = findBestPivotNonNeighborsDegeneracyCliques(
+        &myCandidatesToIterateThrough, &numCandidatesToIterateThrough,
+        vertexSets, vertexLookup, neighborsInP, numNeighbors,
+        beginP, beginR);
+
+    if (numCandidatesToIterateThrough != 0) {
+        int iterator = 0;
+        while (iterator < numCandidatesToIterateThrough) {
+            int vertex = myCandidatesToIterateThrough[iterator];
+            int newBeginP, newBeginR;
+
+            moveToRDegeneracyCliques(vertex,
+                vertexSets, vertexLookup, neighborsInP, numNeighbors,
+                &beginP, &beginR, &newBeginP, &newBeginR);
+
+            if (vertex == pivot) {
+                dropV.push_back(vertex);
+                bkRecurse_NoTree_Universal(
+                    vertexSets, vertexLookup, neighborsInP, numNeighbors,
+                    newBeginP, newBeginR, keepV, dropV, min_k,
+                    leafCounter, ctx);
+                dropV.pop_back();
+            } else {
+                keepV.push_back(vertex);
+                bkRecurse_NoTree_Universal(
+                    vertexSets, vertexLookup, neighborsInP, numNeighbors,
+                    newBeginP, newBeginR, keepV, dropV, min_k,
+                    leafCounter, ctx);
+                keepV.pop_back();
+            }
+            iterator++;
+        }
+    }
+
+    Free(myCandidatesToIterateThrough);
+}
+
+// ---------------------------------------------------------------------------
 //  Recursive BK — with tree storage
 // ---------------------------------------------------------------------------
 static void bkRecurse_WithTree(
@@ -302,6 +367,76 @@ size_t SDCT_Augmented_NoTree(
             vertexSets.data(), vertexLookup.data(),
             neighborsInP.data(), numNeighbors.data(),
             newBeginP, newBeginR, keepV, dropV, max_k, min_k,
+            leafCounter, ctx);
+
+        beginR = beginR + 1;
+    }
+
+    vertexSets.free();
+    vertexLookup.free();
+    for (int i = 0; i < size; ++i) Free(neighborsInP[i]);
+    neighborsInP.free();
+    numNeighbors.free();
+
+    return leafCounter;
+}
+
+// ---------------------------------------------------------------------------
+//  Top-level: SDCT_Augmented_NoTree_Universal (tree-free, emit all maximal)
+// ---------------------------------------------------------------------------
+template<typename OnLeafFn>
+size_t SDCT_Augmented_NoTree_Universal(
+    Graph &edgeGraph, int min_k, OnLeafFn &&onLeaf)
+{
+    auto trampoline = [](void *ud, daf::Size leafId,
+        const daf::StaticVector<int> &keepV, const daf::StaticVector<int> &dropV) {
+        (*static_cast<OnLeafFn*>(ud))(leafId, keepV, dropV);
+    };
+    AugCtx ctx;
+    ctx.callback = trampoline;
+    ctx.userData = &onLeaf;
+
+    auto size = edgeGraph.getGraphNodeSize();
+    daf::StaticVector<int> vertexSets(size);
+    daf::StaticVector<int> vertexLookup(size);
+    daf::StaticVector<int *> neighborsInP(size);
+    daf::StaticVector<int> numNeighbors(size);
+    vertexSets.c_size = size;
+    vertexLookup.c_size = size;
+    neighborsInP.c_size = size;
+    numNeighbors.c_size = size;
+
+    for (int i = 0; i < size; ++i) {
+        vertexLookup[i] = i;
+        vertexSets[i] = i;
+        neighborsInP[i] = static_cast<int *>(Calloc(1, sizeof(int)));
+        numNeighbors[i] = 1;
+    }
+
+    int beginX = 0;
+    int beginP = 0;
+    int beginR = size;
+
+    daf::StaticVector<int> dropV(MAX_CSIZE);
+    daf::StaticVector<int> keepV(MAX_CSIZE);
+
+    size_t leafCounter = 0;
+    for (int vertex = 0; vertex < edgeGraph.getGraphNodeSize(); ++vertex) {
+        int newBeginX, newBeginP, newBeginR;
+
+        fillInPandXForRecursiveCallDegeneracyCliquesEdgeGraph(vertex,
+            vertexSets.data(), vertexLookup.data(), edgeGraph,
+            neighborsInP.data(), numNeighbors.data(),
+            &beginX, &beginP, &beginR,
+            &newBeginX, &newBeginP, &newBeginR);
+
+        dropV.clear();
+        keepV.clear();
+        keepV.push_back(vertex);
+        bkRecurse_NoTree_Universal(
+            vertexSets.data(), vertexLookup.data(),
+            neighborsInP.data(), numNeighbors.data(),
+            newBeginP, newBeginR, keepV, dropV, min_k,
             leafCounter, ctx);
 
         beginR = beginR + 1;

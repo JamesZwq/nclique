@@ -42,6 +42,25 @@ size_t SDCT_Augmented_NoTree(
     Graph &edgeGraph, int max_k, int min_k, OnLeafFn &&onLeaf);
 
 // ---------------------------------------------------------------------------
+//  UNIVERSAL tree-free SDCT: emit EVERY maximal-clique leaf once (no max_k
+//  depth pruning, no cSize>=max_k emission filter).  onLeaf(leafId, keepV=H,
+//  dropV=P) is called for every leaf with |H|+|P| >= min_k.
+//
+//  Unlike SDCT_Augmented_NoTree (whose leaf set is specific to max_k=s), the
+//  universal leaf set serves ALL s simultaneously: a leaf contributes
+//  C(|P|, s-|H|) s-cliques, and the per-vertex support at level s is
+//      keep vertex v in H: += C(|P|,   s-|H|)
+//      pivot vertex v in P: += C(|P|-1, s-|H|-1)
+//  (the standard Pivoter/SCT counting invariant, valid for every s).  This is
+//  the substrate for a build-once Nucleus Spectrum Index.
+//
+//  Returns the total number of leaves emitted.
+// ---------------------------------------------------------------------------
+template<typename OnLeafFn>
+size_t SDCT_Augmented_NoTree_Universal(
+    Graph &edgeGraph, int min_k, OnLeafFn &&onLeaf);
+
+// ---------------------------------------------------------------------------
 //  SDCT without tree storage (tree-free) + dual callback
 //  onLeaf called at each leaf; onVertexDone called after each top-level
 //  vertex's subtree completes (vertex is then finalized).

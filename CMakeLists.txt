@@ -137,10 +137,12 @@ add_executable(test_sdct_speed ${COMMON_SOURCES} test_sdct_speed.cpp)
 add_executable(verify_all_sdct ${COMMON_SOURCES} verify_all_sdct.cpp)
 add_executable(bench_sdct_par_scale ${COMMON_SOURCES} bench_sdct_par_scale.cpp)
 add_executable(bench_spectrum_sat ${COMMON_SOURCES} bench_spectrum_sat.cpp)
-# bench_spectrum_sat drives deep BK recursion (bkRecurse_NoTree) just like the
-# main binary, so raise the main-thread stack the same way.
+add_executable(bench_spectrum_index ${COMMON_SOURCES} bench_spectrum_index.cpp)
+# These bench drive deep BK recursion (bkRecurse_NoTree[_Universal]) just like
+# the main binary, so raise the main-thread stack the same way.
 if(APPLE)
     target_link_options(bench_spectrum_sat PRIVATE "-Wl,-stack_size,0x20000000")
+    target_link_options(bench_spectrum_index PRIVATE "-Wl,-stack_size,0x20000000")
 endif()
 #add_executable(main ${COMMON_SOURCES} src/main.cpp)
 #add_executable(BCtest ${COMMON_SOURCES}
@@ -155,6 +157,7 @@ target_link_libraries(test_sdct_speed PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 target_link_libraries(verify_all_sdct PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 target_link_libraries(bench_sdct_par_scale PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 target_link_libraries(bench_spectrum_sat PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(bench_spectrum_index PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(main PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 #target_link_libraries(BCtest PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 
