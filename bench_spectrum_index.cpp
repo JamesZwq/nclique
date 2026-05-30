@@ -458,6 +458,17 @@ int main(int argc, char *argv[]) {
         }
         return sum;
     };
+    // "build tree ONCE, reuse" baseline: from the already-built universal CPI,
+    // recompute support + peel for this s (NO tree rebuild).  This is the fair
+    // shared-tree alternative; only the full per-s rebuild (q below) rebuilds.
+    auto q_shared = [&](int s) -> double {
+        recomputeCountingV(U, s, wKeep, wPivot);     // allocates U.d.countingV
+        double *cv = NCliqueVertexCoreDecomposition_ST_V3_Peel(U.d, (daf::CliqueSize)s);
+        double sum = 0;
+        for (int v = 0; v < n; ++v) { double k = kappa_of(cv, v); if (k > 0.0) sum += (double)v * k; }
+        delete[] cv;
+        return sum;
+    };
 
     // ===== correctness: index kappa_s == per-s brute force (ST_V3_Build+Peel) =====
     // Compared PER VERTEX (not just a checksum) against the path that
@@ -511,21 +522,31 @@ int main(int argc, char *argv[]) {
     for (int s : queries) {
         double dense_us = bench([&]{ return q_dense(s); });
         double ad_us    = bench([&]{ return q_anchordelta(s); });
-        double base_ms = -1;
-        if (do_baseline) {        // rebuild + peel, single shot (it is slow)
+        // shared-tree baseline (build universal CPI once, reuse): recompute+peel.
+        // Few-shot timed (ms-scale): run until ~budget or 5 reps.
+        double shared_ms = -1;
+        {
+            sink += q_shared(s);                      // warmup
+            int r = 0; auto t = Clock::now(); double el = 0;
+            do { sink += q_shared(s); ++r; el = ms_since(t); } while (el < budget_ms && r < 5);
+            shared_ms = el / r;
+        }
+        // full per-s rebuild baseline (no shared tree): build CPI for THIS s + peel.
+        double rebuild_ms = -1;
+        if (do_baseline) {
             auto tb = Clock::now();
             ST_V2_Data bd = NCliqueVertexCoreDecomposition_ST_V3_Build(g, (daf::CliqueSize)s);
             if (bd.numLeaves == 0) { if (bd.countingV){delete[] bd.countingV; bd.countingV=nullptr;} }
             else { double *bc = NCliqueVertexCoreDecomposition_ST_V3_Peel(bd, (daf::CliqueSize)s); delete[] bc; }
-            base_ms = ms_since(tb);
+            rebuild_ms = ms_since(tb);
         }
         size_t na_s = dense.off[s+1] - dense.off[s];
         std::printf("IDX_QUERY graph=%s s=%d n_active_s=%zu dense_us=%.4f "
-                    "anchordelta_us=%.3f baseline_ms=%.3f speedup_dense=%.1fx "
-                    "speedup_ad=%.1fx\n",
-                    gpath, s, na_s, dense_us, ad_us, base_ms,
-                    base_ms > 0 ? base_ms * 1000.0 / dense_us : 0.0,
-                    base_ms > 0 && ad_us > 0 ? base_ms * 1000.0 / ad_us : 0.0);
+                    "anchordelta_us=%.3f shared_ms=%.3f rebuild_ms=%.3f "
+                    "dense_vs_shared=%.1fx dense_vs_rebuild=%.1fx\n",
+                    gpath, s, na_s, dense_us, ad_us, shared_ms, rebuild_ms,
+                    shared_ms > 0 ? shared_ms * 1000.0 / dense_us : 0.0,
+                    rebuild_ms > 0 ? rebuild_ms * 1000.0 / dense_us : 0.0);
         std::fflush(stdout);
     }
     (void)sink;
