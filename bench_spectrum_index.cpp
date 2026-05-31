@@ -232,6 +232,19 @@ static inline double kappa_of(const double *coreV, daf::Size v) {
     return coreV[v] < 0.0 ? 0.0 : coreV[v];
 }
 
+// Resident bytes of the universal CPI ("tree" substrate): the dual CSR + the
+// per-leaf metadata that must stay in memory to answer queries by recompute+
+// peel.  Excludes the transient countingV (allocated/freed per peel).
+template <class T> static size_t capb(const std::vector<T>& v){ return v.capacity()*sizeof(T); }
+static size_t cpi_bytes(const UniversalCPI &U) {
+    const ST_V2_Data &d = U.d;
+    return capb(d.vtxLeafOff) + capb(d.leafVtxOff)
+         + capb(d.vtxLeafIds) + capb(d.vtxLeafIsPivot)
+         + capb(d.leafVtxIds) + capb(d.leafVtxIsPivot)
+         + capb(d.leafPivotCount) + capb(d.leafNeedPivot)
+         + capb(U.leafKeepC);
+}
+
 // ===========================================================================
 //  Materialized index
 // ===========================================================================
@@ -415,6 +428,16 @@ int main(int argc, char *argv[]) {
                 "spectrum_ms=%.1f recompute_ms=%.1f peel_ms=%.1f\n",
                 gpath, n_active, traj, dense.vid.size(), dense.bytes(),
                 ad.deltaS.size(), ad.bytes(), spectrum_ms, recompute_ms, peel_ms);
+    std::fflush(stdout);
+
+    // Memory comparison: CPI/tree substrate vs the two materialized indexes.
+    size_t cpib = cpi_bytes(U), dnb = dense.bytes(), adb = ad.bytes();
+    std::printf("IDX_MEM graph=%s cpi_tree_bytes=%zu cpi_tree_MB=%.2f "
+                "dense_bytes=%zu dense_MB=%.2f anchordelta_bytes=%zu anchordelta_MB=%.2f "
+                "dense_over_cpi=%.2f anchordelta_over_cpi=%.2f bytes_per_vertex_cpi=%.1f\n",
+                gpath, cpib, cpib/1e6, dnb, dnb/1e6, adb, adb/1e6,
+                cpib>0 ? (double)dnb/cpib : 0.0, cpib>0 ? (double)adb/cpib : 0.0,
+                (double)cpib/std::max(1,n));
     std::fflush(stdout);
 
     // ===== query set =====
