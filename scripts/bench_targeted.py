@@ -114,12 +114,13 @@ def main():
     fieldnames = ["graph","r","s","algo","status",
                   "wall_ms","total_ms","step4_ms","peel_ms","hier_ms","mem_kB"]
 
-    # Load existing cells to skip
+    # Load existing cells to skip: any non-blank status counts as already-tried,
+    # so a restart does not retry TIMEOUT / OOM / SKIP_AFTER_FAIL cells.
     done = set()
     if out_path.exists():
         with out_path.open() as f:
             for row in csv.DictReader(f):
-                if row.get("status") == "OK":
+                if row.get("status", "").strip():
                     done.add((row["graph"], int(row["r"]),
                               int(row["s"]), row["algo"]))
 
