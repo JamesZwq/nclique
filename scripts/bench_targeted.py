@@ -48,13 +48,26 @@ def run_cell(graph: str, r: int, s: int, algo: str,
 
     cmd = ["/usr/bin/time", "-v", BIN, edges, str(r), str(s), "degen"]
     t0 = time.time()
+    proc = subprocess.Popen(
+        cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, preexec_fn=os.setsid)
     try:
-        proc = subprocess.run(
-            cmd, env=env, capture_output=True, text=True,
-            timeout=timeout_s, check=False,
-            preexec_fn=os.setsid)
+        stdout, stderr = proc.communicate(timeout=timeout_s)
     except subprocess.TimeoutExpired:
+        # Kill the entire process group (covers /usr/bin/time wrapper AND binary).
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.wait()
         return {"status": "TIMEOUT", "wall_ms": timeout_s * 1000}
+    # Synthesize CompletedProcess-like view for the rest of the function.
+    class _R: pass
+    proc_view = _R()
+    proc_view.returncode = proc.returncode
+    proc_view.stdout = stdout
+    proc_view.stderr = stderr
+    proc = proc_view
     dt_ms = (time.time() - t0) * 1000
 
     stdout = proc.stdout
