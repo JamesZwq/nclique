@@ -48,8 +48,8 @@ PAPER6_LABELS = {
 # the caption, panel labels remain plain text).
 PAPER6_PLAIN = {g: g for g in PAPER6}
 
-ALGO_ALIAS = {"REF": "Nuclear CD", "RegNDC": "RegND"}
-ALGOS_HEAT = ["REF", "RegNDC"]
+ALGO_ALIAS = {"REF": "Nuclear CD", "RegNDC": "RegND", "V3LM_NOCPI": "RegND-naive"}
+ALGOS_HEAT = ["REF", "RegNDC", "V3LM_NOCPI"]
 
 # Paper's r-values for the memory ratio curves.
 R_VALUES = [3, 4, 5, 7, 10, 15]
