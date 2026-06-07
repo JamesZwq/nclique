@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Nucleus Spectrum Index — 算法详解(真实数据)</title>
+<style>
+:root{
+  --bg:#0d1117;--panel:#161b22;--panel2:#1c2128;--text:#c9d1d9;--muted:#6e7681;
+  --accent:#58a6ff;--accent2:#79c0ff;--hi:#f78166;--green:#56d364;--yellow:#e3b341;
+  --red:#f85149;--purple:#d2a8ff;--border:#30363d;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;margin:0;line-height:1.7;font-size:15px}
+nav{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;gap:13px;font-size:13px;z-index:10;overflow-x:auto}
+nav a{color:var(--muted);text-decoration:none;white-space:nowrap}
+nav a:hover{color:var(--accent)}
+main{max-width:1120px;margin:0 auto;padding:24px}
+section{margin:32px 0;padding:24px;background:var(--panel);border:1px solid var(--border);border-radius:8px}
+h1{font-size:28px;margin:22px 0 4px;font-weight:600}
+h2{font-size:20px;margin:0 0 14px;color:var(--accent2);font-weight:600}
+h3{font-size:15px;margin:16px 0 6px;font-weight:600}
+.sub{color:var(--muted);margin-top:0;font-size:14px}
+code,.mono{font-family:"SF Mono",Menlo,Consolas,monospace;background:rgba(255,255,255,.06);padding:1px 6px;border-radius:3px;font-size:13px;color:var(--accent2)}
+.controls{display:flex;gap:8px;margin:14px 0;align-items:center;flex-wrap:wrap}
+button{background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:6px 13px;border-radius:4px;cursor:pointer;font-size:13px;transition:all .15s;font-family:inherit}
+button:hover{background:var(--border);border-color:var(--accent)}
+button.active{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+table{border-collapse:collapse;margin:12px 0;width:100%}
+th,td{border:1px solid var(--border);padding:6px 10px;text-align:center;font-size:13px}
+th{background:rgba(88,166,255,.08);color:var(--accent2);font-weight:600}
+.svg-box{display:flex;justify-content:center;background:var(--bg);padding:14px;border-radius:6px;margin:12px 0;overflow-x:auto}
+svg{font-family:"SF Mono",Menlo,monospace}
+.edge{stroke:var(--border);stroke-width:1.4;transition:all .3s}
+.edge.dead{opacity:.12}
+.vtx circle{stroke-width:2;transition:all .3s ease}
+.vtx text{text-anchor:middle;dominant-baseline:middle;font-weight:700;font-size:11px;pointer-events:none;fill:#0d1117}
+.vtx.peeled circle{fill:#21262d!important;stroke:var(--muted);stroke-width:1;opacity:.35}
+.vtx.peeled text{fill:var(--muted)}
+.vtx.cur circle{stroke:var(--yellow);stroke-width:3.5}
+.note{background:rgba(88,166,255,.06);border-left:3px solid var(--accent);padding:11px 15px;margin:13px 0;font-size:14px;border-radius:0 4px 4px 0}
+.warn{background:rgba(247,129,102,.07);border-left:3px solid var(--hi);padding:11px 15px;margin:13px 0;font-size:14px;border-radius:0 4px 4px 0}
+.good{background:rgba(86,211,100,.07);border-left:3px solid var(--green);padding:11px 15px;margin:13px 0;font-size:14px;border-radius:0 4px 4px 0}
+.bad{background:rgba(248,81,73,.07);border-left:3px solid var(--red);padding:11px 15px;margin:13px 0;font-size:14px;border-radius:0 4px 4px 0}
+.legend{display:flex;gap:14px;margin:10px 0;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:50%;border:1px solid var(--border)}
+.kc{font-family:"SF Mono",monospace;font-weight:600}
+.kc.zero{color:var(--muted)}
+.kc.peak{color:var(--hi);background:rgba(247,129,102,.16)}
+.step{color:var(--muted);font-size:13px;margin-left:auto}
+.tree-node{fill:var(--panel2);stroke:var(--accent2);stroke-width:1.5}
+.tree-node.shared{fill:rgba(247,129,102,.18);stroke:var(--hi);stroke-width:2.2}
+.tree-link{stroke:var(--accent2);stroke-width:1.5;fill:none;opacity:.55}
+.verify-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+.vcard{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;text-align:center}
+.vcard .big{font-size:24px;font-weight:700;color:var(--green);font-family:"SF Mono",monospace}
+.vcard .lbl{font-size:12px;color:var(--muted);margin-top:3px}
+.recon{font-family:"SF Mono",monospace;font-size:13px;line-height:2;background:var(--bg);padding:14px;border-radius:6px;margin:10px 0}
+.recon .anchor{color:var(--purple);font-weight:700}
+.recon .shadow{color:var(--accent2)}
+.recon .delta{color:var(--hi);font-weight:700}
+.recon .res{color:var(--green);font-weight:700}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:780px){.two-col{grid-template-columns:1fr}}
+.pipe{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin:14px 0}
+.pstep{background:var(--panel2);border:1px solid var(--accent);border-radius:5px;padding:9px 12px;font-size:13px;flex:1;min-width:120px;text-align:center}
+.pstep strong{color:var(--accent2)}
+.parr{color:var(--accent);font-size:20px;display:flex;align-items:center}
+.formula{background:rgba(0,0,0,.3);padding:11px 15px;border-radius:4px;text-align:center;font-family:"SF Mono",monospace;color:var(--accent2);margin:11px 0;font-size:14px}
+</style>
+</head>
+<body>
+<nav>
+  <a href="#intro">概览</a>
+  <a href="#verify">验证</a>
+  <a href="#graphs">两个例子</a>
+  <a href="#peel">Peel 动画</a>
+  <a href="#traj">轨迹·非单调</a>
+  <a href="#law">定理1 KK律</a>
+  <a href="#anchor">定理2 + 编码</a>
+  <a href="#trees">Hier 树</a>
+  <a href="#dag">DAG·压缩</a>
+  <a href="#build">构建</a>
+  <a href="#query">查询</a>
+</nav>
+<main>
+<h1>Nucleus Spectrum Index</h1>
+<p class="sub">r=1 vertex-nucleus 跨 s 索引 — 全部数字由 Python 直接 peeling 算出,真实数据(玩具图 + Zachary 空手道俱乐部)</p>
+
+<section id="intro">
+  <h2>要解决什么</h2>
+  <p><strong>κ_s(v)</strong> = 最大的 k,使得存在 v 所在子图 H,H 中每个顶点都参与 ≥ k 个 s-clique。s=2 是经典 k-core,s=3 是三角形 core,以此类推。每个 s 给出一棵 hierarchy 树 T_s。</p>
+  <p class="formula">目标:一份索引,对任意 s ∈ [2, ω] 返回完整 T_s 和 κ_s</p>
+  <p>本质是<strong>把 ω 棵分开的树压成一个共享结构</strong>。压缩有两层:① <strong>轨迹压缩</strong>(anchor+delta,基于 Kruskal–Katona 律),② <strong>区域去重</strong>(同一顶点集合在多个 s 复用)。下面用真实数据逐层讲。</p>
+</section>
+
+<section id="verify">
+  <h2>先看证据:核心命题在真实图上零违例</h2>
+  <p>在空手道俱乐部(34 顶点,78 边,ω=5)上,所有关键命题用暴力枚举验证:</p>
+  <div class="verify-grid" id="verify-cards"></div>
+  <div class="good">这些不是断言,是 <code>/tmp/spectrum_compute.py</code> 实算出来的。下面每一节都基于这些验证过的事实。</div>
+</section>
+
+<section id="graphs">
+  <h2>两个例子</h2>
+  <p>左:玩具图(K₅ + 三角形 + pendant,9 顶点),用来一步步讲 peel 机制。右:空手道俱乐部(真实社交网络)。顶点按 κ_s 着色,可切 s。</p>
+  <div class="controls">
+    <strong>着色 s =</strong>
+    <span id="color-s-tabs"></span>
+  </div>
+  <div class="two-col">
+    <div><h3>玩具图</h3><div class="svg-box"><svg id="toy-graph" viewBox="0 0 640 380" width="100%"></svg></div></div>
+    <div><h3>空手道俱乐部(真实)</h3><div class="svg-box"><svg id="karate-graph" viewBox="0 0 620 420" width="100%"></svg></div></div>
+  </div>
+  <div class="legend" id="color-legend"></div>
+  <div class="note" id="karate-note"></div>
+</section>
+
+<section id="peel">
+  <h2>Peel 机制(玩具图,真实顺序)</h2>
+  <p>按当前 μ_s 从小到大剥顶点,剥出来时的 μ_s 就是 κ_s。下面是真实 peel trace。</p>
+  <div class="controls">
+    <strong>s =</strong><span id="peel-s-tabs"></span>
+  </div>
+  <div class="controls">
+    <button id="p-reset">重置</button><button id="p-prev">← 上一步</button>
+    <button id="p-next">下一步 →</button><button id="p-play">▶ 播放</button>
+    <span class="step">步 <span id="p-num">0</span> / <span id="p-tot">0</span></span>
+  </div>
+  <div class="svg-box"><svg id="peel-graph" viewBox="0 0 640 380" width="100%"></svg></div>
+  <div id="peel-desc" class="note"></div>
+  <div class="legend">
+    <div class="legend-item"><span class="dot" style="background:var(--accent)"></span>alive</div>
+    <div class="legend-item"><span class="dot" style="background:var(--hi);border-color:var(--yellow)"></span>当前剥</div>
+    <div class="legend-item"><span class="dot" style="background:#21262d;border-color:var(--muted)"></span>已剥(标 κ)</div>
+  </div>
+</section>
+
+<section id="traj">
+  <h2>轨迹与非单调性</h2>
+  <p>把 peel 跑完,每个顶点得到轨迹 κ̄(v) = (κ₂, κ₃, …)。</p>
+  <div class="controls"><strong>图:</strong><span id="traj-tabs"></span></div>
+  <div style="overflow-x:auto"><table id="traj-table"></table></div>
+  <div class="warn" id="traj-warn"></div>
+</section>
+
+<section id="law">
+  <h2>定理 1 — Shifted Containment Law(Kruskal–Katona)</h2>
+  <p class="formula">C<sub>s+1</sub><sup>k</sup> ⊆ C<sub>s</sub><sup>∂ₛ(k)</sup>　即逐顶点　κ_s(v) ≥ ∂ₛ( κ_{s+1}(v) )</p>
+  <p>∂ₛ(k) 是 k 的 <strong>Kruskal–Katona lower shadow</strong>:把 k 写成 s-cascade,取下影。直觉:v 有 ≥k 个 (s+1)-clique ⇒ 邻域里有 ≥k 个 s-clique ⇒ 由 KK 至少有 ∂ₛ(k) 个 (s-1)-clique ⇒ 每个配上 v 就是一个 s-clique。</p>
+  <div class="bad"><strong>这里修正了一个早先的错误:</strong> 曾用 g = C(d*, s−1)(d* = min{d : C(d,s) ≥ k}),它<strong>高估、无效</strong>,只在 k 恰为 C(d,s) 时才对。反例 s=3:κ₄=2 时真值 κ₃≥5,但该式给 6。暴力枚举(~76 万次 check)确认:KK shadow 才是有效且最紧的界(∂ₛ(k)+1 就失败)。</p>
+  <h3>真实 KK shadow 表 ∂ₛ(k)</h3>
+  <div style="overflow-x:auto"><table id="kk-table"></table></div>
+  <div class="controls" style="margin-top:14px">
+    <strong>试一下:</strong> 任何顶点若 κ<sub>s+1</sub> =
+    <select id="law-k"></select> 且 s =
+    <select id="law-s"></select> ，则保证 κ_s ≥ <span class="kc" id="law-out" style="color:var(--green);font-size:16px"></span>
+  </div>
+  <div class="good">空手道俱乐部上 <span id="law-stat"></span>。</div>
+</section>
+
+<section id="anchor">
+  <h2>定理 2 + Anchor/Delta 编码(真正的压缩)</h2>
+  <p><strong>定理 2(支撑嵌套,已验证):</strong> {v : κ<sub>s+1</sub>(v) &gt; 0} ⊆ {v : κ_s(v) &gt; 0}。所以 s*(v) = max{s : κ_s(v) &gt; 0} 良定义,v 对所有 s ≤ s* 都存在 —— 这让"从 anchor 往下递推"合法。</p>
+  <h3>编码方式</h3>
+  <ul>
+    <li><strong>Anchor</strong>:(s*, κ_{s*}) —— 两个数</li>
+    <li><strong>Deltas</strong>:δ_s = κ_s − ∂ₛ(κ_{s+1}) ≥ 0,从 anchor 往下重建 κ_s = ∂ₛ(κ_{s+1}) + δ_s</li>
+    <li><strong>饱和顶点</strong> = 所有 δ=0 = 轨迹正好贴 KK 下界(邻域"像完全图")</li>
+  </ul>
+  <div class="good" id="sat-stat"></div>
+  <h3>逐顶点重建演示(空手道俱乐部真实数据)</h3>
+  <div class="controls"><strong>选顶点:</strong><span id="anchor-vtx-tabs"></span></div>
+  <div class="recon" id="recon-box"></div>
+  <div class="note">饱和顶点(δ 全 0)只存 anchor 两个数,整条轨迹由 KK 公式推出;非饱和顶点额外存少数 δ。这是把 n×ω 的 κ 矩阵压成 O(n + 非零δ) 的来源。</div>
+</section>
+
+<section id="trees">
+  <h2>Hierarchy 树 T_s(真实)</h2>
+  <p>BuildHier 把顶点按 κ_s 由高到低合并。已交叉验证:树的每层 component 与直接计算的 s-connected component 完全一致(0 mismatch)。</p>
+  <div class="controls"><strong>图:</strong><span id="tree-graph-tabs"></span>　<strong>s:</strong><span id="tree-s-tabs"></span></div>
+  <div class="svg-box"><svg id="tree-svg" viewBox="0 0 820 440" width="100%"></svg></div>
+  <div id="tree-exp" class="note"></div>
+</section>
+
+<section id="dag">
+  <h2>Unified Region DAG 与诚实的压缩数字</h2>
+  <p>把所有 T_s 的节点按<strong>顶点集合(region)</strong>去重,同一 region 在多个 s 复用,只存一份 + per-s 标注。注意身份用 region 而非 (region, kbirth) —— 后者因 kbirth 跨 s 必不同而几乎无法去重。</p>
+  <div style="overflow-x:auto"><table id="dag-table"></table></div>
+  <div class="warn" id="dag-honest"></div>
+  <h3>索引的几个数组</h3>
+  <ul style="font-size:14px">
+    <li><code>REGION_CSR / REGION_PTR</code> — 每个 distinct region 的顶点集(去重后)</li>
+    <li><code>ANCHOR[v]</code>, <code>DELTA[v]</code> — 轨迹压缩(主压缩来源)</li>
+    <li><code>APPEARS[region]</code> — 该 region 在哪些 (s, kbirth, parent) 出现</li>
+    <li><code>ROOTS[s]</code> — T_s 的根 region 列表</li>
+  </ul>
+</section>
+
+<section id="build">
+  <h2>构建流水线与诚实复杂度</h2>
+  <div class="pipe">
+    <div class="pstep"><strong>1</strong><br>ParaBuild CPI<br>(1 次)</div><div class="parr">→</div>
+    <div class="pstep"><strong>2</strong><br>Pascal 联合 init<br>所有 μ_s 一次出</div><div class="parr">→</div>
+    <div class="pstep"><strong>3</strong><br>ω 个 SPIN★ peel<br>(可并行)</div><div class="parr">→</div>
+    <div class="pstep"><strong>4</strong><br>BuildHier 每个 s</div><div class="parr">→</div>
+    <div class="pstep"><strong>5</strong><br>region 去重<br>+ anchor/delta</div>
+  </div>
+  <table id="cx-table">
+    <thead><tr><th>维度</th><th>诚实陈述</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Space</strong></td><td>O(n + #δ + |V*| + Σ|T_s|)。<strong>没有</strong> Ω(nω) 信息论下界(K_ω+孤立点塌成 O(ω))。压缩率数据依赖。</td></tr>
+      <tr><td><strong>Query</strong></td><td>物化时 O(|T_s|),output-optimal;lazy 重建有隐藏项。</td></tr>
+      <tr><td><strong>Build</strong></td><td>O(ω·M)(bucket queue 去掉 log)。"必须 ω 次独立 peel" 不是定理;支撑嵌套(定理2)让 peel 可剪枝。</td></tr>
+    </tbody>
+  </table>
+  <div class="warn">撤回的 3 个 overclaim:① 空间 Ω(nω) 下界;② build 必须 ω 次独立 peel;③ 跨 s pair query 的渐进胜(实为平局)。真胜场:存储 + 输出 o(Σ|T_s|) 的全局聚合查询(count-distinct region、present-in-all-s、stability)。</div>
+</section>
+
+<section id="query">
+  <h2>查询:给 s 返回完整 T_s</h2>
+  <ol>
+    <li>读 <code>ROOTS[s]</code> 得根 region</li>
+    <li>沿 per-s parent 指针遍历(从 APPEARS 标注取该 s 的 parent / kbirth)</li>
+    <li>每个 region 的顶点从 <code>REGION_CSR</code> 展开;kbirth 也可从 anchor+delta 用 ∂ₛ 现场派生</li>
+  </ol>
+  <div class="controls"><strong>图:</strong><span id="q-graph-tabs"></span>　<strong>s:</strong><span id="q-s-tabs"></span></div>
+  <div class="svg-box"><svg id="query-svg" viewBox="0 0 820 440" width="100%"></svg></div>
+  <div id="query-desc" class="note"></div>
+</section>
+</main>
+
+<script>
+"use strict";
+const DATA = {"toy": {"name": "Toy (K5 + triangle + pendant)", "n": 9, "edges": [[0, 1], [0, 2], [0, 3], [0, 4], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4], [5, 6], [5, 7], [6, 7], [4, 5], [0, 8]], "omega": 5, "S": [2, 3, 4, 5], "layout": {"0": [240, 200], "1": [170, 270], "2": [240, 330], "3": [330, 320], "4": [350, 220], "5": [460, 220], "6": [540, 170], "7": [540, 270], "8": [130, 110]}, "kappa": {"2": [4, 4, 4, 4, 4, 2, 2, 2, 1], "3": [6, 6, 6, 6, 6, 1, 1, 1, 0], "4": [4, 4, 4, 4, 4, 0, 0, 0, 0], "5": [1, 1, 1, 1, 1, 0, 0, 0, 0]}, "traj": {"0": [4, 6, 4, 1], "1": [4, 6, 4, 1], "2": [4, 6, 4, 1], "3": [4, 6, 4, 1], "4": [4, 6, 4, 1], "5": [2, 1, 0, 0], "6": [2, 1, 0, 0], "7": [2, 1, 0, 0], "8": [1, 0, 0, 0]}, "law_checks": 27, "law_viol": 0, "nest_viol": 0, "enc": {"0": {"sstar": 5, "kstar": 1, "deltas": {}}, "1": {"sstar": 5, "kstar": 1, "deltas": {}}, "2": {"sstar": 5, "kstar": 1, "deltas": {}}, "3": {"sstar": 5, "kstar": 1, "deltas": {}}, "4": {"sstar": 5, "kstar": 1, "deltas": {}}, "5": {"sstar": 3, "kstar": 1, "deltas": {}}, "6": {"sstar": 3, "kstar": 1, "deltas": {}}, "7": {"sstar": 3, "kstar": 1, "deltas": {}}, "8": {"sstar": 2, "kstar": 1, "deltas": {}}}, "active_vertices": 9, "saturated": 9, "nonzero_deltas": 0, "recon_fail": 0, "trees": {"2": [{"id": 0, "kbirth": 4, "members": [0, 1, 2, 3, 4], "parent": 1, "size": 5}, {"id": 1, "kbirth": 2, "members": [5, 6, 7], "parent": 2, "size": 8}, {"id": 2, "kbirth": 1, "members": [8], "parent": -1, "size": 9}], "3": [{"id": 0, "kbirth": 6, "members": [0, 1, 2, 3, 4], "parent": -1, "size": 5}, {"id": 1, "kbirth": 1, "members": [5, 6, 7], "parent": -1, "size": 3}], "4": [{"id": 0, "kbirth": 4, "members": [0, 1, 2, 3, 4], "parent": -1, "size": 5}], "5": [{"id": 0, "kbirth": 1, "members": [0, 1, 2, 3, 4], "parent": -1, "size": 5}]}, "peel_trace": {"2": [{"v": 8, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 6, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 7, "sdeg": 1, "level": 2, "init_deg": 2}, {"v": 5, "sdeg": 1, "level": 2, "init_deg": 3}, {"v": 0, "sdeg": 4, "level": 4, "init_deg": 5}, {"v": 1, "sdeg": 3, "level": 4, "init_deg": 4}, {"v": 2, "sdeg": 2, "level": 4, "init_deg": 4}, {"v": 3, "sdeg": 1, "level": 4, "init_deg": 4}, {"v": 4, "sdeg": 0, "level": 4, "init_deg": 5}], "3": [{"v": 8, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 5, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 6, "sdeg": 0, "level": 1, "init_deg": 1}, {"v": 7, "sdeg": 0, "level": 1, "init_deg": 1}, {"v": 0, "sdeg": 6, "level": 6, "init_deg": 6}, {"v": 1, "sdeg": 3, "level": 6, "init_deg": 6}, {"v": 2, "sdeg": 1, "level": 6, "init_deg": 6}, {"v": 3, "sdeg": 0, "level": 6, "init_deg": 6}, {"v": 4, "sdeg": 0, "level": 6, "init_deg": 6}], "4": [{"v": 5, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 6, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 7, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 8, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 0, "sdeg": 4, "level": 4, "init_deg": 4}, {"v": 1, "sdeg": 1, "level": 4, "init_deg": 4}, {"v": 2, "sdeg": 0, "level": 4, "init_deg": 4}, {"v": 3, "sdeg": 0, "level": 4, "init_deg": 4}, {"v": 4, "sdeg": 0, "level": 4, "init_deg": 4}], "5": [{"v": 5, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 6, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 7, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 8, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 0, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 1, "sdeg": 0, "level": 1, "init_deg": 1}, {"v": 2, "sdeg": 0, "level": 1, "init_deg": 1}, {"v": 3, "sdeg": 0, "level": 1, "init_deg": 1}, {"v": 4, "sdeg": 0, "level": 1, "init_deg": 1}]}, "hier_check_mismatches": 0, "sumT": 7, "Vstar": 6, "multi_used": 1, "Vstar_region": 4, "multi_region": 1, "kk_table": {"2": {"0": 0, "1": 2, "2": 3, "3": 3, "4": 4, "5": 4, "6": 4, "7": 5, "8": 5, "9": 5, "10": 5, "11": 6, "12": 6, "13": 6, "14": 6, "15": 6, "16": 7, "17": 7, "18": 7, "19": 7, "20": 7, "21": 7}, "3": {"0": 0, "1": 3, "2": 5, "3": 6, "4": 6, "5": 8, "6": 9, "7": 9, "8": 10, "9": 10, "10": 10, "11": 12, "12": 13, "13": 13, "14": 14, "15": 14, "16": 14, "17": 15, "18": 15, "19": 15, "20": 15, "21": 17}, "4": {"0": 0, "1": 4, "2": 7, "3": 9, "4": 10, "5": 10, "6": 13, "7": 15, "8": 16, "9": 16, "10": 18, "11": 19, "12": 19, "13": 20, "14": 20, "15": 20, "16": 23, "17": 25, "18": 26, "19": 26, "20": 28, "21": 29}, "5": {"0": 0, "1": 5, "2": 9, "3": 12, "4": 14, "5": 15, "6": 15, "7": 19, "8": 22, "9": 24, "10": 25, "11": 25, "12": 28, "13": 30, "14": 31, "15": 31, "16": 33, "17": 34, "18": 34, "19": 35, "20": 35, "21": 35}}}, "karate": {"name": "Zachary Karate Club", "n": 34, "edges": [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [0, 7], [0, 8], [0, 10], [0, 11], [0, 12], [0, 13], [0, 17], [0, 19], [0, 21], [0, 31], [1, 2], [1, 3], [1, 7], [1, 13], [1, 17], [1, 19], [1, 21], [1, 30], [2, 3], [2, 7], [2, 8], [2, 9], [2, 13], [2, 27], [2, 28], [2, 32], [3, 7], [3, 12], [3, 13], [4, 6], [4, 10], [5, 6], [5, 10], [5, 16], [6, 16], [8, 30], [8, 32], [8, 33], [9, 33], [13, 33], [14, 32], [14, 33], [15, 32], [15, 33], [18, 32], [18, 33], [19, 33], [20, 32], [20, 33], [22, 32], [22, 33], [23, 25], [23, 27], [23, 29], [23, 32], [23, 33], [24, 25], [24, 27], [24, 31], [25, 31], [26, 29], [26, 33], [27, 33], [28, 31], [28, 33], [29, 32], [29, 33], [30, 32], [30, 33], [31, 32], [31, 33], [32, 33]], "omega": 5, "S": [2, 3, 4, 5], "layout": {"0": [226.6, 288.8], "1": [201.8, 242.8], "2": [357.9, 218.7], "3": [282.1, 301.4], "4": [317.5, 379.2], "5": [137.8, 379.2], "6": [178.8, 379.2], "7": [333.2, 297.2], "8": [284.0, 171.6], "9": [513.7, 200.6], "10": [267.7, 379.2], "11": [85.3, 379.2], "12": [231.1, 379.2], "13": [290.8, 227.9], "14": [202.7, 40.8], "15": [241.5, 40.8], "16": [56.2, 379.2], "17": [71.4, 291.7], "18": [281.7, 40.8], "19": [199.6, 185.5], "20": [394.3, 40.8], "21": [63.6, 250.0], "22": [331.0, 40.8], "23": [480.0, 73.0], "24": [563.8, 129.0], "25": [563.8, 87.5], "26": [558.9, 40.8], "27": [490.9, 141.1], "28": [461.6, 205.8], "29": [475.4, 40.8], "30": [227.7, 131.7], "31": [420.3, 166.5], "32": [335.7, 90.2], "33": [368.7, 111.9]}, "kappa": {"2": [4, 4, 4, 4, 3, 3, 3, 4, 4, 2, 3, 1, 2, 4, 2, 2, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 2, 3, 3, 3, 4, 3, 4, 4], "3": [6, 6, 6, 6, 2, 2, 2, 6, 3, 0, 2, 0, 1, 6, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 3, 3, 1, 3, 3], "4": [4, 4, 4, 4, 0, 0, 0, 4, 1, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1], "5": [1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, "traj": {"0": [4, 6, 4, 1], "1": [4, 6, 4, 1], "2": [4, 6, 4, 1], "3": [4, 6, 4, 1], "4": [3, 2, 0, 0], "5": [3, 2, 0, 0], "6": [3, 2, 0, 0], "7": [4, 6, 4, 1], "8": [4, 3, 1, 0], "9": [2, 0, 0, 0], "10": [3, 2, 0, 0], "11": [1, 0, 0, 0], "12": [2, 1, 0, 0], "13": [4, 6, 4, 1], "14": [2, 1, 0, 0], "15": [2, 1, 0, 0], "16": [2, 1, 0, 0], "17": [2, 1, 0, 0], "18": [2, 1, 0, 0], "19": [3, 1, 0, 0], "20": [2, 1, 0, 0], "21": [2, 1, 0, 0], "22": [2, 1, 0, 0], "23": [3, 3, 1, 0], "24": [3, 1, 0, 0], "25": [3, 1, 0, 0], "26": [2, 1, 0, 0], "27": [3, 1, 0, 0], "28": [3, 1, 0, 0], "29": [3, 3, 1, 0], "30": [4, 3, 1, 0], "31": [3, 1, 0, 0], "32": [4, 3, 1, 0], "33": [4, 3, 1, 0]}, "law_checks": 102, "law_viol": 0, "nest_viol": 0, "enc": {"0": {"sstar": 5, "kstar": 1, "deltas": {}}, "1": {"sstar": 5, "kstar": 1, "deltas": {}}, "2": {"sstar": 5, "kstar": 1, "deltas": {}}, "3": {"sstar": 5, "kstar": 1, "deltas": {}}, "4": {"sstar": 3, "kstar": 2, "deltas": {}}, "5": {"sstar": 3, "kstar": 2, "deltas": {}}, "6": {"sstar": 3, "kstar": 2, "deltas": {}}, "7": {"sstar": 5, "kstar": 1, "deltas": {}}, "8": {"sstar": 4, "kstar": 1, "deltas": {"2": 1}}, "9": {"sstar": 2, "kstar": 2, "deltas": {}}, "10": {"sstar": 3, "kstar": 2, "deltas": {}}, "11": {"sstar": 2, "kstar": 1, "deltas": {}}, "12": {"sstar": 3, "kstar": 1, "deltas": {}}, "13": {"sstar": 5, "kstar": 1, "deltas": {}}, "14": {"sstar": 3, "kstar": 1, "deltas": {}}, "15": {"sstar": 3, "kstar": 1, "deltas": {}}, "16": {"sstar": 3, "kstar": 1, "deltas": {}}, "17": {"sstar": 3, "kstar": 1, "deltas": {}}, "18": {"sstar": 3, "kstar": 1, "deltas": {}}, "19": {"sstar": 3, "kstar": 1, "deltas": {"2": 1}}, "20": {"sstar": 3, "kstar": 1, "deltas": {}}, "21": {"sstar": 3, "kstar": 1, "deltas": {}}, "22": {"sstar": 3, "kstar": 1, "deltas": {}}, "23": {"sstar": 4, "kstar": 1, "deltas": {}}, "24": {"sstar": 3, "kstar": 1, "deltas": {"2": 1}}, "25": {"sstar": 3, "kstar": 1, "deltas": {"2": 1}}, "26": {"sstar": 3, "kstar": 1, "deltas": {}}, "27": {"sstar": 3, "kstar": 1, "deltas": {"2": 1}}, "28": {"sstar": 3, "kstar": 1, "deltas": {"2": 1}}, "29": {"sstar": 4, "kstar": 1, "deltas": {}}, "30": {"sstar": 4, "kstar": 1, "deltas": {"2": 1}}, "31": {"sstar": 3, "kstar": 1, "deltas": {"2": 1}}, "32": {"sstar": 4, "kstar": 1, "deltas": {"2": 1}}, "33": {"sstar": 4, "kstar": 1, "deltas": {"2": 1}}}, "active_vertices": 34, "saturated": 24, "nonzero_deltas": 10, "recon_fail": 0, "trees": {"2": [{"id": 0, "kbirth": 4, "members": [0, 1, 2, 3, 7, 8, 13, 30, 32, 33], "parent": 1, "size": 10}, {"id": 1, "kbirth": 3, "members": [4, 5, 6, 10, 19, 23, 24, 25, 27, 28, 29, 31], "parent": 2, "size": 22}, {"id": 2, "kbirth": 2, "members": [9, 12, 14, 15, 16, 17, 18, 20, 21, 22, 26], "parent": 3, "size": 33}, {"id": 3, "kbirth": 1, "members": [11], "parent": -1, "size": 34}], "3": [{"id": 0, "kbirth": 6, "members": [0, 1, 2, 3, 7, 13], "parent": 1, "size": 6}, {"id": 1, "kbirth": 3, "members": [8, 23, 29, 30, 32, 33], "parent": 2, "size": 12}, {"id": 2, "kbirth": 2, "members": [4, 5, 6, 10], "parent": 3, "size": 16}, {"id": 3, "kbirth": 1, "members": [12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 27, 28, 31], "parent": -1, "size": 32}], "4": [{"id": 0, "kbirth": 4, "members": [0, 1, 2, 3, 7, 13], "parent": -1, "size": 6}, {"id": 1, "kbirth": 1, "members": [8, 23, 29, 30, 32, 33], "parent": -1, "size": 6}], "5": [{"id": 0, "kbirth": 1, "members": [0, 1, 2, 3, 7, 13], "parent": -1, "size": 6}]}, "peel_trace": {"2": [{"v": 11, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 9, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 12, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 14, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 15, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 16, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 17, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 18, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 20, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 21, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 22, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 26, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 4, "sdeg": 3, "level": 3, "init_deg": 3}, {"v": 6, "sdeg": 2, "level": 3, "init_deg": 4}, {"v": 5, "sdeg": 2, "level": 3, "init_deg": 4}, {"v": 10, "sdeg": 1, "level": 3, "init_deg": 3}, {"v": 19, "sdeg": 3, "level": 3, "init_deg": 3}, {"v": 24, "sdeg": 3, "level": 3, "init_deg": 3}, {"v": 25, "sdeg": 2, "level": 3, "init_deg": 3}, {"v": 27, "sdeg": 3, "level": 3, "init_deg": 4}, {"v": 23, "sdeg": 3, "level": 3, "init_deg": 5}, {"v": 29, "sdeg": 2, "level": 3, "init_deg": 4}, {"v": 28, "sdeg": 3, "level": 3, "init_deg": 3}, {"v": 31, "sdeg": 3, "level": 3, "init_deg": 6}, {"v": 7, "sdeg": 4, "level": 4, "init_deg": 4}, {"v": 3, "sdeg": 4, "level": 4, "init_deg": 6}, {"v": 0, "sdeg": 4, "level": 4, "init_deg": 16}, {"v": 1, "sdeg": 3, "level": 4, "init_deg": 9}, {"v": 13, "sdeg": 2, "level": 4, "init_deg": 5}, {"v": 2, "sdeg": 2, "level": 4, "init_deg": 10}, {"v": 8, "sdeg": 3, "level": 4, "init_deg": 5}, {"v": 30, "sdeg": 2, "level": 4, "init_deg": 4}, {"v": 32, "sdeg": 1, "level": 4, "init_deg": 12}, {"v": 33, "sdeg": 0, "level": 4, "init_deg": 17}], "3": [{"v": 9, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 11, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 12, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 14, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 15, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 16, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 17, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 18, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 19, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 20, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 21, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 22, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 24, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 25, "sdeg": 0, "level": 1, "init_deg": 1}, {"v": 26, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 27, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 28, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 31, "sdeg": 1, "level": 1, "init_deg": 3}, {"v": 4, "sdeg": 2, "level": 2, "init_deg": 2}, {"v": 6, "sdeg": 1, "level": 2, "init_deg": 3}, {"v": 5, "sdeg": 1, "level": 2, "init_deg": 3}, {"v": 10, "sdeg": 0, "level": 2, "init_deg": 2}, {"v": 23, "sdeg": 3, "level": 3, "init_deg": 4}, {"v": 29, "sdeg": 1, "level": 3, "init_deg": 4}, {"v": 30, "sdeg": 3, "level": 3, "init_deg": 3}, {"v": 33, "sdeg": 1, "level": 3, "init_deg": 15}, {"v": 32, "sdeg": 1, "level": 3, "init_deg": 13}, {"v": 8, "sdeg": 1, "level": 3, "init_deg": 5}, {"v": 7, "sdeg": 6, "level": 6, "init_deg": 6}, {"v": 0, "sdeg": 6, "level": 6, "init_deg": 18}, {"v": 1, "sdeg": 3, "level": 6, "init_deg": 12}, {"v": 2, "sdeg": 1, "level": 6, "init_deg": 11}, {"v": 3, "sdeg": 0, "level": 6, "init_deg": 10}, {"v": 13, "sdeg": 0, "level": 6, "init_deg": 6}], "4": [{"v": 4, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 5, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 6, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 9, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 10, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 11, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 12, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 14, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 15, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 16, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 17, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 18, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 19, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 20, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 21, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 22, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 24, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 25, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 26, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 27, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 28, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 31, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 8, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 30, "sdeg": 0, "level": 1, "init_deg": 1}, {"v": 23, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 29, "sdeg": 0, "level": 1, "init_deg": 1}, {"v": 32, "sdeg": 0, "level": 1, "init_deg": 2}, {"v": 33, "sdeg": 0, "level": 1, "init_deg": 2}, {"v": 7, "sdeg": 4, "level": 4, "init_deg": 4}, {"v": 0, "sdeg": 4, "level": 4, "init_deg": 7}, {"v": 1, "sdeg": 1, "level": 4, "init_deg": 7}, {"v": 2, "sdeg": 0, "level": 4, "init_deg": 7}, {"v": 3, "sdeg": 0, "level": 4, "init_deg": 7}, {"v": 13, "sdeg": 0, "level": 4, "init_deg": 4}], "5": [{"v": 4, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 5, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 6, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 8, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 9, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 10, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 11, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 12, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 14, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 15, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 16, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 17, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 18, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 19, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 20, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 21, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 22, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 23, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 24, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 25, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 26, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 27, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 28, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 29, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 30, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 31, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 32, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 33, "sdeg": 0, "level": 0, "init_deg": 0}, {"v": 7, "sdeg": 1, "level": 1, "init_deg": 1}, {"v": 0, "sdeg": 1, "level": 1, "init_deg": 2}, {"v": 1, "sdeg": 0, "level": 1, "init_deg": 2}, {"v": 2, "sdeg": 0, "level": 1, "init_deg": 2}, {"v": 3, "sdeg": 0, "level": 1, "init_deg": 2}, {"v": 13, "sdeg": 0, "level": 1, "init_deg": 1}]}, "hier_check_mismatches": 0, "sumT": 11, "Vstar": 11, "multi_used": 0, "Vstar_region": 9, "multi_region": 1, "kk_table": {"2": {"0": 0, "1": 2, "2": 3, "3": 3, "4": 4, "5": 4, "6": 4, "7": 5, "8": 5, "9": 5, "10": 5, "11": 6, "12": 6, "13": 6, "14": 6, "15": 6, "16": 7, "17": 7, "18": 7, "19": 7, "20": 7, "21": 7}, "3": {"0": 0, "1": 3, "2": 5, "3": 6, "4": 6, "5": 8, "6": 9, "7": 9, "8": 10, "9": 10, "10": 10, "11": 12, "12": 13, "13": 13, "14": 14, "15": 14, "16": 14, "17": 15, "18": 15, "19": 15, "20": 15, "21": 17}, "4": {"0": 0, "1": 4, "2": 7, "3": 9, "4": 10, "5": 10, "6": 13, "7": 15, "8": 16, "9": 16, "10": 18, "11": 19, "12": 19, "13": 20, "14": 20, "15": 20, "16": 23, "17": 25, "18": 26, "19": 26, "20": 28, "21": 29}, "5": {"0": 0, "1": 5, "2": 9, "3": 12, "4": 14, "5": 15, "6": 15, "7": 19, "8": 22, "9": 24, "10": 25, "11": 25, "12": 28, "13": 30, "14": 31, "15": 31, "16": 33, "17": 34, "18": 34, "19": 35, "20": 35, "21": 35}}}};
+
+// ---------- helpers ----------
+function el(t,a={}){const e=document.createElementNS("http://www.w3.org/2000/svg",t);for(const k in a)e.setAttribute(k,a[k]);return e;}
+function clr(s){while(s.firstChild)s.removeChild(s.firstChild);}
+function maxKappa(g,s){return Math.max(1,...DATA[g].kappa[String(s)]);}
+function kColor(val,maxv){
+  if(val<=0)return "#21262d";
+  const t=Math.min(1,val/maxv);
+  const hue=210-185*t, sat=70, light=38+18*t;
+  return `hsl(${hue},${sat}%,${light}%)`;
+}
+function mkTabs(container,items,initial,cb){
+  const host=document.getElementById(container);host.innerHTML="";
+  items.forEach((it,i)=>{
+    const b=document.createElement("button");
+    b.textContent=it.label;b.dataset.val=it.val;
+    if(it.val===initial)b.classList.add("active");
+    b.onclick=()=>{host.querySelectorAll("button").forEach(x=>x.classList.remove("active"));b.classList.add("active");cb(it.val);};
+    host.appendChild(b);
+  });
+}
+
+// ---------- graph drawing ----------
+function drawGraph(svgId,g,sColor,opts={}){
+  const G=DATA[g],svg=document.getElementById(svgId);clr(svg);
+  const {peeled=new Set(),cur=null,labels=null}=opts;
+  const maxv=maxKappa(g,sColor);
+  const pos=v=>G.layout[String(v)];
+  for(const [u,v] of G.edges){
+    const dead=peeled.has(u)||peeled.has(v);
+    svg.appendChild(el("line",{x1:pos(u)[0],y1:pos(u)[1],x2:pos(v)[0],y2:pos(v)[1],class:"edge"+(dead?" dead":"")}));
+  }
+  const r=G.n>20?11:18;
+  for(let v=0;v<G.n;v++){
+    const kap=G.kappa[String(sColor)][v];
+    const grp=el("g",{class:"vtx"+(peeled.has(v)?" peeled":"")+(cur===v?" cur":"")});
+    grp.appendChild(el("circle",{cx:pos(v)[0],cy:pos(v)[1],r:r,fill:kColor(kap,maxv),stroke:"#0d1117"}));
+    const t=el("text",{x:pos(v)[0],y:pos(v)[1]});t.textContent=v;grp.appendChild(t);
+    svg.appendChild(grp);
+    if(labels&&labels[v]!==undefined){
+      const lb=el("text",{x:pos(v)[0]+r+2,y:pos(v)[1]-r,fill:peeled.has(v)?"var(--muted)":"var(--yellow)","font-size":11,"font-weight":600});
+      lb.textContent=labels[v];svg.appendChild(lb);
+    }
+  }
+}
+
+// ---------- verify cards ----------
+function renderVerify(){
+  const k=DATA.karate;
+  const cards=[
+    {big:`${k.law_viol}/${k.law_checks}`,lbl:"KK 律违例 (定理1)"},
+    {big:`${k.nest_viol}`,lbl:"支撑嵌套违例 (定理2)"},
+    {big:`${k.recon_fail}`,lbl:"anchor+delta 重建失败"},
+    {big:`${k.hier_check_mismatches}`,lbl:"Hier 树 vs 直接 component"},
+    {big:`${k.saturated}/${k.active_vertices}`,lbl:`饱和顶点 (${Math.round(100*k.saturated/k.active_vertices)}%)`},
+  ];
+  const host=document.getElementById("verify-cards");host.innerHTML="";
+  cards.forEach(c=>{
+    const d=document.createElement("div");d.className="vcard";
+    d.innerHTML=`<div class="big">${c.big}</div><div class="lbl">${c.lbl}</div>`;
+    host.appendChild(d);
+  });
+}
+
+// ---------- graphs section ----------
+let colorS=2;
+function renderGraphs(){
+  drawGraph("toy-graph","toy",colorS);
+  drawGraph("karate-graph","karate",colorS);
+  const maxv=maxKappa("karate",colorS);
+  const leg=document.getElementById("color-legend");
+  leg.innerHTML=`<div class="legend-item">颜色 = κ_${colorS}:</div>`+
+    [0,1,Math.ceil(maxv/2),maxv].map(v=>`<div class="legend-item"><span class="dot" style="background:${kColor(v,maxv)}"></span>${v}</div>`).join("");
+  document.getElementById("karate-note").innerHTML=
+    `空手道俱乐部 ω=5。深核 <code>{0,1,2,3,7,13}</code>(Mr. Hi 周围)轨迹 (4,6,4,1),从 s=2 一直存活到 s=5;另一密区 <code>{8,23,29,30,32,33}</code>(John A. 周围)平行存在。`;
+}
+
+// ---------- peel ----------
+let peelS=2,peelStep=0,peelTimer=null;
+function renderPeel(){
+  const tr=DATA.toy.peel_trace[String(peelS)];
+  document.getElementById("p-num").textContent=peelStep;
+  document.getElementById("p-tot").textContent=tr.length;
+  const peeled=new Set();for(let i=0;i<peelStep;i++)peeled.add(tr[i].v);
+  const cur=(peelStep>0&&peelStep<=tr.length)?tr[peelStep-1].v:null;
+  const labels={};
+  for(let v=0;v<DATA.toy.n;v++){
+    if(peeled.has(v)){const st=tr.find(x=>x.v===v);labels[v]=`κ=${st.level}`;}
+    else{const st=tr.find(x=>x.v===v);labels[v]=`μ=${st.init_deg}`;}
+  }
+  drawGraph("peel-graph","toy",peelS,{peeled,cur,labels});
+  const d=document.getElementById("peel-desc");
+  if(peelStep===0)d.innerHTML=`<strong>初始 (s=${peelS})</strong>:黄标 = 每个顶点的初始 μ_${peelS} = 该顶点参与的 ${peelS}-clique 数。按 μ 从小到大剥。`;
+  else{const e=tr[peelStep-1];d.innerHTML=`<strong>步 ${peelStep}</strong>:当前最小 μ 的是 <strong>v=${e.v}</strong>(此刻 μ=${e.sdeg})。固定 <strong>κ_${peelS}(${e.v}) = ${e.level}</strong>(running max of min)。移除并更新邻居。`;}
+}
+
+// ---------- trajectory ----------
+let trajG="karate";
+function renderTraj(){
+  const G=DATA[trajG],S=G.S;
+  let h="<thead><tr><th>v</th>"+S.map(s=>`<th>κ${s}</th>`).join("")+"<th>轨迹</th><th>单调?</th></tr></thead><tbody>";
+  for(let v=0;v<G.n;v++){
+    const t=S.map(s=>G.kappa[String(s)][v]);
+    if(t.every(x=>x===0))continue;
+    let mono=true;for(let i=1;i<t.length;i++)if(t[i]>t[i-1])mono=false;
+    const cells=t.map((val,i)=>{
+      let cls="kc";if(val===0)cls+=" zero";else if(i>0&&val>t[i-1])cls+=" peak";
+      return `<td class="${cls}">${val}</td>`;
+    }).join("");
+    h+=`<tr><td><strong>${v}</strong></td>${cells}<td class="mono">(${t.join(", ")})</td><td>${mono?"✓":'<span style="color:var(--hi)">✗ 非单调</span>'}</td></tr>`;
+  }
+  h+="</tbody>";
+  document.getElementById("traj-table").innerHTML=h;
+  document.getElementById("traj-warn").innerHTML=
+    `<strong>非单调是通性。</strong> 看 <code>(4,6,4,1)</code>:κ₃=6 &gt; κ₂=4。原因:K₅ 里每个顶点度数 4,但参与 C(4,2)=6 个三角形。所以不能用"低 s 的 κ 当高 s 的下界"做朴素 warm-start —— 正确的跨 s 关系是定理 1 的 KK 律(下一节)。`;
+}
+
+// ---------- KK law ----------
+function renderKK(){
+  const S=DATA.karate.S,kk=DATA.karate.kk_table;
+  const ks=[];for(let k=0;k<=10;k++)ks.push(k);
+  let h="<thead><tr><th>k＼s</th>"+ks.map(k=>`<th>${k}</th>`).join("")+"</tr></thead><tbody>";
+  for(const s of S){
+    h+=`<tr><td><strong>s=${s}</strong></td>`+ks.map(k=>`<td class="kc">${kk[String(s)][String(k)]}</td>`).join("")+"</tr>";
+  }
+  h+="</tbody>";
+  document.getElementById("kk-table").innerHTML=h;
+  // selects
+  const selS=document.getElementById("law-s"),selK=document.getElementById("law-k");
+  selS.innerHTML=S.slice(0,-1).map(s=>`<option value="${s}">${s}</option>`).join("");
+  selK.innerHTML=[1,2,3,4,5,6,8,10].map(k=>`<option value="${k}">${k}</option>`).join("");
+  function upd(){
+    const s=selS.value,k=selK.value;
+    document.getElementById("law-out").textContent=kk[String(s)][String(k)];
+  }
+  selS.onchange=upd;selK.onchange=upd;upd();
+  const k=DATA.karate;
+  document.getElementById("law-stat").innerHTML=`${k.law_checks} 次逐顶点 check,违例 <strong>${k.law_viol}</strong>`;
+}
+
+// ---------- anchor/delta ----------
+function renderSatStat(){
+  const k=DATA.karate;
+  document.getElementById("sat-stat").innerHTML=
+    `空手道俱乐部:${k.active_vertices} 个活跃顶点中 <strong>${k.saturated} 个饱和</strong>(${Math.round(100*k.saturated/k.active_vertices)}%),只有 <strong>${k.nonzero_deltas} 个非零 δ</strong>。κ 矩阵从 ${k.active_vertices}×${k.S.length}=${k.active_vertices*k.S.length} 压到 ~${k.active_vertices*2}(anchor) + ${k.nonzero_deltas}(δ)。`;
+}
+let anchorV=0;
+function renderRecon(){
+  const G=DATA.karate,S=G.S,kk=G.kk_table,e=G.enc[String(anchorV)];
+  const box=document.getElementById("recon-box");
+  if(!e||e.sstar===null){box.textContent=`v${anchorV}:不在任何 nucleus 中`;return;}
+  const traj=S.map(s=>G.kappa[String(s)][anchorV]);
+  let h=`<div>顶点 v${anchorV}　真实轨迹 = <span class="res">(${traj.join(", ")})</span></div>`;
+  h+=`<div><span class="anchor">anchor: s* = ${e.sstar}, κ_${e.sstar} = ${e.kstar}</span>　(只存这两个数)</div>`;
+  // reconstruct downward
+  const rec={};rec[e.sstar]=e.kstar;
+  for(let s=e.sstar-1;s>=2;s--){
+    const sh=kk[String(s)][String(rec[s+1])];
+    const d=(e.deltas[String(s)]!==undefined)?e.deltas[String(s)]:0;
+    rec[s]=sh+d;
+    h+=`<div>κ_${s} = ∂_${s}(κ_${s+1}=${rec[s+1]}) <span class="shadow">[=${sh}]</span> + δ_${s} <span class="delta">[=${d}]</span> = <span class="res">${rec[s]}</span></div>`;
+  }
+  const ok=S.every(s=>s>e.sstar||rec[s]===G.kappa[String(s)][anchorV]);
+  h+=`<div style="margin-top:6px;color:${ok?'var(--green)':'var(--red)'}">${ok?'✓ 重建与真实轨迹完全一致':'✗ 不一致'}　${Object.keys(e.deltas).length===0?'(饱和顶点,δ 全 0)':'(非饱和)'}</div>`;
+  box.innerHTML=h;
+}
+
+// ---------- trees ----------
+function layoutTree(tree,ox,oy,lh=120,sw=180){
+  const byid={};tree.forEach(n=>byid[n.id]=n);
+  const ch={};tree.forEach(n=>{if(n.parent!==-1){(ch[n.parent]=ch[n.parent]||[]).push(n.id);}});
+  const roots=tree.filter(n=>n.parent===-1).map(n=>n.id);
+  const w={};
+  function cw(i){if(!ch[i]||!ch[i].length)return w[i]=1;let s=0;for(const c of ch[i])s+=cw(c);return w[i]=s;}
+  let tot=0;roots.forEach(r=>tot+=cw(r));
+  const lay={};
+  function ap(i,x,y){lay[i]={x,y};let cx=x-(w[i]*sw)/2+sw/2;for(const c of (ch[i]||[])){ap(c,cx+(w[c]*sw)/2-sw/2,y+lh);cx+=w[c]*sw;}}
+  let cur=ox-(tot*sw)/2+sw/2;
+  roots.forEach(r=>{ap(r,cur+(w[r]*sw)/2-sw/2,oy);cur+=w[r]*sw;});
+  return {lay,ch,byid};
+}
+function drawTreeNode(svg,x,y,nd,shared){
+  const w=164,h=58;
+  svg.appendChild(el("rect",{x:x-w/2,y:y-h/2,width:w,height:h,rx:6,class:"tree-node"+(shared?" shared":"")}));
+  const mem=nd.members.join(",");
+  const memShort=mem.length>22?mem.slice(0,20)+"…":mem;
+  const t1=el("text",{x,y:y-9,"text-anchor":"middle",fill:"var(--text)","font-size":11,"font-weight":600});
+  t1.textContent=`{${memShort}}`;svg.appendChild(t1);
+  const t2=el("text",{x,y:y+11,"text-anchor":"middle",fill:"var(--accent2)","font-size":10});
+  t2.textContent=`kbirth=${nd.kbirth}  size=${nd.size}`;svg.appendChild(t2);
+}
+function renderTreeOn(svgId,g,s,markShared){
+  const svg=document.getElementById(svgId);clr(svg);
+  const tree=DATA[g].trees[String(s)];
+  if(!tree||!tree.length){svg.appendChild(el("text",{x:400,y:200,"text-anchor":"middle",fill:"var(--muted)"})).textContent="(空)";return;}
+  const {lay,ch,byid}=layoutTree(tree,400,55);
+  tree.forEach(nd=>{if(nd.parent!==-1){const p=lay[nd.parent],c=lay[nd.id];
+    svg.appendChild(el("path",{d:`M ${p.x} ${p.y+29} L ${p.x} ${(p.y+c.y)/2} L ${c.x} ${(p.y+c.y)/2} L ${c.x} ${c.y-29}`,class:"tree-link"}));}});
+  // shared region detection
+  tree.forEach(nd=>{
+    let shared=false;
+    if(markShared){const key=JSON.stringify(closureMembers(g,s,nd.id));
+      for(const s2 of DATA[g].S){if(s2===s)continue;for(const nd2 of DATA[g].trees[String(s2)]){
+        if(JSON.stringify(closureMembers(g,s2,nd2.id))===key){shared=true;break;}}if(shared)break;}}
+    drawTreeNode(svg,lay[nd.id].x,lay[nd.id].y,nd,shared);
+  });
+}
+function closureMembers(g,s,id){
+  const tree=DATA[g].trees[String(s)],byid={},ch={};
+  tree.forEach(n=>byid[n.id]=n);
+  tree.forEach(n=>{if(n.parent!==-1)(ch[n.parent]=ch[n.parent]||[]).push(n.id);});
+  function f(i){let o=byid[i].members.slice();for(const c of (ch[i]||[]))o=o.concat(f(c));return o;}
+  return f(id).sort((a,b)=>a-b);
+}
+let treeG="karate",treeS=2;
+function renderTree(){
+  renderTreeOn("tree-svg",treeG,treeS,true);
+  const tree=DATA[treeG].trees[String(treeS)];
+  document.getElementById("tree-exp").innerHTML=
+    `<strong>${DATA[treeG].name} · T_${treeS}</strong>:${tree.length} 个节点。橙色 = 顶点集合在其他 s 也出现(region 复用)。节点内显示在该层新生的顶点 + kbirth + 子树大小。`;
+}
+
+// ---------- DAG / compression ----------
+function renderDag(){
+  const rows=[["toy","玩具图"],["karate","空手道俱乐部(真实)"]];
+  let h="<thead><tr><th>图</th><th>Σ|T_s|</th><th>naive (vset,kbirth) 去重</th><th>region (vset) 去重</th><th>轨迹饱和率</th></tr></thead><tbody>";
+  for(const [g,nm] of rows){
+    const d=DATA[g];
+    h+=`<tr><td>${nm}</td><td class="kc">${d.sumT}</td>`+
+       `<td class="kc">${d.Vstar} (${(d.sumT/d.Vstar).toFixed(2)}×)</td>`+
+       `<td class="kc">${d.Vstar_region} (${(d.sumT/d.Vstar_region).toFixed(2)}×)</td>`+
+       `<td class="kc">${Math.round(100*d.saturated/d.active_vertices)}%</td></tr>`;
+  }
+  h+="</tbody>";
+  document.getElementById("dag-table").innerHTML=h;
+  document.getElementById("dag-honest").innerHTML=
+    `<strong>诚实结论:</strong> 结构性 region 去重在真实图上很弱(空手道仅 ${(DATA.karate.sumT/DATA.karate.Vstar_region).toFixed(2)}×,naive (vset,kbirth) 更是 ${(DATA.karate.sumT/DATA.karate.Vstar).toFixed(2)}×,基本无效)。<strong>真正的压缩来自 anchor+delta 轨迹编码</strong>(空手道 71% 饱和)。dedup 比是数据依赖的,稀疏图上可退化到 1×。`;
+}
+
+// ---------- query ----------
+let qG="karate",qS=2;
+function renderQuery(){
+  renderTreeOn("query-svg",qG,qS,false);
+  const tree=DATA[qG].trees[String(qS)];
+  const roots=tree.filter(n=>n.parent===-1).map(n=>n.id);
+  document.getElementById("query-desc").innerHTML=
+    `<strong>tree(${qS}) on ${DATA[qG].name}</strong>:ROOTS[${qS}] = [${roots.join(", ")}](${roots.length} 个根),沿 parent 遍历共 ${tree.length} 个节点。复杂度 O(|T_${qS}|),output-optimal。`;
+}
+
+// ---------- init ----------
+document.addEventListener("DOMContentLoaded",()=>{
+  const S=DATA.karate.S;
+  renderVerify();
+  // color-s tabs
+  mkTabs("color-s-tabs",S.map(s=>({label:String(s),val:s})),colorS,v=>{colorS=v;renderGraphs();});
+  renderGraphs();
+  // peel
+  mkTabs("peel-s-tabs",DATA.toy.S.map(s=>({label:String(s),val:s})),peelS,v=>{peelS=v;peelStep=0;renderPeel();});
+  renderPeel();
+  document.getElementById("p-next").onclick=()=>{if(peelStep<DATA.toy.peel_trace[String(peelS)].length){peelStep++;renderPeel();}};
+  document.getElementById("p-prev").onclick=()=>{if(peelStep>0){peelStep--;renderPeel();}};
+  document.getElementById("p-reset").onclick=()=>{peelStep=0;renderPeel();};
+  document.getElementById("p-play").onclick=function(){
+    if(peelTimer){clearInterval(peelTimer);peelTimer=null;this.textContent="▶ 播放";return;}
+    this.textContent="⏸ 暂停";const btn=this;
+    peelTimer=setInterval(()=>{const L=DATA.toy.peel_trace[String(peelS)].length;
+      if(peelStep>=L){clearInterval(peelTimer);peelTimer=null;btn.textContent="▶ 播放";return;}peelStep++;renderPeel();},1000);
+  };
+  // trajectory
+  mkTabs("traj-tabs",[{label:"空手道(真实)",val:"karate"},{label:"玩具图",val:"toy"}],"karate",v=>{trajG=v;renderTraj();});
+  renderTraj();
+  // KK
+  renderKK();
+  // anchor
+  renderSatStat();
+  const vtxOptions=[0,33,32,8,30,19,11].filter(v=>v<DATA.karate.n);
+  mkTabs("anchor-vtx-tabs",vtxOptions.map(v=>({label:"v"+v,val:v})),0,v=>{anchorV=v;renderRecon();});
+  renderRecon();
+  // trees
+  mkTabs("tree-graph-tabs",[{label:"空手道",val:"karate"},{label:"玩具图",val:"toy"}],"karate",v=>{treeG=v;if(!DATA[treeG].S.includes(treeS))treeS=DATA[treeG].S[0];renderTree();mkTabs("tree-s-tabs",DATA[treeG].S.map(s=>({label:"T"+s,val:s})),treeS,vv=>{treeS=vv;renderTree();});});
+  mkTabs("tree-s-tabs",S.map(s=>({label:"T"+s,val:s})),treeS,v=>{treeS=v;renderTree();});
+  renderTree();
+  // dag
+  renderDag();
+  // query
+  mkTabs("q-graph-tabs",[{label:"空手道",val:"karate"},{label:"玩具图",val:"toy"}],"karate",v=>{qG=v;if(!DATA[qG].S.includes(qS))qS=DATA[qG].S[0];renderQuery();mkTabs("q-s-tabs",DATA[qG].S.map(s=>({label:"T"+s,val:s})),qS,vv=>{qS=vv;renderQuery();});});
+  mkTabs("q-s-tabs",S.map(s=>({label:"T"+s,val:s})),qS,v=>{qS=v;renderQuery();});
+  renderQuery();
+});
+</script>
+</body>
+</html>
