@@ -274,6 +274,7 @@ static SDCTBuildResult buildSDCTWithIndex(
         envSet("PIVOTER_RUN_REGION_V3NOCPI") || envSet("PIVOTER_RUN_REGION_V3H") ||
         envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM") ||
         envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") || envSet("PIVOTER_RUN_REGION_V3LM_HIER") ||
+        envSet("PIVOTER_RUN_REGION_TIER") ||
         envSet("PIVOTER_RUN_CCPATH");
     // Region V2 only needs tree + maxCliqueTags, skip expensive ci and tgv
     // V3 needs SDCT tree with hold/pivot info — DO NOT use MaxCliqEnum for V3
@@ -285,6 +286,7 @@ static SDCTBuildResult buildSDCTWithIndex(
         !envSet("PIVOTER_RUN_REGION_V3H") && !envSet("PIVOTER_RUN_REGION_V3HC") &&
         !envSet("PIVOTER_RUN_REGION_V3LM") && !envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") &&
         !envSet("PIVOTER_RUN_REGION_V3LM_HIER") && !envSet("PIVOTER_RUN_REGION_V4") &&
+        !envSet("PIVOTER_RUN_REGION_TIER") &&
         !envSet("PIVOTER_RUN_CCPATH");
 
     DynamicGraphSet<TreeGraphNode> tgv(n);
@@ -299,6 +301,7 @@ static SDCTBuildResult buildSDCTWithIndex(
                          envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM") ||
                          envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") ||
                          envSet("PIVOTER_RUN_REGION_V3LM_HIER") ||
+                         envSet("PIVOTER_RUN_REGION_TIER") ||
                          envSet("PIVOTER_RUN_CCPATH")) &&
                         !envSet("PIVOTER_COMPARE") && !envSet("PIVOTER_RUN_ST");
     auto ci = (r >= 3 && !quotientLabOnly && !regionOnly && !v3Only) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
@@ -622,12 +625,11 @@ static bool dispatchR1(
             delete[] refV;
         }
         dumpCoreValues(coreV, numVertices, "r=1 ST_V3");
-        // Optional post-peel hierarchy build (paper §5).  Reuses V3's
-        // dual CSR (vtxLeafOff/Ids) — V3's tree-free 10Σ peel-state
-        // budget is preserved; the hier routine takes O(Σ) temporary
-        // scratch and frees it on return.  Strict paper Def 4: leaves
-        // act as DSU connector nodes, so two vertices share a hier
-        // component iff they are s-connected via admissible CPI cliques.
+        // Optional post-peel hierarchy build (paper BuildHier). Reuses
+        // V3's dual CSR and core values; the default exact routine emits
+        // per-leaf clique-entry events and applies an elder-rule DSU scan.
+        // Set PIVOTER_HIER_VERSION=leaf to run the older leaf-connector
+        // approximation for local A/B checks only.
         if (const char *hpath = std::getenv("PIVOTER_DUMP_HIER")) {
             const int min_size = []() {
                 if (const char *e = std::getenv("PIVOTER_HIER_MIN_SIZE"))
@@ -636,6 +638,32 @@ static bool dispatchR1(
             }();
             daf::timeCount("hier r=1 (build via CPI leaves)", [&]() {
                 nucleus_hier::buildAndDumpHierarchyFromCSR(
+                    *pmr.st_v2_data, coreV, numVertices, s, min_size, hpath);
+                return 0;
+            });
+        }
+        // Experiment-only A/B hooks: run both hierarchy builders after the
+        // same peel so large graphs do not pay the ST_V3 build cost twice.
+        if (const char *hpath = std::getenv("PIVOTER_DUMP_HIER_EXACT")) {
+            const int min_size = []() {
+                if (const char *e = std::getenv("PIVOTER_HIER_MIN_SIZE"))
+                    return std::max(1, std::atoi(e));
+                return 1;
+            }();
+            daf::timeCount("hier r=1 (build exact via CPI leaves)", [&]() {
+                nucleus_hier::buildAndDumpHierarchyFromCSRExact(
+                    *pmr.st_v2_data, coreV, numVertices, s, min_size, hpath);
+                return 0;
+            });
+        }
+        if (const char *hpath = std::getenv("PIVOTER_DUMP_HIER_LEAF")) {
+            const int min_size = []() {
+                if (const char *e = std::getenv("PIVOTER_HIER_MIN_SIZE"))
+                    return std::max(1, std::atoi(e));
+                return 1;
+            }();
+            daf::timeCount("hier r=1 (build leaf via CPI leaves)", [&]() {
+                nucleus_hier::buildAndDumpHierarchyFromCSRLeafConnector(
                     *pmr.st_v2_data, coreV, numVertices, s, min_size, hpath);
                 return 0;
             });
@@ -930,6 +958,7 @@ static bool dispatchR3Plus(
         {"PIVOTER_RUN_REGION_V3FAST", "Region CPI V3 Fast r>=3", NucleusCoreDecompositionRClique_RegionCPI},
         {"PIVOTER_RUN_REGION_V3H", "Region CPI V3 Fast + Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_Hierarchy},
         {"PIVOTER_RUN_REGION_V3HC", "Region CPI V3 Fast + Class-based Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_HierarchyClass},
+        {"PIVOTER_RUN_REGION_TIER", "RegND 4-tier dispatcher (PIVOTER_TIER={1,2,3,4}) r>=3", NucleusCoreDecompositionRClique_RegionCPI_Tier},
         {"PIVOTER_RUN_REGION_V3LM", "RegNDC (Region-Tuple Nucleus Decomposition with CPI backend) r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem},
         {"PIVOTER_RUN_CCPATH", "CCPath (lazy/eager threshold antichain) r>=3", NucleusCoreDecompositionRClique_CCPath},
         {"PIVOTER_RUN_REGION_V3LM_NOCPI", "Region CPI V3 Low-Memory NoCPI (ablation) r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem_NoCPI},
@@ -1109,6 +1138,7 @@ int main(int argc, char **argv) {
         || envSet("PIVOTER_RUN_REGION_V3H") || envSet("PIVOTER_RUN_REGION_V3HC")
         || envSet("PIVOTER_RUN_REGION_V3LM") || envSet("PIVOTER_RUN_REGION_V3LM_NOCPI")
         || envSet("PIVOTER_RUN_REGION_V3LM_HIER")
+        || envSet("PIVOTER_RUN_REGION_TIER")
         || envSet("PIVOTER_RUN_REGION_V4") || envSet("PIVOTER_RUN_REGION_V2F")
         || envSet("PIVOTER_RUN_CCPATH")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {

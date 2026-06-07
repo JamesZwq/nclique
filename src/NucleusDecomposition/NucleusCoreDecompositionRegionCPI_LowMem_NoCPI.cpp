@@ -348,6 +348,12 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_NoCPI(
     // - keep private classes only as path-side support dimensions
     const bool enablePrivateCloud = !getenv("PIVOTER_V3_NO_PRIVATE");
     const bool enableDebugVerify = getenv("PIVOTER_V3_DEBUG_VERIFY") != nullptr;
+    // PIVOTER_RECOMPUTE_PEEL: tier-ablation mode. Skip Step 5/6 dead-box
+    // machinery and recompute support from scratch after every batch.
+    // Used by Tier-1 (\regnd) via NucleusCoreDecompositionRClique_RegionCPI_Tier.
+    const bool recomputePeel = std::getenv("PIVOTER_RECOMPUTE_PEEL") != nullptr;
+    if (recomputePeel)
+        std::cout << "  [Tier-Ablation] PIVOTER_RECOMPUTE_PEEL=1 — peel runs in full-recompute mode" << std::endl;
 
     std::vector<bool> isPrivateClass(numClasses, false);
     std::vector<daf::Size> privateClassMC(numClasses, INVALID);
@@ -1308,6 +1314,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_NoCPI(
     // classToPaths, support/dSup, and a handful of scalar per-tuple arrays.
     // Swap-to-empty instead of clear() to actually release the heap buffer
     // (clear keeps capacity).
+    // [Tier ablation] skipped under recomputePeel — recompute peel needs
+    // rTupleIndex/regionVerts/vtxMaxPaths/classOf/isPrivateClass.
+    if (!recomputePeel)
     {
         robin_hood::unordered_flat_map<TupleKey, daf::Size, TupleHash>().swap(rTupleIndex);
         std::vector<std::vector<daf::Size>>().swap(regionVerts);
@@ -1602,6 +1611,152 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_NoCPI(
     daf::Size numPeeled = 0;
     BigLevel currentLevel = 0, coreLevel = 0;
 
+    if (recomputePeel) {
+        auto recomputeSupportDirect = [&]() {
+            for (daf::Size t = 0; t < rTuples.size(); ++t)
+                if (!rPeeled[t]) effSup[t] = 0;
+            auto enumerateSubsetsLocal = [&](const std::vector<daf::Size> &src, int k,
+                                             const std::function<void(const daf::Size *)> &cb) {
+                int n = (int)src.size();
+                if (k > n || k <= 0) return;
+                std::vector<int> idx(k);
+                for (int i = 0; i < k; ++i) idx[i] = i;
+                std::vector<daf::Size> buf(k);
+                while (true) {
+                    for (int i = 0; i < k; ++i) buf[i] = src[idx[i]];
+                    cb(buf.data());
+                    int i = k - 1;
+                    while (i >= 0 && idx[i] == n - k + i) --i;
+                    if (i < 0) break;
+                    ++idx[i];
+                    for (int j = i + 1; j < k; ++j) idx[j] = idx[j - 1] + 1;
+                }
+            };
+            auto isSubsetOfRegion = [&](const daf::Size *sv, int sl, daf::Size rid2) -> bool {
+                auto &r2 = regionVerts[rid2];
+                size_t j = 0; int i = 0;
+                while (i < sl && j < r2.size()) {
+                    if (sv[i] < r2[j]) return false;
+                    if (sv[i] == r2[j]) { ++i; ++j; } else ++j;
+                }
+                return i == sl;
+            };
+            auto isCanonicalHome = [&](const daf::Size *sv, int sl, daf::Size rid) -> bool {
+                daf::Size v0 = sv[0];
+                for (daf::Size rid2 : vtxMaxPaths[v0]) {
+                    if (rid2 >= rid) break;
+                    if (isSubsetOfRegion(sv, sl, rid2)) return false;
+                }
+                return true;
+            };
+            TupleKey keyBuf; keyBuf.reserve(r);
+            std::vector<daf::Size> rSubsetTuples; rSubsetTuples.reserve(64);
+            for (daf::Size rid = 0; rid < numRegions; ++rid) {
+                auto &M = regionVerts[rid];
+                if ((int)M.size() < (int)s) continue;
+                enumerateSubsetsLocal(M, (int)s, [&](const daf::Size *sVec) {
+                    if (!isCanonicalHome(sVec, (int)s, rid)) return;
+                    if (enablePrivateCloud) {
+                        for (int i = 0; i < (int)s; ++i) {
+                            daf::Size cid = classOf[sVec[i]];
+                            if (cid != INVALID && isPrivateClass[cid]) return;
+                        }
+                    }
+                    rSubsetTuples.clear();
+                    bool anyPeeled = false;
+                    std::vector<daf::Size> sVecV(sVec, sVec + (int)s);
+                    enumerateSubsetsLocal(sVecV, (int)r, [&](const daf::Size *rVec) {
+                        if (anyPeeled) return;
+                        keyBuf.clear();
+                        bool invalid = false;
+                        for (int i = 0; i < (int)r; ++i) {
+                            daf::Size cid = classOf[rVec[i]];
+                            if (cid == INVALID) { invalid = true; break; }
+                            keyBuf.push_back(cid);
+                        }
+                        if (invalid) return;
+                        std::sort(keyBuf.begin(), keyBuf.end());
+                        auto it = rTupleIndex.find(keyBuf);
+                        if (it == rTupleIndex.end()) return;
+                        daf::Size tidx = it->second;
+                        if (rPeeled[tidx]) { anyPeeled = true; return; }
+                        rSubsetTuples.push_back(tidx);
+                    });
+                    if (anyPeeled) return;
+                    for (auto tidx : rSubsetTuples) effSup[tidx] += 1;
+                });
+            }
+            for (daf::Size t = 0; t < rTuples.size(); ++t) {
+                if (rPeeled[t]) continue;
+                daf::Size m = rTuples[t].mult;
+                if (m > 1) effSup[t] /= m;
+                BigLevel floor = safeToBigLevel(tupleMinCore[t]);
+                if (effSup[t] < floor) effSup[t] = floor;
+            }
+        };
+
+        recomputeSupportDirect();
+        buckets.clear(); overflow.clear();
+        buckets.assign(BUCKET_CAP, std::vector<daf::Size>());
+        for (daf::Size t = 0; t < rTuples.size(); ++t) {
+            if (rPeeled[t]) continue;
+            BigLevel lvl = effSup[t];
+            if (lvl < BUCKET_CAP) buckets[lvl].push_back(t);
+            else overflow.insert({lvl, t});
+        }
+        currentLevel = 0;
+
+        while (numPeeled < rTuples.size()) {
+            while (currentLevel < BUCKET_CAP && buckets[currentLevel].empty())
+                currentLevel++;
+            if (currentLevel >= BUCKET_CAP) {
+                if (overflow.empty()) break;
+                currentLevel = overflow.begin()->first;
+            }
+            std::vector<daf::Size> batch;
+            if (currentLevel < BUCKET_CAP) {
+                while (!buckets[currentLevel].empty()) {
+                    daf::Size idx = buckets[currentLevel].back();
+                    buckets[currentLevel].pop_back();
+                    if (rPeeled[idx]) continue;
+                    if (effSup[idx] != currentLevel) continue;
+                    rPeeled[idx] = true;
+                    batch.push_back(idx);
+                }
+            } else {
+                auto range = overflow.equal_range(currentLevel);
+                for (auto it = range.first; it != range.second; ++it) {
+                    daf::Size idx = it->second;
+                    if (rPeeled[idx]) continue;
+                    if (effSup[idx] != currentLevel) continue;
+                    rPeeled[idx] = true;
+                    batch.push_back(idx);
+                }
+                overflow.erase(range.first, range.second);
+            }
+            if (batch.empty()) { currentLevel++; continue; }
+            prof_batchCount++;
+            coreLevel = std::max(coreLevel, currentLevel);
+            for (auto idx : batch) {
+                numPeeled++;
+                coreDist[(double)coreLevel] += (int64_t)rTuples[idx].mult;
+            }
+            if (numPeeled >= rTuples.size()) break;
+            recomputeSupportDirect();
+            buckets.clear(); overflow.clear();
+            buckets.assign(BUCKET_CAP, std::vector<daf::Size>());
+            for (daf::Size t = 0; t < rTuples.size(); ++t) {
+                if (rPeeled[t]) continue;
+                BigLevel lvl = effSup[t];
+                if (lvl < BUCKET_CAP) buckets[lvl].push_back(t);
+                else overflow.insert({lvl, t});
+            }
+            currentLevel = 0;
+        }
+        goto post_peel_loop;
+    }
+    {
+
     // Audit fix #4: `newlyDeadByPath` and `affectedPathSet` were
     // rebuilt per batch as hashmap / hashset with per-entry heap allocs
     // and per-batch bucket-array allocation. Reuse across batches via:
@@ -1699,6 +1854,8 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_NoCPI(
         }
         refreshAffectedPaths(affected, currentLevel);
     }
+    }
+post_peel_loop: ;
 
     auto tStep6End = std::chrono::high_resolution_clock::now();
     auto step6Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep6End - tStep6).count();

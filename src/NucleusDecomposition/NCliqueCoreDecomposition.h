@@ -305,6 +305,15 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex = nullptr);
 
+// 4-tier RegND ablation dispatcher.  PIVOTER_TIER={1,2,3,4} selects:
+//   T1 \regnd, T2 \regndplus, T3 \regndplusplus, T4 \regndstar (headline).
+// Routes to LowMem / LowMem_NoCPI with PIVOTER_RECOMPUTE_PEEL,
+// PIVOTER_V3_NO_PRIVATE, PIVOTER_VSAFE_CLOUD toggled as appropriate.
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI_Tier(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
 // RegionCPI V3 low-memory + class-based hierarchy post-processing.
 std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
