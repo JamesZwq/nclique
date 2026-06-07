@@ -2,16 +2,17 @@
 //
 // Memory note: V3 peel itself runs at the §7.3 ~10Σ peel-state budget;
 // nothing here is allocated until peel completes.  We then take O(Σ)
-// scratch to build the leaf-first vertex lists (one bucket-CSR pass
-// over vtxLeafIds), run union-find with leaves as connector nodes, and
-// free the scratch on return.
+// scratch to read the leaf-first CSR, generate paper BuildHier events,
+// run the elder-rule union-find scan, and free the scratch on return.
 
 #include "BuildHierarchyR1.h"
 #include "NCliqueCoreDecomposition.h"  // ST_V2_Data
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <limits>
 #include <numeric>
@@ -30,6 +31,32 @@ struct HierNode {
     int     size_death;
 };
 
+bool writeHierarchyCsv(const char* out_path,
+                       const std::vector<HierNode>& nodes,
+                       int min_size,
+                       const char* tag) {
+    std::FILE* f = std::fopen(out_path, "w");
+    if (!f) {
+        std::cerr << "PIVOTER_DUMP_HIER: failed to open " << out_path << "\n";
+        return false;
+    }
+    std::fprintf(f, "id,k_birth,k_death,parent,size_birth,size_death,persistence\n");
+    int written = 0;
+    for (const auto& n : nodes) {
+        if (n.size_birth < min_size && n.size_death < min_size) continue;
+        const double persistence = n.k_birth - n.k_death;
+        std::fprintf(f, "%d,%.0f,%.0f,%d,%d,%d,%.0f\n",
+                     n.id, n.k_birth, n.k_death, n.parent,
+                     n.size_birth, n.size_death, persistence);
+        ++written;
+    }
+    std::fclose(f);
+    std::cerr << "PIVOTER_DUMP_HIER[" << tag << "]: wrote " << written
+              << " hierarchy nodes (" << nodes.size() << " total) to "
+              << out_path << "\n";
+    return true;
+}
+
 // Path-compressed find. parent_uf[r] == r marks a root.
 inline daf::Size dsu_find(std::vector<daf::Size>& parent_uf, daf::Size x) {
     while (parent_uf[x] != x) {
@@ -41,7 +68,7 @@ inline daf::Size dsu_find(std::vector<daf::Size>& parent_uf, daf::Size x) {
 
 }  // namespace
 
-void buildAndDumpHierarchyFromCSR(
+void buildAndDumpHierarchyFromCSRExact(
     const ST_V2_Data& v3,
     const double*     coreV,
     daf::Size         numVertices,
@@ -52,7 +79,281 @@ void buildAndDumpHierarchyFromCSR(
     if (!coreV || !out_path) return;
     const size_t numLeaves = v3.numLeaves;
     if (numLeaves == 0) {
-        std::cerr << "PIVOTER_DUMP_HIER: no leaves\n";
+        std::cerr << "PIVOTER_DUMP_HIER[exact]: no leaves\n";
+        return;
+    }
+
+    struct Event {
+        size_t off;
+        size_t len;
+        daf::Size leaf;
+    };
+
+    std::vector<daf::Size> eventMembers;
+    eventMembers.reserve(numLeaves * 2);
+
+    struct PivotCore { daf::Size v; size_t rank; };
+    const size_t invalidRank = std::numeric_limits<size_t>::max();
+    std::vector<double> levels;
+    levels.reserve(numVertices);
+    std::vector<size_t> coreRank(numVertices, invalidRank);
+    std::vector<std::pair<double, daf::Size>> rankedVertices;
+    rankedVertices.reserve(numVertices);
+    for (daf::Size v = 0; v < numVertices; ++v) {
+        const double k = coreV[v];
+        if (std::isfinite(k) && k > 0.0) rankedVertices.push_back({k, v});
+    }
+    std::sort(rankedVertices.begin(), rankedVertices.end(),
+              [](const auto& a, const auto& b) {
+                  if (a.first != b.first) return a.first > b.first;
+                  return a.second < b.second;
+              });
+    for (const auto& [k, v] : rankedVertices) {
+        if (levels.empty() || levels.back() != k) levels.push_back(k);
+        coreRank[v] = levels.size() - 1;
+    }
+
+    std::vector<std::vector<Event>> eventBuckets(levels.size());
+
+    auto append_bucketed_event = [&](size_t rank, Event e) {
+        if (rank == invalidRank || rank >= eventBuckets.size()) return;
+        eventBuckets[rank].push_back(e);
+    };
+
+    auto append_event = [&](size_t rank, const std::vector<daf::Size>& members, daf::Size leaf) {
+        if (rank == invalidRank || members.empty()) return;
+        Event e{};
+        e.off = eventMembers.size();
+        e.len = members.size();
+        e.leaf = leaf;
+        eventMembers.insert(eventMembers.end(), members.begin(), members.end());
+        append_bucketed_event(rank, e);
+    };
+
+    auto append_event_prefix = [&](size_t rank,
+                                   const std::vector<daf::Size>& base,
+                                   const std::vector<PivotCore>& sortedPivots,
+                                   int pivotPrefix,
+                                   daf::Size leaf) {
+        if (rank == invalidRank) return;
+        const size_t len = base.size() + static_cast<size_t>(pivotPrefix);
+        if (len == 0) return;
+        Event e{};
+        e.off = eventMembers.size();
+        e.len = len;
+        e.leaf = leaf;
+        eventMembers.insert(eventMembers.end(), base.begin(), base.end());
+        for (int i = 0; i < pivotPrefix; ++i) {
+            eventMembers.push_back(sortedPivots[static_cast<size_t>(i)].v);
+        }
+        append_bucketed_event(rank, e);
+    };
+
+    auto append_event_pair = [&](size_t rank, daf::Size a, daf::Size b, daf::Size leaf) {
+        if (rank == invalidRank) return;
+        Event e{};
+        e.off = eventMembers.size();
+        e.len = 2;
+        e.leaf = leaf;
+        eventMembers.push_back(a);
+        eventMembers.push_back(b);
+        append_bucketed_event(rank, e);
+    };
+
+    auto event_rank = [&](size_t holdRank, bool hasHolds, bool badHold, size_t pivotRank) {
+        if (badHold || pivotRank == invalidRank) return invalidRank;
+        if (!hasHolds) return pivotRank;
+        if (holdRank == invalidRank) return invalidRank;
+        return std::max(holdRank, pivotRank);
+    };
+
+    std::vector<daf::Size> holds;
+    std::vector<PivotCore> pivots;
+    const bool packedLeafCsr = !v3.leafVtxIds.empty();
+
+    for (daf::Size L = 0; L < static_cast<daf::Size>(numLeaves); ++L) {
+        if (L >= v3.leafNeedPivot.size()) continue;
+        const int eta = v3.leafNeedPivot[L];
+        if (eta < 0) continue;
+
+        const size_t off0 = v3.leafVtxOff[L];
+        const size_t off1 = v3.leafVtxOff[L + 1];
+        const size_t leafLen = off1 - off0;
+        if (leafLen < static_cast<size_t>(s)) continue;
+
+        holds.clear();
+        pivots.clear();
+        holds.reserve(leafLen);
+        pivots.reserve(leafLen);
+        size_t hRank = invalidRank;
+        bool badHold = false;
+        if (packedLeafCsr) {
+            for (size_t i = off0; i < off1; ++i) {
+                const daf::Size v = v3.leafVtxIds[i];
+                const size_t rank = (v < coreRank.size()) ? coreRank[v] : invalidRank;
+                if (STV3_getBit(v3.leafVtxIsPivot, i)) {
+                    pivots.push_back({v, rank});
+                } else {
+                    holds.push_back(v);
+                    if (rank == invalidRank) {
+                        badHold = true;
+                    } else if (hRank == invalidRank || rank > hRank) {
+                        hRank = rank;
+                    }
+                }
+            }
+        } else {
+            for (size_t i = off0; i < off1; ++i) {
+                const auto& entry = v3.leafVtxData[i];
+                const daf::Size v = entry.vertex;
+                const size_t rank = (v < coreRank.size()) ? coreRank[v] : invalidRank;
+                if (entry.isPivot != 0) {
+                    pivots.push_back({v, rank});
+                } else {
+                    holds.push_back(v);
+                    if (rank == invalidRank) {
+                        badHold = true;
+                    } else if (hRank == invalidRank || rank > hRank) {
+                        hRank = rank;
+                    }
+                }
+            }
+        }
+
+        if (eta == 0) {
+            append_event(badHold ? invalidRank : hRank, holds, L);
+            continue;
+        }
+        if (eta > static_cast<int>(pivots.size())) continue;
+
+        std::sort(pivots.begin(), pivots.end(),
+                  [](const PivotCore& a, const PivotCore& b) {
+                      if (a.rank != b.rank) return a.rank < b.rank;
+                      return a.v < b.v;
+                  });
+
+        const bool hasHolds = !holds.empty();
+        append_event_prefix(
+            event_rank(hRank, hasHolds, badHold, pivots[(size_t)eta - 1].rank),
+            holds, pivots, eta, L);
+
+        const daf::Size anchor = pivots[0].v;
+        for (size_t i = static_cast<size_t>(eta); i < pivots.size(); ++i) {
+            append_event_pair(
+                event_rank(hRank, hasHolds, badHold, pivots[i].rank),
+                anchor, pivots[i].v, L);
+        }
+    }
+
+    std::vector<daf::Size> parent_uf(numVertices);
+    std::iota(parent_uf.begin(), parent_uf.end(), (daf::Size)0);
+    std::vector<int> compSize(numVertices, 0);
+    std::vector<double> birth(numVertices, std::numeric_limits<double>::infinity());
+    std::vector<int> state_node(numVertices, -1);
+    std::vector<HierNode> nodes;
+    nodes.reserve(numVertices / 4 + 16);
+
+    std::vector<daf::Size> roots;
+    roots.reserve(64);
+    std::vector<uint8_t> seen_mark(numVertices, 0);
+    std::vector<daf::Size> seen_clear;
+    seen_clear.reserve(64);
+
+    auto activate_root = [&](daf::Size r, double k) {
+        if (compSize[r] == 0) compSize[r] = 1;
+        if (state_node[r] != -1) return;
+        HierNode n{};
+        n.id = static_cast<int>(nodes.size());
+        n.k_birth = k;
+        n.k_death = 0;
+        n.parent = -1;
+        n.size_birth = compSize[r];
+        n.size_death = compSize[r];
+        nodes.push_back(n);
+        state_node[r] = n.id;
+        birth[r] = k;
+    };
+
+    auto process_event = [&](const Event& e, double k) {
+        roots.clear();
+        for (daf::Size x : seen_clear) seen_mark[x] = 0;
+        seen_clear.clear();
+
+        for (size_t j = 0; j < e.len; ++j) {
+            const daf::Size v = eventMembers[e.off + j];
+            if (v >= numVertices) continue;
+            if (compSize[v] == 0) compSize[v] = 1;
+            daf::Size r = dsu_find(parent_uf, v);
+            if (!seen_mark[r]) {
+                seen_mark[r] = 1;
+                seen_clear.push_back(r);
+                roots.push_back(r);
+            }
+        }
+        if (roots.empty()) return;
+
+        for (daf::Size r : roots) activate_root(r, k);
+        if (roots.size() == 1) return;
+
+        daf::Size elder = roots[0];
+        for (daf::Size r : roots) {
+            if (birth[r] > birth[elder] ||
+                (birth[r] == birth[elder] && r > elder)) {
+                elder = r;
+            }
+        }
+        const int elderNode = state_node[elder];
+
+        for (daf::Size r : roots) {
+            if (r == elder) continue;
+            const int childNode = state_node[r];
+            nodes[childNode].k_death = k;
+            nodes[childNode].size_death = compSize[r];
+            nodes[childNode].parent = elderNode;
+        }
+
+        daf::Size newRoot = elder;
+        for (daf::Size r : roots) {
+            daf::Size a = dsu_find(parent_uf, newRoot);
+            daf::Size b = dsu_find(parent_uf, r);
+            if (a == b) continue;
+            if (compSize[a] < compSize[b]) std::swap(a, b);
+            parent_uf[b] = a;
+            compSize[a] += compSize[b];
+            newRoot = a;
+        }
+        newRoot = dsu_find(parent_uf, newRoot);
+        state_node[newRoot] = elderNode;
+        birth[newRoot] = nodes[elderNode].k_birth;
+    };
+
+    for (size_t rank = 0; rank < eventBuckets.size(); ++rank) {
+        const double k = levels[rank];
+        for (const auto& e : eventBuckets[rank]) process_event(e, k);
+    }
+
+    for (daf::Size v = 0; v < numVertices; ++v) {
+        if (compSize[v] == 0 || parent_uf[v] != v) continue;
+        const int nid = state_node[v];
+        if (nid < 0 || nodes[nid].parent != -1) continue;
+        nodes[nid].size_death = compSize[v];
+    }
+
+    writeHierarchyCsv(out_path, nodes, min_size, "exact");
+}
+
+void buildAndDumpHierarchyFromCSRLeafConnector(
+    const ST_V2_Data& v3,
+    const double*     coreV,
+    daf::Size         numVertices,
+    daf::Size         s,
+    int               min_size,
+    const char*       out_path)
+{
+    if (!coreV || !out_path) return;
+    const size_t numLeaves = v3.numLeaves;
+    if (numLeaves == 0) {
+        std::cerr << "PIVOTER_DUMP_HIER[leaf]: no leaves\n";
         return;
     }
 
@@ -248,26 +549,27 @@ void buildAndDumpHierarchyFromCSR(
         nodes[nid].size_death = rootVertexCount[r];
     }
 
-    // ---- Write CSV ----
-    std::FILE* f = std::fopen(out_path, "w");
-    if (!f) {
-        std::cerr << "PIVOTER_DUMP_HIER: failed to open " << out_path << "\n";
+    writeHierarchyCsv(out_path, nodes, min_size, "leaf");
+}
+
+void buildAndDumpHierarchyFromCSR(
+    const ST_V2_Data& v3data,
+    const double*     coreV,
+    daf::Size         numVertices,
+    daf::Size         s,
+    int               min_size,
+    const char*       out_path)
+{
+    const char* mode = std::getenv("PIVOTER_HIER_VERSION");
+    if (mode && (std::strcmp(mode, "leaf") == 0 ||
+                 std::strcmp(mode, "old") == 0 ||
+                 std::strcmp(mode, "connector") == 0)) {
+        buildAndDumpHierarchyFromCSRLeafConnector(
+            v3data, coreV, numVertices, s, min_size, out_path);
         return;
     }
-    std::fprintf(f, "id,k_birth,k_death,parent,size_birth,size_death,persistence\n");
-    int written = 0;
-    for (const auto& n : nodes) {
-        if (n.size_birth < min_size && n.size_death < min_size) continue;
-        const double persistence = n.k_birth - n.k_death;
-        std::fprintf(f, "%d,%.0f,%.0f,%d,%d,%d,%.0f\n",
-                     n.id, n.k_birth, n.k_death, n.parent,
-                     n.size_birth, n.size_death, persistence);
-        ++written;
-    }
-    std::fclose(f);
-    std::cerr << "PIVOTER_DUMP_HIER: wrote " << written
-              << " hierarchy nodes (" << nodes.size() << " total) to "
-              << out_path << "\n";
+    buildAndDumpHierarchyFromCSRExact(
+        v3data, coreV, numVertices, s, min_size, out_path);
 }
 
 }  // namespace nucleus_hier
