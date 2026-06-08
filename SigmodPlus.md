@@ -72,15 +72,23 @@ Resolve by preferring `RegNDC` when present.
 
 ### 1.5  Budgets
 
-| Resource | Default cap     | Where enforced                                  |
-|----------|-----------------|-------------------------------------------------|
-| Time     | 1800 s (30 min) | `subprocess.run(..., timeout=...)` per cell     |
-| Memory   | 200–250 GB      | `--mem-cap-gb` flag; checked via `time -v` line |
-| Disk     | unbounded       | logs land under `/data/wenqianz/...`            |
+The main sweep in `bench_v3_all.py` uses a one-hour budget.
+It kills an individual process if its memory exceeds 250 GB, and
+launches new jobs only while total machine memory use is below
+300 GB.
+The focused Pass A/B/C runs use the explicit `--timeout` and
+`--mem-cap-gb` values shown in §2.3.
 
-When a cell is killed by timeout the script also calls
-`os.killpg(pid, SIGKILL)` on the child group so the binary cannot
-survive `/usr/bin/time -v` and become an orphan.
+| Resource | Main-sweep cap | Where enforced                                  |
+|----------|----------------|-------------------------------------------------|
+| Time     | 3600 s (1 h)   | `TIMEOUT` in `bench_v3_all.py`                  |
+| Per-run memory | 250 GB  | `PER_PROC_MEM_GB` in `bench_v3_all.py`          |
+| Launch gate | 300 GB total machine use | `MEM_LIMIT_GB` in `bench_v3_all.py` |
+| Disk     | unbounded      | logs land under `bench_v3_all_logs/` and `/data/wenqianz/...` |
+
+When a targeted cell is killed by timeout, `bench_targeted.py`
+also calls `os.killpg(pid, SIGKILL)` on the child group so the
+binary cannot survive `/usr/bin/time -v` and become an orphan.
 
 ### 1.6  Skip Discipline
 
@@ -433,8 +441,8 @@ Compression ratio peak: web-it-2004 at r=7 — \(|K_r| / |T|\) ≈
 ## 7.  Known Gaps and Limits
 
 - **com-orkut / com-lj**: even RegND TIMEOUTs at every (r, s) ≤ 7
-  within 30-min budget.  These graphs are an honest infeasibility
-  regime for RegND and are not in Fig 3.
+  in the focused large-graph pass.  These graphs are an honest
+  infeasibility regime for RegND and are not in Fig 3.
 - **ca-HepPh**: only r=3 yields useful data; r=4..9 all SKIP/TIMEOUT
   for V3LM_NOCPI and most of REF.  Paper §exp-compression
   acknowledges this as the structural-boundary regime.
@@ -446,3 +454,246 @@ Compression ratio peak: web-it-2004 at r=7 — \(|K_r| / |T|\) ≈
   `scripts/bench_targeted.py` by calling `os.killpg` on
   `TimeoutExpired`.  Any TSV/CSV row from before commit `b70a313`
   may have wasted CPU on an orphan that was never recorded.
+---
+
+## 8.  4-Tier Ablation Reproduction Guide
+
+The 4-tier ablation is the SIGMOD §6 experiment that justifies the
+RegND family as a progression rather than a single algorithm.  Each
+tier is one strict superset of optimizations over the previous one,
+and all four produce **bit-exact** core values on every cell that
+finishes.
+
+### 8.1  What the Four Tiers Mean
+
+| Tier | Name                       | Paper anchor                    | One-line description                                                                                  |
+|------|----------------------------|---------------------------------|-------------------------------------------------------------------------------------------------------|
+| T1   | Class Integrality          | `\refsec{approach-class}`       | Direct s-clique enumeration + per-tuple bucket peel, no path-level pivoting (baseline RegND).         |
+| T2   | Pivot Extension            | `\refsec{approach-pivot}`       | T1 + CPI path interface + AggrCount DP, but re-runs AggrCount per peel batch (no incremental delta).  |
+| T3   | Dead-Box Inclusion-Exclusion | `\refsec{approach-deadbox}`   | T2 + closed-form support-count via dead-box IE so peel deltas are O(paths) instead of O(re-enum).     |
+| T4   | RegND\* (full system)      | `\refsec{approach-algorithm}`   | T3 + private-cloud V-safe optimization, instant path retire, and the SIMD-vectorized feasWeighted DP. |
+
+All four tiers ship in the same binary (`degeneracy_cliques`) and are
+selected at runtime via env var.  No recompile needed to switch.
+
+### 8.2  Build
+
+```bash
+mkdir -p build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j 12        # hard cap: NEVER use -j > 12
+```
+
+Output binary: `./build/bin/degeneracy_cliques`.  Same binary used by
+every other section of this guide.
+
+### 8.3  Run a Single Cell Locally
+
+```bash
+PIVOTER_RUN_REGION_TIER=1 PIVOTER_TIER=4 \
+  /usr/bin/time -v ./build/bin/degeneracy_cliques \
+    graphs/ca-GrQc.edges 3 4 degen
+```
+
+Both env vars are required:
+
+- `PIVOTER_RUN_REGION_TIER=1` activates the tier-dispatch code path
+  inside the RegND family (otherwise the binary defaults to the
+  legacy V3LM entry point).
+- `PIVOTER_TIER=N` (N ∈ {1, 2, 3, 4}) selects which tier to run.
+
+Stdout has the usual phase timers (`CPI counting time`,
+`Peeling time`, `Total time`) plus the `Core value distribution`
+block used by the verifier.  Stderr from `/usr/bin/time -v` gives
+peak RSS.
+
+### 8.4  Verify Bit-Exact Correctness
+
+`verify_tiers.py` parses the `core=N count=M` histogram from each
+tier's stdout and asserts T1 = T2 = T3 = T4 on every (graph, r, s).
+T4 is the reference.
+
+```bash
+# Default cell (ca-GrQc, r=3, s=4)
+python3 verify_tiers.py
+
+# A specific cell
+python3 verify_tiers.py ca-GrQc 5 6
+
+# Built-in smoke suite (5 cells across 3 small graphs)
+python3 verify_tiers.py --all
+```
+
+A successful run prints `-> PASS` for every cell and ends with
+`ALL PASS`.  Any mismatch is dumped as the first five `(core, t<X>,
+t<ref>)` triples plus a `FAIL` marker; the script exits non-zero
+so it composes with CI.
+
+### 8.5  Full Sweep on tods2
+
+The full ablation matrix is **18 cells × 4 tiers = 72 runs**
+(see `ABLATION_CELLS` in `bench_tier_ablation.py`).  Per-cell
+timeout: 3600 s.  Per-cell memory cap: 250 GB (kernel OOM-kill).
+T4 rows can be reused from the main sweep CSV via `--reuse-t4`.
+
+```bash
+# 1. Local: commit + push the harness
+git add bench_tier_ablation.py verify_tiers.py
+git commit -m "ablation harness"
+git push origin main
+
+# 2. Server: pull, build, link graphs
+ssh tods2 "cd ~/nclique && git stash && git pull origin main && \
+           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && \
+           cmake --build build -j 12 --target degeneracy_cliques"
+
+# 3. Server: launch in a detached setsid + nohup subshell
+ssh tods2 "cd ~/nclique && setsid nohup bash -c '
+python3 bench_tier_ablation.py tods2 --reuse-t4 \
+  > bench_tier_ablation.log 2>&1
+echo DONE >> bench_tier_ablation.log
+' </dev/null > /dev/null 2>&1 &"
+
+# 4. Server: monitor progress
+ssh tods2 "tail -f ~/nclique/bench_tier_ablation.log"
+# or: ssh tods2 "wc -l ~/nclique/bench_tier_ablation_results.csv"
+
+# 5. Server: kill cleanly when needed
+ssh tods2 "pkill -9 -u \$(whoami) -f 'bench_tier_ablation'"
+ssh tods2 "pkill -9 -u \$(whoami) -f 'degeneracy_cliques'"
+ssh tods2 "pkill -9 -u \$(whoami) -f '/usr/bin/time'"
+
+# 6. Local: pull the result CSV back into paper_data/
+scp tods2:~/nclique/bench_tier_ablation_results.csv \
+    paper_data/bench_tier_ablation_results.csv
+```
+
+The harness writes `bench_tier_ablation_results.csv` incrementally
+(one row per cell, flushed immediately), so a mid-sweep kill is
+recoverable: rerun and the harness skips any row already present.
+Per-cell logs land in `bench_tier_ablation_logs/T<tier>_<graph>_r<r>_s<s>.log`.
+
+### 8.6  CSV Schema (12 columns)
+
+Output file: `bench_tier_ablation_results.csv` (locally) or
+`paper_data/bench_tier_ablation_results.csv` (after pulling back).
+
+```
+graph,r,s,tier,algo,status,wall_ms,total_ms,step4_ms,peel_ms,mem_kB,max_core
+```
+
+| Column   | Meaning                                                    |
+|----------|------------------------------------------------------------|
+| graph    | dataset stem (matches `graphs/<name>.edges`)               |
+| r        | r-clique size                                              |
+| s        | s-clique witness size                                      |
+| tier     | 1, 2, 3, or 4                                              |
+| algo     | always `T<tier>` — convenient label for plotters           |
+| status   | `OK` / `TIMEOUT` / `TIMEOUT(skip)` / `OK(reused)` / `ERR(rc)` |
+| wall_ms  | end-to-end wall time including `/usr/bin/time` startup     |
+| total_ms | `NucleusCoreDecomposition took: X` from binary stdout       |
+| step4_ms | `CPI counting time: X` (T2/T3/T4 only — empty for T1)      |
+| peel_ms  | `Peeling time: X` from binary stdout                       |
+| mem_kB   | `[Memory-...] Final Memory: X kB` from binary's tracker     |
+| max_core | `Max core: N` (drives the verifier's bit-exact check)       |
+
+Status semantics:
+
+- **OK** — completed within budget; every numeric column is real.
+- **TIMEOUT** — exceeded 3600 s cap; numeric columns are placeholders
+  (`wall_ms = 3600000`, the rest empty).  The cell **was attempted**.
+- **TIMEOUT(skip)** — cell **was not attempted** because it appears in
+  the `T1_HARD_SKIP` set (or, by extension, was inferred to be
+  infeasible from neighbouring cells).  Same placeholder numerics as
+  `TIMEOUT`; treat identically when computing completion rates.
+- **OK(reused)** — T4 row joined from `bench_v3_all_results.csv`
+  (RegNDC) via `--reuse-t4`.  `max_core` is `-1` because the source
+  CSV did not log the histogram.  Counts as `OK` for completion.
+
+### 8.7  Headline Completion Rates (Current Run)
+
+From `paper_data/bench_tier_ablation_results.csv` (72 rows, 18 cells
+× 4 tiers, sweep finished on tods2):
+
+| Tier | OK | TIMEOUT | TIMEOUT(skip) | Completion |
+|------|----|---------|---------------|------------|
+| T1   |  7 |       2 |             9 | **7 / 18** |
+| T2   |  7 |      11 |             0 | **7 / 18** |
+| T3   | 14 |       4 |             0 | **14 / 18**|
+| T4   | 15 |       3 |             0 | **15 / 18**|
+
+Interpretation:
+
+- T1 → T2: zero gain in completion count; T2's per-batch AggrCount
+  re-runs are no cheaper than T1's direct s-enum on the cells that
+  matter.  The motivation for T2 in the paper is **pivot extension
+  as a structural prerequisite for T3**, not a speedup of its own.
+- T2 → T3: **+7 cells (doubles coverage)**.  Closed-form support-count
+  via dead-box IE is the load-bearing optimization.
+- T3 → T4: **+1 cell (web-it-2004 r=5 s=6)**, plus large per-cell
+  speedups on the cells both tiers finish.  The private-cloud V-safe
+  is a constant-factor improvement, not a coverage breaker.
+
+Use only `status == OK` (and `OK(reused)` if `--reuse-t4` was used)
+for the §6 speedup and memory-ratio tables; never let placeholder
+`wall_ms = 3600000` rows pollute geomeans.
+
+### 8.8  Known Gotchas
+
+- **T1/T2 timeout boundaries are real.**  The `T1_HARD_SKIP` set in
+  `bench_tier_ablation.py` is not arbitrary: it is the closure under
+  "if (r, s) times out, every (r', s') with r' ≥ r and s' ≥ s also
+  times out" inferred from earlier sweeps.  When you extend the
+  matrix to a new graph, **first run T4** on the candidate (r, s)
+  cells; only attempt T1/T2 on cells where T4 finishes in well under
+  the 3600 s budget, otherwise the T1/T2 row is a 1-hour CPU sink for
+  no information gain.
+
+- **V-safe 3-tuple miscount on ca-CondMat (open issue, task #125).**
+  T4 reports a slightly different `dist` than T1/T2/T3 on
+  `ca-CondMat r=3 s=4` for a single low-core bucket.  Root cause is
+  still under investigation: the V-safe private-cloud trims a tuple
+  that the dead-box IE later re-counts.  Until fixed, the verifier
+  may print a FAIL on that one cell with a single-bucket off-by-small
+  diff; the other 4 verifier cells (bio-celegans, ca-GrQc ×3) pass
+  cleanly and remain the canonical correctness oracle.  **Do not
+  ship a paper number for ca-CondMat r=3 s=4 from T4** without
+  cross-checking against T3.
+
+- **`PIVOTER_TIER` without `PIVOTER_RUN_REGION_TIER` is silent.**
+  Setting only `PIVOTER_TIER=N` makes the binary fall through to the
+  legacy V3LM dispatch and ignore the tier number.  The harness always
+  sets both; if you write a one-off script, set both too.
+
+- **`OK(reused)` rows have no `max_core`.**  If a downstream plotter
+  needs `max_core`, either re-run T4 from scratch on those cells (drop
+  `--reuse-t4`) or join `max_core` from a parallel sweep.
+
+- **`mem_kB` is the binary's internal tracker, not `/usr/bin/time`.**
+  We wrap with `/usr/bin/time -v` for the log file, but the CSV
+  records the `[Memory-Final] Final Memory: X kB` line emitted by the
+  in-binary tracker, which is consistently within ~2% of
+  `Maximum resident set size (kbytes)`.  When comparing against
+  `bench_full_merged.csv.mem_kB`, prefer the harness CSV for tier
+  rows (they were measured in the same setup) and the main CSV for
+  REF / RegNDC rows.
+
+### 8.9  Extending the Matrix
+
+To add a new graph or a new (r, s) cell:
+
+1. Edit `ABLATION_CELLS` in `bench_tier_ablation.py` (a tuple
+   `(graph_stem, r, s)`).
+2. If the cell is dense enough that T1 will obviously time out,
+   add it to `T1_HARD_SKIP` to save a CPU-hour.  Rule of thumb:
+   degeneracy × s ≥ 1500 → skip T1.
+3. Confirm the graph file exists on the server under
+   `SERVER_DATADIR[server]` (default `/data/wenqianz/`).  The
+   harness symlinks `graphs/<g>.edges` automatically.
+4. Run with `--dry-run` first to inspect the row plan.
+5. Run for real with `--reuse-t4` so previously-finished T4 cells
+   from the main sweep are not re-executed.
+
+The harness is **resume-friendly by construction**: rows already in
+the output CSV are skipped on restart, so it is safe to interrupt
+and relaunch at any cell boundary.
