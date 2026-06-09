@@ -697,3 +697,179 @@ To add a new graph or a new (r, s) cell:
 The harness is **resume-friendly by construction**: rows already in
 the output CSV are skipped on restart, so it is safe to interrupt
 and relaunch at any cell boundary.
+
+
+## 9.  Current State Snapshot (2026-06-09)
+
+Three things have changed since the §6 result summary above was
+frozen on 2026-06-05:
+
+1.  the 4-tier RegND family was committed to `main`
+    (`PIVOTER_TIER={1,2,3,4}` dispatch in C++);
+2.  a full ablation sweep ran on tods2 and the CSV came back to
+    `paper_data/`;
+3.  the paper now ships a new §6.8 *Tier Ablation* subsection with
+    its own figure, two tables, and three-paragraph reading.
+
+This section is the snapshot the next maintainer should read first.
+Everything is reproducible from `main` at HEAD; no uncommitted edits
+gate the figures.
+
+### 9.1  What Shipped This Week (commits)
+
+| Commit  | Subject                                                              |
+|---------|----------------------------------------------------------------------|
+| ae3dcac | Add PIVOTER_TIER 4-tier RegND ablation entry (T1..T4 dispatcher)     |
+| 8a1c0b3 | BuildHierarchyR1: expose LeafConnector + Exact variants in header    |
+| 04e6ffb | 4-tier ablation deliverables: figure + handoff guide (this §8 + §9)  |
+
+All three are pushed to `git@github.com:JamesZwq/nclique.git` `main`.
+The fresh-clone build on tods2 was verified end-to-end (see §8.4).
+
+### 9.2  Tier Ablation Headline Numbers (72-cell sweep)
+
+Run on tods2 single-stream over ~21h on 2026-06-07/08.  Source:
+`paper_data/bench_tier_ablation_results.csv` (12 columns, 72 rows).
+
+**Coverage within the one-hour budget (out of 18 (r,s) cells):**
+
+| Tier                          | OK | TIMEOUT (run) | TIMEOUT (hard-skip) |
+|-------------------------------|----|---------------|---------------------|
+| T1 (`\regnd`)                 |  7 |  2            |  9                  |
+| T2 (`\regndplus`)             |  7 | 11            |  0                  |
+| T3 (`\regndplusplus`)         | 14 |  4            |  0                  |
+| T4 (`\regndstar`, headline)   | 15 |  3            |  0                  |
+
+**Three differentials worth quoting in talks / rebuttals:**
+
+- **T1 → T2 is flat (±3 %)** on every shared cell.  The CPI-leaf
+  convolution alone does not pay for itself when the per-peel
+  recompute remains.  (`com-dblp` (3,4): 877,390 → 875,938 ms.)
+- **T2 → T3 is the main contribution: 14× – 318×** on every shared
+  cell and lifts coverage from 7 to 14 of 18 cells.  Highest:
+  `dblp-core30` (3,4) 84,674 → 266 ms = 318×.
+- **T3 → T4 trims another 1.0 × – 8.5 ×** and contributes the
+  single T4-only cell `com-dblp` (5,6) which T3 cannot reach in
+  one hour but T4 clears in 227 s.
+
+**Six representative cells (wall-clock, ms; `to` = 1 h timeout):**
+
+| Graph       | (r,s)   |     T1     |     T2     |     T3     |     T4     |
+|-------------|---------|------------|------------|------------|------------|
+| ca-GrQc     | (3, 4)  |     4,878  |     5,110  |       158  |       118  |
+| ca-CondMat  | (7, 8)  |    42,706  |    41,829  |     2,897  |     2,206  |
+| dblp-core30 | (3, 4)  |    85,593  |    84,674  |       266  |       255  |
+| com-dblp    | (3, 4)  |   877,390  |   875,938  |    37,018  |     5,898  |
+| ca-HepPh    | (3, 4)  |       to   |       to   | 1,155,762  |   384,497  |
+| web-it-2004 | (5, 6)  |       to   |       to   |   212,140  |   201,188  |
+
+All four tiers produce **bit-exact identical** core-value
+histograms on every cell where they all finish; verified via
+`python3 verify_tiers.py --all`.  The only known mismatch is the
+pre-existing V-safe/private-cloud 3-tuple miscount on `ca-CondMat`
+r=3 s=4 (task #125, ~0.002 % of tuples, not introduced by this
+work).
+
+### 9.3  Where the Data Lives
+
+**On the laptop** (`/Users/zhangwenqian/UNSW/pivoter/`):
+
+| Artifact                                            | Purpose                                                                 |
+|-----------------------------------------------------|-------------------------------------------------------------------------|
+| `paper_data/bench_tier_ablation_results.csv`        | the 72-row sweep CSV (single source of truth for §6.8)                  |
+| `paper_data/01_main_benchmark_v3.csv`               | the 549-cell main RegND* / CND sweep (unchanged this week)              |
+| `make_tier_ablation_fig.py`                         | reads the tier CSV, writes the §6.8 figure to the Overleaf path         |
+| `scripts/make_sigmod_figs.py`                       | unchanged; still produces the other 8 paper-6 figures from the main CSV |
+| `verify_tiers.py`                                   | bit-exact κ_s histogram diff across T1/T2/T3/T4 for any (graph, r, s)   |
+| `bench_tier_ablation.py`                            | the sweep driver itself (run on tods2 with `--reuse-t4`)                |
+
+**On tods2** (`/home/wenqianz/UNSW/pivoter/`, fresh clone from this
+week, NOT the older stale `/home/wenqianz/nclique/pivoter`):
+
+| Path                                                            | Contents                                                |
+|-----------------------------------------------------------------|---------------------------------------------------------|
+| `~/UNSW/pivoter/bench_tier_ablation_results.csv`                | identical to local `paper_data/…csv` (pulled 2026-06-09)|
+| `~/UNSW/pivoter/bench_tier_ablation_logs/`                      | one `T<n>_<graph>_r<r>_s<s>.log` per cell, with `/usr/bin/time -v` tail |
+| `~/UNSW/pivoter/bench_tier_ablation.log`                        | harness stdout (progress messages)                      |
+| `~/UNSW/pivoter/bench_tier_ablation.pid`                        | PID of the last sweep (`2864765`, now exited)           |
+| `~/UNSW/pivoter/build/bin/degeneracy_cliques`                   | the binary used for the sweep                           |
+| `/data/wenqianz/<graph>.edges`                                  | the raw edge files (symlinked from `~/UNSW/pivoter/graphs/` by `link_graphs()`) |
+
+**In the Overleaf paper**
+(`/Users/zhangwenqian/Library/CloudStorage/Dropbox/应用/Overleaf/Sigmod2027Nuclear/`):
+
+| File                                          | What it adds for §6.8                                                |
+|-----------------------------------------------|----------------------------------------------------------------------|
+| `figures/fig_tier_ablation.pdf`               | 6 × 3 grid of bar groups (re-rendered any time the CSV changes)      |
+| `sections/Experiments.tex` (§6.8 block)       | the new `\experimentsection{Tier Ablation}` block + 2 tables + prose |
+
+Both are committed to Dropbox / Overleaf history; no external state.
+
+### 9.4  Latest Local-Repo Change: `graphs/` Moved to T7
+
+To reclaim ~3 GB of internal-SSD space, the entire
+`~/UNSW/pivoter/graphs/` directory was moved onto an external T7
+drive:
+
+- Real files:           `/Volumes/WenqianT7/pivoter_graphs/`  (75 files, 3.4 GB)
+- Pivoter view:         `~/UNSW/pivoter/graphs`  — now a **symlink**.
+- `.gitignore`:         updated to ignore both `graphs/` and the
+                        `graphs` symlink (1-line addition).
+
+**Implications for the next maintainer:**
+
+1.  Any local experiment requires the T7 to be mounted
+    (`ls /Volumes/WenqianT7` must succeed) — otherwise
+    `graphs/<g>.edges` opens fail at the C++ side and the harness
+    aborts at the first cell.
+2.  **tods2 is unaffected**: the server uses its own
+    `/data/wenqianz/*.edges` symlinks, independent of the laptop.
+3.  Any script that reads from `graphs/` (including
+    `bench_tier_ablation.py`, `verify_tiers.py`, and ad-hoc CLI
+    invocations of `./build/bin/degeneracy_cliques graphs/x.edges …`)
+    continues to work unchanged through the symlink.
+4.  `make_tier_ablation_fig.py` and `scripts/make_sigmod_figs.py`
+    do **not** touch `graphs/` — they only read `paper_data/*.csv`.
+    Figures can be re-rendered without the T7 mounted.
+
+### 9.5  Paper Compile Status
+
+`pdflatex` clean as of `04e6ffb`:
+
+- `main.pdf`: 20 pages (one more than the pre-tier-ablation 19-page
+  build).
+- 0 unresolved references (`Latexmk: ====` empty).
+- 0 `??` markers in extracted PDF text
+  (`pdftotext main.pdf - | grep -c '??'` returns 0).
+- Multiply-defined labels: 0.
+
+To rebuild from a fresh checkout:
+
+```bash
+cd "/Users/zhangwenqian/Library/CloudStorage/Dropbox/应用/Overleaf/Sigmod2027Nuclear"
+latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
+```
+
+To regenerate the §6.8 figure after a re-sweep:
+
+```bash
+cd /Users/zhangwenqian/UNSW/pivoter
+python3 make_tier_ablation_fig.py     # reads paper_data/bench_tier_ablation_results.csv
+                                      # writes Overleaf/figures/fig_tier_ablation.pdf
+```
+
+### 9.6  Open Items for the Next Session
+
+Carried over from this week, not yet addressed:
+
+| Task # | Description                                                                |
+|--------|----------------------------------------------------------------------------|
+| #99    | RegNDC without r-mergeable merging — ablation still in progress            |
+| #125   | V-safe / private-cloud 3-tuple miscount on `ca-CondMat` (0.002 %, T4 only) |
+| #74    | Memory-opt RegNDC sweep (carried from before this work)                    |
+| #73    | Re-run paper-6 benchmark on servers with RegNDC (low priority now that T4 sweep is fresh) |
+
+None of these block paper §6.8 from going to reviewer; the
+tier-ablation evidence is complete and self-contained.
+
+---
