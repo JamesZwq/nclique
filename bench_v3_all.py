@@ -63,7 +63,7 @@ MEM_KILL_GB = 450      # kill newest if total used > this
 PER_PROC_MEM_GB = 250  # kill individual process if RSS > this
 SETTLE_SEC = 0.1       # brief pause between launches
 POLL_SEC = 3           # poll interval
-OUTCSV = "bench_v3_all_results.csv"
+OUTCSV = os.getenv("BENCH_OUTCSV", "bench_v3_all_results.csv")
 LOGDIR = Path("bench_v3_all_logs")
 DATADIR = "/data/wenqianz"
 # Split graphs across servers: tods1 gets dense graphs, tods2 gets large/power-law
@@ -130,7 +130,15 @@ def get_server_name():
     return None
 
 def get_graphs():
-    """Pick graphs based on hostname or CLI arg."""
+    """Pick graphs based on hostname or CLI arg.
+
+    BENCH_GRAPHS overrides the per-server list with a comma-separated set,
+    e.g. BENCH_GRAPHS="dblp-core30,ca-GrQc,ca-CondMat,com-dblp,web-it-2004"
+    to run the full paper-6 advantage grid on a single host.
+    """
+    override = os.getenv("BENCH_GRAPHS")
+    if override:
+        return [g.strip() for g in override.split(",") if g.strip()]
     name = get_server_name()
     if name is not None:
         return SERVER_GRAPHS[name]
@@ -161,6 +169,12 @@ ALGOS = {
     "V3LM_NOCPI":  {"env": "PIVOTER_RUN_REGION_V3LM_NOCPI"},
     "V3LM_HIER":   {"env": "PIVOTER_RUN_REGION_V3LM_HIER"},
 }
+# BENCH_SKIP_REF drops the CND/REF baseline from the algo set. Use when
+# re-measuring only the RegND family (e.g. after a RegND-only code change),
+# since REF is unaffected and is the slowest baseline; preserve old REF rows
+# by merging against the prior CSV.
+if os.getenv("BENCH_SKIP_REF"):
+    ALGOS.pop("REF", None)
 
 # ============ Helpers ============
 def link_graphs():
