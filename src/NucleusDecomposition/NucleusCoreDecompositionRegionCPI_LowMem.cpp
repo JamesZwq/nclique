@@ -2062,14 +2062,28 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         return (BigLevel)llround(x);
     };
 
-    BigLevel maxSup = 0;
+    // Dense bucket array sizing. The array is indexed by support *value*, so
+    // a naive cap of min(maxEffSup+2, 1000001) allocates up to 1,000,001
+    // empty std::vector headers (~24 MB) whenever any support is large -- and
+    // supports ARE large at high s (an active tuple's support is
+    // C(|M|-r,s-r), e.g. ~1e9 at r=6,s=20, and a region floor can reach
+    // ~1e19). On a cell with only a handful of tuples that dense array is
+    // almost entirely empty: it is the s-independent ~24 MB memory plateau on
+    // the matched-cell memory curves. Since there are at most |rTuples|
+    // non-empty buckets, also cap the dense array by the tuple count; tuples
+    // whose support exceeds the cap are peeled last and live in `overflow`,
+    // which the peel loop and refreshAffectedPaths already consult, so the
+    // output is unchanged.
+    BigLevel maxRealSup = 0;
     std::vector<BigLevel> effSup(rTuples.size());
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
         BigLevel sv = safeToBigLevel(dSup[i]);
         effSup[i] = std::max(sv, safeToBigLevel(tupleMinCore[i]));
-        maxSup = std::max(maxSup, effSup[i]);
+        maxRealSup = std::max(maxRealSup, sv);
     }
-    const BigLevel BUCKET_CAP = std::min<BigLevel>(maxSup + 2, (BigLevel)1000001);
+    const BigLevel BUCKET_CAP = std::min<BigLevel>(
+        std::min<BigLevel>(maxRealSup + 2, (BigLevel)1000001),
+        (BigLevel)rTuples.size() + 2);
 
     std::vector<std::vector<daf::Size>> buckets(BUCKET_CAP);
     std::multimap<BigLevel, daf::Size> overflow;

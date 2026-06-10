@@ -1547,14 +1547,21 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier(
         return (BigLevel)llround(x);
     };
 
-    BigLevel maxSup = 0;
+    // Dense bucket array sized by the real support range AND the tuple count
+    // (see NucleusCoreDecompositionRegionCPI_LowMem.cpp for the rationale):
+    // a single large support value would otherwise force a ~24 MB dense array
+    // of empty bucket headers; high-support tuples beyond the cap live in
+    // `overflow`, leaving the output unchanged.
+    BigLevel maxRealSup = 0;
     std::vector<BigLevel> effSup(rTuples.size());
     for (daf::Size i = 0; i < rTuples.size(); ++i) {
         BigLevel sv = safeToBigLevel(dSup[i]);
         effSup[i] = std::max(sv, safeToBigLevel(tupleMinCore[i]));
-        maxSup = std::max(maxSup, effSup[i]);
+        maxRealSup = std::max(maxRealSup, sv);
     }
-    const BigLevel BUCKET_CAP = std::min<BigLevel>(maxSup + 2, (BigLevel)1000001);
+    const BigLevel BUCKET_CAP = std::min<BigLevel>(
+        std::min<BigLevel>(maxRealSup + 2, (BigLevel)1000001),
+        (BigLevel)rTuples.size() + 2);
 
     std::vector<std::vector<daf::Size>> buckets(BUCKET_CAP);
     std::multimap<BigLevel, daf::Size> overflow;
