@@ -989,3 +989,30 @@ pair at retire time — decide during prototyping.
 
 Next: read tods2 probe; if web-it cells are sane, prototype the
 event engine (task #129, design above), verify bit-exact (#130).
+
+### 10.7  Big-graph probe results — GATE PASSED for the event engine
+
+From tods2 `cellprobe_big.log` (V-safe ON):
+
+| cell | total cells | max cells (m,T) | packed alive-cell est. | sCliques/cells |
+|---|---|---|---|---|
+| web-it-2004 5,6 | 5.3 M | 17,300 (18,5) | ~45 MB | 1.4e7 |
+| web-it-2004 7,8 | 10.3 M | 112,720 (17,7) | ~85 MB | 1.8e10 |
+| ca-HepPh 3,4 | 43.1 M | 879,023 (m=176!, 3) | ~390 MB | 1.33 |
+| com-dblp 5,6 | 13.8 M | 875,440 (42,5) | ~115 MB | 16 |
+
+Reading:
+
+- The naive bound (cells × tuples, up to 2e13) is irrelevant to the
+  factored event engine; its bound is Σcells·T + #queries·O(1) +
+  sparse corrections.  Σcells·T ≤ 1.3e8 everywhere — fine.
+- web-it-2004 (the 1513 s peel, biggest prize) is comfortably
+  feasible: 10 M cells ≈ 85 MB vs the current 1.4 GB peak.
+- ca-HepPh remains the honest boundary regime (compression 1.33,
+  m=176): the engine stays correct there; expected win is from the
+  O(1) shared term replacing per-query DP, not from orbit
+  compression.  Measure, don't promise.
+- Remaining unknown to measure in the prototype: the sparse
+  correction volume (cells whose class set intersects hot tuples).
+
+Decision: proceed to prototype (task #129).  Probe phase (#128) done.
