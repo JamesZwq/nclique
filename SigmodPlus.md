@@ -1338,7 +1338,9 @@ Task ①: hierarchy phase is now FASTER than before the correctness
 fixes (rule-B removal dropped per-tuple pathsCoveringTuple calls;
 v1's FM-overlap correction was quadratic on FM-heavy graphs and was
 replaced by first-claim shared-vertex counting, v2): CondMat 23->6,
-GrQc 20->4, com-dblp 254->125 ms. 60/60 oracle + counterexamples
+GrQc 20->4, com-dblp 254->125, ca-HepPh 3,5 5528->43 ms (128x; rule
+B's per-tuple path intersections dominated on the region-overlap-
+heavy graph). 60/60 oracle + counterexamples
 pass. cs10 uses the R=1 ST_V3 dump path, NOT RegND-H -- no figure
 regeneration needed; V3H_DUMP_MEMBERS has no script consumer.
 
