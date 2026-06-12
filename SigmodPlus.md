@@ -1070,3 +1070,100 @@ are ZERO bulk deaths, so the engine's amortized weapon never fires.
    more code.
 3. Push EventPeel further (SIMD the correction loop) — bounded gain,
    cannot close a 15.5e9-pair asymmetry. Not recommended.
+
+## 11.  Current State Snapshot (2026-06-12, post-EventPeel) — READ THIS FIRST
+
+This supersedes §9 as the entry point.  §10 is the investigation log;
+this section is what a new maintainer needs to act.
+
+### 11.1  TL;DR of the cell-peel arc
+
+Goal was a single elegant peel mechanism replacing the dead-box
+B&B/DomPrune/deadCache machinery.  Outcome:
+
+1. **Theory crystallized**: classes/tuples are r-clique orbits, CPI
+   leaves decompose the s-clique orbit space into *cells*, peeling is
+   orbit extinction.  This vocabulary is paper-ready regardless of
+   engine choice.
+2. **A second engine exists and is exact**: `EventPeel`
+   (`PIVOTER_RUN_REGION_EVENT=1`) — factored cell-death events, no
+   B&B/IE/caches, ~1880 lines.  Exact vs the trusted reference on
+   every tested cell *including* the one where V3LM is wrong (#125).
+3. **Performance verdict: dual evaluators, neither dominates.**
+   EventPeel wins where bulk deaths dominate (com-dblp 3,4: 1.7×),
+   loses where correction incidence is dense (com-dblp 5,6: 1.7×
+   slower with 1.55e10 correction pairs; ca-GrQc 5,6: 5.7× slower).
+   Both mitigation attempts (per-class histograms, signature
+   memoization) were defeated by unique signatures — the incidence
+   volume is irreducible for any per-pair-exact method.
+4. **Open decision** (§10.8): (1) keep V3LM as perf engine + lift the
+   quotient theory into the paper + ADT refactor for code elegance
+   [low risk, recommended]; (2) adaptive dual engine; (3) keep
+   pushing EventPeel [not recommended].
+
+### 11.2  Session commit chain (all pushed; rollback tag below)
+
+| commit | what |
+|---|---|
+| 4f4fc74 | PIVOTER_CELL_PROBE: per-path cell counts, work bound, compression |
+| ae75bec | SigmodPlus §10 investigation log opened |
+| ff85e1f | probe v2: wall-time attribution by cell-count bucket (99.9% on monsters) |
+| 9e3a1a8 | §10.5–10.6: design pivot to factored events |
+| bcba51c | §10.7: big-graph probes (web-it OK, HepPh boundary), gate passed |
+| a40fb58 | EventPeel v1.1: engine, correct, ASan stride-bug fixed |
+| 64c9fd3 | EventPeel v1.2: signature memo (correct, ineffective) |
+| 71126d5 | §10.8 verdict + options |
+
+Rollback of the whole arc: `git checkout pre-cellpeel-20260612`
+(tag pushed; full tars on `/Volumes/WenqianT7/backups/`).
+
+### 11.3  How to run / verify EventPeel
+
+```bash
+# run (any r>=3 cell; VSAFE optional, mirrors V3LM env semantics)
+PIVOTER_RUN_REGION_EVENT=1 [PIVOTER_VSAFE_CLOUD=1] \
+  ./build/bin/degeneracy_cliques graphs/<g>.edges <r> <s> degen
+
+# exactness vs trusted reference (small/medium cells)
+PIVOTER_RUN_REGION_EVENT=1 PIVOTER_COMPARE=1 ./build/bin/... 
+
+# histogram A/B vs V3LM
+diff <(ENV_A ... | grep '^  core=') <(ENV_B ... | grep '^  core=')
+```
+
+Engine-specific log lines: `EventPeel init` (per-pair contributions +
+init check vs Step 4), `Bulk deaths`, `Partial death events`,
+`Cells died (materialized N on K paths)`, `Sparse correction pairs
+(sig memo H hits / M miss)`.
+
+### 11.4  File / artifact map
+
+| artifact | state |
+|---|---|
+| `src/NucleusDecomposition/NucleusCoreDecompositionRegionCPI_EventPeel.cpp` | the new engine (Steps 1–4 + PathInfo verbatim from V3LM; peel half rewritten) |
+| `...RegionCPI_LowMem.cpp` (V3LM) | UNTOUCHED except the CellProbe instrumentation; still the production engine |
+| `PIVOTER_CELL_PROBE[, _EXIT]` | cell-count probe inside V3LM (run-and-exit cheap on big graphs) |
+| tods2 `~/UNSW/pivoter` | behind by this session's commits — `git pull` before any server work; `cellprobe_big.log` there holds the web-it/HepPh probe outputs |
+| `/tmp/ev_dblp56.log`, `/tmp/v3_dblp56.log` (laptop) | headline-cell runs backing §10.8's table (volatile, /tmp) |
+
+### 11.5  Known issues & their state
+
+- **#125 (V-safe 3-tuple miscount, ca-CondMat 3,4)**: now LOCALIZED
+  to V3LM's dead-box/V-safe interaction (EventPeel shares Steps 1–4
+  verbatim and is exact there).  Next debugging step written in the
+  task: diff per-tuple supports between engines on the 3 tuples.
+- EventPeel on ca-HepPh: untested (43M cells expected ≈ 390 MB
+  materialized; engine handles it but was not the priority).
+- `verify_tiers.py` does not yet know about EventPeel; add
+  `PIVOTER_RUN_REGION_EVENT` as a 5th column if it becomes a tier.
+- The tier-ablation CSV/figure (§8) and the paper are UNAFFECTED by
+  this session: no paper edits were made on top of the quotient idea
+  yet (deliberately — engine verdict first).
+
+### 11.6  Task map after this session
+
+#127 backup ✓ · #128 probe ✓ · #129 EventPeel prototype ✓ (verdict:
+dual) · #130 bit-exact verify ✓ (informal full sweep; formalize if
+EventPeel is promoted) · #131 bench — OBSOLETE in original form, the
+§10.8 table is the bench · #132 paper §4 quotient rewrite — BLOCKED
+on the §10.8 decision · #125 — localized, in progress.
