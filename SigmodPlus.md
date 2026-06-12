@@ -1294,3 +1294,14 @@ these families. web-it has one 213-vertex false-twin class
 (template/hub structure) — the only hint of practical relevance.
 Decision left to the user: add a one-remark extension to the paper
 or keep it for the thesis. No engine work justified.
+
+## 15. Paper story-line pass (2026-06-13, task #132 continued)
+
+Three targeted edits (full log in paper PhaseTracker 2026-06-13):
+two-halves framing (CND = static half, RegND* = dynamic half) in §1
+and §3; three per-clique costs named explicitly in Scaling Barrier;
+thm:fm demoted to inline remark (saves a theorem box, kills
+redundancy with thm:vsafe). Bonus: fixed a latent overclaim — "Csafe
+subsumes FM isolation" is false in general (multi-region classes
+inside FM regions can be unsafe); exactness was never affected, only
+the optimization-coverage claim. Build verified 20pp/0 overfull/0 ??.
