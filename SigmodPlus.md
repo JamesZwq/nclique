@@ -1016,3 +1016,57 @@ Reading:
   correction volume (cells whose class set intersects hot tuples).
 
 Decision: proceed to prototype (task #129).  Probe phase (#128) done.
+
+### 10.8  EventPeel prototype: results and verdict (task #129)
+
+Engine `PIVOTER_RUN_REGION_EVENT=1`
+(NucleusCoreDecompositionRegionCPI_EventPeel.cpp, ~1880 lines vs
+V3LM's 2990; the union-count/DomPrune/deadCache machinery is fully
+replaced by materialized cell sets + factored death events).
+
+**Correctness (the headline win):**
+
+- Exact vs the trusted reference on every tested cell, including
+  VSAFE mode.
+- Matches V3LM everywhere EXCEPT ca-CondMat 3,4 VSAFE — where
+  **EventPeel is exact and V3LM has the known 3-tuple miscount
+  (#125)**. The bug therefore lives in V3LM's dead-box/V-safe
+  interaction, which EventPeel does not share. Independent
+  cross-check value regardless of engine choice.
+- One real bug found during bring-up (ASan): cross-path stride reuse
+  in event-scratch cleanup; fixed by cleaning at event end.
+
+**Performance (honest, clean single-run, VSAFE):**
+
+| cell | EventPeel peel | V3LM peel | corr pairs |
+|---|---|---|---|
+| com-dblp 3,4 | 2.3 s | 4.0 s (**1.7x win**) | 4.8e7 |
+| com-dblp 5,6 (headline) | 497 s | 285 s (1.7x loss) | 1.55e10 |
+| ca-GrQc 5,6 | 9.7 s | 1.7 s (5.7x loss) | 4.0e8 |
+| small cells | comparable | — | — |
+
+**Diagnosis.** The correction-pair volume
+Σ (dying cell × touching tuple) is the engine's true cost and is
+irreducible: single-touch histograms (v1.1) and signature
+memoization (v1.2, 88 hits / 24k misses) both failed because the
+multi-class signatures are almost all unique. On com-dblp 5,6 there
+are ZERO bulk deaths, so the engine's amortized weapon never fires.
+
+**Conclusion: the two evaluators are duals; neither dominates.**
+- Cell-event enumeration wins when bulk deaths dominate or
+  correction incidence is sparse (com-dblp 3,4).
+- Per-query union-count DP (V3LM) wins when correction incidence is
+  dense — it integrates the incidence in closed form instead of
+  enumerating it.
+
+**Options for next session (decision needed):**
+1. Low risk: keep V3LM as the perf engine; lift the QUOTIENT THEORY
+   into the paper (dead box = corner of dead witness-orbits, B&B =
+   corner-measure evaluator, Theorem 5 = bulk orbit extinction);
+   code elegance via extracting an orbit-evaluator ADT from V3LM.
+   EventPeel stays as cross-check + the bug-#125-free reference.
+2. Ambitious: adaptive dual engine (choose evaluator per path by
+   correction density) — honest "adaptive representation" story,
+   more code.
+3. Push EventPeel further (SIMD the correction loop) — bounded gain,
+   cannot close a 15.5e9-pair asymmetry. Not recommended.
