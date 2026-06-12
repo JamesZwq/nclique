@@ -1316,3 +1316,18 @@ Paper state: story line, theory capstone (size-free + blow-up),
 correctness fix (FM overclaim), and language passes all landed.
 Remaining before submission is figure/example re-checks against the
 final prose (old PhaseTracker checklist) and the author's own pass.
+
+## 17. A-level fixes landed (2026-06-13, task #134)
+
+Reviewer simulation (4 personas, §16 follow-on) found two REAL
+hierarchy bugs in RegND-H, both fixed and verified by a new
+brute-force oracle (scripts/verify_hierarchy_brute.py, 60/60):
+Rule-B path-anchor over-merge and FM-overlap double-count/under-
+merge. Paper: Prelim definitions aligned with firstNucleus
+(family-internal admissibility; old defs made class-integrality
+literally false), class-symmetry/class-integrality re-proved via
+the swap involution, bucket clamp fixed, (s-r)^2 factor, §5
+rewritten to the verified vertex-hierarchy class-DSU algorithm
+with soundness/completeness lemmas. Full log in paper PhaseTracker.
+TODO: regenerate cs10 dump + RegND-H overhead numbers (fixed engine
+does strictly less work); B/C-level review items pending.
