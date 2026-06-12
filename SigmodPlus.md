@@ -1376,3 +1376,30 @@ On DONE: fetch CSVs -> recompute hierarchy overhead stats (replace
 median 0.085% / p95 1.16% / max 2.8% in Experiments.tex) -> refresh
 RegND-H series in exp figures (make_sigmod_figs.py + merged CSV) ->
 rebuild paper -> commit.
+
+## 20. Hierarchy refresh sweep COMPLETE + paper data updated (2026-06-13, task #135)
+
+Sweep finished in ~6.5 h on tods2: 37 bench_hierarchy rows (both
+grids) + 133,770 V3LM_HIER rows (full paper-6 grids, 1:1 replacement
+of the old rows in bench_full_merged.csv). Zero errors.
+
+Paper updates (all rebuilt, 20pp / 0 overfull / 0 ??):
+- Hierarchy overhead sentence (Experiments): now 3,577 matched
+  cells, sweep <= 2.5 s absolute, median 0% / p95 3.4% of total
+  time, with the large relative shares confined to sub-second runs
+  (peel so fast the sweep's fixed sort cost shows). Replaces the
+  stale 1,083-cell 0.085%/1.16%/2.8% claim measured pre-fix on a
+  partial grid.
+- Headline numbers now exact and traceable (reviewer item): "up to
+  5,767-fold runtime (dblp-core30 (5,40)) and 2,835-fold memory
+  (dblp-core30 (5,11))" anchored in §exp-time; abstract/intro/
+  conclusion updated from the rounded-up 5,800/2,800.
+- Consistency check: geomeans unchanged (14.49x / 21.62x) since
+  REF/RegNDC rows were untouched — exactly as predicted.
+- Figures regenerated from the updated merged CSV directly into the
+  Overleaf figures dir (repo symlink): time/memory advantage,
+  runtime, coverage, etc.
+
+Provenance: refresh CSVs force-added under paper_data/hier_refresh/;
+merged CSV updated in place (backup at
+/tmp/bench_full_merged_backup_20260613.csv).
