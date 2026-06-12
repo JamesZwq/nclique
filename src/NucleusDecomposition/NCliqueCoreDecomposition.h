@@ -305,6 +305,14 @@ std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionR
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex = nullptr);
 
+// EventPeel: factored cell-death event engine (quotient peel). Replaces the
+// dead-box B&B/union machinery with per-path alive-cell sets + rank-1
+// factored death events (SigmodPlus §10.6). Same Steps 1-4 as V3LM.
+std::vector<std::pair<std::vector<daf::Size>, double>> NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
 // 4-tier RegND ablation dispatcher.  PIVOTER_TIER={1,2,3,4} selects:
 //   T1 \regnd, T2 \regndplus, T3 \regndplusplus, T4 \regndstar (headline).
 // Routes to LowMem / LowMem_NoCPI with PIVOTER_RECOMPUTE_PEEL,

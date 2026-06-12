@@ -274,7 +274,7 @@ static SDCTBuildResult buildSDCTWithIndex(
         envSet("PIVOTER_RUN_REGION_V3NOCPI") || envSet("PIVOTER_RUN_REGION_V3H") ||
         envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM") ||
         envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") || envSet("PIVOTER_RUN_REGION_V3LM_HIER") ||
-        envSet("PIVOTER_RUN_REGION_TIER") ||
+        envSet("PIVOTER_RUN_REGION_TIER") || envSet("PIVOTER_RUN_REGION_EVENT") ||
         envSet("PIVOTER_RUN_CCPATH");
     // Region V2 only needs tree + maxCliqueTags, skip expensive ci and tgv
     // V3 needs SDCT tree with hold/pivot info — DO NOT use MaxCliqEnum for V3
@@ -286,7 +286,7 @@ static SDCTBuildResult buildSDCTWithIndex(
         !envSet("PIVOTER_RUN_REGION_V3H") && !envSet("PIVOTER_RUN_REGION_V3HC") &&
         !envSet("PIVOTER_RUN_REGION_V3LM") && !envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") &&
         !envSet("PIVOTER_RUN_REGION_V3LM_HIER") && !envSet("PIVOTER_RUN_REGION_V4") &&
-        !envSet("PIVOTER_RUN_REGION_TIER") &&
+        !envSet("PIVOTER_RUN_REGION_TIER") && !envSet("PIVOTER_RUN_REGION_EVENT") &&
         !envSet("PIVOTER_RUN_CCPATH");
 
     DynamicGraphSet<TreeGraphNode> tgv(n);
@@ -301,7 +301,7 @@ static SDCTBuildResult buildSDCTWithIndex(
                          envSet("PIVOTER_RUN_REGION_V3HC") || envSet("PIVOTER_RUN_REGION_V3LM") ||
                          envSet("PIVOTER_RUN_REGION_V3LM_NOCPI") ||
                          envSet("PIVOTER_RUN_REGION_V3LM_HIER") ||
-                         envSet("PIVOTER_RUN_REGION_TIER") ||
+                         envSet("PIVOTER_RUN_REGION_TIER") || envSet("PIVOTER_RUN_REGION_EVENT") ||
                          envSet("PIVOTER_RUN_CCPATH")) &&
                         !envSet("PIVOTER_COMPARE") && !envSet("PIVOTER_RUN_ST");
     auto ci = (r >= 3 && !quotientLabOnly && !regionOnly && !v3Only) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
@@ -959,6 +959,7 @@ static bool dispatchR3Plus(
         {"PIVOTER_RUN_REGION_V3H", "Region CPI V3 Fast + Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_Hierarchy},
         {"PIVOTER_RUN_REGION_V3HC", "Region CPI V3 Fast + Class-based Hierarchy r>=3", NucleusCoreDecompositionRClique_RegionCPI_HierarchyClass},
         {"PIVOTER_RUN_REGION_TIER", "RegND 4-tier dispatcher (PIVOTER_TIER={1,2,3,4}) r>=3", NucleusCoreDecompositionRClique_RegionCPI_Tier},
+        {"PIVOTER_RUN_REGION_EVENT", "RegND EventPeel (factored cell-death events) r>=3", NucleusCoreDecompositionRClique_RegionCPI_EventPeel},
         {"PIVOTER_RUN_REGION_V3LM", "RegNDC (Region-Tuple Nucleus Decomposition with CPI backend) r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem},
         {"PIVOTER_RUN_CCPATH", "CCPath (lazy/eager threshold antichain) r>=3", NucleusCoreDecompositionRClique_CCPath},
         {"PIVOTER_RUN_REGION_V3LM_NOCPI", "Region CPI V3 Low-Memory NoCPI (ablation) r>=3", NucleusCoreDecompositionRClique_RegionCPI_LowMem_NoCPI},
@@ -1138,7 +1139,7 @@ int main(int argc, char **argv) {
         || envSet("PIVOTER_RUN_REGION_V3H") || envSet("PIVOTER_RUN_REGION_V3HC")
         || envSet("PIVOTER_RUN_REGION_V3LM") || envSet("PIVOTER_RUN_REGION_V3LM_NOCPI")
         || envSet("PIVOTER_RUN_REGION_V3LM_HIER")
-        || envSet("PIVOTER_RUN_REGION_TIER")
+        || envSet("PIVOTER_RUN_REGION_TIER") || envSet("PIVOTER_RUN_REGION_EVENT")
         || envSet("PIVOTER_RUN_REGION_V4") || envSet("PIVOTER_RUN_REGION_V2F")
         || envSet("PIVOTER_RUN_CCPATH")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
