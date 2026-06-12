@@ -1354,3 +1354,25 @@ RECOMMENDED CLEANUP: port the verified BuildHier sweep into the
 main V3LM engine as a flag (paper §5 already describes it
 engine-agnostically); kills the fork debt and makes
 with-hierarchy >= without by construction.
+
+## 19. tods2 hierarchy refresh sweep launched (2026-06-13, task #135)
+
+What changed in code = only the V3LM_HIER engine (rule-B removal +
+FM-overlap fix), so the refresh re-runs exactly the affected rows:
+1. bench_hierarchy.py, both server grids, fresh
+   (paper_data/bench_hierarchy.csv on tods2 repo).
+2. bench_v3_all.py with new BENCH_ALGOS=V3LM_HIER filter,
+   BENCH_GRAPHS=paper-6 (all six on tods2),
+   OUTCSV=/data/wenqianz/hier_refresh/bench_v3_hier_refresh.csv.
+CND/RegNDC/NOCPI rows are NOT re-run: engines untouched, V3LM
+perf-neutrality A/B-verified in §12.
+
+Chain pid 3640436, logs /data/wenqianz/hier_refresh/chain.log,
+sentinel ALL_DONE. Persistent local monitor: hourly status, DONE /
+stall / error alerts. Pre-launch smoke on tods2: oracle 10/10 +
+dblp-core30 HIER run OK.
+
+On DONE: fetch CSVs -> recompute hierarchy overhead stats (replace
+median 0.085% / p95 1.16% / max 2.8% in Experiments.tex) -> refresh
+RegND-H series in exp figures (make_sigmod_figs.py + merged CSV) ->
+rebuild paper -> commit.
