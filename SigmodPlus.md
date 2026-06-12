@@ -873,3 +873,69 @@ None of these block paper §6.8 from going to reviewer; the
 tier-ablation evidence is complete and self-contained.
 
 ---
+
+
+## 10.  Cell-Peel (Quotient Peel) Investigation — live log
+
+Started 2026-06-12.  Goal: replace the dead-box union machinery
+(B&B + DomPrune + caches, ~half of V3LM's 2657 lines) with a single
+mechanism, and reframe the paper as "quotient the peel's bipartite
+incidence by within-class symmetry on BOTH sides".
+
+**Backups before any work** (task #127, done):
+
+- git tag `pre-cellpeel-20260612` (pushed)
+- `/Volumes/WenqianT7/backups/pivoter_pre_cellpeel_20260612.tgz` (7.4 GB)
+- `/Volumes/WenqianT7/backups/Sigmod2027Nuclear_pre_cellpeel_20260612.tgz`
+
+### 10.1  The idea
+
+A **cell** on path P = one pivot-count vector y (Σy_c = T = s−h,
+0 ≤ y_c ≤ p_c) = one orbit of s-cliques under within-class vertex
+permutations.  Tuple–cell incidence weight is the existing
+W_τ(y) = Π_c C(p_c,y_c)·C(h_c+y_c,j_c).  Initial support = all cells
+alive; peeling τ\* kills cells y ≥ ℓ(τ\*|P); each cell dies once and
+broadcasts −W to surviving tuples.  One ~30-line `applyCell` would
+replace AggrCount + UnionCount + DomPrune + deadCache + the m=1/m=2
+special cases + saturation detection.
+
+### 10.2  Probe results (PIVOTER_CELL_PROBE, commit 4f4fc74)
+
+Run as `PIVOTER_RUN_REGION_V3LM=1 PIVOTER_VSAFE_CLOUD=1
+PIVOTER_CELL_PROBE=1 PIVOTER_CELL_PROBE_EXIT=1 ./build/bin/... g r s degen`.
+
+| cell | paths | total cells | max cells (m,T) | p50/p90/p99 | naive work bound |
+|---|---|---|---|---|---|
+| ca-GrQc 3,4 | 450 | 33 K | 3,030 (28,3) | 1/35/1860 | 5.9e7 |
+| ca-GrQc 5,6 | 124 | 151 K | 22,860 (22,5) | 5/1818/22860 | 2.8e9 |
+| dblp-core30 9,10 | 177 | 92 K | 4,791 (10,9) | 31/2049/4791 | 2.6e8 |
+| ca-CondMat 7,8 | 821 | 92 K | 9,438 (15,7) | 6/183/2211 | 3.7e8 |
+| com-dblp 3,4 | 64 K | 1.6 M | 28,327 (57,3) | 1/15/220 | 1.1e10 |
+| **com-dblp 5,6** | 9.5 K | **13.8 M** | **875,440 (42,5)** | 3/91/19836 | **5.5e12** |
+
+**Verdict so far:**
+
+1. The typical path is trivially materializable (p50 = 1–31), and
+   witness-orbit compression (s-cliques / cells) reaches 1e4–1e10 —
+   a publishable s-side compression number mirroring the r-side one.
+2. The heavy tail is REAL: monster paths with m ≈ 40–60 classes
+   produce up to 8.75e5 cells each.  A **pure** cell-materialization
+   engine is infeasible on com-dblp-like graphs.  V-safe ON does not
+   shrink the monsters (it removed only 169 classes there).
+3. Peel = **88–99 %** of RegND\* total time on every headline cell
+   (com-dblp 5,6: 263 s of 277 s; web-it 7,8: 1513 s of 1534 s), so
+   the peel engine is worth real algorithmic work.
+
+### 10.3  Open question (next step)
+
+Attribute the current B&B work (countUnionRec recursive calls) to
+path cell-count buckets.  If most work is on small-cell paths, a
+hybrid engine (materialized cells for small paths, lazy B&B for
+monsters, one ADT interface) wins; if monsters dominate, the gain
+needs a better implicit representation instead.
+
+### 10.4  Task map
+
+#127 backup (done) · #128 probe (running) · #129 prototype engine ·
+#130 bit-exact verify · #131 bench · #132 paper §4 rewrite.
+Tag to roll back everything: `pre-cellpeel-20260612`.
