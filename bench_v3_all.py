@@ -176,6 +176,14 @@ ALGOS = {
 if os.getenv("BENCH_SKIP_REF"):
     ALGOS.pop("REF", None)
 
+# BENCH_ALGOS restricts the algo set to a comma-separated whitelist, e.g.
+# BENCH_ALGOS=V3LM_HIER for the 2026-06-13 hierarchy-engine refresh (rule-B
+# removal + FM-overlap fix changed only that engine; other rows stay valid).
+if os.getenv("BENCH_ALGOS"):
+    _keep = {a.strip() for a in os.getenv("BENCH_ALGOS").split(",") if a.strip()}
+    ALGOS = {k: v for k, v in ALGOS.items() if k in _keep}
+    print(f"[algos] BENCH_ALGOS restriction -> {sorted(ALGOS)}", flush=True)
+
 # ============ Helpers ============
 def link_graphs():
     os.makedirs("graphs", exist_ok=True)
