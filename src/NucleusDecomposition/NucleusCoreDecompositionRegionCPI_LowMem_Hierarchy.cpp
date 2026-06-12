@@ -1798,92 +1798,88 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier(
     std::vector<int>  compVertCount(totalNodes, 0); // stored at DSU root
     std::vector<char> active(totalNodes, 0);
 
-    // FM-overlap bookkeeping (bug fix 2026-06-13): a merged-FM MC can
-    // share vertices with class-covered regions (region overlap < r but
-    // >= 1 vertex) or with another merged MC. The old Rule D kept FM
-    // nodes isolated forever and counted shared vertices twice
-    // (observed: verts=12 on an 11-vertex graph, one true component
-    // reported as two). Fix: precompute per FM node its (partner node,
-    // shared-vertex count) pairs against classes and earlier FM nodes;
-    // union with active partners at activation time; subtract the
-    // shared count when a union joins two components so every vertex
-    // counts once.
-    std::vector<std::vector<std::pair<int,int>>> fmPartners(mergedMCs.size());
-    std::vector<std::vector<int>> classToFMs(numClasses);
+    // FM-overlap bookkeeping (bug fix 2026-06-13, v2): a merged-FM MC
+    // can share vertices with class-covered regions (region overlap < r
+    // but >= 1 vertex) or with another merged MC. The old Rule D kept
+    // FM nodes isolated forever and counted shared vertices twice.
+    // v1 of this fix subtracted overlaps inside mergeRoots by scanning
+    // the FM nodes of both components, which is quadratic on graphs
+    // with many FM MCs (com-dblp 3,4: 333 ms -> 16 s). v2: every
+    // SHARED vertex (contained in >1 node) is attributed to whichever
+    // of its containers activates first; node activation adds its
+    // unshared base count plus the shared vertices it is first to
+    // claim, then unions with every already-active partner. All active
+    // containers of a shared vertex are therefore always in one
+    // component, every vertex is counted exactly once, and mergeRoots
+    // stays O(alpha) with no correction scan.
+    std::vector<std::vector<int>> nodePartners(totalNodes);
+    std::vector<std::vector<daf::Size>> nodeShared(totalNodes);
+    std::vector<int> nodeBaseCount(totalNodes, 0);
     {
-        // classOf was freed after classVerts was built; rebuild the
-        // vertex->class map from classVerts (still alive).
+        // vertex -> class owner (classOf was freed; rebuild from classVerts)
         std::vector<daf::Size> vertClass(numVertices, INVALID);
-        for (daf::Size c = 0; c < numClasses; ++c)
+        for (daf::Size c = 0; c < numClasses; ++c) {
             for (auto v : classVerts[c]) vertClass[v] = c;
-        robin_hood::unordered_flat_map<daf::Size, int> vertToFM;
+            nodeBaseCount[c] = (int)classVerts[c].size();
+        }
+        robin_hood::unordered_flat_map<daf::Size, std::vector<int>> vertFMs;
         for (daf::Size mi = 0; mi < mergedMCs.size(); ++mi) {
-            robin_hood::unordered_flat_map<int,int> ov;  // partner node -> shared verts
-            for (auto v : mergedMCs[mi].verts) {
-                if (v < numVertices && vertClass[v] != INVALID)
-                    ov[(int)vertClass[v]]++;
-                auto it = vertToFM.find(v);
-                if (it != vertToFM.end())
-                    ov[(int)(nodeBase_fm + (daf::Size)it->second)]++;
-                else
-                    vertToFM[v] = (int)mi;
-            }
-            for (auto &kv : ov) {
-                fmPartners[mi].emplace_back(kv.first, kv.second);
-                if (kv.first < (int)numClasses)
-                    classToFMs[kv.first].push_back((int)mi);
+            nodeBaseCount[(int)(nodeBase_fm + mi)] = (int)mergedMCs[mi].verts.size();
+            for (auto v : mergedMCs[mi].verts) vertFMs[v].push_back((int)mi);
+        }
+        robin_hood::unordered_flat_map<int, robin_hood::unordered_flat_set<int>> pset;
+        for (auto &kv : vertFMs) {
+            daf::Size v = kv.first;
+            auto &fms = kv.second;
+            std::vector<int> containers;
+            if (v < numVertices && vertClass[v] != INVALID)
+                containers.push_back((int)vertClass[v]);
+            for (int mi : fms) containers.push_back((int)(nodeBase_fm + (daf::Size)mi));
+            if (containers.size() < 2) continue;
+            for (int node : containers) {
+                nodeShared[node].push_back(v);
+                nodeBaseCount[node]--;
+                for (int other : containers)
+                    if (other != node) pset[node].insert(other);
             }
         }
+        for (auto &kv : pset)
+            nodePartners[kv.first].assign(kv.second.begin(), kv.second.end());
     }
-    std::vector<std::vector<int>> fmNodesInComp(totalNodes);
+    std::vector<char> vertClaimed_h(numVertices, 0);
+    robin_hood::unordered_flat_set<daf::Size> vertClaimedHi_h;  // ids >= numVertices
 
     auto mergeRoots = [&](int a, int b) {
         int ra = dsu.find(a), rb = dsu.find(b);
         if (ra == rb) return;
-        // Overlap correction: for every FM node on either side, subtract
-        // shared-vertex counts against partners that live on the other
-        // side. FM-FM overlaps are stored once (on the later FM node)
-        // and class partners only on their FM node, so no pair is
-        // subtracted twice.
-        int correction = 0;
-        for (int side = 0; side < 2; ++side) {
-            int from = side == 0 ? ra : rb, to = side == 0 ? rb : ra;
-            for (int mi : fmNodesInComp[from])
-                for (auto &pc : fmPartners[mi])
-                    if (active[pc.first] && dsu.find(pc.first) == to)
-                        correction += pc.second;
-        }
-        int combined = compVertCount[ra] + compVertCount[rb] - correction;
+        int combined = compVertCount[ra] + compVertCount[rb];
         dsu.unite(ra, rb);
         int newRoot = dsu.find(ra);
         int other   = (newRoot == ra) ? rb : ra;
-        if (fmNodesInComp[other].size() > fmNodesInComp[newRoot].size())
-            std::swap(fmNodesInComp[other], fmNodesInComp[newRoot]);
-        fmNodesInComp[newRoot].insert(fmNodesInComp[newRoot].end(),
-                                      fmNodesInComp[other].begin(),
-                                      fmNodesInComp[other].end());
-        fmNodesInComp[other].clear();
         compVertCount[newRoot] = combined;
         compVertCount[other]   = 0;
     };
-    auto activateClass = [&](daf::Size cid) {
-        int node = (int)cid;
-        if (!active[node]) {
-            active[node] = 1;
-            compVertCount[node] = (int)classVerts[cid].size();
-            for (int mi : classToFMs[node])
-                if (active[(int)(nodeBase_fm + (daf::Size)mi)])
-                    mergeRoots(node, (int)(nodeBase_fm + (daf::Size)mi));
+    auto claimShared = [&](int node) -> int {
+        int claimed = 0;
+        for (auto v : nodeShared[node]) {
+            if (v < numVertices) {
+                if (!vertClaimed_h[v]) { vertClaimed_h[v] = 1; claimed++; }
+            } else if (vertClaimedHi_h.insert(v).second) {
+                claimed++;
+            }
         }
+        return claimed;
     };
-    auto activateFM = [&](daf::Size mi) {
-        int node = (int)(nodeBase_fm + mi);
+    auto activateNode = [&](int node) {
         if (active[node]) return;
         active[node] = 1;
-        compVertCount[node] = (int)mergedMCs[mi].verts.size();
-        fmNodesInComp[dsu.find(node)].push_back((int)mi);
-        for (auto &pc : fmPartners[mi])
-            if (active[pc.first]) mergeRoots(node, pc.first);
+        compVertCount[dsu.find(node)] += nodeBaseCount[node] + claimShared(node);
+        for (int p : nodePartners[node])
+            if (active[p]) mergeRoots(node, p);
+    };
+    auto activateClass = [&](daf::Size cid) { activateNode((int)cid); };
+    auto activateFM = [&](daf::Size mi) {
+        activateNode((int)(nodeBase_fm + mi));
     };
 
     // Optional per-level member dump for case study.
