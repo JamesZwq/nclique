@@ -1528,6 +1528,20 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
     std::vector<std::vector<uint32_t>> evDyingBy;  // local k -> dying indices
     std::vector<int> evTk;               // tuple's local class idxs
     std::vector<int> evTj;               // tuple's per-class j
+    // Multi-touch signature memo: tuples sharing the same
+    // (marked-touched classes, j) signature share one correction core
+    //   corrCore(K, j|K) = Σ_dying g·(Π_{k∈K} C(nh+y,j) − Π_{k∈K} C(nh,j)),
+    // and differ only by the scalar baseOther = Π_{touched∖K} C(nh,j).
+    struct SigVecHash {
+        size_t operator()(const std::vector<uint32_t> &v) const {
+            size_t h = 1469598103934665603ull;
+            for (uint32_t x : v) { h ^= x; h *= 1099511628211ull; }
+            return h;
+        }
+    };
+    std::unordered_map<std::vector<uint32_t>, double, SigVecHash> evSigMemo;
+    std::vector<uint32_t> evSigKey;
+    long long prof_sigHits = 0, prof_sigMiss = 0;
 
     auto processPath = [&](daf::Size piIdx, const std::vector<daf::Size> &deadTuples,
                            BigLevel &scanLevel) {
@@ -1570,6 +1584,7 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
             evMarkedList.clear();
             evDying.clear();
             evDyingG.clear();
+            evSigMemo.clear();
         };
         double G = 0.0;
         if ((int)evEll.size() < (int)pi.classIds.size())
@@ -1707,32 +1722,57 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
                     delta += baseOther * acc;
                     prof_corrPairs++;
                 } else if (nMarked >= 2) {
-                    // Multi-touch: exact loop over the union of the touched
-                    // classes' dying lists, epoch-deduped per tuple.
-                    const uint32_t epoch = ++pi.evEpoch;
+                    // Multi-touch via signature memo: the correction core
+                    // depends only on the marked-touched (k, j) pairs, so
+                    // tuples sharing that signature share one cell loop.
+                    evSigKey.clear();
+                    double baseOther = 1.0;
                     for (size_t t2 = 0; t2 < evTk.size(); ++t2) {
                         const int kT = evTk[t2];
-                        if (!evMarkedLocalG[kT]) continue;
-                        for (uint32_t dIdx : evDyingBy[kT]) {
-                            const uint32_t ci = evDying[dIdx];
-                            if (pi.cellEpoch[ci] == epoch) continue;
-                            pi.cellEpoch[ci] = epoch;
-                            double wfull = 1.0;
-                            for (size_t t3 = 0; t3 < evTk.size(); ++t3) {
-                                const int k2 = evTk[t3];
-                                int yv = 0;
-                                for (uint32_t o = pi.cellStart[ci];
-                                     o < pi.cellStart[ci + 1]; ++o)
-                                    if (coordK(pi.cellCoords[o]) == k2) {
-                                        yv = coordY(pi.cellCoords[o]);
-                                        break;
-                                    }
-                                wfull *= CC(pi.nh[k2] + yv, evTj[t3]);
-                            }
-                            delta += evDyingG[dIdx] * (wfull - base);
-                            prof_corrPairs++;
-                        }
+                        if (evMarkedLocalG[kT])
+                            evSigKey.push_back(((uint32_t)kT << 8) |
+                                               (uint32_t)evTj[t2]);
+                        else
+                            baseOther *= CC(pi.nh[kT], evTj[t2]);
                     }
+                    auto mit = evSigMemo.find(evSigKey);
+                    double corrCore;
+                    if (mit != evSigMemo.end()) {
+                        corrCore = mit->second;
+                        prof_sigHits++;
+                    } else {
+                        prof_sigMiss++;
+                        double cK = 1.0;
+                        for (uint32_t sk : evSigKey)
+                            cK *= CC(pi.nh[sk >> 8], (int)(sk & 0xFF));
+                        corrCore = 0.0;
+                        const uint32_t epoch = ++pi.evEpoch;
+                        for (uint32_t sk : evSigKey) {
+                            const int kT = (int)(sk >> 8);
+                            for (uint32_t dIdx : evDyingBy[kT]) {
+                                const uint32_t ci = evDying[dIdx];
+                                if (pi.cellEpoch[ci] == epoch) continue;
+                                pi.cellEpoch[ci] = epoch;
+                                double thetaProd = 1.0;
+                                for (uint32_t sk2 : evSigKey) {
+                                    const int k2 = (int)(sk2 >> 8);
+                                    int yv = 0;
+                                    for (uint32_t o = pi.cellStart[ci];
+                                         o < pi.cellStart[ci + 1]; ++o)
+                                        if (coordK(pi.cellCoords[o]) == k2) {
+                                            yv = coordY(pi.cellCoords[o]);
+                                            break;
+                                        }
+                                    thetaProd *= CC(pi.nh[k2] + yv,
+                                                    (int)(sk2 & 0xFF));
+                                }
+                                corrCore += evDyingG[dIdx] * (thetaProd - cK);
+                                prof_corrPairs++;
+                            }
+                        }
+                        evSigMemo.emplace(evSigKey, corrCore);
+                    }
+                    delta += baseOther * corrCore;
                 }
             }
 
@@ -1879,7 +1919,9 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
     std::cout << "  Cells died: " << prof_dyingCells
               << "  (materialized " << prof_cellsMaterialized
               << " on " << prof_pathsMaterialized << " paths)" << std::endl;
-    std::cout << "  Sparse correction pairs: " << prof_corrPairs << std::endl;
+    std::cout << "  Sparse correction pairs: " << prof_corrPairs
+              << "  (sig memo " << prof_sigHits << " hits / "
+              << prof_sigMiss << " miss)" << std::endl;
     {
         double peelMs = (double)step6Ms;
         auto pct = [peelMs](long long ns) -> double {
