@@ -293,6 +293,23 @@ def make_algorithm_grid(rows: list[dict], out_path: Path, metric: str, ylabel: s
                 vals.extend([s for s, _ in completed_points_for(idx, graph, r, algo, metric)])
         graph_max_s[graph] = max(vals) if vals else 10
 
+    # Per-row shared y-limits. Panels where the baseline (CND) has no data
+    # otherwise auto-scale to the narrow RegND-only range and magnify tiny
+    # run-to-run noise into a fake "cliff"; sharing the row's range across
+    # all of its panels keeps every cell comparable and renders the
+    # RegND family as a flat low band where the baseline is absent.
+    row_ylim = {}
+    for r in ADVANTAGE_R_ROWS:
+        yvals = []
+        for graph in ADVANTAGE_GRID_GRAPHS:
+            for algo, *_ in FORMAL_ALGOS:
+                yvals.extend(v for _, v in attempted_series_for(idx, graph, r, algo, metric)
+                             if v is not None and v > 0)
+        if yvals:
+            lo = 10 ** math.floor(math.log10(min(yvals)))
+            hi = 10 ** math.ceil(math.log10(max(yvals)))
+            row_ylim[r] = (lo, hi)
+
     for row_i, r in enumerate(ADVANTAGE_R_ROWS):
         for col, graph in enumerate(ADVANTAGE_GRID_GRAPHS):
             ax = axes[row_i, col]
@@ -322,6 +339,8 @@ def make_algorithm_grid(rows: list[dict], out_path: Path, metric: str, ylabel: s
             ax.set_xticks(ticks)
             ax.set_xticklabels([str(t) for t in ticks])
             ax.set_yscale("log")
+            if r in row_ylim:
+                ax.set_ylim(row_ylim[r])
             ax.yaxis.set_major_formatter(FuncFormatter(compact_log_tick))
             ax.yaxis.set_minor_formatter(NullFormatter())
             ax.xaxis.set_minor_formatter(NullFormatter())
