@@ -1331,3 +1331,24 @@ rewritten to the verified vertex-hierarchy class-DSU algorithm
 with soundness/completeness lemmas. Full log in paper PhaseTracker.
 TODO: regenerate cs10 dump + RegND-H overhead numbers (fixed engine
 does strictly less work); B/C-level review items pending.
+
+## 18. Hierarchy speed re-measure + fork-drift finding (2026-06-13)
+
+Task ①: hierarchy phase is now FASTER than before the correctness
+fixes (rule-B removal dropped per-tuple pathsCoveringTuple calls;
+v1's FM-overlap correction was quadratic on FM-heavy graphs and was
+replaced by first-claim shared-vertex counting, v2): CondMat 23->6,
+GrQc 20->4, com-dblp 254->125 ms. 60/60 oracle + counterexamples
+pass. cs10 uses the R=1 ST_V3 dump path, NOT RegND-H -- no figure
+regeneration needed; V3H_DUMP_MEMBERS has no script consumer.
+
+User-spotted anomaly CONFIRMED: on ca-GrQc 5,6 the HIER binary's
+total (1833 ms) beats no-hier V3LM (2271 ms). Cause: FORK DRIFT,
+not free hierarchy -- LowMem_Hierarchy.cpp forks an older V3LM peel
+(no saturation machinery; unaffected by #125 since double-decrement
+needs saturation+death). On CondMat/com-dblp HIER is slower as
+expected (+130/+773 ms). The sweep itself is 4-125 ms everywhere.
+RECOMMENDED CLEANUP: port the verified BuildHier sweep into the
+main V3LM engine as a flag (paper §5 already describes it
+engine-agnostically); kills the fork debt and makes
+with-hierarchy >= without by construction.
