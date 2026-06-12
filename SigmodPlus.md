@@ -1267,3 +1267,30 @@ Two standing conclusions reinforced:
    non-size-free phase), cf. §12.
 
 Probe cost: ~1 hour, zero engine code. Probe kept env-gated in V3LM.
+
+## 14. False-twin census (2026-06-13)
+
+Question: does extending profile classes from true twins (N[u]=N[v])
+to the full twin partition (+ false twins: N(u)=N(v), non-adjacent,
+kappa-preserving via automorphism but invisible to MC profiles) buy
+real compression on paper-6? Probe: scripts/probe_false_twins.py.
+
+Removable vertices (sum |class|-1, degree >= s-1 = 3 filter):
+
+| graph        | true-twin rmv | false-twin rmv | ft max class |
+|--------------|---------------|----------------|--------------|
+| dblp-core30  | 1069          | 0              | 0   |
+| ca-GrQc      | 665           | 10             | 6   |
+| ca-HepPh     | 751           | 35             | 9   |
+| ca-CondMat   | 3802          | 43             | 8   |
+| com-dblp     | 49115         | 1065           | 18  |
+| web-it-2004  | 376250        | 3230           | 213 |
+
+Verdict: false twins are <=0.6% of vertices on every paper-6 graph
+(0 on dblp-core30); the twin-partition extension is theoretical
+armor (closes the cocktail-party K_{n x 2} counterexample, reaches
+"all O(n+m)-computable local symmetry"), not a practical win on
+these families. web-it has one 213-vertex false-twin class
+(template/hub structure) — the only hint of practical relevance.
+Decision left to the user: add a one-remark extension to the paper
+or keep it for the thesis. No engine work justified.
