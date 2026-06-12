@@ -1713,6 +1713,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     // distribution and that work bound WITHOUT changing any behavior.
     // PIVOTER_CELL_PROBE_EXIT additionally returns right after the probe
     // (skipping the peel) so large graphs can be probed cheaply.
+    // Kept unsorted (indexed by piIdx) so the peel loop can attribute B&B
+    // work to cell-count buckets; empty unless PIVOTER_CELL_PROBE is set.
+    std::vector<double> probeCellsByPath;
     if (std::getenv("PIVOTER_CELL_PROBE")) {
         std::vector<double> cellsPerPath;
         cellsPerPath.reserve(pathInfos.size());
@@ -1754,6 +1757,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                 totSCliques += nCr[pTot][T];
             if (cells > maxCells) { maxCells = cells; maxCellsPath = piIdx; }
         }
+        probeCellsByPath = cellsPerPath;  // unsorted copy for peel attribution
         std::sort(cellsPerPath.begin(), cellsPerPath.end());
         auto pct = [&](double q) -> double {
             if (cellsPerPath.empty()) return 0;
@@ -2224,6 +2228,16 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     // from the path's tupleIdxs, and stop being refreshed.
     long long prof_tupleSaturated = 0;
 
+    // Probe attribution: B&B recursive calls + wall time per path (empty
+    // unless probing). Rec calls alone proved misleading (ca-GrQc 5,6: only
+    // 24K rec calls in a 2s peel), so wall-ns is the primary metric.
+    std::vector<long long> probeRecByPath;
+    std::vector<long long> probeNsByPath;
+    if (!probeCellsByPath.empty()) {
+        probeRecByPath.assign(pathInfos.size(), 0);
+        probeNsByPath.assign(pathInfos.size(), 0);
+    }
+
     auto refreshAffectedPaths = [&](const std::vector<daf::Size> &affectedPaths,
                                     BigLevel &scanLevel) {
         // Per-path cache for the all-zero base[] case. Filled lazily on
@@ -2249,6 +2263,11 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         for (daf::Size piIdx : affectedPaths) {
             auto &pi = pathInfos[piIdx];
             int m = (int)pi.classIds.size();
+            const long long _probeRecBase =
+                probeRecByPath.empty() ? 0 : prof_totalRecCalls;
+            std::chrono::steady_clock::time_point _probeT0;
+            if (!probeNsByPath.empty())
+                _probeT0 = std::chrono::steady_clock::now();
             // Reset cache for this path.
             zeroCache.valid = false;
             // LowMem: stack-buffer cap (MAX_M/MAX_T) no longer used on the
@@ -2539,6 +2558,12 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
                     pathRetired[piIdx] = true;
                     prof_pathsRetired++;
                 }
+            }
+            if (!probeRecByPath.empty()) {
+                probeRecByPath[piIdx] += prof_totalRecCalls - _probeRecBase;
+                probeNsByPath[piIdx] +=
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now() - _probeT0).count();
             }
         }
     };
@@ -2889,6 +2914,45 @@ post_peel_loop: ;
     std::cout << "  Zero-base cache: " << prof_zeroBaseHits << " hits / "
               << prof_zeroBaseFills << " fills" << std::endl;
     std::cout << "  Total recursive calls: " << prof_totalRecCalls << std::endl;
+    if (!probeRecByPath.empty() && !probeCellsByPath.empty()) {
+        // Attribute B&B work to path cell-count buckets to decide whether a
+        // hybrid engine (materialize small paths, keep B&B on monsters)
+        // can pay. Buckets are by cells(P): 1, <=10, <=1e2, <=1e3, <=1e4,
+        // <=1e5, >1e5.
+        const double edges[] = {1.5, 10.5, 100.5, 1000.5, 10000.5, 100000.5};
+        const char *names[] = {"=1", "<=10", "<=1e2", "<=1e3", "<=1e4",
+                               "<=1e5", ">1e5"};
+        long long recB[7] = {0}, nsB[7] = {0};
+        size_t cntB[7] = {0};
+        long long nsTot = 0;
+        const size_t n = std::min(probeRecByPath.size(), probeCellsByPath.size());
+        for (size_t i = 0; i < n; ++i) {
+            int b = 6;
+            for (int k = 0; k < 6; ++k)
+                if (probeCellsByPath[i] < edges[k]) { b = k; break; }
+            recB[b] += probeRecByPath[i];
+            nsB[b] += probeNsByPath[i];
+            nsTot += probeNsByPath[i];
+            cntB[b]++;
+        }
+        std::cout << "  [CellProbe] refresh work by path cell-count bucket:"
+                  << std::endl;
+        for (int k = 0; k < 7; ++k) {
+            double pctRec = prof_totalRecCalls > 0
+                ? 100.0 * (double)recB[k] / (double)prof_totalRecCalls : 0.0;
+            double pctNs = nsTot > 0
+                ? 100.0 * (double)nsB[k] / (double)nsTot : 0.0;
+            std::cout << "    cells" << names[k] << ": paths=" << cntB[k]
+                      << " ms=" << std::fixed << std::setprecision(1)
+                      << (double)nsB[k] / 1e6
+                      << " (" << pctNs << "%)"
+                      << " recCalls=" << recB[k]
+                      << " (" << pctRec << "%)" << std::endl;
+        }
+        std::cout << "  [CellProbe] refresh total: " << std::fixed
+                  << std::setprecision(1) << (double)nsTot / 1e6
+                  << " ms" << std::endl;
+    }
     {
         double peelMs = (double)step6Ms;
         auto pct = [peelMs](long long ns) -> double {
