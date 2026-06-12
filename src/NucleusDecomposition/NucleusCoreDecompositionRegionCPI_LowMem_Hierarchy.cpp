@@ -1766,8 +1766,6 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier(
     //
     // Union rules applied in DESC level order:
     //   (A) alive tuple tau: union all classes in tau.key
-    //   (B) alive tuple tau, each CPI path P covering tau: union one key class
-    //       with pathClassRep[P]
     //   (C) alive region M (mcCoreVal(M) >= level): union all classesInRegion[M]
     //   (D) alive FM MC: isolated node with fixed vertex count
     auto tHierStart = std::chrono::high_resolution_clock::now();
@@ -1799,24 +1797,93 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier(
     SimpleDSU dsu((int)totalNodes);
     std::vector<int>  compVertCount(totalNodes, 0); // stored at DSU root
     std::vector<char> active(totalNodes, 0);
-    std::vector<int>  pathClassRep(pathInfos.size(), -1); // a class id that anchors this path
 
+    // FM-overlap bookkeeping (bug fix 2026-06-13): a merged-FM MC can
+    // share vertices with class-covered regions (region overlap < r but
+    // >= 1 vertex) or with another merged MC. The old Rule D kept FM
+    // nodes isolated forever and counted shared vertices twice
+    // (observed: verts=12 on an 11-vertex graph, one true component
+    // reported as two). Fix: precompute per FM node its (partner node,
+    // shared-vertex count) pairs against classes and earlier FM nodes;
+    // union with active partners at activation time; subtract the
+    // shared count when a union joins two components so every vertex
+    // counts once.
+    std::vector<std::vector<std::pair<int,int>>> fmPartners(mergedMCs.size());
+    std::vector<std::vector<int>> classToFMs(numClasses);
+    {
+        // classOf was freed after classVerts was built; rebuild the
+        // vertex->class map from classVerts (still alive).
+        std::vector<daf::Size> vertClass(numVertices, INVALID);
+        for (daf::Size c = 0; c < numClasses; ++c)
+            for (auto v : classVerts[c]) vertClass[v] = c;
+        robin_hood::unordered_flat_map<daf::Size, int> vertToFM;
+        for (daf::Size mi = 0; mi < mergedMCs.size(); ++mi) {
+            robin_hood::unordered_flat_map<int,int> ov;  // partner node -> shared verts
+            for (auto v : mergedMCs[mi].verts) {
+                if (v < numVertices && vertClass[v] != INVALID)
+                    ov[(int)vertClass[v]]++;
+                auto it = vertToFM.find(v);
+                if (it != vertToFM.end())
+                    ov[(int)(nodeBase_fm + (daf::Size)it->second)]++;
+                else
+                    vertToFM[v] = (int)mi;
+            }
+            for (auto &kv : ov) {
+                fmPartners[mi].emplace_back(kv.first, kv.second);
+                if (kv.first < (int)numClasses)
+                    classToFMs[kv.first].push_back((int)mi);
+            }
+        }
+    }
+    std::vector<std::vector<int>> fmNodesInComp(totalNodes);
+
+    auto mergeRoots = [&](int a, int b) {
+        int ra = dsu.find(a), rb = dsu.find(b);
+        if (ra == rb) return;
+        // Overlap correction: for every FM node on either side, subtract
+        // shared-vertex counts against partners that live on the other
+        // side. FM-FM overlaps are stored once (on the later FM node)
+        // and class partners only on their FM node, so no pair is
+        // subtracted twice.
+        int correction = 0;
+        for (int side = 0; side < 2; ++side) {
+            int from = side == 0 ? ra : rb, to = side == 0 ? rb : ra;
+            for (int mi : fmNodesInComp[from])
+                for (auto &pc : fmPartners[mi])
+                    if (active[pc.first] && dsu.find(pc.first) == to)
+                        correction += pc.second;
+        }
+        int combined = compVertCount[ra] + compVertCount[rb] - correction;
+        dsu.unite(ra, rb);
+        int newRoot = dsu.find(ra);
+        int other   = (newRoot == ra) ? rb : ra;
+        if (fmNodesInComp[other].size() > fmNodesInComp[newRoot].size())
+            std::swap(fmNodesInComp[other], fmNodesInComp[newRoot]);
+        fmNodesInComp[newRoot].insert(fmNodesInComp[newRoot].end(),
+                                      fmNodesInComp[other].begin(),
+                                      fmNodesInComp[other].end());
+        fmNodesInComp[other].clear();
+        compVertCount[newRoot] = combined;
+        compVertCount[other]   = 0;
+    };
     auto activateClass = [&](daf::Size cid) {
         int node = (int)cid;
         if (!active[node]) {
             active[node] = 1;
             compVertCount[node] = (int)classVerts[cid].size();
+            for (int mi : classToFMs[node])
+                if (active[(int)(nodeBase_fm + (daf::Size)mi)])
+                    mergeRoots(node, (int)(nodeBase_fm + (daf::Size)mi));
         }
     };
-    auto mergeRoots = [&](int a, int b) {
-        int ra = dsu.find(a), rb = dsu.find(b);
-        if (ra == rb) return;
-        int combined = compVertCount[ra] + compVertCount[rb];
-        dsu.unite(ra, rb);
-        int newRoot = dsu.find(ra);
-        int other   = (newRoot == ra) ? rb : ra;
-        compVertCount[newRoot] = combined;
-        compVertCount[other]   = 0;
+    auto activateFM = [&](daf::Size mi) {
+        int node = (int)(nodeBase_fm + mi);
+        if (active[node]) return;
+        active[node] = 1;
+        compVertCount[node] = (int)mergedMCs[mi].verts.size();
+        fmNodesInComp[dsu.find(node)].push_back((int)mi);
+        for (auto &pc : fmPartners[mi])
+            if (active[pc.first]) mergeRoots(node, pc.first);
     };
 
     // Optional per-level member dump for case study.
@@ -1841,17 +1908,25 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier(
                 const auto &key = rTuples[tidx].key;
                 if (key.empty()) continue;
                 // Activate and chain-union all classes in tau.key (Rule A).
+                //
+                // Rule B (path-based union: merge alive tuples sharing a
+                // covering CPI path) REMOVED 2026-06-13: it over-merges.
+                // Two alive tuples hosted by the same region were unioned
+                // even when the region's floor C(|M|-r, s-r) is below the
+                // current level, i.e. the region cannot carry any witness
+                // at this level (counterexample: two K7s bridged by a K6
+                // region; at level 4 the two 7-vertex components were
+                // merged into one). Rule A alone is complete for alive
+                // tuples: every r-subclique of a k-admissible witness is
+                // an alive tuple, so the witness's classes chain through
+                // shared class nodes, and witnesses chain via shared
+                // r-cliques. Rules C/D cover direct-binned classes that
+                // never enter the tuple table.
                 daf::Size anchor = key[0];
                 activateClass(anchor);
                 for (size_t k = 1; k < key.size(); ++k) {
                     activateClass(key[k]);
                     mergeRoots((int)anchor, (int)key[k]);
-                }
-                // Path-based union (Rule B): anchor to pathClassRep[P] for each path.
-                pathsCoveringTuple(tidx, pctPaths);
-                for (auto piIdx : pctPaths) {
-                    if (pathClassRep[piIdx] < 0) pathClassRep[piIdx] = (int)anchor;
-                    else mergeRoots((int)anchor, pathClassRep[piIdx]);
                 }
             } else if (ev.type == EV_REGION) {
                 daf::Size rid = ev.idx;
@@ -1865,10 +1940,7 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem_Hier(
                     mergeRoots((int)anchor, (int)cs[k]);
                 }
             } else { // EV_FM
-                daf::Size mi = ev.idx;
-                int node = (int)(nodeBase_fm + mi);
-                active[node] = 1;
-                compVertCount[node] = (int)mergedMCs[mi].verts.size();
+                activateFM(ev.idx);
             }
         }
         ++levelsSeen;
