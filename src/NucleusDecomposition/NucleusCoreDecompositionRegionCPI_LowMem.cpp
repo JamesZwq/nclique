@@ -2122,6 +2122,112 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         pathAliveCount[i] = (daf::Size)pathInfos[i].tupleIdxs.size();
     pathRetired.assign(pathInfos.size(), false);
 
+    // Moment-probe state (PIVOTER_MOMENT_PROBE_DYN=1): momPerPath holds
+    // each path's distinct moment-pattern count; the prof_mp_* counters
+    // compare measured per-survivor refresh work against the
+    // hypothetical moment-vector update work in matched units of
+    // range-DP cells (see SigmodPlus moment-engine probe).
+    std::vector<daf::Size> momPerPath;
+    std::vector<int> mpBase;
+    long long prof_mp_curWork = 0, prof_mp_momWork = 0;
+    long long prof_mp_dotWork = 0, prof_mp_dQ = 0;
+
+    // PIVOTER_MOMENT_PROBE=1: Vandermonde moment-pattern census.
+    // For each path P, count a_P (hosted tuples) and the number of
+    // DISTINCT moment indices t needed by the moment-vector update
+    // scheme: union over hosted tuples tau of { t : 0 <= t <= j(tau|P) },
+    // where j(tau|P) is tau's per-class multiplicity vector restricted
+    // to P's classes. Reports the static win-factor proxy a_P/#moments
+    // (unweighted and a_P^2-weighted, the latter approximating refresh
+    // work share). PIVOTER_MOMENT_PROBE_EXIT=1 exits after printing.
+    if (std::getenv("PIVOTER_MOMENT_PROBE")) {
+        if (std::getenv("PIVOTER_MOMENT_PROBE_DYN"))
+            momPerPath.assign(pathInfos.size(), 0);
+        double sumA = 0, sumMom = 0, sumA2 = 0, sumAMom = 0;
+        daf::Size pathsCounted = 0;
+        // top-10 paths by a_P
+        std::vector<std::tuple<daf::Size, daf::Size, daf::Size, daf::Size>> top; // (a_P, mom, m, piIdx)
+        robin_hood::unordered_flat_set<uint64_t> momSet;
+        std::vector<std::pair<int,int>> jvec;  // (class local idx, j)
+        std::vector<int> tcur;
+        for (daf::Size piIdx = 0; piIdx < pathInfos.size(); ++piIdx) {
+            const auto &pi = pathInfos[piIdx];
+            if (pi.tupleIdxs.empty()) continue;
+            const int m = (int)pi.classIds.size();
+            momSet.clear();
+            for (auto tidx : pi.tupleIdxs) {
+                auto key = keyOf(tidx);
+                jvec.clear();
+                int ci = 0, ki = 0;
+                while (ci < m && ki < (int)key.size()) {
+                    if (pi.classIds[ci] < key[ki]) { ++ci; }
+                    else if (pi.classIds[ci] > key[ki]) { ++ki; }
+                    else {
+                        int jc = 1;
+                        while (ki + jc < (int)key.size() && key[ki + jc] == key[ki]) ++jc;
+                        jvec.emplace_back(ci, jc);
+                        ++ci; ki += jc;
+                    }
+                }
+                // odometer over t <= j (componentwise), FNV-1a hash of
+                // the sparse (idx,t>0) pattern
+                tcur.assign(jvec.size(), 0);
+                while (true) {
+                    uint64_t h = 1469598103934665603ULL;
+                    for (size_t q = 0; q < jvec.size(); ++q) {
+                        if (tcur[q] == 0) continue;
+                        uint32_t enc = ((uint32_t)jvec[q].first << 8) | (uint32_t)tcur[q];
+                        for (int b = 0; b < 4; ++b) {
+                            h ^= (enc >> (8 * b)) & 0xFF;
+                            h *= 1099511628211ULL;
+                        }
+                    }
+                    momSet.insert(h);
+                    // increment odometer
+                    size_t q = 0;
+                    while (q < jvec.size() && tcur[q] == jvec[q].second) {
+                        tcur[q] = 0; ++q;
+                    }
+                    if (q == jvec.size()) break;
+                    ++tcur[q];
+                }
+            }
+            if (!momPerPath.empty()) momPerPath[piIdx] = (daf::Size)momSet.size();
+            const double aP = (double)pi.tupleIdxs.size();
+            const double mom = (double)momSet.size();
+            sumA += aP; sumMom += mom;
+            sumA2 += aP * aP; sumAMom += aP * mom;
+            pathsCounted++;
+            top.emplace_back(pi.tupleIdxs.size(), momSet.size(), (daf::Size)m, piIdx);
+            if (top.size() > 64) {
+                std::nth_element(top.begin(), top.begin() + 10, top.end(),
+                                 [](auto &a, auto &b){ return std::get<0>(a) > std::get<0>(b); });
+                top.resize(10);
+            }
+        }
+        std::sort(top.begin(), top.end(),
+                  [](auto &a, auto &b){ return std::get<0>(a) > std::get<0>(b); });
+        if (top.size() > 10) top.resize(10);
+        std::cout << "  [MomentProbe] paths=" << pathsCounted
+                  << "  sum a_P=" << std::fixed << std::setprecision(0) << sumA
+                  << "  sum #mom=" << sumMom
+                  << "  unweighted ratio=" << std::setprecision(3) << (sumA / std::max(1.0, sumMom))
+                  << std::endl;
+        std::cout << "  [MomentProbe] work proxy: sum a_P^2=" << std::setprecision(0) << sumA2
+                  << "  sum a_P*#mom=" << sumAMom
+                  << "  weighted win factor=" << std::setprecision(3)
+                  << (sumA2 / std::max(1.0, sumAMom)) << std::endl;
+        for (auto &[aP, mom, mm, piIdx] : top)
+            std::cout << "  [MomentProbe] top path=" << piIdx << " m=" << mm
+                      << " a_P=" << aP << " #mom=" << mom
+                      << " ratio=" << std::setprecision(2)
+                      << ((double)aP / std::max<double>(1.0, (double)mom)) << std::endl;
+        if (std::getenv("PIVOTER_MOMENT_PROBE_EXIT")) {
+            std::cout << "  [MomentProbe] exit requested" << std::endl;
+            exit(0);
+        }
+    }
+
     // Profiling counters
     long long prof_unionCalls = 0, prof_totalRecCalls = 0;
     long long prof_deadBoxesAdded = 0, prof_tupleUpdates = 0;
@@ -2341,6 +2447,33 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             upper.assign(m, 0);
             for (int i = 0; i < m; ++i) upper[i] = pi.np[i];
 
+            // [MomentProbe DYN] hypothetical moment-update cost for this
+            // (path, batch): decompose each new box's newly-dead region
+            // against the OLD boxes once; the moment engine would pay
+            // (visited ranges) x (#moment patterns) here instead of
+            // (survivors) x (full-union B&B) below.
+            if (!momPerPath.empty() && numNewBoxes > 0) {
+                const int numOldBoxes = nBoxes - numNewBoxes;
+                long long dQ = 0;
+                mpBase.assign(m, 0);
+                for (int b = 0; b < numNewBoxes; ++b) {
+                    const int16_t *nb = pi.deadBoxesFlat.data()
+                                      + (size_t)(numOldBoxes + b) * m;
+                    for (int i = 0; i < m; ++i) mpBase[i] = (int)nb[i];
+                    UnionCtx ctx2{m, pi.T, 0,
+                                  pi.tupleIdxs.empty() ? 0 : pi.tupleIdxs[0],
+                                  &pi};
+                    (void)countUnionRec(mpBase.data(), upper.data(),
+                                        pi.deadBoxesFlat.data(),
+                                        numOldBoxes, ctx2);
+                    dQ += ctx2.recCalls + 1;
+                }
+                prof_mp_dQ += dQ;
+                prof_mp_momWork += dQ * (long long)momPerPath[piIdx];
+                prof_mp_dotWork += (long long)pi.tupleIdxs.size()
+                                 * (1LL << std::min<long long>((long long)r, 20));
+            }
+
             for (auto tidx : pi.tupleIdxs) {
                 auto key = keyOf(tidx);  // sorted with repetitions
                 // Merge-scan: base[i] = max(0, j_c(τ) - nh_c). Classes not
@@ -2512,6 +2645,8 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
                 prof_totalRecCalls += ctx.recCalls;
                 prof_unionCalls++;
+                if (!momPerPath.empty())
+                    prof_mp_curWork += (long long)ctx.recCalls * m;
 
                 uint64_t cacheKey = (uint64_t)piIdx * numTuplesSz + tidx;
                 double oldDead = 0.0;
@@ -2965,6 +3100,19 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
     }
     }  // end if(!recomputePeel) wrap of existing peel loop block
 post_peel_loop: ;
+
+    if (!momPerPath.empty()) {
+        std::cout << "  [MomentProbe DYN] cur work (recCalls*b_P) = "
+                  << prof_mp_curWork
+                  << "  mom work (dQ*#mom) = " << prof_mp_momWork
+                  << "  dot work = " << prof_mp_dotWork
+                  << "  dQ total = " << prof_mp_dQ << std::endl;
+        std::cout << "  [MomentProbe DYN] win factor = "
+                  << std::fixed << std::setprecision(3)
+                  << ((double)prof_mp_curWork /
+                      std::max(1.0, (double)(prof_mp_momWork + prof_mp_dotWork)))
+                  << std::endl;
+    }
 
     auto tStep6End = std::chrono::high_resolution_clock::now();
     auto step6Ms = std::chrono::duration_cast<std::chrono::milliseconds>(tStep6End - tStep6).count();

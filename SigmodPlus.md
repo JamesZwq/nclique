@@ -1225,3 +1225,45 @@ Open paper decisions for the user:
    would require regenerating the ablation figure labels.
 2. Whether to also state the B&B bound via the tighter arrangement
    argument.
+
+## 13. Moment-engine probe: idea killed by data (2026-06-12, task #133)
+
+First-principles candidate: Vandermonde factorization
+C(nh+y, j) = Σ_t C(nh, j−t)·C(y, t) makes every tuple's live support
+a static ≤2^r-dim linear functional of a per-path "moment vector"
+M_P(t) = Σ_{y live} Π C(np,y)·C(y,t); a peel event would update the
+moment vector once per path instead of running one B&B per survivor.
+Would have replaced deadCache (per path×tuple) with per-path state.
+
+Probe (PIVOTER_MOMENT_PROBE / _DYN / _EXIT in V3LM, env-gated):
+
+- Static census: #distinct moment patterns vs a_P per path.
+  Result: #mom/a_P = 1.1–1.9 (ca-CondMat 3,4: 0.54 ratio inverse;
+  ca-GrQc 5,6: 0.70; com-dblp 3,4: 0.65 unweighted, 0.93 weighted).
+  Moments are MORE numerous than tuples — paths host nearly all
+  tuple compositions, so the downward closure is bigger.
+- Dynamic comparison in matched range-DP units:
+  cur = Σ recCalls×b_P (measured), mom = Σ dQ×#mom (hypothetical,
+  dQ = Δ-region decomposition measured by 1 extra B&B per new box):
+  | cell | cur | mom(+dot) | win factor |
+  | ca-CondMat 3,4 | 6.1e5 | 2.8e7 | 0.021 |
+  | ca-GrQc 5,6    | 5.2e5 | 5.0e8 | 0.001 |
+  | com-dblp 3,4   | 3.9e6 | 5.8e8 | 0.007 |
+
+Root cause of the kill: event→survivor incidence is SPARSE (the
+affected-check skips most pairs for free; recCalls totals are tiny),
+while the moment vector is DENSE — every event pays #mom regardless
+of how few supports actually changed. Basis compression trades
+sparse scatter for dense updates and loses 50–1000×.
+
+Two standing conclusions reinforced:
+1. The correction-pair irreducibility claim survives its strongest
+   challenger yet (exact low-rank factorization). V3LM's
+   sparse-scatter design (affected predicate + DomPrune + zero-base
+   cache) is close to the practical optimum for the sequential
+   update rule.
+2. Remaining upside is NOT a better update rule: it is parallelism
+   (per-path independence) and build-phase twin reduction (the only
+   non-size-free phase), cf. §12.
+
+Probe cost: ~1 hour, zero engine code. Probe kept env-gated in V3LM.
