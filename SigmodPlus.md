@@ -1305,3 +1305,14 @@ redundancy with thm:vsafe). Bonus: fixed a latent overclaim — "Csafe
 subsumes FM isolation" is false in general (multi-region classes
 inside FM regions can be unsafe); exactness was never affected, only
 the optimization-coverage claim. Build verified 20pp/0 overfull/0 ??.
+
+## 16. Paper pre-submission passes done (2026-06-13, task #132 CLOSED)
+
+4-tier naming kept as ablation ladder (user approved). Vocabulary
+cull: clean. Long-sentence pass: 4 splits (all >50w or two-thought),
+22 single-chain sentences kept, 0 >50w remain. Build verified.
+detect_long_sentences.py now lives in the paper repo root.
+Paper state: story line, theory capstone (size-free + blow-up),
+correctness fix (FM overclaim), and language passes all landed.
+Remaining before submission is figure/example re-checks against the
+final prose (old PhaseTracker checklist) and the author's own pass.
