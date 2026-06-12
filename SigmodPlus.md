@@ -939,3 +939,53 @@ needs a better implicit representation instead.
 #127 backup (done) · #128 probe (running) · #129 prototype engine ·
 #130 bit-exact verify · #131 bench · #132 paper §4 rewrite.
 Tag to roll back everything: `pre-cellpeel-20260612`.
+
+### 10.5  Wall-time attribution (commit ff85e1f) — design pivot
+
+`PIVOTER_CELL_PROBE` without `_EXIT` now also attributes refresh
+wall-time and B&B rec-calls to path cell-count buckets.
+
+ca-GrQc 5,6: **99.9 % of refresh time (1946 of 2088 ms peel) sits on
+the 6 paths with 1e4–1e5 cells**; every path below 1e3 cells is free.
+B&B recursion itself is negligible (23 K calls total); the real cost
+is the multiplier  #batches × #alive-survivors × DP-query  on monster
+paths.  Consequences:
+
+1. Pure cell materialization is dead (probe gate FAILED): it would
+   optimize the free 0.1 % and explode on the expensive paths.
+2. A hybrid (cells for small paths) is pointless for the same reason.
+3. The right target is the per-query cost on monster paths.
+
+### 10.6  New design: factored cell-death events ("rank-1 + sparse")
+
+Key algebraic fact: for a dying cell y (≤T non-zero coords) and a
+survivor τ′,
+
+    W_τ′(y) = g(y) · base_τ′ · corr(y, τ′)
+
+where g(y)=Π_{c∈S(y)} C(p_c,y_c) is tuple-independent,
+base_τ′=Π_c C(h_c, j_c) is cell-independent (0 exactly for tuples
+that need pivots — the corner constraint handles itself), and
+corr ≠ 1 only when touched(τ′) ∩ S(y) ≠ ∅ (sparse: |S(y)| ≤ T,
+|touched| ≤ r, m ≈ 40).
+
+Engine per death event: enumerate newly-dead cells once (amortized:
+each cell dies exactly once), accumulate the scalar G = Σ g(y), apply
+Δτ′ = base_τ′·G to all survivors in O(1) each, plus sparse exact
+corrections for the few (cell, tuple) pairs whose class sets
+intersect.  No B&B, no inclusion–exclusion, no dominance pruning, no
+caches; per-path state = packed alive-cell set (~8 B/cell).
+
+Work bound: O(Σ_P cells(P)·T + #batches×#survivors·O(1) + sparse).
+On the GrQc monster this replaces ~10⁶ DP queries (m·T² each) with
+~10⁶ O(1) updates + 150 K cell deaths.
+
+Open risks: (i) com-dblp 5,6 holds 13.8 M cells ⇒ ~110 MB packed
+alive-cell state (current T4 peak there is 580 MB, so plausible but
+must be measured); (ii) web-it-2004 cell counts unknown — probe
+running on tods2 (`cellprobe_big.log`); (iii) bulk path death needs
+either per-pair liveContrib (+124 MB on com-dblp) or one final DP per
+pair at retire time — decide during prototyping.
+
+Next: read tods2 probe; if web-it cells are sane, prototype the
+event engine (task #129, design above), verify bit-exact (#130).
