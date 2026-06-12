@@ -1048,6 +1048,7 @@ def numerical_summary(rows: list[dict]) -> None:
     """Print the key numbers the paper text claims, recomputed from data."""
     idx = index_rows(rows)
     matched = []
+    matched_mem = []
     for (g, r, s, a), row in idx.items():
         if g not in PAPER6 or a != "REF" or row["status"] != "OK":
             continue
@@ -1062,6 +1063,12 @@ def numerical_summary(rows: list[dict]) -> None:
         if t_v3 <= 0 or t_ref <= 0:
             continue
         matched.append((g, r, s, t_ref / t_v3))
+        try:
+            m_ref = float(row["mem_kB"]); m_v3 = float(v3["mem_kB"])
+            if m_ref > 0 and m_v3 > 0:
+                matched_mem.append((g, r, s, m_ref / m_v3))
+        except (ValueError, KeyError):
+            pass
 
     print("\n=== Recomputed paper numbers ===")
     print(f"  matched (REF OK & RegND* OK) cells: {len(matched)}")
@@ -1071,6 +1078,9 @@ def numerical_summary(rows: list[dict]) -> None:
         return math.exp(sum(math.log(x) for x in xs) / len(xs))
 
     print(f"  geomean speedup (all 6 graphs): {gmean([x for *_, x in matched]):.2f}x")
+    print(f"  geomean memory  (all 6 graphs): {gmean([x for *_, x in matched_mem]):.2f}x")
+    print(f"  MAX speedup: {max((x,g,r,s) for g,r,s,x in matched)[0]:.0f}x  "
+          f"MAX memory: {max((x,g,r,s) for g,r,s,x in matched_mem)[0]:.0f}x")
     non_hepp = [x for g, *_ , x in matched if g != "ca-HepPh"]
     print(f"  geomean speedup (non-HepPh):    {gmean(non_hepp):.2f}x")
     dense = [x for g, *_ , x in matched if g in ("dblp-core30", "com-dblp", "web-it-2004")]
