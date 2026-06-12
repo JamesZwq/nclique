@@ -1704,6 +1704,96 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         std::cout << "  CPI vs PathInfo match: " << (mismatches == 0 ? "PASS" : ("MISMATCH(" + std::to_string(mismatches) + ")")) << std::endl;
     }
 
+    // --- Cell probe (PIVOTER_CELL_PROBE): feasibility stats for the
+    // quotient/cell-peel redesign. A "cell" on path P is one pivot-count
+    // vector y with sum y_c = T and 0 <= y_c <= np_c, i.e. one orbit of
+    // s-cliques under within-class symmetry. The candidate engine kills
+    // each cell exactly once, so its total update work is
+    // sum_P cells(P) * |tupleIdxs(P)|. This probe reports the cell-count
+    // distribution and that work bound WITHOUT changing any behavior.
+    // PIVOTER_CELL_PROBE_EXIT additionally returns right after the probe
+    // (skipping the peel) so large graphs can be probed cheaply.
+    if (std::getenv("PIVOTER_CELL_PROBE")) {
+        std::vector<double> cellsPerPath;
+        cellsPerPath.reserve(pathInfos.size());
+        double totCells = 0, totWork = 0, totSCliques = 0;
+        double maxCells = 0;
+        size_t maxCellsPath = 0;
+        std::vector<double> dp;  // DP buffer: compositions of t into capped parts
+        for (size_t piIdx = 0; piIdx < pathInfos.size(); ++piIdx) {
+            const auto &pi = pathInfos[piIdx];
+            const int T = pi.T;
+            if (T < 0) { cellsPerPath.push_back(0); continue; }
+            // cells(P) = [x^T] prod_c (1 + x + ... + x^{np_c})
+            dp.assign((size_t)T + 1, 0.0);
+            dp[0] = 1.0;
+            int reach = 0;  // highest attainable degree so far (prunes the inner loop)
+            for (size_t k = 0; k < pi.np.size(); ++k) {
+                const int cap = std::min(pi.np[k], T);
+                if (cap < 0) continue;
+                // suffix-sum convolution with (1+...+x^cap), in place via
+                // sliding window: dp'[t] = sum_{q=0..min(cap,t)} dp[t-q]
+                std::vector<double> next((size_t)T + 1, 0.0);
+                double window = 0.0;
+                for (int t = 0; t <= T; ++t) {
+                    window += dp[t];
+                    if (t - cap - 1 >= 0) window -= dp[t - cap - 1];
+                    next[t] = window;
+                }
+                dp.swap(next);
+                reach = std::min(T, reach + cap);
+            }
+            const double cells = dp[T];
+            cellsPerPath.push_back(cells);
+            totCells += cells;
+            totWork += cells * (double)pi.tupleIdxs.size();
+            // total s-cliques on P = C(sum np, T)
+            long long pTot = 0;
+            for (int v : pi.np) pTot += v;
+            if (pTot >= T && T >= 0 && pTot <= 1000 && T <= 400)
+                totSCliques += nCr[pTot][T];
+            if (cells > maxCells) { maxCells = cells; maxCellsPath = piIdx; }
+        }
+        std::sort(cellsPerPath.begin(), cellsPerPath.end());
+        auto pct = [&](double q) -> double {
+            if (cellsPerPath.empty()) return 0;
+            size_t i = (size_t)(q * (double)(cellsPerPath.size() - 1));
+            return cellsPerPath[i];
+        };
+        const auto &mp = pathInfos[maxCellsPath];
+        std::cout << "  [CellProbe] paths=" << pathInfos.size()
+                  << " totalCells=" << std::fixed << std::setprecision(0) << totCells
+                  << " maxCells=" << maxCells
+                  << " (path m=" << mp.classIds.size() << " T=" << mp.T << ")"
+                  << std::endl;
+        std::cout << "  [CellProbe] cells/path p50=" << pct(0.50)
+                  << " p90=" << pct(0.90) << " p99=" << pct(0.99)
+                  << std::endl;
+        std::cout << "  [CellProbe] workBound(sum cells*tuples)=" << totWork
+                  << "  sCliques=" << std::scientific << std::setprecision(2)
+                  << totSCliques
+                  << "  compression(sCliques/cells)="
+                  << (totCells > 0 ? totSCliques / totCells : 0.0)
+                  << std::defaultfloat << std::endl;
+        {
+            // Incidence count sizes the liveContrib array (+8 B each) that a
+            // bulk-death engine needs; also report paths whose cell count
+            // exceeds a materialization budget (lazy-cells candidates).
+            double sumIncid = 0; size_t over1k = 0, over100k = 0;
+            for (const auto &pi : pathInfos) sumIncid += (double)pi.tupleIdxs.size();
+            for (double c : cellsPerPath) { if (c > 1000) over1k++; if (c > 100000) over100k++; }
+            std::cout << "  [CellProbe] incidences(sum|tupleIdxs|)=" << std::fixed
+                      << std::setprecision(0) << sumIncid
+                      << " (~" << sumIncid * 8.0 / 1048576.0 << " MB liveContrib)"
+                      << "  pathsCells>1k=" << over1k
+                      << "  >100k=" << over100k << std::endl;
+        }
+        if (std::getenv("PIVOTER_CELL_PROBE_EXIT")) {
+            std::cout << "  [CellProbe] exit requested; skipping peel." << std::endl;
+            return {};
+        }
+    }
+
     // --- LowMem: free Step-1..5 scaffolding that the peel loop never reads ---
     // Everything below this comment is referenced only during PathInfo build
     // and earlier phases; the peel loop uses only rTuples, pathInfos,
