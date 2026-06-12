@@ -1191,3 +1191,37 @@ EventPeel is promoted) · #131 bench — OBSOLETE in original form, the
 §10.8 table is the bench · #132 paper §4 quotient rewrite — BLOCKED
 on the §10.8 decision · #125 — FIXED (pathAliveCount double
 decrement; see §11.5).
+
+## 12. Paper: Size-Free Cost Analysis (2026-06-12, task #132)
+
+The §10.8 engine decision resolved as option 1 in practice: V3LM
+stays the perf engine, and the quotient theory was lifted into the
+paper as new theory rather than new code.
+
+What landed in `Sigmod2027Nuclear` (Dropbox/Overleaf):
+
+- **New §4.5 "Size-Free Cost Analysis"**: combinatorial quotient
+  (def), compressed-output queries in O(r log r) (prop), the
+  size-free cost theorem (post-construction work bounded by quotient
+  quantities only; class sizes appear only inside O(1) binomial
+  arithmetic), and the blow-up separation corollary (fixed quotient,
+  unbounded |K_r| ⇒ unbounded gap vs any per-clique algorithm).
+  This is the formalization of the "blow-up invariance" idea from
+  the optimality discussion; it converts the empirical 1.9e9×
+  compression and the ca-HepPh weak case into two ends of one
+  theorem.
+- Pseudocode made consistent with the theorem (tuple-level records
+  instead of per-clique writes; ordered-level selection instead of
+  value-indexed bucket scan).
+- Intro contribution bullet, abstract sentence, conclusion sentence,
+  compression-experiment cross-reference.
+
+Full edit log in the paper repo's `PhaseTracker.md` (2026-06-12
+entry). Build verified: 20 pp, 0 overfull, 0 "??". Pre-edit backup
+tarball on the T7 drive.
+
+Open paper decisions for the user:
+1. 4-tier naming (RegND/+/++/*) vs house 3-tier style — folding ++
+   would require regenerating the ablation figure labels.
+2. Whether to also state the B&B bound via the tighter arrangement
+   argument.
