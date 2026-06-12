@@ -649,16 +649,26 @@ for the §6 speedup and memory-ratio tables; never let placeholder
   the 3600 s budget, otherwise the T1/T2 row is a 1-hour CPU sink for
   no information gain.
 
-- **V-safe 3-tuple miscount on ca-CondMat (open issue, task #125).**
-  T4 reports a slightly different `dist` than T1/T2/T3 on
-  `ca-CondMat r=3 s=4` for a single low-core bucket.  Root cause is
-  still under investigation: the V-safe private-cloud trims a tuple
-  that the dead-box IE later re-counts.  Until fixed, the verifier
-  may print a FAIL on that one cell with a single-bucket off-by-small
-  diff; the other 4 verifier cells (bio-celegans, ca-GrQc ×3) pass
-  cleanly and remain the canonical correctness oracle.  **Do not
-  ship a paper number for ca-CondMat r=3 s=4 from T4** without
-  cross-checking against T3.
+- **V-safe 3-tuple miscount on ca-CondMat (task #125, FIXED 2026-06-12).**
+  Root cause was NOT V-safe-specific: `pathAliveCount` was decremented
+  twice for a tuple that first *saturated* on a path (Theorem 1
+  removal, count--) and later *died* (the static `pathsCoveringTuple`
+  index still lists the path, so the blind
+  `pathAliveCount -= deadTuples.size()` decremented again).  The count
+  hit 0 while live tuples remained, the path was retired prematurely
+  (dead boxes freed), and the stranded tuples missed every subsequent
+  support subtraction — κ came out 1 too high for 3 tuples.  342 such
+  premature retirements occurred on ca-CondMat 3,4 alone; private-cloud
+  mode merely changed the peel order so the damage became visible.
+  Fix (in `refreshAffectedPaths`' caller, the affected-path loop):
+  filter `pi.tupleIdxs` by `rPeeled` *in place* and reset
+  `pathAliveCount = tupleIdxs.size()` — exact bookkeeping, no blind
+  decrement.  Diagnosed by differential tracing vs EventPeel
+  (`PIVOTER_TRACE_TUPLE`, `PIVOTER_TRACE_PATH`,
+  `PIVOTER_DUMP_TUPLE_CORE`, `PIVOTER_RETIRE_CHECK` — all kept,
+  env-gated, zero cost when unset).  Post-fix: 10/10 compare cells
+  exact (ca-CondMat 3,4/3,5/4,5 × private/no-private/vsafe, ca-GrQc
+  3,4/3,5/4,5/5,6, com-dblp 3,4), retire-check 0 violations.
 
 - **`PIVOTER_TIER` without `PIVOTER_RUN_REGION_TIER` is silent.**
   Setting only `PIVOTER_TIER=N` makes the binary fall through to the
@@ -865,7 +875,7 @@ Carried over from this week, not yet addressed:
 | Task # | Description                                                                |
 |--------|----------------------------------------------------------------------------|
 | #99    | RegNDC without r-mergeable merging — ablation still in progress            |
-| #125   | V-safe / private-cloud 3-tuple miscount on `ca-CondMat` (0.002 %, T4 only) |
+| #125   | ~~V-safe / private-cloud 3-tuple miscount on `ca-CondMat`~~ FIXED 2026-06-12 (pathAliveCount double decrement, see §11.5) |
 | #74    | Memory-opt RegNDC sweep (carried from before this work)                    |
 | #73    | Re-run paper-6 benchmark on servers with RegNDC (low priority now that T4 sweep is fresh) |
 
@@ -1148,10 +1158,13 @@ init check vs Step 4), `Bulk deaths`, `Partial death events`,
 
 ### 11.5  Known issues & their state
 
-- **#125 (V-safe 3-tuple miscount, ca-CondMat 3,4)**: now LOCALIZED
-  to V3LM's dead-box/V-safe interaction (EventPeel shares Steps 1–4
-  verbatim and is exact there).  Next debugging step written in the
-  task: diff per-tuple supports between engines on the 3 tuples.
+- **#125 (V-safe 3-tuple miscount, ca-CondMat 3,4)**: **FIXED
+  2026-06-12** — root cause was a pathAliveCount double decrement
+  (saturation removal + later death of the same tuple on the same
+  path) retiring paths prematurely; not V-safe-specific.  Full root
+  cause, fix, and post-fix verification in the §9 known-issues entry
+  ("V-safe 3-tuple miscount … FIXED").  The ca-CondMat 3,4 caveat on
+  T4 paper numbers is lifted.
 - EventPeel on ca-HepPh: untested (43M cells expected ≈ 390 MB
   materialized; engine handles it but was not the priority).
 - `verify_tiers.py` does not yet know about EventPeel; add
@@ -1166,4 +1179,5 @@ init check vs Step 4), `Bulk deaths`, `Partial death events`,
 dual) · #130 bit-exact verify ✓ (informal full sweep; formalize if
 EventPeel is promoted) · #131 bench — OBSOLETE in original form, the
 §10.8 table is the bench · #132 paper §4 quotient rewrite — BLOCKED
-on the §10.8 decision · #125 — localized, in progress.
+on the §10.8 decision · #125 — FIXED (pathAliveCount double
+decrement; see §11.5).

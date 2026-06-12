@@ -47,6 +47,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iomanip>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <span>
@@ -1433,6 +1434,33 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
     // from the path's tupleIdxs, and stop being refreshed.
     long long prof_tupleSaturated = 0;
 
+    // PIVOTER_TRACE_TUPLE="i,j,k": log every dSup change for those tuples.
+    std::unordered_set<daf::Size> traceSet;
+    if (const char *ts = std::getenv("PIVOTER_TRACE_TUPLE")) {
+        std::string s2(ts); size_t pos = 0;
+        while (pos < s2.size()) {
+            size_t e = s2.find(',', pos);
+            if (e == std::string::npos) e = s2.size();
+            traceSet.insert((daf::Size)std::stoul(s2.substr(pos, e - pos)));
+            pos = e + 1;
+        }
+        for (auto t : traceSet)
+            std::cerr << "TRACE eng=EV init tidx=" << t << " dSup=" << dSup[t]
+                      << " minCore=" << tupleMinCore[t] << "\n";
+    }
+
+    // PIVOTER_TRACE_PATH="p,q": log dying-tuple dispatch onto those paths.
+    std::unordered_set<daf::Size> tracePathSet;
+    if (const char *ps = std::getenv("PIVOTER_TRACE_PATH")) {
+        std::string s2(ps); size_t pos = 0;
+        while (pos < s2.size()) {
+            size_t e = s2.find(',', pos);
+            if (e == std::string::npos) e = s2.size();
+            tracePathSet.insert((daf::Size)std::stoul(s2.substr(pos, e - pos)));
+            pos = e + 1;
+        }
+    }
+
     // ====================================================================
     // EventPeel engine (SigmodPlus §10.6): factored cell-death events.
     //
@@ -1546,6 +1574,10 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
     auto processPath = [&](daf::Size piIdx, const std::vector<daf::Size> &deadTuples,
                            BigLevel &scanLevel) {
         auto &pi = pathInfos[piIdx];
+        if (!tracePathSet.empty() && tracePathSet.count(piIdx))
+            for (auto d : deadTuples)
+                std::cerr << "TRACE eng=EV PCT path=" << piIdx
+                          << " dying=" << d << "\n";
         // (1) drop peeled tuples from the slot arrays (lockstep).
         {
             size_t w = 0;
@@ -1660,6 +1692,11 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
                 if (delta > 0.5) {
                     dSup[tidx] -= delta / rTuples[tidx].mult;
                     if (dSup[tidx] < -0.5) dSup[tidx] = 0;
+                    if (!traceSet.empty() && traceSet.count(tidx))
+                        std::cerr << "TRACE eng=EV updBULK path=" << piIdx
+                                  << " tidx=" << tidx
+                                  << " delta=" << (delta / rTuples[tidx].mult)
+                                  << " dSup=" << dSup[tidx] << "\n";
                     prof_tupleUpdates++;
                     const BigLevel newSup = safeToBigLevel(dSup[tidx]);
                     const BigLevel newBucket =
@@ -1781,6 +1818,12 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
             if (delta > 0.5) {
                 dSup[tidx] -= delta / rTuples[tidx].mult;
                 if (dSup[tidx] < -0.5) dSup[tidx] = 0;
+                if (!traceSet.empty() && traceSet.count(tidx))
+                    std::cerr << "TRACE eng=EV updPART path=" << piIdx
+                              << " tidx=" << tidx
+                              << " delta=" << (delta / rTuples[tidx].mult)
+                              << " G=" << G << " lc=" << lc
+                              << " dSup=" << dSup[tidx] << "\n";
                 prof_tupleUpdates++;
                 const BigLevel newSup = safeToBigLevel(dSup[tidx]);
                 const BigLevel newBucket =
@@ -1809,6 +1852,12 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
     // Per-batch path grouping (sized once; reused).
     std::vector<std::vector<daf::Size>> batchDead(pathInfos.size());
     std::vector<daf::Size> touchedPaths;
+
+    // PIVOTER_DUMP_TUPLE_CORE=<path>: per-active-tuple final core dump
+    // ("idx mult kappa" per line) for cross-engine differential debugging.
+    std::vector<double> dumpTupleCore;
+    if (std::getenv("PIVOTER_DUMP_TUPLE_CORE"))
+        dumpTupleCore.assign(rTuples.size(), -1.0);
 
     // --- Batch peeling loop ---
     daf::Size numPeeled = 0;
@@ -1857,6 +1906,10 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
             numPeeled++;
             // minCore floor already enforced by bucket placement (effSup ≥ minCore)
             coreDist[(double)coreLevel] += (int64_t)rTuples[idx].mult;
+            if (!dumpTupleCore.empty()) dumpTupleCore[idx] = (double)coreLevel;
+            if (!traceSet.empty() && traceSet.count(idx))
+                std::cerr << "TRACE eng=EV PEEL tidx=" << idx
+                          << " level=" << coreLevel << "\n";
         }
 
         // Clear last batch's scratch (capacity kept).
@@ -1945,6 +1998,13 @@ NucleusCoreDecompositionRClique_RegionCPI_EventPeel(
     std::cout << "  Total time: " << totalMs << " ms" << std::endl;
     std::cout << "==============================================" << std::endl;
     daf::phaseMark("Peel");
+
+    if (!dumpTupleCore.empty()) {
+        std::ofstream df(std::getenv("PIVOTER_DUMP_TUPLE_CORE"));
+        df << std::setprecision(17);
+        for (daf::Size i = 0; i < rTuples.size(); ++i)
+            df << i << " " << rTuples[i].mult << " " << dumpTupleCore[i] << "\n";
+    }
 
     // Return compact format: one entry per core level, key[0] = count
     std::vector<std::pair<std::vector<daf::Size>, double>> result;

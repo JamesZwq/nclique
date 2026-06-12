@@ -47,6 +47,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iomanip>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <span>
@@ -2238,6 +2239,33 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         probeNsByPath.assign(pathInfos.size(), 0);
     }
 
+    // PIVOTER_TRACE_TUPLE="i,j,k": log every dSup change for those tuples.
+    std::unordered_set<daf::Size> traceSet;
+    if (const char *ts = std::getenv("PIVOTER_TRACE_TUPLE")) {
+        std::string s2(ts); size_t pos = 0;
+        while (pos < s2.size()) {
+            size_t e = s2.find(',', pos);
+            if (e == std::string::npos) e = s2.size();
+            traceSet.insert((daf::Size)std::stoul(s2.substr(pos, e - pos)));
+            pos = e + 1;
+        }
+        for (auto t : traceSet)
+            std::cerr << "TRACE eng=V3 init tidx=" << t << " dSup=" << dSup[t]
+                      << " minCore=" << tupleMinCore[t] << "\n";
+    }
+
+    // PIVOTER_TRACE_PATH="p,q": log dead-box dispatch onto those paths.
+    std::unordered_set<daf::Size> tracePathSet;
+    if (const char *ps = std::getenv("PIVOTER_TRACE_PATH")) {
+        std::string s2(ps); size_t pos = 0;
+        while (pos < s2.size()) {
+            size_t e = s2.find(',', pos);
+            if (e == std::string::npos) e = s2.size();
+            tracePathSet.insert((daf::Size)std::stoul(s2.substr(pos, e - pos)));
+            pos = e + 1;
+        }
+    }
+
     auto refreshAffectedPaths = [&](const std::vector<daf::Size> &affectedPaths,
                                     BigLevel &scanLevel) {
         // Per-path cache for the all-zero base[] case. Filled lazily on
@@ -2519,6 +2547,13 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
 
                     dSup[tidx] -= delta / rTuples[tidx].mult;
                     if (dSup[tidx] < -0.5) dSup[tidx] = 0;
+                    if (!traceSet.empty() && traceSet.count(tidx))
+                        std::cerr << "TRACE eng=V3 upd batch=" << prof_batchCount
+                                  << " path=" << piIdx << " tidx=" << tidx
+                                  << " delta=" << (delta / rTuples[tidx].mult)
+                                  << " newDead=" << newDead << " oldDead=" << oldDead
+                                  << " totalFeas=" << totalFeas
+                                  << " dSup=" << dSup[tidx] << "\n";
                     prof_tupleUpdates++;
 
                     BigLevel newSup = safeToBigLevel(dSup[tidx]);
@@ -2567,6 +2602,12 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             }
         }
     };
+
+    // PIVOTER_DUMP_TUPLE_CORE=<path>: per-active-tuple final core dump
+    // ("idx mult kappa" per line) for cross-engine differential debugging.
+    std::vector<double> dumpTupleCore;
+    if (std::getenv("PIVOTER_DUMP_TUPLE_CORE"))
+        dumpTupleCore.assign(rTuples.size(), -1.0);
 
     // --- Batch peeling loop ---
     daf::Size numPeeled = 0;
@@ -2774,6 +2815,10 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             numPeeled++;
             // minCore floor already enforced by bucket placement (effSup ≥ minCore)
             coreDist[(double)coreLevel] += (int64_t)rTuples[idx].mult;
+            if (!dumpTupleCore.empty()) dumpTupleCore[idx] = (double)coreLevel;
+            if (!traceSet.empty() && traceSet.count(idx))
+                std::cerr << "TRACE eng=V3 PEEL batch=" << prof_batchCount
+                          << " tidx=" << idx << " level=" << coreLevel << "\n";
         }
 
         // Clear last batch's scratch (capacity kept).
@@ -2789,6 +2834,9 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             for (auto piIdx : pctPaths) {
                 if (batchDead[piIdx].empty()) touchedPaths.push_back(piIdx);
                 batchDead[piIdx].push_back(idx);
+                if (!tracePathSet.empty() && tracePathSet.count(piIdx))
+                    std::cerr << "TRACE eng=V3 PCT batch=" << prof_batchCount
+                              << " path=" << piIdx << " dying=" << idx << "\n";
                 // Evict stale deadCache entry: once tuple idx is peeled, no
                 // future refresh queries (piIdx, idx).
                 uint64_t cacheKey = (uint64_t)piIdx * numTuplesSz + idx;
@@ -2806,7 +2854,24 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
         for (auto piIdx : touchedPaths) {
             auto &pi = pathInfos[piIdx];
             auto &deadTuples = batchDead[piIdx];
-            pathAliveCount[piIdx] -= (daf::Size)deadTuples.size();
+            // Exact alive bookkeeping (bug fix, SigmodPlus #125): a tuple
+            // that saturated on this path earlier (Theorem 1) was already
+            // removed from tupleIdxs AND decremented from pathAliveCount.
+            // When that tuple later dies, pathsCoveringTuple (static
+            // index) still lists this path, so a blind
+            //     pathAliveCount -= deadTuples.size()
+            // decrements it a second time. The count then hits 0 while
+            // live tuples remain, the path is retired prematurely, and
+            // the stranded tuples miss every subsequent support
+            // subtraction (κ comes out too high; 342 such retirements on
+            // ca-CondMat 3,4 alone). Filter the peeled tuples here — the
+            // same pass refreshAffectedPaths would run at its top — and
+            // reset the count to the exact list size.
+            pi.tupleIdxs.erase(
+                std::remove_if(pi.tupleIdxs.begin(), pi.tupleIdxs.end(),
+                               [&](daf::Size t) { return rPeeled[t]; }),
+                pi.tupleIdxs.end());
+            pathAliveCount[piIdx] = (daf::Size)pi.tupleIdxs.size();
             if (pathAliveCount[piIdx] == 0) {
                 // Path retired: no surviving tuple consults this path
                 // for refresh. pathsCoveringTuple may still surface this
@@ -2831,10 +2896,15 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             oldBoxSizeByPath[piIdx] = oldBoxCountBefore;
             int acceptedThisBatch = 0;
             for (auto idx : deadTuples) {
-                if (appendReqBox(idx, piIdx, pi)) {
+                bool acc = appendReqBox(idx, piIdx, pi);
+                if (acc) {
                     prof_deadBoxesAdded++;
                     acceptedThisBatch++;
                 }
+                if (!tracePathSet.empty() && tracePathSet.count(piIdx))
+                    std::cerr << "TRACE eng=V3 BOX batch=" << prof_batchCount
+                              << " path=" << piIdx << " dying=" << idx
+                              << " accepted=" << acc << "\n";
             }
             const int curBoxCount = (int)(pi.deadBoxesFlat.size() / (size_t)m);
             // If DomPrune rejected every candidate AND removed nothing
@@ -2842,7 +2912,12 @@ NucleusCoreDecompositionRClique_RegionCPI_LowMem(
             // skip refresh entirely on this path. (Pass-ii removals
             // would shrink curBoxCount relative to oldBoxCountBefore;
             // we re-read curBoxCount post-batch to detect them.)
-            if (acceptedThisBatch == 0 && curBoxCount == oldBoxCountBefore) continue;
+            if (acceptedThisBatch == 0 && curBoxCount == oldBoxCountBefore) {
+                if (!tracePathSet.empty() && tracePathSet.count(piIdx))
+                    std::cerr << "TRACE eng=V3 SKIPREFRESH batch=" << prof_batchCount
+                              << " path=" << piIdx << "\n";
+                continue;
+            }
             // Precise new-suffix length: after the batch, the new boxes
             // form a contiguous suffix of length acceptedThisBatch
             // (pass ii only displaces them by removing some old boxes,
@@ -2983,6 +3058,13 @@ post_peel_loop: ;
     std::cout << "  Total time: " << totalMs << " ms" << std::endl;
     std::cout << "==============================================" << std::endl;
     daf::phaseMark("Peel");
+
+    if (!dumpTupleCore.empty()) {
+        std::ofstream df(std::getenv("PIVOTER_DUMP_TUPLE_CORE"));
+        df << std::setprecision(17);
+        for (daf::Size i = 0; i < rTuples.size(); ++i)
+            df << i << " " << rTuples[i].mult << " " << dumpTupleCore[i] << "\n";
+    }
 
     // Return compact format: one entry per core level, key[0] = count
     std::vector<std::pair<std::vector<daf::Size>, double>> result;
