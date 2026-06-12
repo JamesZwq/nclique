@@ -669,6 +669,16 @@ for the §6 speedup and memory-ratio tables; never let placeholder
   env-gated, zero cost when unset).  Post-fix: 10/10 compare cells
   exact (ca-CondMat 3,4/3,5/4,5 × private/no-private/vsafe, ca-GrQc
   3,4/3,5/4,5/5,6, com-dblp 3,4), retire-check 0 violations.
+  Performance impact (matched-mode A/B vs pre-fix binary built from
+  837c2d5^, same machine, sequential, VSAFE; 3-rep medians for small
+  cells, single clean pair for the big cell): none.
+  ca-CondMat 3,4 peel 166→207 ms (the 342 stranded paths now get
+  their legally required updates; PRE/POST rep ranges overlap),
+  ca-GrQc 5,6 1918→1884 ms, com-dblp 3,4 3860→3686 ms, com-dblp 5,6
+  216.3→215.6 s.  Memory flat on all four (38/21/213/725-731 MB).
+  NOTE: the §10.8 "285 s" V3LM com-dblp 5,6 number was contaminated
+  by concurrent session load; both clean runs land at ~216 s — use
+  that as the V3LM baseline going forward.
 
 - **`PIVOTER_TIER` without `PIVOTER_RUN_REGION_TIER` is silent.**
   Setting only `PIVOTER_TIER=N` makes the binary fall through to the
