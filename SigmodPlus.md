@@ -1403,3 +1403,47 @@ Paper updates (all rebuilt, 20pp / 0 overfull / 0 ??):
 Provenance: refresh CSVs force-added under paper_data/hier_refresh/;
 merged CSV updated in place (backup at
 /tmp/bench_full_merged_backup_20260613.csv).
+
+## 21. ARB parallel-baseline comparison (2026-06-16, task #136, newSigmod fork)
+
+GOAL: add the Shi et al. shared-memory parallel nucleus decomposition
+(ARB-NUCLEUS-DECOMP) as a baseline, addressing reviewer R2's "no
+parallel baseline" attack. TWO variants, single-thread for apples-to-
+apples with our single-thread numbers:
+  ARB    = ~/arb-nucleus-decomp (core numbers only)  <-> RegND*
+  ARB-Hi = ~/arb-nucleus-hierarchy (with hierarchy)  <-> RegND-H
+
+SETUP (all on tods2, binaries already bazel-built Oct-2025):
+- CLI: NucleusDecomposition_main -s --rClique R --sClique S graph.adj
+  (PARLAY_NUM_THREADS=1 for single-thread; prints "### Running Time"
+  to STDOUT, /usr/bin/time -v to STDERR).
+- Graph format = GBBS AdjacencyGraph CSR. The stale /data/wenqianz/*.adj
+  are a DIFFERENT dataset (com-dblp.adj n=1.05M vs our 317K) — DO NOT
+  reuse. Converted OUR 6 .edges via scripts/edges_to_gbbs_adj.py into
+  /data/wenqianz/arb_adj/; all 6 verified n,|E| match our .edges.
+- Harness bench_arb.py: 6 graphs x 2 variants x r in {3,4,5,6,7}, s from
+  r+1 up with skip-floor on timeout, 1h cap, 24 concurrent single-thread
+  cells + 80GB mem gate, resumable, /usr/bin/time -v per cell.
+  OUTCSV=/data/wenqianz/arb_run/bench_arb.csv, sentinel ARB_DONE.
+- Bug fixed during bring-up: stdout was DEVNULL'd, losing the GBBS
+  timing line (all cells mislabelled ERROR); now capture both streams.
+
+EARLY FINDINGS (smoke, single-thread):
+- ARB no-hier is fast: dblp-core30 (3,4) 0.0018s, web-it (3,4) 0.12s.
+- ARB-Hi is 1000x+ slower: dblp-core30 (3,4) 16s, ca-GrQc (3,5) 15.8s,
+  com-dblp (3,4) 23s, web-it (3,4) TIMEOUTs. Our RegND-H hierarchy
+  overhead was median 0% / <=2.5s (section 20) -- a strong contrast.
+
+PAPER INTEGRATION (after ARB_DONE):
+- Add ARB to algorithms-under-test (Setup) and as a 3rd series in
+  exp-time (runtime) + exp-memory; ARB-Hi vs RegND-H in the hierarchy
+  paragraph of exp-breakdown-time.
+- Honest framing: ARB is parallel-by-design but run single-thread to
+  match our numbers; note this is conservative for ARB (it could use
+  more cores) yet RegND* still wins on the single-thread axis, and
+  ARB-Hi cannot produce hierarchies at the scale RegND-H does.
+- Reference how the prior nucleus papers presented ARB (data shape in
+  python/experiment/data/dataARBnoHi.csv: dataset,s,r,total_sec,
+  max_rss_mb,exit,source).
+
+Monitor: persistent, hourly status + DONE alert.
