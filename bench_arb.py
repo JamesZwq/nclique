@@ -120,22 +120,24 @@ def run_cell(graph: str, variant: str, r: int, s: int):
     env = dict(os.environ, PARLAY_NUM_THREADS="1")
     t0 = time.time()
     try:
-        p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
+        # GBBS prints "### Running Time" to STDOUT; /usr/bin/time -v prints
+        # User/wall/maxRSS to STDERR. Capture both.
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, env=env,
                              preexec_fn=os.setsid, text=True)
         try:
-            _, err = p.communicate(timeout=TIMEOUT)
+            out, err = p.communicate(timeout=TIMEOUT)
             status = "OK"
         except subprocess.TimeoutExpired:
             os.killpg(os.getpgid(p.pid), signal.SIGKILL)
-            _, err = p.communicate()
+            out, err = p.communicate()
             status = "TIMEOUT"
     except Exception as e:
         return dict(graph=graph, r=r, s=s, variant=variant, status="ERROR",
                     alg_s=-1, user_s=-1, wall_s=time.time() - t0,
                     max_rss_mb=-1, exit_status=str(e)[:40])
-    log.write_text(err)
-    alg  = ALG_RE.search(err)
+    log.write_text(out + "\n----TIME-V----\n" + err)
+    alg  = ALG_RE.search(out)
     user = USER_RE.search(err)
     wall = WALL_RE.search(err)
     rss  = RSS_RE.search(err)
