@@ -183,32 +183,39 @@ def main():
     print(f"[arb] {len(chains)} (graph,variant,r) chains, s up to {S_CAP}, "
           f"{WORKERS} workers, timeout {TIMEOUT}s, single-thread", flush=True)
 
-    lock_rows = 0
+    import threading
+    wlock = threading.Lock()
+    counter = {"n": 0}
+
+    def emit(res):
+        # Crash-safe: write each cell immediately under a lock so a long
+        # slow chain (ARB-Hi) is never lost on kill, and progress is
+        # visible live. Per-chain batching delayed all rows until the
+        # whole (slow) chain returned.
+        with wlock:
+            w.writerow(res); fout.flush(); counter["n"] += 1
+            print(f"  {res['graph']:14} {res['variant']:7} "
+                  f"r={res['r']} s={res['s']:2} {res['status']:8} "
+                  f"alg={res['alg_s']}s wall={res['wall_s']:.1f}s "
+                  f"rss={res['max_rss_mb']:.0f}MB", flush=True)
+
     # each chain is sequential internally (skip-floor); chains run concurrently
     def run_chain(graph, variant, r):
-        out = []
         for s in range(r + 1, omega_of(graph) + 1):
             if (graph, r, s, variant) in done:
                 continue
             res = run_cell(graph, variant, r, s)
-            out.append(res)
+            emit(res)
             if res["status"] in ("TIMEOUT", "OOM"):
-                # skip-floor: stop this chain at the first death
-                break
-        return out
+                break   # skip-floor: stop this chain at the first death
 
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-        futs = {ex.submit(run_chain, g, v, r): (g, v, r) for g, v, r in chains}
+        futs = [ex.submit(run_chain, g, v, r) for g, v, r in chains]
         for fut in as_completed(futs):
-            for res in fut.result():
-                w.writerow(res); fout.flush(); lock_rows += 1
-                print(f"  {res['graph']:14} {res['variant']:7} "
-                      f"r={res['r']} s={res['s']:2} {res['status']:8} "
-                      f"alg={res['alg_s']}s wall={res['wall_s']:.1f}s "
-                      f"rss={res['max_rss_mb']:.0f}MB", flush=True)
+            fut.result()   # surface exceptions; rows already emitted
     fout.close()
-    print(f"[arb] {lock_rows} cells written to {OUTCSV} in "
+    print(f"[arb] {counter['n']} cells written to {OUTCSV} in "
           f"{time.time() - t0:.0f}s", flush=True)
 
 
