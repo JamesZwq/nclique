@@ -46,6 +46,13 @@ S_CAP    = int(os.getenv("BENCH_ARB_SCAP", "50"))  # safety ceiling on s
 TIMEOUT  = int(os.getenv("BENCH_ARB_TIMEOUT", "3600"))
 WORKERS  = int(os.getenv("BENCH_ARB_WORKERS", "24"))
 MIN_FREE_GB = int(os.getenv("BENCH_ARB_MIN_FREE_GB", "80"))  # memory gate
+# RLIMIT_AS per cell (GB). ARB-Hi's hierarchy/connectivity structure can
+# balloon to 100-200GB even on tiny dense graphs, so cap each cell at the
+# paper's 250GB per-run budget; a cell exceeding it is recorded OOM (a
+# valid "out of budget" result) instead of taking down the 503GB box.
+MEMCAP_GB = int(os.getenv("BENCH_ARB_MEMCAP_GB", "0"))  # 0 = no cap
+# restrict which variants to run (e.g. ARB-Hi alone after ARB is done)
+VWANT = set(v.strip() for v in os.getenv("BENCH_ARB_VARIANTS", "ARB,ARB-Hi").split(","))
 OUTCSV   = Path(os.getenv("BENCH_ARB_OUTCSV", "paper_data/bench_arb.csv"))
 LOGDIR   = Path("bench_arb_logs")
 FIELDS   = ["graph", "r", "s", "variant", "status",
@@ -118,13 +125,21 @@ def run_cell(graph: str, variant: str, r: int, s: int):
     cmd = ["/usr/bin/time", "-v", str(binpath), "-s",
            "--rClique", str(r), "--sClique", str(s), str(adj)]
     env = dict(os.environ, PARLAY_NUM_THREADS="1")
+
+    def child_setup():
+        os.setsid()
+        if MEMCAP_GB > 0:
+            import resource
+            cap = MEMCAP_GB * 1024 * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
+
     t0 = time.time()
     try:
         # GBBS prints "### Running Time" to STDOUT; /usr/bin/time -v prints
         # User/wall/maxRSS to STDERR. Capture both.
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, env=env,
-                             preexec_fn=os.setsid, text=True)
+                             preexec_fn=child_setup, text=True)
         try:
             out, err = p.communicate(timeout=TIMEOUT)
             status = "OK"
@@ -145,10 +160,15 @@ def run_cell(graph: str, variant: str, r: int, s: int):
     sig  = SIG_RE.search(err)
     exit_status = int(ex.group(1)) if ex else 0
     if sig:
-        # SIGKILL from our timeout already labeled; other signals = OOM/crash
+        # SIGKILL from our timeout already labeled; other signals = OOM/crash.
+        # RLIMIT_AS exhaustion surfaces as std::bad_alloc -> SIGABRT(6), or a
+        # null-deref SIGSEGV(11), or kernel SIGKILL(9).
         if status != "TIMEOUT":
-            status = "OOM" if sig.group(1) in ("9", "11") else "ERROR"
+            status = "OOM" if sig.group(1) in ("6", "9", "11") else "ERROR"
         exit_status = 128 + int(sig.group(1))
+    elif status == "OK" and ("bad_alloc" in out or "bad_alloc" in err
+                             or "out of memory" in (out + err).lower()):
+        status = "OOM"
     elif status == "OK" and not alg:
         status = "ERROR"   # finished but no timing line: treat as failure
     return dict(graph=graph, r=r, s=s, variant=variant, status=status,
@@ -177,6 +197,8 @@ def main():
         if not (ADJ_DIR / f"{graph}.adj").exists():
             print(f"[skip] no .adj for {graph}", flush=True); continue
         for variant in BINS:
+            if variant not in VWANT:
+                continue
             for r in RGRID:
                 chains.append((graph, variant, r))
 
