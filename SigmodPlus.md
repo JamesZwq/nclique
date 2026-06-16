@@ -1447,3 +1447,38 @@ PAPER INTEGRATION (after ARB_DONE):
   max_rss_mb,exit,source).
 
 Monitor: persistent, hourly status + DONE alert.
+
+## 22. ARB comparison COMPLETE — corrected results (2026-06-16, task #136)
+
+CRITICAL CORRECTION: the first ARB sweep used --rClique/--sClique with
+default -tt 0, which the GBBS binary treats as a NO-OP (parse+exit in
+~ms). All those rows were invalid; "ARB faster on 763/763 cells" was an
+artifact. Caught by the "4ms where CND/RegND* take minutes" smell test.
+Correct invocation: -rounds 1 -s -r R -ss S -relabel -efficient 1 -tt 5.
+Correctness cross-checked via max core: ca-HepPh 236, dblp-core30 111,
+com-dblp 111 — all match RegND*.
+
+Also corrected: the "ARB-Hi 200GB explosion" was a tt=0 artifact too;
+with correct flags ARB-Hi memory is normal (dblp (5,6) 6GB). 250GB
+RLIMIT_AS cap kept as the paper-budget safety net.
+
+FINAL (single-thread, end-to-end wall, correct flags):
+- RegND* vs ARB (no-hier), 45 matched OK cells: gmean 57.6x faster
+  (dblp-core30 244.7x, ca-GrQc 122.6x, ca-CondMat 65.1x, com-dblp 6.0x,
+  ca-HepPh 0.6x = our weak case, web-it 0 matched: ARB completes none).
+  Max 7851x (ca-GrQc).
+- RegND-H vs ARB-Hi, 33 matched OK cells: gmean 65.1x, max 6407x.
+- Coverage: ARB completes 0/web-it cells, ~3 low-(r,s) cells on
+  dblp-core30/com-dblp; times out/OOMs at higher s exactly like CND.
+  We complete 92000/6216/6116 respectively.
+
+Net: we beat the parallel baseline (single-thread) by MORE than we beat
+CND (57.6x vs 14.49x), because ARB's per-clique work explodes faster
+with s. Directly answers reviewer R2's "no parallel baseline".
+Data: paper_data/bench_arb.csv (139 rows: 79 OK/8 OOM/52 TIMEOUT).
+Caveat: collected at 12-way concurrency (~3% contention measured);
+headline cells to be re-measured sequentially before camera-ready.
+
+NEXT: add ARB/ARB-Hi as a third series in Experiments §exp-time and the
+hierarchy paragraph; note single-thread fairness (ARB is parallel-by-
+design, run single-thread to match our axis; even so we win).
