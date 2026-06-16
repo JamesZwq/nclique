@@ -122,8 +122,15 @@ def run_cell(graph: str, variant: str, r: int, s: int):
     LOGDIR.mkdir(parents=True, exist_ok=True)
     mem_gate()
     log = LOGDIR / f"{graph}_{variant}_r{r}_s{s}.timev.log"
-    cmd = ["/usr/bin/time", "-v", str(binpath), "-s",
-           "--rClique", str(r), "--sClique", str(s), str(adj)]
+    # README canonical invocation: -r/-ss select the clique sizes, -relabel
+    # + -efficient 1 + -tt 5 select the actual decomposition path. WITHOUT
+    # -tt (default tt=0) the binary parses args and exits in ~ms WITHOUT
+    # decomposing -- the first sweep was entirely no-ops (caught because
+    # 4ms on a graph where CND/RegND* take minutes is implausible; the
+    # correct-flag max core 236 on ca-HepPh matches RegND*).
+    cmd = ["/usr/bin/time", "-v", str(binpath),
+           "-rounds", "1", "-s", "-r", str(r), "-ss", str(s),
+           "-relabel", "-efficient", "1", "-tt", "5", str(adj)]
     env = dict(os.environ, PARLAY_NUM_THREADS="1")
 
     def child_setup():
