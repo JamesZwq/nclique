@@ -1482,3 +1482,24 @@ headline cells to be re-measured sequentially before camera-ready.
 NEXT: add ARB/ARB-Hi as a third series in Experiments §exp-time and the
 hierarchy paragraph; note single-thread fairness (ARB is parallel-by-
 design, run single-thread to match our axis; even so we win).
+
+## 23. ARB single-thread results integrated into paper (2026-06-17, task #136)
+
+Experiments.tex edits (single-thread ARB, per user "先整合单线程"):
+- Algorithms Under Test: added \arb{} (Shi et al., sotaPrveHierarchy)
+  as the parallel baseline run single-threaded for a shared axis;
+  correctness noted (max (3,4)-core 236 ca-HepPh, 111 com-dblp match).
+- §exp-time: new "Comparison with the parallel baseline" para —
+  RegND* 57.6x gmean over ARB on 45 matched cells (vs 14.49x over
+  CND), 244.7x on dblp-core30, 122.6x on ca-GrQc, inverts only on
+  ca-HepPh (0.6x); coverage: ARB 0 web-it cells / 3 low cells on
+  dblp-core30,com-dblp vs our 92000/6216/6116.
+- §exp-breakdown-time hierarchy para: RegND-H 65.1x gmean over
+  hierarchical ARB (33 cells), up to 6407x (dblp-core30 3,5:
+  0.31s vs 1985s).
+Build: 20pp, 0 "??", 0 undefined refs. ONE pre-existing overfull in
+Introduction.tex:111 ("using the same grouped view"), from the user's
+intro rewrite (title now "Beyond Per-Clique Peeling..."), NOT this
+change — left for the author.
+NOT done (deferred per user): multi-thread ARB run; adding ARB
+series to the cactus/runtime FIGURES (prose+numbers only so far).
