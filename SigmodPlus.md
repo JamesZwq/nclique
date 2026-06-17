@@ -1621,3 +1621,12 @@ yet region-native (the unionCount B&B IS structurally the dead-box
 update, so the path is clear). End-to-end claim needs the peel built.
 web-it support (5.35s, 3.28M B&B nodes) is the next optimization target
 but already dwarfed by the 85.5s SDCT it removes.
+
+### 24.3 Server full counting comparison launched (2026-06-18)
+bench_region_native.py on tods2 (pid 369733, /data/wenqianz/brn/):
+paper-6 x {(3,4),(3,5),(3,6),(4,5),(4,6),(5,6)}, region-native MCE+support
+vs existing SDCT+MCEnum+CPI counting+PathInfo, with on-server --verify
+correctness gate. Existing server binary was STALE (printed SDCT_Fused +
+"clique not found" errors); rebuilt from HEAD (now clean, SDCT_MaxClique).
+Persistent monitor: per-cell speedup, DONE/stall/MISMATCH alerts.
+Next milestone after this: the region-native PEEL-UPDATE half.
