@@ -1817,3 +1817,38 @@ NEXT: integrate controlled_split into region_native_peel.cpp (per-region
 split-path set, support = sum over the region's current paths). Re-gate
 correctness vs brute/V3LM, then run the peel size-free sweep + end-to-end
 vs CND/RegND*.
+
+## 27. controlled_split done for single-region; multi-host is the wall (2026-06-18, #139)
+
+Implemented controlled_split in region_native_peel (commit d912b8f).
+Per-region state = a SET of CCPaths each with forbidden <= KMAX=12; regSupp
+sums support_count over them. Split preserves the count, correctness holds
+(34/34 vs brute). The single-region antichain is now BOUNDED: ca-GrQc (3,4)
+maxForb (split-path count) plateaus ~46 vs 81+-and-climbing before.
+
+But ca-GrQc (3,4) still does not finish. maxForb tracking proves the
+antichain is no longer the wall; the MULTI-HOST fallback is. |host|>=2
+patterns (fb counter, ~600+ and growing on ca-GrQc 3,4) still recompute
+via the old suppOf over the GLOBAL peeled list (O(P)/leaf, unbounded leaf
+antichain). They now dominate.
+
+ROOT INSIGHT (honest, important for the paper): a multi-host pattern's
+shared witnesses span several regions, so its peel-update needs a
+CROSS-REGION inclusion-exclusion whose intersection leaves need their own
+bounded (split) antichains. CPI's UNIFIED pivot paths sidestep this:
+witnesses of a tuple live on ONE path regardless of how many maximal
+cliques they span, so the dead-box update is single-structure. So:
+ - region-native WINS on COUNTING / initial support (size-free, fast,
+   real 500-cell experiments in hand) -- the quotient exposes the
+   host-collapse CPI can't.
+ - region-native PEEL-UPDATE is where CPI's unified paths actually earn
+   their keep: splitting witnesses across regions turns the multi-host
+   support maintenance into a cross-region IE that CPI avoids.
+This is a clean division-of-labor finding, not a failure: the peel may be
+best left on CPI/paths while counting moves to the region quotient.
+
+To finish a fully-fast region-native peel one would maintain bounded
+split-path sets per DISTINCT HOST (region intersection), i.e. re-derive
+the production engine's path machinery on the quotient -- a multi-session
+effort. Status: peel CORRECT + single-region fast; multi-host fast is the
+open piece.
