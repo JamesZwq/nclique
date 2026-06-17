@@ -486,11 +486,21 @@ int main(int argc, char **argv) {
     for (int pi = 0; pi < (int)pats.size(); pi++)
         for (int rid : pats[pi].host) regToPats[rid].push_back(pi);
 
-    // per-region peeled antichain (Pareto-min comp vectors over the region's
-    // class order). Maintained incrementally; used for the single-region
-    // fast delta. peeled[] (global) is kept only for the rare |host|>=2
-    // fallback recompute via suppOf.
-    vector<vector<Vec>> regAnti(nR);
+    // per-region peeled state, BOUNDED via controlled_split: each region
+    // holds a SET of CCPaths whose forbidden antichains are each <= KMAX, so
+    // every support_count is <= 2^KMAX instead of 2^(all peeled in M). The
+    // split preserves the count: sum over a region's paths of support_count
+    // == support_count with the full antichain. This is the antichain bound
+    // the data proved necessary (maxForb hit 81 without it).
+    const int KMAX = 12;
+    vector<vector<CCPath>> regPaths(nR);
+    auto regInit = [&](int rid) {
+        const vector<int> &Cs = regionClasses[rid];
+        int M = (int)Cs.size();
+        Vec nn((size_t)M, 0), zeros((size_t)M, 0);
+        for (int i = 0; i < M; i++) nn[i] = (int16_t)classSize[Cs[i]];
+        regPaths[rid].push_back(CCPath::initial(zeros, nn, s));
+    };
     auto mapComp = [&](const vector<pair<int,int>> &comp, int rid) {
         const vector<int> &Cs = regionClasses[rid];
         Vec v((size_t)Cs.size(), 0);
@@ -500,16 +510,29 @@ int main(int argc, char **argv) {
         }
         return v;
     };
-    // alive witnesses >= compVec in region rid, honoring regAnti[rid].
+    // record a peeled comp v into region rid: insert into every path's
+    // forbidden, then re-split any path whose antichain exceeds KMAX.
+    auto regForbid = [&](int rid, const Vec &v) {
+        if (regPaths[rid].empty()) regInit(rid);
+        vector<CCPath> out;
+        for (auto &p : regPaths[rid]) {
+            if (ccpath::impossible(p, v)) { out.push_back(std::move(p)); continue; }
+            if (ccpath::covers_whole_path(p, v)) continue;   // path fully dead
+            ccpath::insert_antichain(p.forbidden, v);
+            if ((int)p.forbidden.size() > KMAX) {
+                auto kids = ccpath::controlled_split(p, KMAX);
+                for (auto &k : kids) out.push_back(std::move(k));
+            } else out.push_back(std::move(p));
+        }
+        regPaths[rid] = std::move(out);
+        if (regPaths[rid].size() > maxForb) maxForb = regPaths[rid].size();
+    };
+    // alive witnesses >= b in region rid = sum over its bounded split paths.
     auto regSupp = [&](int rid, const Vec &b) -> double {
-        const vector<int> &Cs = regionClasses[rid];
-        int M = (int)Cs.size();
-        Vec nn((size_t)M, 0), zeros((size_t)M, 0);
-        for (int i = 0; i < M; i++) nn[i] = (int16_t)classSize[Cs[i]];
-        CCPath p = CCPath::initial(zeros, nn, s);
-        p.forbidden = regAnti[rid];
-        if (p.forbidden.size() > maxForb) maxForb = p.forbidden.size();
-        return ccpath::support_count(p, b, ccpath_ncr);
+        if (regPaths[rid].empty()) regInit(rid);
+        double tot = 0.0;
+        for (auto &p : regPaths[rid]) tot += ccpath::support_count(p, b, ccpath_ncr);
+        return tot;
     };
 
     // ---- peel: bucket queue, INCREMENTAL delta ----
@@ -563,13 +586,14 @@ int main(int argc, char **argv) {
                 if (nk < curLevel) nk = curLevel;
                 if (nk != Q.key) { Q.sup = ns; Q.key = nk; bk[nk].push_back(qi); }
             }
-            ccpath::insert_antichain(regAnti[M], pm);      // now record P
+            regForbid(M, pm);                              // now record P (bounded)
+            peeled.push_back(pi);                          // keep global set for fallback suppOf
         } else {
             // RARE |host|>=2: record P everywhere, then full recompute of the
             // affected (shares a host region) via suppOf (global `peeled`).
             fallbacks++;
             peeled.push_back(pi);
-            for (int rid : P.host) ccpath::insert_antichain(regAnti[rid], mapComp(P.comp, rid));
+            for (int rid : P.host) regForbid(rid, mapComp(P.comp, rid));
             // dedup affected
             static vector<char> seen2; if ((int)seen2.size()<(int)pats.size()) seen2.assign(pats.size(),0);
             vector<int> aff;
