@@ -23,7 +23,9 @@ from pathlib import Path
 
 RN  = "./region_native/region_native"
 BIN = "./build/bin/degeneracy_cliques"
-GRAPHS = ["dblp-core30", "ca-GrQc", "ca-HepPh", "ca-CondMat", "com-dblp", "web-it-2004"]
+_GD = ["dblp-core30", "ca-GrQc", "ca-HepPh", "ca-CondMat", "com-dblp", "web-it-2004"]
+# BRN_GRAPHS overrides graph order (e.g. push the heavy ca-HepPh weak case last)
+GRAPHS = [g.strip() for g in os.getenv("BRN_GRAPHS", ",".join(_GD)).split(",") if g.strip()]
 # FULL (r,s) grid to test the size-free criterion: region-native time must
 # NOT grow significantly with r or s. region-native runs every cell (fast);
 # CPI uses a skip-floor (once it times out at some s, higher s same r is
