@@ -475,7 +475,7 @@ int main(int argc, char **argv) {
     fflush(stdout);
     if (pats.empty()) { printf("[rn-peel] no patterns.\n"); return 0; }
 
-    // ---- initial support ----
+    // ---- initial support (empty antichains -> matches verified counting) ----
     for (auto &P : pats) { P.sup = suppOf(P); P.key = (long long)llround(P.sup); }
     auto T5 = Clock::now();
     printf("[rn-peel] initial-support=%.2fs\n", secs(T4, T5));
@@ -486,16 +486,41 @@ int main(int argc, char **argv) {
     for (int pi = 0; pi < (int)pats.size(); pi++)
         for (int rid : pats[pi].host) regToPats[rid].push_back(pi);
 
-    // ---- peel: bucket queue keyed by integer support (monotone level) ----
+    // per-region peeled antichain (Pareto-min comp vectors over the region's
+    // class order). Maintained incrementally; used for the single-region
+    // fast delta. peeled[] (global) is kept only for the rare |host|>=2
+    // fallback recompute via suppOf.
+    vector<vector<Vec>> regAnti(nR);
+    auto mapComp = [&](const vector<pair<int,int>> &comp, int rid) {
+        const vector<int> &Cs = regionClasses[rid];
+        Vec v((size_t)Cs.size(), 0);
+        for (auto &cm : comp) {
+            int pos = (int)(lower_bound(Cs.begin(), Cs.end(), cm.first) - Cs.begin());
+            v[(size_t)pos] = (int16_t)cm.second;
+        }
+        return v;
+    };
+    // alive witnesses >= compVec in region rid, honoring regAnti[rid].
+    auto regSupp = [&](int rid, const Vec &b) -> double {
+        const vector<int> &Cs = regionClasses[rid];
+        int M = (int)Cs.size();
+        Vec nn((size_t)M, 0), zeros((size_t)M, 0);
+        for (int i = 0; i < M; i++) nn[i] = (int16_t)classSize[Cs[i]];
+        CCPath p = CCPath::initial(zeros, nn, s);
+        p.forbidden = regAnti[rid];
+        if (p.forbidden.size() > maxForb) maxForb = p.forbidden.size();
+        return ccpath::support_count(p, b, ccpath_ncr);
+    };
+
+    // ---- peel: bucket queue, INCREMENTAL delta ----
     long long npat = (long long)pats.size(), peeledN = 0, maxKey = 0;
     for (auto &P : pats) maxKey = max(maxKey, P.key);
     unordered_map<long long, vector<int>> bk;
     for (int pi = 0; pi < (int)pats.size(); pi++) bk[pats[pi].key].push_back(pi);
-    map<double,double> coreDist;       // core -> total r-clique count (mult)
-    vector<char> seen(pats.size(), 0);
-    long long curLevel = 0;
+    map<double,double> coreDist;
+    long long curLevel = 0, fallbacks = 0;
+    Vec maxv;                              // reused max(Q*,Q) buffer
     while (peeledN < npat) {
-        // advance to lowest non-empty bucket (core numbers are non-decreasing)
         auto it = bk.find(curLevel);
         while (it == bk.end() || it->second.empty()) {
             if (++curLevel > maxKey + 1) break;
@@ -504,39 +529,70 @@ int main(int argc, char **argv) {
         if (curLevel > maxKey + 1) break;
         int pi = it->second.back(); it->second.pop_back();
         Pat &P = pats[pi];
-        if (!P.alive || P.key != curLevel) continue;        // stale entry
+        if (!P.alive || P.key != curLevel) continue;
         P.alive = false; P.core = (double)curLevel; peeledN++;
-        if (peeledN <= 30 || (peeledN & 0xFF) == 0)
-            fprintf(stderr, "[peel] %lld/%lld level=%lld maxForb=%zu t=%.2fs\n",
-                    peeledN, npat, curLevel, maxForb, secs(T5, Clock::now()));
+        if ((peeledN & 0xFF) == 0)
+            fprintf(stderr, "[peel] %lld/%lld lvl=%lld fb=%lld maxForb=%zu t=%.1fs\n",
+                    peeledN, npat, curLevel, fallbacks, maxForb, secs(T5, Clock::now()));
         coreDist[P.core] += (double)P.mult;
-        peeled.push_back(pi);
-        // affected = alive patterns sharing a host region with P; recompute.
-        vector<int> aff;
-        for (int rid : P.host) for (int qi : regToPats[rid]) {
-            if (qi == pi || !pats[qi].alive || seen[qi]) continue;
-            seen[qi] = 1; aff.push_back(qi);
-        }
-        for (int qi : aff) {
-            seen[qi] = 0;
-            double ns = suppOf(pats[qi]);
-            long long nk = (long long)llround(ns);
-            if (nk < curLevel) nk = curLevel;               // clamp to peel level
-            if (nk != pats[qi].key) {
-                pats[qi].key = nk; pats[qi].sup = ns;
-                bk[nk].push_back(qi);
+
+        // collect support changes (qi -> new sup) before re-bucketing
+        // SINGLE-REGION FAST PATH: every witness of P lives in its one
+        // region M, so the delta to any affected Q is one regSupp(M,max).
+        if (P.host.size() == 1) {
+            int M = P.host[0];
+            Vec pm = mapComp(P.comp, M);
+            const vector<int> &Cs = regionClasses[M];
+            for (int qi : regToPats[M]) {
+                Pat &Q = pats[qi];
+                if (qi == pi || !Q.alive) continue;
+                // max(P,Q) over M's classes; feasible iff sum<=s & <=classSize
+                Vec qm = mapComp(Q.comp, M);
+                maxv.assign(Cs.size(), 0);
+                int tot = 0; bool feas = true;
+                for (size_t k = 0; k < Cs.size(); k++) {
+                    int mx = max((int)pm[k], (int)qm[k]);
+                    if (mx > classSize[Cs[k]]) { feas = false; break; }
+                    maxv[k] = (int16_t)mx; tot += mx;
+                }
+                if (!feas || tot > s) continue;            // cannot co-occur
+                double d = regSupp(M, maxv);               // antichain WITHOUT P yet
+                if (d <= 0) continue;
+                double ns = Q.sup - d;
+                long long nk = (long long)llround(ns);
+                if (nk < curLevel) nk = curLevel;
+                if (nk != Q.key) { Q.sup = ns; Q.key = nk; bk[nk].push_back(qi); }
+            }
+            ccpath::insert_antichain(regAnti[M], pm);      // now record P
+        } else {
+            // RARE |host|>=2: record P everywhere, then full recompute of the
+            // affected (shares a host region) via suppOf (global `peeled`).
+            fallbacks++;
+            peeled.push_back(pi);
+            for (int rid : P.host) ccpath::insert_antichain(regAnti[rid], mapComp(P.comp, rid));
+            // dedup affected
+            static vector<char> seen2; if ((int)seen2.size()<(int)pats.size()) seen2.assign(pats.size(),0);
+            vector<int> aff;
+            for (int rid : P.host) for (int qi : regToPats[rid]) {
+                if (qi==pi || !pats[qi].alive || seen2[qi]) continue;
+                seen2[qi]=1; aff.push_back(qi);
+            }
+            for (int qi : aff) {
+                seen2[qi]=0;
+                double ns = suppOf(pats[qi]);
+                long long nk = (long long)llround(ns);
+                if (nk < curLevel) nk = curLevel;
+                if (nk != pats[qi].key) { pats[qi].sup=ns; pats[qi].key=nk; bk[nk].push_back(qi); }
             }
         }
     }
     auto T6 = Clock::now();
-    printf("[rn-peel] peel=%.2fs  peeled=%lld/%lld\n", secs(T5,T6), peeledN, npat);
+    printf("[rn-peel] peel=%.2fs  peeled=%lld/%lld  multihost-fallbacks=%lld\n",
+           secs(T5,T6), peeledN, npat, fallbacks);
     printf("[rn-peel] TIMING MCE=%.2f enum=%.2f initsup=%.2f peel=%.2f total=%.2f\n",
            secs(T1,T2), secs(T3,T4), secs(T4,T5), secs(T5,T6), secs(T1,T6));
-
-    // ---- core distribution (compare bit-for-bit to V3LM `core=k count=N`) ----
     double maxCore = 0; for (auto &kv : coreDist) maxCore = max(maxCore, kv.first);
     printf("[rn-peel] Max core: %.0f\n", maxCore);
-    for (auto &kv : coreDist)
-        printf("core=%.0f count=%.0f\n", kv.first, kv.second);
+    for (auto &kv : coreDist) printf("core=%.0f count=%.0f\n", kv.first, kv.second);
     return 0;
 }
