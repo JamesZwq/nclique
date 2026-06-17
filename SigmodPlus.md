@@ -1697,3 +1697,65 @@ any pull (the stale degeneracy_cliques printed SDCT_Fused + threw
 NEXT: (a) finish sampled sweep, plot scripts/make_rn_scaling_fig.py;
 (b) design+build the region-native PEEL-UPDATE for an end-to-end
 engine; (c) decide paper framing (CPI -> region-native counting).
+
+## 25. Region-native flatness fix: support is host-determined (2026-06-18, #139)
+
+FINDING (the size-free lever). The s-clique support of a region tuple
+depends ONLY on its host = the set of regions (maximal cliques) that
+contain it; it does NOT depend on the tuple's class multiplicities.
+Proof: sup = union over host regions M of {s-cliques in M containing
+R0} = IE over the host using C(|cap region|-r, s-r); every term is a
+property of the host set, not of which classes R0 picks. Two different
+r-cliques with the same host have identical support.
+
+WHY com-dblp was NOT flat (prior sweep: (7,8)=75.78s, 143x flat-ratio).
+The first region_native enumerated EVERY pattern (28.4M at com-dblp 7,8)
+and recomputed host from scratch per leaf (vector alloc + interClasses),
+plus it computed support for the huge single-region (direct-binned)
+population it should have skipped. Diagnosis via PIVOTER_RN_HOSTPROBE:
+com-dblp (7,8) has only 2067 DISTINCT HOSTS behind 28.4M patterns
+(collapse 13719x) -> support was recomputed ~13700x too often.
+
+FIX (region_native.cpp, commit c5282e6), three changes, all bit-exact
+(--verify EXACT on every tested cell):
+ 1. Enumerate ONLY multi-region classes. A single-region (safe) class
+    pins |Host|=1 (direct-binned, Thm vsafe), never peeled.
+ 2. Incremental host in a depth stack: host = cap classRegions[chosen],
+    updated per class-choice, no per-leaf re-intersection/alloc. The
+    moment |host| drops to 1 the whole subtree is pruned (its patterns
+    are all direct-binned) -- the single-region population is never
+    enumerated.
+ 3. Memoize support per host hash: each distinct host's union-count runs
+    once, not once per pattern.
+
+RESULT (local Mac, support-only phase):
+  com-dblp (7,8) : 75.78s -> 0.89s  (85x), bit-exact
+  com-dblp (6,7) : 12.17s -> 0.34s
+  com-dblp (7,10): 22.93s -> 0.38s
+  com-dblp now FLAT in (r,s): 0.14-0.89s (was 0.53-75.78s, 143x -> ~6x).
+  4/5 sparse graphs already flat; com-dblp was the lone violator, now
+  fixed.
+
+ca-HepPh STILL the outlier (NOT fixed, and fundamentally so): 79,545
+distinct hosts (vs com-dblp 2067), collapse only 45-290x, support
+13-35s and TIMEOUT at (6,10)+. Its cost is NOT enumeration -- it is the
+per-host union-count itself: dense overlap -> |Host| large -> IE B&B
+deep. This is exactly the regime CPI's pivot compression was built for.
+Clean scientific framing: region-native (CPI-free) wins on most graphs
+but loses on the densest-overlap graph, where pivoting earns its keep.
+NOT a regression -- ca-HepPh was already the universal weak case.
+
+DENSE RE-SWEEP launched on tods2 (pid 420990, repo at
+/home/wenqianz/UNSW/pivoter NOT /data/wenqianz/pivoter): full grid
+s in [r+1,20], r in 3..8, ca-HepPh last, region-native-only
+(BRN_SKIP_CPI=1, BRN_VERIFY=0). Out: /data/wenqianz/brn/
+bench_region_native_dense.csv. Monitor b5ovqwnlp watches for DONE.
+
+DEPLOY NOTE: server git repo is /home/wenqianz/UNSW/pivoter (the
+/data/wenqianz/pivoter dir is a stale non-git copy). region_native runs
+from there; rebuild with g++ -O3 -std=c++17 after each pull.
+
+NEXT: (a) plot dense flatness fig (make_rn_scaling_fig.py, point it at
+the dense CSV); (b) consider host-level Mobius counting to also flatten
+ca-HepPh's enumeration (won't help its union-count depth though);
+(c) region-native PEEL-UPDATE half for an end-to-end engine.
