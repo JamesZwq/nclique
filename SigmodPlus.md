@@ -1630,3 +1630,16 @@ correctness gate. Existing server binary was STALE (printed SDCT_Fused +
 "clique not found" errors); rebuilt from HEAD (now clean, SDCT_MaxClique).
 Persistent monitor: per-cell speedup, DONE/stall/MISMATCH alerts.
 Next milestone after this: the region-native PEEL-UPDATE half.
+
+### 24.4 Size-free scaling test launched (2026-06-18, user's main criterion)
+User criterion: region-native time must NOT grow significantly with r or s.
+Full grid r in {3..7} x s in {r+1..20}, region-native-only (BRN_SKIP_CPI),
+per-cell 600s timeout; contrast = CND/RegND* totals from bench_full_merged.
+DEPLOY GOTCHA fixed: `git pull --ff-only` was SILENTLY failing (output
+swallowed by `| tail -1`), so tods2 ran the stale 6-cell grid + pre-opt
+region_native for several relaunches. Now use `git fetch + reset --hard
+origin/main` and VERIFY `git rev-parse HEAD` before launching.
+Early reads (pre-fix, still valid): region-native FLAT -- dblp-core30
+0.02-0.03s, ca-GrQc 0.03-0.13s across (r,s); ca-HepPh NOT flat
+(37->166s, the heavy-overlap IE blow-up = the known universal weak case).
+Plot: scripts/make_rn_scaling_fig.py.

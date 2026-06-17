@@ -31,7 +31,15 @@ GRAPHS = ["dblp-core30", "ca-GrQc", "ca-HepPh", "ca-CondMat", "com-dblp", "web-i
 # the result.
 RGRID = [int(x) for x in os.getenv("BRN_RGRID", "3,4,5,6,7").split(",")]
 SMAX = int(os.getenv("BRN_SMAX", "20"))
-RS = [(r, s) for r in RGRID for s in range(r + 1, SMAX + 1)]
+# SAMPLED grid (BRN_SOFFS): per r, take s = r + offset for these offsets.
+# Default {1,3,6,10,15} spans low->high s (~1/3 of the full grid) -- enough
+# to draw the flatness curve without running every cell. Empty -> full grid.
+_soffs = os.getenv("BRN_SOFFS", "1,3,6,10,15")
+if _soffs.strip():
+    OFFS = [int(x) for x in _soffs.split(",")]
+    RS = [(r, r + o) for r in RGRID for o in OFFS if r + o <= SMAX]
+else:
+    RS = [(r, s) for r in RGRID for s in range(r + 1, SMAX + 1)]
 TIMEOUT = int(os.getenv("BRN_TIMEOUT", "1800"))
 VERIFY = int(os.getenv("BRN_VERIFY", "2000"))
 OUT = Path(os.getenv("BRN_OUT", "paper_data/bench_region_native.csv"))
@@ -66,14 +74,19 @@ def main():
     f = open(OUT, "a", newline=""); w = csv.DictWriter(f, fieldnames=FIELDS)
     if new: w.writeheader(); f.flush()
     cpi_skip = set()   # (graph, r) where CPI timed out -> skip higher s
+    rn_skip = set()    # (graph, r) where region-native timed out (weak case)
     for g in GRAPHS:
         gp = f"graphs/{g}.edges"
         if not os.path.exists(gp): print(f"[skip] {g}", flush=True); continue
-        for (r, s) in RS:
+        for (r, s) in sorted(RS):
             if (g, r, s) in done: continue
+            if (g, r) in rn_skip:   # region-native blew up at smaller s
+                continue
             # region-native (with small verify sample)
             rn = run([RN, gp, str(r), str(s), "--verify", str(VERIFY),
                       "--mce-budget", str(TIMEOUT)], TIMEOUT + 60)
+            if rn == "__TIMEOUT__":
+                rn_skip.add((g, r))
             (LOGD / f"{g}_{r}_{s}_rn.log").write_text(rn if rn != "__TIMEOUT__" else "TIMEOUT")
             if rn == "__TIMEOUT__":
                 row = dict(graph=g, r=r, s=s, regions=-1, tuples=-1, rn_mce_s=-1,
