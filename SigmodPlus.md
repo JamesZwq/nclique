@@ -1556,3 +1556,37 @@ PROBE (#137, scripts/probe_region_ie.py, standalone):
 Greenlight engine prototype (#138) only if (1) exact + (2) small on
 5/6 + (3) build share real. Probe-before-engine, per this season's
 repeatedly-validated discipline.
+
+### 24.1 Probe results (2026-06-18) — STRONGLY POSITIVE
+
+scripts/probe_region_ie.py, sampled r-cliques per graph:
+
+| graph        | regions | |Host| med/max | meet-closure med/max | correctness        |
+|--------------|---------|---------------|----------------------|--------------------|
+| dblp-core30  | 68      | 1 / 13        | 1 / 50               | 200/200 EXACT      |
+| ca-GrQc      | 311     | 1 / 7         | 1 / 20               | 200/200 EXACT      |
+| ca-CondMat   | 8824    | 1 / 36        | 1 / 167              | 197/197 EXACT (3 skip |H|>18) |
+| com-dblp     | 96786   | 1 / 6         | 1 / 15               | (cost only)        |
+| ca-HepPh     | --      | BK 60s timeout (V3LM: max vtxMC 1411, 11M pairs) | BLOW-UP | weak case (already) |
+
+Findings:
+1. The region-IE support formula is BIT-EXACT vs direct s-clique
+   enumeration: 597/597 tested cells. The F1 math is correct.
+2. Cost is tiny on 5/6 graphs. MEDIAN |Host| = 1 on every graph: most
+   r-cliques sit in exactly ONE maximal clique, so counting collapses
+   to a single binomial (the private/safe fast path). Real IE happens
+   only on a small shared minority, and even then the meet-closure
+   (realistic term count) maxes at 15-167.
+3. ca-HepPh blows up, exactly the existing weak case. NO new weak case.
+
+USER REFINEMENT (2026-06-18): the ideal is not raw IE but a method that
+KEEPS pivot THEORY and does the counting natively on regions/classes
+(fast + elegant), not a ported external index. Precise reading: this is
+the principled "partition s-cliques by exact host-region set; count each
+block by canonical-home / Mobius over the region-intersection lattice."
+That IS pivot theory (free/forced split, canonical homes, binomial
+counting) on the quotient. Its cost = the meet-closure size already
+measured = small on 5/6 graphs; median |Host|=1 means the binomial base
+case is hit for most cliques. Both elegance and speed are data-backed.
+Equivalence to raw IE (validated exact) makes the partition form exact too.
+Still TODO: the PEEL-UPDATE half must also be reformulated natively.
