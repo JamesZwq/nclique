@@ -1503,3 +1503,56 @@ intro rewrite (title now "Beyond Per-Clique Peeling..."), NOT this
 change — left for the author.
 NOT done (deferred per user): multi-thread ARB run; adding ARB
 series to the cactus/runtime FIGURES (prose+numbers only so far).
+
+## 24. Region-IE fusion investigation (2026-06-18, tasks #137-138) — LIVE
+
+GOAL (user idea): drop CPI as a separate "pivot index bolted onto the
+code"; fuse the pivot-compression NATURALLY into the Region/Class
+quotient so there is one structure, not two stacked layers.
+
+ANALYSIS (full reasoning in chat 2026-06-18):
+- CPI's ONE irreducible job is providing a PARTITION of s-cliques
+  (canonical homes via degeneracy+pivot) so support = a clean SUM.
+  Region/Class alone gives a COVER (overlapping maximal cliques), so
+  support over it = INCLUSION-EXCLUSION. "Partition->sum (cheap),
+  cover->IE (maybe costly)" is the whole crux.
+- Within a region, compression is just binomial over classes (pivot
+  machinery NOT needed for that). CPI is only needed to (a) enumerate
+  maximal cliques and (b) dedup cliques across overlapping regions.
+  The private-cloud / safe-class machinery (Thm vsafe) is ALREADY the
+  fusion for the private (single-region) part.
+- Two fusion routes:
+  F1 region-IE: sup(R0)=Σ_{∅≠A⊆Host(R0)} (-1)^{|A|+1}
+                C(|∩_{M∈A}M|-r, s-r); intersection sizes from class
+                profiles. Pure quotient, no SDCT, but pays IE
+                (2^|Host|, dominance-prunable; same family as the
+                existing dead-box IE -> unifies init+update).
+  F2 region-native partition: derive canonical homes from regions+
+                degeneracy at (region x class) granularity -> a path
+                set that slots into the EXISTING path-interface
+                abstraction (Def path-interface already allows any
+                partition path set). Lowest risk: peel untouched.
+                Unknown: can the split be produced cheaply.
+
+OVERLAP DATA (V3LM Step-1, (3,4)): max regions-per-vertex =
+dblp-core30 13, ca-GrQc 45, ca-CondMat 199, com-dblp 253,
+ca-HepPh 1411 (11M overlap pairs). => IE cheap on 5/6 graphs,
+explodes only on ca-HepPh, which is ALREADY our one weak case.
+Fusion introduces NO NEW weak case -- strongest argument for it.
+
+PRIZE: elegance (one quotient story) + attacks the SDCT-build
+bottleneck (RQ5: on web-it peel is 0.6-1%, construction dominates) +
+drops CPI Tree memory + unifies init/update onto one IE engine.
+
+CONSTRAINTS (user): do NOT touch existing code; build new standalone
+files only; keep this doc + the task list updated live.
+
+PROBE (#137, scripts/probe_region_ie.py, standalone):
+  (1) correctness: region-IE == direct s-clique enumeration on small
+      graphs (ground truth that CPI also computes);
+  (2) cost: IE term-count per sampled r-clique, raw 2^|H| vs after
+      merging equal region-intersections (realistic);
+  (3) prize size: SDCT/path build share from existing binary stdout.
+Greenlight engine prototype (#138) only if (1) exact + (2) small on
+5/6 + (3) build share real. Probe-before-engine, per this season's
+repeatedly-validated discipline.
