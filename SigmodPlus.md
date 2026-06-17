@@ -1759,3 +1759,61 @@ NEXT: (a) plot dense flatness fig (make_rn_scaling_fig.py, point it at
 the dense CSV); (b) consider host-level Mobius counting to also flatten
 ca-HepPh's enumeration (won't help its union-count depth though);
 (c) region-native PEEL-UPDATE half for an end-to-end engine.
+
+## 26. Region-native PEEL half: correct, but needs controlled_split (2026-06-18, #139)
+
+Built region_native/region_native_peel.cpp = region-native END-TO-END
+(r,s)-nucleus peel. Front half (load/MCE/classes) shared with
+region_native.cpp. KEY DESIGN: support during peeling is the region-IE
+union (same B&B as initial support) where each region-intersection LEAF
+returns ccpath::support_count with the peeled tuples as the forbidden
+antichain. A witness (composition y) dies iff y >= some peeled tuple f
+(it contains a peeled orbit) -- this is pattern-peeling semantics
+(peeling removes a whole class-multiplicity orbit), so aliveness is a
+composition property and the component-max forbidden IE is exact.
+Reuses CCPathCore.h (each region = degenerate CCPath: h=0, ell=0, u=n,
+T=s).
+
+MILESTONES (each adversarially gated):
+ M1 (commit e373d85): foundation test test_region_forbidden.cpp --
+    region->CCPath + support_count-with-forbidden vs VERTEX-LEVEL brute
+    force, 2 hand cases + 4000 random trials, ALL bit-exact.
+ M3 (commit 0a652ab): end-to-end peel core-distribution correctness.
+    Oracle = scripts/verify_nucleus_brute.py (textbook peel on individual
+    r-cliques). vs brute: 34/34 (5 tiny graphs x r=2,3,4 x s), vs
+    production V3LM: 4/4 on r>=3. Restricted to core>=1 (the witnessed
+    domain: an r-clique has support>=1 iff it sits in a region iff core>=1;
+    region-native scores exactly these, matching V3LM which also emits
+    core>=1 only). BUG found+fixed by the discriminating t_k6k4 test: the
+    inherited stable_partition reordered regionClasses and broke the
+    sorted-order invariant leafCount's binary search relies on -> silent
+    support corruption. Removed the partition (peel enumerates ALL
+    patterns; keeps sorted order).
+
+M4 (PERFORMANCE) -- BLOCKED on the same wall CPI hit. Profiled
+dblp-core30 (3,4): enum=0.00s, initial-support=0.00s (both instant), but
+the PEEL does not finish. Root cause CONFIRMED via maxForb tracking: as
+patterns peel, each region's forbidden antichain grows (0->8->...), and
+ccpath::support_count's inclusion_exclusion_terms is 2^|forbidden|, so
+support recompute goes exponential. EVERY real cell times out (even
+ca-GrQc (10,12), high r/s); only the tiny synthetic graphs complete.
+This is EXACTLY the support-maintenance bottleneck the production engine
+solved with controlled_split (tasks #92-98): when |forbidden| > kmax,
+split the path so each child's antichain is bounded. CCPathCore.h ALREADY
+provides the primitives (first_failing_split_by_vector, choose_split_vector,
+controlled_split) -- the region-native peel must adopt them (maintain a
+SET of split CCPaths per region instead of one).
+
+HONEST STATUS:
+ - Region-native COUNTING (initial support): DONE, fast, size-free on 5/6
+   graphs, real experiments in hand (500-cell dense sweep).
+ - Region-native PEEL: CORRECT (proven), but naive support recompute is
+   exponential in the antichain -> needs controlled_split before any real
+   peel experiment. This is a UNIFICATION result, not a dead end:
+   region-native peeling and CPI peeling face the identical
+   forbidden-antichain growth and need the same controlled-split cure.
+
+NEXT: integrate controlled_split into region_native_peel.cpp (per-region
+split-path set, support = sum over the region's current paths). Re-gate
+correctness vs brute/V3LM, then run the peel size-free sweep + end-to-end
+vs CND/RegND*.

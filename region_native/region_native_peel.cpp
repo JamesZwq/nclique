@@ -360,6 +360,7 @@ int main(int argc, char **argv) {
     };
     vector<Pat> pats;
     vector<int> peeled;              // pattern indices in peel order (forbidden)
+    size_t maxForb = 0;              // diagnostic: largest forbidden antichain seen
 
     // alive witnesses >= comp inside the clique whose class-set is Cs.
     auto leafCount = [&](const vector<int> &Cs,
@@ -391,6 +392,7 @@ int main(int argc, char **argv) {
             }
             ccpath::insert_antichain(p.forbidden, fv);
         }
+        if (p.forbidden.size() > maxForb) maxForb = p.forbidden.size();
         return ccpath::support_count(p, b, ccpath_ncr);
     };
 
@@ -470,12 +472,14 @@ int main(int argc, char **argv) {
     long long totalRCliques = 0; for (auto &P : pats) totalRCliques += P.mult;
     printf("[rn-peel] patterns=%zu  r-cliques=%lld  enum=%.2fs\n",
            pats.size(), totalRCliques, secs(T3, T4));
+    fflush(stdout);
     if (pats.empty()) { printf("[rn-peel] no patterns.\n"); return 0; }
 
     // ---- initial support ----
     for (auto &P : pats) { P.sup = suppOf(P); P.key = (long long)llround(P.sup); }
     auto T5 = Clock::now();
     printf("[rn-peel] initial-support=%.2fs\n", secs(T4, T5));
+    fflush(stdout);
 
     // region -> patterns hosted there (affected-set lookup on peel)
     vector<vector<int>> regToPats(nR);
@@ -502,6 +506,9 @@ int main(int argc, char **argv) {
         Pat &P = pats[pi];
         if (!P.alive || P.key != curLevel) continue;        // stale entry
         P.alive = false; P.core = (double)curLevel; peeledN++;
+        if (peeledN <= 30 || (peeledN & 0xFF) == 0)
+            fprintf(stderr, "[peel] %lld/%lld level=%lld maxForb=%zu t=%.2fs\n",
+                    peeledN, npat, curLevel, maxForb, secs(T5, Clock::now()));
         coreDist[P.core] += (double)P.mult;
         peeled.push_back(pi);
         // affected = alive patterns sharing a host region with P; recompute.
