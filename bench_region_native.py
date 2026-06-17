@@ -83,7 +83,7 @@ def main():
             env = dict(os.environ, PIVOTER_RUN_REGION_V3LM="1")
             cp = run([BIN, gp, str(r), str(s), "degen"], TIMEOUT + 60)
             (LOGD / f"{g}_{r}_{s}_cpi.log").write_text(cp if cp != "__TIMEOUT__" else "TIMEOUT")
-            sdct = grep1(cp, r"SDCT_MaxClique took: ([\d.]+) ms") / 1000.0
+            sdct = grep1(cp, r"SDCT_(?:MaxClique|Fused) took: ([\d.]+) ms") / 1000.0
             mcenum = grep1(cp, r"MaxCliqEnum \(V3/V4\) took: ([\d.]+) ms") / 1000.0
             ccount = grep1(cp, r"CPI counting time: ([\d.]+) ms") / 1000.0
             pinfo = grep1(cp, r"PathInfo build time: ([\d.]+) ms") / 1000.0
