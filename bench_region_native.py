@@ -87,8 +87,13 @@ def main():
             rn_sup = grep1(rn, r"support=([\d.]+)s \(support-only")
             verify = "EXACT" if "[EXACT]" in rn else ("MISMATCH" if "MISMATCH" in rn else "?")
             rn_total = (rn_mce + rn_sup) if (rn_mce >= 0 and rn_sup >= 0) else -1
-            # existing CPI engine (skip-floor: CPI explodes with s)
-            if (g, r) in cpi_skip:
+            # existing CPI engine (skip-floor: CPI explodes with s).
+            # BRN_SKIP_CPI: region-native-only fast sweep (contrast comes
+            # from CND/RegND* totals already in bench_full_merged.csv; the
+            # existing engine also crashes on some graphs via SDCT_Fused).
+            if os.getenv("BRN_SKIP_CPI"):
+                cp = "__SKIP__"
+            elif (g, r) in cpi_skip:
                 cp = "__SKIP__"
             else:
                 os.environ["PIVOTER_RUN_REGION_V3LM"] = "1"
