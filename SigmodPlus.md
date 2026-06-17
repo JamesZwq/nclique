@@ -1590,3 +1590,34 @@ measured = small on 5/6 graphs; median |Host|=1 means the binomial base
 case is hit for most cliques. Both elegance and speed are data-backed.
 Equivalence to raw IE (validated exact) makes the partition form exact too.
 Still TODO: the PEEL-UPDATE half must also be reformulated natively.
+
+### 24.2 region_native engine: counting validated, SDCT bottleneck killed (2026-06-18, task #139)
+
+New standalone region_native/region_native.cpp (no existing code touched).
+Pipeline: degeneracy-ordered BK maximal cliques (regions) -> profile
+classes (each region = disjoint union of classes) -> canonical-home
+tuple enumeration -> initial support by region union-count IE B&B at
+CLASS granularity (|Host|<=2 closed-form fast paths; median |Host|=1).
+
+ADVERSARIAL CORRECTNESS: bit-exact vs direct s-clique enumeration,
+ALL tuples on dblp-core30/ca-GrQc/ca-CondMat across (3,4)/(4,5)/(3,6)/
+(5,6)/(4,6) -- e.g. 1706/1706, 29997/29997, 100000/100000. Two bugs
+caught & fixed by the self-check: (a) unionCount aliased its arg by ref
+and emptied it before the IE subtraction (over-count on every multi-
+host tuple); (b) naive BK pivot was O(n^2) at the root (flame-graph:
+1547/1548 samples in intersect_nbr) -> replaced with degeneracy-ordered
+ELS: MCE 55s -> 0.30s on com-dblp (180x).
+
+SPEED (construction+counting; the CPI-replacement):
+| cell | region-native MCE+support | existing SDCT+MCEnum+CPI+PathInfo |
+| com-dblp (3,4) | 0.33 + 0.34 = 0.67s | 0.29+0.19+0.16+0.15 ~ 0.97s (1.4x) |
+| web-it  (3,4) | 3.94 + 5.35 = 9.3s | SDCT 85.5s + 3.4s ~ 89s (~10x)  |
+The win = region-native NEEDS only maximal cliques (degeneracy MCE
+3.94s), NOT the full pivoted SDCT (85.5s on web-it, building 423886
+path leaves). Same 84871 regions, bit-exact support.
+
+HONEST SCOPE: this is INITIAL SUPPORT only. The peel-UPDATE half is not
+yet region-native (the unionCount B&B IS structurally the dead-box
+update, so the path is clear). End-to-end claim needs the peel built.
+web-it support (5.35s, 3.28M B&B nodes) is the next optimization target
+but already dwarfed by the 85.5s SDCT it removes.
