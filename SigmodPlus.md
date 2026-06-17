@@ -1643,3 +1643,57 @@ Early reads (pre-fix, still valid): region-native FLAT -- dblp-core30
 0.02-0.03s, ca-GrQc 0.03-0.13s across (r,s); ca-HepPh NOT flat
 (37->166s, the heavy-overlap IE blow-up = the known universal weak case).
 Plot: scripts/make_rn_scaling_fig.py.
+
+### 24.5 Progress snapshot (2026-06-18, task #139 region-native)
+
+STATUS: counting engine built + adversarially validated + size-free
+scaling confirmed on the done graphs; sampled server sweep in flight.
+
+WHAT WORKS (committed: region_native/region_native.cpp, optimized):
+- Pipeline: degeneracy-ordered BK maximal cliques (regions) -> profile
+  classes (region = disjoint union of classes) -> canonical-home tuple
+  enumeration -> support by region union-count IE B&B at class
+  granularity; |Host|<=2 closed-form fast paths; median |Host|=1.
+- Correctness: bit-exact vs direct s-clique enumeration, thousands of
+  tuples on dblp-core30/ca-GrQc/ca-CondMat across (3,4)/(4,5)/(3,6)/
+  (5,6)/(4,6). Two bugs caught & fixed by the self-check:
+  (1) unionCount aliased its arg by ref -> emptied before IE subtract
+      (over-count on every multi-host tuple);
+  (2) naive BK pivot O(n^2) at root (flame-graph: 1547/1548 in
+      intersect_nbr) -> degeneracy ELS, MCE 55s->0.30s on com-dblp.
+
+SIZE-FREE SCALING (user's main criterion: time must not grow with r,s):
+sampled grid s-offsets {1,3,6,10,15} per r in {3..7}, verify OFF (the
+direct-enum ground-truth was the runtime bottleneck, not region-native).
+- dblp-core30: region-native 0.02-0.04s across the WHOLE grid (flat
+  ratio 2x); CND explodes 1.36s@(3,4) -> 835s@(5,6) -> timeout.
+- ca-GrQc: region-native 0.01-0.27s (spikes only at s=r+1 cells), and
+  FASTER than current RegND* there ((5,6) 0.13s vs RegND* 2.14s; (6,7)
+  0.19s vs 1.21s); CND (7,8)=298s.
+=> region-native is flat in (r,s); vs CND 30x-28000x and the gap GROWS
+   with s; vs RegND* comparable-or-faster (flatter on hard s=r+1 cells).
+
+IN-FLIGHT: sampled sweep on tods2 (pid 399562, /data/wenqianz/brn/,
+BRN_VERIFY=0, region-native skip-floor). Done: dblp-core30, ca-GrQc (23
+cells each); grinding ca-HepPh (weak case, (4,5)=168s, self-bounds via
+skip-floor); ca-CondMat/com-dblp/web-it to follow. Monitor bsdquuek6.
+
+HONEST SCOPE: validated half = INITIAL SUPPORT counting only. The
+peel-UPDATE half is NOT yet region-native (its IE B&B is structurally
+the same dead-box update, so the path is clear). End-to-end engine =
+next milestone. ca-HepPh (heavy overlap, vtx in up to 1411 regions) is
+the IE blow-up weak case = the already-known universal weak case; no
+new weak case introduced.
+
+DEPLOY GOTCHAS (this session): `git pull --ff-only` SILENTLY failed
+(swallowed by `| tail -1`) -> server ran stale code/binary for several
+relaunches; FIX: `git fetch` then `git reset --hard origin/main`, each
+as a SEPARATE ssh call (chained multi-stmt ssh sometimes returns no
+output), and VERIFY `git rev-parse --short HEAD` before launching.
+Also rebuild region_native AND degeneracy_cliques on the server after
+any pull (the stale degeneracy_cliques printed SDCT_Fused + threw
+"clique not found" on ca-GrQc until rebuilt from HEAD).
+
+NEXT: (a) finish sampled sweep, plot scripts/make_rn_scaling_fig.py;
+(b) design+build the region-native PEEL-UPDATE for an end-to-end
+engine; (c) decide paper framing (CPI -> region-native counting).
