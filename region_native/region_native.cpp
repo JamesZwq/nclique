@@ -1,4 +1,5 @@
 // region_native.cpp — standalone prototype of region-native pivot
+#include <unordered_set>
 // counting for (r,s)-nucleus INITIAL SUPPORT. Touches no existing code.
 //
 // Idea (SigmodPlus section 24): compute the s-clique support of every
@@ -291,6 +292,26 @@ int main(int argc, char **argv) {
         for (int rid : classRegions[c]) regionClasses[rid].push_back(c);
     for (int i = 0; i < nR; i++) sort(regionClasses[i].begin(), regionClasses[i].end());
 
+    // SAFE (private) classes = in exactly one region. By Thm vsafe every
+    // r-clique made only of safe classes is supported solely inside that
+    // region and gets the closed-form region floor (direct-binned, NOT
+    // peeled). The existing engine excludes these from its active-tuple
+    // set; region-native must too, or it pays per-tuple work on the huge
+    // private-tuple population (com-dblp (7,8): 150M tuples, most private).
+    // We split each region's classes into [non-safe | safe] and enumerate
+    // only tuples with >=1 non-safe class (the rest are direct-binned).
+    std::vector<char> safeClass(nC, 0);
+    for (int c = 0; c < nC; c++) if (classRegions[c].size() == 1) safeClass[c] = 1;
+    // per-region: non-safe classes first, then safe; record split point.
+    std::vector<int> nsCount(nR, 0);
+    for (int i = 0; i < nR; i++) {
+        auto &rc = regionClasses[i];
+        std::stable_partition(rc.begin(), rc.end(),
+                              [&](int c){ return !safeClass[c]; });
+        nsCount[i] = (int)std::count_if(rc.begin(), rc.end(),
+                                        [&](int c){ return !safeClass[c]; });
+    }
+
     // adversarial invariant: |region| == sum of its class sizes
     for (int i = 0; i < nR; i++) {
         long tot = 0; for (int c : regionClasses[i]) tot += classSize[c];
@@ -393,32 +414,58 @@ int main(int argc, char **argv) {
     // native to the quotient, and it removes the per-tuple string-key map
     // (millions of allocations) the first version paid.
     int curRid = 0;
+    long long nDirectBin = 0;   // tuples with |alive host|<2 (direct-binned)
     vector<pair<int,int>> cur;  // (classId, j)
     vector<Node> Bbuf;          // reused host-node buffer
-    std::function<void(int,const vector<int>&,int)> enumTuple =
-        [&](int idx, const vector<int> &cls, int rem) {
+    std::unordered_set<uint64_t> distinctHosts;
+    std::unordered_map<uint64_t,double> hostSup;   // host hash -> support (memoized)
+    bool hostProbe = getenv("PIVOTER_RN_HOSTPROBE") != nullptr;
+    // PEELED tuples (those needing a support union-count) use ONLY
+    // multi-region classes: any single-region (safe) class would pin the
+    // host to one region, giving |Host|=1 -> direct-binned (core = region
+    // floor, Thm vsafe), never peeled. So we enumerate ONLY the non-safe
+    // (multi-region) prefix of each region's class list, and at the leaf
+    // keep the tuple only if it is supported by >=2 regions of size>=s.
+    // This skips the entire single-region tuple population WITHOUT
+    // enumerating it (com-dblp (7,8): 150M tuples -> the multi-host few).
+    // INCREMENTAL HOST + EARLY PRUNE. We walk the class-subset tree once,
+    // maintaining host = ∩ classRegions[chosen] incrementally in
+    // hostStk[depth] (no per-leaf re-intersection, no allocation). The
+    // moment the host shrinks to a single region, every deeper pattern has
+    // |Host|=1 (direct-binned), so we prune the whole subtree WITHOUT
+    // enumerating it. At a leaf the host is already known; its support is
+    // memoized (support depends only on the host, com-dblp (7,8): 2067
+    // distinct hosts behind 28M patterns).
+    auto intersectInto = [](vector<int> &out, const vector<int> &a, const vector<int> &b) {
+        out.clear(); size_t i = 0, j = 0;
+        while (i < a.size() && j < b.size()) {
+            if (a[i] < b[j]) i++;
+            else if (a[i] > b[j]) j++;
+            else { out.push_back(a[i]); i++; j++; }
+        }
+    };
+    vector<vector<int>> hostStk(r + 2);
+    std::function<void(int,const vector<int>&,int,int)> rec =
+        [&](int idx, const vector<int> &cls, int rem, int depth) {
         if (rem == 0) {
-            // host set = ∩ profiles of classes in cur
-            vector<int> host = classRegions[cur[0].first];
-            for (size_t i = 1; i < cur.size() && !host.empty(); i++)
-                host = interClasses(host, classRegions[cur[i].first]);
-            if (host.empty() || host[0] != curRid) return;  // not canonical home
-            // build B&B nodes from host regions (as class sets), prune size<s
-            Bbuf.clear();
-            for (int rid : host) {
-                int vs = (int)regions[rid].size();
-                if (vs >= s) Bbuf.push_back({regionClasses[rid], vs});
-            }
+            const vector<int> &host = hostStk[depth];   // |host|>=2 guaranteed by prune
+            if (host[0] != curRid) return;              // not canonical home
+            uint64_t hh = 1469598103934665603ULL;
+            for (int rid : host) { hh ^= (uint64_t)rid; hh *= 1099511628211ULL; }
+            if (hostProbe) distinctHosts.insert(hh);
             double sup;
-            // fast paths: |host alive|<=2 needs no recursion
-            if (Bbuf.size() == 1) {
-                sup = C(Bbuf[0].vsize - r, s - r);
-            } else if (Bbuf.size() == 2) {
-                int iv = classesSize(interClasses(Bbuf[0].classes, Bbuf[1].classes));
-                sup = C(Bbuf[0].vsize - r, s - r) + C(Bbuf[1].vsize - r, s - r)
-                      - (iv >= s ? C(iv - r, s - r) : 0.0);
-            } else {
-                sup = unionCount(Bbuf);
+            auto it = hostSup.find(hh);
+            if (it != hostSup.end()) sup = it->second;
+            else {
+                Bbuf.clear();
+                for (int rid : host)
+                    Bbuf.push_back({regionClasses[rid], (int)regions[rid].size()});
+                if (Bbuf.size() == 2) {
+                    int iv = classesSize(interClasses(Bbuf[0].classes, Bbuf[1].classes));
+                    sup = C(Bbuf[0].vsize - r, s - r) + C(Bbuf[1].vsize - r, s - r)
+                          - (iv >= s ? C(iv - r, s - r) : 0.0);
+                } else sup = unionCount(Bbuf);
+                hostSup.emplace(hh, sup);
             }
             nTuples++; sumSup += sup;
             if (verifyN && (int)samples.size() < verifyN) {
@@ -429,18 +476,31 @@ int main(int argc, char **argv) {
         }
         for (int i = idx; i < (int)cls.size(); i++) {
             int c = cls[i];
+            if (depth == 0) hostStk[depth + 1] = classRegions[c];
+            else intersectInto(hostStk[depth + 1], hostStk[depth], classRegions[c]);
+            if (hostStk[depth + 1].size() < 2) continue;   // |Host|<2 -> prune subtree
             int maxj = min(rem, classSize[c]);
             for (int j = 1; j <= maxj; j++) {
                 cur.push_back({c, j});
-                enumTuple(i + 1, cls, rem - j);
+                rec(i + 1, cls, rem - j, depth + 1);
                 cur.pop_back();
             }
         }
     };
-    for (int i = 0; i < nR; i++) { curRid = i; enumTuple(0, regionClasses[i], r); }
+    std::vector<int> nsClasses;
+    for (int i = 0; i < nR; i++) {
+        if (nsCount[i] < 1) continue;        // no multi-region class -> all direct-binned
+        curRid = i;
+        nsClasses.assign(regionClasses[i].begin(), regionClasses[i].begin() + nsCount[i]);
+        rec(0, nsClasses, r, 0);
+    }
     auto T4 = Clock::now();
     printf("[rn] tuples=%lld  support B&B visited=%lld  support=%.2fs\n",
            nTuples, visited, secs(T3, T4));
+    if (hostProbe)
+        printf("[rn] HOSTPROBE: distinct_hosts=%zu  patterns=%lld  collapse=%.1fx\n",
+               distinctHosts.size(), nTuples,
+               distinctHosts.empty() ? 0.0 : (double)nTuples / distinctHosts.size());
     printf("[rn] TIMING: MCE=%.2fs support=%.2fs (support-only, the CPI-replacement phase)\n",
            secs(T1, T2), secs(T3, T4));
 
