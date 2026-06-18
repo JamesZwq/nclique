@@ -1885,3 +1885,51 @@ BUILD PLAN (correctness-first, each gated):
  P2: peel via dead-boxes on these per-host-group paths; re-gate core
      distribution vs brute + V3LM.
  P3: size-free sweep + end-to-end vs CND/RegND*.
+
+## 29. CONSOLIDATED STATE + P2 build (orbit-aware class Pivoter) (2026-06-18, #139)
+
+WHERE WE ARE (region-native engine, region_native/):
+ - COUNTING (initial support): DONE, fast, size-free. region_native.cpp
+   (incremental host + memoized-by-host + subtree prune). 500-cell dense
+   sweep in paper_data/bench_region_native_dense.csv: 5/6 graphs flat
+   (1.8-8.8x over r=3..8 x s=r+1..20); ca-HepPh the IE-overlap outlier.
+ - PEEL (end-to-end nucleus): region_native_peel.cpp. CORRECT (vs brute
+   34/34, vs V3LM r>=3 4/4). controlled_split bounds the single-region
+   antichain. BUT not fast: multi-host (|host|>=2) patterns need a
+   cross-region IE that blows up (the wall).
+
+WHY THE PEEL IS HARD, AND THE FIX (user steer, confirmed necessary):
+ Counting (s-r)-cliques in a UNION of cliques (the host regions) without a
+ pivot forces region-IE; for the peel that means cross-region dead-box IE.
+ The pivot/SCT of the candidate-class graph turns the union into disjoint,
+ single-counted leaves -> dead-box update is one structure, no cross-region
+ IE. The candidate-class graph is QUOTIENT-NATIVE (class i ~ j iff they
+ co-occur in a region; P1 validated 400/400 == region-IE). pivot != CPI:
+ do it at CLASS granularity (classes << vertices), lightweight.
+
+P2 = ORBIT-AWARE CLASS-WEIGHTED PIVOTER (the irreducible core):
+ Build the SCT of the quotient graph (nodes=classes, edges=co-occurrence,
+ weight w_c=classSize). The vertex SDCT (existing, src/SDCT_*) holds/pivots
+ individual vertices; the class version must hold/pivot CLASSES carrying
+ w_c interchangeable vertices, so "holding" a class consumes one and leaves
+ a residual (orbit/binomial handling) -- this is the one intricate piece
+ (production spent ~7 tasks on its vertex analogue).
+ Output: CCPath leaves (h_c holds, n_c pivots) s.t. sum over leaves of
+ support_count(leaf) == total weighted s-cliques, each counted once.
+ Then the peel = the existing CCPath dead-box machinery (support_count +
+ lazy_delete + controlled_split, all in CCPathCore.h) on these class-leaves
+ -- single structure, no region-IE.
+
+GATES (correctness-first; user wants adversarial subagents each step):
+ G1 build SCT, sum_leaves support_count(empty forbidden) == region-IE
+    (region_native.cpp suppOf) on ca-GrQc/ca-CondMat/com-dblp, all (r,s).
+ G2 peel on leaves; core dist == brute (verify_nucleus_brute.py) on tiny
+    graphs + == V3LM (r>=3) on small real cells.
+ G3 size-free sweep + end-to-end time/mem vs CND/RegND* on tods2.
+
+KEY FILES: region_native/region_native_peel.cpp (peel + candcheck P1),
+ src/NucleusDecomposition/CCPathCore.h (support_count, insert_antichain,
+ controlled_split, first_failing_split_by_vector -- REUSE for the peel),
+ scripts/verify_nucleus_brute.py (oracle), graphs/t_*.edges (tiny tests,
+ regenerable from the inline python in the session).
+COMMITS this session: c5282e6 (counting flatness fix) .. 0ebfc4d (P1).
