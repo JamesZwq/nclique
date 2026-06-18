@@ -812,25 +812,40 @@ int main(int argc, char **argv) {
     // (localpos,val)) and test just those few positions -- avoiding both the
     // per-path tuple_to_threshold allocation and the full-width O(M) scan over
     // the ~99% of paths that are unaffected.
-    vector<CCPath> sfdKeep;                            // reused scratch
+    vector<CCPath> sfdKids;                            // reused scratch (split children)
+    // IN-PLACE: unchanged paths (~99%) stay put (never moved). Only changed paths
+    // are snapshotted; covers-whole / split-parent paths are swap-removed; split
+    // children are appended. Same resulting slot (order-independent: leaves are a
+    // disjoint set, support = sum); same chgOld set. Avoids the per-call rebuild of
+    // the entire split-set (was 339M CCPath moves on com-dblp(3,4)).
     auto slotForbidDiff = [&](int lid, const Vec &bloc,
                               const vector<pair<int,int>> &plNZ, vector<CCPath> &chgOld) {
         vector<CCPath> &cur = slotPaths[lid];
-        vector<CCPath> &keep = sfdKeep; keep.clear(); keep.reserve(cur.size());
+        sfdKids.clear();
         chgOld.clear();
-        for (auto &p : cur) {
+        int w = (int)cur.size();                          // live prefix [0,w)
+        for (int i = 0; i < w; ) {
+            CCPath &p = cur[i];
             bool imposs = false;                          // impossible(p, bloc)?
             for (auto &pv : plNZ) if ((int)p.u[pv.first] < pv.second) { imposs = true; break; }
-            if (imposs) { keep.push_back(std::move(p)); continue; }
+            if (imposs) { ++i; continue; }                // unchanged: stays in place
             chgOld.push_back(p);                            // snapshot before change
-            if (ccpath::covers_whole_path(p, bloc)) continue; // path fully dead (a==bloc)
-            ccpath::insert_antichain(p.forbidden, bloc);
-            if ((int)p.forbidden.size() > KMAX) {
-                auto kids = ccpath::controlled_split(p, KMAX);
-                for (auto &k : kids) keep.push_back(std::move(k));
-            } else keep.push_back(std::move(p));
+            bool remove = false;
+            if (ccpath::covers_whole_path(p, bloc)) {
+                remove = true;                             // path fully dead (a==bloc)
+            } else {
+                ccpath::insert_antichain(p.forbidden, bloc);
+                if ((int)p.forbidden.size() > KMAX) {
+                    auto kk = ccpath::controlled_split(p, KMAX);
+                    for (auto &k : kk) sfdKids.push_back(std::move(k));
+                    remove = true;                         // split-parent replaced by children
+                }
+            }
+            if (remove) { --w; if (i != w) cur[i] = std::move(cur[w]); }  // swap-remove (no self-move)
+            else ++i;                                      // modified in place, keep
         }
-        cur.swap(keep);
+        cur.resize(w);
+        for (auto &k : sfdKids) cur.push_back(std::move(k));
         if (cur.size() > maxSplit) maxSplit = cur.size();
     };
 
