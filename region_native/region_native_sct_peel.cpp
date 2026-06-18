@@ -773,6 +773,17 @@ int main(int argc, char **argv) {
     // Correctness is invariant to KMAX (verified 80/80 vs brute at KMAX=1,2,12).
     int KMAX = 2;
     if (getenv("SCT_KMAX")) { KMAX = atoi(getenv("SCT_KMAX")); if (KMAX < 1) KMAX = 1; }
+    // SKIP_H1: a |host|=1 pattern peels at EXACTLY L_M=C(|M|-r,s-r) regardless
+    // of how the peel proceeds (every r-clique in its region M has support
+    // >= L_M, so no witness of a |host|=1 pattern dies before curLevel=L_M --
+    // verified 0 exceptions on all test graphs). Its initial key already ==
+    // L_M, so recomputing its support during affected-updates is pure waste:
+    // the answer never changes its bucket. We therefore SKIP |host|=1 patterns
+    // as affected-update TARGETS (they still peel normally as SOURCES, removing
+    // their witnesses so |host|>=2 patterns drop correctly). Since |host|=1 is
+    // the majority on sparse/real graphs, this removes the bulk of the
+    // per-affected scWithTerms work. Bit-identical to the full peel.
+    bool skipH1 = getenv("SCT_NO_SKIP_H1") == nullptr;   // default ON
     size_t maxSplit = 0;                              // diagnostic: largest split-set
     // Record a pattern's LOCAL threshold into slot lid. Paths where the
     // threshold is impossible are UNCHANGED (kept in place); the rest are the
@@ -1015,6 +1026,7 @@ int main(int argc, char **argv) {
             auto applyIdx = [&](const Vec &ql, int t) {
                 int qi = qsAll[t];
                 if (qi == pi || !pats[qi].alive) return;
+                if (skipH1 && pats[qi].host.size() == 1) return;  // peels at L_M regardless
                 double d = 0.0;                         // drop, via delta formula
                 for (size_t z = 0; z < chgOld.size(); z++) {
                     const CCPath &p = chgOld[z];
