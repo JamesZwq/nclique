@@ -776,10 +776,14 @@ int main(int argc, char **argv) {
     // KMAX bounds each path's forbidden antichain (controlled_split keeps it
     // <= KMAX), so support_count's inclusion-exclusion stays <= 2^KMAX terms.
     // With the changed-paths incremental update the split COUNT no longer
-    // hurts, so a small KMAX (cheap per-call IE) wins: KMAX=2 finishes
-    // ca-GrQc(3,4) in <1s and dblp-core30(3,4) in 0.04s vs minutes at KMAX=12.
-    // Correctness is invariant to KMAX (verified 80/80 vs brute at KMAX=1,2,12).
-    int KMAX = 2;
+    // hurts, so a small KMAX (cheap per-call IE) wins. KMAX=1 minimises the
+    // per-candidate IE/DP (<=2 terms) and measured FASTEST on every cell tested
+    // (moderate ca-GrQc/ca-CondMat/dblp ~17-24% faster than KMAX=2, and even on
+    // the maxSplit-stress com-dblp(3,4) 10.7s vs 12.9s) -- the affected-Q drop is
+    // per-candidate-DP-bound, so the slightly larger split-set (cheap impossible-
+    // skip scan) never dominates. Correctness is invariant to KMAX (verified
+    // 80/80 vs brute at KMAX=1,2,12; corehash byte-identical across KMAX here).
+    int KMAX = 1;
     if (getenv("SCT_KMAX")) { KMAX = atoi(getenv("SCT_KMAX")); if (KMAX < 1) KMAX = 1; }
     // SKIP_H1: a |host|=1 pattern peels at EXACTLY L_M=C(|M|-r,s-r) regardless
     // of how the peel proceeds (every r-clique in its region M has support
@@ -792,6 +796,17 @@ int main(int argc, char **argv) {
     // the majority on sparse/real graphs, this removes the bulk of the
     // per-affected scWithTerms work. Bit-identical to the full peel.
     bool skipH1 = getenv("SCT_NO_SKIP_H1") == nullptr;   // default ON
+    // DFS_PRUNE: per-path AND-feasibility prune of the affected-Q DFS. The DFS's
+    // cap=min(uEnv[c],rem) uses uEnv = per-coord UNION (max_z u_z) over chgOld, so
+    // it admits ql that fit the union but NO single path; those score d==0 in every
+    // chgOld path (applyIdx's max(ql,pl)<=p.u test) and are pure waste (~57 cands
+    // generated for ~4 with a real drop). We track, per chgOld path z, whether the
+    // prefix max(pl,ql) still fits u_z; once NO path is alive we prune the subtree.
+    // Killing is monotone in descent (running max only grows, Σ only grows), and
+    // pruned candidates are exactly applyIdx's d==0 set, so cores are BIT-IDENTICAL
+    // (applyIdx stays the final oracle: an over-keep just wastes a lookup). All
+    // chgOld paths share T=s, so the Σ<=T bound stays path-independent (sfp/Tcap).
+    bool dfsPrune = getenv("SCT_DFS_PRUNE") != nullptr;  // default OFF (A/B flag)
     size_t maxSplit = 0;                              // diagnostic: largest split-set
     // Record a pattern's LOCAL threshold into slot lid. Paths where the
     // threshold is impossible are UNCHANGED (kept in place); the rest are the
@@ -971,6 +986,9 @@ int main(int argc, char **argv) {
     vector<char> seen(pats.size(), 0);
     vector<double> delta(pats.size(), 0.0);          // per-affected exact drop
     Vec uEnv, sufPl, qcand;                           // reused per-leaf scratch
+    vector<char> aliveBuf;                             // depth-indexed alive scratch (DFS_PRUNE)
+    vector<const int16_t*> chgU;                       // u-rows of chgOld (DFS_PRUNE)
+    long long dbgGen = 0, dbgHit = 0, dbgNZ = 0;       // instrumentation: cands gen / hit / nonzero-drop
     while (peeledN < npat) {
         auto it = bk.find(curLevel);
         while (it == bk.end() || it->second.empty()) {
@@ -1075,6 +1093,7 @@ int main(int argc, char **argv) {
                 int qi = qsAll[t];
                 if (qi == pi || !pats[qi].alive) return;
                 if (skipH1 && pats[qi].host.size() == 1) return;  // peels at L_M regardless
+                dbgHit++;                               // a real candidate pattern reached
                 double d = 0.0;                         // drop, via delta formula
                 for (size_t z = 0; z < chgOld.size(); z++) {
                     const CCPath &p = chgOld[z];
@@ -1091,11 +1110,13 @@ int main(int argc, char **argv) {
                     if (ok && sm <= (int)p.T) d += scWithTerms(p, chgOldTerms[z], ql, &pl);
                 }
                 if (d == 0.0) return;
+                dbgNZ++;                                // candidate with a genuine nonzero drop
                 if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                 delta[qi] += d;
             };
             // look up a complete candidate (by rolling hash) and confirm exactly.
             auto applyCand = [&](const Vec &ql, uint64_t h) {
+                dbgGen++;                               // a complete ql candidate generated
                 auto it = q2p.find(h);
                 if (it == q2p.end()) return;
                 for (int t : it->second) if (qbAll[t] == ql) { applyIdx(ql, t); return; }
@@ -1119,7 +1140,50 @@ int main(int argc, char **argv) {
                 }
                 qcand[c] = 0;
             };
-            dfs(dfs, 0, r, 0, 1469598103934665603ULL);
+            if (!dfsPrune) {
+                dfs(dfs, 0, r, 0, 1469598103934665603ULL);
+            } else {
+                // ---- per-path AND-feasibility prune (SCT_DFS_PRUNE) ----
+                // aliveBuf is depth-indexed: row c (offset c*nChg) holds, for each
+                // chgOld path z, whether prefix max(pl,ql)[<c] still fits u_z. Frame c
+                // reads its row, writes row c+1 per branch j; recursion for j finishes
+                // before j+1, so a single buffer per depth is safe (no allocation).
+                int nChg = (int)chgOld.size();
+                if ((int)chgU.size() < nChg) chgU.resize(nChg);
+                for (int z = 0; z < nChg; z++) chgU[z] = chgOld[z].u.data();
+                if ((long long)aliveBuf.size() < (long long)(Mloc + 1) * nChg)
+                    aliveBuf.assign((size_t)(Mloc + 1) * nChg, 1);
+                for (int z = 0; z < nChg; z++) aliveBuf[z] = 1;   // root: all paths alive
+                const int16_t **chgUp = chgU.data();
+                char *ab = aliveBuf.data();
+                auto dfsP = [&](auto &&self, int c, int rem, int acc, uint64_t h, int base) -> void {
+                    if (c == Mloc) { if (rem == 0) applyCand(qcand, h); return; }
+                    if (acc + (int)sfp[c] > Tcap) return;        // Σ bound (path-independent, T=s)
+                    const char *al = ab + base;
+                    // cap to the largest u_z[c] among ALIVE paths (a larger j kills every
+                    // alive path, so it generates nothing). chgOld paths all have pl<=u,
+                    // so plc<=capA whenever a path is alive.
+                    int capA = 0;
+                    for (int z = 0; z < nChg; z++) if (al[z] && (int)chgUp[z][c] > capA) capA = (int)chgUp[z][c];
+                    int cap = capA; if (cap > rem) cap = rem;
+                    int plc = (int)plp[c];
+                    char *nx = ab + base + nChg;
+                    for (int j = 0; j <= cap; j++) {
+                        int mx = plc > j ? plc : j;
+                        bool any = false;                         // build nextAlive, prune if empty
+                        for (int z = 0; z < nChg; z++) {
+                            char a = al[z] && (mx <= (int)chgUp[z][c]);
+                            nx[z] = a; any = any || a;
+                        }
+                        if (!any) continue;                       // no path can host this prefix
+                        qcand[c] = (int16_t)j;
+                        uint64_t hc = (h ^ ((uint64_t)(uint16_t)j + 1)) * HMUL;
+                        self(self, c + 1, rem - j, acc + mx, hc, base + nChg);
+                    }
+                    qcand[c] = 0;
+                };
+                dfsP(dfsP, 0, r, 0, 1469598103934665603ULL, 0);
+            }
         }
         for (int qi : aff) {
             seen[qi] = 0;
@@ -1133,6 +1197,8 @@ int main(int argc, char **argv) {
     auto T6 = Clock::now();
     printf("[sct-peel] peel=%.2fs  peeled=%lld/%lld  maxSplit(split-set)=%zu\n",
            secs(T5,T6), peeledN, npat, maxSplit);
+    fprintf(stderr, "[sct-peel] dbg dfsPrune=%d cand_gen=%lld hit=%lld nz=%lld  gen/nz=%.1f\n",
+            (int)dfsPrune, dbgGen, dbgHit, dbgNZ, dbgNZ ? (double)dbgGen/dbgNZ : 0.0);
     printf("[sct-peel] TIMING MCE=%.2f enum=%.2f sct-build+maps=%.2f peel=%.2f total=%.2f\n",
            secs(T1,T2), secs(T3,T4), secs(Tqg0,T5), secs(T5,T6), secs(T1,T6));
     // fold in the r-mergeable direct-assigned cores
