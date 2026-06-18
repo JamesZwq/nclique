@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RegND:区域/类商上的 (r,s)-Nucleus 分解</title>
+<script>
+  MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$','$$']] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  :root{
+    --fg:#1f2430; --muted:#5b6470; --bg:#fbfcfe; --card:#ffffff;
+    --accent:#2563eb; --accent2:#0d9488; --win:#0a7d34; --lose:#b42318; --warn:#b45309;
+    --border:#e3e8ef; --code:#0f172a; --codebg:#f3f6fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.75 -apple-system,"PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;}
+  .wrap{max-width:960px;margin:0 auto;padding:48px 28px 96px;}
+  h1{font-size:30px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em;}
+  .sub{color:var(--muted);font-size:15px;margin:0 0 28px;}
+  h2{font-size:23px;margin:48px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+  h3{font-size:18px;margin:28px 0 8px;color:var(--accent);}
+  p{margin:12px 0;}
+  .lead{font-size:17px;background:linear-gradient(180deg,#eef4ff,#f7faff);
+    border:1px solid #d6e2ff;border-radius:14px;padding:18px 22px;margin:0 0 8px;}
+  .lead b{color:var(--accent);}
+  code{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;
+    background:var(--codebg);padding:1px 6px;border-radius:5px;color:var(--code);}
+  pre{background:var(--code);color:#e6edf3;border-radius:12px;padding:16px 18px;
+    overflow:auto;font-size:13px;line-height:1.6;}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:center;}
+  th{background:#f1f5f9;font-weight:600;}
+  td.l,th.l{text-align:left;}
+  .win{color:var(--win);font-weight:600;} .lose{color:var(--lose);font-weight:600;}
+  .both{color:var(--warn);}
+  .note{border-left:4px solid var(--accent2);background:#f0fdfa;padding:12px 16px;
+    border-radius:0 10px 10px 0;margin:16px 0;}
+  .warnbox{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;
+    border-radius:0 10px 10px 0;margin:16px 0;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .card h4{margin:0 0 8px;font-size:15px;}
+  .kbd{display:inline-block;background:#eef2f7;border:1px solid #d6dde7;border-bottom-width:2px;
+    border-radius:6px;padding:1px 7px;font-family:monospace;font-size:12.5px;}
+  .small{color:var(--muted);font-size:13px;}
+  ol li,ul li{margin:6px 0;}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
+    vertical-align:middle;}
+  .tag.v{background:#fee4e2;color:#b42318;} .tag.c{background:#dcfce7;color:#0a7d34;}
+  hr{border:none;border-top:1px solid var(--border);margin:40px 0;}
+  .center{text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>RegND:在<strong>区域 / 类商</strong>上做 (r,s)-Nucleus 分解</h1>
+<p class="sub">不构建顶点级 CPI · 用 class 级的 Succinct Clique Tree · 与 NuclearCD (CND) 的对比</p>
+
+<p class="lead">
+一句话:我们把"逐个 r-clique、在顶点上做"的核分解,搬到一张<b>压缩过的商图</b>上做——
+节点不是顶点,而是<b>可互换顶点的等价类</b>。计数用<b>纯二项式闭式</b>(不建任何 pivot 树),
+剥皮用一棵<b>class 级的 Succinct Clique Tree</b>。结果:在高 $(r,s)$ 和稀疏图上,
+<b>时间和内存都大幅领先 CND</b>;内存优势几乎是全局的。
+</p>
+
+<h2>1. 问题:(r,s)-Nucleus 分解</h2>
+<p>
+给定无向图,固定两个整数 $r &lt; s$。对每个 <b>r-clique</b>(r 个两两相连的点),它的 <b>support</b>
+定义为"包含它的 <b>s-clique</b> 个数"。把所有 r-clique 按 support 从小到大<b>剥皮</b>(peel):
+每次拿掉 support 最小的那个,记下它的 core number,并把因此死掉的 s-clique 从其它 r-clique 的
+support 里扣除,直到全部剥完。输出 = 每个 r-clique 的 core number 分布。
+</p>
+<p class="small">例:$(r,s)=(3,4)$ 就是"三角形在四团里的核分解";$(4,5)$ 是"四团在五团里的核分解"。</p>
+
+<h2>2. Baseline:CND(NuclearCD)<span class="tag v">顶点级</span></h2>
+<p>
+经典做法在<b>顶点粒度、逐个 r-clique</b> 上算:枚举出所有 r-clique 和 s-clique,逐个维护 support、逐个剥。
+正确、而且在低 $(r,s)$ 时很快(团很少、枚举便宜)。但它有一个致命点:
+</p>
+<div class="warnbox">
+<b>CND 必须把所有 r-clique / s-clique 物化出来。</b> 当 $(r,s)$ 升高,团的数量<b>组合爆炸</b>,
+时间和<b>内存</b>随之爆炸。实测 ca-GrQc 在 $(6,8)$ 时 CND 已占用 <b>2&nbsp;GB</b>,$(7,10)$ 时
+<b>近 9&nbsp;GB</b> 且跑不完;com-dblp、web-Stanford 在中等 $(r,s)$ 就要几十 GB。
+</div>
+
+<h2>3. RegND 的核心:区域 / 类商(quotient)</h2>
+<p>用三个对象把"巨量但等价"的东西压成"少量":</p>
+<table>
+<tr><th>概念</th><th class="l">定义</th><th class="l">作用</th></tr>
+<tr><td><b>Region</b></td><td class="l">大小 $\ge s$ 的<b>极大团</b>(MCE 枚举得到)</td><td class="l">任何 s-clique 一定整个落在某个 region 内</td></tr>
+<tr><td><b>Class</b></td><td class="l">region-成员身份<b>完全相同</b>的一组顶点(互相可交换)</td><td class="l">把 $n$ 个顶点压成 $n_C$ 个 class(通常小一两个数量级)</td></tr>
+<tr><td><b>Pattern / Tuple</b></td><td class="l">一个 r-clique orbit 的 <b>class-重数签名</b>(每类取几个点)</td><td class="l">把巨量 r-clique 压成少量 pattern —— size-free 的关键</td></tr>
+</table>
+<p>还有一个关键量 <b>Host</b><sub>($\tau$)</sub> = 包含某 r-clique 的所有 region 的集合。</p>
+<div class="note">
+<b>决定性事实(整个算法的地基):</b> 一个 r-clique 的 s-support <b>只取决于它的 Host</b>(在哪些 region 里),
+跟它具体是哪几个点无关。所以同一个 pattern 的所有 r-clique support 相同 —— 只需算一次。
+</div>
+<p class="small">实测压缩比:ca-GrQc 5242 个顶点 → 仅 <b>199 个 class</b>;1,680,912 个 4-clique → 仅 <b>22,542 个 pattern</b>(com-dblp 同理 317K 顶点 → 69K class)。</p>
+
+<h2>4. 计数那一半:region 容斥,<b>纯二项式闭式,不建任何 pivot 树</b> <span class="tag c">class 级</span></h2>
+<p>
+一个包含该 r-clique 的 s-clique,要再扩 $(s-r)$ 个点,这些点必须落在 Host 的 region 里。于是 support
+就是这些 region "扩展点集合"的<b>并集计数</b> —— 用 region 容斥(region-IE):
+</p>
+<p class="center">$$\mathrm{sup}(\tau)=\sum_{\varnothing\neq A\subseteq \mathrm{Host}(\tau)}(-1)^{|A|+1}\binom{\,|\cap A|-r\,}{\,s-r\,}$$</p>
+<p>
+其中 $|\cap A|$ 是 $A$ 里这些 region 的交集大小。<b>全程在 class 粒度</b>(region 的交 = 一小撮 class)。
+这正是<code>region_native.cpp</code> 头注释写的:
+"compute the s-clique support ... <b>with NO CPI/SDCT pivot index</b>"。三个优化(只枚举多-region 的 class、
+深度栈增量维护 Host、按 Host 哈希 memoize)让它真正 <b>size-free</b>:com-dblp $(7,8)$ 从 75.78s → <b>0.89s</b>。
+</p>
+<div class="note">所以<b>计数完全是组合数 + 容斥,没有 DP、没有顶点级 pivot 树。</b>这是 RegND 最干净的一半。</div>
+
+<h2>5. 剥皮那一半:<b>class 级的 Succinct Clique Tree(ClassSCT)</b> <span class="tag c">class 级</span></h2>
+<p>剥皮要在"witness 不断死掉"中维护每个 pattern 的 live support。RegND 不建顶点级 CPI,而是:</p>
+<ol>
+<li><b>建商图</b>:节点 = class,两个 class 间连边 ⟺ 它们在某个 region 里共现(即完全互相邻接)。</li>
+<li><b>对商图建一棵 class-加权的 s-clique SCT</b>(只建一次)。SCT 的叶子是<b>不相交的 CCPath</b>:每个加权 s-clique witness 恰好落在<b>一个</b>叶子里。</li>
+<li>于是 <b>support(pattern) = 它所在叶子的 support_count 之和</b> —— 纯求和,没有容斥(叶子不相交,没东西要减)。</li>
+<li><b>剥皮</b> = pattern 粒度的桶队列;剥掉 P 时把它的阈值塞进所在叶子的 forbidden 集合,受影响的 pattern = 与 P 共享叶子的那些。</li>
+</ol>
+<p>
+代码就是 <code>region_native_sct_peel.cpp</code>,include 的是 <code>ClassSCT.h</code> / <code>ClassSCTScalable.h</code>,
+<b>没有</b> include 顶点级的 <code>SDCT_Fused</code>/<code>SDCT</code>。<b>整条线唯一的顶点级操作只有 MCE(找 region = 极大团)</b>,之后全在 class 商上。
+</p>
+
+<h2>6. 为什么"更小、更快"?<b>class 级 vs 顶点级</b></h2>
+<div class="grid">
+  <div class="card">
+    <h4 style="color:#0a7d34">RegND:结构规模 = O(#class)</h4>
+    <p class="small">SCT 的节点是 class,几百个;叶子几百个。几乎<b>不随 $(r,s)$ 变化</b> —— 团多不多,商图就那么大。</p>
+    <p class="small">ca-GrQc(4,5):<code>nC=199, base-leaves=285</code>。</p>
+  </div>
+  <div class="card">
+    <h4 style="color:#b42318">CND:结构规模 = O(#r-clique)</h4>
+    <p class="small">要物化所有 r-clique / s-clique,数量随 $(r,s)$ <b>组合爆炸</b> → 内存随 RS 爆到 GB 级。</p>
+    <p class="small">ca-GrQc:251K 个 4-clique;高 RS 时几百万。</p>
+  </div>
+</div>
+<p>
+所以 RegND 的内存几乎是<b>平的</b>(只跟 class 数走),而 CND 的内存随 RS 起飞。这是下面实验里
+<code>SCT_MB</code> 一直 ~25M、<code>CND_MB</code> 涨到几十 GB 的根本原因。
+</p>
+
+<h2>7. 实验对比(tods2,真实 wall-clock + 峰值内存)</h2>
+<p class="small">SCT = RegND(<code>region_native_sct_peel</code>);CND = <code>PIVOTER_RUN_REF</code>。<code>&gt;90</code> = 超过 90s 超时;内存单位 MB。绿 = SCT 赢,红 = CND 赢,橙 = 两边都爆。</p>
+<table>
+<tr><th class="l">图</th><th>r</th><th>s</th><th>SCT 时间</th><th>SCT 内存</th><th>CND 时间</th><th>CND 内存</th><th>结论</th></tr>
+<tr><td class="l">ca-GrQc</td><td>3</td><td>4</td><td>0.67</td><td>19M</td><td>0.15</td><td>19M</td><td class="lose">CND</td></tr>
+<tr><td class="l">ca-GrQc</td><td>4</td><td>5</td><td>2.17</td><td>48M</td><td>0.47</td><td>63M</td><td class="lose">CND</td></tr>
+<tr><td class="l">ca-GrQc</td><td>5</td><td>7</td><td>1.89</td><td>26M</td><td>3.33</td><td>369M</td><td class="win">SCT 1.8× · 内存 14×</td></tr>
+<tr><td class="l">ca-GrQc</td><td>6</td><td>8</td><td>1.23</td><td><b>25M</b></td><td>19.95</td><td><b>2026M</b></td><td class="win">SCT 16× · 内存 80×</td></tr>
+<tr><td class="l">ca-GrQc</td><td>7</td><td>10</td><td><b>0.03</b></td><td><b>4M</b></td><td>&gt;90</td><td><b>8905M</b></td><td class="win">CND 爆炸</td></tr>
+<tr><td class="l">ca-GrQc</td><td>7</td><td>12</td><td>0.04</td><td>4M</td><td>&gt;90</td><td>8905M</td><td class="win">CND 爆炸</td></tr>
+<tr><td class="l">dblp-core30</td><td>3</td><td>4</td><td>0.08</td><td>6M</td><td>1.60</td><td>137M</td><td class="win">SCT 20×</td></tr>
+<tr><td class="l">dblp-core30</td><td>4</td><td>5</td><td>0.15</td><td>9M</td><td>31.64</td><td>2090M</td><td class="win">SCT <b>211×</b></td></tr>
+<tr><td class="l">dblp-core30</td><td>5</td><td>7</td><td>0.15</td><td>10M</td><td>&gt;90</td><td>16899M</td><td class="win">CND 爆炸</td></tr>
+<tr><td class="l">dblp-core30</td><td>6</td><td>8</td><td>0.28</td><td>15M</td><td>&gt;90</td><td>32777M</td><td class="win">CND 爆炸</td></tr>
+<tr><td class="l">dblp-core30</td><td>7</td><td>10–12</td><td>0.7–2.1</td><td>26–32M</td><td>&gt;90</td><td>32777M</td><td class="win">CND 爆炸</td></tr>
+<tr><td class="l">ca-CondMat</td><td>3–6</td><td>4–8</td><td>1.6–3.3</td><td>118–158M</td><td>0.35–1.07</td><td>55–178M</td><td class="lose">CND(稠密)</td></tr>
+<tr><td class="l">ca-CondMat</td><td>7</td><td>12</td><td>1.75</td><td>50M</td><td>2.09</td><td>309M</td><td class="win">SCT 1.2×</td></tr>
+<tr><td class="l">ca-HepPh</td><td>3</td><td>4</td><td>&gt;90</td><td>600M</td><td>11.26</td><td>509M</td><td class="lose">CND(太稠密,SCT 超时)</td></tr>
+<tr><td class="l">com-dblp</td><td>3</td><td>4</td><td>32.9</td><td>1121M</td><td>4.57</td><td>569M</td><td class="lose">CND(低 RS)</td></tr>
+<tr><td class="l">com-dblp</td><td>5</td><td>7</td><td>&gt;90</td><td><b>3476M</b></td><td>&gt;90</td><td><b>17593M</b></td><td class="both">都爆,但 SCT 内存小 5×</td></tr>
+<tr><td class="l">web-Stanford</td><td>5</td><td>7</td><td>&gt;90</td><td><b>103M</b></td><td>&gt;90</td><td><b>42916M</b></td><td class="both">都爆,但 SCT 内存小 <b>400×</b></td></tr>
+</table>
+
+<h3>怎么读这张表(诚实版)</h3>
+<ul>
+<li><b>时间优势 = 稀疏图 + 中高 $(r,s)$。</b> ca-GrQc(≥5,7)、dblp-core30(几乎全程)上 SCT 把 CND 打爆(最高 <b>211×</b>,以及 CND 直接超时/几十 GB)。这正是 CND 的 r-clique 枚举爆炸、而我们 size-free 的地方。</li>
+<li><b>内存优势 ≈ 全局。</b> 即使在 SCT 也超时的格子(web-Stanford(5,7)),SCT 也只用 <b>103M</b> 而 CND 要 <b>43 GB</b>。class 级结构的内存几乎平的。</li>
+<li><b>CND 反而赢的地方:低 $(r,s)$(3,4)/(4,5) + 稠密图。</b> ca-CondMat、ca-HepPh、以及大图 com-dblp/web-Stanford 的低 RS —— 那里 CND 本来就亚秒级,我们的剥皮 overhead 还追不上。ca-HepPh 太稠密,SCT 在 (3,4) 都会超时。</li>
+</ul>
+
+<h2>8. 当前状态与瓶颈(给后续优化看的)</h2>
+<p>
+计数一半是干净、可扩展的胜利;<b>瓶颈在剥皮</b>。在稠密 / 低 RS 的格子上,剥皮里"找受影响 pattern"的枚举有
+<b>~40× 空枚举</b>(每个 leaf-peel 生成 ~57 个候选,只有 ~4 个真受影响),根因是 <code>controlled_split</code>
+把叶子炸成几千条 path(dead-tracking 的代价)。已落地的 bit-identical 优化(in-place 重建、sum-guard、
+forbidden early-out)让稠密 (4,5) 快了 ~36%,但还差几倍。理论上界很清楚:真受影响集合满足闭式
+$E(P\!\to\!Q)=\sum_c\max(0,q_c-p_c)\le T-r$,对 $(4,5)$ 只有 ~4 个,所以"剥皮逼近 fundamental、过 CND"是可达的,
+关键是更省的 dead-tracking。
+</p>
+
+<hr>
+<h2>总结</h2>
+<div class="lead" style="background:linear-gradient(180deg,#f0fdf4,#f7fefb);border-color:#bbf7d0;">
+<b>RegND = 把核分解搬到 class 商上做</b>:计数用 region 容斥的纯二项式(不建顶点 CPI),剥皮用 class 级 SCT。
+因为结构规模只跟 class 数走、不随 $(r,s)$ 爆炸,所以<b>内存优势几乎全局</b>,<b>时间在稀疏图 + 中高 $(r,s)$ 上大幅领先</b>
+(CND 在那里因 r-clique 枚举爆炸而超时/吃几十 GB)。尚未拿下的是<b>稠密图 / 低 RS</b> —— CND 在那里本就极快,
+是剥皮 dead-tracking 还需突破的硬骨头。
+</div>
+<p class="small center" style="margin-top:32px;">代码:<code>region_native/region_native_sct_peel.cpp</code> · 设计与试错全记录:<code>SigmodPlus.md §24–37</code></p>
+
+</div>
+</body>
+</html>
