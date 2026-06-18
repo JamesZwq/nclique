@@ -24,7 +24,8 @@
 #include <unordered_set>
 #include <map>
 #include "CCPathCore.h"
-#include "ClassSCT.h"   // orbit-aware class-weighted SCT (G1/P2)
+#include "ClassSCT.h"          // dense orbit-aware class-SCT (oracle)
+#include "ClassSCTScalable.h"  // scalable sparse class-SCT (production path)
 // counting for (r,s)-nucleus INITIAL SUPPORT. Touches no existing code.
 //
 // Idea (SigmodPlus section 24): compute the s-clique support of every
@@ -496,26 +497,26 @@ int main(int argc, char **argv) {
     // ===================================================================
     //  CLASS-SCT PEEL  (replaces the region-IE peel of region_native_peel)
     // ===================================================================
-    // Step 1: GLOBAL quotient graph. nodes = classes 0..nC-1, weight
-    // w_c = classSize[c], edge(i,j) iff classes i,j co-occur in some region.
-    if ((long)nC > 20000) {
-        printf("[sct] nC=%d > 6000; dense quotient matrix too large; "
-               "skipping (scale is a later concern).\n", nC);
-        return 0;
-    }
+    // Step 1+2: SPARSE quotient graph + SCALABLE class-SCT. Handles large nC
+    // (com-dblp nC=123k, web-it 57k) where a dense C x C matrix would be ~15GB.
+    // edge(i,j) iff classes i,j co-occur in some region. scalableBuildClassSCT
+    // (degeneracy-seeded, sparse) returns COMPACT leaves (classIds sorted +
+    // local h/n/ell/u), validated == the dense builder over 50000 trials.
     auto Tqg0 = Clock::now();
-    ClassG QG; QG.C = nC; QG.w.assign(nC, 0);
-    for (int c = 0; c < nC; c++) QG.w[c] = classSize[c];
-    QG.A.assign(nC, std::vector<char>(nC, 0));
+    vector<int> qw(nC); for (int c = 0; c < nC; c++) qw[c] = classSize[c];
+    vector<vector<int>> qadj(nC);
     for (int M = 0; M < nR; M++) {
         const auto &rc = regionClasses[M];
         for (size_t a = 0; a < rc.size(); a++)
             for (size_t b = a + 1; b < rc.size(); b++) {
-                QG.A[rc[a]][rc[b]] = 1; QG.A[rc[b]][rc[a]] = 1;
+                qadj[rc[a]].push_back(rc[b]); qadj[rc[b]].push_back(rc[a]);
             }
     }
-    // Step 2: build the s-clique class-SCT (T=s). Leaves are DISJOINT.
-    auto baseLeaves = buildClassSCT(QG, s);
+    for (int c = 0; c < nC; c++) {
+        auto &v = qadj[c]; std::sort(v.begin(), v.end());
+        v.erase(std::unique(v.begin(), v.end()), v.end());
+    }
+    auto baseLeaves = classsct_scalable::scalableBuildClassSCT(nC, qw, qadj, s);  // COMPACT
     auto Tqg1 = Clock::now();
     printf("[sct] quotient nC=%d  base-leaves=%zu  build=%.2fs\n",
            nC, baseLeaves.size(), secs(Tqg0, Tqg1));
@@ -534,8 +535,9 @@ int main(int argc, char **argv) {
     // sanity: SCT total s-cliques == region-IE total (each s-clique has
     // C(s,r) r-subcliques). Strong global gate before per-pattern work.
     {
-        double sclSCT = 0; Vec zb((size_t)nC, 0);
-        for (auto &lf : baseLeaves) sclSCT += ccpath::support_count(lf, zb, ccpath_ncr);
+        double sclSCT = 0;
+        for (auto &lf : baseLeaves) { Vec zb((size_t)lf.m(), 0);  // compact: m()=|classIds|
+            sclSCT += ccpath::support_count(lf, zb, ccpath_ncr); }
         double sclIE = 0; for (auto &P : pats) sclIE += (double)P.mult * P.sup;
         sclIE /= C(s, r);
         printf("[sct] total s-cliques: class-SCT=%.0f  region-IE=%.0f  %s\n",
@@ -556,18 +558,10 @@ int main(int argc, char **argv) {
     vector<vector<CCPath>> slotPaths(nLeaf);          // compact (split) path set
     for (int lid = 0; lid < nLeaf; lid++) {
         const CCPath &lf = baseLeaves[lid];
-        vector<int> &sc = supC[lid];
-        for (int c = 0; c < nC; c++) if (lf.n[c] || lf.h[c]) sc.push_back(c);
-        int M = (int)sc.size();
-        CCPath cp;
-        cp.h = Vec((size_t)M,0); cp.n = Vec((size_t)M,0);
-        cp.ell = Vec((size_t)M,0); cp.u = Vec((size_t)M,0);
-        for (int i = 0; i < M; i++) {
-            int c = sc[i];
-            cp.h[i]=lf.h[c]; cp.n[i]=lf.n[c]; cp.ell[i]=lf.ell[c]; cp.u[i]=lf.u[c];
-        }
-        cp.T = lf.T;
-        slotPaths[lid].push_back(std::move(cp));
+        // scalable leaves are ALREADY compact: classIds (sorted global) parallel
+        // to the local h/n/ell/u dimensions. Use them directly as supC/slotPath.
+        supC[lid].assign(lf.classIds.begin(), lf.classIds.end());
+        slotPaths[lid].push_back(lf);
     }
     // map a global-class vector to leaf lid's local dimension (b-vector).
     auto toLocal = [&](int lid, const Vec &gv) -> Vec {
@@ -613,9 +607,9 @@ int main(int argc, char **argv) {
             }
         };
         for (int lid = 0; lid < nLeaf; lid++) {
-            const CCPath &lf = baseLeaves[lid];
-            lcs.clear(); lcap.clear();
-            for (int c = 0; c < nC; c++) if (lf.n[c] || lf.h[c]) { lcs.push_back(c); lcap.push_back((int)lf.u[c]); }
+            const CCPath &cp = slotPaths[lid][0];          // compact leaf
+            lcs = supC[lid];                               // global class ids (sorted)
+            lcap.assign(cp.u.begin(), cp.u.end());         // local u, parallel to supC
             cur.clear(); enumLP(lid, 0, r);
         }
     }
