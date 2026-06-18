@@ -986,8 +986,9 @@ int main(int argc, char **argv) {
     vector<char> seen(pats.size(), 0);
     vector<double> delta(pats.size(), 0.0);          // per-affected exact drop
     Vec uEnv, sufPl, qcand;                           // reused per-leaf scratch
-    vector<char> aliveBuf;                             // depth-indexed alive scratch (DFS_PRUNE)
-    vector<const int16_t*> chgU;                       // u-rows of chgOld (DFS_PRUNE)
+    vector<char> uLiveBuf, covBuf;                     // depth-indexed prune scratch (DFS_PRUNE)
+    vector<const int16_t*> chgU, fbA;                  // u-rows / single-forbidden rows of chgOld
+    vector<int> fbCrit; vector<char> fbHas;            // per-path: max critical coord / has-1-forbidden
     long long dbgGen = 0, dbgHit = 0, dbgNZ = 0;       // instrumentation: cands gen / hit / nonzero-drop
     while (peeledN < npat) {
         auto it = bk.find(curLevel);
@@ -1143,39 +1144,56 @@ int main(int argc, char **argv) {
             if (!dfsPrune) {
                 dfs(dfs, 0, r, 0, 1469598103934665603ULL);
             } else {
-                // ---- per-path AND-feasibility prune (SCT_DFS_PRUNE) ----
-                // aliveBuf is depth-indexed: row c (offset c*nChg) holds, for each
-                // chgOld path z, whether prefix max(pl,ql)[<c] still fits u_z. Frame c
-                // reads its row, writes row c+1 per branch j; recursion for j finishes
-                // before j+1, so a single buffer per depth is safe (no allocation).
+                // ---- per-path COVERAGE + feasibility subtree prune (SCT_DFS_PRUNE) ----
+                // A chgOld path z scores 0 for candidate ql (so contributes nothing to
+                // the drop) iff it is u-INFEASIBLE (max(ql,pl) </=  u_z) OR COVERED
+                // (some forbidden a_z <= max(ql,pl) -- exactly scWithTerms' early-out,
+                // lines ~877-890). Both are MONOTONE as ql grows in descent, so once a
+                // path is dead it stays dead in the whole subtree; when ALL paths are
+                // dead the subtree's candidates all have d==0 and are pruned -- removing
+                // exactly applyIdx's d==0 set, so cores stay BIT-IDENTICAL (applyIdx is
+                // the oracle). This targets the ~90% forbidden-COVERAGE waste (vs the
+                // u-only prune, which the uEnv union already made tight). KMAX=1 default
+                // => <=1 forbidden/path; paths with !=1 forbidden skip coverage
+                // (conservative: an over-keep only wastes a lookup, never breaks cores).
                 int nChg = (int)chgOld.size();
-                if ((int)chgU.size() < nChg) chgU.resize(nChg);
-                for (int z = 0; z < nChg; z++) chgU[z] = chgOld[z].u.data();
-                if ((long long)aliveBuf.size() < (long long)(Mloc + 1) * nChg)
-                    aliveBuf.assign((size_t)(Mloc + 1) * nChg, 1);
-                for (int z = 0; z < nChg; z++) aliveBuf[z] = 1;   // root: all paths alive
-                const int16_t **chgUp = chgU.data();
-                char *ab = aliveBuf.data();
+                if ((int)chgU.size() < nChg) { chgU.resize(nChg); fbA.resize(nChg); fbCrit.resize(nChg); fbHas.resize(nChg); }
+                for (int z = 0; z < nChg; z++) {
+                    chgU[z] = chgOld[z].u.data();
+                    if (chgOld[z].forbidden.size() == 1) {
+                        const Vec &a = chgOld[z].forbidden[0];
+                        fbA[z] = a.data(); fbHas[z] = 1;
+                        int cm = -1;                              // max coord where a_z > pl (critical)
+                        for (int c = 0; c < Mloc; c++) if ((int)a[(size_t)c] > (int)pl[c]) cm = c;
+                        fbCrit[z] = cm;                           // tail a_z<=pl from coord cm+1
+                    } else { fbA[z] = nullptr; fbHas[z] = 0; fbCrit[z] = Mloc; }
+                }
+                long long need = (long long)(Mloc + 1) * nChg;
+                if ((long long)uLiveBuf.size() < need) uLiveBuf.assign((size_t)need, 1);
+                if ((long long)covBuf.size()   < need) covBuf.assign((size_t)need, 1);
+                for (int z = 0; z < nChg; z++) { uLiveBuf[z] = 1; covBuf[z] = fbHas[z] ? 1 : 0; }
+                const int16_t **uP = chgU.data(); const int16_t **aP = fbA.data();
+                const int *crit = fbCrit.data(); const char *hasF = fbHas.data();
+                char *ul = uLiveBuf.data(); char *cv = covBuf.data();
                 auto dfsP = [&](auto &&self, int c, int rem, int acc, uint64_t h, int base) -> void {
                     if (c == Mloc) { if (rem == 0) applyCand(qcand, h); return; }
                     if (acc + (int)sfp[c] > Tcap) return;        // Σ bound (path-independent, T=s)
-                    const char *al = ab + base;
-                    // cap to the largest u_z[c] among ALIVE paths (a larger j kills every
-                    // alive path, so it generates nothing). chgOld paths all have pl<=u,
-                    // so plc<=capA whenever a path is alive.
-                    int capA = 0;
-                    for (int z = 0; z < nChg; z++) if (al[z] && (int)chgUp[z][c] > capA) capA = (int)chgUp[z][c];
-                    int cap = capA; if (cap > rem) cap = rem;
+                    const char *ulc = ul + base, *cvc = cv + base;
+                    bool any = false;                            // any path still feasible AND uncovered?
+                    for (int z = 0; z < nChg; z++) {
+                        bool dead = !ulc[z] || (hasF[z] && cvc[z] && crit[z] < c);
+                        if (!dead) { any = true; break; }
+                    }
+                    if (!any) return;                            // whole subtree scores d==0
+                    int cap = (int)uEp[c]; if (cap > rem) cap = rem;
                     int plc = (int)plp[c];
-                    char *nx = ab + base + nChg;
+                    char *uln = ul + base + nChg, *cvn = cv + base + nChg;
                     for (int j = 0; j <= cap; j++) {
                         int mx = plc > j ? plc : j;
-                        bool any = false;                         // build nextAlive, prune if empty
                         for (int z = 0; z < nChg; z++) {
-                            char a = al[z] && (mx <= (int)chgUp[z][c]);
-                            nx[z] = a; any = any || a;
+                            uln[z] = ulc[z] && (mx <= (int)uP[z][c]);
+                            cvn[z] = hasF[z] ? (cvc[z] && ((int)aP[z][c] <= mx)) : 0;
                         }
-                        if (!any) continue;                       // no path can host this prefix
                         qcand[c] = (int16_t)j;
                         uint64_t hc = (h ^ ((uint64_t)(uint16_t)j + 1)) * HMUL;
                         self(self, c + 1, rem - j, acc + mx, hc, base + nChg);
