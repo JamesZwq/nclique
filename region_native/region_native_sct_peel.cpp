@@ -695,6 +695,14 @@ int main(int argc, char **argv) {
         }
     }
     for (auto &v : leafPats) std::sort(v.begin(), v.end());
+    // hasH2[lid]: does leaf lid host any |host|>=2 pattern? A |host|=1 pattern
+    // whose leaves are ALL pure-|host|=1 removes nothing relevant when it peels
+    // (its witnesses are M-exclusive, so they feed no |host|>=2 support), so its
+    // source-peel can be skipped entirely. (Source-skip; SCT_NO_SKIP_H1 disables
+    // both this and the target-skip.)
+    vector<char> hasH2(nLeaf, 0);
+    for (int lid = 0; lid < nLeaf; lid++)
+        for (int qi : leafPats[lid]) if (pats[qi].host.size() >= 2) { hasH2[lid] = 1; break; }
     // pre-mapped compact b for every (pattern, hosting-leaf) pair.
     vector<vector<Vec>> pbLocal(pats.size());         // parallel to patLeaves[pi]
     for (int pi = 0; pi < (int)pats.size(); pi++) {
@@ -949,6 +957,17 @@ int main(int argc, char **argv) {
             fprintf(stderr, "[peel] %lld/%lld lvl=%lld maxSplit=%zu t=%.1fs\n",
                     peeledN, npat, curLevel, maxSplit, secs(T5, Clock::now()));
         coreDist[P.core] += (double)P.mult;
+
+        // SOURCE-SKIP: a |host|=1 pattern whose leaves are all pure-|host|=1
+        // removes nothing that any |host|>=2 pattern depends on, so skip its
+        // entire affected-update (slotForbidDiff + DFS). Correct because its
+        // witnesses are M-exclusive (a |host|>=2 pattern is never hosted in
+        // these leaves, so never has a witness there).
+        if (skipH1 && P.host.size() == 1) {
+            bool affectsH2 = false;
+            for (int lid : patLeaves[pi]) if (hasH2[lid]) { affectsH2 = true; break; }
+            if (!affectsH2) continue;
+        }
 
         // INCREMENTAL, EXACT update. Only the leaves hosting P change, and
         // within a leaf only the PATHS where P's threshold applies change. For
