@@ -874,6 +874,20 @@ int main(int argc, char **argv) {
         // addLow we must let the IE terms account for the forbidden set instead.
         if (!addLow) {
             for (const auto &a : p.forbidden) if (ccpath::leq(a, b)) return 0.0;
+        } else {
+            // addLow raises the per-class floor to max(b, addLow); if ANY single
+            // forbidden a <= that floor, every witness >= floor is >= a (dead) so
+            // the count is 0 -- skip the IE+DP. Correct (only fires when truly 0;
+            // union-covered zeros still fall through to the IE).
+            const int M2 = p.m();
+            for (const auto &a : p.forbidden) {
+                bool below = true;
+                for (int c = 0; c < M2; c++) {
+                    int fl = (int)b[c] > (int)(*addLow)[c] ? (int)b[c] : (int)(*addLow)[c];
+                    if ((int)a[c] > fl) { below = false; break; }
+                }
+                if (below) return 0.0;
+            }
         }
         const int M = p.m();
         const int T = p.T;
@@ -1068,12 +1082,13 @@ int main(int argc, char **argv) {
                     // in A_p, y >= max(ql, pl)) weighted by C(n - ql, y - ql). The
                     // weight base STAYS ql (addLow=pl only raises the floor) --
                     // reweighting-correct delta. Feasible only if max(ql,pl)<=p.u.
-                    bool ok = true;
+                    bool ok = true; int sm = 0;
                     for (int c = 0; c < Mloc; c++) {
                         int v = (int)ql[c] > (int)pl[c] ? (int)ql[c] : (int)pl[c];
                         if (v > (int)p.u[c]) { ok = false; break; }
+                        sm += v;
                     }
-                    if (ok) d += scWithTerms(p, chgOldTerms[z], ql, &pl);
+                    if (ok && sm <= (int)p.T) d += scWithTerms(p, chgOldTerms[z], ql, &pl);
                 }
                 if (d == 0.0) return;
                 if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
