@@ -2283,3 +2283,38 @@ lightweight-build, competitive-with-V3LM peel that beats CND on more cells.
 The contribution regime is sparse + high-(r,s) (CND explodes, SCT/V3LM win,
 SCT's lighter build often wins the head-to-head). Dense low-(r,s) remains
 CND territory for all region methods.
+
+## 36. HONEST large-graph verdict: SCT peel does NOT scale (#139)
+
+User (emphatic): test LARGE graphs, small graphs prove nothing. Done.
+
+com-dblp (n=317k, m=1.05M):
+  (3,4): SCT 23.58s (build+maps 2.43 + peel 20.55) | V3LM 3.25s | CND 2.17s
+  (4,5): V3LM 14.63s | CND 17.19s | SCT killed (peel >150s)
+  (5,7): V3LM 54.29s | SCT peel >150s (1.79M patterns)
+  (7,10): SCT 10.75M patterns, peel >150s
+
+=> SCT peel is 7-11x SLOWER than V3LM on com-dblp; does NOT scale.
+
+KMAX lever EXHAUSTED (com-dblp 3,4 peel): KMAX=2 -> 21s, KMAX=4 -> 29s,
+KMAX=8/16 -> timeout. Higher KMAX = more 2^KMAX IE terms in scWithTerms,
+dominates the fewer-split-paths saving. KMAX=2 already optimal.
+
+ROOT CAUSE (important, honest): the SCT's premise was "disjoint leaves avoid
+region inclusion-exclusion, so it is faster." For the PEEL this premise
+FAILS -- the controlled_split slot growth (maxSplit=5607 on com-dblp 3,4)
+makes each peel's slot scan O(#peels x maxSplit) cost MORE than the bounded
+region-IE it avoids. V3LM's bounded-IE tuple peel beats the SCT split peel
+at scale. The 0.01s "build" earlier was just the class-build substep; full
+build+maps is 2.43s, already ~ V3LM's whole 3.25s.
+
+WHAT ACTUALLY WORKS (honest scorecard):
+  - Size-free COUNTING: scales (com-dblp 0.89s) -- the real scalable win.
+  - Peel small + high-(r,s): beats CND where it explodes; ~V3LM (13-13).
+  - Peel large graphs: loses to V3LM decisively. NOT its domain.
+The |host|=1 skip (real ~2x) does not change this ordering.
+
+RECOMMENDATION: contribution = size-free region-native counting (+ light
+class-SCT build) + the high-(r,s) peel niche; do NOT claim large-graph peel
+superiority. A scalable SCT peel would need to beat V3LM's bounded-IE
+incremental update, whose constant factor is lower -- uncertain / open.
