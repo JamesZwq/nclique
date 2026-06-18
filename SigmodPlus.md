@@ -2379,3 +2379,73 @@ ca-GrQc(4,5) (peel 1.06s vs CND 0.18s), ca-CondMat(4,5) (0.65s vs 0.18s). These 
 - Instrumented patchers used: /tmp/patch_{prof,timers,inplace,dfs}.py (counts: scWithTerms/dfsNodes/affPairs/
   hashMiss/realZeroDrop; timers: slotForbidDiff vs dfs+scWithTerms).
 - NEXT: implement (1) per-path enumeration, verify bit-identical, measure over-enumeration drop; then (2).
+
+## 38. Experiment baseline + architecture + the PEEL-walks-the-pivot-tree direction (2026-06-19, #139)
+
+### 38.1 RegND(class-SCT) vs CND comparison — tods2, TRUE wall-clock + peak RSS
+FAIRNESS NOTE (critical): measure WALL-CLOCK + peak RSS via `/usr/bin/time -f "%e %M"`, NOT the program's
+self-reported time. CND prints a "NucleusCoreDecomposition took:" line PER sub-phase; the FIRST one is a
+single phase and undercounts CND by ~28x (ca-GrQc(6,8): first "took"=0.388s vs TRUE wall=20.11s). My first
+sweep used the wrong number and falsely showed CND winning everywhere -- do not repeat.
+Sweep: 8 paper graphs x (3,4)(4,5)(5,7)(6,8)(7,10)(7,12), TO=90s. Script /tmp/rs_sweep2.sh -> /tmp/rs_compare.txt.
+HONEST verdict:
+ - WIN (time AND memory): small/sparse graphs at HIGH (r,s). dblp-core30 ALL rs (4,5)=211x; ca-GrQc (5,7)+
+   (6,8 SCT 1.2s/25MB vs CND 20s/2GB; (7,10) SCT 0.03s vs CND >90s/8.9GB). CND materializes all r-cliques ->
+   RAM explodes to 32GB; our class-SCT stays MB.
+ - MEMORY advantage is BROAD: SCT memory ~flat (class-level), CND grows with rs to 32GB cap.
+ - LOSE (time): dense graphs (ca-CondMat CND wins up to (7,10); ca-HepPh SCT even TIMES OUT at (3,4) while
+   CND=11s), and ALL large graphs at low rs (com-dblp(3,4) SCT 33s vs CND 4.6s; web-Stanford/com-youtube SCT
+   TIMES OUT >90s while CND finishes 20-73s). On large graphs SCT uses far less memory but DOESN'T FINISH
+   (moot). Consistent with SigmodPlus 36 "SCT peel does not scale".
+ => advantage is real but REGIME-SPECIFIC: high-rs on small/sparse. Large+dense is the unsolved wall.
+
+### 38.2 Architecture confirmed: NO vertex CPI; class-level SCT; the BUILD is already Pivoter
+ - region_native_sct_peel builds NO vertex-level CPI/SDCT. Counting = region-IE closed-form binomials
+   (region_native.cpp, sup(tau)=sum_A (-1)^{|A|+1} C(|cap A|-r, s-r)). Peel = class-level SCT.
+ - "Our CPI" = ClassSCT = class-weighted Succinct Clique Tree on the QUOTIENT graph (nodes=classes,
+   edge iff two classes co-occur in a region). ~26x smaller than vertex level (ca-GrQc nC=199 vs 5242 verts)
+   -- THIS is the source of the flat memory.
+ - ClassSCTScalable.h gen() IS the SDCT/Pivoter algorithm: orbit-aware pivot recursion (lowest-non-neighbour
+   branching) + degeneracy-seeding (each subtree open set <= d) + sparse adjacency. Already fast: com-dblp
+   build=0.13s (vs vertex SDCT ~85s on web-it). => NOTHING to borrow for the build; it is already Pivoter.
+
+### 38.3 Pipeline breakdown: PEEL is the wall (62-86%); build is cheap
+   ca-GrQc(6,8): build+maps 0.05 | PEEL 0.38 (86%)   |  ca-CondMat(4,5): build+maps 0.27 | PEEL 0.57 (62%)
+   com-dblp(3,4): build 0.13, maps ~2.06, PEEL 14.34 (83%).  Optimizing build is pointless; PEEL holds the time.
+
+### 38.4 The PEEL bottleneck (definitive): affected-Q OVER-ENUMERATION ~40x
+ - Fundamental work ~0.05s (the ~248942 real support updates) is BELOW CND's time. Waste = affected-Q search
+   generates ~57 candidates/leaf-peel for ~4 real. Candidates ARE real patterns (hashMiss ~negligible); the
+   waste is real co-occurring patterns whose specific witnesses give ZERO drop.
+ - The DP is NOT the bottleneck (confirmed user's intuition): support_count is a binomial (Vandermonde
+   C(sum(n-b),T-sum b) when unconstrained); only ~248942 real-drop DP calls ~0.1s. The cost is the ENUMERATION.
+ - Co-occurrence closed form: Q affected by P <=> E(P->Q)=sum_c max(0, ql_c-pl_c) <= T-r. (4,5) base leaf
+   T-r=1 => affected set intrinsically ~4 (Q = P with one unit moved between classes).
+
+### 38.5 Tried + verdicts (ALL bit-identical; verify cores match before trusting any change)
+ - COMMITTED pure wins: in-place slotForbidDiff (8c0086d); sum-guard + addLow forbidden early-out (b76b779).
+   ca-GrQc(4,5) 1.06 -> 0.68-0.76s (~30%). KMAX=1 best for dense cells.
+ - DUDS/reverted: active-classes DFS skip (~0%, the descent wasn't the cost); PER-PATH tight-box enumeration
+   (WORSE on dense: the disjoint split-boxes are barely tighter than their union, so ~2.4x re-enumeration >
+   phantom savings; helps only high-rs where chgOld small; REVERTED); Vandermonde fast-path (0% hit: the
+   addLow=pl floor always constrains the box). avg chgOld(changed paths/leaf-peel)~2.4 but max~630.
+
+### 38.6 NEXT (user-approved, STARTING NOW): make the PEEL walk the class-SCT PIVOT TREE for affected-Q
+ - The BUILD is Pivoter but the PEEL is NOT: it finds affected-Q by FLAT per-leaf DFS (enumerate all
+   r-multisets in a leaf + hash-lookup) -> the 40x over-enumeration.
+ - The class-SCT pivot tree already organizes cliques by pivot/spine/free-pool. Affected-Q (patterns sharing
+   a live witness with P) should be found by NAVIGATING that pivot structure, not by flat enumeration.
+ - GOAL: kill the 40x over-enum -> peel approaches its ~0.05s fundamental -> beats CND on dense too (and may
+   help scale on large graphs). This is the key to "beat CND on every (r,s) incl dense".
+
+### 38.7 Verify / run / assets
+ - SCT build: cd region_native && g++ -O3 -std=c++17 -I. -I../src/NucleusDecomposition -o BIN region_native_sct_peel.cpp
+ - Run: ./BIN ../graphs/G.edges r s  (env SCT_KMAX tunes KMAX). Prints [sct-peel] TIMING + core=k count=N.
+ - CORRECTNESS GATE: grep '^core=' | md5 must equal /tmp/sct_inplace (or stock) on the verify cells.
+ - CND: PIVOTER_RUN_REF=1 build/bin/degeneracy_cliques graphs/G.edges r s degen ; FAIR time = wall-clock+RSS
+   (/usr/bin/time -f "%e %M"), NOT the "took" line. Do NOT re-derive cnd from the first "took".
+ - tods2 real git repo: /home/wenqianz/UNSW/pivoter (= origin/main, pushed through 23d8291). /data/wenqianz
+   is a STALE non-git copy -- do not use it.
+ - Verify cells: ca-GrQc{4:5,5:7,6:8} ca-CondMat{4:5,5:7} dblp-core30{4:5,5:7} ca-HepTh 5:7 bio-celegans 4:5
+   amazon0302 4:5 com-dblp 3:4. Key files: region_native_sct_peel.cpp (peel), ClassSCTScalable.h (build),
+   src/NucleusDecomposition/CCPathCore.h (CCPath/support_count). Instrument patchers: /tmp/patch_*.py.
