@@ -786,16 +786,18 @@ int main(int argc, char **argv) {
     int KMAX = 1;
     bool kAdapt = true;                               // adaptive per-leaf KMAX (default ON)
     if (getenv("SCT_KMAX")) { KMAX = atoi(getenv("SCT_KMAX")); if (KMAX < 1) KMAX = 1; kAdapt = false; }
-    // ADAPTIVE KMAX: KMAX=1 minimises per-candidate IE/DP and wins where the peel is
-    // DP-bound (the majority), but on maxSplit-BLOWUP leaves the O(slot) scan in
-    // slotForbidDiff dominates and a larger KMAX (fewer split children) wins
-    // (measured: web-NotreDame(6,8) maxSplit~13k is 20% faster at KMAX=2 than 1,
-    // while (7,10) maxSplit~2k is 40% faster at KMAX=1). We therefore raise a LEAF's
-    // effective KMAX as its slot grows: kml = 1 + slotSize/KTHRESH. Small slots stay
-    // at KMAX=1 (cheap DP); blow-up slots self-limit (bigger KMAX => fewer splits =>
-    // bounded slot => bounded scan). Bit-identical: support_count is invariant to the
-    // split strategy (KMAX-invariance), so a per-leaf, slot-dependent KMAX is exact.
-    int KTHRESH = 8192; if (getenv("SCT_KMAX_THRESH")) KTHRESH = atoi(getenv("SCT_KMAX_THRESH"));
+    // ADAPTIVE KMAX: KMAX=1 minimises per-candidate IE/DP and measured FASTEST on
+    // EVERY graph tested -- moderate (~1.5-2x vs KMAX=2) AND maxSplit-blowup
+    // (web-NotreDame(6,8) maxSplit~14k: 41.2s vs 53.5s for KMAX=2 on a quiet host;
+    // an earlier "regression" was server contention, not real). So KMAX=1 is the
+    // default everywhere observed (slot up to ~14k). The O(slot) scan in
+    // slotForbidDiff is cheaply 99%-skipped (the impossible test), so it does NOT
+    // overtake the DP in the measured range. The adaptive rule only HEDGES the
+    // unmeasured extreme tail (slot > KTHRESH=16384, e.g. soc-pokec / web-it-2004 at
+    // high (r,s)): there a leaf's KMAX rises (kml = 1 + slotSize/KTHRESH) so a runaway
+    // slot self-limits. Bit-identical: support_count is invariant to the split
+    // strategy (KMAX-invariance), so a per-leaf slot-dependent KMAX is exact.
+    int KTHRESH = 16384; if (getenv("SCT_KMAX_THRESH")) KTHRESH = atoi(getenv("SCT_KMAX_THRESH"));
     const int KMAXCAP = 6;                            // ceiling on the adaptive KMAX
     // SKIP_H1: a |host|=1 pattern peels at EXACTLY L_M=C(|M|-r,s-r) regardless
     // of how the peel proceeds (every r-clique in its region M has support
