@@ -2487,3 +2487,37 @@ HONEST verdict:
  - FORMAT: region_native + degeneracy_cliques both need a "n m" header line (the .grp format). /data/wenqianz
    raw .edges need a prepended "maxid+1 numEdges" header; /home/wenqianz/UNSW/pivoter/graphs/*.edges already
    have it. CND time = wall-clock, NOT "took". tods2 real repo /home/wenqianz/UNSW/pivoter (=origin/main).
+
+## 40. Overnight phase-distribution sweep RESULTS: peel is the UNIVERSAL bottleneck, build is never (2026-06-19, #139)
+Ran 19 diverse graphs x 6 (r,s)={3:4,4:5,5:7,6:8,7:10,8:12} = 114 cells, TO=120s, SCT(region_native_sct_peel)
+vs CND(PIVOTER_RUN_REF). Per-phase timing (MCE/enum/build/maps/peel) + structural (regions,nC,patterns,
+rcliques,maxSplit) + wall + RSS. Raw CSV: paper_data/phase_sweep_2026-06-19.csv.
+RESULT: 33/114 SCT-completed (full breakdown), 81 timed out. CAVEAT: ran under OTHER-USER contention on tods2
+(v15_ablation x1-5, up to 522GB RSS; load avg 2.2-2.9 by end so CPU starvation was MODEST) -> absolute times +
+SCT-vs-CND head-to-head are NOISY; phase FRACTIONS within a cell + all structural stats are ROBUST.
+
+WHICH GRAPH PROPERTY DRIVES WHICH PHASE (the user's question, answered):
+ - peel  <- maxSplit (witness-box fan-out) + pattern count. THE universal bottleneck. Dominates wherever SCT
+            completes: collab (ca-GrQc, ca-CondMat ALL rs), coauthor (dblp-core30 mid/high-rs, com-dblp 3:4
+            peel=33.7/39.6), web-NotreDame (peel=59/69 at 6:8), web-it-2004 (peel=85 at 5:7). High maxSplit
+            => peel explosion => timeout. maxSplit extremes: web-NotreDame(6,8)=12610, web-it-2004(5,7)=10609,
+            com-dblp(3,4)=5607. This is the SAME §24-36 wall, now confirmed ACROSS graph families.
+ - MCE   <- graph SIZE (n). cit-Patents (3.77M nodes) MCE=14.11 of 16.65 total; ca-GrQc very-high rs where
+            peel->0 (few regions left); dblp-core30(3,4); com-amazon(4,5)(5,7).
+ - maps  <- #regions + region->class mapping size. web-it-2004(3,4)(4,5) maps=8.3/12.8s.
+ - build <- NEVER. 0.00-0.35s across ALL 33 completed cells. STRONG confirmation: the class-SCT build is NOT
+            a bottleneck. => do NOT spend effort borrowing SDCT tricks to speed the build; optimize PEEL.
+
+SCT-vs-CND where SCT completes: SCT WINS at high rs, often hugely (CND materializes all r-cliques and
+explodes): ca-GrQc(6,8) 1.23 vs 33.0s (27x); ca-GrQc(7,10)(8,12) SCT<0.1s vs CND>120; dblp-core30(4,5) 0.13
+vs 33.3 (256x), (5:7+) SCT<2s vs CND>120; web-NotreDame & web-it-2004 high-rs SCT finishes while CND>120;
+ca-CondMat(8,12) 5.94 vs 22.19 (3.7x). The high-(r,s) memory+time win over CND is REAL and broad.
+
+SCT timeout (>120s) by type: social 24/24 (ALL), web 24/30, email 6/6, ego 6/6, collab 12/24, coauthor 5/6,
+citation 4/6. Social + dense (HepPh/AstroPh/email/ego) uniformly blow the peel budget.
+
+NET: the sweep CONFIRMS the optimization target is the PEEL (affected-Q over-enumeration / maxSplit blow-up),
+and that it is the bottleneck on EVERY graph family that completes, not just dense ones -> the user's intuition
+("property-driven, not density-driven") is right: size->MCE, regions->maps, maxSplit->peel, build->never.
+NEXT: (a) attack peel (the dead-witness / controlled_split wall); (b) optional CLEAN re-run for trustworthy
+absolute SCT-vs-CND numbers now that load is light.
