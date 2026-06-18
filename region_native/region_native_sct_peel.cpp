@@ -547,8 +547,9 @@ int main(int argc, char **argv) {
 
     // Step 3: compaction + pattern<->leaf maps.
     int nLeaf = (int)baseLeaves.size();
-    vector<Vec> patVec(pats.size());
-    for (int pi = 0; pi < (int)pats.size(); pi++) patVec[pi] = compToVec(pats[pi].comp);
+    // NB: no full-C per-pattern vector (would be length-nC x #patterns = TB on
+    // com-dblp nC=123k). Patterns stay SPARSE (comp); compToLocal maps a comp
+    // straight into a leaf's local dimension via binary search on supC.
 
     // ---- PER-LEAF COMPACTION (FIRST, so the map-build confirm is cheap) ----
     // Each leaf touches only its support classes {c: n[c]||h[c]} (<=~10);
@@ -568,6 +569,18 @@ int main(int argc, char **argv) {
         const vector<int> &sc = supC[lid];
         Vec b((size_t)sc.size(), 0);
         for (size_t i = 0; i < sc.size(); i++) b[i] = gv[(size_t)sc[i]];
+        return b;
+    };
+    // map a SPARSE comp straight into leaf lid's local dim (no full-C vector).
+    // supC[lid] is sorted, so each comp class is binary-searched. A pattern's
+    // classes are a subset of the leaf's classes when it is hosted there.
+    auto compToLocal = [&](const vector<pair<int,int>> &comp, int lid) -> Vec {
+        const vector<int> &sc = supC[lid];
+        Vec b((size_t)sc.size(), 0);
+        for (auto &cm : comp) {
+            int pos = (int)(std::lower_bound(sc.begin(), sc.end(), cm.first) - sc.begin());
+            if (pos < (int)sc.size() && sc[pos] == cm.first) b[(size_t)pos] = (int16_t)cm.second;
+        }
         return b;
     };
 
@@ -596,7 +609,7 @@ int main(int argc, char **argv) {
                 if (it == patIdx.end()) return;           // not a registered pattern
                 int pi = it->second;
                 // confirm host on the compact leaf (filters m with no s-extension)
-                if (ccpath::support_count(slotPaths[lid][0], toLocal(lid, patVec[pi]), ccpath_ncr) > 0.0) {
+                if (ccpath::support_count(slotPaths[lid][0], compToLocal(cur, lid), ccpath_ncr) > 0.0) {
                     patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
                 }
                 return;
@@ -618,7 +631,7 @@ int main(int argc, char **argv) {
     vector<vector<Vec>> pbLocal(pats.size());         // parallel to patLeaves[pi]
     for (int pi = 0; pi < (int)pats.size(); pi++) {
         pbLocal[pi].reserve(patLeaves[pi].size());
-        for (int lid : patLeaves[pi]) pbLocal[pi].push_back(toLocal(lid, patVec[pi]));
+        for (int lid : patLeaves[pi]) pbLocal[pi].push_back(compToLocal(pats[pi].comp, lid));
     }
     // inverse: for each leaf, the local b of every pattern it hosts (parallel
     // to leafPats[lid]). Lets the incremental peel evaluate SC(slot, m_Q) for
@@ -626,7 +639,7 @@ int main(int argc, char **argv) {
     vector<vector<Vec>> leafPatLocB(nLeaf);           // parallel to leafPats[lid]
     for (int lid = 0; lid < nLeaf; lid++) {
         leafPatLocB[lid].reserve(leafPats[lid].size());
-        for (int qi : leafPats[lid]) leafPatLocB[lid].push_back(toLocal(lid, patVec[qi]));
+        for (int qi : leafPats[lid]) leafPatLocB[lid].push_back(compToLocal(pats[qi].comp, lid));
     }
     // support(pi) = sum over hosting slots of sum over slot's paths of
     // support_count(path, b_local). Uses the pre-mapped compact b.
