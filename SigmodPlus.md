@@ -1970,3 +1970,38 @@ but END-TO-END is NOT yet beating V3LM:
 NEXT: (a) optimize map-build (per-leaf enumeration); (b) sparse quotient
 adjacency for nC>6000; (c) G3 size-free sweep + end-to-end vs CND/RegND*/
 V3LM on tods2. Commit a774bf2.
+
+## 31. SCALE: scalable SCT integrated; BUILD scales, PEEL-PHASE is the perf gap (2026-06-18, #139)
+
+Integrated classsct_scalable::scalableBuildClassSCT (degeneracy-seeded,
+sparse adj, compact leaves) + sparse patterns (compToLocal, no full-C
+patVec) into region_native_sct_peel. Adversarial gates all hold:
+ - scalable SCT vs dense oracle: 50000 trials sum+disjointness, 0 fail.
+ - brute re-gate after each integration step: PASS (15-22/each).
+ - ca-CondMat(3,4) == V3LM, and 6.6s -> 2.8s (sparse build beats dense).
+ - com-dblp(3,4) nC=123526: class-SCT BUILD 0.19s (158315 leaves), G1
+   s-cliques 16713192 == region-IE, G2a 934117/934117 patterns
+   SCT-support == region-IE. Support computation correct at scale.
+
+HONEST PERFORMANCE VERDICT (the make-or-break, now measured at scale):
+ - The class-SCT BUILD is lightweight + scalable: 0.19s on com-dblp
+   (nC=123k) where a dense C×C matrix is 15GB and the vertex SDCT is ~85s
+   on web-it. This is the user's "pivot at class level, not CPI" win, real.
+ - The PEEL-PHASE is SLOW and NOT competitive with V3LM. com-dblp(3,4)
+   peel ~250s (vs V3LM seconds). Root cause: heavily-peeled leaves grow a
+   large controlled_split set (maxSplit=4452 paths) and the per-affected-
+   pattern support recompute over that set dominates. On small/medium
+   graphs too the peel trails V3LM (ca-GrQc 4,5 peel 7.9s vs V3LM 0.23s).
+ - So: region-native class-SCT peel is CORRECT, ELEGANT (pivot-on-quotient,
+   no cross-region IE), with a fast lightweight build -- but its peel-phase
+   constant factors / split-overhead make it slower than the mature V3LM.
+   Beating V3LM end-to-end needs the same peel-phase engineering V3LM spent
+   tasks #93-98 on (single-level split, batch bucket moves, lazy affected
+   updates). Not done.
+
+WHAT'S SOLID: the scientific result -- region-native peeling via a
+class-level pivot is correct and removes the cross-region IE -- plus a
+near-instant scalable build. WHAT'S NOT: end-to-end speed vs V3LM (peel
+phase). NEXT (if pursued): peel-phase optimization (KMAX tuning, batch
+updates, lazy recompute) to close the gap; the build + counting halves are
+already fast. Commits 7f01fc4..23710db.
