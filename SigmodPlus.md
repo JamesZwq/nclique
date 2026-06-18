@@ -2318,3 +2318,64 @@ RECOMMENDATION: contribution = size-free region-native counting (+ light
 class-SCT build) + the high-(r,s) peel niche; do NOT claim large-graph peel
 superiority. A scalable SCT peel would need to beat V3LM's bounded-IE
 incremental update, whose constant factor is lower -- uncertain / open.
+
+## 37. PEEL optimization campaign: DP is NOT the bottleneck, affected-Q ENUMERATION is (2026-06-18, #139)
+
+User target (sharpened): at **r>=4 (esp (4,5)) beat CND on EVERY graph, time AND memory**. That is the
+regime where CND must enumerate r-cliques (explodes) while our quotient is size-free, so theory says we
+dominate everywhere. The cells where region_native_sct_peel currently LOSES to CND are the dense small ones:
+ca-GrQc(4,5) (peel 1.06s vs CND 0.18s), ca-CondMat(4,5) (0.65s vs 0.18s). These are fast to iterate.
+
+### 37.1 Diagnosis (all measured, instrumented /tmp builds)
+- Fundamental work on ca-GrQc(4,5) ~0.05s (= the 248942 real support updates) -- BELOW CND's 0.18s. Win is real.
+- Profile of the peel (com-dblp(3,4), r=3): DFS candidate-gen ~35%, CCPath memory churn ~35%, the DP only ~6%.
+- The TREE IS SMALLER and we touch FEWER pairs (user was right): ca-GrQc(4,5) ours ~3.56M (P,Q) pairs vs
+  CND ~ #5cliques x (C(5,4)-1) = 2.2M x 4 ~ 8.8M. So pair COUNT is not the problem.
+- THE REAL GAP: per-pair UPDATE cost. After adding guards, the DP (count_with_extra_lower) is called only
+  248942 times (= real nonzero drops) ~0.1s -- NOT the bottleneck. The remaining ~0.7s is the affected-Q
+  ENUMERATION: ~158 candidate patterns generated per leaf-peel to find ~4 real ones = **40x over-enumeration**.
+- Candidate fate (instrumented, ca-GrQc(4,5)): hashMiss=5476 (negligible -> a TRIE is useless, candidates
+  ARE real patterns); realZeroDrop=2,228,853 (63%); realNonzero=248,942. So the waste = real co-occurring
+  patterns with ZERO drop (their witnesses don't overlap P's killed region, or are forbidden-dead).
+- Why CND has no over-enumeration: a dying s-clique's C(s,r) r-subcliques ALL co-occur (same s-clique).
+  Our leaf is a BUNDLE of structurally-different witnesses; most of its r-sub-patterns do NOT co-occur with
+  P in the same witness -> 40x waste.
+- support_count is FUNDAMENTALLY A BINOMIAL not a DP (verified: unconstrained box = Vandermonde
+  C(sum(n-b), T-sum b); n=[3,3]T=2b=[1,0] DP=5=C(5,1)). DP only "earns its keep" on split-constrained boxes;
+  for the real drops here 0% hit the clean-binomial fast path (addLow=pl raises the floor), but DP is cheap
+  anyway so this does not matter. The user's instinct ("don't DP, it's simpler") is right that the DP is not
+  the cost; the cost is the enumeration.
+
+### 37.2 Committed bit-identical fixes (all verified cores-identical on 11 cells incl com-dblp(3,4))
+- in-place slotForbidDiff (no full split-set rebuild; unchanged paths stay put) -- ~16% peel.
+- sum-guard (skip scWithTerms when sum max(ql,pl) > p.T, provably 0) + addLow forbidden early-out (single
+  forbidden a <= max(ql,pl) => region dead => 0) -- skips provably-zero drops.
+- Cumulative: ca-GrQc(4,5) peel 1.06 -> 0.76s at KMAX=1 (best for dense cells), still ~4x off CND 0.18s.
+  Two git commits on region_native/region_native_sct_peel.cpp.
+
+### 37.3 THE redesign target = kill the 40x affected-Q over-enumeration. Two derived directions:
+(1) PER-PATH tight-box enumeration (testable now): the DFS enumerates Q over the ENVELOPE uEnv = max-u over
+    all chgOld paths, then per-path-filters. The envelope is loose -> generates "feasible-on-the-union but
+    on NO single path" phantoms. chgOld paths are DISJOINT (controlled_split partitions witnesses), so P's
+    killed witnesses live in specific paths; a Q whose witnesses are in OTHER paths has 0 drop. Enumerate Q
+    PER changed-path using that path's tight [ell,u] -> only Q that can co-occur in THAT killed box. Dup cost
+    = Q with witnesses in multiple changed paths (chgOld small, so low). Should cut most of the 63% zero-drop.
+(2) CO-OCCURRENCE condition / index: on a BASE leaf, P co-occurs with Q  <=>  max(pl,ql)<=u (auto) AND
+    sum_c max(pl,ql) <= T  <=>  sum_{c: ql>pl} (ql[c]-pl[c]) <= T-r. For (4,5) T-r is tiny (often <=1) =>
+    Q exceeds pl by <=1 total => the affected set is INTRINSICALLY ~4. The DFS bound already encodes
+    sum max(pl,ql) <= Tcap; the residual over-enumeration is exactly (a) the loose envelope [fixed by (1)]
+    and (b) forbidden-DEAD patterns that pass the geometric bound but whose witnesses are all peeled [the
+    dead-tracking]. (b) is what the split/forbidden machinery exists for; per-path tight box (1) already
+    excludes dead regions, so (1)+(2) together should give near-zero over-enumeration -> peel ~ fundamental
+    ~0.05s -> UNDER CND. User believes this is definitely achievable; the derivation supports it.
+
+### 37.4 Reusable assets / how to verify
+- Verification protocol: run /tmp/sct_inplace (baseline) vs the variant on the test cells; cores
+  (grep '^core=' | md5) MUST match; measure 'total=' and peel='. Cells: ca-GrQc {4:5,5:7,6:8},
+  ca-CondMat{4:5,5:7}, dblp-core30{4:5,5:7}, ca-HepTh 5:7, bio-celegans 4:5, amazon0302 4:5, com-dblp 3:4.
+- Build: cd region_native && g++ -O3 -std=c++17 -I. -I../src/NucleusDecomposition -o BIN region_native_sct_peel.cpp
+- Run: ./BIN ../graphs/G.edges r s  (prints [sct-peel] TIMING ... + core=k count=N). SCT_KMAX env tunes KMAX.
+- CND baseline times are stored in paper_data/bench_sct_peel_skipH1.csv (col 8 cnd_total_s); DO NOT re-run CND.
+- Instrumented patchers used: /tmp/patch_{prof,timers,inplace,dfs}.py (counts: scWithTerms/dfsNodes/affPairs/
+  hashMiss/realZeroDrop; timers: slotForbidDiff vs dfs+scWithTerms).
+- NEXT: implement (1) per-path enumeration, verify bit-identical, measure over-enumeration drop; then (2).
