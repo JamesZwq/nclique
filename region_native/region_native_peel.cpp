@@ -481,6 +481,61 @@ int main(int argc, char **argv) {
     printf("[rn-peel] initial-support=%.2fs\n", secs(T4, T5));
     fflush(stdout);
 
+    // ---- P1 foundation check: the CANDIDATE-CLASS GRAPH is quotient-native
+    // (class i ~ class j  <=>  classRegions[i] cap classRegions[j] != empty).
+    // A tuple's support = weighted (s-r)-cliques in this graph. We count it
+    // by a direct clique recursion and confirm it equals the verified
+    // region-IE support. This validates the structure the pivot will be
+    // built on. Gated by PIVOTER_CANDCHECK=N (sample size).
+    if (getenv("PIVOTER_CANDCHECK")) {
+        int N = atoi(getenv("PIVOTER_CANDCHECK")); if (N <= 0) N = 300;
+        // class adjacency via region co-occurrence (sorted classRegions)
+        auto classAdj = [&](int a, int b) {
+            const auto &ra = classRegions[a], &rb = classRegions[b];
+            size_t i = 0, j = 0;
+            while (i < ra.size() && j < rb.size()) {
+                if (ra[i] < rb[j]) i++; else if (ra[i] > rb[j]) j++; else return true;
+            }
+            return false;
+        };
+        int ok = 0, bad = 0;
+        for (int pi = 0; pi < (int)pats.size() && pi < N; pi++) {
+            const Pat &P = pats[pi];
+            // candidate classes = union of host regions' classes; cap = size - R0 usage
+            vector<int> cand; for (int M : P.host)
+                for (int c : regionClasses[M]) cand.push_back(c);
+            sort(cand.begin(), cand.end()); cand.erase(unique(cand.begin(), cand.end()), cand.end());
+            unordered_map<int,int> used; for (auto &cm : P.comp) used[cm.first] = cm.second;
+            vector<int> cls, cap;
+            for (int c : cand) {
+                int cp = classSize[c] - (used.count(c) ? used[c] : 0);
+                if (cp > 0) { cls.push_back(c); cap.push_back(cp); }
+            }
+            int Cn = (int)cls.size(), K = s - r;
+            vector<int> chosen;                       // indices into cls forming a clique
+            std::function<double(int,int)> rec = [&](int idx, int remK) -> double {
+                if (remK == 0) return 1.0;
+                double res = 0;
+                for (int j = idx; j < Cn; j++) {
+                    bool adjAll = true;               // cls[j] adjacent to all chosen
+                    for (int ci : chosen) if (!classAdj(cls[j], cls[ci])) { adjAll = false; break; }
+                    if (!adjAll) continue;
+                    int mx = min(remK, cap[j]);
+                    chosen.push_back(j);
+                    for (int m = 1; m <= mx; m++) res += C(cap[j], m) * rec(j + 1, remK - m);
+                    chosen.pop_back();
+                }
+                return res;
+            };
+            double cc = rec(0, K);
+            if (fabs(cc - P.sup) < 0.5) ok++;
+            else { bad++; if (bad <= 5) printf("[candcheck] MISMATCH pi=%d cand=%.0f regionIE=%.0f\n", pi, cc, P.sup); }
+        }
+        printf("[candcheck] %d/%d candidate-class-graph == region-IE  %s\n",
+               ok, ok + bad, bad == 0 ? "[FOUNDATION OK]" : "[MISMATCH]");
+        fflush(stdout);
+    }
+
     // region -> patterns hosted there (affected-set lookup on peel)
     vector<vector<int>> regToPats(nR);
     for (int pi = 0; pi < (int)pats.size(); pi++)
