@@ -2562,4 +2562,11 @@ ENV FLAGS: SCT_KMAX=k (force fixed KMAX, disables adaptive, for A/B), SCT_KMAX_T
 to stderr: '[sct-peel] dbg cand_gen/hit/nz' (the over-enumeration ratio).
 OPEN: scaling timeouts on dense/social/large-web need a fundamentally different peel (not a prune) -- the
 candidate count is irreducibly large and per-candidate work is already minimal at KMAX=1. Open research.
-NEXT: broader SCT-new-vs-CND re-measure (running) to quantify how many more cells the ~1.5-2x peel lets SCT win.
+BROADER EXPERIMENT (server, SCT-new adaptive vs SCT KMAX=2, peel min-of-2 back-to-back = contention-robust
+ratio): CONSISTENT 1.15-1.60x peel speedup on EVERY graph family, ALL 12 cells bit-identical (corehash ok):
+ca-GrQc(6,8) 1.60x, ca-CondMat(7,10) 1.36x, web-NotreDame(7,10) 1.36x, dblp-core30(8,12) 1.30x,
+web-NotreDame(6,8) 1.27x [the maxSplit~14k BLOWUP graph: 42.4 vs 53.8s -> settles the contention-noise
+question, KMAX=1 wins there too, NO regression], cit-Patents(7,10) 1.27x, com-amazon(3,4) 1.23x,
+ca-CondMat(5,7) 1.21x, web-it-2004(3,4) 1.21x, com-dblp(3,4) 1.15x. (Server back-to-back ratios run smaller
+than the clean-local 1.5-2x because server peel times are larger, diluting the per-candidate DP saving.)
+SHIPPED: adaptive KMAX (HEAD 0b2fc52), bit-identical, ~1.2-1.6x peel everywhere, zero regression.
