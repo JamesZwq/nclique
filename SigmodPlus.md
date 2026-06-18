@@ -2449,3 +2449,41 @@ HONEST verdict:
  - Verify cells: ca-GrQc{4:5,5:7,6:8} ca-CondMat{4:5,5:7} dblp-core30{4:5,5:7} ca-HepTh 5:7 bio-celegans 4:5
    amazon0302 4:5 com-dblp 3:4. Key files: region_native_sct_peel.cpp (peel), ClassSCTScalable.h (build),
    src/NucleusDecomposition/CCPathCore.h (CCPath/support_count). Instrument patchers: /tmp/patch_*.py.
+
+## 39. Day log 2026-06-19: peel bottleneck PINNED + micro-opts exhausted + overnight diverse-graph phase test
+### Done today
+ - Architecture confirmed (§38): NO vertex CPI; class-level SCT; the BUILD already IS Pivoter (orbit-aware
+   pivot recursion + degeneracy seeding), build=0.13s on com-dblp. Nothing to borrow for the build.
+ - RegND-vs-CND experiment baseline (§38, tods2, TRUE wall-clock %e + RSS %M; the program's first "took"
+   undercounts CND 28x -- never use it). WIN (time+mem): small/sparse at HIGH (r,s) (dblp-core30 211x;
+   ca-GrQc (5,7)+; CND -> 32GB while SCT stays MB). MEMORY win broad. LOSE: dense (ca-CondMat, ca-HepPh)
+   and large (com-dblp/web-Stanford/com-youtube) -- SCT slow/times-out (peel doesn't scale, §36).
+ - Pipeline breakdown: PEEL is 62-86% of total; build cheap. Optimizing build is pointless.
+ - PEEL bottleneck PINNED via fine timers (ca-GrQc(4,5) peel 0.86s): enum+apply (generate+hash-lookup the
+   ~57 affected-Q candidates/leaf-peel for ~4 real) = 0.446s (52%); scWithTerms DP 0.204s (24%); slot 0.108s
+   (13%). The cost is the 14x affected-Q OVER-enumeration; work is proportional to 57, not 4.
+ - Micro-opts EXHAUSTED (all bit-identical, all ~0% on dense, because NONE cuts the candidate count 57->4):
+   active-classes DFS skip; per-path tight-box (WORSE, reverted); Vandermonde binomial fast-path (0% hit);
+   sparse O(r) feasibility check (today, ~0%). COMMITTED pure wins earlier: in-place slotForbidDiff +
+   sum-guard + addLow early-out (~30% on dense, KMAX=1 best).
+
+### Current open problems (THE wall)
+ - To cut 57->4 you must know, BEFORE enumerating, which co-occurring patterns (E(P->Q)<=T-r) share a LIVE
+   witness with P. The 53 zero-drops are real co-occurring patterns whose shared witnesses are dead (peeled)
+   or in other split-boxes. That is dead-witness tracking == the controlled_split blow-up (maxSplit=3498),
+   the §24-36 wall. Every cheap dead-tracking tried blows up or doesn't prune.
+ - Net: peel does not scale on dense/large; ~4x gap to CND on ca-GrQc/ca-CondMat at low-mid (r,s).
+   The class-SCT build, counting, memory, and high-(r,s) time win are all solid; the dense/large peel is open.
+
+### USER'S KEY REMINDER (2026-06-19) + overnight task
+ - The phase-time distribution varies HUGELY by graph, determined by MANY graph properties, not just density.
+   The algorithm is graph-property-sensitive -> must test MANY varied graphs.
+ - OVERNIGHT (running): comprehensive phase-distribution sweep on a DIVERSE graph set (collaboration / web /
+   social / citation / product / bio / email, varied clustering/degeneracy/max-clique/skew) x (r,s) small+
+   large, capturing per-phase timing (MCE/enum/build/maps/peel) + wall + RSS + the [rn]/[sct] structural
+   stats (n,m,regions,nC,base-leaves,patterns,maxSplit) + CND wall+RSS. Plus parallel graph-property
+   characterization (workflow). Goal: map which graph properties drive which phase, to find where the peel
+   is/ isn't the wall. Output -> /tmp/phase_sweep.txt on tods2.
+ - FORMAT: region_native + degeneracy_cliques both need a "n m" header line (the .grp format). /data/wenqianz
+   raw .edges need a prepended "maxid+1 numEdges" header; /home/wenqianz/UNSW/pivoter/graphs/*.edges already
+   have it. CND time = wall-clock, NOT "took". tods2 real repo /home/wenqianz/UNSW/pivoter (=origin/main).
