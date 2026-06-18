@@ -280,6 +280,55 @@ int main(int argc, char **argv) {
     int maxMC = 0; for (auto &R : regions) maxMC = max(maxMC, (int)R.size());
     build_ncr(maxMC + 2);
 
+    // ---- r-MERGEABLE DIRECT-ASSIGN (V3LM Step 1b; env SCT_NO_RMERGE to disable) ----
+    // A region M is fully-mergeable iff it shares < r vertices with EVERY other
+    // region. Then every r-clique in M is |host|=1 (no other region holds an
+    // r-subset of it), so M behaves as an isolated clique: all its r-cliques
+    // share support C(|M|-r,s-r) and peel together at that level => core =
+    // C(|M|-r,s-r), count = C(|M|,r). Direct-assign these (closed form) and
+    // REMOVE M from the SCT/peel. M's r-cliques never appear in any active
+    // region (|host|=1) and never sit inside an active region's s-clique (an
+    // active s-clique meets M in < r vertices), so this is exact + no double
+    // count. The SCT peel then handles only the OVERLAPPING (non-mergeable)
+    // regions -> on sparse graphs that is a tiny fraction of the patterns.
+    std::map<double,double> directCoreDist;
+    long long nMergeable = 0, nMergedRC = 0;
+    auto Trm0 = Clock::now();
+    if (!getenv("SCT_NO_RMERGE")) {
+        int nRall = (int)regions.size();
+        vector<vector<int>> vr(g.n);
+        for (int i = 0; i < nRall; i++) for (int v : regions[i]) vr[v].push_back(i);
+        vector<int> cnt(nRall, 0); vector<int> dirty; dirty.reserve(256);
+        vector<char> mergeable(nRall, 0);
+        for (int M = 0; M < nRall; M++) {
+            for (int v : regions[M]) for (int o : vr[v]) if (o != M) {
+                if (cnt[o] == 0) dirty.push_back(o); cnt[o]++;
+            }
+            int mx = 0; for (int o : dirty) { if (cnt[o] > mx) mx = cnt[o]; cnt[o] = 0; }
+            dirty.clear();
+            if (mx < r) mergeable[M] = 1;
+        }
+        vector<vector<int>> active;
+        for (int M = 0; M < nRall; M++) {
+            if (mergeable[M]) {
+                int N = (int)regions[M].size();
+                double cv = (N >= (int)s) ? C(N - r, s - r) : 0.0;
+                directCoreDist[cv] += C(N, r);
+                nMergeable++; nMergedRC += (long long)llround(C(N, r));
+            } else active.push_back(std::move(regions[M]));
+        }
+        regions = std::move(active);
+        printf("[rn] r-mergeable: %lld regions direct (%lld r-cliques); active=%zu  %.2fs\n",
+               nMergeable, nMergedRC, regions.size(), secs(Trm0, Clock::now()));
+        fflush(stdout);
+        if (regions.empty()) {
+            double mx = 0; for (auto &kv : directCoreDist) mx = max(mx, kv.first);
+            printf("[sct-peel] Max core: %.0f\n", mx);
+            for (auto &kv : directCoreDist) printf("core=%.0f count=%.0f\n", kv.first, kv.second);
+            return 0;
+        }
+    }
+
     // vtx -> sorted region ids
     int nR = (int)regions.size();
     vector<vector<int>> vtxR(g.n);
@@ -1006,6 +1055,8 @@ int main(int argc, char **argv) {
            secs(T5,T6), peeledN, npat, maxSplit);
     printf("[sct-peel] TIMING MCE=%.2f enum=%.2f sct-build+maps=%.2f peel=%.2f total=%.2f\n",
            secs(T1,T2), secs(T3,T4), secs(Tqg0,T5), secs(T5,T6), secs(T1,T6));
+    // fold in the r-mergeable direct-assigned cores
+    for (auto &kv : directCoreDist) coreDist[kv.first] += kv.second;
     double maxCore = 0; for (auto &kv : coreDist) maxCore = max(maxCore, kv.first);
     printf("[sct-peel] Max core: %.0f\n", maxCore);
     for (auto &kv : coreDist) printf("core=%.0f count=%.0f\n", kv.first, kv.second);
