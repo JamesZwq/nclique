@@ -641,6 +641,16 @@ int main(int argc, char **argv) {
         leafPatLocB[lid].reserve(leafPats[lid].size());
         for (int qi : leafPats[lid]) leafPatLocB[lid].push_back(compToLocal(pats[qi].comp, lid));
     }
+    // The leaf->pattern maps are now built from classIds (via supC). The peel
+    // works purely in local positions and NEVER reads CCPath::classIds /
+    // tupleIdxs again (they are metadata; no CCPathCore algorithm touches them).
+    // Strip them so the many path COPIES inside slotForbidDiff / controlled_split
+    // during peeling don't drag a length-M classIds vector each time.
+    for (int lid = 0; lid < nLeaf; lid++)
+        for (auto &p : slotPaths[lid]) {
+            p.classIds.clear(); p.classIds.shrink_to_fit();
+            p.tupleIdxs.clear(); p.tupleIdxs.shrink_to_fit();
+        }
     // support(pi) = sum over hosting slots of sum over slot's paths of
     // support_count(path, b_local). Uses the pre-mapped compact b.
     auto sctSupport = [&](int pi) -> double {
@@ -702,24 +712,138 @@ int main(int argc, char **argv) {
     // replacements (chgNew) so the caller can compute affected-pattern support
     // deltas over only the changed paths (unchanged paths cancel in before-
     // after). This makes the cost independent of the total split-set size.
+    // The delta-formula affected-update reads ONLY chgOld (the pre-insertion
+    // snapshots); the split children cancel algebraically, so we no longer
+    // materialize them into a chgNew list -- they go straight into `keep` (the
+    // updated slot) by MOVE, halving the path copies in this hot routine.
+    //
+    // A slot can hold thousands of split paths, but P's threshold a (= bloc,
+    // since every leaf path has h=0) fits in almost none of them: profiling
+    // showed ~99% of path visits hit `impossible` and are skipped. The
+    // impossible test only depends on P's NONZERO classes (a[c]=0 elsewhere is
+    // always <= u[c]), so we pass the sparse support of bloc (plNZ = list of
+    // (localpos,val)) and test just those few positions -- avoiding both the
+    // per-path tuple_to_threshold allocation and the full-width O(M) scan over
+    // the ~99% of paths that are unaffected.
+    vector<CCPath> sfdKeep;                            // reused scratch
     auto slotForbidDiff = [&](int lid, const Vec &bloc,
-                              vector<CCPath> &chgOld, vector<CCPath> &chgNew) {
+                              const vector<pair<int,int>> &plNZ, vector<CCPath> &chgOld) {
         vector<CCPath> &cur = slotPaths[lid];
-        vector<CCPath> keep; keep.reserve(cur.size());
-        chgOld.clear(); chgNew.clear();
+        vector<CCPath> &keep = sfdKeep; keep.clear(); keep.reserve(cur.size());
+        chgOld.clear();
         for (auto &p : cur) {
-            Vec a = ccpath::tuple_to_threshold(p, bloc);  // h=0 => a == bloc
-            if (ccpath::impossible(p, a)) { keep.push_back(std::move(p)); continue; }
+            bool imposs = false;                          // impossible(p, bloc)?
+            for (auto &pv : plNZ) if ((int)p.u[pv.first] < pv.second) { imposs = true; break; }
+            if (imposs) { keep.push_back(std::move(p)); continue; }
             chgOld.push_back(p);                            // snapshot before change
-            if (ccpath::covers_whole_path(p, a)) continue; // path fully dead (no new)
-            ccpath::insert_antichain(p.forbidden, a);
+            if (ccpath::covers_whole_path(p, bloc)) continue; // path fully dead (a==bloc)
+            ccpath::insert_antichain(p.forbidden, bloc);
             if ((int)p.forbidden.size() > KMAX) {
                 auto kids = ccpath::controlled_split(p, KMAX);
-                for (auto &k : kids) { keep.push_back(k); chgNew.push_back(std::move(k)); }
-            } else { keep.push_back(p); chgNew.push_back(std::move(p)); }
+                for (auto &k : kids) keep.push_back(std::move(k));
+            } else keep.push_back(std::move(p));
         }
-        cur = std::move(keep);
+        cur.swap(keep);
         if (cur.size() > maxSplit) maxSplit = cur.size();
+    };
+
+    // ---- fast support_count with PRECOMPUTED inclusion-exclusion terms ----
+    // support_count_impl recomputes inclusion_exclusion_terms(p.forbidden) on
+    // every call, even though the terms depend only on the path's forbidden
+    // antichain (not on b). In the affected-update loop the SAME path is queried
+    // against MANY patterns Q, so we hoist the IE-term build out of the Q loop:
+    // precompute terms once per changed path, then evaluate every Q against the
+    // cached terms. This is bit-identical to ccpath::support_count (same early-
+    // out, same terms, same count_with_extra_lower) but removes the dominant
+    // redundant IE rebuild. Reused DP scratch avoids a malloc/free per term.
+    vector<double> dpA, dpB;                          // reused DP scratch
+    // count_with_extra_lower (b = weight base / lower) plus an INDEPENDENT extra
+    // lower `addLow` (raises the per-class lower WITHOUT changing the C(n-b,y-b)
+    // weight base). addLow==nullptr reproduces ccpath::support_count exactly.
+    // With addLow set, this computes the alive-witness count >= max(b, addLow)
+    // still weighted by C(n-b, y-b) -- exactly the per-path peel DROP for a
+    // query b=m_Q with addLow=a_p (P's threshold). The weight base staying at b
+    // is what makes this correct (a plain support_count(max(b,addLow)) would
+    // change the weight; see lines below).
+    auto scWithTerms = [&](const CCPath &p,
+                           const vector<pair<Vec,int>> &terms,
+                           const Vec &b, const Vec *addLow) -> double {
+        // forbidden early-out is only valid when no addLow raises the floor; with
+        // addLow we must let the IE terms account for the forbidden set instead.
+        if (!addLow) {
+            for (const auto &a : p.forbidden) if (ccpath::leq(a, b)) return 0.0;
+        }
+        const int M = p.m();
+        const int T = p.T;
+        double total = 0.0;
+        for (const auto &kv : terms) {
+            const Vec &extra = kv.first;
+            // ---- inlined count_with_extra_lower_impl with shared scratch ----
+            bool bad = false;
+            int sumL = 0, sumU = 0;
+            // bounds per class (recomputed; cheap, M is tiny)
+            for (int c = 0; c < M; ++c) {
+                if (b[c] < 0 || (int)b[c] > (int)p.n[c]) { bad = true; break; }
+                int Lc = p.ell[c];
+                if ((int)b[c] > Lc) Lc = (int)b[c];
+                if ((int)extra[c] > Lc) Lc = (int)extra[c];
+                if (addLow && (int)(*addLow)[c] > Lc) Lc = (int)(*addLow)[c];
+                int Uc = (int)p.u[c];
+                if (Lc > Uc) { bad = true; break; }
+                sumL += Lc; sumU += Uc;
+            }
+            if (bad || sumL > T || sumU < T) continue;
+            dpA.assign((size_t)T + 1, 0.0);
+            dpA[0] = 1.0;
+            for (int c = 0; c < M; ++c) {
+                dpB.assign((size_t)T + 1, 0.0);
+                const int bc = (int)b[c];
+                const int nc = (int)p.n[c];
+                int Lc = p.ell[c];
+                if (bc > Lc) Lc = bc;
+                if ((int)extra[c] > Lc) Lc = (int)extra[c];
+                if (addLow && (int)(*addLow)[c] > Lc) Lc = (int)(*addLow)[c];
+                const int Uc = (int)p.u[c];
+                for (int tot = 0; tot <= T; ++tot) {
+                    double w = dpA[(size_t)tot];
+                    if (w == 0.0) continue;
+                    int maxy = Uc;
+                    if (T - tot < maxy) maxy = T - tot;
+                    for (int y = Lc; y <= maxy; ++y)
+                        dpB[(size_t)(tot + y)] += w * ccpath_ncr(nc - bc, y - bc);
+                }
+                dpA.swap(dpB);
+            }
+            total += (double)kv.second * dpA[(size_t)T];
+        }
+        return total;
+    };
+
+    // ---- lazy per-leaf lookup: local-witness HASH -> leaf-pattern indices ----
+    // The affected-Q set for a peel is enumerated DIRECTLY from m_P (the DFS
+    // below) instead of scanning every pattern in the leaf (~99.8% of those scans
+    // failed the feasibility filter). Each enumerated candidate m_Q is looked up
+    // here. Built lazily on first touch (most leaves are touched many times). Key
+    // = a rolling polynomial HASH of the local m_Q (robust to any leaf width,
+    // unlike a perfect mixed-radix pack which overflows for wide leaves, e.g.
+    // ca-GrQc(4,5) reaches width 28). Bucket value = indices into leafPats[lid];
+    // a candidate is confirmed by comparing the full local vector (only on a hash
+    // hit, which is rare), so the lookup is exact.
+    vector<std::unordered_map<uint64_t,vector<int>>> leafQ2pat(nLeaf);
+    vector<char> leafQbuilt(nLeaf, 0);
+    const uint64_t HMUL = 1099511628211ULL;          // FNV-style multiplier
+    auto hashVec = [&](const Vec &v) -> uint64_t {
+        uint64_t h = 1469598103934665603ULL;
+        for (size_t i = 0; i < v.size(); i++) { h ^= (uint64_t)(uint16_t)v[i] + 1; h *= HMUL; }
+        return h;
+    };
+    auto ensureLeafMap = [&](int lid) {
+        if (leafQbuilt[lid]) return;
+        leafQbuilt[lid] = 1;
+        auto &mp = leafQ2pat[lid];
+        const auto &qb = leafPatLocB[lid];
+        mp.reserve(qb.size() * 2);
+        for (int t = 0; t < (int)qb.size(); t++) mp[hashVec(qb[t])].push_back(t);
     };
 
     long long npat = (long long)pats.size(), peeledN = 0, maxKey = 0;
@@ -730,6 +854,7 @@ int main(int argc, char **argv) {
     long long curLevel = 0;
     vector<char> seen(pats.size(), 0);
     vector<double> delta(pats.size(), 0.0);          // per-affected exact drop
+    Vec uEnv, sufPl, qcand;                           // reused per-leaf scratch
     while (peeledN < npat) {
         auto it = bk.find(curLevel);
         while (it == bk.end() || it->second.empty()) {
@@ -760,43 +885,112 @@ int main(int argc, char **argv) {
         vector<int> aff;
         const auto &pleaf = patLeaves[pi];
         const auto &ploc  = pbLocal[pi];
-        vector<CCPath> chgOld, chgNew;                 // changed paths for this slot
+        vector<CCPath> chgOld;                         // pre-insertion snapshots
+        vector<vector<pair<Vec,int>>> chgOldTerms;     // cached IE terms (pre-insert)
+        vector<pair<int,int>> plNZ;                    // sparse nonzeros of m_P local
         for (size_t k = 0; k < pleaf.size(); k++) {
             int lid = pleaf[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
-            const Vec &pl = ploc[k];                   // m_P local to lid
+            const Vec &pl = ploc[k];                   // m_P local to lid (== a_p, h=0)
             int Mloc = (int)pl.size();
-            // Record P and get the CHANGED paths only. A Q's support drop on
-            // this slot = SC over chgOld(m_Q) - SC over chgNew(m_Q); unchanged
-            // paths cancel, so the cost is independent of the split-set size.
-            slotForbidDiff(lid, pl, chgOld, chgNew);
+            // sparse support of m_P (positions where it is nonzero) -- the only
+            // positions the impossible / feasibility tests depend on.
+            plNZ.clear();
+            for (int c = 0; c < Mloc; c++) if (pl[c]) plNZ.push_back({c, (int)pl[c]});
+            // Record P (updates the stored slot via split) and capture the CHANGED
+            // OLD paths (the pre-insertion snapshots where P's threshold applies).
+            slotForbidDiff(lid, pl, plNZ, chgOld);
             if (chgOld.empty()) continue;              // P touched nothing here
+            // ---- DELTA-FORMULA incremental drop (no chgNew sweep) ----
+            // For a changed path p, P inserts threshold a_p (= P's tuple local to
+            // p) into p.forbidden. Q's support drop from p equals the witnesses of
+            // p that were alive (>= no f in A_p), >= b_Q, and are now killed by
+            // a_p, i.e. also >= a_p. That count is exactly support_count of p with
+            // its ORIGINAL antichain A_p evaluated at b = componentwise-max(b_Q,
+            // a_p). So one scWithTerms over chgOld (with b raised to max(ql,a_p))
+            // gives the drop directly -- the split children (chgNew) cancel
+            // algebraically and never need to be summed per Q. This halves the
+            // scWithTerms work and removes the entire chgNew x Q sweep.
+            // Bit-identical to (Σ SC(chgOld) − Σ SC(chgNew)); verified vs brute.
+            chgOldTerms.clear(); chgOldTerms.reserve(chgOld.size());
+            for (auto &p : chgOld)
+                chgOldTerms.push_back(ccpath::inclusion_exclusion_terms(p.forbidden, p.m()));
+            // a_p (P's local threshold) == pl for every changed path (h=0), so we
+            // use pl directly as the delta-formula addLow below -- no per-path
+            // tuple_to_threshold needed.
             // envelope over the CHANGED-old paths (the only ones that can drop):
             // a Q with a nonzero drop must have a witness >= max(m_P,m_Q) in a
             // changed path. Prune Q if max(m_P,m_Q) exceeds chgOld's u-envelope.
-            Vec uEnv((size_t)Mloc, 0); int Tcap = chgOld.front().T;
+            uEnv.assign((size_t)Mloc, 0); int Tcap = chgOld.front().T;
             for (auto &p : chgOld)
                 for (int c = 0; c < Mloc; c++) if (p.u[c] > uEnv[c]) uEnv[c] = p.u[c];
-            const auto &qs = leafPats[lid];
-            const auto &qb = leafPatLocB[lid];
-            for (size_t t = 0; t < qs.size(); t++) {
-                int qi = qs[t];
-                if (qi == pi || !pats[qi].alive) continue;
-                const Vec &ql = qb[t];
-                int sum = 0; bool feas = true;
-                for (int c = 0; c < Mloc; c++) {
-                    int mx = (int)pl[c] > (int)ql[c] ? (int)pl[c] : (int)ql[c];
-                    if (mx > (int)uEnv[c]) { feas = false; break; }
-                    sum += mx;
+            // ---- ENUMERATE affected Q directly from m_P (no full-leaf scan) ----
+            // An affected Q must own a dying witness y in a changed path, i.e.
+            //   y >= max(m_P, m_Q),  ell <= y <= u,  Σy = T.
+            // Hence m_Q <= y <= uEnv and Σ_c max(m_P[c], m_Q[c]) <= Tcap. We DFS
+            // over the leaf's local classes generating exactly the m_Q meeting
+            // those bounds (each once, in canonical order), look each up in the
+            // per-leaf map, and apply the delta-formula drop. This replaces the
+            // O(#patterns-in-leaf) scan -- of which ~99.8% failed the bound -- by
+            // an enumeration whose size is the genuinely-affected candidate set.
+            ensureLeafMap(lid);
+            const auto &q2p = leafQ2pat[lid];
+            const auto &qbAll = leafPatLocB[lid];
+            const auto &qsAll = leafPats[lid];
+            // suffix sum of m_P: min future contribution of classes >= i to the
+            // witness sum (max(pl,ql) >= pl), used to prune the DFS early.
+            sufPl.assign((size_t)Mloc + 1, 0);
+            for (int c = Mloc - 1; c >= 0; c--) sufPl[c] = (int16_t)(sufPl[c + 1] + (int)pl[c]);
+            qcand.assign((size_t)Mloc, 0);
+            // process drop for the candidate ql at leaf-pattern index t (already
+            // confirmed leafPatLocB[lid][t] == ql). qi = leafPats[lid][t].
+            auto applyIdx = [&](const Vec &ql, int t) {
+                int qi = qsAll[t];
+                if (qi == pi || !pats[qi].alive) return;
+                double d = 0.0;                         // drop, via delta formula
+                for (size_t z = 0; z < chgOld.size(); z++) {
+                    const CCPath &p = chgOld[z];
+                    // a_p = pl (P's local threshold; h=0). drop_p = count(y: alive
+                    // in A_p, y >= max(ql, pl)) weighted by C(n - ql, y - ql). The
+                    // weight base STAYS ql (addLow=pl only raises the floor) --
+                    // reweighting-correct delta. Feasible only if max(ql,pl)<=p.u.
+                    bool ok = true;
+                    for (int c = 0; c < Mloc; c++) {
+                        int v = (int)ql[c] > (int)pl[c] ? (int)ql[c] : (int)pl[c];
+                        if (v > (int)p.u[c]) { ok = false; break; }
+                    }
+                    if (ok) d += scWithTerms(p, chgOldTerms[z], ql, &pl);
                 }
-                if (!feas || sum > Tcap) continue;     // no shared witness in changed paths
-                double d = 0.0;                         // drop = SC(old) - SC(new)
-                for (auto &p : chgOld) d += ccpath::support_count(p, ql, ccpath_ncr);
-                for (auto &p : chgNew) d -= ccpath::support_count(p, ql, ccpath_ncr);
-                if (d == 0.0) continue;
+                if (d == 0.0) return;
                 if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                 delta[qi] += d;
-            }
+            };
+            // look up a complete candidate (by rolling hash) and confirm exactly.
+            auto applyCand = [&](const Vec &ql, uint64_t h) {
+                auto it = q2p.find(h);
+                if (it == q2p.end()) return;
+                for (int t : it->second) if (qbAll[t] == ql) { applyIdx(ql, t); return; }
+            };
+            // DFS over leaf classes: place ql[c] in [0, min(uEnv[c],rem)], track
+            // rem = r left, acc = Σ_{<c} max(pl,ql), and the running rolling hash.
+            // Self-recursive lambda (Y-combinator) -> fully inlinable, no
+            // std::function indirection. Each complete ql is looked up once.
+            const int16_t *plp = pl.data(); const int16_t *uEp = uEnv.data();
+            const int16_t *sfp = sufPl.data();
+            auto dfs = [&](auto &&self, int c, int rem, int acc, uint64_t h) -> void {
+                if (c == Mloc) { if (rem == 0) applyCand(qcand, h); return; }
+                if (acc + (int)sfp[c] > Tcap) return;   // min future sum already too big
+                int cap = (int)uEp[c]; if (cap > rem) cap = rem;
+                int plc = (int)plp[c];
+                for (int j = 0; j <= cap; j++) {
+                    qcand[c] = (int16_t)j;
+                    int mx = plc > j ? plc : j;
+                    uint64_t hc = (h ^ ((uint64_t)(uint16_t)j + 1)) * HMUL;
+                    self(self, c + 1, rem - j, acc + mx, hc);
+                }
+                qcand[c] = 0;
+            };
+            dfs(dfs, 0, r, 0, 1469598103934665603ULL);
         }
         for (int qi : aff) {
             seen[qi] = 0;
