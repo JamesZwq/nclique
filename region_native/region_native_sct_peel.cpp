@@ -552,13 +552,36 @@ int main(int argc, char **argv) {
     vector<vector<int>> leafPats(nLeaf);
     vector<Vec> patVec(pats.size());
     for (int pi = 0; pi < (int)pats.size(); pi++) patVec[pi] = compToVec(pats[pi].comp);
+    // OPTIM: a leaf hosts pattern pi ONLY IF every class of pi is present in
+    // the leaf (m_c>0 with leaf u_c=0 forces support_count=0). So index leaves
+    // by class and intersect over the pattern's (few) classes -> candidate
+    // leaves, then confirm with support_count. This replaces the O(nLeaf*nPats)
+    // all-pairs scan (each O(nC)) with O(sum of pattern-leaf incidences).
+    vector<vector<int>> classToLeaves(nC);
     for (int lid = 0; lid < nLeaf; lid++) {
-        const CCPath &lf = baseLeaves[lid];           // forbidden empty here
-        for (int pi = 0; pi < (int)pats.size(); pi++) {
-            double sc = ccpath::support_count(lf, patVec[pi], ccpath_ncr);
-            if (sc > 0.0) { patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi); }
+        const CCPath &lf = baseLeaves[lid];
+        for (int c = 0; c < nC; c++) if (lf.n[c] || lf.h[c]) classToLeaves[c].push_back(lid);
+    }
+    vector<char> leafMark(nLeaf, 0);
+    for (int pi = 0; pi < (int)pats.size(); pi++) {
+        const auto &cs = pats[pi].classSet;           // sorted class ids of pattern
+        if (cs.empty()) continue;
+        // candidate leaves = leaves containing the pattern's rarest class,
+        // filtered to those containing ALL of the pattern's classes.
+        int rare = cs[0]; for (int c : cs) if (classToLeaves[c].size() < classToLeaves[rare].size()) rare = c;
+        for (int lid : classToLeaves[rare]) {
+            const CCPath &lf = baseLeaves[lid];
+            bool all = true;
+            for (int c : cs) if (!(lf.n[c] || lf.h[c])) { all = false; break; }
+            if (!all) continue;
+            if (ccpath::support_count(lf, patVec[pi], ccpath_ncr) > 0.0) {
+                patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
+            }
         }
     }
+    // leafPats was filled per-pattern; sort each for determinism.
+    for (auto &v : leafPats) std::sort(v.begin(), v.end());
+    (void)leafMark;
 
     // ---- PER-LEAF COMPACTION ----
     // support_count loops over ALL m()=nC components, so on graphs with many
