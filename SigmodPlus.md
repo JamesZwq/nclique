@@ -2005,3 +2005,172 @@ near-instant scalable build. WHAT'S NOT: end-to-end speed vs V3LM (peel
 phase). NEXT (if pursued): peel-phase optimization (KMAX tuning, batch
 updates, lazy recompute) to close the gap; the build + counting halves are
 already fast. Commits 7f01fc4..23710db.
+
+## 32. CONSOLIDATED DETAILED HANDOFF — region-native engine (2026-06-18, #139)
+
+Self-contained pickup doc for the whole region-native effort: two halves
+(COUNTING = done/fast; PEEL = correct, perf in progress), the full
+trial-and-error, files, commits, how to run, gates, next steps.
+
+### 0. BIG PICTURE
+Goal: (r,s)-nucleus decomposition on the Region/Class QUOTIENT instead of
+per-r-clique. Region = maximal clique >= s. Class = vertices with identical
+region-membership (interchangeable). Pattern = class-multiplicity signature
+of an r-clique orbit. Two halves:
+ (A) COUNTING (initial s-clique support of every pattern): DONE, fast,
+     size-free. File region_native/region_native.cpp.
+ (B) PEEL (end-to-end core numbers): CORRECT + validated; build is fast and
+     scalable; PEEL-PHASE is the open perf problem (slower than CND/V3LM).
+     File region_native/region_native_sct_peel.cpp.
+
+### 1. COUNTING HALF (region_native.cpp) — DONE
+KEY FACT: an r-clique's s-support depends ONLY on its HOST (the set of
+regions containing it), not on its class multiplicities. So support =
+region-IE union-count over the host: sum_{A subset host} (-1)^{|A|+1}
+C(|cap A|-r, s-r), at CLASS granularity.
+THREE WINS (commit c5282e6) that made it size-free:
+ 1. enumerate ONLY multi-region classes; a single-region (safe) class pins
+    |Host|=1 -> direct-binned (Thm vsafe), pruned mid-recursion (the huge
+    single-region tuple population is never enumerated).
+ 2. incremental host in a depth stack (no per-leaf re-intersection/alloc).
+ 3. memoize support per host hash (each distinct host's union-count once).
+RESULT: com-dblp (7,8) 75.78s -> 0.89s; FLAT over the full (r,s) grid on
+5/6 graphs (dense sweep paper_data/bench_region_native_dense.csv, commits
+3cdf210/3bd0ce9). ca-HepPh is the IE-overlap outlier (79545 distinct hosts;
+its per-host union-count is genuinely deep -- that is where CPI's pivot
+compression earns its keep).
+
+### 2. PEEL HALF — THE TRIAL-AND-ERROR (read this before re-trying anything)
+What is hard: peeling removes a pattern (an r-clique orbit). A witness
+s-clique dies when ANY of its r-subcliques is peeled, so aliveness is a
+COMPOSITION property: a witness (composition y) is dead iff y >= some
+peeled pattern f. Maintaining live support under removals is the crux.
+
+DEAD ENDS (do NOT repeat):
+ (a) region-IE peel + naive full recompute of affected patterns each peel
+     -> O(P^2) support evals. Too slow. (commit 0a652ab was correct but
+     this recompute strategy is the slow part.)
+ (b) region-IE peel + incremental delta + per-region forbidden antichain
+     -> the forbidden antichain GROWS as patterns peel and support_count is
+     2^|antichain|. maxForb hit 81 on ca-GrQc(3,4); EVERY real cell blew up.
+     (commits eccfe37, b23f0b4). Antichain explosion is intrinsic to
+     "count alive witnesses avoiding peeled" at compressed granularity.
+ (c) controlled_split on per-region paths -> bounded the SINGLE-region
+     antichain (maxForb plateau ~46), but MULTI-HOST patterns' witnesses
+     span regions, forcing a CROSS-REGION inclusion-exclusion that blew up
+     (commit d912b8f, f4f8750). This is the wall the region-IE approach
+     cannot pass.
+ LESSON: counting via region-IE is fast, but the region-IE PEEL needs a
+ cross-region dead-box IE that does not scale. The fix is to NOT represent
+ witnesses as a union of regions.
+
+USER STEER (the breakthrough): use the PIVOT idea (a single canonical
+hold/optional witness structure) so each witness is counted once and a
+peel is one dead-box on ONE structure -- no cross-region IE. pivot != CPI:
+do it at CLASS granularity (lightweight), not the heavy vertex SDCT.
+
+KEY ENABLING FACT (commit 0ebfc4d, validated 400/400 vs region-IE):
+classes i,j are fully mutually adjacent <=> they co-occur in some region
+(classRegions[i] cap classRegions[j] != empty). Proof: full adjacency =>
+i union j is a clique => extends to a maximal clique (region) with both.
+So a tuple's witnesses = (s-r)-cliques of its CANDIDATE-CLASS GRAPH (nodes
+= host-region classes, edges = region co-occurrence), read straight off
+the quotient. And the SCT of that graph turns the union into DISJOINT
+leaves -> support is a SUM (no IE), peel is a per-leaf dead-box.
+
+### 3. THE SOLUTION (class-level Succinct Clique Tree)
+ - ClassSCT.h: dense orbit-aware class-weighted SCT. emitLeaf: empty hold
+   (h=0); spine class via ell=u=mult (weight C(w,mult)); free pivot pool;
+   canonical lowest-non-neighbour branching => DISJOINT leaves; sum over
+   leaves of support_count == weighted s-clique count. Adversarially
+   audited ~605k cases vs an independent vertex-expansion oracle (commit
+   9ab372b, subagent).
+ - ClassSCTScalable.h: scalable version. Dense C×C matrix OOMs (~15GB at
+   nC=123k); the gen() also does O(|P|^2) pivot over P=all-classes. FIX:
+   degeneracy-seeded (Eppstein) + sparse adjacency + COMPACT leaves
+   (touched classes only, global ids in CCPath.classIds). Emitting full-C
+   leaves OOM'd at 15.8GB -> compact leaves: 150x faster, 80x less mem.
+   Validated 50000 trials vs the dense oracle + scale to C=125000 in 4.4s
+   (commits 7f01fc4).
+ - region_native_sct_peel.cpp: the peel. support(pattern) = SUM over its
+   hosting leaves of support_count(leaf-slot, m). Peel inserts the pattern
+   threshold into hosting leaves' forbidden antichains; a leaf over KMAX is
+   replaced by controlled_split (a SET of CCPaths). Map-build = PER-LEAF
+   enumeration (every r-multiset over a leaf's classes is a registered
+   pattern -> O(incidences); the per-pattern scan was 33s on ca-CondMat).
+   Patterns stay SPARSE: compToLocal maps a comp into a leaf's local dim
+   via binary search (full-C patVec would be TB on com-dblp). commits
+   a774bf2, 9423767, 23710db.
+
+### 4. CORRECTNESS GATES (all PASS, independently re-run by me)
+ - class-SCT: 605k random cases (sum + per-pattern disjointness) vs oracle.
+ - scalable vs dense: 50000 trials, 0 fail.
+ - peel vs brute (scripts/verify_nucleus_brute.py): 68/68 on tiny + 4 dense
+   stress graphs (t_dense/t_chain/t_stress/t_split, in graphs/), core>=1.
+ - peel vs V3LM (PIVOTER_RUN_REGION_V3LM): identical on ca-GrQc 3,4/4,5,
+   dblp-core30 3,4, ca-CondMat 3,4.
+ - peel vs CND (PIVOTER_RUN_REF): identical (ca-GrQc 3,4/4,5, ca-CondMat).
+ - G1 (total s-cliques class-SCT == region-IE): ca-GrQc 329297, dblp-core30
+   13.8M, com-dblp 16.7M.
+ - G2a (per-pattern SCT-support == region-IE): com-dblp 934117/934117.
+
+### 5. PERFORMANCE (honest, measured)
+ BUILD is the win: class-SCT builds com-dblp (nC=123526) in 0.19s vs the
+ vertex SDCT ~85s on web-it; counting half is size-free.
+ PEEL-PHASE is the problem: ca-GrQc(4,5) peel 10.9s vs CND 0.18s/V3LM 0.18s;
+ com-dblp(3,4) peel ~250s. Profile (macOS sample): support_count /
+ count_with_extra_lower + the affected-update loop dominate; maxSplit=4452
+ (KMAX=2 over-splits). CND ~= V3LM on ca-GrQc/ca-CondMat (V3LM only beats
+ CND on specific graphs -- the motivation to do better).
+ IN PROGRESS: peel-phase optimization subagent (KMAX sweep, truly-
+ incremental affected-update over only-changed slots, bucket-queue
+ efficiency, prune affected set), gated exact vs brute+CND+V3LM.
+
+### 6. HOW TO RUN
+ build SCT peel:  cd region_native && g++ -O3 -std=c++17 \
+   -I../src/NucleusDecomposition -o region_native_sct_peel region_native_sct_peel.cpp
+ run:  ./region_native_sct_peel graphs/G.edges r s    (prints core=k count=N + TIMING)
+ CND:  PIVOTER_RUN_REF=1 ./build/bin/degeneracy_cliques graphs/G.edges r s degen
+ V3LM: PIVOTER_RUN_REGION_V3LM=1 ./build/bin/degeneracy_cliques graphs/G.edges r s degen
+ brute oracle: python3 scripts/verify_nucleus_brute.py graphs/G.edges r s
+ 3-way bench: python3 scripts/bench_sct_peel.py  (CND vs V3LM vs SCT, 16 graphs;
+   env BSCT_GRAPHS/BSCT_RS/BSCT_TIMEOUT/BSCT_OUT)
+ KMAX tunable via SCT_KMAX env.
+
+### 7. KEY FILES
+ region_native/region_native.cpp          counting half (size-free, done)
+ region_native/region_native_peel.cpp     region-IE peel (DEAD END, kept for history)
+ region_native/ClassSCT.h                  dense class-SCT (oracle)
+ region_native/class_sct.cpp               dense SCT self-test (605k cases)
+ region_native/ClassSCTScalable.h          scalable sparse class-SCT (production)
+ region_native/test_scalable_sct.cpp       scalable self-test (vs dense)
+ region_native/region_native_sct_peel.cpp  THE PEEL (current main)
+ region_native/test_region_forbidden.cpp   M1 foundation test
+ scripts/verify_nucleus_brute.py           brute nucleus oracle
+ scripts/bench_sct_peel.py                 3-way CND/V3LM/SCT bench
+ graphs/t_{dense,chain,stress,split,k6k4,k7k5k4,2k5tri,mix}.edges, tiny_3k4.edges
+
+### 8. GOTCHAS / ENV
+ - CND = PIVOTER_RUN_REF=1 (the no-env DEFAULT crashes: stale SDCT_Fused
+   "clique not found").
+ - server git repo is /home/wenqianz/UNSW/pivoter (NOT /data/wenqianz/pivoter,
+   which is a stale non-git copy). git fetch + reset --hard, separate ssh
+   calls, verify HEAD; rebuild binaries after pull.
+ - graphs/ is a SYMLINK -> cannot git-add through it; scripts/ is gitignored
+   (so .py bench/oracle live untracked but regenerable).
+ - dense quotient matrix only up to nC~20000; use the scalable path for big.
+ - full-C per-pattern vectors do not scale (com-dblp = TB) -> keep sparse.
+
+### 9. NEXT STEPS
+ 1. (running) peel-phase optimization -> close the CND/V3LM gap.
+ 2. broad 3-way sweep (16 NuclearCD-style graphs) -> table of where SCT beats
+    CND vs where V3LM beats CND (the headline the user wants).
+ 3. REGION MERGING (r-mergeable, cf. task #99 / RegND family): merge regions
+    to make the pattern count strictly FEWER -> the theoretical lever to beat
+    CND on MORE graphs (the SCT peel currently processes the SAME patterns as
+    V3LM/CND; merging is the not-yet-applied advantage).
+ 4. when peel competitive: deploy to tods2, full sweep, paper framing.
+
+COMMIT TRAIL this session (region-native): c5282e6 (counting flatness) ..
+0ebfc4d (P1) .. 9ab372b (class-SCT+G1) .. a774bf2 (SCT peel G2) .. 9423767
+(map-build) .. 7f01fc4 (scalable) .. 23710db (sparse patterns) .. 5fb6a25/this.
