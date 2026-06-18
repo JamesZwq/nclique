@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <map>
 #include "CCPathCore.h"
+#include "ClassSCT.h"   // orbit-aware class-weighted SCT (G1/P2)
 // counting for (r,s)-nucleus INITIAL SUPPORT. Touches no existing code.
 //
 // Idea (SigmodPlus section 24): compute the s-clique support of every
@@ -533,6 +534,44 @@ int main(int argc, char **argv) {
         }
         printf("[candcheck] %d/%d candidate-class-graph == region-IE  %s\n",
                ok, ok + bad, bad == 0 ? "[FOUNDATION OK]" : "[MISMATCH]");
+        fflush(stdout);
+    }
+
+    // ---- G1: GLOBAL class-SCT vs region-IE on the REAL graph ----
+    // Build the quotient graph (nodes=classes, edge iff co-occur in a region),
+    // build its orbit-aware SCT for size s, and check the SCT's total s-clique
+    // count == the total derived from the verified region-IE supports:
+    //   total s-cliques = (sum over patterns of mult * support) / C(s, r)
+    // (each s-clique contains C(s,r) r-cliques). This validates the GLOBAL
+    // class-SCT (the structure the peel will use) on real graph structure.
+    // Gated by PIVOTER_SCTCHECK. Skipped if nC too large for the dense matrix.
+    if (getenv("PIVOTER_SCTCHECK")) {
+        double sclIE = 0;
+        for (auto &P : pats) sclIE += (double)P.mult * P.sup;
+        sclIE /= C(s, r);                       // each s-clique has C(s,r) r-subcliques
+        if ((long)nC > 6000) {
+            printf("[sctcheck] nC=%d too large for dense matrix; skipped\n", nC);
+        } else {
+            auto Tsa = Clock::now();
+            ClassG QG; QG.C = nC; QG.w.assign(nC, 0);
+            for (int c = 0; c < nC; c++) QG.w[c] = classSize[c];
+            QG.A.assign(nC, std::vector<char>(nC, 0));
+            for (int M = 0; M < nR; M++) {       // co-occurrence edges per region
+                const auto &rc = regionClasses[M];
+                for (size_t a = 0; a < rc.size(); a++)
+                    for (size_t b = a + 1; b < rc.size(); b++) {
+                        QG.A[rc[a]][rc[b]] = 1; QG.A[rc[b]][rc[a]] = 1;
+                    }
+            }
+            auto leaves = buildClassSCT(QG, s);
+            double sclSCT = 0;
+            ccpath::Vec zb((size_t)nC, 0);
+            for (auto &lf : leaves) sclSCT += ccpath::support_count(lf, zb, ccpath_ncr);
+            auto Tsb = Clock::now();
+            printf("[sctcheck] s-cliques: region-IE=%.0f  class-SCT=%.0f  leaves=%zu  build=%.2fs  %s\n",
+                   sclIE, sclSCT, leaves.size(), secs(Tsa, Tsb),
+                   fabs(sclIE - sclSCT) < 0.5 ? "[G1 OK]" : "[MISMATCH]");
+        }
         fflush(stdout);
     }
 
