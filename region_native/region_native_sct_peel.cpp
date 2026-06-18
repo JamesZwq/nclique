@@ -498,7 +498,7 @@ int main(int argc, char **argv) {
     // ===================================================================
     // Step 1: GLOBAL quotient graph. nodes = classes 0..nC-1, weight
     // w_c = classSize[c], edge(i,j) iff classes i,j co-occur in some region.
-    if ((long)nC > 6000) {
+    if ((long)nC > 20000) {
         printf("[sct] nC=%d > 6000; dense quotient matrix too large; "
                "skipping (scale is a later concern).\n", nC);
         return 0;
@@ -543,55 +543,15 @@ int main(int argc, char **argv) {
         fflush(stdout);
     }
 
-    // Step 3: pattern <-> leaf maps. patLeaves[pi] = original-leaf ids that
-    // host pattern pi (support_count(leaf, m_pi) > 0 with empty forbidden).
-    // leafPats[lid] = patterns hosted by that leaf. Keyed by ORIGINAL leaf
-    // id; stable under controlled_split (children stay under the same id).
+    // Step 3: compaction + pattern<->leaf maps.
     int nLeaf = (int)baseLeaves.size();
-    vector<vector<int>> patLeaves(pats.size());
-    vector<vector<int>> leafPats(nLeaf);
     vector<Vec> patVec(pats.size());
     for (int pi = 0; pi < (int)pats.size(); pi++) patVec[pi] = compToVec(pats[pi].comp);
-    // OPTIM: a leaf hosts pattern pi ONLY IF every class of pi is present in
-    // the leaf (m_c>0 with leaf u_c=0 forces support_count=0). So index leaves
-    // by class and intersect over the pattern's (few) classes -> candidate
-    // leaves, then confirm with support_count. This replaces the O(nLeaf*nPats)
-    // all-pairs scan (each O(nC)) with O(sum of pattern-leaf incidences).
-    vector<vector<int>> classToLeaves(nC);
-    for (int lid = 0; lid < nLeaf; lid++) {
-        const CCPath &lf = baseLeaves[lid];
-        for (int c = 0; c < nC; c++) if (lf.n[c] || lf.h[c]) classToLeaves[c].push_back(lid);
-    }
-    vector<char> leafMark(nLeaf, 0);
-    for (int pi = 0; pi < (int)pats.size(); pi++) {
-        const auto &cs = pats[pi].classSet;           // sorted class ids of pattern
-        if (cs.empty()) continue;
-        // candidate leaves = leaves containing the pattern's rarest class,
-        // filtered to those containing ALL of the pattern's classes.
-        int rare = cs[0]; for (int c : cs) if (classToLeaves[c].size() < classToLeaves[rare].size()) rare = c;
-        for (int lid : classToLeaves[rare]) {
-            const CCPath &lf = baseLeaves[lid];
-            bool all = true;
-            for (int c : cs) if (!(lf.n[c] || lf.h[c])) { all = false; break; }
-            if (!all) continue;
-            if (ccpath::support_count(lf, patVec[pi], ccpath_ncr) > 0.0) {
-                patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
-            }
-        }
-    }
-    // leafPats was filled per-pattern; sort each for determinism.
-    for (auto &v : leafPats) std::sort(v.begin(), v.end());
-    (void)leafMark;
 
-    // ---- PER-LEAF COMPACTION ----
-    // support_count loops over ALL m()=nC components, so on graphs with many
-    // classes (ca-GrQc nC=1302) each call is O(nC*2^|forbidden|). But every
-    // leaf only TOUCHES its support classes {c : n[c]>0} (typically <=~10).
-    // Compact each leaf to its own support set (local dimension), remapping
-    // h/n/ell/u; then every support_count / controlled_split runs in the tiny
-    // local dimension. CCPathCore/ClassSCT are untouched — we rebuild the
-    // CCPath objects ourselves. Pattern b-vectors are pre-mapped per (leaf,
-    // pattern) hosting pair so the hot loops never remap.
+    // ---- PER-LEAF COMPACTION (FIRST, so the map-build confirm is cheap) ----
+    // Each leaf touches only its support classes {c: n[c]||h[c]} (<=~10);
+    // compact to that local dimension so support_count / controlled_split run
+    // in the tiny local dim. CCPathCore/ClassSCT untouched.
     vector<vector<int>> supC(nLeaf);                  // leaf -> sorted support classes
     vector<vector<CCPath>> slotPaths(nLeaf);          // compact (split) path set
     for (int lid = 0; lid < nLeaf; lid++) {
@@ -616,6 +576,50 @@ int main(int argc, char **argv) {
         for (size_t i = 0; i < sc.size(); i++) b[i] = gv[(size_t)sc[i]];
         return b;
     };
+
+    // ---- pattern<->leaf maps via PER-LEAF ENUMERATION ----
+    // Every r-multiset over a leaf's classes is a valid r-clique = a registered
+    // pattern (the leaf's classes form a clique). So enumerate r-multisets PER
+    // LEAF and look them up in a comp->patternId index -> O(sum of pattern-leaf
+    // incidences), independent of how many leaves a class sits in. (The
+    // per-pattern candidate scan was 33s on ca-CondMat: 29544 leaves x a class
+    // in many leaves. This is the production enumCb approach.) The host is
+    // confirmed on the COMPACT leaf (local dim) so each support_count is small.
+    vector<vector<int>> patLeaves(pats.size());
+    vector<vector<int>> leafPats(nLeaf);
+    std::unordered_map<std::string,int> patIdx; patIdx.reserve(pats.size() * 2);
+    auto compKey = [](const vector<pair<int,int>> &comp) {
+        std::string k; k.reserve(comp.size() * 8);
+        for (auto &cm : comp) { k.append((const char*)&cm.first, 4); k.append((const char*)&cm.second, 4); }
+        return k;
+    };
+    for (int pi = 0; pi < (int)pats.size(); pi++) patIdx[compKey(pats[pi].comp)] = pi;
+    {
+        vector<int> lcs, lcap; vector<pair<int,int>> cur;
+        std::function<void(int,int,int)> enumLP = [&](int lid, int idx, int rem) {
+            if (rem == 0) {
+                auto it = patIdx.find(compKey(cur));
+                if (it == patIdx.end()) return;           // not a registered pattern
+                int pi = it->second;
+                // confirm host on the compact leaf (filters m with no s-extension)
+                if (ccpath::support_count(slotPaths[lid][0], toLocal(lid, patVec[pi]), ccpath_ncr) > 0.0) {
+                    patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
+                }
+                return;
+            }
+            for (int i = idx; i < (int)lcs.size(); i++) {
+                int mx = std::min(rem, lcap[i]);
+                for (int j = 1; j <= mx; j++) { cur.push_back({lcs[i], j}); enumLP(lid, i+1, rem-j); cur.pop_back(); }
+            }
+        };
+        for (int lid = 0; lid < nLeaf; lid++) {
+            const CCPath &lf = baseLeaves[lid];
+            lcs.clear(); lcap.clear();
+            for (int c = 0; c < nC; c++) if (lf.n[c] || lf.h[c]) { lcs.push_back(c); lcap.push_back((int)lf.u[c]); }
+            cur.clear(); enumLP(lid, 0, r);
+        }
+    }
+    for (auto &v : leafPats) std::sort(v.begin(), v.end());
     // pre-mapped compact b for every (pattern, hosting-leaf) pair.
     vector<vector<Vec>> pbLocal(pats.size());         // parallel to patLeaves[pi]
     for (int pi = 0; pi < (int)pats.size(); pi++) {
