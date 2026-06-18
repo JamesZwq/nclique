@@ -784,7 +784,19 @@ int main(int argc, char **argv) {
     // skip scan) never dominates. Correctness is invariant to KMAX (verified
     // 80/80 vs brute at KMAX=1,2,12; corehash byte-identical across KMAX here).
     int KMAX = 1;
-    if (getenv("SCT_KMAX")) { KMAX = atoi(getenv("SCT_KMAX")); if (KMAX < 1) KMAX = 1; }
+    bool kAdapt = true;                               // adaptive per-leaf KMAX (default ON)
+    if (getenv("SCT_KMAX")) { KMAX = atoi(getenv("SCT_KMAX")); if (KMAX < 1) KMAX = 1; kAdapt = false; }
+    // ADAPTIVE KMAX: KMAX=1 minimises per-candidate IE/DP and wins where the peel is
+    // DP-bound (the majority), but on maxSplit-BLOWUP leaves the O(slot) scan in
+    // slotForbidDiff dominates and a larger KMAX (fewer split children) wins
+    // (measured: web-NotreDame(6,8) maxSplit~13k is 20% faster at KMAX=2 than 1,
+    // while (7,10) maxSplit~2k is 40% faster at KMAX=1). We therefore raise a LEAF's
+    // effective KMAX as its slot grows: kml = 1 + slotSize/KTHRESH. Small slots stay
+    // at KMAX=1 (cheap DP); blow-up slots self-limit (bigger KMAX => fewer splits =>
+    // bounded slot => bounded scan). Bit-identical: support_count is invariant to the
+    // split strategy (KMAX-invariance), so a per-leaf, slot-dependent KMAX is exact.
+    int KTHRESH = 8192; if (getenv("SCT_KMAX_THRESH")) KTHRESH = atoi(getenv("SCT_KMAX_THRESH"));
+    const int KMAXCAP = 6;                            // ceiling on the adaptive KMAX
     // SKIP_H1: a |host|=1 pattern peels at EXACTLY L_M=C(|M|-r,s-r) regardless
     // of how the peel proceeds (every r-clique in its region M has support
     // >= L_M, so no witness of a |host|=1 pattern dies before curLevel=L_M --
@@ -839,6 +851,11 @@ int main(int argc, char **argv) {
         sfdKids.clear();
         chgOld.clear();
         int w = (int)cur.size();                          // live prefix [0,w)
+        // effective KMAX for THIS leaf: raised as the slot grows so a blow-up slot
+        // self-limits (more forbidden per path => fewer split children). Computed from
+        // the entry slot size (stable within this call). Bit-identical (KMAX-invariant).
+        int kml = KMAX;
+        if (kAdapt) { kml = KMAX + w / KTHRESH; if (kml > KMAXCAP) kml = KMAXCAP; }
         for (int i = 0; i < w; ) {
             CCPath &p = cur[i];
             bool imposs = false;                          // impossible(p, bloc)?
@@ -850,8 +867,8 @@ int main(int argc, char **argv) {
                 remove = true;                             // path fully dead (a==bloc)
             } else {
                 ccpath::insert_antichain(p.forbidden, bloc);
-                if ((int)p.forbidden.size() > KMAX) {
-                    auto kk = ccpath::controlled_split(p, KMAX);
+                if ((int)p.forbidden.size() > kml) {
+                    auto kk = ccpath::controlled_split(p, kml);
                     for (auto &k : kk) sfdKids.push_back(std::move(k));
                     remove = true;                         // split-parent replaced by children
                 }
