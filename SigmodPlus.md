@@ -2215,3 +2215,44 @@ quantify SCT-vs-V3LM across many graphs at the cells that matter; then the
 honest paper story = "region-native class-SCT: size-free counting +
 lightweight build + correct peel that, at high (r,s), beats CND by 1e4-1e5x
 and matches/beats V3LM, on a superset of V3LM's win-set."
+
+## 34. PEEL SPEEDUP via |host|=1 target-skip (the merging idea, done right) (#139)
+
+User push: "use region MERGING to optimize the peel, not just direct-assign;
+it will definitely be faster." Careful investigation of every realization:
+
+DEAD ENDS (both empirically falsified vs brute):
+1. Direct-bin ALL |host|=1 patterns (core=C(|M|-r,s-r), skip peel): WRONG.
+   t_2k5tri shared triangle core 4 vs 2 -- a |host|=1 witness s-clique can
+   contain a |host|>=2 r-clique, so skipping the |host|=1 peel inflates the
+   |host|>=2 cores.
+2. Batch "region mass-death": set u[c]=0 for M's PRIVATE classes at L_M.
+   WRONG (t_dense, 4 shared patterns over-cored). ROOT CAUSE: |host|=1 is NOT
+   "uses a private class" -- a |host|=1 pattern can use only SHARED classes
+   whose region-intersection is a single region (e.g. (0,1,3) in t_dense, all
+   of 0,1,3 shared but host={one region}). A correct compact mass-death needs
+   to remove host=={M} witnesses, which requires region-IE -- exactly what the
+   class-SCT's disjoint leaves avoid. So no clean compact batch exists.
+
+WHAT IS TRUE + CORRECT (verified 0 exceptions, then proven): every |host|=1
+pattern peels at EXACTLY L_M=C(|M|-r,s-r). Proof: every r-clique in M (incl
+shared ones) has core >= L_M, because a shared r-clique keeps its M-witnesses
+(C(|M|-r,s-r)=L_M of them) until M's own |host|=1 patterns die at L_M; so no
+witness of a |host|=1 pattern dies before curLevel=L_M.
+
+THE WIN (commit 1b6bf3f, SCT_NO_SKIP_H1 to disable): a |host|=1 pattern's
+bucket key is already L_M and never changes, so recomputing its support in
+affected-updates is pure waste. SKIP |host|=1 patterns as affected-update
+TARGETS; still peel them as SOURCES (witnesses removed, |host|>=2 drops
+correct). |host|=1 is the majority -> removes the bulk of scWithTerms.
+GATE skip==no-skip==brute 38/38 incl dense. Peel speedup:
+  ca-CondMat(5,7) 5.27->1.33s (4x); (5,10) 3.07->1.04s; (7,10) 2.47->1.12s;
+  ca-GrQc(5,7) 1.25->0.85s.
+New standing (total, skipH1): SCT beats BOTH CND and V3LM on bio-celegans,
+ca-HepTh, ca-GrQc(5,10)/(7,10), dblp-core30(5,7); beats CND on every
+high-(r,s) explode cell. Weak spot remains dense moderate-(r,s) (ca-CondMat)
+where CND/V3LM are sub-second.
+
+NEXT: source-skip -- a |host|=1 pattern whose leaves host NO |host|>=2
+pattern affects nothing when it peels, so skip its source-peel entirely
+(generalizes fully-mergeable direct-assign to the leaf level).
