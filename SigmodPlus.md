@@ -1852,3 +1852,36 @@ split-path sets per DISTINCT HOST (region intersection), i.e. re-derive
 the production engine's path machinery on the quotient -- a multi-session
 effort. Status: peel CORRECT + single-region fast; multi-host fast is the
 open piece.
+
+## 28. PIVOT-on-quotient redesign (2026-06-18, #139) -- user steer
+
+User insight: "use the PIVOT concept to compute, otherwise the update is
+too complex. pivot is an idea, not necessarily a CPI." Correct diagnosis
+of my detour: region-overlap union-IE counts fine but makes the peel
+update need cross-region IE. The pivot idea gives a SINGLE canonical
+hold/optional witness structure, so each witness is counted once and the
+update is one dead-box -- no cross-region IE. And pivot != CPI: do it at
+CLASS granularity (tiny), not the heavy vertex-level global SDCT.
+
+KEY ENABLING FACT (quotient-native, no vertex adjacency needed):
+  class i and class j are fully mutually adjacent  <=>  they co-occur in
+  some region (classRegions[i] cap classRegions[j] != empty).
+Proof: full adjacency => i union j is a clique => extends to a maximal
+clique (a region) containing both. So a tuple's witness space is the
+(s-r)-cliques of its CANDIDATE-CLASS GRAPH: nodes = classes in its host
+regions, edges = region co-occurrence, weights = (remaining) class sizes.
+This graph is read straight off the quotient.
+
+DESIGN: per tuple (shared across a host-group), pivot the candidate-class
+graph into ONE CCPath (hold/optional). support = support_count along it;
+peel = dead-box (forbidden antichain) on that one path; controlled_split
+bounds the antichain. Multi-host collapses to one path -> no cross-region
+IE. This is "pivot fused into region/class," lightweight (class-level).
+
+BUILD PLAN (correctness-first, each gated):
+ P1: build candidate-class graph + class-level pivot -> one CCPath;
+     validate support_count(path, empty forbidden) == region-IE/direct on
+     sampled tuples (foundation).
+ P2: peel via dead-boxes on these per-host-group paths; re-gate core
+     distribution vs brute + V3LM.
+ P3: size-free sweep + end-to-end vs CND/RegND*.
