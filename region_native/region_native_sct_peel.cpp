@@ -536,6 +536,25 @@ int main(int argc, char **argv) {
         };
         for (int i = 0; i < nR; i++) { curRid = i; enumAll(0, regionClasses[i], r); }
     }
+    // EMPIRICAL TEST (env SCT_DIRECTBIN_ALL_HOST1): direct-bin ALL |host|=1
+    // patterns (not only fully-mergeable regions), peel only |host|>=2. GATE
+    // vs brute decides correctness. Suspected WRONG: a |host|=1 pattern's
+    // witness s-clique can contain a |host|>=2 r-clique, so peeling the
+    // |host|=1 pattern lowers a |host|>=2 pattern's support -> skipping it
+    // corrupts the |host|>=2 cores.
+    if (getenv("SCT_DIRECTBIN_ALL_HOST1")) {
+        vector<Pat> keep; long long nDB=0, nDBrc=0;
+        for (auto &P : pats) {
+            if (P.host.size() == 1) {
+                int N = (int)regions[P.host[0]].size();
+                double cv = (N >= (int)s) ? C(N-r, s-r) : 0.0;
+                directCoreDist[cv] += (double)P.mult; nDB++; nDBrc += P.mult;
+            } else keep.push_back(std::move(P));
+        }
+        pats = std::move(keep);
+        printf("[rn-peel] DIRECTBIN_ALL_HOST1: %lld patterns direct (%lld r-cliques); peel patterns=%zu\n",
+               nDB, nDBrc, pats.size());
+    }
     auto T4 = Clock::now();
     long long totalRCliques = 0; for (auto &P : pats) totalRCliques += P.mult;
     printf("[rn-peel] patterns=%zu  r-cliques=%lld  enum=%.2fs\n",
