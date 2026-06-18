@@ -1933,3 +1933,40 @@ KEY FILES: region_native/region_native_peel.cpp (peel + candcheck P1),
  scripts/verify_nucleus_brute.py (oracle), graphs/t_*.edges (tiny tests,
  regenerable from the inline python in the session).
 COMMITS this session: c5282e6 (counting flatness fix) .. 0ebfc4d (P1).
+
+## 30. P2 DONE: class-SCT peel correct + peel-phase fast; map-build is the perf bottleneck (2026-06-18, #139)
+
+region_native/region_native_sct_peel.cpp: nucleus peel on the disjoint
+class-SCT leaves. support(pattern)=clean SUM over hosting leaves (no IE,
+leaves disjoint); peel=per-leaf dead-box + controlled_split; affected
+update via exact before/after diff over changed split paths. Built by a
+subagent (267k tok), INDEPENDENTLY re-verified by me.
+
+CORRECTNESS (all gates pass, independently re-run):
+ - vs brute oracle: 68/68 (tiny + 4 dense stress graphs t_stress/t_chain/
+   t_dense/t_split the subagent added to graphs/), core>=1.
+ - vs V3LM (r>=3): 4/4 identical (ca-GrQc 3,4 [24 bins] / 4,5; dblp-core30
+   3,4; t_k7k5k4).
+ - ca-GrQc(3,4) FINISHES: peel=0.70s, Max core 41 == V3LM (region-IE peel
+   timed out 300s+). The cross-region IE is GONE (disjoint leaves => sum).
+ - Subagent also found: the SC(max) delta shortcut over-promotes on dense
+   graphs (fixed: exact diff); the OLD region-IE peel is itself WRONG on
+   dense graphs (invents a spurious core; SCT matches brute).
+ - class-SCT itself adversarially audited: ~605k cases vs independent
+   vertex-expansion oracle, 0 bug; leaf count Theta(#maximal-cliques);
+   dead-box = orbit/batch deletion = exactly the pattern-peel semantics.
+
+PERFORMANCE (honest): the PEEL phase is fast (0.70s ca-GrQc, 0.05s dblp),
+but END-TO-END is NOT yet beating V3LM:
+   ca-GrQc(3,4): SCT total 5.80s (build+maps 5.09 + peel 0.70) vs V3LM 0.06s
+   dblp-core30(3,4): SCT 0.12s vs V3LM 0.08s
+ The bottleneck is the hosting-map build: O(nLeaf x nPats) (tests every
+ pattern against every leaf via support_count>0). FIX (next): enumerate,
+ per leaf, the r-multisets of its classes (the patterns it hosts) and map
+ directly -> O(sum of pattern-leaf incidences), the production enumCb
+ approach. Also: nC>6000 still needs sparse quotient adjacency (dense CxC
+ matrix skips ca-CondMat nC=11152).
+
+NEXT: (a) optimize map-build (per-leaf enumeration); (b) sparse quotient
+adjacency for nC>6000; (c) G3 size-free sweep + end-to-end vs CND/RegND*/
+V3LM on tods2. Commit a774bf2.
