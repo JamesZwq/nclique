@@ -3,199 +3,268 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RegND:区域/类商上的 (r,s)-Nucleus 分解</title>
-<script>
-  MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$','$$']] } };
-</script>
+<title>RegND 图解:一个例子从头讲到底</title>
+<script>MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};</script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <style>
-  :root{
-    --fg:#1f2430; --muted:#5b6470; --bg:#fbfcfe; --card:#ffffff;
-    --accent:#2563eb; --accent2:#0d9488; --win:#0a7d34; --lose:#b42318; --warn:#b45309;
-    --border:#e3e8ef; --code:#0f172a; --codebg:#f3f6fb;
-  }
+  :root{--fg:#1f2430;--muted:#5b6470;--bg:#fbfcfe;--card:#fff;--accent:#2563eb;
+    --A:#2563eb;--C:#0d9488;--E:#ea580c;--R1:#2563eb;--R2:#ea580c;
+    --win:#0a7d34;--lose:#b42318;--warn:#b45309;--border:#e3e8ef;--code:#0f172a;--codebg:#f3f6fb;}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);
     font:16px/1.75 -apple-system,"PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;}
-  .wrap{max-width:960px;margin:0 auto;padding:48px 28px 96px;}
-  h1{font-size:30px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em;}
-  .sub{color:var(--muted);font-size:15px;margin:0 0 28px;}
-  h2{font-size:23px;margin:48px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--border);}
-  h3{font-size:18px;margin:28px 0 8px;color:var(--accent);}
+  .wrap{max-width:980px;margin:0 auto;padding:48px 28px 110px;}
+  h1{font-size:30px;line-height:1.3;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:15px;margin:0 0 26px;}
+  h2{font-size:23px;margin:50px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+  .step{display:inline-block;background:var(--accent);color:#fff;border-radius:8px;
+    font-size:14px;font-weight:700;padding:2px 11px;margin-right:8px;vertical-align:3px;}
+  h3{font-size:18px;margin:26px 0 8px;color:var(--accent);}
   p{margin:12px 0;}
   .lead{font-size:17px;background:linear-gradient(180deg,#eef4ff,#f7faff);
     border:1px solid #d6e2ff;border-radius:14px;padding:18px 22px;margin:0 0 8px;}
   .lead b{color:var(--accent);}
   code{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;
     background:var(--codebg);padding:1px 6px;border-radius:5px;color:var(--code);}
-  pre{background:var(--code);color:#e6edf3;border-radius:12px;padding:16px 18px;
-    overflow:auto;font-size:13px;line-height:1.6;}
+  figure{margin:18px 0;text-align:center;}
+  figure svg{max-width:100%;height:auto;background:#fff;border:1px solid var(--border);border-radius:14px;padding:10px;}
+  figcaption{color:var(--muted);font-size:13.5px;margin-top:8px;}
   table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;}
   th,td{border:1px solid var(--border);padding:8px 10px;text-align:center;}
-  th{background:#f1f5f9;font-weight:600;}
-  td.l,th.l{text-align:left;}
-  .win{color:var(--win);font-weight:600;} .lose{color:var(--lose);font-weight:600;}
-  .both{color:var(--warn);}
-  .note{border-left:4px solid var(--accent2);background:#f0fdfa;padding:12px 16px;
-    border-radius:0 10px 10px 0;margin:16px 0;}
-  .warnbox{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;
-    border-radius:0 10px 10px 0;margin:16px 0;}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
-  .card h4{margin:0 0 8px;font-size:15px;}
-  .kbd{display:inline-block;background:#eef2f7;border:1px solid #d6dde7;border-bottom-width:2px;
-    border-radius:6px;padding:1px 7px;font-family:monospace;font-size:12.5px;}
+  th{background:#f1f5f9;font-weight:600;} td.l,th.l{text-align:left;}
+  .win{color:var(--win);font-weight:600;}.lose{color:var(--lose);font-weight:600;}.both{color:var(--warn);}
+  .note{border-left:4px solid var(--C);background:#f0fdfa;padding:12px 16px;border-radius:0 10px 10px 0;margin:16px 0;}
+  .warnbox{border-left:4px solid var(--warn);background:#fffbeb;padding:12px 16px;border-radius:0 10px 10px 0;margin:16px 0;}
+  .calc{background:#0f172a;color:#e6edf3;border-radius:12px;padding:16px 20px;margin:16px 0;font-size:15px;line-height:2;}
+  .calc .hl{color:#fbbf24;} .calc .gr{color:#86efac;}
+  .pillA{color:var(--A);font-weight:700} .pillC{color:var(--C);font-weight:700} .pillE{color:var(--E);font-weight:700}
   .small{color:var(--muted);font-size:13px;}
   ol li,ul li{margin:6px 0;}
-  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
-    vertical-align:middle;}
-  .tag.v{background:#fee4e2;color:#b42318;} .tag.c{background:#dcfce7;color:#0a7d34;}
-  hr{border:none;border-top:1px solid var(--border);margin:40px 0;}
-  .center{text-align:center;}
+  hr{border:none;border-top:1px solid var(--border);margin:42px 0;}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<h1>RegND:在<strong>区域 / 类商</strong>上做 (r,s)-Nucleus 分解</h1>
-<p class="sub">不构建顶点级 CPI · 用 class 级的 Succinct Clique Tree · 与 NuclearCD (CND) 的对比</p>
+<h1>RegND 图解 ——「区域 / 类商」核分解,一个例子从头讲到底</h1>
+<p class="sub">贯穿全文的例子:6 个顶点的小图,$(r,s)=(2,3)$(算「每条边在多少个三角形里」,再按这个剥皮)</p>
 
 <p class="lead">
-一句话:我们把"逐个 r-clique、在顶点上做"的核分解,搬到一张<b>压缩过的商图</b>上做——
-节点不是顶点,而是<b>可互换顶点的等价类</b>。计数用<b>纯二项式闭式</b>(不建任何 pivot 树),
-剥皮用一棵<b>class 级的 Succinct Clique Tree</b>。结果:在高 $(r,s)$ 和稀疏图上,
-<b>时间和内存都大幅领先 CND</b>;内存优势几乎是全局的。
+我们用<b>一张 6 顶点小图</b>把每一步都画出来:从原图 → 找 region → 合并成 class →
+写出 pattern 和 host → 用<b>纯二项式</b>把 support 算出来 → 在 <b>class 级 SCT</b> 上剥皮。
+你会看到:同样一件事,CND 在 251K 个团上做,我们只在 <b>3 个 class</b> 上做。
 </p>
 
-<h2>1. 问题:(r,s)-Nucleus 分解</h2>
+<h2><span class="step">例子</span>我们的小图</h2>
 <p>
-给定无向图,固定两个整数 $r &lt; s$。对每个 <b>r-clique</b>(r 个两两相连的点),它的 <b>support</b>
-定义为"包含它的 <b>s-clique</b> 个数"。把所有 r-clique 按 support 从小到大<b>剥皮</b>(peel):
-每次拿掉 support 最小的那个,记下它的 core number,并把因此死掉的 s-clique 从其它 r-clique 的
-support 里扣除,直到全部剥完。输出 = 每个 r-clique 的 core number 分布。
+6 个顶点 <span class="pillA">a, b</span>(蓝)、<span class="pillC">c, d</span>(青)、<span class="pillE">e, f</span>(橙)。
+边见下图。关键:<span class="pillA">a,b</span> 跟 <span class="pillE">e,f</span> <b>不相连</b>。
 </p>
-<p class="small">例:$(r,s)=(3,4)$ 就是"三角形在四团里的核分解";$(4,5)$ 是"四团在五团里的核分解"。</p>
+<figure>
+<svg viewBox="0 0 460 250" width="460" role="img" aria-label="原图">
+  <g stroke="#94a3b8" stroke-width="2">
+    <line x1="70" y1="70" x2="70" y2="170"/>   <line x1="70" y1="70" x2="210" y2="70"/>
+    <line x1="70" y1="70" x2="210" y2="170"/>  <line x1="70" y1="170" x2="210" y2="70"/>
+    <line x1="70" y1="170" x2="210" y2="170"/> <line x1="210" y1="70" x2="210" y2="170"/>
+    <line x1="210" y1="70" x2="350" y2="70"/>  <line x1="210" y1="70" x2="350" y2="170"/>
+    <line x1="210" y1="170" x2="350" y2="70"/> <line x1="210" y1="170" x2="350" y2="170"/>
+    <line x1="350" y1="70" x2="350" y2="170"/>
+  </g>
+  <g font-family="monospace" font-size="16" font-weight="700" text-anchor="middle">
+    <circle cx="70" cy="70" r="18" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/><text x="70" y="76" fill="#2563eb">a</text>
+    <circle cx="70" cy="170" r="18" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/><text x="70" y="176" fill="#2563eb">b</text>
+    <circle cx="210" cy="70" r="18" fill="#ccfbf1" stroke="#0d9488" stroke-width="2.5"/><text x="210" y="76" fill="#0d9488">c</text>
+    <circle cx="210" cy="170" r="18" fill="#ccfbf1" stroke="#0d9488" stroke-width="2.5"/><text x="210" y="176" fill="#0d9488">d</text>
+    <circle cx="350" cy="70" r="18" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/><text x="350" y="76" fill="#ea580c">e</text>
+    <circle cx="350" cy="170" r="18" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/><text x="350" y="176" fill="#ea580c">f</text>
+  </g>
+</svg>
+<figcaption>原图 G。边:a–b, a–c, a–d, b–c, b–d, c–d, c–e, c–f, d–e, d–f, e–f。(a,b 与 e,f 无边)</figcaption>
+</figure>
+<p><b>要算什么:</b> $(r,s)=(2,3)$ —— 对每条<b>边</b>(r=2),数包含它的<b>三角形</b>(s=3)个数,这就是它的 support;再按 support 从小到大剥皮,得到每条边的 core number。</p>
 
-<h2>2. Baseline:CND(NuclearCD)<span class="tag v">顶点级</span></h2>
+<h2><span class="step">第 1 步</span>Region = 大小 ≥ s 的极大团</h2>
+<p>MCE 找出所有极大团。这张图里大小 ≥ 3 的极大团只有两个 4-团:</p>
+<figure>
+<svg viewBox="0 0 460 250" width="460" role="img" aria-label="两个 region">
+  <ellipse cx="140" cy="120" rx="115" ry="92" fill="#2563eb" opacity="0.10"/>
+  <ellipse cx="280" cy="120" rx="115" ry="92" fill="#ea580c" opacity="0.10"/>
+  <text x="70" y="32" fill="#2563eb" font-weight="700" font-size="15">R₁ = {a,b,c,d}</text>
+  <text x="300" y="32" fill="#ea580c" font-weight="700" font-size="15">R₂ = {c,d,e,f}</text>
+  <g stroke="#cbd5e1" stroke-width="1.5">
+    <line x1="70" y1="70" x2="70" y2="170"/><line x1="70" y1="70" x2="210" y2="70"/>
+    <line x1="70" y1="70" x2="210" y2="170"/><line x1="70" y1="170" x2="210" y2="70"/>
+    <line x1="70" y1="170" x2="210" y2="170"/><line x1="210" y1="70" x2="210" y2="170"/>
+    <line x1="210" y1="70" x2="350" y2="70"/><line x1="210" y1="70" x2="350" y2="170"/>
+    <line x1="210" y1="170" x2="350" y2="70"/><line x1="210" y1="170" x2="350" y2="170"/>
+    <line x1="350" y1="70" x2="350" y2="170"/>
+  </g>
+  <g font-family="monospace" font-size="16" font-weight="700" text-anchor="middle">
+    <circle cx="70" cy="70" r="17" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="70" y="76" fill="#2563eb">a</text>
+    <circle cx="70" cy="170" r="17" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="70" y="176" fill="#2563eb">b</text>
+    <circle cx="210" cy="70" r="17" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"/><text x="210" y="76" fill="#0d9488">c</text>
+    <circle cx="210" cy="170" r="17" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"/><text x="210" y="176" fill="#0d9488">d</text>
+    <circle cx="350" cy="70" r="17" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/><text x="350" y="76" fill="#ea580c">e</text>
+    <circle cx="350" cy="170" r="17" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/><text x="350" y="176" fill="#ea580c">f</text>
+  </g>
+</svg>
+<figcaption>两个 region:R₁(蓝)和 R₂(橙),它们在 <b>{c,d}</b> 处重叠。任何三角形都整个落在某个 region 里。</figcaption>
+</figure>
+
+<h2><span class="step">第 2 步</span>Class = region-成员身份相同的顶点(可互换)</h2>
+<p>看每个顶点"在哪些 region 里",身份相同的合并成一个 class:</p>
+<figure>
+<svg viewBox="0 0 600 200" width="600" role="img" aria-label="三个 class">
+  <g font-family="monospace" font-size="15" font-weight="700" text-anchor="middle">
+    <rect x="30" y="50" width="150" height="100" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <circle cx="80" cy="100" r="16" fill="#fff" stroke="#2563eb" stroke-width="2"/><text x="80" y="106" fill="#2563eb">a</text>
+    <circle cx="130" cy="100" r="16" fill="#fff" stroke="#2563eb" stroke-width="2"/><text x="130" y="106" fill="#2563eb">b</text>
+    <text x="105" y="38" fill="#2563eb" font-size="17">class A</text>
+    <text x="105" y="172" fill="#475569" font-size="12">∈ {R₁}</text>
+
+    <rect x="225" y="50" width="150" height="100" rx="16" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"/>
+    <circle cx="275" cy="100" r="16" fill="#fff" stroke="#0d9488" stroke-width="2"/><text x="275" y="106" fill="#0d9488">c</text>
+    <circle cx="325" cy="100" r="16" fill="#fff" stroke="#0d9488" stroke-width="2"/><text x="325" y="106" fill="#0d9488">d</text>
+    <text x="300" y="38" fill="#0d9488" font-size="17">class C</text>
+    <text x="300" y="172" fill="#475569" font-size="12">∈ {R₁, R₂}  ← 在两个 region 里</text>
+
+    <rect x="420" y="50" width="150" height="100" rx="16" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+    <circle cx="470" cy="100" r="16" fill="#fff" stroke="#ea580c" stroke-width="2"/><text x="470" y="106" fill="#ea580c">e</text>
+    <circle cx="520" cy="100" r="16" fill="#fff" stroke="#ea580c" stroke-width="2"/><text x="520" y="106" fill="#ea580c">f</text>
+    <text x="495" y="38" fill="#ea580c" font-size="17">class E</text>
+    <text x="495" y="172" fill="#475569" font-size="12">∈ {R₂}</text>
+  </g>
+</svg>
+<figcaption>6 个顶点 → <b>3 个 class</b>。a,b 互换;c,d 互换;e,f 互换。这就是"商":之后全在这 3 个 class 上算。</figcaption>
+</figure>
+
+<h2><span class="step">第 3 步</span>Pattern(r-clique 的 class 签名)与 Host</h2>
 <p>
-经典做法在<b>顶点粒度、逐个 r-clique</b> 上算:枚举出所有 r-clique 和 s-clique,逐个维护 support、逐个剥。
-正确、而且在低 $(r,s)$ 时很快(团很少、枚举便宜)。但它有一个致命点:
+一条边 = 取 2 个点,按它们的 class 写成签名,就是 <b>pattern</b>。
+<b>Host</b> = 包含这条边的所有 region 集合 —— <b>support 只取决于 Host</b>。
 </p>
-<div class="warnbox">
-<b>CND 必须把所有 r-clique / s-clique 物化出来。</b> 当 $(r,s)$ 升高,团的数量<b>组合爆炸</b>,
-时间和<b>内存</b>随之爆炸。实测 ca-GrQc 在 $(6,8)$ 时 CND 已占用 <b>2&nbsp;GB</b>,$(7,10)$ 时
-<b>近 9&nbsp;GB</b> 且跑不完;com-dblp、web-Stanford 在中等 $(r,s)$ 就要几十 GB。
-</div>
-
-<h2>3. RegND 的核心:区域 / 类商(quotient)</h2>
-<p>用三个对象把"巨量但等价"的东西压成"少量":</p>
 <table>
-<tr><th>概念</th><th class="l">定义</th><th class="l">作用</th></tr>
-<tr><td><b>Region</b></td><td class="l">大小 $\ge s$ 的<b>极大团</b>(MCE 枚举得到)</td><td class="l">任何 s-clique 一定整个落在某个 region 内</td></tr>
-<tr><td><b>Class</b></td><td class="l">region-成员身份<b>完全相同</b>的一组顶点(互相可交换)</td><td class="l">把 $n$ 个顶点压成 $n_C$ 个 class(通常小一两个数量级)</td></tr>
-<tr><td><b>Pattern / Tuple</b></td><td class="l">一个 r-clique orbit 的 <b>class-重数签名</b>(每类取几个点)</td><td class="l">把巨量 r-clique 压成少量 pattern —— size-free 的关键</td></tr>
+<tr><th>pattern(边的 class 签名)</th><th class="l">代表的实际边</th><th>Host</th><th>有几条这样的边</th></tr>
+<tr><td><span class="pillA">A</span><span class="pillA">A</span></td><td class="l">a–b</td><td><span style="color:#2563eb">{R₁}</span></td><td>1</td></tr>
+<tr><td><span class="pillA">A</span><span class="pillC">C</span></td><td class="l">a–c, a–d, b–c, b–d</td><td><span style="color:#2563eb">{R₁}</span></td><td>4</td></tr>
+<tr><td><span class="pillC">C</span><span class="pillC">C</span></td><td class="l">c–d</td><td><b style="color:#7c3aed">{R₁, R₂}</b> ← 两个 region!</td><td>1</td></tr>
+<tr><td><span class="pillC">C</span><span class="pillE">E</span></td><td class="l">c–e, c–f, d–e, d–f</td><td><span style="color:#ea580c">{R₂}</span></td><td>4</td></tr>
+<tr><td><span class="pillE">E</span><span class="pillE">E</span></td><td class="l">e–f</td><td><span style="color:#ea580c">{R₂}</span></td><td>1</td></tr>
 </table>
-<p>还有一个关键量 <b>Host</b><sub>($\tau$)</sub> = 包含某 r-clique 的所有 region 的集合。</p>
-<div class="note">
-<b>决定性事实(整个算法的地基):</b> 一个 r-clique 的 s-support <b>只取决于它的 Host</b>(在哪些 region 里),
-跟它具体是哪几个点无关。所以同一个 pattern 的所有 r-clique support 相同 —— 只需算一次。
+<p class="small">注意没有 <code>AE</code> pattern —— 因为 a,b 与 e,f 无边。</p>
+
+<h2><span class="step">第 4 步</span>计数:用 region 容斥的<b>纯二项式</b>算 support(不建任何 pivot 树)</h2>
+<p>包含某条边的三角形 = 这条边再扩 1 个点($s-r=1$),扩的点必须落在 Host 的 region 里。于是 support = Host 这些 region 的"扩展点集合"的<b>并集计数</b>,用容斥:</p>
+<p style="text-align:center">$$\mathrm{sup}(\tau)=\sum_{\varnothing\neq A\subseteq \mathrm{Host}(\tau)}(-1)^{|A|+1}\binom{\,|\cap A|-r\,}{\,s-r\,}$$</p>
+<p>拿最有意思的 <span class="pillC">C</span><span class="pillC">C</span>(边 c–d,Host = {R₁, R₂})算到底:</p>
+<div class="calc">
+sup(<span class="hl">CC</span>) &nbsp;=&nbsp; <span class="gr">[R₁]</span> $\binom{|R_1|-2}{1}$ &nbsp;+&nbsp; <span class="gr">[R₂]</span> $\binom{|R_2|-2}{1}$ &nbsp;−&nbsp; <span class="gr">[R₁∩R₂]</span> $\binom{|\{c,d\}|-2}{1}$<br>
+&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp; $\binom{4-2}{1}$ + $\binom{4-2}{1}$ − $\binom{2-2}{1}$ &nbsp;=&nbsp; 2 + 2 − <span class="hl">0</span> &nbsp;=&nbsp; <span class="hl">4</span>
 </div>
-<p class="small">实测压缩比:ca-GrQc 5242 个顶点 → 仅 <b>199 个 class</b>;1,680,912 个 4-clique → 仅 <b>22,542 个 pattern</b>(com-dblp 同理 317K 顶点 → 69K class)。</p>
-
-<h2>4. 计数那一半:region 容斥,<b>纯二项式闭式,不建任何 pivot 树</b> <span class="tag c">class 级</span></h2>
-<p>
-一个包含该 r-clique 的 s-clique,要再扩 $(s-r)$ 个点,这些点必须落在 Host 的 region 里。于是 support
-就是这些 region "扩展点集合"的<b>并集计数</b> —— 用 region 容斥(region-IE):
-</p>
-<p class="center">$$\mathrm{sup}(\tau)=\sum_{\varnothing\neq A\subseteq \mathrm{Host}(\tau)}(-1)^{|A|+1}\binom{\,|\cap A|-r\,}{\,s-r\,}$$</p>
-<p>
-其中 $|\cap A|$ 是 $A$ 里这些 region 的交集大小。<b>全程在 class 粒度</b>(region 的交 = 一小撮 class)。
-这正是<code>region_native.cpp</code> 头注释写的:
-"compute the s-clique support ... <b>with NO CPI/SDCT pivot index</b>"。三个优化(只枚举多-region 的 class、
-深度栈增量维护 Host、按 Host 哈希 memoize)让它真正 <b>size-free</b>:com-dblp $(7,8)$ 从 75.78s → <b>0.89s</b>。
-</p>
-<div class="note">所以<b>计数完全是组合数 + 容斥,没有 DP、没有顶点级 pivot 树。</b>这是 RegND 最干净的一半。</div>
-
-<h2>5. 剥皮那一半:<b>class 级的 Succinct Clique Tree(ClassSCT)</b> <span class="tag c">class 级</span></h2>
-<p>剥皮要在"witness 不断死掉"中维护每个 pattern 的 live support。RegND 不建顶点级 CPI,而是:</p>
-<ol>
-<li><b>建商图</b>:节点 = class,两个 class 间连边 ⟺ 它们在某个 region 里共现(即完全互相邻接)。</li>
-<li><b>对商图建一棵 class-加权的 s-clique SCT</b>(只建一次)。SCT 的叶子是<b>不相交的 CCPath</b>:每个加权 s-clique witness 恰好落在<b>一个</b>叶子里。</li>
-<li>于是 <b>support(pattern) = 它所在叶子的 support_count 之和</b> —— 纯求和,没有容斥(叶子不相交,没东西要减)。</li>
-<li><b>剥皮</b> = pattern 粒度的桶队列;剥掉 P 时把它的阈值塞进所在叶子的 forbidden 集合,受影响的 pattern = 与 P 共享叶子的那些。</li>
-</ol>
-<p>
-代码就是 <code>region_native_sct_peel.cpp</code>,include 的是 <code>ClassSCT.h</code> / <code>ClassSCTScalable.h</code>,
-<b>没有</b> include 顶点级的 <code>SDCT_Fused</code>/<code>SDCT</code>。<b>整条线唯一的顶点级操作只有 MCE(找 region = 极大团)</b>,之后全在 class 商上。
-</p>
-
-<h2>6. 为什么"更小、更快"?<b>class 级 vs 顶点级</b></h2>
-<div class="grid">
-  <div class="card">
-    <h4 style="color:#0a7d34">RegND:结构规模 = O(#class)</h4>
-    <p class="small">SCT 的节点是 class,几百个;叶子几百个。几乎<b>不随 $(r,s)$ 变化</b> —— 团多不多,商图就那么大。</p>
-    <p class="small">ca-GrQc(4,5):<code>nC=199, base-leaves=285</code>。</p>
-  </div>
-  <div class="card">
-    <h4 style="color:#b42318">CND:结构规模 = O(#r-clique)</h4>
-    <p class="small">要物化所有 r-clique / s-clique,数量随 $(r,s)$ <b>组合爆炸</b> → 内存随 RS 爆到 GB 级。</p>
-    <p class="small">ca-GrQc:251K 个 4-clique;高 RS 时几百万。</p>
-  </div>
-</div>
-<p>
-所以 RegND 的内存几乎是<b>平的</b>(只跟 class 数走),而 CND 的内存随 RS 起飞。这是下面实验里
-<code>SCT_MB</code> 一直 ~25M、<code>CND_MB</code> 涨到几十 GB 的根本原因。
-</p>
-
-<h2>7. 实验对比(tods2,真实 wall-clock + 峰值内存)</h2>
-<p class="small">SCT = RegND(<code>region_native_sct_peel</code>);CND = <code>PIVOTER_RUN_REF</code>。<code>&gt;90</code> = 超过 90s 超时;内存单位 MB。绿 = SCT 赢,红 = CND 赢,橙 = 两边都爆。</p>
+<p>验证:包含 c–d 的三角形正好 4 个 —— {c,d,<span class="pillA">a</span>}、{c,d,<span class="pillA">b</span>}、{c,d,<span class="pillE">e</span>}、{c,d,<span class="pillE">f</span>}。✓
+其它边 Host 只有一个 region,sup = $\binom{4-2}{1}=2$。</p>
 <table>
-<tr><th class="l">图</th><th>r</th><th>s</th><th>SCT 时间</th><th>SCT 内存</th><th>CND 时间</th><th>CND 内存</th><th>结论</th></tr>
-<tr><td class="l">ca-GrQc</td><td>3</td><td>4</td><td>0.67</td><td>19M</td><td>0.15</td><td>19M</td><td class="lose">CND</td></tr>
-<tr><td class="l">ca-GrQc</td><td>4</td><td>5</td><td>2.17</td><td>48M</td><td>0.47</td><td>63M</td><td class="lose">CND</td></tr>
-<tr><td class="l">ca-GrQc</td><td>5</td><td>7</td><td>1.89</td><td>26M</td><td>3.33</td><td>369M</td><td class="win">SCT 1.8× · 内存 14×</td></tr>
-<tr><td class="l">ca-GrQc</td><td>6</td><td>8</td><td>1.23</td><td><b>25M</b></td><td>19.95</td><td><b>2026M</b></td><td class="win">SCT 16× · 内存 80×</td></tr>
-<tr><td class="l">ca-GrQc</td><td>7</td><td>10</td><td><b>0.03</b></td><td><b>4M</b></td><td>&gt;90</td><td><b>8905M</b></td><td class="win">CND 爆炸</td></tr>
-<tr><td class="l">ca-GrQc</td><td>7</td><td>12</td><td>0.04</td><td>4M</td><td>&gt;90</td><td>8905M</td><td class="win">CND 爆炸</td></tr>
-<tr><td class="l">dblp-core30</td><td>3</td><td>4</td><td>0.08</td><td>6M</td><td>1.60</td><td>137M</td><td class="win">SCT 20×</td></tr>
-<tr><td class="l">dblp-core30</td><td>4</td><td>5</td><td>0.15</td><td>9M</td><td>31.64</td><td>2090M</td><td class="win">SCT <b>211×</b></td></tr>
-<tr><td class="l">dblp-core30</td><td>5</td><td>7</td><td>0.15</td><td>10M</td><td>&gt;90</td><td>16899M</td><td class="win">CND 爆炸</td></tr>
-<tr><td class="l">dblp-core30</td><td>6</td><td>8</td><td>0.28</td><td>15M</td><td>&gt;90</td><td>32777M</td><td class="win">CND 爆炸</td></tr>
-<tr><td class="l">dblp-core30</td><td>7</td><td>10–12</td><td>0.7–2.1</td><td>26–32M</td><td>&gt;90</td><td>32777M</td><td class="win">CND 爆炸</td></tr>
-<tr><td class="l">ca-CondMat</td><td>3–6</td><td>4–8</td><td>1.6–3.3</td><td>118–158M</td><td>0.35–1.07</td><td>55–178M</td><td class="lose">CND(稠密)</td></tr>
-<tr><td class="l">ca-CondMat</td><td>7</td><td>12</td><td>1.75</td><td>50M</td><td>2.09</td><td>309M</td><td class="win">SCT 1.2×</td></tr>
-<tr><td class="l">ca-HepPh</td><td>3</td><td>4</td><td>&gt;90</td><td>600M</td><td>11.26</td><td>509M</td><td class="lose">CND(太稠密,SCT 超时)</td></tr>
-<tr><td class="l">com-dblp</td><td>3</td><td>4</td><td>32.9</td><td>1121M</td><td>4.57</td><td>569M</td><td class="lose">CND(低 RS)</td></tr>
-<tr><td class="l">com-dblp</td><td>5</td><td>7</td><td>&gt;90</td><td><b>3476M</b></td><td>&gt;90</td><td><b>17593M</b></td><td class="both">都爆,但 SCT 内存小 5×</td></tr>
-<tr><td class="l">web-Stanford</td><td>5</td><td>7</td><td>&gt;90</td><td><b>103M</b></td><td>&gt;90</td><td><b>42916M</b></td><td class="both">都爆,但 SCT 内存小 <b>400×</b></td></tr>
+<tr><th>边 pattern</th><td><span class="pillA">AA</span></td><td><span class="pillA">A</span><span class="pillC">C</span></td><td><b style="color:#7c3aed">CC</b></td><td><span class="pillC">C</span><span class="pillE">E</span></td><td><span class="pillE">EE</span></td></tr>
+<tr><th>support</th><td>2</td><td>2</td><td><b>4</b></td><td>2</td><td>2</td></tr>
 </table>
+<div class="note"><b>计数全是组合数 + 容斥,没有 DP、没有顶点级 CPI。</b>这是 RegND 最干净的一半。</div>
 
-<h3>怎么读这张表(诚实版)</h3>
+<h2><span class="step">第 5 步</span>剥皮:在 <b>class 级 SCT</b> 上做(不是顶点级)</h2>
+<p>剥皮要在"三角形不断死掉"中维护 support。我们建一棵 <b>class 级的 Succinct Clique Tree</b>:</p>
+<h3>(a) 商图:节点 = class,边 = 在某 region 共现</h3>
+<figure>
+<svg viewBox="0 0 520 150" width="520" role="img" aria-label="商图">
+  <g stroke="#94a3b8" stroke-width="3"><line x1="130" y1="75" x2="260" y2="75"/><line x1="260" y1="75" x2="390" y2="75"/></g>
+  <text x="195" y="58" fill="#475569" font-size="12" text-anchor="middle">共现于 R₁</text>
+  <text x="325" y="58" fill="#475569" font-size="12" text-anchor="middle">共现于 R₂</text>
+  <g font-family="monospace" font-size="18" font-weight="700" text-anchor="middle">
+    <circle cx="130" cy="75" r="28" fill="#dbeafe" stroke="#2563eb" stroke-width="2.5"/><text x="130" y="74" fill="#2563eb">A</text><text x="130" y="90" fill="#2563eb" font-size="11">|A|=2</text>
+    <circle cx="260" cy="75" r="28" fill="#ccfbf1" stroke="#0d9488" stroke-width="2.5"/><text x="260" y="74" fill="#0d9488">C</text><text x="260" y="90" fill="#0d9488" font-size="11">|C|=2</text>
+    <circle cx="390" cy="75" r="28" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/><text x="390" y="74" fill="#ea580c">E</text><text x="390" y="90" fill="#ea580c" font-size="11">|E|=2</text>
+  </g>
+  <text x="475" y="80" fill="#94a3b8" font-size="13">A–E 无边</text>
+</svg>
+<figcaption>商图:A — C — E 一条链(A 和 E 没有公共 region,所以不连)。SCT 就建在这张<b>只有 3 个节点</b>的图上。</figcaption>
+</figure>
+
+<h3>(b) SCT 把"加权三角形"切成不相交的叶子,support = 叶子求和</h3>
+<p>商图上的三角形(s-clique 的 class 签名)就 4 种,SCT 把它们组织成<b>不相交叶子</b>;每个叶子带权(从各 class 里选几个点的组合数):</p>
+<figure>
+<svg viewBox="0 0 640 210" width="640" role="img" aria-label="class 级 SCT 叶子">
+  <rect x="270" y="14" width="100" height="34" rx="9" fill="#eef2f7" stroke="#94a3b8"/>
+  <text x="320" y="36" text-anchor="middle" font-weight="700" font-size="14">ClassSCT</text>
+  <g stroke="#cbd5e1" stroke-width="2" fill="none">
+    <path d="M320 48 L90 110"/><path d="M320 48 L243 110"/><path d="M320 48 L397 110"/><path d="M320 48 L550 110"/>
+  </g>
+  <g text-anchor="middle" font-size="13.5">
+    <rect x="30" y="110" width="120" height="68" rx="11" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="90" y="134" font-weight="700"><tspan fill="#2563eb">A</tspan><tspan fill="#2563eb">A</tspan><tspan fill="#0d9488">C</tspan></text>
+    <text x="90" y="153" font-size="11.5" fill="#475569">{a,b,·}+1∈C</text><text x="90" y="169" font-size="11.5" fill="#475569">权 = C(2,2)·2 = 2</text>
+
+    <rect x="183" y="110" width="120" height="68" rx="11" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="243" y="134" font-weight="700"><tspan fill="#2563eb">A</tspan><tspan fill="#0d9488">C</tspan><tspan fill="#0d9488">C</tspan></text>
+    <text x="243" y="153" font-size="11.5" fill="#475569">1∈A+{c,d}</text><text x="243" y="169" font-size="11.5" fill="#475569">权 = 2·C(2,2) = 2</text>
+
+    <rect x="337" y="110" width="120" height="68" rx="11" fill="#ffedd5" stroke="#ea580c"/>
+    <text x="397" y="134" font-weight="700"><tspan fill="#0d9488">C</tspan><tspan fill="#0d9488">C</tspan><tspan fill="#ea580c">E</tspan></text>
+    <text x="397" y="153" font-size="11.5" fill="#475569">{c,d}+1∈E</text><text x="397" y="169" font-size="11.5" fill="#475569">权 = C(2,2)·2 = 2</text>
+
+    <rect x="490" y="110" width="120" height="68" rx="11" fill="#ffedd5" stroke="#ea580c"/>
+    <text x="550" y="134" font-weight="700"><tspan fill="#0d9488">C</tspan><tspan fill="#ea580c">E</tspan><tspan fill="#ea580c">E</tspan></text>
+    <text x="550" y="153" font-size="11.5" fill="#475569">1∈C+{e,f}</text><text x="550" y="169" font-size="11.5" fill="#475569">权 = 2·C(2,2) = 2</text>
+  </g>
+</svg>
+<figcaption>4 个不相交叶子(每个 = 一类加权三角形)。<b>support(边) = 含这条边的叶子的权之和。</b></figcaption>
+</figure>
+<p>再用这棵树验证 <b>support(CC)</b>:边 c–d 出现在哪些叶子里?<span class="pillA">A</span><span class="pillC">CC</span>(c,d 都在)和 <span class="pillC">CC</span><span class="pillE">E</span>(c,d 都在)→ 权 2 + 2 = <b>4</b>。和第 4 步容斥得到的 <b>4</b> 完全一致。✓
+<span class="small">(剥皮时:剥掉一个边 pattern,就把它的阈值塞进所在叶子的 forbidden;受影响的 = 共享叶子的 pattern。叶子不相交,所以 support 永远是"求和",不需要跨 region 容斥。)</span></p>
+
+<h2><span class="step">对照</span>同一件事,CND 和我们各做多少</h2>
+<figure>
+<svg viewBox="0 0 600 150" width="600" role="img" aria-label="CND vs RegND 规模">
+  <rect x="20" y="30" width="270" height="92" rx="12" fill="#fee2e2" stroke="#b42318"/>
+  <text x="155" y="54" text-anchor="middle" font-weight="700" fill="#b42318" font-size="15">CND(顶点级)</text>
+  <text x="155" y="80" text-anchor="middle" font-size="13" fill="#7f1d1d">逐个枚举所有边 / 三角形</text>
+  <text x="155" y="103" text-anchor="middle" font-size="13" fill="#7f1d1d">规模 = O(#三角形),随 (r,s) 爆炸</text>
+
+  <rect x="310" y="30" width="270" height="92" rx="12" fill="#dcfce7" stroke="#0a7d34"/>
+  <text x="445" y="54" text-anchor="middle" font-weight="700" fill="#0a7d34" font-size="15">RegND(class 级)</text>
+  <text x="445" y="80" text-anchor="middle" font-size="13" fill="#14532d">只在 3 个 class / 5 个 pattern 上</text>
+  <text x="445" y="103" text-anchor="middle" font-size="13" fill="#14532d">规模 = O(#class),几乎不随 (r,s) 变</text>
+</svg>
+<figcaption>小图上差别不大;真实图上 6 个顶点变成几十万顶点、几十万团,而 class 数还是几百 —— 这就是内存优势的根。</figcaption>
+</figure>
+
+<h2><span class="step">实验</span>真实图上的对比(tods2,wall-clock + 峰值内存)</h2>
+<p class="small">SCT = RegND;CND = <code>PIVOTER_RUN_REF</code>;<code>&gt;90</code> = 超过 90s 超时。绿 = SCT 赢,红 = CND 赢,橙 = 两边都爆。</p>
+<table>
+<tr><th class="l">图</th><th>(r,s)</th><th>SCT 时间</th><th>SCT 内存</th><th>CND 时间</th><th>CND 内存</th><th>结论</th></tr>
+<tr><td class="l">ca-GrQc</td><td>(3,4)</td><td>0.67</td><td>19M</td><td>0.15</td><td>19M</td><td class="lose">CND</td></tr>
+<tr><td class="l">ca-GrQc</td><td>(5,7)</td><td>1.89</td><td>26M</td><td>3.33</td><td>369M</td><td class="win">SCT 1.8× · 内存 14×</td></tr>
+<tr><td class="l">ca-GrQc</td><td>(6,8)</td><td>1.23</td><td><b>25M</b></td><td>19.95</td><td><b>2026M</b></td><td class="win">SCT 16× · 内存 80×</td></tr>
+<tr><td class="l">ca-GrQc</td><td>(7,10)</td><td><b>0.03</b></td><td><b>4M</b></td><td>&gt;90</td><td>8905M</td><td class="win">CND 爆炸</td></tr>
+<tr><td class="l">dblp-core30</td><td>(4,5)</td><td>0.15</td><td>9M</td><td>31.64</td><td>2090M</td><td class="win">SCT <b>211×</b></td></tr>
+<tr><td class="l">dblp-core30</td><td>(5,7)</td><td>0.15</td><td>10M</td><td>&gt;90</td><td>16899M</td><td class="win">CND 爆炸</td></tr>
+<tr><td class="l">ca-CondMat</td><td>(4,5)</td><td>2.24</td><td>146M</td><td>0.48</td><td>75M</td><td class="lose">CND(稠密)</td></tr>
+<tr><td class="l">com-dblp</td><td>(3,4)</td><td>32.9</td><td>1121M</td><td>4.57</td><td>569M</td><td class="lose">CND(低 RS)</td></tr>
+<tr><td class="l">web-Stanford</td><td>(5,7)</td><td>&gt;90</td><td><b>103M</b></td><td>&gt;90</td><td><b>42916M</b></td><td class="both">都爆,SCT 内存小 <b>400×</b></td></tr>
+</table>
+<h3>怎么读(诚实版)</h3>
 <ul>
-<li><b>时间优势 = 稀疏图 + 中高 $(r,s)$。</b> ca-GrQc(≥5,7)、dblp-core30(几乎全程)上 SCT 把 CND 打爆(最高 <b>211×</b>,以及 CND 直接超时/几十 GB)。这正是 CND 的 r-clique 枚举爆炸、而我们 size-free 的地方。</li>
-<li><b>内存优势 ≈ 全局。</b> 即使在 SCT 也超时的格子(web-Stanford(5,7)),SCT 也只用 <b>103M</b> 而 CND 要 <b>43 GB</b>。class 级结构的内存几乎平的。</li>
-<li><b>CND 反而赢的地方:低 $(r,s)$(3,4)/(4,5) + 稠密图。</b> ca-CondMat、ca-HepPh、以及大图 com-dblp/web-Stanford 的低 RS —— 那里 CND 本来就亚秒级,我们的剥皮 overhead 还追不上。ca-HepPh 太稠密,SCT 在 (3,4) 都会超时。</li>
+<li><b>时间优势 = 稀疏图 + 中高 (r,s)。</b> 那里 CND 的团枚举爆炸,我们 size-free,最高 <b>211×</b>,或 CND 直接超时/几十 GB。</li>
+<li><b>内存优势 ≈ 全局。</b> 连两边都超时的 web-Stanford(5,7),SCT 也只 103M,CND 要 43 GB —— class 级结构内存几乎平的。</li>
+<li><b>CND 反赢:低 (r,s)(3,4)/(4,5) + 稠密图。</b> CND 在那里本就亚秒级,我们剥皮的 overhead 还没追上 —— 这是当前在攻的硬骨头。</li>
 </ul>
-
-<h2>8. 当前状态与瓶颈(给后续优化看的)</h2>
-<p>
-计数一半是干净、可扩展的胜利;<b>瓶颈在剥皮</b>。在稠密 / 低 RS 的格子上,剥皮里"找受影响 pattern"的枚举有
-<b>~40× 空枚举</b>(每个 leaf-peel 生成 ~57 个候选,只有 ~4 个真受影响),根因是 <code>controlled_split</code>
-把叶子炸成几千条 path(dead-tracking 的代价)。已落地的 bit-identical 优化(in-place 重建、sum-guard、
-forbidden early-out)让稠密 (4,5) 快了 ~36%,但还差几倍。理论上界很清楚:真受影响集合满足闭式
-$E(P\!\to\!Q)=\sum_c\max(0,q_c-p_c)\le T-r$,对 $(4,5)$ 只有 ~4 个,所以"剥皮逼近 fundamental、过 CND"是可达的,
-关键是更省的 dead-tracking。
-</p>
 
 <hr>
 <h2>总结</h2>
 <div class="lead" style="background:linear-gradient(180deg,#f0fdf4,#f7fefb);border-color:#bbf7d0;">
-<b>RegND = 把核分解搬到 class 商上做</b>:计数用 region 容斥的纯二项式(不建顶点 CPI),剥皮用 class 级 SCT。
-因为结构规模只跟 class 数走、不随 $(r,s)$ 爆炸,所以<b>内存优势几乎全局</b>,<b>时间在稀疏图 + 中高 $(r,s)$ 上大幅领先</b>
-(CND 在那里因 r-clique 枚举爆炸而超时/吃几十 GB)。尚未拿下的是<b>稠密图 / 低 RS</b> —— CND 在那里本就极快,
-是剥皮 dead-tracking 还需突破的硬骨头。
+顺着这个例子:<b>原图 → region → class → pattern/host → 容斥算 support → class 级 SCT 剥皮</b>。
+全程把"顶点上几十万个团"压成"几个 class 上的 pattern"。<b>计数是纯二项式(不建顶点 CPI)</b>,
+<b>剥皮在 class 级 SCT 上</b>。结果:内存优势几乎全局,时间在稀疏图 + 中高 (r,s) 上大幅领先 CND;
+还没拿下的是稠密 / 低 RS。
 </div>
-<p class="small center" style="margin-top:32px;">代码:<code>region_native/region_native_sct_peel.cpp</code> · 设计与试错全记录:<code>SigmodPlus.md §24–37</code></p>
+<p class="small" style="text-align:center;margin-top:30px;">代码:<code>region_native/region_native_sct_peel.cpp</code> · 设计与试错:<code>SigmodPlus.md §24–37</code></p>
 
 </div>
 </body>
