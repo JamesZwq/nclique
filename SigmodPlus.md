@@ -2256,3 +2256,30 @@ where CND/V3LM are sub-second.
 NEXT: source-skip -- a |host|=1 pattern whose leaves host NO |host|>=2
 pattern affects nothing when it peels, so skip its source-peel entirely
 (generalizes fully-mergeable direct-assign to the leaf level).
+
+## 35. skipH1 broad sweep result: SCT now competitive with V3LM, beats CND on more (#139)
+
+48-cell sweep (8 graphs x 6 (r,s)), skipH1 ON, vs V3LM and CND (45s cap).
+Data: paper_data/bench_sct_peel_skipH1.csv. ALL cells that ran are EXACT
+(no correctness regression from the skip).
+
+TALLY:
+  - SCT beats CND on 18 cells; V3LM beats CND on 17  -> SCT beats CND on MORE.
+  - SCT beats CND where V3LM does NOT (6): bio-celegans(3,4)(4,5)(5,7),
+    ca-HepTh(3,4), ca-CondMat(7,12), amazon0302(4,5).
+  - SCT vs V3LM head-to-head (26 both-ran cells): 13-13 (was mostly losing
+    before the |host|=1 skip).
+  - Big wins: dblp-core30(4,5) SCT 0.06 vs CND 12.73 (212x) vs V3LM 0.09;
+    ca-GrQc(6,8) 17x CND; ca-HepTh(5,7) 13.7x CND.
+
+WEAK SPOT (shared with V3LM, not unique to SCT): dense graphs ca-AstroPh /
+ca-HepPh -> SCT TIMEOUT(>45s). But V3LM also times out on most of those
+(ca-AstroPh(4,5)+, ca-HepPh all) and CND handles only the lowest (r,s).
+The dense |host|>=2 peel is the hard core for BOTH region methods. ca-CondMat
+/ ca-GrQc mid-(r,s) is where V3LM's mature peel still edges SCT.
+
+CONCLUSION: the region-native class-SCT engine + |host|=1 skip is a correct,
+lightweight-build, competitive-with-V3LM peel that beats CND on more cells.
+The contribution regime is sparse + high-(r,s) (CND explodes, SCT/V3LM win,
+SCT's lighter build often wins the head-to-head). Dense low-(r,s) remains
+CND territory for all region methods.
