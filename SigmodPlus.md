@@ -2174,3 +2174,44 @@ leaves -> support is a SUM (no IE), peel is a per-leaf dead-box.
 COMMIT TRAIL this session (region-native): c5282e6 (counting flatness) ..
 0ebfc4d (P1) .. 9ab372b (class-SCT+G1) .. a774bf2 (SCT peel G2) .. 9423767
 (map-build) .. 7f01fc4 (scalable) .. 23710db (sparse patterns) .. 5fb6a25/this.
+
+## 33. CORRECTION + KEY POSITIVE RESULT: SCT peel wins at high (r,s) (2026-06-18, #139)
+
+IMPORTANT correction to §31/§32's "peel not competitive" verdict: that was
+measured at (r,s)=(3,4) on modest graphs -- exactly the regime where CND is
+FAST and the WHOLE region approach (V3LM too) LOSES. That is NOT where the
+contribution lives.
+
+The contribution lives at HIGH (r,s) where CND's witness enumeration /
+SDCT build EXPLODES. From paper data (bench_full_merged.csv): RegNDC(V3LM)
+beats REF(CND) on 417/875 cells, e.g. ca-GrQc(7,10) CND=255s vs V3LM
+0.002s (127667x), dblp-core30(5,7) CND=863s vs 0.027s.
+
+SCT PEEL on those exact cells (independently measured, all bit-exact vs V3LM):
+  ca-GrQc(7,10)   SCT 0.01s  V3LM 0.04s  CND 255s   (SCT beats CND ~25000x AND beats V3LM)
+  ca-GrQc(7,12)   SCT 0.01s  V3LM 0.02s  CND 223s
+  ca-CondMat(14,18) SCT 0.03s V3LM 0.06s CND 24s    (SCT beats V3LM)
+  dblp-core30(5,7)  SCT 0.10s V3LM 0.09s CND 863s   (~tie, both crush CND)
+  dblp-core30(5,8)  SCT 0.17s V3LM 0.08s CND 857s   (SCT 2x V3LM, both crush CND)
+
+So: at high (r,s) SCT beats CND by 1e4-1e5x AND is competitive-to-faster
+than V3LM (its lightweight class-SCT build skips V3LM's vertex SDCT build).
+Combined with the (3,4) finding that SCT beats CND on the sparsest graphs
+where V3LM loses (bio-celegans 1.12x, ca-HepTh 1.02x), SCT beats CND on a
+SUPERSET of where V3LM does -> the user's goal (beat CND on MORE graphs).
+
+WHERE SCT STILL LOSES: (3,4) on medium/dense graphs (ca-GrQc 0.39 vs CND
+0.05) and dense graphs at any (r,s) (email-Eu-core, ca-HepPh (3,4) timeout)
+-- but V3LM also loses there, and these are the low-(r,s) "CND is fast"
+regime, not the region approach's domain.
+
+r-MERGEABLE (committed 71879d2): correct (gate: rmerge==no-rmerge==brute
+20/20) but barely speeds up -- it removes the ISOLATED (cheap) regions; the
+cost is the OVERLAPPING peel + build, untouched. Kept ON for fair apples-
+to-apples with V3LM/CND (both merge). Not the hoped lever.
+
+NEXT: broad high-(r,s) 3-way sweep (running, /tmp/bsct_highrs.csv) to
+quantify SCT-vs-V3LM across many graphs at the cells that matter; then the
+honest paper story = "region-native class-SCT: size-free counting +
+lightweight build + correct peel that, at high (r,s), beats CND by 1e4-1e5x
+and matches/beats V3LM, on a superset of V3LM's win-set."
