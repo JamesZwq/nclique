@@ -2521,3 +2521,45 @@ and that it is the bottleneck on EVERY graph family that completes, not just den
 ("property-driven, not density-driven") is right: size->MCE, regions->maps, maxSplit->peel, build->never.
 NEXT: (a) attack peel (the dead-witness / controlled_split wall); (b) optional CLEAN re-run for trustworthy
 absolute SCT-vs-CND numbers now that load is light.
+
+## 41. Peel optimization campaign #2: KMAX=1/adaptive WIN + 2 refuted prunes (candidate-count wall) (2026-06-19, #139)
+Method: design panel (5 approaches x adversarial correctness+perf review, the peel-optimization-design workflow)
+-> implement top pick -> verify BIT-IDENTICAL (corehash of '^core=' lines vs golden) -> measure. Local clean
+iterate loop: clang++ -O3 -I region_native -I src/NucleusDecomposition; /tmp/bench_peel.sh (15 cells, corehash
+oracle + peel + maxSplit); golden = /tmp/golden.txt. SERVER timing is contention-noisy -> use min-of-N /
+back-to-back ratios; structural stats (maxSplit) are contention-robust.
+
+THE WIN -- default KMAX 2->1, then adaptive (commits 853cf0d, 14d819c, 0b2fc52):
+ - The affected-Q drop is per-candidate-IE/DP-bound, so FEWER forbidden/path (lower KMAX) = cheaper per
+   candidate. KMAX=1 measured FASTEST on every cell, monotone (1<2<3<4<6): moderate graphs ~1.5-2x peel
+   (ca-GrQc 1.45x, ca-CondMat 1.7-2.2x, dblp 1.8-3x), and the maxSplit-BLOWUP graphs too (web-NotreDame(6,8)
+   maxSplit~14k: 41.2s vs 53.5s KMAX=2 on a quiet host; com-dblp(3,4) 10.7 vs 12.9s). The O(slot) scan in
+   slotForbidDiff is 99%-skipped (impossible test) so it never overtakes the DP in the measured range
+   (slot<=14k). (A single contended run falsely showed a KMAX=1 regression -- contention, not real.)
+ - Bit-identical: support_count is invariant to the split strategy (KMAX-invariance), verified 15/15 golden
+   corehashes at KMAX=1, KMAX=2, and adaptive. ADAPTIVE (default, threshold 16384): kml = 1 + slotSize/16384,
+   so = KMAX=1 across everything observed, only hedging the unmeasured extreme tail (slot>16k, e.g. soc-pokec/
+   web-it-2004 high-(r,s)) where a runaway slot self-limits. No-regret ship.
+
+TWO REFUTED PRUNES (candidate count is NOT cheaply reducible -- the wall, from the pruning angle):
+ - (1) Per-path AND-feasibility DFS prune (the design panel's #1 pick, SCT_DFS_PRUNE): push applyIdx's per-path
+   max(ql,pl)<=u test earlier into the DFS. Bit-identical (15/15, nz-counts identical) but NET SLOWDOWN: cuts
+   only 1-16% of candidates because uEnv (per-coord union) is already TIGHT (chgOld paths have near-identical
+   u), so it barely fires while its per-node bookkeeping adds overhead. The real waste is NOT envelope-
+   looseness.
+ - (2) Forbidden-COVERAGE subtree prune (data-indicated follow-up, replaced (1) under same flag): kill a path
+   when its forbidden a_z<=max(ql,pl) (=scWithTerms early-out) OR u-infeasible; prune subtree when all dead.
+   Bit-identical, cuts 12-30% candidates (2-3x more than (1)) but STILL net loss: the ~90% forbidden-coverage
+   deadness (hit/nz~=10x) is a LEAF-level property (a_z's critical coords span the vector => critmax large =>
+   subtree prune fires only deep), so the DFS must descend anyway and the per-node bookkeeping is pure
+   overhead. Flag left OFF-by-default for ablation.
+ - CONCLUSION: the affected-Q over-enumeration cannot be cheaply cut by subtree pruning (deadness is leaf-
+   level). The per-candidate COST (KMAX) is the tractable lever, not the candidate COUNT. The candidate-count
+   wall = the same dead-witness / controlled_split wall (sec 24-36), reconfirmed.
+
+ENV FLAGS: SCT_KMAX=k (force fixed KMAX, disables adaptive, for A/B), SCT_KMAX_THRESH=N (adaptive knee, def
+16384), SCT_DFS_PRUNE=1 (refuted coverage prune, OFF), SCT_NO_SKIP_H1 (disable |host|=1 skip). Instrumentation
+to stderr: '[sct-peel] dbg cand_gen/hit/nz' (the over-enumeration ratio).
+OPEN: scaling timeouts on dense/social/large-web need a fundamentally different peel (not a prune) -- the
+candidate count is irreducibly large and per-candidate work is already minimal at KMAX=1. Open research.
+NEXT: broader SCT-new-vs-CND re-measure (running) to quantify how many more cells the ~1.5-2x peel lets SCT win.
