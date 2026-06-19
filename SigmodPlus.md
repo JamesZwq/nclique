@@ -2570,3 +2570,33 @@ question, KMAX=1 wins there too, NO regression], cit-Patents(7,10) 1.27x, com-am
 ca-CondMat(5,7) 1.21x, web-it-2004(3,4) 1.21x, com-dblp(3,4) 1.15x. (Server back-to-back ratios run smaller
 than the clean-local 1.5-2x because server peel times are larger, diluting the per-candidate DP saving.)
 SHIPPED: adaptive KMAX (HEAD 0b2fc52), bit-identical, ~1.2-1.6x peel everywhere, zero regression.
+
+## 42. Cracking the scaling wall: s=r+1 WITNESS-FLOOR fast path (output-sensitive affected-Q) (2026-06-19, #139)
+The affected-Q DFS over-enumerates because it works at the wrong granularity. KEY STRUCTURE: when
+P peels and s=r+1, the dying witnesses above P are the SINGLE points floor_c = m_P + e_c (Σ=s, so the
+only witness >= floor_c is floor_c itself). Every affected Q that uses that witness is floor_c - e_d
+(move one unit d->c), and they all SHARE the one floor. So instead of generating ~140 candidate Q and
+filtering, iterate the ~width witness-floors, check liveness of the single point floor_c once per
+(c,box), and expand only LIVE floors. The drop is CLOSED FORM (no IE/DP):
+   drop_Q(box p) = [floor_c alive in p] * (n_p[d] - m_Q[d]),  summed over chgOld boxes.
+"alive" = ell<=floor_c<=u AND no forbidden a<=floor_c. (floor_c-m_Q = e_d, weight = C(n_d-m_Q[d],1).)
+
+CORRECTNESS (3 independent checks): (1) closed form validated BIT-EXACT vs scWithTerms on 400k random
+boxes incl ell>0 spine boxes (/tmp/validate_cf2.py, uses solved.py's brute-validated CCPath ops);
+(2) C++ cores BYTE-IDENTICAL to golden on all 15 cells (7 of them s=r+1); (3) core-value set matches
+CND exactly. Flag SCT_NO_WFLOOR disables (A/B).
+
+SPEEDUP (local clean, peel, vs adaptive-KMAX baseline, ALL bit-identical):
+  ca-GrQc(3,4) 4.5x, ca-GrQc(4,5) 3.4x, dblp-core30(4,5) 2.0x, ca-CondMat(4,5) 1.5x, ca-CondMat(3,4)
+  1.45x. vs ORIGINAL KMAX=2: ca-GrQc(4,5) 0.75->0.18 = 4.2x. Non-s=r+1 cells fall back to the DFS,
+  UNCHANGED (0.97-1.00x). Commit fe4c70a.
+
+WHY IT CRACKS THE WALL (vs the refuted prunes): the prunes tried to filter the ~140 candidates but the
+deadness is leaf-level so they couldn't reach it; the witness-floor changes the ENUMERATION ITSELF to be
+output-sensitive (work ~ live floors, not all candidates) AND removes the DP. Many timeout cells are
+s=r+1 ((3,4)/(4,5): ca-HepPh, ca-AstroPh, web-Google, twitter, wiki-Talk, com-youtube, web-NotreDame(4,5)
+...), so this directly targets the scaling timeouts. SERVER timeout-graph confirmation: PENDING (running).
+NEXT (open): generalize to s=r+delta (delta>=2, the (5,7)/(6,8)/(7,10)/(8,12) cells): group affected Q by
+their dying witnesses (m_P + delta units); enumerate ALIVE witnesses, take r-shadows, accumulate
+weight(y,m_Q). Output-sensitive if alive witnesses are few; drop is a (delta-j)-free-unit weighted sum
+(cheaper than the full T-DP) but no longer a single closed form. More complex; do after s=r+1 lands.
