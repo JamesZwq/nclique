@@ -2615,3 +2615,26 @@ NEXT (open): generalize to s=r+delta (delta>=2, the (5,7)/(6,8)/(7,10)/(8,12) ce
 their dying witnesses (m_P + delta units); enumerate ALIVE witnesses, take r-shadows, accumulate
 weight(y,m_Q). Output-sensitive if alive witnesses are few; drop is a (delta-j)-free-unit weighted sum
 (cheaper than the full T-DP) but no longer a single closed form. More complex; do after s=r+1 lands.
+
+## 43. MAPS phase optimization: cracked the DP-bound regime, scale-bound regime remains (2026-06-19, #139)
+The densest timeout graphs die in 'pattern<->leaf maps + compaction' (206-234s) BEFORE the peel (sec 42).
+That phase (region_native_sct_peel.cpp ~660-740): per leaf enumerate every r-multiset, look up in an index,
+confirm host, and store per-incidence local b vectors into patLeaves/leafPats/pbLocal/leafPatLocB. THREE
+optimizations, each bit-identical (15/15 golden corehashes; commits f2fa66c, c27ef6b, 06677a5):
+ (1) integer rolling-hash key instead of std::string compKey -> ~1% (the string key was NOT the cost).
+ (2) host-confirm via FEASIBILITY test instead of support_count DP: support_count(box,b)>0 iff the box
+     {max(ell,b)<=y<=u, Σy=s} is nonempty (all weights are positive binomials), so with empty forbidden
+     (pre-peel box) it is an O(width) check, no DP. -> ca-HepPh(3,4) 205->85s = 2.4x.
+ (3) build the local b INLINE during enum (blocal[i]=j; lcs parallel to box local dim) and fill all 4 maps
+     in one pass -> ZERO compToLocal (was ~3 allocs+binary-searches per incidence). Dropped the leafPats
+     sort (not load-bearing; peel accesses by hash-mapped index). -> web-Google(3,4) 233->215s only (~1.1x).
+RESULT (graph-regime-dependent): ca-HepPh-type (DP-bound, dense-but-fewer-patterns) CRACKED 2.4x; web-Google-
+type (SCALE-bound: 6M patterns) barely moved -- the cost there is the sheer volume (6M-entry patIdx build +
+millions of per-incidence Vec allocs in pbLocal/leafPatLocB; the push_back(blocal) still heap-allocs).
+web-Google(4,5) maps still >300s. OPEN: the scale-bound regime needs an ARENA for the per-incidence local
+vectors (flat int16 buffer + (offset,len) instead of vector<vector<Vec>>) to kill the millions of small
+allocations -- a deeper refactor that also touches the peel's leafPatLocB[lid][t] reads. Bigger effort,
+uncertain ROI; surfaced as a decision point.
+SESSION NET (all bit-identical, shipped): PEEL adaptive-KMAX 1.2-1.6x + s=r+1 witness-floor 2.5-4.5x; MAPS
+hash+feasibility+inline-blocal -> ca-HepPh maps 2.4x. The wall is per-phase + per-graph-regime: peel (cracked
+for s=r+1), maps-DP (cracked), maps-scale (open, arena), s>=r+2 peel (open, witness generalization).
