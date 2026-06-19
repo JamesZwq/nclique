@@ -306,7 +306,15 @@ int main(int argc, char **argv) {
         long long Nsub = 0; bool tooBig = false;
         for (auto &M : regions) { int W = (int)M.size();
             if (W >= r) { double c = C(W, r); if (c > 3e8 || Nsub > 300000000LL) { tooBig = true; break; } Nsub += (long long)llround(c); } }
-        bool rmPairwise = (getenv("SCT_RM_PAIRWISE") != nullptr) || tooBig;
+        // pick the CHEAPER method per graph (they have opposite weaknesses):
+        //   pairwise  = O(Σ_v deg_R(v)^2)   -- bad on hub-skew (cit-Patents 6e10)
+        //   r-clique  = O(Σ_M C(|M|,r) log) -- bad on dense large regions (ca-HepPh r=4, 28s)
+        // Estimate Σdeg^2 (cheap) and use pairwise unless r-clique has >=16x fewer ops
+        // (the sort costs ~16x more per element). Either way the RESULT is identical.
+        long long costPw = 0;
+        { vector<int> dc(g.n, 0); for (auto &M : regions) for (int v : M) dc[v]++;
+          for (int v = 0; v < g.n; v++) costPw += (long long)dc[v] * (long long)dc[v]; }
+        bool rmPairwise = (getenv("SCT_RM_PAIRWISE") != nullptr) || tooBig || (costPw <= Nsub * 16);
         if (!rmPairwise) {
             vector<int> sub; sub.reserve((size_t)Nsub * (size_t)r);   // flattened sorted r-tuples
             vector<int> reg; reg.reserve((size_t)Nsub);               // owning region per tuple
