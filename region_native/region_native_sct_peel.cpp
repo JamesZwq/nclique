@@ -694,15 +694,16 @@ int main(int argc, char **argv) {
         return v;
     };
 
-    // region-IE init support, kept ONLY as the G2a cross-check reference.
-    for (auto &P : pats) { P.sup = suppOf(P); }
-
-    // sanity: SCT total s-cliques == region-IE total (each s-clique has
-    // C(s,r) r-subcliques). Strong global gate before per-pattern work.
-    {
+    // region-IE init support is an INDEPENDENT reference (gate G2a); the PEEL runs on the SCT
+    // support (sctSupport below). Computing region-IE suppOf per pattern was 99s on ca-AstroPh
+    // (THE maps-phase bottleneck), so it is now SCT_VERIFY-only; production takes P.sup from the
+    // SCT in the G2a loop below. Bit-identical (region-IE == SCT, integer-valued; verified G2a).
+    bool verifyIE = getenv("SCT_VERIFY") != nullptr;
+    if (verifyIE) {
+        for (auto &P : pats) { P.sup = suppOf(P); }
+        // sanity: SCT total s-cliques == region-IE total (each s-clique has C(s,r) r-subcliques).
         double sclSCT = 0;
-        for (auto &lf : baseLeaves) { Vec zb((size_t)lf.m(), 0);  // compact: m()=|classIds|
-            sclSCT += ccpath::support_count(lf, zb, ccpath_ncr); }
+        for (auto &lf : baseLeaves) { Vec zb((size_t)lf.m(), 0); sclSCT += ccpath::support_count(lf, zb, ccpath_ncr); }
         double sclIE = 0; for (auto &P : pats) sclIE += (double)P.mult * P.sup;
         sclIE /= C(s, r);
         printf("[sct] total s-cliques: class-SCT=%.0f  region-IE=%.0f  %s\n",
@@ -874,30 +875,33 @@ int main(int argc, char **argv) {
     printf("[sct] pattern<->leaf maps + compaction=%.2fs\n", secs(Tqg1, T5));
     fflush(stdout);
 
-    // -------------------- GATE G2a (init support equality) --------------------
-    // For EVERY pattern: SCT sum-over-leaves support == region-IE suppOf.
+    // -------- support init: SCT (production) + optional region-IE cross-check (gate G2a) -------
+    // P.sup := SCT sum-over-leaves support. Under SCT_VERIFY also compare to the region-IE init
+    // (suppOf, set above) per pattern and abort on mismatch. sctSupport is computed either way
+    // (it IS the production support), so production just skips the 99s region-IE entirely.
     {
         int okc = 0, badc = 0; double worst = 0;
         for (int pi = 0; pi < (int)pats.size(); pi++) {
-            double sIE = pats[pi].sup;                 // already = suppOf init
             double sSCT = sctSupport(pi);
-            if (fabs(sIE - sSCT) < 0.5) okc++;
-            else {
-                badc++; worst = max(worst, fabs(sIE - sSCT));
-                if (badc <= 8) {
-                    printf("[G2a] MISMATCH pi=%d host=%zu comp=[", pi, pats[pi].host.size());
-                    for (auto &cm : pats[pi].comp) printf("(c%d:%d)", cm.first, cm.second);
-                    printf("] regionIE=%.1f SCT=%.1f leaves=%zu\n",
-                           sIE, sSCT, patLeaves[pi].size());
+            if (verifyIE) {
+                double sIE = pats[pi].sup;             // region-IE init
+                if (fabs(sIE - sSCT) < 0.5) okc++;
+                else {
+                    badc++; worst = max(worst, fabs(sIE - sSCT));
+                    if (badc <= 8) {
+                        printf("[G2a] MISMATCH pi=%d host=%zu comp=[", pi, pats[pi].host.size());
+                        for (auto &cm : pats[pi].comp) printf("(c%d:%d)", cm.first, cm.second);
+                        printf("] regionIE=%.1f SCT=%.1f leaves=%zu\n", sIE, sSCT, patLeaves[pi].size());
+                    }
                 }
             }
+            pats[pi].sup = sSCT;                        // PRODUCTION: the SCT IS the support
         }
-        printf("[G2a] %d/%d patterns: SCT-sum == region-IE  %s  (worst|d|=%.1f)\n",
-               okc, okc + badc, badc == 0 ? "[OK]" : "[FAIL]", worst);
-        fflush(stdout);
-        if (badc != 0) {
-            printf("[G2a] FAILED — aborting before peel (correctness gate).\n");
-            return 3;
+        if (verifyIE) {
+            printf("[G2a] %d/%d patterns: SCT-sum == region-IE  %s  (worst|d|=%.1f)\n",
+                   okc, okc + badc, badc == 0 ? "[OK]" : "[FAIL]", worst);
+            fflush(stdout);
+            if (badc != 0) { printf("[G2a] FAILED — aborting before peel (correctness gate).\n"); return 3; }
         }
     }
 
