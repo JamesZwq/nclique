@@ -2693,3 +2693,40 @@ RECOMMENDATION: bank the r-merge fix (genuine, bit-identical, general); position
 low-RS-many-region (cit-Patents/com-youtube) as CND's regime and clique-explosion (twitter/soc-pokec) as
 out-of-scope-for-everyone. Continuing to chase low RS = optimizing every phase (SCT build, maps-arena, peel)
 against a structural disadvantage, uncertain payoff. ENV: SCT_RM_PAIRWISE (old r-merge), RM_DBG (timers).
+
+## 45. PIPELINE STRUCTURE (code map) + per-phase timing by graph (2026-06-19, #139)
+FILES: region_native/region_native_sct_peel.cpp (1389 lines, main@254) = FULL pipeline (count+peel), the
+binary we optimise. region_native/region_native.cpp = separate count-only sibling. Headers included by the
+peel binary: src/NucleusDecomposition/CCPathCore.h (CCPath math: support_count / count_with_extra_lower /
+inclusion_exclusion_terms / controlled_split / first_failing_split); region_native/ClassSCT.h (DENSE class-
+SCT buildClassSCT, the oracle); region_native/ClassSCTScalable.h (SPARSE scalableBuildClassSCT, the PRODUCTION
+path actually used).
+
+PIPELINE -> region_native_sct_peel.cpp line ranges (printf marker -> phase):
+ 0. load + degeneracy        254-266  (T0->T1)                        [rn] graph
+ 1. MCE -> regions           266-277  (T1->T2)  MCE mce(g,s);mce.run() [rn] regions(>=s)   regions=max cliques>=s
+ 2. r-mergeable              296-415  (Trm0)    r-clique OR pairwise   [rn] r-mergeable    <- this session (cost-based pick)
+ 3. class build              ~395-411 (->T3)    vtxR + region-membership string-key group  [rn] classes
+ 4. pattern enum             410-607  (T3->T4)  distinct patterns + r-clique counts + host; DIRECTBIN@602  [rn-peel] patterns
+ 5. quotient + ClassSCT      620-636  (Tqg0->Tqg1) scalableBuildClassSCT(nC,qw,qadj,s)@634  [sct] quotient   <- ClassSCTScalable.h
+ 6. counting + verify gate   636-660  suppOf(P)=region-IE; class-SCT total == region-IE total @658  [sct] total s-cliques
+ 7. pattern<->leaf maps      660-813  (Tqg1->T5) enumLP per-leaf; patLeaves/leafPats/pbLocal/leafPatLocB  [sct] maps+compaction  <- this session (hash/feasibility/inline)
+ 8. bucket-queue peel        813-1389 (T5->T6)  KMAX@857-872, sEqRp1 witness-floor@881, slotForbidDiff/controlled_split  [sct-peel] peel/TIMING  <- this session (KMAX/witness-floor)
+
+PER-PHASE TIMING (sec) on diverse graphs, current binary (HEAD 9305e04), all opts ON:
+ graph          (r,s) | load   MCE  rmrg class enum sctbld maps   peel | TOTAL | dominant
+ ca-GrQc        4,5   | 0.01  0.02  0.00 0.00  0.03  0.00  0.12   0.39 |  0.56 | peel 70%
+ ca-CondMat     5,7   | 0.03  0.05  0.00 0.00  0.10  0.01  0.29   1.69 |  2.15 | peel 79%
+ com-dblp       3,4   | 0.20  0.64  0.08 0.04  0.54  0.32  2.13   9.07 | 12.82 | peel 71%
+ web-NotreDame  6,8   | 0.21  1.34  0.06 0.01  3.17  0.05  3.69  43.89 | 52.22 | peel 84%
+ com-amazon     3,4   | 0.17  0.54  0.07 0.06  0.36  0.22  0.96   0.75 |  2.97 | maps+peel
+ web-it-2004    3,4   | 1.12  6.50  0.18 0.03  0.71  0.10  7.88   1.48 | 16.89 | MCE+maps (size)
+ cit-Patents    7,10  | 3.50 13.56  0.06 0.05  1.62  0.01  0.35   0.22 | 15.87 | MCE 85% (size)
+ ca-HepPh       4,5   | TIMEOUT: front end fine (rmrg 0.05s), maps/peel bound (dense)
+PATTERN (property-driven, matches the §40 sweep): peel dominates (70-84%) on collab/coauthor/web with MODERATE
+regions (the main cost where SCT completes); MCE dominates on HUGE graphs (cit-Patents 85%, web-it-2004)
+size-driven; maps significant on large web (web-it-2004 7.9s) region-count-driven. After this session, rmrg/
+class/sctbld/enum are all <1s -- none is a bottleneck; the live targets are peel (cracked for s=r+1) and, on
+the densest, maps-scale (open, arena). Reproduce: /tmp/phasebreak.sh on tods2 (git-pulls, rebuilds, parses
+the [rn]/[sct]/[sct-peel] lines into the per-phase split). NOTE: cost-based r-merge pick (commit 9305e04)
+fixed a regression where the r-clique reform made ca-HepPh r-merge 28s (dense large regions, big C(|M|,r)).
