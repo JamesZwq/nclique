@@ -2730,3 +2730,27 @@ class/sctbld/enum are all <1s -- none is a bottleneck; the live targets are peel
 the densest, maps-scale (open, arena). Reproduce: /tmp/phasebreak.sh on tods2 (git-pulls, rebuilds, parses
 the [rn]/[sct]/[sct-peel] lines into the per-phase split). NOTE: cost-based r-merge pick (commit 9305e04)
 fixed a regression where the r-clique reform made ca-HepPh r-merge 28s (dense large regions, big C(|M|,r)).
+
+## 46. WHERE the losing graphs drag (per-phase) + phase-4 hub-K^2 blowup is the marathon (2026-06-19, #139)
+On graphs where CND completes but we don't, the stall phase DIFFERS (measured, line-buffered, grep '\[rn|\[sct'):
+ - cit-Patents(3,4) CND 35.9s -> we stall in PHASE 4 (pattern enum), >105s, 2.7M active regions.
+ - com-youtube(3,4)  CND 20.5s -> PHASE 4 (pattern enum), 1.18M active regions.
+ - web-Google(3,4)   CND 30.5s -> PHASE 6-7 (counting/maps), passed quotient, 6M patterns (scale-bound).
+ - ca-HepPh(3,4)     CND 11.7s -> PHASE 7 maps (86s) + peel (dense).
+ - twitter/soc-pokec/wiki-Talk: CND ALSO times out -> graph's problem (SDCT build is O(#maximal cliques),
+   confirmed by reading src/SDCT.cpp = BK recursion + tree_buffer.push_back per leaf). Out of scope.
+PHASE 4 ROOT CAUSE (region_native_sct_peel.cpp ~565): each pattern's host = ∩_c classRegions[c] is computed
+per (region, r-multiset). A hub class in K regions: every region M containing it enumerates patterns with it
+and pays |classRegions[hub]|=K -> K^2 (cross-region), exactly r-merge's Σdeg^2. Measured PE_DBG: hostWork
+super-linear 91M->783M->2.28B->9.18B@half (cit-Patents), heading ~50-100B = the >105s stall.
+ATTEMPTED FIX (commit c820527, KEPT, bit-identical 15/15): thread the running host through the recursion
+(one interClasses per class ADD, shared across multiplicities + subtree; host depends only on class-set) +
+inline (was std::function). RESULT: only removes the WITHIN-region redundancy -> hostWork 9.18B->6.33B (~31%),
+TIME unchanged (12.2s vs 11.6s, per-node alloc ate it). PHASE 4 STILL STALLS. The K^2 CROSS-region part
+(pattern enumerated once per hosting region) is untouched.
+VERDICT: phase-4 crack needs a GLOBAL reformulation (compute each pattern's host ONCE, not once-per-region --
+like r-merge's r-clique trick but the quantity is an INTERSECTION ∩classRegions[c], not a count, so harder),
+AND it's only the FIRST of cit-Patents/com-youtube's heavy phases (5/6/7 follow). => 马拉松, not one cut.
+CONFIRMS the regime line (sec 44): low-RS-many-region = CND's territory by design; region-native's win is
+HIGH RS. Recommendation stands: position at high RS; do NOT chase the low-RS marathon. ENV: PE_DBG (phase-4
+leaves/hostWork timers).
