@@ -2775,3 +2775,30 @@ FINAL VERDICT: the low-RS-many-region regime is CND's by DESIGN (structural, the
 fixable bottleneck. The global host is KEPT (general win, bit-identical, the cleanest proof the "compute host
 once" instinct was right). Region-native's contribution is HIGH RS (CND explodes, we win 3-256x). Stop
 chasing low RS. ENV: SCT_PE_PERREGION (old per-region host).
+
+## 48. BIG-GRAPH per-phase timing, ALL opts on (HEAD a5e09a8), TO=220 (2026-06-19, #139)
+Reproduce: /tmp/biggraph.sh on tods2 (git-pulls, rebuilds, parses per-phase). Phases in sec:
+ graph         r,s  | load   MCE  rmrg class  enum sctbld  maps   peel | TOTAL  status
+ cit-Patents   7,10 | 3.41 14.17  0.06 0.05  0.09  0.01   0.35   0.22 | 14.95  OK  <- high RS, fast
+ web-it-2004   3,4  | 1.12  5.93  0.16 0.03  0.40  0.10   7.81   1.44 | 15.88  OK
+ com-dblp      3,4  | 0.20  0.62  0.07 0.04  0.45  0.33   2.15   8.62 | 12.28  OK  (peel)
+ web-NotreDame 6,8  | 0.21  1.33  0.06 0.00  0.71  0.05   3.83  42.37 | 48.36  OK  (peel)
+ web-it-2004   5,7  | 1.13  5.86  0.16 0.03  1.37  0.09  16.60  68.21 | 92.34  OK  (peel)
+ ca-AstroPh    3,4  | 0.05  0.41  0.22 0.01  1.66  0.66 102.08  24.71 |129.75  OK  (MAPS 102s)
+ cit-Patents   3,4  | 3.40 14.34 13.53 0.79 26.01  5.98     -      -  |  TO   stall maps/peel
+ web-Google    3,4  | 0.76  4.34  7.66 0.32  8.61  2.54     -      -  |  TO   stall maps/peel
+ web-Google    6,8  | 0.78  4.38  0.83 0.13 35.78  0.96     -      -  |  TO   stall maps/peel (enum 35.8!)
+ com-youtube   3,4  | 0.57  9.18  7.59 0.27 14.45  6.31     -      -  |  TO   stall maps/peel
+ ca-HepPh      3,4  | 0.04  0.22  0.05 0.00  1.42  2.81  84.91    -   |  TO   maps 85s + peel TO
+ soc-pokec     6,8  | 3.90 51.15 61.51   -     -     -      -      -  |  TO   front-end: MCE 51 + rmrg 61
+TAKEAWAYS:
+ - HIGH-RS / moderate-region big graphs COMPLETE and are not slow: cit-Patents(7,10) 15s, web-it-2004(3,4)
+   16s, com-dblp 12s, web-NotreDame(6,8) 48s. This is the contribution regime.
+ - global host WORKED: phase-4 (enum) is no longer the stall anywhere -- it's 0.1-36s now (was >105s). The
+   remaining walls are MAPS-scale + PEEL-scale (millions of patterns) and, on soc-pokec, the MCE+r-merge
+   front-end (51+61s; soc-pokec is both hub-skewed AND large-region so BOTH r-merge methods are costly).
+ - Timeout breakdown: low-RS-many-pattern (cit-Patents/web-Google/com-youtube 3:4, web-Google 6:8) -> maps/
+   peel; ca-HepPh(3,4) -> maps 85s + huge peel; ca-AstroPh(3,4) completes but maps=102s. soc-pokec(6,8) ->
+   front-end. NONE is phase-4 anymore.
+ - NET after this session: front-end (r-merge, phase-4) is fixed; the live targets are maps-scale (arena) and
+   peel-scale -- both ~inherent to materialising millions of patterns, the low-RS structural disadvantage.
