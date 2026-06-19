@@ -568,17 +568,17 @@ int main(int argc, char **argv) {
         vector<pair<int,int>> cur;
         bool peDbg = getenv("PE_DBG") != nullptr;            // phase-4 split diagnostic
         long long peLeaves = 0, peWork = 0;                  // #r-multisets / host-intersection visits
-        std::function<void(int,const vector<int>&,int)> enumAll =
-            [&](int idx, const vector<int> &cls, int rem) {
+        // THREADED host: host = ∩ classRegions[c] over cur's classes is built INCREMENTALLY
+        // (one interClasses when a class is ADDED, shared across all its multiplicities and
+        // the whole subtree below) instead of recomputed from scratch per leaf. The host
+        // depends only on the class-set, not multiplicities, so this is exact -> bit-
+        // identical. Kills the hub blowup (hostWork re-paid classRegions[hub] per r-multiset).
+        // Self-recursive (Y-combinator) -> inlined, no std::function.
+        vector<int> rootHost;                              // sentinel "all" when cur empty
+        auto enumAll = [&](auto &&self, int idx, const vector<int> &cls, int rem, const vector<int> &host) -> void {
             if (rem == 0) {
                 peLeaves++;
-                vector<int> host = classRegions[cur[0].first];
-                peWork += (long long)host.size();
-                for (size_t i = 1; i < cur.size() && !host.empty(); i++) {
-                    peWork += (long long)host.size() + (long long)classRegions[cur[i].first].size();
-                    host = interClasses(host, classRegions[cur[i].first]);
-                }
-                if (host.empty() || host[0] != curRid) return;   // canonical home
+                if (host.empty() || host[0] != curRid) return;   // canonical home (host pre-computed)
                 Pat P; P.host = host; P.comp = cur;
                 for (auto &cm : cur) P.classSet.push_back(cm.first);
                 sort(P.classSet.begin(), P.classSet.end());
@@ -589,13 +589,19 @@ int main(int argc, char **argv) {
                 return;
             }
             for (int i = idx; i < (int)cls.size(); i++) {
-                int c = cls[i], maxj = min(rem, classSize[c]);
+                int c = cls[i];
+                const vector<int> &cr = classRegions[c];
+                vector<int> nh;                            // newHost = host ∩ cr (or cr if first class)
+                if (cur.empty()) nh = cr;
+                else { peWork += (long long)host.size() + (long long)cr.size(); nh = interClasses(host, cr); }
+                if (nh.empty()) continue;                  // no region hosts this class-set (prunes subtree)
+                int maxj = min(rem, classSize[c]);
                 for (int j = 1; j <= maxj; j++) {
-                    cur.push_back({c, j}); enumAll(i+1, cls, rem-j); cur.pop_back();
+                    cur.push_back({c, j}); self(self, i + 1, cls, rem - j, nh); cur.pop_back();
                 }
             }
         };
-        for (int i = 0; i < nR; i++) { curRid = i; enumAll(0, regionClasses[i], r);
+        for (int i = 0; i < nR; i++) { curRid = i; enumAll(enumAll, 0, regionClasses[i], r, rootHost);
             if (peDbg && (i & 0x3FFFF) == 0)
                 fprintf(stderr, "[pe-dbg] region %d/%d pats=%zu leaves=%lld hostWork=%lld t=%.1fs\n",
                         i, nR, pats.size(), peLeaves, peWork, secs(T3, Clock::now()));
