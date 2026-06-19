@@ -2754,3 +2754,24 @@ AND it's only the FIRST of cit-Patents/com-youtube's heavy phases (5/6/7 follow)
 CONFIRMS the regime line (sec 44): low-RS-many-region = CND's territory by design; region-native's win is
 HIGH RS. Recommendation stands: position at high RS; do NOT chase the low-RS marathon. ENV: PE_DBG (phase-4
 leaves/hostWork timers).
+
+## 47. GLOBAL host (phase-4 K² CRACKED) -- but cit-Patents/com-youtube still lose on the SUM (2026-06-19, #139)
+DID IT (commit 4aa6c78, bit-identical): the phase-4 host = ∩classRegions[c] per (region, r-multiset) was the
+K² hub blowup. KEY INSIGHT: host(P) = {M : P's classes ⊆ regionClasses[M]} = EXACTLY the regions that
+ENUMERATE P -> emit (comp-key, region) per (region, r-multiset), sort by comp-key, GROUP: each group's region
+list IS the host, NO intersection. (Same reform as r-merge pairwise->r-clique.) canonical-home dedup is now
+just the grouping. Bit-identical: global 15/15 golden corehashes, per-region fallback (SCT_PE_PERREGION) 6/6,
+agree (corehash = order-independent core distribution, so pats order doesn't matter).
+RESULT: phase 4 CRACKED -- cit-Patents >105s -> 28.7s (emit 54.5M incidences 3.5s + sort/group ~25s, pats
+3.85M), com-youtube stuck -> 14.4s (pats 2.53M). A real, general algorithmic win on the pattern-enum phase
+for ANY many-region graph.
+BUT STILL LOSE TO CND -- now unmistakably the SUM, not one phase:
+  cit-Patents(3,4): MCE 14.5 + r-merge 13 + phase4 28.7 + SCT 6 + maps + peel ≈ 62s+ TIMEOUT vs CND 35.9s.
+  MCE(14.5)+r-merge(13) ALONE ≈ 28s; then SCT/maps/peel on 3.85M patterns / 1.95M base-leaves still to go.
+Every region-native phase scales with the millions of regions/patterns; CND builds NONE of these structures
+(counts 4-cliques directly). The phase-4 sort itself is ~25s (54.5M records) -- could be radix/hash-grouped
+to ~5s, but the front-end SUM (MCE+r-merge+SCT) already exceeds CND, so it wouldn't flip the result.
+FINAL VERDICT: the low-RS-many-region regime is CND's by DESIGN (structural, the sum of phases), not a single
+fixable bottleneck. The global host is KEPT (general win, bit-identical, the cleanest proof the "compute host
+once" instinct was right). Region-native's contribution is HIGH RS (CND explodes, we win 3-256x). Stop
+chasing low RS. ENV: SCT_PE_PERREGION (old per-region host).
