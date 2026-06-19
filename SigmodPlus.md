@@ -2638,3 +2638,30 @@ uncertain ROI; surfaced as a decision point.
 SESSION NET (all bit-identical, shipped): PEEL adaptive-KMAX 1.2-1.6x + s=r+1 witness-floor 2.5-4.5x; MAPS
 hash+feasibility+inline-blocal -> ca-HepPh maps 2.4x. The wall is per-phase + per-graph-regime: peel (cracked
 for s=r+1), maps-DP (cracked), maps-scale (open, arena), s>=r+2 peel (open, witness generalization).
+
+## 37. CORRECTION to 36 (contention) + precise peel complexity (#139)
+
+§36's "SCT peel 7-11x slower, does not scale" was measured under CPU
+CONTENTION (multiple parallel benches). Re-measured CLEAN (sequential, nothing
+else running). True picture on com-dblp:
+  (3,4): SCT 6.38s  vs V3LM 5.99s  -> TIED (build+maps 1.26s, peel 4.69s)
+  (4,5): SCT 73.3s  vs V3LM 12.99s -> SCT 5.6x slower
+  (5,7): SCT >200s  vs V3LM 54.76s -> SCT loses (timeout)
+So the direction (loses at scale) holds, but the MAGNITUDE was wrong: it is
+TIED at (3,4), and degrades only as (r,s)/pattern-count grows. [[feedback_clean_benchmarking]]
+
+PRECISE COMPLEXITY (profiled, com-dblp 3,4):
+  peel = 50% slotForbidDiff (slot scan) + 50% affected-update (scWithTerms).
+  slot scan = O(#patterns x maxSplit). maxSplit = size of a leaf's split-path
+  set, which GROWS during peeling via controlled_split: 1 -> 5681 on (3,4)
+  (358M path-visits). At higher (r,s) overlap is denser => maxSplit far larger
+  => peel is SUPER-LINEAR in pattern count.
+  V3LM peels region-IE tuples with an update bounded by |host| (small, fixed)
+  => near-linear. That is why V3LM degrades gently (6/13/55s) and SCT steeply
+  (6/73/>200s).
+
+ROOT: the SCT's disjoint-leaf + controlled_split peel has cost that blows up
+with clique OVERLAP (split-set growth) -- the very thing it was meant to be
+good at. Build is genuinely light (1.26s); the split peel is the non-scaling
+part. |host|=1 skip (commit 1b6bf3f/9e72810) helps but does not change the
+super-linear slot-growth term.
