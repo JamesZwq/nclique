@@ -774,6 +774,10 @@ int main(int argc, char **argv) {
         return h;
     };
     for (int pi = 0; pi < (int)pats.size(); pi++) patIdx[compHash(pats[pi].comp)].push_back(pi);
+    long long mapInc = 0;                              // maps-dbg: pattern-leaf incidences
+    bool mapsDbg = getenv("MAPS_DBG") != nullptr;
+    if (mapsDbg) fprintf(stderr, "[maps-dbg] patIdx-build=%.2fs pats=%zu\n", secs(Tqg1, Clock::now()), pats.size());
+    auto TmapE0 = Clock::now();
     {
         vector<int> lcs, lcap; vector<pair<int,int>> cur; Vec blocal;
         // host-confirm: support_count(box,b)>0 iff the box {max(ell,b)<=y<=u, Σy=s}
@@ -810,6 +814,7 @@ int main(int argc, char **argv) {
                 if (host) {
                     patLeaves[pi].push_back(lid); pbLocal[pi].push_back(blocal);
                     leafPats[lid].push_back(pi);  leafPatLocB[lid].push_back(blocal);
+                    mapInc++;
                 }
                 return;
             }
@@ -830,6 +835,8 @@ int main(int argc, char **argv) {
             cur.clear(); enumLP(enumLP, lid, 0, r);
         }
     }
+    if (mapsDbg) fprintf(stderr, "[maps-dbg] enumLP=%.2fs incidences=%lld (%.0f ns/inc)\n",
+                         secs(TmapE0, Clock::now()), mapInc, mapInc ? 1e9*secs(TmapE0, Clock::now())/mapInc : 0.0);
     // hasH2[lid]: does leaf lid host any |host|>=2 pattern? A |host|=1 pattern
     // whose leaves are ALL pure-|host|=1 removes nothing relevant when it peels
     // (its witnesses are M-exclusive, so they feed no |host|>=2 support), so its
