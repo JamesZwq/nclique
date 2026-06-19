@@ -2841,3 +2841,36 @@ verification): (1) web-Google(6,8) maps 94.9s = genuine enumLP/incidence scale (
 help HERE); (2) ca-HepPh(3,4) huge PEEL; (3) soc-pokec(6,8) MCE 51s + r-merge 60s front-end. The "maps was
 the wall" story (sec 42-48) was largely a VERIFICATION artifact -- with it gone, the true residual walls are
 peel-scale, the genuine maps-incidence scale on a few cells, and soc-pokec's MCE.
+
+## 50. MAPS lookup: flat open-addressing hash (the 56s was a binary search) + reserve pass (2026-06-20, #140)
+MEASURE-FIRST on web-Google(6,8), the one cell where maps (94.9s) was genuine, not verification. Decomposed
+the maps enumLP (the per-incidence loop) with an ENUMLP_PROBE ladder (throwaway /tmp build, levels skip
+sub-steps):
+  L0 bare recursion = 1.50s | L1 +lookup = 57.95 | L2 +hostFeasible = 63.30 | L3 +4 push_backs = 91.89
+  => lookup 56.45s (61%) | push_backs 28.59s (31%) | hostFeasible 5.35s (6%) | recursion 1.5s (2%).
+So the ARENA (push_backs) was the WRONG target -- the dominant 61% was the comp->pi LOOKUP: a std::lower_bound
+binary search over the 23.2M-pattern sorted array, ~25 cache-cold comparisons x 107M reaches. We had abandoned
+hashing earlier because unordered_map BUILD was pathological (99.7s/848k, node-per-element) -- but we jumped
+straight to sorted+binary-search and never tried a FLAT open-addressing table (one contiguous vector<int>,
+O(N) linear build, ~1-2 probes; collisions resolved by comparing the real comp -> bit-exact).
+FIX A -- flat hash (commit 845d648): replaced patSorted+lower_bound with htab(hcap=nextpow2(2*pats), -1) +
+linear probe. web-Google(6,8) maps 96.66 -> 50.38s (1.92x); enumLP 93.52 -> 48.75s; ns/inc 943 -> 492;
+patIdx-build 3.11 -> 1.61s.
+FIX B -- reserve() pass (commit 9b2f4c1, audit-driven via a 6-agent reserve-audit workflow): reserve at hot
+single-container appends -- BK cand/P/X, r-merge active, class profKey/classRegions/classSize, interClasses
+out, unionAlive inter/keep, phase-4 rec/recReg (EXACT via a count-only recursion; these grow to ~4GB on
+web-Google(6,8), reserve avoids ~2x realloc-copy AND the ~12GB geometric transient that risks OOM), maps cur,
+peel slot grow, SCT-build nonNb/P. SKIPPED with reason: pats (vector<Pat> realloc MOVES structs ~0.5s; counting
+groups costs a full duplicate W2-scan = net loss) and chgOld (reused buffer, clear() keeps capacity). Effect:
+small but real -- enum EMIT 6.0 -> 4.09s (the rec/recReg reserve), patIdx 3.11 -> 1.61s. Single-digit seconds,
+exactly as predicted; the reserves are a constant-factor + OOM-safety cleanup, NOT a phase-transformer. The
+phase win is FIX A.
+VALIDATION: combined (845d648+9b2f4c1) bit-identical vs trusted 407017e -- 11 pass / 0 fail (r,s = 3,4/3,5/4,5/
+5,6/6,7 across com-dblp/ca-GrQc/ca-CondMat/dblp-core30) + 4 skip (peel>80s timeout on both, not mismatch).
+web-Google(6,8) front-end preamble 138 -> 92s; still TO in peel (23.2M patterns). ENV: ENUMLP_PROBE (0-3
+sub-step ladder, throwaway), MAPS_DBG, PE_DBG.
+NEW TARGETS this exposed (web-Google 6,8, post-fix): (1) maps push_backs 28.59s now ~59% of enumLP -> the
+flat-list + counting-sort-to-CSR is the #1 maps target (two-pass-count is a NET LOSS here: pass 1 re-runs the
+~11s+ lookup; must collect a flat incidence list in ONE pass then bucket). (2) enum sort/group 29.6s
+(std::sort of 82.9M incidences) is now the enum bottleneck -> radix sort on the fixed W2-int comp-key, or
+parallel sort. (3) peel-scale unchanged (the high-RS wall).
