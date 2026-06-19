@@ -208,7 +208,7 @@ static void gen(const SparseAdj& G, int C,
     }
 
     // pc has >=1 non-neighbour in P. Non-neighbours (EXCLUDING pc), by id.
-    std::vector<int> nonNb;
+    std::vector<int> nonNb; nonNb.reserve(P.size());   // <= |P| non-neighbours
     for (auto& q : P) if (q.c != pc && !G.adjacent(pc, q.c)) nonNb.push_back(q.c);
     std::sort(nonNb.begin(), nonNb.end());
 

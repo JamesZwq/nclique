@@ -158,7 +158,7 @@ static void gen(const ClassG& G, std::vector<std::pair<int,int>>& spine,
     }
 
     // pc has >=1 non-neighbour in P. Non-neighbours (EXCLUDING pc), by id.
-    std::vector<int> nonNb;
+    std::vector<int> nonNb; nonNb.reserve(P.size());   // <= |P| non-neighbours
     for (auto& q : P) if (q.c != pc && !G.adj(pc, q.c)) nonNb.push_back(q.c);
     std::sort(nonNb.begin(), nonNb.end());
 
@@ -206,7 +206,7 @@ static void gen(const ClassG& G, std::vector<std::pair<int,int>>& spine,
 
 static std::vector<CCPath> buildClassSCT(const ClassG& G, int k) {
     std::vector<CCPath> out;
-    std::vector<OpenC> P;
+    std::vector<OpenC> P; P.reserve(G.C);   // <= G.C open classes
     for (int c = 0; c < G.C; ++c) if (G.w[c] > 0) P.push_back(OpenC{c, G.w[c]});
     std::sort(P.begin(), P.end(),
               [](const OpenC& a, const OpenC& b){ return a.c < b.c; });

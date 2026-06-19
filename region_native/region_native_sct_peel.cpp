@@ -162,7 +162,7 @@ struct MCE {
         };
         consider(P); consider(X);
         // candidates = P \ N(bestu)
-        vector<int> cand;
+        vector<int> cand; cand.reserve(P.size());   // |cand| <= |P|, avoid regrowth
         {
             const int *b = &g.adj[g.off[bestu]], *e = &g.adj[g.off[bestu + 1]];
             size_t i = 0; const int *p = b;
@@ -218,6 +218,7 @@ struct MCE {
         for (int idx = 0; idx < n; idx++) {
             int v = order[idx];
             vector<int> P, X;
+            P.reserve(g.deg(v)); X.reserve(g.deg(v));   // |P|+|X| == deg(v); fresh per vertex
             for (int w : g_nbr(v)) {
                 if (pos[w] > idx) P.push_back(w);
                 else X.push_back(w);
@@ -363,7 +364,7 @@ int main(int argc, char **argv) {
                 if (mx < r) mergeable[M] = 1;
             }
         }
-        vector<vector<int>> active;
+        vector<vector<int>> active; active.reserve(nRall);   // <= nRall non-mergeable regions
         for (int M = 0; M < nRall; M++) {
             if (mergeable[M]) {
                 int N = (int)regions[M].size();
@@ -391,10 +392,10 @@ int main(int argc, char **argv) {
     for (int v = 0; v < g.n; v++) sort(vtxR[v].begin(), vtxR[v].end());
 
     // classes: vertices grouped by their (sorted) region-id vector
-    unordered_map<string, int> profKey;
+    unordered_map<string, int> profKey; profKey.reserve(g.n);   // <= g.n distinct profiles; kill rehashing
     vector<int> classOf(g.n, -1);
-    vector<vector<int>> classRegions;   // class -> sorted region ids (its profile)
-    vector<int> classSize;
+    vector<vector<int>> classRegions; classRegions.reserve(g.n);   // class -> sorted region ids (its profile)
+    vector<int> classSize; classSize.reserve(g.n);
     auto keyOf = [](const vector<int> &p) {
         string k; k.reserve(p.size() * 4);
         for (int x : p) { k.append((const char *)&x, 4); }
@@ -454,7 +455,8 @@ int main(int argc, char **argv) {
         long t = 0; for (int c : cs) t += classSize[c]; return (int)t;
     };
     auto interClasses = [&](const vector<int> &a, const vector<int> &b) {
-        vector<int> out; size_t i = 0, j = 0;
+        vector<int> out; out.reserve(std::min(a.size(), b.size()));   // |a∩b| <= min; hot in unionAlive
+        size_t i = 0, j = 0;
         while (i < a.size() && j < b.size()) {
             if (a[i] < b[j]) i++;
             else if (a[i] > b[j]) j++;
@@ -527,7 +529,7 @@ int main(int argc, char **argv) {
         if (B.empty()) return 0.0;
         Node M = std::move(B.back()); B.pop_back();
         double here = leafCount(M.classes, comp);
-        vector<Node> inter;
+        vector<Node> inter; inter.reserve(B.size());   // <= |B| surviving intersections
         for (auto &N : B) {
             vector<int> cs = interClasses(M.classes, N.classes);
             int vs = classesSize(cs);
@@ -536,7 +538,7 @@ int main(int argc, char **argv) {
         if (inter.size() > 1) {
             sort(inter.begin(), inter.end(),
                  [](const Node &a, const Node &b){ return a.classes.size() > b.classes.size(); });
-            vector<Node> keep;
+            vector<Node> keep; keep.reserve(inter.size());   // <= |inter| non-dominated
             for (auto &nd : inter) {
                 bool dom = false;
                 for (auto &k : keep) if (nd.classes.size() <= k.classes.size()) {
@@ -574,6 +576,20 @@ int main(int argc, char **argv) {
         bool peDbg = getenv("PE_DBG") != nullptr;
         const int W2 = 2 * r;
         vector<int> rec; vector<int> recReg;               // flat padded comp-keys / region per incidence
+        // size the two flat buffers exactly with a cheap count-only recursion. rec
+        // grows to Ninc*W2 ints (multi-GB on dense high-s graphs); reserving avoids
+        // the ~2x deep-copy of geometric growth AND the transient ~1.5x peak (which
+        // risks OOM on the big cells), at the cost of one extra bare recursion pass.
+        {
+            long long nIncEst = 0;
+            auto cnt = [&](auto &&self, int idx, const vector<int> &cls, int rem) -> void {
+                if (rem == 0) { nIncEst++; return; }
+                for (int i = idx; i < (int)cls.size(); i++) { int c = cls[i], maxj = min(rem, classSize[c]);
+                    for (int j = 1; j <= maxj; j++) self(self, i + 1, cls, rem - j); }
+            };
+            for (int i = 0; i < nR; i++) cnt(cnt, 0, regionClasses[i], r);
+            rec.reserve((size_t)nIncEst * W2); recReg.reserve((size_t)nIncEst);
+        }
         vector<pair<int,int>> cur; int curRid = 0;
         auto enumE = [&](auto &&self, int idx, const vector<int> &cls, int rem) -> void {
             if (rem == 0) {
@@ -794,6 +810,7 @@ int main(int argc, char **argv) {
     auto TmapE0 = Clock::now();
     {
         vector<int> lcs, lcap; vector<pair<int,int>> cur; Vec blocal;
+        cur.reserve(r);   // r-multiset depth <= r; one-time, kills startup reallocs
         // host-confirm: support_count(box,b)>0 iff the box {max(ell,b)<=y<=u, Σy=s}
         // is NONEMPTY -- every weight C(n-b,y-b) is a positive binomial, so the count
         // is >0 exactly when an integer point exists. With empty forbidden (the
@@ -1034,6 +1051,7 @@ int main(int argc, char **argv) {
             else ++i;                                      // modified in place, keep
         }
         cur.resize(w);
+        cur.reserve((size_t)w + sfdKids.size());          // grow once, not per child
         for (auto &k : sfdKids) cur.push_back(std::move(k));
         if (cur.size() > maxSplit) maxSplit = cur.size();
     };
