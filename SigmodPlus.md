@@ -2802,3 +2802,22 @@ TAKEAWAYS:
    front-end. NONE is phase-4 anymore.
  - NET after this session: front-end (r-merge, phase-4) is fixed; the live targets are maps-scale (arena) and
    peel-scale -- both ~inherent to materialising millions of patterns, the low-RS structural disadvantage.
+
+## 49. MAPS phase: the bottleneck was a VERIFICATION left in production (region-IE), not the arena (2026-06-19, #139)
+Chose B (attack maps-scale). MEASURE-FIRST saved a wrong fix: I assumed the per-incidence Vec copies in
+pbLocal/leafPatLocB were the maps cost and was about to build an arena. MAPS_DBG split showed otherwise:
+ - ca-AstroPh(3,4): "patIdx-build"=99.7s, enumLP=3.8s. Replacing the unordered_map patIdx with a sorted
+   (hash,pi)+binary-search (commit 395e3cc) DID NOT change the 99.7s -> the timer (from Tqg1) was catching
+   something ELSE. It was LINE 698: `for P: P.sup = suppOf(P)` -- the per-pattern region-IE inclusion-
+   exclusion, which the code itself labels "kept ONLY as the G2a cross-check reference". The PEEL runs on
+   the SCT support (sctSupport), and the G2a gate ALREADY computes sctSupport for every pattern. So region-IE
+   is PURE VERIFICATION: 99.7s ca-AstroPh, 48s ca-HepPh, 15s web-it-2004, and the maps-stall on the low-RS
+   losers.
+FIX (commit 407017e, bit-identical): region-IE suppOf + the total-s-clique gate + the G2a per-pattern compare
+are now SCT_VERIFY-gated (default OFF); production sets P.sup = sctSupport directly (region-IE == SCT, integer-
+valued). Verified: production 15/15 golden corehashes, SCT_VERIFY 3/3 + gate [OK]. (Kept the sorted patIdx.)
+IMPACT -- cit-Patents(3,4) went TIMEOUT(>220s) -> 82.3s COMPLETE (maps 102s-region-IE-bound -> 10.6s):
+  load 3.5 + MCE 14.4 + rmrg 13.1 + class 0.8 + enum(phase4) 25.9 + sctbld 5.9 + maps 10.6 + peel 11.6 = 82.3s.
+  Still LOSES to CND(35.9s) on the SUM, but now COMPLETES (was a timeout). Full big-graph re-run in progress
+  (biggraph2.out on tods2) -- expect ca-AstroPh/ca-HepPh/web-Google/com-youtube to similarly drop. ENV:
+  SCT_VERIFY (re-enable the region-IE cross-check), MAPS_DBG (patIdx/enumLP split).
