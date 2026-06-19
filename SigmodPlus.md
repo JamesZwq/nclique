@@ -2665,3 +2665,31 @@ with clique OVERLAP (split-set growth) -- the very thing it was meant to be
 good at. Build is genuinely light (1.26s); the split peel is the non-scaling
 part. |host|=1 skip (commit 1b6bf3f/9e72810) helps but does not change the
 super-linear slot-growth term.
+
+## 44. Front-end: r-mergeable O(Σdeg^2) quadratic FIXED + the low-RS regime line (2026-06-19, #139)
+CONTEXT: on graphs where the maximal-clique count is TRACTABLE (CND completes), CND beat us at low RS
+purely on the FRONT END: cit-Patents(3,4) CND 35.9s vs our MCE 14.5s + then >90s stuck; com-youtube(3,4)
+CND 20.5s vs MCE 9.4s + stuck. (On clique-EXPLOSION graphs twitter/soc-pokec/wiki-Talk, CND ALSO times out
+-> graph's problem, out of scope for everyone. The SDCT build is itself O(#maximal cliques): it IS the
+Bron-Kerbosch recursion (src/SDCT.cpp listAllCliquesDegeneracyRecursive...) with tree_buffer.push_back per
+leaf, so it does NOT escape the maximal-clique cost -- confirmed by reading the code + CND timing out there.)
+THE BUG (fixed, commit cc14617): r-mergeable was O(Σ_v deg_R(v)^2) -- for each region, scan every other
+region sharing a vertex; a hub vertex in K regions costs K^2. Measured 6.0e10 ops on cit-Patents (>128s),
+5.1e10 on com-youtube (>123s). FIX: r-CLIQUE reformulation -- region M is mergeable iff every r-subset of M
+is unique to M; enumerate (sorted r-subset, region) pairs, sort, any r-subset shared by >=2 regions makes
+those regions non-mergeable. O(Σ_M C(|M|,r) log), no per-hub square. Exact (compares real r-tuples) ->
+BIT-IDENTICAL (r-clique path 15/15 golden corehashes, pairwise fallback 6/6, the two agree). Fallback to
+pairwise only on r-subset blowup (Nsub>3e8, clique-explosion = out of scope). SCT_RM_PAIRWISE forces old.
+RESULT: r-merge 13-16s now (was >128s), bit-identical -- a real robustness win (protects ANY hub-heavy graph,
+incl high-RS). BUT it did NOT win cit-Patents/com-youtube: the MERGEABLE FRACTION IS TINY (54227/2.78M = 2%;
+4990/1.18M = 0.4%), so ~2.7M/1.18M regions stay ACTIVE and the wall just MOVES downstream (class build now
+~1s/529K classes, then stuck in the SCT quotient+build >130s; maps and peel would follow). ROOT CAUSE: these
+are millions-of-overlapping-regions graphs; the region-native pipeline does per-region work across 5 phases
+while CND counts s-cliques directly -- at low RS the region machinery is structurally heavier no matter how
+many phases are optimized (phase-by-phase whack-a-mole vs CND's lean 36s).
+THE REGIME LINE (now precisely located): HIGH RS -> CND explodes on r-cliques -> region-native wins 3-256x
+(the contribution). LOW RS + many regions -> CND's direct clique-counting is lean -> CND wins by design.
+RECOMMENDATION: bank the r-merge fix (genuine, bit-identical, general); position the paper at HIGH RS; treat
+low-RS-many-region (cit-Patents/com-youtube) as CND's regime and clique-explosion (twitter/soc-pokec) as
+out-of-scope-for-everyone. Continuing to chase low RS = optimizing every phase (SCT build, maps-arena, peel)
+against a structural disadvantage, uncertain payoff. ENV: SCT_RM_PAIRWISE (old r-merge), RM_DBG (timers).
