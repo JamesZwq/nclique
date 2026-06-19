@@ -662,6 +662,8 @@ int main(int argc, char **argv) {
     // confirmed on the COMPACT leaf (local dim) so each support_count is small.
     vector<vector<int>> patLeaves(pats.size());
     vector<vector<int>> leafPats(nLeaf);
+    vector<vector<Vec>> pbLocal(pats.size());         // parallel to patLeaves[pi]
+    vector<vector<Vec>> leafPatLocB(nLeaf);           // parallel to leafPats[lid]
     // integer rolling-hash key (was a std::string compKey: a per-r-multiset heap
     // alloc + string hash, the bulk of the maps phase on dense graphs). Hash
     // collisions are resolved by comparing the actual comp, so lookup stays exact.
@@ -676,7 +678,7 @@ int main(int argc, char **argv) {
     };
     for (int pi = 0; pi < (int)pats.size(); pi++) patIdx[compHash(pats[pi].comp)].push_back(pi);
     {
-        vector<int> lcs, lcap; vector<pair<int,int>> cur;
+        vector<int> lcs, lcap; vector<pair<int,int>> cur; Vec blocal;
         // host-confirm: support_count(box,b)>0 iff the box {max(ell,b)<=y<=u, Σy=s}
         // is NONEMPTY -- every weight C(n-b,y-b) is a positive binomial, so the count
         // is >0 exactly when an integer point exists. With empty forbidden (the
@@ -692,6 +694,11 @@ int main(int argc, char **argv) {
             return sl <= box.T && box.T <= su;
         };
         // self-recursive (Y-combinator) -> inlinable, no std::function indirection.
+        // The local vector `blocal` is built INLINE during the enumeration (lcs is
+        // parallel to the box's local dim, so class at enum position i sits at local
+        // position i) -> no compToLocal, and the SAME blocal fills all four maps
+        // (patLeaves/leafPats/pbLocal/leafPatLocB), eliminating the ~3 per-incidence
+        // compToLocal remaps+allocs that dominated the maps phase on wide graphs.
         auto enumLP = [&](auto &&self, int lid, int idx, int rem) -> void {
             if (rem == 0) {
                 auto it = patIdx.find(compHash(cur));
@@ -701,49 +708,40 @@ int main(int argc, char **argv) {
                 if (pi < 0) return;
                 // confirm host on the compact leaf (filters m with no s-extension)
                 const CCPath &box = slotPaths[lid][0];
-                Vec bl = compToLocal(cur, lid);
-                bool host = box.forbidden.empty() ? hostFeasible(box, bl)
-                                                  : (ccpath::support_count(box, bl, ccpath_ncr) > 0.0);
+                bool host = box.forbidden.empty() ? hostFeasible(box, blocal)
+                                                  : (ccpath::support_count(box, blocal, ccpath_ncr) > 0.0);
                 if (host) {
-                    patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
+                    patLeaves[pi].push_back(lid); pbLocal[pi].push_back(blocal);
+                    leafPats[lid].push_back(pi);  leafPatLocB[lid].push_back(blocal);
                 }
                 return;
             }
             for (int i = idx; i < (int)lcs.size(); i++) {
                 int mx = std::min(rem, lcap[i]);
-                for (int j = 1; j <= mx; j++) { cur.push_back({lcs[i], j}); self(self, lid, i+1, rem-j); cur.pop_back(); }
+                for (int j = 1; j <= mx; j++) {
+                    cur.push_back({lcs[i], j}); blocal[(size_t)i] = (int16_t)j;
+                    self(self, lid, i+1, rem-j);
+                    cur.pop_back(); blocal[(size_t)i] = 0;
+                }
             }
         };
         for (int lid = 0; lid < nLeaf; lid++) {
             const CCPath &cp = slotPaths[lid][0];          // compact leaf
             lcs = supC[lid];                               // global class ids (sorted)
             lcap.assign(cp.u.begin(), cp.u.end());         // local u, parallel to supC
+            blocal.assign(lcs.size(), 0);                  // local b scratch (parallel to lcs)
             cur.clear(); enumLP(enumLP, lid, 0, r);
         }
     }
-    for (auto &v : leafPats) std::sort(v.begin(), v.end());
     // hasH2[lid]: does leaf lid host any |host|>=2 pattern? A |host|=1 pattern
     // whose leaves are ALL pure-|host|=1 removes nothing relevant when it peels
     // (its witnesses are M-exclusive, so they feed no |host|>=2 support), so its
     // source-peel can be skipped entirely. (Source-skip; SCT_NO_SKIP_H1 disables
-    // both this and the target-skip.)
+    // both this and the target-skip.) leafPats order is enumeration order (the peel
+    // accesses patterns by hash-mapped index, not order; cores bit-identical).
     vector<char> hasH2(nLeaf, 0);
     for (int lid = 0; lid < nLeaf; lid++)
         for (int qi : leafPats[lid]) if (pats[qi].host.size() >= 2) { hasH2[lid] = 1; break; }
-    // pre-mapped compact b for every (pattern, hosting-leaf) pair.
-    vector<vector<Vec>> pbLocal(pats.size());         // parallel to patLeaves[pi]
-    for (int pi = 0; pi < (int)pats.size(); pi++) {
-        pbLocal[pi].reserve(patLeaves[pi].size());
-        for (int lid : patLeaves[pi]) pbLocal[pi].push_back(compToLocal(pats[pi].comp, lid));
-    }
-    // inverse: for each leaf, the local b of every pattern it hosts (parallel
-    // to leafPats[lid]). Lets the incremental peel evaluate SC(slot, m_Q) for
-    // every Q on a changed slot without a global remap.
-    vector<vector<Vec>> leafPatLocB(nLeaf);           // parallel to leafPats[lid]
-    for (int lid = 0; lid < nLeaf; lid++) {
-        leafPatLocB[lid].reserve(leafPats[lid].size());
-        for (int qi : leafPats[lid]) leafPatLocB[lid].push_back(compToLocal(pats[qi].comp, lid));
-    }
     // The leaf->pattern maps are now built from classIds (via supC). The peel
     // works purely in local positions and NEVER reads CCPath::classIds /
     // tupleIdxs again (they are metadata; no CCPathCore algorithm touches them).
