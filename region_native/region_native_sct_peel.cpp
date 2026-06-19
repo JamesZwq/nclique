@@ -677,6 +677,20 @@ int main(int argc, char **argv) {
     for (int pi = 0; pi < (int)pats.size(); pi++) patIdx[compHash(pats[pi].comp)].push_back(pi);
     {
         vector<int> lcs, lcap; vector<pair<int,int>> cur;
+        // host-confirm: support_count(box,b)>0 iff the box {max(ell,b)<=y<=u, Σy=s}
+        // is NONEMPTY -- every weight C(n-b,y-b) is a positive binomial, so the count
+        // is >0 exactly when an integer point exists. With empty forbidden (the
+        // pre-peel leaf box) this is an O(width) feasibility test, no DP. (Falls back
+        // to support_count if forbidden is ever non-empty here.)
+        auto hostFeasible = [](const CCPath &box, const Vec &b) -> bool {
+            const int M = box.m(); int sl = 0, su = 0;
+            for (int c = 0; c < M; c++) {
+                int L = box.ell[c]; if ((int)b[c] > L) L = (int)b[c];
+                int U = (int)box.u[c]; if (L > U) return false;
+                sl += L; su += U;
+            }
+            return sl <= box.T && box.T <= su;
+        };
         // self-recursive (Y-combinator) -> inlinable, no std::function indirection.
         auto enumLP = [&](auto &&self, int lid, int idx, int rem) -> void {
             if (rem == 0) {
@@ -686,7 +700,11 @@ int main(int argc, char **argv) {
                 for (int cand : it->second) if (pats[cand].comp == cur) { pi = cand; break; }
                 if (pi < 0) return;
                 // confirm host on the compact leaf (filters m with no s-extension)
-                if (ccpath::support_count(slotPaths[lid][0], compToLocal(cur, lid), ccpath_ncr) > 0.0) {
+                const CCPath &box = slotPaths[lid][0];
+                Vec bl = compToLocal(cur, lid);
+                bool host = box.forbidden.empty() ? hostFeasible(box, bl)
+                                                  : (ccpath::support_count(box, bl, ccpath_ncr) > 0.0);
+                if (host) {
                     patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
                 }
                 return;
