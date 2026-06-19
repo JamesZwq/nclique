@@ -566,12 +566,18 @@ int main(int argc, char **argv) {
     {
         int curRid = 0;
         vector<pair<int,int>> cur;
+        bool peDbg = getenv("PE_DBG") != nullptr;            // phase-4 split diagnostic
+        long long peLeaves = 0, peWork = 0;                  // #r-multisets / host-intersection visits
         std::function<void(int,const vector<int>&,int)> enumAll =
             [&](int idx, const vector<int> &cls, int rem) {
             if (rem == 0) {
+                peLeaves++;
                 vector<int> host = classRegions[cur[0].first];
-                for (size_t i = 1; i < cur.size() && !host.empty(); i++)
+                peWork += (long long)host.size();
+                for (size_t i = 1; i < cur.size() && !host.empty(); i++) {
+                    peWork += (long long)host.size() + (long long)classRegions[cur[i].first].size();
                     host = interClasses(host, classRegions[cur[i].first]);
+                }
                 if (host.empty() || host[0] != curRid) return;   // canonical home
                 Pat P; P.host = host; P.comp = cur;
                 for (auto &cm : cur) P.classSet.push_back(cm.first);
@@ -589,7 +595,13 @@ int main(int argc, char **argv) {
                 }
             }
         };
-        for (int i = 0; i < nR; i++) { curRid = i; enumAll(0, regionClasses[i], r); }
+        for (int i = 0; i < nR; i++) { curRid = i; enumAll(0, regionClasses[i], r);
+            if (peDbg && (i & 0x3FFFF) == 0)
+                fprintf(stderr, "[pe-dbg] region %d/%d pats=%zu leaves=%lld hostWork=%lld t=%.1fs\n",
+                        i, nR, pats.size(), peLeaves, peWork, secs(T3, Clock::now()));
+        }
+        if (peDbg) fprintf(stderr, "[pe-dbg] DONE pats=%zu leaves=%lld hostWork=%lld t=%.2fs\n",
+                           pats.size(), peLeaves, peWork, secs(T3, Clock::now()));
     }
     // EMPIRICAL TEST (env SCT_DIRECTBIN_ALL_HOST1): direct-bin ALL |host|=1
     // patterns (not only fully-mergeable regions), peel only |host|>=2. GATE
