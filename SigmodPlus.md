@@ -2874,3 +2874,40 @@ flat-list + counting-sort-to-CSR is the #1 maps target (two-pass-count is a NET 
 ~11s+ lookup; must collect a flat incidence list in ONE pass then bucket). (2) enum sort/group 29.6s
 (std::sort of 82.9M incidences) is now the enum bottleneck -> radix sort on the fixed W2-int comp-key, or
 parallel sort. (3) peel-scale unchanged (the high-RS wall).
+
+BROAD DETAILED SWEEP (HEAD 9b2f4c1 combined, single-thread, /tmp/sct_new2), vs §49 totals:
+  graph         r,s  | load  MCE  rmrg class enum sctbld maps  peel | TOTAL | §49 tot
+  cit-Patents   3,4  | 3.42 13.38 13.48 0.72 25.59 6.05  7.37 11.71 | 78.31 | 82.3
+  cit-Patents   7,10 | 3.52 13.77 0.07  0.06  0.10 0.01  0.07  0.22 | 14.30 | 14.9
+  web-Google    3,4  | 0.76  4.34 7.56  0.26  8.13 2.55  9.93 34.80 | 67.59 | 74.9
+  web-Google    6,8  | 0.79  4.38 0.81  0.12 33.91 0.97 50.31   TO  | TO    | TO (maps 94.9->50.3)
+  web-it-2004   3,4  | 1.11  5.74 0.16  0.02  0.38 0.09  0.33  1.41 |  8.15 | 8.4
+  web-it-2004   5,7  | 0.91  5.45 0.16  0.02  1.28 0.10  1.14 63.54 | 71.70 | 77.9
+  web-NotreDame 6,8  | 0.25  1.62 0.07  0.01  0.68 0.05  0.70 39.28 | 42.42 | 45.9
+  com-youtube   3,4  | 0.57  9.19 7.57  0.23 13.74 6.44  7.45 14.51 | 59.15 | 66.7
+  soc-pokec     6,8  | 3.83 48.94 72.05  -     -    -     -     -   | TO    | TO (front-end wall)
+  com-dblp      3,4  | 0.20  0.56 0.07  0.03  0.45 0.34  1.00  7.95 | 10.40 | 11.3
+  ca-HepPh      3,4  | 0.04  0.22 0.05  0.00  1.40 3.05 32.95   TO  | TO    | TO (enumLP 32.9, ns/inc 719)
+  ca-AstroPh    3,4  | 0.05  0.41 0.22  0.01  1.61 0.71  3.29 24.67 | 30.92 | 32.3
+SUB-BREAKDOWN (enum = emit + sort/grp ; maps = patIdx + enumLP[ns/inc] ; peel slotFwd = slotForbidDiff):
+  cit-Patents  3,4 | enum emit 2.66 + sort/grp 22.86 | maps enumLP 6.56 (590) | peel slotFwd 2.81
+  web-Google   3,4 | enum emit 0.94 + sort/grp 7.16  | maps enumLP 9.38 (399) | peel slotFwd 14.58
+  web-Google   6,8 | enum emit 4.10 + sort/grp 29.61 | maps enumLP 48.68(491) | peel TO
+  web-it-2004  5,7 | enum emit 0.18 + sort/grp 1.09  | maps enumLP 1.04 (255) | peel slotFwd 13.12
+  web-NotreDame6,8 | enum emit 0.12 + sort/grp 0.55  | maps enumLP 0.66 (337) | peel slotFwd 10.78
+  com-youtube  3,4 | enum emit 1.49 + sort/grp 12.20 | maps enumLP 6.88 (481) | peel slotFwd 3.02
+  com-dblp     3,4 | enum emit 0.05 + sort/grp 0.40  | maps enumLP 0.93 (372) | peel slotFwd 4.50
+  ca-HepPh     3,4 | enum emit 0.13 + sort/grp 1.26  | maps enumLP 32.89(719) | peel TO
+  ca-AstroPh   3,4 | enum emit 0.17 + sort/grp 1.43  | maps enumLP 3.23 (481) | peel slotFwd 13.99
+READING (where the time now is, by regime):
+ - LOW-RS losers (cit-Patents/com-youtube/web-Google 3,4): the front+mid is dominated by enum SORT/GROUP
+   (cit-Patents 22.86s, com-youtube 12.20s, web-Google 6,8 29.61s) + rmrg (cit/youtube ~13/7.5s) + MCE
+   (13.4/9.2s) + peel. The single biggest reducible mid-phase is the std::sort -> RADIX on the W2-int comp-key.
+ - HIGH-RS OK cells (web-it-2004 5,7, web-NotreDame 6,8, ca-AstroPh 3,4, web-Google 3,4): PEEL dominates,
+   and slotForbidDiff is 20-57% of peel (14.58/13.99/13.12/10.78s) -> the peel-internal slotForbidDiff is the
+   target there.
+ - ca-HepPh 3,4: maps enumLP 32.89s at ns/inc 719 (highest) -> the push_back/CSR target bites hardest here.
+ - soc-pokec 6,8: MCE 48.9 + rmrg 72.0 front-end wall (graph's problem, out of scope).
+RANKED NEXT TARGETS: (1) enum sort/group -> radix sort (fixed W2-int key, appears on every low-RS cell,
+   biggest reducible mid-phase, 7-30s); (2) maps push_back -> flat-list+counting-sort CSR (ca-HepPh/web-Google
+   6,8); (3) peel slotForbidDiff (high-RS OK cells, 20-57% of peel).
