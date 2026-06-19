@@ -562,52 +562,76 @@ int main(int argc, char **argv) {
         return unionAlive(std::move(H), P.comp);
     };
 
-    // ---- enumerate ALL patterns (canonical home), including |host|=1 ----
-    {
-        int curRid = 0;
-        vector<pair<int,int>> cur;
-        bool peDbg = getenv("PE_DBG") != nullptr;            // phase-4 split diagnostic
-        long long peLeaves = 0, peWork = 0;                  // #r-multisets / host-intersection visits
-        // THREADED host: host = ∩ classRegions[c] over cur's classes is built INCREMENTALLY
-        // (one interClasses when a class is ADDED, shared across all its multiplicities and
-        // the whole subtree below) instead of recomputed from scratch per leaf. The host
-        // depends only on the class-set, not multiplicities, so this is exact -> bit-
-        // identical. Kills the hub blowup (hostWork re-paid classRegions[hub] per r-multiset).
-        // Self-recursive (Y-combinator) -> inlined, no std::function.
-        vector<int> rootHost;                              // sentinel "all" when cur empty
-        auto enumAll = [&](auto &&self, int idx, const vector<int> &cls, int rem, const vector<int> &host) -> void {
+    // ---- patterns via GLOBAL host: emit (pattern, region) incidences, group by pattern ----
+    // host(P) = {M : P's classes ⊆ regionClasses[M]} = EXACTLY the regions that enumerate P.
+    // So emitting (comp-key, M) per (region, r-multiset) and grouping by comp-key yields the
+    // host directly -- NO ∩classRegions[c] (kills the per-pattern K² hub blowup; the old
+    // canonical-home dedup is now just the grouping). comp is padded to r (class,mult) pairs
+    // with sentinel class=nC for a fixed-width sort key. Bit-identical (same pats; corehash is
+    // the order-independent core distribution). SCT_PE_PERREGION forces the old per-region path.
+    bool pePerRegion = getenv("SCT_PE_PERREGION") != nullptr;
+    if (!pePerRegion) {
+        bool peDbg = getenv("PE_DBG") != nullptr;
+        const int W2 = 2 * r;
+        vector<int> rec; vector<int> recReg;               // flat padded comp-keys / region per incidence
+        vector<pair<int,int>> cur; int curRid = 0;
+        auto enumE = [&](auto &&self, int idx, const vector<int> &cls, int rem) -> void {
             if (rem == 0) {
-                peLeaves++;
-                if (host.empty() || host[0] != curRid) return;   // canonical home (host pre-computed)
-                Pat P; P.host = host; P.comp = cur;
-                for (auto &cm : cur) P.classSet.push_back(cm.first);
-                sort(P.classSet.begin(), P.classSet.end());
-                long long mu = 1;
-                for (auto &cm : cur) mu *= (long long)llround(C(classSize[cm.first], cm.second));
-                P.mult = mu;
-                pats.push_back(std::move(P));
+                for (auto &cm : cur) { rec.push_back(cm.first); rec.push_back(cm.second); }
+                for (int p = (int)cur.size(); p < r; p++) { rec.push_back(nC); rec.push_back(0); }   // pad
+                recReg.push_back(curRid);
                 return;
             }
             for (int i = idx; i < (int)cls.size(); i++) {
-                int c = cls[i];
-                const vector<int> &cr = classRegions[c];
-                vector<int> nh;                            // newHost = host ∩ cr (or cr if first class)
-                if (cur.empty()) nh = cr;
-                else { peWork += (long long)host.size() + (long long)cr.size(); nh = interClasses(host, cr); }
-                if (nh.empty()) continue;                  // no region hosts this class-set (prunes subtree)
-                int maxj = min(rem, classSize[c]);
-                for (int j = 1; j <= maxj; j++) {
-                    cur.push_back({c, j}); self(self, i + 1, cls, rem - j, nh); cur.pop_back();
-                }
+                int c = cls[i], maxj = min(rem, classSize[c]);
+                for (int j = 1; j <= maxj; j++) { cur.push_back({c, j}); self(self, i + 1, cls, rem - j); cur.pop_back(); }
             }
         };
-        for (int i = 0; i < nR; i++) { curRid = i; enumAll(enumAll, 0, regionClasses[i], r, rootHost);
-            if (peDbg && (i & 0x3FFFF) == 0)
-                fprintf(stderr, "[pe-dbg] region %d/%d pats=%zu leaves=%lld hostWork=%lld t=%.1fs\n",
-                        i, nR, pats.size(), peLeaves, peWork, secs(T3, Clock::now()));
+        for (int i = 0; i < nR; i++) { curRid = i; cur.clear(); enumE(enumE, 0, regionClasses[i], r); }
+        long long Ninc = (long long)recReg.size();
+        if (peDbg) fprintf(stderr, "[pe-dbg] emitted=%lld incidences t=%.2fs\n", Ninc, secs(T3, Clock::now()));
+        vector<int> ord((size_t)Ninc); for (long long i = 0; i < Ninc; i++) ord[(size_t)i] = (int)i;
+        const int *rp = rec.data();
+        std::sort(ord.begin(), ord.end(), [&](int a, int b) {
+            const int *pa = rp + (size_t)a * W2, *pb = rp + (size_t)b * W2;
+            for (int k = 0; k < W2; k++) if (pa[k] != pb[k]) return pa[k] < pb[k];
+            return recReg[a] < recReg[b];                  // region tiebreak -> host comes out sorted
+        });
+        for (long long i = 0; i < Ninc; ) {                // group consecutive equal comp-key -> one Pat
+            const int *pi = rp + (size_t)ord[(size_t)i] * W2;
+            long long j = i + 1;
+            while (j < Ninc) { const int *pj = rp + (size_t)ord[(size_t)j] * W2;
+                bool eq = true; for (int k = 0; k < W2; k++) if (pi[k] != pj[k]) { eq = false; break; }
+                if (!eq) break; j++; }
+            Pat P;
+            for (int k = 0; k < W2; k += 2) { if (pi[k] == nC) break; P.comp.push_back({pi[k], pi[k + 1]}); }
+            for (auto &cm : P.comp) P.classSet.push_back(cm.first);          // comp already class-id sorted
+            P.host.reserve((size_t)(j - i));
+            for (long long t = i; t < j; t++) P.host.push_back(recReg[ord[(size_t)t]]);   // sorted (region tiebreak)
+            long long mu = 1; for (auto &cm : P.comp) mu *= (long long)llround(C(classSize[cm.first], cm.second));
+            P.mult = mu;
+            pats.push_back(std::move(P));
+            i = j;
         }
-        if (peDbg) fprintf(stderr, "[pe-dbg] DONE pats=%zu leaves=%lld hostWork=%lld t=%.2fs\n",
-                           pats.size(), peLeaves, peWork, secs(T3, Clock::now()));
+        if (peDbg) fprintf(stderr, "[pe-dbg] DONE pats=%zu t=%.2fs\n", pats.size(), secs(T3, Clock::now()));
+    } else {
+        // old per-region path (host = ∩classRegions[c], canonical-home dedup); O(K²) on hubs.
+        int curRid = 0; vector<pair<int,int>> cur;
+        std::function<void(int,const vector<int>&,int)> enumAll = [&](int idx, const vector<int> &cls, int rem) {
+            if (rem == 0) {
+                vector<int> host = classRegions[cur[0].first];
+                for (size_t i = 1; i < cur.size() && !host.empty(); i++) host = interClasses(host, classRegions[cur[i].first]);
+                if (host.empty() || host[0] != curRid) return;
+                Pat P; P.host = host; P.comp = cur;
+                for (auto &cm : cur) P.classSet.push_back(cm.first);
+                long long mu = 1; for (auto &cm : cur) mu *= (long long)llround(C(classSize[cm.first], cm.second));
+                P.mult = mu; pats.push_back(std::move(P));
+                return;
+            }
+            for (int i = idx; i < (int)cls.size(); i++) { int c = cls[i], maxj = min(rem, classSize[c]);
+                for (int j = 1; j <= maxj; j++) { cur.push_back({c, j}); enumAll(i + 1, cls, rem - j); cur.pop_back(); } }
+        };
+        for (int i = 0; i < nR; i++) { curRid = i; enumAll(0, regionClasses[i], r); }
     }
     // EMPIRICAL TEST (env SCT_DIRECTBIN_ALL_HOST1): direct-bin ALL |host|=1
     // patterns (not only fully-mergeable regions), peel only |host|>=2. GATE
