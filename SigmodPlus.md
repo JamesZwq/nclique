@@ -2595,7 +2595,22 @@ WHY IT CRACKS THE WALL (vs the refuted prunes): the prunes tried to filter the ~
 deadness is leaf-level so they couldn't reach it; the witness-floor changes the ENUMERATION ITSELF to be
 output-sensitive (work ~ live floors, not all candidates) AND removes the DP. Many timeout cells are
 s=r+1 ((3,4)/(4,5): ca-HepPh, ca-AstroPh, web-Google, twitter, wiki-Talk, com-youtube, web-NotreDame(4,5)
-...), so this directly targets the scaling timeouts. SERVER timeout-graph confirmation: PENDING (running).
+...), so this directly targets the scaling timeouts. SERVER CONFIRMATION + PIVOTAL FINDING:
+ - AT SCALE the witness-floor holds: com-dblp(3,4) peel 21.1s -> 8.3s = 2.5x, bit-identical (643485 peeled).
+ - BUT the densest timeout graphs are NOT peel-bound -- they die in the 'pattern<->leaf maps + compaction'
+   phase BEFORE the peel: ca-HepPh(3,4) MCE 0.22s, build 2.63s, maps+compaction=206s; web-Google(3,4)
+   MCE 4.3s, build 2.6s, maps+compaction=234s. The witness-floor (a PEEL optimization) cannot help these.
+   The phase sweep's 'maps <- #regions' prediction was right; cracking the peel just EXPOSED the maps wall.
+ - THE MAPS-PHASE BOTTLENECK (region_native_sct_peel.cpp 655-741, the enumLP per-leaf r-multiset enum):
+   for each leaf, enumerate every r-multiset over its classes, build a std::STRING key (compKey), look up
+   in unordered_map<string,int> patIdx, and call support_count (a DP) PER incidence to confirm the host.
+   Cost = Σ_leaf (#r-multisets) x (string-key build + map lookup + support_count DP). For dense graphs with
+   huge leaves (ca-HepPh 14411 base-leaves/1.25M patterns; web-Google 774473 leaves/6M patterns) this is the
+   206-234s. Clear engineering wins: integer/rolling-hash key (the peel already uses hashVec) instead of
+   std::string; cheaper/batched host-confirm; inline enumLP (it is a std::function, not inlined).
+NEXT TARGETS (the wall is per-phase, property-driven): (a) MAPS phase for the densest/dense graphs (string->
+int keys etc.) -- highest impact on the current timeouts; (b) s=r+delta witness-floor generalization for the
+peel-bound higher-(r,s) cells.
 NEXT (open): generalize to s=r+delta (delta>=2, the (5,7)/(6,8)/(7,10)/(8,12) cells): group affected Q by
 their dying witnesses (m_P + delta units); enumerate ALIVE witnesses, take r-shadows, accumulate
 weight(y,m_Q). Output-sensitive if alive witnesses are few; drop is a (delta-j)-free-unit weighted sum
