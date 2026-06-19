@@ -799,6 +799,14 @@ int main(int argc, char **argv) {
     // strategy (KMAX-invariance), so a per-leaf slot-dependent KMAX is exact.
     int KTHRESH = 16384; if (getenv("SCT_KMAX_THRESH")) KTHRESH = atoi(getenv("SCT_KMAX_THRESH"));
     const int KMAXCAP = 6;                            // ceiling on the adaptive KMAX
+    // WITNESS-FLOOR fast path for s=r+1: when s=r+1 the dying witnesses above a
+    // peeled pattern P are the single points floor_c = m_P + e_c (Σ=s), so the
+    // affected Q are exactly floor_c - e_d (move one unit), grouped under ONE
+    // liveness check per (c,box). The drop has a closed form (no IE/DP):
+    //   drop_Q(box p) = [floor_c alive in p] * (n_p[d] - m_Q[d]).
+    // This is output-sensitive (work ~ live floors, not all candidates) and was
+    // validated bit-exact vs scWithTerms on 400k random boxes (incl ell>0).
+    bool sEqRp1 = (s == r + 1) && (getenv("SCT_NO_WFLOOR") == nullptr);
     // SKIP_H1: a |host|=1 pattern peels at EXACTLY L_M=C(|M|-r,s-r) regardless
     // of how the peel proceeds (every r-clique in its region M has support
     // >= L_M, so no witness of a |host|=1 pattern dies before curLevel=L_M --
@@ -1008,6 +1016,7 @@ int main(int argc, char **argv) {
     vector<char> uLiveBuf, covBuf;                     // depth-indexed prune scratch (DFS_PRUNE)
     vector<const int16_t*> chgU, fbA;                  // u-rows / single-forbidden rows of chgOld
     vector<int> fbCrit; vector<char> fbHas;            // per-path: max critical coord / has-1-forbidden
+    vector<long long> wfSum;                            // s=r+1 fast path: Σ n_p[d] over alive boxes
     long long dbgGen = 0, dbgHit = 0, dbgNZ = 0;       // instrumentation: cands gen / hit / nonzero-drop
     while (peeledN < npat) {
         auto it = bk.find(curLevel);
@@ -1066,6 +1075,63 @@ int main(int argc, char **argv) {
             // OLD paths (the pre-insertion snapshots where P's threshold applies).
             slotForbidDiff(lid, pl, plNZ, chgOld);
             if (chgOld.empty()) continue;              // P touched nothing here
+            if (sEqRp1) {
+                // ---- s=r+1 WITNESS-FLOOR fast path (validated bit-exact vs scWithTerms) ----
+                // For each receiving class c, floor_c = m_P + e_c is the ONLY dying
+                // witness >= floor_c (Σ=s). It is alive in a chgOld box p iff
+                // ell<=floor_c<=u and no forbidden a<=floor_c. For each removable d
+                // (pl[d]>0, d!=c) the affected Q = floor_c - e_d has drop, summed over
+                // alive boxes, = Σ(n_p[d]) - nAlive*(pl[d]-1). One liveness pass per
+                // (c,box) covers all d -> output-sensitive, no IE/DP.
+                ensureLeafMap(lid);
+                const auto &q2p = leafQ2pat[lid];
+                const auto &qbAll = leafPatLocB[lid];
+                const auto &qsAll = leafPats[lid];
+                dbgGen += Mloc;
+                if ((int)wfSum.size() < Mloc) wfSum.resize(Mloc);
+                Vec fl = pl;                            // floor scratch (pl, then +e_c / -e_d)
+                for (int c = 0; c < Mloc; c++) {
+                    fl[c] = (int16_t)((int)pl[c] + 1);  // floor_c = pl + e_c
+                    int nAlive = 0;
+                    for (auto &pr : plNZ) wfSum[pr.first] = 0;
+                    for (size_t z = 0; z < chgOld.size(); z++) {
+                        const CCPath &p = chgOld[z];
+                        if ((int)p.u[c] < (int)fl[c]) continue;             // floor_c<=u at c
+                        bool ok = true;                                    // ell<=floor_c
+                        for (int k = 0; k < Mloc; k++) if ((int)p.ell[k] > (int)fl[k]) { ok = false; break; }
+                        if (!ok) continue;
+                        bool dead = false;                                 // forbidden a<=floor_c?
+                        for (auto &a : p.forbidden) { bool le = true;
+                            for (int k = 0; k < Mloc; k++) if ((int)a[k] > (int)fl[k]) { le = false; break; }
+                            if (le) { dead = true; break; } }
+                        if (dead) continue;
+                        nAlive++;
+                        for (auto &pr : plNZ) wfSum[pr.first] += (long long)p.n[pr.first];
+                    }
+                    if (nAlive > 0)
+                        for (auto &pr : plNZ) {
+                            int d = pr.first; if (d == c) continue;        // d!=c (else Q==P)
+                            long long mqd = (long long)pl[d] - 1;          // m_Q[d]
+                            double drop = (double)(wfSum[d] - (long long)nAlive * mqd);
+                            if (drop == 0.0) continue;
+                            fl[d] = (int16_t)mqd;                          // fl == m_Q = floor_c - e_d
+                            auto it = q2p.find(hashVec(fl));
+                            if (it != q2p.end())
+                                for (int t : it->second) if (qbAll[t] == fl) {
+                                    int qi = qsAll[t];
+                                    if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
+                                        dbgHit++; dbgNZ++;
+                                        if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
+                                        delta[qi] += drop;
+                                    }
+                                    break;
+                                }
+                            fl[d] = pl[d];                                 // restore floor_c
+                        }
+                    fl[c] = pl[c];                                         // restore to pl
+                }
+                continue;                                                  // leaf done; skip DFS path
+            }
             // ---- DELTA-FORMULA incremental drop (no chgNew sweep) ----
             // For a changed path p, P inserts threshold a_p (= P's tuple local to
             // p) into p.forbidden. Q's support drop from p equals the witnesses of
