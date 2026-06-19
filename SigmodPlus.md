@@ -2818,6 +2818,26 @@ are now SCT_VERIFY-gated (default OFF); production sets P.sup = sctSupport direc
 valued). Verified: production 15/15 golden corehashes, SCT_VERIFY 3/3 + gate [OK]. (Kept the sorted patIdx.)
 IMPACT -- cit-Patents(3,4) went TIMEOUT(>220s) -> 82.3s COMPLETE (maps 102s-region-IE-bound -> 10.6s):
   load 3.5 + MCE 14.4 + rmrg 13.1 + class 0.8 + enum(phase4) 25.9 + sctbld 5.9 + maps 10.6 + peel 11.6 = 82.3s.
-  Still LOSES to CND(35.9s) on the SUM, but now COMPLETES (was a timeout). Full big-graph re-run in progress
-  (biggraph2.out on tods2) -- expect ca-AstroPh/ca-HepPh/web-Google/com-youtube to similarly drop. ENV:
-  SCT_VERIFY (re-enable the region-IE cross-check), MAPS_DBG (patIdx/enumLP split).
+  Still LOSES to CND(35.9s) on the SUM, but now COMPLETES (was a timeout). ENV: SCT_VERIFY (re-enable the
+  region-IE cross-check), MAPS_DBG (patIdx/enumLP split).
+BIG-GRAPH RE-RUN (HEAD 407017e, region-IE OFF), vs §48 (before):
+  graph         r,s  | load MCE  rmrg class enum sctbld maps  peel | TOTAL  | §48 before
+  cit-Patents   3,4  | 3.5 14.4 13.1  0.8 25.9  5.9  10.6  11.6 | 82.3 OK | TIMEOUT  <- now completes
+  web-Google    3,4  | 0.6  4.2  7.6  0.3  8.7  2.5  16.6  35.0 | 74.9 OK | TIMEOUT  <- now completes
+  com-youtube   3,4  | 0.6  9.2  7.6  0.2 14.5  6.3  14.3  14.8 | 66.7 OK | TIMEOUT  <- now completes
+  ca-AstroPh    3,4  | 0.1  0.3  0.2  0.0  1.4  0.6   4.99 24.8 | 32.3 OK | 129.8 (maps 102->5, 4x)
+  web-it-2004   3,4  | 1.1  5.9  0.2  0.0  0.4  0.1   0.43  1.4 |  8.4 OK | 15.9 (2x)
+  web-it-2004   5,7  | 1.0  5.7  0.2  0.0  1.4  0.1   1.69 68.9 | 77.9 OK | 92.3
+  web-NotreDame 6,8  | 0.3  1.7  0.1  0.0  0.7  0.1   0.98 42.4 | 45.9 OK | 48.4
+  com-dblp      3,4  | 0.2  0.6  0.1  0.0  0.4  0.3   1.28  8.6 | 11.3 OK | 12.3
+  cit-Patents   7,10 | 3.5 14.4  0.1  0.1  0.1  0.0   0.10  0.2 | 14.9 OK | 14.9 (high RS)
+  web-Google    6,8  | 0.8  4.4  0.8  0.1 36.1  1.0  94.87   -  |  TO     | TIMEOUT (maps 94.9 = genuine scale)
+  ca-HepPh      3,4  | 0.0  0.2  0.0  0.0  1.2  2.7  37.68   -  |  TO     | maps 85->37.7 but peel TO
+  soc-pokec     6,8  | 4.3 51.4 60.6   -    -    -     -     -  |  TO     | front-end MCE 51 + rmrg 60
+RESULT: region-IE removal turned 3 timeouts into completions (cit-Patents/web-Google/com-youtube 3:4) and
+gave 2-4x on the maps-heavy completers (ca-AstroPh 130->32). The completers at low RS still LOSE to CND on the
+SUM (cit-Patents 82 vs 36, web-Google 75 vs 30) but they no longer TIME OUT. REMAINING walls (all post-maps-
+verification): (1) web-Google(6,8) maps 94.9s = genuine enumLP/incidence scale (the arena I deferred could
+help HERE); (2) ca-HepPh(3,4) huge PEEL; (3) soc-pokec(6,8) MCE 51s + r-merge 60s front-end. The "maps was
+the wall" story (sec 42-48) was largely a VERIFICATION artifact -- with it gone, the true residual walls are
+peel-scale, the genuine maps-incidence scale on a few cells, and soc-pokec's MCE.
