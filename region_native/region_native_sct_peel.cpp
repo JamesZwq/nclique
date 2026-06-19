@@ -662,20 +662,29 @@ int main(int argc, char **argv) {
     // confirmed on the COMPACT leaf (local dim) so each support_count is small.
     vector<vector<int>> patLeaves(pats.size());
     vector<vector<int>> leafPats(nLeaf);
-    std::unordered_map<std::string,int> patIdx; patIdx.reserve(pats.size() * 2);
-    auto compKey = [](const vector<pair<int,int>> &comp) {
-        std::string k; k.reserve(comp.size() * 8);
-        for (auto &cm : comp) { k.append((const char*)&cm.first, 4); k.append((const char*)&cm.second, 4); }
-        return k;
+    // integer rolling-hash key (was a std::string compKey: a per-r-multiset heap
+    // alloc + string hash, the bulk of the maps phase on dense graphs). Hash
+    // collisions are resolved by comparing the actual comp, so lookup stays exact.
+    std::unordered_map<uint64_t,vector<int>> patIdx; patIdx.reserve(pats.size() * 2);
+    auto compHash = [](const vector<pair<int,int>> &comp) -> uint64_t {
+        uint64_t h = 1469598103934665603ULL;
+        for (auto &cm : comp) {
+            h = (h ^ ((uint64_t)(uint32_t)cm.first + 1)) * 1099511628211ULL;
+            h = (h ^ ((uint64_t)(uint32_t)cm.second + 1)) * 1099511628211ULL;
+        }
+        return h;
     };
-    for (int pi = 0; pi < (int)pats.size(); pi++) patIdx[compKey(pats[pi].comp)] = pi;
+    for (int pi = 0; pi < (int)pats.size(); pi++) patIdx[compHash(pats[pi].comp)].push_back(pi);
     {
         vector<int> lcs, lcap; vector<pair<int,int>> cur;
-        std::function<void(int,int,int)> enumLP = [&](int lid, int idx, int rem) {
+        // self-recursive (Y-combinator) -> inlinable, no std::function indirection.
+        auto enumLP = [&](auto &&self, int lid, int idx, int rem) -> void {
             if (rem == 0) {
-                auto it = patIdx.find(compKey(cur));
+                auto it = patIdx.find(compHash(cur));
                 if (it == patIdx.end()) return;           // not a registered pattern
-                int pi = it->second;
+                int pi = -1;                              // confirm exact comp (collision-safe)
+                for (int cand : it->second) if (pats[cand].comp == cur) { pi = cand; break; }
+                if (pi < 0) return;
                 // confirm host on the compact leaf (filters m with no s-extension)
                 if (ccpath::support_count(slotPaths[lid][0], compToLocal(cur, lid), ccpath_ncr) > 0.0) {
                     patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
@@ -684,14 +693,14 @@ int main(int argc, char **argv) {
             }
             for (int i = idx; i < (int)lcs.size(); i++) {
                 int mx = std::min(rem, lcap[i]);
-                for (int j = 1; j <= mx; j++) { cur.push_back({lcs[i], j}); enumLP(lid, i+1, rem-j); cur.pop_back(); }
+                for (int j = 1; j <= mx; j++) { cur.push_back({lcs[i], j}); self(self, lid, i+1, rem-j); cur.pop_back(); }
             }
         };
         for (int lid = 0; lid < nLeaf; lid++) {
             const CCPath &cp = slotPaths[lid][0];          // compact leaf
             lcs = supC[lid];                               // global class ids (sorted)
             lcap.assign(cp.u.begin(), cp.u.end());         // local u, parallel to supC
-            cur.clear(); enumLP(lid, 0, r);
+            cur.clear(); enumLP(enumLP, lid, 0, r);
         }
     }
     for (auto &v : leafPats) std::sort(v.begin(), v.end());
