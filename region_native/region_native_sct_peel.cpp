@@ -296,24 +296,65 @@ int main(int argc, char **argv) {
     auto Trm0 = Clock::now();
     if (!getenv("SCT_NO_RMERGE")) {
         int nRall = (int)regions.size();
-        vector<vector<int>> vr(g.n);
-        for (int i = 0; i < nRall; i++) for (int v : regions[i]) vr[v].push_back(i);
-        if (getenv("RM_DBG")) fprintf(stderr, "[rm-dbg] vr-build=%.2fs nRall=%d\n", secs(Trm0, Clock::now()), nRall);
-        vector<int> cnt(nRall, 0); vector<int> dirty; dirty.reserve(256);
-        vector<char> mergeable(nRall, 0);
-        long long rmWork = 0;                          // dbg: total inner-loop visits (the Σdeg² cost)
-        auto Trm1 = Clock::now();
-        for (int M = 0; M < nRall; M++) {
-            for (int v : regions[M]) for (int o : vr[v]) if (o != M) {
-                if (cnt[o] == 0) dirty.push_back(o); cnt[o]++; rmWork++;
+        // ---- r-mergeable via r-CLIQUE sharing (replaces the O(Σ_v deg_R(v)^2) pairwise
+        // overlap, which explodes on hub vertices: cit-Patents 6.0e10 ops / >128s). A
+        // region M is mergeable iff every r-subset of M is unique to M (contained in no
+        // other region). Enumerate (sorted r-subset, region) pairs, sort by the r-tuple,
+        // and any r-subset owned by >=2 regions marks those regions NON-mergeable. Exact
+        // (compares the actual r-tuples) => bit-identical. Cost O(Σ_M C(|M|,r) log). ----
+        vector<char> mergeable(nRall, 1);              // assume mergeable; cleared if shared
+        long long Nsub = 0; bool tooBig = false;
+        for (auto &M : regions) { int W = (int)M.size();
+            if (W >= r) { double c = C(W, r); if (c > 3e8 || Nsub > 300000000LL) { tooBig = true; break; } Nsub += (long long)llround(c); } }
+        bool rmPairwise = (getenv("SCT_RM_PAIRWISE") != nullptr) || tooBig;
+        if (!rmPairwise) {
+            vector<int> sub; sub.reserve((size_t)Nsub * (size_t)r);   // flattened sorted r-tuples
+            vector<int> reg; reg.reserve((size_t)Nsub);               // owning region per tuple
+            vector<int> Rs, cc(r);
+            for (int M = 0; M < nRall; M++) {
+                int W = (int)regions[M].size();
+                if (W < r) continue;
+                Rs = regions[M]; std::sort(Rs.begin(), Rs.end());     // canonical tuple order
+                for (int k = 0; k < r; k++) cc[k] = k;
+                while (true) {                                        // iterate r-subsets of Rs
+                    for (int k = 0; k < r; k++) sub.push_back(Rs[cc[k]]);
+                    reg.push_back(M);
+                    int k = r - 1; while (k >= 0 && cc[k] == W - r + k) k--;
+                    if (k < 0) break;
+                    cc[k]++; for (int kk = k + 1; kk < r; kk++) cc[kk] = cc[kk - 1] + 1;
+                }
             }
-            int mx = 0; for (int o : dirty) { if (cnt[o] > mx) mx = cnt[o]; cnt[o] = 0; }
-            dirty.clear();
-            if (mx < r) mergeable[M] = 1;
-            if (getenv("RM_DBG") && (M & 0x3FFFF) == 0)
-                fprintf(stderr, "[rm-dbg] M=%d/%d work=%lld t=%.1fs\n", M, nRall, rmWork, secs(Trm1, Clock::now()));
+            long long N = (long long)reg.size();
+            vector<int> idx((size_t)N); for (long long i = 0; i < N; i++) idx[(size_t)i] = (int)i;
+            const int *sp = sub.data();
+            std::sort(idx.begin(), idx.end(), [&](int a, int b) {
+                const int *pa = sp + (size_t)a * r, *pb = sp + (size_t)b * r;
+                for (int k = 0; k < r; k++) if (pa[k] != pb[k]) return pa[k] < pb[k];
+                return false;
+            });
+            for (long long i = 0; i < N; ) {                         // scan groups of equal r-tuple
+                long long j = i + 1; const int *pi = sp + (size_t)idx[(size_t)i] * r;
+                while (j < N) { const int *pj = sp + (size_t)idx[(size_t)j] * r;
+                    bool eq = true; for (int k = 0; k < r; k++) if (pi[k] != pj[k]) { eq = false; break; }
+                    if (!eq) break; j++; }
+                if (j - i >= 2) for (long long k = i; k < j; k++) mergeable[reg[idx[(size_t)k]]] = 0;
+                i = j;
+            }
+            if (getenv("RM_DBG")) fprintf(stderr, "[rm-dbg] r-clique: Nsub=%lld done=%.2fs\n", N, secs(Trm0, Clock::now()));
+        } else {
+            // fallback (only on r-subset blowup = clique-explosion graphs, out of scope
+            // for everyone incl CND): original O(Σ_v deg_R(v)^2) pairwise overlap.
+            std::fill(mergeable.begin(), mergeable.end(), 0);
+            vector<vector<int>> vr(g.n);
+            for (int i = 0; i < nRall; i++) for (int v : regions[i]) vr[v].push_back(i);
+            vector<int> cnt(nRall, 0); vector<int> dirty; dirty.reserve(256);
+            for (int M = 0; M < nRall; M++) {
+                for (int v : regions[M]) for (int o : vr[v]) if (o != M) { if (cnt[o] == 0) dirty.push_back(o); cnt[o]++; }
+                int mx = 0; for (int o : dirty) { if (cnt[o] > mx) mx = cnt[o]; cnt[o] = 0; }
+                dirty.clear();
+                if (mx < r) mergeable[M] = 1;
+            }
         }
-        if (getenv("RM_DBG")) fprintf(stderr, "[rm-dbg] main-loop=%.2fs totalWork=%lld\n", secs(Trm1, Clock::now()), rmWork);
         vector<vector<int>> active;
         for (int M = 0; M < nRall; M++) {
             if (mergeable[M]) {
