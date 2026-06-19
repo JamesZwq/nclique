@@ -764,7 +764,9 @@ int main(int argc, char **argv) {
     // integer rolling-hash key (was a std::string compKey: a per-r-multiset heap
     // alloc + string hash, the bulk of the maps phase on dense graphs). Hash
     // collisions are resolved by comparing the actual comp, so lookup stays exact.
-    std::unordered_map<uint64_t,vector<int>> patIdx; patIdx.reserve(pats.size() * 2);
+    // pattern lookup: sorted (compHash, pi) + binary search. (Was unordered_map<uint64,
+    // vector<int>>, pathologically slow to BUILD: 99.7s for 848k patterns on ca-AstroPh.)
+    vector<pair<uint64_t,int>> patSorted; patSorted.reserve(pats.size());
     auto compHash = [](const vector<pair<int,int>> &comp) -> uint64_t {
         uint64_t h = 1469598103934665603ULL;
         for (auto &cm : comp) {
@@ -773,7 +775,8 @@ int main(int argc, char **argv) {
         }
         return h;
     };
-    for (int pi = 0; pi < (int)pats.size(); pi++) patIdx[compHash(pats[pi].comp)].push_back(pi);
+    for (int pi = 0; pi < (int)pats.size(); pi++) patSorted.push_back({compHash(pats[pi].comp), pi});
+    std::sort(patSorted.begin(), patSorted.end());
     long long mapInc = 0;                              // maps-dbg: pattern-leaf incidences
     bool mapsDbg = getenv("MAPS_DBG") != nullptr;
     if (mapsDbg) fprintf(stderr, "[maps-dbg] patIdx-build=%.2fs pats=%zu\n", secs(Tqg1, Clock::now()), pats.size());
@@ -802,10 +805,11 @@ int main(int argc, char **argv) {
         // compToLocal remaps+allocs that dominated the maps phase on wide graphs.
         auto enumLP = [&](auto &&self, int lid, int idx, int rem) -> void {
             if (rem == 0) {
-                auto it = patIdx.find(compHash(cur));
-                if (it == patIdx.end()) return;           // not a registered pattern
+                uint64_t hk = compHash(cur);              // binary-search the sorted (hash,pi) index
+                auto lo = std::lower_bound(patSorted.begin(), patSorted.end(), std::make_pair(hk, -1));
                 int pi = -1;                              // confirm exact comp (collision-safe)
-                for (int cand : it->second) if (pats[cand].comp == cur) { pi = cand; break; }
+                for (auto it = lo; it != patSorted.end() && it->first == hk; ++it)
+                    if (pats[it->second].comp == cur) { pi = it->second; break; }
                 if (pi < 0) return;
                 // confirm host on the compact leaf (filters m with no s-extension)
                 const CCPath &box = slotPaths[lid][0];
