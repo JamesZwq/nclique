@@ -298,16 +298,22 @@ int main(int argc, char **argv) {
         int nRall = (int)regions.size();
         vector<vector<int>> vr(g.n);
         for (int i = 0; i < nRall; i++) for (int v : regions[i]) vr[v].push_back(i);
+        if (getenv("RM_DBG")) fprintf(stderr, "[rm-dbg] vr-build=%.2fs nRall=%d\n", secs(Trm0, Clock::now()), nRall);
         vector<int> cnt(nRall, 0); vector<int> dirty; dirty.reserve(256);
         vector<char> mergeable(nRall, 0);
+        long long rmWork = 0;                          // dbg: total inner-loop visits (the Σdeg² cost)
+        auto Trm1 = Clock::now();
         for (int M = 0; M < nRall; M++) {
             for (int v : regions[M]) for (int o : vr[v]) if (o != M) {
-                if (cnt[o] == 0) dirty.push_back(o); cnt[o]++;
+                if (cnt[o] == 0) dirty.push_back(o); cnt[o]++; rmWork++;
             }
             int mx = 0; for (int o : dirty) { if (cnt[o] > mx) mx = cnt[o]; cnt[o] = 0; }
             dirty.clear();
             if (mx < r) mergeable[M] = 1;
+            if (getenv("RM_DBG") && (M & 0x3FFFF) == 0)
+                fprintf(stderr, "[rm-dbg] M=%d/%d work=%lld t=%.1fs\n", M, nRall, rmWork, secs(Trm1, Clock::now()));
         }
+        if (getenv("RM_DBG")) fprintf(stderr, "[rm-dbg] main-loop=%.2fs totalWork=%lld\n", secs(Trm1, Clock::now()), rmWork);
         vector<vector<int>> active;
         for (int M = 0; M < nRall; M++) {
             if (mergeable[M]) {
@@ -855,6 +861,7 @@ int main(int argc, char **argv) {
     // chgOld paths share T=s, so the Σ<=T bound stays path-independent (sfp/Tcap).
     bool dfsPrune = getenv("SCT_DFS_PRUNE") != nullptr;  // default OFF (A/B flag)
     size_t maxSplit = 0;                              // diagnostic: largest split-set
+    double tSFD = 0; long long slotVisits = 0;       // PROFILE: slot-scan time + path visits
     // Record a pattern's LOCAL threshold into slot lid. Paths where the
     // threshold is impossible are UNCHANGED (kept in place); the rest are the
     // CHANGED paths. We collect the changed OLD paths (chgOld) and their NEW
@@ -1098,7 +1105,8 @@ int main(int argc, char **argv) {
             for (int c = 0; c < Mloc; c++) if (pl[c]) plNZ.push_back({c, (int)pl[c]});
             // Record P (updates the stored slot via split) and capture the CHANGED
             // OLD paths (the pre-insertion snapshots where P's threshold applies).
-            slotForbidDiff(lid, pl, plNZ, chgOld);
+            { auto _sa = Clock::now(); slotVisits += (long long)slotPaths[lid].size();
+              slotForbidDiff(lid, pl, plNZ, chgOld); tSFD += secs(_sa, Clock::now()); }
             if (chgOld.empty()) continue;              // P touched nothing here
             if (sEqRp1) {
                 // ---- s=r+1 WITNESS-FLOOR fast path (validated bit-exact vs scWithTerms) ----
@@ -1323,6 +1331,8 @@ int main(int argc, char **argv) {
         }
     }
     auto T6 = Clock::now();
+    fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
+            secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
     printf("[sct-peel] peel=%.2fs  peeled=%lld/%lld  maxSplit(split-set)=%zu\n",
            secs(T5,T6), peeledN, npat, maxSplit);
     fprintf(stderr, "[sct-peel] dbg dfsPrune=%d cand_gen=%lld hit=%lld nz=%lld  gen/nz=%.1f\n",
