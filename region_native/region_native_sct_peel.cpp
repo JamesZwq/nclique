@@ -1530,6 +1530,11 @@ int main(int argc, char **argv) {
         vector<pair<int,int>> plNZ;
         Vec plScr, qlScr, uEnv, qcand;
         vector<int> aff;
+        vector<int> coStart;                           // per-threshold contiguous start offset in coAll
+        vector<long long> cbDP;                        // candidate-count DP scratch (saturating)
+        Vec sufScr, uThrScr;                           // fallback per-threshold: pl-suffix-sum / u-envelope
+        long long cbCap = getenv("SCT_BATCH_CB_CAP") ? atoll(getenv("SCT_BATCH_CB_CAP")) : 128;
+        long long cbBatch = 0, cbFallback = 0;         // leaves served by single-DFS vs per-threshold fallback
         long long printMark = 0;
         while (peeledN < npat) {
             auto it0 = bk.find(curLevel);
@@ -1569,7 +1574,7 @@ int main(int argc, char **argv) {
                 while (ti < taskLL.size()) {
                     int lid = taskLL[ti].lid;
                     size_t tj = ti; while (tj < taskLL.size() && taskLL[tj].lid == lid) tj++;
-                    coAll.clear(); coPlIdx.clear(); coPls.clear();
+                    coAll.clear(); coPlIdx.clear(); coPls.clear(); coStart.clear();
                     for (size_t t = ti; t < tj; t++) {       // apply every threshold touching this leaf
                         int pi = taskLL[t].pi, kk = taskLL[t].k;
                         const Vec &pl = mapsRecompute ? (localB(pi, lid, plScr), (const Vec &)plScr)
@@ -1581,11 +1586,13 @@ int main(int argc, char **argv) {
                         slotForbidDiff(lid, pl, plNZ, chgTmp);
                         tSFD += secs(_sa, Clock::now());
                         if (chgTmp.empty()) continue;
+                        coStart.push_back((int)coAll.size());     // threshold's pre-images begin here
                         int plIdx = (int)coPls.size(); coPls.push_back(pl);
                         for (auto &p : chgTmp) { coAll.push_back(std::move(p)); coPlIdx.push_back(plIdx); }
                     }
                     if (coAll.empty()) { ti = tj; continue; }
-                    int Mloc = coAll.front().m();           // leaf width (uniform across a leaf's slot paths)
+                    coStart.push_back((int)coAll.size());          // sentinel end offset
+                    int Mloc = coAll.front().m(), Tcap = coAll.front().T, F = (int)coPls.size();
                     coTerms.clear(); coTerms.reserve(coAll.size());
                     for (auto &p : coAll) coTerms.push_back(ccpath::inclusion_exclusion_terms(p.forbidden, p.m()));
                     uEnv.assign((size_t)Mloc, 0);          // envelope: a Q with a drop has ql<=some changed-path u
@@ -1595,46 +1602,89 @@ int main(int argc, char **argv) {
                     const auto &qbAll = leafPatLocB[lid];
                     const auto &qsAll = leafPats[lid];
                     qcand.assign((size_t)Mloc, 0);
-                    // drop for confirmed candidate ql at leaf-pattern index t = Σ threshold-pre-images
-                    auto applyIdxB = [&](const Vec &ql, int t) {
-                        int qi = qsAll[t];
-                        if (!pats[qi].alive) return;        // peeled (incl. whole wave) -> no live drop
-                        if (skipH1 && pats[qi].host.size() == 1) return;
-                        double d = 0.0;
-                        for (size_t e = 0; e < coAll.size(); e++) {
-                            const CCPath &p = coAll[e];
-                            const Vec &plE = coPls[coPlIdx[e]];
-                            bool ok = true; int sm = 0;
-                            for (int c = 0; c < Mloc; c++) {
-                                int v = (int)ql[c] > (int)plE[c] ? (int)ql[c] : (int)plE[c];
-                                if (v > (int)p.u[c]) { ok = false; break; }
-                                sm += v;
-                            }
-                            if (ok && sm <= (int)p.T) d += scWithTerms(p, coTerms[e], ql, &plE);
-                        }
-                        if (d == 0.0) return;
-                        if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
-                        delta[qi] += d;
-                    };
-                    auto applyCandB = [&](const Vec &ql, uint64_t h) {
+                    const int16_t *uEp = uEnv.data();
+                    // confirm candidate ql against the leaf-pattern map, then accumulate its drop over the
+                    // pre-image entries [e0,e1). Both enumeration strategies below feed THIS, so they are
+                    // bit-identical (the drop partitions exactly by threshold: Σ_j drop[e0_j,e1_j) == drop[0,all)).
+                    auto confirm = [&](const Vec &ql, uint64_t h, int e0, int e1) {
                         auto itc = q2p.find(h);
                         if (itc == q2p.end()) return;
                         for (int t : itc->second)
                             if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == ql) {
-                                applyIdxB(ql, t); return; }
+                                int qi = qsAll[t];
+                                if (!pats[qi].alive) return;       // peeled (incl. the whole wave)
+                                if (skipH1 && pats[qi].host.size() == 1) return;
+                                double d = 0.0;
+                                for (int e = e0; e < e1; e++) {
+                                    const CCPath &p = coAll[e];
+                                    const Vec &plE = coPls[coPlIdx[e]];
+                                    bool ok = true; int sm = 0;
+                                    for (int c = 0; c < Mloc; c++) {
+                                        int v = (int)ql[c] > (int)plE[c] ? (int)ql[c] : (int)plE[c];
+                                        if (v > (int)p.u[c]) { ok = false; break; }
+                                        sm += v;
+                                    }
+                                    if (ok && sm <= (int)p.T) d += scWithTerms(p, coTerms[e], ql, &plE);
+                                }
+                                if (d != 0.0) { if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); } delta[qi] += d; }
+                                return;
+                            }
                     };
-                    const int16_t *uEp = uEnv.data();
-                    auto dfsB = [&](auto &&self, int c, int rem, uint64_t h) -> void {
-                        if (c == Mloc) { if (rem == 0) applyCandB(qcand, h); return; }
-                        int cap = (int)uEp[c]; if (cap > rem) cap = rem;
-                        for (int j = 0; j <= cap; j++) {
-                            qcand[c] = (int16_t)j;
-                            uint64_t hc = (h ^ ((uint64_t)(uint16_t)j + 1)) * HMUL;
-                            self(self, c + 1, rem - j, hc);
+                    // CB = #{ql : Σ=r, ql<=uEnv} (saturating count-DP, O(Mloc*r^2)). When CB is small the
+                    // single shared DFS amortizes the same-level fan-in; when it would blow up (high r / wide
+                    // leaf, no single pl to prune by) we fall back to F cheap pl_j-pruned DFS == the proven
+                    // per-pattern affected-update reorganized per threshold. cbCap tunable (SCT_BATCH_CB_CAP).
+                    cbDP.assign((size_t)r + 1, 0); cbDP[0] = 1;
+                    for (int c = 0; c < Mloc && cbDP[r] <= cbCap; c++) {
+                        int uc = (int)uEp[c]; if (uc > r) uc = r;
+                        for (int t = r; t >= 1; t--) { long long s2 = 0;
+                            for (int y = 1; y <= uc && y <= t; y++) s2 += cbDP[t - y];
+                            cbDP[t] += s2; if (cbDP[t] > cbCap) cbDP[t] = cbCap + 1;
                         }
-                        qcand[c] = 0;
-                    };
-                    dfsB(dfsB, 0, r, 1469598103934665603ULL);
+                    }
+                    if (cbDP[r] <= cbCap) {
+                        cbBatch++;
+                        int allE = (int)coAll.size();
+                        auto dfsB = [&](auto &&self, int c, int rem, uint64_t h) -> void {   // single shared DFS
+                            if (c == Mloc) { if (rem == 0) confirm(qcand, h, 0, allE); return; }
+                            int cap = (int)uEp[c]; if (cap > rem) cap = rem;
+                            for (int jj = 0; jj <= cap; jj++) {
+                                qcand[c] = (int16_t)jj;
+                                uint64_t hc = (h ^ ((uint64_t)(uint16_t)jj + 1)) * HMUL;
+                                self(self, c + 1, rem - jj, hc);
+                            }
+                            qcand[c] = 0;
+                        };
+                        dfsB(dfsB, 0, r, 1469598103934665603ULL);
+                    } else {
+                        cbFallback++;
+                        for (int j = 0; j < F; j++) {        // per-threshold pl_j-pruned DFS (cheap O(1)/node)
+                            const Vec &plj = coPls[j];
+                            sufScr.assign((size_t)Mloc + 1, 0);
+                            for (int c = Mloc - 1; c >= 0; c--) sufScr[c] = (int16_t)((int)sufScr[c + 1] + (int)plj[c]);
+                            uThrScr.assign((size_t)Mloc, 0);     // threshold-j u-envelope over its own pre-images
+                            for (int e = coStart[j]; e < coStart[j + 1]; e++) {
+                                const Vec &pu = coAll[e].u;
+                                for (int c = 0; c < Mloc; c++) if (pu[c] > uThrScr[c]) uThrScr[c] = pu[c];
+                            }
+                            const int16_t *plp = plj.data(), *ujp = uThrScr.data(), *sfp = sufScr.data();
+                            int e0 = coStart[j], e1 = coStart[j + 1];
+                            auto dfsT = [&](auto &&self, int c, int rem, int acc, uint64_t h) -> void {
+                                if (c == Mloc) { if (rem == 0) confirm(qcand, h, e0, e1); return; }
+                                if (acc + (int)sfp[c] > Tcap) return;       // Σmax(pl_j,ql)<=T (per-pattern prune)
+                                int cap = (int)ujp[c]; if (cap > rem) cap = rem;
+                                int plc = (int)plp[c];
+                                for (int jj = 0; jj <= cap; jj++) {
+                                    qcand[c] = (int16_t)jj;
+                                    int mx = plc > jj ? plc : jj;
+                                    uint64_t hc = (h ^ ((uint64_t)(uint16_t)jj + 1)) * HMUL;
+                                    self(self, c + 1, rem - jj, acc + mx, hc);
+                                }
+                                qcand[c] = 0;
+                            };
+                            dfsT(dfsT, 0, r, 0, 1469598103934665603ULL);
+                        }
+                    }
                     ti = tj;
                 }
                 for (int qi : aff) {                        // APPLY once per wave (telescoped drop)
@@ -1648,6 +1698,8 @@ int main(int argc, char **argv) {
                 aff.clear();
             }
         }
+        fprintf(stderr, "[peel-batch] leaf-instances: single-DFS=%lld fallback=%lld (%.1f%% batched, CB-cap=%lld)\n",
+                cbBatch, cbFallback, (cbBatch + cbFallback) ? 100.0 * cbBatch / (cbBatch + cbFallback) : 0.0, cbCap);
     } else {
     while (peeledN < npat) {
         auto it = bk.find(curLevel);
