@@ -3061,4 +3061,22 @@ contended-server signal was misleading). These split (maxSplit 1243-5524), singl
 cells are low-affected (web-NotreDame 0.19%, web-it-2004 0.49%, ca-AstroPh 1.19%) so #1 should help them
 substantially. MUCH better than the contended 16%; #1 is a SOLID win, not modest. (Totals sub-second so some
 noise, but the trend is clean+monotone in affected%.) METHOD NOTE: local Mac measurement bypasses the contended
-tods2 -- use it for all clean timing while gengdaz holds the server.
+tods2 -- use it for all clean timing while gengdaz holds the server. (Harness gotcha: the Bash tool shell is
+ZSH, which does NOT word-split unquoted $var; `set -- $spec` leaves $2/$3 empty -> use explicit args.)
+
+## 56. #3 (NCR binomial hoist) is a WASH -- measure-first caught the synthesis overestimate (2026-06-20, #146)
+Did #3: hoist `const double* ncrow = NCR[nc-bc].data()` out of the scWithTerms DP y-loop, replace the
+per-cell ccpath_ncr(nc-bc,y-bc) with ncrow[y-bc]. Bit-identical by construction (verified IDENTICAL cores on
+8 cells, both small and high-s). CLEAN LOCAL A/B (3-trial min peel, s>r+1 cells so the general DP fires):
+  ca-GrQc 3,5 -3% | ca-GrQc 4,6 -1% | ca-CondMat 3,5 -0% | ca-CondMat 4,6 -0%
+  ca-CondMat 5,7 -0% | ca-CondMat 6,8 -0% | ca-GrQc 6,8 -3% | ca-GrQc 5,8 -0%   (rest=0.23-0.63s)
+=> ~0% everywhere. The synthesis's 5-15% estimate was WRONG: ccpath_ncr is a one-line `return NCR[n][k]` that
+the compiler already inlines, so removing the function call / double-indirection saves nothing. Scale-invariant
+0% -> won't materialize at server scale (rest=38s) either. REVERTED (no measured benefit; project rule: no
+unmeasured changes). The affected-update cost is NOT the binomial lookup -- it's the DFS over-generation (C) or
+the inherent O(patterns x chgOld x T) DP volume / IE machinery. #4 (s=r+1 liveness) and #2 (flat leaf map)
+remain untried.
+SESSION CONSOLIDATED (this stretch): radix sort = 4.85x enum (clean, SHIPPED default); maps-CSR recompute = bit-
+identical, gated SCT_MAPS_RECOMPUTE OFF, timing unmeasured (may be wash); slot index #1 = bit-identical, CLEAN
+23-27% total peel on low-affected cells, gated SCT_SLOT_IDX OFF -> candidate to make DEFAULT; #3 = wash,
+reverted. NEXT: make #1 default after a broad clean validation; then #4/#2 or step back to structural peel.
