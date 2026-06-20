@@ -3020,3 +3020,24 @@ via swap-remove + back-pointers bpos. Incremental plan: (1) build+maintain index
 asserting index==cur consistency, still full-scan for affected; (2) switch affected-find to the index with a
 per-call differential assert (index-affected==scan-affected); (3) corehash + timing (clean box). ENV: SFD_DBG,
 SCT_SLOT_REVERSE.
+
+## 55. PEEL #1 (slot dominance index) -- CORRECTNESS-COMPLETE, bit-identical (2026-06-20, #145)
+Built the sub-linear slot skip in 2 verified steps; both pass.
+INDEX (per-leaf, lazy like leafQ2pat): ixBkt[lid][c*maxv+v] = slot positions with u[c]==v; ixBpos[lid][pos*M+c]
+= back-pointer (index within its bucket) for O(1) removal. maxv from the initial build bounds all future u (u
+only DECREASES on split). ixFindAffected: pivot = plNZ coord with min Sum_{v>=bloc[c]}|bkt[c][v]|, enumerate
+that bucket suffix, filter survivors by the other plNZ coords (read cur[pos].u, few candidates). Maintained at
+swap-remove (ixRemove + ixRelabel w->i) and append (ixAppend), cur stays dense so consumers (sctSupport, peel
+iteration) are untouched.
+STEP 1 (commits 8a783c6/ccaab31, +#include <climits>): index built+maintained alongside the full scan;
+SCT_SLOT_IDX_VERIFY asserts ixFindAffected == scan-affected on every call (pristine slot). 13 OK / 0 FAIL
+(com-dblp x2, ca-GrQc x5, ca-CondMat x3, dblp-core30 x2, ca-AstroPh; s=r+1 AND s>r+1). Proves the index +
+mutation maintenance (swap-remove relabel, append, back-pointers) is correct.
+STEP 2 (commit 39d38f3, SCT_SLOT_IDX): index DRIVES the find. Phase A classify (snapshot/cover/split/modify-in-
+place, NO position moves) -> Phase B batch swap-remove dead DESCENDING (w>=p always, cur[w] live) + append
+children, maintaining the index. chgOld in pivot order (order-independent per sec 54). corehash index-driven vs
+default: 13 OK / 0 MISMATCH, both peel paths. => slot skip is BIT-IDENTICAL, correctness-complete.
+STATUS: gated SCT_SLOT_IDX (default OFF). TIMING DEFERRED -- tods2 contended all session (gengdaz). Expected
+win: eliminates the impossible-scan (0.19-1.2% affected, was the cache-miss-bound 40-70% of slotForbidDiff);
+the affected-paths' real work (chgOld copy, covers, split) remains. Measure slotForbidDiff before/after on a
+clean box. ENV: SCT_SLOT_IDX (drive), SCT_SLOT_IDX_VERIFY (Step-1 assert), SFD_DBG (cost probe).
