@@ -2911,3 +2911,24 @@ READING (where the time now is, by regime):
 RANKED NEXT TARGETS: (1) enum sort/group -> radix sort (fixed W2-int key, appears on every low-RS cell,
    biggest reducible mid-phase, 7-30s); (2) maps push_back -> flat-list+counting-sort CSR (ca-HepPh/web-Google
    6,8); (3) peel slotForbidDiff (high-RS OK cells, 20-57% of peel).
+
+## 51. enum sort/group: LSD radix sort, packed (class,mult) digit (2026-06-20, #141)
+Did target (1). Replaced the std::sort over the phase-4 incidence index array (comparator = lexicographic
+over W2=2r ints + region tiebreak, each compare doing 2 random gathers into the multi-GB rec) with an LSD
+radix sort (stable counting passes, least-significant first: region, then comp columns high..low). Same total
+order => bit-identical pats/host => identical corehash.
+MEASURE-FIRST CAUGHT THE NAIVE VERSION: unpacked radix (one digit per int, 2r+1 passes) won 3.5x at r=3 but
+was NEUTRAL (0.99x) at r=6 -- 13 random-gather passes ~ the comparison cost; the win scales INVERSELY with r.
+The per-pass random gather is the cost, so FEWER PASSES wins. Fix: pack each (class,mult) pair into ONE digit
+class<<mb | mult (mb=bits(r); mult<=r fits, class is high part => order-preserving, sentinel (nC,0) sorts
+last) -> r+1 passes instead of 2r+1 (commit 9c743a2; ablation SCT_PE_RADIX_UNPACKED, SCT_PE_STDSORT).
+A/B enum sort/group (packed | unpacked | stdsort | packed-vs-std):
+  cit-Patents 3,4 |  6.20 |  7.87 | 30.06 | 4.85x
+  com-youtube 3,4 |  3.48 |  9.18 | 15.75 | 4.53x
+  web-Google  3,4 |  3.42 |  4.26 |  8.84 | 2.58x
+  web-Google  6,8 | 22.60 | 25.85 | 31.71 | 1.40x   <- packing lifted r=6 from neutral 0.99x to 1.40x
+Packed beats unpacked on every cell. VALIDATION: 3-way packed=unpacked=stdsort bit-identical, 10/11 + 1
+timeout-only flag (com-dblp 3,5 stdsort >90s -> empty hash; packed=unpacked agree and match the prior run's
+stdsort value 5100c9ad74e1; confirmed clean with a 240s re-run). Commits 4ca20c6 (radix) + 9c743a2 (packed).
+IMPACT on the low-RS losers (the cells that lose to CND): cit-Patents 3,4 enum 25.6 -> ~6 (-20s of an 78s
+total); com-youtube 3,4 -> -11s of 59s; web-Google 3,4 -> -5s. ENV: SCT_PE_STDSORT, SCT_PE_RADIX_UNPACKED.
