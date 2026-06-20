@@ -2994,3 +2994,29 @@ RANKED (bit-identical preserving; excludes already-done KMAX/witness-floor/IE-ca
  atomically), scWithTerms floor-collapse memo (subtle cache key).
 SYNTHESIS ORDER: #3 -> #2 -> #6/#8 (free safety) -> #4/#5 -> #1 (big swing, with harness, when a clean box
 allows timing). Full report: workflow wsfbvc9qm.
+
+## 54. PEEL #1 (slot-skip) groundwork: cost-structure probe + the order-independence unlock (2026-06-20, #144)
+User picked #1 (the sub-linear slot skip, biggest bucket). MEASURE-FIRST before building the index.
+SFD_DBG cost-structure probe (slotForbidDiff per-path-test counts, deterministic -> contention-proof):
+  cell           tested     affected%  coord-tests/test  fail-on-1st   slotForbidDiff
+  com-dblp 3,4    359M       0.81%      1.37              66.2%         5.87s (56% of peel)
+  ca-AstroPh 3,4  870M       1.19%      1.31              74.4%         17.97s (58%)
+  web-Google 3,4  215M       8.04%      1.49              70.9%         15.68s (42%)
+  web-NotreDame   837M       0.19%      1.72              52.3%         15.23s (28%)
+  web-it-2004 5,7 928M       0.49%      1.45              66.2%         18.76s (23%)
+=> 0.19-1.2% affected on most cells (web-Google 8% is the outlier): a 50-500x ceiling on the SCAN. The scan
+pointer-chases w heap Vecs (p.u), cache-miss-bound. KEY DESIGN QUESTION found by reading the code: the scan
+uses SWAP-REMOVE, giving the slot a specific internal order; a sub-linear skip must reorder (find-then-act,
+mark-compact). Is slot-path ORDER load-bearing for bit-identical? Supports are summed in slot order and FP add
+is non-associative -- IF supports are not exact-integer-recovered, reorder flips llround and breaks corehash.
+PROBE (commit c67f364, SCT_SLOT_REVERSE: reverse every slot once after build, corehash vs default): 12 SAME /
+0 different (com-dblp/ca-GrQc x5/ca-CondMat/dblp-core30/ca-AstroPh, s=r+1 and s>r+1). => ORDER IS NOT LOAD-
+BEARING (supports exact-integer, FP error <0.5). UNLOCK: the skip may find-then-act / mark-compact / remove in
+any order; only the live-path SET must be correct. Risk drops very-hard -> moderate.
+DESIGN (in progress): per-leaf lazy bucket index bkt[c][v]=path-indices with u[c]==v (u only DECREASES on
+split, so maxv from the initial build bounds all future u); query = pick pivot = plNZ coord with min
+Sum_{v>=bloc[c]}cnt[c][v], enumerate that bucket suffix, filter survivors by the other plNZ coords. Maintain
+via swap-remove + back-pointers bpos. Incremental plan: (1) build+maintain index with SCT_SLOT_IDX_VERIFY
+asserting index==cur consistency, still full-scan for affected; (2) switch affected-find to the index with a
+per-call differential assert (index-affected==scan-affected); (3) corehash + timing (clean box). ENV: SFD_DBG,
+SCT_SLOT_REVERSE.
