@@ -3242,3 +3242,29 @@ MEMORY ANSWER (user's q): region-native peak = 0.6-9.5G (hog at low-RS, lean at 
 0.2-2.7G. All fit 64GB local; the 503GB icml2 has huge headroom. Caveat: SINGLE-TRIAL (icml2 idle so clean-ish);
 multi-trial for the paper. PAPER POSITIONING: region-native's win is the HIGH-RS regime where CND explodes on
 r-cliques; honest limitation = low-RS (slower + memory-heavy), exact-irreducible (sec 57).
+
+## 62. MEMORY loss DECOMPOSED -- half fixable, half inherent (2026-06-20, #153) [FIX QUEUED]
+User asked: a succinct (SDCT/CPI, no s-clique enumeration) method should NOT lose memory. Investigated the 2
+worst low-RS hogs (icml2, /usr/bin/time -v peak RSS, 4 configs):
+  web-Google 3,4 (CND 3.1G):  default 9.5G/80s | maps-CSR 6.4G/76s | no-index 8.7G/77s | MEM-MIN 5.6G/72s
+  com-youtube 3,4 (CND 1.1G): default 6.4G/62s | maps-CSR 4.7G/58s | no-index 5.6G/60s | MEM-MIN 3.9G/55s
+  (MEM-MIN = SCT_MAPS_RECOMPUTE=1 SCT_NO_SLOT_IDX=1)
+TWO PARTS:
+ 1. FIXABLE (implementation): the maps Vec storage (~200M blocal Vecs) + the #1 index buckets. MEM-MIN reclaims
+    web-Google 9.5->5.6G, com-youtube 6.4->3.9G. KEY: on these BIG-incidence cells maps-CSR is FREE -- both
+    LOWER memory AND FASTER (80->72, 62->58) -- contradicting sec 52's small-cell "net time loss" verdict. So
+    maps-CSR's time sign is CELL-SIZE-DEPENDENT (hurts small, helps big) -> it should be an ADAPTIVE default
+    (auto-enable when incidences/patterns are large).
+ 2. INHERENT (design): even MEM-MIN stays ~2-3.5x CND (5.6 vs 3.1; 3.9 vs 1.1). This is the explicit ORBIT/
+    PATTERN materialisation -- region peels PATTERNS (bucket queue + affected-update), so it must materialise
+    all Pat structs (each = host+comp+classSet vectors) + the patLeaves/leafPats maps. CND peels per-r-clique
+    INCREMENTALLY -- a single int counter per r-clique, no orbit structure. So even with #patterns <= #r-cliques,
+    region's PER-ELEMENT overhead (3 vectors vs 1 int) makes it net heavier. => the "succinct counting saves but
+    orbit materialisation costs" tradeoff; region does NOT theoretically guarantee a memory win.
+FIX PLAN (user: "start later"):
+ (a) maps-CSR ADAPTIVE default: auto-enable SCT_MAPS_RECOMPUTE when incidences exceed a threshold (find the
+     break-even from sec 52 small-cell vs this big-cell data). Cheapest high-value: free memory on big cells.
+ (b) Flatten Pat (host/comp/classSet) + patLeaves/leafPats into CSR/arena -> kills the per-vector overhead of
+     the residual. Diminishing returns, won't reach CND, but narrows the 2-3.5x gap.
+ (c) #1 index buckets (vector<vector<vector<int>>>) are heavy (~0.8G on web-Google 3,4); a flatter layout or
+     large-slot-only build trims it -- but #1 is a TIME win so keep it default, just lighten the structure.
