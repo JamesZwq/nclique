@@ -3440,3 +3440,33 @@ deadness is irreducibly r-dimensional cross-class corners, NOT axis-aligned clas
 obstruction with data). Both of the user's "eliminate the convolution" routes are now measured + closed: composition
 direct-counting = 4-45x memory (§67); class-deletion = <2% opportunity (§69). The compact box+forbidden+IE
 representation matches the real structure of what dies. Direction CLOSED with evidence; keep the current machinery.
+
+## 70. §58 BATCH-PEEL IMPLEMENTED + bit-identical (2026-06-21, #161) [local-only validation, no server]
+Built the §58 batch-peel: gate SCT_BATCH_PEEL, default OFF, active only for s>r+1 (the path that owns an
+affected-Q DFS to amortize; s=r+1 keeps the proven per-pattern witness-floor path via !sEqRp1).
+DESIGN (region_native_sct_peel.cpp ~1506-1650): drain a whole curLevel WAVE (re-drain for cascade), mark all
+wave patterns peeled up front, group (pattern,leaf) tasks LEAF-MAJOR (sorted by lid), and per leaf: apply ALL the
+leaf's wave-thresholds via slotForbidDiff (accumulate pre-images into coAll tagged with their per-threshold pl in
+coPls/coPlIdx), then run ONE DFS over ql<=uEnv (Sum=r) and for each confirmed Q compute drop = Sum over coAll
+entries of scWithTerms(p, coTerms[e], ql, &plE) -- the SAME proven single-threshold delta-formula, summed over the
+leaf's thresholds. Apply once per wave.
+WHY BIT-IDENTICAL (proven + verified): drops are ADDITIVE over thresholds; each threshold's pre-image is snapshotted
+at the correct (post-prior-insertions) slot state, exactly like the per-pattern sequential capture; the drop math
+reads only slot paths (never .sup), so reordering apply to wave-scope changes nothing; every wave member peels at
+curLevel regardless of order (order-independence within a level + slot order not load-bearing, sec 54); intra-wave
+drops clamp to curLevel==key and never re-bucket in the per-pattern path, so skipping them (via !alive) is exact.
+The batch DFS drops the per-pattern Sum-max(pl,ql)<=Tcap prune (no single pl) => over-generates candidates, all
+filtered by applyIdxB's feasibility + d==0 checks; it is a strict SUPERSET of generated candidates so misses no
+genuine Q.
+VALIDATION (LOCAL, corehash = md5 of sorted core=K count=N): 7/7 bit-identical, default vs SCT_BATCH_PEEL:
+  s>r+1 (batch active): dblp-sigmod 3,5 / 4,6 ; dblp-db 4,6 / 5,7 / 3,5  -> all match.
+  s=r+1 (fall-through):  dblp-sigmod 3,4 (=32451c95, the known-correct ref) ; dblp-db 4,5  -> all match.
+Plus a separate ADVERSARIAL REVIEW (subagent, 10 checkpoints: accumulation order, whole-wave-peel safety, cascade,
+DFS-bound false-negative, bk-iterator rehash safety, source-skip, count-once, memory reuse, pbLocal indexing,
+uniform Mloc/T): 10/10 PASS, "bit-identical: yes", no bugs. Memory: all batch buffers (wave/taskLL/coAll/coPlIdx/
+coPls/coTerms/chgTmp/plNZ/aff/uEnv/qcand) declared outside the loops, clear()/assign() per wave/leaf (capacity
+retained, no per-iteration realloc), bounded by one leaf's wave-threshold count. No regression vs per-pattern alloc.
+SCOPE/HONESTY: the slot index (#1) already made slotForbidDiff output-sensitive, so the batch's win is the
+affected-Q DFS + candidate-generation amortization (divides by fan-in), NOT the slot mutation (still F insertions).
+Win concentrated in s>r+1 (high-RS, where region-native already wins + the DFS dominates the "rest"). Timing: local
+interleaved peel-time only (per user: no server experiments this round).
