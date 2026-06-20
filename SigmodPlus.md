@@ -3406,3 +3406,37 @@ antichain shrinks a lot => fewer IE terms / less split => faster, SAME memory, b
 fraction of forbidden-threshold insertions have |supp(a)|=1 on the real cells; if high, build the hybrid (u_c-reduce
 fast path in lazy_delete_tuple / slotForbidDiff before insert_antichain). This is the honest realization of "delete
 a class": it is exact + free where the pattern is single-class, and falls back to the corner only where it must.
+
+## 69. SUPP_DBG measured: single-class share <2% where it costs -> class-deletion hybrid NOT worth building (2026-06-21, #160)
+Probe (gate SUPP_DBG, in slotForbidDiff): histogram of |supp(a)| over EVERY forbidden-threshold insertion, with
+calls / affected-path work / controlled_split-triggers per |supp| bucket. |supp|==1 == axis-aligned == the clean
+"delete a class" u_c-reduction (§68). Single-class SHARE = the hybrid's win ceiling. icml2, 12 cells:
+  cell             total-calls  splits    SC-calls%  SC-aff%  SC-splits%   dominant |supp|
+  web-Google 3,4    12.25M      9.37M      0.6%      0.5%      0.5%        |supp|=3: 93.8%
+  com-dblp   3,4     1.99M      1.84M      0.4%      1.7%      2.3%        |supp|=3: 88.5%
+  com-dblp   3,5     1.20M      1.61M      0.7%      2.8%      3.6%        |supp|=3: 80.7%
+  ca-CondMat 4,5     0.24M      0.14M      0.1%      0.3%      0.2%        |supp|=4: 86.0%
+  ca-CondMat 4,6     0.16M      0.10M      0.2%      0.3%      0.3%        |supp|=4: 77.4%
+  ca-CondMat 5,9     0.047M     0.023M     0.3%      0.4%      0.3%        |supp|=5: 52.3%
+  web-NotreDame 6,8  0.76M      0.80M      0.2%      0.6%      1.0%        |supp|=6: 52.0%
+  web-it-2004 5,7    2.21M      2.41M      1.9%      1.2%      2.1%        |supp|=4: 35.6%
+  ca-GrQc    4,6     0.042M     0.044M     0.2%      0.1%      0.0%        |supp|=4: 85.0%
+  cit-Patents 7,10   5302       2651       0.1%      0.1%      0.1%        |supp|=6: 90.6%
+  ca-GrQc    5,9     1287        616       4.4%      5.6%      3.9%        (tiny: sub-ms peel)
+  ca-GrQc    7,10    528         230       6.2%      9.9%      8.3%        (tiny: sub-ms peel)
+  (2 cells failed: web-NotreDame 4,5 timeout; ca-HepPh 6,10 std::bad_alloc in r-mergeable 683M r-cliques. Neither
+   changes the verdict.)
+VERDICT: single-class share is <=2.3% of split work on EVERY cell with real cost (>100k splits). It only reaches
+4-10% on ca-GrQc 5,9 / 7,10 which are sub-millisecond (528-1287 total calls). The dominant footprint dimension is
+|supp| ~ r (88-95% at r=3; 77-90% at r=4): a peeled r-clique's r vertices almost always land in ~r DISTINCT classes
+(in dense regions classes are small, so vertices are not interchangeable). => the "delete a class" axis-aligned
+fast path captures <2% of the work where it matters. NOT WORTH BUILDING.
+ADVERSARIAL VERIFY (separate agent, 140M oracle-checked queries, 0 mismatches): the hybrid IS provably bit-identical
+(insert single-class corner a == set u_c=t-1; AND it correctly prunes pre-existing multi-class corners a' with
+a'_c>=t). The §68 theorem is SOUND. The only blocker is the empirical fraction, not correctness. Verifier flagged the
+ixBkt slot-index update on u_c-shrink as "the single most error-prone implementation point" => real risk for a <2% gain.
+DEEPER TAKEAWAY (paper asset): |supp|~r is the QUANTITATIVE justification for the corner/antichain/IE machinery. r>=2
+deadness is irreducibly r-dimensional cross-class corners, NOT axis-aligned class deletions (confirms the §68
+obstruction with data). Both of the user's "eliminate the convolution" routes are now measured + closed: composition
+direct-counting = 4-45x memory (§67); class-deletion = <2% opportunity (§69). The compact box+forbidden+IE
+representation matches the real structure of what dies. Direction CLOSED with evidence; keep the current machinery.
