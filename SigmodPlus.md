@@ -3192,3 +3192,20 @@ ON==OFF) -- settles the lean -30% scare = it was SERVER CONTENTION, not a #1 reg
 validated clean at scale. (6-15% < the 23-27% on tiny ca-GrQc cells because big cells have a larger affected-
 update "rest" fraction #1 doesn't touch -- inverse-affected% mechanism.) Local Mac (web-NotreDame peel 16s vs
 the bad server trial's 95.65s) is the clean measurement env -- use it.
+
+## 60. MEASUREMENT METHODOLOGY: local Mac DRIFTS between windows -> INTERLEAVE conditions (2026-06-20, #151)
+A block-sequential A/B (3 ON trials, then 3 OFF) gave web-NotreDame 6,8 #1 = -26% (ON SLOWER), contradicting an
+earlier +15% on the SAME clean local cell. ROOT CAUSE (5-trial within-window run): within a tight window ON/OFF
+are STABLE (ON~26.3, OFF~29.2, +10%, SAME RSS 0.8G -> index is NOT a memory hog), but ACROSS windows minutes
+apart the whole Mac's speed drifts hugely (OFF was 18.7 / 29.2 / 18.6 in different runs; ON 16 / 23.7 / 26).
+Drift = thermal + my own background agents/workflows loading the Mac all session. Block-sequential lets drift
+masquerade as a real effect on SMALL-margin cells. FIX: INTERLEAVE ON/OFF per trial (ON,OFF,ON,OFF...) and take
+the mean of per-pair ON/OFF RATIOS -- each pair samples the same instant, drift cancels. (Interleaved web-NotreDame
+= +13%, then the full table below.)
+#1 FINAL DRIFT-ROBUST TABLE (local, interleaved, mean ON/OFF ratio over 5 pairs, all bit-id) -- MONOTONE in aff%:
+  ca-GrQc 6,7   0.18% +32% | ca-GrQc 5,6   0.24% +24% | web-NotreDame 6,8 0.19% +16% | ca-CondMat 5,6 0.71% +12%
+  web-it-2004 5,7 0.49% +11% | ca-AstroPh 3,4 1.19% +1% | ca-CondMat 4,5 2.35% +1% | ca-GrQc 4,6 1.55% -1%
+=> #1 wins big at low affected% (<=0.5% -> +11..32%), NEUTRAL at high (>1% -> +-1%), never meaningfully regresses.
+The -26% web-NotreDame scare = 100% drift artifact; #1 is +16% there. Shipped default VALIDATED.
+P1 STATUS: DONE. maps-CSR = net loss on time (gated OFF, memory hatch); #1 = clean validated table above.
+LESSON: for any small-margin local timing A/B, INTERLEAVE conditions + paired ratio, never block-sequential.
