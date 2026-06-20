@@ -848,6 +848,11 @@ int main(int argc, char **argv) {
     }
     long long mapInc = 0;                              // maps-dbg: pattern-leaf incidences
     bool mapsDbg = getenv("MAPS_DBG") != nullptr;
+    // Phase 2: when set, DON'T store the ~200M pbLocal/leafPatLocB Vec payloads; each
+    // blocal is recomputed on demand via localB (proven equivalent in Phase 1, gate
+    // SCT_MAPS_VALIDATE). The int maps patLeaves/leafPats are always stored. Default
+    // OFF keeps the stored path for A/B + corehash cross-check (both must be bit-identical).
+    bool mapsRecompute = getenv("SCT_MAPS_RECOMPUTE") != nullptr;
     if (mapsDbg) fprintf(stderr, "[maps-dbg] patIdx-build=%.2fs pats=%zu\n", secs(Tqg1, Clock::now()), pats.size());
     auto TmapE0 = Clock::now();
     {
@@ -885,8 +890,10 @@ int main(int argc, char **argv) {
                 bool host = box.forbidden.empty() ? hostFeasible(box, blocal)
                                                   : (ccpath::support_count(box, blocal, ccpath_ncr) > 0.0);
                 if (host) {
-                    patLeaves[pi].push_back(lid); pbLocal[pi].push_back(blocal);
-                    leafPats[lid].push_back(pi);  leafPatLocB[lid].push_back(blocal);
+                    patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
+                    if (!mapsRecompute) {                  // Phase 2: skip the ~200M Vec-payload stores
+                        pbLocal[pi].push_back(blocal); leafPatLocB[lid].push_back(blocal);
+                    }
                     mapInc++;
                 }
                 return;
@@ -930,7 +937,7 @@ int main(int argc, char **argv) {
         }
     };
     (void)localB;
-    if (getenv("SCT_MAPS_VALIDATE")) {                 // prove recompute == stored, then abort-on-mismatch
+    if (getenv("SCT_MAPS_VALIDATE") && !mapsRecompute) {   // prove recompute == stored (needs storage), abort-on-mismatch
         long long chk = 0, bad = 0; Vec rb;
         for (int pi = 0; pi < (int)pats.size(); pi++)
             for (size_t k = 0; k < patLeaves[pi].size(); k++) {
@@ -968,12 +975,15 @@ int main(int argc, char **argv) {
         }
     // support(pi) = sum over hosting slots of sum over slot's paths of
     // support_count(path, b_local). Uses the pre-mapped compact b.
+    Vec sctScr;                                        // reused recompute scratch for sctSupport
     auto sctSupport = [&](int pi) -> double {
         double tot = 0.0;
-        const auto &bl = pbLocal[pi];
         const auto &ls = patLeaves[pi];
-        for (size_t k = 0; k < ls.size(); k++)
-            for (auto &p : slotPaths[ls[k]]) tot += ccpath::support_count(p, bl[k], ccpath_ncr);
+        for (size_t k = 0; k < ls.size(); k++) {
+            const Vec &b = mapsRecompute ? (localB(pi, ls[k], sctScr), (const Vec &)sctScr)
+                                         : pbLocal[pi][k];
+            for (auto &p : slotPaths[ls[k]]) tot += ccpath::support_count(p, b, ccpath_ncr);
+        }
         return tot;
     };
     auto T5 = Clock::now();
@@ -1239,13 +1249,18 @@ int main(int argc, char **argv) {
         for (size_t i = 0; i < v.size(); i++) { h ^= (uint64_t)(uint16_t)v[i] + 1; h *= HMUL; }
         return h;
     };
+    Vec elmScr;                                        // reused recompute scratch for ensureLeafMap
     auto ensureLeafMap = [&](int lid) {
         if (leafQbuilt[lid]) return;
         leafQbuilt[lid] = 1;
         auto &mp = leafQ2pat[lid];
-        const auto &qb = leafPatLocB[lid];
-        mp.reserve(qb.size() * 2);
-        for (int t = 0; t < (int)qb.size(); t++) mp[hashVec(qb[t])].push_back(t);
+        int nt = mapsRecompute ? (int)leafPats[lid].size() : (int)leafPatLocB[lid].size();
+        mp.reserve((size_t)nt * 2);
+        for (int t = 0; t < nt; t++) {
+            const Vec &q = mapsRecompute ? (localB(leafPats[lid][t], lid, elmScr), (const Vec &)elmScr)
+                                         : leafPatLocB[lid][t];
+            mp[hashVec(q)].push_back(t);
+        }
     };
 
     long long npat = (long long)pats.size(), peeledN = 0, maxKey = 0;
@@ -1302,14 +1317,15 @@ int main(int argc, char **argv) {
         // SC(L, max(m_P,m_Q)) because of that C(n-b,y-b) reweighting.)
         vector<int> aff;
         const auto &pleaf = patLeaves[pi];
-        const auto &ploc  = pbLocal[pi];
+        Vec plScr, qlScr;                              // recompute scratch: P-side (held across k-body), Q-side (per confirm)
         vector<CCPath> chgOld;                         // pre-insertion snapshots
         vector<vector<pair<Vec,int>>> chgOldTerms;     // cached IE terms (pre-insert)
         vector<pair<int,int>> plNZ;                    // sparse nonzeros of m_P local
         for (size_t k = 0; k < pleaf.size(); k++) {
             int lid = pleaf[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
-            const Vec &pl = ploc[k];                   // m_P local to lid (== a_p, h=0)
+            const Vec &pl = mapsRecompute ? (localB(pi, lid, plScr), (const Vec &)plScr)
+                                          : pbLocal[pi][k];   // m_P local to lid (== a_p, h=0)
             int Mloc = (int)pl.size();
             // sparse support of m_P (positions where it is nonzero) -- the only
             // positions the impossible / feasibility tests depend on.
@@ -1362,7 +1378,7 @@ int main(int argc, char **argv) {
                             fl[d] = (int16_t)mqd;                          // fl == m_Q = floor_c - e_d
                             auto it = q2p.find(hashVec(fl));
                             if (it != q2p.end())
-                                for (int t : it->second) if (qbAll[t] == fl) {
+                                for (int t : it->second) if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == fl) {
                                     int qi = qsAll[t];
                                     if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
                                         dbgHit++; dbgNZ++;
@@ -1450,7 +1466,7 @@ int main(int argc, char **argv) {
                 dbgGen++;                               // a complete ql candidate generated
                 auto it = q2p.find(h);
                 if (it == q2p.end()) return;
-                for (int t : it->second) if (qbAll[t] == ql) { applyIdx(ql, t); return; }
+                for (int t : it->second) if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == ql) { applyIdx(ql, t); return; }
             };
             // DFS over leaf classes: place ql[c] in [0, min(uEnv[c],rem)], track
             // rem = r left, acc = Σ_{<c} max(pl,ql), and the running rolling hash.
