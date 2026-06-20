@@ -3268,3 +3268,23 @@ FIX PLAN (user: "start later"):
      the residual. Diminishing returns, won't reach CND, but narrows the 2-3.5x gap.
  (c) #1 index buckets (vector<vector<vector<int>>>) are heavy (~0.8G on web-Google 3,4); a flatter layout or
      large-slot-only build trims it -- but #1 is a TIME win so keep it default, just lighten the structure.
+
+## 63. Is the peel CACHE-bound? NO -- it is COMPUTE/ALLOC-bound (2026-06-20, #154)
+User: before flattening structures for speed, measure if the peel is cache-bound. perf BLOCKED (perf_event_
+paranoid=4 on icml2 AND tods2, no sudo); valgrind not installed + won't apt-get-download. So measured via a
+LAYOUT-ONLY A/B: SCT_PL_CSR flattens patLeaves (vector<vector<int>>, pointer-chased per peeled pattern) to a
+contiguous CSR -- same lids, same order, bit-identical; ONLY the memory layout changes. If peel speeds up =>
+cache-bound. RESULT (icml2, interleaved 4-pair drift-robust, all bit-id): web-NotreDame 6,8 +1% | ca-AstroPh
+3,4 -1% | com-youtube 3,4 +0% => NULL. patLeaves access is NOT a bottleneck.
+CONVERGENT EVIDENCE the peel is COMPUTE/ALLOC-bound (not cache-bound):
+ - patLeaves flatten = 0% (this probe).
+ - #3 NCR binomial hoist = wash (sec 56) -> the DP's table lookup isn't the bottleneck.
+ - deep-scope (sec 53): cost = support_count DP convolution (compute) + controlled_split (CCPath child allocs)
+   + affected-Q DFS over-generation (gen/nz = 8-14x = MEASURED redundant compute).
+CONCLUSION: flattening structures is a MEMORY play (sec 62) with at-best-modest speed benefit -- NOT the speed
+lever. The genuine "faster, no trade" levers are: (1) BATCH-PEEL (dedups the 8-14x DFS over-gen = the biggest
+measured compute waste; sec 58 design, kill-gate GO sec 57); (2) controlled_split ALLOC pooling/arena (dense
+cells maxSplit~1000s of small CCPath child allocs -> arena = faster AND less memory, a real Pareto win).
+CAVEAT: patLeaves is ONE (outer-loop) probe; the heaviest random access is slotPaths (CCPath p.u Vec chase in
+slotForbidDiff) + pats[qi] in the DFS -- not separately isolated, but the DP/split/over-gen evidence already
+points compute-bound. (Probe reverted to keep the default hot path lambda-free; MEM_DBG kept.)
