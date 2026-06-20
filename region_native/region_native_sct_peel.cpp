@@ -1083,6 +1083,8 @@ int main(int argc, char **argv) {
     bool dfsPrune = getenv("SCT_DFS_PRUNE") != nullptr;  // default OFF (A/B flag)
     size_t maxSplit = 0;                              // diagnostic: largest split-set
     double tSFD = 0; long long slotVisits = 0;       // PROFILE: slot-scan time + path visits
+    bool sfdDbg = getenv("SFD_DBG") != nullptr;       // cost-structure probe for the slot-index design
+    long long sfdAff = 0, sfdCoordTests = 0, sfdFailFirst = 0;  // affected / coords-examined / failed-on-1st-coord
     // Record a pattern's LOCAL threshold into slot lid. Paths where the
     // threshold is impossible are UNCHANGED (kept in place); the rest are the
     // CHANGED paths. We collect the changed OLD paths (chgOld) and their NEW
@@ -1122,8 +1124,13 @@ int main(int argc, char **argv) {
         for (int i = 0; i < w; ) {
             CCPath &p = cur[i];
             bool imposs = false;                          // impossible(p, bloc)?
-            for (auto &pv : plNZ) if ((int)p.u[pv.first] < pv.second) { imposs = true; break; }
+            if (sfdDbg) {                                 // probe: count coord-tests + first-coord failures
+                int nt = 0; for (auto &pv : plNZ) { nt++; if ((int)p.u[pv.first] < pv.second) { imposs = true; break; } }
+                sfdCoordTests += nt; if (imposs && nt == 1) sfdFailFirst++;
+            } else
+                for (auto &pv : plNZ) if ((int)p.u[pv.first] < pv.second) { imposs = true; break; }
             if (imposs) { ++i; continue; }                // unchanged: stays in place
+            sfdAff++;
             chgOld.push_back(p);                            // snapshot before change
             bool remove = false;
             if (ccpath::covers_whole_path(p, bloc)) {
@@ -1561,6 +1568,10 @@ int main(int argc, char **argv) {
     auto T6 = Clock::now();
     fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
             secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
+    if (sfdDbg) fprintf(stderr, "[sfd-dbg] tested=%lld affected=%lld (%.2f%%) coord-tests=%lld (%.2f/test) fail-on-1st=%lld (%.1f%% of skips)\n",
+            slotVisits, sfdAff, slotVisits ? 100.0*sfdAff/slotVisits : 0.0, sfdCoordTests,
+            slotVisits ? (double)sfdCoordTests/slotVisits : 0.0, sfdFailFirst,
+            (slotVisits - sfdAff) ? 100.0*sfdFailFirst/(slotVisits - sfdAff) : 0.0);
     printf("[sct-peel] peel=%.2fs  peeled=%lld/%lld  maxSplit(split-set)=%zu\n",
            secs(T5,T6), peeledN, npat, maxSplit);
     fprintf(stderr, "[sct-peel] dbg dfsPrune=%d cand_gen=%lld hit=%lld nz=%lld  gen/nz=%.1f\n",
