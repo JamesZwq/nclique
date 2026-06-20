@@ -1299,6 +1299,12 @@ int main(int argc, char **argv) {
     // 2^(#binding) Vandermonde binomials per term -- viable iff #binding stays small.
     bool cfDbg = getenv("CF_DBG") != nullptr;
     long long cfTerms = 0, cfBindHist[20] = {0}; double cfFormTermsVsDP = 0;
+    // HYBRID closed form (sec 65): per IE-term, if the active classes give few expansion
+    // terms, compute the bounded binomial-weighted composition count by Vandermonde IE
+    // (pure binomials, NO convolution) instead of the DP. Bit-identical (exact integer).
+    bool cfEnabled = getenv("SCT_NO_CF") == nullptr;   // DEFAULT ON (escape hatch SCT_NO_CF)
+    const long long CF_CAP = 4096;                     // skip closed form if #terms exceeds this
+    vector<int> cfActM, cfActLo, cfActUc;              // reused: per active class M_c, ell_c, u'_c
     auto scWithTerms = [&](const CCPath &p,
                            const vector<pair<Vec,int>> &terms,
                            const Vec &b, const Vec *addLow) -> double {
@@ -1352,6 +1358,37 @@ int main(int argc, char **argv) {
                 cfTerms++; cfBindHist[nb < 19 ? nb : 19]++;
                 // closed-form work = 2^nb binomials; DP work ~ M*(T+1) cells. ratio:
                 cfFormTermsVsDP += (double)(1 << (nb < 20 ? nb : 20)) / ((double)M * (T + 1) + 1);
+            }
+            if (cfEnabled) {                              // ---- CLOSED-FORM fast path (sec 65) ----
+                int Z = T, totalM = 0; cfActM.clear(); cfActLo.clear(); cfActUc.clear();
+                long long nterms = 1; bool cfBig = false;
+                for (int c = 0; c < M; ++c) {
+                    int bc = (int)b[c], Mc = (int)p.n[c] - bc; totalM += Mc; Z -= bc;
+                    int Lc = p.ell[c]; if (bc > Lc) Lc = bc;
+                    if ((int)extra[c] > Lc) Lc = (int)extra[c];
+                    if (addLow && (int)(*addLow)[c] > Lc) Lc = (int)(*addLow)[c];
+                    int lc = Lc - bc;                     // ell_c (low-tail length = lc terms: 0..lc-1)
+                    int uc = (int)p.u[c] - bc; if (uc > Mc) uc = Mc;   // u'_c (high-tail = Mc-uc terms: uc+1..Mc)
+                    int ntail = lc + (Mc - uc);
+                    if (ntail > 0) { cfActM.push_back(Mc); cfActLo.push_back(lc); cfActUc.push_back(uc);
+                        nterms *= (long long)(1 + ntail); if (nterms > CF_CAP) { cfBig = true; break; } }
+                }
+                if (!cfBig && nterms <= (long long)M * (T + 1)) {   // closed form cheaper than the DP
+                    int na = (int)cfActM.size(); double cf = 0.0;
+                    auto rec = [&](auto &&self, int idx, int sign, int sumJ, int sumMpick, double prodW) -> void {
+                        if (idx == na) { int rem = Z - sumJ, navail = totalM - sumMpick;
+                            if (rem >= 0 && rem <= navail) cf += sign * prodW * ccpath_ncr(navail, rem); return; }
+                        int Mc = cfActM[idx], lc = cfActLo[idx], uc = cfActUc[idx];
+                        self(self, idx + 1, sign, sumJ, sumMpick, prodW);                 // full (1+x)^Mc
+                        for (int j = 0; j < lc; ++j)                                       // low tail z<ell
+                            self(self, idx + 1, -sign, sumJ + j, sumMpick + Mc, prodW * ccpath_ncr(Mc, j));
+                        for (int j = uc + 1; j <= Mc; ++j)                                 // high tail z>u'
+                            self(self, idx + 1, -sign, sumJ + j, sumMpick + Mc, prodW * ccpath_ncr(Mc, j));
+                    };
+                    rec(rec, 0, 1, 0, 0, 1.0);
+                    total += (double)kv.second * cf;
+                    continue;                             // skip the DP for this term
+                }
             }
             dpA.assign((size_t)T + 1, 0.0);
             dpA[0] = 1.0;
