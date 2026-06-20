@@ -3209,3 +3209,36 @@ the mean of per-pair ON/OFF RATIOS -- each pair samples the same instant, drift 
 The -26% web-NotreDame scare = 100% drift artifact; #1 is +16% there. Shipped default VALIDATED.
 P1 STATUS: DONE. maps-CSR = net loss on time (gated OFF, memory hatch); #1 = clean validated table above.
 LESSON: for any small-margin local timing A/B, INTERLEAVE conditions + paired ratio, never block-sequential.
+
+## 61. P2 HEADLINE: region-native vs CND vs V3LM, 3-way time+memory (2026-06-20, #152, icml2)
+SETUP: icml2 (64c, 503GB, IDLE) -- cloned repo, NO-SUDO deps (apt-get download + dpkg -x for boost-serialization
++ sparsehash; manual-Boost CMake patch), built BOTH degeneracy_cliques (CND=PIVOTER_RUN_REF, V3LM/RegNDC=
+PIVOTER_RUN_REGION_V3LM) and region-native; staged 13 graphs (tods2->local->icml2). 3-WAY COREHASH VERIFIED
+IDENTICAL (CND=V3LM=region on ca-GrQc/ca-AstroPh/ca-CondMat) -> fair comparison. /usr/bin/time -v wall+maxRSS,
+single trial, timeout 400s, HEAD 817939b.
+RESULTS (wall-clock | peak RSS):
+  cell             CND          V3LM         region-native
+  com-dblp 3,4     4.4s 0.6G    6.1s 0.2G    12.1s 1.2G
+  ca-AstroPh 3,4   4.2s 0.3G    52.5s 0.3G   32.7s 2.6G
+  ca-HepPh 3,4     11.3s 0.5G   353s 0.7G    TIMEOUT(>400)
+  com-youtube 3,4  21s 1.1G     120s 1.7G    62.8s 6.4G
+  web-Google 3,4   27.9s 3.1G   61s 1.7G     80.8s 9.5G
+  cit-Patents 3,4  36.5s 3.3G   84.8s 2.7G   75.8s 7.3G
+  web-NotreDame 6,8 TIMEOUT     47s 0.2G     40.1s 0.9G
+  web-it-2004 5,7   TIMEOUT     201.9s 0.7G  70.8s 1.8G
+  cit-Patents 7,10  21.2s 2.5G  38s 0.7G     17.3s 0.6G   <- region FASTEST
+  web-Google 6,8    TIMEOUT     TIMEOUT      TIMEOUT      <- graph's problem (all 3)
+  ca-HepPh 6,8      TIMEOUT     TIMEOUT      TIMEOUT
+HONEST REGIME CHARACTERIZATION (confirms sec 57):
+ 1. LOW-RS (3,4): CND WINS on time (4-37s, fastest) AND region-native is a MEMORY HOG (6-9.5G vs CND 1-3G --
+    the pattern materialisation). Worst case = dense ca-HepPh 3,4: region TIMEOUT vs CND 11s. region-native
+    LOSES the low-RS regime, decisively. (vs V3LM mixed: region beats V3LM on ca-AstroPh/com-youtube/ca-HepPh,
+    loses on web-Google.)
+ 2. HIGH-RS: region-native WINS -- CND TIMEOUTS on web-NotreDame 6,8 + web-it-2004 5,7 (structural r-clique
+    explosion = CND's wall), region completes (40s,71s) and BEATS V3LM (201.9->70.8 on web-it-2004); cit-Patents
+    7,10 region is FASTEST of all 3 (17.3s). Memory LEAN here (0.6-1.8G).
+ 3. The 2 hardest cells (web-Google 6,8, ca-HepPh 6,8) TIMEOUT for ALL 3 -- the graph's problem, out of scope.
+MEMORY ANSWER (user's q): region-native peak = 0.6-9.5G (hog at low-RS, lean at high-RS); CND 0.3-3.3G; V3LM
+0.2-2.7G. All fit 64GB local; the 503GB icml2 has huge headroom. Caveat: SINGLE-TRIAL (icml2 idle so clean-ish);
+multi-trial for the paper. PAPER POSITIONING: region-native's win is the HIGH-RS regime where CND explodes on
+r-cliques; honest limitation = low-RS (slower + memory-heavy), exact-irreducible (sec 57).
