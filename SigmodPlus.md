@@ -3037,7 +3037,15 @@ STEP 2 (commit 39d38f3, SCT_SLOT_IDX): index DRIVES the find. Phase A classify (
 place, NO position moves) -> Phase B batch swap-remove dead DESCENDING (w>=p always, cur[w] live) + append
 children, maintaining the index. chgOld in pivot order (order-independent per sec 54). corehash index-driven vs
 default: 13 OK / 0 MISMATCH, both peel paths. => slot skip is BIT-IDENTICAL, correctness-complete.
-STATUS: gated SCT_SLOT_IDX (default OFF). TIMING DEFERRED -- tods2 contended all session (gengdaz). Expected
-win: eliminates the impossible-scan (0.19-1.2% affected, was the cache-miss-bound 40-70% of slotForbidDiff);
-the affected-paths' real work (chgOld copy, covers, split) remains. Measure slotForbidDiff before/after on a
-clean box. ENV: SCT_SLOT_IDX (drive), SCT_SLOT_IDX_VERIFY (Step-1 assert), SFD_DBG (cost probe).
+STATUS: gated SCT_SLOT_IDX (default OFF). TIMING DEFERRED -- tods2 contended all session (gengdaz).
+ROUGH A/B (load 26, NOT a clean claim) slotForbidDiff default->idx: com-dblp 3,4 6.93->5.79 (16%), ca-CondMat
+4,5 0.39->0.39 (~0), ca-AstroPh 3,4 17.78->17.36 (2%). => MODEST, smaller than the 200x scan ceiling. HONEST
+CORRECTION to the earlier estimate: the impossible-SCAN is ~20-25% of slotForbidDiff, NOT 40-70%. slotForbidDiff
+is DOMINATED by the affected-paths' REAL WORK (chgOld CCPath snapshot copies + controlled_split), which is
+NECESSARY and not skippable. The index correctly removes the 928M-test scan but that scan was a minority. So #1
+is a real, bit-identical, algorithmically-correct win but a modest one (~16% of slotForbidDiff, contended; clean
+number TBD). Durable value: the correct sub-linear index + the sec-54 order-independence finding.
+STRATEGIC RE-RANK: the AFFECTED-UPDATE ("rest" in [profile], 10-39s) is the BIGGER peel bucket on most cells
+(web-NotreDame rest=38.85, web-Google rest=21.80) vs slotForbidDiff 11-19s. So the higher-value remaining
+targets are the affected-update: #3 (NCR binomial flatten/hoist, the DP inner cell, bit-id by construction) and
+#4 (s=r+1 liveness precompute). ENV: SCT_SLOT_IDX (drive), SCT_SLOT_IDX_VERIFY (Step-1 assert), SFD_DBG.
