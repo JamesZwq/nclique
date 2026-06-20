@@ -1009,6 +1009,20 @@ int main(int argc, char **argv) {
     };
     auto T5 = Clock::now();
     printf("[sct] pattern<->leaf maps + compaction=%.2fs\n", secs(Tqg1, T5));
+    // CACHE-BOUND PROBE (SCT_PL_CSR, layout-only A/B): flatten patLeaves (vector<vector<int>>,
+    // pointer-chased per peeled pattern) into a contiguous CSR. Same lids, same order -> bit-
+    // identical; only the memory layout changes. If the peel speeds up, it was cache-bound on
+    // this access; if not, compute-bound (the support_count DP dominates).
+    bool plCSR = getenv("SCT_PL_CSR") != nullptr;
+    vector<size_t> plOff; vector<int> plVal;
+    if (plCSR) {
+        plOff.assign(pats.size() + 1, 0);
+        for (size_t pi = 0; pi < pats.size(); pi++) plOff[pi + 1] = plOff[pi] + patLeaves[pi].size();
+        plVal.reserve(plOff.back());
+        for (size_t pi = 0; pi < pats.size(); pi++) for (int lid : patLeaves[pi]) plVal.push_back(lid);
+    }
+    auto plBeg = [&](int pi) -> const int * { return plCSR ? plVal.data() + plOff[pi] : patLeaves[pi].data(); };
+    auto plLen = [&](int pi) -> int { return plCSR ? (int)(plOff[pi + 1] - plOff[pi]) : (int)patLeaves[pi].size(); };
     memCk("after-maps(patLeaves/pbLocal)");
     fflush(stdout);
 
@@ -1436,7 +1450,8 @@ int main(int argc, char **argv) {
         // these leaves, so never has a witness there).
         if (skipH1 && P.host.size() == 1) {
             bool affectsH2 = false;
-            for (int lid : patLeaves[pi]) if (hasH2[lid]) { affectsH2 = true; break; }
+            { const int *plb = plBeg(pi); int pln = plLen(pi);
+              for (int t = 0; t < pln; t++) if (hasH2[plb[t]]) { affectsH2 = true; break; } }
             if (!affectsH2) continue;
         }
 
@@ -1452,13 +1467,13 @@ int main(int argc, char **argv) {
         // (A componentwise-max shortcut is NOT valid: the drop is not
         // SC(L, max(m_P,m_Q)) because of that C(n-b,y-b) reweighting.)
         vector<int> aff;
-        const auto &pleaf = patLeaves[pi];
+        const int *pleafB = plBeg(pi); int pleafN = plLen(pi);   // CSR or vector<vector> (SCT_PL_CSR)
         Vec plScr, qlScr;                              // recompute scratch: P-side (held across k-body), Q-side (per confirm)
         vector<CCPath> chgOld;                         // pre-insertion snapshots
         vector<vector<pair<Vec,int>>> chgOldTerms;     // cached IE terms (pre-insert)
         vector<pair<int,int>> plNZ;                    // sparse nonzeros of m_P local
-        for (size_t k = 0; k < pleaf.size(); k++) {
-            int lid = pleaf[k];
+        for (int k = 0; k < pleafN; k++) {
+            int lid = pleafB[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
             if (faninDbg) { fanA++; if (leafLastLevel[lid] != curLevel) { fanB++; leafLastLevel[lid] = curLevel; } }
             const Vec &pl = mapsRecompute ? (localB(pi, lid, plScr), (const Vec &)plScr)
