@@ -608,11 +608,45 @@ int main(int argc, char **argv) {
         if (peDbg) fprintf(stderr, "[pe-dbg] emitted=%lld incidences t=%.2fs\n", Ninc, secs(T3, Clock::now()));
         vector<int> ord((size_t)Ninc); for (long long i = 0; i < Ninc; i++) ord[(size_t)i] = (int)i;
         const int *rp = rec.data();
-        std::sort(ord.begin(), ord.end(), [&](int a, int b) {
-            const int *pa = rp + (size_t)a * W2, *pb = rp + (size_t)b * W2;
-            for (int k = 0; k < W2; k++) if (pa[k] != pb[k]) return pa[k] < pb[k];
-            return recReg[a] < recReg[b];                  // region tiebreak -> host comes out sorted
-        });
+        if (getenv("SCT_PE_STDSORT")) {                    // ablation: comparison sort (the old path)
+            std::sort(ord.begin(), ord.end(), [&](int a, int b) {
+                const int *pa = rp + (size_t)a * W2, *pb = rp + (size_t)b * W2;
+                for (int k = 0; k < W2; k++) if (pa[k] != pb[k]) return pa[k] < pb[k];
+                return recReg[a] < recReg[b];              // region tiebreak -> host comes out sorted
+            });
+        } else {
+            // LSD radix sort of `ord` by the key (k0..k_{W2-1}, region). Stable
+            // counting sort per column, least-significant first: region, then
+            // k[W2-1..0]. Produces the IDENTICAL total order to the comparator above
+            // (region is the last tiebreak <=> least-significant column), so the
+            // grouping and the resulting pats/host are bit-identical. Replaces the
+            // O(N log N) comparison sort -- each compare did 2 random W2-int gathers
+            // into the multi-GB `rec` -- with O((W2+1)*N) sequential counting passes
+            // (no comparisons, no log factor). W2=2r is even, so W2+1 passes is odd:
+            // the result always lands in ord2, swapped back into ord in O(1).
+            vector<int> ord2((size_t)Ninc);
+            int M = nC; if ((int)nR - 1 > M) M = (int)nR - 1;   // max column value (class<=nC, region<=nR-1)
+            vector<int> cnt2((size_t)M + 2);
+            int *src = ord.data(), *dst = ord2.data();
+            auto pass = [&](int col) {                     // col<0 => the region column
+                std::fill(cnt2.begin(), cnt2.end(), 0);
+                for (long long i = 0; i < Ninc; i++) {
+                    int idx = src[i];
+                    int v = (col < 0) ? recReg[idx] : rp[(size_t)idx * W2 + col];
+                    cnt2[(size_t)v + 1]++;
+                }
+                for (int b = 1; b <= M + 1; b++) cnt2[(size_t)b] += cnt2[(size_t)b - 1];   // start offsets
+                for (long long i = 0; i < Ninc; i++) {     // stable scatter
+                    int idx = src[i];
+                    int v = (col < 0) ? recReg[idx] : rp[(size_t)idx * W2 + col];
+                    dst[cnt2[(size_t)v]++] = idx;
+                }
+                std::swap(src, dst);
+            };
+            pass(-1);                                      // region = least significant (last tiebreak)
+            for (int k = W2 - 1; k >= 0; k--) pass(k);     // then k[W2-1] .. k[0] (k0 most significant)
+            if (src == ord2.data()) ord.swap(ord2);        // land the result in ord (O(1) pointer swap)
+        }
         for (long long i = 0; i < Ninc; ) {                // group consecutive equal comp-key -> one Pat
             const int *pi = rp + (size_t)ord[(size_t)i] * W2;
             long long j = i + 1;
