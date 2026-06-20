@@ -910,6 +910,43 @@ int main(int argc, char **argv) {
     }
     if (mapsDbg) fprintf(stderr, "[maps-dbg] enumLP=%.2fs incidences=%lld (%.0f ns/inc)\n",
                          secs(TmapE0, Clock::now()), mapInc, mapInc ? 1e9*secs(TmapE0, Clock::now())/mapInc : 0.0);
+    // ---- maps-recompute oracle: localB(pi,lid) reconstructs the stored blocal ----
+    // The stored Vec payloads pbLocal[pi][k]/leafPatLocB[lid][t] are ~200M per-
+    // incidence std::vector<int16_t> heap allocs (the dominant maps push_back cost).
+    // But each blocal is fully determined by (pattern comp, leaf class layout):
+    // blocal[i] = mult of leaf-class supC[lid][i] in pattern pi's comp -> a merge of
+    // two sorted lists, recomputable on demand into a reused scratch (no alloc). This
+    // lambda is the recompute; SCT_MAPS_VALIDATE proves it equals every stored payload
+    // (the prerequisite for Phase 2: drop the storage and recompute at the consumers).
+    auto localB = [&](int pi, int lid, Vec &out) {
+        const vector<int> &sc = supC[lid];
+        out.assign(sc.size(), 0);
+        const auto &comp = pats[pi].comp;              // sorted (classId, mult)
+        size_t i = 0, j = 0;
+        while (i < sc.size() && j < comp.size()) {
+            if (sc[i] < comp[j].first) i++;
+            else if (sc[i] > comp[j].first) j++;
+            else { out[(size_t)i] = (int16_t)comp[j].second; i++; j++; }
+        }
+    };
+    (void)localB;
+    if (getenv("SCT_MAPS_VALIDATE")) {                 // prove recompute == stored, then abort-on-mismatch
+        long long chk = 0, bad = 0; Vec rb;
+        for (int pi = 0; pi < (int)pats.size(); pi++)
+            for (size_t k = 0; k < patLeaves[pi].size(); k++) {
+                localB(pi, patLeaves[pi][k], rb);
+                if (rb != pbLocal[pi][k]) { if (bad < 8) fprintf(stderr, "[maps-val] pbLocal MISMATCH pi=%d k=%d\n", pi, (int)k); bad++; }
+                chk++;
+            }
+        for (int lid = 0; lid < nLeaf; lid++)
+            for (size_t t = 0; t < leafPats[lid].size(); t++) {
+                localB(leafPats[lid][t], lid, rb);
+                if (rb != leafPatLocB[lid][t]) { if (bad < 8) fprintf(stderr, "[maps-val] leafPatLocB MISMATCH lid=%d t=%d\n", lid, (int)t); bad++; }
+                chk++;
+            }
+        fprintf(stderr, "[maps-val] recompute vs stored: %lld checked, %lld bad\n", chk, bad);
+        if (bad) return 4;
+    }
     // hasH2[lid]: does leaf lid host any |host|>=2 pattern? A |host|=1 pattern
     // whose leaves are ALL pure-|host|=1 removes nothing relevant when it peels
     // (its witnesses are M-exclusive, so they feed no |host|>=2 support), so its
