@@ -253,7 +253,17 @@ static inline double C(int n, int k) {
 // nCr wrapper for ccpath::support_count (forbidden-antichain IE leaf).
 static double ccpath_ncr(int n, int k) { return C(n, k); }
 
+// current resident-set, GB (Linux /proc) -- per-phase memory breakdown (MEM_DBG).
+static double rssGB() {
+    FILE *f = fopen("/proc/self/status", "r"); if (!f) return 0;
+    char ln[256]; long kb = 0;
+    while (fgets(ln, sizeof ln, f)) if (sscanf(ln, "VmRSS: %ld kB", &kb) == 1) break;
+    fclose(f); return kb / 1048576.0;
+}
+
 int main(int argc, char **argv) {
+    bool memDbg = getenv("MEM_DBG") != nullptr;
+    auto memCk = [&](const char *tag) { if (memDbg) fprintf(stderr, "[mem] %-22s RSS=%.2fG\n", tag, rssGB()); };
     if (argc < 4) { fprintf(stderr, "usage: %s graph.edges r s [--verify N] [--mce-budget S]\n", argv[0]); return 1; }
     const char *gpath = argv[1];
     int r = atoi(argv[2]), s = atoi(argv[3]);
@@ -419,6 +429,7 @@ int main(int argc, char **argv) {
     int nC = (int)classRegions.size();
     auto T3 = Clock::now();
     printf("[rn] classes=%d  build(vtxR+class)=%.2fs\n", nC, secs(T2, T3));
+    memCk("after-classes(pats not yet)");
 
     // region -> sorted class ids present in it (each class wholly in/out)
     vector<vector<int>> regionClasses(nR);
@@ -713,6 +724,7 @@ int main(int argc, char **argv) {
     }
     auto T4 = Clock::now();
     long long totalRCliques = 0; for (auto &P : pats) totalRCliques += P.mult;
+    memCk("after-pattern-enum(pats)");
     printf("[rn-peel] patterns=%zu  r-cliques=%lld  enum=%.2fs\n",
            pats.size(), totalRCliques, secs(T3, T4));
     fflush(stdout);
@@ -742,6 +754,7 @@ int main(int argc, char **argv) {
     }
     auto baseLeaves = classsct_scalable::scalableBuildClassSCT(nC, qw, qadj, s);  // COMPACT
     auto Tqg1 = Clock::now();
+    memCk("after-SDCT-build(slotPaths)");
     printf("[sct] quotient nC=%d  base-leaves=%zu  build=%.2fs\n",
            nC, baseLeaves.size(), secs(Tqg0, Tqg1));
     fflush(stdout);
@@ -996,6 +1009,7 @@ int main(int argc, char **argv) {
     };
     auto T5 = Clock::now();
     printf("[sct] pattern<->leaf maps + compaction=%.2fs\n", secs(Tqg1, T5));
+    memCk("after-maps(patLeaves/pbLocal)");
     fflush(stdout);
 
     // -------- support init: SCT (production) + optional region-IE cross-check (gate G2a) -------
@@ -1682,6 +1696,7 @@ int main(int argc, char **argv) {
         }
     }
     auto T6 = Clock::now();
+    memCk("after-peel(+index)");
     fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
             secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
     if (sfdDbg) fprintf(stderr, "[sfd-dbg] tested=%lld affected=%lld (%.2f%%) coord-tests=%lld (%.2f/test) fail-on-1st=%lld (%.1f%% of skips)\n",
