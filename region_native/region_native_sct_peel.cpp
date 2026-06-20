@@ -1123,8 +1123,9 @@ int main(int argc, char **argv) {
     // maxv from the initial build bounds all future values. Slot order is NOT load-
     // bearing (sec 54, SCT_SLOT_REVERSE 12/0), so find-then-act is safe. Maintained
     // via swap-remove + back-pointers bpos (cur stays dense -> consumers unchanged).
-    bool slotIdx       = getenv("SCT_SLOT_IDX") != nullptr;          // Step 2: drive find from index
+    bool slotIdx       = getenv("SCT_NO_SLOT_IDX") == nullptr;       // DEFAULT ON (escape hatch: SCT_NO_SLOT_IDX)
     bool slotIdxVerify = getenv("SCT_SLOT_IDX_VERIFY") != nullptr;   // Step 1: assert index==scan
+    if (slotIdxVerify) slotIdx = false;                             // verify mode needs the full scan to drive
     bool idxOn = slotIdx || slotIdxVerify;
     vector<char> ixBuilt(idxOn ? nLeaf : 0, 0);
     vector<int>  ixM(idxOn ? nLeaf : 0, 0), ixMaxv(idxOn ? nLeaf : 0, 0);
