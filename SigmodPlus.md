@@ -3176,3 +3176,12 @@ LEAN 1-trial A/B (no min, contended box load 14) -- NOISE-CONTAMINATED, peel tot
 TRUSTWORTHY at-scale #1: web-NotreDame 3-trial-min (sfd -42%, peel -19%) + web-it-2004 sfd -42%. The sfd cuts
 corroborate the inverse-affected% mechanism (big at <=0.5% affected, small at >1%). LESSON RE-CONFIRMED: 1-trial
 timing on a contended box is worthless; use 3-trial-min + taskset pin, or measure on the clean local Mac.
+DEFINITIVE CLEAN LOCAL A/B (user scp'd the big graphs to local Mac, 3-trial-min, HEAD 11b3e60, ALL bit-id corehash
+ON==OFF) -- settles the lean -30% scare = it was SERVER CONTENTION, not a #1 regression:
+  web-NotreDame 6,8 (0.19% aff): peel ON 16.00 / OFF 18.78  => #1 +15% FASTER (lean server said -30% = noise!)
+  ca-AstroPh 3,4 (1.19% aff):    peel ON 12.51 / OFF 13.27  => #1 +6% faster
+  web-it-2004 5,7 (0.49% aff):   peel ON 26.58 / OFF 30.04  => #1 +12% faster
+=> #1 is FASTER on ALL big cells (6-15% peel), bit-identical, NO regression anywhere. The shipped default is
+validated clean at scale. (6-15% < the 23-27% on tiny ca-GrQc cells because big cells have a larger affected-
+update "rest" fraction #1 doesn't touch -- inverse-affected% mechanism.) Local Mac (web-NotreDame peel 16s vs
+the bad server trial's 95.65s) is the clean measurement env -- use it.
