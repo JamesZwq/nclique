@@ -3120,3 +3120,10 @@ nothing (near-dead, STOP); if fanin>=5 proceed. Run on dblp-sigmod(3,4)/dblp-db(
 BOTTOM LINE: the "crack the scaling wall" hope is FALSIFIED for EXACT cores -- the asymptotic factor is
 irreducible and the bulk-bin stratum is exhausted. Batch-peel is the largest exact constant-factor reclaim
 left, gated by the fan-in probe.
+KILL-GATE RESULT (commit 63496da, FANIN_DBG, local counter-only): fan-in = avg patterns sharing a (leaf,level):
+  dblp-sigmod 3,4 = 10.0 | dblp-db 3,4 = 18.4 | ca-CondMat 4,5 = 32.4 | ca-CondMat 5,6 = 70.5 | ca-GrQc 5,6 = 1213
+ALL >> the >=5 GO threshold. Same-level patterns heavily co-host leaves => the affected-update re-processes each
+leaf 10-1213x per core level. STRONG GO for batch-peel: doing the per-leaf slotForbidDiff (44-48% of peel) +
+affected-Q DFS once per (leaf,level) instead of once per pattern divides that work by ~fan-in. NEXT: build
+batch-peel (medium/medium), validate the non-linearity soundness probe (combined multi-threshold insert vs
+Σ-individual -> must recompute affected-Q against the COMBINED slot state, exact) + end-to-end corehash gate.
