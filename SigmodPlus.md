@@ -3127,3 +3127,31 @@ leaf 10-1213x per core level. STRONG GO for batch-peel: doing the per-leaf slotF
 affected-Q DFS once per (leaf,level) instead of once per pattern divides that work by ~fan-in. NEXT: build
 batch-peel (medium/medium), validate the non-linearity soundness probe (combined multi-threshold insert vs
 Σ-individual -> must recompute affected-Q against the COMBINED slot state, exact) + end-to-end corehash gate.
+
+## 58. BATCH-PEEL design + incremental plan (2026-06-20, #149) -- the build, scoped from the full loop read
+CURRENT PEEL LOOP (region_native_sct_peel.cpp ~1399-1683): while(peeledN<npat){ advance curLevel to lowest
+non-empty bk; pi=bk[curLevel].back(); pop; if(!alive||key!=curLevel)continue; alive=false;core=curLevel;
+peeledN++; coreDist+=mult; source-skip(host1); FOR k in patLeaves[pi]: lid=pleaf[k]; slotForbidDiff(lid,pl)
+mutate slot + capture chgOld; then wf-path(s=r+1) OR general-DFS(s>r+1) accumulate delta[qi]/aff; APPLY: for qi
+in aff: ns=sup-delta; nk=llround(ns); clamp>=curLevel; re-bucket. }
+WHY BATCH IS EXACT: cores are order-independent WITHIN a level (all level-L patterns get core L; drops to higher-
+level Q telescope: total = pre-level-sup - post-level-sup, order-independent) + slot order not load-bearing
+(sec 54). So we may drain a whole curLevel wave and process leaf-major.
+DESIGN (gated SCT_BATCH_PEEL, default OFF = proven per-pattern path; A/B + corehash):
+ Step 1 (wave-drain, bit-identical, NO win yet -- scaffold): outer loop drains ALL current bk[curLevel] into a
+   wave list (mark each peeled), processes each pattern's affected-update with the EXISTING inner logic but
+   ACCUMULATES aff/delta across the wave, applies ONCE per wave. Cascade (drops re-bucketing Q to curLevel) is
+   handled by the outer loop re-draining curLevel until empty. Verify corehash == default.
+ Step 2 (leaf-major group + shared per-leaf setup): group the wave's (pi,leaf) work by leaf; per leaf do
+   ensureLeafMap / leafQ2pat / sufPl setup ONCE for the group (amortize). Still per-pattern slotForbidDiff +
+   delta inside the group. Verify corehash. (Partial win: amortized leaf setup.)
+ Step 3 (THE win -- batch slot mutation + pre-minus-post delta): per (leaf,wave) insert ALL group thresholds
+   into the slot in one pass (combined slotForbidDiff), tracking per chgOld-path its POST paths (in-place-
+   modified self OR split children). Then each affected Q's drop = Σ_changed-paths [SC(p_pre, ql) - SC(p_post,
+   ql)] -- the pre-minus-post telescoped drop (NOT Σ-individual-threshold; that is the non-linearity the
+   synthesizer flagged). This divides slotForbidDiff (44-48% of peel) + the affected-Q DFS by ~fan-in (measured
+   10-1213). REQUIRES: slotForbidDiff to return the chgOld->post-paths map; the affected-Q enumeration to cover
+   Q affected by ANY group threshold (DFS bounds from the union of the group's m_P). Verify corehash + a
+   soundness probe (combined-state drop == sequential sum on one level of ca-GrQc 3,4).
+RISK: high (bit-identical peel core). MITIGATION: gated, incremental, corehash after each step; the slot index
+(#1) used the same find-then-act + verify discipline successfully. ENV: SCT_BATCH_PEEL.
