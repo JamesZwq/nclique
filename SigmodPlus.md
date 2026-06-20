@@ -3080,3 +3080,7 @@ SESSION CONSOLIDATED (this stretch): radix sort = 4.85x enum (clean, SHIPPED def
 identical, gated SCT_MAPS_RECOMPUTE OFF, timing unmeasured (may be wash); slot index #1 = bit-identical, CLEAN
 23-27% total peel on low-affected cells, gated SCT_SLOT_IDX OFF -> candidate to make DEFAULT; #3 = wash,
 reverted. NEXT: make #1 default after a broad clean validation; then #4/#2 or step back to structural peel.
+UPDATE (#147): #1 made DEFAULT (commit 5d60e08, escape hatch SCT_NO_SLOT_IDX), default==full-scan bit-identical
+on 4 cells. User chose to STEP BACK to the STRUCTURAL peel redesign (constant-factor opts can't change the
+regime: peel is O(#patterns x per-peel-update) and low-RS #patterns is millions = inherent). Launching a design-
+exploration workflow for structural approaches that break the O(#patterns x update) scaling while staying exact.
