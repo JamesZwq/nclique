@@ -2932,3 +2932,27 @@ timeout-only flag (com-dblp 3,5 stdsort >90s -> empty hash; packed=unpacked agre
 stdsort value 5100c9ad74e1; confirmed clean with a 240s re-run). Commits 4ca20c6 (radix) + 9c743a2 (packed).
 IMPACT on the low-RS losers (the cells that lose to CND): cit-Patents 3,4 enum 25.6 -> ~6 (-20s of an 78s
 total); com-youtube 3,4 -> -11s of 59s; web-Google 3,4 -> -5s. ENV: SCT_PE_STDSORT, SCT_PE_RADIX_UNPACKED.
+
+## 52. maps push_back: recompute blocal (drop the ~200M stored Vec payloads) (2026-06-20, #142)
+Target (2). The maps phase stores 4 vector<vector<>>: patLeaves[pi]/leafPats[lid] (int) + pbLocal[pi][k]/
+leafPatLocB[lid][t] (Vec=vector<int16_t>). The two Vec maps are ~200M per-incidence heap allocs (+~6.8GB) and
+the bulk of the maps push_back cost. CSR was the obvious fix but BLOCKED: support_count/covers/hashVec all take
+a const Vec& (a real std::vector), so a flat int16 arena would force a per-access copy back to a Vec. KEY
+OBSERVATION: each blocal is fully determined by (pattern comp, leaf class layout) -- blocal[i] = mult of leaf-
+class supC[lid][i] in pats[pi].comp -- so it is RECOMPUTABLE on demand (merge of two sorted lists) into a
+reused scratch, no storage at all.
+TWO-PHASE (TDD): Phase 1 (commit 8f9e89e) added localB() + SCT_MAPS_VALIDATE asserting localB == every stored
+payload: 129,053,828 incidences across 14 cells (incl ca-HepPh 91.5M, ca-AstroPh 13.4M), 0 bad -> proven
+equivalent. Phase 2 (commit 46fb3af) SCT_MAPS_RECOMPUTE: enumLP skips the 2 Vec stores; the 5 consumers
+(sctSupport, ensureLeafMap, peel P-side pl, wf-path confirm qbAll[t]==fl, general-path confirm qbAll[t]==ql)
+recompute via localB into reused scratch (sctScr/elmScr/plScr/qlScr; plScr held across the k-body, qlScr per
+confirm). Both paths kept for A/B; SCT_MAPS_VALIDATE guarded to the stored path.
+VALIDATION (bit-identical corehash, recompute vs stored, contention-insensitive): 14 pass / 0 fail / 1 skip
+(com-dblp 4,6 TO on both) -- covers BOTH peel paths: s=r+1 (wf confirm) and s>r+1 (general confirm).
+STATUS: correctness-complete, GATED OFF by default (production = stored). TIMING DEFERRED -- tods2 contended by
+another user (gengdaz dess, load ~23) since this work began; clean-sweep waiter armed. HONEST PERF CAVEAT (not
+yet measured): recompute does MORE blocal-builds than store (~2-4x Ninc vs 2x) but each is a reused-scratch
+merge (no malloc) vs a heap alloc -- expected net win from killing 200M mallocs + 6.8GB, but could be a wash;
+will not claim until measured clean. And maps is only large on web-Google 6,8 / ca-HepPh (both peel-TO), so
+this mainly trims front-end of TO cells -- peel slotForbidDiff (15-18s on COMPLETING cells) is the higher-value
+remaining target. ENV: SCT_MAPS_RECOMPUTE (drop storage + recompute), SCT_MAPS_VALIDATE (Phase-1 oracle check).
