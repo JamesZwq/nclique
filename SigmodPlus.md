@@ -3346,3 +3346,63 @@ zero a_Y for all Y>=m_P (the whole orbit dies => every composition >=m_P dies). 
 antichain (compact dead-set) + recompute. TRADE: memory (one counter per alive composition per leaf) vs the
 compact box+convolution. VIABILITY = #s-compositions per leaf (COMP_DBG measuring now): few=>direct-count wins
 (simpler+faster), many (wide leaves/high s)=>too much memory, the box+convolution is why the current code exists.
+
+## 67. COMP_DBG measured: #s-compositions per leaf = 4-45x #patterns (direct-counting memory cost) (2026-06-21, #158)
+COMP_DBG probe (gated, after maps print, count-DP over slotPaths[lid][0].u per leaf): integer pts (Sum y=T, 0<=y<=u).
+  cell            leaves   total comps   avg/leaf  max/leaf   #patterns   comp/pat
+  web-NotreDame 6,8  19409   2,917,509     150      94,146     695,144     4.20x
+  ca-CondMat   4,6    4,469     669,780     150      27,132     105,784     6.33x
+  web-it-2004  5,7   70,930  12,005,581     169     153,451   1,302,866     9.21x
+  web-Google   3,4  774,473  71,550,413      92      24,158   6,096,377    11.74x
+  com-dblp     3,4   99,641  15,282,334     153     443,662     643,485    23.75x
+  ca-GrQc      4,6      165     610,034    3697     117,603      13,636    44.74x
+VERDICT: s-compositions are TENS OF MILLIONS (4-45x patterns), NOT billions of s-cliques => direct-count is succinct
+(nowhere near CND). BUT 4-45x more memory than the pattern materialization; the box+forbidden+convolution is the
+COMPACT form (one box covers many compositions). Direct-count = no convolution + kills slotForbidDiff(44-48%) but
+4-45x memory. Fundamental trade: convolution is the PRICE of the compact representation. (low-RS cells already lose
+on memory => direct-count makes memory worse there; high-RS lean cells 4-9x may be ok.)
+
+## 68. THEORY: "delete a class & update CPI" -- exact characterization (2026-06-21, #159)
+User Q: CND has an efficient delete-clique-from-CPI primitive; can we have an efficient delete-CLASS-from-our-CPI?
+Derived carefully from the leaf-box algebra (CCPathCore.h).
+
+### Leaf-box model (precise)
+A leaf box is a CCPath p: classes c with n[c] vertices (all mutually adjacent inside the region, so any subset is a
+clique); h[c]=held(forced-in) classes; T=s-Sum h = #more vertices to pick; ell[c],u[c]=bounds on y_c; forbidden=
+antichain of dead-corner thresholds. #s-cliques in the box containing footprint b =
+  support_count(p,b) = Sum_{IE terms over forbidden} Sum_{Y in box, ell<=Y<=u, Sum Y=T} Prod_c C(n_c - b_c, Y_c - b_c).
+Support of pattern Q = Sum over leaves of support_count(p, b=m_Q). Peel Q = insert threshold a=tuple_to_threshold(m_Q)
+into each hosting leaf's forbidden antichain (kills every composition Y >= m_Q, i.e. every s-clique containing a
+Q-orbit r-clique).
+
+### What "delete a class" means and the exact theorem
+Two distinct dead-set representations:
+  (A) FORBID-CORNER (current): dead = {Y >= a}, a multi-coordinate corner. Accumulates an ANTICHAIN. k corners =>
+      up to 2^k IE terms; controlled_split bounds it to kmax by cutting the box into axis-aligned sub-boxes. This is
+      the slotForbidDiff + IE + convolution machinery -- the entire expensive peel.
+  (B) DELETE-CLASS (reduce n_c / u_c): removes class-c VERTICES. Keeps the box PRODUCT-FORM (just a smaller box),
+      NO antichain, NO IE, NO split. support = one clean bounded composition count.
+THEOREM. A dead pattern's footprint corner {Y>=m_Q} is axis-aligned (= a single class-bound reduction, rep B) IFF
+m_Q is supported on exactly ONE class (|supp(m_Q)|=1). Multi-class patterns (|supp|>=2) are genuine corners,
+NOT expressible as any class deletion.
+COROLLARY (why r=1 is already clean). For r=1 every pattern is a single vertex = single class => EVERY peel is an
+axis-aligned class/vertex deletion => the alive set is ALWAYS a plain box, the forbidden antichain is NEVER needed.
+This is exactly why the r=1 path (ST_V2) has no IE/split. The user's instinct ("class deletion saves a lot of
+trouble") is PROVABLY correct -- but only at r=1, where dead objects ARE vertices.
+OBSTRUCTION (r>=2). Peeling removes r-CLIQUES = combinations of vertices across classes, NOT vertices. Removing the
+orbit (c:1,d:1) does not reduce n_c or n_d (those vertices still live in other r-cliques) => cannot be a class
+deletion => must forbid the cross-class corner. The antichain/IE is the irreducible price of r>=2 multi-class
+deadness. So a LITERAL "delete a class" cannot drive the r>=2 (r,s)-nucleus peel.
+
+### The salvage: HYBRID axis-aligned absorption (concrete, measurable)
+Split every dead footprint by |supp(m_Q)|:
+  - |supp|=1 (single-class pattern, e.g. (c:r) = r interchangeable verts in one class): absorb as a clean u_c
+    reduction. NO antichain entry, NO IE -- it is a class deletion.
+  - |supp|>=2 (cross-class): keep in the residual forbidden antichain (the only place IE/split fires).
+=> the expensive antichain holds ONLY genuinely cross-class dead corners; all single-class peels become free box
+shrinks. Win size = fraction of dead footprints that are single-class (measurable, like a CF_DBG probe over the
+forbidden insertions). If single-class peels are common (classes of size>=r are common in dense regions), the
+antichain shrinks a lot => fewer IE terms / less split => faster, SAME memory, bit-identical. NEXT GATE: probe what
+fraction of forbidden-threshold insertions have |supp(a)|=1 on the real cells; if high, build the hybrid (u_c-reduce
+fast path in lazy_delete_tuple / slotForbidDiff before insert_antichain). This is the honest realization of "delete
+a class": it is exact + free where the pattern is single-class, and falls back to the corner only where it must.
