@@ -973,6 +973,13 @@ int main(int argc, char **argv) {
             p.classIds.clear(); p.classIds.shrink_to_fit();
             p.tupleIdxs.clear(); p.tupleIdxs.shrink_to_fit();
         }
+    // PROBE (SCT_SLOT_REVERSE): is slot-path ORDER load-bearing for bit-identical?
+    // Reverse every slot once; if corehash is unchanged, the support sums are
+    // order-robust (exact-integer recovered, FP error < 0.5) -> the sub-linear slot
+    // skip may reorder/mark-compact freely. If it changes, the skip must reproduce
+    // the exact swap-remove order. Deterministic -> contention-insensitive.
+    if (getenv("SCT_SLOT_REVERSE"))
+        for (int lid = 0; lid < nLeaf; lid++) std::reverse(slotPaths[lid].begin(), slotPaths[lid].end());
     // support(pi) = sum over hosting slots of sum over slot's paths of
     // support_count(path, b_local). Uses the pre-mapped compact b.
     Vec sctScr;                                        // reused recompute scratch for sctSupport
