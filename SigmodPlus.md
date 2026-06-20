@@ -3327,3 +3327,22 @@ COST: #terms tiny when few bounds bind (the 89% from sec 64: B empty, |A|<=r rai
 a handful of binomials) vs the DP's O(M*(s+1)) cells. HYBRID rule: compute #terms cheaply; if #terms < DP cost
 (~M*(T+1), capped), use closed form, else DP. Implementing next; gate SCT_CF, must be bit-identical corehash
 (the count is an exact integer either way -> same llround -> same cores).
+
+## 66. Hybrid closed form IMPLEMENTED: bit-identical but speed INCONSISTENT -> not the lever (2026-06-21, #157)
+Implemented the hybrid (commit, SCT_NO_CF escape hatch, default ON): per IE-term, if active-class expansion
+<CF_CAP and < DP cost, Vandermonde-IE closed form (recursive, pure binomials) else DP. CF_AB (icml2, interleaved,
+default-CF vs SCT_NO_CF): ALL BIT-IDENTICAL (no FP cancellation break -- the hybrid only fires CF on few-bound
+terms where cancellation is mild). SPEED: ca-GrQc 4,6 -34% | ca-CondMat 4,6 -8% | web-NotreDame 6,8 -5% |
+web-it-2004 5,7 -2% | com-dblp 3,5 -1% (all SLOWER). High-s: cit-Patents 7,10 +13% (faster!) | ca-GrQc 5,9 +0% |
+ca-CondMat 5,9 -50% (slower). => INCONSISTENT, mostly slower. WHY: the DP inner loop is a tight FMA/vectorizable
+loop; the closed form is recursion + scattered NCR lookups + a per-term active-class scan. For small T=s-r the
+DP is already cheap so the CF overhead loses; and the DP's total cost is dominated by the NUMBER of calls (the
+8-14x affected-Q over-generation), NOT per-call size -- which the CF doesn't touch. So eliminating the convolution
+per-call is mathematically right (sec 65 verified) but is NOT a speed win. (Kept gated, default... TBD; lean OFF.)
+PIVOT (user's deeper idea): COMPOSITION-LEVEL DIRECT COUNTING (like CND but succinct). Maintain a_Y = #alive
+s-cliques per s-COMPOSITION Y (a_Y = prod C(n_c,Y_c), computed once). Support(Q) = sum_{Y>=m_Q} a_Y. Peel P =>
+zero a_Y for all Y>=m_P (the whole orbit dies => every composition >=m_P dies). Drop(Q) = sum of the zeroed a_Y
+>= max(m_Q,m_P). NO convolution, NO closed form -- just sum + zero. It is the EXPLICIT version of the forbidden-
+antichain (compact dead-set) + recompute. TRADE: memory (one counter per alive composition per leaf) vs the
+compact box+convolution. VIABILITY = #s-compositions per leaf (COMP_DBG measuring now): few=>direct-count wins
+(simpler+faster), many (wide leaves/high s)=>too much memory, the box+convolution is why the current code exists.
