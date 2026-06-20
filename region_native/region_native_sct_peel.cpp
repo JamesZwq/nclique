@@ -945,7 +945,7 @@ int main(int argc, char **argv) {
                 chk++;
             }
         fprintf(stderr, "[maps-val] recompute vs stored: %lld checked, %lld bad\n", chk, bad);
-        if (bad) return 4;
+        return bad ? 4 : 0;                            // validation-only run: skip the peel
     }
     // hasH2[lid]: does leaf lid host any |host|>=2 pattern? A |host|=1 pattern
     // whose leaves are ALL pure-|host|=1 removes nothing relevant when it peels
