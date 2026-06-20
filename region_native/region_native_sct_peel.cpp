@@ -1131,6 +1131,11 @@ int main(int argc, char **argv) {
     double tSFD = 0; long long slotVisits = 0;       // PROFILE: slot-scan time + path visits
     bool sfdDbg = getenv("SFD_DBG") != nullptr;       // cost-structure probe for the slot-index design
     long long sfdAff = 0, sfdCoordTests = 0, sfdFailFirst = 0;  // affected / coords-examined / failed-on-1st-coord
+    // SUPP_DBG (§68 gate): histogram of |supp(a)| over forbidden-threshold insertions. |supp|==1 == axis-aligned
+    // == a clean u_c reduction (the hybrid "delete a class" fast path, bit-identical). Track calls/affected-path
+    // work/controlled_split triggers by |supp| -> single-class SHARE = the upper bound on the hybrid's win.
+    bool suppDbg = getenv("SUPP_DBG") != nullptr;
+    long long suppCalls[12] = {0}, suppAff[12] = {0}, suppSplit[12] = {0};
     long long idxMismatch = 0;                         // slot-index verify: #calls where index-find != scan-find
     // Record a pattern's LOCAL threshold into slot lid. Paths where the
     // threshold is impossible are UNCHANGED (kept in place); the rest are the
@@ -1219,6 +1224,9 @@ int main(int argc, char **argv) {
         vector<CCPath> &cur = slotPaths[lid];
         sfdKids.clear();
         chgOld.clear();
+        int sdK = suppDbg ? ((int)plNZ.size() < 11 ? (int)plNZ.size() : 11) : 0;  // |supp(a)| bucket
+        long long sdAff0 = sfdAff; int sdSplit = 0;
+        if (suppDbg) suppCalls[sdK]++;
         if (idxOn && !ixBuilt[lid]) ixBuild(lid);
         if (slotIdxVerify) {                           // Step-1 check: index-find == scan-find (pristine state)
             ixFindAffected(lid, plNZ, ixAff);
@@ -1247,6 +1255,7 @@ int main(int argc, char **argv) {
                 if (ccpath::covers_whole_path(cur[pos], bloc)) { scanAff.push_back(pos); continue; }
                 ccpath::insert_antichain(cur[pos].forbidden, bloc);
                 if ((int)cur[pos].forbidden.size() > kml) {
+                    if (suppDbg) sdSplit++;
                     auto kk = ccpath::controlled_split(cur[pos], kml);
                     for (auto &k : kk) sfdKids.push_back(std::move(k));
                     scanAff.push_back(pos);               // split-parent dies (u unchanged until removed)
@@ -1263,6 +1272,7 @@ int main(int argc, char **argv) {
             cur.reserve((size_t)w + sfdKids.size());
             for (auto &k : sfdKids) { ixAppend(lid, (int)cur.size(), k.u); cur.push_back(std::move(k)); }
             if (cur.size() > maxSplit) maxSplit = cur.size();
+            if (suppDbg) { suppAff[sdK] += sfdAff - sdAff0; suppSplit[sdK] += sdSplit; }
             return;
         }
         for (int i = 0; i < w; ) {
@@ -1282,6 +1292,7 @@ int main(int argc, char **argv) {
             } else {
                 ccpath::insert_antichain(p.forbidden, bloc);
                 if ((int)p.forbidden.size() > kml) {
+                    if (suppDbg) sdSplit++;
                     auto kk = ccpath::controlled_split(p, kml);
                     for (auto &k : kk) sfdKids.push_back(std::move(k));
                     remove = true;                         // split-parent replaced by children
@@ -1298,6 +1309,7 @@ int main(int argc, char **argv) {
         cur.reserve((size_t)w + sfdKids.size());          // grow once, not per child
         for (auto &k : sfdKids) { if (idxOn) ixAppend(lid, (int)cur.size(), k.u); cur.push_back(std::move(k)); }
         if (cur.size() > maxSplit) maxSplit = cur.size();
+        if (suppDbg) { suppAff[sdK] += sfdAff - sdAff0; suppSplit[sdK] += sdSplit; }
     };
 
     // ---- fast support_count with PRECOMPUTED inclusion-exclusion terms ----
@@ -1781,6 +1793,17 @@ int main(int argc, char **argv) {
             slotVisits, sfdAff, slotVisits ? 100.0*sfdAff/slotVisits : 0.0, sfdCoordTests,
             slotVisits ? (double)sfdCoordTests/slotVisits : 0.0, sfdFailFirst,
             (slotVisits - sfdAff) ? 100.0*sfdFailFirst/(slotVisits - sfdAff) : 0.0);
+    if (suppDbg) {
+        long long tc = 0, ta = 0, ts = 0;
+        for (int k = 0; k < 12; k++) { tc += suppCalls[k]; ta += suppAff[k]; ts += suppSplit[k]; }
+        fprintf(stderr, "[supp] forbid-insert calls=%lld affected-paths=%lld splits=%lld\n", tc, ta, ts);
+        for (int k = 1; k < 12; k++) if (suppCalls[k] || suppAff[k])
+            fprintf(stderr, "[supp]  |supp|=%d: calls=%lld(%.1f%%) aff=%lld(%.1f%%) splits=%lld(%.1f%%)\n", k,
+                    suppCalls[k], tc ? 100.0*suppCalls[k]/tc : 0.0, suppAff[k], ta ? 100.0*suppAff[k]/ta : 0.0,
+                    suppSplit[k], ts ? 100.0*suppSplit[k]/ts : 0.0);
+        fprintf(stderr, "[supp]  >>> SINGLE-CLASS share: calls=%.1f%%  aff-work=%.1f%%  splits=%.1f%%  (hybrid win ceiling)\n",
+                tc ? 100.0*suppCalls[1]/tc : 0.0, ta ? 100.0*suppAff[1]/ta : 0.0, ts ? 100.0*suppSplit[1]/ts : 0.0);
+    }
     if (slotIdxVerify) { fprintf(stderr, "[slot-idx] verify: %lld mismatched calls %s\n", idxMismatch, idxMismatch ? "FAIL" : "OK");
         if (idxMismatch) return 5; }
     if (faninDbg) fprintf(stderr, "[fanin] touches(pattern,leaf)=%lld distinct(leaf,level)=%lld  fanin=%.2f\n",
