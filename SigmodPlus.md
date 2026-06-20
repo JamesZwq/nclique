@@ -3049,3 +3049,16 @@ STRATEGIC RE-RANK: the AFFECTED-UPDATE ("rest" in [profile], 10-39s) is the BIGG
 (web-NotreDame rest=38.85, web-Google rest=21.80) vs slotForbidDiff 11-19s. So the higher-value remaining
 targets are the affected-update: #3 (NCR binomial flatten/hoist, the DP inner cell, bit-id by construction) and
 #4 (s=r+1 liveness precompute). ENV: SCT_SLOT_IDX (drive), SCT_SLOT_IDX_VERIFY (Step-1 assert), SFD_DBG.
+
+CLEAN LOCAL #1 NUMBERS (user's idea: measure on local uncontended Mac with ca-* graphs scp'd to /tmp; the
+contended-server signal was misleading). These split (maxSplit 1243-5524), single clean run, default->idx:
+  ca-CondMat 4,5 | aff 2.35% | slotForbidDiff 0.15->0.15 (~0%) | total 0.43->0.42
+  ca-CondMat 5,6 | aff 0.71% | slotForbidDiff 0.25->0.20 (20%) | total 0.58->0.51 (12%)
+  ca-GrQc    5,6 | aff 0.24% | slotForbidDiff 0.25->0.15 (40%) | total 0.47->0.36 (23%)
+  ca-GrQc    6,7 | aff 0.18% | slotForbidDiff 0.18->0.10 (44%) | total 0.30->0.22 (27%)
+=> #1 cuts slotForbidDiff 40-44% and TOTAL peel 23-27% on LOW-affected-% cells (<=0.25%), scaling to ~0 at
+2.35%. The win scales INVERSELY with affected% exactly as the mechanism predicts. The server's big slotForbidDiff
+cells are low-affected (web-NotreDame 0.19%, web-it-2004 0.49%, ca-AstroPh 1.19%) so #1 should help them
+substantially. MUCH better than the contended 16%; #1 is a SOLID win, not modest. (Totals sub-second so some
+noise, but the trend is clean+monotone in affected%.) METHOD NOTE: local Mac measurement bypasses the contended
+tods2 -- use it for all clean timing while gengdaz holds the server.
