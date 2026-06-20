@@ -3155,3 +3155,17 @@ DESIGN (gated SCT_BATCH_PEEL, default OFF = proven per-pattern path; A/B + coreh
    soundness probe (combined-state drop == sequential sum on one level of ca-GrQc 3,4).
 RISK: high (bit-identical peel core). MITIGATION: gated, incremental, corehash after each step; the slot index
 (#1) used the same find-then-act + verify discipline successfully. ENV: SCT_BATCH_PEEL.
+STATUS: batch-peel DESIGNED + de-risked (kill-gate GO, exactness proof), NOT yet implemented -- it is a ~260-line
+restructure of the bit-identical peel core (extract affected-update into a callable unit, move aff/apply to wave
+scope, add wave-drain driver). Deferred to a focused effort: too risky to rush via incremental Edits at the tail
+of a long session. §58 is the actionable plan; pick up from Step 1.
+
+## 59. #1 (slot index) VALIDATED AT SCALE on the big server cell (2026-06-20, #150)
+Clean pinned (taskset -c 90) A/B on tods2 (96 cores, load 20, gengdaz busy -> pinning dodges it), HEAD 753e89a,
+default(#1 ON) vs SCT_NO_SLOT_IDX(#1 OFF):
+  web-NotreDame 6,8 (0.19% affected): slotForbidDiff 16.27 -> 9.38 (-42%) ; peel total 54.06 -> 43.83 (-19%).
+=> the shipped #1 default holds AT SCALE: slotForbidDiff cut 42% (matches the local ca-GrQc 6,7 -44% prediction
+exactly for ~0.19% affected); peel-total cut 19% here (lower than the local 23-27% because web-NotreDame's
+affected-update "rest"=38s is unusually large, diluting the slotForbidDiff fraction). Confirms #1 is a real
+clean win at scale, not a small-graph artifact. (More big cells in a lean A/B; web-it-2004/ca-AstroPh/com-dblp
+pending.) The slow 3-trial-x-2-arm A/B was killed at 17min/cell-2 -- 8 runs/cell on 70-90s peels was overkill.
