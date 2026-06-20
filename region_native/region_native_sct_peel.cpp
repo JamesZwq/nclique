@@ -616,36 +616,44 @@ int main(int argc, char **argv) {
             });
         } else {
             // LSD radix sort of `ord` by the key (k0..k_{W2-1}, region). Stable
-            // counting sort per column, least-significant first: region, then
-            // k[W2-1..0]. Produces the IDENTICAL total order to the comparator above
-            // (region is the last tiebreak <=> least-significant column), so the
-            // grouping and the resulting pats/host are bit-identical. Replaces the
-            // O(N log N) comparison sort -- each compare did 2 random W2-int gathers
-            // into the multi-GB `rec` -- with O((W2+1)*N) sequential counting passes
-            // (no comparisons, no log factor). W2=2r is even, so W2+1 passes is odd:
-            // the result always lands in ord2, swapped back into ord in O(1).
+            // counting sort per column, least-significant first: region, then the
+            // comp columns high..low. Produces the IDENTICAL total order to the
+            // comparator above (region is the last tiebreak <=> least-significant
+            // column), so the grouping and the resulting pats/host are bit-identical.
+            // Replaces the O(N log N) comparison sort -- each compare did 2 random
+            // W2-int gathers into the multi-GB `rec` -- with stable counting passes
+            // (no comparisons, no log factor). The per-pass random gather is the cost,
+            // so FEWER PASSES wins: by DEFAULT we pack each (class,mult) pair into one
+            // digit class<<mb | mult (mult<=r fits in mb bits, class is the high part
+            // => order-preserving, sentinel (nC,0) still sorts last) -> r+1 passes
+            // instead of 2r+1. Measured: unpacked radix is 3.5x on r=3 but only ~1x at
+            // r=6 (13 passes ~ comparison cost); packing halves the passes. The result
+            // lands in ord2 (odd #passes) or ord (even); the pointer check swaps in O(1).
+            // ABLATION: SCT_PE_RADIX_UNPACKED = one digit per int (2r+1 passes).
+            int mb = 1; while ((1 << mb) <= r) mb++;        // mult in [0,r] fits in mb bits
+            bool unpacked = getenv("SCT_PE_RADIX_UNPACKED") != nullptr;
             vector<int> ord2((size_t)Ninc);
-            int M = nC; if ((int)nR - 1 > M) M = (int)nR - 1;   // max column value (class<=nC, region<=nR-1)
+            long long Mreg = (long long)nR - 1;
+            long long Mcol = unpacked ? (long long)nC : ((long long)nC << mb);
+            long long M = Mcol > Mreg ? Mcol : Mreg;        // widest column value
             vector<int> cnt2((size_t)M + 2);
             int *src = ord.data(), *dst = ord2.data();
-            auto pass = [&](int col) {                     // col<0 => the region column
+            auto digit = [&](int idx, int col, bool packed) -> long long {   // col<0 => region
+                if (col < 0) return recReg[idx];
+                const int *e = rp + (size_t)idx * W2;
+                return packed ? (((long long)e[2 * col] << mb) | e[2 * col + 1]) : e[col];
+            };
+            auto pass = [&](int col, bool packed) {
                 std::fill(cnt2.begin(), cnt2.end(), 0);
-                for (long long i = 0; i < Ninc; i++) {
-                    int idx = src[i];
-                    int v = (col < 0) ? recReg[idx] : rp[(size_t)idx * W2 + col];
-                    cnt2[(size_t)v + 1]++;
-                }
-                for (int b = 1; b <= M + 1; b++) cnt2[(size_t)b] += cnt2[(size_t)b - 1];   // start offsets
-                for (long long i = 0; i < Ninc; i++) {     // stable scatter
-                    int idx = src[i];
-                    int v = (col < 0) ? recReg[idx] : rp[(size_t)idx * W2 + col];
-                    dst[cnt2[(size_t)v]++] = idx;
-                }
+                for (long long i = 0; i < Ninc; i++) cnt2[(size_t)digit(src[i], col, packed) + 1]++;
+                for (long long b = 1; b <= M + 1; b++) cnt2[(size_t)b] += cnt2[(size_t)b - 1];   // start offsets
+                for (long long i = 0; i < Ninc; i++) { int idx = src[i]; dst[cnt2[(size_t)digit(idx, col, packed)]++] = idx; }
                 std::swap(src, dst);
             };
-            pass(-1);                                      // region = least significant (last tiebreak)
-            for (int k = W2 - 1; k >= 0; k--) pass(k);     // then k[W2-1] .. k[0] (k0 most significant)
-            if (src == ord2.data()) ord.swap(ord2);        // land the result in ord (O(1) pointer swap)
+            pass(-1, false);                                // region = least significant (last tiebreak)
+            if (unpacked) for (int k = W2 - 1; k >= 0; k--) pass(k, false);   // k[W2-1]..k[0]
+            else          for (int c = r - 1;  c >= 0; c--) pass(c, true);    // packed pair r-1..0
+            if (src == ord2.data()) ord.swap(ord2);         // land the result in ord (O(1) pointer swap)
         }
         for (long long i = 0; i < Ninc; ) {                // group consecutive equal comp-key -> one Pat
             const int *pi = rp + (size_t)ord[(size_t)i] * W2;
