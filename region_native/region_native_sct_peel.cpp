@@ -50,6 +50,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <climits>
 #include <cstdlib>
 #include <cstring>
 #include <random>
