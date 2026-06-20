@@ -3288,3 +3288,27 @@ cells maxSplit~1000s of small CCPath child allocs -> arena = faster AND less mem
 CAVEAT: patLeaves is ONE (outer-loop) probe; the heaviest random access is slotPaths (CCPath p.u Vec chase in
 slotForbidDiff) + pats[qi] in the DFS -- not separately isolated, but the DP/split/over-gen evidence already
 points compute-bound. (Probe reverted to keep the default hot path lambda-free; MEM_DBG kept.)
+
+## 64. The support_count DP (convolution) is UNNECESSARY for ~89% of calls -> closed-form direction (2026-06-20, #155)
+User insight: "why convolution? the count can be computed directly." TRUE. support_count = the bounded binomial-
+weighted composition count: sum_{ell<=z<=u', sum z=Z} prod_c C(M_c, z_c) (M_c=n_c-b_c, Z=s-sum_b). The DP only
+exists to handle the UPPER bounds u'; with no truncation it Vandermonde-collapses to a single C(sum M_c, Z).
+CF_DBG PROBE (per DP IE-term, count #upper bounds that TRUNCATE = Uc-Lc < total-slack), s>r+1 cells:
+  cell            DP IE-terms   #binding-upper=0 share   tail(many binding)
+  web-NotreDame 6,8  16.2M       89.3%                    ~10%
+  web-it-2004 5,7    29.5M       90.0%                    ~10%
+  ca-GrQc 4,6        1.14M       89.4%                    ~10%
+  ca-CondMat 4,6     0.77M       83.6%                    ~16%
+=> ~89% of DP calls the upper bound NEVER truncates -> the DP's upper-bound machinery is wasted 89% of the time.
+The avg closed-form/DP-work RATIO printed >1 (19.7/10.0/147.7/1.67) is a MISLEADING aggregate -- dragged up by
+the ~10% high-binding tail (2^k blowup in the naive model). Split: the 89% easy terms are ~1/(M*s) the DP cost
+(~50x CHEAPER as closed form); the 10% tail is where 2^k explodes. => HYBRID: closed form for low-binding terms,
+DP for the high-binding tail, cuts the DP (the dominant peel arithmetic) massively.
+DERIVATION SKETCH (general, any s-r): count = [x^Z] prod_c P_c(x), P_c = sum_{z=ell_c}^{u'_c} C(M_c,z) x^z =
+(1+x)^{M_c} - low_c(x) - high_c(x). Expand: count = sum over (low-tail choices of the raised-lower classes) x
+(high-tail choices of the binding-upper classes) of +- a Vandermonde C(remaining sum M_c, Z - degree). #terms =
+prod_{raised-lower}(ell_c+1) x prod_{binding-upper}(...) -- SMALL when few bounds bind (the 89%), since for an
+r-clique drop the raised lowers are <= r classes (where P's threshold pl exceeds Q's) with small ell_c. This
+GENERALIZES the s=r+1 witness-floor (s-r=1 done) to ANY s-r. NOTE: lower bounds come from the IE-over-forbidden
+`terms` (already expanded) PLUS addLow=pl (P's threshold) in the drop. NEXT (user): derive+verify the general
+closed form for ANY s-r (not just 2), numerically check vs the DP, then hybridise. ENV: CF_DBG (binding probe).
