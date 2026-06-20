@@ -3312,3 +3312,18 @@ r-clique drop the raised lowers are <= r classes (where P's threshold pl exceeds
 GENERALIZES the s=r+1 witness-floor (s-r=1 done) to ANY s-r. NOTE: lower bounds come from the IE-over-forbidden
 `terms` (already expanded) PLUS addLow=pl (P's threshold) in the drop. NEXT (user): derive+verify the general
 closed form for ANY s-r (not just 2), numerically check vs the DP, then hybridise. ENV: CF_DBG (binding probe).
+
+## 65. GENERAL closed form for support_count -- DERIVED + NUMERICALLY VERIFIED (2026-06-20, #156)
+The DP count_with_extra_lower = sum_{ell_c<=z_c<=u'_c, sum z=Z} prod_c C(M_c,z_c) (M_c=n_c-b_c, ell_c=L_c-b_c,
+u'_c=U_c-b_c, Z=s-sum b_c). CLOSED FORM (any Z), by expanding [x^Z] prod_c [(1+x)^M_c - low_c - high_c] where
+low_c=sum_{j<ell_c}C(M_c,j)x^j, high_c=sum_{j>u'_c}C(M_c,j)x^j:
+   count = SUM over K (subset of ACTIVE classes, each picking ONE tail term j_c in [0,ell_c-1] OR [u'_c+1,M_c])
+           of  (-1)^|K| * prod_{c in K} C(M_c,j_c) * C( sum_{c not in K} M_c ,  Z - sum_{c in K} j_c )
+   ACTIVE class = ell_c>0 OR u'_c<M_c. Classes not active are "full" (1+x)^M_c -> Vandermonde-collapse into the
+   trailing binomial. NO CONVOLUTION -- pure binomial lookups. #terms = prod_{active}(1 + ell_c + max(0,M_c-u'_c)).
+VERIFIED: /tmp/cf_verify.py, closed-form == brute-force DP on 119,691 random cases (n<=5, M<=8, lo<=3) -> 0
+mismatches; + real-peel regime (large M<=200, small Z<=6) [running]. The formula is EXACT (polynomial identity).
+COST: #terms tiny when few bounds bind (the 89% from sec 64: B empty, |A|<=r raised lowers with small ell ->
+a handful of binomials) vs the DP's O(M*(s+1)) cells. HYBRID rule: compute #terms cheaply; if #terms < DP cost
+(~M*(T+1), capped), use closed form, else DP. Implementing next; gate SCT_CF, must be bit-identical corehash
+(the count is an exact integer either way -> same llround -> same cores).
