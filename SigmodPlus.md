@@ -2956,3 +2956,41 @@ merge (no malloc) vs a heap alloc -- expected net win from killing 200M mallocs 
 will not claim until measured clean. And maps is only large on web-Google 6,8 / ca-HepPh (both peel-TO), so
 this mainly trims front-end of TO cells -- peel slotForbidDiff (15-18s on COMPLETING cells) is the higher-value
 remaining target. ENV: SCT_MAPS_RECOMPUTE (drop storage + recompute), SCT_MAPS_VALIDATE (Phase-1 oracle check).
+
+## 53. PEEL deep-scope: cost map + ranked opportunities (2026-06-20, #143, 6-agent workflow)
+Deep-scoped the peel before touching it (peel-deep-scope workflow: 6 parallel readers + synthesis). FOUR cost
+centers (peel = dominant phase on completing cells; [profile] = slotForbidDiff 11-15s + affected-update ~10-20s):
+ A. Full-prefix slot scan (slotForbidDiff): `for i in [0,w)` touches EVERY live path though ~99% hit
+    `impossible` and skip. O(w*|plNZ|) per (P,leaf), w up to thousands. = the 11-15s slotForbidDiff bucket.
+ B. Knapsack DP + IE (scWithTerms/CCPathCore): O(M*T*U_c) reweighted convolution per IE-term per (chgOld x Q).
+    Two vector<double>(T+1) alloc+memset per class per term; NCR is vector<vector<double>> (double indirection
+    in the innermost cell). = dominant arithmetic of the affected-update bucket (s>r+1 cells).
+ C. DFS over-generation + map probes (general s>r+1): DFS gen >> #affected-Q; every wasted candidate pays one
+    node-based unordered_map (leafQ2pat) cache-cold probe. = the lookup half of affected-update.
+ D. s=r+1 liveness re-scan: liveness over chgOld reruns Mloc times (once per receiving class c), mostly
+    c-invariant. O(Mloc^2*|chgOld|*|fbd|). = affected-update on s=r+1 cells ONLY.
+ (E allocator churn, F scheduling = few % each, smeared.)
+ NOTE: a cell is EITHER s=r+1 (path D) OR s>r+1 (paths B+C) -- disjoint, so wins on both sides needed to move
+ the aggregate.
+RANKED (bit-identical preserving; excludes already-done KMAX/witness-floor/IE-cache/affected-Q-DFS + 2 refuted prunes):
+ #1 Slot u-envelope INDEX (center A, the biggest bucket): index slot paths so the scan visits only paths with
+    p.u>=bloc on plNZ, not the whole [0,w). HIGHEST ceiling but medium-risk/hard (index vs swap-remove/append
+    consistency). bit-id LIKELY (changed-set unchanged, slot order-independent). Needs a differential verify-flag
+    harness (assert indexed chgOld == full-scan chgOld) before trusting.
+ #2 Flat open-addressing leaf map (center C): replace leafQ2pat unordered_map with the in-repo htab pattern
+    (lines 826-848, already proven bit-exact). LOW risk / moderate / bit-id YES. Notable benefit.
+ #3 Flatten+hoist NCR binomial table (center B): hoist `const double* row = NCR[nc-bc]` out of the y-loop +
+    flat vector<double> stride. LOW risk / EASY / bit-id YES BY CONSTRUCTION (same doubles, same order). 5-15%
+    of affected-update. = SYNTHESIS TOP PICK (provable now on a contended box, clear benefit, no bookkeeping).
+ #4 s=r+1 per-box liveness precompute (center D): predicate differs from pl only at coord c; precompute ell-
+    violation + per-forbidden gap-coord once -> Mloc^2 becomes Mloc. medium/moderate, bit-id YES. s=r+1 only.
+ #5 s=r+1 uEnv class-prune (center D): uEnv already computed for general path; skip class c with uEnv[c]<pl[c]+1
+    (provably nAlive=0). LOW/EASY/bit-id YES. stacks with #4.
+ #6 Hoist per-peel scratch out of while loop (aff/chgOld/chgOldTerms/plNZ/DP) -> clear() not reconstruct (center
+    E). LOW/EASY/bit-id YES. (NOTE: delta already hoisted line 1273; aff IS loop-local 1318.)
+ #7 DP scratch thread_local + reachable-band [SL,min(T,SU)] (center B/E). LOW/EASY. bit-id YES (w==0 skips).
+ #8 Dense coreDist + flat bk level-queue + precomputed affectsH2 (center F). LOW, few-% each, bundled.
+ DROPPED/traps: forced-bloc split (changes materialised slot -> risky), q2p hash-fn change (must edit build+probe
+ atomically), scWithTerms floor-collapse memo (subtle cache key).
+SYNTHESIS ORDER: #3 -> #2 -> #6/#8 (free safety) -> #4/#5 -> #1 (big swing, with harness, when a clean box
+allows timing). Full report: workflow wsfbvc9qm.
