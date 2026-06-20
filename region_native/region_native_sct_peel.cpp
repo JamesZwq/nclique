@@ -1011,6 +1011,30 @@ int main(int argc, char **argv) {
     printf("[sct] pattern<->leaf maps + compaction=%.2fs\n", secs(Tqg1, T5));
     memCk("after-maps(patLeaves/pbLocal)");
     fflush(stdout);
+    // COMP_DBG: count feasible s-COMPOSITIONS per leaf (integer pts Sum y=T, 0<=y<=u). This is
+    // the peak storage of the user's DIRECT-COUNTING peel (one alive-count a_Y per composition,
+    // zeroed on peel, no convolution). Viable iff #compositions stays small vs #patterns.
+    if (getenv("COMP_DBG")) {
+        long long totComp = 0, maxComp = 0; long long leavesCounted = 0;
+        vector<long long> cdp, ndp;
+        for (int lid = 0; lid < nLeaf; lid++) {
+            long long lc = 0;
+            for (auto &bx : slotPaths[lid]) {
+                int Mb = bx.m(), Tb = bx.T;
+                cdp.assign((size_t)Tb + 1, 0); cdp[0] = 1;
+                for (int c = 0; c < Mb; c++) { ndp.assign((size_t)Tb + 1, 0); int uc = (int)bx.u[c];
+                    for (int t = 0; t <= Tb; t++) { if (!cdp[t]) continue;
+                        int my = uc; if (Tb - t < my) my = Tb - t;
+                        for (int y = 0; y <= my; y++) ndp[t + y] += cdp[t]; }
+                    cdp.swap(ndp); }
+                lc += cdp[(size_t)Tb];
+            }
+            if (lc > 0) { totComp += lc; if (lc > maxComp) maxComp = lc; leavesCounted++; }
+        }
+        fprintf(stderr, "[comp] leaves=%lld  total s-compositions=%lld  max/leaf=%lld  avg/leaf=%.1f  vs #patterns=%zu (ratio comp/pat=%.2f)\n",
+                leavesCounted, totComp, maxComp, leavesCounted ? (double)totComp / leavesCounted : 0.0, pats.size(),
+                pats.size() ? (double)totComp / pats.size() : 0.0);
+    }
 
     // -------- support init: SCT (production) + optional region-IE cross-check (gate G2a) -------
     // P.sup := SCT sum-over-leaves support. Under SCT_VERIFY also compare to the region-IE init
