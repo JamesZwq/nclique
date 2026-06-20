@@ -3084,3 +3084,39 @@ UPDATE (#147): #1 made DEFAULT (commit 5d60e08, escape hatch SCT_NO_SLOT_IDX), d
 on 4 cells. User chose to STEP BACK to the STRUCTURAL peel redesign (constant-factor opts can't change the
 regime: peel is O(#patterns x per-peel-update) and low-RS #patterns is millions = inherent). Launching a design-
 exploration workflow for structural approaches that break the O(#patterns x update) scaling while staying exact.
+
+## 57. STRUCTURAL peel redesign: the scaling wall is EXACT-IRREDUCIBLE past |host|=1 (2026-06-20, #148, workflow)
+6-approach design-exploration workflow (wymzy4bgx); the synthesizer EMPIRICALLY verified its claims (ran the
+corehash gate + profiling on dblp-sigmod/db on the server). DECISIVE NEGATIVE RESULT: NO exact approach breaks
+O(#patterns). 4 of 6 are rigorously-assessed DEAD-ENDS:
+ - h-index convergence (generalize R=1 Local to r>=2): EXACT-on-convergence but makes the per-update term WORSE
+   -- the histogram needs a per-witness min over up-to C(s,r)-1 co-r-subclique patterns, and support_count
+   counts witnesses COMBINATORIALLY without listing them (its whole advantage over CND); producing per-witness
+   thresholds forces s-clique enumeration x #iters = strictly worse than the bucket peel at r=3,s=4. (R=1 wins
+   only because a witness threshold there folds into a closed-form nCr breakpoint.)
+ - lazy support maintenance: the slot MUTATION (44-48% of peel) cannot be deferred (later sctSupport reads would
+   see stale slots = WRONG); lazy only touches the cheap incremental delta and replaces it with from-scratch
+   recompute. Ceiling <2x, realistic = slowdown. Dead.
+ - global witness->pattern inverted index: exact requires carrying the full C(n-b,y-b) reweighting per entry
+   (reproduces current work, saves nothing); dropping it = the componentwise-max shortcut the code PROVES wrong
+   (L1433). Box-splitting churns it every peel. Dead.
+ - generalized bulk-prune (enlarge r-mergeable/direct-bin past |host|=1): EMPIRICALLY FALSIFIED -- corehash
+   SCT_DIRECTBIN_ALL_HOST1 = 1cc6ca3a vs correct 32451c95 on sigmod(3,4). A |host|=1 pattern's witness s-clique
+   can contain a |host|>=2 r-clique, so its core != its initial support. The exact fixed-point stratum is
+   PROVABLY MAXIMAL at |host|=1 (already implemented via skipH1 + direct-bin). No exact enlargement without a
+   new theorem. (sigmod 3,4: 13966 |host|=1 / 3236 |host|=2 -- the 81% H1 mass is already harvested.)
+TOP PICK (only remaining EXACT lever): BATCH-PEEL-WHOLE-LEVEL. Drain the whole bk[curLevel] bucket at once; per
+touched leaf run ONE batched slotForbidDiff + ONE merged affected-Q DFS with cross-pattern seen[] dedup, instead
+of once per pattern. CONSTANT-FACTOR (does NOT break O(#patterns) -- honest), divides the per-update constant by
+the same-level co-hosting fan-in and kills the affected-Q DFS over-enumeration (MEASURED gen/nz = 8.5 on db,
+13.7 on sigmod => 8-14 candidates generated per genuine drop). Bit-identical (slot order-invariant, sec 54).
+SUBTLETY: multiple antichain thresholds in the SAME path interact non-linearly through the IE, so combined-drop
+!= Σ individual-drops -- must recompute affected-Q against the COMBINED slot state (still exact, loses the
+additivity shortcut not correctness). Reuses seen[]/aff dedup, chgOldTerms cache, the per-level bucket. medium/
+medium.
+KILL-GATE FIRST EXPERIMENT (counter-only, no rebuild, contention-insensitive): instrument the peel to count, per
+level, total (pattern,leaf) touches A vs distinct (leaf,level) touches B; fanin = A/B. If fanin~1 batch saves
+nothing (near-dead, STOP); if fanin>=5 proceed. Run on dblp-sigmod(3,4)/dblp-db(3,4)/ca-CondMat.
+BOTTOM LINE: the "crack the scaling wall" hope is FALSIFIED for EXACT cores -- the asymptotic factor is
+irreducible and the bulk-bin stratum is exhausted. Batch-peel is the largest exact constant-factor reclaim
+left, gated by the fan-in probe.
