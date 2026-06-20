@@ -3470,3 +3470,30 @@ SCOPE/HONESTY: the slot index (#1) already made slotForbidDiff output-sensitive,
 affected-Q DFS + candidate-generation amortization (divides by fan-in), NOT the slot mutation (still F insertions).
 Win concentrated in s>r+1 (high-RS, where region-native already wins + the DFS dominates the "rest"). Timing: local
 interleaved peel-time only (per user: no server experiments this round).
+
+## 71. §58 batch-peel: per-leaf CB GATE makes it a clean win, no regression (2026-06-21, #162) [local-only]
+§70's first cut (single shared no-prune DFS) was measured (local interleaved peel time, dblp-db): r=3,s=5 2.13x WIN
+but r=4,s=6 0.83x and r=5,s=7 0.59x LOSS. Cause: the shared DFS dropped the per-pattern Σmax(pl,ql)<=T prune (no
+single pl over a leaf's wave-thresholds) -> candidate enumeration BLOWS UP at high r. Two prune attempts measured +
+rejected: per-ENTRY prune (state per pre-image, O(nCo)/node) -> r=3 crashed to 0.21x (61.86s); per-THRESHOLD prune
+in one DFS (O(F)/node + uEnvThr precompute O(nCo*Mloc)/leaf) -> r=4 WORSE at 0.35x (264s). The tight prune's per-node
+/precompute overhead exceeds the over-generation it removes on the common (non-exploding) leaves.
+FIX = cheap PER-LEAF gate (committed 6dd557b). CB = #{ql: Σ=r, ql<=uEnv} via a saturating O(Mloc*r^2) count-DP.
+  CB<=cap (default 128, env SCT_BATCH_CB_CAP): ONE shared no-prune DFS, full drop over ALL pre-images [0,nCo).
+  CB> cap: fall back to F cheap pl_j-pruned DFS (per-pattern's exact prune, O(1)/node) over each threshold's
+           contiguous pre-image range [coStart[j],coStart[j+1]); drop = that threshold's contribution.
+KEY: both paths feed the SAME confirm(); the drop partitions exactly by threshold (Σ_j drop[range_j) == drop[all]),
+so the gate choice is BIT-IDENTICAL for ANY cap -- the gate is pure speed, never correctness. coAll is naturally
+grouped by threshold (pushed threshold-by-threshold) so coStart gives the ranges for free.
+RESULT (dblp-db, peel time, interleaved/known-def, ALL bit-identical):
+  r=3,s=5: 13.11->6.05s = 2.17x | r=4,s=6: 91.31->46.99s = 1.94x | r=5,s=7: 980.32->321.68s = 3.05x.
+Gate split @ dblp-db 4,6: 86.8% leaf-instances single-DFS, 13.2% fallback -> batches the common case, routes only
+the few exploding leaves to per-pattern cost. The old worst case (5,7) is now the BEST speedup.
+CORRECTNESS: 17 corehash cells across 4 graphs (dblp-sigmod/db, amazon-copurchase, soc-Epinions1), s=r+1 (fall-
+through) and s>r+1 (both DFS paths) -- all default==SCT_BATCH_PEEL. Plus the §70 by-construction telescoping proof +
+10/10 adversarial review. MEMORY: all buffers reused (coStart/cbDP/sufScr/uThrScr added, all clear()/assign() per
+leaf). Per user this round: LOCAL validation only, no server experiments. Default OFF (SCT_BATCH_PEEL opt-in);
+s=r+1 untouched (proven witness-floor path). NOTE: the #1 slot index already made slotForbidDiff output-sensitive,
+so the win is the affected-Q enumeration amortization, concentrated in s>r+1 (where region-native already wins).
+NEXT (not done, deferred): wider sweep + cbCap sensitivity if promoting to default; s=r+1 batch variant (witness-
+floor) if low-RS peel ever becomes the target.
