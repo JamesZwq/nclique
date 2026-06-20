@@ -1394,6 +1394,11 @@ int main(int argc, char **argv) {
     vector<int> fbCrit; vector<char> fbHas;            // per-path: max critical coord / has-1-forbidden
     vector<long long> wfSum;                            // s=r+1 fast path: Σ n_p[d] over alive boxes
     long long dbgGen = 0, dbgHit = 0, dbgNZ = 0;       // instrumentation: cands gen / hit / nonzero-drop
+    // batch-peel kill-gate (FANIN_DBG, sec 57): fanin = total (pattern,leaf) affected-update touches /
+    // distinct (leaf,level) touches = avg #patterns sharing a (leaf,curLevel). fanin>=5 => batch-peel pays.
+    bool faninDbg = getenv("FANIN_DBG") != nullptr;
+    long long fanA = 0, fanB = 0;
+    vector<long long> leafLastLevel; if (faninDbg) leafLastLevel.assign(nLeaf, -1);
     while (peeledN < npat) {
         auto it = bk.find(curLevel);
         while (it == bk.end() || it->second.empty()) {
@@ -1441,6 +1446,7 @@ int main(int argc, char **argv) {
         for (size_t k = 0; k < pleaf.size(); k++) {
             int lid = pleaf[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
+            if (faninDbg) { fanA++; if (leafLastLevel[lid] != curLevel) { fanB++; leafLastLevel[lid] = curLevel; } }
             const Vec &pl = mapsRecompute ? (localB(pi, lid, plScr), (const Vec &)plScr)
                                           : pbLocal[pi][k];   // m_P local to lid (== a_p, h=0)
             int Mloc = (int)pl.size();
@@ -1684,6 +1690,8 @@ int main(int argc, char **argv) {
             (slotVisits - sfdAff) ? 100.0*sfdFailFirst/(slotVisits - sfdAff) : 0.0);
     if (slotIdxVerify) { fprintf(stderr, "[slot-idx] verify: %lld mismatched calls %s\n", idxMismatch, idxMismatch ? "FAIL" : "OK");
         if (idxMismatch) return 5; }
+    if (faninDbg) fprintf(stderr, "[fanin] touches(pattern,leaf)=%lld distinct(leaf,level)=%lld  fanin=%.2f\n",
+            fanA, fanB, fanB ? (double)fanA / fanB : 0.0);
     printf("[sct-peel] peel=%.2fs  peeled=%lld/%lld  maxSplit(split-set)=%zu\n",
            secs(T5,T6), peeledN, npat, maxSplit);
     fprintf(stderr, "[sct-peel] dbg dfsPrune=%d cand_gen=%lld hit=%lld nz=%lld  gen/nz=%.1f\n",
