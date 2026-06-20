@@ -1294,6 +1294,11 @@ int main(int argc, char **argv) {
     // query b=m_Q with addLow=a_p (P's threshold). The weight base staying at b
     // is what makes this correct (a plain support_count(max(b,addLow)) would
     // change the weight; see lines below).
+    // CF_DBG (closed-form viability probe): per DP IE-term, count how many upper bounds
+    // u_c actually TRUNCATE (Uc-Lc < total slack). The closed form replaces the DP with
+    // 2^(#binding) Vandermonde binomials per term -- viable iff #binding stays small.
+    bool cfDbg = getenv("CF_DBG") != nullptr;
+    long long cfTerms = 0, cfBindHist[20] = {0}; double cfFormTermsVsDP = 0;
     auto scWithTerms = [&](const CCPath &p,
                            const vector<pair<Vec,int>> &terms,
                            const Vec &b, const Vec *addLow) -> double {
@@ -1336,6 +1341,18 @@ int main(int argc, char **argv) {
                 sumL += Lc; sumU += Uc;
             }
             if (bad || sumL > T || sumU < T) continue;
+            if (cfDbg) {                                  // count binding upper bounds for this IE term
+                int slack = T - sumL, nb = 0;
+                for (int c = 0; c < M; ++c) {
+                    int Lc = p.ell[c]; if ((int)b[c] > Lc) Lc = (int)b[c];
+                    if ((int)extra[c] > Lc) Lc = (int)extra[c];
+                    if (addLow && (int)(*addLow)[c] > Lc) Lc = (int)(*addLow)[c];
+                    if ((int)p.u[c] - Lc < slack) nb++;
+                }
+                cfTerms++; cfBindHist[nb < 19 ? nb : 19]++;
+                // closed-form work = 2^nb binomials; DP work ~ M*(T+1) cells. ratio:
+                cfFormTermsVsDP += (double)(1 << (nb < 20 ? nb : 20)) / ((double)M * (T + 1) + 1);
+            }
             dpA.assign((size_t)T + 1, 0.0);
             dpA[0] = 1.0;
             for (int c = 0; c < M; ++c) {
@@ -1707,6 +1724,12 @@ int main(int argc, char **argv) {
         if (idxMismatch) return 5; }
     if (faninDbg) fprintf(stderr, "[fanin] touches(pattern,leaf)=%lld distinct(leaf,level)=%lld  fanin=%.2f\n",
             fanA, fanB, fanB ? (double)fanA / fanB : 0.0);
+    if (cfDbg) {
+        fprintf(stderr, "[cf] DP IE-terms=%lld  binding-upper histogram (0..):", cfTerms);
+        for (int i = 0; i <= 10; i++) if (cfBindHist[i]) fprintf(stderr, " %d:%.1f%%", i, cfTerms ? 100.0*cfBindHist[i]/cfTerms : 0.0);
+        fprintf(stderr, "\n[cf] avg closed-form/DP work ratio=%.4f (closed-form wins per term if <1)\n",
+                cfTerms ? cfFormTermsVsDP / cfTerms : 0.0);
+    }
     printf("[sct-peel] peel=%.2fs  peeled=%lld/%lld  maxSplit(split-set)=%zu\n",
            secs(T5,T6), peeledN, npat, maxSplit);
     fprintf(stderr, "[sct-peel] dbg dfsPrune=%d cand_gen=%lld hit=%lld nz=%lld  gen/nz=%.1f\n",
