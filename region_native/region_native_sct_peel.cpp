@@ -1092,6 +1092,7 @@ int main(int argc, char **argv) {
     double tSFD = 0; long long slotVisits = 0;       // PROFILE: slot-scan time + path visits
     bool sfdDbg = getenv("SFD_DBG") != nullptr;       // cost-structure probe for the slot-index design
     long long sfdAff = 0, sfdCoordTests = 0, sfdFailFirst = 0;  // affected / coords-examined / failed-on-1st-coord
+    long long idxMismatch = 0;                         // slot-index verify: #calls where index-find != scan-find
     // Record a pattern's LOCAL threshold into slot lid. Paths where the
     // threshold is impossible are UNCHANGED (kept in place); the rest are the
     // CHANGED paths. We collect the changed OLD paths (chgOld) and their NEW
@@ -1112,6 +1113,62 @@ int main(int argc, char **argv) {
     // per-path tuple_to_threshold allocation and the full-width O(M) scan over
     // the ~99% of paths that are unaffected.
     vector<CCPath> sfdKids;                            // reused scratch (split children)
+    // ===== SLOT DOMINANCE INDEX (peel #1: find affected paths sub-linearly) =====
+    // The impossible scan visits all w paths to find the ~0.2-1% AFFECTED ones (those
+    // with u[c] >= bloc[c] for every plNZ coord c). Index per leaf: bkt[c][v] = slot
+    // positions with u[c]==v. A path is affected iff u dominates bloc on plNZ, so the
+    // candidates are bkt[pivot][v>=bloc[pivot]] for the most-selective plNZ coord; we
+    // then filter survivors by the other plNZ coords. u only DECREASES on split, so
+    // maxv from the initial build bounds all future values. Slot order is NOT load-
+    // bearing (sec 54, SCT_SLOT_REVERSE 12/0), so find-then-act is safe. Maintained
+    // via swap-remove + back-pointers bpos (cur stays dense -> consumers unchanged).
+    bool slotIdx       = getenv("SCT_SLOT_IDX") != nullptr;          // Step 2: drive find from index
+    bool slotIdxVerify = getenv("SCT_SLOT_IDX_VERIFY") != nullptr;   // Step 1: assert index==scan
+    bool idxOn = slotIdx || slotIdxVerify;
+    vector<char> ixBuilt(idxOn ? nLeaf : 0, 0);
+    vector<int>  ixM(idxOn ? nLeaf : 0, 0), ixMaxv(idxOn ? nLeaf : 0, 0);
+    vector<vector<vector<int>>> ixBkt(idxOn ? nLeaf : 0);  // [lid][c*maxv+v] -> positions
+    vector<vector<int>>         ixBpos(idxOn ? nLeaf : 0); // [lid][pos*M+c] -> index in its bucket
+    auto ixBuild = [&](int lid) {
+        auto &cur = slotPaths[lid]; int M = (int)supC[lid].size();
+        int mv = 1; for (auto &p : cur) for (int c = 0; c < M; c++) { int u = (int)p.u[c]; if (u + 1 > mv) mv = u + 1; }
+        ixM[lid] = M; ixMaxv[lid] = mv;
+        auto &bkt = ixBkt[lid]; bkt.assign((size_t)M * mv, {});
+        auto &bp = ixBpos[lid]; bp.assign(cur.size() * (size_t)M, 0);
+        for (int i = 0; i < (int)cur.size(); i++) for (int c = 0; c < M; c++) {
+            int key = c * mv + (int)cur[i].u[c];
+            bp[(size_t)i * M + c] = (int)bkt[key].size(); bkt[key].push_back(i);
+        }
+        ixBuilt[lid] = 1;
+    };
+    auto ixRemove = [&](int lid, int i, const Vec &uv) {            // drop position i (uv = its u)
+        int M = ixM[lid], mv = ixMaxv[lid]; auto &bkt = ixBkt[lid]; auto &bp = ixBpos[lid];
+        for (int c = 0; c < M; c++) { auto &B = bkt[c * mv + (int)uv[c]];
+            int idx = bp[(size_t)i * M + c], last = B.back(); B[idx] = last; bp[(size_t)last * M + c] = idx; B.pop_back(); }
+    };
+    auto ixRelabel = [&](int lid, int from, int to, const Vec &uv) {// path uv moves from->to
+        int M = ixM[lid], mv = ixMaxv[lid]; auto &bkt = ixBkt[lid]; auto &bp = ixBpos[lid];
+        for (int c = 0; c < M; c++) { int idx = bp[(size_t)from * M + c]; bkt[c * mv + (int)uv[c]][idx] = to; bp[(size_t)to * M + c] = idx; }
+    };
+    auto ixAppend = [&](int lid, int p, const Vec &uv) {            // new path at position p
+        int M = ixM[lid], mv = ixMaxv[lid]; auto &bkt = ixBkt[lid]; auto &bp = ixBpos[lid];
+        if ((int)bp.size() < (p + 1) * M) bp.resize((size_t)(p + 1) * M, 0);
+        for (int c = 0; c < M; c++) { int key = c * mv + (int)uv[c]; bp[(size_t)p * M + c] = (int)bkt[key].size(); bkt[key].push_back(p); }
+    };
+    auto ixFindAffected = [&](int lid, const vector<pair<int,int>> &plNZ, vector<int> &out) {
+        out.clear(); int M = ixM[lid], mv = ixMaxv[lid]; auto &bkt = ixBkt[lid]; auto &cur = slotPaths[lid];
+        int piv = -1, pivThr = 0; long best = LONG_MAX;            // pivot = min-count plNZ coord
+        for (auto &pv : plNZ) { if (pv.first >= M) { out.assign(1, -1); return; }   // bloc coord beyond leaf width => no path (defensive)
+            long cc = 0; for (int v = pv.second; v < mv; v++) cc += (long)bkt[pv.first * mv + v].size();
+            if (cc < best) { best = cc; piv = pv.first; pivThr = pv.second; } }
+        if (piv < 0) return;
+        for (int v = pivThr; v < mv; v++) for (int pos : bkt[piv * mv + v]) {
+            bool ok = true; for (auto &pv : plNZ) { if (pv.first == piv) continue;
+                if ((int)cur[pos].u[pv.first] < pv.second) { ok = false; break; } }
+            if (ok) out.push_back(pos);
+        }
+    };
+    vector<int> ixAff, scanAff;                        // reused: index-found / scan-found affected positions
     // IN-PLACE: unchanged paths (~99%) stay put (never moved). Only changed paths
     // are snapshotted; covers-whole / split-parent paths are swap-removed; split
     // children are appended. Same resulting slot (order-independent: leaves are a
@@ -1122,6 +1179,19 @@ int main(int argc, char **argv) {
         vector<CCPath> &cur = slotPaths[lid];
         sfdKids.clear();
         chgOld.clear();
+        if (idxOn && !ixBuilt[lid]) ixBuild(lid);
+        if (slotIdxVerify) {                           // Step-1 check: index-find == scan-find (pristine state)
+            ixFindAffected(lid, plNZ, ixAff);
+            scanAff.clear();
+            for (int i = 0; i < (int)cur.size(); i++) { bool im = false;
+                for (auto &pv : plNZ) if ((int)cur[i].u[pv.first] < pv.second) { im = true; break; }
+                if (!im) scanAff.push_back(i); }
+            std::sort(ixAff.begin(), ixAff.end());
+            if (ixAff != scanAff) {
+                fprintf(stderr, "[slot-idx] MISMATCH lid=%d scan=%zu idx=%zu\n", lid, scanAff.size(), ixAff.size());
+                idxMismatch++;
+            }
+        }
         int w = (int)cur.size();                          // live prefix [0,w)
         // effective KMAX for THIS leaf: raised as the slot grows so a blow-up slot
         // self-limits (more forbidden per path => fewer split children). Computed from
@@ -1150,12 +1220,16 @@ int main(int argc, char **argv) {
                     remove = true;                         // split-parent replaced by children
                 }
             }
-            if (remove) { --w; if (i != w) cur[i] = std::move(cur[w]); }  // swap-remove (no self-move)
-            else ++i;                                      // modified in place, keep
+            if (remove) {                                  // swap-remove (no self-move)
+                --w;
+                if (idxOn) ixRemove(lid, i, cur[i].u);     // drop i's index entries (its own u, pre-overwrite)
+                if (i != w) { cur[i] = std::move(cur[w]); if (idxOn) ixRelabel(lid, w, i, cur[i].u); }
+            }
+            else ++i;                                      // modified in place (u unchanged -> index unchanged)
         }
         cur.resize(w);
         cur.reserve((size_t)w + sfdKids.size());          // grow once, not per child
-        for (auto &k : sfdKids) cur.push_back(std::move(k));
+        for (auto &k : sfdKids) { if (idxOn) ixAppend(lid, (int)cur.size(), k.u); cur.push_back(std::move(k)); }
         if (cur.size() > maxSplit) maxSplit = cur.size();
     };
 
@@ -1579,6 +1653,8 @@ int main(int argc, char **argv) {
             slotVisits, sfdAff, slotVisits ? 100.0*sfdAff/slotVisits : 0.0, sfdCoordTests,
             slotVisits ? (double)sfdCoordTests/slotVisits : 0.0, sfdFailFirst,
             (slotVisits - sfdAff) ? 100.0*sfdFailFirst/(slotVisits - sfdAff) : 0.0);
+    if (slotIdxVerify) { fprintf(stderr, "[slot-idx] verify: %lld mismatched calls %s\n", idxMismatch, idxMismatch ? "FAIL" : "OK");
+        if (idxMismatch) return 5; }
     printf("[sct-peel] peel=%.2fs  peeled=%lld/%lld  maxSplit(split-set)=%zu\n",
            secs(T5,T6), peeledN, npat, maxSplit);
     fprintf(stderr, "[sct-peel] dbg dfsPrune=%d cand_gen=%lld hit=%lld nz=%lld  gen/nz=%.1f\n",
