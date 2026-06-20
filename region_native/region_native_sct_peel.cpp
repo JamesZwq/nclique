@@ -1199,6 +1199,33 @@ int main(int argc, char **argv) {
         // the entry slot size (stable within this call). Bit-identical (KMAX-invariant).
         int kml = KMAX;
         if (kAdapt) { kml = KMAX + w / KTHRESH; if (kml > KMAXCAP) kml = KMAXCAP; }
+        if (slotIdx) {                                    // Step 2: INDEX-DRIVEN (skip the full scan)
+            ixFindAffected(lid, plNZ, ixAff);             // affected positions (pristine slot)
+            scanAff.clear();                              // reuse as deadPos
+            for (int pos : ixAff) {                       // Phase A: classify (no position moves)
+                sfdAff++;
+                chgOld.push_back(cur[pos]);               // pre-change snapshot
+                if (ccpath::covers_whole_path(cur[pos], bloc)) { scanAff.push_back(pos); continue; }
+                ccpath::insert_antichain(cur[pos].forbidden, bloc);
+                if ((int)cur[pos].forbidden.size() > kml) {
+                    auto kk = ccpath::controlled_split(cur[pos], kml);
+                    for (auto &k : kk) sfdKids.push_back(std::move(k));
+                    scanAff.push_back(pos);               // split-parent dies (u unchanged until removed)
+                }
+                // else modified in place: u unchanged -> index entry stays valid.
+            }
+            std::sort(scanAff.begin(), scanAff.end());    // Phase B: batch swap-remove dead, descending
+            for (int k = (int)scanAff.size() - 1; k >= 0; --k) {
+                int p = scanAff[k]; --w;                  // (w >= p always; cur[w] is live)
+                ixRemove(lid, p, cur[p].u);
+                if (p != w) { cur[p] = std::move(cur[w]); ixRelabel(lid, w, p, cur[p].u); }
+            }
+            cur.resize(w);
+            cur.reserve((size_t)w + sfdKids.size());
+            for (auto &k : sfdKids) { ixAppend(lid, (int)cur.size(), k.u); cur.push_back(std::move(k)); }
+            if (cur.size() > maxSplit) maxSplit = cur.size();
+            return;
+        }
         for (int i = 0; i < w; ) {
             CCPath &p = cur[i];
             bool imposs = false;                          // impossible(p, bloc)?
