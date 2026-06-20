@@ -3167,5 +3167,12 @@ default(#1 ON) vs SCT_NO_SLOT_IDX(#1 OFF):
 => the shipped #1 default holds AT SCALE: slotForbidDiff cut 42% (matches the local ca-GrQc 6,7 -44% prediction
 exactly for ~0.19% affected); peel-total cut 19% here (lower than the local 23-27% because web-NotreDame's
 affected-update "rest"=38s is unusually large, diluting the slotForbidDiff fraction). Confirms #1 is a real
-clean win at scale, not a small-graph artifact. (More big cells in a lean A/B; web-it-2004/ca-AstroPh/com-dblp
-pending.) The slow 3-trial-x-2-arm A/B was killed at 17min/cell-2 -- 8 runs/cell on 70-90s peels was overkill.
+clean win at scale, not a small-graph artifact.
+LEAN 1-trial A/B (no min, contended box load 14) -- NOISE-CONTAMINATED, peel totals UNTRUSTWORTHY:
+  web-NotreDame 6,8 peel 95.65/73.64 (-30%!?) -- a CONTENTION SPIKE (ON 95.65 vs the 3-trial-min 43.83 on the
+    SAME cell); 1-trial under load is unreliable, do NOT trust the lean peel numbers.
+  web-it-2004 5,7: sfd 10.54/18.31 = -42% (clean, matches 0.49% affected) ; ca-AstroPh 3,4: sfd -3% (1.19%
+    affected) ; com-dblp 3,4: sfd -9%.
+TRUSTWORTHY at-scale #1: web-NotreDame 3-trial-min (sfd -42%, peel -19%) + web-it-2004 sfd -42%. The sfd cuts
+corroborate the inverse-affected% mechanism (big at <=0.5% affected, small at >1%). LESSON RE-CONFIRMED: 1-trial
+timing on a contended box is worthless; use 3-trial-min + taskset pin, or measure on the clean local Mac.
