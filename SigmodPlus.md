@@ -3080,6 +3080,13 @@ SESSION CONSOLIDATED (this stretch): radix sort = 4.85x enum (clean, SHIPPED def
 identical, gated SCT_MAPS_RECOMPUTE OFF, timing unmeasured (may be wash); slot index #1 = bit-identical, CLEAN
 23-27% total peel on low-affected cells, gated SCT_SLOT_IDX OFF -> candidate to make DEFAULT; #3 = wash,
 reverted. NEXT: make #1 default after a broad clean validation; then #4/#2 or step back to structural peel.
+MAPS-CSR MEASURED (clean local 3-trial-min, all bit-id) -- NET LOSS on TIME, keep gated OFF:
+  ca-AstroPh 3,4: maps 1.27->0.80 (-37%, the 200M-alloc removal works) BUT peel 13.23->15.50 (+17%, recompute
+    at the peel consumers costs more than the stored read) => total 16.64->17.40 (+5% SLOWER).
+  ca-CondMat 3,4/4,5 same shape (maps faster, peel slower, total ~flat-to-slower).
+  => recompute's on-demand blocal at the hot peel consumers dominates; peel >> maps so net is a small LOSS.
+  DECISION: maps-CSR stays gated OFF (default stored = faster). Its real value is MEMORY (~6.8GB saved on huge
+  cells web-Google 6,8 / ca-HepPh that OOM) -> keep SCT_MAPS_RECOMPUTE as a MEMORY escape-hatch, NOT a speed default.
 UPDATE (#147): #1 made DEFAULT (commit 5d60e08, escape hatch SCT_NO_SLOT_IDX), default==full-scan bit-identical
 on 4 cells. User chose to STEP BACK to the STRUCTURAL peel redesign (constant-factor opts can't change the
 regime: peel is O(#patterns x per-peel-update) and low-RS #patterns is millions = inherent). Launching a design-
