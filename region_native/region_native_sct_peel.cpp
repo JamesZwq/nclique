@@ -1503,6 +1503,152 @@ int main(int argc, char **argv) {
     bool faninDbg = getenv("FANIN_DBG") != nullptr;
     long long fanA = 0, fanB = 0;
     vector<long long> leafLastLevel; if (faninDbg) leafLastLevel.assign(nLeaf, -1);
+    // ===== BATCH-PEEL (§58, gate SCT_BATCH_PEEL): leaf-major affected-Q enumeration =====
+    // Drain a whole curLevel wave, group its (pattern,leaf) tasks LEAF-MAJOR, and run ONE
+    // affected-Q DFS per (leaf,wave) instead of once per (pattern,leaf). Each candidate Q's
+    // drop = Σ over the leaf's wave-thresholds of the PROVEN single-threshold delta-formula
+    // (scWithTerms with addLow=pl over that threshold's pre-image paths). This is the SAME
+    // per-(P,leaf) drop math the per-pattern path uses, only reordered (enumerate-Q-once,
+    // then sum-over-thresholds) so the DFS over-enumeration (gen/nz=8-14, sec 57) and the
+    // candidate generation amortize across the same-level co-hosting fan-in (10-1213, sec 57).
+    // EXACTNESS: cores are order-independent within a level (all level-L patterns get core L;
+    // drops to higher-level Q telescope: total = pre-level-sup - post-level-sup) + slot order
+    // is not load-bearing (sec 54). Intra-wave drops clamp to curLevel and never re-bucket, so
+    // marking the whole wave peeled up front and skipping them is bit-identical. Cascade (a
+    // higher-level Q dropping to curLevel) re-drains curLevel. Only s>r+1 (the path that owns
+    // a DFS to amortize); s=r+1 keeps the proven per-pattern witness-floor path. Default OFF.
+    bool batchPeel = getenv("SCT_BATCH_PEEL") != nullptr;
+    if (batchPeel && !sEqRp1) {
+        struct BTask { int lid, pi, k; };
+        vector<int> wave;
+        vector<BTask> taskLL;                          // (leaf,pattern,leaf-index) tasks for the wave
+        vector<CCPath> coAll;                          // accumulated changed pre-image paths (one leaf)
+        vector<int> coPlIdx;                           // per pre-image -> index into coPls
+        vector<Vec> coPls;                             // distinct wave-thresholds touching the leaf
+        vector<vector<pair<Vec,int>>> coTerms;         // per pre-image cached IE terms
+        vector<CCPath> chgTmp;                          // slotForbidDiff output (reused)
+        vector<pair<int,int>> plNZ;
+        Vec plScr, qlScr, uEnv, qcand;
+        vector<int> aff;
+        long long printMark = 0;
+        while (peeledN < npat) {
+            auto it0 = bk.find(curLevel);
+            while (it0 == bk.end() || it0->second.empty()) {
+                if (++curLevel > maxKey + 1) break;
+                it0 = bk.find(curLevel);
+            }
+            if (curLevel > maxKey + 1) break;
+            // re-drain curLevel until empty (handles within-level cascade)
+            while (true) {
+                auto bit = bk.find(curLevel);
+                if (bit == bk.end() || bit->second.empty()) break;
+                wave.clear();
+                for (int pi : bit->second) if (pats[pi].alive && pats[pi].key == curLevel) wave.push_back(pi);
+                bit->second.clear();
+                if (wave.empty()) break;
+                taskLL.clear();
+                for (int pi : wave) {
+                    Pat &P = pats[pi];
+                    P.alive = false; P.core = (double)curLevel; peeledN++;
+                    coreDist[P.core] += (double)P.mult;
+                    if (skipH1 && P.host.size() == 1) {        // SOURCE-SKIP (sec: M-exclusive witnesses)
+                        bool aff2 = false;
+                        for (int lid : patLeaves[pi]) if (hasH2[lid]) { aff2 = true; break; }
+                        if (!aff2) continue;
+                    }
+                    const auto &pl2 = patLeaves[pi];
+                    for (int kk = 0; kk < (int)pl2.size(); kk++)
+                        if (!slotPaths[pl2[kk]].empty()) taskLL.push_back({pl2[kk], pi, kk});
+                }
+                if ((peeledN >> 12) != printMark) { printMark = peeledN >> 12;
+                    fprintf(stderr, "[peel-batch] %lld/%lld lvl=%lld maxSplit=%zu t=%.1fs\n",
+                            peeledN, npat, curLevel, maxSplit, secs(T5, Clock::now())); }
+                std::sort(taskLL.begin(), taskLL.end(),
+                          [](const BTask &a, const BTask &b) { return a.lid < b.lid; });
+                size_t ti = 0;
+                while (ti < taskLL.size()) {
+                    int lid = taskLL[ti].lid;
+                    size_t tj = ti; while (tj < taskLL.size() && taskLL[tj].lid == lid) tj++;
+                    coAll.clear(); coPlIdx.clear(); coPls.clear();
+                    for (size_t t = ti; t < tj; t++) {       // apply every threshold touching this leaf
+                        int pi = taskLL[t].pi, kk = taskLL[t].k;
+                        const Vec &pl = mapsRecompute ? (localB(pi, lid, plScr), (const Vec &)plScr)
+                                                      : pbLocal[pi][kk];
+                        plNZ.clear();
+                        for (int c = 0; c < (int)pl.size(); c++) if (pl[c]) plNZ.push_back({c, (int)pl[c]});
+                        slotVisits += (long long)slotPaths[lid].size();
+                        auto _sa = Clock::now();
+                        slotForbidDiff(lid, pl, plNZ, chgTmp);
+                        tSFD += secs(_sa, Clock::now());
+                        if (chgTmp.empty()) continue;
+                        int plIdx = (int)coPls.size(); coPls.push_back(pl);
+                        for (auto &p : chgTmp) { coAll.push_back(std::move(p)); coPlIdx.push_back(plIdx); }
+                    }
+                    if (coAll.empty()) { ti = tj; continue; }
+                    int Mloc = coAll.front().m();           // leaf width (uniform across a leaf's slot paths)
+                    coTerms.clear(); coTerms.reserve(coAll.size());
+                    for (auto &p : coAll) coTerms.push_back(ccpath::inclusion_exclusion_terms(p.forbidden, p.m()));
+                    uEnv.assign((size_t)Mloc, 0);          // envelope: a Q with a drop has ql<=some changed-path u
+                    for (auto &p : coAll) for (int c = 0; c < Mloc; c++) if (p.u[c] > uEnv[c]) uEnv[c] = p.u[c];
+                    ensureLeafMap(lid);
+                    const auto &q2p = leafQ2pat[lid];
+                    const auto &qbAll = leafPatLocB[lid];
+                    const auto &qsAll = leafPats[lid];
+                    qcand.assign((size_t)Mloc, 0);
+                    // drop for confirmed candidate ql at leaf-pattern index t = Σ threshold-pre-images
+                    auto applyIdxB = [&](const Vec &ql, int t) {
+                        int qi = qsAll[t];
+                        if (!pats[qi].alive) return;        // peeled (incl. whole wave) -> no live drop
+                        if (skipH1 && pats[qi].host.size() == 1) return;
+                        double d = 0.0;
+                        for (size_t e = 0; e < coAll.size(); e++) {
+                            const CCPath &p = coAll[e];
+                            const Vec &plE = coPls[coPlIdx[e]];
+                            bool ok = true; int sm = 0;
+                            for (int c = 0; c < Mloc; c++) {
+                                int v = (int)ql[c] > (int)plE[c] ? (int)ql[c] : (int)plE[c];
+                                if (v > (int)p.u[c]) { ok = false; break; }
+                                sm += v;
+                            }
+                            if (ok && sm <= (int)p.T) d += scWithTerms(p, coTerms[e], ql, &plE);
+                        }
+                        if (d == 0.0) return;
+                        if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
+                        delta[qi] += d;
+                    };
+                    auto applyCandB = [&](const Vec &ql, uint64_t h) {
+                        auto itc = q2p.find(h);
+                        if (itc == q2p.end()) return;
+                        for (int t : itc->second)
+                            if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == ql) {
+                                applyIdxB(ql, t); return; }
+                    };
+                    const int16_t *uEp = uEnv.data();
+                    auto dfsB = [&](auto &&self, int c, int rem, uint64_t h) -> void {
+                        if (c == Mloc) { if (rem == 0) applyCandB(qcand, h); return; }
+                        int cap = (int)uEp[c]; if (cap > rem) cap = rem;
+                        for (int j = 0; j <= cap; j++) {
+                            qcand[c] = (int16_t)j;
+                            uint64_t hc = (h ^ ((uint64_t)(uint16_t)j + 1)) * HMUL;
+                            self(self, c + 1, rem - j, hc);
+                        }
+                        qcand[c] = 0;
+                    };
+                    dfsB(dfsB, 0, r, 1469598103934665603ULL);
+                    ti = tj;
+                }
+                for (int qi : aff) {                        // APPLY once per wave (telescoped drop)
+                    seen[qi] = 0;
+                    double ns = pats[qi].sup - delta[qi];
+                    delta[qi] = 0.0;
+                    long long nk = (long long)llround(ns);
+                    if (nk < curLevel) nk = curLevel;
+                    if (nk != pats[qi].key) { pats[qi].sup = ns; pats[qi].key = nk; bk[nk].push_back(qi); }
+                }
+                aff.clear();
+            }
+        }
+    } else {
     while (peeledN < npat) {
         auto it = bk.find(curLevel);
         while (it == bk.end() || it->second.empty()) {
@@ -1784,6 +1930,7 @@ int main(int argc, char **argv) {
             if (nk < curLevel) nk = curLevel;          // monotone clamp
             if (nk != pats[qi].key) { pats[qi].sup = ns; pats[qi].key = nk; bk[nk].push_back(qi); }
         }
+    }
     }
     auto T6 = Clock::now();
     memCk("after-peel(+index)");
