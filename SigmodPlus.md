@@ -3863,3 +3863,18 @@ closed it on MEMORY (comp/pat=77x here -> 65M counters ~260MB, +11% peak RSS). R
 on dense high-split leaves (bound the memory, keep the antichain's size-freedom on sparse/high-comp leaves). Correctness
 needs re-derivation (which witnesses of comp Y die when a contained pattern peels -- the binomial subtlety). DECISION
 POINT for the user: revive §67 adaptively (reopens a memory-closed direction; server has 503GB).
+
+## 88. WIN: a_Y direct dead-set deletes the split churn -- 1.82x on dense ca-AstroPh 3,4, BIT-IDENTICAL (2026-06-21, #178)
+Implemented the §87 lever (SCT_AY): replace the forbidden-antichain alive-tracking with an EXPLICIT per-composition
+dead-set (hash-set of dying witness compositions Y=pl+δ). Y alive == not yet inserted; mark = O(1) insert; NO antichain,
+NO controlled_split, NO IE. Folded the death-marking into the witness path's addDelta (it already enumerates exactly the
+Y⊇pl with ΣY=s). Witness path only (single-pattern regime, t<=witCross); batch disabled under SCT_AY.
+RESULT (ca-AstroPh 3,4, tods2): antichain peel 27.07s (slotForbidDiff 52%) -> a_Y peel 14.85s (slotForbidDiff 0%) =
+1.82x, COREHASH-IDENTICAL (93ae5ff3...). slotForbidDiff ENTIRELY ELIMINATED; remaining 14.85s is the drop (remGamma+
+credit), the genuinely-necessary witness-major work. Validates the user's thesis: the update HAD recoverable waste (the
+antichain split churn), removed WITHIN our framework (no CND graft). Bit-identical also on mini_diff_8v (2,3/2,4/3,4) and
+soc-Epinions1 (3,4). CND on this cell was 5.2s; we closed the gap from 5.2x to 2.9x.
+NEXT: (a) MEMORY -- deadY is a hash-set (up to 65M dead comps on this cell ~1-2GB); measure RSS vs antichain (2.4GB); if
+heavy, swap to a per-leaf bit-array via composition ranking (8MB). (b) does the faster peel let 4,5/5,6 (timed out at
+12-36GB) finish? (c) the drop (now 100% of peel) is the next target. (d) ADAPTIVE gate (a_Y on dense high-split leaves,
+antichain elsewhere) once memory is bounded. (e) wire a_Y into the BATCH path for t>witCross.
