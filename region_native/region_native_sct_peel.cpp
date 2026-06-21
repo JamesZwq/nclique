@@ -1228,6 +1228,14 @@ int main(int argc, char **argv) {
     bool idxOn = slotIdx || slotIdxVerify;
     bool idxDbg = getenv("IDX_DBG") != nullptr;        // localize index cost: pivot-scan vs candidate-filter vs output
     long long ixPivScan = 0, ixCand = 0, ixOut = 0;    // Σ(mv-thr) over coords / Σ pivot-candidates filtered / Σ affected
+    // ===== a_Y DIRECT DEAD-SET (§87/§88): explicit per-composition alive-flag, replaces the antichain split churn =====
+    // The forbidden antichain answers "is witness-composition Y alive?" via IE over the peeled-pattern generators,
+    // and keeping that IE cheap forces controlled_split (measured 52% / 5.85M splits on ca-AstroPh 3,4). a_Y stores the
+    // dead set EXPLICITLY: Y is dead iff Y dominates some peeled pattern, i.e. iff some addDelta enumeration already
+    // marked it. Query/mark are O(1) (a hash-set insert) -- NO antichain, NO split, NO IE. Bit-identical: same dead
+    // set, same witness-major drop. Witness path only (single-pattern regime); skips slotForbidDiff for the leaf.
+    bool ayMode = getenv("SCT_AY") != nullptr;
+    vector<std::unordered_set<uint64_t>> deadY(ayMode ? nLeaf : 0);   // per-leaf dead witness-composition hashes
     vector<char> ixBuilt(idxOn ? nLeaf : 0, 0);
     vector<int>  ixM(idxOn ? nLeaf : 0, 0), ixMaxv(idxOn ? nLeaf : 0, 0);
     vector<vector<vector<int>>> ixBkt(idxOn ? nLeaf : 0);  // [lid][c*maxv+v] -> positions
@@ -1582,7 +1590,7 @@ int main(int argc, char **argv) {
     // higher-level Q dropping to curLevel) re-drains curLevel. Only s>r+1 (the path that owns
     // a DFS to amortize); s=r+1 keeps the proven per-pattern witness-floor path. Default OFF.
     bool batchPeel = getenv("SCT_BATCH_PEEL") != nullptr;
-    if (witnessTail >= 2 && (batchPeel || witnessTail > witCross)) {
+    if (!ayMode && witnessTail >= 2 && (batchPeel || witnessTail > witCross)) {
         struct BTask { int lid, pi, k; };
         vector<int> wave;
         vector<BTask> taskLL;                          // (leaf,pattern,leaf-index) tasks for the wave
@@ -1819,6 +1827,72 @@ int main(int argc, char **argv) {
             // positions the impossible / feasibility tests depend on.
             plNZ.clear();
             for (int c = 0; c < Mloc; c++) if (pl[c]) plNZ.push_back({c, (int)pl[c]});
+            // ---- a_Y DIRECT path (§88): explicit dead-set, NO slotForbidDiff / antichain / split ----
+            // Witnesses dying when P peels are Y = pl + δ (Σδ=t). Y is alive iff not already marked dead by an
+            // earlier-peeled sub-pattern. We enumerate those Y (same DFS as the witness path), and for each ALIVE one
+            // mark it dead (one hash-set insert) and credit the witness-major drop to every Q = Y - γ. No box scan,
+            // no forbidden IE, no controlled_split -> deletes the entire slotForbidDiff churn. Bit-identical: the
+            // dead set is exactly {Y : Y dominates some peeled pattern}, the same set the antichain represents.
+            if (ayMode && witnessActive) {
+                const CCPath &box = slotPaths[lid][0];     // original leaf box (never mutated in a_Y mode)
+                witInst++; witMSum += Mloc; if (Mloc > witMMax) witMMax = Mloc;
+                ensureLeafMap(lid);
+                const auto &q2p = leafQ2pat[lid];
+                const auto &qsAll = leafPats[lid];
+                const Vec &nn = box.n;                       // leaf class sizes (n_b)
+                auto &dead = deadY[lid];
+                Yscr = pl;                                   // scratch: pl -> +δ (Y) -> -γ (Q)
+                const int16_t *uEp = box.u.data();
+                const int16_t *ellp = box.ell.data();
+                auto credit = [&](double w) {                // credit Q (= current Yscr); nAlive==1 by construction
+                    if (w == 0.0) return;
+                    auto it = q2p.find(hashVec(Yscr));
+                    if (it == q2p.end()) return;
+                    for (int t : it->second)
+                        if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
+                            int qi = qsAll[t];
+                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
+                                if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
+                                delta[qi] += w;
+                            }
+                            return;
+                        }
+                };
+                auto remGamma = [&](auto &&self, int start, int rem, double w) -> void {
+                    if (rem == 0) { credit(w); return; }
+                    for (int b = start; b < Mloc; b++) {
+                        int Yb = (int)Yscr[b];
+                        if (Yb < 1) continue;
+                        int maxm = Yb < rem ? Yb : rem;
+                        for (int m = 1; m <= maxm; m++) {
+                            Yscr[b] = (int16_t)(Yb - m);                      // Q_b = Y_b - m
+                            int avail = (int)nn[b] - (Yb - m);                // n_b - Q_b
+                            double wf = (m == 1) ? (double)avail : ccpath_ncr(avail, m);
+                            self(self, b + 1, rem - m, w * wf);
+                        }
+                        Yscr[b] = (int16_t)Yb;
+                    }
+                };
+                auto addDelta = [&](auto &&self, int start, int rem) -> void {
+                    if (rem == 0) {
+                        for (int k = 0; k < Mloc; k++)                        // feasible witness: ell <= Y <= u
+                            if ((int)ellp[k] > (int)Yscr[k] || (int)Yscr[k] > (int)uEp[k]) return;
+                        if (!dead.insert(hashVec(Yscr)).second) return;       // already dead -> no drop
+                        remGamma(remGamma, 0, witnessTail, 1.0);
+                        return;
+                    }
+                    for (int a = start; a < Mloc; a++) {
+                        int room = (int)uEp[a] - (int)Yscr[a];               // Y[a] may grow (Y <= u)
+                        if (room < 1) continue;
+                        int maxm = room < rem ? room : rem;
+                        int Ya = (int)Yscr[a];
+                        for (int m = 1; m <= maxm; m++) { Yscr[a] = (int16_t)(Ya + m); self(self, a + 1, rem - m); }
+                        Yscr[a] = (int16_t)Ya;
+                    }
+                };
+                addDelta(addDelta, 0, witnessTail);
+                continue;                                    // leaf done; no slotForbidDiff
+            }
             // Record P (updates the stored slot via split) and capture the CHANGED
             // OLD paths (the pre-insertion snapshots where P's threshold applies).
             { auto _sa = Clock::now(); slotVisits += (long long)slotPaths[lid].size();
