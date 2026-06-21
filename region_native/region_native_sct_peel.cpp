@@ -872,6 +872,12 @@ int main(int argc, char **argv) {
     // memory at near-zero time cost -- vs SCT_MAPS_RECOMPUTE (full) which recomputes BOTH and pays +17% on the hot map.
     bool mapsRecomputePB = getenv("SCT_MAPS_RECOMPUTE_PB") != nullptr;
     bool recomputePB = mapsRecompute || mapsRecomputePB;   // pbLocal not stored / recomputed
+    // LEVER 2 (§80): recompute the HOT leafPatLocB for the WIDEST leaves only (Mloc>=leafWmin) -- recovers the
+    // OTHER ~half of the maps memory, but at a time cost on those (hot) leaves. leafWmin tunes the memory<->time
+    // tradeoff (0 = off; combine with SCT_MAPS_RECOMPUTE_PB for free-half + adaptive-other-half). Mloc=supC[lid].size().
+    int leafWmin = getenv("SCT_MAPS_LEAF_WMIN") ? atoi(getenv("SCT_MAPS_LEAF_WMIN")) : 0;
+    vector<char> leafRecomp(nLeaf, 0);
+    if (leafWmin > 0) for (int lid = 0; lid < nLeaf; lid++) leafRecomp[lid] = ((int)supC[lid].size() >= leafWmin);
     if (mapsDbg) fprintf(stderr, "[maps-dbg] patIdx-build=%.2fs pats=%zu\n", secs(Tqg1, Clock::now()), pats.size());
     auto TmapE0 = Clock::now();
     {
@@ -911,7 +917,7 @@ int main(int argc, char **argv) {
                 if (host) {
                     patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
                     if (!recomputePB) pbLocal[pi].push_back(blocal);          // cold map: skip under PB or full
-                    if (!mapsRecompute) leafPatLocB[lid].push_back(blocal);   // hot map: keep unless full recompute
+                    if (!mapsRecompute && !leafRecomp[lid]) leafPatLocB[lid].push_back(blocal);  // hot map: keep unless full / wide-leaf
                     mapInc++;
                 }
                 return;
@@ -1503,10 +1509,10 @@ int main(int argc, char **argv) {
         if (leafQbuilt[lid]) return;
         leafQbuilt[lid] = 1;
         auto &mp = leafQ2pat[lid];
-        int nt = mapsRecompute ? (int)leafPats[lid].size() : (int)leafPatLocB[lid].size();
+        int nt = (mapsRecompute || leafRecomp[lid]) ? (int)leafPats[lid].size() : (int)leafPatLocB[lid].size();
         mp.reserve((size_t)nt * 2);
         for (int t = 0; t < nt; t++) {
-            const Vec &q = mapsRecompute ? (localB(leafPats[lid][t], lid, elmScr), (const Vec &)elmScr)
+            const Vec &q = (mapsRecompute || leafRecomp[lid]) ? (localB(leafPats[lid][t], lid, elmScr), (const Vec &)elmScr)
                                          : leafPatLocB[lid][t];
             mp[hashVec(q)].push_back(t);
         }
@@ -1641,7 +1647,7 @@ int main(int argc, char **argv) {
                         auto itc = q2p.find(h);
                         if (itc == q2p.end()) return;
                         for (int t : itc->second)
-                            if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == ql) {
+                            if (((mapsRecompute || leafRecomp[lid]) ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == ql) {
                                 int qi = qsAll[t];
                                 if (!pats[qi].alive) return;       // peeled (incl. the whole wave)
                                 if (skipH1 && pats[qi].host.size() == 1) return;
@@ -1839,7 +1845,7 @@ int main(int argc, char **argv) {
                     auto it = q2p.find(hashVec(Yscr));
                     if (it == q2p.end()) return;
                     for (int t : it->second)
-                        if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == Yscr) {
+                        if (((mapsRecompute || leafRecomp[lid]) ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == Yscr) {
                             int qi = qsAll[t];
                             if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
                                 if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
@@ -1971,7 +1977,7 @@ int main(int argc, char **argv) {
                 dbgGen++;                               // a complete ql candidate generated
                 auto it = q2p.find(h);
                 if (it == q2p.end()) return;
-                for (int t : it->second) if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == ql) { applyIdx(ql, t); return; }
+                for (int t : it->second) if (((mapsRecompute || leafRecomp[lid]) ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == ql) { applyIdx(ql, t); return; }
             };
             // DFS over leaf classes: place ql[c] in [0, min(uEnv[c],rem)], track
             // rem = r left, acc = Σ_{<c} max(pl,ql), and the running rolling hash.
