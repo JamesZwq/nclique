@@ -1105,7 +1105,7 @@ int main(int argc, char **argv) {
     // This is output-sensitive (work ~ live floors, not all candidates) and was
     // validated bit-exact vs scWithTerms on 400k random boxes (incl ell>0).
     bool sEqRp1 = (s == r + 1) && (getenv("SCT_NO_WFLOOR") == nullptr);
-    bool rp2Witness = (s == r + 2) && (getenv("SCT_RP2_WITNESS") != nullptr);  // §72 s=r+2 witness-major
+    bool rp2Witness = (s == r + 2) && (getenv("SCT_NO_RP2_WITNESS") == nullptr);  // §72 s=r+2 witness-major (default ON)
     // SKIP_H1: a |host|=1 pattern peels at EXACTLY L_M=C(|M|-r,s-r) regardless
     // of how the peel proceeds (every r-clique in its region M has support
     // >= L_M, so no witness of a |host|=1 pattern dies before curLevel=L_M --
