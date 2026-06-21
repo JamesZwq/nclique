@@ -1226,6 +1226,8 @@ int main(int argc, char **argv) {
     bool slotIdxVerify = getenv("SCT_SLOT_IDX_VERIFY") != nullptr;   // Step 1: assert index==scan
     if (slotIdxVerify) slotIdx = false;                             // verify mode needs the full scan to drive
     bool idxOn = slotIdx || slotIdxVerify;
+    bool idxDbg = getenv("IDX_DBG") != nullptr;        // localize index cost: pivot-scan vs candidate-filter vs output
+    long long ixPivScan = 0, ixCand = 0, ixOut = 0;    // Σ(mv-thr) over coords / Σ pivot-candidates filtered / Σ affected
     vector<char> ixBuilt(idxOn ? nLeaf : 0, 0);
     vector<int>  ixM(idxOn ? nLeaf : 0, 0), ixMaxv(idxOn ? nLeaf : 0, 0);
     vector<vector<vector<int>>> ixBkt(idxOn ? nLeaf : 0);  // [lid][c*maxv+v] -> positions
@@ -1261,13 +1263,16 @@ int main(int argc, char **argv) {
         int piv = -1, pivThr = 0; long best = LONG_MAX;            // pivot = min-count plNZ coord
         for (auto &pv : plNZ) { if (pv.first >= M) { out.assign(1, -1); return; }   // bloc coord beyond leaf width => no path (defensive)
             long cc = 0; for (int v = pv.second; v < mv; v++) cc += (long)bkt[pv.first * mv + v].size();
+            if (idxDbg) ixPivScan += (mv - pv.second);
             if (cc < best) { best = cc; piv = pv.first; pivThr = pv.second; } }
         if (piv < 0) return;
         for (int v = pivThr; v < mv; v++) for (int pos : bkt[piv * mv + v]) {
+            if (idxDbg) ixCand++;
             bool ok = true; for (auto &pv : plNZ) { if (pv.first == piv) continue;
                 if ((int)cur[pos].u[pv.first] < pv.second) { ok = false; break; } }
             if (ok) out.push_back(pos);
         }
+        if (idxDbg) ixOut += (long long)out.size();
     };
     vector<int> ixAff, scanAff;                        // reused: index-found / scan-found affected positions
     // IN-PLACE: unchanged paths (~99%) stay put (never moved). Only changed paths
@@ -2096,6 +2101,8 @@ int main(int argc, char **argv) {
             witGateW, witGateG, (witGateW + witGateG) ? 100.0 * witGateG / (witGateW + witGateG) : 0.0);
     fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
             secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
+    if (idxDbg) fprintf(stderr, "[idx-dbg] pivot-scan(Σ mv-thr)=%lld  candidates-filtered=%lld  affected-out=%lld | filter waste=%.1fx, pivscan/out=%.1fx\n",
+            ixPivScan, ixCand, ixOut, ixOut ? (double)ixCand/ixOut : 0.0, ixOut ? (double)ixPivScan/ixOut : 0.0);
     if (sfdDbg) fprintf(stderr, "[sfd-dbg] tested=%lld affected=%lld (%.2f%%) coord-tests=%lld (%.2f/test) fail-on-1st=%lld (%.1f%% of skips)\n",
             slotVisits, sfdAff, slotVisits ? 100.0*sfdAff/slotVisits : 0.0, sfdCoordTests,
             slotVisits ? (double)sfdCoordTests/slotVisits : 0.0, sfdFailFirst,
