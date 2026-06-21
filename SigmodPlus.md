@@ -3540,3 +3540,23 @@ currently gated, should become default for s=r+2); s>r+2 -> batch (SCT_BATCH_PEE
 PENDING (user decision): flip SCT_RP2_WITNESS to default-on for s=r+2? (bit-identical + 4-7x local win; a server
 sweep would confirm at scale but this round is local-only.) And whether to extend the witness-major to s=r+3
 (tail 3, O(M^3) configs -- likely still beats general for moderate M, but the batch/general may win past some tail).
+
+## 74. UNIFIED tail-parameterized witness path (replaces witness-floor + witness-major) + crossover (2026-06-21, #165) [local]
+Replaced the two hand-rolled fast paths (t=1 witness-floor, t=2 witness-major, ~125 lines) with ONE
+tail-parameterized recursion (gate SCT_WITNESS_TMAX, default 2): addDelta recursively adds t units to pl as a
+non-decreasing class multiset -> witness Y; count alive boxes; remGamma recursively removes t units -> Q with
+weight Π C(n_b-Q_b, mult_b); credit drop = weight × #alive. Q==P excluded by qi!=pi (no explicit γ≠δ needed --
+Q=pl maps only to pi). m=1 weight fast path (avoid ccpath_ncr). Active for 1<=t<=witnessTMax; batch condition
+changed to (batchPeel && !useWitness) so batch only runs past the witness cap.
+CORRECTNESS: bit-identical to the general fallback (SCT_WITNESS_TMAX=0) at t=1,2,3 across dblp-sigmod/db (incl
+the 32451c95 reference). The NEW t=3 path also matches -> the recursion is exact for any tail.
+CROSSOVER (local peel time, the SCT_WITNESS_TMAX knob makes this directly measurable):
+  t=1 dblp-db 4,5: witness 7.3s vs general 21.2s = 2.45x (still wins).
+  t=3 dblp-sigmod 3,6: witness 0.07 | general 0.08 | batch 0.03 -> witness ~= general, LOSES to batch (0.43x).
+  t=3 dblp-sigmod 4,7: witness ~= general ~= batch (~0.09s, tied).
+  => t=3 is the CROSSOVER: the O(M^t) witness enumeration stops winning; batch/general take over. Confirms
+     witnessTMax=2 is the right default. (t=3 cells here are tiny <0.1s; a larger t=3 graph would sharpen it.)
+UNIFICATION TAX: the unified recursion is ~7% slower at t=1 than the old flat-loop witness-floor (7.34 vs 6.86s,
+interleaved) -- runtime-t recursion can't unroll to a flat loop. Accepted: t=1 is low-RS (not region-native's
+strength), the path still wins 2.45x vs general, and the user prioritized de-duplication. A template<int t>
+dispatch would regain flat-loop speed with one source if ever wanted. Default behavior unchanged (t=1,2 witness).
