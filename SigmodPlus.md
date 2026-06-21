@@ -3643,3 +3643,30 @@ Bit-identical: default == force-witness(WIT_CROSS=99) == general(TMAX=0) at t=3,
 calibrated crossover; it is graph-dependent (sparser graphs witness wins further, denser earlier) but tunable, and
 sec 77's "per-leaf ~= fixed cap" logic applies. STATE: affected-update now auto-picks the fastest method by tail
 across the whole spectrum; t=1,2,3 witness (1.9-7x over general), t>=4 batch (3.6x over witness). All local.
+
+## 79. STATE OF THE PEEL + remaining optimization landscape (next: MEMORY) (2026-06-21, #170)
+ARC COMPLETE (sec 70-78): the affected-update now AUTO-PICKS the fastest method by tail t=s-r, all bit-identical:
+  t=1        -> witness-floor (unified witness path, sec 74)
+  t=2,3      -> per-leaf-adaptive witness (sec 76); gate ~never splits vs general (sec 77)
+  t>witCross(3) -> wave BATCH driver (sec 71), routed BY DEFAULT (sec 78)
+  Env knobs: SCT_WITNESS_TMAX(8 hard cap) / SCT_WIT_GATE_MINT(3) / SCT_WIT_K(8) / SCT_WIT_CROSS(3) /
+             SCT_BATCH_PEEL / SCT_BATCH_CB_CAP(128) / SCT_NO_SLOT_IDX. Diagnostics: SCT_WIT_DBG, SUPP_DBG, COMP_DBG.
+  Wins (dblp-db peel, local, vs general baseline): t=2 ~4x | t=3 ~3.4x | t=4 ~3.6x (batch over witness).
+CURRENT PEEL BREAKDOWN (local, after the witness/batch work -- where time goes NOW):
+  dblp-db 3,5 (t=2): peel 1.72s = slotForbidDiff 0.44 (26%) + affected-update 1.27 (74%)
+  dblp-db 4,6 (t=2): peel 12.4s = slotForbidDiff 4.05 (33%) + affected-update 8.33 (67%)
+  => the AFFECTED-UPDATE (now witness) is STILL the dominant 67-74% (its box-scan O(Wδ*boxes*M)); slotForbidDiff
+  26-33%. build/maps are TIME-cheap (0.1-0.3s) -- the maps' problem is MEMORY, not time.
+REMAINING OPTIMIZATION LANDSCAPE (prioritized):
+  A. MEMORY (pattern<->leaf maps) -- THE competitive gap: region-native only loses to CND on memory at low-RS
+     (sec 62: maps = 4.16G, the biggest consumer). Lever = ADAPTIVE maps-CSR: don't store the local footprint for
+     WIDE leaves, recompute on demand (sec 52 SCT_MAPS_RECOMPUTE exists but full-on loses time; recompute only the
+     storage-expensive leaves -> ~6.8GB saved at ~no time cost). HIGH value, closes the only weakness. <- NEXT (user picked A).
+  B. PEEL PARALLELISM (multi-core) -- peel is single-thread; the 67-74% affected-update is per-pattern within a
+     wave, and the batch already groups a level leaf-major -> wave leaves parallelize. New speedup + scalability
+     axis. Effort medium-high (delta[] accumulate + re-bucket shared state -> per-thread accumulate + merge).
+  C. WITNESS box-scan reduction -- the dominant peel cost now, but fundamental (index the per-δ box liveness like
+     slot-idx #1? hard: liveness depends on δ and forbidden). MEDIUM/uncertain.
+  D. slotForbidDiff (26-33%) -- slot-idx #1 already made it output-sensitive; sec 57 killed lazy maintenance. LOW.
+CLOSED (do not revisit): closed-form CF (sec 66 time-unstable), composition direct-counting (sec 67, 4-45x mem),
+class-deletion (sec 69, <2% single-class), bulk-bin enlargement past |host|=1 (sec 57 falsified).
