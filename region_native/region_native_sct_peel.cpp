@@ -254,11 +254,21 @@ static inline double C(int n, int k) {
 static double ccpath_ncr(int n, int k) { return C(n, k); }
 
 // current resident-set, GB (Linux /proc) -- per-phase memory breakdown (MEM_DBG).
+#ifdef __APPLE__
+#include <mach/mach.h>
+#endif
 static double rssGB() {
+#ifdef __APPLE__
+    mach_task_basic_info info; mach_msg_type_number_t cnt = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &cnt) == KERN_SUCCESS)
+        return (double)info.resident_size / 1073741824.0;
+    return 0;
+#else
     FILE *f = fopen("/proc/self/status", "r"); if (!f) return 0;
     char ln[256]; long kb = 0;
     while (fgets(ln, sizeof ln, f)) if (sscanf(ln, "VmRSS: %ld kB", &kb) == 1) break;
     fclose(f); return kb / 1048576.0;
+#endif
 }
 
 int main(int argc, char **argv) {
