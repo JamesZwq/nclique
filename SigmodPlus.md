@@ -3771,3 +3771,23 @@ slower at low-RS. That is region-native's known dense+low-RS weakness (maps expl
 -23-29% isn't enough there. WHERE RN DOMINATES = high-RS: CND explodes to 40GB/29min (ca-AstroPh 6,8) while RN stays
 small/fast (pending the high-RS RN rows). STILL RUNNING: ca-AstroPh high-RS + com-amazon/com-dblp/com-youtube/
 web-Google (large; CND has NO data past the timeout there = RN wins by default). Full table next.
+
+## 85. ROOT CAUSE of the ca-AstroPh (dense) blow-up: PATTERN explosion, not layout (2026-06-21, #177) [tods2 diag]
+User asked why RN times out + uses huge memory on ca-AstroPh. MEASURED (region_native diagnostics):
+  graph (n)        | regions | classes | PATTERNS  | incidences | maps   | peel
+  ca-GrQc 3,4 (5242)|   905  |   648   |   7,508   |   42K      | 6MB    | 0.12s
+  ca-AstroPh 3,4(18772)| 27,997 | 9,694 | 848,771  | 6.7M       | ~1GB   | 27s   (RSS 2.4GB)
+  ca-AstroPh 4,5    | 21,665 | 7,303   | 4,535,489 | 32.9M      | 5.8GB  | TIMEOUT (RSS 12.6GB; 5,6 hit 36GB)
+ca-AstroPh is DENSE (astro co-authorship; every multi-author paper = a clique), n only 18772 but regions=27997
+(MORE maximal cliques than nodes -- the dense signature). The chain: dense -> many regions x many classes per region
+-> #PATTERNS (r-multisets of a region's classes) EXPLODES (7.5K sparse -> 849K -> 4.5M). The maps store EVERY
+(pattern,leaf) incidence, so memory tracks #patterns: 6MB -> 1GB -> 5.8GB -> 36GB(5,6). Peel grinds all -> timeout.
+TWO CONSEQUENCES: (1) higher r is WORSE (r-multisets grow combinatorially in r) -> mid-RS 4,5/5,6 is the timeout
+zone. (2) CSR+PB CANNOT rescue this -- they halve BYTES/incidence, but the NUMBER of incidences (33M) is the root;
+halving 5.8GB is still 2.9GB. The explosion is ALGORITHMIC (pattern materialization), not a layout issue.
+CND wins on dense because it NEVER materializes patterns -- streams r-clique->s-clique enumeration, memory = the
+small clique index. FUNDAMENTAL TRADE: RN pays memory (maps) to be size-free at HIGH-RS on SPARSE graphs; on DENSE
+graphs the pattern materialization is the wrong trade (loses time AND memory). This is region-native's intrinsic
+dense weakness -- not fixable by the memory levers; would need a different representation (don't materialize all
+patterns) or a density gate (use CND/streaming on dense regions). The CND comparison on SPARSE large graphs (com-dblp
+/web-Google, where RN should win at high-RS) is still the pending piece; the dense ca-* cells are RN-loss by design.
