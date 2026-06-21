@@ -1100,6 +1100,45 @@ int main(int argc, char **argv) {
         fprintf(stderr, "[cls-leaf] intersect cost: Sum min-list(hash-probe)=%lld  Sum sum-list(two-ptr)=%lld  vs patLeaves-iter=%lld  -> overhead min=%.2fx sum=%.2fx\n",
                 totMin, totSum, patLeafInc, patLeafInc ? (double)totMin / patLeafInc : 0.0, patLeafInc ? (double)totSum / patLeafInc : 0.0);
     }
+    // ON-DEMAND MAPS, STAGE 1 (§94): prove patLeaves can be COMPUTED (not stored) via class->leaves intersection.
+    // patLeavesOnDemand(P) = hash-probe-smallest over clsLeaves[c] (c in P), keep leaf iff every P-class is present
+    // AND hostFeasible (P extends to an s-clique in the box). Asserted == the stored patLeaves on every pattern. No
+    // behaviour change (gated by SCT_ONDEMAND_VERIFY). The prerequisite for Stage 2 (drop the stored patLeaves).
+    if (getenv("SCT_ONDEMAND_VERIFY")) {
+        vector<vector<int>> clsLeaves((size_t)nC);                  // class -> sorted leaf ids (the NEW small store)
+        for (int lid = 0; lid < nLeaf; lid++) for (int c : supC[lid]) clsLeaves[(size_t)c].push_back(lid);
+        Vec bl; vector<int> od;
+        auto onDemand = [&](int pi, vector<int> &out) {
+            out.clear();
+            const auto &comp = pats[pi].comp;
+            if (comp.empty()) return;
+            int cstar = comp[0].first; size_t best = clsLeaves[(size_t)comp[0].first].size();   // rarest class
+            for (auto &cm : comp) { size_t z = clsLeaves[(size_t)cm.first].size(); if (z < best) { best = z; cstar = cm.first; } }
+            for (int lid : clsLeaves[(size_t)cstar]) {
+                const vector<int> &sc = supC[lid];
+                bl.assign(sc.size(), 0);
+                size_t i = 0, j = 0; int matched = 0;                  // merge P.comp into leaf-local bl
+                while (i < sc.size() && j < comp.size()) {
+                    if (sc[i] < comp[j].first) i++;
+                    else if (sc[i] > comp[j].first) j++;
+                    else { bl[i] = (int16_t)comp[j].second; matched++; i++; j++; }
+                }
+                if (matched != (int)comp.size()) continue;             // some P-class absent -> not a host
+                const CCPath &box = slotPaths[lid][0]; int M = (int)sc.size();
+                long sl = 0, su = 0; bool ok = true;                   // hostFeasible(box, bl)
+                for (int c = 0; c < M; c++) { int L = (int)box.ell[c]; if ((int)bl[c] > L) L = (int)bl[c];
+                    int U = (int)box.u[c]; if (L > U) { ok = false; break; } sl += L; su += U; }
+                if (ok && sl <= box.T && box.T <= su) out.push_back(lid);
+            }
+        };
+        long long mism = 0;
+        for (int pi = 0; pi < (int)pats.size(); pi++) {
+            onDemand(pi, od);
+            if (od != patLeaves[pi]) { if (mism < 8) fprintf(stderr, "[ondemand] MISMATCH pi=%d stored=%zu od=%zu\n", pi, patLeaves[pi].size(), od.size()); mism++; }
+        }
+        fprintf(stderr, "[ondemand] verify: %lld/%zu patterns patLeavesOnDemand==stored %s\n",
+                (long long)pats.size() - mism, pats.size(), mism ? "[FAIL]" : "[OK]");
+    }
 
     // -------- support init: SCT (production) + optional region-IE cross-check (gate G2a) -------
     // P.sup := SCT sum-over-leaves support. Under SCT_VERIFY also compare to the region-IE init

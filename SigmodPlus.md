@@ -3956,3 +3956,14 @@ becomes ~1GB-class. CONCLUSION: on-demand patLeaves via hash-probe-smallest inte
 dense memory wall. Ready to implement (staged: 1=build class->leaves + assert patLeavesOnDemand==stored; 2=drop stored
 patLeaves, verify bit-identical + RSS; 3=Q-lookup via global comp->index hash, drop leafPats/footprints). Gate on
 maps/newstore so it triggers only where it wins (soc-Epinions-like graphs keep the stored maps).
+
+## 94. ON-DEMAND MAPS Stage 1 DONE: patLeavesOnDemand proven == stored patLeaves (2026-06-22, #178) [branch ondemand-maps]
+Stage 1 (safe scaffold, SCT_ONDEMAND_VERIFY, no behaviour change): build class->leaves inverted index; compute
+patLeavesOnDemand(P) = hash-probe-smallest over clsLeaves[c] (c in P) keeping leaf iff all P-classes present AND
+hostFeasible(box,bl) (Σmax(ell,bl) <= s <= Σu, the same s-extendability test enumLP uses). Asserted == stored
+patLeaves per pattern. RESULT: ca-AstroPh 3,4 848771/848771 OK, 4,5 4535489/4535489 OK, mini 2,4 & 3,5 OK. So the
+intersection reproduces the maps EXACTLY on dense + small at t=1,t=2. Order matches (both ascending leaf-id: enumLP
+iterates lid 0..nLeaf; clsLeaves built same order). NEXT Stage 2: drive the peel from patLeavesOnDemand, drop the
+stored patLeaves, verify corehash + measure RSS reclaim on 5,6/6,7. Stage 3: Q->index via global comp hash, drop
+leafPats/leafFlat (footprints already localB-recomputable §52). Gate on maps/newstore (§93). Working on a feature
+branch (ondemand-maps) per the user's "use Git for good project management"; merge to main when verified.
