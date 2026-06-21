@@ -3560,3 +3560,23 @@ UNIFICATION TAX: the unified recursion is ~7% slower at t=1 than the old flat-lo
 interleaved) -- runtime-t recursion can't unroll to a flat loop. Accepted: t=1 is low-RS (not region-native's
 strength), the path still wins 2.45x vs general, and the user prioritized de-duplication. A template<int t>
 dispatch would regain flat-loop speed with one source if ever wanted. Default behavior unchanged (t=1,2 witness).
+
+## 75. CROSSOVER IS GRAPH-DEPENDENT (driven by leaf width M) -> fixed witnessTMax is not universal (2026-06-21, #166) [local]
+User: the crossover param differs per graph. CONFIRMED. The witness enumeration is O(M^t) (M=leaf width, t=s-r),
+so the crossover where it loses to batch/general depends on M, which varies a lot by graph density. Measured
+max leaf width M (SCT_WIT_DBG, r=3 s=5): amazon-copurchase M=7 | dblp-sigmod M=18 | dblp-db M=33 | soc-Epinions1
+M huge (witness t=2 >150s timeout -- very dense).
+CROSSOVER SWEEP (r=3, t=2/3/4, witness vs general vs batch, local peel time; w/batch = batch/witness):
+  amazon  (M=7) : t2 0.97 | t3 1.33 | t4 - (sub-0.1s cells, noise)
+  sigmod  (M=18): t2 0.83 | t3 0.57 | t4 0.40 (ALL sub-0.1s -- NOISE, do not trust)
+  dblp-db (M=33): t2 1.51 | t3 1.13 | t4 0.29  <-- RELIABLE (cells 3.6-54s)
+RELIABLE READ (dblp-db, seconds-scale): witness BEATS batch at t=2 (1.51x) and t=3 (1.13x), LOSES at t=4 (0.29x,
+batch 3.4x faster). Crossover between t=3 and t=4 here. amazon (tiny M) keeps winning further; soc-Epinions (huge
+M) is so dense even t=2 witness is very slow (loses risk at t=2, unmeasured). So: witnessTMax=2 is SAFE on the
+measured moderate-M graphs (witness clearly wins t=2 on the reliable cell), t=3 is graph-dependent-marginal, t>=4
+loses. But a FIXED cap is NOT optimal per graph -- small M wants a higher cap, huge M may want lower (even <2).
+ELEGANT FIX (proposed, not built): make witness/fallback ADAPTIVE PER LEAF, like the batch's CB gate (sec 71):
+per leaf cheaply estimate the witness enumeration size ~ #compositions of t over its M (a small DP), and use
+witness only when it is below a cost threshold vs the general/batch alternative; else fall back. Auto-adapts to M
+and t together, no per-graph tuning. (The batch already does exactly this with CB; the witness can reuse the idea.)
+NOTE: small-graph timing (<0.1s) is noise-dominated; only seconds-scale cells (dblp-db) are trustworthy here.

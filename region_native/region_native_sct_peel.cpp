@@ -1502,6 +1502,8 @@ int main(int argc, char **argv) {
     vector<const int16_t*> chgU, fbA;                  // u-rows / single-forbidden rows of chgOld
     vector<int> fbCrit; vector<char> fbHas;            // per-path: max critical coord / has-1-forbidden
     long long dbgGen = 0, dbgHit = 0, dbgNZ = 0;       // instrumentation: cands gen / hit / nonzero-drop
+    long long witInst = 0, witMSum = 0, witMMax = 0;   // witness path: leaf-instances + leaf-width M (drives crossover)
+    bool witDbg = getenv("SCT_WIT_DBG") != nullptr;
     // batch-peel kill-gate (FANIN_DBG, sec 57): fanin = total (pattern,leaf) affected-update touches /
     // distinct (leaf,level) touches = avg #patterns sharing a (leaf,curLevel). fanin>=5 => batch-peel pays.
     bool faninDbg = getenv("FANIN_DBG") != nullptr;
@@ -1774,6 +1776,7 @@ int main(int argc, char **argv) {
                 // exclusion). δ,γ are enumerated as non-decreasing class multisets (each multiset once).
                 // t=1 == the old witness-floor, t=2 == the old witness-major; one path for all tails.
                 // Output-sensitive: NO DP, NO IE, NO DFS. Q==P (γ==δ) is excluded by the qi!=pi test.
+                witInst++; witMSum += Mloc; if (Mloc > witMMax) witMMax = Mloc;
                 ensureLeafMap(lid);
                 const auto &q2p = leafQ2pat[lid];
                 const auto &qbAll = leafPatLocB[lid];
@@ -2016,6 +2019,8 @@ int main(int argc, char **argv) {
     }
     auto T6 = Clock::now();
     memCk("after-peel(+index)");
+    if (witDbg) fprintf(stderr, "[wit] tail=%d leaf-instances=%lld avg-M=%.1f max-M=%lld\n",
+            witnessTail, witInst, witInst ? (double)witMSum / witInst : 0.0, witMMax);
     fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
             secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
     if (sfdDbg) fprintf(stderr, "[sfd-dbg] tested=%lld affected=%lld (%.2f%%) coord-tests=%lld (%.2f/test) fail-on-1st=%lld (%.1f%% of skips)\n",
