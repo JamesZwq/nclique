@@ -1509,6 +1509,7 @@ int main(int argc, char **argv) {
     vector<int> fbCrit; vector<char> fbHas;            // per-path: max critical coord / has-1-forbidden
     long long dbgGen = 0, dbgHit = 0, dbgNZ = 0;       // instrumentation: cands gen / hit / nonzero-drop
     long long witInst = 0, witMSum = 0, witMMax = 0;   // witness path: leaf-instances + leaf-width M (drives crossover)
+    long long witGateW = 0, witGateG = 0;              // gated leaves (t>=minT): chose witness / fell back to general
     bool witDbg = getenv("SCT_WIT_DBG") != nullptr;
     // batch-peel kill-gate (FANIN_DBG, sec 57): fanin = total (pattern,leaf) affected-update touches /
     // distinct (leaf,level) touches = avg #patterns sharing a (leaf,curLevel). fanin>=5 => batch-peel pays.
@@ -1793,6 +1794,7 @@ int main(int argc, char **argv) {
                     for (int tt = r; tt >= 1; tt--) { long long s2 = 0; for (int y = 1; y <= uc && y <= tt; y++) s2 += cbDP2[tt - y];
                         cbDP2[tt] += s2; if (cbDP2[tt] > SAT) cbDP2[tt] = SAT; } }
                 wLeaf = ((double)wdDP[witnessTail] <= (double)cbDP2[r] * witK);
+                if (wLeaf) witGateW++; else witGateG++;     // does the gate actually split per leaf?
             }
             if (wLeaf) {
                 // ---- UNIFIED WITNESS-MAJOR fast path, tail t = s-r (bit-exact vs scWithTerms, §72-74) ----
@@ -2046,8 +2048,9 @@ int main(int argc, char **argv) {
     }
     auto T6 = Clock::now();
     memCk("after-peel(+index)");
-    if (witDbg) fprintf(stderr, "[wit] tail=%d leaf-instances=%lld avg-M=%.1f max-M=%lld\n",
-            witnessTail, witInst, witInst ? (double)witMSum / witInst : 0.0, witMMax);
+    if (witDbg) fprintf(stderr, "[wit] tail=%d leaf-instances=%lld avg-M=%.1f max-M=%lld | gate: witness=%lld general=%lld (%.1f%% fell back)\n",
+            witnessTail, witInst, witInst ? (double)witMSum / witInst : 0.0, witMMax,
+            witGateW, witGateG, (witGateW + witGateG) ? 100.0 * witGateG / (witGateW + witGateG) : 0.0);
     fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
             secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
     if (sfdDbg) fprintf(stderr, "[sfd-dbg] tested=%lld affected=%lld (%.2f%%) coord-tests=%lld (%.2f/test) fail-on-1st=%lld (%.1f%% of skips)\n",
