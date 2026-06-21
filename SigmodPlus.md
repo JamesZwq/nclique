@@ -4083,3 +4083,21 @@ EXPERIMENT (detached on tods2, /tmp/cmp.csv): ALL OURS first then ALL CND, OMP_N
 (wall+peak RSS), per-run TIMEOUT=1h. Graphs {ca-GrQc,ca-CondMat,ca-AstroPh,com-dblp,com-youtube,web-Google} x cells
 {2,3;3,4;4,5;5,6;3,5;4,6}. OURS=region_native a_Y default (production); CND=degeneracy_cliques. Poll /tmp/cmp.csv;
 markers /tmp/cmp.ours.done then /tmp/cmp.done. (on-demand memory mode -52% RSS is documented §96-98; not a column here.)
+
+## 100. ours-vs-CND experiment: MIXED result; fresh CND broken r>=3, used prior REF CSV (2026-06-22)
+Fresh CND (degeneracy_cliques) r>=3 is BROKEN: byClique throws "clique not found" (src/dataStruct/CliqueHashMap.h:452)
+AFTER printing took -- so its fast r>=3 times are GARBAGE (com-dblp 4,5 broken 4.5s vs prior-valid REF 41s). So r>=3
+used the prior bench_full_merged.csv REF (status OK; likely same tods2 machine). OURS = region_native a_Y default,
+fresh tods2, OMP=1, /usr/bin/time wall+RSS. RESULT (ours fresh vs CND prior-REF, spd=CND/ours):
+  WINS (high-RS where CND explodes, ours does not): com-dblp 5,6 ours 70.6s/3.6GB vs CND 932s/28GB = 13.2x faster +
+    7.8x leaner; ca-GrQc 5,6 5.2x; com-dblp 4,5 1.8x; ca-GrQc 3,4/4,5 1.4-1.6x.
+  LOSSES (ours' OWN pattern explosion §85, or build-dominated): ca-AstroPh 4,6 ours 1465s/14GB vs CND 33s/966M (44x
+    SLOWER, 15x more mem); ca-AstroPh 5,6 592s/31GB vs 224s/6.4GB (slower + 5x mem); com-youtube/web-Google all slower
+    (build+large social graph); low-mid RS generally ours slower (materialization vs CND streaming).
+HONEST VERDICT: the method is NOT uniformly better than CND. It WINS BIG at high-RS where CND's s-clique count explodes
+but ours' compression holds (com-dblp 5,6 13x); it LOSES BIG where ours' OWN pattern materialization explodes (ca-AstroPh
+dense high-RS) or where the build dominates (large social/web graphs, low-RS). a_Y (the peel, this session) is a clean
+universal peel win, but the END-TO-END vs CND is graph/cell-dependent -- the BUILD (MCE+pattern-enum+SCT materialization)
+and the §85 pattern explosion are the unaddressed costs. CAVEATS: fresh CND r>=3 unrunnable (binary bug); prior REF is a
+different run (machine provenance not fully confirmed). To get clean apples-to-apples r>=3, fix the byClique crash and
+re-run CND on tods2. Full table /tmp/cmp.csv.
