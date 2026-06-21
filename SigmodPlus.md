@@ -3706,3 +3706,21 @@ leafPatLocB for WIDE leaves (Mloc>=leafWmin) -> recovers the OTHER half but at t
 +9-17%). Tunable middle ground; characterizing its RSS/time curve on the server next.
 OPEN COMPETITIVE Q: does free lever-1 close the CND memory gap at low-RS (docs: com-dblp 3,4 RN 1121M vs CND 569M)?
 Lever 1 alone likely narrows but may not beat CND; lever 2 / full closes more at time cost. Need CND numbers per cell.
+
+## 82. §79-A MEMORY lever-2 curve + the REAL next lever is CSR-flatten (free), not recompute (2026-06-21, #173) [tods2 RSS]
+WMIN tradeoff sweep (PB + SCT_MAPS_LEAF_WMIN, tods2 peak RSS):
+  com-dblp 4,6 (wide leaves, t=2): PB 1.70GB | +W24 1.38GB(-0.32, +10% peel, recompute 76% of leafPatLocB) |
+    +W16 1.33GB(-0.37,+12%) | +W8 1.29GB(-0.41,+13%, recompute 94%). The wide leaves hold MOST of leafPatLocB AND
+    are HOT -> lever-2 ~= full recompute cost. A real memory<->time knob, but no free lunch on wide-leaf graphs.
+  com-youtube 3,4 (narrow leaves, t=1): W16/W24 catch ~NOTHING (leaves narrow, Mloc<16); only W8 trims 811->480MB
+    (-0.35GB RSS, +5%). leafPatLocB = 811MB / 14.3M incidences = ~57 bytes/inc but the DATA is tiny (Mloc small) ->
+    the memory is PER-Vec OVERHEAD (vector obj 24B + malloc hdr 16B ~= 40B/footprint), NOT data.
+KEY INSIGHT: the maps' "other half" (leafPatLocB) is TWO different costs: (a) real footprint data on WIDE-leaf graphs
+(lever-2 recompute reclaims it, but those leaves are hot -> ~full time cost); (b) PER-Vec OVERHEAD on NARROW-leaf
+graphs (the 40B/footprint dominates). (b) is removed FOR FREE by CSR-FLATTENING (one flat int16 array + per-leaf
+offsets, no per-footprint vector) -- ~36-40B/incidence saved at ~0 time (CSR reads are as fast). On com-youtube that
+is ~0.57GB free; it also shrinks pbLocal's empty-outer + patLeaves/leafPats similarly.
+=> MEMORY LEVER RANKING (free first): L1 PB (drop cold pbLocal) = FREE ~half [DONE, RSS-confirmed]; L3 CSR-flatten
+leafPatLocB + the int maps = FREE overhead removal [NOT BUILT -- the better next lever]; L2 width-recompute = the
+residual real data, memory<->time knob [DONE, useful on wide-leaf graphs]. RECOMMEND: L1 default-on now; build L3
+(CSR) for the other free chunk; keep L2 as a tunable knob. NEXT: build L3 (CSR-flatten leafPatLocB).
