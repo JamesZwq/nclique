@@ -3791,3 +3791,32 @@ graphs the pattern materialization is the wrong trade (loses time AND memory). T
 dense weakness -- not fixable by the memory levers; would need a different representation (don't materialize all
 patterns) or a density gate (use CND/streaming on dense regions). The CND comparison on SPARSE large graphs (com-dblp
 /web-Google, where RN should win at high-RS) is still the pending piece; the dense ca-* cells are RN-loss by design.
+
+## 86. NEW DIRECTION: CND-style enumerate+decrement on ORBITS, adaptive per-leaf (the "small-knife" path) (2026-06-21, #178)
+USER INSIGHT (correct): patterns are just COMPRESSED r-cliques, so the compressed work can't fundamentally exceed CND.
+We are slower on dense low-RS NOT because of the compression but because of an IMPLEMENTATION choice: we only carry
+ONE tool -- the heavy COMBINATORIAL machinery (forbidden-antichain boxes + binomial witness counting). That heavy
+machinery is size-free (the win at high-RS) but has a LARGE per-unit constant; it only pays off when the witness
+count is large. On dense LOW-RS (witnesses few) it is a sledgehammer for a nut.
+
+MEASURED (ca-AstroPh 3,4, peel 27.19s): slotForbidDiff(forbidden-antichain maintenance)=52%, combinatorial drop=48%.
+Per-unit ~4us/incidence vs CND's ~0.5us/decrement -> ~8x heavier per unit. Work unit is INCIDENCES (pattern,leaf)=
+6.7M, which already EXCEEDS r-cliques(1.3M) (a pattern is a subclique of s-cliques across many leaves on dense), so
+we process MORE units, each HEAVIER -> 27s vs CND 5.2s. (#patterns<#r-cliques is true but irrelevant: work != #objects.)
+
+THE FIX (user's "reuse CND + compress"): add a SECOND affected-update path = CND's enumerate+decrement, but operating
+on PATTERN-ORBITS with multiplicity. When a leaf's witness count is SMALL: enumerate the leaf's witness compositions
+(s-multisets of classes), and for each, decrement the affected pattern-orbits' support by (binomial multiplicity).
+This is exactly CND's mechanism (enumerate witnesses, decrement r-subcliques) but (a) on the COMPRESSED orbit set
+(decrement each pattern once x mult, not each r-clique) and (b) it BYPASSES BOTH heavy parts -- no forbidden-antichain
+(no slotForbidDiff), no binomial box machinery. So on dense low-RS it should MATCH CND (same mechanism) and BEAT it
+(compression). Keep the combinatorial size-free path for high-RS. Per-leaf ADAPTIVE between "enumerate (CND small-knife)"
+and "count combinatorially (our sledgehammer)" -- SAME routing framework as the existing witness/batch gate.
+
+HONEST CAVEAT (measure-first): the enumeration cost = the leaf's COMPOSITION count, and §67 measured compositions can
+be 4-45x patterns. So enumerate is NOT free on every dense leaf; the crossover (enumerate < combinatorial) must be
+MEASURED per leaf. PLAN: build a PROBE first -- on a real dense cell (ca-AstroPh 3,4 / soc-Epinions), per gated leaf,
+measure (i) #witness-compositions to enumerate, (ii) the would-be enumerate+decrement op count, vs (iii) the current
+combinatorial op count (slot-path-visits + drop work). Find where enumerate wins. THEN build the path + an adaptive
+gate, verify BIT-IDENTICAL (corehash), then measure end-to-end vs CND on the dense cells. This is the principled fix
+for region-native's dense weakness (the one structural loss in the CND comparison, cf §84/§85).
