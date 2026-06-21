@@ -4048,3 +4048,12 @@ on-demand is a WIN on dense co-authorship (classes in few leaves -> cheap inters
 (disable when max class->leaves list is long), not memory-gated -- com-youtube has a decent mem win yet 11x time, so a
 maps/newstore gate would WRONGLY enable it. Gate signal = maxlist (CLS_LEAF_DBG already measures it), cheap at build.
 VERDICT: on-demand maps is a NICHE, cost-gated tool (dense co-authorship only); a_Y remains the clean universal win.
+
+## 98. COST-GATE fixes the com-youtube pit: on-demand auto-disables where the intersection is costly (2026-06-22) [branch]
+The §97 com-youtube 11x regression is fixed by a build-time COST-GATE (not a memory gate -- com-youtube has a mem win
+yet 11x time). Signal = avg rarest class->leaves list = (Σ_patterns min_c |leaves(c)|)/#patterns, one cheap count pass
+over supC, computed BEFORE enumLP so it flips `ondemand` off (-> enumLP stores the maps, full clean fallback). MEASURED
+avg-rarest: com-dblp 16, ca-AstroPh 94 (WINS) vs com-youtube 625, soc-Epinions 3494 (LOSSES) -> threshold 150 separates
+cleanly (env SCT_ONDEMAND_MAXAVG). VERIFIED: ca-AstroPh 4,5 avg=93.9 -> ON (corehash OK), soc-Epinions 3,4 avg=3494 ->
+OFF (stored maps, no regression). So `SCT_ONDEMAND` is now safe to set globally: it self-disables on social graphs.
+NEXT: merge ondemand-maps -> main; then the comprehensive ours-vs-CND server experiment (multi-graph x RS, 1h timeout).

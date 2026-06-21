@@ -821,6 +821,29 @@ int main(int argc, char **argv) {
         supC[lid].assign(lf.classIds.begin(), lf.classIds.end());
         slotPaths[lid].push_back(lf);
     }
+    bool ondemand = getenv("SCT_ONDEMAND") != nullptr;   // §94/§98: compute maps on-demand; the cost-gate below may flip it off
+    // §98: COST-GATE for on-demand maps. On social graphs (hub classes in MANY leaves) the patLeaves intersection +
+    // globalLookup blow up (com-youtube 3,4 was 11x slower) and a memory gate would WRONGLY enable it (it still has a
+    // mem win). Gate on the avg rarest class->leaves list size = (Σ_patterns min_c |leaves(c)|)/#patterns -- one cheap
+    // count pass over supC. It cleanly separates wins (com-dblp 16, ca-AstroPh 94) from losses (com-youtube 625,
+    // soc-Epinions 3494). If too costly, fall back to stored maps (enumLP below stores them, ondemand=false).
+    if (ondemand) {
+        vector<int> clsCnt((size_t)nC, 0);
+        for (int lid = 0; lid < nLeaf; lid++) for (int c : supC[lid]) clsCnt[(size_t)c]++;
+        double sumMin = 0;
+        for (auto &P : pats) {
+            if (P.comp.empty()) continue;
+            int mn = clsCnt[P.comp[0].first];
+            for (auto &cm : P.comp) if (clsCnt[cm.first] < mn) mn = clsCnt[cm.first];
+            sumMin += mn;
+        }
+        double avgRarest = pats.empty() ? 0.0 : sumMin / (double)pats.size();
+        double maxAvg = getenv("SCT_ONDEMAND_MAXAVG") ? atof(getenv("SCT_ONDEMAND_MAXAVG")) : 150.0;
+        bool keep = avgRarest < maxAvg;
+        if (memDbg) fprintf(stderr, "[ondemand-gate] avg-rarest-list=%.1f vs max=%.1f -> on-demand %s\n",
+                            avgRarest, maxAvg, keep ? "ON" : "OFF (stored maps; intersection too costly)");
+        if (!keep) ondemand = false;
+    }
     // map a global-class vector to leaf lid's local dimension (b-vector).
     auto toLocal = [&](int lid, const Vec &gv) -> Vec {
         const vector<int> &sc = supC[lid];
@@ -891,7 +914,7 @@ int main(int argc, char **argv) {
     // memory at near-zero time cost -- vs SCT_MAPS_RECOMPUTE (full) which recomputes BOTH and pays +17% on the hot map.
     bool mapsRecomputePB = getenv("SCT_MAPS_NO_RECOMPUTE_PB") == nullptr;   // DEFAULT ON (free; §81 RSS-confirmed)
     bool recomputePB = mapsRecompute || mapsRecomputePB;   // pbLocal not stored / recomputed
-    bool ondemand = getenv("SCT_ONDEMAND") != nullptr;     // §94 Stage 2: compute patLeaves on-demand, do NOT store it
+    // (ondemand declared earlier, right after the supC compaction, so the §98 cost-gate can run before enumLP)
     // LEVER 2 (§80): recompute the HOT leafPatLocB for the WIDEST leaves only (Mloc>=leafWmin) -- recovers the
     // OTHER ~half of the maps memory, but at a time cost on those (hot) leaves. leafWmin tunes the memory<->time
     // tradeoff (0 = off; combine with SCT_MAPS_RECOMPUTE_PB for free-half + adaptive-other-half). Mloc=supC[lid].size().
