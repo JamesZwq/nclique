@@ -3840,3 +3840,26 @@ PROBE (framework-internal, replaces the §86 CND-cost probe): per leaf measure (
 NONZERO drop = necessary work; (ii) slotVisits + DFS visits = ACTUAL work; ratio actual/realDrops = our inefficiency
 factor. If slotForbidDiff >> minimum, that is the recoverable waste -> attack it inside our framework. §86's "graft CND"
 framing is RETRACTED; keep §86 only for the cost analysis (dense low-RS: slotForbidDiff 52%, incidences 6.7M>r-cliques).
+
+## 87. MEASURED: the dense-low-RS 52% is SPLIT CHURN, not a re-scan bug; the find is already output-sensitive (2026-06-21, #178)
+Followed the §86b plan (make our update output-sensitive). Probed ca-AstroPh 3,4 (dense, compression only
+patterns/r-cliques=849K/1.3M=1.5x) on tods2. FINDINGS:
+  [profile] peel=25.9s slotForbidDiff=13.4s (52%) drop=12.3s (48%)
+  [sfd-dbg] tested(slot-size sum)=870M affected=10.3M (1.19%)  -- BUT this 870M is the CALL-SITE metric, not work.
+  [idx-dbg] pivot-scan=27.6M candidates-filtered=73.8M affected-out=10.3M (filter 7.2x, pivscan 2.7x)
+  index-on 13.4s vs SCAN(SCT_NO_SLOT_IDX) 15.3s -> the slot INDEX (ixFindAffected, already DEFAULT-ON) cuts FIND
+    870M->101M ops but saves only 13% time => FINDING IS NOT THE BOTTLENECK.
+  [supp] forbid-insert calls=4.6M affected-paths=10.3M SPLITS=5.85M -> 57% of affected boxes SPLIT.
+  KMAX sweep: KMAX=1 peel 25.9s < KMAX=2 28.3s < KMAX=4 33.3s (larger KMAX = fewer splits but exponential IE; 1 optimal).
+CONCLUSION: the 52% is the controlled_split CHURN of the forbidden-antichain (5.85M splits), NOT a re-scan / not a
+find bug. The update IS already output-sensitive (index handles find; drop reads chgOld snapshots only). So §86b's "the
+excess is a re-scan" was WRONG -- there is no re-scan to delete. The cost is the antichain's split machinery per real
+change (~1.3us/affected box), a HEAVY per-op CONSTANT vs CND's decrement. On 1.5x-compression dense graphs the weak
+compression can't offset this constant => 5x slower than CND. (On HIGH-compression sparse high-RS, the compression
+offsets it and we already win -- our regime.)
+NEXT LEVER (framework-internal, NOT CND): composition-direct-counting (§67, OUR orbit-level a_Y counters) ELIMINATES the
+antichain + splits entirely -- the alive-state is a per-composition counter, decremented on death, no IE/no split. §67
+closed it on MEMORY (comp/pat=77x here -> 65M counters ~260MB, +11% peak RSS). REVISIT ADAPTIVELY: direct-counting only
+on dense high-split leaves (bound the memory, keep the antichain's size-freedom on sparse/high-comp leaves). Correctness
+needs re-derivation (which witnesses of comp Y die when a contained pattern peels -- the binomial subtlety). DECISION
+POINT for the user: revive §67 adaptively (reopens a memory-closed direction; server has 503GB).
