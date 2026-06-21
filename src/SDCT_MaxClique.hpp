@@ -15,8 +15,9 @@ static void listAllCliquesDegeneracyRecursive_MaxClique(
     if ((int)keepV.size() > max_k) return;
 
     // Look-ahead: if max possible path size (current + all remaining P) < store_min_k,
-    // no branch can produce a stored path (size ≥ s). Prune entire subtree.
-    // Paper Lemma (Feasibility): path encodes s-clique iff |V_h| ≤ s ≤ |V_h|+|V_p|.
+    // prune entire subtree. When a CPI is built, the caller sets store_min_k = r
+    // (= emit_min_k) so every subtree that can reach an r-clique is kept and the CPI
+    // indexes all r-cliques, including those in no s-clique. Otherwise store_min_k = s.
     if ((int)keepV.size() + (int)dropV.size() + (beginR - beginP) < store_min_k) return;
 
     if (beginP >= beginR) {

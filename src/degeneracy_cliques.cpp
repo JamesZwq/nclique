@@ -263,7 +263,7 @@ static SDCTBuildResult buildSDCTWithIndex(
     Graph &edgeGraph, daf::CliqueSize r, daf::CliqueSize s) {
 
     const int emit_min_k = r;   // callback for all leaves ≥ r
-    const int store_min_k = s;  // only store leaves ≥ s in tree
+    int store_min_k = s;        // store leaves ≥ s in tree (overridden to r below when a CPI is built)
     const daf::Size n = edgeGraph.getGraphNodeSize();
     const bool quotientLabOnly =
         envSet("PIVOTER_RUN_ST_QUOTIENT_LAB") && envSet("PIVOTER_QUOTIENT_LAB_ONLY");
@@ -305,6 +305,12 @@ static SDCTBuildResult buildSDCTWithIndex(
                          envSet("PIVOTER_RUN_CCPATH")) &&
                         !envSet("PIVOTER_COMPARE") && !envSet("PIVOTER_RUN_ST");
     auto ci = (r >= 3 && !quotientLabOnly && !regionOnly && !v3Only) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
+    // The CPI must index ALL r-cliques (size >= r), including those in no s-clique
+    // (support 0). Tree-based CPI builds (build / buildWithFullEnum) enumerate only
+    // from STORED leaves, so the tree must store leaves >= r, matching the REF's
+    // SDCT(edgeGraph, s, r). Storing only >= s drops r-cliques whose maximal clique
+    // is in [r, s), causing byClique lookups to throw during peeling.
+    if (ci) store_min_k = emit_min_k;
     daf::StaticVector<daf::Size> keepBuf, dropBuf;
     daf::Size mergedBuf[16]; // enough for r ≤ 16
 

@@ -26,7 +26,10 @@ static void listAllCliquesDegeneracyRecursive_Fused(
 
     if ((int)keepV.size() > max_k) return;
 
-    // Look-ahead: if max possible path size < store_min_k (s), prune subtree
+    // Look-ahead: if max possible path size < store_min_k, prune subtree.
+    // When a CPI is built, the caller sets store_min_k = r (= emit_min_k) so this
+    // prune keeps every subtree that can reach an r-clique; the CPI then indexes all
+    // r-cliques, including those in no s-clique. Otherwise store_min_k = s prunes more.
     if ((int)keepV.size() + (int)dropV.size() + (beginR - beginP) < store_min_k) return;
 
     if (beginP >= beginR) {
