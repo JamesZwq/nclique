@@ -3626,3 +3626,20 @@ witness/general choice. So: (a) per-leaf vs general = theoretically >= fixed but
 splits); (b) per-leaf vs batch = WOULD matter (lower crossover, real splitting) -> integrating batch into the
 per-leaf choice is where adaptive actually pays off. The adaptive gate's current value is robustness + no per-graph
 tuning + future-proofing, NOT a raw speedup over a good fixed cap. Honest.
+
+## 78. METHOD ROUTING by measured crossover: witness (t<=witCross) -> BATCH (t>witCross) (2026-06-21, #169) [local]
+Completed the tail-indexed method hierarchy for the affected-update, all bit-identical:
+  t=1      : witness-floor (unified witness path)
+  t=2,3    : per-leaf-adaptive witness (sec 76; gate ~never splits vs general, sec 77)
+  t>witCross(3): the wave BATCH driver (sec 71) -- routes here BY DEFAULT (tunable SCT_WIT_CROSS).
+WHY routing not per-leaf-3-way: integrating witness INTO the wave driver is a big risky rewrite of the bit-identical
+core, and sec 77 showed a whole-peel switch ~= per-leaf (witness/general gate ~never splits). The witness->BATCH
+crossover IS real and lower than witness->general: at dblp-db t=4 batch beats witness ~3.6x. So a tail-based route
+to batch past the crossover captures the win at low risk. Verified batch bit-identical at t=3,4 (dblp-sigmod/db)
+BEFORE making it a default there.
+RESULT (dblp-db, peel time, default-routing vs force-witness-everywhere SCT_WIT_CROSS=99):
+  t=2 1.68 vs 1.66 (unchanged, witness) | t=3 6.03 vs 6.01 (unchanged, witness) | t=4 8.43 vs 30.25 = 3.59x (batch).
+Bit-identical: default == force-witness(WIT_CROSS=99) == general(TMAX=0) at t=3,4. witCross=3 is the dblp-db-
+calibrated crossover; it is graph-dependent (sparser graphs witness wins further, denser earlier) but tunable, and
+sec 77's "per-leaf ~= fixed cap" logic applies. STATE: affected-update now auto-picks the fastest method by tail
+across the whole spectrum; t=1,2,3 witness (1.9-7x over general), t>=4 batch (3.6x over witness). All local.
