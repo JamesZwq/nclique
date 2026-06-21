@@ -490,7 +490,8 @@ int main(int argc, char **argv) {
     struct Pat {
         vector<int> host;            // sorted region ids (|host|>=1)
         vector<pair<int,int>> comp;  // (classId, mult) sorted by classId, sum=r
-        vector<int> classSet;        // sorted class ids of comp (subset tests)
+        vector<int> classSet;        // sorted class ids of comp (subset tests) -- SCT_VERIFY-only, freed after build
+        int hostSz = 0;              // |host| kept after host's region-id list is freed (peel needs only the count)
         double sup = 0; double core = -1;
         long long mult = 1;          // # actual r-cliques in this orbit
         bool alive = true; long long key = -1;
@@ -782,9 +783,14 @@ int main(int argc, char **argv) {
                sclSCT, sclIE, fabs(sclSCT - sclIE) < 0.5 ? "[OK]" : "[MISMATCH]");
         fflush(stdout);
     }
+    // §96b: free build-only heavy per-pattern fields. classSet is read ONLY by suppOf (SCT_VERIFY, just above); host's
+    // region-id list is needed ONLY at build (directBin) + suppOf -- the peel uses only |host| (kept as hostSz). Frees
+    // ~classSet + ~host of per-pattern incidence (e.g. ca-AstroPh 4,5: 73MB + 85MB).
+    for (auto &P : pats) { P.hostSz = (int)P.host.size(); vector<int>().swap(P.classSet); vector<int>().swap(P.host); }
 
     // Step 3: compaction + pattern<->leaf maps.
     int nLeaf = (int)baseLeaves.size();
+    vector<char> hasH2(nLeaf, 0);                     // §96b: filled during enumLP (from hostSz), so leafPats can be dropped
     // NB: no full-C per-pattern vector (would be length-nC x #patterns = TB on
     // com-dblp nC=123k). Patterns stay SPARSE (comp); compToLocal maps a comp
     // straight into a leaf's local dimension via binary search on supC.
@@ -917,7 +923,8 @@ int main(int argc, char **argv) {
                                                   : (ccpath::support_count(box, blocal, ccpath_ncr) > 0.0);
                 if (host) {
                     if (!ondemand) patLeaves[pi].push_back(lid);   // §94: on-demand recomputes patLeaves via class->leaves
-                    leafPats[lid].push_back(pi);
+                    if (pats[pi].hostSz >= 2) hasH2[lid] = 1;       // §96b: hasH2 computed here (host freed; leafPats droppable)
+                    if (!(ondemand && (s - r) == 1)) leafPats[lid].push_back(pi);   // §96b: ondemand t=1 resolves Q via global hash
                     if (!recomputePB) pbLocal[pi].push_back(blocal);          // cold map: skip under PB or full
                     if (!mapsRecompute && !leafRecomp[lid] && !(ondemand && (s - r) == 1))   // §3b: ondemand t=1 resolves Q via global hash -> leafFlat unused
                         leafFlat[lid].insert(leafFlat[lid].end(), blocal.begin(), blocal.end());  // hot map (flat)
@@ -1010,9 +1017,7 @@ int main(int argc, char **argv) {
     // source-peel can be skipped entirely. (Source-skip; SCT_NO_SKIP_H1 disables
     // both this and the target-skip.) leafPats order is enumeration order (the peel
     // accesses patterns by hash-mapped index, not order; cores bit-identical).
-    vector<char> hasH2(nLeaf, 0);
-    for (int lid = 0; lid < nLeaf; lid++)
-        for (int qi : leafPats[lid]) if (pats[qi].host.size() >= 2) { hasH2[lid] = 1; break; }
+    // hasH2 is filled during enumLP (above) from hostSz -- correct even when leafPats is dropped (ondemand t=1).
     // The leaf->pattern maps are now built from classIds (via supC). The peel
     // works purely in local positions and NEVER reads CCPath::classIds /
     // tupleIdxs again (they are metadata; no CCPathCore algorithm touches them).
@@ -1187,7 +1192,7 @@ int main(int argc, char **argv) {
                 else {
                     badc++; worst = max(worst, fabs(sIE - sSCT));
                     if (badc <= 8) {
-                        printf("[G2a] MISMATCH pi=%d host=%zu comp=[", pi, pats[pi].host.size());
+                        printf("[G2a] MISMATCH pi=%d host=%d comp=[", pi, pats[pi].hostSz);
                         for (auto &cm : pats[pi].comp) printf("(c%d:%d)", cm.first, cm.second);
                         printf("] regionIE=%.1f SCT=%.1f leaves=%zu\n", sIE, sSCT, patLeaves[pi].size());
                     }
@@ -1747,7 +1752,7 @@ int main(int argc, char **argv) {
                     Pat &P = pats[pi];
                     P.alive = false; P.core = (double)curLevel; peeledN++;
                     coreDist[P.core] += (double)P.mult;
-                    if (skipH1 && P.host.size() == 1) {        // SOURCE-SKIP (sec: M-exclusive witnesses)
+                    if (skipH1 && P.hostSz == 1) {        // SOURCE-SKIP (sec: M-exclusive witnesses)
                         bool aff2 = false;
                         for (int lid : leavesOf(pi)) if (hasH2[lid]) { aff2 = true; break; }
                         if (!aff2) continue;
@@ -1803,7 +1808,7 @@ int main(int argc, char **argv) {
                             if (spanEqFP(lid, t, Mloc, qlScr, ql)) {
                                 int qi = qsAll[t];
                                 if (!pats[qi].alive) return;       // peeled (incl. the whole wave)
-                                if (skipH1 && pats[qi].host.size() == 1) return;
+                                if (skipH1 && pats[qi].hostSz == 1) return;
                                 double d = 0.0;
                                 for (int e = e0; e < e1; e++) {
                                     const CCPath &p = coAll[e];
@@ -1913,7 +1918,7 @@ int main(int argc, char **argv) {
         // witnesses are M-exclusive (a |host|>=2 pattern is never hosted in
         // these leaves, so never has a witness there).
         const auto &pleaf = leavesOf(pi);   // §94: hosting leaves computed ONCE (reused by affectsH2 + the main loop)
-        if (skipH1 && P.host.size() == 1) {
+        if (skipH1 && P.hostSz == 1) {
             bool affectsH2 = false;
             for (int lid : pleaf) if (hasH2[lid]) { affectsH2 = true; break; }
             if (!affectsH2) continue;
@@ -1972,7 +1977,7 @@ int main(int argc, char **argv) {
                         for (int t : it->second) if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) { qi = qsAll[t]; break; }
                         if (qi < 0) return;
                     }
-                    if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
+                    if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)) {
                         if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                         delta[qi] += w;
                     }
@@ -2065,7 +2070,7 @@ int main(int argc, char **argv) {
                     for (int t : it->second)
                         if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
                             int qi = qsAll[t];
-                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
+                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)) {
                                 if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                                 delta[qi] += w * (double)nAlive;
                             }
@@ -2167,7 +2172,7 @@ int main(int argc, char **argv) {
             auto applyIdx = [&](const Vec &ql, int t) {
                 int qi = qsAll[t];
                 if (qi == pi || !pats[qi].alive) return;
-                if (skipH1 && pats[qi].host.size() == 1) return;  // peels at L_M regardless
+                if (skipH1 && pats[qi].hostSz == 1) return;  // peels at L_M regardless
                 dbgHit++;                               // a real candidate pattern reached
                 double d = 0.0;                         // drop, via delta formula
                 for (size_t z = 0; z < chgOld.size(); z++) {

@@ -4013,3 +4013,17 @@ REMAINING: leafPats(189MB) still built (hasH2 needs it) -- could compute hasH2 i
 ondemand keeps leafFlat (witness/general credits still use spanEqFP -- wire them to globalLookup to extend). Gate on
 maps/newstore. Re-measure whether 5,6/6,8 now fit. This makes on-demand a REAL memory lever, not the modest one I'd
 concluded.
+
+## 96b. Free the build-only heavy fields: host/classSet/leafPats -> ca-AstroPh 4,5 ondemand 3.50GB -> 2.81GB (2026-06-22) [branch]
+The pipeline review (user-requested) flagged 3 "white-stored" per-pattern fields. Dropped all three, BIT-IDENTICAL:
+- classSet (73MB): read ONLY by suppOf (SCT_VERIFY). Freed right after the verify block.
+- host region-id list (85MB): needed only at build (directBin) + suppOf; the peel uses only |host|. Added Pat.hostSz
+  (the count), freed host's list after build, replaced all peel host.size() with hostSz.
+- leafPats (189MB): fed hasH2 + the default credit. hasH2 now computed IN enumLP (from hostSz). leafPats dropped under
+  ondemand t=1 (a_Y resolves Q via globalLookup). Kept for default + ondemand t>=2 (witness/general credits still use it).
+RESULT (ca-AstroPh 4,5): host 85->0, classSet 73->0, leafPats 189->1MB (+ leafFlat 2557->1 from Stage 3b). RSS
+ondemand 3.50GB -> 2.81GB (-690MB -- more than the 347MB of structs, because freeing at BUILD time also lowers the
+build peak). Peel unchanged (72.4s). CUMULATIVE on-demand (patLeaves+leafFlat+host+classSet+leafPats): ca-AstroPh 4,5
+~5.89GB default -> 2.81GB ondemand (~ -52%) at ~1.26x peel, all bit-identical (ca-AstroPh 3,4 + mini t=2 + soc-Epinions
+ALL default==ondemand==antichain). host/classSet also shrink the DEFAULT path by ~158MB (freed for all modes).
+NEXT (still open): the ~2GB build-peak gap (where's the real peak?); peel parallelism (the time lever); gate + merge.
