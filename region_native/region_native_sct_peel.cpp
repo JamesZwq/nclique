@@ -1115,6 +1115,10 @@ int main(int argc, char **argv) {
     int witGateMinT = getenv("SCT_WIT_GATE_MINT") ? atoi(getenv("SCT_WIT_GATE_MINT")) : 3;
     double witK = getenv("SCT_WIT_K") ? atof(getenv("SCT_WIT_K")) : 8.0;
     bool witnessActive = witnessTail >= 1 && witnessTail <= witnessTMax;
+    // METHOD ROUTING by the measured crossover (sec 75-77): witness wins for the common small tails (t<=witCross),
+    // the wave BATCH driver wins past it (t>witCross: batch 15.8s vs witness 79s at dblp-db t=4). t>witCross routes
+    // to batch BY DEFAULT (both bit-identical). Tunable SCT_WIT_CROSS. (Per-leaf witness/general gate handles t<=cross.)
+    int witCross = getenv("SCT_WIT_CROSS") ? atoi(getenv("SCT_WIT_CROSS")) : 3;
     // SKIP_H1: a |host|=1 pattern peels at EXACTLY L_M=C(|M|-r,s-r) regardless
     // of how the peel proceeds (every r-clique in its region M has support
     // >= L_M, so no witness of a |host|=1 pattern dies before curLevel=L_M --
@@ -1531,7 +1535,7 @@ int main(int argc, char **argv) {
     // higher-level Q dropping to curLevel) re-drains curLevel. Only s>r+1 (the path that owns
     // a DFS to amortize); s=r+1 keeps the proven per-pattern witness-floor path. Default OFF.
     bool batchPeel = getenv("SCT_BATCH_PEEL") != nullptr;
-    if (batchPeel && witnessTail >= 2) {
+    if (witnessTail >= 2 && (batchPeel || witnessTail > witCross)) {
         struct BTask { int lid, pi, k; };
         vector<int> wave;
         vector<BTask> taskLL;                          // (leaf,pattern,leaf-index) tasks for the wave
