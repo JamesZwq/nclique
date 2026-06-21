@@ -1234,7 +1234,12 @@ int main(int argc, char **argv) {
     // dead set EXPLICITLY: Y is dead iff Y dominates some peeled pattern, i.e. iff some addDelta enumeration already
     // marked it. Query/mark are O(1) (a hash-set insert) -- NO antichain, NO split, NO IE. Bit-identical: same dead
     // set, same witness-major drop. Witness path only (single-pattern regime); skips slotForbidDiff for the leaf.
-    bool ayMode = getenv("SCT_AY") != nullptr;
+    // DEFAULT-ON for tail t=1 (s=r+1): a_Y is faster AND leaner than the antichain on EVERY t=1 graph tested
+    // (ca-GrQc/com-dblp/com-youtube/ca-AstroPh; 1.0-1.8x peel, -5..-12% RSS), bit-identical. It also turns the
+    // ca-AstroPh 4,5/5,6 antichain TIMEOUTS into finishing runs. t>=2 keeps the antichain by DEFAULT (a_Y
+    // over-enumerates the full δ-space on sparse t>=2; the dense-t>=2 adaptive gate is future work). Escapes:
+    // SCT_AY forces a_Y for all witness tails (t<=witnessTMax); SCT_NO_AY restores the antichain everywhere.
+    bool ayMode = (getenv("SCT_NO_AY") == nullptr && witnessTail == 1) || getenv("SCT_AY") != nullptr;
     vector<std::unordered_set<uint64_t>> deadY(ayMode ? nLeaf : 0);   // per-leaf dead witness-composition hashes
     vector<char> ixBuilt(idxOn ? nLeaf : 0, 0);
     vector<int>  ixM(idxOn ? nLeaf : 0, 0), ixMaxv(idxOn ? nLeaf : 0, 0);

@@ -3890,3 +3890,13 @@ all 65M comps, and dead-only storage stays under the split-set it replaces.
 IMPLICATION: a_Y may deserve DEFAULT-ON for the witness path (not just adaptive) -- need to confirm it doesn't balloon
 memory on SPARSE graphs (antichain splits little there, so deadY relatively larger). Pending: sparse a_Y mem/speed; CND
 head-to-head on the now-finishing dense cells; higher-tail (t=2,3) breadth; ranking->bit-array if any sparse balloon.
+
+## 90. a_Y DEFAULT-ON for t=1 (s=r+1): universal win, bit-identical (2026-06-21, #178)
+Sparse t=1 also wins (no regression): com-dblp 3,4 anti 8.64s/902MB -> a_Y 5.37s/815MB (1.6x, leaner); com-youtube 3,4
+anti 16.36s/5194MB -> a_Y 15.90s/4945MB (leaner). Plus ca-GrQc t=1 (3,4/4,5) a_Y faster, all corehash-identical. So t=1
+a_Y is FASTER+LEANER on every graph tested (small/large sparse + dense) AND unblocks the ca-AstroPh 4,5/5,6 timeouts.
+FLIPPED DEFAULT-ON for witnessTail==1: `ayMode = (SCT_NO_AY unset && witnessTail==1) || SCT_AY`. Escapes: SCT_AY (force
+all witness tails t<=witnessTMax), SCT_NO_AY (restore antichain). t>=2 keeps the antichain (a_Y over-enumerates the full
+δ-space on sparse t>=2: ca-GrQc 3,5 anti 0.22 vs a_Y 0.36, 3,6 0.63 vs 1.27). REMAINING: (a) dense-t>=2 adaptive gate
+(a_Y on dense leaves -> reclaim ca-AstroPh 6,8 etc.); (b) ranking->bit-array if any t=1 graph balloons deadY (none yet);
+(c) the drop is now 100% of the t=1 peel -> next target; (d) re-run the full CND head-to-head with t=1 a_Y default.
