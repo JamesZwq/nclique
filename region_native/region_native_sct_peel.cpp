@@ -1077,6 +1077,29 @@ int main(int argc, char **argv) {
                 leavesCounted, totComp, maxComp, leavesCounted ? (double)totComp / leavesCounted : 0.0, pats.size(),
                 pats.size() ? (double)totComp / pats.size() : 0.0);
     }
+    // CLS_LEAF_DBG (§93): size the "compute maps on-demand via class->leaves intersection" plan (user's idea).
+    // (1) class-leaf incidence (the NEW small inverted-index store) vs pattern-leaf incidence (the maps we DROP).
+    // (2) list-length max + per-pattern intersect cost: Σ min-list (hash-probe-smallest) / Σ sum-list (two-pointer),
+    //     vs patLeaves-iter (the result size the peel walks anyway) -> the time overhead of computing vs storing.
+    if (getenv("CLS_LEAF_DBG")) {
+        vector<long long> clsCnt((size_t)nC + 1, 0);            // clsCnt[c] = #leaves containing class c
+        long long clsLeafInc = 0;
+        for (int lid = 0; lid < nLeaf; lid++) for (int c : supC[lid]) { clsCnt[c]++; clsLeafInc++; }
+        long long patLeafInc = 0; for (auto &v : patLeaves) patLeafInc += (long long)v.size();
+        long long maxList = 0, nClsUsed = 0;
+        for (int c = 0; c <= nC; c++) if (clsCnt[c]) { nClsUsed++; if (clsCnt[c] > maxList) maxList = clsCnt[c]; }
+        long long totMin = 0, totSum = 0;
+        for (auto &P : pats) {
+            long long mn = LLONG_MAX, sm = 0;
+            for (auto &cm : P.comp) { long long l = clsCnt[cm.first]; if (l < mn) mn = l; sm += l; }
+            totMin += (mn == LLONG_MAX ? 0 : mn); totSum += sm;
+        }
+        fprintf(stderr, "[cls-leaf] classes=%lld  class-leaf-inc=%lld (NEW store)  pattern-leaf-inc=%lld (maps DROPPED)  maps/newstore=%.1fx  maxlist=%lld avglist=%.1f\n",
+                nClsUsed, clsLeafInc, patLeafInc, clsLeafInc ? (double)patLeafInc / clsLeafInc : 0.0,
+                maxList, nClsUsed ? (double)clsLeafInc / nClsUsed : 0.0);
+        fprintf(stderr, "[cls-leaf] intersect cost: Sum min-list(hash-probe)=%lld  Sum sum-list(two-ptr)=%lld  vs patLeaves-iter=%lld  -> overhead min=%.2fx sum=%.2fx\n",
+                totMin, totSum, patLeafInc, patLeafInc ? (double)totMin / patLeafInc : 0.0, patLeafInc ? (double)totSum / patLeafInc : 0.0);
+    }
 
     // -------- support init: SCT (production) + optional region-IE cross-check (gate G2a) -------
     // P.sup := SCT sum-over-leaves support. Under SCT_VERIFY also compare to the region-IE init
