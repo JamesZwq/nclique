@@ -3690,3 +3690,19 @@ On the sec 62 server cell (maps 4.16G) this projects to ~2G saved for free. PEND
 CONFIRM the GB saving (Mac /proc returns 0), then flip SCT_MAPS_RECOMPUTE_PB default-ON. NEXT memory step (if more
 needed): adaptive per-leaf recompute of the HOT leafPatLocB for the few WIDEST leaves (the other ~half, at some
 time cost on those leaves only) -- a tiered free->cheap->costly memory ladder.
+
+## 81. §79-A MEMORY: SERVER RSS confirms lever-1 (PB) saves the cold half FREE (2026-06-21, #172) [tods2 RSS]
+Ran default/PB/full on tods2 (/usr/bin/time -v peak RSS + MEM_DBG after-maps). REAL peak RSS:
+  cell           default | PB (saved, peel)        | full (saved, peel)
+  com-dblp 3,5   891MB   | 721MB (-170/-19%, ~0%)  | 560MB (-331/-37%, +17% 18.4->21.6s)
+  com-dblp 4,6   2.18GB  | 1.70GB(-0.49/-22%, ~0%) | 1.27GB(-0.91/-42%, +12% 114->129s)
+  com-youtube 3,4 6.44GB | 5.55GB(-0.89/-14%, ~0%) | 4.68GB(-1.76/-27%, +9% 17->18.5s)
+  (PB peel within noise of default at all three; full pays +9-17% on the hot leafPatLocB recompute.)
+=> CONFIRMED on real RSS: PB-recompute (recompute cold pbLocal) saves the maps' cold half (0.17-0.89GB here, scales
+with graph) at ~ZERO time. payload check: pbLocal 166/476/838MB == leafPatLocB 157/460/811MB (each ~half). PB drops
+pbLocal to ~10-60MB (empty outer vectors). STRONG candidate for DEFAULT-ON (free memory, bit-identical).
+LEVER 2 (SCT_MAPS_LEAF_WMIN) IMPLEMENTED + bit-identical (default==PB==PB+WMIN16==full, dblp): recompute the HOT
+leafPatLocB for WIDE leaves (Mloc>=leafWmin) -> recovers the OTHER half but at time cost on those leaves (full = the
++9-17%). Tunable middle ground; characterizing its RSS/time curve on the server next.
+OPEN COMPETITIVE Q: does free lever-1 close the CND memory gap at low-RS (docs: com-dblp 3,4 RN 1121M vs CND 569M)?
+Lever 1 alone likely narrows but may not beat CND; lever 2 / full closes more at time cost. Need CND numbers per cell.
