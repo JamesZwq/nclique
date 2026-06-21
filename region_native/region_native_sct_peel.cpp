@@ -1104,8 +1104,12 @@ int main(int argc, char **argv) {
     //   drop_Q(box p) = [floor_c alive in p] * (n_p[d] - m_Q[d]).
     // This is output-sensitive (work ~ live floors, not all candidates) and was
     // validated bit-exact vs scWithTerms on 400k random boxes (incl ell>0).
-    bool sEqRp1 = (s == r + 1) && (getenv("SCT_NO_WFLOOR") == nullptr);
-    bool rp2Witness = (s == r + 2) && (getenv("SCT_NO_RP2_WITNESS") == nullptr);  // §72 s=r+2 witness-major (default ON)
+    // UNIFIED witness-major affected-update (§72-74): one tail-parameterized path covers every small tail
+    // t = s - r. t=1 is the old witness-floor, t=2 the old witness-major. Active for 1 <= t <= witnessTMax
+    // (default 2; raise SCT_WITNESS_TMAX to test the crossover where the O(M^t) enumeration loses to batch/DP).
+    int witnessTail = s - r;
+    int witnessTMax = getenv("SCT_WITNESS_TMAX") ? atoi(getenv("SCT_WITNESS_TMAX")) : 2;
+    bool useWitness = witnessTail >= 1 && witnessTail <= witnessTMax;
     // SKIP_H1: a |host|=1 pattern peels at EXACTLY L_M=C(|M|-r,s-r) regardless
     // of how the peel proceeds (every r-clique in its region M has support
     // >= L_M, so no witness of a |host|=1 pattern dies before curLevel=L_M --
@@ -1497,7 +1501,6 @@ int main(int argc, char **argv) {
     vector<char> uLiveBuf, covBuf;                     // depth-indexed prune scratch (DFS_PRUNE)
     vector<const int16_t*> chgU, fbA;                  // u-rows / single-forbidden rows of chgOld
     vector<int> fbCrit; vector<char> fbHas;            // per-path: max critical coord / has-1-forbidden
-    vector<long long> wfSum;                            // s=r+1 fast path: Σ n_p[d] over alive boxes
     long long dbgGen = 0, dbgHit = 0, dbgNZ = 0;       // instrumentation: cands gen / hit / nonzero-drop
     // batch-peel kill-gate (FANIN_DBG, sec 57): fanin = total (pattern,leaf) affected-update touches /
     // distinct (leaf,level) touches = avg #patterns sharing a (leaf,curLevel). fanin>=5 => batch-peel pays.
@@ -1519,7 +1522,7 @@ int main(int argc, char **argv) {
     // higher-level Q dropping to curLevel) re-drains curLevel. Only s>r+1 (the path that owns
     // a DFS to amortize); s=r+1 keeps the proven per-pattern witness-floor path. Default OFF.
     bool batchPeel = getenv("SCT_BATCH_PEEL") != nullptr;
-    if (batchPeel && !sEqRp1) {
+    if (batchPeel && !useWitness) {
         struct BTask { int lid, pi, k; };
         vector<int> wave;
         vector<BTask> taskLL;                          // (leaf,pattern,leaf-index) tasks for the wave
@@ -1762,130 +1765,87 @@ int main(int argc, char **argv) {
             { auto _sa = Clock::now(); slotVisits += (long long)slotPaths[lid].size();
               slotForbidDiff(lid, pl, plNZ, chgOld); tSFD += secs(_sa, Clock::now()); }
             if (chgOld.empty()) continue;              // P touched nothing here
-            if (sEqRp1) {
-                // ---- s=r+1 WITNESS-FLOOR fast path (validated bit-exact vs scWithTerms) ----
-                // For each receiving class c, floor_c = m_P + e_c is the ONLY dying
-                // witness >= floor_c (Σ=s). It is alive in a chgOld box p iff
-                // ell<=floor_c<=u and no forbidden a<=floor_c. For each removable d
-                // (pl[d]>0, d!=c) the affected Q = floor_c - e_d has drop, summed over
-                // alive boxes, = Σ(n_p[d]) - nAlive*(pl[d]-1). One liveness pass per
-                // (c,box) covers all d -> output-sensitive, no IE/DP.
+            if (useWitness) {
+                // ---- UNIFIED WITNESS-MAJOR fast path, tail t = s-r (bit-exact vs scWithTerms, §72-74) ----
+                // Dying witness Y = pl + δ (Σδ=t); each affected Q = Y - γ (Σγ=t, γ<=Y) gets drop
+                //   Π_{distinct b in γ} C(n_b - Q_b, mult_b), summed over alive boxes. n is leaf-constant
+                // (splits preserve n) so the weight is box-independent -> only the alive-box COUNT matters.
+                // "Alive" = ell<=Y<=u AND Y not>= any forbidden (a direct dominance test, NO inclusion-
+                // exclusion). δ,γ are enumerated as non-decreasing class multisets (each multiset once).
+                // t=1 == the old witness-floor, t=2 == the old witness-major; one path for all tails.
+                // Output-sensitive: NO DP, NO IE, NO DFS. Q==P (γ==δ) is excluded by the qi!=pi test.
                 ensureLeafMap(lid);
                 const auto &q2p = leafQ2pat[lid];
                 const auto &qbAll = leafPatLocB[lid];
                 const auto &qsAll = leafPats[lid];
-                dbgGen += Mloc;
-                if ((int)wfSum.size() < Mloc) wfSum.resize(Mloc);
-                Vec fl = pl;                            // floor scratch (pl, then +e_c / -e_d)
-                for (int c = 0; c < Mloc; c++) {
-                    fl[c] = (int16_t)((int)pl[c] + 1);  // floor_c = pl + e_c
-                    int nAlive = 0;
-                    for (auto &pr : plNZ) wfSum[pr.first] = 0;
-                    for (size_t z = 0; z < chgOld.size(); z++) {
-                        const CCPath &p = chgOld[z];
-                        if ((int)p.u[c] < (int)fl[c]) continue;             // floor_c<=u at c
-                        bool ok = true;                                    // ell<=floor_c
-                        for (int k = 0; k < Mloc; k++) if ((int)p.ell[k] > (int)fl[k]) { ok = false; break; }
-                        if (!ok) continue;
-                        bool dead = false;                                 // forbidden a<=floor_c?
-                        for (auto &a : p.forbidden) { bool le = true;
-                            for (int k = 0; k < Mloc; k++) if ((int)a[k] > (int)fl[k]) { le = false; break; }
-                            if (le) { dead = true; break; } }
-                        if (dead) continue;
-                        nAlive++;
-                        for (auto &pr : plNZ) wfSum[pr.first] += (long long)p.n[pr.first];
-                    }
-                    if (nAlive > 0)
-                        for (auto &pr : plNZ) {
-                            int d = pr.first; if (d == c) continue;        // d!=c (else Q==P)
-                            long long mqd = (long long)pl[d] - 1;          // m_Q[d]
-                            double drop = (double)(wfSum[d] - (long long)nAlive * mqd);
-                            if (drop == 0.0) continue;
-                            fl[d] = (int16_t)mqd;                          // fl == m_Q = floor_c - e_d
-                            auto it = q2p.find(hashVec(fl));
-                            if (it != q2p.end())
-                                for (int t : it->second) if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == fl) {
-                                    int qi = qsAll[t];
-                                    if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
-                                        dbgHit++; dbgNZ++;
-                                        if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
-                                        delta[qi] += drop;
-                                    }
-                                    break;
-                                }
-                            fl[d] = pl[d];                                 // restore floor_c
-                        }
-                    fl[c] = pl[c];                                         // restore to pl
-                }
-                continue;                                                  // leaf done; skip DFS path
-            }
-            if (rp2Witness) {
-                // ---- s=r+2 WITNESS-MAJOR fast path (validated bit-exact vs scWithTerms, §72) ----
-                // Dying witness Y = pl + δ (Σδ=2); each affected Q = Y - γ (Σγ=2, γ<=Y, γ!=δ) gets drop
-                //   Π_k C(n_k - Q_k, γ_k) summed over alive boxes. n is leaf-constant (splits preserve n),
-                // so the weight is box-independent -> only the alive-box COUNT matters. No IE / DP / DFS.
-                ensureLeafMap(lid);
-                const auto &q2p = leafQ2pat[lid];
-                const auto &qbAll = leafPatLocB[lid];
-                const auto &qsAll = leafPats[lid];
-                const Vec &nn = chgOld.front().n;       // leaf class sizes (same across the leaf's boxes)
-                uEnv.assign((size_t)Mloc, 0);           // u-envelope over chgOld -> cheap δ feasibility pre-prune
+                const Vec &nn = chgOld.front().n;       // leaf class sizes (constant across the leaf's boxes)
+                uEnv.assign((size_t)Mloc, 0);           // u-envelope over chgOld -> cheap δ feasibility prune
                 for (auto &p : chgOld) for (int c = 0; c < Mloc; c++) if (p.u[c] > uEnv[c]) uEnv[c] = p.u[c];
-                Yscr = pl;                              // witness scratch (pl, then +δ then -γ)
-                for (int a1 = 0; a1 < Mloc; a1++) {
-                    if ((int)pl[a1] + 1 > (int)uEnv[a1]) continue;
-                    Yscr[a1] = (int16_t)((int)Yscr[a1] + 1);
-                    for (int a2 = a1; a2 < Mloc; a2++) {            // δ = e_a1 + e_a2 (a1==a2 -> +2 at a1)
-                        Yscr[a2] = (int16_t)((int)Yscr[a2] + 1);
-                        if ((int)Yscr[a1] <= (int)uEnv[a1] && (int)Yscr[a2] <= (int)uEnv[a2]) {
-                            int nAlive = 0;                          // chgOld boxes where Y is alive
-                            for (size_t z = 0; z < chgOld.size(); z++) {
-                                const CCPath &p = chgOld[z];
-                                bool ok = true;
-                                for (int k = 0; k < Mloc; k++)
-                                    if ((int)p.ell[k] > (int)Yscr[k] || (int)Yscr[k] > (int)p.u[k]) { ok = false; break; }
-                                if (!ok) continue;
-                                bool dead = false;
-                                for (auto &a : p.forbidden) { bool le = true;
-                                    for (int k = 0; k < Mloc; k++) if ((int)a[k] > (int)Yscr[k]) { le = false; break; }
-                                    if (le) { dead = true; break; } }
-                                if (!dead) nAlive++;
+                Yscr = pl;                              // scratch: pl, then +δ (build Y), then -γ (build Q)
+                const int16_t *uEp = uEnv.data();
+                // credit Q (= current Yscr) with the γ-weight w times the alive-box count.
+                auto credit = [&](double w, int nAlive) {
+                    if (w == 0.0) return;
+                    auto it = q2p.find(hashVec(Yscr));
+                    if (it == q2p.end()) return;
+                    for (int t : it->second)
+                        if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == Yscr) {
+                            int qi = qsAll[t];
+                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
+                                if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
+                                delta[qi] += w * (double)nAlive;
                             }
-                            if (nAlive > 0)
-                                for (int b1 = 0; b1 < Mloc; b1++) {
-                                    if ((int)Yscr[b1] < 1) continue;
-                                    for (int b2 = b1; b2 < Mloc; b2++) {        // γ = e_b1 + e_b2
-                                        if (b1 == b2) { if ((int)Yscr[b1] < 2) continue; }
-                                        else if ((int)Yscr[b2] < 1) continue;
-                                        if (b1 == a1 && b2 == a2) continue;     // γ != δ  (else Q == P)
-                                        Yscr[b1] = (int16_t)((int)Yscr[b1] - 1);
-                                        Yscr[b2] = (int16_t)((int)Yscr[b2] - 1);   // Yscr now holds Q
-                                        double weight = (b1 == b2)
-                                            ? ccpath_ncr((int)nn[b1] - (int)Yscr[b1], 2)
-                                            : (double)((int)nn[b1] - (int)Yscr[b1]) * (double)((int)nn[b2] - (int)Yscr[b2]);
-                                        if (weight != 0.0) {
-                                            auto it = q2p.find(hashVec(Yscr));
-                                            if (it != q2p.end())
-                                                for (int t : it->second)
-                                                    if ((mapsRecompute ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == Yscr) {
-                                                        int qi = qsAll[t];
-                                                        if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
-                                                            if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
-                                                            delta[qi] += weight * (double)nAlive;
-                                                        }
-                                                        break;
-                                                    }
-                                        }
-                                        Yscr[b1] = (int16_t)((int)Yscr[b1] + 1);
-                                        Yscr[b2] = (int16_t)((int)Yscr[b2] + 1);   // restore Yscr to pl+δ
-                                    }
-                                }
+                            return;
                         }
-                        Yscr[a2] = (int16_t)((int)Yscr[a2] - 1);
+                };
+                // remove t units from Y as a non-decreasing class multiset -> Q; weight = Π C(n_b-Q_b, m).
+                auto remGamma = [&](auto &&self, int start, int rem, double w, int nAlive) -> void {
+                    if (rem == 0) { credit(w, nAlive); return; }
+                    for (int b = start; b < Mloc; b++) {
+                        int Yb = (int)Yscr[b];
+                        if (Yb < 1) continue;
+                        int maxm = Yb < rem ? Yb : rem;
+                        for (int m = 1; m <= maxm; m++) {
+                            Yscr[b] = (int16_t)(Yb - m);                          // Q_b = Y_b - m
+                            double wf = ccpath_ncr((int)nn[b] - (Yb - m), m);     // C(n_b - Q_b, m)
+                            self(self, b + 1, rem - m, w * wf, nAlive);
+                        }
+                        Yscr[b] = (int16_t)Yb;                                    // restore
                     }
-                    Yscr[a1] = (int16_t)((int)Yscr[a1] - 1);
-                }
-                continue;                                                  // leaf done; skip DFS path
+                };
+                // add t units to pl as a non-decreasing class multiset -> Y; scan boxes; then enumerate γ.
+                auto addDelta = [&](auto &&self, int start, int rem) -> void {
+                    if (rem == 0) {
+                        int nAlive = 0;                                          // chgOld boxes where Y is alive
+                        for (size_t z = 0; z < chgOld.size(); z++) {
+                            const CCPath &p = chgOld[z];
+                            bool ok = true;
+                            for (int k = 0; k < Mloc; k++)
+                                if ((int)p.ell[k] > (int)Yscr[k] || (int)Yscr[k] > (int)p.u[k]) { ok = false; break; }
+                            if (!ok) continue;
+                            bool dead = false;
+                            for (auto &a : p.forbidden) { bool le = true;
+                                for (int k = 0; k < Mloc; k++) if ((int)a[k] > (int)Yscr[k]) { le = false; break; }
+                                if (le) { dead = true; break; } }
+                            if (!dead) nAlive++;
+                        }
+                        if (nAlive > 0) remGamma(remGamma, 0, witnessTail, 1.0, nAlive);
+                        return;
+                    }
+                    for (int a = start; a < Mloc; a++) {
+                        int room = (int)uEp[a] - (int)Yscr[a];                   // Y[a] may grow this much (Y<=uEnv)
+                        if (room < 1) continue;
+                        int maxm = room < rem ? room : rem;
+                        int Ya = (int)Yscr[a];
+                        for (int m = 1; m <= maxm; m++) {
+                            Yscr[a] = (int16_t)(Ya + m);
+                            self(self, a + 1, rem - m);
+                        }
+                        Yscr[a] = (int16_t)Ya;                                   // restore
+                    }
+                };
+                addDelta(addDelta, 0, witnessTail);
+                continue;                                                       // leaf done; skip DFS path
             }
             // ---- DELTA-FORMULA incremental drop (no chgNew sweep) ----
             // For a changed path p, P inserts threshold a_p (= P's tuple local to
