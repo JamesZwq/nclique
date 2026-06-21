@@ -3956,3 +3956,20 @@ becomes ~1GB-class. CONCLUSION: on-demand patLeaves via hash-probe-smallest inte
 dense memory wall. Ready to implement (staged: 1=build class->leaves + assert patLeavesOnDemand==stored; 2=drop stored
 patLeaves, verify bit-identical + RSS; 3=Q-lookup via global comp->index hash, drop leafPats/footprints). Gate on
 maps/newstore so it triggers only where it wins (soc-Epinions-like graphs keep the stored maps).
+
+## 95. REGRESSION SWEEP done (t=1): a_Y wins time AND memory on EVERY graph (2026-06-22, #178)
+a_Y vs antichain, 6 graphs x {3,4;4,5} (t=1), corehash all IDENTICAL:
+  graph(cell)        a_Y t/m            anti t/m           speedup
+  ca-GrQc 3,4        0.09s/14MB         0.12s/15MB         1.3x
+  ca-CondMat 3,4     0.31s/87MB         0.55s/98MB         1.8x
+  com-amazon 3,4     0.69s/416MB        1.03s/437MB        1.5x
+  com-dblp 3,4       5.45s/766MB        9.55s/902MB        1.8x
+  com-dblp 4,5       20.5s/1.52GB       61.0s/2.10GB       3.0x
+  com-youtube 3,4    15.4s/4.82GB       16.3s/5.19GB       1.06x
+  com-youtube 4,5    26.2s/6.34GB       30.4s/6.94GB       1.16x
+  web-Google 3,4     25.5s/6.50GB       40.8s/7.38GB       1.6x
+  web-Google 4,5     53.5s/10.8GB       96.3s/12.7GB       1.8x
+CONCLUSION: t=1 a_Y is a UNIVERSAL win (1.06-3.0x faster AND always leaner), every graph. The shipped t=1 DEFAULT is
+fully validated -- no regression anywhere. t=2: a_Y time regresses ~1.2-1.55x (very sparse) but memory consistently
+leaner; stays GATED (not default). This + §88-92 settles the a_Y story: the split-churn deletion is the session's
+headline result. ca-HepPh both modes timeout (build-bound, not an a_Y regression).
