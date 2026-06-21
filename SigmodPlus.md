@@ -3997,3 +3997,19 @@ leaves, random supC[lid]/box access), ~1.5x is near the floor for recomputing pa
 1.65-1.75x peel for the 12-334x maps memory; worth it ONLY gated to memory-bound (OOM/timeout) cells. Lesson: the §93
 CLS_LEAF_DBG "1% of peel" undercounted -- it was candidate COUNT, the real per-candidate work + cache misses make it
 ~1.5x. Honest. Next decision (user): Stage 3 (drop leafFlat via localB + leafPats via global htab) + gate, or stop.
+
+## 96. ON-DEMAND Stage 3b: drop leafFlat via global-hash Q-lookup -> -53% RSS @ 1.26x (the user found the real hog) (2026-06-22) [branch]
+USER PUSH ("内存怎么这么高，不对呀") -> MEM_BREAKDOWN probe (per-structure bytes) revealed the real memory hog on
+ca-AstroPh 4,5: leafFlat=2557MB (the per-(pattern,leaf) FOOTPRINT store) -- REDUNDANT (each pattern's comp re-expressed
+in leaf-local coords, == localB). NOT deadY(378MB) / NOT the maps-structure. My earlier "maps ~30% of RSS" was wrong.
+FIX (Stage 3b): the a_Y credit's Q-lookup went through leafQ2pat+spanEqFP (which NEED leafFlat). Replaced with
+globalLookup: rebuild Q's GLOBAL comp from supC[lid] + probe the existing global pattern hash htab (~hcap ints, already
+alive). No leafQ2pat / no spanEqFP / no leafFlat. For ondemand t=1 (only the a_Y path runs) -> skip building leafFlat
+entirely. RESULT (ca-AstroPh 4,5): leafFlat 2557MB->1MB, RSS 7.43GB -> 3.50GB (-53%), peel 57.4s->72.5s (1.26x, BETTER
+than Stage-2's 1.5x -- dropping leafFlat improves cache, offsetting the patLeaves recompute). BIT-IDENTICAL (3,4 corehash;
+4,5 pending). So ondemand t=1 now drops patLeaves(132MB)+leafFlat(2.5GB) at 1.26x time. MUCH better than my pessimistic
+-29%/+57% (which used SCT_MAPS_RECOMPUTE's recompute overhead). The user was right to push.
+REMAINING: leafPats(189MB) still built (hasH2 needs it) -- could compute hasH2 in enumLP to drop it (marginal). t>=2
+ondemand keeps leafFlat (witness/general credits still use spanEqFP -- wire them to globalLookup to extend). Gate on
+maps/newstore. Re-measure whether 5,6/6,8 now fit. This makes on-demand a REAL memory lever, not the modest one I'd
+concluded.

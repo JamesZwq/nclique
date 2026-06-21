@@ -919,7 +919,8 @@ int main(int argc, char **argv) {
                     if (!ondemand) patLeaves[pi].push_back(lid);   // §94: on-demand recomputes patLeaves via class->leaves
                     leafPats[lid].push_back(pi);
                     if (!recomputePB) pbLocal[pi].push_back(blocal);          // cold map: skip under PB or full
-                    if (!mapsRecompute && !leafRecomp[lid]) leafFlat[lid].insert(leafFlat[lid].end(), blocal.begin(), blocal.end());  // hot map (flat)
+                    if (!mapsRecompute && !leafRecomp[lid] && !(ondemand && (s - r) == 1))   // §3b: ondemand t=1 resolves Q via global hash -> leafFlat unused
+                        leafFlat[lid].insert(leafFlat[lid].end(), blocal.begin(), blocal.end());  // hot map (flat)
                     mapInc++;
                 }
                 return;
@@ -1071,6 +1072,20 @@ int main(int argc, char **argv) {
         return patLeaves[pi];
     };
     (void)patLeavesOnDemand; (void)leavesOf;
+    // §94 Stage 3b: affected-Q lookup WITHOUT the per-leaf footprint maps. A leaf-local composition `loc` maps to the
+    // global pattern by rebuilding its global comp (leaf class supC[lid][c] with mult loc[c]) and probing the global
+    // pattern hash htab (already alive, ~hcap ints). Replaces leafQ2pat + spanEqFP + leafPats -> drops leafFlat (the
+    // 2.5GB footprint store) and leafPats entirely. Returns the global pattern id, or -1 if no such pattern.
+    vector<pair<int,int>> glComp;
+    auto globalLookup = [&](int lid, const Vec &loc, int Mloc) -> int {
+        glComp.clear(); const vector<int> &sc = supC[lid];
+        for (int c = 0; c < Mloc; c++) if (loc[c]) glComp.push_back({sc[c], (int)loc[c]});   // sorted by global class (sc sorted)
+        uint64_t h = compHash(glComp);
+        for (size_t idx = h & hmask; htab[idx] != -1; idx = (idx + 1) & hmask)
+            if (pats[htab[idx]].comp == glComp) return htab[idx];
+        return -1;
+    };
+    (void)globalLookup;
     // support(pi) = sum over hosting slots of sum over slot's paths of
     // support_count(path, b_local). Uses the pre-mapped compact b.
     Vec sctScr;                                        // reused recompute scratch for sctSupport
@@ -1940,7 +1955,7 @@ int main(int argc, char **argv) {
             if (ayMode && witnessActive) {
                 const CCPath &box = slotPaths[lid][0];     // original leaf box (never mutated in a_Y mode)
                 witInst++; witMSum += Mloc; if (Mloc > witMMax) witMMax = Mloc;
-                ensureLeafMap(lid);
+                if (!ondemand) ensureLeafMap(lid);           // §3b: ondemand resolves Q via the global hash, no per-leaf map
                 const auto &q2p = leafQ2pat[lid];
                 const auto &qsAll = leafPats[lid];
                 const Vec &nn = box.n;                       // leaf class sizes (n_b)
@@ -1950,17 +1965,17 @@ int main(int argc, char **argv) {
                 const int16_t *ellp = box.ell.data();
                 auto credit = [&](double w) {                // credit Q (= current Yscr); nAlive==1 by construction
                     if (w == 0.0) return;
-                    auto it = q2p.find(hashVec(Yscr));
-                    if (it == q2p.end()) return;
-                    for (int t : it->second)
-                        if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
-                            int qi = qsAll[t];
-                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
-                                if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
-                                delta[qi] += w;
-                            }
-                            return;
-                        }
+                    int qi;
+                    if (ondemand) { qi = globalLookup(lid, Yscr, Mloc); if (qi < 0) return; }
+                    else {
+                        auto it = q2p.find(hashVec(Yscr)); if (it == q2p.end()) return; qi = -1;
+                        for (int t : it->second) if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) { qi = qsAll[t]; break; }
+                        if (qi < 0) return;
+                    }
+                    if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
+                        if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
+                        delta[qi] += w;
+                    }
                 };
                 auto remGamma = [&](auto &&self, int start, int rem, double w) -> void {
                     if (rem == 0) { credit(w); return; }
@@ -2275,17 +2290,17 @@ int main(int argc, char **argv) {
     auto T6 = Clock::now();
     memCk("after-peel(+index)");
     if (getenv("MEM_BREAKDOWN")) {                              // actual bytes of each major structure (post-peel, deadY full)
-        long long deadYB = 0, deadYent = 0;
-        for (auto &d : deadY) { deadYB += (long long)d.t.capacity() * 8; deadYent += (long long)d.cnt; }
-        long long patsB = (long long)pats.size() * (long long)sizeof(Pat), hostInc = 0, hostB = 0, compB = 0, csB = 0;
-        for (auto &P : pats) { hostInc += (long long)P.host.size(); hostB += (long long)P.host.capacity() * 4;
-            compB += (long long)P.comp.capacity() * 8; csB += (long long)P.classSet.capacity() * 4; }
-        long long leafPatsB = 0, leafPatInc = 0, leafFlatB = 0;
-        for (auto &v : leafPats) { leafPatsB += (long long)v.capacity() * 4 + 24; leafPatInc += (long long)v.size(); }
-        for (auto &v : leafFlat) leafFlatB += (long long)v.capacity() * 2 + 24;
-        long long slotB = 0;
-        for (auto &sp : slotPaths) for (auto &b : sp) slotB += (long long)(b.ell.capacity() + b.u.capacity() + b.n.capacity()) * 2 + (long long)b.classIds.capacity() * 4 + 80;
-        fprintf(stderr, "[mem-bd] deadY=%.0fMB(%lld ent) | pats=%.0fMB struct + host=%.0fMB(%lld inc) comp=%.0fMB classSet=%.0fMB | leafPats=%.0fMB(%lld inc) leafFlat=%.0fMB | slotPaths=%.0fMB\n",
+        double deadYB = 0, deadYent = 0;
+        for (auto &d : deadY) { deadYB += (double)d.t.capacity() * 8; deadYent += (double)d.cnt; }
+        double patsB = (double)pats.size() * (double)sizeof(Pat), hostInc = 0, hostB = 0, compB = 0, csB = 0;
+        for (auto &P : pats) { hostInc += (double)P.host.size(); hostB += (double)P.host.capacity() * 4;
+            compB += (double)P.comp.capacity() * 8; csB += (double)P.classSet.capacity() * 4; }
+        double leafPatsB = 0, leafPatInc = 0, leafFlatB = 0;
+        for (auto &v : leafPats) { leafPatsB += (double)v.capacity() * 4 + 24; leafPatInc += (double)v.size(); }
+        for (auto &v : leafFlat) leafFlatB += (double)v.capacity() * 2 + 24;
+        double slotB = 0;
+        for (auto &sp : slotPaths) for (auto &b : sp) slotB += (double)(b.ell.capacity() + b.u.capacity() + b.n.capacity()) * 2 + (double)b.classIds.capacity() * 4 + 80;
+        fprintf(stderr, "[mem-bd] deadY=%.0fMB(%.0f ent) | pats=%.0fMB struct + host=%.0fMB(%.0f inc) comp=%.0fMB classSet=%.0fMB | leafPats=%.0fMB(%.0f inc) leafFlat=%.0fMB | slotPaths=%.0fMB\n",
                 deadYB / 1e6, deadYent, patsB / 1e6, hostB / 1e6, hostInc, compB / 1e6, csB / 1e6, leafPatsB / 1e6, leafPatInc, leafFlatB / 1e6, slotB / 1e6);
     }
     if (witDbg) fprintf(stderr, "[wit] tail=%d leaf-instances=%lld avg-M=%.1f max-M=%lld | gate: witness=%lld general=%lld (%.1f%% fell back)\n",
