@@ -1240,7 +1240,26 @@ int main(int argc, char **argv) {
     // over-enumerates the full δ-space on sparse t>=2; the dense-t>=2 adaptive gate is future work). Escapes:
     // SCT_AY forces a_Y for all witness tails (t<=witnessTMax); SCT_NO_AY restores the antichain everywhere.
     bool ayMode = (getenv("SCT_NO_AY") == nullptr && witnessTail == 1) || getenv("SCT_AY") != nullptr;
-    vector<std::unordered_set<uint64_t>> deadY(ayMode ? nLeaf : 0);   // per-leaf dead witness-composition hashes
+    // Flat open-addressing uint64 set (linear probe, power-of-2): ~5-10x faster per op than std::unordered_set
+    // (no node alloc, cache-friendly) -- the per-Y dead-check/mark constant is what decides a_Y on sparse t>=2.
+    struct FlatU64 {
+        std::vector<uint64_t> t; size_t mask = 0, cnt = 0;
+        inline bool insert(uint64_t k) {                       // true iff newly inserted (was alive)
+            if (!k) k = 0x9E3779B97F4A7C15ULL;                 // remap reserved empty slot (0)
+            if (t.empty()) { t.assign(16, 0); mask = 15; }
+            else if ((cnt + 1) * 4 >= t.size() * 3) grow();    // load factor 0.75
+            size_t i = (k * 0x9E3779B97F4A7C15ULL >> 28) & mask;
+            while (t[i]) { if (t[i] == k) return false; i = (i + 1) & mask; }
+            t[i] = k; ++cnt; return true;
+        }
+        void grow() {
+            std::vector<uint64_t> old; old.swap(t);
+            t.assign(old.size() * 2, 0); mask = t.size() - 1; cnt = 0;
+            for (uint64_t k : old) if (k) { size_t i = (k * 0x9E3779B97F4A7C15ULL >> 28) & mask;
+                while (t[i]) i = (i + 1) & mask; t[i] = k; ++cnt; }
+        }
+    };
+    vector<FlatU64> deadY(ayMode ? nLeaf : 0);                 // per-leaf dead witness-composition hashes
     vector<char> ixBuilt(idxOn ? nLeaf : 0, 0);
     vector<int>  ixM(idxOn ? nLeaf : 0, 0), ixMaxv(idxOn ? nLeaf : 0, 0);
     vector<vector<vector<int>>> ixBkt(idxOn ? nLeaf : 0);  // [lid][c*maxv+v] -> positions
@@ -1882,7 +1901,7 @@ int main(int argc, char **argv) {
                     if (rem == 0) {
                         for (int k = 0; k < Mloc; k++)                        // feasible witness: ell <= Y <= u
                             if ((int)ellp[k] > (int)Yscr[k] || (int)Yscr[k] > (int)uEp[k]) return;
-                        if (!dead.insert(hashVec(Yscr)).second) return;       // already dead -> no drop
+                        if (!dead.insert(hashVec(Yscr))) return;              // already dead -> no drop
                         remGamma(remGamma, 0, witnessTail, 1.0);
                         return;
                     }
