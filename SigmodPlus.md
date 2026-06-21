@@ -3670,3 +3670,23 @@ REMAINING OPTIMIZATION LANDSCAPE (prioritized):
   D. slotForbidDiff (26-33%) -- slot-idx #1 already made it output-sensitive; sec 57 killed lazy maintenance. LOW.
 CLOSED (do not revisit): closed-form CF (sec 66 time-unstable), composition direct-counting (sec 67, 4-45x mem),
 class-deletion (sec 69, <2% single-class), bulk-bin enlargement past |host|=1 (sec 57 falsified).
+
+## 80. §79-A MEMORY: recompute the COLD pbLocal, keep the HOT leafPatLocB -> ~half the maps free (2026-06-21, #171) [local]
+The per-(pattern,leaf) local footprint is stored TWICE: pbLocal[pi][k] (pattern->leaf, read ~O(incidences) -- in
+sctSupport + the per-pattern peel) and leafPatLocB[lid][t] (leaf->pattern, read O(incidences*candidates) -- per Q
+confirm/lookup in witness/general/batch). So pbLocal is the COLD copy, leafPatLocB the HOT copy. New gate
+SCT_MAPS_RECOMPUTE_PB: don't store pbLocal, recompute it via localB on read; KEEP leafPatLocB stored. (vs the
+existing full SCT_MAPS_RECOMPUTE which drops BOTH and pays +17% on the hot direction -- sec 52.) recomputePB =
+mapsRecompute || mapsRecomputePB at the 3 pbLocal read sites (sctSupport, batch, per-pattern peel); store split:
+pbLocal iff !recomputePB, leafPatLocB iff !mapsRecompute.
+CORRECTNESS: default == PB == full-recompute, bit-identical (dblp-sigmod/db 3,5 / 4,6 / 3,4). localB recompute is
+sec 52's proven equivalence.
+MEASURED (local; RSS needs Linux so this is the analytical payload + total time, MAPS_MEM_DBG probe):
+  payload pbLocal ~= leafPatLocB (EACH ~half the maps): dblp-db 3,5 pb 58.6MB / lp 55.1MB | dblp-db 4,6 pb 179.9 /
+  lp 171.5 | amazon 3,5 pb 19.7 / lp 16.3.  TIME cost ~0%: dblp-db 3,5 default[2.05,2.07] vs PB[2.01,2.04]; 4,6
+  default[12.1,12.5] vs PB[12.0,12.1] (within noise -- pbLocal is read O(incidences), cheap to recompute).
+=> PB-recompute is Pareto-better than full recompute: saves ~HALF the maps memory at ~ZERO time cost, bit-identical.
+On the sec 62 server cell (maps 4.16G) this projects to ~2G saved for free. PENDING: a Linux/server RSS run to
+CONFIRM the GB saving (Mac /proc returns 0), then flip SCT_MAPS_RECOMPUTE_PB default-ON. NEXT memory step (if more
+needed): adaptive per-leaf recompute of the HOT leafPatLocB for the few WIDEST leaves (the other ~half, at some
+time cost on those leaves only) -- a tiered free->cheap->costly memory ladder.
