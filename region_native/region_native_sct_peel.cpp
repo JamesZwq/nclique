@@ -870,7 +870,7 @@ int main(int argc, char **argv) {
     // ADAPTIVE memory (§79 A): recompute the COLD pbLocal (pattern->leaf footprints, read ~O(incidences)) but KEEP
     // the HOT leafPatLocB (leaf->pattern, read O(incidences*candidates) per Q-lookup) stored. Drops ~half the maps
     // memory at near-zero time cost -- vs SCT_MAPS_RECOMPUTE (full) which recomputes BOTH and pays +17% on the hot map.
-    bool mapsRecomputePB = getenv("SCT_MAPS_RECOMPUTE_PB") != nullptr;
+    bool mapsRecomputePB = getenv("SCT_MAPS_NO_RECOMPUTE_PB") == nullptr;   // DEFAULT ON (free; §81 RSS-confirmed)
     bool recomputePB = mapsRecompute || mapsRecomputePB;   // pbLocal not stored / recomputed
     // LEVER 2 (§80): recompute the HOT leafPatLocB for the WIDEST leaves only (Mloc>=leafWmin) -- recovers the
     // OTHER ~half of the maps memory, but at a time cost on those (hot) leaves. leafWmin tunes the memory<->time
