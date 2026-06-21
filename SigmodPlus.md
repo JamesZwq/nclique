@@ -3748,3 +3748,26 @@ free 23-29% peak-RSS reduction, bit-identical (default==known-good==escape-hatch
 RECOMPUTE_PB. Memory A delivered (free tier on by default; SCT_MAPS_LEAF_WMIN knob + full for more). REMAINING:
 CND memory comparison (needs the MAIN binary built on tods2, CND=PIVOTER_RUN_REF) to confirm the free stack closes
 the low-RS gap vs CND.
+
+## 84. CND COMPARISON (tods2): setup + early results -- RN crushes high-RS, still loses dense low-RS (2026-06-21, #176) [IN PROGRESS]
+GOAL: confirm whether the memory work (§80-83) lets RN beat CND at low-RS. Cells 3,4/3,5/4,5/4,6/5,6/5,7/6,7/6,8.
+SETUP / BLOCKER: the main-binary CND baseline (REF, mutable-tree, run as `degeneracy_cliques g r s` no flag) CRASHES
+for r>=2 NOW ("Error: clique not found for key=... vmin=..." -> terminate, rc=134) on ca-CondMat/com-dblp -- a
+main-binary REGRESSION, unrelated to region_native. Only REF_R1 (r=1) still works. So CND CANNOT be re-run fresh.
+RESOLUTION: CND memory/time taken from the prior paper CSV paper_data/bench_full_merged.csv (header
+graph,r,s,algo,status,wall_ms,total_ms,step4_ms,peel_ms,hier_ms,mem_kB; algo==REF). CND memory is INTRINSIC (the
+baseline is unchanged), so RN-new(fresh, /usr/bin/time -v peak RSS, OMP=1) vs CND(CSV) is valid for MEMORY (approx
+for time, different runs). REF crash means I trust the CSV REF numbers (they predate the regression).
+CND (REF, from CSV) -- the key fact, it EXPLODES at high-RS:
+  ca-AstroPh: 3,4=228MB/5.2s | 5,6=6372MB | 6,7=40437MB(40GB)/1758s(29min) | 6,8=40434MB.  ca-CondMat: 3,4=49.5MB |
+  6,8=143MB.  ca-GrQc: 3,4=17.7MB | 5,6=305MB.
+RN-NEW (fresh, CSR+PB default-on) -- partial:
+  ca-GrQc : 3,4 18MB/0.17s | 5,6 81MB/0.95s | 6,8 24MB/0.30s   -> vs CND: 3,4 TIE(18~17.7), 5,6 RN WINS 3.8x(81<305)
+  ca-CondMat: 3,4 115MB/0.85s | 6,7 174MB/1.71s | 6,8 132MB     -> vs CND: 3,4 RN LOSES 2.3x(115>49.5), 6,8 ~tie
+  ca-AstroPh(DENSE): 3,4 2.4GB/32.5s | 3,5 3.8GB/110s           -> vs CND 3,4 228MB/5s: RN LOSES ~10x mem + ~6x time
+EARLY READ (honest): the memory levers helped (RN now competitive/better on sparse like ca-GrQc) but DID NOT close
+the DENSE low-RS gap -- on ca-AstroPh (dense astro co-authorship, huge cliques) RN still uses ~10x CND memory AND is
+slower at low-RS. That is region-native's known dense+low-RS weakness (maps explode on dense graphs); CSR+PB's
+-23-29% isn't enough there. WHERE RN DOMINATES = high-RS: CND explodes to 40GB/29min (ca-AstroPh 6,8) while RN stays
+small/fast (pending the high-RS RN rows). STILL RUNNING: ca-AstroPh high-RS + com-amazon/com-dblp/com-youtube/
+web-Google (large; CND has NO data past the timeout there = RN wins by default). Full table next.
