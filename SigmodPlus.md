@@ -3590,3 +3590,20 @@ witnessTMax=2 is a SAFE, well-justified default across the measured spectrum; t=
 win (dblp-db 1.13x, amazon 1.33x); t>=4 loses. The adaptive per-leaf gate (sec 75) remains the robust long-term
 fix -- it would (a) safely capture the t=3 win where it exists and (b) protect against the shrinking t=2 margin on
 extreme-density graphs -- but is OPTIONAL polish, not needed for the default to be correct/safe.
+
+## 76. ADAPTIVE per-leaf witness/general gate -> auto-captures the graph-dependent t>=3 win (2026-06-21, #167) [local]
+Replaced the fixed witnessTMax cap with a PER-LEAF cost gate (both paths bit-identical -> pure speed, zero
+correctness risk). Per leaf: Wδ = #feasible witnesses (saturating DP, compositions of t, δ_c<=uEnv_c-pl_c);
+CB = #affected-Q candidates (compositions of r, Q_c<=uEnv_c). Take witness while Wδ <= CB*witK (witness per-unit
+box-scan << general per-unit scWithTerms-DP). t=1,2 skip the gate (always win, measured); gate at t>=witGateMinT=3;
+witnessTMax=8 hard backstop. Tunables SCT_WIT_K(8)/SCT_WIT_GATE_MINT(3)/SCT_WITNESS_TMAX(8).
+CORRECTNESS: default(adaptive) == pure-general(TMAX=0) == pure-witness(GATE_MINT=99), bit-identical t=1/2/3/4 on
+dblp-sigmod/db. TIMING (dblp-db, peel s): t2 adaptive 4.43 ~ witness 4.93 << general 17.9 | t3 adaptive 16.6 ~
+witness 16.5 << general 56.7 | t4 adaptive 79 ~ witness 79 < general 126. HEADLINE: the old fixed cap=2 used GENERAL
+at t=3 (56.7s); the adaptive auto-picks witness (16.6s) = 3.4x, with no per-graph tuning. The gate keeps witness
+wherever it beats general (here t<=4) and would fall back on extreme M/t -- robust, never worse than min(witness,
+general). GAP (honest): at t>=4 the BATCH is the true winner (sec 75: batch 15.8s vs witness 79s at dblp-db 3,7),
+but batch is wave-based and NOT in the per-leaf witness/general choice. So the default is optimal for the common
+t=1,2,3 regimes; for the rare t>=4 it picks witness-over-general (still beats general) but misses the batch.
+Integrating batch into the per-leaf fallback (3-way choice) is the remaining step -- bigger rewrite of the wave
+driver, deferred. batch stays opt-in (SCT_BATCH_PEEL, now gated batchPeel && tail>=2).
