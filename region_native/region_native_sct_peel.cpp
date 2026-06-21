@@ -872,6 +872,7 @@ int main(int argc, char **argv) {
     // memory at near-zero time cost -- vs SCT_MAPS_RECOMPUTE (full) which recomputes BOTH and pays +17% on the hot map.
     bool mapsRecomputePB = getenv("SCT_MAPS_NO_RECOMPUTE_PB") == nullptr;   // DEFAULT ON (free; §81 RSS-confirmed)
     bool recomputePB = mapsRecompute || mapsRecomputePB;   // pbLocal not stored / recomputed
+    bool ondemand = getenv("SCT_ONDEMAND") != nullptr;     // §94 Stage 2: compute patLeaves on-demand, do NOT store it
     // LEVER 2 (§80): recompute the HOT leafPatLocB for the WIDEST leaves only (Mloc>=leafWmin) -- recovers the
     // OTHER ~half of the maps memory, but at a time cost on those (hot) leaves. leafWmin tunes the memory<->time
     // tradeoff (0 = off; combine with SCT_MAPS_RECOMPUTE_PB for free-half + adaptive-other-half). Mloc=supC[lid].size().
@@ -915,7 +916,8 @@ int main(int argc, char **argv) {
                 bool host = box.forbidden.empty() ? hostFeasible(box, blocal)
                                                   : (ccpath::support_count(box, blocal, ccpath_ncr) > 0.0);
                 if (host) {
-                    patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
+                    if (!ondemand) patLeaves[pi].push_back(lid);   // §94: on-demand recomputes patLeaves via class->leaves
+                    leafPats[lid].push_back(pi);
                     if (!recomputePB) pbLocal[pi].push_back(blocal);          // cold map: skip under PB or full
                     if (!mapsRecompute && !leafRecomp[lid]) leafFlat[lid].insert(leafFlat[lid].end(), blocal.begin(), blocal.end());  // hot map (flat)
                     mapInc++;
@@ -1027,12 +1029,43 @@ int main(int argc, char **argv) {
     // the exact swap-remove order. Deterministic -> contention-insensitive.
     if (getenv("SCT_SLOT_REVERSE"))
         for (int lid = 0; lid < nLeaf; lid++) std::reverse(slotPaths[lid].begin(), slotPaths[lid].end());
+    // ON-DEMAND patLeaves (§94 Stage 2): class->leaves inverted index + patLeavesOnDemand (hash-probe-smallest
+    // intersection + hostFeasible). Built when SCT_ONDEMAND (or the Stage-1 verify). Every patLeaves reader goes
+    // through leavesOf(), so flipping ondemand swaps stored O(pattern x leaf) for O(class x leaf) + ~1%-of-peel recompute.
+    bool odBuild = ondemand || getenv("SCT_ONDEMAND_VERIFY");
+    vector<vector<int>> clsLeaves;
+    if (odBuild) { clsLeaves.assign((size_t)nC, {}); for (int lid = 0; lid < nLeaf; lid++) for (int c : supC[lid]) clsLeaves[(size_t)c].push_back(lid); }
+    Vec odBl; vector<int> odLeaves;
+    auto patLeavesOnDemand = [&](int pi, vector<int> &out) {
+        out.clear(); const auto &comp = pats[pi].comp; if (comp.empty()) return;
+        int cstar = comp[0].first; size_t best = clsLeaves[(size_t)comp[0].first].size();   // rarest class = smallest list
+        for (auto &cm : comp) { size_t z = clsLeaves[(size_t)cm.first].size(); if (z < best) { best = z; cstar = cm.first; } }
+        for (int lid : clsLeaves[(size_t)cstar]) {
+            const vector<int> &sc = supC[lid]; odBl.assign(sc.size(), 0);
+            size_t i = 0, j = 0; int matched = 0;                  // merge P.comp into leaf-local odBl
+            while (i < sc.size() && j < comp.size()) {
+                if (sc[i] < comp[j].first) i++;
+                else if (sc[i] > comp[j].first) j++;
+                else { odBl[i] = (int16_t)comp[j].second; matched++; i++; j++; }
+            }
+            if (matched != (int)comp.size()) continue;             // some P-class absent here -> not a host
+            const CCPath &box = slotPaths[lid][0]; int M = (int)sc.size(); long sl = 0, su = 0; bool ok = true;
+            for (int c = 0; c < M; c++) { int L = (int)box.ell[c]; if ((int)odBl[c] > L) L = (int)odBl[c];
+                int U = (int)box.u[c]; if (L > U) { ok = false; break; } sl += L; su += U; }
+            if (ok && sl <= box.T && box.T <= su) out.push_back(lid);
+        }
+    };
+    auto leavesOf = [&](int pi) -> const vector<int> & {           // on-demand recompute, else the stored list
+        if (ondemand) { patLeavesOnDemand(pi, odLeaves); return odLeaves; }
+        return patLeaves[pi];
+    };
+    (void)patLeavesOnDemand; (void)leavesOf;
     // support(pi) = sum over hosting slots of sum over slot's paths of
     // support_count(path, b_local). Uses the pre-mapped compact b.
     Vec sctScr;                                        // reused recompute scratch for sctSupport
     auto sctSupport = [&](int pi) -> double {
         double tot = 0.0;
-        const auto &ls = patLeaves[pi];
+        const auto &ls = leavesOf(pi);
         for (size_t k = 0; k < ls.size(); k++) {
             const Vec &b = recomputePB ? (localB(pi, ls[k], sctScr), (const Vec &)sctScr)
                                        : pbLocal[pi][k];
@@ -1104,36 +1137,10 @@ int main(int argc, char **argv) {
     // patLeavesOnDemand(P) = hash-probe-smallest over clsLeaves[c] (c in P), keep leaf iff every P-class is present
     // AND hostFeasible (P extends to an s-clique in the box). Asserted == the stored patLeaves on every pattern. No
     // behaviour change (gated by SCT_ONDEMAND_VERIFY). The prerequisite for Stage 2 (drop the stored patLeaves).
-    if (getenv("SCT_ONDEMAND_VERIFY")) {
-        vector<vector<int>> clsLeaves((size_t)nC);                  // class -> sorted leaf ids (the NEW small store)
-        for (int lid = 0; lid < nLeaf; lid++) for (int c : supC[lid]) clsLeaves[(size_t)c].push_back(lid);
-        Vec bl; vector<int> od;
-        auto onDemand = [&](int pi, vector<int> &out) {
-            out.clear();
-            const auto &comp = pats[pi].comp;
-            if (comp.empty()) return;
-            int cstar = comp[0].first; size_t best = clsLeaves[(size_t)comp[0].first].size();   // rarest class
-            for (auto &cm : comp) { size_t z = clsLeaves[(size_t)cm.first].size(); if (z < best) { best = z; cstar = cm.first; } }
-            for (int lid : clsLeaves[(size_t)cstar]) {
-                const vector<int> &sc = supC[lid];
-                bl.assign(sc.size(), 0);
-                size_t i = 0, j = 0; int matched = 0;                  // merge P.comp into leaf-local bl
-                while (i < sc.size() && j < comp.size()) {
-                    if (sc[i] < comp[j].first) i++;
-                    else if (sc[i] > comp[j].first) j++;
-                    else { bl[i] = (int16_t)comp[j].second; matched++; i++; j++; }
-                }
-                if (matched != (int)comp.size()) continue;             // some P-class absent -> not a host
-                const CCPath &box = slotPaths[lid][0]; int M = (int)sc.size();
-                long sl = 0, su = 0; bool ok = true;                   // hostFeasible(box, bl)
-                for (int c = 0; c < M; c++) { int L = (int)box.ell[c]; if ((int)bl[c] > L) L = (int)bl[c];
-                    int U = (int)box.u[c]; if (L > U) { ok = false; break; } sl += L; su += U; }
-                if (ok && sl <= box.T && box.T <= su) out.push_back(lid);
-            }
-        };
-        long long mism = 0;
+    if (getenv("SCT_ONDEMAND_VERIFY") && !ondemand) {              // reuses the function-scope patLeavesOnDemand/clsLeaves
+        vector<int> od; long long mism = 0;
         for (int pi = 0; pi < (int)pats.size(); pi++) {
-            onDemand(pi, od);
+            patLeavesOnDemand(pi, od);
             if (od != patLeaves[pi]) { if (mism < 8) fprintf(stderr, "[ondemand] MISMATCH pi=%d stored=%zu od=%zu\n", pi, patLeaves[pi].size(), od.size()); mism++; }
         }
         fprintf(stderr, "[ondemand] verify: %lld/%zu patterns patLeavesOnDemand==stored %s\n",
@@ -1676,7 +1683,7 @@ int main(int argc, char **argv) {
     // higher-level Q dropping to curLevel) re-drains curLevel. Only s>r+1 (the path that owns
     // a DFS to amortize); s=r+1 keeps the proven per-pattern witness-floor path. Default OFF.
     bool batchPeel = getenv("SCT_BATCH_PEEL") != nullptr;
-    if (!ayMode && witnessTail >= 2 && (batchPeel || witnessTail > witCross)) {
+    if (!ayMode && !ondemand && witnessTail >= 2 && (batchPeel || witnessTail > witCross)) {
         struct BTask { int lid, pi, k; };
         vector<int> wave;
         vector<BTask> taskLL;                          // (leaf,pattern,leaf-index) tasks for the wave
@@ -1716,10 +1723,10 @@ int main(int argc, char **argv) {
                     coreDist[P.core] += (double)P.mult;
                     if (skipH1 && P.host.size() == 1) {        // SOURCE-SKIP (sec: M-exclusive witnesses)
                         bool aff2 = false;
-                        for (int lid : patLeaves[pi]) if (hasH2[lid]) { aff2 = true; break; }
+                        for (int lid : leavesOf(pi)) if (hasH2[lid]) { aff2 = true; break; }
                         if (!aff2) continue;
                     }
-                    const auto &pl2 = patLeaves[pi];
+                    const auto &pl2 = leavesOf(pi);
                     for (int kk = 0; kk < (int)pl2.size(); kk++)
                         if (!slotPaths[pl2[kk]].empty()) taskLL.push_back({pl2[kk], pi, kk});
                 }
@@ -1881,7 +1888,7 @@ int main(int argc, char **argv) {
         // these leaves, so never has a witness there).
         if (skipH1 && P.host.size() == 1) {
             bool affectsH2 = false;
-            for (int lid : patLeaves[pi]) if (hasH2[lid]) { affectsH2 = true; break; }
+            for (int lid : leavesOf(pi)) if (hasH2[lid]) { affectsH2 = true; break; }
             if (!affectsH2) continue;
         }
 
@@ -1897,7 +1904,7 @@ int main(int argc, char **argv) {
         // (A componentwise-max shortcut is NOT valid: the drop is not
         // SC(L, max(m_P,m_Q)) because of that C(n-b,y-b) reweighting.)
         vector<int> aff;
-        const auto &pleaf = patLeaves[pi];
+        const auto &pleaf = leavesOf(pi);
         Vec plScr, qlScr;                              // recompute scratch: P-side (held across k-body), Q-side (per confirm)
         vector<CCPath> chgOld;                         // pre-insertion snapshots
         vector<vector<pair<Vec,int>>> chgOldTerms;     // cached IE terms (pre-insert)

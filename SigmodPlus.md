@@ -3967,3 +3967,20 @@ iterates lid 0..nLeaf; clsLeaves built same order). NEXT Stage 2: drive the peel
 stored patLeaves, verify corehash + measure RSS reclaim on 5,6/6,7. Stage 3: Q->index via global comp hash, drop
 leafPats/leafFlat (footprints already localB-recomputable §52). Gate on maps/newstore (§93). Working on a feature
 branch (ondemand-maps) per the user's "use Git for good project management"; merge to main when verified.
+
+## 94b. ON-DEMAND MAPS Stage 2 DONE (bit-identical) -- but HONEST cost: ~1.6-1.7x peel, not ~1% (2026-06-22, #178) [branch]
+Stage 2 (SCT_ONDEMAND): drop the stored patLeaves; every reader (sctSupport init, single-pattern peel affectsH2+pleaf,
+batch) goes through leavesOf() -> patLeavesOnDemand (hash-probe-smallest intersect + hostFeasible). Batch disabled under
+ondemand (single-pattern is bit-identical). CORRECTNESS: corehash IDENTICAL ca-AstroPh 3,4 + mini 2,4/3,5(t=2); Stage-1
+verify still OK. PERFORMANCE (ca-AstroPh, local):
+  3,4: peel 7.42s -> 12.77s (1.72x), RSS 1.44 -> 1.41GB (-2%)
+  4,5: peel 52.1s -> 82.4s (1.58x), RSS 6.96 -> 6.77GB (-2.6%)
+HONEST CORRECTION: my "~1% of peel" (§93) was WRONG. The CLS_LEAF_DBG totMin counted CANDIDATE leaves assuming O(1)
+each, but patLeavesOnDemand does O(|leaf classes|) per candidate (merge + hostFeasible), and the peel calls it ~2x per
+pattern (affectsH2 + pleaf). So real cost ~1.6-1.7x. And Stage 2 ALONE saves little memory (patLeaves is the SMALL map;
+leafFlat/leafPats are the big ones -> Stage 3). OPTIMIZATIONS to recover: (a) compute pleaf ONCE per pattern (merge the
+affectsH2+pleaf calls) -> ~1.4x; (b) precompute per-leaf sumEll/sumU so hostFeasible is O(r) not O(|supC|); (c) binary
+-search the r P-classes instead of full merge. Floor ~1.3-1.4x (the 84M candidate-leaf scan is irreducible). VERDICT:
+on-demand trades ~1.4-1.6x peel time for the BIG memory win (12-334x, Stage 3). RIGHT only GATED to memory-bound cells
+(where the alternative is OOM/timeout -- we have time, not memory); on non-bound cells it is a pure loss -> gate on
+maps/newstore (§93). Next: opt (a)+(b), then Stage 3 (drop leafFlat via localB + leafPats via global htab), then gate.
