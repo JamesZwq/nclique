@@ -2274,6 +2274,20 @@ int main(int argc, char **argv) {
     }
     auto T6 = Clock::now();
     memCk("after-peel(+index)");
+    if (getenv("MEM_BREAKDOWN")) {                              // actual bytes of each major structure (post-peel, deadY full)
+        long long deadYB = 0, deadYent = 0;
+        for (auto &d : deadY) { deadYB += (long long)d.t.capacity() * 8; deadYent += (long long)d.cnt; }
+        long long patsB = (long long)pats.size() * (long long)sizeof(Pat), hostInc = 0, hostB = 0, compB = 0, csB = 0;
+        for (auto &P : pats) { hostInc += (long long)P.host.size(); hostB += (long long)P.host.capacity() * 4;
+            compB += (long long)P.comp.capacity() * 8; csB += (long long)P.classSet.capacity() * 4; }
+        long long leafPatsB = 0, leafPatInc = 0, leafFlatB = 0;
+        for (auto &v : leafPats) { leafPatsB += (long long)v.capacity() * 4 + 24; leafPatInc += (long long)v.size(); }
+        for (auto &v : leafFlat) leafFlatB += (long long)v.capacity() * 2 + 24;
+        long long slotB = 0;
+        for (auto &sp : slotPaths) for (auto &b : sp) slotB += (long long)(b.ell.capacity() + b.u.capacity() + b.n.capacity()) * 2 + (long long)b.classIds.capacity() * 4 + 80;
+        fprintf(stderr, "[mem-bd] deadY=%.0fMB(%lld ent) | pats=%.0fMB struct + host=%.0fMB(%lld inc) comp=%.0fMB classSet=%.0fMB | leafPats=%.0fMB(%lld inc) leafFlat=%.0fMB | slotPaths=%.0fMB\n",
+                deadYB / 1e6, deadYent, patsB / 1e6, hostB / 1e6, hostInc, compB / 1e6, csB / 1e6, leafPatsB / 1e6, leafPatInc, leafFlatB / 1e6, slotB / 1e6);
+    }
     if (witDbg) fprintf(stderr, "[wit] tail=%d leaf-instances=%lld avg-M=%.1f max-M=%lld | gate: witness=%lld general=%lld (%.1f%% fell back)\n",
             witnessTail, witInst, witInst ? (double)witMSum / witInst : 0.0, witMMax,
             witGateW, witGateG, (witGateW + witGateG) ? 100.0 * witGateG / (witGateW + witGateG) : 0.0);
