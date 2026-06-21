@@ -3900,3 +3900,16 @@ all witness tails t<=witnessTMax), SCT_NO_AY (restore antichain). t>=2 keeps the
 δ-space on sparse t>=2: ca-GrQc 3,5 anti 0.22 vs a_Y 0.36, 3,6 0.63 vs 1.27). REMAINING: (a) dense-t>=2 adaptive gate
 (a_Y on dense leaves -> reclaim ca-AstroPh 6,8 etc.); (b) ranking->bit-array if any t=1 graph balloons deadY (none yet);
 (c) the drop is now 100% of the t=1 peel -> next target; (d) re-run the full CND head-to-head with t=1 a_Y default.
+
+## 91. a_Y all-T groundwork: flat dead-set + dense-default confirmation (2026-06-21, #178)
+Toward "a_Y for ALL tails" (not just t=1 default): a_Y is ALREADY tail-general -- bit-identical at t=1 AND t=2
+(mini 2,3/2,4/3,4/3,5, ca-GrQc 4,6) with SCT_AY forcing all tails. The only t=1-specific thing is the DEFAULT switch.
+DENSE-DEFAULT confirmation (out-of-the-box, t=1 a_Y default, ca-AstroPh, tods2):
+  3,4: peel 15.3s / 1.64GB (was 27s/1.86GB)   4,5: peel 102s / 8.0GB RECLAIMED (was timeout/12.6GB)
+  5,6: did NOT finish in 9min budget (was 36GB timeout) -- likely BUILD/pattern-materialization bound, not peel (a_Y
+       only fixes the peel split-churn; §85 the pattern explosion is the fundamental high-RS-dense limit).
+FLAT DEAD-SET (§91 commit a1051d1): replaced std::unordered_set with a flat open-addressing FlatU64 (linear probe,
+load 0.75) -- ~5-10x faster per op, the per-Y constant that decides a_Y on SPARSE t>=2. Bit-identical (mini t=1/t=2).
+DECISION PENDING (route 1 vs 2): re-measure sparse t>=2 (ca-GrQc 3,5/3,6) with the flat-set. If a_Y now >= antichain
+there too -> make a_Y the SINGLE all-T default (no gate). Else add ONE unified cost gate (price a_Y vs antichain per
+leaf, any tail). Also running: 6,8 (t=2) reclaim -- tests whether a_Y helps when the BUILD (not peel) is the bottleneck.
