@@ -3724,3 +3724,21 @@ is ~0.57GB free; it also shrinks pbLocal's empty-outer + patLeaves/leafPats simi
 leafPatLocB + the int maps = FREE overhead removal [NOT BUILT -- the better next lever]; L2 width-recompute = the
 residual real data, memory<->time knob [DONE, useful on wide-leaf graphs]. RECOMMEND: L1 default-on now; build L3
 (CSR) for the other free chunk; keep L2 as a tunable knob. NEXT: build L3 (CSR-flatten leafPatLocB).
+
+## 83. §82 L3 CSR-flatten: SERVER RSS -- CSR+PB (two FREE levers) cut peak 23-29% at ~0% time (2026-06-21, #174) [tods2 RSS]
+L3 = leafPatLocB -> per-leaf FLAT int16 array leafFlat[lid] (footprint t = &leafFlat[lid][t*Mloc]). Removes the
+per-footprint vector-obj(24B)+malloc-hdr(16B) overhead. BIT-IDENTICAL (corehash unchanged from known-good + under
+PB/WMIN, t=1/2). SERVER peak RSS vs the per-Vec baseline (sec 81):
+  cell           per-Vec default | CSR     | CSR+PB (L1+L3 free) | full(+time)
+  com-youtube 3,4 6.44GB         | 5.84GB  | 4.95GB (-1.49/-23%) | 4.68GB(+9%)
+  com-dblp 4,6    2.18GB         | 2.00GB  | 1.54GB (-0.64/-29%) | 1.27GB(+12%)
+  payload: leafFlat 303MB(youtube)/403MB(dblp) vs per-Vec 811/460 -> CSR removes 508MB/57MB overhead (narrow-leaf
+  graphs benefit most). CSR+PB peel within noise of default (free).
+=> THE TWO FREE LEVERS (CSR-flatten leafFlat + PB-recompute pbLocal) cut peak RSS 23-29% at ~0% time, landing close
+to full-recompute (which saves a bit more but pays +9-17% on the hot recompute). MEMORY LADDER COMPLETE:
+  free:   CSR (default now) + PB (gated, RSS-confirmed free)         -> -23-29%, ~0% time
+  knob:   + SCT_MAPS_LEAF_WMIN (lever 2, the residual real data)     -> down toward full, memory<->time
+  max:    SCT_MAPS_RECOMPUTE (full)                                  -> -27-42%, +9-17%
+RECOMMEND: flip SCT_MAPS_RECOMPUTE_PB DEFAULT-ON (free + bit-identical + RSS-confirmed) so default = CSR+PB = the
+free 23-29% reduction. CSR is already default (no gate, pure layout). Then the CND memory comparison (does the free
+stack close the low-RS gap? docs: com-dblp 3,4 RN 1121M vs CND 569M) to confirm we beat CND on memory.
