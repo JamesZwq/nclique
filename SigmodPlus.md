@@ -3957,6 +3957,47 @@ dense memory wall. Ready to implement (staged: 1=build class->leaves + assert pa
 patLeaves, verify bit-identical + RSS; 3=Q-lookup via global comp->index hash, drop leafPats/footprints). Gate on
 maps/newstore so it triggers only where it wins (soc-Epinions-like graphs keep the stored maps).
 
+## 94. ON-DEMAND MAPS Stage 1 DONE: patLeavesOnDemand proven == stored patLeaves (2026-06-22, #178) [branch ondemand-maps]
+Stage 1 (safe scaffold, SCT_ONDEMAND_VERIFY, no behaviour change): build class->leaves inverted index; compute
+patLeavesOnDemand(P) = hash-probe-smallest over clsLeaves[c] (c in P) keeping leaf iff all P-classes present AND
+hostFeasible(box,bl) (Σmax(ell,bl) <= s <= Σu, the same s-extendability test enumLP uses). Asserted == stored
+patLeaves per pattern. RESULT: ca-AstroPh 3,4 848771/848771 OK, 4,5 4535489/4535489 OK, mini 2,4 & 3,5 OK. So the
+intersection reproduces the maps EXACTLY on dense + small at t=1,t=2. Order matches (both ascending leaf-id: enumLP
+iterates lid 0..nLeaf; clsLeaves built same order). NEXT Stage 2: drive the peel from patLeavesOnDemand, drop the
+stored patLeaves, verify corehash + measure RSS reclaim on 5,6/6,7. Stage 3: Q->index via global comp hash, drop
+leafPats/leafFlat (footprints already localB-recomputable §52). Gate on maps/newstore (§93). Working on a feature
+branch (ondemand-maps) per the user's "use Git for good project management"; merge to main when verified.
+
+## 94b. ON-DEMAND MAPS Stage 2 DONE (bit-identical) -- but HONEST cost: ~1.6-1.7x peel, not ~1% (2026-06-22, #178) [branch]
+Stage 2 (SCT_ONDEMAND): drop the stored patLeaves; every reader (sctSupport init, single-pattern peel affectsH2+pleaf,
+batch) goes through leavesOf() -> patLeavesOnDemand (hash-probe-smallest intersect + hostFeasible). Batch disabled under
+ondemand (single-pattern is bit-identical). CORRECTNESS: corehash IDENTICAL ca-AstroPh 3,4 + mini 2,4/3,5(t=2); Stage-1
+verify still OK. PERFORMANCE (ca-AstroPh, local):
+  3,4: peel 7.42s -> 12.77s (1.72x), RSS 1.44 -> 1.41GB (-2%)
+  4,5: peel 52.1s -> 82.4s (1.58x), RSS 6.96 -> 6.77GB (-2.6%)
+HONEST CORRECTION: my "~1% of peel" (§93) was WRONG. The CLS_LEAF_DBG totMin counted CANDIDATE leaves assuming O(1)
+each, but patLeavesOnDemand does O(|leaf classes|) per candidate (merge + hostFeasible), and the peel calls it ~2x per
+pattern (affectsH2 + pleaf). So real cost ~1.6-1.7x. And Stage 2 ALONE saves little memory (patLeaves is the SMALL map;
+leafFlat/leafPats are the big ones -> Stage 3). OPTIMIZATIONS to recover: (a) compute pleaf ONCE per pattern (merge the
+affectsH2+pleaf calls) -> ~1.4x; (b) precompute per-leaf sumEll/sumU so hostFeasible is O(r) not O(|supC|); (c) binary
+-search the r P-classes instead of full merge. Floor ~1.3-1.4x (the 84M candidate-leaf scan is irreducible). VERDICT:
+on-demand trades ~1.4-1.6x peel time for the BIG memory win (12-334x, Stage 3). RIGHT only GATED to memory-bound cells
+(where the alternative is OOM/timeout -- we have time, not memory); on non-bound cells it is a pure loss -> gate on
+maps/newstore (§93). Next: opt (a)+(b), then Stage 3 (drop leafFlat via localB + leafPats via global htab), then gate.
+
+## 94c. Stage 2 opt: fold hostFeasible into the merge (sumEll/sumU) -> 1.7x to 1.51x; capacity-bug found+fixed (2026-06-22) [branch]
+patLeavesOnDemand was 3 passes/candidate (odBl.assign zeroing + merge + O(|leaf|) hostFeasible scan). Folded into ONE
+merge pass: precompute per-leaf sumEll/sumU, accumulate extra=Σmax(0,P_c-ell_c) during the merge, hostFeasible ==
+(sumEll+extra <= T <= sumU). BUG caught by SCT_ONDEMAND_VERIFY: dropped the per-class CAPACITY check (P_c<=u_c), so
+repeated-class patterns (P_c>=2) got false hosts -> 4,5 verify FAIL (od>stored); 3,4 passed (all P_c=1). FIXED: check
+comp[j].second>u[i] -> matched=-1 in the merge. Re-verified 4,5 4535489/4535489 OK, mini t=2 corehash IDENTICAL.
+SPEED: ca-AstroPh 3,4 default 8.0s -> ondemand 12.1s = 1.51x (was 1.7x). The residual is CACHE-bound (84M candidate
+leaves, random supC[lid]/box access), ~1.5x is near the floor for recomputing patLeaves. Stage 2 saves ~2% RSS alone
+(patLeaves is the small map). VERDICT: full on-demand ~1.5x(intersect) x ~1.1-1.17x(footprint recompute, Stage 3) ~
+1.65-1.75x peel for the 12-334x maps memory; worth it ONLY gated to memory-bound (OOM/timeout) cells. Lesson: the §93
+CLS_LEAF_DBG "1% of peel" undercounted -- it was candidate COUNT, the real per-candidate work + cache misses make it
+~1.5x. Honest. Next decision (user): Stage 3 (drop leafFlat via localB + leafPats via global htab) + gate, or stop.
+
 ## 95. REGRESSION SWEEP done (t=1): a_Y wins time AND memory on EVERY graph (2026-06-22, #178)
 a_Y vs antichain, 6 graphs x {3,4;4,5} (t=1), corehash all IDENTICAL:
   graph(cell)        a_Y t/m            anti t/m           speedup
@@ -3973,3 +4014,62 @@ CONCLUSION: t=1 a_Y is a UNIVERSAL win (1.06-3.0x faster AND always leaner), eve
 fully validated -- no regression anywhere. t=2: a_Y time regresses ~1.2-1.55x (very sparse) but memory consistently
 leaner; stays GATED (not default). This + §88-92 settles the a_Y story: the split-churn deletion is the session's
 headline result. ca-HepPh both modes timeout (build-bound, not an a_Y regression).
+## 96. ON-DEMAND Stage 3b: drop leafFlat via global-hash Q-lookup -> -53% RSS @ 1.26x (the user found the real hog) (2026-06-22) [branch]
+USER PUSH ("内存怎么这么高，不对呀") -> MEM_BREAKDOWN probe (per-structure bytes) revealed the real memory hog on
+ca-AstroPh 4,5: leafFlat=2557MB (the per-(pattern,leaf) FOOTPRINT store) -- REDUNDANT (each pattern's comp re-expressed
+in leaf-local coords, == localB). NOT deadY(378MB) / NOT the maps-structure. My earlier "maps ~30% of RSS" was wrong.
+FIX (Stage 3b): the a_Y credit's Q-lookup went through leafQ2pat+spanEqFP (which NEED leafFlat). Replaced with
+globalLookup: rebuild Q's GLOBAL comp from supC[lid] + probe the existing global pattern hash htab (~hcap ints, already
+alive). No leafQ2pat / no spanEqFP / no leafFlat. For ondemand t=1 (only the a_Y path runs) -> skip building leafFlat
+entirely. RESULT (ca-AstroPh 4,5): leafFlat 2557MB->1MB, RSS 7.43GB -> 3.50GB (-53%), peel 57.4s->72.5s (1.26x, BETTER
+than Stage-2's 1.5x -- dropping leafFlat improves cache, offsetting the patLeaves recompute). BIT-IDENTICAL (3,4 corehash;
+4,5 pending). So ondemand t=1 now drops patLeaves(132MB)+leafFlat(2.5GB) at 1.26x time. MUCH better than my pessimistic
+-29%/+57% (which used SCT_MAPS_RECOMPUTE's recompute overhead). The user was right to push.
+REMAINING: leafPats(189MB) still built (hasH2 needs it) -- could compute hasH2 in enumLP to drop it (marginal). t>=2
+ondemand keeps leafFlat (witness/general credits still use spanEqFP -- wire them to globalLookup to extend). Gate on
+maps/newstore. Re-measure whether 5,6/6,8 now fit. This makes on-demand a REAL memory lever, not the modest one I'd
+concluded.
+
+## 96b. Free the build-only heavy fields: host/classSet/leafPats -> ca-AstroPh 4,5 ondemand 3.50GB -> 2.81GB (2026-06-22) [branch]
+The pipeline review (user-requested) flagged 3 "white-stored" per-pattern fields. Dropped all three, BIT-IDENTICAL:
+- classSet (73MB): read ONLY by suppOf (SCT_VERIFY). Freed right after the verify block.
+- host region-id list (85MB): needed only at build (directBin) + suppOf; the peel uses only |host|. Added Pat.hostSz
+  (the count), freed host's list after build, replaced all peel host.size() with hostSz.
+- leafPats (189MB): fed hasH2 + the default credit. hasH2 now computed IN enumLP (from hostSz). leafPats dropped under
+  ondemand t=1 (a_Y resolves Q via globalLookup). Kept for default + ondemand t>=2 (witness/general credits still use it).
+RESULT (ca-AstroPh 4,5): host 85->0, classSet 73->0, leafPats 189->1MB (+ leafFlat 2557->1 from Stage 3b). RSS
+ondemand 3.50GB -> 2.81GB (-690MB -- more than the 347MB of structs, because freeing at BUILD time also lowers the
+build peak). Peel unchanged (72.4s). CUMULATIVE on-demand (patLeaves+leafFlat+host+classSet+leafPats): ca-AstroPh 4,5
+~5.89GB default -> 2.81GB ondemand (~ -52%) at ~1.26x peel, all bit-identical (ca-AstroPh 3,4 + mini t=2 + soc-Epinions
+ALL default==ondemand==antichain). host/classSet also shrink the DEFAULT path by ~158MB (freed for all modes).
+NEXT (still open): the ~2GB build-peak gap (where's the real peak?); peel parallelism (the time lever); gate + merge.
+
+## 97. build-peak frees (allocator-bound) + CRITICAL: on-demand 11x SLOWER on com-youtube (cost-aware gate needed) (2026-06-22) [branch]
+BUILD-PEAK (user-requested): freed qadj (dead after SCT build) + regionClasses/classRegions (dead after enum/suppOf),
+bit-identical (ca-AstroPh 3,4 + mini OK). BUT on macOS the ondemand peak DID NOT drop (2.81G still): the build peak is
+the pattern-enum's radix-sort working set, and freeing the objects doesn't return RSS (the allocator retains freed
+pages). Phase RSS (ondemand 4,5): after-enum 2.6G, after-SDCT 2.6G, after-maps 1.16G -> the ~1.4G transient is the enum
+radix arrays + pats, released late. The peak (~2.4x the steady) is largely INTRINSIC to the radix sort + allocator-bound.
+Linux (glibc returns large frees) may differ -> re-measure on tods2; macOS is a dead-ish end.
+CRITICAL (the user's "test other graphs" instinct): multi-graph od_bench (tods2) shows on-demand is GRAPH-DEPENDENT on
+TIME, severely:
+  graph(cell)      def peel/peak      od peel/peak       verdict
+  ca-AstroPh 3,4   13.2s/1417MB       18.7s/421MB        win (-70% mem, 1.4x time)
+  ca-AstroPh 4,5   86s/6935MB         115s/2278MB        win (-67% mem, 1.33x)
+  com-dblp 3,4     5.29s/716MB        5.06s/358MB        WIN (faster + -50%)
+  com-dblp 4,5     19.1s/1440MB       16.5s/467MB        WIN (faster + -68%)
+  com-youtube 3,4  15.6s/4472MB       174.8s/2730MB      *** 11x SLOWER *** (-39% mem)
+on-demand is a WIN on dense co-authorship (classes in few leaves -> cheap intersect) but CATASTROPHIC on social graphs
+(hub classes in many leaves -> intersect/globalLookup blow up, cf soc-Epinions maxlist 431K). So it MUST be COST-gated
+(disable when max class->leaves list is long), not memory-gated -- com-youtube has a decent mem win yet 11x time, so a
+maps/newstore gate would WRONGLY enable it. Gate signal = maxlist (CLS_LEAF_DBG already measures it), cheap at build.
+VERDICT: on-demand maps is a NICHE, cost-gated tool (dense co-authorship only); a_Y remains the clean universal win.
+
+## 98. COST-GATE fixes the com-youtube pit: on-demand auto-disables where the intersection is costly (2026-06-22) [branch]
+The §97 com-youtube 11x regression is fixed by a build-time COST-GATE (not a memory gate -- com-youtube has a mem win
+yet 11x time). Signal = avg rarest class->leaves list = (Σ_patterns min_c |leaves(c)|)/#patterns, one cheap count pass
+over supC, computed BEFORE enumLP so it flips `ondemand` off (-> enumLP stores the maps, full clean fallback). MEASURED
+avg-rarest: com-dblp 16, ca-AstroPh 94 (WINS) vs com-youtube 625, soc-Epinions 3494 (LOSSES) -> threshold 150 separates
+cleanly (env SCT_ONDEMAND_MAXAVG). VERIFIED: ca-AstroPh 4,5 avg=93.9 -> ON (corehash OK), soc-Epinions 3,4 avg=3494 ->
+OFF (stored maps, no regression). So `SCT_ONDEMAND` is now safe to set globally: it self-disables on social graphs.
+NEXT: merge ondemand-maps -> main; then the comprehensive ours-vs-CND server experiment (multi-graph x RS, 1h timeout).

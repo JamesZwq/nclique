@@ -254,11 +254,21 @@ static inline double C(int n, int k) {
 static double ccpath_ncr(int n, int k) { return C(n, k); }
 
 // current resident-set, GB (Linux /proc) -- per-phase memory breakdown (MEM_DBG).
+#ifdef __APPLE__
+#include <mach/mach.h>
+#endif
 static double rssGB() {
+#ifdef __APPLE__
+    mach_task_basic_info info; mach_msg_type_number_t cnt = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &cnt) == KERN_SUCCESS)
+        return (double)info.resident_size / 1073741824.0;
+    return 0;
+#else
     FILE *f = fopen("/proc/self/status", "r"); if (!f) return 0;
     char ln[256]; long kb = 0;
     while (fgets(ln, sizeof ln, f)) if (sscanf(ln, "VmRSS: %ld kB", &kb) == 1) break;
     fclose(f); return kb / 1048576.0;
+#endif
 }
 
 int main(int argc, char **argv) {
@@ -490,7 +500,8 @@ int main(int argc, char **argv) {
     struct Pat {
         vector<int> host;            // sorted region ids (|host|>=1)
         vector<pair<int,int>> comp;  // (classId, mult) sorted by classId, sum=r
-        vector<int> classSet;        // sorted class ids of comp (subset tests)
+        vector<int> classSet;        // sorted class ids of comp (subset tests) -- SCT_VERIFY-only, freed after build
+        int hostSz = 0;              // |host| kept after host's region-id list is freed (peel needs only the count)
         double sup = 0; double core = -1;
         long long mult = 1;          // # actual r-cliques in this orbit
         bool alive = true; long long key = -1;
@@ -753,6 +764,7 @@ int main(int argc, char **argv) {
         v.erase(std::unique(v.begin(), v.end()), v.end());
     }
     auto baseLeaves = classsct_scalable::scalableBuildClassSCT(nC, qw, qadj, s);  // COMPACT
+    { vector<vector<int>>().swap(qadj); vector<int>().swap(qw); }   // §97: quotient graph dead after the SCT build -> free (build-peak)
     auto Tqg1 = Clock::now();
     memCk("after-SDCT-build(slotPaths)");
     printf("[sct] quotient nC=%d  base-leaves=%zu  build=%.2fs\n",
@@ -782,9 +794,16 @@ int main(int argc, char **argv) {
                sclSCT, sclIE, fabs(sclSCT - sclIE) < 0.5 ? "[OK]" : "[MISMATCH]");
         fflush(stdout);
     }
+    // §96b: free build-only heavy per-pattern fields. classSet is read ONLY by suppOf (SCT_VERIFY, just above); host's
+    // region-id list is needed ONLY at build (directBin) + suppOf -- the peel uses only |host| (kept as hostSz). Frees
+    // ~classSet + ~host of per-pattern incidence (e.g. ca-AstroPh 4,5: 73MB + 85MB).
+    for (auto &P : pats) { P.hostSz = (int)P.host.size(); vector<int>().swap(P.classSet); vector<int>().swap(P.host); }
+    // §97: regionClasses / classRegions are dead after the pattern enum + suppOf (this is past both) -> free (build-peak).
+    vector<vector<int>>().swap(regionClasses); vector<vector<int>>().swap(classRegions);
 
     // Step 3: compaction + pattern<->leaf maps.
     int nLeaf = (int)baseLeaves.size();
+    vector<char> hasH2(nLeaf, 0);                     // §96b: filled during enumLP (from hostSz), so leafPats can be dropped
     // NB: no full-C per-pattern vector (would be length-nC x #patterns = TB on
     // com-dblp nC=123k). Patterns stay SPARSE (comp); compToLocal maps a comp
     // straight into a leaf's local dimension via binary search on supC.
@@ -801,6 +820,29 @@ int main(int argc, char **argv) {
         // to the local h/n/ell/u dimensions. Use them directly as supC/slotPath.
         supC[lid].assign(lf.classIds.begin(), lf.classIds.end());
         slotPaths[lid].push_back(lf);
+    }
+    bool ondemand = getenv("SCT_ONDEMAND") != nullptr;   // §94/§98: compute maps on-demand; the cost-gate below may flip it off
+    // §98: COST-GATE for on-demand maps. On social graphs (hub classes in MANY leaves) the patLeaves intersection +
+    // globalLookup blow up (com-youtube 3,4 was 11x slower) and a memory gate would WRONGLY enable it (it still has a
+    // mem win). Gate on the avg rarest class->leaves list size = (Σ_patterns min_c |leaves(c)|)/#patterns -- one cheap
+    // count pass over supC. It cleanly separates wins (com-dblp 16, ca-AstroPh 94) from losses (com-youtube 625,
+    // soc-Epinions 3494). If too costly, fall back to stored maps (enumLP below stores them, ondemand=false).
+    if (ondemand) {
+        vector<int> clsCnt((size_t)nC, 0);
+        for (int lid = 0; lid < nLeaf; lid++) for (int c : supC[lid]) clsCnt[(size_t)c]++;
+        double sumMin = 0;
+        for (auto &P : pats) {
+            if (P.comp.empty()) continue;
+            int mn = clsCnt[P.comp[0].first];
+            for (auto &cm : P.comp) if (clsCnt[cm.first] < mn) mn = clsCnt[cm.first];
+            sumMin += mn;
+        }
+        double avgRarest = pats.empty() ? 0.0 : sumMin / (double)pats.size();
+        double maxAvg = getenv("SCT_ONDEMAND_MAXAVG") ? atof(getenv("SCT_ONDEMAND_MAXAVG")) : 150.0;
+        bool keep = avgRarest < maxAvg;
+        if (memDbg) fprintf(stderr, "[ondemand-gate] avg-rarest-list=%.1f vs max=%.1f -> on-demand %s\n",
+                            avgRarest, maxAvg, keep ? "ON" : "OFF (stored maps; intersection too costly)");
+        if (!keep) ondemand = false;
     }
     // map a global-class vector to leaf lid's local dimension (b-vector).
     auto toLocal = [&](int lid, const Vec &gv) -> Vec {
@@ -872,6 +914,7 @@ int main(int argc, char **argv) {
     // memory at near-zero time cost -- vs SCT_MAPS_RECOMPUTE (full) which recomputes BOTH and pays +17% on the hot map.
     bool mapsRecomputePB = getenv("SCT_MAPS_NO_RECOMPUTE_PB") == nullptr;   // DEFAULT ON (free; §81 RSS-confirmed)
     bool recomputePB = mapsRecompute || mapsRecomputePB;   // pbLocal not stored / recomputed
+    // (ondemand declared earlier, right after the supC compaction, so the §98 cost-gate can run before enumLP)
     // LEVER 2 (§80): recompute the HOT leafPatLocB for the WIDEST leaves only (Mloc>=leafWmin) -- recovers the
     // OTHER ~half of the maps memory, but at a time cost on those (hot) leaves. leafWmin tunes the memory<->time
     // tradeoff (0 = off; combine with SCT_MAPS_RECOMPUTE_PB for free-half + adaptive-other-half). Mloc=supC[lid].size().
@@ -915,9 +958,12 @@ int main(int argc, char **argv) {
                 bool host = box.forbidden.empty() ? hostFeasible(box, blocal)
                                                   : (ccpath::support_count(box, blocal, ccpath_ncr) > 0.0);
                 if (host) {
-                    patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
+                    if (!ondemand) patLeaves[pi].push_back(lid);   // §94: on-demand recomputes patLeaves via class->leaves
+                    if (pats[pi].hostSz >= 2) hasH2[lid] = 1;       // §96b: hasH2 computed here (host freed; leafPats droppable)
+                    if (!(ondemand && (s - r) == 1)) leafPats[lid].push_back(pi);   // §96b: ondemand t=1 resolves Q via global hash
                     if (!recomputePB) pbLocal[pi].push_back(blocal);          // cold map: skip under PB or full
-                    if (!mapsRecompute && !leafRecomp[lid]) leafFlat[lid].insert(leafFlat[lid].end(), blocal.begin(), blocal.end());  // hot map (flat)
+                    if (!mapsRecompute && !leafRecomp[lid] && !(ondemand && (s - r) == 1))   // §3b: ondemand t=1 resolves Q via global hash -> leafFlat unused
+                        leafFlat[lid].insert(leafFlat[lid].end(), blocal.begin(), blocal.end());  // hot map (flat)
                     mapInc++;
                 }
                 return;
@@ -1007,9 +1053,7 @@ int main(int argc, char **argv) {
     // source-peel can be skipped entirely. (Source-skip; SCT_NO_SKIP_H1 disables
     // both this and the target-skip.) leafPats order is enumeration order (the peel
     // accesses patterns by hash-mapped index, not order; cores bit-identical).
-    vector<char> hasH2(nLeaf, 0);
-    for (int lid = 0; lid < nLeaf; lid++)
-        for (int qi : leafPats[lid]) if (pats[qi].host.size() >= 2) { hasH2[lid] = 1; break; }
+    // hasH2 is filled during enumLP (above) from hostSz -- correct even when leafPats is dropped (ondemand t=1).
     // The leaf->pattern maps are now built from classIds (via supC). The peel
     // works purely in local positions and NEVER reads CCPath::classIds /
     // tupleIdxs again (they are metadata; no CCPathCore algorithm touches them).
@@ -1027,12 +1071,68 @@ int main(int argc, char **argv) {
     // the exact swap-remove order. Deterministic -> contention-insensitive.
     if (getenv("SCT_SLOT_REVERSE"))
         for (int lid = 0; lid < nLeaf; lid++) std::reverse(slotPaths[lid].begin(), slotPaths[lid].end());
+    // ON-DEMAND patLeaves (§94 Stage 2): class->leaves inverted index + patLeavesOnDemand (hash-probe-smallest
+    // intersection + hostFeasible). Built when SCT_ONDEMAND (or the Stage-1 verify). Every patLeaves reader goes
+    // through leavesOf(), so flipping ondemand swaps stored O(pattern x leaf) for O(class x leaf) + ~1%-of-peel recompute.
+    bool odBuild = ondemand || getenv("SCT_ONDEMAND_VERIFY");
+    vector<vector<int>> clsLeaves; vector<int> sumEll, sumU;        // class->leaves index + per-leaf Σell / Σu (hostFeasible O(1))
+    if (odBuild) {
+        clsLeaves.assign((size_t)nC, {}); sumEll.assign(nLeaf, 0); sumU.assign(nLeaf, 0);
+        for (int lid = 0; lid < nLeaf; lid++) {
+            for (int c : supC[lid]) clsLeaves[(size_t)c].push_back(lid);
+            const CCPath &box = slotPaths[lid][0]; int se = 0, su2 = 0;
+            for (int c = 0; c < (int)box.u.size(); c++) { se += (int)box.ell[c]; su2 += (int)box.u[c]; }
+            sumEll[lid] = se; sumU[lid] = su2;
+        }
+    }
+    vector<int> odLeaves;
+    // hosts of P = leaves with every P-class present that can extend P to an s-clique. Probe the SMALLEST class list;
+    // in ONE merge pass confirm presence AND accumulate the hostFeasible delta extra=Σ max(0, P_c - ell_c). Then
+    // hostFeasible == (sumEll[lid] + extra <= T <= sumU[lid]). No per-candidate alloc / no separate O(|leaf|) scan.
+    auto patLeavesOnDemand = [&](int pi, vector<int> &out) {
+        out.clear(); const auto &comp = pats[pi].comp; if (comp.empty()) return;
+        int cstar = comp[0].first; size_t best = clsLeaves[(size_t)comp[0].first].size();   // rarest class = smallest list
+        for (auto &cm : comp) { size_t z = clsLeaves[(size_t)cm.first].size(); if (z < best) { best = z; cstar = cm.first; } }
+        int nc = (int)comp.size();
+        for (int lid : clsLeaves[(size_t)cstar]) {
+            const vector<int> &sc = supC[lid]; const CCPath &box = slotPaths[lid][0];
+            size_t i = 0, j = 0; int matched = 0; long extra = 0;
+            while (j < (size_t)nc && i < sc.size()) {
+                if (sc[i] < comp[j].first) i++;
+                else if (sc[i] > comp[j].first) j++;               // P-class comp[j] not in sc -> matched stays short
+                else { if (comp[j].second > (int)box.u[i]) { matched = -1; break; }   // P_c exceeds leaf capacity -> not host
+                       int d = comp[j].second - (int)box.ell[i]; if (d > 0) extra += d; matched++; i++; j++; }
+            }
+            if (matched != nc) continue;                           // some P-class absent / over-capacity -> not a host
+            long sl = (long)sumEll[lid] + extra;                   // Σ max(ell, P) = sumEll + Σ max(0, P_c - ell_c)
+            if (sl <= box.T && box.T <= sumU[lid]) out.push_back(lid);
+        }
+    };
+    auto leavesOf = [&](int pi) -> const vector<int> & {           // on-demand recompute, else the stored list
+        if (ondemand) { patLeavesOnDemand(pi, odLeaves); return odLeaves; }
+        return patLeaves[pi];
+    };
+    (void)patLeavesOnDemand; (void)leavesOf;
+    // §94 Stage 3b: affected-Q lookup WITHOUT the per-leaf footprint maps. A leaf-local composition `loc` maps to the
+    // global pattern by rebuilding its global comp (leaf class supC[lid][c] with mult loc[c]) and probing the global
+    // pattern hash htab (already alive, ~hcap ints). Replaces leafQ2pat + spanEqFP + leafPats -> drops leafFlat (the
+    // 2.5GB footprint store) and leafPats entirely. Returns the global pattern id, or -1 if no such pattern.
+    vector<pair<int,int>> glComp;
+    auto globalLookup = [&](int lid, const Vec &loc, int Mloc) -> int {
+        glComp.clear(); const vector<int> &sc = supC[lid];
+        for (int c = 0; c < Mloc; c++) if (loc[c]) glComp.push_back({sc[c], (int)loc[c]});   // sorted by global class (sc sorted)
+        uint64_t h = compHash(glComp);
+        for (size_t idx = h & hmask; htab[idx] != -1; idx = (idx + 1) & hmask)
+            if (pats[htab[idx]].comp == glComp) return htab[idx];
+        return -1;
+    };
+    (void)globalLookup;
     // support(pi) = sum over hosting slots of sum over slot's paths of
     // support_count(path, b_local). Uses the pre-mapped compact b.
     Vec sctScr;                                        // reused recompute scratch for sctSupport
     auto sctSupport = [&](int pi) -> double {
         double tot = 0.0;
-        const auto &ls = patLeaves[pi];
+        const auto &ls = leavesOf(pi);
         for (size_t k = 0; k < ls.size(); k++) {
             const Vec &b = recomputePB ? (localB(pi, ls[k], sctScr), (const Vec &)sctScr)
                                        : pbLocal[pi][k];
@@ -1100,6 +1200,19 @@ int main(int argc, char **argv) {
         fprintf(stderr, "[cls-leaf] intersect cost: Sum min-list(hash-probe)=%lld  Sum sum-list(two-ptr)=%lld  vs patLeaves-iter=%lld  -> overhead min=%.2fx sum=%.2fx\n",
                 totMin, totSum, patLeafInc, patLeafInc ? (double)totMin / patLeafInc : 0.0, patLeafInc ? (double)totSum / patLeafInc : 0.0);
     }
+    // ON-DEMAND MAPS, STAGE 1 (§94): prove patLeaves can be COMPUTED (not stored) via class->leaves intersection.
+    // patLeavesOnDemand(P) = hash-probe-smallest over clsLeaves[c] (c in P), keep leaf iff every P-class is present
+    // AND hostFeasible (P extends to an s-clique in the box). Asserted == the stored patLeaves on every pattern. No
+    // behaviour change (gated by SCT_ONDEMAND_VERIFY). The prerequisite for Stage 2 (drop the stored patLeaves).
+    if (getenv("SCT_ONDEMAND_VERIFY") && !ondemand) {              // reuses the function-scope patLeavesOnDemand/clsLeaves
+        vector<int> od; long long mism = 0;
+        for (int pi = 0; pi < (int)pats.size(); pi++) {
+            patLeavesOnDemand(pi, od);
+            if (od != patLeaves[pi]) { if (mism < 8) fprintf(stderr, "[ondemand] MISMATCH pi=%d stored=%zu od=%zu\n", pi, patLeaves[pi].size(), od.size()); mism++; }
+        }
+        fprintf(stderr, "[ondemand] verify: %lld/%zu patterns patLeavesOnDemand==stored %s\n",
+                (long long)pats.size() - mism, pats.size(), mism ? "[FAIL]" : "[OK]");
+    }
 
     // -------- support init: SCT (production) + optional region-IE cross-check (gate G2a) -------
     // P.sup := SCT sum-over-leaves support. Under SCT_VERIFY also compare to the region-IE init
@@ -1115,7 +1228,7 @@ int main(int argc, char **argv) {
                 else {
                     badc++; worst = max(worst, fabs(sIE - sSCT));
                     if (badc <= 8) {
-                        printf("[G2a] MISMATCH pi=%d host=%zu comp=[", pi, pats[pi].host.size());
+                        printf("[G2a] MISMATCH pi=%d host=%d comp=[", pi, pats[pi].hostSz);
                         for (auto &cm : pats[pi].comp) printf("(c%d:%d)", cm.first, cm.second);
                         printf("] regionIE=%.1f SCT=%.1f leaves=%zu\n", sIE, sSCT, patLeaves[pi].size());
                     }
@@ -1637,7 +1750,7 @@ int main(int argc, char **argv) {
     // higher-level Q dropping to curLevel) re-drains curLevel. Only s>r+1 (the path that owns
     // a DFS to amortize); s=r+1 keeps the proven per-pattern witness-floor path. Default OFF.
     bool batchPeel = getenv("SCT_BATCH_PEEL") != nullptr;
-    if (!ayMode && witnessTail >= 2 && (batchPeel || witnessTail > witCross)) {
+    if (!ayMode && !ondemand && witnessTail >= 2 && (batchPeel || witnessTail > witCross)) {
         struct BTask { int lid, pi, k; };
         vector<int> wave;
         vector<BTask> taskLL;                          // (leaf,pattern,leaf-index) tasks for the wave
@@ -1675,12 +1788,12 @@ int main(int argc, char **argv) {
                     Pat &P = pats[pi];
                     P.alive = false; P.core = (double)curLevel; peeledN++;
                     coreDist[P.core] += (double)P.mult;
-                    if (skipH1 && P.host.size() == 1) {        // SOURCE-SKIP (sec: M-exclusive witnesses)
+                    if (skipH1 && P.hostSz == 1) {        // SOURCE-SKIP (sec: M-exclusive witnesses)
                         bool aff2 = false;
-                        for (int lid : patLeaves[pi]) if (hasH2[lid]) { aff2 = true; break; }
+                        for (int lid : leavesOf(pi)) if (hasH2[lid]) { aff2 = true; break; }
                         if (!aff2) continue;
                     }
-                    const auto &pl2 = patLeaves[pi];
+                    const auto &pl2 = leavesOf(pi);
                     for (int kk = 0; kk < (int)pl2.size(); kk++)
                         if (!slotPaths[pl2[kk]].empty()) taskLL.push_back({pl2[kk], pi, kk});
                 }
@@ -1731,7 +1844,7 @@ int main(int argc, char **argv) {
                             if (spanEqFP(lid, t, Mloc, qlScr, ql)) {
                                 int qi = qsAll[t];
                                 if (!pats[qi].alive) return;       // peeled (incl. the whole wave)
-                                if (skipH1 && pats[qi].host.size() == 1) return;
+                                if (skipH1 && pats[qi].hostSz == 1) return;
                                 double d = 0.0;
                                 for (int e = e0; e < e1; e++) {
                                     const CCPath &p = coAll[e];
@@ -1840,9 +1953,10 @@ int main(int argc, char **argv) {
         // entire affected-update (slotForbidDiff + DFS). Correct because its
         // witnesses are M-exclusive (a |host|>=2 pattern is never hosted in
         // these leaves, so never has a witness there).
-        if (skipH1 && P.host.size() == 1) {
+        const auto &pleaf = leavesOf(pi);   // §94: hosting leaves computed ONCE (reused by affectsH2 + the main loop)
+        if (skipH1 && P.hostSz == 1) {
             bool affectsH2 = false;
-            for (int lid : patLeaves[pi]) if (hasH2[lid]) { affectsH2 = true; break; }
+            for (int lid : pleaf) if (hasH2[lid]) { affectsH2 = true; break; }
             if (!affectsH2) continue;
         }
 
@@ -1858,7 +1972,6 @@ int main(int argc, char **argv) {
         // (A componentwise-max shortcut is NOT valid: the drop is not
         // SC(L, max(m_P,m_Q)) because of that C(n-b,y-b) reweighting.)
         vector<int> aff;
-        const auto &pleaf = patLeaves[pi];
         Vec plScr, qlScr;                              // recompute scratch: P-side (held across k-body), Q-side (per confirm)
         vector<CCPath> chgOld;                         // pre-insertion snapshots
         vector<vector<pair<Vec,int>>> chgOldTerms;     // cached IE terms (pre-insert)
@@ -1883,7 +1996,7 @@ int main(int argc, char **argv) {
             if (ayMode && witnessActive) {
                 const CCPath &box = slotPaths[lid][0];     // original leaf box (never mutated in a_Y mode)
                 witInst++; witMSum += Mloc; if (Mloc > witMMax) witMMax = Mloc;
-                ensureLeafMap(lid);
+                if (!ondemand) ensureLeafMap(lid);           // §3b: ondemand resolves Q via the global hash, no per-leaf map
                 const auto &q2p = leafQ2pat[lid];
                 const auto &qsAll = leafPats[lid];
                 const Vec &nn = box.n;                       // leaf class sizes (n_b)
@@ -1893,17 +2006,17 @@ int main(int argc, char **argv) {
                 const int16_t *ellp = box.ell.data();
                 auto credit = [&](double w) {                // credit Q (= current Yscr); nAlive==1 by construction
                     if (w == 0.0) return;
-                    auto it = q2p.find(hashVec(Yscr));
-                    if (it == q2p.end()) return;
-                    for (int t : it->second)
-                        if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
-                            int qi = qsAll[t];
-                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
-                                if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
-                                delta[qi] += w;
-                            }
-                            return;
-                        }
+                    int qi;
+                    if (ondemand) { qi = globalLookup(lid, Yscr, Mloc); if (qi < 0) return; }
+                    else {
+                        auto it = q2p.find(hashVec(Yscr)); if (it == q2p.end()) return; qi = -1;
+                        for (int t : it->second) if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) { qi = qsAll[t]; break; }
+                        if (qi < 0) return;
+                    }
+                    if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)) {
+                        if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
+                        delta[qi] += w;
+                    }
                 };
                 auto remGamma = [&](auto &&self, int start, int rem, double w) -> void {
                     if (rem == 0) { credit(w); return; }
@@ -1993,7 +2106,7 @@ int main(int argc, char **argv) {
                     for (int t : it->second)
                         if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
                             int qi = qsAll[t];
-                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
+                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)) {
                                 if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                                 delta[qi] += w * (double)nAlive;
                             }
@@ -2095,7 +2208,7 @@ int main(int argc, char **argv) {
             auto applyIdx = [&](const Vec &ql, int t) {
                 int qi = qsAll[t];
                 if (qi == pi || !pats[qi].alive) return;
-                if (skipH1 && pats[qi].host.size() == 1) return;  // peels at L_M regardless
+                if (skipH1 && pats[qi].hostSz == 1) return;  // peels at L_M regardless
                 dbgHit++;                               // a real candidate pattern reached
                 double d = 0.0;                         // drop, via delta formula
                 for (size_t z = 0; z < chgOld.size(); z++) {
@@ -2217,6 +2330,20 @@ int main(int argc, char **argv) {
     }
     auto T6 = Clock::now();
     memCk("after-peel(+index)");
+    if (getenv("MEM_BREAKDOWN")) {                              // actual bytes of each major structure (post-peel, deadY full)
+        double deadYB = 0, deadYent = 0;
+        for (auto &d : deadY) { deadYB += (double)d.t.capacity() * 8; deadYent += (double)d.cnt; }
+        double patsB = (double)pats.size() * (double)sizeof(Pat), hostInc = 0, hostB = 0, compB = 0, csB = 0;
+        for (auto &P : pats) { hostInc += (double)P.host.size(); hostB += (double)P.host.capacity() * 4;
+            compB += (double)P.comp.capacity() * 8; csB += (double)P.classSet.capacity() * 4; }
+        double leafPatsB = 0, leafPatInc = 0, leafFlatB = 0;
+        for (auto &v : leafPats) { leafPatsB += (double)v.capacity() * 4 + 24; leafPatInc += (double)v.size(); }
+        for (auto &v : leafFlat) leafFlatB += (double)v.capacity() * 2 + 24;
+        double slotB = 0;
+        for (auto &sp : slotPaths) for (auto &b : sp) slotB += (double)(b.ell.capacity() + b.u.capacity() + b.n.capacity()) * 2 + (double)b.classIds.capacity() * 4 + 80;
+        fprintf(stderr, "[mem-bd] deadY=%.0fMB(%.0f ent) | pats=%.0fMB struct + host=%.0fMB(%.0f inc) comp=%.0fMB classSet=%.0fMB | leafPats=%.0fMB(%.0f inc) leafFlat=%.0fMB | slotPaths=%.0fMB\n",
+                deadYB / 1e6, deadYent, patsB / 1e6, hostB / 1e6, hostInc, compB / 1e6, csB / 1e6, leafPatsB / 1e6, leafPatInc, leafFlatB / 1e6, slotB / 1e6);
+    }
     if (witDbg) fprintf(stderr, "[wit] tail=%d leaf-instances=%lld avg-M=%.1f max-M=%lld | gate: witness=%lld general=%lld (%.1f%% fell back)\n",
             witnessTail, witInst, witInst ? (double)witMSum / witInst : 0.0, witMMax,
             witGateW, witGateG, (witGateW + witGateG) ? 100.0 * witGateG / (witGateW + witGateG) : 0.0);
