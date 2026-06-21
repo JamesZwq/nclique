@@ -4073,3 +4073,13 @@ avg-rarest: com-dblp 16, ca-AstroPh 94 (WINS) vs com-youtube 625, soc-Epinions 3
 cleanly (env SCT_ONDEMAND_MAXAVG). VERIFIED: ca-AstroPh 4,5 avg=93.9 -> ON (corehash OK), soc-Epinions 3,4 avg=3494 ->
 OFF (stored maps, no regression). So `SCT_ONDEMAND` is now safe to set globally: it self-disables on social graphs.
 NEXT: merge ondemand-maps -> main; then the comprehensive ours-vs-CND server experiment (multi-graph x RS, 1h timeout).
+
+## 99. Comprehensive ours-vs-CND experiment LAUNCHED + on-demand merged to main (2026-06-22)
+MERGED ondemand-maps -> main (fcffe9c): a_Y default + cost-gated on-demand (SCT_ONDEMAND safe globally; self-disables on
+social graphs via the §98 avg-rarest gate). All bit-identical (ca-AstroPh/mini ALL-MATCH a_Y==ondemand==antichain).
+CND BINARY status: degeneracy_cliques works r=1,2 cleanly; r>=3 CRASHES but AFTER computing ("took" prints, then the
+§84 "clique not found" hierarchy bug) -- so CND time(took)+peak RSS are still measurable for r>=3, flagged CRASH.
+EXPERIMENT (detached on tods2, /tmp/cmp.csv): ALL OURS first then ALL CND, OMP_NUM_THREADS=1, /usr/bin/time -v
+(wall+peak RSS), per-run TIMEOUT=1h. Graphs {ca-GrQc,ca-CondMat,ca-AstroPh,com-dblp,com-youtube,web-Google} x cells
+{2,3;3,4;4,5;5,6;3,5;4,6}. OURS=region_native a_Y default (production); CND=degeneracy_cliques. Poll /tmp/cmp.csv;
+markers /tmp/cmp.ours.done then /tmp/cmp.done. (on-demand memory mode -52% RSS is documented §96-98; not a column here.)
