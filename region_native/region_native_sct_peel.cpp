@@ -867,6 +867,11 @@ int main(int argc, char **argv) {
     // SCT_MAPS_VALIDATE). The int maps patLeaves/leafPats are always stored. Default
     // OFF keeps the stored path for A/B + corehash cross-check (both must be bit-identical).
     bool mapsRecompute = getenv("SCT_MAPS_RECOMPUTE") != nullptr;
+    // ADAPTIVE memory (§79 A): recompute the COLD pbLocal (pattern->leaf footprints, read ~O(incidences)) but KEEP
+    // the HOT leafPatLocB (leaf->pattern, read O(incidences*candidates) per Q-lookup) stored. Drops ~half the maps
+    // memory at near-zero time cost -- vs SCT_MAPS_RECOMPUTE (full) which recomputes BOTH and pays +17% on the hot map.
+    bool mapsRecomputePB = getenv("SCT_MAPS_RECOMPUTE_PB") != nullptr;
+    bool recomputePB = mapsRecompute || mapsRecomputePB;   // pbLocal not stored / recomputed
     if (mapsDbg) fprintf(stderr, "[maps-dbg] patIdx-build=%.2fs pats=%zu\n", secs(Tqg1, Clock::now()), pats.size());
     auto TmapE0 = Clock::now();
     {
@@ -905,9 +910,8 @@ int main(int argc, char **argv) {
                                                   : (ccpath::support_count(box, blocal, ccpath_ncr) > 0.0);
                 if (host) {
                     patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
-                    if (!mapsRecompute) {                  // Phase 2: skip the ~200M Vec-payload stores
-                        pbLocal[pi].push_back(blocal); leafPatLocB[lid].push_back(blocal);
-                    }
+                    if (!recomputePB) pbLocal[pi].push_back(blocal);          // cold map: skip under PB or full
+                    if (!mapsRecompute) leafPatLocB[lid].push_back(blocal);   // hot map: keep unless full recompute
                     mapInc++;
                 }
                 return;
@@ -951,7 +955,7 @@ int main(int argc, char **argv) {
         }
     };
     (void)localB;
-    if (getenv("SCT_MAPS_VALIDATE") && !mapsRecompute) {   // prove recompute == stored (needs storage), abort-on-mismatch
+    if (getenv("SCT_MAPS_VALIDATE") && !recomputePB) {   // prove recompute == stored (needs full storage), abort-on-mismatch
         long long chk = 0, bad = 0; Vec rb;
         for (int pi = 0; pi < (int)pats.size(); pi++)
             for (size_t k = 0; k < patLeaves[pi].size(); k++) {
@@ -1001,14 +1005,24 @@ int main(int argc, char **argv) {
         double tot = 0.0;
         const auto &ls = patLeaves[pi];
         for (size_t k = 0; k < ls.size(); k++) {
-            const Vec &b = mapsRecompute ? (localB(pi, ls[k], sctScr), (const Vec &)sctScr)
-                                         : pbLocal[pi][k];
+            const Vec &b = recomputePB ? (localB(pi, ls[k], sctScr), (const Vec &)sctScr)
+                                       : pbLocal[pi][k];
             for (auto &p : slotPaths[ls[k]]) tot += ccpath::support_count(p, b, ccpath_ncr);
         }
         return tot;
     };
     auto T5 = Clock::now();
     printf("[sct] pattern<->leaf maps + compaction=%.2fs\n", secs(Tqg1, T5));
+    if (getenv("MAPS_MEM_DBG")) {     // analytical map-payload sizes (RSS itself needs Linux); PB drops pbLocal
+        auto vbytes = [](const vector<vector<Vec>> &m, long long &inc) {
+            long long b = 0; inc = 0;
+            for (auto &v : m) { b += 24; for (auto &fp : v) { b += (long long)fp.capacity() * 2 + 40; inc++; } }
+            return b; };
+        long long pbInc, lpInc;
+        long long pbB = vbytes(pbLocal, pbInc), lpB = vbytes(leafPatLocB, lpInc);
+        fprintf(stderr, "[maps-mem] pbLocal=%.1fMB(%lld inc, stored=%s) leafPatLocB=%.1fMB(%lld inc) -> PB saves pbLocal\n",
+                pbB / 1e6, pbInc, recomputePB ? "no" : "yes", lpB / 1e6, lpInc);
+    }
     memCk("after-maps(patLeaves/pbLocal)");
     fflush(stdout);
     // COMP_DBG: count feasible s-COMPOSITIONS per leaf (integer pts Sum y=T, 0<=y<=u). This is
@@ -1594,8 +1608,8 @@ int main(int argc, char **argv) {
                     coAll.clear(); coPlIdx.clear(); coPls.clear(); coStart.clear();
                     for (size_t t = ti; t < tj; t++) {       // apply every threshold touching this leaf
                         int pi = taskLL[t].pi, kk = taskLL[t].k;
-                        const Vec &pl = mapsRecompute ? (localB(pi, lid, plScr), (const Vec &)plScr)
-                                                      : pbLocal[pi][kk];
+                        const Vec &pl = recomputePB ? (localB(pi, lid, plScr), (const Vec &)plScr)
+                                                    : pbLocal[pi][kk];
                         plNZ.clear();
                         for (int c = 0; c < (int)pl.size(); c++) if (pl[c]) plNZ.push_back({c, (int)pl[c]});
                         slotVisits += (long long)slotPaths[lid].size();
@@ -1766,8 +1780,8 @@ int main(int argc, char **argv) {
             int lid = pleaf[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
             if (faninDbg) { fanA++; if (leafLastLevel[lid] != curLevel) { fanB++; leafLastLevel[lid] = curLevel; } }
-            const Vec &pl = mapsRecompute ? (localB(pi, lid, plScr), (const Vec &)plScr)
-                                          : pbLocal[pi][k];   // m_P local to lid (== a_p, h=0)
+            const Vec &pl = recomputePB ? (localB(pi, lid, plScr), (const Vec &)plScr)
+                                        : pbLocal[pi][k];   // m_P local to lid (== a_p, h=0)
             int Mloc = (int)pl.size();
             // sparse support of m_P (positions where it is nonzero) -- the only
             // positions the impossible / feasibility tests depend on.
