@@ -3607,3 +3607,22 @@ but batch is wave-based and NOT in the per-leaf witness/general choice. So the d
 t=1,2,3 regimes; for the rare t>=4 it picks witness-over-general (still beats general) but misses the batch.
 Integrating batch into the per-leaf fallback (3-way choice) is the remaining step -- bigger rewrite of the wave
 driver, deferred. batch stays opt-in (SCT_BATCH_PEEL, now gated batchPeel && tail>=2).
+
+## 77. Does per-leaf ADAPTIVE beat a fixed cap? MEASURED: vs GENERAL, negligible; the lever is vs BATCH (2026-06-21, #168) [local]
+User asked: is per-leaf adaptive much better than a fixed witnessTMax, or about the same? Added a gate-split
+counter (SCT_WIT_DBG: gated leaves that chose witness vs fell back to general). RESULT -- the gate almost NEVER
+splits:
+  dblp-db t=3: 0.0% fell back (181198/181198 chose witness) | t=4: 0.0% | t=5: 3.6% (3895/109k)
+  dblp-sigmod t=4: 0.0% | t=5: 0.1%
+=> On the measured graphs, per-leaf adaptive == "always witness up to a high cap": the gate picks witness for
+~99.9-100% of leaves through t=4, only starting to split at t=5 (3.6%). So vs a WELL-CHOSEN fixed cap (e.g. 4-5),
+the per-leaf gate's raw speed edge is NEGLIGIBLE here. The earlier 3.4x "win" was vs the CONSERVATIVE cap=2, not
+vs a good fixed cap. WHY: the gate's alternative is the GENERAL DFS (slow DFS+IE baseline), which witness beats so
+broadly that the crossover witness->general sits at very high M/t (rarely hit). 
+THE REAL LEVER: the gate would actually SPLIT (and per-leaf would earn its keep) if the alternative were the BATCH,
+not general -- the crossover witness->BATCH is LOWER (t=4 on dblp-db: batch 15.8s < witness 79s, sec 75). At t=4 the
+gate keeps witness (0% fallback, witness 79 < general 126) but the true best is batch (15.8) which is NOT in the
+witness/general choice. So: (a) per-leaf vs general = theoretically >= fixed but empirically ~equal (gate ~never
+splits); (b) per-leaf vs batch = WOULD matter (lower crossover, real splitting) -> integrating batch into the
+per-leaf choice is where adaptive actually pays off. The adaptive gate's current value is robustness + no per-graph
+tuning + future-proofing, NOT a raw speedup over a good fixed cap. Honest.
