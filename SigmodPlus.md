@@ -3820,3 +3820,23 @@ measure (i) #witness-compositions to enumerate, (ii) the would-be enumerate+decr
 combinatorial op count (slot-path-visits + drop work). Find where enumerate wins. THEN build the path + an adaptive
 gate, verify BIT-IDENTICAL (corehash), then measure end-to-end vs CND on the dense cells. This is the principled fix
 for region-native's dense weakness (the one structural loss in the CND comparison, cf §84/§85).
+
+## 86b. CORRECTION (user redirect): do NOT graft CND. Make OUR OWN update output-sensitive. (2026-06-21, #178)
+User STOPPED the §86 CND-graft plan: "把 CND 接进来是不对的，咱们的算法不能照搬人家的。咱们只是提供了一种压缩
+clique 的办法，这个压缩一定是高效的。既然证明了压缩过程高效，那更新过程不可能不是高效的。" CORRECT, and theoretically
+grounded:
+  OPTIMAL peel total work = Σ_witness (decrement its alive r-subcliques on death) = #witnesses × O(C(s,r)).
+  With orbit compression both sides GROUP into types => compressed total = #witness-ORBITS × (affected pattern-ORBITS)
+  <= the same sum for CND. So the optimal update on our compressed structure is STRICTLY <= CND. An efficient update
+  EXISTS; our slowness is WORK ABOVE THIS MINIMUM (an impl bug), not the compression failing.
+WHERE THE EXCESS IS: the DROP formula (Σδ alive · Σγ Π C) IS the compression applied to the update (same cheap machinery
+as the support init) -- that half is right. The suspect is slotForbidDiff (forbidden-antichain MAINTENANCE, measured 52%):
+its only job is alive-tracking ("has this witness already died?") and it pays O(slot size) PER PEEL, not O(actual dying
+witnesses). That is the work-above-minimum: a re-scan where an OUTPUT-SENSITIVE update belongs.
+CORRECTED RESEARCH QUESTION (not "borrow CND's flags"): make alive-tracking OUTPUT-SENSITIVE WITHIN our structure --
+touch work ~ dying witnesses, the way the compression touches work ~ witness-orbits. Alive-counts stay at the
+COMPOSITION/ORBIT level (ours), never CND's per-s-clique level. The compression maintains itself.
+PROBE (framework-internal, replaces the §86 CND-cost probe): per leaf measure (i) realDrops = #(peel,affected-Q) with
+NONZERO drop = necessary work; (ii) slotVisits + DFS visits = ACTUAL work; ratio actual/realDrops = our inefficiency
+factor. If slotForbidDiff >> minimum, that is the recoverable waste -> attack it inside our framework. §86's "graft CND"
+framing is RETRACTED; keep §86 only for the cost analysis (dense low-RS: slotForbidDiff 52%, incidences 6.7M>r-cliques).
