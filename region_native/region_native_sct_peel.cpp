@@ -833,7 +833,7 @@ int main(int argc, char **argv) {
     vector<vector<int>> patLeaves(pats.size());
     vector<vector<int>> leafPats(nLeaf);
     vector<vector<Vec>> pbLocal(pats.size());         // parallel to patLeaves[pi]
-    vector<vector<Vec>> leafPatLocB(nLeaf);           // parallel to leafPats[lid]
+    vector<vector<int16_t>> leafFlat(nLeaf);          // L3 CSR: per-leaf FLAT footprints (size leafPats[lid].size()*Mloc)
     // integer rolling-hash key (was a std::string compKey: a per-r-multiset heap
     // alloc + string hash, the bulk of the maps phase on dense graphs). Hash
     // collisions are resolved by comparing the actual comp, so lookup stays exact.
@@ -917,7 +917,7 @@ int main(int argc, char **argv) {
                 if (host) {
                     patLeaves[pi].push_back(lid); leafPats[lid].push_back(pi);
                     if (!recomputePB) pbLocal[pi].push_back(blocal);          // cold map: skip under PB or full
-                    if (!mapsRecompute && !leafRecomp[lid]) leafPatLocB[lid].push_back(blocal);  // hot map: keep unless full / wide-leaf
+                    if (!mapsRecompute && !leafRecomp[lid]) leafFlat[lid].insert(leafFlat[lid].end(), blocal.begin(), blocal.end());  // hot map (flat)
                     mapInc++;
                 }
                 return;
@@ -961,6 +961,28 @@ int main(int argc, char **argv) {
         }
     };
     (void)localB;
+    // ---- L3 CSR: leafPatLocB is a PER-LEAF FLAT int16 array leafFlat[lid] (footprints all size Mloc=supC[lid]
+    // size, concatenated in leafPats order). Footprint t = &leafFlat[lid][t*Mloc]. This removes the ~40B/footprint
+    // per-Vec overhead (object + malloc header) that dominated narrow-leaf graphs, free (same data, flat layout).
+    auto spanEq = [](const int16_t *p, int len, const Vec &v) -> bool {
+        if ((int)v.size() != len) return false;
+        for (int i = 0; i < len; i++) if (p[i] != (int16_t)v[i]) return false;
+        return true;
+    };
+    auto hashSpan = [](const int16_t *p, int len) -> uint64_t {       // == hashVec(span) (same FNV)
+        uint64_t h = 1469598103934665603ULL;
+        for (int i = 0; i < len; i++) { h ^= (uint64_t)(uint16_t)p[i] + 1; h *= 1099511628211ULL; }
+        return h;
+    };
+    // footprint of leaf-pattern t in leaf lid as a span (recompute into scr for full/wide-leaf, else CSR view).
+    auto leafFP = [&](int lid, int t, int Mloc, Vec &scr) -> std::pair<const int16_t *, int> {
+        if (mapsRecompute || leafRecomp[lid]) { localB(leafPats[lid][t], lid, scr); return {scr.data(), (int)scr.size()}; }
+        return {leafFlat[lid].data() + (size_t)t * (size_t)Mloc, Mloc};
+    };
+    auto spanEqFP = [&](int lid, int t, int Mloc, Vec &scr, const Vec &v) -> bool {   // footprint(lid,t) == v ?
+        auto fp = leafFP(lid, t, Mloc, scr); return spanEq(fp.first, fp.second, v);
+    };
+    (void)spanEq; (void)hashSpan; (void)leafFP; (void)spanEqFP;
     if (getenv("SCT_MAPS_VALIDATE") && !recomputePB) {   // prove recompute == stored (needs full storage), abort-on-mismatch
         long long chk = 0, bad = 0; Vec rb;
         for (int pi = 0; pi < (int)pats.size(); pi++)
@@ -972,7 +994,8 @@ int main(int argc, char **argv) {
         for (int lid = 0; lid < nLeaf; lid++)
             for (size_t t = 0; t < leafPats[lid].size(); t++) {
                 localB(leafPats[lid][t], lid, rb);
-                if (rb != leafPatLocB[lid][t]) { if (bad < 8) fprintf(stderr, "[maps-val] leafPatLocB MISMATCH lid=%d t=%d\n", lid, (int)t); bad++; }
+                int Mw = (int)supC[lid].size();
+                if (!spanEq(leafFlat[lid].data() + (size_t)t * Mw, Mw, rb)) { if (bad < 8) fprintf(stderr, "[maps-val] leafFlat MISMATCH lid=%d t=%d\n", lid, (int)t); bad++; }
                 chk++;
             }
         fprintf(stderr, "[maps-val] recompute vs stored: %lld checked, %lld bad\n", chk, bad);
@@ -1020,13 +1043,12 @@ int main(int argc, char **argv) {
     auto T5 = Clock::now();
     printf("[sct] pattern<->leaf maps + compaction=%.2fs\n", secs(Tqg1, T5));
     if (getenv("MAPS_MEM_DBG")) {     // analytical map-payload sizes (RSS itself needs Linux); PB drops pbLocal
-        auto vbytes = [](const vector<vector<Vec>> &m, long long &inc) {
-            long long b = 0; inc = 0;
-            for (auto &v : m) { b += 24; for (auto &fp : v) { b += (long long)fp.capacity() * 2 + 40; inc++; } }
-            return b; };
-        long long pbInc, lpInc;
-        long long pbB = vbytes(pbLocal, pbInc), lpB = vbytes(leafPatLocB, lpInc);
-        fprintf(stderr, "[maps-mem] pbLocal=%.1fMB(%lld inc, stored=%s) leafPatLocB=%.1fMB(%lld inc) -> PB saves pbLocal\n",
+        long long pbB = 0, pbInc = 0;                          // pbLocal still vector<vector<Vec>> (per-footprint)
+        for (auto &v : pbLocal) { pbB += 24; for (auto &fp : v) { pbB += (long long)fp.capacity() * 2 + 40; pbInc++; } }
+        long long lpB = 0, lpInc = 0;                          // leafFlat is CSR: per-leaf flat int16 (no per-footprint overhead)
+        for (int lid = 0; lid < nLeaf; lid++) { lpB += 24 + (long long)leafFlat[lid].capacity() * 2;
+            int Mw = (int)supC[lid].size(); lpInc += Mw ? (long long)leafFlat[lid].size() / Mw : 0; }
+        fprintf(stderr, "[maps-mem] pbLocal=%.1fMB(%lld inc, stored=%s) leafFlat(CSR)=%.1fMB(%lld inc) -> PB drops pbLocal, CSR drops per-Vec overhead\n",
                 pbB / 1e6, pbInc, recomputePB ? "no" : "yes", lpB / 1e6, lpInc);
     }
     memCk("after-maps(patLeaves/pbLocal)");
@@ -1509,12 +1531,12 @@ int main(int argc, char **argv) {
         if (leafQbuilt[lid]) return;
         leafQbuilt[lid] = 1;
         auto &mp = leafQ2pat[lid];
-        int nt = (mapsRecompute || leafRecomp[lid]) ? (int)leafPats[lid].size() : (int)leafPatLocB[lid].size();
+        int nt = (int)leafPats[lid].size();                    // == #footprints (int map always stored)
+        int Mw = (int)supC[lid].size();
         mp.reserve((size_t)nt * 2);
         for (int t = 0; t < nt; t++) {
-            const Vec &q = (mapsRecompute || leafRecomp[lid]) ? (localB(leafPats[lid][t], lid, elmScr), (const Vec &)elmScr)
-                                         : leafPatLocB[lid][t];
-            mp[hashVec(q)].push_back(t);
+            auto fp = leafFP(lid, t, Mw, elmScr);              // (ptr,len) span: recompute or CSR view
+            mp[hashSpan(fp.first, fp.second)].push_back(t);
         }
     };
 
@@ -1636,7 +1658,6 @@ int main(int argc, char **argv) {
                     for (auto &p : coAll) for (int c = 0; c < Mloc; c++) if (p.u[c] > uEnv[c]) uEnv[c] = p.u[c];
                     ensureLeafMap(lid);
                     const auto &q2p = leafQ2pat[lid];
-                    const auto &qbAll = leafPatLocB[lid];
                     const auto &qsAll = leafPats[lid];
                     qcand.assign((size_t)Mloc, 0);
                     const int16_t *uEp = uEnv.data();
@@ -1647,7 +1668,7 @@ int main(int argc, char **argv) {
                         auto itc = q2p.find(h);
                         if (itc == q2p.end()) return;
                         for (int t : itc->second)
-                            if (((mapsRecompute || leafRecomp[lid]) ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == ql) {
+                            if (spanEqFP(lid, t, Mloc, qlScr, ql)) {
                                 int qi = qsAll[t];
                                 if (!pats[qi].alive) return;       // peeled (incl. the whole wave)
                                 if (skipH1 && pats[qi].host.size() == 1) return;
@@ -1832,7 +1853,6 @@ int main(int argc, char **argv) {
                 witInst++; witMSum += Mloc; if (Mloc > witMMax) witMMax = Mloc;
                 ensureLeafMap(lid);
                 const auto &q2p = leafQ2pat[lid];
-                const auto &qbAll = leafPatLocB[lid];
                 const auto &qsAll = leafPats[lid];
                 const Vec &nn = chgOld.front().n;       // leaf class sizes (constant across the leaf's boxes)
                 uEnv.assign((size_t)Mloc, 0);           // u-envelope over chgOld -> cheap δ feasibility prune
@@ -1845,7 +1865,7 @@ int main(int argc, char **argv) {
                     auto it = q2p.find(hashVec(Yscr));
                     if (it == q2p.end()) return;
                     for (int t : it->second)
-                        if (((mapsRecompute || leafRecomp[lid]) ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == Yscr) {
+                        if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
                             int qi = qsAll[t];
                             if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].host.size() == 1)) {
                                 if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
@@ -1938,7 +1958,6 @@ int main(int argc, char **argv) {
             // an enumeration whose size is the genuinely-affected candidate set.
             ensureLeafMap(lid);
             const auto &q2p = leafQ2pat[lid];
-            const auto &qbAll = leafPatLocB[lid];
             const auto &qsAll = leafPats[lid];
             // suffix sum of m_P: min future contribution of classes >= i to the
             // witness sum (max(pl,ql) >= pl), used to prune the DFS early.
@@ -1977,7 +1996,7 @@ int main(int argc, char **argv) {
                 dbgGen++;                               // a complete ql candidate generated
                 auto it = q2p.find(h);
                 if (it == q2p.end()) return;
-                for (int t : it->second) if (((mapsRecompute || leafRecomp[lid]) ? (localB(qsAll[t], lid, qlScr), (const Vec &)qlScr) : qbAll[t]) == ql) { applyIdx(ql, t); return; }
+                for (int t : it->second) if (spanEqFP(lid, t, Mloc, qlScr, ql)) { applyIdx(ql, t); return; }
             };
             // DFS over leaf classes: place ql[c] in [0, min(uEnv[c],rem)], track
             // rem = r left, acc = Σ_{<c} max(pl,ql), and the running rolling hash.
