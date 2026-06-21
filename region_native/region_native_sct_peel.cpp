@@ -1033,26 +1033,37 @@ int main(int argc, char **argv) {
     // intersection + hostFeasible). Built when SCT_ONDEMAND (or the Stage-1 verify). Every patLeaves reader goes
     // through leavesOf(), so flipping ondemand swaps stored O(pattern x leaf) for O(class x leaf) + ~1%-of-peel recompute.
     bool odBuild = ondemand || getenv("SCT_ONDEMAND_VERIFY");
-    vector<vector<int>> clsLeaves;
-    if (odBuild) { clsLeaves.assign((size_t)nC, {}); for (int lid = 0; lid < nLeaf; lid++) for (int c : supC[lid]) clsLeaves[(size_t)c].push_back(lid); }
-    Vec odBl; vector<int> odLeaves;
+    vector<vector<int>> clsLeaves; vector<int> sumEll, sumU;        // class->leaves index + per-leaf Σell / Σu (hostFeasible O(1))
+    if (odBuild) {
+        clsLeaves.assign((size_t)nC, {}); sumEll.assign(nLeaf, 0); sumU.assign(nLeaf, 0);
+        for (int lid = 0; lid < nLeaf; lid++) {
+            for (int c : supC[lid]) clsLeaves[(size_t)c].push_back(lid);
+            const CCPath &box = slotPaths[lid][0]; int se = 0, su2 = 0;
+            for (int c = 0; c < (int)box.u.size(); c++) { se += (int)box.ell[c]; su2 += (int)box.u[c]; }
+            sumEll[lid] = se; sumU[lid] = su2;
+        }
+    }
+    vector<int> odLeaves;
+    // hosts of P = leaves with every P-class present that can extend P to an s-clique. Probe the SMALLEST class list;
+    // in ONE merge pass confirm presence AND accumulate the hostFeasible delta extra=Σ max(0, P_c - ell_c). Then
+    // hostFeasible == (sumEll[lid] + extra <= T <= sumU[lid]). No per-candidate alloc / no separate O(|leaf|) scan.
     auto patLeavesOnDemand = [&](int pi, vector<int> &out) {
         out.clear(); const auto &comp = pats[pi].comp; if (comp.empty()) return;
         int cstar = comp[0].first; size_t best = clsLeaves[(size_t)comp[0].first].size();   // rarest class = smallest list
         for (auto &cm : comp) { size_t z = clsLeaves[(size_t)cm.first].size(); if (z < best) { best = z; cstar = cm.first; } }
+        int nc = (int)comp.size();
         for (int lid : clsLeaves[(size_t)cstar]) {
-            const vector<int> &sc = supC[lid]; odBl.assign(sc.size(), 0);
-            size_t i = 0, j = 0; int matched = 0;                  // merge P.comp into leaf-local odBl
-            while (i < sc.size() && j < comp.size()) {
+            const vector<int> &sc = supC[lid]; const CCPath &box = slotPaths[lid][0];
+            size_t i = 0, j = 0; int matched = 0; long extra = 0;
+            while (j < (size_t)nc && i < sc.size()) {
                 if (sc[i] < comp[j].first) i++;
-                else if (sc[i] > comp[j].first) j++;
-                else { odBl[i] = (int16_t)comp[j].second; matched++; i++; j++; }
+                else if (sc[i] > comp[j].first) j++;               // P-class comp[j] not in sc -> matched stays short
+                else { if (comp[j].second > (int)box.u[i]) { matched = -1; break; }   // P_c exceeds leaf capacity -> not host
+                       int d = comp[j].second - (int)box.ell[i]; if (d > 0) extra += d; matched++; i++; j++; }
             }
-            if (matched != (int)comp.size()) continue;             // some P-class absent here -> not a host
-            const CCPath &box = slotPaths[lid][0]; int M = (int)sc.size(); long sl = 0, su = 0; bool ok = true;
-            for (int c = 0; c < M; c++) { int L = (int)box.ell[c]; if ((int)odBl[c] > L) L = (int)odBl[c];
-                int U = (int)box.u[c]; if (L > U) { ok = false; break; } sl += L; su += U; }
-            if (ok && sl <= box.T && box.T <= su) out.push_back(lid);
+            if (matched != nc) continue;                           // some P-class absent / over-capacity -> not a host
+            long sl = (long)sumEll[lid] + extra;                   // Σ max(ell, P) = sumEll + Σ max(0, P_c - ell_c)
+            if (sl <= box.T && box.T <= sumU[lid]) out.push_back(lid);
         }
     };
     auto leavesOf = [&](int pi) -> const vector<int> & {           // on-demand recompute, else the stored list
@@ -1886,9 +1897,10 @@ int main(int argc, char **argv) {
         // entire affected-update (slotForbidDiff + DFS). Correct because its
         // witnesses are M-exclusive (a |host|>=2 pattern is never hosted in
         // these leaves, so never has a witness there).
+        const auto &pleaf = leavesOf(pi);   // §94: hosting leaves computed ONCE (reused by affectsH2 + the main loop)
         if (skipH1 && P.host.size() == 1) {
             bool affectsH2 = false;
-            for (int lid : leavesOf(pi)) if (hasH2[lid]) { affectsH2 = true; break; }
+            for (int lid : pleaf) if (hasH2[lid]) { affectsH2 = true; break; }
             if (!affectsH2) continue;
         }
 
@@ -1904,7 +1916,6 @@ int main(int argc, char **argv) {
         // (A componentwise-max shortcut is NOT valid: the drop is not
         // SC(L, max(m_P,m_Q)) because of that C(n-b,y-b) reweighting.)
         vector<int> aff;
-        const auto &pleaf = leavesOf(pi);
         Vec plScr, qlScr;                              // recompute scratch: P-side (held across k-body), Q-side (per confirm)
         vector<CCPath> chgOld;                         // pre-insertion snapshots
         vector<vector<pair<Vec,int>>> chgOldTerms;     // cached IE terms (pre-insert)

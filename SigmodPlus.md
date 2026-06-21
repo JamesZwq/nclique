@@ -3984,3 +3984,16 @@ affectsH2+pleaf calls) -> ~1.4x; (b) precompute per-leaf sumEll/sumU so hostFeas
 on-demand trades ~1.4-1.6x peel time for the BIG memory win (12-334x, Stage 3). RIGHT only GATED to memory-bound cells
 (where the alternative is OOM/timeout -- we have time, not memory); on non-bound cells it is a pure loss -> gate on
 maps/newstore (§93). Next: opt (a)+(b), then Stage 3 (drop leafFlat via localB + leafPats via global htab), then gate.
+
+## 94c. Stage 2 opt: fold hostFeasible into the merge (sumEll/sumU) -> 1.7x to 1.51x; capacity-bug found+fixed (2026-06-22) [branch]
+patLeavesOnDemand was 3 passes/candidate (odBl.assign zeroing + merge + O(|leaf|) hostFeasible scan). Folded into ONE
+merge pass: precompute per-leaf sumEll/sumU, accumulate extra=Σmax(0,P_c-ell_c) during the merge, hostFeasible ==
+(sumEll+extra <= T <= sumU). BUG caught by SCT_ONDEMAND_VERIFY: dropped the per-class CAPACITY check (P_c<=u_c), so
+repeated-class patterns (P_c>=2) got false hosts -> 4,5 verify FAIL (od>stored); 3,4 passed (all P_c=1). FIXED: check
+comp[j].second>u[i] -> matched=-1 in the merge. Re-verified 4,5 4535489/4535489 OK, mini t=2 corehash IDENTICAL.
+SPEED: ca-AstroPh 3,4 default 8.0s -> ondemand 12.1s = 1.51x (was 1.7x). The residual is CACHE-bound (84M candidate
+leaves, random supC[lid]/box access), ~1.5x is near the floor for recomputing patLeaves. Stage 2 saves ~2% RSS alone
+(patLeaves is the small map). VERDICT: full on-demand ~1.5x(intersect) x ~1.1-1.17x(footprint recompute, Stage 3) ~
+1.65-1.75x peel for the 12-334x maps memory; worth it ONLY gated to memory-bound (OOM/timeout) cells. Lesson: the §93
+CLS_LEAF_DBG "1% of peel" undercounted -- it was candidate COUNT, the real per-candidate work + cache misses make it
+~1.5x. Honest. Next decision (user): Stage 3 (drop leafFlat via localB + leafPats via global htab) + gate, or stop.
