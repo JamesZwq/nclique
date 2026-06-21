@@ -1807,7 +1807,8 @@ int main(int argc, char **argv) {
                         int maxm = Yb < rem ? Yb : rem;
                         for (int m = 1; m <= maxm; m++) {
                             Yscr[b] = (int16_t)(Yb - m);                          // Q_b = Y_b - m
-                            double wf = ccpath_ncr((int)nn[b] - (Yb - m), m);     // C(n_b - Q_b, m)
+                            int avail = (int)nn[b] - (Yb - m);                    // n_b - Q_b
+                            double wf = (m == 1) ? (double)avail : ccpath_ncr(avail, m);  // C(n_b-Q_b, m), m=1 fast
                             self(self, b + 1, rem - m, w * wf, nAlive);
                         }
                         Yscr[b] = (int16_t)Yb;                                    // restore
