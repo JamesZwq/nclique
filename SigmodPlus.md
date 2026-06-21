@@ -3497,3 +3497,25 @@ s=r+1 untouched (proven witness-floor path). NOTE: the #1 slot index already mad
 so the win is the affected-Q enumeration amortization, concentrated in s>r+1 (where region-native already wins).
 NEXT (not done, deferred): wider sweep + cbCap sensitivity if promoting to default; s=r+1 batch variant (witness-
 floor) if low-RS peel ever becomes the target.
+
+## 72. s=r+2 witness-major drop: DERIVED + brute-force VERIFIED (theory confirmed, pre-code) (2026-06-21, #163)
+User asked for special opts at small s-r (=1,2). Derived the WITNESS-MAJOR drop reorganization of the proven
+per-pattern delta-formula: write witness Y = pl + delta (Σdelta = s-r = tail); the Q it feeds are Q = Y - gamma
+(Σgamma = tail, gamma<=Y, gamma!=delta), with weight Π_k C(n_k - Q_k, gamma_k) [= Π C(n-ql, Y-ql), the same
+reweighting]. So:
+  drop(Q) = Σ_{delta: Σ=tail, Y=pl+delta ALIVE in box} Σ_{gamma: Σ=tail, gamma<=Y, gamma!=delta, Q=pl+delta-gamma} Π C(n_k-Q_k, gamma_k)
+"ALIVE" = ell<=Y<=u AND Y not>= any forbidden (the antichain handled by a direct dominance test -- NO IE, NO DP, NO DFS).
+This is EXACT for ANY tail (just witness-major vs Q-major summation of the same set); cheap ONLY for small tail
+(the (delta,gamma) count is O(M^tail)). That is precisely why s=r+1/r+2 are special.
+  s=r+1 (tail 1): delta=e_c, gamma=e_d, weight=n_d-Q_d == the EXISTING witness-floor (sEqRp1). cross-check.
+  s=r+2 (tail 2): gamma=2e_e -> C(n_e-Q_e,2); gamma=e_e+e_f -> (n_e-Q_e)(n_f-Q_f). delta in {2e_c} ∪ {e_c+e_c'}.
+                  closed-form binomials, output-sensitive, no DP/IE/DFS.
+VERIFICATION (/tmp/verify_rp2.py, vs brute-force general Σ_{Y>=max(pl,Q),ΣY=s,ell<=Y<=u,Y not>=forbidden} ΠC(n-Q,Y-Q)):
+  tail=1: 3271 inst / 382379 (box,Q) checks / 0 mismatch | tail=2: 2847 / 287528 / 0 | tail=3: 914 / 81448 / 0.
+  Random n<=6, ell, u, 0-2 forbidden corners, M=2-5. THEORY CONFIRMED (reweighting + Q!=P exclusion correct).
+COST (s=r+2, per (P,leaf)): enumerate delta (Σ=2, O(M^2) configs) x scan chgOld boxes for Y-liveness (O(boxes*M))
+x per alive delta enumerate gamma (Σ=2, gamma<=Y, ~O((r+2)^2)) -> credit drops. ~O(M^2 * boxes * M) per (P,leaf).
+IMPLEMENTATION CHOICE (pending): (a) per-pattern witness-major for s=r+2 (like witness-floor) -- simplest, compare
+vs the batch (which already gives 1.9-3.0x at s=r+2, ALL my batch cells were s=r+2); OR (b) compose witness-major
+WITH the wave batch. Gate as SCT_RP2_WITNESS (or fold into sEqRp1-style branch). Corehash-validate, LOCAL only.
+NOTE: this COMPETES with the batch at s=r+2 -- must beat the batch's 1.9-3.0x to be worth shipping. Measure first.
