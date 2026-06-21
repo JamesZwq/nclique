@@ -3742,3 +3742,9 @@ to full-recompute (which saves a bit more but pays +9-17% on the hot recompute).
 RECOMMEND: flip SCT_MAPS_RECOMPUTE_PB DEFAULT-ON (free + bit-identical + RSS-confirmed) so default = CSR+PB = the
 free 23-29% reduction. CSR is already default (no gate, pure layout). Then the CND memory comparison (does the free
 stack close the low-RS gap? docs: com-dblp 3,4 RN 1121M vs CND 569M) to confirm we beat CND on memory.
+
+## 83b. DONE: PB flipped DEFAULT-ON (2026-06-21, #175). Default now = CSR(flat) + PB(recompute cold pbLocal) = the
+free 23-29% peak-RSS reduction, bit-identical (default==known-good==escape-hatch, 31716ad). Escape: SCT_MAPS_NO_
+RECOMPUTE_PB. Memory A delivered (free tier on by default; SCT_MAPS_LEAF_WMIN knob + full for more). REMAINING:
+CND memory comparison (needs the MAIN binary built on tods2, CND=PIVOTER_RUN_REF) to confirm the free stack closes
+the low-RS gap vs CND.
