@@ -3519,3 +3519,24 @@ IMPLEMENTATION CHOICE (pending): (a) per-pattern witness-major for s=r+2 (like w
 vs the batch (which already gives 1.9-3.0x at s=r+2, ALL my batch cells were s=r+2); OR (b) compose witness-major
 WITH the wave batch. Gate as SCT_RP2_WITNESS (or fold into sEqRp1-style branch). Corehash-validate, LOCAL only.
 NOTE: this COMPETES with the batch at s=r+2 -- must beat the batch's 1.9-3.0x to be worth shipping. Measure first.
+
+## 73. s=r+2 witness-major IMPLEMENTED: beats batch AND default (option (a) wins) (2026-06-21, #164) [local]
+Built the per-pattern s=r+2 witness-major fast path (gate SCT_RP2_WITNESS, default OFF, only when s==r+2 and not
+batchPeel). Sits next to the sEqRp1 witness-floor in the per-pattern affected-update. Dying witness Y=pl+δ (Σδ=2,
+two added classes a1<=a2), affected Q=Y-γ (Σγ=2, two removed classes b1<=b2, (b1,b2)!=(a1,a2)), drop =
+[γ=2e_b -> C(n_b-Q_b,2)] or [γ=e_b1+e_b2 -> (n_b1-Q_b1)(n_b2-Q_b2)] times #alive-boxes. n leaf-constant -> weight
+box-independent, only the alive-box COUNT matters. uEnv pre-prune skips infeasible δ before the box-liveness scan.
+NO IE / NO DP / NO DFS.
+CORRECTNESS: brute-force theory verified (§72) + 6 corehash cells bit-identical across 4 graphs (dblp-sigmod/db,
+amazon-copurchase, soc-Epinions1), default==SCT_RP2_WITNESS.
+SPEED (dblp-db, peel time, interleaved 3-way default/batch/witness, ALL s=r+2):
+  3,5: def 11.36 | batch 5.40 | witness 2.85  -> witness 3.99x vs def, 1.89x vs batch
+  4,6: def 99.39 | batch 49.96| witness 20.49 -> witness 4.85x vs def, 2.44x vs batch
+  5,7: def 1129  | batch 372  | witness 164.6 -> witness 6.86x vs def, 2.26x vs batch
+=> WITNESS-MAJOR is the clear s=r+2 winner: 4.0-6.9x vs default, 1.9-2.4x vs the batch. The closed-form (no DP/IE/
+DFS) beats the batch's DFS-amortization. Option (a) succeeds; no need for (b) batch composition to beat batch.
+END-STATE design for the affected-update: s=r+1 -> witness-floor (default ON); s=r+2 -> witness-major (THIS,
+currently gated, should become default for s=r+2); s>r+2 -> batch (SCT_BATCH_PEEL, gated) or general DFS.
+PENDING (user decision): flip SCT_RP2_WITNESS to default-on for s=r+2? (bit-identical + 4-7x local win; a server
+sweep would confirm at scale but this round is local-only.) And whether to extend the witness-major to s=r+3
+(tail 3, O(M^3) configs -- likely still beats general for moderate M, but the batch/general may win past some tail).
