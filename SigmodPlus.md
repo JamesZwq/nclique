@@ -3913,3 +3913,18 @@ load 0.75) -- ~5-10x faster per op, the per-Y constant that decides a_Y on SPARS
 DECISION PENDING (route 1 vs 2): re-measure sparse t>=2 (ca-GrQc 3,5/3,6) with the flat-set. If a_Y now >= antichain
 there too -> make a_Y the SINGLE all-T default (no gate). Else add ONE unified cost gate (price a_Y vs antichain per
 leaf, any tail). Also running: 6,8 (t=2) reclaim -- tests whether a_Y helps when the BUILD (not peel) is the bottleneck.
+
+## 92. a_Y boundary (6,8 build-bound) + regression sweep launched (2026-06-21, #178)
+ca-AstroPh 6,8 (t=2) a_Y did NOT finish: patterns=87,608,026 (87.6M!), r-cliques=386M, enum=71.88s, peel never
+completed (killed at 9min). So 6,8 is BUILD / pattern-materialization bound, NOT peel-bound -- a_Y optimizes the PEEL
+(deletes split churn) so it CANNOT reclaim 6,8 (nor likely 5,6). a_Y reclaims cells where the PEEL was the wall (4,5:
+timeout->116s) but not where the §85 pattern explosion is the wall. Honest boundary: a_Y is a peel optimization.
+REGRESSION SWEEP launched (detached setsid on tods2, /tmp/ay_sweep.csv): a_Y(SCT_AY) vs antichain(SCT_NO_AY) on
+{ca-GrQc,ca-HepPh,ca-CondMat,ca-AstroPh,com-amazon,com-dblp,com-youtube,web-Google,soc-pokec} x {3,4;4,5;3,5;4,6} x
+{ay,anti}, per-run timeout 240s, recording peel_s + RSS + corehash. Purpose: answer "does a_Y regress time/memory on
+OTHER graphs?" empirically (the only real guarantee, per the user). Expected: t=1 a_Y >= antichain everywhere (no
+over-enum); t=2 a_Y may regress on sparse (re-enumerates dead regions the antichain prunes via splits). Decision: if
+no t=1 regression -> default safe confirmed; if t=2 regresses -> the all-T extension needs a conservative gate.
+THEORY HONESTY (told user): correctness is GUARANTEED bit-identical (construction); time/memory non-regression is NOT
+theoretically guaranteed for all T -- a_Y trades split-maintenance for re-enumeration, winner is graph/tail-dependent;
+flat-set shrinks the constant not the asymptotic over-enum. t=1 has no over-enum (same floor set) so near-guaranteed.
