@@ -3580,3 +3580,13 @@ per leaf cheaply estimate the witness enumeration size ~ #compositions of t over
 witness only when it is below a cost threshold vs the general/batch alternative; else fall back. Auto-adapts to M
 and t together, no per-graph tuning. (The batch already does exactly this with CB; the witness can reuse the idea.)
 NOTE: small-graph timing (<0.1s) is noise-dominated; only seconds-scale cells (dblp-db) are trustworthy here.
+
+## 75b. soc-Epinions (huge M) t=2: witness STILL WINS 1.19x -> witnessTMax=2 safe across the density spectrum
+soc-Epinions1 3,5 (t=2, huge M): witness=73.01s vs batch=87.03s -> w/batch=1.19, witness WINS. (Earlier "timeout"
+was the 150s cap; it just takes 73s.) So at t=2 witness wins on EVERY measured graph: amazon(M7)~tie/noise,
+soc-Epinions(hugeM) 1.19x, dblp-db(M33) 1.51x. CRITICAL TREND: the t=2 margin SHRINKS as M grows (1.51x @ M=33 ->
+1.19x @ huge M), so for pathologically dense graphs the t=2 win -> 1.0 and could eventually tie/lose. CONCLUSION:
+witnessTMax=2 is a SAFE, well-justified default across the measured spectrum; t=3 is a graph-dependent marginal
+win (dblp-db 1.13x, amazon 1.33x); t>=4 loses. The adaptive per-leaf gate (sec 75) remains the robust long-term
+fix -- it would (a) safely capture the t=3 win where it exists and (b) protect against the shrinking t=2 margin on
+extreme-density graphs -- but is OPTIONAL polish, not needed for the default to be correct/safe.
