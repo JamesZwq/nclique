@@ -4027,3 +4027,24 @@ build peak). Peel unchanged (72.4s). CUMULATIVE on-demand (patLeaves+leafFlat+ho
 ~5.89GB default -> 2.81GB ondemand (~ -52%) at ~1.26x peel, all bit-identical (ca-AstroPh 3,4 + mini t=2 + soc-Epinions
 ALL default==ondemand==antichain). host/classSet also shrink the DEFAULT path by ~158MB (freed for all modes).
 NEXT (still open): the ~2GB build-peak gap (where's the real peak?); peel parallelism (the time lever); gate + merge.
+
+## 97. build-peak frees (allocator-bound) + CRITICAL: on-demand 11x SLOWER on com-youtube (cost-aware gate needed) (2026-06-22) [branch]
+BUILD-PEAK (user-requested): freed qadj (dead after SCT build) + regionClasses/classRegions (dead after enum/suppOf),
+bit-identical (ca-AstroPh 3,4 + mini OK). BUT on macOS the ondemand peak DID NOT drop (2.81G still): the build peak is
+the pattern-enum's radix-sort working set, and freeing the objects doesn't return RSS (the allocator retains freed
+pages). Phase RSS (ondemand 4,5): after-enum 2.6G, after-SDCT 2.6G, after-maps 1.16G -> the ~1.4G transient is the enum
+radix arrays + pats, released late. The peak (~2.4x the steady) is largely INTRINSIC to the radix sort + allocator-bound.
+Linux (glibc returns large frees) may differ -> re-measure on tods2; macOS is a dead-ish end.
+CRITICAL (the user's "test other graphs" instinct): multi-graph od_bench (tods2) shows on-demand is GRAPH-DEPENDENT on
+TIME, severely:
+  graph(cell)      def peel/peak      od peel/peak       verdict
+  ca-AstroPh 3,4   13.2s/1417MB       18.7s/421MB        win (-70% mem, 1.4x time)
+  ca-AstroPh 4,5   86s/6935MB         115s/2278MB        win (-67% mem, 1.33x)
+  com-dblp 3,4     5.29s/716MB        5.06s/358MB        WIN (faster + -50%)
+  com-dblp 4,5     19.1s/1440MB       16.5s/467MB        WIN (faster + -68%)
+  com-youtube 3,4  15.6s/4472MB       174.8s/2730MB      *** 11x SLOWER *** (-39% mem)
+on-demand is a WIN on dense co-authorship (classes in few leaves -> cheap intersect) but CATASTROPHIC on social graphs
+(hub classes in many leaves -> intersect/globalLookup blow up, cf soc-Epinions maxlist 431K). So it MUST be COST-gated
+(disable when max class->leaves list is long), not memory-gated -- com-youtube has a decent mem win yet 11x time, so a
+maps/newstore gate would WRONGLY enable it. Gate signal = maxlist (CLS_LEAF_DBG already measures it), cheap at build.
+VERDICT: on-demand maps is a NICHE, cost-gated tool (dense co-authorship only); a_Y remains the clean universal win.

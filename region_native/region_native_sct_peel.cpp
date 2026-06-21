@@ -764,6 +764,7 @@ int main(int argc, char **argv) {
         v.erase(std::unique(v.begin(), v.end()), v.end());
     }
     auto baseLeaves = classsct_scalable::scalableBuildClassSCT(nC, qw, qadj, s);  // COMPACT
+    { vector<vector<int>>().swap(qadj); vector<int>().swap(qw); }   // §97: quotient graph dead after the SCT build -> free (build-peak)
     auto Tqg1 = Clock::now();
     memCk("after-SDCT-build(slotPaths)");
     printf("[sct] quotient nC=%d  base-leaves=%zu  build=%.2fs\n",
@@ -797,6 +798,8 @@ int main(int argc, char **argv) {
     // region-id list is needed ONLY at build (directBin) + suppOf -- the peel uses only |host| (kept as hostSz). Frees
     // ~classSet + ~host of per-pattern incidence (e.g. ca-AstroPh 4,5: 73MB + 85MB).
     for (auto &P : pats) { P.hostSz = (int)P.host.size(); vector<int>().swap(P.classSet); vector<int>().swap(P.host); }
+    // §97: regionClasses / classRegions are dead after the pattern enum + suppOf (this is past both) -> free (build-peak).
+    vector<vector<int>>().swap(regionClasses); vector<vector<int>>().swap(classRegions);
 
     // Step 3: compaction + pattern<->leaf maps.
     int nLeaf = (int)baseLeaves.size();
