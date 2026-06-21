@@ -1104,12 +1104,17 @@ int main(int argc, char **argv) {
     //   drop_Q(box p) = [floor_c alive in p] * (n_p[d] - m_Q[d]).
     // This is output-sensitive (work ~ live floors, not all candidates) and was
     // validated bit-exact vs scWithTerms on 400k random boxes (incl ell>0).
-    // UNIFIED witness-major affected-update (§72-74): one tail-parameterized path covers every small tail
-    // t = s - r. t=1 is the old witness-floor, t=2 the old witness-major. Active for 1 <= t <= witnessTMax
-    // (default 2; raise SCT_WITNESS_TMAX to test the crossover where the O(M^t) enumeration loses to batch/DP).
+    // UNIFIED witness-major affected-update (§72-75): one tail-parameterized path for every small tail t=s-r.
+    // t=1 == old witness-floor, t=2 == old witness-major. The witness enumeration is O(M^t) (M=leaf width), so
+    // whether it beats the general DFS is GRAPH- and LEAF-dependent (sec 75). Instead of a fixed cap we choose
+    // PER LEAF: witness while its δ-enumeration is cheap relative to the general DFS's candidate space, else
+    // fall back to the general DFS (both bit-identical -> pure speed). t=1,2 always win (measured across the
+    // density spectrum) so they skip the gate; the gate kicks in at t>=witGateMinT. witnessTMax is a hard cap.
     int witnessTail = s - r;
-    int witnessTMax = getenv("SCT_WITNESS_TMAX") ? atoi(getenv("SCT_WITNESS_TMAX")) : 2;
-    bool useWitness = witnessTail >= 1 && witnessTail <= witnessTMax;
+    int witnessTMax = getenv("SCT_WITNESS_TMAX") ? atoi(getenv("SCT_WITNESS_TMAX")) : 8;
+    int witGateMinT = getenv("SCT_WIT_GATE_MINT") ? atoi(getenv("SCT_WIT_GATE_MINT")) : 3;
+    double witK = getenv("SCT_WIT_K") ? atof(getenv("SCT_WIT_K")) : 8.0;
+    bool witnessActive = witnessTail >= 1 && witnessTail <= witnessTMax;
     // SKIP_H1: a |host|=1 pattern peels at EXACTLY L_M=C(|M|-r,s-r) regardless
     // of how the peel proceeds (every r-clique in its region M has support
     // >= L_M, so no witness of a |host|=1 pattern dies before curLevel=L_M --
@@ -1498,6 +1503,7 @@ int main(int argc, char **argv) {
     vector<char> seen(pats.size(), 0);
     vector<double> delta(pats.size(), 0.0);          // per-affected exact drop
     Vec uEnv, sufPl, qcand, Yscr;                     // reused per-leaf scratch (Yscr = s=r+2 witness)
+    vector<long long> wdDP, cbDP2;                     // adaptive-gate scratch: #witnesses Wδ / #candidates CB
     vector<char> uLiveBuf, covBuf;                     // depth-indexed prune scratch (DFS_PRUNE)
     vector<const int16_t*> chgU, fbA;                  // u-rows / single-forbidden rows of chgOld
     vector<int> fbCrit; vector<char> fbHas;            // per-path: max critical coord / has-1-forbidden
@@ -1524,7 +1530,7 @@ int main(int argc, char **argv) {
     // higher-level Q dropping to curLevel) re-drains curLevel. Only s>r+1 (the path that owns
     // a DFS to amortize); s=r+1 keeps the proven per-pattern witness-floor path. Default OFF.
     bool batchPeel = getenv("SCT_BATCH_PEEL") != nullptr;
-    if (batchPeel && !useWitness) {
+    if (batchPeel && witnessTail >= 2) {
         struct BTask { int lid, pi, k; };
         vector<int> wave;
         vector<BTask> taskLL;                          // (leaf,pattern,leaf-index) tasks for the wave
@@ -1767,7 +1773,28 @@ int main(int argc, char **argv) {
             { auto _sa = Clock::now(); slotVisits += (long long)slotPaths[lid].size();
               slotForbidDiff(lid, pl, plNZ, chgOld); tSFD += secs(_sa, Clock::now()); }
             if (chgOld.empty()) continue;              // P touched nothing here
-            if (useWitness) {
+            // ---- ADAPTIVE PER-LEAF choice: witness vs general DFS (both bit-identical) ----
+            // t=1,2 always witness (win across the density spectrum). For t>=witGateMinT estimate the two costs
+            // cheaply: Wδ = #feasible witnesses (compositions of t with δ_c<=uEnv_c-pl_c) drives the witness
+            // box-scan; CB = #affected-Q candidates (compositions of r with Q_c<=uEnv_c) drives the general DFS.
+            // Witness per-unit (box scan) << general per-unit (scWithTerms DP), so take witness while Wδ<=CB*witK.
+            bool wLeaf = witnessActive;
+            if (wLeaf && witnessTail >= witGateMinT) {
+                int Mw = (int)pl.size();
+                uEnv.assign((size_t)Mw, 0);
+                for (auto &p : chgOld) for (int c = 0; c < Mw; c++) if (p.u[c] > uEnv[c]) uEnv[c] = p.u[c];
+                const long long SAT = 1LL << 40;
+                wdDP.assign((size_t)witnessTail + 1, 0); wdDP[0] = 1;     // Wδ: bounded compositions of t
+                for (int c = 0; c < Mw; c++) { int room = (int)uEnv[c] - (int)pl[c]; if (room < 0) room = 0; if (room > witnessTail) room = witnessTail;
+                    for (int tt = witnessTail; tt >= 1; tt--) { long long s2 = 0; for (int y = 1; y <= room && y <= tt; y++) s2 += wdDP[tt - y];
+                        wdDP[tt] += s2; if (wdDP[tt] > SAT) wdDP[tt] = SAT; } }
+                cbDP2.assign((size_t)r + 1, 0); cbDP2[0] = 1;            // CB: bounded compositions of r
+                for (int c = 0; c < Mw; c++) { int uc = (int)uEnv[c]; if (uc > r) uc = r;
+                    for (int tt = r; tt >= 1; tt--) { long long s2 = 0; for (int y = 1; y <= uc && y <= tt; y++) s2 += cbDP2[tt - y];
+                        cbDP2[tt] += s2; if (cbDP2[tt] > SAT) cbDP2[tt] = SAT; } }
+                wLeaf = ((double)wdDP[witnessTail] <= (double)cbDP2[r] * witK);
+            }
+            if (wLeaf) {
                 // ---- UNIFIED WITNESS-MAJOR fast path, tail t = s-r (bit-exact vs scWithTerms, §72-74) ----
                 // Dying witness Y = pl + δ (Σδ=t); each affected Q = Y - γ (Σγ=t, γ<=Y) gets drop
                 //   Π_{distinct b in γ} C(n_b - Q_b, mult_b), summed over alive boxes. n is leaf-constant
