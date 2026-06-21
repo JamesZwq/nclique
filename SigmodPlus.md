@@ -3928,3 +3928,21 @@ no t=1 regression -> default safe confirmed; if t=2 regresses -> the all-T exten
 THEORY HONESTY (told user): correctness is GUARANTEED bit-identical (construction); time/memory non-regression is NOT
 theoretically guaranteed for all T -- a_Y trades split-maintenance for re-enumeration, winner is graph/tail-dependent;
 flat-set shrinks the constant not the asymptotic over-enum. t=1 has no over-enum (same floor set) so near-guaranteed.
+
+## 93. ON-DEMAND MAPS VALIDATED on the explosion case (user's class->leaves intersection idea) (2026-06-22, #178)
+User's plan: don't store pattern<->leaf maps; compute patLeaves(P) = INTERSECTION of class->leaves lists (two-pointer,
+hash-probe-smallest if large); footprints via localB (done); Q->global-index via the global composition hash. Measured
+(CLS_LEAF_DBG probe, local ca-AstroPh):
+  cell  | maps/newstore (mem win) | maxlist | intersect hash-probe (Σ min-list) abs | overhead vs patLeaves-iter
+  3,4 r3|   12.0x                 |  5842   |  84M ops (~1% of 15s peel)            |  12.6x
+  4,5 r4|   67.0x                 |  5902   | 425M ops (~1% of 102s peel)           |  12.9x
+KEY: (1) memory win GROWS with r (12x->67x, ~M^{r-1}) -> at 6,8 (r=6) the maps shrink by orders of magnitude, directly
+attacking the 87.6M-pattern wall. (2) intersect cost is NEGLIGIBLE in absolute terms (~1% of peel) because maxlist is
+bounded (~5900) on the explosion case. (3) hash-probe-smallest is essential: 13x vs two-pointer's 160-285x.
+NON-TARGET (soc-Epinions 3,4): maps/newstore only 1.4x, maxlist 431K -> intersect 324x. INVERSE RELATION: where maps
+explode (big/few leaves), classes sit in few leaves -> cheap intersect; where intersect is dear (many small leaves),
+the win is tiny. So a trivial build-time gate on maps/newstore applies on-demand exactly where it wins. Plan HOLDS:
+store class->leaves (small) + global comp->index hash + localB; the O(pattern x leaf) maps vanish for ~1% peel-time.
+This is the path to push the dense frontier OUT (reclaim 5,6/6,7), built on a_Y's cheap peel (recompute affordable).
+NEXT: confirm r=5 trend; then implement on-demand patLeaves (class->leaves inverted index + hash-probe intersect),
+verify bit-identical, measure RSS reclaim on the high-RS dense cells.
