@@ -3878,3 +3878,15 @@ NEXT: (a) MEMORY -- deadY is a hash-set (up to 65M dead comps on this cell ~1-2G
 heavy, swap to a per-leaf bit-array via composition ranking (8MB). (b) does the faster peel let 4,5/5,6 (timed out at
 12-36GB) finish? (c) the drop (now 100% of peel) is the next target. (d) ADAPTIVE gate (a_Y on dense high-split leaves,
 antichain elsewhere) once memory is bounded. (e) wire a_Y into the BATCH path for t>witCross.
+
+## 89. a_Y is FASTER AND LEANER, and UNBLOCKS a timed-out cell (2026-06-21, #178)
+RSS (ca-AstroPh 3,4, tods2, /usr/bin/time -v): antichain 1.86GB -> a_Y 1.64GB (-12%). The §67 "4-45x memory" fear was
+WRONG: the antichain's SPLIT-SET (maxSplit 4509 boxes) is itself a memory hog; deadY (hash-set of dead compositions)
+replaces it and is SMALLER. So a_Y wins on BOTH axes on dense.
+ca-AstroPh 4,5 (antichain TIMED OUT at 12.6GB, §85): a_Y FINISHES -- wall 1:56 (116s), RSS 8.0GB, Max core 53, rc=0.
+The 2x-faster lean peel turns the timeout into a completed run. (Correctness for 4,5: same t=1 code as 3,4 which is
+corehash-identical; t=2/t=3 verified separately on mini/soc-Epinions.) deadY did NOT balloon -- the peel does not kill
+all 65M comps, and dead-only storage stays under the split-set it replaces.
+IMPLICATION: a_Y may deserve DEFAULT-ON for the witness path (not just adaptive) -- need to confirm it doesn't balloon
+memory on SPARSE graphs (antichain splits little there, so deadY relatively larger). Pending: sparse a_Y mem/speed; CND
+head-to-head on the now-finishing dense cells; higher-tail (t=2,3) breadth; ranking->bit-array if any sparse balloon.
