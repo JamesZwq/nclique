@@ -3946,3 +3946,13 @@ store class->leaves (small) + global comp->index hash + localB; the O(pattern x 
 This is the path to push the dense frontier OUT (reclaim 5,6/6,7), built on a_Y's cheap peel (recompute affordable).
 NEXT: confirm r=5 trend; then implement on-demand patLeaves (class->leaves inverted index + hash-probe intersect),
 verify bit-identical, measure RSS reclaim on the high-RS dense cells.
+
+## 93b. r=5 confirms the on-demand-maps trend (2026-06-22, #178)
+ca-AstroPh 5,6 (r=5,t=1): patterns=22.1M, r-cliques=62.8M, pattern-leaf-inc=141.7M -> class-leaf-inc=424K =>
+maps/newstore=334.0x (12x->67x->334x for r=3,4,5; ~M^{r-1}). maxlist=5792 (pinned), intersect hash-probe overhead
+12.50x (constant in r). So at 6,8 (r=6) the maps shrink ~1000x+. The 142M-incidence maps (tens of GB) collapse to a
+424K store; memory -> the pattern floor (22M patterns x ~24B ~ 0.5GB) + class->leaves (1.7MB). 5,6 (was 36GB timeout)
+becomes ~1GB-class. CONCLUSION: on-demand patLeaves via hash-probe-smallest intersection is the validated fix for the
+dense memory wall. Ready to implement (staged: 1=build class->leaves + assert patLeavesOnDemand==stored; 2=drop stored
+patLeaves, verify bit-identical + RSS; 3=Q-lookup via global comp->index hash, drop leafPats/footprints). Gate on
+maps/newstore so it triggers only where it wins (soc-Epinions-like graphs keep the stored maps).
