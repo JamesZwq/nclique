@@ -310,7 +310,12 @@ static SDCTBuildResult buildSDCTWithIndex(
                          envSet("PIVOTER_RUN_REGION_TIER") || envSet("PIVOTER_RUN_REGION_EVENT") ||
                          envSet("PIVOTER_RUN_CCPATH")) &&
                         !envSet("PIVOTER_COMPARE") && !envSet("PIVOTER_RUN_ST");
-    auto ci = (r >= 3 && !quotientLabOnly && !regionOnly && !v3Only) ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
+    // §105 M4: the tuple-NATIVE engine is cliqueIndex-FREE -- building the per-r-clique
+    // CPI for it is pure waste (262M cliques / 13.3GB on com-dblp 5,6). It only needs
+    // leaves >= s (support-0 r-cliques are skipped), so keep store_min_k = s.
+    const bool nativeNoCI = envSet("PIVOTER_RUN_TUPLE_NATIVE");
+    auto ci = (r >= 3 && !quotientLabOnly && !regionOnly && !v3Only && !nativeNoCI)
+                  ? std::make_unique<StaticCliqueIndex>(r) : nullptr;
     // The CPI must index ALL r-cliques (size >= r), including those in no s-clique
     // (support 0). Tree-based CPI builds (build / buildWithFullEnum) enumerate only
     // from STORED leaves, so the tree must store leaves >= r, matching the REF's
