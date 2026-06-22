@@ -4437,3 +4437,66 @@ COMPLETE §105 ARC: M1 (class port) -> M2 (reproc ratio) -> M2.6 (premise) -> M3
   never slower) -> M4 (cliqueIndex-free native, 3.1x leaner, bit-identical dist). REMAINING OPTIMIZATION (not blocking):
   native moderate-RS speed (compact tupleLeaves, parallel counting), and the clean-split is still per-member O(#rcliques)
   (batching it at tuple level = the hard BK-internal frontier). Validate on com-dblp 5,6 (the CND-OOM cell) on tods2 next.
+
+## 106. PERF ROUND + V3LM COMPARISON + Task #11 RED VERDICT -- the tuple-native engine hits its general-(r,s) ceiling (2026-06-22)
+ENGINE = NucleusCoreDecompositionRCliqueTupleNative (env PIVOTER_RUN_TUPLE_NATIVE), single-threaded, cliqueIndex-FREE.
+Pipeline: [driver] load+degen-sort -> SDCT tree (store_min_k=s, no CPI) -> MaxCliqEnum (regions>=s) -> classes (g_m1ClassOf);
+[engine] B0 classSize; B1 counting = per-leaf combinatorial A_L(T) convolution -> rawSupport[t], tupleOfKey (ArrKey),
+tupleComp[t], robin_hood tupleLeaves; B2 support_T=rawSupport/mult, buckets; B3 peel: pop tuple -> tupleLeaves -> enumMembers
+(flat CSR) + bkRmClique::removeRClique clean-split + processLeaf decr/incr -> tupleDelta -> bucketMove; B4 dist = sum mult per core.
+COUNT side (B1 + reprocess + find-leaf) enumerates NO clique (combinatorial). DELETE side (B3 enumMembers + clean-split) still
+enumerates R-cliques + builds a sub-leaf tree -- the high-RS cost.
+
+PERF OPTIMIZATIONS (all bit-identical to the saved refs + region_native, adversarially A/B-verified each):
+- enumMembers malloc->flat CSR (commit 46b2bb0): was 80% of peel (per-leaf unordered_map + heap vector per member). Reused
+  cflat/coff + vector<span> for removeRClique. com-dblp 4,5 peel 69.2->18.5s (3.75x); enumMembers 55.4->7.5s.
+- de-hash processLeaf (34756cc): flat classToLocal + ArrKey<int,RMAX> key. PERF-NEUTRAL (3-run A/B) -- processLeaf's cost is
+  the convolution enumeration, NOT the hashing. Kept (cleaner, removes hot-loop allocations).
+- SKIP the wasted #r-clique cliqueIndex for native (8bac1b5): the driver built a 262M-clique/13.3GB CPI native never uses
+  (com-dblp 5,6). Excluded PIVOTER_RUN_TUPLE_NATIVE from `ci`; store_min_k stays s (native only needs leaves>=s, support-0
+  skipped). com-dblp 4,5 RSS 4.48->2.23GB. store_min_k=r is WORSE (com-dblp 5,6 36GB vs s 30GB; more leaves -> more incidences).
+- robin_hood tupleLeaves (e0b7795): unordered_set ~40B/incidence -> flat_set ~13B (181M incidences on com-dblp 5,6). Cut peak
+  only ~2GB (30->28GB) because at PEAK the index is mostly freed (popped tuples release it); the win is the after-count phase.
+HONEST HIGH-RS MEMORY: the PEAK is the clean-split SUB-LEAF TREE (grows during peel), NOT the index. ca-GrQc 7,8: 8.94GB,
+split+incr=91% of peel. com-dblp 5,6: ~28GB (vs CND serial 91GB = 3x leaner, but NOT region_native's 3.6GB). Moderate cells:
+com-dblp 4,5 native 2.23GB vs CND serial 6.89GB (3.1x). Speed (serial, both OMP=1): com-dblp 4,5 native ~2x slower (count 9.7s
++ peel); high-RS the clean-split dominates. The engine BEATS CND (correct + 3x leaner + no OOM) but is heavier+slower than
+region_native at high RS.
+
+V3LM (RegionCPI_LowMem) COMPARISON (read NucleusCoreDecompositionRegionCPI_LowMem.cpp): V3LM peels tuples COMBINATORIALLY on
+the class-box (dead-box union, B&B + Bidirectional DomPrune Pareto antichain) -- NO vertex tree, NO r-clique enum, NO clean-split.
+s=r+1 closed-form fast (2.5-4.5x); s>r+1 uses B&B (correct, slower). So V3LM IS the combinatorial class-box support-drop. The
+tuple-native engine is the OTHER tradeoff (vertex clean-split). Both heavy at high RS, in DIFFERENT places (V3LM=antichain,
+tuple-native=sub-leaf tree).
+
+TASK #11 = RED (do NOT build; commit 4404b76). "Replace the delete-side clean-split with a combinatorial class-box support-drop
+(HAPS-TIE)" = re-inventing V3LM's peel + inheriting the §104b ANTICHAIN CURSE. A design+adversarial WORKFLOW + a STEP-0 read-only
+probe (PIVOTER_TN_TPROBE) settled it by MEASUREMENT on this engine:
+  * GATE-1 (does t>=2 dominate? else the combinatorial path -- which can't beat a_Y at t=1 -- is irrelevant): PASSES.
+    t>=2 share of support-mass = 75.7% (ca-GrQc 3,4) -> 97-99% (ca-AstroPh/ca-HepPh dense). t = tupleComp[t].size() =
+    #distinct classes in the r-clique footprint; dense=tiny classes=high t.
+  * GATE-3 (antichain Pareto-maintenance cost): FAILS HARD. Accumulated per-leaf |A_L| (#t>=2 corners/leaf) p99 = 867
+    (ca-GrQc 3,4) -> 38064 (ca-HepPh 3,4), MAX 925415. O(|A|^2) Pareto = ~1e12 ops/leaf on ca-HepPh = the §104b INCOMPUTABLE
+    op. My upper-bound p99=2300 (ca-AstroPh 3,4) MATCHES §104b's measured Pareto antichain (2117) -> it is the real antichain.
+    Cold-projection (|A_cold|~12-21) shrinks the QUERY IE but the raw antichain must be STORED + Pareto-maintained, and the
+    cold re-Pareto is itself O(|A|^2) (what killed ca-HepPh in §104b).
+  VERDICT: the vertex clean-split (current engine) is the RIGHT call for general (r,s) -- it dodges the antichain; its
+  sub-leaf-tree cost is the price of avoiding the WORSE O(|A|^2) antichain cost. §104b's "class compression and a lean peel
+  are fundamentally exclusive" is re-confirmed on this engine. The STEP-0 probe saved a multi-week doomed build (the §104b
+  discipline). The tuple-native engine is at its design ceiling for general (r,s).
+
+ENV-GATE CHEAT SHEET (all read-only/corehash-safe unless noted): PIVOTER_RUN_TUPLE_NATIVE (the engine, dispatch R3 table);
+PIVOTER_RUN_TUPLE_BATCH (M3 vertex-index variant, returns per-r-clique cores); PIVOTER_M1_TUPLE_PROBE (class port + [m1-tuple]
+patterns/r-cliques sanity vs region_native [rn-peel]); PIVOTER_M2_REPROCESS_PROBE ([m2-reproc] reprocess ratio); PIVOTER_M3_
+INVARIANT_PROBE ([m3-invariant] tuple-core uniformity); PIVOTER_TN_PROFILE (peel sub-timers find/enumMembers/decr/split+incr +
+[tn-mem] tupleLeaves incidences); PIVOTER_TN_TPROBE (Task#11 gate: t-hist + accumulated |A_L| percentiles); PIVOTER_TB_V1
+/ PIVOTER_TB_THRESHOLD (M3 adaptive combinatorial-vs-enum). Correctness oracle: PIVOTER_RUN_REF dump vs the engine dump
+(per-r-clique) OR region_native (SCT_NO_RMERGE) core=K count=N (distribution). Server: tods1 idle (provisioned /data/wenqianz/
+degcliq_m4_v2 + nCr.txt in m4work + bench_native_vs_cnd.sh; restart_v2.sh relaunches); tods2 has the repo+build; /data NOT
+shared between them; the optimized native-vs-CND grid (nbserial_v2_*) is running OMP=1 serial.
+
+NEXT OPTIONS (none is "remove the delete-side enumeration cheaply" -- that's RED): (a) parallelize the native engine (count +
+reprocess are per-leaf independent) -- closes the SPEED gap vs CND, orthogonal to the memory tradeoff; (b) scope the paper:
+tuple-native = leaner-than-CND general-(r,s) drop-in; region_native = the high-RS champion (different peel); V3LM = s=r+1 fast;
+characterize the regimes honestly; (c) the moderate-RS native speed (the convolution is the cost -- incremental W, or a cheaper
+counting). The tods1 grid will give the final comprehensive native-vs-CND mem+speed table across the graph x RS matrix.
