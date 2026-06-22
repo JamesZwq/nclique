@@ -4141,3 +4141,20 @@ core. EXPLOIT (not built): lazy/batch hybrid -- individually peel the early-peel
 when a region goes uniform. Moderate complexity (a_Y / witness-major risk class, needs per-graph corehash). Directly
 attacks the ca-AstroPh 60x loss. INSTRUMENTATION: Pat gained reg0(int)+sup0(double); SCT_DUMP_PATTERNS gated, ~12B/pat.
 Dumps /tmp/pat_{astro_34,astro_45,epin_34}.tsv; ca-HepPh peel too slow to dump at 3,4.
+
+## 103. First exploit attempt: a_Y exhausted-leaf skip -- bit-identical but only 5-10% (output-redundancy != work-redundancy) (2026-06-22) [commit 73c1a96]
+Built the simplest §102 exploit: once ALL of a leaf's feasible witnesses are dead, a later-peeled pattern hosting it
+can only re-enumerate dead Y (every addDelta hit fails dead.insert), so skip the leaf. witTot[lid] = #{Y: ell<=Y<=u,
+ΣY=T} over the single a_Y box (cheap per-leaf count-DP); skip when deadY[lid].cnt >= witTot[lid]. deadY.cnt can never
+exceed witTot -> fires iff every feasible witness dead -> EXACT. Default ON (escape SCT_NO_AYSKIP). VERIFIED bit-identical
+(corehash): mini 3,4, ca-AstroPh 3,4+4,5, soc-Epinions 3,4.
+HONEST RESULT: only **5-10% peel** (ca-AstroPh 3,4 6.91->6.25s, 4,5 48.1->45.4s) despite **30-38% of leaf-instances
+exhausted** -- because a dead leaf does NO credit work (addDelta enumerates, all hit dead, no remGamma), so the exhausted
+instances were ALREADY the cheap ones. The §85 cost is the LIVE-leaf per-(witness,Q) INCIDENCE credits (each incidence
+credited exactly once -- the dead-set already dedups witnesses), which is FUNDAMENTAL, same as CND's per-incidence work.
+So **output-redundancy (§102) does NOT translate to skippable work** via the dead-leaf skip.
+ALSO: the **60x catastrophe is ca-AstroPh 4,6 = t=2** (witness-major/general path), NOT a_Y; the a_Y t=1 loss cells
+(4,5) are only ~4x. So this skip targets the wrong cell for the big loss. NEXT (open): (a) collapse-prediction -- skip
+crediting same-WAVE Q (Q at curLevel peels regardless, clamped) -- but identifying Q needs the lookup, the expensive
+part; (b) attack the t=2 path (the real 60x); (c) bigger redesign = stream, not materialize+peel (match CND's per-r-clique
+combinatorial delta instead of enumerating (witness,Q) incidences). The clean 5-10% ships; the breakthrough is deferred.
