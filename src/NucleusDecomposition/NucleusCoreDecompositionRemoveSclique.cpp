@@ -776,10 +776,24 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
 
     std::vector<double> supportT(nTuples);
     int maxBucket = 0;
+    long long sumMult = 0;
     for (int t = 0; t < nTuples; ++t) {
         supportT[t] = rawSupport[t] / (double)tupleMult[t];
         maxBucket = std::max(maxBucket, (int)supportT[t]);
+        sumMult += tupleMult[t];
     }
+    // Adaptive reprocess: the combinatorial per-leaf convolution pays off only when
+    // r-cliques compress into far fewer tuples (high RS / symmetry); with little
+    // compression it is pure overhead (measured 3x slower on dense ca-AstroPh).
+    // avgMult = #support>0 r-cliques / #tuples = the batching benefit. Use the
+    // combinatorial path iff avgMult >= threshold; else enumerate (which is already
+    // <= CND). PIVOTER_TB_V1 forces enumeration; PIVOTER_TB_THRESHOLD overrides.
+    const double avgMult = nTuples > 0 ? (double)sumMult / (double)nTuples : 1.0;
+    double comboThreshold = 2.0;
+    if (const char *th = std::getenv("PIVOTER_TB_THRESHOLD")) comboThreshold = atof(th);
+    const bool forceEnum = std::getenv("PIVOTER_TB_V1") != nullptr;
+    const bool forceCombo = std::getenv("PIVOTER_TB_COMBO") != nullptr;
+    const bool useEnum = forceCombo ? false : (forceEnum || avgMult < comboThreshold);
 
     // ---- tuple buckets ----
     std::vector<std::vector<int> > buckets(maxBucket + 2);
@@ -817,7 +831,6 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     // L without enumerating each one -- enumerate the DISTINCT class-multisets (the
     // M2-reduced count) instead. accumulate sign*A into tupleDelta. Over-pivot terms
     // (p>needPivot) contribute 0 (guarded), matching v1/REF.
-    const bool tbV1 = std::getenv("PIVOTER_TB_V1") != nullptr;
     constexpr int RMAX = 16;
     std::vector<int> rl_classId, rl_kp, rl_kk, rl_mult, rl_keyExp;
     std::string rl_key;
@@ -971,7 +984,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                         if (i.isPivot) { treeGraphV.addNbr(i.v, {newId, true}); newPivotC++; }
                         else { treeGraphV.addNbr(i.v, {newId, false}); newKeepC++; }
                     }
-                    if (tbV1) {
+                    if (useEnum) {
                         daf::Size needPivot = s - newKeepC;
                         daf::enumerateCombinations(stored, r, [&](const daf::StaticVector<TreeGraphNode> &rclique) {
                             daf::CliqueSize sub = 0;
@@ -991,7 +1004,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                 },
                 &threadMap);
 
-            if (tbV1) {
+            if (useEnum) {
                 daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &clique) {
                     auto id = cliqueIndex.byClique(clique);
                     int t = (id < (daf::Size)tupleOf.size()) ? tupleOf[id] : -1;
@@ -1025,7 +1038,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         auto tb_peel_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - tb_peel_start).count();
         printf("[tuple-batch] peel: %lld ms  (tuples=%d, r-cliques=%lld, mode=%s)\n",
-               (long long)tb_peel_ms, nTuples, (long long)nClique, tbV1 ? "v1-enum" : "v2-combinatorial");
+               (long long)tb_peel_ms, nTuples, (long long)nClique, useEnum ? "v1-enum" : "v2-combinatorial");
         fflush(stdout);
     }
 
