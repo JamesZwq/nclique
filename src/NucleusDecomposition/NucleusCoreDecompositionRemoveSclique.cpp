@@ -883,6 +883,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     };
 
     // ---- peel ----
+    auto tb_peel_start = std::chrono::high_resolution_clock::now();
     long long remaining = nTuples;
     int curBucket = 0;
     double minCore = 0;
@@ -1018,6 +1019,14 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                 if (newB < curBucket) curBucket = newB;
             }
         }
+    }
+
+    {
+        auto tb_peel_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - tb_peel_start).count();
+        printf("[tuple-batch] peel: %lld ms  (tuples=%d, r-cliques=%lld, mode=%s)\n",
+               (long long)tb_peel_ms, nTuples, (long long)nClique, tbV1 ? "v1-enum" : "v2-combinatorial");
+        fflush(stdout);
     }
 
     // ---- assemble per-r-clique result (same format as CND) ----
