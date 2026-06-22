@@ -261,6 +261,19 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         fflush(stdout);
     }
 
+    // §105 M2.6 (validate the M3 premise BEFORE the rewrite): does CND's per-r-clique
+    // peel assign the SAME core to every r-clique of a tuple? If yes, whole-tuple
+    // peeling is provably correct (rawSupport_T = sum support_c = mult_T*support_T,
+    // bucket by support_T). Snapshot the support>0 set now (region_native scope);
+    // check uniformity post-peel. Read-only, env-gated.
+    const bool m3probe = std::getenv("PIVOTER_M3_INVARIANT_PROBE") && !g_m1ClassOf.empty();
+    std::vector<char> m3HadSupport;
+    if (m3probe) {
+        m3HadSupport.assign(cliqueIndex.size(), 0);
+        for (daf::Size id = 0; id < cliqueIndex.size() && id < countingRClique.size(); ++id)
+            m3HadSupport[id] = countingRClique[id] > 0 ? 1 : 0;
+    }
+
     std::vector<double> coreRClique(countingRClique.size(), 0);
     std::vector<daf::Size> changedLeafIndex(tree.adj_list.size(), std::numeric_limits<daf::Size>::max());
     std::vector<std::vector<daf::Size> > removedRCliqueIdForLeaf;
@@ -616,6 +629,35 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
             duration_structure += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_struct_C).count();
         }
 #endif
+    }
+
+    if (m3probe) {
+        // group final cores by tuple; a tuple is uniform iff all its r-cliques
+        // share one core (the §105 whole-tuple-peeling premise).
+        std::unordered_map<std::string, double> tupMin, tupMax;
+        std::vector<int> cls;
+        std::string key;
+        long long checked = 0;
+        for (daf::Size id = 0; id < cliqueIndex.size(); ++id) {
+            if (id >= m3HadSupport.size() || !m3HadSupport[id]) continue;
+            m2KeyOf(id, cls, key);
+            double cv = coreRClique[id];
+            auto it = tupMin.find(key);
+            if (it == tupMin.end()) { tupMin.emplace(key, cv); tupMax.emplace(key, cv); }
+            else { it->second = std::min(it->second, cv); auto &mx = tupMax[key]; mx = std::max(mx, cv); }
+            checked++;
+        }
+        long long nonUniform = 0;
+        double maxSpread = 0;
+        for (auto &kv : tupMin) {
+            double spread = tupMax[kv.first] - kv.second;
+            if (spread > 0) { nonUniform++; maxSpread = std::max(maxSpread, spread); }
+        }
+        printf("[m3-invariant] tuples=%zu  checked_rcliques=%lld  nonUniformTuples=%lld  maxCoreSpread=%.0f  %s\n",
+               tupMin.size(), checked, nonUniform, maxSpread,
+               nonUniform == 0 ? "=> PREMISE HOLDS (whole-tuple peel valid)"
+                               : "=> PREMISE VIOLATED (per-tuple peel would be WRONG)");
+        fflush(stdout);
     }
 
     if (m2on) {
