@@ -2424,7 +2424,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "[probe-A] leaves=%zu  max|A|(peak)=%d  p50=%d p90=%d p99=%d p99.9=%d  avg=%.2f\n",
                 sz.size(), sz.empty() ? 0 : sz.back(), pctv(sz,0.5), pctv(sz,0.9), pctv(sz,0.99), pctv(sz,0.999), sz.empty() ? 0.0 : (double)sum / sz.size());
         // §104c HAPS-TIE make-or-break: does projecting out the 1-2 HOTTEST (max-spread) classes collapse |A| on heavy leaves?
-        std::vector<int> af, a1, a2; long long skipped = 0;
+        std::vector<int> af, a1, a2, nbk; std::vector<double> rat; long long skipped = 0, ieCapped = 0;
         for (int l = 0; l < nLeaf; l++) {
             auto &A = probeA[l]; if ((int)A.size() < 20) continue;            // heavy leaves own the cost
             if ((int)A.size() > 3000) { skipped++; continue; }                // cap O(|A|^2) cold re-pareto; covers the p99 decision range
@@ -2438,12 +2438,30 @@ int main(int argc, char **argv) {
             for (auto &a : A) { Vec b = a; if (h1 >= 0) b[h1] = 0; ccpath::insert_antichain(C1, b); }
             for (auto &a : A) { Vec b = a; if (h1 >= 0) b[h1] = 0; if (h2 >= 0) b[h2] = 0; ccpath::insert_antichain(C2, b); }
             af.push_back((int)A.size()); a1.push_back((int)C1.size()); a2.push_back((int)C2.size());
+            // §104d COST make-or-break: HAPS cost = #hot-buckets * #cold-IE-terms, vs a_Y s-scale (witTot)
+            const CCPath &box = slotPaths[l][0];
+            long long nbuckets = 1;
+            if (h1 >= 0) nbuckets *= ((int)box.u[h1] - (int)box.ell[h1] + 1);
+            if (h2 >= 0) nbuckets *= ((int)box.u[h2] - (int)box.ell[h2] + 1);
+            nbk.push_back((int)std::min(nbuckets, (long long)2000000000));
+            if ((int)C2.size() <= 16) {                                       // cold-IE term count (skip if too wide to enumerate)
+                long long iec = (long long)ccpath::inclusion_exclusion_terms(C2, M).size();
+                double haps = (double)nbuckets * (double)iec;                  // upper bound (per-bucket A_C subset of C2)
+                double ay = (double)witTot[l];                                 // a_Y s-scale work for this leaf
+                if (ay > 0) rat.push_back(haps / ay);
+            } else ieCapped++;
         }
         std::sort(af.begin(), af.end()); std::sort(a1.begin(), a1.end()); std::sort(a2.begin(), a2.end());
+        std::sort(nbk.begin(), nbk.end()); std::sort(rat.begin(), rat.end());
+        auto pctd = [&](std::vector<double> &v, double p) -> double { return v.empty() ? 0 : v[std::min((size_t)(p * v.size()), v.size() - 1)]; };
         fprintf(stderr, "[probe-cold] heavy-leaves(20<=|A|<=3000)=%zu skipped(>3000)=%lld | final|A_full| p50=%d p90=%d p99=%d max=%d\n",
                 af.size(), skipped, pctv(af,0.5), pctv(af,0.9), pctv(af,0.99), af.empty()?0:af.back());
         fprintf(stderr, "[probe-cold] minus-top1 p50=%d p90=%d p99=%d max=%d  (HAPS-TIE VIABLE iff this collapses to <=~8 where |A_full| is hundreds)\n",
                 pctv(a1,0.5), pctv(a1,0.9), pctv(a1,0.99), a1.empty()?0:a1.back());
+        fprintf(stderr, "[probe-cost] #hot-buckets p50=%d p90=%d p99=%d max=%d | cold-IE-capped(|C2|>16)=%lld\n",
+                pctv(nbk,0.5), pctv(nbk,0.9), pctv(nbk,0.99), nbk.empty()?0:nbk.back(), ieCapped);
+        fprintf(stderr, "[probe-cost] HAPS/a_Y cost ratio (hot-buckets*cold-IE / witTot) p50=%.3f p90=%.3f p99=%.3f max=%.3f  (<1 => HAPS CHEAPER than a_Y)\n",
+                pctd(rat,0.5), pctd(rat,0.9), pctd(rat,0.99), rat.empty()?0.0:rat.back());
         fprintf(stderr, "[probe-cold] minus-top2 p50=%d p90=%d p99=%d max=%d\n",
                 pctv(a2,0.5), pctv(a2,0.9), pctv(a2,0.99), a2.empty()?0:a2.back());
     }
