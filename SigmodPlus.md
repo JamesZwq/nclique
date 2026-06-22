@@ -4297,3 +4297,23 @@ reprocess + nCr drop (symmetric-aggregated) + class index for find; corehash bit
 is the vertex-leaf per-tuple clean-split + tuple-level nCr drop (tractable, vertex-level, no antichain). The 14-35x is an
 OPERATION-COUNT ceiling; realizing it needs the reprocess to run at TUPLE granularity (enumerate the leaf's class-multisets,
 not r-cliques) -- that is the implementation crux to validate.
+=== BUILD PLAN for the next focused effort (start here) ===
+M1. In src/degeneracy_cliques.cpp / NucleusCoreDecompositionRemoveSclique.cpp (CND, which ALREADY has the vertex SDCT +
+    clean-split peel + the r>=3 fix from §101): port the class computation from region_native/region_native_sct_peel.cpp
+    (regions = maximal cliques >= s via MCE; vtxR[v] = sorted region ids; class = vertices with identical vtxR profile;
+    see region_native lines ~409-441). Compute each r-clique's TUPLE = the sorted class-multiset of its vertices. Sanity:
+    #distinct tuples == region_native's #patterns, and Sum mult == #r-cliques (the [rn-peel] numbers).
+M2. (measure-before-build, corehash-unchanged) Instrument CND's existing peel to count, per round, the REAL
+    #(r-clique,leaf) reprocesses vs #(distinct-tuple,leaf) reprocesses -> confirm the 14-35x op-ceiling translates to real
+    reprocess savings on the vertex structure (not just the global #rclq/#pat). This decides the speedup before reworking.
+M3. Rework the peel to BATCH by tuple: bucket/heap keyed by tuple (its r-cliques share support by symmetry); per changed
+    leaf, enumerate the leaf's CLASS-MULTISETS (tuples) not its r-cliques; drop per affected tuple = nCr on the CLEAN
+    vertex leaf x mult (symmetric aggregate). Assert corehash BIT-IDENTICAL to CND's per-r-clique peel on mini/ca-GrQc/
+    ca-AstroPh. INVARIANT: clean-split stays vertex-level; class index only finds affected tuples.
+M4. STORAGE (keep high-RS win): replace CND's #r-clique CPI (94GB on com-dblp 5,6) with compressed tuple storage + the
+    small vertex SDCT tree + clsLeaves. Verify memory drops to ~region_native's (3.6GB on com-dblp 5,6) AND ca-HepPh 4,5
+    no longer OOMs, corehash bit-identical.
+Then benchmark vs CND across the grid (cmp_fixed.sh / cmp_big.sh on tods2). EXPECTED: >= CND everywhere, > CND at high-RS
+(14-35x fewer peel ops) + symmetric graphs, no OOM. Parked alt: HAPS-TIE (math validated /tmp/haps_{a,b,c}.cpp, but
+t>=2-only); revisit only if the vertex-batching M3 corehash fails. Probes for reuse: SCT_PROBE_A (antichain |A| + cold
+projection + cost), REGCLS_DBG (class internal/boundary), [ay-scale] (s-scale), MEM_DBG. Comparison data: [[project_cnd_comparison]].
