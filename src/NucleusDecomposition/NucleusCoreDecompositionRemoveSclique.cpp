@@ -21,6 +21,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+#include <functional>
+#include <array>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -806,6 +808,80 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         buckets[newB].push_back(t);
     };
 
+    std::unordered_map<int, double> tupleDelta; // affected tuple -> raw support delta this round
+
+    // ---- combinatorial per-leaf reprocess (v2; the speedup) ----
+    // For a (sub)leaf L, A_L(T) = sum_{p<=needPivot} W_p(T) * nCr[pivotC-p][needPivot-p]
+    // where W_p = [x^p] prod_{class c in T} ( sum_j C(kp_c,j) C(kk_c, m_c - j) x^j ),
+    // needPivot = s - keepC_L. This sums CND's per-r-clique nCr over T's r-cliques in
+    // L without enumerating each one -- enumerate the DISTINCT class-multisets (the
+    // M2-reduced count) instead. accumulate sign*A into tupleDelta. Over-pivot terms
+    // (p>needPivot) contribute 0 (guarded), matching v1/REF.
+    const bool tbV1 = std::getenv("PIVOTER_TB_V1") != nullptr;
+    constexpr int RMAX = 16;
+    std::vector<int> rl_classId, rl_kp, rl_kk, rl_mult, rl_keyExp;
+    std::string rl_key;
+    std::function<void(int, int, int, int)> rl_rec; // (idx, remaining, pivotC, needPivot)
+    auto reprocessLeaf = [&](const auto &leafVerts, double sign) {
+        rl_classId.clear(); rl_kp.clear(); rl_kk.clear();
+        static thread_local std::unordered_map<int, int> classIdx;
+        classIdx.clear();
+        int pivotC = 0, keepC = 0;
+        for (const auto &node : leafVerts) {
+            if (node.isPivot) pivotC++; else keepC++;
+            int c = (node.v < g_m1ClassOf.size()) ? g_m1ClassOf[node.v] : -1;
+            if (c < 0) continue; // support-0 vertex: counts in pivotC/keepC, not a tuple class
+            auto it = classIdx.find(c);
+            int ci;
+            if (it == classIdx.end()) {
+                ci = (int)rl_classId.size();
+                classIdx.emplace(c, ci);
+                rl_classId.push_back(c); rl_kp.push_back(0); rl_kk.push_back(0);
+            } else ci = it->second;
+            if (node.isPivot) rl_kp[ci]++; else rl_kk[ci]++;
+        }
+        int needPivot = (int)s - keepC;
+        int K = (int)rl_classId.size();
+        rl_mult.assign(K, 0);
+        rl_rec = [&](int idx, int remaining, int pC, int nP) {
+            if (remaining == 0) {
+                rl_keyExp.clear();
+                for (int i = 0; i < K; ++i) for (int m = 0; m < rl_mult[i]; ++m) rl_keyExp.push_back(rl_classId[i]);
+                std::sort(rl_keyExp.begin(), rl_keyExp.end());
+                rl_key.clear(); rl_key.reserve(rl_keyExp.size() * sizeof(int));
+                for (int x : rl_keyExp) rl_key.append((const char *)&x, sizeof(int));
+                auto it = tupleOfKey.find(rl_key);
+                if (it == tupleOfKey.end()) return;        // all members support-0
+                int t = it->second;
+                if (!tupleAlive[t]) return;
+                // W_p convolution over classes with mult>0
+                std::array<double, RMAX> W{}; W[0] = 1.0; int deg = 0;
+                for (int i = 0; i < K; ++i) {
+                    int m = rl_mult[i]; if (m == 0) continue;
+                    std::array<double, RMAX> P{};
+                    for (int j = 0; j <= m; ++j) P[j] = nCr[rl_kp[i]][j] * nCr[rl_kk[i]][m - j];
+                    std::array<double, RMAX> NW{};
+                    for (int a = 0; a <= deg; ++a) if (W[a] != 0.0)
+                        for (int j = 0; j <= m; ++j) NW[a + j] += W[a] * P[j];
+                    W = NW; deg += m;
+                }
+                double A = 0.0;
+                int pmax = std::min(nP, deg);
+                for (int p = 0; p <= pmax; ++p) {
+                    if (W[p] == 0.0) continue;
+                    A += W[p] * nCr[pC - p][nP - p];
+                }
+                if (A != 0.0) tupleDelta[t] += sign * A;
+                return;
+            }
+            if (idx == K) return;
+            int cap = std::min(rl_kp[idx] + rl_kk[idx], remaining);
+            for (int m = 0; m <= cap; ++m) { rl_mult[idx] = m; rl_rec(idx + 1, remaining - m, pC, nP); }
+            rl_mult[idx] = 0;
+        };
+        rl_rec(0, (int)r, pivotC, needPivot);
+    };
+
     // ---- peel ----
     long long remaining = nTuples;
     int curBucket = 0;
@@ -818,7 +894,6 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     std::vector<std::vector<daf::Size> > removedRForLeaf;
     std::vector<daf::Size> changedLeafIndex(tree.adj_list.size(), std::numeric_limits<daf::Size>::max());
     std::vector<daf::Size> removedRCliques;
-    std::unordered_map<int, double> tupleDelta;
 
     while (remaining > 0) {
         for (auto leafId : changedLeaf) changedLeafIndex[leafId] = std::numeric_limits<daf::Size>::max();
@@ -895,31 +970,39 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                         if (i.isPivot) { treeGraphV.addNbr(i.v, {newId, true}); newPivotC++; }
                         else { treeGraphV.addNbr(i.v, {newId, false}); newKeepC++; }
                     }
-                    daf::Size needPivot = s - newKeepC;
-                    daf::enumerateCombinations(stored, r, [&](const daf::StaticVector<TreeGraphNode> &rclique) {
-                        daf::CliqueSize sub = 0;
-                        for (const auto &node : rclique) if (node.isPivot) sub++;
-                        if (sub <= needPivot) {
-                            auto id = cliqueIndex.byClique(rclique);
-                            int t = (id < (daf::Size)tupleOf.size()) ? tupleOf[id] : -1;
-                            if (t >= 0 && tupleAlive[t]) tupleDelta[t] += nCr[newPivotC - sub][needPivot - sub];
-                        }
-                        return true;
-                    });
+                    if (tbV1) {
+                        daf::Size needPivot = s - newKeepC;
+                        daf::enumerateCombinations(stored, r, [&](const daf::StaticVector<TreeGraphNode> &rclique) {
+                            daf::CliqueSize sub = 0;
+                            for (const auto &node : rclique) if (node.isPivot) sub++;
+                            if (sub <= needPivot) {
+                                auto id = cliqueIndex.byClique(rclique);
+                                int t = (id < (daf::Size)tupleOf.size()) ? tupleOf[id] : -1;
+                                if (t >= 0 && tupleAlive[t]) tupleDelta[t] += nCr[newPivotC - sub][needPivot - sub];
+                            }
+                            return true;
+                        });
+                    } else {
+                        reprocessLeaf(stored, +1.0);
+                    }
                     if (newId >= changedLeafIndex.size())
                         changedLeafIndex.resize(newId * 2, std::numeric_limits<daf::Size>::max());
                 },
                 &threadMap);
 
-            daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &clique) {
-                auto id = cliqueIndex.byClique(clique);
-                int t = (id < (daf::Size)tupleOf.size()) ? tupleOf[id] : -1;
-                if (t < 0 || !tupleAlive[t]) return true;
-                daf::CliqueSize sub = 0;
-                for (const auto &node : clique) if (node.isPivot) sub++;
-                tupleDelta[t] -= nCr[pivotC - sub][s - keepC - sub];
-                return true;
-            });
+            if (tbV1) {
+                daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &clique) {
+                    auto id = cliqueIndex.byClique(clique);
+                    int t = (id < (daf::Size)tupleOf.size()) ? tupleOf[id] : -1;
+                    if (t < 0 || !tupleAlive[t]) return true;
+                    daf::CliqueSize sub = 0;
+                    for (const auto &node : clique) if (node.isPivot) sub++;
+                    tupleDelta[t] -= nCr[pivotC - sub][s - keepC - sub];
+                    return true;
+                });
+            } else {
+                reprocessLeaf(leaf, -1.0);
+            }
 
             tree.removeNode(leafId);
         }
