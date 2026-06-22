@@ -4101,3 +4101,43 @@ universal peel win, but the END-TO-END vs CND is graph/cell-dependent -- the BUI
 and the §85 pattern explosion are the unaddressed costs. CAVEATS: fresh CND r>=3 unrunnable (binary bug); prior REF is a
 different run (machine provenance not fully confirmed). To get clean apples-to-apples r>=3, fix the byClique crash and
 re-run CND on tods2. Full table /tmp/cmp.csv.
+
+## 101. CND r>=3 crash FIXED + clean same-machine comparison (2026-06-22) [commit 8ea7546]
+The §100 fresh-CND r>=3 crash is FIXED. ROOT CAUSE: the r>=3 decompositions look up EVERY r-clique via byClique,
+including r-cliques whose maximal clique is in [r,s) (support 0, core 0). buildSDCTWithIndex set store_min_k=s to shrink
+the SDCT tree, so tree-based CPI builds (build/buildWithFullEnum, which enumerate only from STORED leaves) never indexed
+those small r-cliques -> byClique miss -> throw. The REF (NucleusCoreDecompositionCorrect) never had it: it builds
+SDCT(edgeGraph, s, r) i.e. min_k=r, storing all leaves >= r. FIX = in buildSDCTWithIndex set `store_min_k = emit_min_k`
+(=r) whenever a CPI is built (ci != nullptr); non-CPI paths (region/v3, r=1/2) keep store_min_k=s. (The user's "prune0
+hardcoded to 3, change to R" maps to this store threshold.) VERIFIED exact vs REF (PIVOTER_COMPARE) on mini 3,4 +
+soc-Epinions 3,4/4,5 + tods2 ca-GrQc 3,4; fixed default stays 4-8x faster than REF. Clean same-machine comparison
+relaunched on tods2 (cmp_fixed.sh small grid + cmp_big.sh big-clique grid, chained no-contention). CONFIRMED WINS:
+com-dblp 5,6 ours 70.7s/3.6GB vs CND 1018s/93.8GB (14.4x faster, 26x leaner -- CND near-OOM); com-dblp 4,5 2.1x/4x.
+CONFIRMED LOSSES: ca-AstroPh 4,6 ours 1479s/14GB vs CND 24.7s/2.8GB (60x slower); ca-AstroPh 5,6 602s/31GB vs 263s/19GB.
+(soc-Epinions cells errored rc1 at load on tods2 -- a data-file issue, both methods, not the fix.) CSV /data/wenqianz/
+cmp_fixed.csv + cmp_big.csv.
+
+## 102. VALIDATED direction (2): pivot/hold pattern compression -- the peel OUTPUT is ~95-99% redundant on dense graphs (2026-06-22) [local]
+User idea: attack the §85 pattern explosion with pivot/hold (the tool that lets pivoter avoid clique enumeration).
+First clarified: #patterns <= #r-cliques ALWAYS (Σmult=#rclq, mult>=1); the "explosion" is MATERIALIZATION cost on
+low-symmetry dense graphs where classes don't compress (nC ~ N_v), not a count > CND. So it is a materialize-vs-stream
+problem. VALIDATION (added SCT_DUMP_PATTERNS=path: per-pattern reg0,hostSz,sup0,core,mult,comp; analyze_patterns.py).
+BUNDLE = patterns sharing reg0 (min host region). Metrics: B=Σdistinct-core/Σpat (output compressibility),
+C=core monotone in initial support, D=core a function of initial support.
+*** BUG CAUGHT MID-VALIDATION ***: first dump used P.key as "support" but peel mutates P.key->core at death (lines
+1928/2328 set both P.sup and P.key to the clamped level), so C/D were core-vs-core = tautological 100%. FIXED by
+snapshotting P.sup0 = P.sup at peel start (line 1719) and dumping that. HONEST RESULTS:
+  ca-AstroPh 3,4 (1.31M rclq): class-compress 0.65 | B(coarse)=0.052 single-host=0.039 | biggest bundle 12821 pat->1
+    core | C=86% D=84%.
+  ca-AstroPh 4,5 (9.26M rclq): B(coarse)=0.0092 | biggest bundle 157833 pat->1 core | big-bundles(>=20)=4.45M/4.54M pat
+    (98%) | C=80% D=75%.
+  soc-Epinions 3,4 (social): B(coarse)=0.536 big-bundles=0.111 | C=90% D=93%.
+CONCLUSION: (1) the peel OUTPUT is massively redundant on dense/high-RS graphs (ca-AstroPh 4,5 ~99%: 4.5M patterns'
+cores representable in <1%), and the redundancy is BIGGEST exactly where we lose to CND. (2) BUT core is NOT a clean
+function of initial support (75-93%, LOWER at higher RS) -- so a pure "support-formula -> core band" exploit is WRONG on
+the 16-25% "early-peeler" minority. (3) The cleanly-exploitable structure is the 1-CORE COLLAPSE: a region's patterns
+peel in lockstep and, when the region's witnesses exhaust, the bulk (98% of patterns live in big bundles) drop to ONE
+core. EXPLOIT (not built): lazy/batch hybrid -- individually peel the early-peelers (the 16-25%), batch-assign the bulk
+when a region goes uniform. Moderate complexity (a_Y / witness-major risk class, needs per-graph corehash). Directly
+attacks the ca-AstroPh 60x loss. INSTRUMENTATION: Pat gained reg0(int)+sup0(double); SCT_DUMP_PATTERNS gated, ~12B/pat.
+Dumps /tmp/pat_{astro_34,astro_45,epin_34}.tsv; ca-HepPh peel too slow to dump at 3,4.

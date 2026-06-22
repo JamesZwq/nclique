@@ -502,6 +502,8 @@ int main(int argc, char **argv) {
         vector<pair<int,int>> comp;  // (classId, mult) sorted by classId, sum=r
         vector<int> classSet;        // sorted class ids of comp (subset tests) -- SCT_VERIFY-only, freed after build
         int hostSz = 0;              // |host| kept after host's region-id list is freed (peel needs only the count)
+        int reg0 = -1;               // canonical (min) host region, kept for SCT_DUMP_PATTERNS bundle analysis
+        double sup0 = -1;            // INITIAL support snapshot (P.sup is mutated to core during peel)
         double sup = 0; double core = -1;
         long long mult = 1;          // # actual r-cliques in this orbit
         bool alive = true; long long key = -1;
@@ -797,7 +799,7 @@ int main(int argc, char **argv) {
     // §96b: free build-only heavy per-pattern fields. classSet is read ONLY by suppOf (SCT_VERIFY, just above); host's
     // region-id list is needed ONLY at build (directBin) + suppOf -- the peel uses only |host| (kept as hostSz). Frees
     // ~classSet + ~host of per-pattern incidence (e.g. ca-AstroPh 4,5: 73MB + 85MB).
-    for (auto &P : pats) { P.hostSz = (int)P.host.size(); vector<int>().swap(P.classSet); vector<int>().swap(P.host); }
+    for (auto &P : pats) { P.hostSz = (int)P.host.size(); P.reg0 = P.host.empty() ? -1 : P.host[0]; vector<int>().swap(P.classSet); vector<int>().swap(P.host); }
     // §97: regionClasses / classRegions are dead after the pattern enum + suppOf (this is past both) -> free (build-peak).
     vector<vector<int>>().swap(regionClasses); vector<vector<int>>().swap(classRegions);
 
@@ -1714,7 +1716,7 @@ int main(int argc, char **argv) {
     };
 
     long long npat = (long long)pats.size(), peeledN = 0, maxKey = 0;
-    for (auto &P : pats) { P.key = (long long)llround(P.sup); maxKey = max(maxKey, P.key); }
+    for (auto &P : pats) { P.key = (long long)llround(P.sup); P.sup0 = P.sup; maxKey = max(maxKey, P.key); }
     unordered_map<long long, vector<int>> bk;
     for (int pi = 0; pi < (int)pats.size(); pi++) bk[pats[pi].key].push_back(pi);
     map<double,double> coreDist;
@@ -2386,6 +2388,24 @@ int main(int argc, char **argv) {
     for (auto &kv : directCoreDist) coreDist[kv.first] += kv.second;
     double maxCore = 0; for (auto &kv : coreDist) maxCore = max(maxCore, kv.first);
     printf("[sct-peel] Max core: %.0f\n", maxCore);
+    // ---- per-pattern dump (SCT_DUMP_PATTERNS=path): validate pivot/hold bundle compressibility ----
+    // Columns: reg0 hostSz support core mult comp(c:m;...). reg0 = canonical (min) host region;
+    // for hostSz==1, reg0 is THE region -> a clean single-region bundle. Lets us measure, per region,
+    // #distinct-core / #patterns (peel-output compression ratio) and core-vs-support monotonicity.
+    if (const char *dp = getenv("SCT_DUMP_PATTERNS")) {
+        FILE *df = fopen(dp, "w");
+        if (df) {
+            fprintf(df, "reg0\thostSz\tsup0\tcore\tmult\tcomp\n");
+            for (auto &P : pats) {
+                fprintf(df, "%d\t%d\t%.0f\t%.0f\t%lld\t", P.reg0, P.hostSz, P.sup0, P.core, P.mult);
+                for (size_t i = 0; i < P.comp.size(); i++)
+                    fprintf(df, "%s%d:%d", i ? ";" : "", P.comp[i].first, P.comp[i].second);
+                fprintf(df, "\n");
+            }
+            fclose(df);
+            fprintf(stderr, "[dump] %zu patterns -> %s\n", pats.size(), dp);
+        }
+    }
     for (auto &kv : coreDist) printf("core=%.0f count=%.0f\n", kv.first, kv.second);
     return 0;
 }
