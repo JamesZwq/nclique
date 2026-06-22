@@ -1111,33 +1111,42 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     static thread_local daf::StaticVector<daf::Size> threadMap;
     if (threadMap.maxSize < graphN + 1) threadMap.resize(graphN + 1);
 
+    constexpr int RMAX = 16;
+    // fixed-size tuple key (sorted class-multiset, exactly r entries + padding) -- no
+    // string allocation, no hashing of a heap buffer.
+    struct ArrKey {
+        std::array<int, RMAX> a;
+        bool operator==(const ArrKey &o) const { return a == o.a; }
+    };
+    struct ArrHash {
+        size_t operator()(const ArrKey &k) const {
+            size_t h = 1469598103934665603ULL;
+            for (int x : k.a) { h ^= (size_t)(unsigned)x; h *= 1099511628211ULL; }
+            return h;
+        }
+    };
     // ---- tuple registry ----
-    std::unordered_map<std::string, int> tupleOfKey;
+    std::unordered_map<ArrKey, int, ArrHash> tupleOfKey;
     std::vector<double> rawSupport;
     std::vector<long long> tupleMult;                       // prod C(classSize,m)
     std::vector<std::vector<std::pair<int, int> > > tupleComp; // (classId, mult), sorted by classId
     std::vector<std::unordered_set<daf::Size> > tupleLeaves;
+    std::vector<int> classToLocal(nClasses, -1);            // flat class->local-index (reset per leaf via pl_cid)
 
-    constexpr int RMAX = 16;
     // process one (sub)leaf: enumerate its class-multisets, compute A_L(T), and either
     // (counting) create/update tuples + register tupleLeaves, or (reprocess) update an
     // existing alive tuple's delta + maintain tupleLeaves. Only A_L(T)>0 is registered.
     std::vector<int> pl_cid, pl_kp, pl_kk, pl_mult, pl_keyExp;
-    std::string pl_key;
     auto processLeaf = [&](const auto &leafVerts, daf::Size leafId, double sign, bool counting,
                            std::vector<char> *alivePtr, std::unordered_map<int, double> *deltaPtr) {
         pl_cid.clear(); pl_kp.clear(); pl_kk.clear();
-        static thread_local std::unordered_map<int, int> cIdx;
-        cIdx.clear();
         int pivotC = 0, keepC = 0;
         for (const auto &node : leafVerts) {
             if (node.isPivot) pivotC++; else keepC++;
             int c = (node.v < classOf.size()) ? classOf[node.v] : -1;
             if (c < 0) continue;
-            auto it = cIdx.find(c);
-            int ci;
-            if (it == cIdx.end()) { ci = (int)pl_cid.size(); cIdx.emplace(c, ci); pl_cid.push_back(c); pl_kp.push_back(0); pl_kk.push_back(0); }
-            else ci = it->second;
+            int ci = classToLocal[c];
+            if (ci < 0) { ci = (int)pl_cid.size(); classToLocal[c] = ci; pl_cid.push_back(c); pl_kp.push_back(0); pl_kk.push_back(0); }
             if (node.isPivot) pl_kp[ci]++; else pl_kk[ci]++;
         }
         int needPivot = (int)s - keepC;
@@ -1164,8 +1173,9 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                 pl_keyExp.clear();
                 for (int i = 0; i < K; ++i) for (int m = 0; m < pl_mult[i]; ++m) pl_keyExp.push_back(pl_cid[i]);
                 std::sort(pl_keyExp.begin(), pl_keyExp.end());
-                pl_key.clear(); pl_key.reserve(pl_keyExp.size() * sizeof(int));
-                for (int x : pl_keyExp) pl_key.append((const char *)&x, sizeof(int));
+                ArrKey pl_key;
+                pl_key.a.fill(-1);
+                for (int i = 0; i < (int)pl_keyExp.size(); ++i) pl_key.a[i] = pl_keyExp[i];
                 if (counting) {
                     auto it = tupleOfKey.find(pl_key);
                     int t;
@@ -1207,6 +1217,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
             pl_mult[idx] = 0;
         };
         pl_rec(pl_rec, 0, (int)r, pivotC, needPivot);
+        for (int c : pl_cid) classToLocal[c] = -1;   // reset only touched entries
     };
 
     // ---- counting: build tuples + rawSupport + tupleLeaves from the initial tree ----
