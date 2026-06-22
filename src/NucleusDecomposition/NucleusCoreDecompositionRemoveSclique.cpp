@@ -699,6 +699,257 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
 }
 
 
+// ============================================================
+// §105 M3: tuple-batched r-clique nucleus decomposition (PIVOTER_RUN_TUPLE_BATCH).
+// Peels whole TUPLES (class-multisets) instead of individual r-cliques. By the
+// M2.6-validated symmetry, all r-cliques of a tuple share one support at ALL
+// times, so CND would peel them in the same round. We maintain ONE counter per
+// tuple: rawSupport_T = sum_{c in T} support_c = mult_T * support_T, bucket by
+// support_T = rawSupport_T / mult_T. Removed r-cliques drive the SAME vertex-level
+// clean-split as CND -> the tree evolves identically -> cores are bit-identical.
+// support-0 r-cliques (in no s-clique) get core 0 and are never peeled: their
+// removal is net-zero on every support, so skipping them leaves support>0 cores
+// unchanged.
+// v1 (this) computes the per-leaf reprocess deltas by ENUMERATING r-cliques and
+// grouping by tuple (correct, no speedup yet) -- it validates the peel/bucket/tree
+// machinery. v2 replaces the enumeration with a combinatorial pivot-convolution.
+// Requires g_m1ClassOf (PIVOTER_M1 class computation). Serial.
+// ============================================================
+std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecompositionRCliqueTupleBatch(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex) {
+
+    if (g_m1ClassOf.empty()) {
+        std::cerr << "[tuple-batch] ERROR: g_m1ClassOf empty; set PIVOTER_M1_TUPLE_PROBE "
+                     "(class computation) when running the tuple-batch peel.\n";
+        return {};
+    }
+
+    StaticCliqueIndex cliqueIndex(r);
+    daf::timeCount("clique Index build", [&]() { cliqueIndex.build(tree, edgeGraph.adj_list.size()); });
+    auto counting = daf::timeCount("countingPerRClique", [&]() {
+        return CDSetRS::countingPerRCliqueParallel(tree, cliqueIndex, r, s);
+    });
+    const daf::Size nClique = cliqueIndex.size();
+
+    // ---- build tuples over support>0 r-cliques (region scope) ----
+    auto tupleKeyOf = [&](daf::Size id, std::vector<int> &cls, std::string &key) {
+        auto span = cliqueIndex.byId(id);
+        cls.clear();
+        for (daf::Size v : span) cls.push_back(v < g_m1ClassOf.size() ? g_m1ClassOf[v] : -1);
+        std::sort(cls.begin(), cls.end());
+        key.clear();
+        key.reserve(cls.size() * sizeof(int));
+        for (int x : cls) key.append((const char *)&x, sizeof(int));
+    };
+    std::vector<double> coreRClique(nClique, 0.0);
+    std::vector<int> tupleOf(nClique, -1);
+    std::unordered_map<std::string, int> tupleOfKey;
+    std::vector<long long> tupleMult;
+    std::vector<double> rawSupport;
+    std::vector<std::vector<daf::Size> > tupleMembers; // M3 explicit storage; M4 will drop it
+    {
+        std::vector<int> cls;
+        std::string key;
+        for (daf::Size id = 0; id < nClique; ++id) {
+            if (id >= counting.size() || counting[id] <= 0) continue; // support 0 -> core 0, never peeled
+            tupleKeyOf(id, cls, key);
+            auto it = tupleOfKey.find(key);
+            int t;
+            if (it == tupleOfKey.end()) {
+                t = (int)tupleMult.size();
+                tupleOfKey.emplace(key, t);
+                tupleMult.push_back(0);
+                rawSupport.push_back(0.0);
+                tupleMembers.emplace_back();
+            } else t = it->second;
+            tupleOf[id] = t;
+            tupleMult[t]++;
+            rawSupport[t] += counting[id];
+            tupleMembers[t].push_back(id);
+        }
+    }
+    const int nTuples = (int)tupleMult.size();
+
+    std::vector<double> supportT(nTuples);
+    int maxBucket = 0;
+    for (int t = 0; t < nTuples; ++t) {
+        supportT[t] = rawSupport[t] / (double)tupleMult[t];
+        maxBucket = std::max(maxBucket, (int)supportT[t]);
+    }
+
+    // ---- tuple buckets ----
+    std::vector<std::vector<int> > buckets(maxBucket + 2);
+    std::vector<int> bucket_of(nTuples), pos_in_bucket(nTuples);
+    std::vector<char> tupleAlive(nTuples, 1);
+    for (int t = 0; t < nTuples; ++t) {
+        int b = (int)supportT[t];
+        bucket_of[t] = b;
+        pos_in_bucket[t] = (int)buckets[b].size();
+        buckets[b].push_back(t);
+    }
+    auto bucketMove = [&](int t, int newB) {
+        int oldB = bucket_of[t];
+        if (newB == oldB) return;
+        auto &oldVec = buckets[oldB];
+        int myPos = pos_in_bucket[t];
+        if (myPos < (int)oldVec.size() - 1) {
+            int last = oldVec.back();
+            oldVec[myPos] = last;
+            pos_in_bucket[last] = myPos;
+        }
+        oldVec.pop_back();
+        if (newB >= (int)buckets.size()) buckets.resize(newB + 1);
+        bucket_of[t] = newB;
+        pos_in_bucket[t] = (int)buckets[newB].size();
+        buckets[newB].push_back(t);
+    };
+
+    // ---- peel ----
+    long long remaining = nTuples;
+    int curBucket = 0;
+    double minCore = 0;
+    const daf::Size graphN = edgeGraph.n;
+    static thread_local daf::StaticVector<daf::Size> threadMap;
+    if (threadMap.maxSize < graphN + 1) threadMap.resize(graphN + 1);
+
+    std::vector<daf::Size> changedLeaf;
+    std::vector<std::vector<daf::Size> > removedRForLeaf;
+    std::vector<daf::Size> changedLeafIndex(tree.adj_list.size(), std::numeric_limits<daf::Size>::max());
+    std::vector<daf::Size> removedRCliques;
+    std::unordered_map<int, double> tupleDelta;
+
+    while (remaining > 0) {
+        for (auto leafId : changedLeaf) changedLeafIndex[leafId] = std::numeric_limits<daf::Size>::max();
+        changedLeaf.clear();
+        removedRForLeaf.clear();
+        removedRCliques.clear();
+        tupleDelta.clear();
+
+        while (curBucket < (int)buckets.size() && buckets[curBucket].empty()) curBucket++;
+        if (curBucket >= (int)buckets.size()) break;
+        minCore = std::max((double)curBucket, minCore);
+
+        // pop all tuples at buckets [curBucket .. minCore]; assign core to members
+        while (curBucket < (int)buckets.size() && !buckets[curBucket].empty() && (double)curBucket <= minCore) {
+            while (!buckets[curBucket].empty()) {
+                int t = buckets[curBucket].back();
+                buckets[curBucket].pop_back();
+                tupleAlive[t] = 0;
+                remaining--;
+                for (daf::Size c : tupleMembers[t]) {
+                    coreRClique[c] = minCore;
+                    removedRCliques.push_back(c);
+                }
+            }
+            if (curBucket + 1 < (int)buckets.size() && !buckets[curBucket + 1].empty()
+                && (double)(curBucket + 1) <= minCore)
+                curBucket++;
+            else break;
+        }
+
+        if (removedRCliques.empty()) {
+            if (remaining == 0) break;
+            continue;
+        }
+
+        // find affected leaves (same as CND: intersect removed members' vertices via treeGraphV)
+        for (daf::Size rmId : removedRCliques) {
+            auto rClique = cliqueIndex.byId(rmId);
+            daf::intersect_dense_sets_multi(rClique, treeGraphV.adj_list,
+                [&](const TreeGraphNode &uClique) {
+                    auto &leafSlot = changedLeafIndex[uClique.v];
+                    if (leafSlot == std::numeric_limits<daf::Size>::max()) {
+                        leafSlot = removedRForLeaf.size();
+                        removedRForLeaf.emplace_back();
+                        changedLeaf.push_back(uClique.v);
+                    }
+                    removedRForLeaf[leafSlot].push_back(rmId);
+                });
+        }
+
+        // per affected leaf: clean-split (vertex-level, identical to CND) + tuple deltas
+        for (daf::Size idx = 0; idx < changedLeaf.size(); ++idx) {
+            daf::Size leafId = changedLeaf[idx];
+            const auto &leaf = tree.adj_list[leafId];
+            daf::Size leafSlot = changedLeafIndex[leafId];
+            const auto &removedR = removedRForLeaf[leafSlot];
+
+            daf::CliqueSize pivotC = 0, keepC = 0;
+            for (const auto &node : leaf) { if (node.isPivot) pivotC++; else keepC++; }
+
+            for (const auto &leafV : leaf) {
+                if (leafV.isPivot) treeGraphV.removeNbr(leafV.v, {leafId, true});
+                else treeGraphV.removeNbr(leafV.v, {leafId, false});
+            }
+
+            auto mapped = removedR | std::views::transform([&](const daf::Size id) { return cliqueIndex.byId(id); });
+            bkRmClique::removeRClique(leaf, mapped, r, s,
+                [&](const bkRmClique::Bitset &c, const bkRmClique::Bitset &pivots) {
+                    auto newLeaf = bkRmClique::coverToVertex(c, pivots, leaf);
+                    auto newId = tree.addNode(newLeaf);
+                    const auto &stored = tree.adj_list[newId];
+                    daf::CliqueSize newPivotC = 0, newKeepC = 0;
+                    for (const auto &i : stored) {
+                        if (i.isPivot) { treeGraphV.addNbr(i.v, {newId, true}); newPivotC++; }
+                        else { treeGraphV.addNbr(i.v, {newId, false}); newKeepC++; }
+                    }
+                    daf::Size needPivot = s - newKeepC;
+                    daf::enumerateCombinations(stored, r, [&](const daf::StaticVector<TreeGraphNode> &rclique) {
+                        daf::CliqueSize sub = 0;
+                        for (const auto &node : rclique) if (node.isPivot) sub++;
+                        if (sub <= needPivot) {
+                            auto id = cliqueIndex.byClique(rclique);
+                            int t = (id < (daf::Size)tupleOf.size()) ? tupleOf[id] : -1;
+                            if (t >= 0 && tupleAlive[t]) tupleDelta[t] += nCr[newPivotC - sub][needPivot - sub];
+                        }
+                        return true;
+                    });
+                    if (newId >= changedLeafIndex.size())
+                        changedLeafIndex.resize(newId * 2, std::numeric_limits<daf::Size>::max());
+                },
+                &threadMap);
+
+            daf::enumerateCombinations(leaf, r, [&](const daf::StaticVector<TreeGraphNode> &clique) {
+                auto id = cliqueIndex.byClique(clique);
+                int t = (id < (daf::Size)tupleOf.size()) ? tupleOf[id] : -1;
+                if (t < 0 || !tupleAlive[t]) return true;
+                daf::CliqueSize sub = 0;
+                for (const auto &node : clique) if (node.isPivot) sub++;
+                tupleDelta[t] -= nCr[pivotC - sub][s - keepC - sub];
+                return true;
+            });
+
+            tree.removeNode(leafId);
+        }
+
+        // apply tuple deltas, move buckets, pull curBucket back
+        for (auto &kv : tupleDelta) {
+            int t = kv.first;
+            if (!tupleAlive[t]) continue;
+            rawSupport[t] += kv.second;
+            int newB = std::max(0, (int)(rawSupport[t] / (double)tupleMult[t]));
+            if (newB != bucket_of[t]) {
+                bucketMove(t, newB);
+                if (newB < curBucket) curBucket = newB;
+            }
+        }
+    }
+
+    // ---- assemble per-r-clique result (same format as CND) ----
+    std::vector<std::pair<std::vector<daf::Size>, double> > sortedK;
+    sortedK.reserve(nClique);
+    for (daf::Size i = 0; i < nClique; ++i) {
+        auto clique = cliqueIndex.byId(i);
+        std::vector<daf::Size> cliqueCopy(clique.begin(), clique.end());
+        sortedK.emplace_back(cliqueCopy, coreRClique[i]);
+    }
+    std::sort(sortedK.begin(), sortedK.end(), [](const auto &a, const auto &b) { return a.second < b.second; });
+    return sortedK;
+}
+
+
 template<class Bitset>
 void print_clique(const Bitset &bs) {
     std::cout << '[';

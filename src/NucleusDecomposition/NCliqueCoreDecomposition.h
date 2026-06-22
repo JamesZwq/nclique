@@ -116,6 +116,13 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex = nullptr);
 
+// §105 M3: tuple-batched r-clique nucleus decomposition (PIVOTER_RUN_TUPLE_BATCH).
+// Requires g_m1ClassOf (PIVOTER_M1 class computation) to be populated.
+std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecompositionRCliqueTupleBatch(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
 std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecompositionRCliqueRef(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
