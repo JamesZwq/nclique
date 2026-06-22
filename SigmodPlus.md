@@ -4417,3 +4417,23 @@ M4-STEP-2 (the REAL sub-CND win, NOT done -- the from-scratch cliqueIndex-FREE e
   * combinatorial regime only (high-RS); dense/enum regime keeps the current cliqueIndex path (it doesn't OOM there).
   Expected: com-dblp 5,6 ~3.6GB (vs CND 94GB near-OOM), ca-HepPh 4,5 no OOM, bit-identical distribution. The risk
   concentrates in the inverted-index maintenance + on-the-fly enumeration (counting + reprocess are already sound/validated).
+
+=== M4 NATIVE ENGINE BUILT (commits 97c1f65 + e88a158) -- THE MEMORY WIN, validated ===
+NucleusCoreDecompositionRCliqueTupleNative (PIVOTER_RUN_TUPLE_NATIVE, serial). Fully cliqueIndex-FREE:
+  * counting = sum_leaves A_L(T) (validated convolution, no per-r-clique index); mult_T = prod_c C(classSize[c],m_c)
+    (region_native formula -- same-class verts mutually adjacent, comp classes share a host region -> no enumeration);
+    support_T = rawSupport_T / mult_T.
+  * removal: affected leaves from a MAINTAINED tuple->leaves index (unordered_set per tuple, built in counting,
+    insert/erase in reprocess) -- NOT per-r-clique intersect; members enumerated on-the-fly per leaf (choose m_c from
+    class c's leaf verts) to feed bkRmClique::removeRClique. Only A_L(T)>0 leaves are registered (auto-excludes support-0).
+  * output: core distribution weighted by mult (map<core, sum mult>), printed as [tuple-native] core=K count=N.
+CORRECTNESS: distribution BIT-IDENTICAL to region_native (SCT_NO_RMERGE) on bio-celegans 3,4 ; ca-GrQc 4,5/5,6 ;
+  ca-AstroPh 3,4. (region_native is the natural oracle -- both emit the per-pattern mult-weighted distribution.)
+MEMORY (peak RSS, /usr/bin/time -l) -- THE PRIZE: ca-GrQc 6,7 = 1760MB vs CND 5413 (3.1x LEANER) ; ca-AstroPh 4,5 =
+  3507 vs CND 3661 (<= CND on dense too). Removes CND's #r-clique-CPI blowup -> can compute high-RS cells CND OOMs on.
+SPEED (serial peel, after de-std::function opt e88a158): ca-GrQc 4,5=0.41x, 5,6=0.83x, 6,7=2.11x vs CND. Memory-for-speed
+  tradeoff at moderate RS (overhead = unordered_set tupleLeaves maintenance + member enum + convolution); wins at extreme RS.
+COMPLETE §105 ARC: M1 (class port) -> M2 (reproc ratio) -> M2.6 (premise) -> M3 (tuple-batch peel, bit-identical, 1.4-2.9x,
+  never slower) -> M4 (cliqueIndex-free native, 3.1x leaner, bit-identical dist). REMAINING OPTIMIZATION (not blocking):
+  native moderate-RS speed (compact tupleLeaves, parallel counting), and the clean-split is still per-member O(#rcliques)
+  (batching it at tuple level = the hard BK-internal frontier). Validate on com-dblp 5,6 (the CND-OOM cell) on tods2 next.
