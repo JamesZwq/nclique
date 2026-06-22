@@ -1229,6 +1229,13 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         }
     });
     const int nTuples = (int)tupleMult.size();
+    if (std::getenv("PIVOTER_TN_PROFILE")) {
+        long long inc = 0;
+        for (const auto &ls : tupleLeaves) inc += (long long)ls.size();
+        printf("[tn-mem] after-count: tuples=%d tupleLeaves_incidences=%lld\n", nTuples, inc);
+        daf::log_memory("tn after-count");
+        fflush(stdout);
+    }
 
     std::vector<double> coreTuple(nTuples, 0.0);
     std::vector<double> supportT(nTuples);

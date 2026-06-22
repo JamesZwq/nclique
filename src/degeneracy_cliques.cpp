@@ -321,6 +321,10 @@ static SDCTBuildResult buildSDCTWithIndex(
     // from STORED leaves, so the tree must store leaves >= r, matching the REF's
     // SDCT(edgeGraph, s, r). Storing only >= s drops r-cliques whose maximal clique
     // is in [r, s), causing byClique lookups to throw during peeling.
+    // store_min_k=s for native (fewer, coarser leaves -> fewer tuple-leaf incidences in
+    // the inverted index; store_min_k=r made com-dblp 5,6 WORSE: 36GB vs 30GB, 181M
+    // incidences). The high-RS memory is the tupleLeaves index + the clean-split sub-leaf
+    // tree, NOT the cliqueIndex (which is skipped). See SigmodPlus §105 / Task #11.
     if (ci) store_min_k = emit_min_k;
     daf::StaticVector<daf::Size> keepBuf, dropBuf;
     daf::Size mergedBuf[16]; // enough for r ≤ 16
