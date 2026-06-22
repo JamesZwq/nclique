@@ -2417,12 +2417,35 @@ int main(int argc, char **argv) {
     if (ayMode) fprintf(stderr, "[ay-scale] class-witnesses processed(s-scale)=%lld  credits(work)=%lld  vs #patterns(r-scale)=%lld  -> work/pat=%.1fx  wit/pat=%.1fx\n",
             ayDead, ayCred, (long long)pats.size(), pats.size()?(double)ayCred/pats.size():0.0, pats.size()?(double)ayDead/pats.size():0.0);
     if (probeAOn) {   // §104 STEP 0 verdict input: distribution of peak per-leaf antichain |A|. p99<=~8 -> LEAN_FEASIBLE; hundreds -> INHERENTLY_HEAVY.
+        auto pctv = [&](std::vector<int> &v, double p) -> int { return v.empty() ? 0 : v[std::min((size_t)(p * v.size()), v.size() - 1)]; };
         std::vector<int> sz; for (int l = 0; l < nLeaf; l++) if (probeAMax[l] > 0) sz.push_back(probeAMax[l]);
         std::sort(sz.begin(), sz.end());
-        auto pct = [&](double p) -> int { return sz.empty() ? 0 : sz[std::min((size_t)(p * sz.size()), sz.size() - 1)]; };
         long long sum = 0; for (int x : sz) sum += x;
-        fprintf(stderr, "[probe-A] leaves=%zu  max|A|=%d  p50=%d p90=%d p99=%d p99.9=%d  avg=%.2f  (p99<=8 => LEAN_FEASIBLE; hundreds => INHERENTLY_HEAVY)\n",
-                sz.size(), sz.empty() ? 0 : sz.back(), pct(0.5), pct(0.9), pct(0.99), pct(0.999), sz.empty() ? 0.0 : (double)sum / sz.size());
+        fprintf(stderr, "[probe-A] leaves=%zu  max|A|(peak)=%d  p50=%d p90=%d p99=%d p99.9=%d  avg=%.2f\n",
+                sz.size(), sz.empty() ? 0 : sz.back(), pctv(sz,0.5), pctv(sz,0.9), pctv(sz,0.99), pctv(sz,0.999), sz.empty() ? 0.0 : (double)sum / sz.size());
+        // §104c HAPS-TIE make-or-break: does projecting out the 1-2 HOTTEST (max-spread) classes collapse |A| on heavy leaves?
+        std::vector<int> af, a1, a2; long long skipped = 0;
+        for (int l = 0; l < nLeaf; l++) {
+            auto &A = probeA[l]; if ((int)A.size() < 20) continue;            // heavy leaves own the cost
+            if ((int)A.size() > 3000) { skipped++; continue; }                // cap O(|A|^2) cold re-pareto; covers the p99 decision range
+            int M = (int)A[0].size();
+            std::vector<int> spread(M, 0), col;
+            for (int c = 0; c < M; c++) { col.clear(); for (auto &a : A) if (a[c]) col.push_back((int)a[c]);
+                std::sort(col.begin(), col.end()); spread[c] = (int)(std::unique(col.begin(), col.end()) - col.begin()); }
+            int h1 = -1, h2 = -1, s1 = -1, s2 = -1;
+            for (int c = 0; c < M; c++) { int s = spread[c]; if (s > s1) { s2 = s1; h2 = h1; s1 = s; h1 = c; } else if (s > s2) { s2 = s; h2 = c; } }
+            std::vector<Vec> C1, C2;
+            for (auto &a : A) { Vec b = a; if (h1 >= 0) b[h1] = 0; ccpath::insert_antichain(C1, b); }
+            for (auto &a : A) { Vec b = a; if (h1 >= 0) b[h1] = 0; if (h2 >= 0) b[h2] = 0; ccpath::insert_antichain(C2, b); }
+            af.push_back((int)A.size()); a1.push_back((int)C1.size()); a2.push_back((int)C2.size());
+        }
+        std::sort(af.begin(), af.end()); std::sort(a1.begin(), a1.end()); std::sort(a2.begin(), a2.end());
+        fprintf(stderr, "[probe-cold] heavy-leaves(20<=|A|<=3000)=%zu skipped(>3000)=%lld | final|A_full| p50=%d p90=%d p99=%d max=%d\n",
+                af.size(), skipped, pctv(af,0.5), pctv(af,0.9), pctv(af,0.99), af.empty()?0:af.back());
+        fprintf(stderr, "[probe-cold] minus-top1 p50=%d p90=%d p99=%d max=%d  (HAPS-TIE VIABLE iff this collapses to <=~8 where |A_full| is hundreds)\n",
+                pctv(a1,0.5), pctv(a1,0.9), pctv(a1,0.99), a1.empty()?0:a1.back());
+        fprintf(stderr, "[probe-cold] minus-top2 p50=%d p90=%d p99=%d max=%d\n",
+                pctv(a2,0.5), pctv(a2,0.9), pctv(a2,0.99), a2.empty()?0:a2.back());
     }
     fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
             secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
