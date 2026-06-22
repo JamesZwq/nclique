@@ -4158,3 +4158,39 @@ ALSO: the **60x catastrophe is ca-AstroPh 4,6 = t=2** (witness-major/general pat
 crediting same-WAVE Q (Q at curLevel peels regardless, clamped) -- but identifying Q needs the lookup, the expensive
 part; (b) attack the t=2 path (the real 60x); (c) bigger redesign = stream, not materialize+peel (match CND's per-r-clique
 combinatorial delta instead of enumerating (witness,Q) incidences). The clean 5-10% ships; the breakthrough is deferred.
+
+## 104. ROOT DIAGNOSIS (user-led): peel is s-SCALE + maps are the memory hog -> the fix is CND's "regen-from-leaf + nCr" on the class-SCT (2026-06-22)
+The user drove this to the root. Chain of measured facts (all on ca-HepPh, the catastrophic-loss graph; all corehash-checked):
+- **Big real cliques are GENERIC**: ca-HepPh 239-clique -> 174 classes, only **1 R-EXCLUSIVE**, 173 boundary (REGCLS_DBG).
+  com-dblp 114->49 (1 excl), ca-AstroPh 57->50 (1 excl). So there is NO structural symmetry to exploit -- orbit/pattern
+  compression is DEAD on real graphs. class compresses ~2.7-3.4x (count) but no more.
+- **The PEEL is s-SCALE, not r-scale** ([ay-scale] probe): ca-HepPh 2,3 a_Y does 4.2M credits = **66x #patterns**
+  (1.4M class-witnesses processed = 22x); ca-AstroPh 4,5 = 27x. a_Y ENUMERATES class-level witnesses (s-compositions),
+  and #s-comp > #r-comp (patterns) since s>r. So we compressed r but pay s in the peel -- the user's "eliminated R,
+  created S". CND's peel is leaf->r-clique->nCr, work proportional to #r-cliques, NEVER touches s.
+- **STEP 1 (force witness-free general path, t=1)**: corehash MATCHES but 235s vs a_Y 15s = **15x SLOWER**. Our
+  witness-free path uses heavy scWithTerms IE per Q. So witness-free alone is a trap; CND wins by witness-free AND lean
+  (nCr). ISOLATION: per-round BATCH for t=1 = 79s (6x slower than a_Y) -> **batching is NOT the lever; the nCr-vs-IE
+  per-Q drop is** (CND ~1s vs our batch 79s = 80x).
+- **CND peel breakdown (ca-HepPh 3,4)**: Structure(clean-split)=460ms, Support(nCr count)=523ms, total peel ~1s; the
+  bulk is initial counting (3s). So clean-split is CHEAP (460ms); our old controlled_split was the 52% hog -> a_Y avoided
+  it -> went s-scale. CND's split is lean.
+- **MEMORY = maps materialization** (MEM_DBG, ca-HepPh 3,4): after-build 0.63G -> after-maps **10.09G** (stored) vs
+  **0.33G** (forced on-demand) = **30x**. The 394GB OOM at 4,5 is pure pattern<->leaf maps (leafFlat/pbLocal). CND stores
+  only vertex->leaf (treeGraphV, small) + the CPI, and REGENERATES r-cliques from the leaf on the fly -> no maps -> no OOM.
+CND MECHANISM (read NucleusCoreDecompositionRemoveSclique.cpp): per round, (A) find changed leaves by intersecting each
+removed r-clique's vertices' treeGraphV (vertex->leaf) lists; (B) per changed leaf, removeRClique (clean-split) then
+enumerateCombinations(leaf,r) REGENERATES the r-cliques, byClique (a cheap RANK, not a hash) -> id, nCr drop (incr/decr);
+(C) apply. NO stored pattern maps, NO per-pattern hash lookup, NO witness enumeration, NO IE.
+** UNIFIED ROOT FIX ** (memory + time are ONE disease, ONE cure): port CND's paradigm to the CLASS-SCT --
+- STORE: class-SCT tree + class->leaf (small, like treeGraphV) + per-pattern core indexed by a class-multiset RANK
+  (combinatorial number system, compact, no hash). DROP leafFlat/pbLocal/patLeaves.
+- PEEL per round: find affected class-leaves (intersect removed pattern's class->leaf lists); per leaf clean-split +
+  enumerateCombinations(class-leaf, r) REGENERATE patterns + nCr drop; rank->id to update core. No maps, no witness, no IE.
+This kills memory (no maps, 30x) AND time (r-scale + nCr, not s-scale + IE). And because we regenerate CLASS-patterns
+(fewer than CND's vertex r-cliques), done right we BEAT CND on both. NOT grafting CND: standard nucleus leaf-peel on our
+unique class compression. NOTE: on-demand maps already does "don't store" but its on-fly method (class->leaves intersect
++ globalLookup hash) is HEAVY (11x on com-youtube); the cure is the CHEAP on-fly method (regenerate-from-leaf + rank +
+nCr), exactly CND's. PROBES added (committed): REGCLS_DBG, [ay-scale], MEM_DBG path. STATUS: diagnosis COMPLETE +
+validated; the regen+nCr class-peel engine is the BUILD (multi-stage: rank-index -> class->leaf store -> per-round
+leaf-regen + nCr drop + clean-split). This is the end-to-end-vs-CND breakthrough path.
