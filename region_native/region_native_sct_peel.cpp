@@ -1732,6 +1732,38 @@ int main(int argc, char **argv) {
     long long witInst = 0, witMSum = 0, witMMax = 0;   // witness path: leaf-instances + leaf-width M (drives crossover)
     long long witGateW = 0, witGateG = 0;              // gated leaves (t>=minT): chose witness / fell back to general
     bool witDbg = getenv("SCT_WIT_DBG") != nullptr;
+    // ===== a_Y EXHAUSTED-LEAF SKIP (§103): once ALL of a leaf's feasible witnesses are dead,
+    // a later-peeled pattern hosting it can only re-enumerate dead Y (every addDelta hit fails
+    // dead.insert -> no credit), so the whole addDelta for that leaf is wasted. witTot[lid] =
+    // #{Y : ell<=Y<=u, ΣY=T} over the single a_Y box; deadY[lid].cnt can never exceed it, so the
+    // skip fires iff every feasible witness is dead -> bit-identical. Directly attacks the §85/
+    // §102 collapse: a region whose patterns all peel at one level kills its witnesses early,
+    // then the remaining (up to 10^5) patterns hosting it skip. Opt-in (SCT_AYSKIP) for A/B.
+    bool aySkip = ayMode && getenv("SCT_NO_AYSKIP") == nullptr;   // default ON (bit-identical); escape: SCT_NO_AYSKIP
+    long long ayExh = 0, ayTot = 0;
+    vector<long long> witTot(ayMode ? nLeaf : 0, 0);
+    if (ayMode) {
+        const long long SAT = 1LL << 60;
+        vector<long long> cdp, ndp;
+        for (int lid = 0; lid < nLeaf; lid++) {
+            if (slotPaths[lid].empty()) { witTot[lid] = 0; continue; }
+            const CCPath &bx = slotPaths[lid][0];
+            int Mb = bx.m(), Tb = bx.T;
+            long long ellsum = 0; for (int c = 0; c < Mb; c++) ellsum += (int)bx.ell[c];
+            long long Tz = (long long)Tb - ellsum;
+            if (Tz < 0) { witTot[lid] = 0; continue; }
+            cdp.assign((size_t)Tz + 1, 0); cdp[0] = 1;
+            for (int c = 0; c < Mb; c++) {
+                int cap = (int)bx.u[c] - (int)bx.ell[c]; if (cap < 0) cap = 0;
+                ndp.assign((size_t)Tz + 1, 0);
+                for (long long t = 0; t <= Tz; t++) { if (!cdp[t]) continue;
+                    long long my = cap; if (Tz - t < my) my = Tz - t;
+                    for (long long y = 0; y <= my; y++) { ndp[t + y] += cdp[t]; if (ndp[t + y] > SAT) ndp[t + y] = SAT; } }
+                cdp.swap(ndp);
+            }
+            witTot[lid] = cdp[(size_t)Tz];
+        }
+    }
     // batch-peel kill-gate (FANIN_DBG, sec 57): fanin = total (pattern,leaf) affected-update touches /
     // distinct (leaf,level) touches = avg #patterns sharing a (leaf,curLevel). fanin>=5 => batch-peel pays.
     bool faninDbg = getenv("FANIN_DBG") != nullptr;
@@ -1996,6 +2028,8 @@ int main(int argc, char **argv) {
             // no forbidden IE, no controlled_split -> deletes the entire slotForbidDiff churn. Bit-identical: the
             // dead set is exactly {Y : Y dominates some peeled pattern}, the same set the antichain represents.
             if (ayMode && witnessActive) {
+                ayTot++;                                   // §103: skip leaves whose witnesses are all dead
+                if (deadY[lid].cnt >= (size_t)witTot[lid]) { ayExh++; if (aySkip) continue; }
                 const CCPath &box = slotPaths[lid][0];     // original leaf box (never mutated in a_Y mode)
                 witInst++; witMSum += Mloc; if (Mloc > witMMax) witMMax = Mloc;
                 if (!ondemand) ensureLeafMap(lid);           // §3b: ondemand resolves Q via the global hash, no per-leaf map
@@ -2349,6 +2383,8 @@ int main(int argc, char **argv) {
     if (witDbg) fprintf(stderr, "[wit] tail=%d leaf-instances=%lld avg-M=%.1f max-M=%lld | gate: witness=%lld general=%lld (%.1f%% fell back)\n",
             witnessTail, witInst, witInst ? (double)witMSum / witInst : 0.0, witMMax,
             witGateW, witGateG, (witGateW + witGateG) ? 100.0 * witGateG / (witGateW + witGateG) : 0.0);
+    if (ayMode) fprintf(stderr, "[ay-skip] exhausted-leaf instances=%lld / total=%lld (%.1f%%) skip=%s\n",
+            ayExh, ayTot, ayTot ? 100.0*ayExh/ayTot : 0.0, aySkip ? "ON" : "OFF(measure-only)");
     fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
             secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
     if (idxDbg) fprintf(stderr, "[idx-dbg] pivot-scan(Σ mv-thr)=%lld  candidates-filtered=%lld  affected-out=%lld | filter waste=%.1fx, pivscan/out=%.1fx\n",
