@@ -4194,3 +4194,26 @@ unique class compression. NOTE: on-demand maps already does "don't store" but it
 nCr), exactly CND's. PROBES added (committed): REGCLS_DBG, [ay-scale], MEM_DBG path. STATUS: diagnosis COMPLETE +
 validated; the regen+nCr class-peel engine is the BUILD (multi-stage: rank-index -> class->leaf store -> per-round
 leaf-regen + nCr drop + clean-split). This is the end-to-end-vs-CND breakthrough path.
+
+## 104b. MAKE-OR-BREAK VERDICT: the lean class-peel engine is INHERENTLY_HEAVY -- ABANDONED (2026-06-22)
+A workflow (4-agent map of CCPath/a_Y-oracle/CND-split/primitives + design + adversary) reduced the engine to ONE
+deciding quantity: the per-leaf antichain |A[lid]| that the telescoped-nCr drop must carry. The drop CAN be made r-scale
++ nCr (no witness enum): drop_wave[Q] = support_count(box,m_Q,A_before) - support_count(box,m_Q,A_after), each a
+closed-form count_with_extra_lower DP. BUT its cost = inclusion-exclusion over the antichain A of peeled-pattern
+thresholds. STEP 0 (SCT_PROBE_A probe, read-only, corehash-identical): |A| is HEAVY-TAILED -- p50=4-16 but
+**p99=220-2117** (ca-GrQc 2117, com-dblp 220, ca-AstroPh **2024**, max 20976) on the 3,4 cells. Pre-registered rule
+(p99<=8 LEAN, hundreds HEAVY) -> **INHERENTLY_HEAVY**. Independently confirmed by STEP 1 (existing IE/general path was
+15x SLOWER than a_Y on ca-HepPh 2,3) and the per-round batch (6x slower). ROOT CAUSE (adversary predicted it): CLASS
+COMPRESSION CONCENTRATES the antichain -- one class-box absorbs all the peeled-pattern conflicts that CND spreads across
+many physical vertex-level BK clique-nodes (each tiny |A|). Bounding |A| needs controlled_split = the 5.85M-split / 52%
+churn a_Y was BUILT to escape. So our class compression and a lean nCr peel are FUNDAMENTALLY in tension; CND avoids it
+by NOT compressing (vertex level). VERDICT: a_Y (dead-set, s-scale) IS our best peel -- the s-scale (66x patterns) is the
+unavoidable price of escaping the antichain churn. NO clean lean-peel beats CND on dense graphs within the class-SCT
+framework. The §104 engine is ABANDONED (the make-or-break said no, saving a doomed multi-week build).
+STRATEGIC CONCLUSION (honest end-state of the whole arc): we WIN where CND's BUILD/count explodes (high-RS,
+witness-dominated: com-dblp 5,6 14x faster/26x leaner, CND near-OOM 94GB); we LOSE where our PEEL's s-scale explodes
+(huge generic cliques: ca-HepPh, ca-AstroPh) and that loss is INHERENT, not fixable by a peel rewrite. ACHIEVABLE: (1)
+MEMORY -- don't materialize pattern<->leaf maps (regen/on-demand drops 10.09G->0.33G = 30x; force it where maps would OOM
+so dense losses are GRACEFUL not OOM); (2) PAPER -- scope the contribution to the witness-dominated regime where class
+compression wins, characterize the huge-clique regime honestly as CND's. Probes (committed): SCT_PROBE_A, REGCLS_DBG,
+[ay-scale], MEM_DBG.
