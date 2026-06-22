@@ -1239,6 +1239,44 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         daf::log_memory("tn after-count");
         fflush(stdout);
     }
+    // §Task11 STEP-0 (read-only, corehash-safe): the GATING quantity. t = #distinct
+    // classes in the r-clique footprint = tupleComp[t].size(). The combinatorial
+    // (HAPS-TIE) delete-side can only beat a_Y at t>=2; t=1 is already optimal on a_Y.
+    // If the t>=2 share of mass is small, Task #11 cannot deliver an end-to-end win.
+    if (std::getenv("PIVOTER_TN_TPROBE")) {
+        std::vector<long long> histMult((int)r + 1, 0);
+        std::vector<double> histSup((int)r + 1, 0.0);
+        long long totMult = 0; double totSup = 0;
+        for (int t = 0; t < nTuples; ++t) {
+            int tc = std::min((int)tupleComp[t].size(), (int)r);
+            histMult[tc] += tupleMult[t];
+            histSup[tc] += rawSupport[t];
+            totMult += tupleMult[t]; totSup += rawSupport[t];
+        }
+        printf("[tn-tprobe] t-hist by mult(#r-cliques):");
+        for (int tc = 1; tc <= (int)r; ++tc) printf(" t%d=%lld", tc, histMult[tc]);
+        printf("\n[tn-tprobe] t-hist by support(#s-mass):");
+        for (int tc = 1; tc <= (int)r; ++tc) printf(" t%d=%.0f", tc, histSup[tc]);
+        double mge2 = totMult > 0 ? 100.0 * (double)(totMult - histMult[1]) / (double)totMult : 0;
+        double sge2 = totSup > 0 ? 100.0 * (totSup - histSup[1]) / totSup : 0;
+        printf("\n[tn-tprobe] tuples=%d  t>=2 share: mult-mass=%.1f%%  support-mass=%.1f%%  (RED if delete-work t>=2 < ~50%%)\n",
+               nTuples, mge2, sge2);
+        // GATE-3: accumulated antichain |A_L| per leaf = #t>=2 tuples touching the leaf
+        // (upper bound on the Pareto-min antichain; the corner-insert / O(|A|^2) Pareto-
+        // maintenance load -- the op that was INCOMPUTABLE on ca-HepPh, SigmodPlus §104b).
+        std::vector<int> leafT2(tree.adj_list.size(), 0);
+        for (int t = 0; t < nTuples; ++t) {
+            if ((int)tupleComp[t].size() < 2) continue;
+            for (daf::Size L : tupleLeaves[t]) if (L < leafT2.size()) leafT2[L]++;
+        }
+        std::vector<int> al;
+        for (int v : leafT2) if (v > 0) al.push_back(v);
+        std::sort(al.begin(), al.end());
+        auto pc = [&](double p) { return al.empty() ? 0 : al[(size_t)(p * (al.size() - 1))]; };
+        printf("[tn-tprobe] accumulated |A_L| (t>=2 corners / leaf) p50/p90/p99/max = %d/%d/%d/%d  over %zu leaves  (RED if p99 in thousands: O(|A|^2) Pareto)\n",
+               pc(0.5), pc(0.9), pc(0.99), al.empty() ? 0 : al.back(), al.size());
+        fflush(stdout);
+    }
 
     std::vector<double> coreTuple(nTuples, 0.0);
     std::vector<double> supportT(nTuples);
