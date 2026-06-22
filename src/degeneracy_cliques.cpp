@@ -966,6 +966,7 @@ static bool dispatchR3Plus(
 
     static const R3Entry table[] = {
         {"PIVOTER_RUN_TUPLE_BATCH", "§105 Tuple-batched peel r>=3", NucleusCoreDecompositionRCliqueTupleBatch},
+        {"PIVOTER_RUN_TUPLE_NATIVE", "§105 Tuple-native (cliqueIndex-free) r>=3", NucleusCoreDecompositionRCliqueTupleNative},
         {"PIVOTER_RUN_REGION_V4", "Region + ST (V4) r>=3", NucleusCoreDecompositionRClique_RegionST},
         {"PIVOTER_RUN_REGION_V3B", "Region CPI V3B (Lazy Split) r>=3", NucleusCoreDecompositionRClique_RegionCPI_V2},
         {"PIVOTER_RUN_REGION_V3FAST", "Region CPI V3 Fast r>=3", NucleusCoreDecompositionRClique_RegionCPI},
@@ -1156,7 +1157,7 @@ int main(int argc, char **argv) {
         || envSet("PIVOTER_RUN_REGION_V4") || envSet("PIVOTER_RUN_REGION_V2F")
         || envSet("PIVOTER_RUN_CCPATH") || envSet("PIVOTER_M1_TUPLE_PROBE")
         || envSet("PIVOTER_M2_REPROCESS_PROBE") || envSet("PIVOTER_M3_INVARIANT_PROBE")
-        || envSet("PIVOTER_RUN_TUPLE_BATCH")) {
+        || envSet("PIVOTER_RUN_TUPLE_BATCH") || envSet("PIVOTER_RUN_TUPLE_NATIVE")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
             return enumerateMaximalCliques(edgeGraph, s);
         });
@@ -1173,7 +1174,7 @@ int main(int argc, char **argv) {
     // count tuples (= sorted class-multisets) per r-clique. Env-gated, read-only,
     // does not touch the core distribution -> corehash unchanged.
     if (envSet("PIVOTER_M1_TUPLE_PROBE") || envSet("PIVOTER_M2_REPROCESS_PROBE") || envSet("PIVOTER_M3_INVARIANT_PROBE")
-        || envSet("PIVOTER_RUN_TUPLE_BATCH")) {
+        || envSet("PIVOTER_RUN_TUPLE_BATCH") || envSet("PIVOTER_RUN_TUPLE_NATIVE")) {
         const auto &regions = g_maxCliques;
         const int nR = (int)regions.size();
         const daf::Size nV = edgeGraph.n;

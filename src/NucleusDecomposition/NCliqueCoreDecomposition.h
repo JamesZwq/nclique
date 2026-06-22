@@ -123,6 +123,13 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
     StaticCliqueIndex *prebuiltIndex = nullptr);
 
+// §105 M4: tuple-NATIVE (cliqueIndex-free) r-clique nucleus decomposition
+// (PIVOTER_RUN_TUPLE_NATIVE). Prints the core distribution; returns empty.
+std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecompositionRCliqueTupleNative(
+    DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
+    DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
+    StaticCliqueIndex *prebuiltIndex = nullptr);
+
 std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecompositionRCliqueRef(
     DynamicGraph<TreeGraphNode> &tree, const Graph &edgeGraph,
     DynamicGraphSet<TreeGraphNode> &treeGraphV, daf::CliqueSize r, daf::CliqueSize s,
