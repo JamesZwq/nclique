@@ -1130,7 +1130,10 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     std::vector<double> rawSupport;
     std::vector<long long> tupleMult;                       // prod C(classSize,m)
     std::vector<std::vector<std::pair<int, int> > > tupleComp; // (classId, mult), sorted by classId
-    std::vector<std::unordered_set<daf::Size> > tupleLeaves;
+    // robin_hood flat set: ~13B/incidence (open addressing) vs std::unordered_set's
+    // ~40B (node + pointers) -> ~3x leaner on the high-RS inverted index (181M
+    // incidences = 11.4GB -> ~3.8GB on com-dblp 5,6). Same insert/erase/iterate API.
+    std::vector<robin_hood::unordered_flat_set<daf::Size> > tupleLeaves;
     std::vector<int> classToLocal(nClasses, -1);            // flat class->local-index (reset per leaf via pl_cid)
 
     // process one (sub)leaf: enumerate its class-multisets, compute A_L(T), and either
@@ -1355,7 +1358,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                 }
                 perLeafPopped[slot].push_back(t);
             }
-            std::unordered_set<daf::Size>().swap(tupleLeaves[t]); // free
+            tupleLeaves[t] = robin_hood::unordered_flat_set<daf::Size>{}; // free
         }
         pT_find += pNs(_tf, pNow());
 
