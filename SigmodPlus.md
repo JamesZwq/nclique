@@ -4342,3 +4342,34 @@ NEXT = M3: rework the OMP peel to batch by tuple. Hook points (NucleusCoreDecomp
   that tuple in the leaf). INVARIANT: clean-split (bkRmClique::removeRClique, ~L425) stays VERTEX-level; tuple only
   groups the support deltas. Bucket/heap keyed by tuple. corehash bit-identical (compareMode "exact") on mini/ca-GrQc/
   ca-AstroPh is the gate. The support>0 scope (M1 skipNoSupport) must carry over.
+
+M2.6 DONE (commit dfd2231) -- premise validated (PIVOTER_M3_INVARIANT_PROBE). CND's per-r-clique cores are UNIFORM
+  within every tuple (nonUniformTuples=0, maxCoreSpread=0 on bio-celegans/ca-GrQc 3,4/4,5/5,6/ca-AstroPh 3,4). So
+  whole-tuple peeling is correctness-PROVEN on real graphs.
+
+=== M3 DESIGN (the fast per-tuple peel) -- locked, building now ===
+CORE FORMULATION (correctness, derived + M2.6-validated):
+  * Per tuple T (class-multiset): mult_T = #concrete r-cliques (= Pi C(classSize_in?, ...); here just count members).
+  * rawSupport_T := sum_{c in T} support_c. INVARIANT (holds because removals are symmetric orbits): rawSupport_T =
+    mult_T * support_T where support_T = the common per-r-clique support. Bucket key = support_T = rawSupport_T / mult_T
+    (exact integer division; the invariant guarantees divisibility). This SIDESTEPS the per-leaf pivot-asymmetry problem:
+    within ONE leaf, T's r-cliques may have different #pivots (degeneracy order breaks class symmetry in the SDCT) ->
+    different per-leaf nCr -- but rawSupport_T sums them, and only the TOTAL is symmetric, which is exactly what we track.
+  * Per-leaf tuple aggregate: A_L(T) = sum_{c in T, c subset L} nCr_L(c), nCr_L(c)=nCr[pivotC_L - p(c)][needPivot_L - p(c)],
+    needPivot_L = s - keepC_L, p(c) = #pivot-vertices of c in L. Then rawSupport_T = sum_L A_L(T), and on a clean-split of
+    L into sub-leaves {L'}, DELTA rawSupport_T = sum_{L'} A_{L'}(T) - A_L(T). Apply, then bucket-move T by new support_T.
+  * COMBINATORIAL A_L(T) (THE SPEEDUP -- avoids enumerating each r-clique): partition L by class -> per class c in L:
+    kp[c]=#pivots, kk[c]=#keep (n[c]=kp+kk). For tuple T={(c,m_c)} realizable in L (m_c<=n[c]):
+        A_L(T) = sum_p W_p * nCr[pivotC_L - p][needPivot_L - p],
+        W_p = [x^p] PROD_{c in T} ( sum_{j=0..m_c} C(kp[c],j) C(kk[c], m_c - j) x^j )   (convolution, degree <= r).
+    Reprocess per leaf = enumerate the leaf's DISTINCT class-multisets (the M2 reduced count, 4.5-20x fewer) x O(r^2)
+    convolution. pivotC_L/keepC_L are over ALL of L's vertices (incl. this-round-removed), matching CND's decr.
+PEEL LOOP (per round): pop all tuples at min support_T -> core[members]=minCore, collect their member r-cliques as
+  "removed"; find affected leaves by intersecting removed r-cliques' vertices via treeGraphV (same as CND); per affected
+  leaf clean-split (bkRmClique::removeRClique, VERTEX-level, UNCHANGED); enumerate the leaf's distinct alive tuples,
+  compute DELTA rawSupport_T combinatorially, bucket-move. Update tree + treeGraphV (UNCHANGED).
+BUILD AS: new fn NucleusCoreDecompositionRCliqueTupleBatch, env PIVOTER_RUN_TUPLE_BATCH, R3 dispatch table; returns the
+  same per-r-clique core vector as CND (expand tuple core to members). M3 may store tupleMembers[T] explicitly (memory
+  O(#rcliques)); M4 replaces with on-the-fly leaf enumeration to reclaim the high-RS memory win. VALIDATION = corehash
+  bit-identical vs reference: PIVOTER_RUN_REF dump vs tuple-batch dump (sorted core=K count=N), on mini/ca-GrQc/ca-AstroPh.
+  (Correctness of the SEMANTICS already proven by M2.6; M3 must get the fast IMPLEMENTATION to reproduce it.)
