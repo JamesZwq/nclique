@@ -4396,3 +4396,24 @@ KEY HONEST FINDING (the cap): the peel win PLATEAUS ~2.5-2.9x even as the reproc
 ASSESSMENT: M3 peel is a real, validated, bit-identical but MODEST win (1.4-2.9x), capped by the removal side. The §105
   headline wins (big speedup / memory) need L1 (removal-side class-index batching) + L2 (M4 tuple storage). Both are deep
   builds -> next focused effort (compress context first, per [[feedback_compress_context_before_build]]).
+
+=== M4 STARTED (memory) -- measured + step-1 done (commit 8f47c89) ===
+MEASURED the actual footprint (peak RSS, /usr/bin/time -l): tuple-batch is currently ABOVE CND, not below --
+  ca-GrQc 6,7: TB 6539 vs CND 5828 MB (+712) ; ca-AstroPh 4,5: TB 4747 vs CND 3650 (+1097). Cause: the engine builds
+  CND's full #r-clique StaticCliqueIndex (pool_ + mapList_) PLUS its own per-r-clique arrays (counting, tupleOf,
+  coreRClique, memberFlat). So it's CND's memory + extras.
+M4-STEP-1 (commit 8f47c89, bit-identical): replaced tupleMembers vector<vector<Size>> with a flat CSR (memberOff +
+  memberFlat). Cut the regression: ca-GrQc 6,7 +712->+276 ; ca-AstroPh 4,5 +1097->+778. STILL above CND (the CSR only
+  removes per-tuple heap-chunk overhead; memberFlat/tupleOf are still O(#r-cliques)).
+M4-STEP-2 (the REAL sub-CND win, NOT done -- the from-scratch cliqueIndex-FREE engine, deep build):
+  * tuple-native counting: rawSupport_T = sum over ALL initial leaves of A_L(T) (the SAME validated combinatorial
+    convolution, no per-r-clique cliqueIndex). MATHEMATICALLY SOUND (A_L(T) already bit-validated) -> low risk.
+  * removal without cliqueIndex: a maintained tuple->leaves (or class->leaves) inverted index gives affected leaves when
+    a tuple peels; enumerate the tuple's concrete members IN each leaf on-the-fly (choose m_c from class c's leaf verts)
+    to feed bkRmClique::removeRClique. GOTCHA (verified in DynamicGraph::removeNode): leaf ids are REUSED via a free list,
+    so the index needs proper insert/erase, NOT lazy "is-empty" skip. THIS is the main risk/effort.
+  * reprocess: already combinatorial (validated). output: per-tuple core -> DISTRIBUTION weighted by mult (O(#tuples),
+    not O(#r-cliques)); validate the distribution (not per-r-clique) vs reference.
+  * combinatorial regime only (high-RS); dense/enum regime keeps the current cliqueIndex path (it doesn't OOM there).
+  Expected: com-dblp 5,6 ~3.6GB (vs CND 94GB near-OOM), ca-HepPh 4,5 no OOM, bit-identical distribution. The risk
+  concentrates in the inverted-index maintenance + on-the-fly enumeration (counting + reprocess are already sound/validated).
