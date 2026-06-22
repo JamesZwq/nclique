@@ -1759,6 +1759,11 @@ int main(int argc, char **argv) {
     bool aySkip = ayMode && getenv("SCT_NO_AYSKIP") == nullptr;   // default ON (bit-identical); escape: SCT_NO_AYSKIP
     long long ayExh = 0, ayTot = 0;
     long long ayDead = 0, ayCred = 0;   // probe: #class-witnesses processed (s-scale) vs #credits (work) vs #patterns (r-scale)
+    // §104 STEP 0 (make-or-break): measure the per-leaf antichain size |A[lid]| the telescoped-nCr peel WOULD carry.
+    // Read-only throwaway antichain fed the same peeled-pattern thresholds; decides LEAN_FEASIBLE vs INHERENTLY_HEAVY.
+    bool probeAOn = getenv("SCT_PROBE_A") != nullptr;
+    vector<vector<Vec>> probeA(probeAOn ? nLeaf : 0);
+    vector<int> probeAMax(probeAOn ? nLeaf : 0, 0);
     vector<long long> witTot(ayMode ? nLeaf : 0, 0);
     if (ayMode) {
         const long long SAT = 1LL << 60;
@@ -2039,6 +2044,10 @@ int main(int argc, char **argv) {
             // positions the impossible / feasibility tests depend on.
             plNZ.clear();
             for (int c = 0; c < Mloc; c++) if (pl[c]) plNZ.push_back({c, (int)pl[c]});
+            if (probeAOn) {   // §104 STEP 0: would-be telescoped antichain for this leaf (read-only, no effect on cores)
+                ccpath::insert_antichain(probeA[lid], pl);
+                int z = (int)probeA[lid].size(); if (z > probeAMax[lid]) probeAMax[lid] = z;
+            }
             // ---- a_Y DIRECT path (§88): explicit dead-set, NO slotForbidDiff / antichain / split ----
             // Witnesses dying when P peels are Y = pl + δ (Σδ=t). Y is alive iff not already marked dead by an
             // earlier-peeled sub-pattern. We enumerate those Y (same DFS as the witness path), and for each ALIVE one
@@ -2407,6 +2416,14 @@ int main(int argc, char **argv) {
             ayExh, ayTot, ayTot ? 100.0*ayExh/ayTot : 0.0, aySkip ? "ON" : "OFF(measure-only)");
     if (ayMode) fprintf(stderr, "[ay-scale] class-witnesses processed(s-scale)=%lld  credits(work)=%lld  vs #patterns(r-scale)=%lld  -> work/pat=%.1fx  wit/pat=%.1fx\n",
             ayDead, ayCred, (long long)pats.size(), pats.size()?(double)ayCred/pats.size():0.0, pats.size()?(double)ayDead/pats.size():0.0);
+    if (probeAOn) {   // §104 STEP 0 verdict input: distribution of peak per-leaf antichain |A|. p99<=~8 -> LEAN_FEASIBLE; hundreds -> INHERENTLY_HEAVY.
+        std::vector<int> sz; for (int l = 0; l < nLeaf; l++) if (probeAMax[l] > 0) sz.push_back(probeAMax[l]);
+        std::sort(sz.begin(), sz.end());
+        auto pct = [&](double p) -> int { return sz.empty() ? 0 : sz[std::min((size_t)(p * sz.size()), sz.size() - 1)]; };
+        long long sum = 0; for (int x : sz) sum += x;
+        fprintf(stderr, "[probe-A] leaves=%zu  max|A|=%d  p50=%d p90=%d p99=%d p99.9=%d  avg=%.2f  (p99<=8 => LEAN_FEASIBLE; hundreds => INHERENTLY_HEAVY)\n",
+                sz.size(), sz.empty() ? 0 : sz.back(), pct(0.5), pct(0.9), pct(0.99), pct(0.999), sz.empty() ? 0.0 : (double)sum / sz.size());
+    }
     fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
             secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
     if (idxDbg) fprintf(stderr, "[idx-dbg] pivot-scan(Σ mv-thr)=%lld  candidates-filtered=%lld  affected-out=%lld | filter waste=%.1fx, pivscan/out=%.1fx\n",
