@@ -4266,3 +4266,34 @@ M3 prototype peel -- per-wave, per-leaf, drop_wave[Q] = support_count(box,m_Q,A_
 validated hot/cold formula -- corehash bit-identical to a_Y, count real ops + time vs a_Y on a t>=2 cell. This is a real
 implementation, not a probe. HONEST end-state of the cheap phase: math proven, feasibility (hot-buckets + cold-IE) proven,
 regime = t>=2; the win/lose vs a_Y is unproven until the prototype peel is built. Cost probe is read-only/corehash-safe.
+
+## 105. NEW DIRECTION (user, supersedes HAPS-TIE): CND vertex clean-split + TUPLE-batching -- dodges the antichain entirely (2026-06-22)
+The user proposed a simpler, more promising design that SIDESTEPS the whole §104b antichain problem. KEY INSIGHT: the
+antichain curse (§104b) was SELF-INFLICTED -- it only exists because we peel on the CLASS-BOX without splitting (a_Y). CND
+peels at the VERTEX level with clean-split (BK pathSplit), which has NO antichain (peeled r-cliques are physically removed,
+remaining support is a plain nCr). So: do the peel on CND's vertex structures (no antichain, no s-clique enumeration,
+no class<->leaf maps -> no OOM), but BATCH by TUPLE.
+WHY BATCHING IS CORRECT (guaranteed, not empirical): r-cliques with the same class-multiset (= our pattern/tuple) are
+EXACTLY symmetric (within-class vertex swaps are graph automorphisms) -> identical support ALWAYS (symmetry preserved
+under symmetric removals) -> identical core -> they peel as one batch. So peel #tuples steps, not #r-cliques.
+THE UPDATE (user's 2nd refinement): when a tuple peels, (1) FIND affected tuples via a CLASS index (clsLeaves: class->
+leaves->tuples; tuples sharing a leaf with the peeled one -- we already have this), (2) compute each affected tuple's
+drop via nCr on the CLEAN vertex leaf, aggregated over its symmetric r-cliques (x mult). CRITICAL INVARIANT: the
+clean-split + drop MUST stay at the VERTEX level; if we clean-split the class-box per tuple we get back the 5.85M-split /
+52% controlled_split churn (§104b). The class index is ONLY for FINDING affected tuples, never for the split.
+STORAGE CAVEAT (do NOT integrate naively): CND's CPI stores #r-cliques (290B each) -> 94GB on com-dblp 5,6 (where we WIN
+at 3.6GB). Using CND's full CPI would LOSE our high-RS compression wins. The PRIZE = HYBRID: compressed tuples (high-RS
+memory win) + a small vertex SDCT TREE (not the #r-clique CPI; the tree is O(#maximal-cliques), cheap, CND's Structure
+phase = 460ms) for the clean-split peel + class index for finding. Keeps BOTH: com-dblp 5,6 stays 3.6GB, ca-HepPh stops
+OOMing (vertex tree, not 394GB maps).
+BATCHING BENEFIT MEASURED (#r-cliques/#patterns = peel-ops saved vs CND, deterministic counts): GROWS with RS (class
+compression compounds with r): ca-GrQc 3,4=4.3x 4,5=11x 5,6=**35x**; com-dblp 3,4=2.6x 4,5=**14x**. Dense/low-RS modest:
+ca-AstroPh 3,4=1.5x 4,5=2.0x, ca-HepPh 2,3=1.7x 3,4=2.6x, ca-CondMat 1.5-1.9x, web-Google 2.1x. So the design AMPLIFIES our
+high-RS wins (14-35x fewer peel ops than CND) and on dense graphs the vertex tree solves the OOM (batching 1.5-2.6x is a
+bonus). EXPECTED END-STATE: >= CND everywhere, > CND at high RS + with symmetry, no catastrophic losses, keeps high-RS
+wins. VERDICT: more promising than HAPS-TIE (dodges the antichain via vertex-level split; correctness is GUARANTEED by
+class symmetry, not empirical). NEXT: build the prototype -- vertex SDCT tree + compressed tuples + per-tuple clean-split
+reprocess + nCr drop (symmetric-aggregated) + class index for find; corehash bit-identical vs a_Y. The one real work item
+is the vertex-leaf per-tuple clean-split + tuple-level nCr drop (tractable, vertex-level, no antichain). The 14-35x is an
+OPERATION-COUNT ceiling; realizing it needs the reprocess to run at TUPLE granularity (enumerate the leaf's class-multisets,
+not r-cliques) -- that is the implementation crux to validate.
