@@ -18,11 +18,16 @@
 #include "graph/DynamicGraphSet.h"
 // timing
 #include <chrono>
+#include <unordered_map>
+#include <string>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
 extern double nCr[1001][401];
+// §105 M1: per-vertex class id (set in degeneracy_cliques.cpp under
+// PIVOTER_M1_TUPLE_PROBE). Empty unless the probe is active.
+extern std::vector<int> g_m1ClassOf;
 
 namespace CDSetRS {
     template<typename It1, typename It2, typename UpdateFunc>
@@ -220,6 +225,40 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     auto countingRClique = daf::timeCount("countingPerRClique", [&]() {
         return CDSetRS::countingPerRCliqueParallel(tree, cliqueIndex, r, s);
     });
+
+    // §105 M1: tag each r-clique with its TUPLE = sorted class-multiset, then
+    // count distinct tuples (must == region_native #patterns) and total
+    // support-bearing r-cliques (must == region_native #r-cliques). r-cliques
+    // with zero s-clique support (in no maximal clique >= s) are NOT region_native
+    // patterns, so they are skipped -- mirroring region_native's region-derived
+    // enumeration. Read-only, env-gated, never touches coreRClique -> corehash unchanged.
+    if (std::getenv("PIVOTER_M1_TUPLE_PROBE") && !g_m1ClassOf.empty()) {
+        std::unordered_map<std::string, long long> tupleMap;
+        long long totalRC = 0, skipNoSupport = 0, skipNoClass = 0;
+        std::vector<int> cls;
+        std::string key;
+        for (daf::Size id = 0; id < cliqueIndex.size(); ++id) {
+            if (id >= countingRClique.size() || countingRClique[id] <= 0) { skipNoSupport++; continue; }
+            auto span = cliqueIndex.byId(id);
+            cls.clear();
+            bool ok = true;
+            for (daf::Size v : span) {
+                int c = (v < g_m1ClassOf.size()) ? g_m1ClassOf[v] : -1;
+                if (c < 0) { ok = false; break; }
+                cls.push_back(c);
+            }
+            if (!ok) { skipNoClass++; continue; }
+            std::sort(cls.begin(), cls.end());
+            key.clear();
+            key.reserve(cls.size() * sizeof(int));
+            for (int x : cls) key.append((const char *)&x, sizeof(int));
+            tupleMap[key]++;
+            totalRC++;
+        }
+        printf("[m1-tuple] patterns=%zu  r-cliques=%lld  (indexed=%lld skipNoSupport=%lld skipNoClass=%lld)\n",
+               tupleMap.size(), totalRC, (long long)cliqueIndex.size(), skipNoSupport, skipNoClass);
+        fflush(stdout);
+    }
 
     std::vector<double> coreRClique(countingRClique.size(), 0);
     std::vector<daf::Size> changedLeafIndex(tree.adj_list.size(), std::numeric_limits<daf::Size>::max());

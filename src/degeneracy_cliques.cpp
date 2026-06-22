@@ -36,6 +36,12 @@
 std::vector<bool> g_maxCliqueTags;
 // Global: MaxCliqEnum results for Region CPI (V3)
 std::vector<std::vector<daf::Size>> g_maxCliques;
+// Global (§105 M1): per-vertex class id (region-profile class), -1 if the vertex
+// is in no region (no maximal clique >= s). Filled under PIVOTER_M1_TUPLE_PROBE,
+// read by the CND peel (NucleusCoreDecompositionRClique) to tag each r-clique
+// with its tuple = sorted class-multiset. Vertex ids are the CND (degeneracy)
+// id space -- consistent with g_maxCliques and the cliqueIndex.
+std::vector<int> g_m1ClassOf;
 
 // ============================================================
 // Utility
@@ -1147,7 +1153,7 @@ int main(int argc, char **argv) {
         || envSet("PIVOTER_RUN_REGION_V3LM_HIER")
         || envSet("PIVOTER_RUN_REGION_TIER") || envSet("PIVOTER_RUN_REGION_EVENT")
         || envSet("PIVOTER_RUN_REGION_V4") || envSet("PIVOTER_RUN_REGION_V2F")
-        || envSet("PIVOTER_RUN_CCPATH")) {
+        || envSet("PIVOTER_RUN_CCPATH") || envSet("PIVOTER_M1_TUPLE_PROBE")) {
         g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
             return enumerateMaximalCliques(edgeGraph, s);
         });
@@ -1155,6 +1161,51 @@ int main(int argc, char **argv) {
         for (auto &mc : g_maxCliques) maxMCSize = std::max(maxMCSize, mc.size());
         printf("MaxCliqEnum (V3): %zu maximal cliques (minSize=%d, maxSize=%zu)\n",
                g_maxCliques.size(), (int)s, maxMCSize);
+    }
+
+    // §105 M1: region/vtxR/class computation on the ORIGINAL (degeneracy-relabeled,
+    // pre-beSingleEdge) graph. Ported from region_native_sct_peel.cpp lines 410-448.
+    // regions = g_maxCliques (maximal cliques >= s). A class = vertices with the
+    // identical sorted region-profile. Fills g_m1ClassOf; the CND peel reads it to
+    // count tuples (= sorted class-multisets) per r-clique. Env-gated, read-only,
+    // does not touch the core distribution -> corehash unchanged.
+    if (envSet("PIVOTER_M1_TUPLE_PROBE")) {
+        const auto &regions = g_maxCliques;
+        const int nR = (int)regions.size();
+        const daf::Size nV = edgeGraph.n;
+        // vtxR[v] = sorted region ids containing v (the class profile)
+        std::vector<std::vector<int>> vtxR(nV);
+        for (int i = 0; i < nR; i++)
+            for (daf::Size v : regions[i]) vtxR[v].push_back(i);
+        for (daf::Size v = 0; v < nV; v++)
+            std::sort(vtxR[v].begin(), vtxR[v].end());
+        // group vertices by identical profile -> classes
+        auto keyOf = [](const std::vector<int> &p) {
+            std::string k;
+            k.reserve(p.size() * 4);
+            for (int x : p) k.append((const char *)&x, 4);
+            return k;
+        };
+        std::unordered_map<std::string, int> profKey;
+        g_m1ClassOf.assign(nV, -1);
+        std::vector<long long> classSize;
+        for (daf::Size v = 0; v < nV; v++) {
+            if (vtxR[v].empty()) continue; // not in any region
+            std::string k = keyOf(vtxR[v]);
+            auto it = profKey.find(k);
+            int c;
+            if (it == profKey.end()) {
+                c = (int)classSize.size();
+                profKey.emplace(std::move(k), c);
+                classSize.push_back(0);
+            } else {
+                c = it->second;
+            }
+            g_m1ClassOf[v] = c;
+            classSize[c]++;
+        }
+        printf("[m1-tuple] regions=%d  classes=%d\n", nR, (int)classSize.size());
+        fflush(stdout);
     }
 
     // Phase 3: Pre-mutation work (must run before beSingleEdge)
