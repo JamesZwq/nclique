@@ -446,6 +446,23 @@ int main(int argc, char **argv) {
     for (int c = 0; c < nC; c++)
         for (int rid : classRegions[c]) regionClasses[rid].push_back(c);
     for (int i = 0; i < nR; i++) sort(regionClasses[i].begin(), regionClasses[i].end());
+    if (getenv("REGCLS_DBG")) {   // theory-vs-practice probe: does the biggest clique fragment into many classes?
+        int bigSz = 0, bigCls = 0, bigIdx = -1;
+        for (int i = 0; i < nR; i++) {
+            int rs2 = (int)regions[i].size();
+            if (rs2 > bigSz) { bigSz = rs2; bigCls = (int)regionClasses[i].size(); bigIdx = i; }
+        }
+        // of the biggest region's classes: how many are R-EXCLUSIVE (only in this region -> truly symmetric,
+        // orbit-compressible) vs SHARED (boundary, coupled to other regions)?
+        int excl = 0, shar = 0;
+        if (bigIdx >= 0) for (int c : regionClasses[bigIdx]) { if ((int)classRegions[c].size() == 1) excl++; else shar++; }
+        // orbit-count estimate: a pattern = (multiset of the `shar` boundary classes) x (shape over `excl` internals).
+        // for singleton internals the internal shape is 1, so #orbits ~ Σ_{j=0..r} C(shar+j-1, j).
+        double orbEst = 0; for (int j = 0; j <= (int)r && j <= bigSz; j++) {
+            double t = 1; for (int k = 0; k < j; k++) t = t * (shar + k) / (k + 1); orbEst += t; }
+        fprintf(stderr, "[regcls] biggest region: %d verts -> %d classes | R-EXCLUSIVE=%d  SHARED(boundary)=%d  -> orbit-est ~%.0f units vs C(%d,%d) patterns\n",
+                bigSz, bigCls, excl, shar, orbEst, bigCls, (int)r);
+    }
 
     // NOTE: the peel engine enumerates ALL patterns (incl |host|=1) for
     // correctness, and leafCount/interClasses require regionClasses[i] to
@@ -1741,6 +1758,7 @@ int main(int argc, char **argv) {
     // then the remaining (up to 10^5) patterns hosting it skip. Opt-in (SCT_AYSKIP) for A/B.
     bool aySkip = ayMode && getenv("SCT_NO_AYSKIP") == nullptr;   // default ON (bit-identical); escape: SCT_NO_AYSKIP
     long long ayExh = 0, ayTot = 0;
+    long long ayDead = 0, ayCred = 0;   // probe: #class-witnesses processed (s-scale) vs #credits (work) vs #patterns (r-scale)
     vector<long long> witTot(ayMode ? nLeaf : 0, 0);
     if (ayMode) {
         const long long SAT = 1LL << 60;
@@ -2042,6 +2060,7 @@ int main(int argc, char **argv) {
                 const int16_t *ellp = box.ell.data();
                 auto credit = [&](double w) {                // credit Q (= current Yscr); nAlive==1 by construction
                     if (w == 0.0) return;
+                    ayCred++;
                     int qi;
                     if (ondemand) { qi = globalLookup(lid, Yscr, Mloc); if (qi < 0) return; }
                     else {
@@ -2074,6 +2093,7 @@ int main(int argc, char **argv) {
                         for (int k = 0; k < Mloc; k++)                        // feasible witness: ell <= Y <= u
                             if ((int)ellp[k] > (int)Yscr[k] || (int)Yscr[k] > (int)uEp[k]) return;
                         if (!dead.insert(hashVec(Yscr))) return;              // already dead -> no drop
+                        ayDead++;
                         remGamma(remGamma, 0, witnessTail, 1.0);
                         return;
                     }
@@ -2385,6 +2405,8 @@ int main(int argc, char **argv) {
             witGateW, witGateG, (witGateW + witGateG) ? 100.0 * witGateG / (witGateW + witGateG) : 0.0);
     if (ayMode) fprintf(stderr, "[ay-skip] exhausted-leaf instances=%lld / total=%lld (%.1f%%) skip=%s\n",
             ayExh, ayTot, ayTot ? 100.0*ayExh/ayTot : 0.0, aySkip ? "ON" : "OFF(measure-only)");
+    if (ayMode) fprintf(stderr, "[ay-scale] class-witnesses processed(s-scale)=%lld  credits(work)=%lld  vs #patterns(r-scale)=%lld  -> work/pat=%.1fx  wit/pat=%.1fx\n",
+            ayDead, ayCred, (long long)pats.size(), pats.size()?(double)ayCred/pats.size():0.0, pats.size()?(double)ayDead/pats.size():0.0);
     fprintf(stderr, "[profile] peel=%.2fs  slotForbidDiff=%.2fs (%.0f%%)  rest(affected-update)=%.2fs  slot-path-visits=%lld\n",
             secs(T5,T6), tSFD, 100.0*tSFD/max(1e-9,secs(T5,T6)), secs(T5,T6)-tSFD, slotVisits);
     if (idxDbg) fprintf(stderr, "[idx-dbg] pivot-scan(Σ mv-thr)=%lld  candidates-filtered=%lld  affected-out=%lld | filter waste=%.1fx, pivscan/out=%.1fx\n",
