@@ -4317,3 +4317,28 @@ Then benchmark vs CND across the grid (cmp_fixed.sh / cmp_big.sh on tods2). EXPE
 (14-35x fewer peel ops) + symmetric graphs, no OOM. Parked alt: HAPS-TIE (math validated /tmp/haps_{a,b,c}.cpp, but
 t>=2-only); revisit only if the vertex-batching M3 corehash fails. Probes for reuse: SCT_PROBE_A (antichain |A| + cold
 projection + cost), REGCLS_DBG (class internal/boundary), [ay-scale] (s-scale), MEM_DBG. Comparison data: [[project_cnd_comparison]].
+
+=== PROGRESS (2026-06-22, this effort) ===
+M1 DONE (commit 3d7794a) -- class/tuple computation ported into CND, env-gated PIVOTER_M1_TUPLE_PROBE.
+  * Driver degeneracy_cliques.cpp: regions = g_maxCliques (reuse existing MaxCliqEnum, no re-port of MCE), vtxR,
+    classes via keyOf (4-byte profile), global g_m1ClassOf[vertex]=class (-1 if in no region). Computed in the
+    Phase-2.5 window (original degeneracy-relabeled, pre-beSingleEdge graph). Vertex ids consistent with cliqueIndex.
+  * Peel NucleusCoreDecompositionRClique: after countingPerRClique, tag each indexed r-clique with its tuple =
+    sorted class-multiset; SKIP zero-s-support r-cliques (countingRClique[id]<=0; they are in no region >= s, not
+    region_native patterns). #distinct tuples / total = [m1-tuple] patterns / r-cliques.
+  * GATE PASSES (== region_native [rn-peel] with SCT_NO_RMERGE), skipNoClass=0 everywhere:
+    bio-celegans 3,4 = 2877/3218 ; ca-GrQc 3,4=9219/46866, 4,5=29997/328703, 5,6=95477/2215318 ;
+    ca-AstroPh 3,4 = 878973/1345247. Non-perturbing: compareMode opt-vs-ref "exact" with probe on.
+  * The 66/1394/594/182/6194 "skipNoSupport" = exactly indexed-minus-rcliques (zero-support small cliques). KEY
+    FACT for M3: CND indexes r-cliques with support 0; the batched peel must apply the same support>0 scope.
+M2 DONE (commit f06164f) -- real per-leaf reprocess ratio, env-gated PIVOTER_M2_REPROCESS_PROBE. Counts CND's actual
+  #(r-clique,leaf) reprocess events (OMP Phase C res.incr+res.decr) vs #(distinct-tuple,leaf). VERDICT = M3 GREEN-LIT:
+    ca-GrQc 3,4 ceiling 5.1x -> real 4.47x (88%) ; 4,5 11.0x->8.38x (76%) ; 5,6 23.2x->20.35x (88%) ;
+    ca-AstroPh 3,4 (dense) 1.5x->1.12x (peel barely compresses -> M4 storage is the dense-graph win, NOT the peel).
+  So tuple-batching cuts REAL reprocess work 4.5-20x at high RS. Non-perturbing (compareMode "exact", totals deterministic).
+NEXT = M3: rework the OMP peel to batch by tuple. Hook points (NucleusCoreDecompositionRemoveSclique.cpp): the two
+  reprocess enumerateCombinations -- incr (new sub-leaves, ~L436) and decr (old leaf, ~L449) -- regenerate r-cliques +
+  byClique + nCr; batch them to enumerate the (sub)leaf's distinct class-multisets once, drop x (#concrete r-cliques of
+  that tuple in the leaf). INVARIANT: clean-split (bkRmClique::removeRClique, ~L425) stays VERTEX-level; tuple only
+  groups the support deltas. Bucket/heap keyed by tuple. corehash bit-identical (compareMode "exact") on mini/ca-GrQc/
+  ca-AstroPh is the gate. The support>0 scope (M1 skipNoSupport) must carry over.
