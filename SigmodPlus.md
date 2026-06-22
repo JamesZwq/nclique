@@ -4373,3 +4373,26 @@ BUILD AS: new fn NucleusCoreDecompositionRCliqueTupleBatch, env PIVOTER_RUN_TUPL
   O(#rcliques)); M4 replaces with on-the-fly leaf enumeration to reclaim the high-RS memory win. VALIDATION = corehash
   bit-identical vs reference: PIVOTER_RUN_REF dump vs tuple-batch dump (sorted core=K count=N), on mini/ca-GrQc/ca-AstroPh.
   (Correctness of the SEMANTICS already proven by M2.6; M3 must get the fast IMPLEMENTATION to reproduce it.)
+
+=== M3 BUILT + MEASURED (commits c600fd1 v1, 73781a7 v2, 7db0c0d adaptive) -- HONEST RESULTS ===
+NucleusCoreDecompositionRCliqueTupleBatch (env PIVOTER_RUN_TUPLE_BATCH, serial). v1 = per-tuple peel, reprocess by
+  r-clique enumeration grouped by tuple. v2 = combinatorial reprocess (pivot-convolution A_L(T)). ADAPTIVE gate: use
+  combinatorial iff avgMult (=#support>0 rcliques / #tuples) >= 2.0 (env PIVOTER_TB_THRESHOLD); else enumerate. All three
+  BIT-IDENTICAL to PIVOTER_RUN_REF (sorted per-r-clique core dump) on bio-celegans/ca-GrQc 3,4..6,7/ca-AstroPh 3,4/4,5.
+PEEL SPEEDUP (serial, OMP_NUM_THREADS=1, peel-loop time only):
+  ca-GrQc 3,4=1.40x 4,5=1.73x 5,6=2.93x 6,7=2.48x (combinatorial) ; ca-AstroPh 3,4=1.17x 4,5=1.27x (enum fallback).
+  NEVER slower than CND. Per-tuple enum alone is already <= CND (leaner than CND's OMP per-r-clique peel).
+KEY HONEST FINDING (the cap): the peel win PLATEAUS ~2.5-2.9x even as the reprocess-op ceiling explodes to 85x (ca-GrQc
+  6,7). Reason: tuple-batching only compresses the REPROCESS (incr/decr, ~half the peel). The REMOVAL side -- per-r-clique
+  treeGraphV intersect + bkRmClique clean-split + tree add/removeNode, all O(#r-cliques) -- is UNBATCHED and dominates.
+  So "14-35x fewer ops" was a reprocess-only ceiling; realized peel speedup is modest. Two levers remain:
+  (L1) REMOVAL-SIDE batching: find affected leaves per-TUPLE via a class->leaves index (clsLeaves, the §105 idea, NOT yet
+       used -- v3 currently finds leaves via per-r-clique intersect like CND) + batch the clean-split. This is the only
+       way to lift the ~2.5x cap. The real frontier now.
+  (L2) M4 MEMORY (the real high-RS prize, NOT yet done): current engine still builds CND's full #r-clique cliqueIndex +
+       tupleMembers[T] (O(#rcliques)) -> it uses MORE memory than CND right now, not less. M4 = replace with tuple-native
+       storage + on-the-fly leaf enumeration so com-dblp 5,6 stays ~3.6GB (vs CND 94GB near-OOM) and ca-HepPh stops OOMing.
+       This is where the original high-RS WIN lives (it was always CND's BUILD/CPI memory that exploded, not the peel).
+ASSESSMENT: M3 peel is a real, validated, bit-identical but MODEST win (1.4-2.9x), capped by the removal side. The §105
+  headline wins (big speedup / memory) need L1 (removal-side class-index batching) + L2 (M4 tuple storage). Both are deep
+  builds -> next focused effort (compress context first, per [[feedback_compress_context_before_build]]).
