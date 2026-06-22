@@ -750,7 +750,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     std::unordered_map<std::string, int> tupleOfKey;
     std::vector<long long> tupleMult;
     std::vector<double> rawSupport;
-    std::vector<std::vector<daf::Size> > tupleMembers; // M3 explicit storage; M4 will drop it
+    // pass 1: assign each support>0 r-clique to its tuple, count mult, sum rawSupport
     {
         std::vector<int> cls;
         std::string key;
@@ -761,18 +761,28 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
             int t;
             if (it == tupleOfKey.end()) {
                 t = (int)tupleMult.size();
-                tupleOfKey.emplace(key, t);
+                tupleOfKey.emplace(std::move(key), t);
                 tupleMult.push_back(0);
                 rawSupport.push_back(0.0);
-                tupleMembers.emplace_back();
             } else t = it->second;
             tupleOf[id] = t;
             tupleMult[t]++;
             rawSupport[t] += counting[id];
-            tupleMembers[t].push_back(id);
         }
     }
     const int nTuples = (int)tupleMult.size();
+    // tuple -> member r-cliques as a flat CSR (replaces vector<vector>, which cost
+    // +12-30% RSS over CND from per-tuple heap chunks). M4-step-1.
+    std::vector<daf::Size> memberOff(nTuples + 1, 0);
+    for (int t = 0; t < nTuples; ++t) memberOff[t + 1] = memberOff[t] + (daf::Size)tupleMult[t];
+    std::vector<daf::Size> memberFlat(memberOff[nTuples]);
+    {
+        std::vector<daf::Size> cursor(memberOff.begin(), memberOff.end() - 1);
+        for (daf::Size id = 0; id < nClique; ++id) {
+            int t = tupleOf[id];
+            if (t >= 0) memberFlat[cursor[t]++] = id;
+        }
+    }
 
     std::vector<double> supportT(nTuples);
     int maxBucket = 0;
@@ -927,7 +937,8 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                 buckets[curBucket].pop_back();
                 tupleAlive[t] = 0;
                 remaining--;
-                for (daf::Size c : tupleMembers[t]) {
+                for (daf::Size i = memberOff[t]; i < memberOff[t + 1]; ++i) {
+                    daf::Size c = memberFlat[i];
                     coreRClique[c] = minCore;
                     removedRCliques.push_back(c);
                 }
