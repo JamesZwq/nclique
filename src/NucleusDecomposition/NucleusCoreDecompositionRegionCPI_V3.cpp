@@ -24,7 +24,8 @@
 
 extern double nCr[1001][401];
 extern std::vector<bool> g_maxCliqueTags;
-extern std::vector<std::vector<daf::Size>> g_maxCliques;
+#include "FlatCliques.h"
+extern FlatCliques g_maxCliques;
 
 // ============================================================
 // Tuple utilities
@@ -82,10 +83,10 @@ NucleusCoreDecompositionRClique_RegionCPI_V3(
     std::vector<std::vector<daf::Size>> regionVerts;
     std::vector<std::vector<daf::Size>> vtxMaxPaths(numVertices);
 
-    for (auto &mc : g_maxCliques) {
+    for (auto mc : g_maxCliques) {
         if ((int)mc.size() < s) continue;
         daf::Size rid = regionVerts.size();
-        regionVerts.push_back(mc);
+        regionVerts.emplace_back(mc.begin(), mc.end());
         for (daf::Size v : mc)
             if (v < numVertices) vtxMaxPaths[v].push_back(rid);
         numRegions++;

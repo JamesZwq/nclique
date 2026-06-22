@@ -20,7 +20,8 @@
 #include <set>
 
 extern double nCr[1001][401];
-extern std::vector<std::vector<daf::Size>> g_maxCliques;
+#include "FlatCliques.h"
+extern FlatCliques g_maxCliques;
 
 using TupleKey = std::vector<daf::Size>;
 struct TupleHash {
@@ -46,8 +47,8 @@ NucleusCoreDecompositionRClique_RegionST(
     // Build MCs + vertex MC membership
     // ================================================================
     std::vector<std::vector<daf::Size>> mcs;
-    for (auto &mc : g_maxCliques)
-        if ((int)mc.size() >= s) mcs.push_back(mc);
+    for (auto mc : g_maxCliques)
+        if ((int)mc.size() >= s) mcs.emplace_back(mc.begin(), mc.end());
     daf::Size numMC = mcs.size();
 
     std::vector<bool> mcAlive(numMC, true);

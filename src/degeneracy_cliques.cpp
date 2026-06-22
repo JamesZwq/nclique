@@ -34,8 +34,8 @@
 
 // Global: maximal clique tags for Region decomposition
 std::vector<bool> g_maxCliqueTags;
-// Global: MaxCliqEnum results for Region CPI (V3)
-std::vector<std::vector<daf::Size>> g_maxCliques;
+// Global: MaxCliqEnum results for Region CPI (V3) — CSR layout (FlatCliques)
+FlatCliques g_maxCliques;
 // Global (§105 M1): per-vertex class id (region-profile class), -1 if the vertex
 // is in no region (no maximal clique >= s). Filled under PIVOTER_M1_TUPLE_PROBE,
 // read by the CND peel (NucleusCoreDecompositionRClique) to tag each r-clique
@@ -390,7 +390,7 @@ static SDCTBuildResult buildSDCTWithIndex(
         // Convert to tree format (V2 only reads .v, not .isPivot)
         tree = DynamicGraph<TreeGraphNode>(edgeGraph.getGraphNodeSize());
         mcTags.resize(cliques.size(), true); // all maximal
-        for (auto &clique : cliques) {
+        for (auto clique : cliques) {
             std::vector<TreeGraphNode> nodes;
             nodes.reserve(clique.size());
             for (auto v : clique) nodes.push_back({v, false});
@@ -1171,7 +1171,7 @@ int main(int argc, char **argv) {
             return enumerateMaximalCliques(edgeGraph, s);
         });
         size_t maxMCSize = 0;
-        for (auto &mc : g_maxCliques) maxMCSize = std::max(maxMCSize, mc.size());
+        for (auto mc : g_maxCliques) maxMCSize = std::max(maxMCSize, mc.size());
         printf("MaxCliqEnum (V3): %zu maximal cliques (minSize=%d, maxSize=%zu)\n",
                g_maxCliques.size(), (int)s, maxMCSize);
     }

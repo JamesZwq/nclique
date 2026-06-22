@@ -8,6 +8,7 @@
 
 #include "Global/Global.h"
 #include "misc.h"
+#include "FlatCliques.h"
 #include <algorithm>
 #include <vector>
 #include <cstring>
@@ -157,7 +158,7 @@ static void bkRecurse(
     int **neighborsInP, int *numNeighbors,
     int beginX, int beginP, int beginR,
     std::vector<int> &clique,
-    std::vector<std::vector<daf::Size>> &output,
+    FlatCliques &output,
     int minSize)
 {
     int sizeOfP = beginR - beginP;
@@ -168,9 +169,7 @@ static void bkRecurse(
     // P empty: maximal iff X also empty
     if (beginX >= beginP && beginP >= beginR) {
         if ((int)clique.size() >= minSize) {
-            std::vector<daf::Size> c(clique.begin(), clique.end());
-            std::sort(c.begin(), c.end());
-            output.push_back(std::move(c));
+            output.appendSorted(clique);
         }
         return;
     }
@@ -225,9 +224,9 @@ static void bkRecurse(
 // Enumerate maximal cliques in graph g (degeneracy-ordered)
 // Uses efficient vertexSets/vertexLookup data structures with P∪X pivoting
 // minSize: only return cliques with size >= minSize (0 = all)
-static std::vector<std::vector<daf::Size>> enumerateMaximalCliques(Graph &g, int minSize = 0) {
+static FlatCliques enumerateMaximalCliques(Graph &g, int minSize = 0) {
     int n = g.getGraphNodeSize();
-    std::vector<std::vector<daf::Size>> result;
+    FlatCliques result;
 
     int *vertexSets = (int *)Calloc(n, sizeof(int));
     int *vertexLookup = (int *)Calloc(n, sizeof(int));
