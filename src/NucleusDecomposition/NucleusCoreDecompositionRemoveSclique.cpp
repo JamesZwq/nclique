@@ -1122,7 +1122,6 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     // existing alive tuple's delta + maintain tupleLeaves. Only A_L(T)>0 is registered.
     std::vector<int> pl_cid, pl_kp, pl_kk, pl_mult, pl_keyExp;
     std::string pl_key;
-    std::function<void(int, int, int, int)> pl_rec;
     auto processLeaf = [&](const auto &leafVerts, daf::Size leafId, double sign, bool counting,
                            std::vector<char> *alivePtr, std::unordered_map<int, double> *deltaPtr) {
         pl_cid.clear(); pl_kp.clear(); pl_kk.clear();
@@ -1142,7 +1141,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         int needPivot = (int)s - keepC;
         int K = (int)pl_cid.size();
         pl_mult.assign(K, 0);
-        pl_rec = [&](int idx, int remaining, int pC, int nP) {
+        auto pl_rec = [&](auto &&self, int idx, int remaining, int pC, int nP) -> void {
             if (remaining == 0) {
                 // A_L(T) convolution
                 std::array<double, RMAX> W{}; W[0] = 1.0; int deg = 0;
@@ -1202,10 +1201,10 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
             }
             if (idx == K) return;
             int cap = std::min(pl_kp[idx] + pl_kk[idx], remaining);
-            for (int m = 0; m <= cap; ++m) { pl_mult[idx] = m; pl_rec(idx + 1, remaining - m, pC, nP); }
+            for (int m = 0; m <= cap; ++m) { pl_mult[idx] = m; self(self, idx + 1, remaining - m, pC, nP); }
             pl_mult[idx] = 0;
         };
-        pl_rec(0, (int)r, pivotC, needPivot);
+        pl_rec(pl_rec, 0, (int)r, pivotC, needPivot);
     };
 
     // ---- counting: build tuples + rawSupport + tupleLeaves from the initial tree ----
@@ -1245,13 +1244,12 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     };
 
     // enumerate tuple T's concrete members (sorted vertex sets) inside one leaf
-    std::function<void(int)> em_rec;
     auto enumMembers = [&](const std::vector<TreeGraphNode> &leaf, const std::vector<std::pair<int, int> > &comp,
                            std::vector<std::vector<daf::Size> > &out) {
         std::unordered_map<int, std::vector<daf::Size> > cv;
         for (const auto &node : leaf) { int c = classOf[node.v]; if (c >= 0) cv[c].push_back(node.v); }
         std::vector<daf::Size> cur;
-        em_rec = [&](int ci) {
+        auto em_rec = [&](auto &&self_em, int ci) -> void {
             if (ci == (int)comp.size()) {
                 std::vector<daf::Size> mem = cur;
                 std::sort(mem.begin(), mem.end());
@@ -1260,13 +1258,13 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
             }
             auto &verts = cv[comp[ci].first];
             int m = comp[ci].second, nv = (int)verts.size();
-            std::function<void(int, int)> choose = [&](int start, int k) {
-                if (k == 0) { em_rec(ci + 1); return; }
-                for (int i = start; i + k <= nv; ++i) { cur.push_back(verts[i]); choose(i + 1, k - 1); cur.pop_back(); }
+            auto choose = [&](auto &&self_ch, int start, int k) -> void {
+                if (k == 0) { self_em(self_em, ci + 1); return; }
+                for (int i = start; i + k <= nv; ++i) { cur.push_back(verts[i]); self_ch(self_ch, i + 1, k - 1); cur.pop_back(); }
             };
-            choose(0, m);
+            choose(choose, 0, m);
         };
-        em_rec(0);
+        em_rec(em_rec, 0);
     };
 
     // ---- peel ----
