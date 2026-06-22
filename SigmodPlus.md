@@ -4217,3 +4217,30 @@ MEMORY -- don't materialize pattern<->leaf maps (regen/on-demand drops 10.09G->0
 so dense losses are GRACEFUL not OOM); (2) PAPER -- scope the contribution to the witness-dominated regime where class
 compression wins, characterize the huge-clique regime honestly as CND's. Probes (committed): SCT_PROBE_A, REGCLS_DBG,
 [ay-scale], MEM_DBG.
+
+## 104c. REVERSAL: §104b measured the WRONG quantity -- HAPS-TIE's make-or-break came back POSITIVE (2026-06-22) [commit 57d9b52]
+**§104b's "INHERENTLY_HEAVY / engine abandoned" verdict is SUPERSEDED for one specific mechanism.** A design-panel workflow
+(6 forced-distinct mechanisms for "cheaply maintain alive-s-clique counts on a class-box" + per-idea adversary + synth)
+ranked **HAPS-TIE (Hot-Axis Partial Split)** #1 -- precisely because it is the ONLY candidate whose cost does NOT depend
+on raw |A| (which §104b already killed at p99=2024). HAPS-TIE: split only the 1-2 HOTTEST (max-spread) classes physically,
+keep the rest compressed; cost depends on the COLD-projected antichain width |A_cold| (the antichain after removing the
+hot axes), NOT raw |A|. §104b never measured |A_cold|. The cost transforms 2^|A| (catastrophic) -> |A| x 2^|A_cold|
+(polynomial x small) IF the antichain concentrates in a few hot classes.
+DECISIVE PROBE (SCT_PROBE_A extended, §104c, read-only, corehash-identical): for heavy leaves, project out the top-1/
+top-2 max-spread coords and re-Pareto the antichain. RESULT -- the antichain CONCENTRATES, |A_cold| COLLAPSES ~80-96x:
+  ca-AstroPh 3,4 (THE blowup graph): |A_full| p50=49/p90=363/p99=2024 -> minus-top2 p50=**3**/p90=**10**/p99=**21**.
+  com-dblp 3,4: |A_full| p99=988 -> minus-top2 p99=**12** (p90 120->6, p50 35->4).
+(ca-HepPh 2,3 post-processing too slow -- O(|A|^2) re-pareto on 185-dim antichains; killed; the probe needs a faster/
+sampled cold-projection to confirm the huge-clique graph.) So §104b's raw-|A| INHERENTLY_HEAVY was measuring the wrong
+thing; the antichain is "rank-2-fattened" (single-class-dominant monotone peeling thickens it along ~2 hot classes), and
+projecting those out leaves a tiny cold residual. CAVEATS (honest): (a) collapse is to ~10 (p90) / ~21 (p99), NOT strictly
+<=8; the synth's ADAPTIVE PROMOTION (promote a 3rd hot axis when |A_cold|>cap, fails OPEN never truncates -> bit-identity
+safe) handles the tail. (b) A SECONDARY cost is un-estimated: #hot-buckets (~spread[h1]*spread[h2] ~ |A|) x cold-IE
+(2^|A_cold|) x the T-convolution O(s) cold evaluations per sub-box. Now POLYNOMIAL in |A|, but must be measured vs a_Y's
+s-scale before claiming a win. NEXT (green-lit, the FIRST real engine step): HAPS-TIE prototype STEP 1 -- on ONE
+ca-AstroPh leaf+wave, compute drop_wave[Q] via the telescoped hot-convolution x cold-IE formula (drop = support_count(
+box,m_Q,A_before) - support_count(box,m_Q,A_after), decomposed hot x cold) and assert llround-bit-identical to the a_Y
+delta[Q] per Q (watch the WEIGHT-BASE pitfall: base is m_Q via C(n-m_Q,y-m_Q), max(m_P,m_Q) enters ONLY as extra_lower,
+never the binomial base). Then the secondary-cost re-estimate. If both pass -> build the engine -> class compression beats
+CND on BOTH regimes. Odds revised UP from the synth's 20-25% prior (the make-or-break premise is empirically confirmed on
+the 2 hardest measured cells). Workflow scripts: alive-sclique-count-wf_7f102554, m4-class-split-ncr-wf_af13a14a.
