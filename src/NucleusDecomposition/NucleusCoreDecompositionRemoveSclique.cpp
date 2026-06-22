@@ -23,6 +23,8 @@
 #include <string>
 #include <functional>
 #include <array>
+#include <span>
+#include <algorithm>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -1243,32 +1245,50 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         bucket_of[t] = newB; pos_in_bucket[t] = (int)buckets[newB].size(); buckets[newB].push_back(t);
     };
 
-    // enumerate tuple T's concrete members (sorted vertex sets) inside one leaf
-    auto enumMembers = [&](const std::vector<TreeGraphNode> &leaf, const std::vector<std::pair<int, int> > &comp,
-                           std::vector<std::vector<daf::Size> > &out) {
-        std::unordered_map<int, std::vector<daf::Size> > cv;
-        for (const auto &node : leaf) { int c = classOf[node.v]; if (c >= 0) cv[c].push_back(node.v); }
-        std::vector<daf::Size> cur;
+    // Allocation-free member enumeration (was the 80%-of-peel hot spot): reused
+    // scratch instead of a per-leaf unordered_map + a per-member heap vector.
+    // Members are appended as a flat CSR (cflat = concatenated sorted vertex sets,
+    // coff = offsets). compVerts groups the leaf's vertices by the tuple's classes.
+    std::vector<daf::Size> cflat;                       // all members' vertices, concatenated
+    std::vector<size_t> coff;                           // CSR offsets; coff.size()-1 = #members
+    std::vector<std::vector<daf::Size> > compVerts(std::max<int>(1, (int)r)); // per comp-class leaf verts
+    std::vector<daf::Size> emCur;                       // current partial member
+    auto enumMembers = [&](const std::vector<TreeGraphNode> &leaf, const std::vector<std::pair<int, int> > &comp) {
+        const int K = (int)comp.size();
+        for (int i = 0; i < K; ++i) compVerts[i].clear();
+        for (const auto &node : leaf) {
+            int c = classOf[node.v];
+            if (c < 0) continue;
+            for (int i = 0; i < K; ++i) if (comp[i].first == c) { compVerts[i].push_back(node.v); break; }
+        }
+        emCur.clear();
         auto em_rec = [&](auto &&self_em, int ci) -> void {
-            if (ci == (int)comp.size()) {
-                std::vector<daf::Size> mem = cur;
-                std::sort(mem.begin(), mem.end());
-                out.push_back(std::move(mem));
+            if (ci == K) {
+                size_t base = cflat.size();
+                cflat.insert(cflat.end(), emCur.begin(), emCur.end());
+                std::sort(cflat.begin() + base, cflat.end());
+                coff.push_back(cflat.size());
                 return;
             }
-            auto &verts = cv[comp[ci].first];
+            const auto &verts = compVerts[ci];
             int m = comp[ci].second, nv = (int)verts.size();
             auto choose = [&](auto &&self_ch, int start, int k) -> void {
                 if (k == 0) { self_em(self_em, ci + 1); return; }
-                for (int i = start; i + k <= nv; ++i) { cur.push_back(verts[i]); self_ch(self_ch, i + 1, k - 1); cur.pop_back(); }
+                for (int i = start; i + k <= nv; ++i) { emCur.push_back(verts[i]); self_ch(self_ch, i + 1, k - 1); emCur.pop_back(); }
             };
             choose(choose, 0, m);
         };
         em_rec(em_rec, 0);
     };
+    // lightweight indexable view over (cflat, coff) for bkRmClique::removeRClique
+    std::vector<std::span<const daf::Size> > conflictSpans; // reused range view for removeRClique
 
     // ---- peel ----
     auto tn_peel_start = std::chrono::high_resolution_clock::now();
+    const bool tnprof = std::getenv("PIVOTER_TN_PROFILE") != nullptr;
+    long long pT_find = 0, pT_enum = 0, pT_decr = 0, pT_split = 0, pT_apply = 0;
+    auto pNow = [] { return std::chrono::high_resolution_clock::now(); };
+    auto pNs = [](auto a, auto b) { return std::chrono::duration_cast<std::chrono::nanoseconds>(b - a).count(); };
     long long remaining = nTuples;
     int curBucket = 0;
     double minCore = 0;
@@ -1306,6 +1326,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         if (popped.empty()) { if (remaining == 0) break; continue; }
 
         // collect affected leaves per popped tuple (from tupleLeaves), then free
+        auto _tf = pNow();
         for (int t : popped) {
             for (daf::Size L : tupleLeaves[t]) {
                 auto &slot = changedLeafIndex[L];
@@ -1318,6 +1339,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
             }
             std::unordered_set<daf::Size>().swap(tupleLeaves[t]); // free
         }
+        pT_find += pNs(_tf, pNow());
 
         // per affected leaf: enumerate popped members, decr, clean-split (incr), mutate tree
         for (daf::Size idx = 0; idx < changedLeaf.size(); ++idx) {
@@ -1325,12 +1347,22 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
             const auto &leaf = tree.adj_list[leafId];
             daf::Size slot = changedLeafIndex[leafId];
 
-            std::vector<std::vector<daf::Size> > conflictSets;
-            for (int t : perLeafPopped[slot]) enumMembers(leaf, tupleComp[t], conflictSets);
+            auto _te = pNow();
+            cflat.clear();
+            coff.assign(1, 0);
+            for (int t : perLeafPopped[slot]) enumMembers(leaf, tupleComp[t]);
+            conflictSpans.clear();
+            for (size_t i = 0; i + 1 < coff.size(); ++i)
+                conflictSpans.emplace_back(cflat.data() + coff[i], coff[i + 1] - coff[i]);
+            auto &conflictSets = conflictSpans;
+            pT_enum += pNs(_te, pNow());
 
             // decr on the old leaf (erase L from alive tuples' tupleLeaves, accumulate -A)
+            auto _td = pNow();
             processLeaf(leaf, leafId, -1.0, false, &tupleAlive, &tupleDelta);
+            pT_decr += pNs(_td, pNow());
 
+            auto _ts = pNow();
             // remove old leaf's vertices from treeGraphV
             for (const auto &lv : leaf) {
                 if (lv.isPivot) treeGraphV.removeNbr(lv.v, {leafId, true});
@@ -1354,9 +1386,11 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
                 &threadMap);
 
             tree.removeNode(leafId);
+            pT_split += pNs(_ts, pNow());
         }
 
         // apply tuple deltas, move buckets, pull curBucket back
+        auto _ta = pNow();
         for (auto &kv : tupleDelta) {
             int t = kv.first;
             if (!tupleAlive[t]) continue;
@@ -1364,12 +1398,16 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
             int newB = std::max(0, (int)(rawSupport[t] / (double)tupleMult[t]));
             if (newB != bucket_of[t]) { bucketMove(t, newB); if (newB < curBucket) curBucket = newB; }
         }
+        pT_apply += pNs(_ta, pNow());
     }
 
     {
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - tn_peel_start).count();
         printf("[tuple-native] peel: %lld ms  (tuples=%d)\n", (long long)ms, nTuples);
+        if (tnprof)
+            printf("[tn-profile] find=%.0fms enumMembers=%.0fms decr=%.0fms split+incr=%.0fms apply=%.0fms\n",
+                   pT_find / 1e6, pT_enum / 1e6, pT_decr / 1e6, pT_split / 1e6, pT_apply / 1e6);
     }
 
     // ---- output: core distribution weighted by mult (matches region_native) ----
