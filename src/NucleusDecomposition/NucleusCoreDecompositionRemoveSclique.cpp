@@ -19,6 +19,7 @@
 // timing
 #include <chrono>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #ifdef _OPENMP
 #include <omp.h>
@@ -305,6 +306,25 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     const daf::Size graphN = edgeGraph.n;
 
     double minCore = 0;
+
+    // §105 M2 (measure-before-build): per-round reprocess accounting. Counts the
+    // REAL #(r-clique,leaf) reprocess events CND pays (incr + decr enumerations)
+    // vs the #(distinct-tuple,leaf) a tuple-batched peel would pay. The ratio is
+    // the TRUE per-leaf reprocess saving; the global #rclq/#pat is only an upper
+    // bound. OMP-path only (uses res.incr/res.decr); read-only on peel state;
+    // env-gated -> corehash unchanged.
+    const bool m2on = std::getenv("PIVOTER_M2_REPROCESS_PROBE") && !g_m1ClassOf.empty();
+    long long m2_rcliqueReproc = 0, m2_tupleReproc = 0, m2_leafEvents = 0, m2_rounds = 0;
+    auto m2KeyOf = [&](daf::Size cid, std::vector<int> &cls, std::string &key) {
+        auto span = cliqueIndex.byId(cid);
+        cls.clear();
+        for (daf::Size v : span) cls.push_back(v < g_m1ClassOf.size() ? g_m1ClassOf[v] : -1);
+        std::sort(cls.begin(), cls.end());
+        key.clear();
+        key.reserve(cls.size() * sizeof(int));
+        for (int x : cls) key.append((const char *)&x, sizeof(int));
+    };
+
     while (remainingInHeap > 0) {
         // [Timer] Start Pop
         auto t_loop_start = std::chrono::high_resolution_clock::now();
@@ -341,6 +361,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
         duration_pop += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t_loop_start).count();
 
         if (remainingInHeap == 0) break;
+        if (m2on) m2_rounds++;
 
         // [Timer] Start Structure (Part A - Intersect)
         auto t_struct_A = std::chrono::high_resolution_clock::now();
@@ -464,6 +485,20 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
             const auto &leaf = tree.adj_list[leafId];
             LeafResult &res = leafResults[idx];
 
+            if (m2on) {
+                // incr (new sub-leaves) and decr (old leaf) are separate batched
+                // groups; distinct tuples within each are what a tuple-batched
+                // peel would touch.
+                std::unordered_set<std::string> incrTup, decrTup;
+                std::vector<int> cls;
+                std::string key;
+                for (const auto &p : res.incr) { m2KeyOf(p.first, cls, key); incrTup.insert(key); }
+                for (const auto &p : res.decr) { m2KeyOf(p.first, cls, key); decrTup.insert(key); }
+                m2_rcliqueReproc += (long long)res.incr.size() + (long long)res.decr.size();
+                m2_tupleReproc   += (long long)incrTup.size() + (long long)decrTup.size();
+                m2_leafEvents++;
+            }
+
             auto t_struct_B = std::chrono::high_resolution_clock::now();
             for (const auto &leafV : leaf) {
                 if (leafV.isPivot) treeGraphV.removeNbr(leafV.v, {leafId, true});
@@ -583,6 +618,16 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
 #endif
     }
 
+    if (m2on) {
+        printf("[m2-reproc] rclique_reproc=%lld  tuple_reproc=%lld  ratio=%.2fx"
+               "  (leafEvents=%lld rounds=%lld)\n",
+               m2_rcliqueReproc, m2_tupleReproc,
+               m2_tupleReproc ? (double)m2_rcliqueReproc / (double)m2_tupleReproc : 0.0,
+               m2_leafEvents, m2_rounds);
+        if (m2_leafEvents == 0)
+            printf("[m2-reproc] NOTE: 0 leaf events -- serial (#else) path not instrumented; run with OpenMP.\n");
+        fflush(stdout);
+    }
 
     std::cout << "time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
