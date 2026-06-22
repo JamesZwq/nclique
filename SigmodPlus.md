@@ -4500,3 +4500,70 @@ reprocess are per-leaf independent) -- closes the SPEED gap vs CND, orthogonal t
 tuple-native = leaner-than-CND general-(r,s) drop-in; region_native = the high-RS champion (different peel); V3LM = s=r+1 fast;
 characterize the regimes honestly; (c) the moderate-RS native speed (the convolution is the cost -- incremental W, or a cheaper
 counting). The tods1 grid will give the final comprehensive native-vs-CND mem+speed table across the graph x RS matrix.
+
+
+## 107. ENGINE REFERENCE -- authoritative map of the 4 (r,s)-nucleus engines + the CORRECTED pipeline (2026-06-22)
+WHY THIS SECTION EXISTS: this session I flailed on basic engine facts (claimed "CND avoids maximal cliques" = WRONG;
+missed that region_native a_Y is a separate binary, not in the dispatch; confused Maximal vs Maximum). This is the single
+authoritative reference. Every fact is CODE-VERIFIED with file:line. Read THIS before reasoning about the engines.
+
+CORRECTIONS TO STATE FIRST (what I got wrong, so future-me does not repeat):
+1. MCE = MAXIMAL Clique Enumeration (enumerate ALL maximal cliques, can be exponentially many), NOT "Maximum" (the one
+   largest clique). Totally different.
+2. The SDCT/SCT IS BUILT ON the maximal-clique recursion. CND does NOT "avoid maximal cliques." ALL FOUR engines rest on the
+   SAME degeneracy-ordered BK-pivot maximal-clique recursion. There is NO "CND skips MCE, ours does MCE" distinction. The
+   CLAUDE.md phrase "SDCT avoids explicit s-clique enumeration" means it does not list each s-CLIQUE (counts via nCr); it
+   does NOT mean it skips maximal cliques.
+3. region_native a_Y is a SEPARATE STANDALONE BINARY at region_native/region_native_sct_peel (source region_native/
+   region_native_sct_peel.cpp; NCR computed internally, no nCr.txt; mach/mach.h is #ifdef __APPLE__ guarded so it builds on
+   Linux). It is NOT an entry in the degeneracy_cliques dispatch table. It is our SHIPPED high-RS champion (§70-97); it MUST
+   be in every engine comparison. The in-binary class engines are V3LM and tuple-native; a_Y lives only in region_native/.
+4. Never ASSUME CND (or any engine) can/cannot run on a graph. MEASURE.
+
+THE FOUR ENGINES (invocation -> implementation):
+- CND          : ./build/bin/degeneracy_cliques <g> <r> <s>              (default, no env) -> bare NucleusCoreDecompositionRClique (RemoveSclique.cpp:208)
+- a_Y          : ./region_native/region_native_sct_peel <g> <r> <s> [--mce-budget S]        (separate binary; MCE struct line 126)
+- V3LM         : PIVOTER_RUN_REGION_V3LM=1 ./build/bin/degeneracy_cliques <g> <r> <s>        -> NucleusCoreDecompositionRClique_RegionCPI_LowMem
+- tuple-native : PIVOTER_RUN_TUPLE_NATIVE=1 ./build/bin/degeneracy_cliques <g> <r> <s>       -> NucleusCoreDecompositionRCliqueTupleNative (RemoveSclique.cpp:1087)
+
+SHARED FRONT-END (all four): degeneracy sort -> degeneracy-ordered BK-PIVOT recursion over the maximal cliques. Each
+maximal-clique leaf is stored COMPRESSED as (keepV=H mandatory stem, dropV=P pivot set); #size-k cliques at a leaf =
+C(|dropV|, k-|keepV|) via nCr (SDCT_Augmented.inl:53-57,104-107). Succinct = counts s-cliques by nCr, never materializing
+individual s-cliques. THE MAXIMAL-CLIQUE RECURSION IS COMMON TO ALL FOUR.
+
+WHERE THE FOUR DIVERGE -- two INDEPENDENT axes:
+  AXIS A (MATERIALIZE the maximal cliques into explicit vertex lists?):
+    - CND: NO. Streams compressed SDCT leaves via callback; never builds an explicit region list.
+    - a_Y / V3LM / tuple-native: YES. Build the explicit list of all maximal cliques (driver degeneracy_cliques.cpp:1170-1171
+      enumerateMaximalCliques -> g_maxCliques; region_native MCE line 152 cliques.push_back). REQUIRED because a "class" =
+      vertices with identical maximal-clique-membership profile vtxR[v] (degeneracy_cliques.cpp:1187-1220) -- you cannot
+      group vertices into classes without the explicit regions. THIS is the class engines' front-end scaling cost.
+  AXIS B (ENUMERATE every R-clique?):
+    - CND: YES. StaticCliqueIndex(r) = explicit index of EVERY r-clique (RemoveSclique.cpp:223-226); counts support
+      per-r-clique (230-232); peel heap/buckets sized cliqueIndex.size() = #r-cliques (291-302). <- CND's bottleneck:
+      #r-cliques explodes at high RS -> CPI OOM (com-dblp 5,6 ~91GB).
+    - a_Y / V3LM: NO. Count support COMBINATORIALLY on classes/tuples (class-multiset + nCr). No r-clique list.
+    - tuple-native: NO for COUNTING (A_L(T) pivot-convolution per leaf); but its DELETE side DOES enumerate r-clique MEMBERS
+      (enumMembers, flat CSR) inside affected leaves to drive the vertex clean-split.
+
+THE COST TRADE (one line): CND pays #R-CLIQUES (enumerate+index every one); our three pay #MAXIMAL-CLIQUES (materialize all
+regions to build classes) PLUS a peel-specific cost. None avoids the maximal-clique recursion; they differ in what they
+MATERIALIZE on top of it (CND: the r-cliques; ours: the maximal cliques).
+
+PEEL MECHANISM + FAILURE/WIN (per engine):
+- CND          : per-r-clique clean-split (BK pathSplit) + nCr delta, bucket queue. FAILS high RS (#r-clique CPI OOM). WINS dense (streams, fastest).
+- a_Y          : witness-major drop; a_Y dead-set (FlatU64) replaces the forbidden antichain for t=s-r=1 (default), t>=2 keeps antichain. FAILS huge dense cliques (s-scale witness) + MCE on large graphs. WINS high-RS/symmetric + mid density.
+- V3LM         : combinatorial class-box drop = dead-box union + Bidirectional DomPrune Pareto antichain (B&B); s=r+1 closed-form. FAILS dense (antichain |A| O(|A|^2)/2^|A| explodes) + MCE on large graphs. WINS high-RS/symmetric, leanest.
+- tuple-native : pop tuple -> tupleLeaves -> enumMembers (flat CSR) + vertex clean-split (bkRmClique::removeRClique) -> reprocess. FAILS high-RS sub-leaf tree grows + slow on dense + MCE on large graphs. WINS dense, leanest + no antichain explosion.
+
+MEASURED 4-way (this session, serial OMP=1, /usr/bin/time):
+- ca-GrQc 6,7 (high RS, symmetric):  CND 9.78s/4.61GB | tuple-native 3.11s/1.20GB | a_Y 0.13s/0.03GB | V3LM 0.46s/0.01GB
+- ca-AstroPh 4,5 (dense):            CND 8.98s/3.03GB | tuple-native 36.2s/2.34GB | a_Y 55.4s/6.44GB | V3LM >13min (antichain, killed)
+- com-dblp 5,6 (mid graph, CND-OOM): a_Y 38.6s/3.56GB (local, == the from-memory 3.6GB) | tuple-native ~28GB (memory) | CND ~91GB near-OOM (memory)
+TAKEAWAY: a_Y is the high-RS/symmetric champion (incl. the CND-OOM cells); V3LM also great there but explodes on dense;
+tuple-native is the dense-robust leanest; CND is the dense speed champion but OOMs at high RS. The §104b duality, measured.
+
+OPEN (IN FLIGHT, do NOT assume the answer): the LARGE-graph test (com-lj, 4.0M V / 34.7M E) on tods2 (503GB). Question: on a
+truly large graph, does CND's R-clique enumeration or our MCE materialization win/finish? region_native MCE SOFT-ABORTED at
+120s locally (materializing tens of millions of maximal cliques); CND alone peaked ~32GB locally and looked like it would
+finish 4,5. A clean serial 4-way (com-lj 4,5 + maybe 3,4/5,6) is running on tods2 via a subagent. [UPDATE WITH RESULTS]
