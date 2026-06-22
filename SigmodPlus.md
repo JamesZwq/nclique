@@ -4244,3 +4244,25 @@ delta[Q] per Q (watch the WEIGHT-BASE pitfall: base is m_Q via C(n-m_Q,y-m_Q), m
 never the binomial base). Then the secondary-cost re-estimate. If both pass -> build the engine -> class compression beats
 CND on BOTH regimes. Odds revised UP from the synth's 20-25% prior (the make-or-break premise is empirically confirmed on
 the 2 hardest measured cells). Workflow scripts: alive-sclique-count-wf_7f102554, m4-class-split-ncr-wf_af13a14a.
+
+## 104d. HAPS-TIE prototype: STEP 1 (math) VALIDATED; cost is t>=2-only and needs the real peel (2026-06-22) [commits 57d9b52,7f7197f]
+STEP 1 (correctness of the hot/cold support_count decomposition) is DONE and SOLID. A workflow (3 agents independently
+derive + write + compile + run C++ fuzz testers vs the ccpath::support_count oracle + reconcile) returned VALIDATED: all
+3 agree on the formula and each passes 200k-251k random cases incl ell>0 + multi-corner; haps_c additionally cross-checks
+the ccpath IE oracle against an independent BRUTE-FORCE witness enumerator (ground truth) over every hot subset. I
+re-ran haps_c myself: 251315 cases PASS. THE FORMULA: support_count(box,b,A) = Sum_{y_H: max(ell_H,b_H)<=y_H<=u_H}
+W_b^H(y_H) * support_count(box_C, b_C, A_C(y_H), targetCold=T-sum(y_H)); W_b^H=Prod_{c in H} C(n_c-b_c, y_c-b_c) [base
+ALWAYS b]; A_C(y_H)=Pareto{ project_cold(a) : a in A AND a_H<=y_H } [DROP corners with a_H NOT<=y_H, don't project];
+T-convolution = cold target varies per hot bucket. Testers: /tmp/haps_{a,b,c}.cpp.
+STEP 2 (cost) -- partial: the cheap probe (SCT_PROBE_A extended, [probe-cost]) settled the two structural RISKS: (a)
+#hot-buckets stays SMALL (p90=6-8, p99=12-48 on com-dblp/ca-GrQc/ca-CondMat) -- the feared multiplier does NOT dominate;
+(b) cold-IE collapses (§104c). BUT the HAPS/a_Y ratio proxy (#hot-buckets*cold-IE / witTot ~ 6-8) is NOT a valid verdict
+-- mismatched units (one HAPS support_count vs a_Y's whole-leaf witTot; missing #affected-Q on HAPS and the M^t credit on
+a_Y). THEORY pins the regime: HAPS helps t>=2 ONLY. At t=1 the §103 bijection (#witnesses == #affected-pairs) means a_Y's
+per-incidence work is O(1) and optimal -> HAPS's per-query overhead loses (proxy 6.4 on t=1 cells, directionally consistent).
+So the ca-HepPh 90x and ca-AstroPh t=1 losses are NOT addressable by HAPS; the TARGET is t>=2 dense cells (ca-AstroPh 4,6
+= the 60x cell; ca-GrQc 4,6 shows a_Y is 174x s-scale at t=2 = the headroom). NEXT (the only way to settle cost): build the
+M3 prototype peel -- per-wave, per-leaf, drop_wave[Q] = support_count(box,m_Q,A_before)-support_count(...,A_after) via the
+validated hot/cold formula -- corehash bit-identical to a_Y, count real ops + time vs a_Y on a t>=2 cell. This is a real
+implementation, not a probe. HONEST end-state of the cheap phase: math proven, feasibility (hot-buckets + cold-IE) proven,
+regime = t>=2; the win/lose vs a_Y is unproven until the prototype peel is built. Cost probe is read-only/corehash-safe.
