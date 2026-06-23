@@ -4567,3 +4567,44 @@ OPEN (IN FLIGHT, do NOT assume the answer): the LARGE-graph test (com-lj, 4.0M V
 truly large graph, does CND's R-clique enumeration or our MCE materialization win/finish? region_native MCE SOFT-ABORTED at
 120s locally (materializing tens of millions of maximal cliques); CND alone peaked ~32GB locally and looked like it would
 finish 4,5. A clean serial 4-way (com-lj 4,5 + maybe 3,4/5,6) is running on tods2 via a subagent. [UPDATE WITH RESULTS]
+
+
+## 108. LARGE-GRAPH RESULTS: com-lj clique explosion + the web-it-2004 WIN (a_Y crushes CND) (2026-06-23)
+Two large-graph findings settled on tods2 (503GB, OMP=1, /usr/bin/time -v, clean serial). The CSR commit 1991d2d is the
+binary used (FlatCliques, bit-identical).
+
+A) **com-lj (4.0M V / 34.7M E) = INTRACTABLE for the class approach, FUNDAMENTALLY (not a CSR/impl bug).** Measured + self-
+checked. degeneracy(com-lj) = 360 (Batagelj-Zaversnik, 3.3s). A clean reference MCE (my own ELS counter, VERIFIED bit-exact
+vs the engine's enumerateMaximalCliques: com-dblp s=5 -> 43751 == 43751, ca-AstroPh s=4 -> 27997 == 27997) shows com-lj has
+>120M MAXIMAL cliques >=5 (still climbing at the 420s cut), sumSz(>=5) >5.0B vertex-incidences. So MATERIALIZING all maximal
+cliques (which the class front-end MUST do, to build per-vertex region-profiles = classes) is fundamentally ~60-100GB+ for
+the cliques ALONE, + vtxR (transpose) + profKey (string-serialized classes) -> the 137GB the engines hit. CND on com-lj 4,5
+also timed out (40min, >107GB still building the #r-clique CPI, never reached peel). KEY LESSON (corrects two of my own wrong
+mid-stream calls): the bottleneck is the maximal-clique VOLUME (degeneracy 360), NOT the vector<vector> overhead. CSR (flat
+vs vector<vector>) saves the per-clique overhead/glibc-fragmentation (~20-50GB) but NOT the fundamental clique DATA (~60-100GB).
+So no engine finishes com-lj at s in {4,5}; this is the §85 "huge-clique" frontier, now quantified.
+
+B) **web-it-2004 (web graph, clique-SPARSE but R-CLIQUE-rich) = the clean LARGE-graph WIN, and a_Y is the champion.** This is
+the regime to anchor the large-graph story: CLIQUE-sparse (only ~84k maximal cliques >=5 -> tiny class front-end) but R-clique
+RICH (13.3M triangles at r=3; 1.43 BILLION 4-cliques at r=4). Full 4-engine x 4-cell, clean serial (grid paused), 400s cap:
+| cell | CND          | VTX (tuple-native)   | V3LM (class)   | a_Y (region)   |
+|------|--------------|----------------------|----------------|----------------|
+| 3,4  | TIMEOUT 55.8GB | TIMEOUT 1.29GB     | 176s 0.38GB    | **8.4s 0.44GB**  |
+| 3,5  | TIMEOUT 55.8GB | TIMEOUT 1.32GB     | 170s 0.38GB    | **10.2s 0.54GB** |
+| 4,5  | TIMEOUT 16.4GB | TIMEOUT 4.80GB     | 176s 0.55GB    | **10.2s 0.67GB** |
+| 4,6  | TIMEOUT 16.4GB | TIMEOUT 4.73GB     | 177s 0.52GB    | **14.4s 0.82GB** |
+Correctness cross-check: V3LM == a_Y on every cell (3,4: core=429 count=13343760; 3,5: core=91806 count=13343760;
+4,5: core=428 count=1431118260; 4,6: core=91378 count=1431118260).
+INTERPRETATION (vindicates the §107 axis B): **the deciding factor is "do you ENUMERATE R-cliques?"** CND enumerates them
+(the #r-clique CPI explodes: 16-55GB, timeout). VTX ALSO enumerates them -- its DELETE side enumerates r-clique MEMBERS in the
+peel -> lean (1.3-4.8GB, no CPI) but TIMES OUT on the same triangle/4-clique volume. a_Y and V3LM count R-clique support
+COMBINATORIALLY (never materialize the cliques) -> they finish; a_Y assigns cores to 1.43 BILLION 4-cliques in ~10s / 0.67GB.
+**a_Y vs CND: timeout-vs-8s, 55.8GB-vs-0.44GB (~125x leaner).** So the large-graph champion is a_Y (combinatorial witness
+engine), NOT VTX -- VTX shares CND's R-clique-enumeration weakness whenever #r-cliques is large (low r, triangle-rich graphs).
+This refines §107's per-engine picture: tuple-native's "no antichain" advantage does not rescue it when the peel's r-clique
+member enumeration is itself the explosion.
+
+GENERAL PRINCIPLE (the large-graph tractability law): tractability is governed by the MAXIMAL-CLIQUE count (~degeneracy) for
+the class front-end AND by the #R-CLIQUE count for any engine that enumerates r-cliques. web-it-2004 = low maximal-clique +
+high r-clique = ONLY the combinatorial engines (a_Y/V3LM) win. com-lj = high maximal-clique (degeneracy 360) = nobody's front
+end fits. The full graph x RS x 4-engine grid (15 graphs, cells s+1/s+2 for r=3,4,5) is running on tods2 (/tmp/cl/grid_summary.tsv).
