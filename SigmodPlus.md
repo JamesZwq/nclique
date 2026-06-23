@@ -4662,3 +4662,49 @@ three; target 7+. See memory [[project_winhunt_7graphs]]. AVOID facebook (too de
 SERVER STATE: tods2 = first win-hunt finishing (web-NotreDame/cit-Patents), com-lj.edges renamed .SKIP. icml2 = LAW-crawl hunt
 (repo was old, subagent pulls+builds). tods1 = broad-sweep hunt (subagent clones+builds, or uses /data/wenqianz/degcliq_m4_v2).
 Result files: tods2 /tmp/cl/{grid_summary,winhunt,m3test}.tsv; icml2 /tmp/winhunt_icml2.tsv; tods1 /tmp/winhunt_tods1.tsv.
+
+
+## 110. THE CLASS-COMPRESSION BASE -- formalized + BRUTE-FORCE VERIFIED + the twin-class MCE-free lever (2026-06-23)
+This is the FOUNDATION of our whole approach (peel class-multisets, not r-cliques), so it is proved AND independently
+brute-force verified (scripts/verify_class_base.py: a from-scratch (r,s)-nucleus + region-class + twin recompute on 36000
+random (graph x r,s) tests, 0 violations).
+
+CONCRETE EXAMPLE (the one to keep in mind): graph = K4{a,b,c,d} + one pendant edge a-e; r=2, s=3.
+- maximal cliques: {a,b,c,d}, {a,e}. REGIONS (maximal cliques >= s=3): only R={a,b,c,d}.
+- region-profile: a,b,c,d -> {R}; e -> {} (in no region).
+- REGION-CLASS: {a,b,c,d} all share profile {R} -> ONE class X; e has none.
+- (2,3)-cores: all 6 K4 edges = 2; a-e = 0 (no triangle).
+- PATTERN (region-class-multiset) of every support-bearing edge = (X,X) -> ONE pattern, all core 2. Same pattern => same core.
+- TRUE-TWIN (closed nbhd N[.]): N[a]={a,b,c,d,e} != N[b]=N[c]=N[d]={a,b,c,d} -> twin splits a from {b,c,d}.
+  Region-class MERGES a with b,c,d (interchangeable for the nucleus -- the a-e edge is irrelevant, e is in no triangle);
+  twin does NOT (it cares about ALL neighbors). So region-class compresses MORE, but needs the regions (MCE); twin is O(E).
+
+DEFINITIONS. REGION = maximal clique of size >= s. region-profile(v) = the set of regions containing v. REGION-CLASS:
+u ~ v iff region-profile(u)=region-profile(v) (partitions the region-bearing vertices). PATTERN/TUPLE of an r-clique = the
+sorted multiset of its vertices' region-classes. TRUE-TWIN: u ~ v iff N[u]=N[v] (closed neighborhood).
+
+VERIFIED CLAIMS (proof + 0/36000 brute-force):
+- **CLAIM 1 (THE BASE): same region-class pattern => same (r,s)-core.** PROOF: r-cliques with the same class-multiset are
+  related by class-internal vertex swaps u<->w (same region-class = same regions). Each swap is a bijection on s-cliques
+  (S ∋ u, S ⊆ region M ∋ u, w ∈ M => S-u+w is an s-clique) and on support-bearing r-cliques, and preserves the
+  "share an s-clique" relation -> preserves the ENTIRE peeling -> preserves the core. (The core depends only on the
+  support-bearing structure; adjacencies outside regions are irrelevant.) This is what licenses peeling PATTERNS not r-cliques.
+- **#patterns <= #r-cliques** (Sigma mult = #r-cliques, mult>=1) and **#region-classes <= #vertices** (it is a partition).
+- **CLAIM 2: true-twin REFINES region-class** (N[u]=N[v] => same maximal cliques => same regions => same region-profile).
+- **CLAIM 3: same TWIN-pattern => same core** (twin-pattern refines region-pattern, by CLAIM 2, so it also determines the
+  core). I.e. peeling on TWIN-classes is CORRECT.
+- **ORDERING: #region-classes <= #twin-classes <= #vertices.**
+
+THE COST INSIGHT + THE LEVER. The class OUTPUT is small (#region-classes <= #vertices). The COST is COMPUTING it: region-class
+needs all REGIONS materialized (enumerateMaximalCliques -> #maximal-cliques, which EXPLODES: com-lj 100M+, web-BerkStan 1.75M).
+**TRUE-TWIN classes are a CORRECT (CLAIM 3) substitute computable in O(E) (hash sorted N[v]) with NO MCE** -> this DODGES the
+maximal-clique materialization front-end entirely. TRADEOFF: twin is strictly FINER -> fewer merges -> more patterns -> less
+peel batching. MEASURED twin-class count / #vertices (the compression twins give): web-it-2004 **26.1%** (web crawls have many
+exact twins -> good compression), com-dblp 81.0%, ca-AstroPh 81.6%, com-youtube **99.6%** (almost no twins -> ~no compression).
+So twin-classes help most where MCE explodes AND twins are common (web crawls -- our win regime!); on twin-poor graphs they
+degenerate toward CND (no compression, but also no MCE blow-up). CAVEAT: this is cleanest for the TUPLE-NATIVE counting (SDCT +
+classes; the SDCT is the BK-pivot tree, NOT the explicit regions) -- the region engines (V3LM/a_Y) build a class-quotient SCT
+that may still need the explicit regions; verify separately before claiming. OPEN LEVER: a correct class-equivalence BETWEEN
+twin and region-class (cheaper than MCE, coarser than twin), or ADAPTIVE (region-class when MCE is cheap, twin when it explodes).
+(Side note: region-class by region-ID is NOT even the coarsest correct equivalence -- it misses false-twin/orbit symmetry, so
+there is compression headroom ABOVE it too, but that is GI-hard.) Verifier: scripts/verify_class_base.py.
