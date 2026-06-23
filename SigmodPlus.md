@@ -4708,3 +4708,26 @@ that may still need the explicit regions; verify separately before claiming. OPE
 twin and region-class (cheaper than MCE, coarser than twin), or ADAPTIVE (region-class when MCE is cheap, twin when it explodes).
 (Side note: region-class by region-ID is NOT even the coarsest correct equivalence -- it misses false-twin/orbit symmetry, so
 there is compression headroom ABOVE it too, but that is GI-hard.) Verifier: scripts/verify_class_base.py.
+
+
+## 111. TWIN-CLASS implemented on tuple-native (env PIVOTER_TWIN_CLASS) -- CORRECT but NOT a universal speed win (2026-06-23)
+IMPLEMENTED the §110 twin-class lever on the tuple-native engine (degeneracy_cliques.cpp, env PIVOTER_TWIN_CLASS, default OFF;
+NOT yet committed): when set, the driver SKIPS enumerateMaximalCliques (the MCE front-end) and builds g_m1ClassOf by hashing
+each vertex's sorted CLOSED neighborhood N[v]=N(v)+{v} (O(E)) instead of from regions. The tuple-native counting/peel use these
+twin-classes unchanged (the SDCT leaves >= s still bound the support-bearing r-cliques, so unclassed/non-region vertices never
+appear -- no extra work).
+CORRECTNESS: bit-identical. The (r,s)-nucleus cores are graph-determined (partition-independent), so twin-class and region-class
+give the SAME cores -- verified md5-equal core distribution (region vs twin) on com-dblp 4,5 + ca-AstroPh 3,4 (matches §110 CLAIM 3).
+SPEED (Mac, OMP=1, tuple-native total wall, region-class vs twin-class):
+  ca-AstroPh 3,4 : 5.3 vs 5.4s (0.98x, tie)   | com-dblp 4,5 : 26.4 vs 43.1s (0.61x, twin 1.6x SLOWER)
+  com-youtube 4,5: 37.6 vs 35.9s (1.05x, twin slightly faster) | web-Stanford 4,5: [in flight, task b136z1607]
+VERDICT: twin-class is CORRECT but a graph-dependent TRADEOFF, not a universal win. It SKIPS the MCE front-end but gives LESS
+compression (more tuples -> heavier counting/peel). Net = (MCE saved) - (extra count/peel from lost compression). On MCE-cheap
+graphs where twins are rare (com-dblp: twin/#V=81%) it LOSES (1.6x slower); where MCE is a bigger fraction and twins are denser
+(com-youtube ~tie) it breaks even. The big hoped-for win is com-lj-class graphs (MCE explodes), but those are also twin-poor
+(com-youtube twin/#V=99.6% -> ~no compression) so twin-class would only make us ~CND there (avoid the MCE OOM but no peel win) --
+NOT yet measured on com-lj. So twin-class on tuple-native is a correct fallback that dodges the MCE OOM, not a speed lever.
+NEXT: (a) measure twin-class on com-lj (does it convert "OOM" into "runs, ~CND"?); (b) the real open lever is still an equivalence
+BETWEEN twin and region-class (cheap, no MCE, more compression than twin) -- §110. Code: PIVOTER_TWIN_CLASS branch in
+degeneracy_cliques.cpp (~line 1170 MCE-skip + ~line 1186 twin-class block); timing harness /tmp/tt2.py.
+(Parallel win-hunt for 7+ win-graphs still running: icml2 LAW crawls, tods1 broad sweep, tods2 first sweep -- see §109 / memory.)
