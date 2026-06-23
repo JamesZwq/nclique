@@ -4720,7 +4720,17 @@ CORRECTNESS: bit-identical. The (r,s)-nucleus cores are graph-determined (partit
 give the SAME cores -- verified md5-equal core distribution (region vs twin) on com-dblp 4,5 + ca-AstroPh 3,4 (matches §110 CLAIM 3).
 SPEED (Mac, OMP=1, tuple-native total wall, region-class vs twin-class):
   ca-AstroPh 3,4 : 5.3 vs 5.4s (0.98x, tie)   | com-dblp 4,5 : 26.4 vs 43.1s (0.61x, twin 1.6x SLOWER)
-  com-youtube 4,5: 37.6 vs 35.9s (1.05x, twin slightly faster) | web-Stanford 4,5: [in flight, task b136z1607]
+  com-youtube 4,5: 37.6 vs 35.9s (1.05x, twin slightly faster) | web-Stanford 4,5: 725.4 vs 920.5s (0.79x, twin 1.27x SLOWER)
+  -> 4 graphs: 3 LOSE + 1 tie/micro-win. web-Stanford is a web crawl (the hoped-for twin profile) yet twin STILL loses --
+     because CLOSED-nbhd (true) twins are rare there; the compression they buy doesn't cover the lost region-class merging.
+FALSE-TWIN GAP (found 2026-06-23, the fix for the weak compression): the current code keys on the CLOSED nbhd N[v], so it
+only catches TRUE twins (N[u]=N[v], adjacent). It MISSES FALSE twins (N(u)=N(v), NON-adjacent, same OPEN nbhd). Both types
+give a transposition AUTOMORPHISM (swap u<->v preserves all edges) -> same (r,s)-core for all r,s. VERIFIED brute-force: false-twin
+core swap-invariance 0 violations / 7370 pair-instances x 9500 (graph x rs) [extends verify_class_base.py]. The unified cheap
+rule is u~v iff N(u)\{v}=N(v)\{u} (adjacent => true twin / non-adjacent => false twin); each class is then a clique or an
+independent set. Implementing BOTH (hash open-nbhd for non-adjacent + closed-nbhd for adjacent, still O(E), still no MCE)
+strictly increases compression toward region-class -> the likely fix that flips the com-youtube/web-Stanford verdict. NOT yet
+implemented.
 VERDICT: twin-class is CORRECT but a graph-dependent TRADEOFF, not a universal win. It SKIPS the MCE front-end but gives LESS
 compression (more tuples -> heavier counting/peel). Net = (MCE saved) - (extra count/peel from lost compression). On MCE-cheap
 graphs where twins are rare (com-dblp: twin/#V=81%) it LOSES (1.6x slower); where MCE is a bigger fraction and twins are denser
