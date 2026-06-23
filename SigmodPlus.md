@@ -4772,3 +4772,13 @@ remaining value is the MCE-OOM FALLBACK for graphs where region-class is uncompu
 would let us RUN at all (no MCE) but with weak compression -> ~CND, not a win. The real open lever stays unchanged: a cheap (no-
 MCE) equivalence STRICTLY COARSER than twin and as coarse as region -- but region's coarseness comes from clique co-membership,
 which seems to require the cliques (MCE), so this may be fundamentally hard. Code: twin block in degeneracy_cliques.cpp ~line 1192.
+
+COM-LJ RESOLVED (2026-06-23, MEASURED, tods2): com-lj is a FUNDAMENTAL maximal-clique-structure wall -- NO engine escapes.
+  - tuple-native + twin (3,4): died in the pre-peel SDCT_Fused build, >1800s / 41GB, never reached the twin front-end.
+  - a_Y (region_native_sct_peel, 3,4): MCE ABORTED at the 1500s budget using 99.5GB (graceful --mce-budget abort, exit 0 but
+    NOT a success) -- com-lj's maximal cliques do not even enumerate.
+  So the twin-class "MCE-OOM fallback" hope is DEAD on com-lj: skipping MCE does not help because (a) tuple-native still needs
+  SDCT_Fused (which explodes) and (b) the clique structure itself (MCE) is the wall for the region-native path. com-lj (and the
+  as-skitter/wiki-Talk 31-83M-maximal-clique class) is simply intractable for (r,s)-nucleus at r>=3 with ALL current engines
+  INCLUDING CND. Not a win target; stop attempting it. The reliable wins are the FEW-maximal-clique + large-dense-block graphs
+  (FEM matrices + dense web crawls), NOT the clique-explosion graphs.
