@@ -4608,3 +4608,57 @@ GENERAL PRINCIPLE (the large-graph tractability law): tractability is governed b
 the class front-end AND by the #R-CLIQUE count for any engine that enumerates r-cliques. web-it-2004 = low maximal-clique +
 high r-clique = ONLY the combinatorial engines (a_Y/V3LM) win. com-lj = high maximal-clique (degeneracy 360) = nobody's front
 end fits. The full graph x RS x 4-engine grid (15 graphs, cells s+1/s+2 for r=3,4,5) is running on tods2 (/tmp/cl/grid_summary.tsv).
+
+
+## 109. GRID VERDICT + M3 correction + k-core filter + the 7-graph WIN HUNT (2026-06-23)
+Consolidates everything since §108. Binary at main HEAD a4994ea (CSR/FlatCliques, 1991d2d, bit-identical).
+
+A) **THE FULL GRID VERDICT (15 graphs x cells s+1/s+2 for r=3,4,5 x {CND,VTX,V3LM,a_Y}, OMP=1, clean serial, 600s cap).**
+The honest end-state: **CND handles almost all small/medium graphs fine (56 DONE); we have exactly ONE clean win (web-it-2004).**
+- **com-youtube** (sparse social, 1.1M V): CND is FASTEST every cell (21-52s) and leanest-ish (1.75-3GB); VTX 2-3x slower,
+  V3LM 3-7x + a TIMEOUT, a_Y similar-time but HEAVIER (4-9.4GB, grows with RS). CND WINS. This is the complement of web-it.
+- **web-Stanford**: mixed (a_Y/V3LM prune after timeouts; CND/VTX finish low cells). Not a win.
+- com-lj intentionally skipped (renamed .SKIP) -- the clique explosion, nobody finishes.
+THE UNIFYING INSIGHT: **all our class/tuple engines pay a "class front-end tax" (enumerateMaximalCliques + build classes/
+profKey) that plain CND SKIPS.** We win ONLY where that tax is cheap (FEW maximal cliques) AND CND's r-clique enumeration
+explodes (web-it-2004). Everywhere else CND's streaming SDCT+CPI is simply faster. So the win regime is NARROW.
+
+B) **M3 (tuple-BATCH, PIVOTER_RUN_TUPLE_BATCH) -- "never slower than CND" is PEEL-ONLY, NOT end-to-end (correction).** Measured
+M3 vs CND back-to-back on com-youtube: M3 is **1.4-1.7x SLOWER on every cell** (3,4: 28.6 vs 21.0s; 5,7: 83 vs 48s) and uses
+MORE memory (keeps CND's CPI + adds class structures). Reason: the §105 "1.4-2.9x peel speedup, never slower" was the PEEL
+PHASE on DENSE graphs (ca-GrQc/ca-AstroPh); end-to-end, M3 adds the class front-end tax CND skips, which dominates on peel-light
+sparse graphs. M3 ALSO inherits CND's #r-clique CPI -> it OOMs WITH CND on web-it-style graphs (predicted; the m3grid that
+would confirm this across all graphs stalled -- a subagent driving 600s runs via blocking ssh; rerun as a server-side nohup).
+NET: M3's only niche is dense, peel-dominated graphs where CND already runs. No end-to-end "faster than CND" guarantee.
+
+C) **(s-1)-core PRE-FILTER (commit 1ae1b27, branch kcore-prefilter, env PIVOTER_KCORE_FILTER, default OFF).** Correctness:
+every s-clique lies in the (s-1)-core, so vertices with coreness < s-1 have core 0 -> prune them before the SDCT/enum.
+Implemented by capturing per-vertex coreness in sortByDegeneracyOrder (running-max at each peel; non-decreasing in degeneracy
+order -> the prunable set is the new_id PREFIX) + restrictToKCore (rebuild CSR). BIT-IDENTICAL verified (K>=1 core distribution
+md5-equal with/without, all 3 engines, com-dblp 4,5 + ca-AstroPh 3,4). BUT the win is MODEST: com-youtube ~1.05-1.08x only,
+because the (s-1)-core retains the dense core where all the cost is. MEASURED (s-1)-core EDGE retention: web-it-2004 **99%**,
+web-BerkStan 94%, com-lj 92%, as-skitter 87%, web-Google 85%, web-NotreDame 69%, com-youtube **57%** -- so the filter is a
+near-no-op exactly on the hard/win graphs (edges in the core) and only meaningfully shrinks sparse graphs. A free small opt
+(user said keep it, don't merge/cost-gate). It does NOT fix any explosion.
+
+D) **com-lj 137GB breakdown (settled, self-checked).** The 137GB is the maximal-clique MATERIALIZATION VOLUME (com-lj has
+>120M maximal cliques >=5, my ELS counter VERIFIED bit-exact vs the engine: com-dblp 43751==43751, ca-AstroPh 27997==27997),
+NOT a vector<vector> bloat. Fundamental to the class front-end (must materialize all regions to build classes). CSR saves the
+per-clique overhead (~20-50GB) but not the ~60-100GB of clique data. I mis-called this twice mid-stream (first "MCE
+materialization is the wall", then over-corrected to "trivial, pure impl bug") -- the truth is in between and the counter-
+verification is what settled it. Lesson: verify your own measurement against the trusted engine before concluding.
+
+E) **WIN-HUNT for NEW win-graphs (in flight) + the 7-GRAPH GOAL (user).** Goal: find 7+ graphs we RELIABLY beat CND on.
+Profile (narrow): FEW maximal cliques (<=~few hundred k -> our front-end small/fast) + HUGE #r-cliques (CND CPI explodes).
+First sweep on tods2 (web-Google/web-BerkStan/web-NotreDame/cit-Patents; as-skitter 31.8M & wiki-Talk 82.7M maximal cliques
+SKIPPED): **NO new clean wins** -- web-Google's cliques too SMALL (CND fine 26-60s); web-BerkStan has 1.75M maximal cliques +
+degeneracy 201 -> OUR engines time out too (at 4,5 CND hits 178GB AND ours timeout = nobody wins). So a win needs BOTH "CND
+explodes" AND "ours stay fast", and web-it-2004 is a rare sweet spot. PARALLEL HUNT launched (2026-06-23): **icml2** (64c/503GB)
+-> LAW web crawls (web-it-2004's family: cnr-2000/in-2004/eu-2005/indochina/hollywood/dblp, WebGraph->edges conversion);
+**tods1** (96c/503GB, idle) -> broad NetworkRepository/SNAP/KONECT sweep (target high-max-clique, moderate-count graphs); tods2
+finishing its first sweep. Each is a self-contained subagent (server-side nohup, NOT blocking-ssh). Aggregate wins across the
+three; target 7+. See memory [[project_winhunt_7graphs]]. AVOID facebook (too dense, everyone OOMs).
+
+SERVER STATE: tods2 = first win-hunt finishing (web-NotreDame/cit-Patents), com-lj.edges renamed .SKIP. icml2 = LAW-crawl hunt
+(repo was old, subagent pulls+builds). tods1 = broad-sweep hunt (subagent clones+builds, or uses /data/wenqianz/degcliq_m4_v2).
+Result files: tods2 /tmp/cl/{grid_summary,winhunt,m3test}.tsv; icml2 /tmp/winhunt_icml2.tsv; tods1 /tmp/winhunt_tods1.tsv.
