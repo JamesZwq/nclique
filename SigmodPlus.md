@@ -4741,3 +4741,34 @@ NEXT: (a) measure twin-class on com-lj (does it convert "OOM" into "runs, ~CND"?
 BETWEEN twin and region-class (cheap, no MCE, more compression than twin) -- §110. Code: PIVOTER_TWIN_CLASS branch in
 degeneracy_cliques.cpp (~line 1170 MCE-skip + ~line 1186 twin-class block); timing harness /tmp/tt2.py.
 (Parallel win-hunt for 7+ win-graphs still running: icml2 LAW crawls, tods1 broad sweep, tods2 first sweep -- see §109 / memory.)
+
+
+## 112. TWIN-CLASS refined: (s-1)-core prune + true+false twins -- CORRECT, false-twin lever WORKS, but verdict does NOT flip (2026-06-23)
+Implemented the §111 false-twin fix on tuple-native (degeneracy_cliques.cpp twin block, env PIVOTER_TWIN_CLASS):
+  (1) (s-1)-core PRUNE before classing (a vertex outside the (s-1)-core lies in no s-clique -> no support -> drop it; also lets
+      two vertices that differ only in pruned neighbors become twins). (2) BOTH true twins (adjacent, equal CLOSED core-nbhd)
+      and false twins (non-adjacent, equal OPEN core-nbhd), via two O(E) hash passes; unified rule u~v iff N(u)\{v}=N(v)\{u};
+      the open/closed key-groups never overlap on a vertex (proven + brute 0/30000), so open-then-closed assignment is exact.
+CORRECTNESS: Python brute 0 violations / 30000 (graph x rs) for "same unified-twin pattern -> same core" + overlap-free; engine
+core HISTOGRAM identical (region vs twin) on ca-AstroPh 3,4, com-youtube 4,5, web-Stanford 4,5.
+FALSE-TWIN LEVER WORKS: web-Stanford 4,5 has 53039 false-twin members (true=0) -> twin class count drops to 138902, almost
+== region's 134617 (the OLD closed-nbhd-only version found 0 twins on web-Stanford -> all singletons). So the refinement gave
+twin nearly region-level CLASS count.
+BUT VERDICT DOES NOT FLIP (clean same-run, Mac OMP=1):
+  com-youtube 4,5: region 32.5s vs twin 32.4s (~tie). tuples 4.657M vs 4.665M (+0.2%, region barely compresses here). MCE 2.0s.
+  web-Stanford 4,5: region 738s vs twin 1507s (twin 2.0x SLOWER). tuples 35.6M vs 51.3M (+44%); count 218->426s, peel 508->1065s.
+  MCE only 2.4s -> skipping it saves nothing.
+KEY LESSON (answers "fewer classes => fewer tuples?"): NO. #classes ~= does NOT imply #tuples ~=. web-Stanford twin/region
+class counts differ only 3% yet TUPLES differ 44%, because region's partition aligns with r-clique CO-MEMBERSHIP (so high-
+multiplicity r-cliques collapse to one tuple) while twin's aligns with NEIGHBORHOOD; twin's residual refinement splits exactly
+the high-multiplicity tuples region compressed hardest. Tuple monotonicity is a HARD FLOOR: twin refines region => #tuples(twin)
+>= #tuples(region) ALWAYS => twin's peel can NEVER beat region's. twin's only lever is skipping MCE, which only pays when MCE is
+the bottleneck. Both test graphs are MCE-cheap (2-2.4s) -> no win possible regardless of compression.
+(My earlier prediction "kcore prune flips web-Stanford to ~tie" was WRONG: I assumed the old 1.27x loss was a front-end cost;
+the real bottleneck is the PEEL (tuple count), which kcore cannot touch.)
+FINAL VERDICT: the two refinements are CORRECT and maximize twin's cheap compression (worth keeping as the canonical twin path),
+but twin-class is NOT a speed win on MCE-cheap graphs (com-youtube tie, web-Stanford 2x loss) and never can be there. Its ONLY
+remaining value is the MCE-OOM FALLBACK for graphs where region-class is uncomputable (com-lj class: MCE explodes); there twin
+would let us RUN at all (no MCE) but with weak compression -> ~CND, not a win. The real open lever stays unchanged: a cheap (no-
+MCE) equivalence STRICTLY COARSER than twin and as coarse as region -- but region's coarseness comes from clique co-membership,
+which seems to require the cliques (MCE), so this may be fundamentally hard. Code: twin block in degeneracy_cliques.cpp ~line 1192.

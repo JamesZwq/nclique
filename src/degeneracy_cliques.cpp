@@ -1167,13 +1167,18 @@ int main(int argc, char **argv) {
         || envSet("PIVOTER_RUN_CCPATH") || envSet("PIVOTER_M1_TUPLE_PROBE")
         || envSet("PIVOTER_M2_REPROCESS_PROBE") || envSet("PIVOTER_M3_INVARIANT_PROBE")
         || envSet("PIVOTER_RUN_TUPLE_BATCH") || envSet("PIVOTER_RUN_TUPLE_NATIVE")) {
-        g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
-            return enumerateMaximalCliques(edgeGraph, s);
-        });
-        size_t maxMCSize = 0;
-        for (auto mc : g_maxCliques) maxMCSize = std::max(maxMCSize, mc.size());
-        printf("MaxCliqEnum (V3): %zu maximal cliques (minSize=%d, maxSize=%zu)\n",
-               g_maxCliques.size(), (int)s, maxMCSize);
+        // PIVOTER_TWIN_CLASS (tuple-native only): SKIP the expensive maximal-clique
+        // enumeration -- twin-classes are computed below from the closed neighborhood
+        // (O(E)), no regions needed. Correct by SigmodPlus §110 CLAIM 3.
+        if (!envSet("PIVOTER_TWIN_CLASS")) {
+            g_maxCliques = daf::timeCount("MaxCliqEnum (V3/V4)", [&]() {
+                return enumerateMaximalCliques(edgeGraph, s);
+            });
+            size_t maxMCSize = 0;
+            for (auto mc : g_maxCliques) maxMCSize = std::max(maxMCSize, mc.size());
+            printf("MaxCliqEnum (V3): %zu maximal cliques (minSize=%d, maxSize=%zu)\n",
+                   g_maxCliques.size(), (int)s, maxMCSize);
+        }
     }
 
     // §105 M1: region/vtxR/class computation on the ORIGINAL (degeneracy-relabeled,
@@ -1184,6 +1189,92 @@ int main(int argc, char **argv) {
     // does not touch the core distribution -> corehash unchanged.
     if (envSet("PIVOTER_M1_TUPLE_PROBE") || envSet("PIVOTER_M2_REPROCESS_PROBE") || envSet("PIVOTER_M3_INVARIANT_PROBE")
         || envSet("PIVOTER_RUN_TUPLE_BATCH") || envSet("PIVOTER_RUN_TUPLE_NATIVE")) {
+      if (envSet("PIVOTER_TWIN_CLASS")) {
+        // TWIN-CLASS (SigmodPlus §110/§111): O(E) class partition, NO maximal-clique enum.
+        // Two refinements over the original closed-nbhd-only version:
+        //   (1) (s-1)-core PRUNE first: a vertex outside the (s-1)-core lies in no s-clique,
+        //       so it bears no support; dropping it is correct AND lets two vertices that
+        //       differ only in pruned neighbors become twins (more compression).
+        //   (2) BOTH true twins (adjacent, equal CLOSED core-nbhd) and false twins
+        //       (non-adjacent, equal OPEN core-nbhd). Each is a transposition automorphism
+        //       u<->v, so same (r,s)-core for all r,s. Unified rule u~v iff N(u)\{v}=N(v)\{u};
+        //       the two key-groups never overlap on a vertex (proven + brute-verified 0/30000),
+        //       so a single open-then-closed assignment is exact.
+        const daf::Size nV = edgeGraph.n;
+        const int kcore = (int)s - 1;
+        // --- (s-1)-core peel: alive[v] iff v in (s-1)-core ---
+        std::vector<int> deg(nV);
+        std::vector<char> alive(nV, 1);
+        std::vector<daf::Size> dq;
+        for (daf::Size v = 0; v < nV; v++) {
+            auto [b, e] = edgeGraph.getNbr(v);
+            deg[v] = (int)(e - b);
+            if (deg[v] < kcore) { alive[v] = 0; dq.push_back(v); }
+        }
+        for (size_t qi = 0; qi < dq.size(); qi++) {
+            auto [b, e] = edgeGraph.getNbr(dq[qi]);
+            for (auto idx = b; idx < e; ++idx) {
+                daf::Size u = edgeGraph.adj_list[idx];
+                if (alive[u] && --deg[u] < kcore) { alive[u] = 0; dq.push_back(u); }
+            }
+        }
+        // --- core-restricted OPEN key per vertex; count open + closed groups ---
+        std::unordered_map<std::string, std::pair<int, int>> openMap;   // key -> (classId, count)
+        std::unordered_map<std::string, std::pair<int, int>> closedMap;
+        std::vector<std::string> openKeyOf(nV);
+        std::vector<daf::Size> cn;
+        for (daf::Size v = 0; v < nV; v++) {
+            if (!alive[v]) continue;
+            auto [b, e] = edgeGraph.getNbr(v);
+            cn.clear();
+            for (auto idx = b; idx < e; ++idx) {
+                daf::Size u = edgeGraph.adj_list[idx];
+                if (alive[u]) cn.push_back(u); // core-restricted neighbor
+            }
+            std::sort(cn.begin(), cn.end());
+            std::string ok;
+            ok.reserve((cn.size() + 1) * sizeof(daf::Size));
+            for (daf::Size x : cn) ok.append((const char *)&x, sizeof(daf::Size));
+            std::string ck = ok;
+            ck.append((const char *)&v, sizeof(daf::Size)); // closed = open + {v}
+            auto oi = openMap.find(ok);
+            if (oi == openMap.end()) openMap.emplace(ok, std::make_pair(-1, 1));
+            else oi->second.second++;
+            auto ci = closedMap.find(ck);
+            if (ci == closedMap.end()) closedMap.emplace(std::move(ck), std::make_pair(-1, 1));
+            else ci->second.second++;
+            openKeyOf[v] = std::move(ok);
+        }
+        // --- assign: false-twin (open grp>1) else true-twin (closed grp>1) else singleton ---
+        g_m1ClassOf.assign(nV, -1);
+        int nextId = 0;
+        long long nFalse = 0, nTrue = 0, nSingle = 0;
+        for (daf::Size v = 0; v < nV; v++) {
+            if (!alive[v]) continue; // pruned: stays -1, never referenced by peel
+            auto &op = openMap[openKeyOf[v]];
+            if (op.second > 1) {
+                if (op.first < 0) op.first = nextId++;
+                g_m1ClassOf[v] = op.first;
+                nFalse++;
+            } else {
+                std::string ck = openKeyOf[v];
+                ck.append((const char *)&v, sizeof(daf::Size));
+                auto &cp = closedMap[ck];
+                if (cp.second > 1) {
+                    if (cp.first < 0) cp.first = nextId++;
+                    g_m1ClassOf[v] = cp.first;
+                    nTrue++;
+                } else {
+                    g_m1ClassOf[v] = nextId++;
+                    nSingle++;
+                }
+            }
+        }
+        printf("[twin-class] vertices=%lld  (s-1)-core=%lld  classes=%d  "
+               "(false=%lld true=%lld single=%lld; MCE skipped)\n",
+               (long long)nV, nFalse + nTrue + nSingle, nextId, nFalse, nTrue, nSingle);
+        fflush(stdout);
+      } else {
         const auto &regions = g_maxCliques;
         const int nR = (int)regions.size();
         const daf::Size nV = edgeGraph.n;
@@ -1220,6 +1311,7 @@ int main(int argc, char **argv) {
         }
         printf("[m1-tuple] regions=%d  classes=%d\n", nR, (int)classSize.size());
         fflush(stdout);
+      }
     }
 
     // Phase 3: Pre-mutation work (must run before beSingleEdge)
