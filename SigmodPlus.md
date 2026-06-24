@@ -4817,3 +4817,46 @@ raefsky3) to get the real exponential->polynomial compression numbers for the pa
 PIVOTER_DUMP_HIER on every (graph,cell) the non-hierarchy sweeps completed, compare total wall to the without-hier time -- the
 hierarchy pass is O(#tuples) so the overhead should be ~negligible (the binary prints "[hier] ... build=Xs"; com-dblp/ca-AstroPh
 hier build was 0.06-0.30s vs seconds-minutes of peel). Expectation to confirm: hierarchy adds almost nothing.
+
+
+## 114. HIERARCHY experiments (overhead A/B + compression) + constant-factor optimization (2026-06-24)
+Two experiments on the §113 tuple-native hierarchy, then a constant-factor optimization. Deployed branch
+feat/ay-tuple-native-hierarchy a_Y to tods1+tods2 (identical rebuilt binary, default no-flag core distribution bit-identical
+to the prior a_Y -> non-invasive deploy verified). 108 completed (graph,cell) A/B pairs across the win graphs; 4 cells the
+a_Y PEEL itself timed out (no hierarchy data, correct).
+
+OVERHEAD (a_Y WITH vs WITHOUT PIVOTER_DUMP_HIER; the hierarchy is a single O(#tuples) pass after the peel):
+  Median 5.4%, mean 6.5%, range -13%..+29.6% (negatives = run noise where the hier run was faster). NOT uniform:
+  - HEADLINE win graphs ~negligible: web-it-2004 ~0-9%, web-uk-2005 ~0% (engine work ~0.01s, wall is the ~11s load).
+  - TINY graphs: high % but trivial absolute (ca-MathSciNet 28%, but build 0.04s; raefsky3 6,8 29.6%, build 0.15s) = noise.
+  - HUGE-#tuple graphs: genuinely 9-16% because the build is O(#tuples) and #tuples is 20-45M -> tens of seconds absolute
+    (pre-opt build: sc-nasasrb 7,8 32.5M tuples 27-28.7s; gsm_106857 4,5 39.2M 33-35.8s; PR02R 4,5 45.7M 43.2s; sc-pwtk 7,8
+    20.8M 16.5s). Also a memory overhead +5-18% RSS (DSU + forest arrays, also O(#tuples)).
+COMPRESSION (#r-cliques / #forest-nodes; forest-nodes ~= #tuples throughout -> store-once confirmed). The headline = exponential
+  -> polynomial, enormous on DENSE nuclei, modest on sparse:
+  - web-uk-2005 7,8 = 1.16e13x (9.66e15 r-cliques in 835 forest nodes -- all-mergeable dense, the single most extreme).
+  - web-it-2004: 7,8 = 2.30e9x (7.57e15 -> 3.29M), 6,7 = 6.48e7x, 5,6 = 1.57e6x, 4,5 = 3.4e4x.
+  - raefsky3 7,9 = 31,761x; sc-pkustk11 high cells = 3,454x; com-DBLP 6,7 = 550x. Sparse: cond-mat 1.5-3.8x, ca-dblp-2010
+    4-22x, gsm_106857 5.6-7.9x, sc-nasasrb 8-49x. Compression grows monotonically with s (denser nuclei) on every graph.
+  Full 112-row tables: tods1 /data/wenqianz/hier_ab_tods1/ab_hier.tsv, tods2 /data/wenqianz/hier_ab_tods2/ab_hier.tsv.
+
+OPTIMIZATION (commit ca991b0, byte-identical output): PROFILE found the build dominated by CSV write (46-53%) + the core sort
+(18-22%); under SCT_ONDEMAND the per-tuple leavesOf recompute exploded to 85% (the on-demand trap). FIXES (all result-preserving):
+  (1) CSV write: per-node fprintf -> hand-rolled integer formatter into a 2MiB buffer + fwrite (all fields are integer cores
+      -> bytes identical), ~3.1-3.3x. (2) sort: std::sort(core desc) -> counting sort on the integer core, O(n), stable scan
+      keeps core-DESC/index-ASC. (3) leavesOf: read patLeaves IN PLACE for stored maps (zero extra RSS); on-demand recompute
+      ONCE into a flat tuple->leaf CSR (NOT a leafPats inversion -- that enumLP host test differs from patLeavesOnDemand and
+      gave off-by-one component sizes; caught + reverted). (4) memory: dropped the per-DSU-node birth array (root birth =
+      nodes[state_node[r]].k_birth); only leaves hosting >=2 tuples get a DSU connector; freed scratch before the CSV.
+  RESULT (server, build time is the noise-free metric): sc-nasasrb 7,8 27.2->14.3s (1.9x), gsm 4,5 35.8->14.6s (2.46x),
+  sc-pwtk 7,8 16.9->6.8s (2.48x), web-it-2004 6,7 1.69->0.69s (2.44x). Time overhead% fell on every cell (gsm 14.5->6.4,
+  sc-pwtk 27.6->-1.5, web-it 12.4->3.7); RSS overhead fell on every cell. So the build constant factor dropped 1.9-2.5x.
+CORRECTNESS (re-verified INDEPENDENTLY by assistant, twice -- pre and post optimization): scripts/verify_tuple_hierarchy.py
+  brute-forces the r-clique-level nucleus forest and checks the tuple forest matches (birth k + #r-cliques size + nesting):
+  0 core mismatches, 0 hierarchy violations / 500 instances on the OPTIMIZED binary. Hierarchy CSV byte-identical to pre-opt
+  on 398/398 random tiny graphs + com-dblp/ca-AstroPh. (At 1200 instances the verifier flags 1 violation, but the BASELINE
+  binary flags the IDENTICAL one -> pre-existing bruteforce edge case, not introduced.)
+PARKED ISSUE (pre-existing a_Y, NOT the hierarchy, user says small/check-later): SCT_ONDEMAND (on-demand patLeaves) gives a
+  DIFFERENT, run-size-varying core distribution than the stored maps for some borderline t>=2 incidences (the on-demand host
+  test patLeavesOnDemand differs from the enumLP-stored host test). On-demand is NOT the production/A-B path. The win-hunt
+  results used stored maps + V3LM cross-checks, so unaffected; flag to audit the on-demand host test later.
