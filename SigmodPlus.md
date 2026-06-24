@@ -4782,3 +4782,38 @@ COM-LJ RESOLVED (2026-06-23, MEASURED, tods2): com-lj is a FUNDAMENTAL maximal-c
   as-skitter/wiki-Talk 31-83M-maximal-clique class) is simply intractable for (r,s)-nucleus at r>=3 with ALL current engines
   INCLUDING CND. Not a win target; stop attempting it. The reliable wins are the FEW-maximal-clique + large-dense-block graphs
   (FEM matrices + dense web crawls), NOT the clique-explosion graphs.
+
+
+## 113. TUPLE-NATIVE (r,s)-NUCLEUS HIERARCHY on a_Y (env PIVOTER_DUMP_HIER) -- correct, store-once, O(#tuples) (2026-06-24)
+Added the nucleus HIERARCHY (forest of nested (r,s)-nuclei) to the a_Y engine (region_native/region_native_sct_peel.cpp,
+branch feat/ay-tuple-native-hierarchy, commit bc0b480). The existing hierarchy variants (V3H tuple / V3HC,V3LM_HIER class) live
+on the heavier in-binary RegionCPI engine; a_Y (our WINNER) had none.
+DESIGN = elder-rule merge-tree (the R1 BuildHierarchyR1.cpp template) lifted to TUPLE granularity:
+  - After the peel, every Pat has .core + .mult (#r-cliques) + leaf adjacency (two tuples are s-CONNECTED iff they share a leaf
+    = co-occur in an s-clique witness; obtained via leavesOf(pi), which works under both stored and on-demand patLeaves maps).
+  - DSU over (nTuples + nLeaf) nodes: tuples (compSize=mult) + LEAF-CONNECTOR nodes (compSize 0, route connectivity so a leaf
+    with P tuples costs O(P) unions not O(P^2); connectors never emit a forest node).
+  - Process tuples by .core DESCENDING; per tuple T(core k): emit ONE HierNode at (k, mult); collect distinct DSU roots among
+    T + its already-active leaf-connectors; elder rule (highest birth = parent, non-elders die at k); union (by size) so a real
+    tuple stays the root. r-mergeable regions (peeled before the SCT) appended as isolated nuclei -> the forest covers EVERY
+    r-clique. Code ~region_native_sct_peel.cpp:2588; namespace tuplehier ~line 85.
+KEY PROPERTY (store-once / space): each tuple emits EXACTLY ONE forest node (merges only set parent + k_death on the existing
+node; nesting/membership in all ancestor nuclei is IMPLICIT via the ancestor chain, NOT materialized per level). So the WHOLE
+hierarchy is O(#tuples) space = polynomial, vs O(#r-cliques)=exponential for the r-clique-level forest, vs O(#tuples x depth)
+for naive per-level nucleus materialization. forest-nodes = #tuples + #r-mergeable-roots (com-dblp 3,4: 643485 tuples ->
+682033 nodes). Same compression philosophy as the a_Y peel; self-consistent.
+CORRECTNESS (independently re-verified by assistant, not just the subagent): scripts/verify_tuple_hierarchy.py brute-forces the
+r-clique-level nucleus forest on tiny random graphs and checks the tuple forest gives the SAME nuclei (birth k + total size
+#r-cliques + parent/child nesting, as a canonical multiset profile). 500 instances, (r,s) in {(2,3),(2,4),(3,4)}, n in [5,12]:
+0 core mismatches, 0 hierarchy violations, PASS. Default peel output (PIVOTER_DUMP_HIER off) is md5-IDENTICAL to pre-change on
+com-dblp/ca-AstroPh (2,3)/(3,4) -> non-invasive. Build (macOS): g++ -O3 -std=c++17 -I. -I../src/NucleusDecomposition from
+region_native/ (server/Linux form adds -march=native -fopenmp -Isrc/tree -Isrc/Global).
+COMPRESSION (headline = polynomial vs exponential, on DENSE nuclei): K40 = 1 forest node for 9,880 / 91,390 r-cliques at
+(3,4)/(4,6); two overlapping K25 through the real SCT peel = 590 r-cliques -> 5 nodes (118x) at (2,3), 4,590 -> 7 nodes (656x)
+at (3,4). On sparse real graphs (com-dblp/ca-AstroPh) compression is modest (1.3-3.3x) because their nuclei are not dense C(N,r)
+blocks; the big compression shows on win-graph high cells (large dense nuclei) -- experiment pending.
+PENDING: (a) deploy this branch to tods1/tods2 + run the hierarchy on the win-graph high cells (web-it-2004, ca-dblp-2010,
+raefsky3) to get the real exponential->polynomial compression numbers for the paper. (b) OVERHEAD experiment: re-run a_Y WITH
+PIVOTER_DUMP_HIER on every (graph,cell) the non-hierarchy sweeps completed, compare total wall to the without-hier time -- the
+hierarchy pass is O(#tuples) so the overhead should be ~negligible (the binary prints "[hier] ... build=Xs"; com-dblp/ca-AstroPh
+hier build was 0.06-0.30s vs seconds-minutes of peel). Expectation to confirm: hierarchy adds almost nothing.
