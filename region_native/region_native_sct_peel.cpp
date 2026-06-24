@@ -1443,6 +1443,11 @@ int main(int argc, char **argv) {
     bool dfsPrune = getenv("SCT_DFS_PRUNE") != nullptr;  // default OFF (A/B flag)
     size_t maxSplit = 0;                              // diagnostic: largest split-set
     double tSFD = 0; long long slotVisits = 0;       // PROFILE: slot-scan time + path visits
+    // PIVOTER_PEEL_PROFILE (#3 probe, t>=2 slotForbidDiff path): antichain-size distribution over
+    // every forbidden-insert + how often controlled_split fires. Gates on the same env as the a_Y probe.
+    bool ppSfd = getenv("PIVOTER_PEEL_PROFILE") != nullptr;
+    long long ppFbInsert = 0, ppSplitFire = 0;       // forbidden inserts / controlled_split triggers
+    std::vector<long long> ppFbHist(64, 0);          // histogram of antichain size AFTER each insert (capped at 63)
     bool sfdDbg = getenv("SFD_DBG") != nullptr;       // cost-structure probe for the slot-index design
     long long sfdAff = 0, sfdCoordTests = 0, sfdFailFirst = 0;  // affected / coords-examined / failed-on-1st-coord
     // SUPP_DBG (§68 gate): histogram of |supp(a)| over forbidden-threshold insertions. |supp|==1 == axis-aligned
@@ -1605,8 +1610,10 @@ int main(int argc, char **argv) {
                 chgOld.push_back(cur[pos]);               // pre-change snapshot
                 if (ccpath::covers_whole_path(cur[pos], bloc)) { scanAff.push_back(pos); continue; }
                 ccpath::insert_antichain(cur[pos].forbidden, bloc);
+                if (ppSfd) { ppFbInsert++; int z = (int)cur[pos].forbidden.size(); ppFbHist[z < 63 ? z : 63]++; }
                 if ((int)cur[pos].forbidden.size() > kml) {
                     if (suppDbg) sdSplit++;
+                    if (ppSfd) ppSplitFire++;
                     auto kk = ccpath::controlled_split(cur[pos], kml);
                     for (auto &k : kk) sfdKids.push_back(std::move(k));
                     scanAff.push_back(pos);               // split-parent dies (u unchanged until removed)
@@ -1642,8 +1649,10 @@ int main(int argc, char **argv) {
                 remove = true;                             // path fully dead (a==bloc)
             } else {
                 ccpath::insert_antichain(p.forbidden, bloc);
+                if (ppSfd) { ppFbInsert++; int z = (int)p.forbidden.size(); ppFbHist[z < 63 ? z : 63]++; }
                 if ((int)p.forbidden.size() > kml) {
                     if (suppDbg) sdSplit++;
+                    if (ppSfd) ppSplitFire++;
                     auto kk = ccpath::controlled_split(p, kml);
                     for (auto &k : kk) sfdKids.push_back(std::move(k));
                     remove = true;                         // split-parent replaced by children
@@ -1821,6 +1830,22 @@ int main(int argc, char **argv) {
         for (size_t i = 0; i < v.size(); i++) { h ^= (uint64_t)(uint16_t)v[i] + 1; h *= HMUL; }
         return h;
     };
+    // ===== a_Y dead-set INCREMENTAL HASH (§-peel #2): position-independent additive fingerprint of a
+    // witness composition Y, H(Y) = XOR_{c: Y[c]>0} mix(c,Y[c]). Unlike the sequential FNV hashVec (O(M)
+    // per witness), a single-coordinate delta Y[a]:x->x' updates H in O(1): H ^= mix(a,x) ^ mix(a,x').
+    // The a_Y dead-set is a pure FlatU64 fingerprint set (no value compare, never matched against the q2p
+    // keys), so any good 64-bit hash is exact here -- same collision profile as the FNV it replaces, caught
+    // by the corehash check. mix() is the splitmix64 finalizer of a (class,value) seed (strong avalanche).
+    auto mixCV = [](int c, int v) -> uint64_t {
+        uint64_t x = ((uint64_t)(uint32_t)c << 20) ^ (uint64_t)(uint32_t)(uint16_t)v ^ 0x9E3779B97F4A7C15ULL;
+        x ^= x >> 30; x *= 0xbf58476d1ce4e5b9ULL; x ^= x >> 27; x *= 0x94d049bb133111ebULL; x ^= x >> 31;
+        return x;
+    };
+    auto hashVecInc = [&](const Vec &v) -> uint64_t {              // full additive fingerprint (init per leaf-instance)
+        uint64_t h = 0;
+        for (size_t i = 0; i < v.size(); i++) if (v[i]) h ^= mixCV((int)i, (int)v[i]);
+        return h;
+    };
     Vec elmScr;                                        // reused recompute scratch for ensureLeafMap
     auto ensureLeafMap = [&](int lid) {
         if (leafQbuilt[lid]) return;
@@ -1862,6 +1887,15 @@ int main(int argc, char **argv) {
     bool aySkip = ayMode && getenv("SCT_NO_AYSKIP") == nullptr;   // default ON (bit-identical); escape: SCT_NO_AYSKIP
     long long ayExh = 0, ayTot = 0;
     long long ayDead = 0, ayCred = 0;   // probe: #class-witnesses processed (s-scale) vs #credits (work) vs #patterns (r-scale)
+    // ===== PIVOTER_PEEL_PROFILE (#2 redundancy probe): measure how many a_Y addDelta leaf-instances
+    // produce ZERO new dead witnesses (pure no-op: every enumerated Y was already dead/infeasible, so
+    // the leaf-instance did O(M^2) hashing + DFS for no credit, yet §103 did not skip it). Also splits
+    // peel time into addDelta vs the §103-skip overhead, and counts enumerated-Y vs newly-dead-Y.
+    bool peelProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr;
+    long long ppLeafRun = 0, ppLeafNoop = 0;     // addDelta leaf-instances run / of those, crediting 0 new dead
+    long long ppYEnum = 0, ppYNewDead = 0;       // enumerated feasible Y / newly dead Y (insert==true)
+    double ppTAddDelta = 0.0, ppTSkipChk = 0.0;  // time in addDelta vs the §103 skip check
+    long long ppNewDeadThis = 0;                 // per-leaf-instance scratch (reset before each addDelta)
     // §104 STEP 0 (make-or-break): measure the per-leaf antichain size |A[lid]| the telescoped-nCr peel WOULD carry.
     // Read-only throwaway antichain fed the same peeled-pattern thresholds; decides LEAN_FEASIBLE vs INHERENTLY_HEAVY.
     bool probeAOn = getenv("SCT_PROBE_A") != nullptr;
@@ -2159,7 +2193,11 @@ int main(int argc, char **argv) {
             // dead set is exactly {Y : Y dominates some peeled pattern}, the same set the antichain represents.
             if (ayMode && witnessActive) {
                 ayTot++;                                   // §103: skip leaves whose witnesses are all dead
-                if (deadY[lid].cnt >= (size_t)witTot[lid]) { ayExh++; if (aySkip) continue; }
+                Clock::time_point _ppS;
+                if (peelProf) _ppS = Clock::now();
+                bool _ppExh = (deadY[lid].cnt >= (size_t)witTot[lid]);
+                if (peelProf) ppTSkipChk += secs(_ppS, Clock::now());
+                if (_ppExh) { ayExh++; if (aySkip) continue; }
                 const CCPath &box = slotPaths[lid][0];     // original leaf box (never mutated in a_Y mode)
                 witInst++; witMSum += Mloc; if (Mloc > witMMax) witMMax = Mloc;
                 if (!ondemand) ensureLeafMap(lid);           // §3b: ondemand resolves Q via the global hash, no per-leaf map
@@ -2200,11 +2238,15 @@ int main(int argc, char **argv) {
                         Yscr[b] = (int16_t)Yb;
                     }
                 };
-                auto addDelta = [&](auto &&self, int start, int rem) -> void {
+                // hY = incremental additive fingerprint of Yscr (== hashVecInc(Yscr)), threaded O(1).
+                uint64_t hPl = hashVecInc(pl);
+                auto addDelta = [&](auto &&self, int start, int rem, uint64_t hY) -> void {
                     if (rem == 0) {
                         for (int k = 0; k < Mloc; k++)                        // feasible witness: ell <= Y <= u
                             if ((int)ellp[k] > (int)Yscr[k] || (int)Yscr[k] > (int)uEp[k]) return;
-                        if (!dead.insert(hashVec(Yscr))) return;              // already dead -> no drop
+                        if (peelProf) ppYEnum++;
+                        if (!dead.insert(hY)) return;                         // already dead -> no drop (hY==hashVecInc(Yscr); FlatU64 remaps 0)
+                        if (peelProf) { ppYNewDead++; ppNewDeadThis++; }
                         ayDead++;
                         remGamma(remGamma, 0, witnessTail, 1.0);
                         return;
@@ -2214,11 +2256,19 @@ int main(int argc, char **argv) {
                         if (room < 1) continue;
                         int maxm = room < rem ? room : rem;
                         int Ya = (int)Yscr[a];
-                        for (int m = 1; m <= maxm; m++) { Yscr[a] = (int16_t)(Ya + m); self(self, a + 1, rem - m); }
+                        uint64_t hBase = hY ^ (Ya ? mixCV(a, Ya) : 0);       // strip Y[a]'s old contribution once
+                        for (int m = 1; m <= maxm; m++) { Yscr[a] = (int16_t)(Ya + m); self(self, a + 1, rem - m, hBase ^ mixCV(a, Ya + m)); }
                         Yscr[a] = (int16_t)Ya;
                     }
                 };
-                addDelta(addDelta, 0, witnessTail);
+                if (peelProf) {
+                    ppNewDeadThis = 0; ppLeafRun++;
+                    Clock::time_point _ppA = Clock::now();
+                    addDelta(addDelta, 0, witnessTail, hPl);
+                    ppTAddDelta += secs(_ppA, Clock::now());
+                    if (ppNewDeadThis == 0) ppLeafNoop++;
+                } else
+                    addDelta(addDelta, 0, witnessTail, hPl);
                 continue;                                    // leaf done; no slotForbidDiff
             }
             // Record P (updates the stored slot via split) and capture the CHANGED
@@ -2519,6 +2569,23 @@ int main(int argc, char **argv) {
             ayExh, ayTot, ayTot ? 100.0*ayExh/ayTot : 0.0, aySkip ? "ON" : "OFF(measure-only)");
     if (ayMode) fprintf(stderr, "[ay-scale] class-witnesses processed(s-scale)=%lld  credits(work)=%lld  vs #patterns(r-scale)=%lld  -> work/pat=%.1fx  wit/pat=%.1fx\n",
             ayDead, ayCred, (long long)pats.size(), pats.size()?(double)ayCred/pats.size():0.0, pats.size()?(double)ayDead/pats.size():0.0);
+    if (peelProf) {
+        fprintf(stderr, "[peel-prof a_Y] addDelta-leaf-instances=%lld  NO-OP(0 new dead)=%lld (%.1f%%)  | enumerated-Y=%lld newly-dead-Y=%lld  already-dead-Y=%lld (%.1f%% of enumerated)\n",
+                ppLeafRun, ppLeafNoop, ppLeafRun ? 100.0*ppLeafNoop/ppLeafRun : 0.0,
+                ppYEnum, ppYNewDead, ppYEnum - ppYNewDead, ppYEnum ? 100.0*(ppYEnum-ppYNewDead)/ppYEnum : 0.0);
+        fprintf(stderr, "[peel-prof a_Y] time: addDelta=%.2fs  skip-check=%.4fs  peel-total=%.2fs  -> addDelta=%.0f%% of peel\n",
+                ppTAddDelta, ppTSkipChk, secs(T5,T6), secs(T5,T6) > 0 ? 100.0*ppTAddDelta/secs(T5,T6) : 0.0);
+    }
+    if (ppSfd && ppFbInsert) {
+        long long cum = 0; int p50 = 0, p90 = 0, p99 = 0, mx = 0;
+        for (int z = 0; z < 64; z++) if (ppFbHist[z]) mx = z;
+        for (int z = 0; z < 64; z++) { cum += ppFbHist[z];
+            if (!p50 && cum*2 >= ppFbInsert) p50 = z;
+            if (!p90 && cum*10 >= ppFbInsert*9) p90 = z;
+            if (!p99 && cum*100 >= ppFbInsert*99) p99 = z; }
+        fprintf(stderr, "[peel-prof sfd] forbidden-inserts=%lld  controlled_split-fires=%lld (%.2f%%)  | antichain-size-after-insert p50=%d p90=%d p99=%d max=%d (KMAX=%d)\n",
+                ppFbInsert, ppSplitFire, ppFbInsert ? 100.0*ppSplitFire/ppFbInsert : 0.0, p50, p90, p99, mx, KMAX);
+    }
     if (probeAOn) {   // §104 STEP 0 verdict input: distribution of peak per-leaf antichain |A|. p99<=~8 -> LEAN_FEASIBLE; hundreds -> INHERENTLY_HEAVY.
         auto pctv = [&](std::vector<int> &v, double p) -> int { return v.empty() ? 0 : v[std::min((size_t)(p * v.size()), v.size() - 1)]; };
         std::vector<int> sz; for (int l = 0; l < nLeaf; l++) if (probeAMax[l] > 0) sz.push_back(probeAMax[l]);
