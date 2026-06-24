@@ -102,24 +102,46 @@ inline int dsu_find(vector<int> &parent_uf, int x) {
     return x;
 }
 
-// CSV identical in schema to BuildHierarchyR1.cpp::writeHierarchyCsv:
+// Append a signed integer's decimal text to buf (byte-identical to printf
+// "%lld"/"%d"/"%.0f" for an integer-valued double): leading '-' for negatives,
+// no leading zeros, no decimal point. k_birth/k_death/persistence are exact
+// integer cores held in double, so llround is lossless (== the %.0f output).
+inline void appendLL(string &buf, long long v) {
+    if (v < 0) { buf.push_back('-'); v = -v; }
+    char tmp[20]; int n = 0;
+    do { tmp[n++] = char('0' + v % 10); v /= 10; } while (v);
+    while (n) buf.push_back(tmp[--n]);
+}
+
+// CSV identical in schema/bytes to the old fprintf path:
 //   id,k_birth,k_death,parent,size_birth,size_death,persistence
+// Hand-formatted into a growable buffer flushed in big fwrite chunks; replaces
+// the per-node fprintf (the dominant build cost: ~46-53% on dense cells), no
+// content change. All numeric fields are integers (cores are integer curLevels).
 inline bool writeHierarchyCsv(const char *out_path,
                               const vector<HierNode> &nodes,
                               long long min_size,
                               const char *tag) {
     FILE *f = fopen(out_path, "w");
     if (!f) { fprintf(stderr, "PIVOTER_DUMP_HIER: failed to open %s\n", out_path); return false; }
-    fprintf(f, "id,k_birth,k_death,parent,size_birth,size_death,persistence\n");
+    string buf;
+    buf.reserve(1u << 22);                                 // 4 MiB working chunk
+    buf += "id,k_birth,k_death,parent,size_birth,size_death,persistence\n";
     long long written = 0;
     for (const auto &n : nodes) {
         if (n.size_birth < min_size && n.size_death < min_size) continue;
-        const double persistence = n.k_birth - n.k_death;
-        fprintf(f, "%d,%.0f,%.0f,%d,%lld,%lld,%.0f\n",
-                n.id, n.k_birth, n.k_death, n.parent,
-                n.size_birth, n.size_death, persistence);
+        const long long kb = llround(n.k_birth), kd = llround(n.k_death);
+        appendLL(buf, n.id);          buf.push_back(',');
+        appendLL(buf, kb);            buf.push_back(',');
+        appendLL(buf, kd);            buf.push_back(',');
+        appendLL(buf, n.parent);      buf.push_back(',');
+        appendLL(buf, n.size_birth);  buf.push_back(',');
+        appendLL(buf, n.size_death);  buf.push_back(',');
+        appendLL(buf, kb - kd);       buf.push_back('\n');
         ++written;
+        if (buf.size() >= (1u << 21)) { fwrite(buf.data(), 1, buf.size(), f); buf.clear(); }
     }
+    if (!buf.empty()) fwrite(buf.data(), 1, buf.size(), f);
     fclose(f);
     fprintf(stderr, "PIVOTER_DUMP_HIER[%s]: wrote %lld hierarchy nodes (%zu total) to %s\n",
             tag, written, nodes.size(), out_path);
@@ -2599,34 +2621,87 @@ int main(int argc, char **argv) {
         using tuplehier::HierNode;
         using tuplehier::dsu_find;
         auto Thier0 = Clock::now();
+        const bool hierProf = getenv("PIVOTER_HIER_PROFILE") != nullptr;  // attribute build time (zero-cost off)
+        double tAlloc = 0, tSort = 0, tLeaves = 0, tDsu = 0;
+        auto _p0 = Clock::now();
         const int nTup = (int)pats.size();
-        const int dsuN = nTup + nLeaf;
 
-        // DSU + per-component bookkeeping.
+        // ---- (1) Tuple->leaves access, from the SAME source the peel used (so
+        // the forest is bit-identical to the per-tuple path):
+        //   * stored maps -> read patLeaves[pi] in place    (NO copy: zero extra RSS)
+        //   * on-demand   -> patLeavesOnDemand once per tuple into a flat CSR
+        //                    (tlOff/tlAdj), so the main loop touches each incidence
+        //                    O(1) instead of re-paying the intersection per visit.
+        // forEachLeaf(pi, fn) feeds fn each in-range leaf of tuple pi. Also build
+        // the per-leaf tuple count -> only multi-tuple leaves get a DSU connector
+        // (a singleton leaf can never merge two tuples), shrinking the DSU.
+        vector<long long> tlOff;                              // on-demand only
+        vector<int>       tlAdj;                              // on-demand only
+        if (ondemand) {
+            tlOff.assign(nTup + 1, 0);
+            tlAdj.reserve((size_t)nTup);
+            for (int pi = 0; pi < nTup; pi++) {
+                if (pats[pi].core < 0.0) { tlOff[pi + 1] = tlOff[pi]; continue; }
+                const vector<int> &lv = leavesOf(pi);        // intrinsic on-demand recompute (once per tuple)
+                for (int lid : lv) if (lid >= 0 && lid < nLeaf) tlAdj.push_back(lid);
+                tlOff[pi + 1] = (long long)tlAdj.size();
+            }
+            tlAdj.shrink_to_fit();
+        }
+        auto forEachLeaf = [&](int pi, auto &&fn) {
+            if (ondemand) { for (long long t = tlOff[pi]; t < tlOff[pi + 1]; t++) fn(tlAdj[(size_t)t]); }
+            else { for (int lid : patLeaves[pi]) if (lid >= 0 && lid < nLeaf) fn(lid); }
+        };
+        // Per-leaf tuple count -> compact connector ids for leaves hosting >= 2.
+        vector<int> leafTupCnt(nLeaf, 0);
+        for (int pi = 0; pi < nTup; pi++) if (pats[pi].core >= 0.0)
+            forEachLeaf(pi, [&](int lid){ leafTupCnt[lid]++; });
+        vector<int> leafConn(nLeaf, -1);
+        int nConn = 0;
+        for (int lid = 0; lid < nLeaf; lid++) if (leafTupCnt[lid] >= 2) leafConn[lid] = nConn++;
+        const int dsuN = nTup + nConn;
+        leafTupCnt.clear(); leafTupCnt.shrink_to_fit();      // free scratch promptly
+        if (hierProf) { tLeaves += secs(_p0, Clock::now()); _p0 = Clock::now(); }
+
+        // ---- (2) DSU + per-component bookkeeping. int32 indices (dsuN < 2^31);
+        // compSize stays int64 (#r-cliques can reach 1e15). `birth` array dropped:
+        // for any DSU root r, its birth == nodes[state_node[r]].k_birth, so the
+        // elder comparison reads it from the node directly.
         vector<int>       parent_uf(dsuN);
         for (int i = 0; i < dsuN; i++) parent_uf[i] = i;
         vector<long long> compSize(dsuN, 0);                 // #r-cliques in the component
-        vector<double>    birth(dsuN, -std::numeric_limits<double>::infinity());
         vector<int>       state_node(dsuN, -1);              // -> HierNode id of the component
-        vector<char>      leafActive(nLeaf, 0);              // a connector wakes on its 1st (top-core) tuple
+        vector<char>      connActive(nConn, 0);              // a connector wakes on its 1st (top-core) tuple
         vector<HierNode>  nodes;
         nodes.reserve((size_t)nTup / 2 + 16);
+        if (hierProf) { tAlloc += secs(_p0, Clock::now()); _p0 = Clock::now(); }
 
-        // Tuple processing order: core DESC, tie-break tuple index ASC. Tuples
-        // with core < 0 (unreached) are skipped; every peeled tuple has a core.
-        vector<int> order; order.reserve(nTup);
-        for (int pi = 0; pi < nTup; pi++) if (pats[pi].core >= 0.0) order.push_back(pi);
-        std::sort(order.begin(), order.end(), [&](int a, int b) {
-            if (pats[a].core != pats[b].core) return pats[a].core > pats[b].core;
-            return a < b;
-        });
+        // ---- (3) Tuple processing order: core DESC, tie-break index ASC, via a
+        // COUNTING sort on the integer core (curLevel in [0,maxKey+1]) -> O(nTup)
+        // instead of O(nTup log nTup) comparator sort. Stable count-from-low then
+        // emit high-core first keeps the index-ASC tie-break.
+        long long hiCore = 0;
+        for (int pi = 0; pi < nTup; pi++) if (pats[pi].core >= 0.0)
+            hiCore = max(hiCore, (long long)llround(pats[pi].core));
+        vector<int> cnt((size_t)hiCore + 2, 0);
+        long long nOrd = 0;
+        for (int pi = 0; pi < nTup; pi++) if (pats[pi].core >= 0.0) { cnt[(size_t)llround(pats[pi].core)]++; nOrd++; }
+        // prefix so that bucket c occupies the slots ABOVE all higher cores ->
+        // higher core emitted first; within a core, ascending pi (stable scan).
+        long long acc = 0;
+        for (long long c = hiCore; c >= 0; --c) { long long t = cnt[(size_t)c]; cnt[(size_t)c] = (int)acc; acc += t; }
+        vector<int> order((size_t)nOrd);
+        for (int pi = 0; pi < nTup; pi++) if (pats[pi].core >= 0.0)
+            order[(size_t)cnt[(size_t)llround(pats[pi].core)]++] = pi;
+        cnt.clear(); cnt.shrink_to_fit();
+        if (hierProf) { tSort += secs(_p0, Clock::now()); _p0 = Clock::now(); }
 
         // Reusable distinct-roots scratch (the tuple-components to merge at k).
         vector<int>  reps; reps.reserve(64);
         vector<char> seen(dsuN, 0);
         vector<int>  seenClear; seenClear.reserve(64);
-        vector<int>  myLeaves;                               // copy of leavesOf(pi) (may alias scratch)
 
+        Clock::time_point _pl;
         for (int pi : order) {
             const double k = pats[pi].core;
             // (a) Born tuple-components to merge: T itself + every ALREADY-ACTIVE
@@ -2645,23 +2720,25 @@ int main(int argc, char **argv) {
             tn.k_birth = k; tn.k_death = 0; tn.parent = -1;
             tn.size_birth = pats[pi].mult; tn.size_death = pats[pi].mult;
             nodes.push_back(tn);
-            state_node[pi] = tn.id; birth[pi] = k;
+            state_node[pi] = tn.id;
             add_rep(pi);
 
-            const vector<int> &lv = leavesOf(pi);            // may return shared scratch; copy
-            myLeaves.assign(lv.begin(), lv.end());
-            for (int lid : myLeaves)
-                if (lid >= 0 && lid < nLeaf && leafActive[lid])
-                    add_rep(nTup + lid);
+            if (hierProf) _pl = Clock::now();
+            forEachLeaf(pi, [&](int lid) {                    // T's leaves (stored in place, or CSR span)
+                int cn = leafConn[lid];
+                if (cn >= 0 && connActive[cn]) add_rep(nTup + cn);
+            });
 
             // (c) ELDER RULE among the born tuple-components in reps. Elder =
             //     highest birth (tie-break larger rep). Non-elders die at k and
             //     parent to the elder; union all under the elder (union by size).
             if (reps.size() >= 2) {
                 int elder = reps[0];
-                for (int r2 : reps)
-                    if (birth[r2] > birth[elder] || (birth[r2] == birth[elder] && r2 > elder))
-                        elder = r2;
+                double elderB = nodes[state_node[elder]].k_birth;
+                for (int r2 : reps) {
+                    double b2 = nodes[state_node[r2]].k_birth;
+                    if (b2 > elderB || (b2 == elderB && r2 > elder)) { elder = r2; elderB = b2; }
+                }
                 const int elderNode = state_node[elder];
                 for (int r2 : reps) {
                     if (r2 == elder) continue;
@@ -2680,39 +2757,55 @@ int main(int argc, char **argv) {
                 }
                 newRoot = dsu_find(parent_uf, newRoot);
                 state_node[newRoot] = elderNode;
-                birth[newRoot]      = nodes[elderNode].k_birth;
             }
 
             // (d) Activate + union T's component with each of T's leaf-connectors,
             //     so later (lower-core) tuples sharing the leaf merge into it.
             //     Connectors have compSize 0, so the tuple stays the DSU root.
-            for (int lid : myLeaves) {
-                if (lid < 0 || lid >= nLeaf) continue;
-                leafActive[lid] = 1;
+            forEachLeaf(pi, [&](int lid) {
+                int cn = leafConn[lid];
+                if (cn < 0) return;                           // singleton leaf: no connector
+                connActive[cn] = 1;
                 int a = dsu_find(parent_uf, pi);
-                int b = dsu_find(parent_uf, nTup + lid);
-                if (a == b) continue;
+                int b = dsu_find(parent_uf, nTup + cn);
+                if (a == b) return;
                 if (compSize[a] < compSize[b]) std::swap(a, b);
                 parent_uf[b] = a; compSize[a] += compSize[b];
                 state_node[a] = state_node[a] != -1 ? state_node[a] : state_node[b];
-                birth[a] = birth[a] != -std::numeric_limits<double>::infinity() ? birth[a] : birth[b];
-            }
+            });
+            if (hierProf) tDsu += secs(_pl, Clock::now());
         }
+        if (hierProf)
+            fprintf(stderr, "[hier-prof] leaves(materialize)=%.3fs alloc=%.3fs sort=%.3fs dsu+elder=%.3fs\n",
+                    tLeaves, tAlloc, tSort, tDsu);
 
         // Finalize roots' size_death = #r-cliques in their final component.
+        // compSize is accumulated AT the DSU root, so read it there (v == root).
         for (int v = 0; v < nTup; v++) {
             if (state_node[v] < 0 || parent_uf[v] != v) continue;
             const int nid = state_node[v];
-            if (nodes[nid].parent != -1) continue;
+            if (nodes[nid].parent != -1) continue;            // not a forest root
             nodes[nid].size_death = compSize[v];
         }
+
+        // free DSU/CSR scratch before the CSV write (peak-RSS trim).
+        parent_uf.clear(); parent_uf.shrink_to_fit();
+        seen.clear(); seen.shrink_to_fit();
+        connActive.clear(); connActive.shrink_to_fit();
+        leafConn.clear(); leafConn.shrink_to_fit();
+        tlAdj.clear(); tlAdj.shrink_to_fit();
+        tlOff.clear(); tlOff.shrink_to_fit();
+        compSize.clear(); compSize.shrink_to_fit();
+        state_node.clear(); state_node.shrink_to_fit();
 
         // r-mergeable isolated nuclei: one standalone root each (no merges).
         for (auto &mr : hierMergeRoots)
             nodes.push_back({(int)nodes.size(), mr.first, 0.0, -1, mr.second, mr.second});
 
         long long minSz = getenv("PIVOTER_HIER_MINSIZE") ? atoll(getenv("PIVOTER_HIER_MINSIZE")) : 1;
+        auto _pw = Clock::now();
         tuplehier::writeHierarchyCsv(getenv("PIVOTER_DUMP_HIER"), nodes, minSz, "tuple");
+        if (hierProf) fprintf(stderr, "[hier-prof] csv-write=%.3fs\n", secs(_pw, Clock::now()));
         // Compression diagnostics: forest is polynomial; the r-clique-level
         // forest would be Σ Pat.mult nodes (exponential on dense nuclei).
         long long totRC = 0; for (auto &P : pats) totRC += P.mult;
