@@ -12,6 +12,7 @@
 #include <vector>
 #include <map>
 #include <limits>
+#include <cstdlib>
 
 #include "../BK/BronKerboschRmEdge.hpp"
 #include "dataStruct/CliqueHashMap.h"
@@ -438,11 +439,30 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
 
     std::cout << "Largest Core Value: " << coreRClique[std::size(coreRClique) - 1] << std::endl;
 
+    // Parseable per-r-clique core distribution for correctness verification:
+    // must be identical to the default CND engine (NucleusCoreDecompositionRClique).
+    {
+        std::map<long long, long long> cndh_dist;
+        long long cndh_max = 0;
+        for (double cv : coreRClique) {
+            long long k = (long long)(cv + 0.5);
+            cndh_dist[k]++;
+            if (k > cndh_max) cndh_max = k;
+        }
+        for (const auto &kv : cndh_dist)
+            std::cout << "core=" << kv.first << " count=" << kv.second << std::endl;
+        std::cout << "[cnd-hier] Max core: " << cndh_max << std::endl;
+    }
+
 
     std::vector<std::pair<std::vector<daf::Size>, double> > sortedK;
 
     // ================= START OF LOGGING BLOCK (Data Export for Python Vis) =================
     // 目标：导出 Nodes.csv (Id, MaxCore, ClusterId) 和 Edges.csv (Source, Target)
+    // Gated: the in-memory hierarchy is fully built above; this block only
+    // serialises it to CSV. Skipped by default so benchmarks measure the build
+    // (not disk I/O) and never blow up disk on large no-timeout cells.
+    if (std::getenv("PIVOTER_CND_HIER_DUMP")) {
 
     std::string outDir = "case_study_output";
     if (!std::filesystem::exists(outDir)) {
@@ -541,6 +561,7 @@ std::vector<std::pair<std::vector<daf::Size>, double> > NucleusCoreDecomposition
     }
     edgeOfs.close();
     std::cout << "[Logging] Graph edges saved: " << edgePath << std::endl;
+    } // end if PIVOTER_CND_HIER_DUMP
 
     // --- 5. Export Hierarchy Metadata (Optional but useful for stats) ---
     // 仍然保留 Metadata json 以备不时之需，或用于 debugging

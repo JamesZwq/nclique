@@ -1062,6 +1062,24 @@ static void dispatchRefOrDefault(
         return;
     }
 
+    // CND-Hier (baseline): the NuclearCD nested-hierarchy reference engine
+    // (r-clique enumeration + disjoint-set forest). Same r-clique core values
+    // as the default CND engine, plus the elder/nested hierarchy. Core dist +
+    // "[cnd-hier] Max core:" printed inside the engine for verification.
+    // Optional CSV dump gated by PIVOTER_CND_HIER_DUMP (off for benchmarks).
+    if (envSet("PIVOTER_RUN_CND_HIER")) {
+        if (r < 3) {
+            std::cout << "PIVOTER_RUN_CND_HIER requires r>=3" << std::endl;
+            return;
+        }
+        daf::timeCount("CND-Hier r>=3 (NuclearCD nested disjoint-set)", [&]() {
+            auto h = NucleusCoreDecompositionHierarchy(
+                tree, edgeGraph, treeGraphV, r, s, sharedCIPtr);
+            return (int)h.size();
+        });
+        return;
+    }
+
     // Defaults when no PIVOTER_RUN_* env var is set
     if (r == 1) {
         NCliqueVertexCoreDecomposition(tree, edgeGraph, treeGraphV, s);
