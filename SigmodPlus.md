@@ -4905,3 +4905,33 @@ IN-FLIGHT (2026-06-24, background):
       EXACT (corehash bit-identical) + verifier 0/0. Parallelization deferred (not urgent per user).
 PARKED: the on-demand patLeaves host-test discrepancy (SCT_ONDEMAND vs stored cores differ for borderline t>=2; not the
 production path; audit later).
+
+## 116. PEEL-REDUNDANCY OPTIMIZATION: DONE + VERIFIED + MERGED (2026-06-24)
+Resolves §115 in-flight item (2). Commit 85aa9db on main (fast-forward merge of feat/peel-redundancy-cut), single file
+region_native/region_native_sct_peel.cpp (+72/-5).
+
+PROFILE-FIRST (new PIVOTER_PEEL_PROFILE gate). On the hard cells the a_Y DIRECT path (ayMode, default-on when s=r+1,
+witnessTail==1: ca-dblp 6,7 / ca-AstroPh 4,5 5,6 / com-dblp 4,5 are all s=r+1) dominates; cost = addDelta witness-enum DFS
+(NO antichain / controlled_split / support_count: slotForbidDiff=0). Measured on ca-AstroPh (4,5), peel=46.5s=86% of total:
+addDelta=58% of peel; §103 exhausted-leaf skip already drops 30.6% of leaf-instances; of the rest 57.2% are pure NO-OPs
+(zero new dead witnesses), and 75.8% of enumerated witnesses Y are ALREADY DEAD (each cost a dead-set probe + an O(M) hashVec
+for no drop). com-dblp (4,5) confirms (57.4% no-op, 76.6% already-dead, addDelta=64% of peel).
+
+#2 IMPLEMENTED. The already-dead witnesses cannot be skipped exactly without probing the dead-set (the probe is what proves
+death), so make each probe's KEY cheaper: replaced the per-witness O(M) sequential FNV hashVec feeding the a_Y dead-set with a
+position-independent additive fingerprint H(Y)=XOR_{c:Y[c]>0} mix(c,Y[c]) (splitmix64 of a (class,value) seed), threaded O(1)
+through the addDelta/remGamma DFS (single-coord delta = two XORs). The a_Y dead-set is a pure FlatU64 fingerprint set never
+matched against q2p keys, so EXACT; credit/q2p lookups keep FNV. Measured addDelta 6.81s->6.37s (-6.5%) on com-dblp (4,5).
+#3 SKIPPED (profile did not justify). A/B on com-dblp (3,5): KMAX=1 (9.7/10.1s) < KMAX=2 (10.3/10.5s) < KMAX=4 (11.4/11.6s),
+monotone worse -- KMAX=1 already optimal (raising it inflates the dominant 79% affected-Q DFS via larger IE). Left untouched.
+
+CORRECTNESS (independently re-verified by main loop, not just the subagent):
+  - scripts/verify_tuple_hierarchy.py 500 on the rebuilt OPT binary: 0 core mismatch / 0 self-check / 0 hierarchy violation =
+    PASS (ground-truth r-clique nucleus forest; (2,3)+(3,4) instances exercise the s=r+1 ayMode path the change touches).
+  - Bit-identical core distribution OPT vs a freshly-built MAIN binary on a REAL graph: soc-Epinions1-undirected (3,4),
+    26-line distribution + Max core 25, diff empty.
+HONEST PERF: the win is MODEST ~4%, not large. ca-AstroPh (4,5) peel 45.67->43.80s (-4.1%); com-dblp (4,5) 10.69->10.24s
+(-4.3%) [subagent, median-of-3, OMP=1]. Local mac directional check on Epinions (3,4) (NOT an addDelta-heavy cell): OPT
+8.99 vs MAIN 8.92s median = wash within noise (correct -- addDelta is a small fraction there). The dead-set probe (a cache
+miss into a large FlatU64) dominates addDelta, not the hash; the incremental fingerprint removes the O(M) hash but not the
+unavoidable probe, so the redundancy (57% no-op, 76% already-dead) cannot be cut more cheaply. Exact + safe -> kept.
