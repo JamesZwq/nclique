@@ -44,6 +44,17 @@
 //
 // Adversarial self-check (--verify): compares sup(tau) for a sample (or
 // all) tuples against direct s-clique enumeration (ground truth).
+//
+// Build (this file): cd region_native && g++ -O3 -std=c++17 -I. \
+//   -I../src/NucleusDecomposition -o region_native_sct_peel region_native_sct_peel.cpp
+//   (on macOS Apple-clang drop -fopenmp / -march=native; neither is needed here.)
+//
+// PIVOTER_DUMP_HIER=<path>: after the peel, also build the TUPLE-NATIVE
+//   (r,s)-nucleus hierarchy (elder-rule merge forest at tuple granularity) and
+//   write it as CSV (id,k_birth,k_death,parent,size_birth,size_death,persistence;
+//   size = #r-cliques = Σ Pat.mult). Default OFF -> peel output byte-unchanged.
+//   PIVOTER_HIER_MINSIZE=<n>: drop forest nodes whose nucleus never reached n
+//   r-cliques (default 1). Verifier: scripts/verify_tuple_hierarchy.py.
 #include <algorithm>
 #include <functional>
 #include <chrono>
@@ -63,6 +74,59 @@ using Clock = chrono::high_resolution_clock;
 static double secs(Clock::time_point a, Clock::time_point b) {
     return chrono::duration_cast<chrono::duration<double>>(b - a).count();
 }
+
+// ===================== TUPLE-NATIVE NUCLEUS HIERARCHY =====================
+// Elder-rule merge-tree over the (r,s)-nucleus forest, built at TUPLE
+// granularity (one tree node per merging tuple-component, NOT per r-clique),
+// so a nucleus holding C(N,r) r-cliques costs a handful of nodes, not an
+// exponential blow-up. Mechanics mirror src/NucleusDecomposition/
+// BuildHierarchyR1.cpp (dsu_find / HierNode / writeHierarchyCsv / the
+// elder-rule process_event), specialized here to the a_Y Pat/leaf model.
+namespace tuplehier {
+
+struct HierNode {
+    int       id;
+    double    k_birth;
+    double    k_death;
+    int       parent;       // -1 = forest root
+    long long size_birth;   // #r-cliques (Σ Pat.mult) when the node was born
+    long long size_death;   // #r-cliques when it merged into its elder (root: final)
+};
+
+// Path-compressed union-find find. parent_uf[r]==r marks a root.
+inline int dsu_find(vector<int> &parent_uf, int x) {
+    while (parent_uf[x] != x) {
+        parent_uf[x] = parent_uf[parent_uf[x]];
+        x = parent_uf[x];
+    }
+    return x;
+}
+
+// CSV identical in schema to BuildHierarchyR1.cpp::writeHierarchyCsv:
+//   id,k_birth,k_death,parent,size_birth,size_death,persistence
+inline bool writeHierarchyCsv(const char *out_path,
+                              const vector<HierNode> &nodes,
+                              long long min_size,
+                              const char *tag) {
+    FILE *f = fopen(out_path, "w");
+    if (!f) { fprintf(stderr, "PIVOTER_DUMP_HIER: failed to open %s\n", out_path); return false; }
+    fprintf(f, "id,k_birth,k_death,parent,size_birth,size_death,persistence\n");
+    long long written = 0;
+    for (const auto &n : nodes) {
+        if (n.size_birth < min_size && n.size_death < min_size) continue;
+        const double persistence = n.k_birth - n.k_death;
+        fprintf(f, "%d,%.0f,%.0f,%d,%lld,%lld,%.0f\n",
+                n.id, n.k_birth, n.k_death, n.parent,
+                n.size_birth, n.size_death, persistence);
+        ++written;
+    }
+    fclose(f);
+    fprintf(stderr, "PIVOTER_DUMP_HIER[%s]: wrote %lld hierarchy nodes (%zu total) to %s\n",
+            tag, written, nodes.size(), out_path);
+    return true;
+}
+
+}  // namespace tuplehier
 
 // ----- graph (CSR, undirected, 0-indexed; header "n m") -----
 struct Graph {
@@ -315,6 +379,13 @@ int main(int argc, char **argv) {
     // regions -> on sparse graphs that is a tiny fraction of the patterns.
     std::map<double,double> directCoreDist;
     long long nMergeable = 0, nMergedRC = 0;
+    // HIER: each r-mergeable region is an ISOLATED (r,s)-nucleus (its r-cliques are
+    // s-connected only among themselves, never sharing an s-clique with any active
+    // region). The tuple-native hierarchy below represents each such region as one
+    // standalone forest root (core, #r-cliques). Captured ONLY when PIVOTER_DUMP_HIER
+    // is set, so the default fast path is byte-unchanged. Pair = (core, C(|M|,r)).
+    const bool wantHier = getenv("PIVOTER_DUMP_HIER") != nullptr;
+    std::vector<std::pair<double,long long>> hierMergeRoots;
     auto Trm0 = Clock::now();
     if (!getenv("SCT_NO_RMERGE")) {
         int nRall = (int)regions.size();
@@ -391,6 +462,7 @@ int main(int argc, char **argv) {
                 int N = (int)regions[M].size();
                 double cv = (N >= (int)s) ? C(N - r, s - r) : 0.0;
                 directCoreDist[cv] += C(N, r);
+                if (wantHier) hierMergeRoots.push_back({cv, (long long)llround(C(N, r))});
                 nMergeable++; nMergedRC += (long long)llround(C(N, r));
             } else active.push_back(std::move(regions[M]));
         }
@@ -401,6 +473,15 @@ int main(int argc, char **argv) {
         if (regions.empty()) {
             double mx = 0; for (auto &kv : directCoreDist) mx = max(mx, kv.first);
             printf("[sct-peel] Max core: %.0f\n", mx);
+            // HIER (all-mergeable graph): every nucleus is an isolated root.
+            if (wantHier) {
+                vector<tuplehier::HierNode> nodes;
+                nodes.reserve(hierMergeRoots.size());
+                for (auto &mr : hierMergeRoots)
+                    nodes.push_back({(int)nodes.size(), mr.first, 0.0, -1, mr.second, mr.second});
+                long long minSz = getenv("PIVOTER_HIER_MINSIZE") ? atoll(getenv("PIVOTER_HIER_MINSIZE")) : 1;
+                tuplehier::writeHierarchyCsv(getenv("PIVOTER_DUMP_HIER"), nodes, minSz, "tuple");
+            }
             for (auto &kv : directCoreDist) printf("core=%.0f count=%.0f\n", kv.first, kv.second);
             return 0;
         }
@@ -2500,6 +2581,150 @@ int main(int argc, char **argv) {
             (int)dfsPrune, dbgGen, dbgHit, dbgNZ, dbgNZ ? (double)dbgGen/dbgNZ : 0.0);
     printf("[sct-peel] TIMING MCE=%.2f enum=%.2f sct-build+maps=%.2f peel=%.2f total=%.2f\n",
            secs(T1,T2), secs(T3,T4), secs(Tqg0,T5), secs(T5,T6), secs(T1,T6));
+
+    // ===================== TUPLE-NATIVE NUCLEUS HIERARCHY =====================
+    // Build the (r,s)-nucleus forest at TUPLE granularity. Two tuples are
+    // s-CONNECTED iff they share a leaf (co-occur in an s-clique witness). We
+    // run an elder-rule merge-tree (highest-core first) over a DSU whose nodes
+    // are the tuples PLUS one connector node per leaf:
+    //   ids [0 .. nTuples)              = tuples,          compSize = Pat.mult
+    //   ids [nTuples .. nTuples+nLeaf)  = leaf-connectors, compSize 0
+    // A leaf with P tuples then costs O(P) unions (each tuple unions with the
+    // one connector) instead of O(P^2) pairwise tuple edges. Connectors carry
+    // no hierarchy node; union-by-size (compSize 0) keeps a tuple as the root
+    // so state_node always follows a real tuple-component. r-mergeable regions
+    // (peeled out before the SCT) are appended as isolated roots so the forest
+    // covers EVERY r-clique. Gated by PIVOTER_DUMP_HIER; default path untouched.
+    if (wantHier) {
+        using tuplehier::HierNode;
+        using tuplehier::dsu_find;
+        auto Thier0 = Clock::now();
+        const int nTup = (int)pats.size();
+        const int dsuN = nTup + nLeaf;
+
+        // DSU + per-component bookkeeping.
+        vector<int>       parent_uf(dsuN);
+        for (int i = 0; i < dsuN; i++) parent_uf[i] = i;
+        vector<long long> compSize(dsuN, 0);                 // #r-cliques in the component
+        vector<double>    birth(dsuN, -std::numeric_limits<double>::infinity());
+        vector<int>       state_node(dsuN, -1);              // -> HierNode id of the component
+        vector<char>      leafActive(nLeaf, 0);              // a connector wakes on its 1st (top-core) tuple
+        vector<HierNode>  nodes;
+        nodes.reserve((size_t)nTup / 2 + 16);
+
+        // Tuple processing order: core DESC, tie-break tuple index ASC. Tuples
+        // with core < 0 (unreached) are skipped; every peeled tuple has a core.
+        vector<int> order; order.reserve(nTup);
+        for (int pi = 0; pi < nTup; pi++) if (pats[pi].core >= 0.0) order.push_back(pi);
+        std::sort(order.begin(), order.end(), [&](int a, int b) {
+            if (pats[a].core != pats[b].core) return pats[a].core > pats[b].core;
+            return a < b;
+        });
+
+        // Reusable distinct-roots scratch (the tuple-components to merge at k).
+        vector<int>  reps; reps.reserve(64);
+        vector<char> seen(dsuN, 0);
+        vector<int>  seenClear; seenClear.reserve(64);
+        vector<int>  myLeaves;                               // copy of leavesOf(pi) (may alias scratch)
+
+        for (int pi : order) {
+            const double k = pats[pi].core;
+            // (a) Born tuple-components to merge: T itself + every ALREADY-ACTIVE
+            //     leaf-connector in T's hosting leaves (routed to its tuple root).
+            reps.clear();
+            for (int x : seenClear) seen[x] = 0;
+            seenClear.clear();
+            auto add_rep = [&](int node) {
+                int r2 = dsu_find(parent_uf, node);
+                if (!seen[r2]) { seen[r2] = 1; seenClear.push_back(r2); reps.push_back(r2); }
+            };
+            // (b) Activate T (born): compSize = Pat.mult, emit a HierNode at (k,size).
+            compSize[pi] = pats[pi].mult;
+            HierNode tn{};
+            tn.id = (int)nodes.size();
+            tn.k_birth = k; tn.k_death = 0; tn.parent = -1;
+            tn.size_birth = pats[pi].mult; tn.size_death = pats[pi].mult;
+            nodes.push_back(tn);
+            state_node[pi] = tn.id; birth[pi] = k;
+            add_rep(pi);
+
+            const vector<int> &lv = leavesOf(pi);            // may return shared scratch; copy
+            myLeaves.assign(lv.begin(), lv.end());
+            for (int lid : myLeaves)
+                if (lid >= 0 && lid < nLeaf && leafActive[lid])
+                    add_rep(nTup + lid);
+
+            // (c) ELDER RULE among the born tuple-components in reps. Elder =
+            //     highest birth (tie-break larger rep). Non-elders die at k and
+            //     parent to the elder; union all under the elder (union by size).
+            if (reps.size() >= 2) {
+                int elder = reps[0];
+                for (int r2 : reps)
+                    if (birth[r2] > birth[elder] || (birth[r2] == birth[elder] && r2 > elder))
+                        elder = r2;
+                const int elderNode = state_node[elder];
+                for (int r2 : reps) {
+                    if (r2 == elder) continue;
+                    const int childNode = state_node[r2];
+                    nodes[childNode].k_death    = k;
+                    nodes[childNode].size_death = compSize[r2];
+                    nodes[childNode].parent     = elderNode;
+                }
+                int newRoot = elder;
+                for (int r2 : reps) {
+                    int a = dsu_find(parent_uf, newRoot);
+                    int b = dsu_find(parent_uf, r2);
+                    if (a == b) continue;
+                    if (compSize[a] < compSize[b]) std::swap(a, b);
+                    parent_uf[b] = a; compSize[a] += compSize[b]; newRoot = a;
+                }
+                newRoot = dsu_find(parent_uf, newRoot);
+                state_node[newRoot] = elderNode;
+                birth[newRoot]      = nodes[elderNode].k_birth;
+            }
+
+            // (d) Activate + union T's component with each of T's leaf-connectors,
+            //     so later (lower-core) tuples sharing the leaf merge into it.
+            //     Connectors have compSize 0, so the tuple stays the DSU root.
+            for (int lid : myLeaves) {
+                if (lid < 0 || lid >= nLeaf) continue;
+                leafActive[lid] = 1;
+                int a = dsu_find(parent_uf, pi);
+                int b = dsu_find(parent_uf, nTup + lid);
+                if (a == b) continue;
+                if (compSize[a] < compSize[b]) std::swap(a, b);
+                parent_uf[b] = a; compSize[a] += compSize[b];
+                state_node[a] = state_node[a] != -1 ? state_node[a] : state_node[b];
+                birth[a] = birth[a] != -std::numeric_limits<double>::infinity() ? birth[a] : birth[b];
+            }
+        }
+
+        // Finalize roots' size_death = #r-cliques in their final component.
+        for (int v = 0; v < nTup; v++) {
+            if (state_node[v] < 0 || parent_uf[v] != v) continue;
+            const int nid = state_node[v];
+            if (nodes[nid].parent != -1) continue;
+            nodes[nid].size_death = compSize[v];
+        }
+
+        // r-mergeable isolated nuclei: one standalone root each (no merges).
+        for (auto &mr : hierMergeRoots)
+            nodes.push_back({(int)nodes.size(), mr.first, 0.0, -1, mr.second, mr.second});
+
+        long long minSz = getenv("PIVOTER_HIER_MINSIZE") ? atoll(getenv("PIVOTER_HIER_MINSIZE")) : 1;
+        tuplehier::writeHierarchyCsv(getenv("PIVOTER_DUMP_HIER"), nodes, minSz, "tuple");
+        // Compression diagnostics: forest is polynomial; the r-clique-level
+        // forest would be Σ Pat.mult nodes (exponential on dense nuclei).
+        long long totRC = 0; for (auto &P : pats) totRC += P.mult;
+        for (auto &mr : hierMergeRoots) totRC += mr.second;
+        fprintf(stderr, "[hier] tuples=%d forest-nodes=%zu r-cliques=%lld "
+                "compress(rc/forest)=%.1fx compress(rc/tuples)=%.1fx build=%.3fs\n",
+                nTup, nodes.size(), totRC,
+                nodes.empty() ? 0.0 : (double)totRC / (double)nodes.size(),
+                nTup ? (double)totRC / (double)nTup : 0.0,
+                secs(Thier0, Clock::now()));
+    }
+
     // fold in the r-mergeable direct-assigned cores
     for (auto &kv : directCoreDist) coreDist[kv.first] += kv.second;
     double maxCore = 0; for (auto &kv : coreDist) maxCore = max(maxCore, kv.first);
