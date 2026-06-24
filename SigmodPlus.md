@@ -4860,3 +4860,48 @@ PARKED ISSUE (pre-existing a_Y, NOT the hierarchy, user says small/check-later):
   DIFFERENT, run-size-varying core distribution than the stored maps for some borderline t>=2 incidences (the on-demand host
   test patLeavesOnDemand differs from the enumLP-stored host test). On-demand is NOT the production/A-B path. The win-hunt
   results used stored maps + V3LM cross-checks, so unaffected; flag to audit the on-demand host test later.
+
+
+## 115. CLEAN WIN-GRAPH MAP (10 graphs, 5 domains) + the graph-header bug + in-flight experiments (2026-06-24)
+After fixing a GRAPH-HEADER BUG (below) and re-verifying, the authoritative win set is 10 graphs across 5 domains. A WIN =
+CND OOM/timeout (its #r-clique CPI explodes, 18-131GB) while a_Y completes (seconds-minutes, much less memory). The headline is
+MEMORY + FEASIBILITY (a_Y computes cells CND cannot), not raw time speedup. win cell varies by clique size (more r needed to
+explode CND on smaller cliques).
+
+| domain | graph | n | m | win cell | CND@win | a_Y@win |
+|---|---|---|---|---|---|---|
+| web hyperlink (LAW) | web-it-2004 | 509,338 | 7,178,413 | (3,4) | TIMEOUT/OOM 55.8GB | 9s/0.44GB |
+| web hyperlink | web-uk-2005 | 129,632 | 11,744,049 | (3,4) | OOM 130.9GB | 12s/0.35GB |
+| co-authorship | ca-dblp-2010 (maxClq 75) | 226,413 | 716,459 | (5,6) | TIMEOUT 15.6GB | 62s/3.96GB |
+| co-authorship | com-DBLP (maxClq 114) | 317,080 | 1,049,865 | (5,6) | TIMEOUT 62.4GB | 70s/3.74GB |
+| FEM structural | sc-pkustk11 | 87,804 | 2,565,054 | (4,5) | TIMEOUT 62GB | 6s/0.61GB |
+| FEM structural | sc-pwtk | 217,891 | 5,653,221 | (4,5) | OOM 122GB | 30s/3.85GB |
+| FEM structural | sc-nasasrb | 54,870 | 1,311,227 | (4,5) | TIMEOUT 18GB | 33s/4.09GB |
+| FEM structural | sc-ldoor | 909,537 | 20,770,807 | (3,4) | OOM 77.9GB | 24s/2.48GB |
+| CFD fluid (STRONG) | raefsky3 | 21,200 | 733,784 | (4,5) | TIMEOUT 33GB | 0.88s/0.09GB |
+| electromagnetics | gsm_106857 | 589,446 | 10,584,739 | (4,5) | OOM 100GB | 256s/33GB |
+Domains: web hyperlink + co-authorship are mainstream graph-mining datasets; FEM/CFD/EM are mesh/PDE matrices (different
+physics, shared mesh character). NON-wins: PR02R (CFD, marginal -- a_Y 500s, times out at higher cells); web-arabic-2005 (web,
+near-miss -- a_Y 48x faster but CND finishes 413s); cond-mat-2005 + ca-MathSciNet (cliques too small, CND completes all).
+
+>>> GRAPH-HEADER BUG (critical lesson) <<<: agent-converted .edges (NetworkRepository/SuiteSparse via the smallhunt/cfd_sweep
+scripts) had NO "n m" header (line 1 = an edge). CND requires the header (reads line1 as n, then SILENTLY SKIPS every edge with
+a vertex id > n -> "skip the first line" log spam), so CND ran a tiny CORRUPTED subgraph and "won/lost" on garbage. a_Y
+auto-detects n from max vertex, so a_Y read the FULL graph all along. FIX = prepend "n m" (n=maxVertex+1, m=#lines). This bug
+made the FIRST collaboration + CFD/EM results WRONG (collab looked like CND-wins, gsm looked like a CND-win) -- ALL flipped after
+the fix (collab + EM are REAL wins). LESSON: always grep the CND log for "skip the first line" + confirm Node/Edge Size matches
+the real graph before trusting any CND number. The web/FEM original win-hunt files had correct headers (CND did real heavy work),
+so those wins were always valid.
+
+IN-FLIGHT (2026-06-24, background):
+  (1) PAPER MAIN EXPERIMENT (no-timeout): a_Y FIRST then CND on the 10 win graphs x cells (3,4)(3,5)(4,5)(4,6)(5,6)(5,7)(6,7)(6,8),
+      NO time limit (let CND run to COMPLETION or a ~480GB memory-guard kill = real finite time+memory instead of "timeout"),
+      OMP=1, recording total time+RSS AND per-phase breakdown time ([sct-peel] TIMING / CND "took") + per-phase memory
+      ([Memory-Linux] lines). Mild same-box parallelism for small cells (single-thread on 64-96 cores), big cells solo.
+      Server-side setsid drivers + DONE flags at /data/wenqianz/maintbl_<host>/. This is the paper's main results table.
+  (2) PEEL-REDUNDANCY OPTIMIZATION (branch feat/peel-redundancy-cut, NO threading per user): the peel is ~85% of a_Y total on
+      hard cells (ca-dblp 6,7: peel 248s of 289s). Measure-first the redundant support recomputes (pattern Q shares a leaf with
+      peeled P but its support is unchanged -> wasted recompute), then short-circuit / delta them (#2) + tune antichain KMAX (#3),
+      EXACT (corehash bit-identical) + verifier 0/0. Parallelization deferred (not urgent per user).
+PARKED: the on-demand patLeaves host-test discrepancy (SCT_ONDEMAND vs stored cores differ for borderline t>=2; not the
+production path; audit later).
