@@ -568,6 +568,14 @@ double * NCliqueVertexCoreDecomposition_LocalV4_Peel(
 double * NCliqueVertexCoreDecomposition_LocalV4(
     Graph &edgeGraph, daf::CliqueSize k);
 
+// Local H-index V5: V4 + per-leaf leafMinCore cache. Saturated leaves
+// (leafMin >= currentCore) are processed via one nCr lookup instead of
+// full L-scan.
+double * NCliqueVertexCoreDecomposition_LocalV5_Peel(
+    ST_V2_Data &data, daf::CliqueSize k);
+double * NCliqueVertexCoreDecomposition_LocalV5(
+    Graph &edgeGraph, daf::CliqueSize k);
+
 // ST V3 Lean: memory-tighter SPIN★ — drops per-leaf persistent state arrays
 // (leafPivotCount, leafNeedPivot, leafAlive, leafRemainPivots) and recomputes
 // np / old_rp from per-event leaf scans. Saves ~13 bytes/leaf permanent at
@@ -598,6 +606,23 @@ double * NCliqueVertexCoreDecomposition_OnDemand(
 // Must be called BEFORE edgeGraph.beSingleEdge() (needs original graph).
 double * NCliqueVertexCoreDecomposition_Online(
     Graph &edgeGraph, daf::CliqueSize k);
+
+// Profiler: count per-vertex Type A (max-clique) vs Type B (depth-bounded)
+// SDCT leaf membership. Triggered by PIVOTER_PROFILE_MAX_CLIQUE=1.
+void profileMaxCliqueLeaves(Graph &edgeGraph, daf::CliqueSize s);
+
+// SPIN★-Lean R=1: V→L CSR only (drops L→V CSR, ~50% memory saved).
+// Vertex-pull peel: O(d̄ · Σ) time, asymptotically equivalent to V3's
+// O(s · Σ). Must be called BEFORE edgeGraph.beSingleEdge().
+double * NCliqueVertexCoreDecomposition_Lean(
+    Graph &edgeGraph, daf::CliqueSize k);
+
+// SPIN★ Parallel Peel: parallelizes V3's Phase 1 (affected-leaf marking)
+// and Phase 2 (closed-form delta propagation) over OpenMP threads within
+// each peeling round. Operates on the same V3 dual CSR (built by
+// NCliqueVertexCoreDecomposition_ST_V3_Build). Bit-identical to serial V3.
+double * NCliqueVertexCoreDecomposition_ParPeel(
+    ST_V2_Data &d, daf::CliqueSize k);
 
 // PullSkip R=1: V3 dual CSR + per-edge Δub precompute. Peel uses PULL
 // propagation along edges with SKIP predicate; refresh on pop (lazy).

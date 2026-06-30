@@ -247,11 +247,13 @@ static bool needsSDCT(daf::CliqueSize r, bool compareMode) {
     if (compareMode) return true;  // need refTree for correctness comparison
     if (r == 1 && (envSet("PIVOTER_RUN_ST_V2") || envSet("PIVOTER_RUN_ST_V2_PROBE")
                    || envSet("PIVOTER_RUN_ST_V3") || envSet("PIVOTER_RUN_ST_V3_LEAN")
-                   || envSet("PIVOTER_RUN_LOCAL_V4")
+                   || envSet("PIVOTER_RUN_PARPEEL")
+                   || envSet("PIVOTER_RUN_LOCAL_V4") || envSet("PIVOTER_RUN_LOCAL_V5")
                    || envSet("PIVOTER_RUN_INTERLEAVED") || envSet("PIVOTER_RUN_INTERLEAVED_V2")
                    || envSet("PIVOTER_RUN_ONDEMAND") || envSet("PIVOTER_RUN_ONLINE")
                    || envSet("PIVOTER_RUN_PULLSKIP")
-                   || envSet("PIVOTER_RUN_LAZYPOP") || envSet("PIVOTER_RUN_APPROX")))
+                   || envSet("PIVOTER_RUN_LAZYPOP") || envSet("PIVOTER_RUN_APPROX")
+                   || envSet("PIVOTER_RUN_LEAN")))
         return false;
     // R=2 OnDemand needs SDCT (uses tree for Case B BK fallback)
     return true;
@@ -481,6 +483,11 @@ static PreMutationResult preMutationPhase(
 
     PreMutationResult result;
 
+    if (r == 1 && envSet("PIVOTER_PROFILE_MAX_CLIQUE")) {
+        profileMaxCliqueLeaves(edgeGraph, s);
+        std::exit(0);  // profiler-only mode
+    }
+
     if (r == 1 && envSet("PIVOTER_RUN_ST_V2")) {
         result.st_v2_data = std::make_unique<ST_V2_Data>(
             daf::timeCount("ST_V2 Build", [&]() {
@@ -490,6 +497,12 @@ static PreMutationResult preMutationPhase(
     if (r == 1 && envSet("PIVOTER_RUN_ST_V3")) {
         result.st_v2_data = std::make_unique<ST_V3_Data>(
             daf::timeCount("ST_V3 Build", [&]() {
+                return NCliqueVertexCoreDecomposition_ST_V3_Build(edgeGraph, s);
+            }));
+    }
+    if (r == 1 && envSet("PIVOTER_RUN_PARPEEL")) {
+        result.st_v2_data = std::make_unique<ST_V3_Data>(
+            daf::timeCount("ParPeel Build (V3)", [&]() {
                 return NCliqueVertexCoreDecomposition_ST_V3_Build(edgeGraph, s);
             }));
     }
@@ -504,6 +517,12 @@ static PreMutationResult preMutationPhase(
         // memory comparison reflects algorithmic differences only.
         result.st_v2_data = std::make_unique<ST_V3_Data>(
             daf::timeCount("LocalV4 Build", [&]() {
+                return NCliqueVertexCoreDecomposition_ST_V3_Build(edgeGraph, s);
+            }));
+    }
+    if (r == 1 && envSet("PIVOTER_RUN_LOCAL_V5")) {
+        result.st_v2_data = std::make_unique<ST_V3_Data>(
+            daf::timeCount("LocalV5 Build", [&]() {
                 return NCliqueVertexCoreDecomposition_ST_V3_Build(edgeGraph, s);
             }));
     }
@@ -550,6 +569,12 @@ static PreMutationResult preMutationPhase(
             return NCliqueVertexCoreDecomposition_Approx(edgeGraph, s);
         });
     }
+
+    if (r == 1 && envSet("PIVOTER_RUN_LEAN")) {
+        result.interleavedCoreV = daf::timeCount("Lean r=1", [&]() {
+            return NCliqueVertexCoreDecomposition_Lean(edgeGraph, s);
+        });
+    }
     return result;
 }
 
@@ -579,7 +604,8 @@ static bool needsTreeGraphV(daf::CliqueSize r, bool compareMode) {
         || envSet("PIVOTER_RUN_INTERLEAVED") || envSet("PIVOTER_RUN_INTERLEAVED_V2")
         || envSet("PIVOTER_RUN_ONDEMAND") || envSet("PIVOTER_RUN_ONLINE")
         || envSet("PIVOTER_RUN_PULLSKIP")
-        || envSet("PIVOTER_RUN_LAZYPOP") || envSet("PIVOTER_RUN_APPROX")) return false;
+        || envSet("PIVOTER_RUN_LAZYPOP") || envSet("PIVOTER_RUN_APPROX")
+        || envSet("PIVOTER_RUN_LEAN")) return false;
     return true;
 }
 
@@ -656,6 +682,38 @@ static bool dispatchR1(
             delete[] refV;
         }
         dumpCoreValues(coreV, numVertices, "r=1 ST_V2");
+        delete[] coreV;
+        return true;
+    }
+
+    // ParPeel: parallel peel on V3's compact index (dual CSR).
+    if (envSet("PIVOTER_RUN_PARPEEL") && pmr.st_v2_data) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto coreV = daf::timeCount("ParPeel r=1 (peel)", [&]() {
+            return NCliqueVertexCoreDecomposition_ParPeel(*pmr.st_v2_data, s);
+        });
+        if (compareMode) {
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            daf::Size diffCnt = 0;
+            double maxAbsErr = 0.0;
+            for (daf::Size i = 0; i < numVertices; ++i) {
+                double rr = refV[i], tt = coreV[i];
+                if (rr <= 0 && tt <= 0) continue;
+                double diff = std::abs(rr - tt);
+                if (diff > 1e-9) { ++diffCnt; if (diff > maxAbsErr) maxAbsErr = diff; }
+            }
+            if (diffCnt == 0)
+                std::cout << "✓ r=1 ParPeel PER-VERTEX correctness verified ("
+                          << numVertices << " vertices)" << std::endl;
+            else
+                std::cout << "✗ r=1 ParPeel PER-VERTEX MISMATCH: " << diffCnt
+                          << " differ, max|diff|=" << maxAbsErr << std::endl;
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(coreV, numVertices), "r=1 ParPeel");
+            delete[] refV;
+        }
+        dumpCoreValues(coreV, numVertices, "r=1 ParPeel");
         delete[] coreV;
         return true;
     }
@@ -739,6 +797,44 @@ static bool dispatchR1(
         return true;
     }
 
+    // LOCAL_V5: V4 + leafMinCore saturated-leaf filter. Same dual CSR.
+    if (envSet("PIVOTER_RUN_LOCAL_V5") && pmr.st_v2_data) {
+        auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
+        auto tgv2 = compareMode ? treeGraphV.clone() : DynamicGraphSet<TreeGraphNode>();
+        auto coreV = daf::timeCount("Local H-index V5 r=1", [&]() {
+            return NCliqueVertexCoreDecomposition_LocalV5_Peel(*pmr.st_v2_data, s);
+        });
+        if (compareMode) {
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            // Per-vertex strict diff. Treat both-non-positive as equivalent
+            // (different algorithms use different sentinels for "no clique").
+            daf::Size diffCnt = 0;
+            double maxAbsErr = 0.0;
+            for (daf::Size i = 0; i < numVertices; ++i) {
+                double r = refV[i], t = coreV[i];
+                if (r <= 0 && t <= 0) continue;
+                double diff = std::abs(r - t);
+                if (diff > 1e-9) {
+                    ++diffCnt;
+                    if (diff > maxAbsErr) maxAbsErr = diff;
+                }
+            }
+            if (diffCnt == 0) {
+                std::cout << "✓ r=1 LocalV5 PER-VERTEX correctness verified ("
+                          << numVertices << " vertices, positive cores match)" << std::endl;
+            } else {
+                std::cout << "✗ r=1 LocalV5 PER-VERTEX MISMATCH: " << diffCnt
+                          << " differ, max|diff|=" << maxAbsErr << std::endl;
+            }
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(coreV, numVertices), "r=1 Local H-index V5");
+            delete[] refV;
+        }
+        dumpCoreValues(coreV, numVertices, "r=1 Local H-index V5");
+        delete[] coreV;
+        return true;
+    }
+
     // ST_V3 Lean: same Build pipeline, lean Peel (no per-leaf persistent state)
     if (envSet("PIVOTER_RUN_ST_V3_LEAN") && pmr.st_v2_data) {
         auto t2 = compareMode ? tree.clone() : DynamicGraph<TreeGraphNode>();
@@ -804,12 +900,70 @@ static bool dispatchR1(
         return true;
     }
 
+    // Lean: already ran in preMutationPhase, just compare result
+    if (envSet("PIVOTER_RUN_LEAN") && pmr.interleavedCoreV) {
+        if (compareMode) {
+            auto t2 = tree.clone();
+            auto tgv2 = treeGraphV.clone();
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            daf::Size diffCnt = 0;
+            double maxAbsErr = 0.0;
+            for (daf::Size i = 0; i < numVertices; ++i) {
+                double r = refV[i], t = pmr.interleavedCoreV[i];
+                if (r <= 0 && t <= 0) continue;
+                double diff = std::abs(r - t);
+                if (diff > 1e-9) { ++diffCnt; if (diff > maxAbsErr) maxAbsErr = diff; }
+            }
+            if (diffCnt == 0) {
+                std::cout << "✓ r=1 Lean PER-VERTEX correctness verified ("
+                          << numVertices << " vertices)" << std::endl;
+            } else {
+                std::cout << "✗ r=1 Lean PER-VERTEX MISMATCH: " << diffCnt
+                          << " differ, max|diff|=" << maxAbsErr << std::endl;
+            }
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(pmr.interleavedCoreV, numVertices), "r=1 Lean");
+            delete[] refV;
+        }
+        dumpCoreValues(pmr.interleavedCoreV, numVertices, "r=1 Lean");
+        delete[] pmr.interleavedCoreV;
+        pmr.interleavedCoreV = nullptr;
+        return true;
+    }
+
     // LazyPop: already ran in preMutationPhase, just compare result
     if (envSet("PIVOTER_RUN_LAZYPOP") && pmr.interleavedCoreV) {
         if (compareMode) {
             auto t2 = tree.clone();
             auto tgv2 = treeGraphV.clone();
             auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            // Per-vertex strict diff (distribution check alone can hide
+            // swap bugs where two vertices exchange core values).
+            daf::Size diffCnt = 0;
+            double maxAbsErr = 0.0, sumAbsErr = 0.0;
+            daf::Size firstDiff = (daf::Size)-1;
+            for (daf::Size i = 0; i < numVertices; ++i) {
+                double diff = std::abs(refV[i] - pmr.interleavedCoreV[i]);
+                if (diff > 1e-9) {
+                    if (firstDiff == (daf::Size)-1) firstDiff = i;
+                    ++diffCnt;
+                    sumAbsErr += diff;
+                    if (diff > maxAbsErr) maxAbsErr = diff;
+                }
+            }
+            if (diffCnt == 0) {
+                std::cout << "✓ r=1 LazyPop PER-VERTEX correctness verified ("
+                          << numVertices << " vertices, all match)" << std::endl;
+            } else {
+                std::cout << "✗ r=1 LazyPop PER-VERTEX MISMATCH: "
+                          << diffCnt << "/" << numVertices << " vertices differ"
+                          << "; max|diff|=" << maxAbsErr
+                          << ", mean|diff|=" << (sumAbsErr / diffCnt)
+                          << "; first diff at vid=" << firstDiff
+                          << " (ref=" << refV[firstDiff]
+                          << " test=" << pmr.interleavedCoreV[firstDiff] << ")"
+                          << std::endl;
+            }
             checkDist(buildCoreDistFromArray(refV, numVertices),
                       buildCoreDistFromArray(pmr.interleavedCoreV, numVertices), "r=1 LazyPop");
             delete[] refV;
