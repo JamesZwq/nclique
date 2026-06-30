@@ -363,7 +363,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 auto hint = buckets.begin();
                 for (size_t i = 0; i < insertPairs.size(); ) {
                     int64_t key = insertPairs[i].first;
-                    hint = buckets.try_emplace(hint, key, std::vector<daf::Size>{}).first;
+                    hint = buckets.try_emplace(hint, key, std::vector<daf::Size>{});
                     auto &vec = hint->second;
                     ++totalGroups;
                     size_t j = i;
