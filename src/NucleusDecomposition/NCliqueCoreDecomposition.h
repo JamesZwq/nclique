@@ -593,6 +593,30 @@ double * NCliqueVertexCoreDecomposition_InterleavedV2(
 double * NCliqueVertexCoreDecomposition_OnDemand(
     Graph &edgeGraph, daf::CliqueSize k);
 
+// Online R=1: zero CSR storage; levelwise peel via repeated SDCT re-walks.
+// Memory O(n); time O(K * Sigma_walk), K = #distinct popped core levels.
+// Must be called BEFORE edgeGraph.beSingleEdge() (needs original graph).
+double * NCliqueVertexCoreDecomposition_Online(
+    Graph &edgeGraph, daf::CliqueSize k);
+
+// PullSkip R=1: V3 dual CSR + per-edge Δub precompute. Peel uses PULL
+// propagation along edges with SKIP predicate; refresh on pop (lazy).
+// Same memory as V3 + O(m) edge UB. Must be called BEFORE beSingleEdge().
+double * NCliqueVertexCoreDecomposition_PullSkip(
+    Graph &edgeGraph, daf::CliqueSize k);
+
+// LazyPop R=1: V3 build, NO Δub precompute, NO peel-time vertex propagation.
+// Per-leaf state still maintained; refresh u (walk u's leaves) only on pop.
+// Same memory as V3. Exact.
+double * NCliqueVertexCoreDecomposition_LazyPop(
+    Graph &edgeGraph, daf::CliqueSize k);
+
+// Approx R=1: V3 build + per-edge Δub. Per peel of v: support[u] -= Δub[v,u]
+// blindly, no refresh. Cores systematically under-assigned (LOWER bound).
+// APPROXIMATE — use only when exact cores are not required.
+double * NCliqueVertexCoreDecomposition_Approx(
+    Graph &edgeGraph, daf::CliqueSize k);
+
 // OnDemand R=2: CSR-based init + Case A/C closed-form delta + Case B BK fallback
 // Same interface as other R=2 variants (needs tree for Case B)
 std::vector<std::pair<std::pair<daf::Size, daf::Size>, int>>

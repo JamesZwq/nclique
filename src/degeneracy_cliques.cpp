@@ -249,7 +249,9 @@ static bool needsSDCT(daf::CliqueSize r, bool compareMode) {
                    || envSet("PIVOTER_RUN_ST_V3") || envSet("PIVOTER_RUN_ST_V3_LEAN")
                    || envSet("PIVOTER_RUN_LOCAL_V4")
                    || envSet("PIVOTER_RUN_INTERLEAVED") || envSet("PIVOTER_RUN_INTERLEAVED_V2")
-                   || envSet("PIVOTER_RUN_ONDEMAND")))
+                   || envSet("PIVOTER_RUN_ONDEMAND") || envSet("PIVOTER_RUN_ONLINE")
+                   || envSet("PIVOTER_RUN_PULLSKIP")
+                   || envSet("PIVOTER_RUN_LAZYPOP") || envSet("PIVOTER_RUN_APPROX")))
         return false;
     // R=2 OnDemand needs SDCT (uses tree for Case B BK fallback)
     return true;
@@ -524,6 +526,30 @@ static PreMutationResult preMutationPhase(
             return NCliqueVertexCoreDecomposition_OnDemand(edgeGraph, s);
         });
     }
+
+    if (r == 1 && envSet("PIVOTER_RUN_ONLINE")) {
+        result.interleavedCoreV = daf::timeCount("Online r=1", [&]() {
+            return NCliqueVertexCoreDecomposition_Online(edgeGraph, s);
+        });
+    }
+
+    if (r == 1 && envSet("PIVOTER_RUN_PULLSKIP")) {
+        result.interleavedCoreV = daf::timeCount("PullSkip r=1", [&]() {
+            return NCliqueVertexCoreDecomposition_PullSkip(edgeGraph, s);
+        });
+    }
+
+    if (r == 1 && envSet("PIVOTER_RUN_LAZYPOP")) {
+        result.interleavedCoreV = daf::timeCount("LazyPop r=1", [&]() {
+            return NCliqueVertexCoreDecomposition_LazyPop(edgeGraph, s);
+        });
+    }
+
+    if (r == 1 && envSet("PIVOTER_RUN_APPROX")) {
+        result.interleavedCoreV = daf::timeCount("Approx r=1", [&]() {
+            return NCliqueVertexCoreDecomposition_Approx(edgeGraph, s);
+        });
+    }
     return result;
 }
 
@@ -551,7 +577,9 @@ static bool needsTreeGraphV(daf::CliqueSize r, bool compareMode) {
     // r=1: ST, ST_V2, Interleaved, OnDemand can skip treeGraphV
     if (envSet("PIVOTER_RUN_ST") || envSet("PIVOTER_RUN_ST_V2")
         || envSet("PIVOTER_RUN_INTERLEAVED") || envSet("PIVOTER_RUN_INTERLEAVED_V2")
-        || envSet("PIVOTER_RUN_ONDEMAND")) return false;
+        || envSet("PIVOTER_RUN_ONDEMAND") || envSet("PIVOTER_RUN_ONLINE")
+        || envSet("PIVOTER_RUN_PULLSKIP")
+        || envSet("PIVOTER_RUN_LAZYPOP") || envSet("PIVOTER_RUN_APPROX")) return false;
     return true;
 }
 
@@ -755,6 +783,83 @@ static bool dispatchR1(
                       buildCoreDistFromArray(pmr.interleavedCoreV, numVertices), "r=1 OnDemand");
             delete[] refV;
         }
+        delete[] pmr.interleavedCoreV;
+        pmr.interleavedCoreV = nullptr;
+        return true;
+    }
+
+    // PullSkip: already ran in preMutationPhase, just compare result
+    if (envSet("PIVOTER_RUN_PULLSKIP") && pmr.interleavedCoreV) {
+        if (compareMode) {
+            auto t2 = tree.clone();
+            auto tgv2 = treeGraphV.clone();
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(pmr.interleavedCoreV, numVertices), "r=1 PullSkip");
+            delete[] refV;
+        }
+        dumpCoreValues(pmr.interleavedCoreV, numVertices, "r=1 PullSkip");
+        delete[] pmr.interleavedCoreV;
+        pmr.interleavedCoreV = nullptr;
+        return true;
+    }
+
+    // LazyPop: already ran in preMutationPhase, just compare result
+    if (envSet("PIVOTER_RUN_LAZYPOP") && pmr.interleavedCoreV) {
+        if (compareMode) {
+            auto t2 = tree.clone();
+            auto tgv2 = treeGraphV.clone();
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(pmr.interleavedCoreV, numVertices), "r=1 LazyPop");
+            delete[] refV;
+        }
+        dumpCoreValues(pmr.interleavedCoreV, numVertices, "r=1 LazyPop");
+        delete[] pmr.interleavedCoreV;
+        pmr.interleavedCoreV = nullptr;
+        return true;
+    }
+
+    // Approx: APPROXIMATE — compare may show mismatch (expected).
+    if (envSet("PIVOTER_RUN_APPROX") && pmr.interleavedCoreV) {
+        if (compareMode) {
+            auto t2 = tree.clone();
+            auto tgv2 = treeGraphV.clone();
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            // Report core-by-core absolute error stats since exact match
+            // is not expected for approximate cores.
+            double maxAbsErr = 0, sumAbsErr = 0;
+            daf::Size diffCnt = 0;
+            for (daf::Size i = 0; i < numVertices; ++i) {
+                double diff = std::abs(refV[i] - pmr.interleavedCoreV[i]);
+                if (diff > 0) { ++diffCnt; sumAbsErr += diff; if (diff > maxAbsErr) maxAbsErr = diff; }
+            }
+            std::cout << "Approx vs V3-ref: " << diffCnt << "/" << numVertices
+                      << " vertices differ; sum|diff|=" << sumAbsErr
+                      << ", max|diff|=" << maxAbsErr
+                      << ", mean|diff|=" << (diffCnt ? sumAbsErr/diffCnt : 0.0)
+                      << std::endl;
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(pmr.interleavedCoreV, numVertices), "r=1 Approx");
+            delete[] refV;
+        }
+        dumpCoreValues(pmr.interleavedCoreV, numVertices, "r=1 Approx");
+        delete[] pmr.interleavedCoreV;
+        pmr.interleavedCoreV = nullptr;
+        return true;
+    }
+
+    // Online: already ran in preMutationPhase, just compare result
+    if (envSet("PIVOTER_RUN_ONLINE") && pmr.interleavedCoreV) {
+        if (compareMode) {
+            auto t2 = tree.clone();
+            auto tgv2 = treeGraphV.clone();
+            auto refV = NCliqueVertexCoreDecomposition(t2, edgeGraph, tgv2, s);
+            checkDist(buildCoreDistFromArray(refV, numVertices),
+                      buildCoreDistFromArray(pmr.interleavedCoreV, numVertices), "r=1 Online");
+            delete[] refV;
+        }
+        dumpCoreValues(pmr.interleavedCoreV, numVertices, "r=1 Online");
         delete[] pmr.interleavedCoreV;
         pmr.interleavedCoreV = nullptr;
         return true;
