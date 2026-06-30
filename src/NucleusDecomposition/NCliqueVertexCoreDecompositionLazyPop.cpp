@@ -29,10 +29,118 @@
 
 extern double nCr[1001][401];
 
+// =====================================================================
+// LazyPop Lean Build: ONLY V→L CSR (vtxLeafOff/Ids/IsPivot) +
+// per-leaf metadata. Skips L→V CSR (leafVtx*) entirely; LazyPop peel
+// never reads it. Saves ~half the dual-CSR memory at build peak.
+// =====================================================================
+static ST_V2_Data lazypop_leanBuild(Graph& edgeGraph, daf::CliqueSize k)
+{
+    auto t_start = std::chrono::high_resolution_clock::now();
+
+    ST_V2_Data d;
+    d.numVertices = edgeGraph.getGraphNodeSize();
+
+    struct COOEntry {
+        daf::Size vertex;
+        daf::Size leafId;
+        uint8_t   isPivot;
+    };
+    std::vector<COOEntry> cooBuf;
+    cooBuf.reserve(1 << 20);
+
+    d.countingV = new double[d.numVertices];
+    std::memset(d.countingV, 0, d.numVertices * sizeof(double));
+
+    d.numLeaves = SDCT_Augmented_NoTree(edgeGraph, k, /*min_k=*/1,
+        [&](daf::Size leafId,
+            const daf::StaticVector<int>& keepV,
+            const daf::StaticVector<int>& dropV)
+        {
+            int pivotC = (int)dropV.size();
+            int keepC  = (int)keepV.size();
+            int needP  = (int)k - keepC;
+
+            if (leafId >= d.leafPivotCount.size()) {
+                size_t newSz = std::max<size_t>(leafId + 1,
+                                                d.leafPivotCount.size() * 2);
+                d.leafPivotCount.resize(newSz, 0);
+                d.leafNeedPivot.resize(newSz, 0);
+            }
+            d.leafPivotCount[leafId] = pivotC;
+            d.leafNeedPivot[leafId]  = needP;
+
+            double wKeep  = (needP >= 0 && needP <= pivotC) ? nCr[pivotC][needP] : 0.0;
+            double wPivot = (needP >= 1 && pivotC >= 1) ? nCr[pivotC - 1][needP - 1] : 0.0;
+
+            for (int i = 0; i < keepC; ++i) {
+                daf::Size v = keepV[i];
+                d.countingV[v] += wKeep;
+                cooBuf.push_back({v, leafId, 0});
+            }
+            for (int i = 0; i < pivotC; ++i) {
+                daf::Size v = dropV[i];
+                d.countingV[v] += wPivot;
+                cooBuf.push_back({v, leafId, 1});
+            }
+        });
+
+    d.leafPivotCount.resize(d.numLeaves);
+    d.leafNeedPivot.resize(d.numLeaves);
+
+    auto t_sdct = std::chrono::high_resolution_clock::now();
+    std::cout << "LazyPop-Lean: SDCT+callback took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t_sdct - t_start).count()
+              << " ms, leaves=" << d.numLeaves
+              << ", COO entries=" << cooBuf.size() << std::endl;
+    daf::phaseMark("LazyPop_Lean_SDCT",
+                   (long)(cooBuf.capacity() * sizeof(COOEntry)));
+
+    // ---- Build ONLY V→L CSR (vtxLeafOff/Ids/IsPivot). L→V skipped. ----
+    d.vtxLeafOff.assign(d.numVertices + 2, 0);
+    for (auto& e : cooBuf)
+        if (e.vertex < d.numVertices) d.vtxLeafOff[e.vertex + 1]++;
+    for (daf::Size i = 1; i <= d.numVertices; ++i)
+        d.vtxLeafOff[i] += d.vtxLeafOff[i - 1];
+
+    const size_t totalIncidence = d.vtxLeafOff[d.numVertices];
+    d.vtxLeafIds.resize(totalIncidence);
+    d.vtxLeafIsPivot.assign((totalIncidence + 63) >> 6, 0);
+    {
+        std::vector<size_t> pos(d.numVertices, 0);
+        for (auto& e : cooBuf) {
+            daf::Size v = e.vertex;
+            if (v < d.numVertices) {
+                size_t p = d.vtxLeafOff[v] + pos[v]++;
+                d.vtxLeafIds[p] = e.leafId;
+                if (e.isPivot) STV3_setBit(d.vtxLeafIsPivot, p);
+            }
+        }
+    }
+    std::vector<COOEntry>().swap(cooBuf);
+
+    auto t_csr = std::chrono::high_resolution_clock::now();
+    std::cout << "LazyPop-Lean: V→L CSR built in "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t_csr - t_sdct).count()
+              << " ms (L→V skipped: saves ~50% dual-CSR)" << std::endl;
+    daf::log_memory("LazyPop-Lean after V→L CSR");
+
+    const long bytesVtxLeaf = (long)(d.vtxLeafOff.capacity() * sizeof(d.vtxLeafOff[0])
+                            + d.vtxLeafIds.capacity() * sizeof(d.vtxLeafIds[0])
+                            + d.vtxLeafIsPivot.capacity() * sizeof(d.vtxLeafIsPivot[0]));
+    const long bytesSupport = (long)(d.numVertices * sizeof(double));
+    const long bytesLeafMeta = (long)(d.leafPivotCount.capacity() * sizeof(int)
+                            + d.leafNeedPivot.capacity() * sizeof(int));
+    daf::phaseMark("LazyPop_Lean_CSR", bytesVtxLeaf + bytesSupport + bytesLeafMeta);
+
+    return d;
+}
+
+
 double* NCliqueVertexCoreDecomposition_LazyPop(Graph& g, daf::CliqueSize s) {
     auto t0 = std::chrono::high_resolution_clock::now();
 
-    auto d = NCliqueVertexCoreDecomposition_ST_V3_Build(g, s);
+    auto d = lazypop_leanBuild(g, s);
     auto t1 = std::chrono::high_resolution_clock::now();
 
     const daf::Size n = d.numVertices;
@@ -198,12 +306,17 @@ double* NCliqueVertexCoreDecomposition_LazyPop(Graph& g, daf::CliqueSize s) {
     }
 
     auto tEnd = std::chrono::high_resolution_clock::now();
-    std::cout << "LazyPop: V3 Build "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << " ms"
+    auto build_us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+    auto peel_us  = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tPeel0).count();
+    std::cout << "LazyPop: Lean Build "
+              << (build_us / 1000) << " ms"
               << ", peel "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tPeel0).count() << " ms"
+              << (peel_us / 1000) << " ms"
               << " (pop_refresh=" << popRefreshCnt
               << ", pop_bounce=" << popBounceCnt << ")" << std::endl;
+    // Microsecond-precision lines for the bench harness (small-peel cells).
+    std::cout << "LAZYPOP_BUILD_US: " << build_us << std::endl;
+    std::cout << "LAZYPOP_PEEL_US: "  << peel_us  << std::endl;
     daf::phaseMark("LazyPop_peel");
 
     delete[] support;

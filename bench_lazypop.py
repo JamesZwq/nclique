@@ -29,7 +29,7 @@ LOGDIR = Path("bench_lazypop_logs")
 RUNS_PER_CFG = 3
 
 FIELDS = ["graph", "s", "algo", "trial", "status",
-          "total_ms", "build_ms", "peel_ms", "peak_rss_kB",
+          "total_ms", "build_ms", "peel_ms", "peel_us", "peak_rss_kB",
           "pop_refresh", "pop_bounce", "note"]
 
 # (graph_stem, [s values to test]) per server.
@@ -66,20 +66,24 @@ _NUM = r'[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?'
 _RE_TOTAL_NCD = re.compile(rf'NucleusCoreDecomposition took:\s*({_NUM})')
 _RE_V3_BUILD  = re.compile(rf'ST_V3 Build took:\s*({_NUM})\s*ms')
 _RE_V3_PEEL   = re.compile(rf'ST_V[23]\s+r=1\s+\(peel\)\s+took:\s*({_NUM})\s*ms')
+_RE_V3_US     = re.compile(rf'STV3_PEEL_US:\s*(\d+)')
 _RE_LZ_LINE   = re.compile(
-    rf'LazyPop:\s+V3 Build\s+({_NUM})\s*ms,\s*peel\s+({_NUM})\s*ms\s*'
+    rf'LazyPop:\s+(?:Lean|V3)\s+Build\s+({_NUM})\s*ms,\s*peel\s+({_NUM})\s*ms\s*'
     rf'\(pop_refresh=(\d+),\s*pop_bounce=(\d+)\)'
 )
 _RE_LZ_TOTAL  = re.compile(rf'LazyPop r=1 took:\s*({_NUM})')
+_RE_LZ_BUILD_US = re.compile(rf'LAZYPOP_BUILD_US:\s*(\d+)')
+_RE_LZ_PEEL_US  = re.compile(rf'LAZYPOP_PEEL_US:\s*(\d+)')
 _RE_RSS = re.compile(rf'Maximum resident set size[^:]*:\s*({_NUM})')
 
 def parse(stdout: str, stderr: str, algo: str) -> dict:
-    out = {"total_ms": "", "build_ms": "", "peel_ms": "",
+    out = {"total_ms": "", "build_ms": "", "peel_ms": "", "peel_us": "",
            "peak_rss_kB": "", "pop_refresh": "", "pop_bounce": ""}
     txt = stdout + "\n" + stderr
     if algo == "V3":
         if (m := _RE_V3_BUILD.search(txt)): out["build_ms"] = m.group(1)
         if (m := _RE_V3_PEEL.search(txt)):  out["peel_ms"]  = m.group(1)
+        if (m := _RE_V3_US.search(txt)):    out["peel_us"]  = m.group(1)
         if (m := _RE_TOTAL_NCD.search(txt)): out["total_ms"] = m.group(1)
     else:
         if (m := _RE_LZ_LINE.search(txt)):
@@ -87,6 +91,11 @@ def parse(stdout: str, stderr: str, algo: str) -> dict:
             out["peel_ms"]     = m.group(2)
             out["pop_refresh"] = m.group(3)
             out["pop_bounce"]  = m.group(4)
+        if (m := _RE_LZ_BUILD_US.search(txt)):
+            # Override ms build with μs-derived (more precise) if present.
+            out["build_ms"] = f"{int(m.group(1)) / 1000:.3f}"
+        if (m := _RE_LZ_PEEL_US.search(txt)):
+            out["peel_us"] = m.group(1)
         if (m := _RE_LZ_TOTAL.search(txt)): out["total_ms"] = m.group(1)
     if (m := _RE_RSS.search(stderr)): out["peak_rss_kB"] = m.group(1)
     return out
@@ -174,7 +183,8 @@ def main():
                     n += 1
                     print(f"  [{n}/{total}] {graph} s={s} {algo} t={trial}: "
                           f"{r.get('status')} total={r.get('total_ms','?')} "
-                          f"build={r.get('build_ms','?')} peel={r.get('peel_ms','?')} "
+                          f"build={r.get('build_ms','?')} peel={r.get('peel_ms','?')}ms"
+                          f"/{r.get('peel_us','?')}us "
                           f"rss={r.get('peak_rss_kB','?')}",
                           flush=True)
     print("\n=== DONE ===", flush=True)

@@ -397,8 +397,13 @@ double * NCliqueVertexCoreDecomposition_ST_V3_Peel(ST_V2_Data &d, daf::CliqueSiz
         currentRemoveVertexIds.clear();
     }
 
-    std::cout << "ST_V2 peeling time: " << std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::high_resolution_clock::now() - time_start).count() << " ms" << std::endl;
+    {
+        auto _peel_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::high_resolution_clock::now() - time_start).count();
+        std::cout << "ST_V2 peeling time: " << (_peel_us / 1000) << " ms" << std::endl;
+        // Microsecond-precision line for the bench harness (small-peel cells).
+        std::cout << "STV3_PEEL_US: " << _peel_us << std::endl;
+    }
 
     daf::phaseMark("STV3_peel_loop");
 
