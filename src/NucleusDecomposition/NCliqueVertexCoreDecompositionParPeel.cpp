@@ -131,16 +131,9 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
         remainingInHeap++;
     }
 
-    // Serial insert of a dirty vertex into its new (decreased-key) bucket.
-    // The matching removal was already done in Phase 2 via tombstoning.
-    auto bucketInsert = [&](daf::Size id) {
-        int64_t newB = supportToKey(countingV[id]);
-        auto &newVec = buckets[newB];
-        bucket_of[id] = newB;
-        pos_in_bucket[id] = newVec.size();
-        bucket_vec[id] = &newVec;
-        newVec.push_back(id);
-    };
+    // Scratch buffer for the per-round sort-and-grouped-insert.
+    std::vector<std::pair<int64_t, daf::Size>> insertPairs;
+    insertPairs.reserve(1 << 16);
 
     // Per-leaf affected flag + per-vertex dirty flag (CAS-deduped).
     std::vector<uint8_t> leafAffected(numLeaves, 0);
@@ -349,11 +342,31 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 t_phase2 += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tp2c).count();
 
                 auto tb0 = clk::now();
-                // Serial re-insert: tombstone removal was already done in
-                // Phase 2; here we only append each dirty vertex to its new
-                // (decreased-key) bucket.
-                for (auto v : dirtyVertices) {
-                    if (vertexInHeap[v]) bucketInsert(v);
+                // Re-insert dirty vertices into their new (decreased-key)
+                // buckets. Tombstone removal already happened in Phase 2.
+                // Sort by new key so equal-key runs share a single std::map
+                // lookup and append contiguously (cuts map ops from O(#dirty)
+                // to O(#distinct keys); each append is O(1)).
+                insertPairs.clear();
+                for (auto v : dirtyVertices)
+                    if (vertexInHeap[v])
+                        insertPairs.push_back({supportToKey(countingV[v]), v});
+                std::sort(insertPairs.begin(), insertPairs.end(),
+                          [](const std::pair<int64_t,daf::Size> &a,
+                             const std::pair<int64_t,daf::Size> &b){ return a.first < b.first; });
+                for (size_t i = 0; i < insertPairs.size(); ) {
+                    int64_t key = insertPairs[i].first;
+                    auto &vec = buckets[key];          // one map lookup per run
+                    size_t j = i;
+                    while (j < insertPairs.size() && insertPairs[j].first == key) {
+                        daf::Size v = insertPairs[j].second;
+                        bucket_of[v] = key;
+                        pos_in_bucket[v] = vec.size();
+                        bucket_vec[v] = &vec;
+                        vec.push_back(v);
+                        ++j;
+                    }
+                    i = j;
                 }
                 t_bucket += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tb0).count();
                 auto tcl = clk::now();
