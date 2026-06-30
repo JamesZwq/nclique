@@ -355,11 +355,17 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 std::sort(insertPairs.begin(), insertPairs.end(),
                           [](const std::pair<int64_t,daf::Size> &a,
                              const std::pair<int64_t,daf::Size> &b){ return a.first < b.first; });
+                // insertPairs is sorted ascending by key; since we visit
+                // distinct keys in increasing order, the previous map node is
+                // a correct hint for the next try_emplace -> amortized O(1)
+                // per distinct key instead of O(log) (the 2.6M std::map
+                // red-black lookups were the dominant serial cost).
+                auto hint = buckets.begin();
                 for (size_t i = 0; i < insertPairs.size(); ) {
                     int64_t key = insertPairs[i].first;
-                    auto &vec = buckets[key];          // one map lookup per run
+                    hint = buckets.try_emplace(hint, key, std::vector<daf::Size>{}).first;
+                    auto &vec = hint->second;
                     ++totalGroups;
-                    totalInserts += 0;
                     size_t j = i;
                     while (j < insertPairs.size() && insertPairs[j].first == key) {
                         daf::Size v = insertPairs[j].second;
