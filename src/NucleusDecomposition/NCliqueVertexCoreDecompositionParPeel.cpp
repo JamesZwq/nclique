@@ -169,6 +169,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
 
     double minCore = 0;
     long long roundCount = 0;
+    long long totalGroups = 0, totalInserts = 0;
 
     // Shared loop state (written in single regions, read after barriers).
     bool   finished = false;
@@ -357,6 +358,8 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 for (size_t i = 0; i < insertPairs.size(); ) {
                     int64_t key = insertPairs[i].first;
                     auto &vec = buckets[key];          // one map lookup per run
+                    ++totalGroups;
+                    totalInserts += 0;
                     size_t j = i;
                     while (j < insertPairs.size() && insertPairs[j].first == key) {
                         daf::Size v = insertPairs[j].second;
@@ -364,7 +367,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                         pos_in_bucket[v] = vec.size();
                         bucket_vec[v] = &vec;
                         vec.push_back(v);
-                        ++j;
+                        ++j; ++totalInserts;
                     }
                     i = j;
                 }
@@ -390,6 +393,10 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
               << " bucket=" << (t_bucket/1000) << "ms"
               << " cleanup=" << (t_cleanup/1000) << "ms"
               << " rounds=" << roundCount << std::endl;
+    std::cout << "  [insert] totalInserts=" << totalInserts
+              << " totalGroups=" << totalGroups
+              << " (avg group size=" << (totalGroups ? (double)totalInserts/totalGroups : 0) << ")"
+              << std::endl;
     daf::phaseMark("ParPeel_peel_loop");
 
     delete[] countingV;
