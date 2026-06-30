@@ -104,9 +104,19 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
         return (int64_t)s;
     };
 
+    // Tombstone sentinel: an invalid vertex id placed in a bucket slot when
+    // its vertex is re-bucketed (decrease-key). Removal is thus a single slot
+    // write (parallelizable: each dirty vertex owns a distinct slot), and the
+    // drain skips sentinels. bucket_vec[v] points to the std::vector holding v
+    // (the mapped value is node-stable in std::map, so the pointer survives
+    // push_back reallocations and only dies when the key is erased on drain —
+    // by which point v has been peeled and is never touched again).
+    static constexpr daf::Size SENTINEL = (daf::Size)-1;
+
     std::map<int64_t, std::vector<daf::Size>> buckets;
     std::vector<int64_t> bucket_of(numVertices, -1);
     std::vector<daf::Size> pos_in_bucket(numVertices, 0);
+    std::vector<std::vector<daf::Size>*> bucket_vec(numVertices, nullptr);
     std::vector<uint8_t> vertexInHeap(numVertices, 0);
     daf::Size remainingInHeap = 0;
     for (daf::Size i = 0; i < numVertices; ++i) {
@@ -115,28 +125,20 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
         auto &lst = buckets[b];
         bucket_of[i] = b;
         pos_in_bucket[i] = lst.size();
+        bucket_vec[i] = &lst;
         lst.push_back(i);
         vertexInHeap[i] = 1;
         remainingInHeap++;
     }
 
-    auto bucketMove = [&](daf::Size id) {
+    // Serial insert of a dirty vertex into its new (decreased-key) bucket.
+    // The matching removal was already done in Phase 2 via tombstoning.
+    auto bucketInsert = [&](daf::Size id) {
         int64_t newB = supportToKey(countingV[id]);
-        int64_t oldB = bucket_of[id];
-        if (newB == oldB) return;
-        auto oldIt = buckets.find(oldB);
-        auto &oldVec = oldIt->second;
-        daf::Size myPos = pos_in_bucket[id];
-        if (myPos + 1 < oldVec.size()) {
-            daf::Size last = oldVec.back();
-            oldVec[myPos] = last;
-            pos_in_bucket[last] = myPos;
-        }
-        oldVec.pop_back();
-        if (oldVec.empty()) buckets.erase(oldIt);
-        bucket_of[id] = newB;
         auto &newVec = buckets[newB];
+        bucket_of[id] = newB;
         pos_in_bucket[id] = newVec.size();
+        bucket_vec[id] = &newVec;
         newVec.push_back(id);
     };
 
@@ -191,20 +193,31 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
             #pragma omp single
             {
                 auto td0 = clk::now();
-                while (!buckets.empty() && buckets.begin()->second.empty())
-                    buckets.erase(buckets.begin());
-                if (buckets.empty() || remainingInHeap == 0) {
+                // Find the smallest bucket that still holds a live (non-
+                // sentinel) vertex. All-sentinel buckets (every vertex
+                // re-bucketed away) are erased without advancing minCore.
+                bool foundLive = false;
+                int64_t curKey = 0;
+                while (!buckets.empty()) {
+                    auto &frontVec = buckets.begin()->second;
+                    bool hasLive = false;
+                    for (daf::Size id : frontVec)
+                        if (id != SENTINEL) { hasLive = true; break; }
+                    if (!hasLive) { buckets.erase(buckets.begin()); continue; }
+                    curKey = buckets.begin()->first;
+                    foundLive = true;
+                    break;
+                }
+                if (!foundLive || remainingInHeap == 0) {
                     finished = true;
                 } else {
-                    int64_t curKey = buckets.begin()->first;
                     minCore = std::max((double)curKey, minCore);
                     currentRemoveVertexIds.clear();
                     while (!buckets.empty()
                            && (double)buckets.begin()->first <= minCore) {
                         auto &lst = buckets.begin()->second;
-                        while (!lst.empty()) {
-                            auto id = lst.back();
-                            lst.pop_back();
+                        for (daf::Size id : lst) {
+                            if (id == SENTINEL) continue;
                             vertexInHeap[id] = 0;
                             bucket_of[id] = -1;
                             currentRemoveVertexIds.push_back(id);
@@ -306,8 +319,15 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                         double delta = STV3_getBit(d.leafVtxIsPivot, li) ? deltaPivot : deltaKeep;
                         if (delta > 0) {
                             atomicSubClamp(countingV[vtx], delta);
-                            if (markFirst(dirtyMark[vtx]))
+                            if (markFirst(dirtyMark[vtx])) {
+                                // Parallel tombstone removal: write SENTINEL to
+                                // vtx's own (unique) slot in its current bucket.
+                                // The map is read-only during Phase 2, and each
+                                // dirty vertex owns a distinct slot, so this is
+                                // race-free. Re-insertion happens serially after.
+                                (*bucket_vec[vtx])[pos_in_bucket[vtx]] = SENTINEL;
                                 myDirty.push_back(vtx);
+                            }
                         }
                     }
                     leafRemainPivots[leafId] = new_rp;   // owner-only write
@@ -328,8 +348,13 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 t_phase2 += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tp2c).count();
 
                 auto tb0 = clk::now();
+                // Serial re-insert: tombstone removal was already done in
+                // Phase 2; here we only append each dirty vertex to its new
+                // (decreased-key) bucket. If the vertex's count went to a
+                // value mapping to the same key it had before being
+                // tombstoned, we still re-append (the old slot is a sentinel).
                 for (auto v : dirtyVertices) {
-                    if (vertexInHeap[v]) bucketMove(v);
+                    if (vertexInHeap[v]) bucketInsert(v);
                     dirtyMark[v] = 0;
                 }
                 for (auto leafId : affectedLeaves) {
