@@ -170,6 +170,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
     // Phase timing accumulators (microseconds).
     long long t_phase1 = 0, t_phase2 = 0, t_bucket = 0, t_drain = 0;
     long long t_p1work = 0, t_p2work = 0;  // actual parallel-for wall time
+    long long t_cleanup = 0;               // flag-reset cleanup wall time
     using clk = std::chrono::high_resolution_clock;
     clk::time_point ts_p1start, ts_p2start;
 
@@ -350,17 +351,15 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 auto tb0 = clk::now();
                 // Serial re-insert: tombstone removal was already done in
                 // Phase 2; here we only append each dirty vertex to its new
-                // (decreased-key) bucket. If the vertex's count went to a
-                // value mapping to the same key it had before being
-                // tombstoned, we still re-append (the old slot is a sentinel).
+                // (decreased-key) bucket.
                 for (auto v : dirtyVertices) {
                     if (vertexInHeap[v]) bucketInsert(v);
-                    dirtyMark[v] = 0;
-                }
-                for (auto leafId : affectedLeaves) {
-                    leafAffected[leafId] = 0;
                 }
                 t_bucket += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tb0).count();
+                auto tcl = clk::now();
+                for (auto v : dirtyVertices) dirtyMark[v] = 0;
+                for (auto leafId : affectedLeaves) leafAffected[leafId] = 0;
+                t_cleanup += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tcl).count();
             }
             // implicit barrier after single
         }
@@ -376,6 +375,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
               << " p2work=" << (t_p2work/1000) << "ms"
               << " p2concat=" << (t_phase2/1000) << "ms"
               << " bucket=" << (t_bucket/1000) << "ms"
+              << " cleanup=" << (t_cleanup/1000) << "ms"
               << " rounds=" << roundCount << std::endl;
     daf::phaseMark("ParPeel_peel_loop");
 
