@@ -174,8 +174,10 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
     long long t_phase1 = 0, t_phase2 = 0, t_bucket = 0, t_drain = 0;
     long long t_p1work = 0, t_p2work = 0;  // actual parallel-for wall time
     long long t_cleanup = 0;               // flag-reset cleanup wall time
+    long long t_pairbuild = 0;             // parallel (key,v) pair build
     using clk = std::chrono::high_resolution_clock;
-    clk::time_point ts_p1start, ts_p2start;
+    clk::time_point ts_p1start, ts_p2start, ts_bstart;
+    int dirtyCount = 0;
 
     double minCore = 0;
     long long roundCount = 0;
@@ -350,19 +352,28 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 for (int t = 0; t < nThreads; ++t)
                     dirtyVertices.insert(dirtyVertices.end(),
                                          tDirty[t].begin(), tDirty[t].end());
+                dirtyCount = (int)dirtyVertices.size();
+                insertPairs.resize(dirtyCount);
                 t_phase2 += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tp2c).count();
+                ts_bstart = clk::now();
+            }
+            // implicit barrier: dirtyVertices/insertPairs sized, visible.
 
+            // ---- Parallel (newKey, v) pair build ----
+            // Reading countingV[v] for each dirty vertex is a scattered
+            // cache-miss load; spreading it across threads is the single
+            // biggest serial cost removed from the bucket phase.
+            #pragma omp for schedule(static)
+            for (int i = 0; i < dirtyCount; ++i) {
+                daf::Size v = dirtyVertices[i];
+                insertPairs[i] = {supportToKey(countingV[v]), v};
+            }
+            // implicit barrier
+
+            #pragma omp single
+            {
+                t_pairbuild += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - ts_bstart).count();
                 auto tb0 = clk::now();
-                // Build (newKey, v) pairs and sort by key. Grouping by key
-                // lets each distinct-key run become one std::map node, whose
-                // vector we pre-size here; the actual scatter of vertices into
-                // buckets (cache-miss-heavy per-vertex metadata writes) is
-                // deferred to a parallel for over groups below, using the
-                // threads that would otherwise spin at the barrier.
-                insertPairs.clear();
-                for (auto v : dirtyVertices)
-                    if (vertexInHeap[v])
-                        insertPairs.push_back({supportToKey(countingV[v]), v});
                 std::sort(insertPairs.begin(), insertPairs.end(),
                           [](const std::pair<int64_t,daf::Size> &a,
                              const std::pair<int64_t,daf::Size> &b){ return a.first < b.first; });
@@ -424,6 +435,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
               << " p1concat=" << (t_phase1/1000) << "ms"
               << " p2work=" << (t_p2work/1000) << "ms"
               << " p2concat=" << (t_phase2/1000) << "ms"
+              << " pairbuild=" << (t_pairbuild/1000) << "ms"
               << " bucket=" << (t_bucket/1000) << "ms"
               << " cleanup=" << (t_cleanup/1000) << "ms"
               << " rounds=" << roundCount << std::endl;
