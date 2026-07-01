@@ -120,7 +120,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
     // the O(NUM_SHARDS) shard fronts each round (cheap). bucket_vec[v] points
     // into a shard's map node value (node-stable), so tombstoning is unchanged.
     int shardBits = 0;
-    while ((1 << shardBits) < nThreads * 4 && shardBits < 9) ++shardBits;
+    while ((1 << shardBits) < nThreads && shardBits < 4) ++shardBits;
     const int NUM_SHARDS = 1 << shardBits;
     const uint64_t SHARD_MASK = (uint64_t)NUM_SHARDS - 1;
     auto keyToShard = [SHARD_MASK](int64_t k) -> int {
