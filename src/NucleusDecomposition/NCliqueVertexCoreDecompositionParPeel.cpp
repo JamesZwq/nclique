@@ -131,9 +131,19 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
         remainingInHeap++;
     }
 
-    // Scratch buffer for the per-round sort-and-grouped-insert.
+    // Scratch buffers for the per-round sort-and-grouped parallel insert.
     std::vector<std::pair<int64_t, daf::Size>> insertPairs;
     insertPairs.reserve(1 << 16);
+    struct GroupInfo {
+        std::vector<daf::Size> *vec;  // target bucket vector
+        size_t base;                  // first pre-sized slot in vec
+        size_t start;                 // first index in insertPairs
+        size_t len;                   // #vertices in this key group
+        int64_t key;
+    };
+    std::vector<GroupInfo> groups;
+    groups.reserve(1 << 14);
+    int numGroups = 0;
 
     // Per-leaf affected flag + per-vertex dirty flag (CAS-deduped).
     std::vector<uint8_t> leafAffected(numLeaves, 0);
@@ -343,11 +353,12 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 t_phase2 += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tp2c).count();
 
                 auto tb0 = clk::now();
-                // Re-insert dirty vertices into their new (decreased-key)
-                // buckets. Tombstone removal already happened in Phase 2.
-                // Sort by new key so equal-key runs share a single std::map
-                // lookup and append contiguously (cuts map ops from O(#dirty)
-                // to O(#distinct keys); each append is O(1)).
+                // Build (newKey, v) pairs and sort by key. Grouping by key
+                // lets each distinct-key run become one std::map node, whose
+                // vector we pre-size here; the actual scatter of vertices into
+                // buckets (cache-miss-heavy per-vertex metadata writes) is
+                // deferred to a parallel for over groups below, using the
+                // threads that would otherwise spin at the barrier.
                 insertPairs.clear();
                 for (auto v : dirtyVertices)
                     if (vertexInHeap[v])
@@ -355,35 +366,52 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 std::sort(insertPairs.begin(), insertPairs.end(),
                           [](const std::pair<int64_t,daf::Size> &a,
                              const std::pair<int64_t,daf::Size> &b){ return a.first < b.first; });
-                // insertPairs is sorted ascending by key; since we visit
-                // distinct keys in increasing order, the previous map node is
-                // a correct hint for the next try_emplace -> amortized O(1)
-                // per distinct key instead of O(log) (the 2.6M std::map
-                // red-black lookups were the dominant serial cost).
+                groups.clear();
                 auto hint = buckets.begin();
                 for (size_t i = 0; i < insertPairs.size(); ) {
                     int64_t key = insertPairs[i].first;
                     hint = buckets.try_emplace(hint, key, std::vector<daf::Size>{});
                     auto &vec = hint->second;
-                    ++totalGroups;
+                    size_t base = vec.size();
                     size_t j = i;
-                    while (j < insertPairs.size() && insertPairs[j].first == key) {
-                        daf::Size v = insertPairs[j].second;
-                        bucket_of[v] = key;
-                        pos_in_bucket[v] = vec.size();
-                        bucket_vec[v] = &vec;
-                        vec.push_back(v);
-                        ++j; ++totalInserts;
-                    }
+                    while (j < insertPairs.size() && insertPairs[j].first == key) ++j;
+                    size_t len = j - i;
+                    vec.resize(base + len);       // pre-size; filled in parallel
+                    groups.push_back(GroupInfo{&vec, base, i, len, key});
+                    ++totalGroups; totalInserts += (long long)len;
                     i = j;
                 }
+                numGroups = (int)groups.size();
                 t_bucket += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tb0).count();
-                auto tcl = clk::now();
-                for (auto v : dirtyVertices) dirtyMark[v] = 0;
-                for (auto leafId : affectedLeaves) leafAffected[leafId] = 0;
-                t_cleanup += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tcl).count();
             }
-            // implicit barrier after single
+            // implicit barrier after single: groups/numGroups visible.
+
+            // ---- Parallel scatter of dirty vertices into pre-sized buckets ----
+            // Each group owns a distinct bucket vector and a distinct slot
+            // range [base, base+len); writes are race-free across groups.
+            #pragma omp for schedule(dynamic, 16)
+            for (int gi = 0; gi < numGroups; ++gi) {
+                GroupInfo &g = groups[gi];
+                auto &vec = *g.vec;
+                for (size_t k = 0; k < g.len; ++k) {
+                    daf::Size v = insertPairs[g.start + k].second;
+                    daf::Size slot = (daf::Size)(g.base + k);
+                    vec[slot] = v;
+                    bucket_of[v] = g.key;
+                    pos_in_bucket[v] = slot;
+                    bucket_vec[v] = &vec;
+                }
+            }
+            // implicit barrier after omp for
+
+            // ---- Cleanup (parallel): reset per-round flags ----
+            #pragma omp for schedule(static) nowait
+            for (int di = 0; di < (int)dirtyVertices.size(); ++di)
+                dirtyMark[dirtyVertices[di]] = 0;
+            #pragma omp for schedule(static)
+            for (int ai = 0; ai < (int)affectedLeaves.size(); ++ai)
+                leafAffected[affectedLeaves[ai]] = 0;
+            // implicit barrier after the second omp for
         }
     }
 
