@@ -113,24 +113,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
     // by which point v has been peeled and is never touched again).
     static constexpr daf::Size SENTINEL = (daf::Size)-1;
 
-    // Sharded bucket structure: NUM_SHARDS independent sorted maps, one lock
-    // each. A key is routed to a shard by a multiplicative hash, so dirty
-    // vertices with different keys are inserted into DIFFERENT shards in
-    // parallel (no global sort, no serial decrease-key). Min extraction scans
-    // the O(NUM_SHARDS) shard fronts each round (cheap). bucket_vec[v] points
-    // into a shard's map node value (node-stable), so tombstoning is unchanged.
-    int shardBits = 0;
-    while ((1 << shardBits) < nThreads && shardBits < 4) ++shardBits;
-    const int NUM_SHARDS = 1 << shardBits;
-    const uint64_t SHARD_MASK = (uint64_t)NUM_SHARDS - 1;
-    auto keyToShard = [SHARD_MASK](int64_t k) -> int {
-        uint64_t h = (uint64_t)k * 0x9E3779B97F4A7C15ULL;
-        return (int)((h >> 40) & SHARD_MASK);
-    };
-    std::vector<std::map<int64_t, std::vector<daf::Size>>> shardMaps(NUM_SHARDS);
-    std::vector<omp_lock_t> shardLocks(NUM_SHARDS);
-    for (int s = 0; s < NUM_SHARDS; ++s) omp_init_lock(&shardLocks[s]);
-
+    std::map<int64_t, std::vector<daf::Size>> buckets;
     std::vector<int64_t> bucket_of(numVertices, -1);
     std::vector<daf::Size> pos_in_bucket(numVertices, 0);
     std::vector<std::vector<daf::Size>*> bucket_vec(numVertices, nullptr);
@@ -139,7 +122,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
     for (daf::Size i = 0; i < numVertices; ++i) {
         if (countingV[i] <= 0) continue;
         int64_t b = supportToKey(countingV[i]);
-        auto &lst = shardMaps[keyToShard(b)][b];
+        auto &lst = buckets[b];
         bucket_of[i] = b;
         pos_in_bucket[i] = lst.size();
         bucket_vec[i] = &lst;
@@ -147,6 +130,20 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
         vertexInHeap[i] = 1;
         remainingInHeap++;
     }
+
+    // Scratch buffers for the per-round sort-and-grouped parallel insert.
+    std::vector<std::pair<int64_t, daf::Size>> insertPairs;
+    insertPairs.reserve(1 << 16);
+    struct GroupInfo {
+        std::vector<daf::Size> *vec;  // target bucket vector
+        size_t base;                  // first pre-sized slot in vec
+        size_t start;                 // first index in insertPairs
+        size_t len;                   // #vertices in this key group
+        int64_t key;
+    };
+    std::vector<GroupInfo> groups;
+    groups.reserve(1 << 14);
+    int numGroups = 0;
 
     // Per-leaf affected flag + per-vertex dirty flag (CAS-deduped).
     std::vector<uint8_t> leafAffected(numLeaves, 0);
@@ -203,43 +200,38 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
             #pragma omp single
             {
                 auto td0 = clk::now();
-                // Global min live key = min over shard fronts, skipping
-                // all-sentinel buckets (erased in place, no minCore advance).
-                int64_t curKey = 0;
+                // Find the smallest bucket that still holds a live (non-
+                // sentinel) vertex. All-sentinel buckets (every vertex
+                // re-bucketed away) are erased without advancing minCore.
                 bool foundLive = false;
-                for (int s = 0; s < NUM_SHARDS; ++s) {
-                    auto &m = shardMaps[s];
-                    while (!m.empty()) {
-                        auto &frontVec = m.begin()->second;
-                        bool hasLive = false;
-                        for (daf::Size id : frontVec)
-                            if (id != SENTINEL) { hasLive = true; break; }
-                        if (!hasLive) { m.erase(m.begin()); continue; }
-                        int64_t k = m.begin()->first;
-                        if (!foundLive || k < curKey) { curKey = k; foundLive = true; }
-                        break;
-                    }
+                int64_t curKey = 0;
+                while (!buckets.empty()) {
+                    auto &frontVec = buckets.begin()->second;
+                    bool hasLive = false;
+                    for (daf::Size id : frontVec)
+                        if (id != SENTINEL) { hasLive = true; break; }
+                    if (!hasLive) { buckets.erase(buckets.begin()); continue; }
+                    curKey = buckets.begin()->first;
+                    foundLive = true;
+                    break;
                 }
                 if (!foundLive || remainingInHeap == 0) {
                     finished = true;
                 } else {
                     minCore = std::max((double)curKey, minCore);
                     currentRemoveVertexIds.clear();
-                    // Drain every bucket with key <= minCore across all shards.
-                    for (int s = 0; s < NUM_SHARDS; ++s) {
-                        auto &m = shardMaps[s];
-                        while (!m.empty() && (double)m.begin()->first <= minCore) {
-                            auto &lst = m.begin()->second;
-                            for (daf::Size id : lst) {
-                                if (id == SENTINEL) continue;
-                                vertexInHeap[id] = 0;
-                                bucket_of[id] = -1;
-                                currentRemoveVertexIds.push_back(id);
-                                coreV[id] = minCore;
-                                remainingInHeap--;
-                            }
-                            m.erase(m.begin());
+                    while (!buckets.empty()
+                           && (double)buckets.begin()->first <= minCore) {
+                        auto &lst = buckets.begin()->second;
+                        for (daf::Size id : lst) {
+                            if (id == SENTINEL) continue;
+                            vertexInHeap[id] = 0;
+                            bucket_of[id] = -1;
+                            currentRemoveVertexIds.push_back(id);
+                            coreV[id] = minCore;
+                            remainingInHeap--;
                         }
+                        buckets.erase(buckets.begin());
                     }
                     if (remainingInHeap == 0) finished = true;
                     batchSize = (int)currentRemoveVertexIds.size();
@@ -351,7 +343,7 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                 // implicit barrier after omp for
             }
 
-            // ---- Concatenate dirty vertices (serial, cheap) ----
+            // ---- Concatenate dirty + bucket moves + cleanup (serial) ----
             #pragma omp single
             {
                 t_p2work += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - ts_p2start).count();
@@ -361,29 +353,65 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
                     dirtyVertices.insert(dirtyVertices.end(),
                                          tDirty[t].begin(), tDirty[t].end());
                 dirtyCount = (int)dirtyVertices.size();
+                insertPairs.resize(dirtyCount);
                 t_phase2 += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tp2c).count();
                 ts_bstart = clk::now();
             }
-            // implicit barrier: dirtyVertices/dirtyCount visible.
+            // implicit barrier: dirtyVertices/insertPairs sized, visible.
 
-            // ---- Parallel sharded re-insert (no global sort) ----
-            // Each dirty vertex is routed to a shard by its new key's hash and
-            // appended under that shard's lock. Distinct keys hash to distinct
-            // shards, so inserts run in parallel; contention only within a
-            // shard (rare, avg group size ~3). The matching removal already
-            // tombstoned the old slot in Phase 2.
+            // ---- Parallel (newKey, v) pair build ----
+            // Reading countingV[v] for each dirty vertex is a scattered
+            // cache-miss load; spreading it across threads is the single
+            // biggest serial cost removed from the bucket phase.
             #pragma omp for schedule(static)
             for (int i = 0; i < dirtyCount; ++i) {
                 daf::Size v = dirtyVertices[i];
-                int64_t key = supportToKey(countingV[v]);
-                int sh = keyToShard(key);
-                omp_set_lock(&shardLocks[sh]);
-                auto &vec = shardMaps[sh][key];
-                bucket_of[v] = key;
-                pos_in_bucket[v] = vec.size();
-                bucket_vec[v] = &vec;
-                vec.push_back(v);
-                omp_unset_lock(&shardLocks[sh]);
+                insertPairs[i] = {supportToKey(countingV[v]), v};
+            }
+            // implicit barrier
+
+            #pragma omp single
+            {
+                t_pairbuild += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - ts_bstart).count();
+                auto tb0 = clk::now();
+                std::sort(insertPairs.begin(), insertPairs.end(),
+                          [](const std::pair<int64_t,daf::Size> &a,
+                             const std::pair<int64_t,daf::Size> &b){ return a.first < b.first; });
+                groups.clear();
+                auto hint = buckets.begin();
+                for (size_t i = 0; i < insertPairs.size(); ) {
+                    int64_t key = insertPairs[i].first;
+                    hint = buckets.try_emplace(hint, key, std::vector<daf::Size>{});
+                    auto &vec = hint->second;
+                    size_t base = vec.size();
+                    size_t j = i;
+                    while (j < insertPairs.size() && insertPairs[j].first == key) ++j;
+                    size_t len = j - i;
+                    vec.resize(base + len);       // pre-size; filled in parallel
+                    groups.push_back(GroupInfo{&vec, base, i, len, key});
+                    ++totalGroups; totalInserts += (long long)len;
+                    i = j;
+                }
+                numGroups = (int)groups.size();
+                t_bucket += std::chrono::duration_cast<std::chrono::microseconds>(clk::now() - tb0).count();
+            }
+            // implicit barrier after single: groups/numGroups visible.
+
+            // ---- Parallel scatter of dirty vertices into pre-sized buckets ----
+            // Each group owns a distinct bucket vector and a distinct slot
+            // range [base, base+len); writes are race-free across groups.
+            #pragma omp for schedule(dynamic, 16)
+            for (int gi = 0; gi < numGroups; ++gi) {
+                GroupInfo &g = groups[gi];
+                auto &vec = *g.vec;
+                for (size_t k = 0; k < g.len; ++k) {
+                    daf::Size v = insertPairs[g.start + k].second;
+                    daf::Size slot = (daf::Size)(g.base + k);
+                    vec[slot] = v;
+                    bucket_of[v] = g.key;
+                    pos_in_bucket[v] = slot;
+                    bucket_vec[v] = &vec;
+                }
             }
             // implicit barrier after omp for
 
@@ -417,7 +445,6 @@ double * NCliqueVertexCoreDecomposition_ParPeel(ST_V2_Data &d, daf::CliqueSize k
               << std::endl;
     daf::phaseMark("ParPeel_peel_loop");
 
-    for (int s = 0; s < NUM_SHARDS; ++s) omp_destroy_lock(&shardLocks[s]);
     delete[] countingV;
     return coreV;
 }
