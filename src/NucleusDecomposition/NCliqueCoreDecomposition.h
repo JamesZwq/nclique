@@ -611,6 +611,11 @@ double * NCliqueVertexCoreDecomposition_Online(
 // SDCT leaf membership. Triggered by PIVOTER_PROFILE_MAX_CLIQUE=1.
 void profileMaxCliqueLeaves(Graph &edgeGraph, daf::CliqueSize s);
 
+// Profiler: per-leaf compression (cliques vs incidences) to estimate the
+// headroom for an adaptive enumerate-vs-compress build.
+// Triggered by PIVOTER_PROFILE_COMPRESSION=1.
+void profileCompression(Graph &edgeGraph, daf::CliqueSize s);
+
 // SPIN★-Lean R=1: V→L CSR only (drops L→V CSR, ~50% memory saved).
 // Vertex-pull peel: O(d̄ · Σ) time, asymptotically equivalent to V3's
 // O(s · Σ). Must be called BEFORE edgeGraph.beSingleEdge().

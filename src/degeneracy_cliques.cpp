@@ -487,6 +487,10 @@ static PreMutationResult preMutationPhase(
         profileMaxCliqueLeaves(edgeGraph, s);
         std::exit(0);  // profiler-only mode
     }
+    if (r == 1 && envSet("PIVOTER_PROFILE_COMPRESSION")) {
+        profileCompression(edgeGraph, s);
+        std::exit(0);  // profiler-only mode
+    }
 
     if (r == 1 && envSet("PIVOTER_RUN_ST_V2")) {
         result.st_v2_data = std::make_unique<ST_V2_Data>(
