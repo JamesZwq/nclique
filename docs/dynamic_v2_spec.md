@@ -577,3 +577,111 @@ k-core deletion literature (its ±1 structure does not transfer).
 - **M5**: batch insertion (union of seeds, one closure over all new
   edges' chains, one peel — the lemmas generalize: chains end at ANY
   inserted edge's clique) + Tier-2 pokec + larger graphs.
+
+---
+
+# v3 ADDENDUM — killing the discovery flood (post-mortem driven)
+
+**Status**: authoritative extension after v2 measurement. v2's Phases 1/3 are
+validated (0/1188 mismatches; Phase-3 peel = 646 µs on the diagnosed edge).
+v2's Phase 2 floods: |C|=3064 admitted for a true region of 16 on
+soc-Epinions1 s=5 edge (1283,2927) (p2 = 3.4 s, of which eviction 2.99 s);
+on s=3 configs the closure exceeds the cap on 78–82% of edges (fallbacks).
+Root cause, measured: the static TS-disjunct is vacuous at small thresholds
+(ℓ_y = 2..4 admits the whole low-core sea) and on level-homogeneous shells
+(everyone's TS exceeds ℓ). The fix below removes the flood AT THE SOURCE
+with a new, provably complete level filter, plus one engineering upgrade.
+
+## 18. Active-level theory (the new lever)
+
+Recall `D_ℓ = C_ℓ(G')\C_ℓ(G)`, `Λ = {ℓ : D_ℓ ≠ ∅}` (the ACTIVE levels),
+seeds `S = {u,v} ∪ W` (optionally restricted to W-members participating in
+at least one new s-clique; for s = 3 that is all of W).
+
+**Lemma 7 (boundary monotonicity).** For a fixed region R, if `b <= b'`
+pointwise on `V\R`, then `ccore_{R,b}(x) <= ccore_{R,b'}(x)` for all
+`x ∈ R`.
+*Proof.* For every ℓ the boundary sets nest:
+`{w ∉ R : b(w) >= ℓ} ⊆ {w ∉ R : b'(w) >= ℓ}`, so any valid ℓ-set `D` for
+`(R,b)` is valid for `(R,b')`; maximum sets therefore nest. ∎
+
+**Lemma 8 (∞-boundary upper bound).** For ANY region R and `x ∈ R`:
+`c'(x) <= ccore_{R,∞}(x)`, where `∞` denotes `b ≡ +∞`.
+*Proof.* Let `ℓ = c'(x)` and `D = C_ℓ(G') ∩ R`. Every `z ∈ D` has `>= ℓ`
+witnesses inside `C_ℓ(G') ⊆ D ∪ (V\R)`, and with `b ≡ ∞` the level-ℓ
+boundary set is all of `V\R`. So D is a valid ℓ-set for `(R,∞)`, and
+`x ∈ D`. ∎
+
+**Lemma 9 (seed cut / active-level filter).**
+`Λ ⊆ ∪_{x ∈ S} ( c(x), c'(x) ]`, and consequently, with any per-seed upper
+bounds `UB(x) >= c'(x)`,
+`Λ ⊆ Λ̂ := ∪_{x ∈ S} ( c(x), UB(x) ]`.
+Moreover every riser `y ∈ R*` satisfies `c(y)+1 ∈ Λ ⊆ Λ̂`, and every
+co-riser member `z ∈ R*` of any witness likewise satisfies
+`c(z)+1 ∈ Λ̂`.
+*Proof.* `ℓ ∈ Λ ⟹ D_ℓ ≠ ∅`; by Corollary 3a some chain-terminal
+`x_m ∈ D_ℓ` has a witness `K ∋ u,v` with `K ⊆ C_ℓ(G')`; `x_m ∈ K` forces
+`x_m ∈ {u,v} ∪ W = S`. `x_m ∈ D_ℓ` means `c(x_m) < ℓ <= c'(x_m)`, i.e.
+`ℓ ∈ (c(x_m), c'(x_m)]`. The rest: `y ∈ R* ⟹ y ∈ D_{c(y)+1}` ⟹
+`c(y)+1 ∈ Λ`; and `c' <= UB` widens intervals only. ∎
+
+**Corollary 9a (second early exit).** If `Λ̂ = ∅` then `R* = ∅`: no core
+changes at all; emit STATS and exit (before closure and peel).
+
+**Computing UB (the seed mini-peel).** Run the pinned peel of §4 on region
+S with boundary values `b ≡ +∞` — i.e. the boundary never exits; keys drop
+only via region pops. By Lemma 1 this computes `ccore_{S,∞}`, which
+by Lemma 8 upper-bounds `c'` on S. Capping (hub seeds' exact supports are
+the expensive objects we must avoid): compute each seed key with the capped
+counter at `K̂_x = c(x) + 256`. A seed whose key saturates is treated as
+UB = ∞ (open-topped interval) AND remains permanently alive in the
+mini-peel (equivalently it is moved to the ∞-boundary; by Lemma 7 this can
+only raise the other seeds' computed values — still sound). Unsaturated
+keys may be recomputed from scratch (capped) after each pop; |S| is tiny.
+Deltas must never be applied to a saturated key.
+
+## 19. The Λ̂ filter — three hooks into Phase 2 (each completeness-preserving)
+
+Compute Λ̂ (sorted disjoint intervals) BEFORE the closure. Then:
+
+1. **Trigger filter**: skip testing y (and mark it tested — the test is
+   static) unless `c(y)+1 ∈ Λ̂`. [Complete by Lemma 9: risers pass.]
+2. **PASS member filter**: member z of a counted witness must satisfy
+   `c(z) >= ℓ_y` OR (`c(z)+1 ∈ Λ̂` AND `TS(z) >= ℓ_y`). [A member needed
+   under optimism is a co-riser, hence in-band by Lemma 9.]
+3. **EOS member filter**: z counts via the optimistic branch only if
+   `z ∈ C` AND `c(z)+1 ∈ Λ̂` AND `TS(z) >= thr`. [Same argument.]
+
+Seeds u,v stay unconditional members of C. Everything downstream
+(eviction order, Phase 3) is unchanged; Lemma 2's hypothesis is still
+delivered by (filtered closure ⊇ R*, Theorem 5 + Lemma 9) + (eviction
+safety, Lemma 6).
+
+Expected effect (verify empirically, §21): on edge (1283,2927)
+(c(u)=766, c(v)=48) every candidate with c below the seeds' interval
+bottoms is excluded up front — the measured 3064-flood's low-core mass
+dies instantly; on dblp s=3, edges whose seeds do not rise (or rise in
+narrow bands) never start a flood, and Λ̂ = ∅ edges exit in Phase 1.5.
+
+## 20. Delta-maintained eviction (Stage B — only if still needed)
+
+If in-band floods remain after §19, replace the recompute-per-recheck
+eviction with a delta-maintained cascade using the SAME machinery as the
+peel: store ev[x] exact-below-cap (cap = c(x)+1+margin); on each eviction
+of z, for each C-neighbor x with ev[x] exact: ev[x] -= (pair count through
+{x,z} under x's EOS member-predicate, computed BEFORE removing z's C
+membership); saturated ev[x] is recomputed (capped) on first touch.
+Decisions (`ev[x] < c(x)+1`) must always be made on exact-at-decision-time
+values (§16a analog). Worklist otherwise unchanged.
+
+## 21. Staged execution & measurement plan (measure before engine)
+
+- **Stage A**: implement §18–§19 only. Measure: (i) the four diagnosed
+  slow edges of soc-Epinions1 s=5 — (1283,2927), (1749,1822),
+  (40200,40202), (148,353): report |C| before/after, p2_us, insert_us;
+  (ii) 20-edge smokes on Epinions s=3/s=5; (iii) 300-edge dblp s=3 —
+  report fallback count (was 246/300). Decision gate: if p90 collapses
+  and fallbacks drop to ~single digits, skip Stage B.
+- **Stage B**: §20 if needed. Re-measure.
+- **Stage C**: full Tier-1 sweep (all four configs), then the §13
+  peel-only acceptance table. Correctness gate remains 0 mismatches.
