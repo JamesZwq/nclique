@@ -130,6 +130,7 @@ add_executable(degeneracy_cliques ${COMMON_SOURCES} src/degeneracy_cliques.cpp s
 if(APPLE)
     target_link_options(degeneracy_cliques PRIVATE "-Wl,-stack_size,0x20000000")
 endif()
+add_executable(dynamic_1s_core src/dynamic_1s_core.cpp)
 add_executable(test_ultra_parallel ${COMMON_SOURCES} test_ultra_parallel.cpp)
 add_executable(test_detailed_verification ${COMMON_SOURCES} test_detailed_verification.cpp)
 add_executable(test_sdct_verify ${COMMON_SOURCES} test_sdct_verify.cpp)
