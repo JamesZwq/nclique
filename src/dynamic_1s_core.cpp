@@ -29,6 +29,7 @@ static int S;                                  // clique size s
 static std::vector<std::vector<uint32_t>> adj; // sorted adjacency
 static std::vector<double> coreBase;           // maintained core[]
 static std::vector<uint8_t> alive;             // peel-alive flag
+static std::vector<uint8_t> inRegion;          // region membership (A)
 static std::vector<std::vector<double>> nCrT;  // Pascal, cols 0..S
 
 static double nCr(size_t n, int k) {
@@ -44,6 +45,22 @@ static double nCr(size_t n, int k) {
     return nCrT[n][k];
 }
 
+// # edges within G[P]; P sorted. Each edge counted once (higher endpoint).
+static double edgesWithin(const std::vector<uint32_t> &P) {
+    if (P.size() < 2) return 0.0;
+    double e = 0.0;
+    for (uint32_t w : P) {
+        const auto &nw = adj[w];
+        size_t i = 0, j = 0;
+        while (i < P.size() && j < nw.size()) {
+            if (P[i] < nw[j]) ++i;
+            else if (P[i] > nw[j]) ++j;
+            else { if (nw[j] > w) e += 1.0; ++i; ++j; }
+        }
+    }
+    return e;
+}
+
 // ---- per-vertex support: count s-cliques containing x within alive set ----
 // Pivoter recursion; P sorted; held = |H| (x included), piv = |Π|.
 static double sctCount(std::vector<uint32_t> &P, int held, int piv) {
@@ -57,6 +74,15 @@ static double sctCount(std::vector<uint32_t> &P, int held, int piv) {
     // pivot branch gives (piv+1) + |P∩N(p)|, hold branches give one clique
     // per v in P\N(p)\{p}, and |P∩N(p)| + |P\N(p)| = |P| with p in P\N(p).
     if (held == S - 1) return (double)piv + (double)P.size();
+    // Two levels above the leaves (S-held == 2): choose the 2 missing
+    // vertices among pivots (mutually adjacent and adjacent to all P by
+    // construction: C(piv,2)), one pivot + one P member (piv*|P|), or an
+    // edge within G[P] (E(P)). Verified by induction on the recursion:
+    // pivot branch C(piv+1,2) + (piv+1)|P∩N(p)| + E(P∩N(p)) plus hold
+    // branches sum piv|B| + [E(P) - E(P∩N(p)) - |P∩N(p)|] with
+    // B = P\N(p)\{p} telescopes to exactly this closed form.
+    if (held == S - 2)
+        return nCr(piv, 2) + (double)piv * (double)P.size() + edgesWithin(P);
     // pivot p = argmax |P ∩ N(p)|
     uint32_t p = P[0];
     size_t best = 0;
@@ -105,26 +131,45 @@ static double sctCount(std::vector<uint32_t> &P, int held, int piv) {
     return res;
 }
 
+// ---- per-vertex τ-view (exact-equivalence optimization) ----
+// Region vertex x accounts ONLY for cliques whose pinned members all have
+// coreBase >= τ_x = coreBase[x] (region members always count). EXACTNESS:
+// (i) key_view(x) >= τ_x at init (x's old-level supporters all have core
+// >= τ_x, hence are in the view), so x is never the scan-min while
+// minCore < τ_x — the pinned cursor (pmin < τ_x <= rmin) always wins;
+// (ii) by the time minCore reaches τ_x, every pinned vertex below τ_x has
+// been drained, so from x's first eligible pop moment onward the τ-view
+// key and the global-view key coincide. Pop decisions therefore agree at
+// every step with the unfiltered peel, and all newCore values are
+// identical — while pinned below τ_x generate NO delta work for x.
+static inline bool inView(uint32_t y, double tau) {
+    return alive[y] && (inRegion[y] || coreBase[y] >= tau);
+}
+
 static double supportOf(uint32_t x) {
+    const double tau = coreBase[x];
     std::vector<uint32_t> P;
     P.reserve(adj[x].size());
     for (uint32_t y : adj[x])
-        if (alive[y]) P.push_back(y);
+        if (inView(y, tau)) P.push_back(y);
     return sctCount(P, 1, 0);
 }
 
 // Exact per-removal delta: # s-cliques containing BOTH x and z whose other
-// members are all alive. Must be called BEFORE setting alive[z]=0 (the other
-// S-2 members must be alive); z itself is excluded automatically (z ∉ N(z)),
-// as is x (x ∉ N(x)). held = {x,z}, pool P = N(x) ∩ N(z) ∩ alive.
+// members are all in x's τ-view. Must be called BEFORE setting alive[z]=0
+// (the other S-2 members must be alive); z itself is excluded automatically
+// (z ∉ N(z)), as is x (x ∉ N(x)). held = {x,z}, P = N(x) ∩ N(z) ∩ view_x.
+// Callers must skip the call entirely when z is pinned with
+// coreBase[z] < τ_x (z was never counted in x's view).
 static double supportDelta(uint32_t x, uint32_t z) {
+    const double tau = coreBase[x];
     std::vector<uint32_t> P;
     const auto &ax = adj[x], &az = adj[z];
     size_t i = 0, j = 0;
     while (i < ax.size() && j < az.size()) {
         if (ax[i] < az[j]) ++i;
         else if (ax[i] > az[j]) ++j;
-        else { if (alive[ax[i]]) P.push_back(ax[i]); ++i; ++j; }
+        else { if (inView(ax[i], tau)) P.push_back(ax[i]); ++i; ++j; }
     }
     return sctCount(P, 2, 0);
 }
@@ -181,7 +226,8 @@ int main(int argc, char **argv) {
     adj[V].insert(std::lower_bound(adj[V].begin(), adj[V].end(), U), U);
 
     // ---- seed region: {u,v} ∪ (N(u)∩N(v)) ----
-    std::vector<uint8_t> inA(n, 0);
+    inRegion.assign(n, 0);
+    auto &inA = inRegion;
     std::vector<uint32_t> A;
     auto addA = [&](uint32_t x) { if (!inA[x]) { inA[x] = 1; A.push_back(x); } };
     addA(U); addA(V);
@@ -198,6 +244,19 @@ int main(int argc, char **argv) {
     std::vector<double> newCore(n, -1.0); // computed cores for region members
     int rounds = 0;
     size_t pinnedSz = 0, peelPops = 0;
+    double lastL0 = 0.0;
+    size_t pinnedSkipped = 0;
+
+    // Cross-round support cache (Opt 2). The alive-at-round-start set only
+    // GROWS across rounds (A grows monotonically; L0 only drops, so the kept
+    // pinned suffix only widens). Invariant: supports depend only on the
+    // alive set; a region vertex with no newly-alive neighbor has an
+    // unchanged alive neighborhood, so its round-start support is unchanged
+    // and can be reused from the previous round.
+    std::vector<uint8_t> aliveStart(n, 0); // previous round's alive-at-start
+    std::vector<double> initKey(n, -1.0);  // cached round-start support (-1 = never computed)
+    std::vector<int> dirtyStamp(n, 0);     // == rounds -> must recount this round
+    size_t prevASize = 0;                  // A-members before this round are cached
 
     while (true) {
         ++rounds;
@@ -213,20 +272,69 @@ int main(int argc, char **argv) {
         std::sort(pinned.begin(), pinned.end(),
                   [](uint32_t a, uint32_t b) { return coreBase[a] < coreBase[b]; });
 
+        // ---- Opt 1: L0 fast-start ----
+        // L0 = min old core over the region. EXACTNESS: every region vertex's
+        // initial key >= its coreBase: the s-cliques that supported x at its
+        // old level c_x consist of vertices with old core >= c_x >= L0, all of
+        // which are alive under this initialization (region vertices always;
+        // pinned kept iff coreBase >= L0). So no region vertex can pop below
+        // L0, and every pinned vertex below L0 would have been drained before
+        // the first region pop anyway (its only effects: deltas on region
+        // keys -- already reflected by counting supports without it -- and a
+        // minCore value < L0 that the max-rule dominates). Skipping them and
+        // starting minCore at L0 yields identical newCore values.
+        double L0 = std::numeric_limits<double>::infinity();
+        for (uint32_t x : A) L0 = std::min(L0, coreBase[x]);
+        size_t j0 = std::lower_bound(pinned.begin(), pinned.end(), L0,
+                                     [](uint32_t a, double v) { return coreBase[a] < v; })
+                    - pinned.begin();
+        lastL0 = L0;
+        pinnedSkipped = j0;
+
         alive.assign(n, 0);
         for (uint32_t x : A) alive[x] = 1;
-        for (uint32_t w : pinned) alive[w] = 1;
+        for (size_t k = j0; k < pinned.size(); ++k) alive[pinned[k]] = 1;
 
-        // pool = REGION vertices only; keys = live support. Initial keys are
-        // one full supportOf per region vertex; afterwards keys stay exact
-        // via per-removal delta subtraction. Pinned vertices never enter the
-        // scan-min pool: they are consumed via the sorted `pinned`/`j`
-        // cursor, one per iteration, at their frozen coreBase level.
+        // ---- Opt 2: mark region vertices whose support must be recounted:
+        // those whose τ-VIEW changed since the previous round's start, i.e.
+        // adjacent to (a) a vertex alive now but not before (new pinned of
+        // newly added region members), or (b) a NEWLY-PROMOTED region member
+        // (promotion changes the view even though aliveness didn't: as a
+        // pinned vertex below the neighbor's τ it was excluded, as a region
+        // member it always counts).
+        for (size_t k = prevASize; k < A.size(); ++k)
+            for (uint32_t y : adj[A[k]])
+                if (inA[y]) dirtyStamp[y] = rounds;
+        prevASize = A.size();
+        for (size_t k = j0; k < pinned.size(); ++k) {
+            uint32_t z = pinned[k];
+            if (!aliveStart[z])
+                for (uint32_t y : adj[z])
+                    if (inA[y]) dirtyStamp[y] = rounds;
+        }
+
+        // pool = REGION vertices only; keys = live support at round start.
+        // Full supportOf only for new region vertices (never counted) and
+        // dirty ones; everyone else reuses the cached round-start support.
+        // Afterwards keys stay exact via per-removal delta subtraction.
+        // Pinned vertices never enter the scan-min pool: they are consumed
+        // via the sorted `pinned`/`j` cursor at their frozen coreBase level.
         std::vector<uint32_t> pool;
         std::vector<double> key(n, 0.0);
-        for (uint32_t x : A) { key[x] = supportOf(x); pool.push_back(x); }
+        auto tk0 = std::chrono::steady_clock::now();
+        size_t nRecounted = 0;
+        for (uint32_t x : A) {
+            if (initKey[x] < 0 || dirtyStamp[x] == rounds) { initKey[x] = supportOf(x); ++nRecounted; }
+            key[x] = initKey[x];
+            pool.push_back(x);
+        }
+        auto tk1 = std::chrono::steady_clock::now();
 
-        size_t j = 0; // cursor into sorted `pinned`
+        // snapshot alive-at-round-start for the next round's dirty marking
+        // (the peel below consumes `alive` down to empty).
+        aliveStart = alive;
+
+        size_t j = j0; // cursor into sorted `pinned`, past the skipped prefix
 
         // Remove z from the alive set, keeping every alive REGION neighbor's
         // key exact via delta subtraction: x loses exactly the s-cliques that
@@ -236,8 +344,12 @@ int main(int argc, char **argv) {
         // every step — no verification or rollback needed, and each delta is
         // only a common-neighborhood-sized pivoter call.
         auto removeAndUpdate = [&](uint32_t z) {
+            const bool zPinned = !inA[z];
             for (uint32_t y : adj[z]) {
                 if (alive[y] && inA[y]) {
+                    // τ-view skip: a pinned z below y's own level was never
+                    // counted in y's view — no delta to subtract.
+                    if (zPinned && coreBase[z] < coreBase[y]) continue;
                     key[y] -= supportDelta(y, z);
                     if (key[y] < 0) {
                         std::fprintf(stderr, "WARN negkey vertex=%u key=%.0f\n",
@@ -249,7 +361,7 @@ int main(int argc, char **argv) {
             alive[z] = 0;
         };
 
-        double minCore = 0.0;
+        double minCore = L0; // Opt 1: no region vertex can pop below L0
         while (!pool.empty()) {
             size_t bi = 0;
             for (size_t i = 1; i < pool.size(); ++i)
@@ -275,6 +387,14 @@ int main(int argc, char **argv) {
                 ++peelPops;
             }
         }
+
+        auto tk2 = std::chrono::steady_clock::now();
+        if (std::getenv("DYN1S_DEBUG"))
+            std::fprintf(stderr, "[dbg] round=%d A=%zu pinned=%zu skipped=%zu "
+                         "recounted=%zu keys_us=%.0f peel_us=%.0f\n",
+                         rounds, A.size(), pinnedSz, pinnedSkipped, nRecounted,
+                         std::chrono::duration<double, std::micro>(tk1 - tk0).count(),
+                         std::chrono::duration<double, std::micro>(tk2 - tk1).count());
 
         // verify-and-expand: riser x may lift outside y iff
         // core_old(x) <= core_old(y) <= core_new(x)
@@ -337,8 +457,9 @@ int main(int argc, char **argv) {
                 std::chrono::duration<double, std::micro>(t1f - t0).count();
             std::printf("FALLBACK\n");
             std::printf("STATS region=%zu pinned=%zu rounds=%d pops=%zu "
-                        "changed=0 insert_us=%.0f\n",
-                        A.size(), pinnedSz, rounds, peelPops, usf);
+                        "changed=0 l0=%.0f pinned_skipped=%zu insert_us=%.0f\n",
+                        A.size(), pinnedSz, rounds, peelPops, lastL0,
+                        pinnedSkipped, usf);
             return 0;
         }
         for (uint32_t y : added) addA(y);
@@ -357,7 +478,9 @@ int main(int argc, char **argv) {
             ++nChanged;
         }
     }
-    std::printf("STATS region=%zu pinned=%zu rounds=%d pops=%zu changed=%zu insert_us=%.0f\n",
-                A.size(), pinnedSz, rounds, peelPops, nChanged, us);
+    std::printf("STATS region=%zu pinned=%zu rounds=%d pops=%zu changed=%zu "
+                "l0=%.0f pinned_skipped=%zu insert_us=%.0f\n",
+                A.size(), pinnedSz, rounds, peelPops, nChanged, lastL0,
+                pinnedSkipped, us);
     return 0;
 }
