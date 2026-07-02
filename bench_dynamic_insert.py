@@ -23,7 +23,7 @@ from pathlib import Path
 
 from bench_dynamic_locality import read_edge_file, run_v3
 
-PROTO = "./build/bin/dynamic_1s_core"
+PROTO = os.environ.get("DYN1S_PROTO", "./build/bin/dynamic_1s_core")
 
 _W = {}
 
