@@ -4973,3 +4973,38 @@ NEXT LEVERS (in value order, all framework-internal):
     needs per-(pattern,leaf) alive-witness counters (4B x #incidences ~ 132MB on ca-AstroPh 4,5) -- skip an instance
     when its count hits 0; measure the residual no-op share first.
 (3) leafQ2pat std::unordered_map -> flat open-addressing table (node-based map = 1-2 cache misses per credit).
+
+## 118. THEORY: t=1 peel == first-death weighted HYPERGRAPH core decomposition; the wave-closure/clamp theorem makes 66-87% of credits removable (2026-07-03)
+USER ASK ("理论上有什么突破? 先列出整个算法逻辑, 再看逻辑上能优化什么"). THE FORMULATION (t=1, s=r+1, the a_Y default):
+- For t=1 the witness shared by patterns P != Q is UNIQUE: Y = pl ∨ ql (join), |nz(Y)| sub-patterns Y - e_c, ALL of
+  which are real patterns (delete one vertex of a concrete Y-clique). So (leaf, witness-orbit) pairs are HYPEREDGES
+  over their <= min(r+1, M) sub-patterns with per-endpoint weights (n_b - Q_b per leaf), and the peel is EXACTLY:
+  weighted hypergraph core decomposition where a hyperedge credits its OTHER endpoints once, at its FIRST endpoint
+  death (Y alive <=> ALL sub-patterns alive; the a_Y dead-set is just a memo of "first death happened").
+- CONSEQUENCE 1 (supports the compression thesis formally): compressed incidences I = Σ_Y |patterns(Y)| <= CND's
+  concrete Σ_{s-cliques} C(s,r) with equality only at mult==1 -- the compressed peel is never more work than CND's
+  in the incidence model, given the right data structure.
+- CONSEQUENCE 2 (incidence-model optimum): an EXPLICIT incidence structure with cross-pointer (dancing-links style)
+  removal achieves Θ(I) with pure array ops -- zero dead-probes (67.9% of enumerated Y today), zero q2p hash
+  lookups. Cost: materialize I x ~16-24B (ca-AstroPh 3,4 ~25M incid ~ 0.5GB; 4,5 ~155M ~ 3GB) -- the memory/time
+  trade returns, affordable on the dense loss cells (we have time, not memory, there).
+- CONSEQUENCE 3 (BELOW Θ(I) -- the real find): THE CLAMP/WAVE-CLOSURE THEOREM. A credit to Q with key == curLevel
+  changes NO state (nk = max(llround(sup - delta), curLevel) == key -> the application drops it; keys are monotone
+  and alive keys never sit below curLevel). So every same-wave credit is removable EXACTLY, and the output-sensitive
+  bound is Θ(#level-crossing incidences + #patterns + #witness-orbits). MEASURED (new peel-prof counter, commit
+  4c46b3c): same-wave share of delta-reaching credits = ca-AstroPh 3,4 66.6% (4.91M/7.36M), com-dblp 4,5 **87.4%**
+  (3.18M/3.64M). Counting the lookup-failed credits too, useful level-crossing credits = ~12.5% (astro 3,4) of all
+  credit invocations -- the theoretical headroom is ~8-20x on the incidence work. This is the §102 1-core-collapse
+  made exact: lockstep bundles generate almost only same-wave credits.
+- EXPLOIT (exact, cheap, NOT yet built -- the next build): (i) per-credit clamp-skip after lookup (trivial, saves
+  delta/aff); (ii) LEAF-KILL: maintain per-leaf cntAbove[L] = #alive hosted patterns with key > curLevel (maintained
+  at bucket-move/pop/level-advance, O(Σ hostSz) total); when cntAbove[L] == 0 every alive pattern of L dies this
+  level (keys monotone + clamp) => ALL of L's remaining witnesses die intra-wave => skip every remaining (P, L)
+  instance outright (cores identical; witness credits from L can only reach L-hosted patterns). Catches the bundle
+  collapse at its source -- the instances themselves, not just the delta lines. Cascade-safe: the skip can only
+  fire when everyone is already in the wave, so no cascade-entering credit is ever skipped. (iii) optionally the
+  CONSEQUENCE-2 incidence structure for the residual cross-level work.
+CAVEAT (honest): sup values of same-wave-popped patterns internally differ under (i)/(ii) (their final CORES do
+not -- the clamp proof); any consumer of post-peel sup must be checked (hierarchy uses cores only; sup0 snapshots
+precede the peel). t>=2: the same clamp theorem holds (it is a property of the bucket application, not of t);
+the witness-major/general paths get the identical leaf-kill rule once their instance loop is restructured.
