@@ -1340,10 +1340,72 @@ int main(int argc, char **argv) {
     // P.sup := SCT sum-over-leaves support. Under SCT_VERIFY also compare to the region-IE init
     // (suppOf, set above) per pattern and abort on mismatch. sctSupport is computed either way
     // (it IS the production support), so production just skips the 99s region-IE entirely.
+    Clock::time_point TsupA = Clock::now();            // §120: support-init segment
+    // -------- §120 SUPPORT-INIT FAST PATH --------
+    // At init every path's forbidden is EMPTY: support_count's leq-scan is a no-op and its
+    // inclusion_exclusion_terms is exactly [(0,+1)], so the call degenerates to ONE bounded-
+    // composition DP -- yet the library call heap-allocates dp/ndp/L/U + the IE-term vector +
+    // zeros_vec PER (pattern,leaf) incidence (6 mallocs x Σ hostSz; supInit measured 55-87% of
+    // the peel window). This inlines the SAME DP with hoisted scratch: identical class order,
+    // identical y order, identical nCr calls -> bit-identical arithmetic, no allocation.
+    // Non-empty forbidden (never at init; defensive) falls back to the library call.
+    vector<double> siDP, siNDP;
+    auto supFast = [&](const CCPath &p, const Vec &b) -> double {
+        const int M = p.m();
+        if ((int)b.size() != M) return 0.0;
+        int sumL = 0, sumU = 0;
+        for (int c = 0; c < M; ++c) {
+            int bc = (int)b[c];
+            if (bc < 0 || bc > (int)p.n[c]) return 0.0;
+            int Lc = (int)p.ell[c]; if (bc > Lc) Lc = bc;
+            int Uc = (int)p.u[c];
+            if (Lc > Uc) return 0.0;
+            sumL += Lc; sumU += Uc;
+        }
+        if (sumL > p.T || sumU < p.T) return 0.0;
+        siDP.assign((size_t)p.T + 1, 0.0); siDP[0] = 1.0;
+        siNDP.assign((size_t)p.T + 1, 0.0);
+        for (int c = 0; c < M; ++c) {
+            std::fill(siNDP.begin(), siNDP.end(), 0.0);
+            const int bc = (int)b[c], nc = (int)p.n[c];
+            int Lc = (int)p.ell[c]; if (bc > Lc) Lc = bc;
+            const int Ucap = (int)p.u[c];
+            for (int total = 0; total <= p.T; ++total) {
+                double w = siDP[(size_t)total];
+                if (w == 0.0) continue;
+                int max_y = Ucap; if (p.T - total < max_y) max_y = p.T - total;
+                for (int y = Lc; y <= max_y; ++y)
+                    siNDP[(size_t)(total + y)] += w * ccpath_ncr(nc - bc, y - bc);
+            }
+            siDP.swap(siNDP);
+        }
+        return siDP[(size_t)p.T];
+    };
+    // §120 probe (under PIVOTER_PEEL_PROFILE): class-set sharing ratio. The grouped supInit
+    // design computes the zero-classes product ONCE per distinct (leaf, nz-position-set) and
+    // applies each footprint's <=r nonzero factors on top; its win = incidences / distinct sets.
+    bool siProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr;
+    std::unordered_set<uint64_t> siSets; long long siInc = 0;
+    auto sctSupportFast = [&](int pi) -> double {
+        double tot = 0.0;
+        const auto &ls = leavesOf(pi);
+        for (size_t k = 0; k < ls.size(); k++) {
+            const Vec &b = recomputePB ? (localB(pi, ls[k], sctScr), (const Vec &)sctScr)
+                                       : pbLocal[pi][k];
+            if (siProf) {
+                uint64_t h = 1469598103934665603ULL ^ (uint64_t)ls[k] * 0x9E3779B97F4A7C15ULL;
+                for (size_t c = 0; c < b.size(); c++) if (b[c]) { h ^= c + 1; h *= 1099511628211ULL; }
+                siSets.insert(h); siInc++;
+            }
+            for (auto &p : slotPaths[ls[k]])
+                tot += p.forbidden.empty() ? supFast(p, b) : ccpath::support_count(p, b, ccpath_ncr);
+        }
+        return tot;
+    };
     {
         int okc = 0, badc = 0; double worst = 0;
         for (int pi = 0; pi < (int)pats.size(); pi++) {
-            double sSCT = sctSupport(pi);
+            double sSCT = sctSupportFast(pi);
             if (verifyIE) {
                 double sIE = pats[pi].sup;             // region-IE init
                 if (fabs(sIE - sSCT) < 0.5) okc++;
@@ -1365,6 +1427,9 @@ int main(int argc, char **argv) {
             if (badc != 0) { printf("[G2a] FAILED — aborting before peel (correctness gate).\n"); return 3; }
         }
     }
+    double tSupInit = secs(TsupA, Clock::now());       // §120: support-init cost (inside the T5..T6 "peel" window)
+    if (siProf) fprintf(stderr, "[supinit-prof §120] incidences=%lld distinct(leaf,nzset)=%zu -> sharing ratio=%.1fx\n",
+            siInc, siSets.size(), siSets.empty() ? 0.0 : (double)siInc / siSets.size());
 
     // ---- bucket-queue peel on the class-SCT ----
     // Peeling P: for each slot hosting P, insert tuple_to_threshold(slot,m_P)
@@ -1856,8 +1921,11 @@ int main(int argc, char **argv) {
         return h;
     };
     Vec elmScr;                                        // reused recompute scratch for ensureLeafMap
+    bool peelProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr;   // declared here so ensureLeafMap can see it
+    double ppTMap = 0.0;                               // §120: time in ensureLeafMap first-touch builds
     auto ensureLeafMap = [&](int lid) {
         if (leafQbuilt[lid]) return;
+        Clock::time_point _mpS; if (peelProf) _mpS = Clock::now();
         leafQbuilt[lid] = 1;
         auto &mp = leafQ2pat[lid];
         int nt = (int)leafPats[lid].size();                    // == #footprints (int map always stored)
@@ -1867,6 +1935,7 @@ int main(int argc, char **argv) {
             auto fp = leafFP(lid, t, Mw, elmScr);              // (ptr,len) span: recompute or CSR view
             mp[hashSpanInc(fp.first, fp.second)].push_back(t);
         }
+        if (peelProf) ppTMap += secs(_mpS, Clock::now());
     };
 
     long long npat = (long long)pats.size(), peeledN = 0, maxKey = 0;
@@ -1945,11 +2014,14 @@ int main(int argc, char **argv) {
     // produce ZERO new dead witnesses (pure no-op: every enumerated Y was already dead/infeasible, so
     // the leaf-instance did O(M^2) hashing + DFS for no credit, yet §103 did not skip it). Also splits
     // peel time into addDelta vs the §103-skip overhead, and counts enumerated-Y vs newly-dead-Y.
-    bool peelProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr;
     long long ppLeafRun = 0, ppLeafNoop = 0;     // addDelta leaf-instances run / of those, crediting 0 new dead
     long long ppYEnum = 0, ppYNewDead = 0;       // enumerated feasible Y / newly dead Y (insert==true)
     long long ppCredSame = 0, ppCredCross = 0;   // §118 probe: credits to same-wave Q (key==curLevel, clamp-wasted) vs level-crossing Q
     double ppTAddDelta = 0.0, ppTSkipChk = 0.0;  // time in addDelta vs the §103 skip check
+    // §120 residual attribution: after §117/§119 addDelta is only 6-29% of peel -- time the other
+    // segments. leafLoop = whole per-death leaf loop (prep = leafLoop - addDelta - skipChk),
+    // apply = the aff drain, map = ensureLeafMap first-touch builds. Rest = pop/bucket machinery.
+    double ppTLeafLoop = 0.0, ppTApply = 0.0;    // (ppTMap declared above ensureLeafMap)
     long long ppNewDeadThis = 0;                 // per-leaf-instance scratch (reset before each addDelta)
     // §104 STEP 0 (make-or-break): measure the per-leaf antichain size |A[lid]| the telescoped-nCr peel WOULD carry.
     // Read-only throwaway antichain fed the same peeled-pattern thresholds; decides LEAN_FEASIBLE vs INHERENTLY_HEAVY.
@@ -1957,6 +2029,7 @@ int main(int argc, char **argv) {
     vector<vector<Vec>> probeA(probeAOn ? nLeaf : 0);
     vector<int> probeAMax(probeAOn ? nLeaf : 0, 0);
     vector<long long> witTot(ayMode ? nLeaf : 0, 0);
+    Clock::time_point TwtA = Clock::now();             // §120: witTot count-DP segment
     if (ayMode) {
         const long long SAT = 1LL << 60;
         vector<long long> cdp, ndp;
@@ -1979,6 +2052,7 @@ int main(int argc, char **argv) {
             witTot[lid] = cdp[(size_t)Tz];
         }
     }
+    double tWitTot = secs(TwtA, Clock::now());         // §120
     // batch-peel kill-gate (FANIN_DBG, sec 57): fanin = total (pattern,leaf) affected-update touches /
     // distinct (leaf,level) touches = avg #patterns sharing a (leaf,curLevel). fanin>=5 => batch-peel pays.
     bool faninDbg = getenv("FANIN_DBG") != nullptr;
@@ -2232,6 +2306,7 @@ int main(int argc, char **argv) {
         // (A componentwise-max shortcut is NOT valid: the drop is not
         // SC(L, max(m_P,m_Q)) because of that C(n-b,y-b) reweighting.)
         aff.clear();                                   // §117: per-death scratch hoisted out of the pop loop
+        Clock::time_point _llS; if (peelProf) _llS = Clock::now();   // §120: leaf-loop segment timer
         for (size_t k = 0; k < pleaf.size(); k++) {
             int lid = pleaf[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
@@ -2662,6 +2737,7 @@ int main(int argc, char **argv) {
                 dfsP(dfsP, 0, r, 0, 0, 0);
             }
         }
+        if (peelProf) { auto _t = Clock::now(); ppTLeafLoop += secs(_llS, _t); _llS = _t; }
         for (int qi : aff) {
             seen[qi] = 0;
             double ns = pats[qi].sup - delta[qi];     // exact incremental drop
@@ -2674,6 +2750,7 @@ int main(int argc, char **argv) {
                     for (int lid : leavesOf(qi)) cntAbove[lid]--;
             }
         }
+        if (peelProf) ppTApply += secs(_llS, Clock::now());
     }
     }
     auto T6 = Clock::now();
@@ -2711,6 +2788,11 @@ int main(int argc, char **argv) {
                 (ppCredSame + ppCredCross) ? 100.0 * ppCredSame / (ppCredSame + ppCredCross) : 0.0);
         fprintf(stderr, "[peel-prof a_Y] time: addDelta=%.2fs  skip-check=%.4fs  peel-total=%.2fs  -> addDelta=%.0f%% of peel\n",
                 ppTAddDelta, ppTSkipChk, secs(T5,T6), secs(T5,T6) > 0 ? 100.0*ppTAddDelta/secs(T5,T6) : 0.0);
+        double _pt = secs(T5,T6), _prep = ppTLeafLoop - ppTAddDelta - ppTSkipChk - ppTMap, _rest = _pt - ppTLeafLoop - ppTApply - tSupInit - tWitTot;
+        fprintf(stderr, "[peel-prof §120] segments: supInit=%.2fs witTotDP=%.2fs leafLoop=%.2fs (map=%.2fs prep=%.2fs addDelta=%.2fs) apply=%.2fs popMachinery=%.2fs | of peel: supInit=%.0f%% witTot=%.0f%% map=%.0f%% prep=%.0f%% addDelta=%.0f%% apply=%.0f%% pop=%.0f%%\n",
+                tSupInit, tWitTot, ppTLeafLoop, ppTMap, _prep, ppTAddDelta, ppTApply, _rest,
+                _pt>0?100.0*tSupInit/_pt:0.0, _pt>0?100.0*tWitTot/_pt:0.0,
+                _pt>0?100.0*ppTMap/_pt:0.0, _pt>0?100.0*_prep/_pt:0.0, _pt>0?100.0*ppTAddDelta/_pt:0.0, _pt>0?100.0*ppTApply/_pt:0.0, _pt>0?100.0*_rest/_pt:0.0);
     }
     if (ppSfd && ppFbInsert) {
         long long cum = 0; int p50 = 0, p90 = 0, p99 = 0, mx = 0;

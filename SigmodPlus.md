@@ -5079,3 +5079,41 @@ slightly EXCEED the local mac (1.60/1.83/3.18/1.16x): the exploit removes hash l
 which pay more on the Xeon's weaker per-core cache/bandwidth. Absolute server times ~2x the mac --
 paper numbers must come from the server, and any refreshed dense-cell experiment should use main
 (5a9fd1e). tods2 was occupied (another user's sweep) -- validation ran on tods1 instead.
+
+## 120. RESIDUAL ATTRIBUTION: supInit was 55-87% of "peel"; alloc-free fast path shipped; two designs falsified (2026-07-04)
+
+Task #19. After §117/§119 the a_Y instance work no longer dominates -- MEASURE-FIRST paid off twice
+by killing planned builds before they started.
+
+ATTRIBUTION (new §120 segment timers, PIVOTER_PEEL_PROFILE): the T5..T6 "peel" window actually =
+support-INIT + witTot-DP + peel loop. Segments (astro34/dblp45/epin34/astro45):
+  supInit 57/87/55/56%   addDelta 24/6/19/29%   map 5/1/8/4%   prep 8/2/10/7%   apply ~1-3%
+  popMachinery 3/2/3/2%  witTotDP ~0%
+Two prior beliefs corrected: (a) the earlier "popMachinery 59-90%" read was a misattribution (T5
+sits at line 1265, far above the pop loop -- the missing mass was supInit); (b) the cross-pointer
+incidence structure (§118 consequence 2) is a NO-GO as a peel-loop fix: addDelta is 6-29%, so even
+a free addDelta caps at 1.06-1.41x -- far below its Θ(I)-memory cost.
+
+SHIPPED -- supInit fast path (supFast/sctSupportFast): at init every path's forbidden is EMPTY, so
+support_count degenerates to ONE bounded-composition DP, yet the library call heap-allocates
+dp/ndp/L/U + IE-terms + zeros_vec per (pattern,leaf) incidence (6 mallocs x Σ hostSz) and calls nCr
+through a function pointer. Inlined the SAME DP with hoisted scratch + direct (inlinable) nCr:
+identical class order, y order, nCr calls -> bit-identical BY CONSTRUCTION (not just gated).
+  GATES: 13-case A/B (incl. ondemand + dblp45/astro45) byte-identical; verify_tuple_hierarchy 500 PASS.
+  PERF (median-of-3, local): astro34 4.07->3.49s (1.17x), astro45 25.07->22.14s (1.13x),
+  dblp45 3.43->2.77s (1.24x), epin34 8.23->6.83s (1.20x); RSS flat. UNIVERSAL (supInit is
+  incidence-proportional, not same-wave-dependent -- epin34 finally moves too).
+  CUMULATIVE local peel vs pre-§117: astro34 1.88x, astro45 2.05x, dblp45 3.88x, epin34 1.36x.
+
+FALSIFIED designs (do not revisit without new evidence):
+- CLASS-SET GROUPING of supInit (share the zero-classes polynomial product across footprints with
+  the same nonzero-position set): measured sharing ratio = 1.0x on ALL 4 cells (6.1M incidences ->
+  6.06M distinct (leaf,nzset) on dblp45). Within a leaf, footprints differ in POSITIONS, not just
+  multiplicities. Dead.
+- Suffix-convolution / leaf-major / leave-one-out products: change float summation/association
+  order -> not constructively bit-identical (exact only while all counts < 2^53); ceiling ~1.3-1.7x
+  on supInit's remainder. Parked as not worth the risk profile now.
+
+REMAINING peel composition (post-§120, astro45): supInit ~8.6s(inherent DP, ~39%), addDelta 7.7s
+(35%), map+prep ~2.8s, machinery ~1s. Next big fish is NOT here: it is the t>=2 leaf-kill transfer
+(the 60x cell ca-AstroPh 4,6) and, on the build side, the §85 pattern-materialization wall.
