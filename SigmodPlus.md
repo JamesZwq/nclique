@@ -5064,3 +5064,18 @@ REMAINING GAP to the Θ(level-crossing incidences) bound (§118 consequence 3): 
 leaves still hosting >=1 cross-level pattern survive (pay lookup, then clamp-skip); killing those
 needs per-(pattern,leaf) alive-witness counters or the consequence-2 cross-pointer structure. The
 t>=2 witness-major/general instance loops can inherit the same leaf-kill rule once restructured.
+
+§119 SERVER VALIDATION (tods1, Xeon Gold 6342, 2026-07-04, serial median-of-3, /usr/bin/time -v,
+logs /data/wenqianz/ab18/): 3-binary A/B (rn_pre117 = 31daab4~1, rn_117 = ee666c5, rn_119 = 5a9fd1e,
+extracted via git show, base64-deployed -- tods1 has no repo clone; ClassSCT.h needs the
+region_native/ + src/NucleusDecomposition/ relative layout).
+  cell              pre117     §117       §119       cum      RSS pre117->119
+  ca-AstroPh 3,4    12.90s     9.31s      7.56s      1.71x    -11%
+  ca-AstroPh 4,5    85.89s     60.76s     44.53s     1.93x    -14%
+  com-dblp 4,5      19.10s     12.39s     5.44s      3.51x    -37% (1437->903MB)
+  soc-Epinions 3,4  17.48s     15.13s     15.28s     1.14x    flat
+Cores byte-identical across the 3 binaries on the server (4/4 cells). The speedup ratios TRANSFER and
+slightly EXCEED the local mac (1.60/1.83/3.18/1.16x): the exploit removes hash lookups + enumeration,
+which pay more on the Xeon's weaker per-core cache/bandwidth. Absolute server times ~2x the mac --
+paper numbers must come from the server, and any refreshed dense-cell experiment should use main
+(5a9fd1e). tods2 was occupied (another user's sweep) -- validation ran on tods1 instead.
