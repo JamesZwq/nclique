@@ -427,8 +427,23 @@ int main(int argc, char **argv) {
         return 1;
     }
     S = std::atoi(argv[2]);
-    const uint32_t U = (uint32_t)std::atoll(argv[4]);
-    const uint32_t V = (uint32_t)std::atoll(argv[5]);
+    // Streaming mode (V4.4 Tier-2 gate): <base.edges> <s> <core.tsv> --edges <file>
+    // processes the file's "u v" lines sequentially, REUSING the maintained
+    // index/support/cores across updates (Lemma 10 end-to-end); final output is
+    // the accumulated per-vertex diff vs the loaded cores.
+    const bool streaming = (std::strcmp(argv[4], "--edges") == 0);
+    std::vector<std::pair<uint32_t, uint32_t>> edgeList;
+    if (streaming) {
+        FILE *ef = std::fopen(argv[5], "r");
+        if (!ef) { std::perror("edges"); return 1; }
+        unsigned long long a, b;
+        while (std::fscanf(ef, "%llu %llu", &a, &b) == 2)
+            edgeList.push_back({(uint32_t)a, (uint32_t)b});
+        std::fclose(ef);
+    } else {
+        edgeList.push_back({(uint32_t)std::atoll(argv[4]),
+                            (uint32_t)std::atoll(argv[5])});
+    }
 
     // ---- load graph (original ids) ----
     FILE *f = std::fopen(argv[1], "r");
@@ -496,6 +511,14 @@ int main(int argc, char **argv) {
     size_t CAP = std::max<size_t>(4096, n / 16);
     if (const char *ce = std::getenv("DYN1S_CAP")) CAP = (size_t)std::atoll(ce);
 
+    // Snapshot for streaming-mode final diff.
+    std::vector<double> coreOrig = coreBase;
+
+    for (size_t eIdx = 0; eIdx < edgeList.size(); ++eIdx) {
+    const uint32_t U = edgeList[eIdx].first;
+    const uint32_t V = edgeList[eIdx].second;
+    if (streaming) std::printf("EDGE %u %u\n", U, V);
+
     auto t0 = std::chrono::steady_clock::now();
 
     // ================= Phase 1 (§7): seeds + early exit =================
@@ -547,7 +570,7 @@ int main(int argc, char **argv) {
                     "lambda_intervals=0 lambda_us=0 lambda_empty=0 "
                     "p1_us=%.0f p2_us=0 p3_us=0 insert_us=%.0f\n",
                     p1_us, us);
-        return 0;
+        continue;
     }
 
     // ===== Phase 1.5 (§18): active-level filter Λ̂ via the seed mini-peel =====
@@ -645,7 +668,7 @@ int main(int argc, char **argv) {
                     "lambda_intervals=0 lambda_us=%.0f lambda_empty=1 "
                     "p1_us=%.0f p2_us=0 p3_us=0 insert_us=%.0f\n",
                     lambda_us, p1_us, us);
-        return 0;
+        continue;
     }
 
     // ================= Phase 2 (§6): discovery =================
@@ -722,6 +745,7 @@ int main(int argc, char **argv) {
                     "p1_us=%.0f p2_us=%.0f p3_us=0 insert_us=%.0f\n",
                     Cvec.size(), testedCount, newCliques, lambdaIv.size(),
                     lambda_us, p1_us, p2_us, us);
+        if (streaming) { std::fprintf(stderr, "FATAL streaming fallback at edge %u %u\n", U, V); return 2; }
         return 0;
     }
 
@@ -1125,16 +1149,38 @@ int main(int argc, char **argv) {
                      lambda_us, evDeltas, evRecomputes,
                      p1_us, p2_us, p2test_us, p2evict_us, p3_us, us);
 
-    // ---- emit CHANGED + STATS ----
+    // ---- emit CHANGED + apply maintained state ----
     size_t nChanged = 0;
+    std::vector<uint32_t> changedNow;
     for (size_t i = 0; i < R; ++i) {
         uint32_t x = region[i];
         if (newCoreL[i] < coreBase[x])
             std::fprintf(stderr, "WARN drop vertex=%u old=%.0f new=%.0f\n",
                          x, coreBase[x], newCoreL[i]);
         if (newCoreL[i] != coreBase[x]) {
-            std::printf("CHANGED %u %.0f %.0f\n", x, coreBase[x], newCoreL[i]);
+            if (!streaming)
+                std::printf("CHANGED %u %.0f %.0f\n", x, coreBase[x], newCoreL[i]);
+            changedNow.push_back(x);
             ++nChanged;
+        }
+    }
+    // Apply new cores to the maintained state, then restore the index
+    // invariant "leaf Π sorted by (core, id)" for every leaf containing a
+    // changed vertex (V4.2's per-leaf binary searches depend on it; changed
+    // sets are tiny so this is O(few leaf sorts) per update).
+    for (size_t i = 0; i < R; ++i) {
+        uint32_t x = region[i];
+        if (newCoreL[i] >= 0.0) coreBase[x] = newCoreL[i];
+    }
+    for (uint32_t x : changedNow) {
+        for (uint32_t enc : vLeaves[x]) {
+            uint32_t li = enc >> 1;
+            uint32_t *b = leafData.data() + leafStart[li] + leafHLen[li];
+            uint32_t *e2 = leafData.data() + leafStart[li + 1];
+            std::sort(b, e2, [](uint32_t a, uint32_t c) {
+                return coreBase[a] < coreBase[c] ||
+                       (coreBase[a] == coreBase[c] && a < c);
+            });
         }
     }
     std::printf("STATS region=%zu pinned=%zu tested=%zu evicted=%zu rounds=1 "
@@ -1147,5 +1193,17 @@ int main(int argc, char **argv) {
                 L0, pinnedSkipped, newCliques, lambdaIv.size(), lambda_us,
                 evDeltas, evRecomputes,
                 p1_us, p2_us, p2test_us, p2evict_us, p3_us, us);
+    }   // end per-edge update loop
+
+    if (streaming) {
+        size_t totalChanged = 0;
+        for (size_t x = 0; x < n; ++x)
+            if (coreBase[x] != coreOrig[x]) {
+                std::printf("CHANGED %zu %.0f %.0f\n", x, coreOrig[x], coreBase[x]);
+                ++totalChanged;
+            }
+        std::printf("STREAM_DONE edges=%zu changed=%zu\n",
+                    edgeList.size(), totalChanged);
+    }
     return 0;
 }
