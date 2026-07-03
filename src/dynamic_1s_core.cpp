@@ -37,6 +37,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <sys/resource.h>
 #include <vector>
 
 static int S;                                  // clique size s
@@ -208,6 +209,200 @@ static double bitCountList(const std::vector<uint32_t> &P0, int held, double cap
 
 static const double INF = std::numeric_limits<double>::infinity();
 
+// ==================== v4 persistent clique index (§22-§25) ====================
+// Level-s clique forest: flat leaves (H, Π), Π SORTED BY CORE VALUE (ascending,
+// ties by id); per-vertex incidence lists (leafId<<1 | isPivot); maintained
+// per-vertex total s-clique support[] for the CURRENT graph. Only leaves with
+// |H| <= s <= |H|+|Π| are stored (others encode no s-clique). Every clique of
+// the graph is encoded at exactly one leaf as H ∪ σ, σ ⊆ Π; each leaf member
+// is adjacent to every other member (H clique, Π pairwise adjacent, Π ~ H).
+static std::vector<uint32_t> leafData;   // per leaf: H members then Π members
+static std::vector<uint64_t> leafStart;  // CSR into leafData (nLeaves+1)
+static std::vector<uint8_t> leafHLen;    // |H| (<= s <= 16)
+static std::vector<std::vector<uint32_t>> vLeaves; // vertex -> (leafId<<1)|isPiv
+static std::vector<double> supportG;     // total s-clique support, current graph
+
+static size_t idxLeaves() { return leafHLen.size(); }
+
+// Append one leaf (global ids). Sorts Π by (core, id); updates incidences and
+// support[] attribution (held: C(|Π|, s-|H|); pivot: C(|Π|-1, s-|H|-1)).
+static void idxEmitLeaf(const std::vector<uint32_t> &H, std::vector<uint32_t> &Pi) {
+    const int hl = (int)H.size(), pl = (int)Pi.size();
+    if (hl > S || hl + pl < S) return;               // s-filter
+    std::sort(Pi.begin(), Pi.end(), [](uint32_t a, uint32_t b) {
+        return coreBase[a] != coreBase[b] ? coreBase[a] < coreBase[b] : a < b;
+    });
+    uint32_t li = (uint32_t)idxLeaves();
+    leafHLen.push_back((uint8_t)hl);
+    for (uint32_t w : H) leafData.push_back(w);
+    for (uint32_t w : Pi) leafData.push_back(w);
+    leafStart.push_back(leafData.size());
+    const double aH = nCr(pl, S - hl), aP = nCr(pl - 1, S - hl - 1);
+    for (uint32_t w : H) { vLeaves[w].push_back(li << 1); supportG[w] += aH; }
+    for (uint32_t w : Pi) { vLeaves[w].push_back((li << 1) | 1u); supportG[w] += aP; }
+}
+
+// Emitting SCT recursion on the CURRENT bitset universe (no closed forms —
+// leaves must be materialized). H carries GLOBAL ids; PiL carries local ids
+// (mapped at emit). Prunes: |H| > s (all deeper leaves have bigger H);
+// |H|+|Π|+|P| < s (cannot reach an s-clique).
+static void idxEmitSct(const uint64_t *P, std::vector<uint32_t> &H,
+                       std::vector<uint32_t> &PiL, int depth) {
+    if ((int)H.size() > S) return;
+    size_t cnt = pcAll(P);
+    if ((int)(H.size() + PiL.size() + cnt) < S) return;
+    if (cnt == 0) {
+        std::vector<uint32_t> Pi;
+        Pi.reserve(PiL.size());
+        for (uint32_t l : PiL) Pi.push_back(lid2g[l]);
+        idxEmitLeaf(H, Pi);
+        return;
+    }
+    // pivot p = argmax |P ∩ N(p)|
+    size_t p = 0, best = 0;
+    bool first = true;
+    for (size_t w = 0; w < Uw; ++w) {
+        uint64_t m = P[w];
+        while (m) {
+            size_t lid = (w << 6) + (size_t)std::countr_zero(m);
+            m &= m - 1;
+            size_t c = pcAnd(P, rowOf(lid));
+            if (first || c > best) { best = c; p = lid; first = false; }
+        }
+    }
+    uint64_t *T = getScr(scrT, depth);
+    {
+        const uint64_t *rp = rowOf(p);
+        for (size_t w = 0; w < Uw; ++w) T[w] = P[w] & rp[w];
+    }
+    PiL.push_back((uint32_t)p);
+    idxEmitSct(T, H, PiL, depth + 1);
+    PiL.pop_back();
+    uint64_t *pool = getScr(scrPool, depth);
+    uint64_t *D = getScr(scrD, depth);
+    {
+        const uint64_t *rp = rowOf(p);
+        for (size_t w = 0; w < Uw; ++w) { pool[w] = P[w]; D[w] = P[w] & ~rp[w]; }
+        bitClr(pool, p);
+        bitClr(D, p);
+    }
+    for (size_t w = 0; w < Uw; ++w) {
+        uint64_t m = D[w];
+        while (m) {
+            size_t v = (w << 6) + (size_t)std::countr_zero(m);
+            m &= m - 1;
+            const uint64_t *rv = rowOf(v);
+            for (size_t x = 0; x < Uw; ++x) T[x] = pool[x] & rv[x];
+            H.push_back(lid2g[v]);
+            idxEmitSct(T, H, PiL, depth + 1);
+            H.pop_back();
+            bitClr(pool, v);
+        }
+    }
+}
+
+// V4.1: build the forest for the CURRENT adjacency (base graph at load).
+// Degeneracy order; per-vertex subproblem on later neighbors (small universes,
+// bitset engine). Cliques partition by their earliest-ordered member.
+static void idxBuild(size_t n) {
+    vLeaves.assign(n, {});
+    supportG.assign(n, 0.0);
+    leafData.clear();
+    leafHLen.clear();
+    leafStart.assign(1, 0);
+    std::vector<uint32_t> deg(n), order;
+    order.reserve(n);
+    std::vector<int64_t> rank(n, -1);
+    {
+        uint32_t maxd = 0;
+        for (size_t i = 0; i < n; ++i) {
+            deg[i] = (uint32_t)adj[i].size();
+            maxd = std::max(maxd, deg[i]);
+        }
+        std::vector<std::vector<uint32_t>> bucket(maxd + 1);
+        for (size_t i = 0; i < n; ++i) bucket[deg[i]].push_back((uint32_t)i);
+        std::vector<uint8_t> done(n, 0);
+        uint32_t cur = 0;
+        while (order.size() < n) {
+            while (cur <= maxd && bucket[cur].empty()) ++cur;
+            if (cur > maxd) break;
+            uint32_t v = bucket[cur].back();
+            bucket[cur].pop_back();
+            if (done[v] || deg[v] != cur) continue;   // stale entry
+            done[v] = 1;
+            rank[v] = (int64_t)order.size();
+            order.push_back(v);
+            for (uint32_t w : adj[v])
+                if (!done[w]) {
+                    --deg[w];
+                    bucket[deg[w]].push_back(w);
+                    if (deg[w] < cur) cur = deg[w];
+                }
+        }
+    }
+    std::vector<uint32_t> H, PiL, P0;
+    for (uint32_t v : order) {
+        P0.clear();
+        for (uint32_t w : adj[v])
+            if (rank[w] > rank[v]) P0.push_back(w);
+        if (1 + (int)P0.size() < S) continue;         // cannot reach s
+        buildUniverse(P0.data(), P0.size());
+        static std::vector<uint64_t> full;
+        full.assign(Uw, 0ull);
+        for (size_t w = 0; w + 1 < Uw; ++w) full[w] = ~0ull;
+        full[Uw - 1] = (Unb & 63) ? ((1ull << (Unb & 63)) - 1) : ~0ull;
+        H.assign(1, v);
+        PiL.clear();
+        idxEmitSct(full.data(), H, PiL, 0);
+    }
+}
+
+// Filtered s-clique count through x, capped, member predicate
+// pass(w) = coreBase[w] >= thr OR extra(w). Exact leaf-sum (§25): per leaf,
+// H∖{x} must all pass; qualifying Π counted via binary search on the
+// core-sorted Π (suffix passes by first disjunct) + extra() scan below thr.
+template <class Extra>
+static double leafCount(uint32_t x, double thr, double cap, Extra &&extra) {
+    double res = 0.0;
+    for (uint32_t enc : vLeaves[x]) {
+        const uint32_t li = enc >> 1;
+        const bool isPiv = enc & 1u;
+        const uint32_t *d = leafData.data() + leafStart[li];
+        const int hl = leafHLen[li];
+        const int pl = (int)(leafStart[li + 1] - leafStart[li]) - hl;
+        bool ok = true;
+        for (int i = 0; i < hl; ++i) {
+            uint32_t w = d[i];
+            if (w == x) continue;
+            if (!(coreBase[w] >= thr || extra(w))) { ok = false; break; }
+        }
+        if (!ok) continue;
+        const uint32_t *pi = d + hl;
+        int lo = 0, hi = pl;
+        while (lo < hi) {
+            int mid = (lo + hi) / 2;
+            if (coreBase[pi[mid]] < thr) lo = mid + 1;
+            else hi = mid;
+        }
+        int q = pl - lo;
+        for (int i = 0; i < lo; ++i)
+            if (extra(pi[i])) ++q;
+        if (!isPiv) {
+            res += nCr(q, S - hl);
+        } else {
+            const bool xq = (coreBase[x] >= thr || extra(x));
+            res += nCr(q - (xq ? 1 : 0), S - hl - 1);
+        }
+        if (res >= cap) return res;
+    }
+    return res;
+}
+
+// ---- V4.3 index-native peel scratch (epoch-stamped, grow-only) ----
+static std::vector<uint32_t> leafEpochV;   // per-leaf activation epoch
+static std::vector<uint32_t> leafActId;    // per-leaf active id (valid iff epoch)
+static uint32_t leafEpoch = 0;
+
 // |N(x) ∩ N(y)| >= k ? (early-exit merge on global adjacency). Used by the
 // OPTIONAL clique-sharing trigger (§6.2 Remark): chain-adjacent partners share
 // an s-clique, hence >= s-2 common neighbors, so restricting the closure
@@ -274,6 +469,24 @@ int main(int argc, char **argv) {
     g2l.assign(n, 0);
     g2lStamp.assign(n, 0);
 
+    // ===== V4.1: build the persistent clique index (untimed, like graph load)
+    {
+        auto tb0 = std::chrono::steady_clock::now();
+        idxBuild(n);
+        auto tb1 = std::chrono::steady_clock::now();
+        struct rusage ru;
+        getrusage(RUSAGE_SELF, &ru);
+#ifdef __APPLE__
+        double rssMB = ru.ru_maxrss / (1024.0 * 1024.0);
+#else
+        double rssMB = ru.ru_maxrss / 1024.0;
+#endif
+        std::printf("INDEX leaves=%zu entries=%zu build_ms=%.0f rss_mb=%.0f\n",
+                    idxLeaves(), leafData.size(),
+                    std::chrono::duration<double, std::milli>(tb1 - tb0).count(),
+                    rssMB);
+    }
+
     const bool dbg = std::getenv("DYN1S_DEBUG") != nullptr;
     // OPTIONAL clique-sharing trigger (§6.2 Remark). Default OFF = faithful M2
     // (plain N(x) trigger). ON: test y only if |N(x)∩N(y)| >= s-2 (complete,
@@ -297,11 +510,27 @@ int main(int argc, char **argv) {
             else { W.push_back(nu[i]); ++i; ++j; }
         }
     }
-    // Count new (s-2)-cliques in G[W]: holding {u,v} (adjacent to all of W and,
-    // after insertion, to each other), each (s-2)-clique in G[W] completes into
-    // one new s-clique through e. Only the ==0 test is load-bearing (Cor 3c), so
-    // cap at 1; the stat is emitted as a 0/1 "creates-new-clique" indicator.
-    double newCliques = bitCountList(W, 2, 1.0) > 0.0 ? 1.0 : 0.0;
+    // Build + APPEND the EdgeTree T_e (Lemma 10): SCT on G[W] with held {u,v}
+    // prepended. Emitting it here (Phase 1) makes the index valid for G'
+    // BEFORE discovery, so TS(z) = support[z] is O(1) with no side structures.
+    // T_e s-filtered leaves exist ⟺ e creates a new s-clique (Cor 3c check).
+    size_t leavesBefore = idxLeaves();
+    if ((int)W.size() + 2 >= S) {
+        buildUniverse(W.data(), W.size());
+        static std::vector<uint64_t> fullW;
+        fullW.assign(Uw, 0ull);
+        for (size_t w = 0; w + 1 < Uw; ++w) fullW[w] = ~0ull;
+        fullW[Uw - 1] = (Unb & 63) ? ((1ull << (Unb & 63)) - 1) : ~0ull;
+        std::vector<uint32_t> He = {U, V}, PiLe;
+        idxEmitSct(fullW.data(), He, PiLe, 0);
+    }
+    double newCliques = (idxLeaves() > leavesBefore) ? 1.0 : 0.0;
+
+    // Insert e into adjacency NOW (in every case — the graph is G' from here;
+    // in streaming mode the next update needs current adjacency even when e
+    // changes no core).
+    adj[U].insert(std::lower_bound(adj[U].begin(), adj[U].end(), V), V);
+    adj[V].insert(std::lower_bound(adj[V].begin(), adj[V].end(), U), U);
 
     auto tp1 = std::chrono::steady_clock::now();
     double p1_us = std::chrono::duration<double, std::micro>(tp1 - t0).count();
@@ -320,12 +549,6 @@ int main(int argc, char **argv) {
                     p1_us, us);
         return 0;
     }
-
-    // Insert e NOW: all Phase-2/3 counting is in G'.
-    adj[U].insert(std::lower_bound(adj[U].begin(), adj[U].end(), V), V);
-    adj[V].insert(std::lower_bound(adj[V].begin(), adj[V].end(), U), U);
-    tp1 = std::chrono::steady_clock::now();
-    p1_us = std::chrono::duration<double, std::micro>(tp1 - t0).count();
 
     // ===== Phase 1.5 (§18): active-level filter Λ̂ via the seed mini-peel =====
     // Seeds S = {u,v} ∪ W. Pinned peel on (S, b ≡ +∞): boundary never exits, so
@@ -346,13 +569,14 @@ int main(int argc, char **argv) {
     std::vector<uint8_t> isDeadSeed(n, 0);
     std::vector<double> sKey(NS, 0.0), sUB(NS, 0.0);
     std::vector<uint8_t> sState(NS, 0);   // 0 alive-unsat, 1 saturated(∞), 2 dead
+    // Index-backed seed key: filtered count over leaves(x), pred = not-dead-seed
+    // (no core-threshold shortcut: thr = INF forces the extra() scan on every
+    // Π member; #leaves(x) <= support[x] bounds unsaturated seeds, and the cap
+    // early-exits saturated ones). Counts in G' (T_e appended in Phase 1).
     auto seedKey = [&](uint32_t x) -> double {
         const double kcap = coreBase[x] + 256.0;
-        std::vector<uint32_t> P;
-        P.reserve(adj[x].size());
-        for (uint32_t y : adj[x])
-            if (!isDeadSeed[y]) P.push_back(y);
-        return bitCountList(P, 1, kcap);
+        return leafCount(x, INF, kcap,
+                         [&](uint32_t w) { return !isDeadSeed[w]; });
     };
     std::vector<uint32_t> mpool;          // indices into seeds, alive unsaturated
     for (size_t i = 0; i < NS; ++i) {
@@ -427,41 +651,24 @@ int main(int argc, char **argv) {
     // ================= Phase 2 (§6): discovery =================
     inRegion.assign(n, 0);        // C membership
     std::vector<uint8_t> tested(n, 0);
-    // TS memo: tsVal[z] holds either the EXACT TS(z) (tsExact[z]=1) or a
-    // CONFIRMED lower bound TS(z) >= tsVal[z] (tsExact[z]=0). -1 = unset. This
-    // caps each TS computation at the actual threshold it is compared against
-    // (usually tiny), not a global max.
-    std::vector<double> tsVal(n, -1.0);
-    std::vector<uint8_t> tsExact(n, 0);
     std::vector<uint32_t> Cvec;             // admitted vertices (may later evict)
 
-    // Exact decision "TS(z) >= thr" (TS = total s-clique support of z in G').
+    // V4.2: TS(z) in G' = supportG[z], O(1) — the index is G'-valid since the
+    // Phase-1 T_e append. Replaces the per-call capped SCT + memo entirely.
     auto TS_ge = [&](uint32_t z, double thr) -> bool {
-        if (tsVal[z] >= 0.0) {
-            if (tsExact[z]) return tsVal[z] >= thr;   // exact known
-            if (tsVal[z] >= thr) return true;         // confirmed >= tsVal >= thr
-            // confirmed only up to tsVal < thr: recompute with a higher cap
-        }
-        double v = bitCountList(adj[z], 1, thr);
-        if (v >= thr) { tsVal[z] = thr; tsExact[z] = 0; return true; }
-        tsVal[z] = v; tsExact[z] = 1; return false;    // exact TS(z) = v < thr
+        return supportG[z] >= thr;
     };
 
     // Static admission test PASS(y): OS(y) >= c(y)+1, where OS counts s-cliques
     // through y whose other members each satisfy c(z) >= ℓ_y OR the optimistic
-    // branch. §19 hook 2: the optimistic branch additionally requires
-    // c(z)+1 ∈ Λ̂ (a member needed under optimism is a co-riser, in-band by
-    // Lemma 9), besides TS(z) >= ℓ_y. TS is lazy+memoized; the OS count is
-    // capped at ℓ_y — only "OS >= ℓ_y" matters (exact decision).
+    // branch (§19 hook 2: c(z)+1 ∈ Λ̂ AND TS(z) >= ℓ_y). V4.2: evaluated as an
+    // exact leaf-sum over leaves(y), capped at ℓ_y (early exit) — the
+    // core-threshold disjunct is a suffix of each core-sorted Π.
     auto PASS = [&](uint32_t y) -> bool {
         const double ly = coreBase[y] + 1.0;
-        std::vector<uint32_t> P;
-        P.reserve(adj[y].size());
-        for (uint32_t z : adj[y])
-            if (coreBase[z] >= ly ||
-                (inLambda(coreBase[z] + 1.0) && TS_ge(z, ly)))
-                P.push_back(z);
-        return bitCountList(P, 1, ly) >= ly;
+        return leafCount(y, ly, ly, [&](uint32_t w) {
+                   return inLambda(coreBase[w] + 1.0) && supportG[w] >= ly;
+               }) >= ly;
     };
 
     // seeds
@@ -543,16 +750,26 @@ int main(int argc, char **argv) {
     {
         double MARGIN = 8.0;   // §20 exact-window width (DYN1S_EVMARGIN to tune)
         if (const char *me = std::getenv("DYN1S_EVMARGIN")) MARGIN = std::atof(me);
-        auto qualifies = [&](uint32_t w, double thr) -> bool {
-            return coreBase[w] >= thr ||
-                   (inRegion[w] && inLambda(coreBase[w] + 1.0) && TS_ge(w, thr));
-        };
+        // Cost-gated hybrid EOS (both branches EXACT ⟹ identical decisions):
+        // leaf-sum evaluation must scan x's whole incidence when the test
+        // FAILS (fixed mass), which regresses on dense-cluster hubs whose
+        // filtered bitset universe shrinks as C collapses. Use leaves when the
+        // incidence is small, bitset otherwise (measured crossover ~1k).
+        size_t EOSLEAF_MAX = 1024;
+        if (const char *le = std::getenv("DYN1S_EOSLEAF_MAX"))
+            EOSLEAF_MAX = (size_t)std::atoll(le);
         auto EOScnt = [&](uint32_t x) -> double {   // capped at c(x)+1+MARGIN
             const double thr = coreBase[x] + 1.0;
+            auto extra = [&](uint32_t w) {
+                return inRegion[w] && inLambda(coreBase[w] + 1.0) &&
+                       supportG[w] >= thr;
+            };
+            if (vLeaves[x].size() <= EOSLEAF_MAX)
+                return leafCount(x, thr, thr + MARGIN, extra);
             std::vector<uint32_t> P;
             P.reserve(adj[x].size());
             for (uint32_t z : adj[x])
-                if (qualifies(z, thr)) P.push_back(z);
+                if (coreBase[z] >= thr || extra(z)) P.push_back(z);
             return bitCountList(P, 1, thr + MARGIN);
         };
         std::vector<double> ev(n, 0.0);
@@ -586,32 +803,13 @@ int main(int argc, char **argv) {
                 if (coreBase[x] >= thry) continue;   // x stays a valid member
                 if (!(inLambda(coreBase[x] + 1.0) && TS_ge(x, thry)))
                     continue;                        // x was never counted for y
-                if (evExact[y] && !evDirty[y]) {
-                    // exact pair delta BEFORE the drop (x still in C)
-                    const auto &ay = adj[y], &ax = adj[x];
-                    std::vector<uint32_t> P;
-                    size_t i = 0, j = 0;
-                    while (i < ay.size() && j < ax.size()) {
-                        if (ay[i] < ax[j]) ++i;
-                        else if (ay[i] > ax[j]) ++j;
-                        else {
-                            if (qualifies(ay[i], thry)) P.push_back(ay[i]);
-                            ++i; ++j;
-                        }
-                    }
-                    ev[y] -= bitCountList(P, 2, ev[y] + 1.0);
-                    ++evDeltas;
-                    if (ev[y] < 0) {
-                        std::fprintf(stderr, "WARN negEOS vertex=%u ev=%.0f\n",
-                                     y, ev[y]);
-                        ev[y] = 0;
-                    }
-                    if (ev[y] < thry && !inQ[y]) { Q.push_back(y); inQ[y] = 1; }
-                } else {
-                    // saturated (or already-dirty): defer ONE recompute to pop
-                    evDirty[y] = 1;
-                    if (!inQ[y]) { Q.push_back(y); inQ[y] = 1; }
-                }
+                // V4.2: recompute-only lazy cascade. Stage-B measured the exact
+                // pair-delta path firing negligibly (34 deltas vs 10k
+                // recomputes on the worst edge) and the leaf-based EOScnt makes
+                // recomputes cheap — so every qualifying touch just defers ONE
+                // batched recompute to pop time (exact-at-decision unchanged).
+                evDirty[y] = 1;
+                if (!inQ[y]) { Q.push_back(y); inQ[y] = 1; }
             }
             inRegion[x] = 0;                          // drop x's C-membership
         }
@@ -648,102 +846,266 @@ int main(int argc, char **argv) {
                 - pinned.begin();
     size_t pinnedSkipped = j0;
 
-    // Local universe for the peel: region [0, R), then alive pinned (ascending
-    // coreBase) [R, Unb). The τ-view "pinned with core >= τ" is then the id
-    // range [cut(τ), Unb): a single clearRange folds the predicate into masks.
     const size_t R = region.size();
-    {
-        std::vector<uint32_t> univ;
-        univ.reserve(R + pinned.size() - j0);
-        for (uint32_t x : region) univ.push_back(x);
-        for (size_t k = j0; k < pinned.size(); ++k) univ.push_back(pinned[k]);
-        buildUniverse(univ.data(), univ.size());
-    }
-    std::vector<double> pinCore;             // ascending, local ids R+i
+    std::vector<double> pinCore;             // ascending, index i = rank j0+i
     pinCore.reserve(pinned.size() - j0);
     for (size_t k = j0; k < pinned.size(); ++k) pinCore.push_back(coreBase[pinned[k]]);
-    auto viewCut = [&](double tau) -> size_t {
-        return R + (size_t)(std::lower_bound(pinCore.begin(), pinCore.end(), tau) -
-                            pinCore.begin());
-    };
-
-    std::vector<uint64_t> aliveM(Uw, 0ull);
-    for (size_t i = 0; i < Unb; ++i) bitSet(aliveM.data(), i);
-
-    std::vector<uint64_t> Pbuf(Uw), Dbuf(Uw);   // top-level P for key counts
-
-    // key(x) = # s-cliques through x within alive ∩ view(τ_x)
-    auto supportOfL = [&](size_t lx) -> double {
-        const uint64_t *rx = rowOf(lx);
-        for (size_t w = 0; w < Uw; ++w) Pbuf[w] = rx[w] & aliveM[w];
-        clearRange(Pbuf.data(), R, viewCut(coreBase[lid2g[lx]]));
-        return bitSct(Pbuf.data(), 1, 0, INF, 0);
-    };
-    // exact removal delta: cliques through {x,z} with other members in x's view;
-    // computed BEFORE z leaves aliveM
-    auto supportDeltaL = [&](size_t lx, size_t lz) -> double {
-        const uint64_t *rx = rowOf(lx), *rz = rowOf(lz);
-        for (size_t w = 0; w < Uw; ++w) Dbuf[w] = rx[w] & rz[w] & aliveM[w];
-        clearRange(Dbuf.data(), R, viewCut(coreBase[lid2g[lx]]));
-        return bitSct(Dbuf.data(), 2, 0, INF, 0);
-    };
 
     std::vector<double> key(R, 0.0), newCoreL(R, -1.0);
-    std::vector<uint32_t> pool;                 // local region ids
+    std::vector<uint32_t> pool;                 // region local ids
     pool.reserve(R);
-    for (size_t i = 0; i < R; ++i) { key[i] = supportOfL(i); pool.push_back((uint32_t)i); }
-
+    for (size_t i = 0; i < R; ++i) pool.push_back((uint32_t)i);
     size_t peelPops = 0;
+    size_t jc = 0;        // cursor into pinCore (rank = j0 + jc)
+    double minCore = L0;  // no region vertex can pop below L0
 
-    // Remove z, keeping every alive region neighbor's key exact via delta
-    // subtraction (computed BEFORE clearing z from aliveM). τ-view skip: a
-    // pinned z below y's level was never counted in y's view.
-    auto removeAndUpdate = [&](size_t lz) {
-        const bool zPinned = lz >= R;
-        const double zCore = zPinned ? pinCore[lz - R] : 0.0;
-        const uint64_t *rz = rowOf(lz);
-        size_t regWords = (R + 63) / 64;
-        for (size_t w = 0; w < regWords; ++w) {
-            uint64_t m = rz[w] & aliveM[w];
-            if (w == regWords - 1 && (R & 63))
-                m &= (1ull << (R & 63)) - 1;    // region ids only
-            while (m) {
-                size_t ly = (w << 6) + (size_t)std::countr_zero(m);
-                m &= m - 1;
-                if (zPinned && zCore < coreBase[lid2g[ly]]) continue;
-                key[ly] -= supportDeltaL(ly, lz);
-                if (key[ly] < 0) {
-                    std::fprintf(stderr, "WARN negkey vertex=%u key=%.0f\n",
-                                 lid2g[ly], key[ly]);
-                    key[ly] = 0;
+    const char *peelEnv = std::getenv("DYN1S_PEEL");
+    const bool bitsetPeel = peelEnv && std::strcmp(peelEnv, "bitset") == 0;
+
+    if (bitsetPeel) {
+        // ---- M1/Stage-B bitset peel (kept for A/B; DYN1S_PEEL=bitset) ----
+        // Local universe: region [0, R), then alive pinned (ascending core)
+        // [R, Unb). τ-view = clearRange over the pinned id range.
+        {
+            std::vector<uint32_t> univ;
+            univ.reserve(R + pinned.size() - j0);
+            for (uint32_t x : region) univ.push_back(x);
+            for (size_t k = j0; k < pinned.size(); ++k) univ.push_back(pinned[k]);
+            buildUniverse(univ.data(), univ.size());
+        }
+        auto viewCut = [&](double tau) -> size_t {
+            return R + (size_t)(std::lower_bound(pinCore.begin(), pinCore.end(), tau) -
+                                pinCore.begin());
+        };
+        std::vector<uint64_t> aliveM(Uw, 0ull);
+        for (size_t i = 0; i < Unb; ++i) bitSet(aliveM.data(), i);
+        std::vector<uint64_t> Pbuf(Uw), Dbuf(Uw);
+        auto supportOfL = [&](size_t lx) -> double {
+            const uint64_t *rx = rowOf(lx);
+            for (size_t w = 0; w < Uw; ++w) Pbuf[w] = rx[w] & aliveM[w];
+            clearRange(Pbuf.data(), R, viewCut(coreBase[lid2g[lx]]));
+            return bitSct(Pbuf.data(), 1, 0, INF, 0);
+        };
+        auto supportDeltaL = [&](size_t lx, size_t lz) -> double {
+            const uint64_t *rx = rowOf(lx), *rz = rowOf(lz);
+            for (size_t w = 0; w < Uw; ++w) Dbuf[w] = rx[w] & rz[w] & aliveM[w];
+            clearRange(Dbuf.data(), R, viewCut(coreBase[lid2g[lx]]));
+            return bitSct(Dbuf.data(), 2, 0, INF, 0);
+        };
+        for (size_t i = 0; i < R; ++i) key[i] = supportOfL(i);
+        auto removeAndUpdate = [&](size_t lz) {
+            const bool zPinned = lz >= R;
+            const double zCore = zPinned ? pinCore[lz - R] : 0.0;
+            const uint64_t *rz = rowOf(lz);
+            size_t regWords = (R + 63) / 64;
+            for (size_t w = 0; w < regWords; ++w) {
+                uint64_t m = rz[w] & aliveM[w];
+                if (w == regWords - 1 && (R & 63))
+                    m &= (1ull << (R & 63)) - 1;
+                while (m) {
+                    size_t ly = (w << 6) + (size_t)std::countr_zero(m);
+                    m &= m - 1;
+                    if (zPinned && zCore < coreBase[lid2g[ly]]) continue;
+                    key[ly] -= supportDeltaL(ly, lz);
+                    if (key[ly] < 0) {
+                        std::fprintf(stderr, "WARN negkey vertex=%u key=%.0f\n",
+                                     lid2g[ly], key[ly]);
+                        key[ly] = 0;
+                    }
                 }
             }
+            bitClr(aliveM.data(), lz);
+        };
+        while (!pool.empty()) {
+            size_t bi = 0;
+            for (size_t i = 1; i < pool.size(); ++i)
+                if (key[pool[i]] < key[pool[bi]]) bi = i;
+            double rmin = key[pool[bi]];
+            double pmin = (jc < pinCore.size()) ? pinCore[jc] : INF;
+            if (pmin <= rmin) {
+                size_t lz = R + jc;
+                ++jc;
+                if (pinCore[lz - R] > minCore) minCore = pinCore[lz - R];
+                removeAndUpdate(lz);
+                ++peelPops;
+            } else {
+                uint32_t lz = pool[bi];
+                pool[bi] = pool.back();
+                pool.pop_back();
+                if (key[lz] > minCore) minCore = key[lz];
+                newCoreL[lz] = minCore;
+                removeAndUpdate(lz);
+                ++peelPops;
+            }
         }
-        bitClr(aliveM.data(), lz);
-    };
-
-    size_t jc = 0;        // cursor into pinCore (ascending, past-skipped only)
-    double minCore = L0;  // no region vertex can pop below L0
-    while (!pool.empty()) {
-        size_t bi = 0;
-        for (size_t i = 1; i < pool.size(); ++i)
-            if (key[pool[i]] < key[pool[bi]]) bi = i;
-        double rmin = key[pool[bi]];
-        double pmin = (jc < pinCore.size()) ? pinCore[jc] : INF;
-        if (pmin <= rmin) {
-            size_t lz = R + jc;
-            ++jc;
-            if (pinCore[lz - R] > minCore) minCore = pinCore[lz - R];
-            removeAndUpdate(lz);
-            ++peelPops;
-        } else {
-            uint32_t lz = pool[bi];
-            pool[bi] = pool.back();
-            pool.pop_back();
-            if (key[lz] > minCore) minCore = key[lz];
-            newCoreL[lz] = minCore;
-            removeAndUpdate(lz);
-            ++peelPops;
+    } else {
+        // ================= V4.3 index-native peel =================
+        // Pinned deaths happen in RANK order (rank = index in the core-sorted
+        // pinned array; unique per vertex, core-monotone). At cursor rank cr,
+        // pinned w is alive ⟺ rank(w) >= cr, and visible to region y ⟺
+        // rank(w) >= rankTau[y] (:= first rank with core >= τ_y). So each
+        // leaf's visible pinned-pivot count is ONE suffix count over its
+        // rank-sorted pinned-pivot list at cutoff m = max(cr, rankTau[y]), and
+        // its pinned-H members are all visible ⟺ minPHR >= m. Rank cutoffs
+        // move by +1 per pinned death and affect ONLY leaves containing that
+        // rank — so pinned deaths need no counter mutation, just key deltas
+        // over the dying vertex's active leaves. Region deaths update the
+        // leaf's dH/aR counters. Keys stay exact at every pop (§16a).
+        ++stampCur;   // vertex -> (region lid | pinned rank) map, via g2l stamps
+        for (size_t i = 0; i < R; ++i) {
+            g2l[region[i]] = (uint32_t)(i << 1);            // even: region lid
+            g2lStamp[region[i]] = stampCur;
+        }
+        for (size_t r = 0; r < pinned.size(); ++r) {
+            g2l[pinned[r]] = (uint32_t)((r << 1) | 1u);     // odd: pinned rank
+            g2lStamp[pinned[r]] = stampCur;
+        }
+        std::vector<uint32_t> rankTau(R);
+        for (size_t i = 0; i < R; ++i)
+            rankTau[i] = (uint32_t)(std::lower_bound(
+                             pinned.begin(), pinned.end(), coreBase[region[i]],
+                             [](uint32_t a, double v) { return coreBase[a] < v; }) -
+                         pinned.begin());
+        if (leafEpochV.size() < idxLeaves()) {
+            leafEpochV.resize(idxLeaves(), 0);
+            leafActId.resize(idxLeaves(), 0);
+        }
+        ++leafEpoch;
+        struct AL {
+            uint32_t k, dH, aR, nPP;
+            uint32_t minPHR;
+            uint32_t membOff, membCnt, ppOff;
+        };
+        std::vector<AL> als;
+        std::vector<uint32_t> aMemb;    // (region lid << 1) | isH
+        std::vector<uint32_t> aPP;      // pinned ranks, sorted asc per leaf
+        std::vector<std::vector<uint32_t>> incR(R);   // (actId << 1) | zIsH
+        std::vector<std::vector<uint32_t>> incP(pinned.size() - j0); // actId
+        const uint32_t NORANK = 0xFFFFFFFFu;
+        for (uint32_t x : region) {
+            for (uint32_t enc : vLeaves[x]) {
+                const uint32_t li = enc >> 1;
+                if (leafEpochV[li] == leafEpoch) continue;
+                leafEpochV[li] = leafEpoch;
+                leafActId[li] = 0xFFFFFFFFu;   // default: not activated
+                const uint32_t *d = leafData.data() + leafStart[li];
+                const int hl = leafHLen[li];
+                const int tot = (int)(leafStart[li + 1] - leafStart[li]);
+                AL a;
+                a.k = (uint32_t)(S - hl);
+                a.dH = 0;
+                a.membOff = (uint32_t)aMemb.size();
+                a.ppOff = (uint32_t)aPP.size();
+                uint32_t minPHR = NORANK, aR = 0;
+                bool valid = true;
+                for (int i = 0; i < tot && valid; ++i) {
+                    uint32_t w = d[i];
+                    if (g2lStamp[w] != stampCur) { valid = false; break; }
+                    uint32_t e2 = g2l[w];
+                    if (i < hl) {                        // H member
+                        if (e2 & 1u) minPHR = std::min(minPHR, e2 >> 1);
+                        else aMemb.push_back(((e2 >> 1) << 1) | 1u);
+                    } else {                             // Π member
+                        if (e2 & 1u) aPP.push_back(e2 >> 1);
+                        else { aMemb.push_back(((e2 >> 1) << 1)); ++aR; }
+                    }
+                }
+                if (!valid) {   // member outside U: impossible by N[x] ⊆ U; guard
+                    std::fprintf(stderr, "WARN leaf member outside U leaf=%u\n", li);
+                    aMemb.resize(a.membOff);
+                    aPP.resize(a.ppOff);
+                    continue;
+                }
+                a.membCnt = (uint32_t)aMemb.size() - a.membOff;
+                a.nPP = (uint32_t)aPP.size() - a.ppOff;
+                a.minPHR = minPHR;
+                a.aR = aR;
+                std::sort(aPP.begin() + a.ppOff, aPP.end());
+                uint32_t actId = (uint32_t)als.size();
+                leafActId[li] = actId;
+                als.push_back(a);
+                for (uint32_t idx = a.membOff; idx < a.membOff + a.membCnt; ++idx)
+                    incR[aMemb[idx] >> 1].push_back((actId << 1) | (aMemb[idx] & 1u));
+                for (uint32_t idx = a.ppOff; idx < a.ppOff + a.nPP; ++idx)
+                    if (aPP[idx] >= j0) incP[aPP[idx] - j0].push_back(actId);
+                if (minPHR != NORANK && minPHR >= j0)
+                    incP[minPHR - j0].push_back(actId);   // H-death event carrier
+            }
+        }
+        // contribution of leaf a to region y's key at cursor rank cr;
+        // aRd = temporary delta on aR (for before/after of a region-Π death)
+        auto contrib = [&](const AL &a, uint32_t yl, bool yIsH, uint32_t cr,
+                           int aRd) -> double {
+            if (a.dH) return 0.0;
+            uint32_t m = std::max(cr, rankTau[yl]);
+            if (a.minPHR != NORANK && a.minPHR < m) return 0.0;
+            const uint32_t *pp = aPP.data() + a.ppOff;
+            size_t lo = std::lower_bound(pp, pp + a.nPP, m) - pp;
+            int nvis = (int)a.aR + aRd + (int)(a.nPP - lo);
+            return yIsH ? nCr(nvis, a.k) : nCr(nvis - 1, a.k - 1);
+        };
+        std::vector<uint8_t> aliveR(R, 1);
+        const uint32_t rank0 = (uint32_t)j0;
+        for (size_t i = 0; i < R; ++i)
+            for (uint32_t e : incR[i])
+                key[i] += contrib(als[e >> 1], (uint32_t)i, e & 1u, rank0, 0);
+        auto guardKey = [&](uint32_t yl) {
+            if (key[yl] < 0) {
+                std::fprintf(stderr, "WARN negkey vertex=%u key=%.0f\n",
+                             region[yl], key[yl]);
+                key[yl] = 0;
+            }
+        };
+        while (!pool.empty()) {
+            size_t bi = 0;
+            for (size_t i = 1; i < pool.size(); ++i)
+                if (key[pool[i]] < key[pool[bi]]) bi = i;
+            double rmin = key[pool[bi]];
+            double pmin = (jc < pinCore.size()) ? pinCore[jc] : INF;
+            const uint32_t cr = rank0 + (uint32_t)jc;
+            if (pmin <= rmin) {
+                // pinned death at rank cr: keys of region members sharing its
+                // leaves lose exactly the m: cr -> cr+1 suffix change.
+                if (pinCore[jc] > minCore) minCore = pinCore[jc];
+                for (uint32_t actId : incP[jc]) {
+                    const AL &a = als[actId];
+                    for (uint32_t idx = a.membOff; idx < a.membOff + a.membCnt; ++idx) {
+                        uint32_t yl = aMemb[idx] >> 1;
+                        bool yIsH = aMemb[idx] & 1u;
+                        if (!aliveR[yl]) continue;
+                        if (rankTau[yl] > cr) continue;   // τ-view skip
+                        key[yl] -= contrib(a, yl, yIsH, cr, 0) -
+                                   contrib(a, yl, yIsH, cr + 1, 0);
+                        guardKey(yl);
+                    }
+                }
+                ++jc;
+                ++peelPops;
+            } else {
+                uint32_t lz = pool[bi];
+                pool[bi] = pool.back();
+                pool.pop_back();
+                if (key[lz] > minCore) minCore = key[lz];
+                newCoreL[lz] = minCore;
+                aliveR[lz] = 0;
+                for (uint32_t e : incR[lz]) {
+                    uint32_t actId = e >> 1;
+                    bool zIsH = e & 1u;
+                    AL &a = als[actId];
+                    for (uint32_t idx = a.membOff; idx < a.membOff + a.membCnt; ++idx) {
+                        uint32_t yl = aMemb[idx] >> 1;
+                        bool yIsH = aMemb[idx] & 1u;
+                        if (yl == lz || !aliveR[yl]) continue;
+                        double before = contrib(a, yl, yIsH, cr, 0);
+                        double after = zIsH ? 0.0 : contrib(a, yl, yIsH, cr, -1);
+                        key[yl] -= before - after;
+                        guardKey(yl);
+                    }
+                    if (zIsH) a.dH += 1;
+                    else a.aR -= 1;
+                }
+                ++peelPops;
+            }
         }
     }
 
