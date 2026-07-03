@@ -5008,3 +5008,59 @@ CAVEAT (honest): sup values of same-wave-popped patterns internally differ under
 not -- the clamp proof); any consumer of post-peel sup must be checked (hierarchy uses cores only; sup0 snapshots
 precede the peel). t>=2: the same clamp theorem holds (it is a property of the bucket application, not of t);
 the witness-major/general paths get the identical leaf-kill rule once their instance loop is restructured.
+
+## 119. §118 EXPLOIT SHIPPED: clamp-skip + leaf-kill, bit-identical, default-ON (2026-07-03)
+
+Task #18. Implements the §118 wave-closure theorem in region_native_sct_peel.cpp as two independent,
+individually-escapable mechanisms. Both default-ON; escapes SCT_NO_CLAMPSKIP / SCT_NO_AYKILL.
+
+MECHANISMS
+(i) CLAMP-SKIP (all 3 credit sites: a_Y credit, witness-major credit, general-DFS applyIdx): after
+    resolving the credited pattern qi, drop the credit if pats[qi].key <= curLevel. STRONGER THAN THE
+    §118 CAVEAT STATED: the baseline apply itself already discards same-wave drops behind its
+    nk != key guard (nk = max(round(sup-delta), curLevel) == curLevel == key, and the sup write sits
+    INSIDE that branch), so sup/key/bucket -- not just cores -- stay bit-for-bit identical. The §118
+    "post-peel sup may differ" caveat is RETRACTED: the skip is fully invisible; only internal state
+    (deadY fill, counters) diverges. In applyIdx the skip fires BEFORE the scWithTerms drop
+    computation, saving the whole per-Q DP on the general path.
+(ii) LEAF-KILL (a_Y instances; the money): cntAbove[lid] = #alive patterns hosted at lid with
+    key > curLevel. ==0 -> every remaining credit from lid is same-wave -> skip the whole (P,lid)
+    instance: enumeration, dead-set inserts, q2p lookups all gone. Maintenance is -1 per
+    (wave-entering pattern, hosting leaf), O(Σ hostSz) total: (a) a once-per-level bucket sweep
+    (patterns already at the level when it opens; bucket pushes happen at strictly-decreasing key
+    values, so one entry per pattern per bucket) and (b) the apply's key-change site when a cascade
+    pulls a key down to curLevel. STALE-DEAD-SET SAFETY: cntAbove is monotone non-increasing (keys
+    never rise, hosting fixed), so a killed leaf stays killed; every later death hosted there is
+    same-wave and killed too, so the leaf's under-filled deadY is never consulted again.
+    batch-peel (t>=4) untouched: it already exploits wave closure by pre-marking the wave dead (§58).
+    ONDEMAND EXCLUDED from leaf-kill: leavesOf() is a per-call hash-probe recompute there, so the
+    cntAbove maintenance costs more than the kills save (measured astro34 SCT_ONDEMAND peel
+    8.49s -> 11.39s before the exclusion). ondemand keeps clamp-skip.
+
+CORRECTNESS (rn_base18 = committed §117 build, vs rn_kill)
+- 13-case A/B gate: the 10 §117 cases + SCT_ONDEMAND + each mechanism alone (SCT_NO_AYKILL /
+  SCT_NO_CLAMPSKIP). Core output byte-identical on all 13. (Gate-filter pitfall: BSD sed has no \b;
+  the timing tokens must be stripped with s/(enum|peel)=[0-9.]+s//g.)
+- scripts/verify_tuple_hierarchy.py 500 on the shipped binary: PASS (0 violations, cores agree).
+
+PERF (local mac, serial, median-of-3, /usr/bin/time -l; base = §117 binary)
+  cell              base peel   kill peel   speedup   killed instances      RSS
+  ca-AstroPh 3,4    4.82s       4.10s       1.18x     2.57M (38.4%)         1355 -> 1211MB (-11%)
+  ca-AstroPh 4,5    31.78s      24.79s      1.28x     13.96M (42.4%)        6488 -> 5741MB (-11%)
+  com-dblp 4,5      6.68s       3.38s       1.98x     5.45M (89.2%)         1361 -> 916MB (-33%)
+  soc-Epinions 3,4  8.02s       8.04s       1.00x     3.93M (23.8%)         ~flat
+  ca-GrQc 4,6 SCT_AY (t=2, single run): 0.12s -> 0.05s -- the t>=2 a_Y path benefits too.
+- The §118 probe PREDICTED the ranking exactly: com-dblp 4,5 had 87.4% same-wave credits -> 89.2%
+  of instances leaf-killed -> ~2x; Epinions had the lowest same-wave share -> tie (no regression).
+- CUMULATIVE vs pre-§117: astro34 6.57->4.10 (1.60x), astro45 45.47->24.79 (1.83x), dblp45
+  10.75->3.38 (3.18x), epin34 9.29->8.04 (1.16x).
+- MEMORY side-win: killed instances never insert into deadY, so the dead-set stays smaller
+  (dblp45 -33% RSS). The §102 collapse case is now caught at its source.
+- Clamp-skip ALONE ~ 0 time gain (astro34 4.84s vs 4.82s, single run): a same-wave credit's cost IS
+  the q2p lookup, which precedes the skip. Consistent with §117 (credit ~ 1 hash probe): the win had
+  to come from removing INSTANCES, which is what leaf-kill does.
+
+REMAINING GAP to the Θ(level-crossing incidences) bound (§118 consequence 3): same-wave credits from
+leaves still hosting >=1 cross-level pattern survive (pay lookup, then clamp-skip); killing those
+needs per-(pattern,leaf) alive-witness counters or the consequence-2 cross-pointer structure. The
+t>=2 witness-major/general instance loops can inherit the same leaf-kill rule once restructured.

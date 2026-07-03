@@ -1906,6 +1906,40 @@ int main(int argc, char **argv) {
     // then the remaining (up to 10^5) patterns hosting it skip. Opt-in (SCT_AYSKIP) for A/B.
     bool aySkip = ayMode && getenv("SCT_NO_AYSKIP") == nullptr;   // default ON (bit-identical); escape: SCT_NO_AYSKIP
     long long ayExh = 0, ayTot = 0;
+    // ===== §118 WAVE-CLOSURE EXPLOIT (Task #18): per-credit clamp-skip + per-leaf leaf-kill =====
+    // CLAMP THEOREM (§118): a credit to an alive Q with key == curLevel changes NO state. Alive keys
+    // never sit below curLevel (every alive key-K pattern has an unpopped entry in bk[K], so the level
+    // cannot pass K) and never rise (drops only). So at apply time nk = max(round(sup-delta), curLevel)
+    // == curLevel == key, the nk != key branch is not taken, and sup/key/bucket all stay untouched.
+    // Two exact consequences, both bit-identical on cores:
+    //  (i) CLAMP-SKIP: drop any credit whose target has key <= curLevel (it would be discarded whole).
+    //  (ii) LEAF-KILL: cntAbove[lid] = #alive patterns hosted at lid with key > curLevel. When it hits
+    //       0, every alive pattern hosted there is same-wave, so every remaining credit FROM that leaf
+    //       is same-wave -> skip the whole (P,leaf) a_Y instance (enumeration + dead-set inserts +
+    //       lookups). cntAbove is monotone non-increasing (keys never rise, hosting is fixed), so a
+    //       killed leaf stays killed and its now-stale dead-set is never consulted again: every later
+    //       death hosted there is same-wave and killed too. Maintenance: -1 per (wave-entering pattern,
+    //       hosting leaf) -- at the once-per-level bucket sweep for patterns already at the level, and
+    //       at the apply when a cascade pulls key down to curLevel. O(Σ hostSz) total.
+    // FULLY invisible: the baseline apply itself discards same-wave drops behind the nk != key guard
+    // (nk == curLevel == key), so sup/key/bucket state -- not just cores -- match bit-for-bit; the
+    // only divergent state is internal (deadY fill, cntAbove, debug counters). Probe measured
+    // 66.6-87.4% of delta-reaching credits same-wave.
+    // batch-peel (t>=4) already exploits this wave closure by pre-marking the wave dead -- untouched.
+    // Escapes: SCT_NO_CLAMPSKIP / SCT_NO_AYKILL (independently correct, A/B-testable alone).
+    bool clampSkip = getenv("SCT_NO_CLAMPSKIP") == nullptr;       // default ON (all 3 credit sites)
+    // ondemand excluded: there leavesOf() is a per-call hash-probe recompute, so the cntAbove
+    // maintenance (init + one call per wave-entering pattern) costs more than the kills save
+    // (measured ca-AstroPh 3,4 SCT_ONDEMAND peel 8.49s -> 11.39s). ondemand keeps clamp-skip only.
+    bool ayKill = ayMode && !ondemand && getenv("SCT_NO_AYKILL") == nullptr;   // default ON (a_Y leaf instances)
+    long long ayKillN = 0;                                        // instances skipped by leaf-kill
+    long long lastSwept = -2;                                     // last wave-entry-swept level
+    vector<int> cntAbove;                                         // per-leaf #alive hosted with key > curLevel
+    if (ayKill) {
+        cntAbove.assign((size_t)nLeaf, 0);
+        for (int pz = 0; pz < (int)pats.size(); pz++)             // all alive at start; the first level's
+            for (int lid : leavesOf(pz)) cntAbove[lid]++;         // sweep subtracts its wave
+    }
     long long ayDead = 0, ayCred = 0;   // probe: #class-witnesses processed (s-scale) vs #credits (work) vs #patterns (r-scale)
     // ===== PIVOTER_PEEL_PROFILE (#2 redundancy probe): measure how many a_Y addDelta leaf-instances
     // produce ZERO new dead witnesses (pure no-op: every enumerated Y was already dead/infeasible, so
@@ -2154,6 +2188,17 @@ int main(int argc, char **argv) {
             it = bk.find(curLevel);
         }
         if (curLevel > maxKey + 1) break;
+        // §118 leaf-kill: once per level, sweep the bucket's live entries (alive && key==curLevel)
+        // into the wave: decrement cntAbove on their hosting leaves. Exactly-once per pattern: a
+        // pattern is either already at this level when it opens (swept here; keys are pushed at
+        // strictly-decreasing values, so it has ONE entry in this bucket) or pulled down during the
+        // drain (decremented at the apply's key-change site, which pushes the entry AFTER the sweep).
+        if (ayKill && curLevel != lastSwept) {
+            lastSwept = curLevel;
+            for (int qz : it->second)
+                if (pats[qz].alive && pats[qz].key == curLevel)
+                    for (int lid : leavesOf(qz)) cntAbove[lid]--;
+        }
         int pi = it->second.back(); it->second.pop_back();
         Pat &P = pats[pi];
         if (!P.alive || P.key != curLevel) continue;
@@ -2191,6 +2236,9 @@ int main(int argc, char **argv) {
             int lid = pleaf[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
             if (faninDbg) { fanA++; if (leafLastLevel[lid] != curLevel) { fanB++; leafLastLevel[lid] = curLevel; } }
+            // §118 LEAF-KILL: every alive pattern hosted here is same-wave -> every credit this
+            // instance could issue is a clamp no-op -> skip the instance whole (see theorem above).
+            if (ayKill && witnessActive && !probeAOn && cntAbove[lid] == 0) { ayKillN++; continue; }
             // §117: hoist the a_Y exhausted-leaf skip ABOVE the pl/plNZ build -- an exhausted leaf
             // (30-40% of instances on dense graphs) pays nothing now. Bit-identical: pl/plNZ have no
             // side effects; kept below the (default-off) probe/fanin gates only when those are active.
@@ -2276,6 +2324,7 @@ int main(int argc, char **argv) {
                     }
                     if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)) {
                         if (peelProf) { if (pats[qi].key <= curLevel) ppCredSame++; else ppCredCross++; }
+                        if (clampSkip && pats[qi].key <= curLevel) return;   // §118 clamp-skip: same-wave, apply would discard it
                         if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                         delta[qi] += w;
                     }
@@ -2399,7 +2448,8 @@ int main(int argc, char **argv) {
                     for (int t : it->second)
                         if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
                             int qi = qsAll[t];
-                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)) {
+                            if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)
+                                && !(clampSkip && pats[qi].key <= curLevel)) {   // §118 clamp-skip
                                 if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                                 delta[qi] += w * (double)nAlive;
                             }
@@ -2502,6 +2552,7 @@ int main(int argc, char **argv) {
                 int qi = qsAll[t];
                 if (qi == pi || !pats[qi].alive) return;
                 if (skipH1 && pats[qi].hostSz == 1) return;  // peels at L_M regardless
+                if (clampSkip && pats[qi].key <= curLevel) return;  // §118 clamp-skip: saves the whole scWithTerms drop
                 dbgHit++;                               // a real candidate pattern reached
                 double d = 0.0;                         // drop, via delta formula
                 for (size_t z = 0; z < chgOld.size(); z++) {
@@ -2617,7 +2668,11 @@ int main(int argc, char **argv) {
             delta[qi] = 0.0;
             long long nk = (long long)llround(ns);
             if (nk < curLevel) nk = curLevel;          // monotone clamp
-            if (nk != pats[qi].key) { pats[qi].sup = ns; pats[qi].key = nk; bk[nk].push_back(qi); }
+            if (nk != pats[qi].key) {
+                pats[qi].sup = ns; pats[qi].key = nk; bk[nk].push_back(qi);
+                if (ayKill && nk == curLevel)          // §118: cascade pulled Q into the current wave
+                    for (int lid : leavesOf(qi)) cntAbove[lid]--;
+            }
         }
     }
     }
@@ -2642,6 +2697,9 @@ int main(int argc, char **argv) {
             witGateW, witGateG, (witGateW + witGateG) ? 100.0 * witGateG / (witGateW + witGateG) : 0.0);
     if (ayMode) fprintf(stderr, "[ay-skip] exhausted-leaf instances=%lld / total=%lld (%.1f%%) skip=%s\n",
             ayExh, ayTot, ayTot ? 100.0*ayExh/ayTot : 0.0, aySkip ? "ON" : "OFF(measure-only)");
+    if (ayMode) fprintf(stderr, "[ay-kill §118] leaf-killed instances=%lld (%.1f%% of %lld reaching the check) ayKill=%s clampSkip=%s\n",
+            ayKillN, (ayKillN + ayTot) ? 100.0*ayKillN/(ayKillN + ayTot) : 0.0, ayKillN + ayTot,
+            ayKill ? "ON" : "OFF", clampSkip ? "ON" : "OFF");
     if (ayMode) fprintf(stderr, "[ay-scale] class-witnesses processed(s-scale)=%lld  credits(work)=%lld  vs #patterns(r-scale)=%lld  -> work/pat=%.1fx  wit/pat=%.1fx\n",
             ayDead, ayCred, (long long)pats.size(), pats.size()?(double)ayCred/pats.size():0.0, pats.size()?(double)ayDead/pats.size():0.0);
     if (peelProf) {
