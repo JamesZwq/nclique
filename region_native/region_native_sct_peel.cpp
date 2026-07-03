@@ -1846,6 +1846,15 @@ int main(int argc, char **argv) {
         for (size_t i = 0; i < v.size(); i++) if (v[i]) h ^= mixCV((int)i, (int)v[i]);
         return h;
     };
+    // Audit fix (§117): leafQ2pat is keyed by the ADDITIVE fingerprint (XOR of mixCV over nonzeros),
+    // not the sequential FNV. Every DFS producer threads it in O(1) per coordinate delta (zeros
+    // contribute nothing), and the a_Y credit gets its key for free from the witness fingerprint.
+    // Buckets are still confirmed by exact footprint compare, so lookups stay bit-exact.
+    auto hashSpanInc = [&](const int16_t *p, int len) -> uint64_t {   // == hashVecInc(span)
+        uint64_t h = 0;
+        for (int i = 0; i < len; i++) if (p[i]) h ^= mixCV(i, (int)p[i]);
+        return h;
+    };
     Vec elmScr;                                        // reused recompute scratch for ensureLeafMap
     auto ensureLeafMap = [&](int lid) {
         if (leafQbuilt[lid]) return;
@@ -1856,7 +1865,7 @@ int main(int argc, char **argv) {
         mp.reserve((size_t)nt * 2);
         for (int t = 0; t < nt; t++) {
             auto fp = leafFP(lid, t, Mw, elmScr);              // (ptr,len) span: recompute or CSR view
-            mp[hashSpan(fp.first, fp.second)].push_back(t);
+            mp[hashSpanInc(fp.first, fp.second)].push_back(t);
         }
     };
 
@@ -1869,6 +1878,17 @@ int main(int argc, char **argv) {
     vector<char> seen(pats.size(), 0);
     vector<double> delta(pats.size(), 0.0);          // per-affected exact drop
     Vec uEnv, sufPl, qcand, Yscr;                     // reused per-leaf scratch (Yscr = s=r+2 witness)
+    // §117 audit-fix scratch: ayD = deficit coords of pl vs ell; ayNZ/ayNZn = merged nz(Y) list
+    // (<= r+t entries); ayDStk = DFS δ-coord stack (ascending by construction).
+    vector<int> ayD; int ayNZn = 0;
+    vector<int> ayNZ((size_t)r + (size_t)std::max(witnessTail, 1) + 2, 0);
+    vector<int> ayDStk((size_t)std::max(witnessTail, 1) + 2, 0);
+    // §117: per-death scratch, hoisted out of the pop loop (was 5 fresh vectors per pattern death).
+    vector<int> aff;
+    Vec plScr, qlScr;                              // recompute scratch: P-side (held across k-body), Q-side (per confirm)
+    vector<CCPath> chgOld;                         // pre-insertion snapshots (slotForbidDiff clears it)
+    vector<vector<pair<Vec,int>>> chgOldTerms;     // cached IE terms (pre-insert)
+    vector<pair<int,int>> plNZ;                    // sparse nonzeros of m_P local
     vector<long long> wdDP, cbDP2;                     // adaptive-gate scratch: #witnesses Wδ / #candidates CB
     vector<char> uLiveBuf, covBuf;                     // depth-indexed prune scratch (DFS_PRUNE)
     vector<const int16_t*> chgU, fbA;                  // u-rows / single-forbidden rows of chgOld
@@ -2075,12 +2095,12 @@ int main(int argc, char **argv) {
                             int cap = (int)uEp[c]; if (cap > rem) cap = rem;
                             for (int jj = 0; jj <= cap; jj++) {
                                 qcand[c] = (int16_t)jj;
-                                uint64_t hc = (h ^ ((uint64_t)(uint16_t)jj + 1)) * HMUL;
+                                uint64_t hc = jj ? (h ^ mixCV(c, jj)) : h;   // additive key: zeros free
                                 self(self, c + 1, rem - jj, hc);
                             }
                             qcand[c] = 0;
                         };
-                        dfsB(dfsB, 0, r, 1469598103934665603ULL);
+                        dfsB(dfsB, 0, r, 0);
                     } else {
                         cbFallback++;
                         for (int j = 0; j < F; j++) {        // per-threshold pl_j-pruned DFS (cheap O(1)/node)
@@ -2102,12 +2122,12 @@ int main(int argc, char **argv) {
                                 for (int jj = 0; jj <= cap; jj++) {
                                     qcand[c] = (int16_t)jj;
                                     int mx = plc > jj ? plc : jj;
-                                    uint64_t hc = (h ^ ((uint64_t)(uint16_t)jj + 1)) * HMUL;
+                                    uint64_t hc = jj ? (h ^ mixCV(c, jj)) : h;   // additive key
                                     self(self, c + 1, rem - jj, acc + mx, hc);
                                 }
                                 qcand[c] = 0;
                             };
-                            dfsT(dfsT, 0, r, 0, 1469598103934665603ULL);
+                            dfsT(dfsT, 0, r, 0, 0);
                         }
                     }
                     ti = tj;
@@ -2165,15 +2185,22 @@ int main(int argc, char **argv) {
         // few paths P actually touches -- independent of the split-set size.
         // (A componentwise-max shortcut is NOT valid: the drop is not
         // SC(L, max(m_P,m_Q)) because of that C(n-b,y-b) reweighting.)
-        vector<int> aff;
-        Vec plScr, qlScr;                              // recompute scratch: P-side (held across k-body), Q-side (per confirm)
-        vector<CCPath> chgOld;                         // pre-insertion snapshots
-        vector<vector<pair<Vec,int>>> chgOldTerms;     // cached IE terms (pre-insert)
-        vector<pair<int,int>> plNZ;                    // sparse nonzeros of m_P local
+        aff.clear();                                   // §117: per-death scratch hoisted out of the pop loop
         for (size_t k = 0; k < pleaf.size(); k++) {
             int lid = pleaf[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
             if (faninDbg) { fanA++; if (leafLastLevel[lid] != curLevel) { fanB++; leafLastLevel[lid] = curLevel; } }
+            // §117: hoist the a_Y exhausted-leaf skip ABOVE the pl/plNZ build -- an exhausted leaf
+            // (30-40% of instances on dense graphs) pays nothing now. Bit-identical: pl/plNZ have no
+            // side effects; kept below the (default-off) probe/fanin gates only when those are active.
+            if (ayMode && witnessActive && !probeAOn) {
+                ayTot++;
+                Clock::time_point _ppS;
+                if (peelProf) _ppS = Clock::now();
+                bool _ppExh = (deadY[lid].cnt >= (size_t)witTot[lid]);
+                if (peelProf) ppTSkipChk += secs(_ppS, Clock::now());
+                if (_ppExh) { ayExh++; if (aySkip) continue; }
+            }
             const Vec &pl = recomputePB ? (localB(pi, lid, plScr), (const Vec &)plScr)
                                         : pbLocal[pi][k];   // m_P local to lid (== a_p, h=0)
             int Mloc = (int)pl.size();
@@ -2192,30 +2219,58 @@ int main(int argc, char **argv) {
             // no forbidden IE, no controlled_split -> deletes the entire slotForbidDiff churn. Bit-identical: the
             // dead set is exactly {Y : Y dominates some peeled pattern}, the same set the antichain represents.
             if (ayMode && witnessActive) {
-                ayTot++;                                   // §103: skip leaves whose witnesses are all dead
-                Clock::time_point _ppS;
-                if (peelProf) _ppS = Clock::now();
-                bool _ppExh = (deadY[lid].cnt >= (size_t)witTot[lid]);
-                if (peelProf) ppTSkipChk += secs(_ppS, Clock::now());
-                if (_ppExh) { ayExh++; if (aySkip) continue; }
+                if (probeAOn) {                            // probe mode keeps the original (post-plNZ) skip site
+                    ayTot++;
+                    Clock::time_point _ppS;
+                    if (peelProf) _ppS = Clock::now();
+                    bool _ppExh = (deadY[lid].cnt >= (size_t)witTot[lid]);
+                    if (peelProf) ppTSkipChk += secs(_ppS, Clock::now());
+                    if (_ppExh) { ayExh++; if (aySkip) continue; }
+                }
                 const CCPath &box = slotPaths[lid][0];     // original leaf box (never mutated in a_Y mode)
                 witInst++; witMSum += Mloc; if (Mloc > witMMax) witMMax = Mloc;
+                const int16_t *uEp = box.u.data();
+                const int16_t *ellp = box.ell.data();
+                // ---- §117 audit fix A (deficit precompute): a feasible witness Y = pl + δ (Σδ = t)
+                // must allocate δ_k >= ell_k - pl_k on every deficit coord (pl_k < ell_k); coords
+                // outside δ keep Y_k = pl_k, and pl <= u holds for every hosted footprint. So
+                // total deficit > t  =>  NO feasible witness: skip the instance outright (the old
+                // code enumerated every candidate and failed each inside an O(M) rem==0 scan), and
+                // otherwise the rem==0 feasibility check is O(|D|), |D| <= t, instead of O(M).
+                ayD.clear(); { int needSum = 0; bool hostOk = true;
+                    for (int c = 0; c < Mloc; c++) {
+                        if ((int)pl[c] > (int)uEp[c]) { hostOk = false; break; }          // defensive: never for hosted pl
+                        if ((int)pl[c] < (int)ellp[c]) { ayD.push_back(c); needSum += (int)ellp[c] - (int)pl[c]; }
+                    }
+                    if (!hostOk || needSum > witnessTail) {
+                        if (peelProf) { ppLeafRun++; ppLeafNoop++; }
+                        continue;                            // no witness of P is feasible in this leaf
+                    }
+                }
                 if (!ondemand) ensureLeafMap(lid);           // §3b: ondemand resolves Q via the global hash, no per-leaf map
                 const auto &q2p = leafQ2pat[lid];
                 const auto &qsAll = leafPats[lid];
                 const Vec &nn = box.n;                       // leaf class sizes (n_b)
                 auto &dead = deadY[lid];
                 Yscr = pl;                                   // scratch: pl -> +δ (Y) -> -γ (Q)
-                const int16_t *uEp = box.u.data();
-                const int16_t *ellp = box.ell.data();
-                auto credit = [&](double w) {                // credit Q (= current Yscr); nAlive==1 by construction
+                // ---- §117 audit fix C (O(1) credit key + O(r) confirm): q2p is keyed by the additive
+                // fingerprint, threaded through remGamma in O(1) per unit removed (was an O(M) FNV per
+                // credit). The bucket confirm compares only nz(Y) coords: footprints and Q are both
+                // r-compositions, so agreeing on nz(Y) ⊇ nz(Q) forces equality (the remaining mass is 0).
+                auto credit = [&](double w, uint64_t hQ) {   // credit Q (= current Yscr); nAlive==1 by construction
                     if (w == 0.0) return;
                     ayCred++;
                     int qi;
                     if (ondemand) { qi = globalLookup(lid, Yscr, Mloc); if (qi < 0) return; }
                     else {
-                        auto it = q2p.find(hashVec(Yscr)); if (it == q2p.end()) return; qi = -1;
-                        for (int t : it->second) if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) { qi = qsAll[t]; break; }
+                        auto it = q2p.find(hQ); if (it == q2p.end()) return; qi = -1;
+                        for (int t : it->second) {
+                            auto fp = leafFP(lid, t, Mloc, qlScr);
+                            bool eq = true;
+                            for (int ni = 0; ni < ayNZn; ni++) { int c = ayNZ[ni];
+                                if (fp.first[c] != Yscr[c]) { eq = false; break; } }
+                            if (eq) { qi = qsAll[t]; break; }
+                        }
                         if (qi < 0) return;
                     }
                     if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)) {
@@ -2223,32 +2278,49 @@ int main(int argc, char **argv) {
                         delta[qi] += w;
                     }
                 };
-                auto remGamma = [&](auto &&self, int start, int rem, double w) -> void {
-                    if (rem == 0) { credit(w); return; }
-                    for (int b = start; b < Mloc; b++) {
+                // ---- §117 audit fix B (sparse remGamma): iterate nz(Y) = plNZ ∪ δ-coords (<= r+t,
+                // merged ascending) instead of all M coords -- identical iteration order (ascending
+                // coordinates), so the credit sequence is bit-identical.
+                auto remGamma = [&](auto &&self, int ni, int rem, double w, uint64_t hQ) -> void {
+                    if (rem == 0) { credit(w, hQ); return; }
+                    for (int i = ni; i < ayNZn; i++) {
+                        int b = ayNZ[i];
                         int Yb = (int)Yscr[b];
                         if (Yb < 1) continue;
                         int maxm = Yb < rem ? Yb : rem;
+                        uint64_t hb = hQ ^ mixCV(b, Yb);                      // strip Y[b]'s contribution once
                         for (int m = 1; m <= maxm; m++) {
                             Yscr[b] = (int16_t)(Yb - m);                      // Q_b = Y_b - m
                             int avail = (int)nn[b] - (Yb - m);                // n_b - Q_b
                             double wf = (m == 1) ? (double)avail : ccpath_ncr(avail, m);
-                            self(self, b + 1, rem - m, w * wf);
+                            self(self, i + 1, rem - m, w * wf, (Yb - m) ? (hb ^ mixCV(b, Yb - m)) : hb);
                         }
                         Yscr[b] = (int16_t)Yb;
                     }
                 };
                 // hY = incremental additive fingerprint of Yscr (== hashVecInc(Yscr)), threaded O(1).
                 uint64_t hPl = hashVecInc(pl);
-                auto addDelta = [&](auto &&self, int start, int rem, uint64_t hY) -> void {
+                auto addDelta = [&](auto &&self, int start, int rem, uint64_t hY, int nDelta) -> void {
                     if (rem == 0) {
-                        for (int k = 0; k < Mloc; k++)                        // feasible witness: ell <= Y <= u
-                            if ((int)ellp[k] > (int)Yscr[k] || (int)Yscr[k] > (int)uEp[k]) return;
+                        for (size_t di = 0; di < ayD.size(); di++)            // O(|D|) feasibility (fix A); u holds by DFS room
+                            if ((int)ellp[ayD[di]] > (int)Yscr[ayD[di]]) return;
                         if (peelProf) ppYEnum++;
                         if (!dead.insert(hY)) return;                         // already dead -> no drop (hY==hashVecInc(Yscr); FlatU64 remaps 0)
                         if (peelProf) { ppYNewDead++; ppNewDeadThis++; }
                         ayDead++;
-                        remGamma(remGamma, 0, witnessTail, 1.0);
+                        // nz(Y) = merge(plNZ coords, δ coords), both ascending (fix B)
+                        ayNZn = 0;
+                        { size_t i = 0; int j = 0;
+                          while (i < plNZ.size() && j < nDelta) {
+                              int c1 = plNZ[i].first, c2 = ayDStk[j];
+                              if (c1 == c2)      { ayNZ[ayNZn++] = c1; i++; j++; }
+                              else if (c1 < c2)  { ayNZ[ayNZn++] = c1; i++; }
+                              else               { ayNZ[ayNZn++] = c2; j++; }
+                          }
+                          while (i < plNZ.size()) ayNZ[ayNZn++] = plNZ[i++].first;
+                          while (j < nDelta)      ayNZ[ayNZn++] = ayDStk[j++];
+                        }
+                        remGamma(remGamma, 0, witnessTail, 1.0, hY);
                         return;
                     }
                     for (int a = start; a < Mloc; a++) {
@@ -2257,18 +2329,19 @@ int main(int argc, char **argv) {
                         int maxm = room < rem ? room : rem;
                         int Ya = (int)Yscr[a];
                         uint64_t hBase = hY ^ (Ya ? mixCV(a, Ya) : 0);       // strip Y[a]'s old contribution once
-                        for (int m = 1; m <= maxm; m++) { Yscr[a] = (int16_t)(Ya + m); self(self, a + 1, rem - m, hBase ^ mixCV(a, Ya + m)); }
+                        ayDStk[nDelta] = a;
+                        for (int m = 1; m <= maxm; m++) { Yscr[a] = (int16_t)(Ya + m); self(self, a + 1, rem - m, hBase ^ mixCV(a, Ya + m), nDelta + 1); }
                         Yscr[a] = (int16_t)Ya;
                     }
                 };
                 if (peelProf) {
                     ppNewDeadThis = 0; ppLeafRun++;
                     Clock::time_point _ppA = Clock::now();
-                    addDelta(addDelta, 0, witnessTail, hPl);
+                    addDelta(addDelta, 0, witnessTail, hPl, 0);
                     ppTAddDelta += secs(_ppA, Clock::now());
                     if (ppNewDeadThis == 0) ppLeafNoop++;
                 } else
-                    addDelta(addDelta, 0, witnessTail, hPl);
+                    addDelta(addDelta, 0, witnessTail, hPl, 0);
                 continue;                                    // leaf done; no slotForbidDiff
             }
             // Record P (updates the stored slot via split) and capture the CHANGED
@@ -2319,7 +2392,7 @@ int main(int argc, char **argv) {
                 // credit Q (= current Yscr) with the γ-weight w times the alive-box count.
                 auto credit = [&](double w, int nAlive) {
                     if (w == 0.0) return;
-                    auto it = q2p.find(hashVec(Yscr));
+                    auto it = q2p.find(hashVecInc(Yscr));
                     if (it == q2p.end()) return;
                     for (int t : it->second)
                         if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
@@ -2469,13 +2542,13 @@ int main(int argc, char **argv) {
                 for (int j = 0; j <= cap; j++) {
                     qcand[c] = (int16_t)j;
                     int mx = plc > j ? plc : j;
-                    uint64_t hc = (h ^ ((uint64_t)(uint16_t)j + 1)) * HMUL;
+                    uint64_t hc = j ? (h ^ mixCV(c, j)) : h;   // additive key
                     self(self, c + 1, rem - j, acc + mx, hc);
                 }
                 qcand[c] = 0;
             };
             if (!dfsPrune) {
-                dfs(dfs, 0, r, 0, 1469598103934665603ULL);
+                dfs(dfs, 0, r, 0, 0);
             } else {
                 // ---- per-path COVERAGE + feasibility subtree prune (SCT_DFS_PRUNE) ----
                 // A chgOld path z scores 0 for candidate ql (so contributes nothing to
@@ -2528,12 +2601,12 @@ int main(int argc, char **argv) {
                             cvn[z] = hasF[z] ? (cvc[z] && ((int)aP[z][c] <= mx)) : 0;
                         }
                         qcand[c] = (int16_t)j;
-                        uint64_t hc = (h ^ ((uint64_t)(uint16_t)j + 1)) * HMUL;
+                        uint64_t hc = j ? (h ^ mixCV(c, j)) : h;   // additive key
                         self(self, c + 1, rem - j, acc + mx, hc, base + nChg);
                     }
                     qcand[c] = 0;
                 };
-                dfsP(dfsP, 0, r, 0, 1469598103934665603ULL, 0);
+                dfsP(dfsP, 0, r, 0, 0, 0);
             }
         }
         for (int qi : aff) {

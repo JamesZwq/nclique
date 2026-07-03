@@ -4935,3 +4935,41 @@ HONEST PERF: the win is MODEST ~4%, not large. ca-AstroPh (4,5) peel 45.67->43.8
 8.99 vs MAIN 8.92s median = wash within noise (correct -- addDelta is a small fraction there). The dead-set probe (a cache
 miss into a large FlatU64) dominates addDelta, not the hash; the incremental fingerprint removes the O(M) hash but not the
 unavoidable probe, so the redundancy (57% no-op, 76% already-dead) cannot be cut more cheaply. Exact + safe -> kept.
+
+## 117. AUDIT FIND (user push): the a_Y hot loop paid O(M) per work unit where O(1)/O(r) suffices -- fixed, bit-identical, peel 1.17-1.62x (2026-07-03)
+USER PUSH ("加速不上, 但一定可以加速, 怀疑代码/逻辑有问题") -> full line-audit of the a_Y addDelta/remGamma/credit hot
+path. §116's "the redundancy cannot be cut more cheaply" was RIGHT about the probe redundancy but WRONG about the
+constants: every unit of work carried an O(M) loop (M = leaf width) that information already on hand reduces to
+O(1)/O(r). THE THREE FINDS (region_native_sct_peel.cpp):
+(A) rem==0 witness feasibility scanned ALL M coords per candidate Y (ell<=Y<=u). Y = pl + δ differs from pl on <=t
+    coords: u holds by the DFS room bound; ell depends only on pl's DEFICIT coords D = {c: pl_c < ell_c},
+    precomputed once per (P,leaf). |D| > t => NO feasible witness => skip the whole instance up front (kills a
+    class of the §116 57%-no-op instances). Per-candidate check now O(|D|), |D|<=t; was O(M) x #candidates.
+(B) remGamma scanned ALL M coords for Y's nonzeros; nz(Y) = plNZ ∪ δ-coords (<= r+t), merged ascending (plNZ was
+    already computed). Same ascending order -> identical credit sequence -> bit-identical.
+(C) every credit paid an O(M) sequential FNV (hashVec) to key leafQ2pat + an O(M) footprint compare. leafQ2pat is
+    now keyed by the §116 additive fingerprint (XOR of mixCV over nonzeros): the credit key THREADS through
+    remGamma in O(1) (hY was already threaded for the dead-set), and the bucket confirm compares only nz(Y)
+    coords -- exact because footprints and Q are both r-compositions (agreement on nz(Y) ⊇ nz(Q) forces the
+    remaining mass to 0). All FOUR q2p producers switched to the additive key (batch dfsB/dfsT, general dfs/dfsP,
+    witness-major credit) -- cheaper per step (zeros contribute nothing), buckets still confirmed exactly.
+(+) two mechanical leaks: per-death scratch (5 vectors incl. chgOld/chgOldTerms) constructed INSIDE the pop loop
+    (~#patterns x mallocs) -> hoisted; the §103 exhausted-leaf skip ran AFTER the O(M) pl/plNZ build -> hoisted
+    above it (37.9% of instances now pay nothing; probe modes keep the old site for continuity).
+CORRECTNESS: 10-case A/B gate vs the pre-change binary -- core distributions byte-identical on mini(2,3/2,4/3,4),
+SCT_AY-forced t=2 (mini 2,4/3,5 + ca-GrQc 4,6), default t=2 (ca-GrQc 3,5/4,6: antichain+batch+general paths,
+exercises the map re-key), soc-Epinions1 3,4, ca-AstroPh 3,4; SCT_ONDEMAND gate on ca-AstroPh 3,4 identical;
+scripts/verify_tuple_hierarchy.py 500 = 0/0/0 (ground truth). Work-unit counters IDENTICAL to base (instances
+4162865, enumerated-Y 15299569, newly-dead 4916340, credits 19555196 on ca-AstroPh 3,4) -- same algorithm, cheaper units.
+PERF (local mac M-series, serial, median-of-3, /usr/bin/time -l; peel seconds):
+  ca-AstroPh 3,4: 6.57 -> 4.82 (1.36x)   ca-AstroPh 4,5: 45.47 -> 31.72 (1.43x)
+  com-dblp  4,5: 10.75 -> 6.64 (1.62x)   soc-Epinions 3,4: 9.29 -> 7.94 (1.17x)
+  RSS unchanged (+-1%). addDelta on ca-AstroPh 3,4: 3.13s -> 1.44s (2.2x), share 46% -> 29% of peel.
+NEXT LEVERS (in value order, all framework-internal):
+(1) the t>=2 witness-major path (THE 60x cell ca-AstroPh 4,6) has the SAME three diseases x |chgOld| boxes (per-box
+    O(M) feasibility + forbidden-dominance scans per candidate Y; O(M) credit hash now O(nnz) via hashVecInc but
+    not threaded) -- identical surgery applies (per-box deficit/okBase precompute, threaded additive credit key).
+(2) already-dead probes (67.9% of enumerated Y, unchanged): each now costs ~O(1)+a cache miss; killing them outright
+    needs per-(pattern,leaf) alive-witness counters (4B x #incidences ~ 132MB on ca-AstroPh 4,5) -- skip an instance
+    when its count hits 0; measure the residual no-op share first.
+(3) leafQ2pat std::unordered_map -> flat open-addressing table (node-based map = 1-2 cache misses per credit).
