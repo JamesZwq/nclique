@@ -518,40 +518,102 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    // ---- eviction cascade (§6.3), STRICTLY after the closure saturates ----
-    // EOS_C(x): s-cliques through x whose other members each satisfy
-    // c(z) >= c(x)+1 OR the optimistic branch, which per §19 hook 3 requires
-    // z ∈ C AND c(z)+1 ∈ Λ̂ AND TS(z) >= c(x)+1.  Prune x when < c(x)+1.
+    // ---- eviction cascade (§6.3 + §20 DELTA-MAINTAINED), STRICTLY after the
+    // closure saturates. EOS_C(x): s-cliques through x whose other members each
+    // satisfy c(z) >= c(x)+1 OR (z ∈ C AND c(z)+1 ∈ Λ̂ AND TS(z) >= c(x)+1,
+    // §19 hook 3). Prune x when EOS < c(x)+1.
+    //
+    // §20: ev[x] is EXACT below cap_x = c(x)+1+MARGIN (evExact=1) or a
+    // confirmed ">= cap_x at last compute" (saturated, evExact=0). EOS_C(x)
+    // changes ONLY when a NEIGHBOR z of x is evicted (all members of counted
+    // cliques are neighbors), and only if z's qualification was C-DEPENDENT:
+    // z qualified via the optimistic branch and NOT via c(z) >= thr_x (a
+    // first-disjunct member survives the eviction as a member — subtracting
+    // for it would leave ev stale-LOW and wrongly evict). On such a touch:
+    //   exact ev[y]: subtract the pair count through {y,z} under y's CURRENT
+    //     predicate, computed BEFORE dropping z (cap = ev[y]+1: a delta never
+    //     exceeds ev[y], so the capped count is always exact);
+    //   saturated ev[y]: recompute (capped) AFTER dropping z.
+    // All decisions (ev[x] < c(x)+1) are made on exact-at-decision-time
+    // values. The fixpoint is order-independent (EOS is monotone in C: an
+    // evictable vertex stays evictable), so the final region equals the
+    // recompute-cascade's.
     size_t evicted = 0;
+    size_t evDeltas = 0, evRecomputes = 0;
     {
-        auto EOScheck = [&](uint32_t x) -> double {
+        double MARGIN = 8.0;   // §20 exact-window width (DYN1S_EVMARGIN to tune)
+        if (const char *me = std::getenv("DYN1S_EVMARGIN")) MARGIN = std::atof(me);
+        auto qualifies = [&](uint32_t w, double thr) -> bool {
+            return coreBase[w] >= thr ||
+                   (inRegion[w] && inLambda(coreBase[w] + 1.0) && TS_ge(w, thr));
+        };
+        auto EOScnt = [&](uint32_t x) -> double {   // capped at c(x)+1+MARGIN
             const double thr = coreBase[x] + 1.0;
             std::vector<uint32_t> P;
             P.reserve(adj[x].size());
             for (uint32_t z : adj[x])
-                if (coreBase[z] >= thr ||
-                    (inRegion[z] && inLambda(coreBase[z] + 1.0) && TS_ge(z, thr)))
-                    P.push_back(z);
-            return bitCountList(P, 1, thr);   // only "EOS >= thr" matters
+                if (qualifies(z, thr)) P.push_back(z);
+            return bitCountList(P, 1, thr + MARGIN);
         };
-        std::vector<uint8_t> inQ(n, 0);
-        std::vector<uint32_t> wl;
-        for (uint32_t x : Cvec)
-            if (x != U && x != V) { wl.push_back(x); inQ[x] = 1; }
-        for (size_t wh = 0; wh < wl.size(); ++wh) {
-            uint32_t x = wl[wh];
+        std::vector<double> ev(n, 0.0);
+        std::vector<uint8_t> evExact(n, 0), inQ(n, 0), evDirty(n, 0);
+        std::vector<uint32_t> Q;
+        for (uint32_t x : Cvec) {
+            if (x == U || x == V) continue;
+            ev[x] = EOScnt(x);
+            evExact[x] = (ev[x] < coreBase[x] + 1.0 + MARGIN) ? 1 : 0;
+            if (evExact[x] && ev[x] < coreBase[x] + 1.0) { Q.push_back(x); inQ[x] = 1; }
+        }
+        for (size_t qh = 0; qh < Q.size(); ++qh) {
+            uint32_t x = Q[qh];
             inQ[x] = 0;
             if (!inRegion[x] || x == U || x == V) continue;
-            if (EOScheck(x) < coreBase[x] + 1.0) {
-                inRegion[x] = 0;   // evict
-                ++evicted;
-                // only neighbors still in C can lose EOS value -> re-check them
-                for (uint32_t y : adj[x])
-                    if (inRegion[y] && y != U && y != V && !inQ[y]) {
-                        wl.push_back(y);
-                        inQ[y] = 1;
-                    }
+            // LAZY batched recompute: a saturated entry touched while queued is
+            // recomputed ONCE here, covering every touch accumulated in the
+            // meantime (the FIFO between enqueue and pop is the batching
+            // window). Decisions below stay exact-at-decision-time.
+            if (evDirty[x]) {
+                ev[x] = EOScnt(x);
+                ++evRecomputes;
+                evExact[x] = (ev[x] < coreBase[x] + 1.0 + MARGIN) ? 1 : 0;
+                evDirty[x] = 0;
             }
+            if (!(evExact[x] && ev[x] < coreBase[x] + 1.0)) continue;  // exact at decision time
+            ++evicted;
+            for (uint32_t y : adj[x]) {
+                if (!inRegion[y] || y == U || y == V) continue;
+                const double thry = coreBase[y] + 1.0;
+                if (coreBase[x] >= thry) continue;   // x stays a valid member
+                if (!(inLambda(coreBase[x] + 1.0) && TS_ge(x, thry)))
+                    continue;                        // x was never counted for y
+                if (evExact[y] && !evDirty[y]) {
+                    // exact pair delta BEFORE the drop (x still in C)
+                    const auto &ay = adj[y], &ax = adj[x];
+                    std::vector<uint32_t> P;
+                    size_t i = 0, j = 0;
+                    while (i < ay.size() && j < ax.size()) {
+                        if (ay[i] < ax[j]) ++i;
+                        else if (ay[i] > ax[j]) ++j;
+                        else {
+                            if (qualifies(ay[i], thry)) P.push_back(ay[i]);
+                            ++i; ++j;
+                        }
+                    }
+                    ev[y] -= bitCountList(P, 2, ev[y] + 1.0);
+                    ++evDeltas;
+                    if (ev[y] < 0) {
+                        std::fprintf(stderr, "WARN negEOS vertex=%u ev=%.0f\n",
+                                     y, ev[y]);
+                        ev[y] = 0;
+                    }
+                    if (ev[y] < thry && !inQ[y]) { Q.push_back(y); inQ[y] = 1; }
+                } else {
+                    // saturated (or already-dirty): defer ONE recompute to pop
+                    evDirty[y] = 1;
+                    if (!inQ[y]) { Q.push_back(y); inQ[y] = 1; }
+                }
+            }
+            inRegion[x] = 0;                          // drop x's C-membership
         }
     }
 
@@ -693,12 +755,13 @@ int main(int argc, char **argv) {
         std::fprintf(stderr,
                      "[dbg] |C|=%zu region=%zu pinned=%zu tested=%zu evicted=%zu "
                      "skipped=%zu pops=%zu l0=%.0f newcliques=%.0f "
-                     "lambda_iv=%zu lambda_us=%.0f "
+                     "lambda_iv=%zu lambda_us=%.0f ev_deltas=%zu ev_recomputes=%zu "
                      "p1_us=%.0f p2_us=%.0f (test=%.0f evict=%.0f) p3_us=%.0f "
                      "insert_us=%.0f\n",
                      Cvec.size(), region.size(), pinnedSz, testedCount, evicted,
                      pinnedSkipped, peelPops, L0, newCliques, lambdaIv.size(),
-                     lambda_us, p1_us, p2_us, p2test_us, p2evict_us, p3_us, us);
+                     lambda_us, evDeltas, evRecomputes,
+                     p1_us, p2_us, p2test_us, p2evict_us, p3_us, us);
 
     // ---- emit CHANGED + STATS ----
     size_t nChanged = 0;
@@ -715,9 +778,12 @@ int main(int argc, char **argv) {
     std::printf("STATS region=%zu pinned=%zu tested=%zu evicted=%zu rounds=1 "
                 "pops=%zu changed=%zu l0=%.0f pinned_skipped=%zu newcliques=%.0f "
                 "lambda_intervals=%zu lambda_us=%.0f lambda_empty=0 "
-                "p1_us=%.0f p2_us=%.0f p3_us=%.0f insert_us=%.0f\n",
+                "ev_deltas=%zu ev_recomputes=%zu "
+                "p1_us=%.0f p2_us=%.0f p2test_us=%.0f p2evict_us=%.0f "
+                "p3_us=%.0f insert_us=%.0f\n",
                 region.size(), pinnedSz, testedCount, evicted, peelPops, nChanged,
                 L0, pinnedSkipped, newCliques, lambdaIv.size(), lambda_us,
-                p1_us, p2_us, p3_us, us);
+                evDeltas, evRecomputes,
+                p1_us, p2_us, p2test_us, p2evict_us, p3_us, us);
     return 0;
 }
