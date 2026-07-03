@@ -685,3 +685,95 @@ values (§16a analog). Worklist otherwise unchanged.
 - **Stage B**: §20 if needed. Re-measure.
 - **Stage C**: full Tier-1 sweep (all four configs), then the §13
   peel-only acceptance table. Correctness gate remains 0 mismatches.
+
+---
+
+# v4 ADDENDUM — dynamically maintained succinct clique index (index-backed mode)
+
+**Motivation** (user directive + measurement): v3's residual costs are
+dominated by SCT recursion inside discovery tests (dblp s=3: ~30k tests,
+median 51.7 ms vs 32.6 ms peel-only). The index-backed mode replaces
+recursion-based counting with leaf-list evaluation over a MAINTAINED
+CPI. Novelty check (2026-07-03): dynamic maximal-clique-set maintenance
+exists; batch-dynamic clique COUNT maintenance exists (numbers only);
+nobody maintains the succinct index itself. Open lane.
+
+## 22. Additivity of the index under insertion
+
+**Lemma 10 (CPI additivity).** Let F be any exact clique forest for G
+(every clique of G encoded at exactly one leaf as H ∪ σ, σ ⊆ Π). Let
+T_e be an SCT built on G[W] with held pair {u,v} prepended to every
+leaf's H. Then F ⊎ T_e is an exact clique forest for G' = G + e.
+*Proof.* Cliques of G' split disjointly into (a) cliques of G (none
+contains both u and v since e ∉ G) — encoded exactly once by F, never
+by T_e (every T_e clique contains u and v); (b) cliques containing both
+u and v — each equals {u,v} ∪ K' with K' a clique of G[W] (members
+must be common neighbors), encoded exactly once by T_e (SCT property on
+G[W]), never by F. ∎
+
+Insert procedure: build T_e on G[W] (the Phase-1 local SCT, now kept),
+append its leaves, extend the V→L incidence lists of {u,v} ∪ (T_e
+members), and update the persistent per-vertex total supports via T_e's
+per-leaf attribution (held: C(|Π|, k−|H|); pivot: C(|Π|−1, k−|H|−1)).
+
+## 23. Deletion surgery (leaf-local)
+
+Deleting e = (u,v) kills exactly the cliques containing both u,v. For
+each leaf L = (H, Π) with both u,v ∈ H ∪ Π (locate via
+leaves(u) ∩ leaves(v) using the V→L index), apply exactly one case:
+1. u,v ∈ H: delete L (all its cliques contain H ⊇ {u,v}).
+2. u ∈ H, v ∈ Π (or symmetric): replace by (H, Π∖{v})
+   (survivors are exactly σ ⊆ Π∖{v}).
+3. u,v ∈ Π: replace by TWO leaves (H, Π∖{u}) and (H∪{u}, Π∖{u,v})
+   (subsets of Π lacking u, plus subsets containing u but not v —
+   disjoint and covering all survivors exactly once).
+Leaves with at most one of u,v are untouched. Each edit is O(|leaf|)
+including incidence-list fixes; total cost O(Σ_{L ∈ leaves(u)∩leaves(v)}
+|L|). *Proof of exactness*: case analysis above partitions each leaf's
+clique set into dead (⊇{u,v}) and alive, re-encoding the alive part
+exactly once. ∎
+
+## 24. Compression drift and amortized rebuild
+
+After T updates the forest is base + edge-trees + surgery fragments;
+size Σ_cur drifts above a fresh build's Σ_fresh. Policy (scapegoat
+style): track Σ_cur and an estimate of Σ_fresh (e.g. from the last full
+build, scaled); when Σ_cur > (1+ε)·Σ_fresh (ε = 0.5 default), rebuild
+from scratch (cost = one static build, amortized over the ≥ ε-fraction
+of growth updates). Per-root subtree rebuilds are a refinement; measure
+first.
+
+## 25. Index-backed counting interface (what discovery/peel consume)
+
+- `TS(z)`: O(1) — maintained persistent support[] (updated in §22/§23).
+- Filtered counts (OS/EOS/keys; member predicate `pred`):
+  Σ over L ∈ leaves(x) with H(L) all-pass of C(#{π ∈ Π(L) pass}, s−|H|).
+  Per-leaf pivot scan is O(|Π|); for threshold predicates (c(z) >= thr)
+  keep each leaf's Π sorted by core value → binary search per leaf.
+  (Core values change only inside R* per update — resort only touched
+  leaves.)
+- Peel with alive-filtering: V3's per-leaf counter machinery
+  (remainPivots/needPivot) scoped to leaves(region) — index-native
+  scoped peel.
+Persistent state (index-backed mode): core[] + adjacency + forest +
+V→L incidences + support[]. Memory O(Σ) — the index-free mode (v3)
+remains the light alternative; the paper presents BOTH backends over
+the same discovery theory (Λ̂/closure/eviction/pinned peel unchanged).
+
+## 26. Kill-or-confirm experiments (build first, decide from data)
+
+- **E1 (additivity, bit-exact)**: standalone driver: per sampled edge e
+  and s ∈ {3,5}: per-vertex s-clique counts of G' computed (a) fresh
+  SCT on G' vs (b) SCT on G plus T_e attribution. Require exact
+  equality on every vertex, ≥100 edges × 2 graphs. Kills Lemma 10's
+  implementation risk.
+- **E2 (surgery cost)**: one SDCT walk per graph recording, for the 300
+  sampled edges, |leaves(u) ∩ leaves(v)| and Σ|L| over those leaves
+  (single pass, callback-based; no per-pair walks). Distribution decides
+  deletion viability.
+- **E3 (index value pricing)**: from Stage-C phase breakdowns, the SCT
+  recursion share of discovery time per config = the exact upper bound
+  on what §25 can erase. Compute projected medians/p90s.
+Decision rule: E1 exact AND E2 median surgery cost ≲ discovery cost AND
+E3 projects peel-only wins on all four configs ⟹ implement v4;
+otherwise index-free v3 stays the primary and v4 is scoped down.
