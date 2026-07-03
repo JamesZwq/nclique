@@ -1914,6 +1914,7 @@ int main(int argc, char **argv) {
     bool peelProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr;
     long long ppLeafRun = 0, ppLeafNoop = 0;     // addDelta leaf-instances run / of those, crediting 0 new dead
     long long ppYEnum = 0, ppYNewDead = 0;       // enumerated feasible Y / newly dead Y (insert==true)
+    long long ppCredSame = 0, ppCredCross = 0;   // §118 probe: credits to same-wave Q (key==curLevel, clamp-wasted) vs level-crossing Q
     double ppTAddDelta = 0.0, ppTSkipChk = 0.0;  // time in addDelta vs the §103 skip check
     long long ppNewDeadThis = 0;                 // per-leaf-instance scratch (reset before each addDelta)
     // §104 STEP 0 (make-or-break): measure the per-leaf antichain size |A[lid]| the telescoped-nCr peel WOULD carry.
@@ -2274,6 +2275,7 @@ int main(int argc, char **argv) {
                         if (qi < 0) return;
                     }
                     if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)) {
+                        if (peelProf) { if (pats[qi].key <= curLevel) ppCredSame++; else ppCredCross++; }
                         if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                         delta[qi] += w;
                     }
@@ -2646,6 +2648,9 @@ int main(int argc, char **argv) {
         fprintf(stderr, "[peel-prof a_Y] addDelta-leaf-instances=%lld  NO-OP(0 new dead)=%lld (%.1f%%)  | enumerated-Y=%lld newly-dead-Y=%lld  already-dead-Y=%lld (%.1f%% of enumerated)\n",
                 ppLeafRun, ppLeafNoop, ppLeafRun ? 100.0*ppLeafNoop/ppLeafRun : 0.0,
                 ppYEnum, ppYNewDead, ppYEnum - ppYNewDead, ppYEnum ? 100.0*(ppYEnum-ppYNewDead)/ppYEnum : 0.0);
+        fprintf(stderr, "[peel-prof a_Y] credits: same-wave(clamp-wasted)=%lld  level-crossing=%lld  (%.1f%% wasted)\n",
+                ppCredSame, ppCredCross,
+                (ppCredSame + ppCredCross) ? 100.0 * ppCredSame / (ppCredSame + ppCredCross) : 0.0);
         fprintf(stderr, "[peel-prof a_Y] time: addDelta=%.2fs  skip-check=%.4fs  peel-total=%.2fs  -> addDelta=%.0f%% of peel\n",
                 ppTAddDelta, ppTSkipChk, secs(T5,T6), secs(T5,T6) > 0 ? 100.0*ppTAddDelta/secs(T5,T6) : 0.0);
     }
