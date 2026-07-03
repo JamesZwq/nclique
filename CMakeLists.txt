@@ -131,6 +131,26 @@ if(APPLE)
     target_link_options(degeneracy_cliques PRIVATE "-Wl,-stack_size,0x20000000")
 endif()
 add_executable(dynamic_1s_core src/dynamic_1s_core.cpp)
+# v4 kill-or-confirm experiments (docs/dynamic_v2_spec.md §26).
+# E1: self-contained (no COMMON_SOURCES). E2: uses the real SDCT walker.
+add_executable(test_cpi_additivity test_cpi_additivity.cpp)
+# COMMON_SOURCES (the src/*.cpp glob) contains dynamic_1s_core.cpp, which has its
+# own main(); drop it for this target to avoid a duplicate-symbol link error.
+set(E2_SOURCES ${COMMON_SOURCES})
+list(REMOVE_ITEM E2_SOURCES ${CMAKE_SOURCE_DIR}/src/dynamic_1s_core.cpp)
+# The Region*/CCPath* nucleus-peel variants reference globals (g_maxCliques, ...)
+# defined only in the excluded main degeneracy_cliques.cpp; E2 (SDCT walker only)
+# does not use them, so drop them to keep the link self-contained.
+file(GLOB _E2_DROP
+    ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/*Region*.cpp
+    ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/*CCPath*.cpp
+)
+list(REMOVE_ITEM E2_SOURCES ${_E2_DROP})
+add_executable(test_e2_surgery ${E2_SOURCES} test_e2_surgery.cpp)
+if(APPLE)
+    target_link_options(test_e2_surgery PRIVATE "-Wl,-stack_size,0x20000000")
+endif()
+target_link_libraries(test_e2_surgery PRIVATE ${TBB_LIBRARY} ${Boost_LIBRARIES})
 add_executable(test_ultra_parallel ${COMMON_SOURCES} test_ultra_parallel.cpp)
 add_executable(test_detailed_verification ${COMMON_SOURCES} test_detailed_verification.cpp)
 add_executable(test_sdct_verify ${COMMON_SOURCES} test_sdct_verify.cpp)
