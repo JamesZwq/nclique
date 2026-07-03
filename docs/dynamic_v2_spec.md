@@ -777,3 +777,30 @@ the same discovery theory (Λ̂/closure/eviction/pinned peel unchanged).
 Decision rule: E1 exact AND E2 median surgery cost ≲ discovery cost AND
 E3 projects peel-only wins on all four configs ⟹ implement v4;
 otherwise index-free v3 stays the primary and v4 is scoped down.
+
+## 27. v4 implementation plan (decision: GO, per §26 — E1 exact, E2 median
+cheap, E3 96.8-99.8% of residual cost is discovery counting; on
+epinions s=5 the peel co-dominates at 48%, so the index must also serve
+peel keys/deltas, not just discovery)
+
+Milestones, each gated:
+- **V4.1 index at load**: build the level-s clique forest (leaves =
+  (H, Π) pairs + V→L incidence CSR) at startup (untimed, like graph
+  load), plus maintained support[] (per-vertex totals from leaf
+  attribution). Storage: flat arrays, leaf Π sorted by core value.
+- **V4.2 index-backed discovery**: TS(z) = support[] O(1); OS/EOS =
+  per-leaf evaluation over leaves(y): H∖{y} all-pass check + count of
+  qualifying Π members (core-threshold part by binary search on the
+  sorted Π; the TS-disjunct part by O(1)-per-member predicate scan).
+  Gate: Tier-1 all four configs 0 failures AND CHANGED lines
+  bit-identical to the Stage-B binary.
+- **V4.3 index-native peel**: keys/deltas served from leaves(region)
+  with V3-style per-leaf counters (remainPivots/needPivot) instead of
+  per-call universe rebuild + recursion. Same gate.
+- **V4.4 index maintenance across updates**: append EdgeTree (Lemma 10)
+  after each insert + update support[] and incidences. Gate: Tier-2
+  streaming (pokec s=3: remove 50 random edges, insert back one at a
+  time REUSING the maintained index; final state must equal core(G)
+  per-vertex) — this exercises Lemma 10 end-to-end.
+- **V4.5**: final dual-mode table (index-backed vs index-free vs both
+  baselines); deletion surgery (§23) after that.
