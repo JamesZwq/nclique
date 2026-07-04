@@ -804,3 +804,54 @@ Milestones, each gated:
   per-vertex) — this exercises Lemma 10 end-to-end.
 - **V4.5**: final dual-mode table (index-backed vs index-free vs both
   baselines); deletion surgery (§23) after that.
+
+---
+
+# v5 EXPLORATION — order certificate + repair walk (mostly FALSIFIED; one salvage)
+
+**Idea**: maintain the peel order O (pop sequence, a total order) + rd_O(x)
+(# s-cliques through x with all other members after x in O) + core = c_O
+(prefix-max of rd_O). Insert only bumps rd_O of seeds; a cheap certificate
+skips zero-change edges, a "repair walk" fixes the rest. Goal: stable 1000x.
+
+## Proven lemmas (these hold; useful regardless of v5's fate)
+- **L-A (upper bound, any order)**: c_O(x) >= core(x).
+- **L-B (peel order tight)**: a valid peel total order has c_O = core.
+- **L-C (prefix freeze)**: with B = bumped seeds, p = min_O(B), every w <_O p
+  keeps core and O-position (new cliques' earliest members are all >=_O p).
+- **L-D (zero-change certificate, needs a MAINTAINED total order)**: if O is a
+  valid peel total order and every seed has rd_O'(x) <= core(x), no core
+  changes. Proof: core monotone along O + L-A squeeze.
+
+## Experiment 1 — certificate soundness (bench_v5_certificate.py, test_v5_certificate.cpp)
+Added PIVOTER_DUMP_ORDER to V3 (pop-rank, no algo change).
+- **NAIVE (after = strict base pop-rank): UNSOUND** on V3's dumped order.
+  46 soundness violations / 4 configs, ALL at rd'=core boundary. Root cause
+  (diagnosed on dblp s5 edge 3962,3964): V3 pops same-core BATCHES and OMITS
+  core-0 vertices from the dump; the dumped order is NOT a coherent maintained
+  total order, so L-D's premise fails. NOT a lemma hole — an artifact of
+  measuring against V3's batch order. (A genuine maintained total order with
+  core-0 vertices placed front + consistent ties would satisfy L-D.)
+- **PESSIMISTIC (after = core(y) >= core(x), ORDER-FREE): SOUND**, 0 violations.
+  Needs only core[]. Zero-change coverage 63-65% (vs naive's buggy 97%).
+  Cost median 38-192 us. **This is the one salvageable artifact.**
+
+## Experiment 2 — repair-walk locality (bench_v5_window.py) — KILLS the naive walk
+Per change edge, O-span of R* (counted vertices):
+- dblp s3/s5: |R*| median 3-5 but O-SPAN median 3190-4220, density 0.0013-0.0027,
+  suffix 46k-119k. R* tight (span<=10*cnt): only 15-26%.
+- Epinions s3/s5: O-SPAN median 43-422, density 0.02-0.11, tight 44-50%.
+Conclusion: R* has FEW vertices but they are SCATTERED across thousands of O
+positions (different cores => far apart in a core-sorted order). This KILLS the
+"re-peel the O-suffix from p" walk (suffix huge, R* sparse in it) and exposes
+L-C's weakness (p can be low-core => frozen prefix saves nothing). A repair MUST
+be clique-ADJACENCY-guided, not O-position-guided; but adjacency-guided scoped
+peel is exactly what v4 already does. **v5's "order replaces discovery" premise
+does not hold.**
+
+## Verdict
+Do NOT build order-maintenance. Salvage: fold the order-free pessimistic
+zero-change certificate into v4 as a microsecond fast-path for trivial edges.
+Open (Experiment 3, pending): price the adjacency-guided dirty set |R* ∪
+clique-boundary| to confirm it equals v4's peel region (expected) vs a hidden
+v5 win (unlikely but worth one cheap check).
