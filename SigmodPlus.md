@@ -5239,7 +5239,19 @@ CRITICAL CORRECTNESS PRECONDITION (do not skip -- it silently poisoned r>=3 numb
 - CND cores vs OURS: both print per-vertex/edge/r-clique core values; for a same-cell agreement
   check, dump both and compare the sorted core multiset (a_Y prints corehash for this).
 
-BENCH DRIVERS (same-machine, no-contention, ours-vs-CND in one pass):
+EXISTING DATA (do NOT re-run from scratch -- it is already collected):
+- Committed in-repo: `paper_data/cnd_comparison/cmp_fixed_2026-06-22.csv` (small/mid grid) +
+  `cmp_big_2026-06-22.csv` (big-clique grid), schema `graph,r,s,method,wall_s,rss_mb,status`,
+  method in {OURS, CND}. Same machine (tods2), fixed CND (commit 8ea7546), §101. Server originals
+  at `/data/wenqianz/cmp_fixed.csv` + `cmp_big.csv`.
+- Local per-cell CND columns also in `paper_data/phase_sweep_2026-06-19.csv` (cnd_wall/cnd_rss_mb).
+- TIME-VALIDITY CAVEAT: the OURS column in those CSVs is the SIGMOD-freeze a_Y binary (PRE-§117).
+  CND has NOT changed, so its column is still current; only the OURS side is stale on the loss cells
+  (§117-121 cut the a_Y peel up to 6.4x). To refresh a ratio, RE-RUN OURS ONLY at main and pair it
+  with the CND number already in these CSVs -- no CND re-run needed. See
+  `paper_data/cnd_comparison/README.md`.
+
+BENCH DRIVERS (only if collecting NEW cells; same-machine, no-contention, ours-vs-CND in one pass):
 - Local: `scripts/bench_native_vs_cnd.sh [outdir] [timeout_s]` -- but that script's NATIVE arm is
   the OLD tuple-native engine (`PIVOTER_RUN_TUPLE_NATIVE=1`), NOT a_Y. To bench a_Y vs CND, run CND
   via `degeneracy_cliques` and a_Y via `region_native_sct_peel` separately, both under
