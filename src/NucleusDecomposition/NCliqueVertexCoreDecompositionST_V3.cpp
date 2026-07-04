@@ -210,6 +210,13 @@ double * NCliqueVertexCoreDecomposition_ST_V3_Peel(ST_V2_Data &d, daf::CliqueSiz
 
     auto coreV = new double[numVertices + 1];
     for (daf::Size i = 0; i <= numVertices; ++i) coreV[i] = -1.0;
+    // Optional peel-order (pop-rank) capture for the v5 order-certificate
+    // experiment. Rank = position in the pop sequence (0 = first popped).
+    // No effect on the algorithm; only recorded when PIVOTER_DUMP_ORDER set.
+    const bool _dumpOrder = std::getenv("PIVOTER_DUMP_ORDER") != nullptr;
+    std::vector<daf::Size> _popRank;
+    daf::Size _popCtr = 0;
+    if (_dumpOrder) _popRank.assign(numVertices, (daf::Size)-1);
 
     // ---- Sparse bucket queue (Phase 1a fix vs V2) ----
     // std::map<int64_t, vector<vid>>; per-relocation O(log L).
@@ -313,6 +320,7 @@ double * NCliqueVertexCoreDecomposition_ST_V3_Peel(ST_V2_Data &d, daf::CliqueSiz
                 vertexInHeap[id] = 0;
                 currentRemoveVertexIds.push_back(id);
                 coreV[id] = minCore;
+                if (_dumpOrder) _popRank[id] = _popCtr++;
                 remainingInHeap--;
             }
             buckets.erase(buckets.begin());
@@ -406,6 +414,20 @@ double * NCliqueVertexCoreDecomposition_ST_V3_Peel(ST_V2_Data &d, daf::CliqueSiz
     }
 
     daf::phaseMark("STV3_peel_loop");
+
+    if (_dumpOrder) {
+        const char *op = std::getenv("PIVOTER_DUMP_ORDER");
+        if (FILE *of = std::fopen(op, "w")) {
+            std::fprintf(of, "# internal_id\tpop_rank\n");
+            for (daf::Size i = 0; i < numVertices; ++i)
+                if (coreV[i] >= 0)
+                    std::fprintf(of, "%llu\t%llu\n", (unsigned long long)i,
+                                 (unsigned long long)_popRank[i]);
+            std::fclose(of);
+            std::cerr << "PIVOTER_DUMP_ORDER: wrote " << _popCtr
+                      << " pop ranks to " << op << std::endl;
+        }
+    }
 
     delete[] countingV;
     currentRemoveVertexIds.free();

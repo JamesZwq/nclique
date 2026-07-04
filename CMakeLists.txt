@@ -62,6 +62,7 @@ file(GLOB _LAB_EXCLUDE
 )
 set(EXCLUDE_SRCS
         ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
+        ${CMAKE_SOURCE_DIR}/src/dynamic_1s_core.cpp
         ${CMAKE_SOURCE_DIR}/src/test_new_algorithm.cpp
         ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/NucleusCoreDecompositionRegion_backup.cpp
         ${_LAB_EXCLUDE}
@@ -134,6 +135,7 @@ add_executable(dynamic_1s_core src/dynamic_1s_core.cpp)
 # v4 kill-or-confirm experiments (docs/dynamic_v2_spec.md §26).
 # E1: self-contained (no COMMON_SOURCES). E2: uses the real SDCT walker.
 add_executable(test_cpi_additivity test_cpi_additivity.cpp)
+add_executable(v5cert test_v5_certificate.cpp)
 # COMMON_SOURCES (the src/*.cpp glob) contains dynamic_1s_core.cpp, which has its
 # own main(); drop it for this target to avoid a duplicate-symbol link error.
 set(E2_SOURCES ${COMMON_SOURCES})
