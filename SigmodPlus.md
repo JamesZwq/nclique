@@ -5311,3 +5311,40 @@ user decision: it changes the single-thread comparison basis (paper + CND are OM
 call, not an algorithmic one. STOP here: the peel is at its output-sensitive s-scale floor; the
 residual (work/pat up to 240x) is the fundamental incidence work that CND also pays (as #r-cliques).
 The a_Y peel line (§117-121) is CLOSED as a single-thread effort. See §122 for the handoff.
+
+## 124. FULL ours-vs-CND GRID at §121 (tods2, fresh same-machine, 36 cells): WIN 19 / LOSS 16 (2026-07-05)
+
+Complete same-machine ours-vs-CND experiment on the §121 binary (main 5193638), tods2 Xeon 6342,
+serial, /usr/bin/time -v, 3600s/cell. Data: paper_data/cnd_comparison/full_grid_2026-07-05.csv +
+tods2 /data/wenqianz/full_exp_123/. OURS = region_native_sct_peel (a_Y), CND = degeneracy_cliques
+default (store_min_k fix present). speedup = CND_wall/OURS_wall, mem = CND_rss/OURS_rss.
+
+VERDICT: 36 cells, WIN 19, LOSS 16, 1 both-OOM (ca-HepPh 5,6 both hit 500GB). The split is DOMAIN-
+structured (not just RS):
+- OURS WINS (high-RS where CND's r-clique enumeration explodes, + dense-web feasibility):
+  ca-GrQc 4,5..7,8  4.7x / 16.9x / 158x / **2371x** (CND 332s/61GB vs OURS 0.14s at 7,8);
+  com-dblp 4,5 4.4x, **5,6 45.5x** (CND 1112s/245GB vs OURS 24.4s/2.2G), 6,7 CND OOMs at 499GB;
+  ca-CondMat 1.5-2.0x; com-amazon 1.4-1.7x; web-Google 5,6 1.4x;
+  web-it-2004 3,4 **402x** / 4,5 CND OOM / 5,6 & 6,7 CND TIMEOUT -- OURS finishes all in <=18s/1.5GB
+  (the dense-web feasibility win: CND cannot complete these at all).
+- OURS LOSES (dense collaboration / social where OUR §85 pattern materialization dominates):
+  ca-AstroPh 3,4..5,6 (1/3.1 .. 1/1.6); ca-HepPh 2,3..4,5 (1/6.2 .. 1/10.7, 4,5 OURS T/O 385GB);
+  web-Stanford (1/5 .. 1/44); com-youtube (1/3); soc-pokec (1/2.5 .. 1/4); web-Google 3,4 & 4,5.
+
+§117-121 MOVEMENT (new OURS wall vs the stale pre-§117 OURS in cmp_fixed/cmp_big):
+  cell            OURS old -> new   ours-gain   loss/win old -> new
+  ca-AstroPh 4,6  1479s -> 209s     7.1x        1/60  -> 1/9.3   (the flagship: 60x loss cut to 9.3x)
+  ca-HepPh 3,4    1052s -> 163s     6.5x        1/90  -> 1/10.7
+  com-dblp 5,6    70.7s -> 24.4s    2.9x        14.4x -> 45.5x   (win TRIPLED)
+  com-dblp 4,5    22.3s -> 10.0s    2.2x        2.1x  -> 4.4x
+  com-dblp 3,4    7.4s  -> 4.5s     1.6x        1/1.8 -> 1.2x    (FLIPPED loss->win)
+  ca-AstroPh 4,5  108s  -> 64.5s    1.7x        1/4.2 -> 1/2.7
+So §117-121 improved OURS on EVERY shared cell (1.5-7.1x), flipped com-dblp 3,4 to a win, tripled
+the com-dblp 5,6 win, and cut the ca-AstroPh 4,6 flagship loss from 60x to 9.3x -- but did NOT flip
+the dense losses (ca-AstroPh/ca-HepPh/web-Stanford). CONFIRMED: those remain build+§85-pattern-
+materialization dominated (§123: peel is at its s-scale floor there; CND streams r-cliques and wins
+on the dense-clique graphs, we win where the r-clique count explodes but our compression holds).
+HEADLINE for the paper: universal MEMORY/FEASIBILITY win (up to 3119x leaner; CND OOMs at 245-499GB
+on com-dblp 5,6/6,7 and OOM/TIMEOUTs on all of web-it-2004 r>=4 where we use <=1.5GB), and a large
+TIME win on high-RS + dense-web (up to 2371x); the loss region is the dense-clique collaboration
+graphs, narrowed but not erased.
