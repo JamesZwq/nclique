@@ -5268,9 +5268,46 @@ KNOWN WIN/LOSS MAP (fixed CND, same machine, §101; re-verify before quoting):
   before quoting the current ratio (the loss is now build-dominated, not peel-dominated).
 
 ### 5. NEXT FRONTIER (value order)
-1. BUILD side: the §85 pattern-materialization wall (implicit/lazy pattern space = the open
-   problem; on dense cells build now dominates end-to-end, peel is no longer the bottleneck).
+1. [CORRECTED by §123] BUILD is NOT the bottleneck (6-11% on loss cells); the PEEL still is, and
+   it is at its s-scale floor. The only clean lever left is PARALLELISM of the independent phases
+   (supInit/witTot/maps), deferred as a comparison-basis decision. See §123.
 2. Re-run ours-vs-CND on the dense loss cells (astro46, astro56) with the §121 binary to quote
    the narrowed gap; the peel is done, the story is now build vs CND's streaming enumeration.
 3. Minor peel: supInit's inherent DP (§120 residual ~39% of astro45 peel), NCR row-hoist,
    leafQ2pat flat table, t>=4 a_Y evaluation on wide leaves.
+
+## 123. BUILD-SIDE PROBE: build is NOT the bottleneck -- peel is at its s-scale floor, STOP (2026-07-04)
+
+Task #21. Went to attack the "build side (§85 pattern materialization)" that §122 called the next
+frontier. MEASURE-FIRST FALSIFIED THE PREMISE: on the loss cells the build is 6-11%, the PEEL is
+still the giant. Corrected `[sct-peel] TIMING` attribution:
+  cell     MCE   enum   sct-build+maps   PEEL    total   peel%
+  astro46  0.22  1.62   6.38             92.0    100.3   92%
+  astro56  0.21  8.73   42.16            115.8   167.6   69%
+  dblp56   0.26  0.52   2.62             7.68    11.1    69%
+So §122's "build now dominates dense loss cells" was WRONG (extrapolated from §85 memory, not
+measured). The a_Y peel after §117-121 is still the dominant end-to-end cost.
+
+PEEL-SEGMENT ATTRIBUTION on the two loss cells (PIVOTER_PEEL_PROFILE, §120 timers -- the two densest
+cells have DIFFERENT dominant sub-costs):
+- astro46: addDelta 66%, supInit 27%. 89.8% of enumerated Y are ALREADY DEAD (dead probes);
+  work/pat = 240x (the raw s-scale). leaf-kill only reached 31% of instances here (leaves stay hot).
+- astro56: supInit 57%, addDelta 30%. work/pat = 17.5x.
+
+WHY NO CHEAP LEVER REMAINS (all checked, not guessed):
+- supInit is ALREADY the fast path: the region-IE `suppOf` alternative was 99s on ca-AstroPh (the
+  old maps bottleneck, comment at line ~903), so SCT was chosen precisely because it is faster; §120
+  made it alloc-free. The per-(P,L) SCT DP is inherent Θ(incidences x T).
+- dead-probe elimination (astro46's 89.8%): a per-(P,L) alive-witness counter would piggyback its
+  DECREMENT on the existing credit loop (free), BUT its INIT = a witTotPL count-DP per incidence
+  ≈ a second supInit. Measured trade: on astro46 init ~34s to save ~47s (marginal); on astro56 init
+  ~203s to save ~18s (a LOSS). Not a clean single-thread win.
+- §120 already falsified the cross-pointer structure (on small-addDelta cells) and class-set grouping
+  (sharing ratio 1.0x). The Θ(I) memory also does not fit an already-7.5-11GB run.
+
+THE ONLY clean high-value lever left is PARALLELISM (supInit/witTot/maps are embarrassingly parallel,
+independent per-pattern deterministic sums -> bit-identical; -fopenmp already linked). Deferred by
+user decision: it changes the single-thread comparison basis (paper + CND are OMP=1), a methodology
+call, not an algorithmic one. STOP here: the peel is at its output-sensitive s-scale floor; the
+residual (work/pat up to 240x) is the fundamental incidence work that CND also pays (as #r-cliques).
+The a_Y peel line (§117-121) is CLOSED as a single-thread effort. See §122 for the handoff.
