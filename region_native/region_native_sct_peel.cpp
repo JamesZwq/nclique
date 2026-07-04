@@ -1567,7 +1567,15 @@ int main(int argc, char **argv) {
     // ca-AstroPh 4,5/5,6 antichain TIMEOUTS into finishing runs. t>=2 keeps the antichain by DEFAULT (a_Y
     // over-enumerates the full δ-space on sparse t>=2; the dense-t>=2 adaptive gate is future work). Escapes:
     // SCT_AY forces a_Y for all witness tails (t<=witnessTMax); SCT_NO_AY restores the antichain everywhere.
-    bool ayMode = (getenv("SCT_NO_AY") == nullptr && witnessTail == 1) || getenv("SCT_AY") != nullptr;
+    // §121 DEFAULT FLIP: a_Y is now the default for t <= 3, not just t = 1. The historical t>=2
+    // counterexample (a_Y over-enumerates the δ-space on sparse graphs; ca-GrQc 3,6 0.63s vs 1.27s)
+    // is DEAD after §117 (deficit skip) + §119 (leaf-kill): the same cell is now 7x FASTER under
+    // a_Y (0.22s antichain vs 0.03s), and a_Y wins every measured t=2/3 cell: ca-AstroPh 3,5
+    // 33.2->12.3s, 4,6 354.9->89.7s (the CND-60x cell), com-dblp 4,6 6.3->3.1s, cores identical
+    // across both paths. t >= 4 stays on antichain+batch (only one small-graph measurement,
+    // ca-GrQc 3,7 -- a_Y's δ-space is C(M+t-1,t) per instance and unmeasured on wide leaves).
+    // Escapes unchanged: SCT_NO_AY (force antichain), SCT_AY (force a_Y for ALL t).
+    bool ayMode = (getenv("SCT_NO_AY") == nullptr && witnessTail <= 3) || getenv("SCT_AY") != nullptr;
     // Flat open-addressing uint64 set (linear probe, power-of-2): ~5-10x faster per op than std::unordered_set
     // (no node alloc, cache-friendly) -- the per-Y dead-check/mark constant is what decides a_Y on sparse t>=2.
     struct FlatU64 {
@@ -2000,11 +2008,17 @@ int main(int argc, char **argv) {
     // ondemand excluded: there leavesOf() is a per-call hash-probe recompute, so the cntAbove
     // maintenance (init + one call per wave-entering pattern) costs more than the kills save
     // (measured ca-AstroPh 3,4 SCT_ONDEMAND peel 8.49s -> 11.39s). ondemand keeps clamp-skip only.
-    bool ayKill = ayMode && !ondemand && getenv("SCT_NO_AYKILL") == nullptr;   // default ON (a_Y leaf instances)
+    // §121 (t>=2 transfer): the kill is PATH-INDEPENDENT -- the clamp theorem is a property of the
+    // bucket apply, not of how credits are computed. Skipping the ANTICHAIN instance also skips
+    // slotForbidDiff's mutation, which is safe by the same monotonicity: a wave-closed leaf's
+    // remaining deaths are all same-wave and killed too, so its (stale) slotPaths/antichain state
+    // is never read for credits again. Covers a_Y, witness-major, and general-DFS instances alike;
+    // the batch-peel loop (t>witCross) is separate and already pre-marks its wave dead (§58).
+    bool leafKill = !ondemand && getenv("SCT_NO_AYKILL") == nullptr;   // default ON (all non-batch instances)
     long long ayKillN = 0;                                        // instances skipped by leaf-kill
     long long lastSwept = -2;                                     // last wave-entry-swept level
     vector<int> cntAbove;                                         // per-leaf #alive hosted with key > curLevel
-    if (ayKill) {
+    if (leafKill) {
         cntAbove.assign((size_t)nLeaf, 0);
         for (int pz = 0; pz < (int)pats.size(); pz++)             // all alive at start; the first level's
             for (int lid : leavesOf(pz)) cntAbove[lid]++;         // sweep subtracts its wave
@@ -2267,7 +2281,7 @@ int main(int argc, char **argv) {
         // pattern is either already at this level when it opens (swept here; keys are pushed at
         // strictly-decreasing values, so it has ONE entry in this bucket) or pulled down during the
         // drain (decremented at the apply's key-change site, which pushes the entry AFTER the sweep).
-        if (ayKill && curLevel != lastSwept) {
+        if (leafKill && curLevel != lastSwept) {
             lastSwept = curLevel;
             for (int qz : it->second)
                 if (pats[qz].alive && pats[qz].key == curLevel)
@@ -2311,9 +2325,10 @@ int main(int argc, char **argv) {
             int lid = pleaf[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
             if (faninDbg) { fanA++; if (leafLastLevel[lid] != curLevel) { fanB++; leafLastLevel[lid] = curLevel; } }
-            // §118 LEAF-KILL: every alive pattern hosted here is same-wave -> every credit this
-            // instance could issue is a clamp no-op -> skip the instance whole (see theorem above).
-            if (ayKill && witnessActive && !probeAOn && cntAbove[lid] == 0) { ayKillN++; continue; }
+            // §118/§121 LEAF-KILL: every alive pattern hosted here is same-wave -> every credit this
+            // instance could issue is a clamp no-op -> skip the instance whole (see theorem above),
+            // INCLUDING the antichain path's slotForbidDiff (§121: stale state never consulted again).
+            if (leafKill && !probeAOn && cntAbove[lid] == 0) { ayKillN++; continue; }
             // §117: hoist the a_Y exhausted-leaf skip ABOVE the pl/plNZ build -- an exhausted leaf
             // (30-40% of instances on dense graphs) pays nothing now. Bit-identical: pl/plNZ have no
             // side effects; kept below the (default-off) probe/fanin gates only when those are active.
@@ -2746,7 +2761,7 @@ int main(int argc, char **argv) {
             if (nk < curLevel) nk = curLevel;          // monotone clamp
             if (nk != pats[qi].key) {
                 pats[qi].sup = ns; pats[qi].key = nk; bk[nk].push_back(qi);
-                if (ayKill && nk == curLevel)          // §118: cascade pulled Q into the current wave
+                if (leafKill && nk == curLevel)        // §118: cascade pulled Q into the current wave
                     for (int lid : leavesOf(qi)) cntAbove[lid]--;
             }
         }
@@ -2774,9 +2789,9 @@ int main(int argc, char **argv) {
             witGateW, witGateG, (witGateW + witGateG) ? 100.0 * witGateG / (witGateW + witGateG) : 0.0);
     if (ayMode) fprintf(stderr, "[ay-skip] exhausted-leaf instances=%lld / total=%lld (%.1f%%) skip=%s\n",
             ayExh, ayTot, ayTot ? 100.0*ayExh/ayTot : 0.0, aySkip ? "ON" : "OFF(measure-only)");
-    if (ayMode) fprintf(stderr, "[ay-kill §118] leaf-killed instances=%lld (%.1f%% of %lld reaching the check) ayKill=%s clampSkip=%s\n",
+    if (leafKill || ayMode) fprintf(stderr, "[leaf-kill §118/§121] killed instances=%lld (%.1f%% of %lld reaching the check) kill=%s clampSkip=%s\n",
             ayKillN, (ayKillN + ayTot) ? 100.0*ayKillN/(ayKillN + ayTot) : 0.0, ayKillN + ayTot,
-            ayKill ? "ON" : "OFF", clampSkip ? "ON" : "OFF");
+            leafKill ? "ON" : "OFF", clampSkip ? "ON" : "OFF");
     if (ayMode) fprintf(stderr, "[ay-scale] class-witnesses processed(s-scale)=%lld  credits(work)=%lld  vs #patterns(r-scale)=%lld  -> work/pat=%.1fx  wit/pat=%.1fx\n",
             ayDead, ayCred, (long long)pats.size(), pats.size()?(double)ayCred/pats.size():0.0, pats.size()?(double)ayDead/pats.size():0.0);
     if (peelProf) {

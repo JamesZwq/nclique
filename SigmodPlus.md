@@ -5117,3 +5117,40 @@ FALSIFIED designs (do not revisit without new evidence):
 REMAINING peel composition (post-§120, astro45): supInit ~8.6s(inherent DP, ~39%), addDelta 7.7s
 (35%), map+prep ~2.8s, machinery ~1s. Next big fish is NOT here: it is the t>=2 leaf-kill transfer
 (the 60x cell ca-AstroPh 4,6) and, on the build side, the §85 pattern-materialization wall.
+
+## 121. t>=2 TRANSFER SHIPPED: path-independent leaf-kill + a_Y default flip to t<=3 -- the 60x cell drops 6.4x (2026-07-04)
+
+Task #20. Two changes, both default-ON, cores identical everywhere (15-case gate + hierarchy verify
++ def-vs-aY cross-checks incl. the 4.27M-pattern astro46).
+
+(1) LEAF-KILL GENERALIZED (path-independent): the §119 kill check now fires for ANTICHAIN
+    (witness-major/general) instances too, not just a_Y -- one unified check before the instance
+    body. Skipping slotForbidDiff's mutation is safe by the §119 monotonicity: a wave-closed leaf's
+    remaining deaths are all same-wave and killed too, so its stale slotPaths/antichain state is
+    never read for credits again (post-peel readers audited: MEM_BREAKDOWN capacity sums + the
+    probeA block, which is mutually exclusive with the kill). cntAbove maintenance unchanged.
+    Antichain-path gains alone: dblp46 50.6->6.3s (8x), grqc36 0.22->0.07s (3.1x), astro35
+    47.6->33.2s (1.43x), astro46 572.9->354.9s (1.61x). maxSplit drops (fewer splits) -- work
+    stat only, not output.
+(2) a_Y DEFAULT FLIP t==1 -> t<=3: the historical t>=2 counterexample (a_Y over-enumerates the
+    δ-space on sparse graphs, ca-GrQc 3,6 0.63 vs 1.27s in §88) is DEAD after §117's deficit skip
+    + §119's leaf-kill -- the same cell is now 7x FASTER under a_Y. a_Y won every measured t=2/3
+    cell; t>=4 stays antichain+batch (one small-graph data point only, ca-GrQc 3,7 -- a_Y's
+    per-instance δ-space C(M+t-1,t) is unmeasured on wide leaves). Escapes: SCT_NO_AY / SCT_AY.
+
+DEFAULT-MODE PERF (old = c4c2303 default, new = this commit's default; single runs, local):
+  cell               t   old        new       speedup   split
+  ca-GrQc 3,5        2   0.08s      0.01s     8x
+  ca-GrQc 4,6        2   0.20s      0.04s     5x
+  ca-GrQc 3,6        3   0.22s      0.03s     7.3x
+  ca-GrQc 3,7        4   0.10s      0.10s     1.0x     (stays antichain+batch by design)
+  com-dblp 4,6       2   50.57s     3.01s     16.8x    (kill 8x  x  flip 2.1x)
+  ca-AstroPh 3,5     2   47.63s     12.31s    3.9x     (kill 1.43x x flip 2.7x)
+  ca-AstroPh 3,6     3   >=162s     68.14s    >=2.4x   (161.98s is antichain WITH kill)
+  ca-AstroPh 4,6     2   572.93s    89.68s    6.4x     (kill 1.61x x flip 4.0x; RSS 7.5->8.0GB)
+  t=1 cells: no regression (epin34 6.65->6.41, astro34 3.39->3.30, dblp45 2.78->2.49,
+  astro45 21.23->20.19 -- small single-run gains).
+HONEST BOUNDARY: ca-AstroPh 4,6 was the ~60x CND-loss flagship (§85); 6.4x narrows it to roughly
+a ~10x-class loss (CND-side number needs a same-machine re-run before quoting a ratio). The dense
+frontier's remaining mass is the BUILD (§85 pattern materialization) + supInit's inherent DP (§120)
++ a_Y addDelta at wide leaves.
