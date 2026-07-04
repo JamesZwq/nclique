@@ -5154,3 +5154,111 @@ HONEST BOUNDARY: ca-AstroPh 4,6 was the ~60x CND-loss flagship (§85); 6.4x narr
 a ~10x-class loss (CND-side number needs a same-machine re-run before quoting a ratio). The dense
 frontier's remaining mass is the BUILD (§85 pattern materialization) + supInit's inherent DP (§120)
 + a_Y addDelta at wide leaves.
+
+## 122. CONSOLIDATED HANDOFF — a_Y peel engine, post-§121 (2026-07-04)
+
+Self-contained pickup doc for the region-native (a_Y) peel line as it stands after §117-121.
+Supersedes §32's "how to run / gates" for THIS engine (region_native_sct_peel.cpp). Read this
+before touching the peel; read §107 for the 4-engine map and §101 for the CND-crash history.
+
+### 0. STATE IN ONE PARAGRAPH
+The a_Y engine is a standalone binary (`region_native/region_native_sct_peel`), NOT in the
+dispatch table. Peel is the SHIPPED path; build (MCE + pattern materialization + SCT) is the
+other half and is now the dense-frontier bottleneck (§85), not the peel. Cores are validated
+bit-identical against ground truth on every change. Five peel rounds landed since the SIGMOD
+freeze: §117 (O(M)->O(1)/O(r) constant-factor audit), §118 (wave-closure THEORY), §119
+(clamp-skip + a_Y leaf-kill), §120 (supInit alloc-free fast path), §121 (path-independent
+leaf-kill + a_Y default flip to t<=3). Cumulative local peel vs the SIGMOD-freeze binary
+(pre-§117): astro34 1.88x, astro45 2.05x, com-dblp 4,5 3.88x, and on the CND-loss cells
+com-dblp 4,6 16.8x / ca-AstroPh 4,6 6.4x (573s->90s). Server-validated on tods1 (§119: 1.71-3.51x).
+
+### 1. BUILD & RUN THE ENGINE (a_Y / "ours")
+```bash
+cd region_native
+g++ -O3 -std=c++17 -I. -I../src/NucleusDecomposition -o region_native_sct_peel \
+    region_native_sct_peel.cpp
+./region_native_sct_peel <graph.edges> <r> <s>          # cores + corehash + peel timer to stderr
+```
+Wrap any timed run with `/usr/bin/time -v` (Linux) or `/usr/bin/time -l` (mac) for peak RSS.
+Local graphs live in `graphs/*.edges` (+ `soc-Epinions1.edges`, `mini_diff_8v.edges` at root);
+server graphs in `/data/wenqianz/*.edges` (some at `/data/wenqianz/graphs/`).
+
+### 2. CONTROL SURFACE (env vars) -- all default-ON unless noted
+| Var | Effect |
+|---|---|
+| (none) | a_Y is the default for t=s-r <= 3 (§121); t>=4 uses antichain+batch |
+| `SCT_NO_AY` | force the antichain path for ALL t (the historical default; still correct) |
+| `SCT_AY` | force a_Y for ALL t (incl. t>=4, unmeasured on wide leaves) |
+| `SCT_NO_AYKILL` | disable the §119/§121 leaf-kill (keeps clamp-skip) |
+| `SCT_NO_CLAMPSKIP` | disable the §119 per-credit clamp-skip |
+| `SCT_ONDEMAND` | class->leaves recompute instead of stored maps (leaner RSS; leaf-kill auto-off there) |
+| `PIVOTER_PEEL_PROFILE` | print the §118 same-wave/cross-level credit split + §120 segment timers |
+| `PIVOTER_DUMP_HIER` | dump the (r,s)-nucleus hierarchy (tuple-native, §113) |
+
+### 3. CORRECTNESS GATES (run ALL before shipping any peel change)
+The engine has NO internal reference; correctness = (a) core output byte-identical vs the prior
+committed binary across a case battery, and (b) the ground-truth hierarchy verifier.
+```bash
+# (a) A/B core-distribution diff. Build the OLD binary from git, diff core lines only.
+#     Cases: mini23/24/34, mini*ay (SCT_AY), grqc35/46/46ay, epin34, astro34, astro34od
+#     (SCT_ONDEMAND), dblp45, astro45; for t>=2 add grqc36/dblp46/astro35 + def-vs-aY cross-diffs.
+git show <old-commit>:region_native/region_native_sct_peel.cpp > /tmp/old.cpp
+g++ -O3 -std=c++17 -Iregion_native -Isrc/NucleusDecomposition -o /tmp/rn_old /tmp/old.cpp
+#     compare ONLY core lines, stripping run-to-run noise:
+diff <(./rn_old  G r s 2>&1 | grep -E "core=|Max core|corehash" | sed -E 's/(enum|peel)=[0-9.]+s//g') \
+     <(./rn_new  G r s 2>&1 | grep -E "core=|Max core|corehash" | sed -E 's/(enum|peel)=[0-9.]+s//g')
+# (b) ground truth (small instances, exact recount of the nucleus hierarchy):
+python3 scripts/verify_tuple_hierarchy.py 500 region_native/region_native_sct_peel
+#     -> "RESULT: PASS (0 violations, cores agree)"
+```
+GATE GOTCHAS (all cost time before):
+- `maxSplit(split-set)=N` is a WORK STAT, not output -- leaf-kill legitimately REDUCES splits, so
+  EXCLUDE that line from the diff (grep only `core=|Max core|corehash`). Diffing it => false FAIL.
+- BSD `sed` (mac) has no `\b`; strip timing tokens with `s/(enum|peel)=[0-9.]+s//g`, not `\b`.
+- run the A/B binaries under `bash -c` if zsh word-splits the arg string into one token.
+- NEVER run timing benches in parallel -- contention once inflated a com-dblp peel 3.7x and gave a
+  WRONG "doesn't scale" verdict. Serial, median-of-3.
+
+### 4. HOW TO OBTAIN CND ALGORITHM DATA (the comparison baseline)
+CND = the prior-art baseline that ENUMERATES every r-clique (its high-RS OOM bottleneck). It is
+the DEFAULT mode of the main dispatch binary -- NO env var selects it.
+```bash
+# 1. Build the main binary (CND lives here; -j 12 is a HARD cap in this repo):
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j 12
+# 2. Run CND on a cell (default mode = NucleusCoreDecompositionRClique):
+/usr/bin/time -v ./build/bin/degeneracy_cliques <graph.edges> <r> <s>
+#    wall clock = time -v "Elapsed"; peak RSS = "Maximum resident set size".
+```
+CRITICAL CORRECTNESS PRECONDITION (do not skip -- it silently poisoned r>=3 numbers once, §100/§101):
+- The r>=3 CND path had a "clique not found" crash that fired AFTER printing `took`, so stale fast
+  r>=3 times were GARBAGE. FIX = `store_min_k = emit_min_k` when a CPI is built
+  (`src/degeneracy_cliques.cpp:332`, commit 8ea7546). VERIFY the binary you time has this line;
+  a CND number for r>=3 from a binary without it is not trustworthy.
+- Cross-check CND cores against the reference with `PIVOTER_COMPARE=1 ./build/bin/degeneracy_cliques
+  <g> <r> <s>` (compares the fast path to NucleusCoreDecompositionCorrect on small/medium cells).
+- CND cores vs OURS: both print per-vertex/edge/r-clique core values; for a same-cell agreement
+  check, dump both and compare the sorted core multiset (a_Y prints corehash for this).
+
+BENCH DRIVERS (same-machine, no-contention, ours-vs-CND in one pass):
+- Local: `scripts/bench_native_vs_cnd.sh [outdir] [timeout_s]` -- but that script's NATIVE arm is
+  the OLD tuple-native engine (`PIVOTER_RUN_TUPLE_NATIVE=1`), NOT a_Y. To bench a_Y vs CND, run CND
+  via `degeneracy_cliques` and a_Y via `region_native_sct_peel` separately, both under
+  `/usr/bin/time -v`, serially.
+- Server: `/data/wenqianz/cmp_fixed.sh` (small grid) + `cmp_big.sh` (big-clique grid), chained to
+  avoid contention; outputs `cmp_fixed.csv` + `cmp_big.csv`. These use the FIXED CND (commit 8ea7546).
+- Server graphs at `/data/wenqianz/`; parse `/usr/bin/time -v` for wall+RSS; 1h timeout typical.
+
+KNOWN WIN/LOSS MAP (fixed CND, same machine, §101; re-verify before quoting):
+- OURS WINS high-RS (CND's s-clique count explodes): com-dblp 5,6 14.4x faster + 26x leaner
+  (CND near-OOM 94GB); com-dblp 4,5 2.1x; ca-GrQc 5,6 4.7x.
+- OURS LOST dense (our §85 pattern materialization explodes): ca-AstroPh 4,6 was 60x SLOWER.
+  §121 narrowed the a_Y-peel side of that cell 6.4x, so a FRESH same-machine CND re-run is needed
+  before quoting the current ratio (the loss is now build-dominated, not peel-dominated).
+
+### 5. NEXT FRONTIER (value order)
+1. BUILD side: the §85 pattern-materialization wall (implicit/lazy pattern space = the open
+   problem; on dense cells build now dominates end-to-end, peel is no longer the bottleneck).
+2. Re-run ours-vs-CND on the dense loss cells (astro46, astro56) with the §121 binary to quote
+   the narrowed gap; the peel is done, the story is now build vs CND's streaming enumeration.
+3. Minor peel: supInit's inherent DP (§120 residual ~39% of astro45 peel), NCR row-hoist,
+   leafQ2pat flat table, t>=4 a_Y evaluation on wide leaves.
