@@ -63,6 +63,7 @@ file(GLOB _LAB_EXCLUDE
 set(EXCLUDE_SRCS
         ${CMAKE_SOURCE_DIR}/src/degeneracy_cliques.cpp
         ${CMAKE_SOURCE_DIR}/src/dynamic_1s_core.cpp
+        ${CMAKE_SOURCE_DIR}/src/dynamic_1s_core_v6.cpp
         ${CMAKE_SOURCE_DIR}/src/test_new_algorithm.cpp
         ${CMAKE_SOURCE_DIR}/src/NucleusDecomposition/NucleusCoreDecompositionRegion_backup.cpp
         ${_LAB_EXCLUDE}
@@ -132,6 +133,7 @@ if(APPLE)
     target_link_options(degeneracy_cliques PRIVATE "-Wl,-stack_size,0x20000000")
 endif()
 add_executable(dynamic_1s_core src/dynamic_1s_core.cpp)
+add_executable(dynamic_1s_core_v6 src/dynamic_1s_core_v6.cpp)
 # v4 kill-or-confirm experiments (docs/dynamic_v2_spec.md §26).
 # E1: self-contained (no COMMON_SOURCES). E2: uses the real SDCT walker.
 add_executable(test_cpi_additivity test_cpi_additivity.cpp)
