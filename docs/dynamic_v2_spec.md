@@ -855,3 +855,107 @@ zero-change certificate into v4 as a microsecond fast-path for trivial edges.
 Open (Experiment 3, pending): price the adjacency-guided dirty set |R* ∪
 clique-boundary| to confirm it equals v4's peel region (expected) vs a hidden
 v5 win (unlikely but worth one cheap check).
+
+---
+
+# v6 DERIVATION — tight adjacency-grown scoped peel (discovery = the peel)
+
+**Motivation (measured)**: the adjacency dirty-set |R* ∪ clique-boundary| is
+tiny on sparse graphs (dblp median 10, vs v4's 30k-41k flood). v4 flooded
+because it admits candidates with a LOOSE test (OS with the TS disjunct) then
+walks them back with eviction. v6 removes the separate discovery entirely: the
+scoped PEEL's exact conditioned support already rejects non-risers, so we grow
+the region along clique-edges and let the peel decide. No admission test, no
+eviction, no Lambda-hat.
+
+## Objects
+G' = G+e, c = old cores, c' = new (>= c, insertion-monotone). Seeds
+S = {u,v} ∪ W (W = N(u)∩N(v)). R* = {x : c'(x) > c(x)}. For a set X,
+clq-nbr(X) = {y ∉ X : y shares an s-clique of G' with some x ∈ X}. The
+"clique-boundary" of R* is clq-nbr(R*).
+
+## Exact-core fixpoint (restate)
+c'(x) = max{ ℓ : x has >= ℓ s-cliques of G' all of whose members w satisfy
+c'(w) >= ℓ }. (Standard support-fixpoint = core; on G'.)
+
+## The algorithm (v6)
+```
+region := S ∪ clq-nbr(S)                 # eager LOCAL closure of the seeds
+repeat:
+    peel region with pinned boundary ∂region (Lemma 1/§4): region keys =
+        exact conditioned support, boundary frozen at old core c.
+    risers := { x ∈ region : peeled core(x) > c(x) }
+    new := clq-nbr(risers) \ region       # grow ONLY from confirmed risers
+    if new = ∅: break
+    region := region ∪ new
+emit CHANGED for risers; boundary vertices keep c.
+```
+Growth adds only clique-neighbors of CONFIRMED risers (plus the one-shot seed
+closure). A non-riser never triggers growth.
+
+## Correctness
+
+**Lemma V1 (exactness given region ⊇ R*)**: if at termination region ⊇ R* and
+the boundary is pinned at c, the pinned peel outputs c' on region (this is
+Lemma 2, scoped exactness, unchanged).
+
+**Lemma V2 (completeness — region ⊇ R*)**: every riser x is added.
+*Proof.* Take x ∈ R*, level ℓ = c(x)+1, so x ∈ D_ℓ = C_ℓ(G')\C_ℓ(G). By
+Cor 3a the witness graph on D_ℓ connects x to a vertex x_m ∈ D_ℓ holding a
+witness clique K ∋ u,v; K's other members lie in W ⊆ S. Chain
+x = x_0 ~ x_1 ~ ... ~ x_m with each x_i ∈ D_ℓ (all risers) and consecutive
+x_i, x_{i+1} sharing a witness clique (so clique-adjacent). Induction from the
+seed end: x_m shares clique K with the seeds ⊆ region_0, and x_m is a riser, so
+once the peel confirms the rise that x_m participates in, x_m ∈ clq-nbr of a
+confirmed riser OR x_m ∈ clq-nbr(S) ⊆ region_0. Then x_{m-1} ∈ clq-nbr(x_m)
+added after x_m is confirmed, ..., down to x_0 = x. Each step adds the next
+chain member because it is a clique-neighbor of a confirmed riser. ∎
+(Gap to close in build: the induction assumes each x_i is *confirmed as a
+riser by the peel of the region at the round it enters*; this needs the region
+at that round to already contain x_i's own witness clique members. Those are
+in D_ℓ (risers) adjacent to x_i, hence added in the same or previous round.
+The rounds therefore advance >= one chain-hop each; #rounds <= diameter of the
+witness graph, empirically <= 4 (connectivity data). MUST verify the
+per-round rise-confirmation is monotone, i.e. a vertex confirmed a riser stays
+one — true since region only grows and conditioned support is monotone in the
+region.)
+
+**Lemma V3 (tightness — region ⊆ R* ∪ clq-nbr(R*) ∪ clq-nbr(S))**: added
+vertices are clique-neighbors of confirmed risers or of seeds; a non-riser
+adds nothing. So |region| <= |R*| + |clq-nbr(R*)| + |clq-nbr(S)| = the measured
+dirty-set (dblp median 10). No flood. ∎
+
+**Same-level rings**: a mutual-rise ring at level ℓ is contained in
+S ∪ clq-nbr(S) (if seed-incident) or in clq-nbr(risers) reached by the chain;
+once all ring members are in the region, the pinned peel keeps them by their
+mutual support (no optimism — the exact conditioned support counts the ring's
+internal cliques). The eager seed closure region_0 = S ∪ clq-nbr(S) is what
+guarantees the seed-level ring is present before the first peel; higher-level
+rings arrive with the chain growth.
+
+## Why v6 is more elegant than v4
+- No admission test (OS/TS): the peel's exact support is the only judge.
+- No eviction cascade: non-risers are never admitted, so nothing to walk back.
+- No Lambda-hat mini-peel: growth is clique-local, self-limiting.
+- Discovery and peel are one loop. Region stays at the dirty-set (proven tight).
+- Rounds bounded by witness-graph diameter (<= 4 empirically), each round peels
+  only |dirty-set| vertices (median 10 on dblp) => cheap; contrast v1 which
+  re-peeled a window-overgrown region (5762) for up to 38 rounds.
+
+## Honest gaps (close before/at build)
+1. Lemma V2's per-round rise-confirmation monotonicity (sketched; make rigorous
+   or fall back to "grow to fixpoint then one final peel").
+2. clq-nbr(S) and clq-nbr(risers) computation must itself be cheap — it is a
+   co-common-neighborhood test (|N(x)∩N(y)| >= s-2), NOT a clique enumeration.
+3. Round count bound: prove <= witness diameter, or cap + fallback.
+4. Dense-hub reality: clq-nbr blows up (Epinions median 62-132, p90 2482), so
+   v6 is a big win on SPARSE graphs, hub-limited on dense (same wall as v4/v6
+   both hit; be honest in the paper).
+
+## Decisive experiment (build in C++, per the no-Python rule)
+Prototype v6 (single binary, reuse the v4 bitset SCT + pinned peel). Gate:
+Tier-1 1180 edges 0 mismatches AND bit-identical CHANGED vs v4. Then measure,
+clean single-thread: region size (expect ~dirty-set median 10 on dblp vs v4's
+tested 30k), rounds (expect <= 4), insert_us vs v4 and vs peel-only. Success =
+dblp median insert collapses toward microseconds (region 10 x local-count),
+approaching stable-1000x on sparse; report the dense-hub residual honestly.
