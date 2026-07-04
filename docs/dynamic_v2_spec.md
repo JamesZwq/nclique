@@ -959,3 +959,42 @@ clean single-thread: region size (expect ~dirty-set median 10 on dblp vs v4's
 tested 30k), rounds (expect <= 4), insert_us vs v4 and vs peel-only. Success =
 dblp median insert collapses toward microseconds (region 10 x local-count),
 approaching stable-1000x on sparse; report the dense-hub residual honestly.
+
+---
+
+# v4 FINALIZATION STATUS (2026-07-04)
+
+CONFIRMED BEST = v4 (index-backed, src/dynamic_1s_core.cpp, frozen
+build/bin/dynamic_1s_core_v4final). v5 (order certificate) mostly falsified;
+v6 (tight adjacency grow) measured WORSE than v4 (same-level ring floods on
+low-core/dense graphs — irreducible; commit 25764c7).
+
+## Authoritative clean single-thread final table (commit 2e07e7c)
+| config | median | p90 | vs full-static | vs peel-only | fallbacks |
+| dblp s3 | 4.5ms | 44ms | 40x | 7.2x | 20 |
+| dblp s5 | 262us | 2.2ms | 833x | 48x | 0 |
+| epin s3 | 357ms | 1.09s | 1.9x | 0.10x (LOSS) | 0 |
+| epin s5 | 7us* | 923ms | ~1e5x | tail loss | 0 |
+(*early-exit dominated. peel-only baselines: dblp 32.6/12.6ms, epin 35.3/61ms.)
+
+## Deletion — the core-update algorithm (symmetric to insertion)
+Delete e=(u,v): removes exactly the s-cliques containing BOTH u,v. Cores only
+FALL (C_ℓ(G-e) ⊆ C_ℓ(G)). Fallers R̄* = {x : c'(x) < c(x)}.
+- Seed support DROPS: each seed x ∈ {u,v}∪W loses its cliques-through-e.
+- Scoped exactness (Lemma 2) is symmetric: pin boundary at OLD core c; a region
+  re-peel yields the fallen cores exactly IF region ⊇ R̄*.
+- Discovery is EASIER than insertion in one way: falling is a restricted peel
+  (no optimism / rings — a faller's drop is caused by ACTUAL lost support, and
+  removal cascades monotonically DOWN). Symmetric fall-chain connectivity: every
+  faller connects to e via same-level fall-chains (dual of Cor 3a).
+- Prototype scope: FRESH index per delete edge (no surgery needed for the
+  core-update result); the streaming leaf surgery (§23, cost already measured
+  by E2, median Σ|L| 0-11) is a separate index-maintenance concern.
+
+## Remaining finalization
+1. [DONE] clean final table (2e07e7c).
+2. deletion core-update prototype + Tier-1 verify vs V3(G-e).
+3. deletion leaf surgery §23 for streaming (cite E2 cost; optional for v1 paper).
+4. paper: novel problem + index-backed maintenance + sparse 1000x win +
+   HONEST dense-hub hardness (the v6 negative result = a characterization, not
+   a hidden weakness).
