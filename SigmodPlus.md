@@ -6230,3 +6230,20 @@ ignored -- NO indexes written in Phase A; E5 needs a server pull+rebuild+re-swee
   Raw logs: tods2:/home/wenqianz/nsi_main_table/ (sweep_*.log, nat_*.log, v2_summary.log).
   REMAINING for the paper table: E3 CND columns, E2 multi-trial, E4 same-machine query bench,
   E5 index numbers (server rebuild needed, §139 gotcha).
+2026-07-08: E5 COMPLETE (17 min, tods2, same-machine) -- the INDEX table:
+  config  index-MB  patterns  residue    B/r-clique  load   point-q  spectrum-q
+  hepph   33.5      1.25M     2,952      10.47       0.62s  200ns    354ns
+  astro   142.4     4.54M     10,687     15.60       2.44s  371ns    574ns
+  dblp4   34.5      1.06M     0          2.17        0.61s  150ns    275ns
+  dblp5   95.7      2.66M     0          0.38        1.70s  130ns    253ns
+  webit   14.5      425k      66         0.045       0.26s  81ns     154ns
+  epin    59.2      1.54M     1.56M      40.30       0.88s  299ns    421ns
+  yt      83.7      2.53M     1.02M      34.23       1.41s  215ns    328ns
+HEADLINES: (i) web-it holds its WHOLE 4-cell spectrum (338.8M r-cliques) in 14.5MB = 0.045
+bytes per r-clique -- vs a raw per-cell table (20B x 4 cells = 80B/r-clique) that is ~1868x
+larger (27GB); (ii) dblp5: 262.6M r-cliques, 0.38 B/r-clique, raw table would be 29.4GB vs
+95.7MB (~307x); (iii) index write adds ~0 to the sweep (hepph 177s vs 167s, noise range);
+(iv) all query latencies now SAME-MACHINE (81-574ns point, 154-574ns spectrum). Social honest:
+34-40 B/r-clique (residue dicts dominate). Queries were 200k random r-cliques per graph
+(gen_queries.py greedy sampler). Raw logs: tods2:/home/wenqianz/nsi_e5/.
+REMAINING: E3 (CND columns), E2 (multi-trial), E4 (sorted-table query baseline, same-machine).
