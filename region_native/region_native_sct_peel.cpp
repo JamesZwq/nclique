@@ -1431,6 +1431,30 @@ int main(int argc, char **argv) {
     if (siProf) fprintf(stderr, "[supinit-prof §120] incidences=%lld distinct(leaf,nzset)=%zu -> sharing ratio=%.1fx\n",
             siInc, siSets.size(), siSets.empty() ? 0.0 : (double)siInc / siSets.size());
 
+    // §128 FLOOR-GAP PROBE (SCT_FLOORGAP): the decisive measurement for the KK-sandwich / FPS spectrum
+    // idea. For each pattern P compute the CLIQUE lower bound f(P) = C(c(P)-r, s-r), c(P) = size of the
+    // LARGEST maximal clique (region) hosting P (base leaves have h=0, so a leaf's clique size = Σ n_c).
+    // After the peel, gap = core(P) - f(P) measures how far P's core exceeds what its single largest
+    // clique gives -- i.e., the "sunflower defect". gap=0 => P settles for FREE from the clique bound
+    // (the sandwich closes); the fraction settled (mult-weighted) and the gap tail decide whether the
+    // whole spectrum is near-free (FPS/NSI viable, win domains) or degrades to naive (loss domains).
+    bool floorGap = !ondemand && getenv("SCT_FLOORGAP") != nullptr;
+    vector<int> fgClique;
+    if (floorGap) {
+        fgClique.assign(pats.size(), 0);
+        for (int pi = 0; pi < (int)pats.size(); pi++) {
+            const auto &ls = leavesOf(pi);
+            int cmax = 0;
+            for (int lid : ls) {
+                if (slotPaths[lid].empty()) continue;
+                const CCPath &b = slotPaths[lid][0];
+                int sz = 0; for (auto x : b.n) sz += (int)x;      // maximal-clique size = Σ class sizes (h=0)
+                if (sz > cmax) cmax = sz;
+            }
+            fgClique[pi] = cmax;
+        }
+    }
+
     // ---- bucket-queue peel on the class-SCT ----
     // Peeling P: for each slot hosting P, insert tuple_to_threshold(slot,m_P)
     // into every path's forbidden, split any path whose antichain exceeds
@@ -2799,6 +2823,39 @@ int main(int argc, char **argv) {
                 crLevels, pc(0.5), pc(0.9), pc(0.99), pc(0.999), crDepths.empty() ? 0 : crDepths.back(), crDepths.empty() ? 0.0 : sum / crDepths.size());
         fprintf(stderr, "[closure-probe §127] INTERPRETATION: d_L is a LOWER BOUND on the D&C median-threshold closure depth. "
                 "d_L p99 <= ~O(10) -> value-space D&C worth building; d_L p99 in the hundreds/thousands -> D&C dead, selector is the answer.\n");
+    }
+    if (floorGap) {                                              // §128: clique-bound floor-gap distribution
+        vector<pair<double,double>> gm; gm.reserve(pats.size());  // (gap, mult)
+        double totMult = 0, settledMult = 0, sumGap = 0; int negCnt = 0;
+        long long totPat = pats.size(), settledPat = 0;           // §128b: UNWEIGHTED (per-pattern)
+        double totWork = 0, settledWork = 0;                       // §128b: WORK-weighted (by sup0 = initial support = the FPS cost it saves)
+        for (int pi = 0; pi < (int)pats.size(); pi++) {
+            int c = fgClique[pi];
+            double fcl = (c >= r) ? C(c - r, s - r) : 0.0;        // clique lower bound C(c-r, s-r)
+            double gap = pats[pi].core - fcl;
+            if (gap < -0.5) { negCnt++; gap = 0; }                // defensive (should never be < 0)
+            if (gap < 0) gap = 0;
+            double m = (double)pats[pi].mult, w = pats[pi].sup0;
+            totMult += m; sumGap += gap * m; totWork += w;
+            if (gap < 0.5) { settledMult += m; settledPat++; settledWork += w; }
+            gm.push_back({gap, m});
+        }
+        fprintf(stderr, "[floorgap §128b] settled: per-r-clique(mult)=%.1f%%  per-pattern=%.1f%%  per-work(sup0)=%.1f%%  | unsettled patterns=%lld of %lld\n",
+                totMult > 0 ? 100.0 * settledMult / totMult : 0.0,
+                totPat > 0 ? 100.0 * settledPat / totPat : 0.0,
+                totWork > 0 ? 100.0 * settledWork / totWork : 0.0,
+                totPat - settledPat, totPat);
+        std::sort(gm.begin(), gm.end());
+        auto wpc = [&](double p) -> double {                     // mult-weighted percentile of the gap
+            double target = p * totMult, acc = 0;
+            for (auto &g : gm) { acc += g.second; if (acc >= target) return g.first; }
+            return gm.empty() ? 0.0 : gm.back().first;
+        };
+        fprintf(stderr, "[floorgap §128] r=%d s=%d | settled-by-clique-bound(gap=0)=%.1f%% of r-cliques(mult-wtd) | gap: p50=%.0f p90=%.0f p99=%.0f max=%.0f avg=%.1f  (neg=%d)\n",
+                r, s, totMult > 0 ? 100.0 * settledMult / totMult : 0.0,
+                wpc(0.5), wpc(0.9), wpc(0.99), gm.empty() ? 0.0 : gm.back().first, totMult > 0 ? sumGap / totMult : 0.0, negCnt);
+        fprintf(stderr, "[floorgap §128] INTERPRETATION: high settled%% + small gap tail -> the KK/clique sandwich closes -> whole spectrum near-free (FPS/NSI viable); "
+                "low settled%% + large gap -> sunflower defect -> degrades to naive (as on loss domains).\n");
     }
     }
     auto T6 = Clock::now();

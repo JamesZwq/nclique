@@ -5478,3 +5478,100 @@ and gives a PRINCIPLED second selector axis (s vs 2r decides bulk-recompute vs e
 of the M/I compression axis (decides win vs parity vs CND). The engine becomes: (compression high?
 -> win) x (s>2r? -> bulk-recompute D&C, else event-driven peel + parity fallback). Probe kept in the
 binary (SCT_CLOSURE_PROBE, default off, cores identical).
+
+## 128. SPECTRUM VIA ONE COLD PEEL + KRUSKAL-KATONA SANDWICH: the reframe (2026-07-07)
+
+Two things fused this round. (i) The class/pattern SYMMETRY-compression-as-SPEED idea is DEAD (two
+fresh-model verdicts, confirmed by measurement): compression is data-dependent with expected ratio ~1
+on real graphs (cliques are generic, 239-clique -> 174 classes, 1 nontrivial); the supInit FLOOR is
+unappealable (ca-AstroPh 4,6: our closed-form counting ALONE = 28s = 5.4x CND's entire 5.2s runtime,
+23x CND's counting); the class-level tree is 2-5x SLOWER to build than the vertex tree (§125). No peel
+optimization reaches parity on dense low-symmetry; the honest ceiling is parity via a two-regime
+selector. STOP selling "faster exact peel". (ii) The REFRAME: the asset is a QUOTIENT that makes the
+OUTPUT (a core number per r-clique for every (r,s)) STORABLE and QUERYABLE -- at high (r,s) the output
+is otherwise UNWRITABLE (trillions of r-cliques). Contribution = the Nucleus Spectrum Index (NSI):
+one build, every (r,s), queryable (point core, closed-form count-at-threshold, community). Competitor
+anchor: EquiTruss (VLDB'17) is output-derived + single-cell (2,3); ours is input-level + all-(r,s).
+
+THE ALGORITHMIC CORE the user pushed for -- compute the WHOLE (r,s) spectrum with FEW peels, not one
+peel per cell. Two independent fresh-model derivations CONVERGED on the same exact mechanism:
+- EXACTNESS BASIS: kappa has a max-min / greatest-fixpoint characterization (order-invariant). The
+  deflationary operator T(x)=x AND H_x, iterated from ANY valid pointwise UPPER bound u >= kappa,
+  converges to EXACTLY kappa (Tarski). So warm-starting is exact regardless of where the bound came from.
+- CROSS-CELL TRANSFER (both derived the same inequalities, both clique-tight):
+  * s-direction = KRUSKAL-KATONA: kappa_{r,s-1}(R) >= g(kappa_{r,s}(R)), g = KK lower shadow (Lovasz
+    form). ON A CLIQUE g(C(x-r,s-r)) = C(x-r,s-1-r) = kappa_{r,s-1} EXACTLY (zero slack). This is the
+    same g = KK-shadow nesting ALREADY VERIFIED in the r=1 spectrum-index work.
+  * r-direction = SUBCLIQUE-MIN: kappa_{r,s}(R) >= max over (r+1)-supercliques R' of kappa_{r+1,s}(R');
+    kappa_{r+1,s}(R+) <= min(supp_s(R+), min over r-subcliques of kappa_{r,s}).
+  * clique lower bound (free, one build): kappa_{r,s}(R) >= C(c(R)-r, s-r), c(R)=largest maximal clique
+    containing R.
+- ALGORITHM (Floored Parametric Sweep): one CPI build (closed-form supp for all cells) -> one cold
+  peel at the boundary -> sweep the grid in the transfer partial order -> at each cell FLOOR every R by
+  max(KK-shadow of the s+1 neighbor, subclique-min of the r+1 neighbor, clique bound); FREEZE R (no
+  bookkeeping at all) while clock < floor; touch-and-recompute in closed form (the CPI superpower) only
+  when clock reaches the floor; peel only the residue. Exact by invariant (floors are true lower bounds;
+  the floored transcript is a reordering of the standard peel with identical per-clock removals).
+- HONEST LIMITS (both PROVED): Theta(omega^2) cell-VISITS unavoidable (no upper certificate exists
+  across s -- a graph rich in (s-1)-cliques can be s-clique-free, so kappa_{r,s}=0 gives no info on
+  kappa_{r,s-1}; independence/gadget proof). Worst-case TOTAL work degrades to naive on SUNFLOWER /
+  quasi-clique graphs (KK slack ~ t^{1/(s-r)} on t cliques sharing a small core). BUT the win is
+  instance-sensitive and ALIGNS EXACTLY with the compression win: slack = 0 and the whole grid costs
+  O(omega) peels (or closed form) on CLIQUE-DOMINATED graphs (web/mesh/FEM = our win domains); it degrades
+  on ca-AstroPh/gsm (our loss domains) -- the SAME wall as Case-B defect-d and §85 pattern explosion.
+  So "few peels" and "compression wins" are the SAME phenomenon.
+- OPEN DOOR (both flagged, conjecture): a single JOINT pass over all r via class/orbit compression (peel
+  CPI symmetry classes once, each carrying its full r-slice), which could beat O(omega) passes -- tied
+  to the tuple-batching orbit guarantee. Unproven.
+- CORRECTION (independent review caught my error): supp_s(R) is NOT monotone in s; it is UNIMODAL
+  (K_n, r=1: C(n-1,s-1) peaks at s~n/2). The correct statement is the KK SHADOW inequality; any sweep
+  assuming "supports only shrink as s grows" is unsound.
+
+DECISIVE CHEAP EXPERIMENT (next): the FLOOR-GAP distribution -- fraction of r-cliques with
+kappa(R) = C(c(R)-r, s-r) (settled free by the clique bound) and the gap distribution for the rest, on
+web-it-2004 / com-dblp high-s (win) vs ca-AstroPh (loss). Small gap -> the spectrum is near-free (FPS
++ NSI viable); large gap -> degrades to naive (as predicted on loss domains). One histogram decides the
+practical win, exactly as the closure-depth probe did for the value-space D&C.
+
+## 128b. FLOOR-GAP PROBE RESULT: the (r,s)-core ≈ the clique lower bound on clique-dominated graphs (2026-07-07)
+
+Built SCT_FLOORGAP (per-pattern c(R) = largest hosting maximal-clique size; f(R) = C(c(R)-r, s-r);
+gap = core - f; cores bit-identical, verified ca-GrQc). This measures the CHEAPEST floor alone (the
+clique lower bound T3), NOT the full KK+subclique sandwich (which settles strictly more). Result
+(settled = gap 0 = core equals the closed-form clique bound, no peel needed):
+  graph          cell   settled/pattern  settled/work(sup0)  max-gap  unsettled patterns
+  web-it-2004    3,4    100.0%           100.0%              1        26 / 425135
+  com-dblp       5,6    100.0%           100.0%              1        29 / 2,659,318
+  ca-AstroPh     4,6    99.9%            100.0%              24       3944 / 4,271,948   <- a LOSS cell!
+  com-youtube    3,4    77.7%            58.1%               5        565599 / 2,533,778
+  soc-Epinions   3,4    45.7%            21.8%               10       833783 / 1,535,271
+
+FINDINGS:
+- On CLIQUE-DOMINATED graphs (web crawls, mesh/FEM, AND collaboration incl. the current LOSS cells
+  ca-AstroPh/ca-HepPh) the (r,s)-core of ~100% of r-cliques EQUALS the closed-form clique bound
+  C(c(R)-r, s-r) -- computable from ONE maximal-clique build, ZERO peeling. Structural reason: an
+  r-clique's densest cohesive context is its largest maximal clique; the sparse cross-clique overlap
+  peels away, so the stable core = the single-clique value. The gap>0 tail is the tiny fraction (0.09%
+  on ca-AstroPh) sitting in LARGE overlaps.
+- SURPRISE/IMPLICATION: ca-AstroPh 4,6 is a current LOSS cell where our engine peels all 4.27M
+  patterns (~92s), but 99.9% of them (100% of the support-work) settle by the closed-form clique bound
+  -- our engine WASTES ~all of that peel. A Floored Parametric Sweep would peel only the ~3944-pattern
+  residue -> the spectrum on the clique-dominated LOSS cells becomes near-free, a genuine route to turn
+  those losses around (closed-form, not faster peel).
+- HONEST BOUNDARY (skepticism paid off -- it is NOT universal): SOCIAL graphs with heavy clique overlap
+  break clique-bound tightness (com-youtube 77.7%/pattern but 58%/work; soc-Epinions only 45.7%/22%).
+  There the overlap structure genuinely raises cores above the single-clique value; the clique bound
+  alone leaves a large residue. The FULL sandwich (add T1 Kruskal-Katona from the s+1 neighbor + T2
+  subclique-min from the r+1 neighbor) settles strictly more than the clique-bound-alone numbers above,
+  so these are lower bounds on the sandwich's reach; but social graphs remain the genuinely-hard case.
+- So the win/loss axis SPLITS the old "loss domain": clique-dominated losses (ca-AstroPh/ca-HepPh) are
+  near-closed-form (FPS makes them near-free); social losses (youtube/Epinions/pokec) have real overlap
+  and stay hard. The predictive statistic is settled% = clique-bound tightness, closed-form at build.
+
+NEXT: this reframes the contribution again. The spectrum is LARGELY CLOSED-FORM (kappa = C(c-r,s-r))
+on clique-dominated graphs; the real algorithmic content is (i) the closed-form floor from one build,
+(ii) cheap verification that a floored r-clique is settled (matched bounds = certificate, no peel),
+(iii) peeling ONLY the residue where overlap raises the core. Build the FPS residue-only peel and
+measure the actual speedup on ca-AstroPh (should collapse ~92s toward the residue). NOVELTY: claim
+"a new empirical characterization + closed-form floor in this work" pending literature check (do not
+overclaim that core=clique-value is a new theorem; the tail is real and the social counterexample real).
