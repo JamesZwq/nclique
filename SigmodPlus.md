@@ -6106,3 +6106,84 @@ s6-9, webit r3 s4-7, epin r3 s4-6, yt r3 s4-6. NOTE (user): server is much slowe
 the local M-series -- NO cross-machine claims; the main table is tods2-only for BOTH sides, and
 the query-latency "parity" statement (§138C) must be re-measured same-machine in G3 (NSI bench +
 sorted-table probe baseline, both on tods2).
+
+## 140. ROADMAP: everything that remains (experiments, paper plan, timeline, idea backlog)
+(2026-07-07. The forward plan. TODO.md at the repo root mirrors this as a checklist; THIS
+section is the source of truth -- update both together.)
+
+### 140.1 EXPERIMENTS still to run (all tods2, serial, /usr/bin/time -v, same-machine ONLY)
+E1 [RUNNING] Main table: 7 configs (hepph r3 s4-7, astro r4 s5-8, dblp r4 s5-8, dblp r5 s6-9,
+   webit r3 s4-7, epin r3 s4-6, yt r3 s4-6); sweep vs native per cell, bit-exact gates.
+   Lands in tods2:/home/wenqianz/nsi_main_table/. A local poller reports on completion.
+E2 [G2] Multi-trial: >= 3 runs, median + spread, for every number that enters the paper
+   (sweep totals, marginal cells, native cells). Extend nsi_sweep_gate.py with a --trials flag.
+E3 [G3] CND same-machine spectrum baseline, EXACT cell list: hepph 3,{4,5,6,7}; astro 4,{5,6,7,8};
+   dblp 4,{5..8} + 5,{6..9}; webit 3,{4..7}; epin 3,{4,5,6}; yt 3,{4,5,6}. Method per §122.
+   Neutral budget-marker semantics for OOM/timeout (rc137 = memory budget exceeded). Record
+   wall + peak RSS per cell.
+E4 [G3b] Same-machine QUERY bench on tods2: NSI point/spectrum latency AND a sorted-table
+   binary-search baseline (build the table from REF dumps where writable); the local "parity"
+   claim (§138C) is void until this runs.
+E5 Server-scale INDEX numbers: SCT_INDEX_OUT for all 7 configs on tods2 -> build time (delta vs
+   plain sweep), file size, B-per-r-clique, load time, query latency. This is the §136 table at
+   scale, same-machine.
+E6 Certification anatomy (RQ2 figure): per-cell certified% (patterns and r-cliques) across all
+   7 configs -- already printed by every sweep ([nsi] lines); aggregate into one figure/table.
+E7 Ablation: SCT_SWEEP_NOCERT vs FPS on 2-3 configs (isolates the certificate's contribution
+   vs shared-build alone); plus leaf-skip on/off if cheap.
+E8 [stretch] One LARGE graph beyond web-it (as-skitter or soc-pokec, r=3 small range) for the
+   scalability paragraph; skip if the schedule is tight.
+
+### 140.2 PAPER plan (venue, structure, style, figures)
+P1 VENUE/TIMELINE: target SIGMOD or VLDB rolling. VERIFY THE ACTUAL DEADLINES FIRST (do not
+   trust memory; check sigmod.org / vldb.org submission rounds for late 2026). Working target:
+   the next round that is >= 3 weeks out when the main table lands.
+P2 WRITING ORDER (hardest first): (1) Intro + Figure 1; (2) Theory section (port
+   docs/nsi_theorems.md: D1, T1-T3 main line, T5 diagonal, T4 as foil, T6-T8 as exactness,
+   P9/P10); (3) Algorithm (FPS sweep + replay); (4) Index (layout + query walk); (5)
+   Experiments (RQ1 spectrum cost, RQ2 anatomy, RQ3 index size/query, RQ4 CND baseline,
+   RQ5 boundary); (6) Related work; (7) Abstract last.
+P3 STORY: exactly §"故事线" as discussed -- 5 acts (need the spectrum / certifiable redundancy /
+   FPS / index / evaluation), one-sentence thesis in §135. Spectrum-vs-spectrum ONLY; band
+   §131-132 = one scope paragraph; social weakness framed via P10, never apologized for.
+P4 STYLE DISCIPLINE (from memory, binding): no em-dashes; contributions = final deliverables
+   only; no self-exposed weaknesses; storytelling voice not slide voice; plain-English metric
+   names (runtime, memory usage); teacher-paper architecture (NuclearCD style: Fig1 + example,
+   Applications, Challenges, SOTA+Limitations, Our Idea, Contributions); LaTeX one sentence per
+   line; use the paper-architect skill when drafting.
+P5 FIGURES/TABLES list: Fig1 = spectrum heatmap (certified vs residue cells colored) + cost
+   bars (native sum vs sweep); T-main = the E1+E3 merged table; T-index = E5; F-anatomy = E6;
+   T-theorems summary; maybe F-T5 (equality rates).
+P6 MUST-READ before claims (novelty, §137): Burkhardt-Faber arXiv:1806.05523; Frohmader
+   flag-KK; ICDE'21 Interplay (arXiv:2011.00749). Calibrate T2/T3/T5 wording after reading.
+P7 P10 decision: either write the gadget out formally (then it is a theorem) or demote to a
+   remark; do NOT submit with "sketch" language in a claimed contribution.
+P8 WHERE: new dir (e.g. sigmodNSI/) from the vldbNuclearR1 acmart template; keep it a real
+   tracked dir (never a symlink); commit every edit.
+P9 REPRODUCIBILITY package: §134 file map + exact commands + graph sources + seeds; the gates
+   ARE the correctness story (bit-exact everywhere) -- no "correctness experiments" (exact
+   algorithm, proofs carry it).
+
+### 140.3 IDEA BACKLOG (post-submission or if time allows; do NOT block the paper)
+I1 P10 gadget formal write-out (promotes the lower bound to a theorem).
+I2 General diagonal (r,s)->(r+1,s+1) transfer (KK-for-links; T5 is the t=1 case).
+I3 Band-interior sub-quotient compression (recursive intersection quotients / host-set
+   grouping) -- the §132 wall.
+I4 Diagonal sweep ENGINE operationalizing T5 (cross-r pattern alignment).
+I5 Dynamic NSI maintenance (bridge to the dynamic (1,s)-core direction, which has validated
+   kill-tests already).
+I6 Parallel sweep (cells are sequential via the chain, but the residue peel and supInit
+   parallelize; also multiple r-rows in parallel).
+I7 Index format v2: varint/delta comp encoding, multi-r rows in one file, mmap loading.
+I8 T3-tightness sufficient condition beyond host-1 (characterize which overlaps still settle).
+
+### 140.4 SUGGESTED SCHEDULE (adjust when E1 lands; verify venue dates first)
+Week 1: E1 finishes; run E2-E5 (scripted, mostly machine time); do P6 reading + P7 decision
+        during the runs; draft P2(1) Intro + Fig1.
+Week 2: draft Theory + Algorithm + Index sections (material exists: docs/nsi_theorems.md,
+        SigmodPlus §130/132/136); build E6 figure; assemble the main table from E1+E3.
+Week 3: full draft; paper-architect audit passes (low-context reader, claim-evidence ledger,
+        vocabulary/sentence discipline); G2 numbers swapped in.
+Week 4: polish, reproducibility appendix, internal deadline buffer, submit at the verified
+        round. If a deadline forces cuts: E8 and I-anything go first; never cut gates or the
+        honest-boundary content.
