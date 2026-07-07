@@ -6051,3 +6051,51 @@ Compression reading: the index holds the WHOLE spectrum at 5-40 bytes per r-cliq
 per-cell listing (>= 8 bytes per r-clique PER CELL, unwritable at high (r,s)); nanosecond exact
 queries. Files: region_native/nsi_query.cpp, region_native/nsi_index_gate.py, engine §136 edits.
 G2 (multi-trial) + G3 (CND spectrum baseline) remain; server main table (§135) still running.
+
+## 137. NOVELTY CHECK, round 1 (web search, 2026-07-07): core claims hold; two must-reads
+
+Five searches (nucleus index across (r,s); KK + core/truss; core-truss relationship; unified
+core-truss indexes; parametric core indexes). VERDICT:
+- The OBJECT (an index across the (r,s) PLANE) appears NOVEL: every existing index is per-cell
+  across the threshold k or across a SECOND parameter -- UCF-Index (k,eta uncertain cores),
+  CPT-Index ((k,gamma)-truss), historical k-cores, ST-Index (subcore DAG per fixed cell).
+  Nothing crosses (r,s). Sariyuce et al. explicitly call r,s>4 "intractable" and (3,4) the
+  "practical sweet spot" -- quotable motivation: what they call intractable we index.
+- The TRANSFER THEOREMS appear novel in substance. Closest in spirit: "Characterizing and
+  Utilizing the Interplay Between Core and Truss Decompositions" (ICDE'21, arXiv:2011.00749) --
+  EMPIRICAL (1,2)-vs-(2,3) scatter characterization (VI/EI plots), no theorems, no exact
+  transfer. Perfect related-work foil: the relationship was observed; proving + operationalizing
+  it is new.
+- MUST-READ before submission (medium risk): (1) Burkhardt-Faber, "Bounds and algorithms for
+  graph trusses" (arXiv:1806.05523) -- truss-number bounds, possibly KK-flavored counting;
+  calibrate T2/T3 wording against it. (2) Frohmader, flag Kruskal-Katona (pure combinatorics
+  foundation; cite). T5 must be phrased as "generalizes + operationalizes truss<=core-1",
+  never "discovers".
+
+## 138. NSI vs CND: build / size / query gap analysis (from measured data; G3 fills the holes)
+
+STRUCTURAL FACT: CND has NO index -- per-cell algorithm, all r-cliques in RAM. Two honest
+baseline readings: query-by-rerun, or dump per-cell output as a lookup table.
+A. BUILD (spectrum): ours = one sweep (hepph 3,4..6: 76.6s/<13GB local incl. index write;
+   astro 4,5..7: 41.4s). CND = sum of full-price cells + memory ramp to death: measured (§124
+   grid, server): astro 4,5=23.5s + 4,6=22.6s (9GB); hepph 3,4=15.2s but 4,5=650s/137GB and
+   5,6 KILLED at 510GB; dblp 5,6=1112s/251GB, 6,7 KILLED at 510GB. HONEST: CND is FASTER on
+   single low cells (astro 4,6: 22.6s vs our whole sweep 41.4s) -- hence spectrum-vs-spectrum
+   positioning only.
+B. SIZE: CND table = (4r+8)B per r-clique PER CELL. GrQc 3,4..6: ours 0.23MB vs ~2.8MB (~12x);
+   HepPh: 33.8MB vs ~201MB (~6x); Epinions: 59.2MB vs ~92MB (1.5x, residue-heavy, honest).
+   THE REAL POINT: at high cells the table is UNWRITABLE (astro row r=43: 7.7e12 r-cliques =
+   ~185TB/cell) while the closed-form surface answers from ~nothing.
+C. QUERY: ours 23-412ns point / 49-678ns spectrum (measured). CND-rerun: seconds-to-hours per
+   query. CND-as-sorted-table: a few hundred ns per probe -- PARITY per probe, honestly stated;
+   the gap is that the table costs A to build, B to store, and does not exist at high cells.
+CAVEATS for the paper table: (i) cross-machine contamination (sweep numbers local M-series, CND
+numbers server) -- the tods2 main table gives ours same-machine; G3 must run CND on tods2 for
+the SAME configs; (ii) CND cells missing: hepph 3,5/3,6/3,7, astro 4,7/4,8 (G3 checklist);
+(iii) CND rc137 deaths must be labeled with neutral budget-marker semantics.
+
+## 139. Server main-table status ledger (update as it lands)
+2026-07-07 ~15:30 local: config 1/7 (hepph r=3 s=4..7) -- sweep done, native cells 4/5/6 done,
+native 3,7 running 82+ min (single-thread server). The per-cell native cost IS the story the
+table tells. Results land in tods2:/home/wenqianz/nsi_main_table/ (summary.log + per-config
+logs); a local background poller reports on completion.
