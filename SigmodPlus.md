@@ -5348,3 +5348,97 @@ HEADLINE for the paper: universal MEMORY/FEASIBILITY win (up to 3119x leaner; CN
 on com-dblp 5,6/6,7 and OOM/TIMEOUTs on all of web-it-2004 r>=4 where we use <=1.5GB), and a large
 TIME win on high-RS + dense-web (up to 2371x); the loss region is the dense-clique collaboration
 graphs, narrowed but not erased.
+
+## 125. RETRACTION + fair SCT comparison: class-CPI is NOT faster to build than vertex-SCT (2026-07-06)
+
+User probed "is building the class-CPI faster than a traditional vertex CPI?" First answer claimed
+"186x / 18x faster" -- RETRACTED, it was an UNFAIR min_k baseline: it compared class-SCT built for
+s-counting (min_k=s) against CND's vertex SDCT built with min_k=r (=5, storing an extra clique level
+for per-r-clique indexing). Different work, not a CPI-vs-CPI number.
+
+FAIR comparison (r=1, s=6, BOTH min_k=s, both count per-vertex s-cliques; vertex SDCT = the main
+binary's SDCT_Fused, class SCT = region_native):
+  graph        vSCT_lv  vSCT_ms | clsSCT_lv  MCE_ms  sctBuild_ms | leaf_x  build+MCE_x
+  ca-CondMat    6584     13.3      6238        30      10           1.06    0.33
+  ca-HepPh     11841    337.1     10366       170     760           1.14    0.36
+  ca-AstroPh   44274    107.2     42819       220     270           1.03    0.22
+  com-dblp     42345    168.3     35629       300      70           1.19    0.45
+  com-youtube 762543   1844.8    761153      7400    1800           1.00    0.20
+FINDINGS: (1) leaf counts NEARLY IDENTICAL (1.0-1.9x) -- the class quotient does NOT shrink the
+counting SCT; on dense graphs it is 1.0x (no reduction). (2) build+MCE_x = 0.20-0.45 everywhere:
+the class path is 2-5x SLOWER to build the counting index, because it must run MCE + class-
+construction first. COUNTING CORRECTNESS VERIFIED (SCT_VERIFY, independent region-IE cross-check):
+com-dblp 5,6 class-SCT counts 4,119,223,645 6-cliques == region-IE [OK]; ca-GrQc 11,034,391 [OK];
+so the class-SCT's fast build is NOT under-counting.
+CONSEQUENCE FOR THE PAPER (important positioning correction): the class-CPI's value is NOT faster
+counting/build -- both structures count the same s-cliques and the class build is slower at fair
+settings. Its ONLY value is the COMPRESSED PEEL DOMAIN (r-cliques -> patterns), which is where CND's
+per-r-clique enumeration explodes at high RS (§124). Never pitch "faster counting/build". Also: the
+class compression is intrinsically MCE-derived (region co-occurrence is global); the only MCE-free
+proxy is twins (§14: true-twin removes ~13-16% of vertices, false-twin <=0.6% -- far too weak to
+give the region-class compression). So "build class SCT without MCE" cannot recover the compression.
+
+## 126. FABLE-5 REVIEW ROUNDS: the update paradigm, the corrected floor, and the ONE new idea (2026-07-06)
+
+User goal is a SIGMOD paper; honest self-assessment "idea is good, experiments are bad (WIN 19/
+LOSS 16), must optimize". Ran 4 independent fresh-model reviews (2 brainstorm + 2 adjudication) with
+neutral briefs. Key measured anchor: on the loss cells the PEEL dominates (~92%), and the per-death
+update enumerates 679M witnesses of which only 69M are newly dead (89.8% wasted re-probes into a
+monotonically GROWING hash dead-set), ~1.03B hash-lookup credits, work/pat=240x, and the per-pattern
+cost RISES ~14x over the peel (2.6us -> 37us) with NO tail collapse on ca-AstroPh (dead-set grows
+out of cache; leaf-kill only reaches 31% of instances there).
+
+CONVERGED DIAGNOSIS (all reviews): the dead-set is the wrong accounting unit and is REDUNDANT (a
+witness is dead iff a sub-pattern is dead = min death-index over sub-patterns, already stored).
+Replace "track the GROWING dead-set" with "track the SHRINKING set of still-alive above-level
+patterns, per clique-tree path (an 'above-list')"; invert the loop to enumerate SURVIVORS per path,
+not dead witnesses -> every decrement computed is level-crossing, and the tail COLLAPSES. Deadness
+made implicit via the residual inclusion-exclusion algebra = our own validated Case-B/DCLP machinery
+(0/735k, d=1 covers 93-97% at r=2) promoted from "replace BK" to "replace the dead-set". Plus:
+top-core certification (freeze max-nucleus members early, kill the 14x tail, zero extra memory),
+CNS ranking to replace the 1.03B hash lookups.
+
+ADJUDICATION CORRECTIONS (retract earlier over-optimism):
+- The "strengthened floor Theta(cross-level (pattern,path)) smaller by C(m-r,s-r)=1e2-1e4" claim is
+  WRONG. The peel's unit is the (dead R, alive R') PAIR, batch = C(m-u, s-u), u=|R∪R'|<=min(2r,s).
+  For s<=2r the event count is >= CND's witness count (batch size 1 on dominant pairs) -> NO saving.
+  A genuine separation ~C(m-2r, s-2r) exists ONLY for s>2r. State the floor with the per-pair batch.
+- The "per-path local compression solves the peel" reframe is only HALF right: static counting is
+  symmetry-independent and cheap (TRUE), but the dynamic peel is NOT -- globally-ordered deaths make
+  the alive-residue of a path a generic subset (Kolmogorov argument), and the exact alive-correction
+  kernel is #P-hard adversarially. So compression does NOT transfer to the dominant per-death update
+  for s<=2r low-symmetry.
+
+VERDICT (implementation vs fundamental, split by loss-cell geometry):
+- The measured pathology (dead-set/hash/14x tail) = IMPLEMENTATION, worth ~10x, achieves PARITY.
+- s<=2r low-symmetry event-driven peel = FUNDAMENTAL, ceiling = parity (confidence ~90%).
+- Dense LARGE-clique loss cells (ca-AstroPh type): a genuinely NEW paradigm can help (below).
+- Dense MANY-SMALL-clique cells (gsm type, L~s): fundamental in ANY paradigm; the two-regime
+  selector (M/I ratio, closed-form at build time) IS the theorem-backed endpoint, not a concession.
+
+THE ONE NEW IDEA (nobody proposed before, escapes the event-driven paradigm that the wave-closure
+floor governs): RECOMPUTATION-DRIVEN VALUE-SPACE DIVIDE-AND-CONQUER. Currency: I = compressed
+incidences (event cost); M = Sum_P #paths containing P (cost of ONE full closed-form recount of all
+supports). M << I whenever maximal cliques are LARGE -- and this is INDEPENDENT of symmetry. So on
+dense large-clique low-symmetry graphs (the loss cells), pattern-COUNT compression fails but the
+incidence-to-membership ratio I/M is at its LARGEST -- the surviving half of the compression, unusable
+by peeling (spends I) but usable by recomputation (spends M). MECHANISM: recurse on the LEVEL axis;
+compute the mid-nucleus by repeated bulk rounds (closed-form recount all alive supports O(M) + delete
+all patterns < mid to fixed point); survivors recurse [mid,hi], casualties [lo,mid). Cost
+~O(M * rounds * log kmax) vs event floor Theta(I_cross); wins when rounds*log k < I/M. No priority
+queue, no dead-set, D&C-PARALLEL, anytime. Top-core certification is its k=kmax special case (so one
+closure level is already evidenced). KILL CONDITION: cascade depth (thousands of thin rounds ->
+rounds*M explodes); mitigation = adaptive per-round switch to event-wise when the kill-frontier is
+small (min(event, recompute) per round). Honest survival estimate: ~35-40% for a clear win over CND
+on dense large-clique loss cells, ~60% for parity/beating our current peel, ~0% on many-small-clique
+cells. DECISIVE CHEAP EXPERIMENT (settles it before any build): the closure-round-depth histogram at
+median thresholds on ca-AstroPh (4,6) == the per-path defect-d distribution over the peel. d/rounds
+small -> build the D&C engine; blows up -> the s=2r boundary is the honest ceiling, selector is the answer.
+
+SIGMOD STRATEGY (from all rounds): (1) build the implementation fixes (above-list inversion +
+death-index deadness + top-core freeze + CNS ranking) -- they turn 10-60x losses into parity and
+clean the win numbers; sell as "matching the proven incidence bound", NOT "beating CND everywhere".
+(2) the two-regime selector with the M/I build-time statistic is the paper's safety theorem (<= CND
+by construction, kills the loss column honestly). (3) lead with the THEORY (hypergraph formulation +
+wave-closure + the CORRECT per-pair floor). (4) the value-space D&C is the one stretch bet to convert
+a current loss family (dense large-clique) into wins -- gated entirely on the one histogram.
