@@ -6197,3 +6197,18 @@ self-matches the invoking ssh shell (rc=255, half-executed cleanup, a lost scrip
 by explicit pid or split-string patterns; tods2 now hosts another user's idle IDE daemons
 (cursor-server) -- acceptable for serial single-thread runs, noted for the reproducibility
 paragraph. v2 lands in tods2:/home/wenqianz/nsi_main_table/v2_summary.log (marker NSI_V2_DONE).
+2026-07-08: PHASE A COMPLETE -- all 7 sweeps in 15 min wall (tods2, serial, same-machine):
+  config              sweep-total  cold-cell  marginal cells          certified%      peak RSS
+  hepph  r3 s4-7      167.2s       119.4s     0.68 / 2.23 / 10.41s    99.97%          14.7GB
+  astro  r4 s5-8      89.7s        49.7s      1.27 / 3.34 / 10.69s    99.96%          10.3GB
+  dblp4  r4 s5-8      9.3s         5.2s       0.07 x3                 100.00% (res=0) 1.1GB
+  dblp5  r5 s6-9      28.3s        17.1s      0.17 / 0.16 / 0.15s     100.00% (res=0) 2.7GB
+  webit  r3 s4-7      8.1s (6.3=MCE) 0.70s    0.03-0.04s x3           100.00% (res=22) 0.5GB
+  epin   r3 s4-6      474.3s       48.6s      77.6 / 178.9s           47-51%          26.2GB
+  yt     r3 s4-6      105.0s       17.2s      18.3 / 25.2s            79-81%          7.8GB
+NEW HEADLINE FACTS: (i) com-dblp BOTH rows have residue ZERO above the cold cell -- marginal
+cells are a pure certification pass (0.07-0.17s, 100.00% certified); (ii) web-it marginals are
+0.03s (the whole 4-cell spectrum costs ~one MCE); (iii) the honest side scales as expected
+(epin sweep 474s/26GB, residue peel dominates). PHASE B (natives, 2h budget) started 15:01 UTC.
+GOTCHA: the server binary predates §136 (pulled at 32405a6), so SCT_INDEX_OUT was silently
+ignored -- NO indexes written in Phase A; E5 needs a server pull+rebuild+re-sweep (15 min).
