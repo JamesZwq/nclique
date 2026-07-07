@@ -2829,6 +2829,11 @@ int main(int argc, char **argv) {
         double totMult = 0, settledMult = 0, sumGap = 0; int negCnt = 0;
         long long totPat = pats.size(), settledPat = 0;           // §128b: UNWEIGHTED (per-pattern)
         double totWork = 0, settledWork = 0;                       // §128b: WORK-weighted (by sup0 = initial support = the FPS cost it saves)
+        // §128c CERTIFIABILITY: can we tell WHICH are settled WITHOUT peeling? The cheap upper-bound
+        // certificate is sup0(P) == C(c-r,s-r) (support all from one clique -> upper=lower -> settled).
+        // certPat/certMult = certifiable-settled (known at init, no peel). The GAP between certifiable
+        // and actually-settled = patterns that DO settle but you must peel to KNOW (the user's point).
+        long long certPat = 0; double certMult = 0; long long certButActuallyUnsettled = 0;
         for (int pi = 0; pi < (int)pats.size(); pi++) {
             int c = fgClique[pi];
             double fcl = (c >= r) ? C(c - r, s - r) : 0.0;        // clique lower bound C(c-r, s-r)
@@ -2836,15 +2841,22 @@ int main(int argc, char **argv) {
             if (gap < -0.5) { negCnt++; gap = 0; }                // defensive (should never be < 0)
             if (gap < 0) gap = 0;
             double m = (double)pats[pi].mult, w = pats[pi].sup0;
+            bool actuallySettled = (gap < 0.5);
+            bool certifiable = (std::fabs(pats[pi].sup0 - fcl) < 0.5);  // sup0 == clique bound -> upper=lower
             totMult += m; sumGap += gap * m; totWork += w;
-            if (gap < 0.5) { settledMult += m; settledPat++; settledWork += w; }
+            if (actuallySettled) { settledMult += m; settledPat++; settledWork += w; }
+            if (certifiable) { certPat++; certMult += m; if (!actuallySettled) certButActuallyUnsettled++; }
             gm.push_back({gap, m});
         }
-        fprintf(stderr, "[floorgap §128b] settled: per-r-clique(mult)=%.1f%%  per-pattern=%.1f%%  per-work(sup0)=%.1f%%  | unsettled patterns=%lld of %lld\n",
+        fprintf(stderr, "[floorgap §128b] ACTUALLY-settled(core==bound): per-r-clique=%.1f%%  per-pattern=%.1f%%  per-work=%.1f%%\n",
                 totMult > 0 ? 100.0 * settledMult / totMult : 0.0,
                 totPat > 0 ? 100.0 * settledPat / totPat : 0.0,
-                totWork > 0 ? 100.0 * settledWork / totWork : 0.0,
-                totPat - settledPat, totPat);
+                totWork > 0 ? 100.0 * settledWork / totWork : 0.0);
+        fprintf(stderr, "[floorgap §128c] CERTIFIABLE-at-init(sup0==bound, no peel needed): per-r-clique=%.1f%%  per-pattern=%.1f%%  | so MUST-peel-to-know = %.1f%% of patterns (settle but uncertifiable); cert-but-wrong=%lld\n",
+                totMult > 0 ? 100.0 * certMult / totMult : 0.0,
+                totPat > 0 ? 100.0 * certPat / totPat : 0.0,
+                totPat > 0 ? 100.0 * (settledPat - certPat) / totPat : 0.0,   // settled but not certifiable = must peel to discover
+                certButActuallyUnsettled);
         std::sort(gm.begin(), gm.end());
         auto wpc = [&](double p) -> double {                     // mult-weighted percentile of the gap
             double target = p * totMult, acc = 0;

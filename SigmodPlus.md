@@ -5575,3 +5575,46 @@ on clique-dominated graphs; the real algorithmic content is (i) the closed-form 
 measure the actual speedup on ca-AstroPh (should collapse ~92s toward the residue). NOVELTY: claim
 "a new empirical characterization + closed-form floor in this work" pending literature check (do not
 overclaim that core=clique-value is a new theorem; the tail is real and the social counterexample real).
+
+## 128c. CERTIFIABILITY (the user's objection, CONFIRMED): "core hits the bound" != "we cheaply KNOW it hits" (2026-07-07)
+
+The user pushed the crux: §128b showed 46-100% of r-cliques ACTUALLY settle (core == clique bound
+C(c-r,s-r)), but a LOWER bound hitting does not tell you WHICH ones hit without a matching UPPER
+bound. Tested the cheapest init-only certificate: sup0(P) == C(c(R)-r, s-r) (support all from one
+clique => upper=lower => certified settled, NO peel). SCT_FLOORGAP now reports ACTUALLY-settled
+(core==bound, needs the peel to know) vs CERTIFIABLE-at-init (sup0==bound, known for free).
+  graph          cell  actually-settled/pat  CERTIFIABLE-at-init/pat  must-peel-to-know  cert-wrong
+  web-it-2004    3,4   100.0%                72.6%                    27.4%              0
+  com-dblp       5,6   100.0%                76.0%                    24.0%              0
+  ca-AstroPh     4,6   99.9%                 56.3%                    43.6%              0
+  ca-HepPh       3,4   99.7%                 75.6%                    24.1%              0
+  com-youtube    3,4   77.7%                 30.2%                    47.4%              0
+  soc-Epinions   3,4   45.7%                 12.5%                    33.2%              0
+
+FINDINGS (the user was RIGHT; this prevented an overclaim):
+- The cheap init certificate is SOUND but INCOMPLETE EVERYWHERE. cert-wrong = 0 (never certifies a
+  non-settled pattern), but it certifies only 12.5-76% of patterns, far below the 46-100% that
+  actually settle. The MUST-PEEL-TO-KNOW gap (settle-but-uncertifiable) is 24-47% on every graph,
+  INCLUDING the win/clique-dominated ones (web-it 27%, dblp 24%, ca-AstroPh 44%).
+- Reason: a pattern in MULTIPLE overlapping cliques has sup0 > C(c-r,s-r), so the cheap certificate
+  says "uncertain"; its overlap MAY peel away (core still = bound) or MAY raise the core -- you cannot
+  distinguish the two WITHOUT peeling. So "99.9% settled" is real but NOT freely knowable.
+- SOCIAL graphs are worst on BOTH axes (soc-Epinions: 45.7% actually settle, only 12.5% certifiable).
+- CONSEQUENCE for FPS/NSI: the "free" (cheaply-skippable) fraction is the CERTIFIABLE one (12.5-76%),
+  NOT the actually-settled one (46-100%). So the closed-form-floor speedup from the INIT certificate
+  alone is MODEST: skip 12.5-76% of patterns -> ~1.1-4x on the peel (worst ~1.1-1.4x on social), NOT
+  the ~1000x the raw settled% suggested. The "one build -> free spectrum" framing (§128b) was too
+  optimistic; corrected here.
+- The FULL sandwich (KK-shadow upper bound from the peeled (r,s+1) neighbor + subclique-min from
+  (r+1,s)) is TIGHTER than sup0 and would certify MORE than the init-only 12.5-76% -- but those upper
+  bounds require the NEIGHBOR CELLS to be peeled first, so certification chains through a peeled
+  boundary; it is not free. Whether the neighbor-chained sandwich certifies most of the 24-47% residue
+  cheaply is the next measurement (needs the FPS sweep built to test).
+
+NET HONEST STATE of the whole line: (1) the symmetry-compression-as-speed idea is dead (§128); (2) the
+reframe to a queryable spectrum object / closed-form floor is real but the FREE fraction is the
+certifiable one (12.5-76%), a modest not dramatic peel saving; (3) the un-erasable residue (24-47%,
+worse on social) genuinely needs peeling or neighbor-chained certification; (4) the honest paper
+contributions remain: the memory/feasibility win (CND OOM), the spectrum-as-object framing, the
+KK-sandwich theory + the s=2r closure-depth phase transition, and the two-regime selector. No single
+result makes us beat CND everywhere; the user's certifiability probe closed the last optimistic gap.
