@@ -6099,3 +6099,10 @@ the SAME configs; (ii) CND cells missing: hepph 3,5/3,6/3,7, astro 4,7/4,8 (G3 c
 native 3,7 running 82+ min (single-thread server). The per-cell native cost IS the story the
 table tells. Results land in tods2:/home/wenqianz/nsi_main_table/ (summary.log + per-config
 logs); a local background poller reports on completion.
+2026-07-07 ~17:00: still config 1/7 (hepph r=3 s=4..7). Sweep + native cells 4/5/6 DONE (buffered
+in the log, not yet flushed); native 3,7 at 103 CPU-min and running -- the t=4 native cell is the
+long pole, exactly the cost the table demonstrates. Queued: astro r4 s5-8, dblp r4 s5-8, dblp r5
+s6-9, webit r3 s4-7, epin r3 s4-6, yt r3 s4-6. NOTE (user): server is much slower per-thread than
+the local M-series -- NO cross-machine claims; the main table is tods2-only for BOTH sides, and
+the query-latency "parity" statement (§138C) must be re-measured same-machine in G3 (NSI bench +
+sorted-table probe baseline, both on tods2).
