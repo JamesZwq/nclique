@@ -6187,3 +6187,13 @@ Week 3: full draft; paper-architect audit passes (low-context reader, claim-evid
 Week 4: polish, reproducibility appendix, internal deadline buffer, submit at the verified
         round. If a deadline forces cuts: E8 and I-anything go first; never cut gates or the
         honest-boundary content.
+2026-07-08 (local): E1 RESTRUCTURED as runner v2 after the native hepph 3,7 cell blocked the whole
+grid for ~2.5h CPU with 6 configs queued behind it. v2 protocol: PHASE A = all 7 sweeps first,
+each also writing its NSI index (E5 folded in); PHASE B = natives cell-by-cell under a 2h budget
+(timeout -> EXCEEDS-BUDGET mark = a legal lower-bound entry; hepph 3,7 native already evidenced
+>2.5h). Cells whose native exceeds budget get "gate: N/A (native exceeds budget)" -- correctness
+rests on the exact algorithm + the gates at feasible cells. Ops lessons recorded: pkill -f
+self-matches the invoking ssh shell (rc=255, half-executed cleanup, a lost script file) -- kill
+by explicit pid or split-string patterns; tods2 now hosts another user's idle IDE daemons
+(cursor-server) -- acceptable for serial single-thread runs, noted for the reproducibility
+paragraph. v2 lands in tods2:/home/wenqianz/nsi_main_table/v2_summary.log (marker NSI_V2_DONE).
