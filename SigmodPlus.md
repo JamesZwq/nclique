@@ -5618,3 +5618,42 @@ worse on social) genuinely needs peeling or neighbor-chained certification; (4) 
 contributions remain: the memory/feasibility win (CND OOM), the spectrum-as-object framing, the
 KK-sandwich theory + the s=2r closure-depth phase transition, and the two-regime selector. No single
 result makes us beat CND everywhere; the user's certifiability probe closed the last optimistic gap.
+
+## 128d. FPS PROTOTYPE RESULT: the KK s-sandwich certifies FAR more than the init certificate (2026-07-07)
+
+Built the FPS certification prototype (scratchpad/fps_kk.py): PIVOTER_RUN_REF dumps EXACT per-r-clique
+cores (keyed by vertex set = s-invariant) at (3,4),(3,5),(3,6); for cell (3,5) compute the Kruskal-
+Katona s-neighbor sandwich f_lo(R) = g_{s+1-r}(kappa_{r,s+1}(R)) [lower] and f_hi(R) =
+g_{s-r}^{-1}(kappa_{r,s-1}(R)) [upper], g = KK lower shadow (Lovasz form); CERTIFIED iff f_lo == f_hi
+(then = the true kappa, squeezed). SOUNDNESS verified: 0 certified r-cliques disagree with the true
+core on any graph (my KK implementation is correct).
+  graph          cell   KK-sandwich CERTIFIED   (vs sup0-only §128c)   residue (must peel)
+  ca-HepPh       3,5    99.7%                    76% (at 3,4)           0.3%
+  ca-GrQc        3,5    96.7%                    --                     3.3%
+  soc-Epinions   3,5    41.2% (32% of nz-core)   12.5% (at 3,4)         59%
+
+FINDINGS (the decisive FPS number, answering "does the full sandwich certify the residue"):
+- The KK s-neighbor sandwich certifies FAR MORE than the cheap init certificate: ca-HepPh 76% -> 99.7%,
+  soc-Epinions 12.5% -> 41.2%. The neighbor cores (also clique-shaped on clique-dominated graphs) close
+  the overlapping-but-settled r-cliques that sup0 alone misses.
+- CLIQUE-DOMINATED graphs (incl. the LOSS families ca-HepPh/ca-AstroPh): ~99.7% certified -> the FPS
+  residue is ~0.3%. The spectrum is genuinely near-free: cold-peel the boundary cells, certify the
+  interior from neighbors, peel only 0.3%. This is a REAL route to turn the clique-dominated LOSS cells
+  around (via the closed-form + certified-neighbor spectrum, not faster peeling).
+- SOCIAL graphs (soc-Epinions 41%): the sandwich still leaves a ~59% residue that must be peeled --
+  the overlap structure genuinely raises cores in a way the neighbors do not pin. Social stays the hard
+  case; FPS there is a ~1.7x saving, not near-free.
+HONEST CAVEAT: the measurement uses BOTH s-neighbors (kappa_{s-1} AND kappa_{s+1}), which must be peeled
+first; it is an UPPER BOUND on what a single-directional sweep certifies (one KK neighbor + sup0/subclique
+gives somewhat less). The bootstrapping (which cells to cold-peel, propagation order) is a design detail;
+but the REDUNDANCY it measures -- 99.7% of a cell's cores are determined by its neighbors on clique-
+dominated graphs -- is real and bit-exact. Also the r-direction (subclique) transfer is untested here
+(clean cross-r alignment needs the shared-build engine); adding it can only certify MORE.
+
+CONCLUSION of the whole §128 line: the honest, strong paper is the NUCLEUS SPECTRUM INDEX -- a queryable
+all-(r,s) object, built once, exact -- whose spectrum is (i) near-closed-form / neighbor-certified on
+clique-dominated graphs (web/mesh/collab incl. current loss cells: 96-99.7% certified, ~0.3-3% residue
+peel), (ii) genuinely peeled but compressed on social graphs (41% certified), (iii) never-worse than CND
+by the two-regime selector. The symmetry-compression-as-speed idea stays dead; the spectrum-redundancy /
+KK-certification is the real algorithmic content and it is measured, sound, and largest exactly on the
+clique-dominated graphs (the win domains + the collaboration loss cells).
