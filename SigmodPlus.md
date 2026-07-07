@@ -5925,3 +5925,50 @@ On collaboration graphs the T5 bound is an EQUALITY for every single 4-clique me
 diagonal recurrence kappa_{r+1,r+2} = min_sub kappa_{r,r+1} - 1 holds universally there (a
 one-pass diagonal is information-theoretically real on such graphs; the engineering blocker
 remains materialization in the band, §132). Social graphs: bound holds, equality only 23.4%.
+
+## 134. FILE MAP for the NSI arc (§128-133): every artifact and how to run it
+
+THEORY
+  docs/nsi_theorems.md ........... the formal theorem set (8 proven + 2 sketches; T5 diagonal +1
+                                   is NEW). Force-added to git (docs/ is gitignored). Feeds the
+                                   paper's theory section.
+
+ENGINES (all in region_native/)
+  region_native_sct_peel.cpp ..... the production a_Y engine + the §130 FPS SWEEP MODE.
+      build: g++ -O3 -std=c++17 -I. -I../src/NucleusDecomposition -o region_native_sct_peel region_native_sct_peel.cpp
+      native cell:  ./region_native_sct_peel <graph.edges> r s
+      sweep:        SCT_SWEEP=<smax> ./region_native_sct_peel <graph.edges> r s0
+      env: SCT_SWEEP=<smax> (cells s0..smax, one shared build, chain certificate + residue peel)
+           SCT_SWEEP_NOCERT=1 (A/B: full peel on the shared structure)
+           SCT_MAX_INC=<n> (§131 guard: clean exit-7 abort BEFORE the multi-GB pattern-enum
+             allocs; ALWAYS set on laptop runs -- the unguarded run OOMed the machine)
+           SCT_FLOORGAP=1 (§128b/c probe) / SCT_CLOSURE_PROBE=1 (§127) / PIVOTER_PEEL_PROFILE=1 (§120)
+  ClassSCTScalable.h ............. class-SCT builder; kOver param (§130): overshoot prunes widened
+                                   to smax, reach prune stays s0 -> ONE tree serves all slices.
+  diag_band.cpp .................. §132 band engine (t=1, prototype): host-1 closed form +
+                                   multi-host from pairwise intersections + exact wave replay.
+      build: g++ -O3 -std=c++17 -o diag_band diag_band.cpp;  run: ./diag_band <graph.edges> r
+      env: DIAG_MAX_PATS=<n> (pattern cap, exit 7)
+
+HARNESSES / DRIVERS (region_native/)
+  nsi_sweep_gate.py .............. §130 gate: sweep vs native per-cell distributions (drops the
+                                   sweep's core=0 line = r-cliques in no s-clique, absent natively).
+      python3 nsi_sweep_gate.py <binary> <graph> <r> <s0> <smax>
+  diag_baseline.py ............... §131 t=1 diagonal baseline driver (ascend/descend protocol,
+                                   timeout + RSS-poll kill + SCT_MAX_INC).
+      python3 diag_baseline.py <binary> <graph> <out.tsv> [timeout] [rtop] [rsscap_mb]
+  scripts/fps_kk_certification_probe.py ... §128d KK-sandwich certification test over
+                                   PIVOTER_RUN_REF per-r-clique dumps (force-added; scripts/ ignored).
+
+REFERENCE DUMPS (for per-r-clique checks, e.g. the T5 validation §133)
+  PIVOTER_RUN_REF=1 PIVOTER_DUMP_CORE=<file> ./build/bin/degeneracy_cliques <graph> r s
+      (one line per r-clique: "v1 .. vr\tcore"; vertex-set keyed, s-invariant)
+
+DATA (paper_data/, force-added; the dir is gitignored)
+  cnd_comparison/ ................ §124 ours-vs-CND grids (full_grid_2026-07-05.csv etc.)
+  diag_astro_baseline_2026-07-07.tsv / diag_dblp_baseline_2026-07-07.tsv ... §131 diagonal U-shape
+  band_astro_2026-07-07.tsv / band_dblp_2026-07-07.tsv ................... §132 band-engine rows
+
+RESULTS SECTIONS: §128 theory derivations; §128b/c/d probes; §129 handoff/plan; §130/130b sweep
+engine + results (loss cells turned around; Epinions honest); §131/131b diagonal U-shape;
+§132 band lever; §133 theorem set + T5 validation. Memory pickup: project_nsi_direction.md.
