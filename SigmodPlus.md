@@ -5859,3 +5859,42 @@ the host-1 complement per region is C(|M|,r) minus the shared count, all at core
 theorem) -- no enumeration. The coupling (host-1 deaths lowering multi-host supports) would be
 replayed in closed form per region at level |M|-r, the §130 replay idea at region granularity.
 Would turn the band rows into (small multi-host peel) + (closed-form complement). UNBUILT.
+
+## 132. BAND LEVER BUILT (diag_band.cpp): EXACT + band edges recovered, but the band INTERIOR
+## is a real wall -- multi-host patterns themselves explode (2026-07-07)
+
+Built region_native/diag_band.cpp (separate prototype; production engine untouched): the t=1
+(r, r+1) cell WITHOUT the full pattern space. Three exact ingredients, all theorem-backed:
+ (1) HOST-1 CLOSED FORM (SKIP_H1, t=1): core = |M| - r; per-region complement counted, never
+     enumerated: C(|M|,r) - hosted multi-host mult.
+ (2) MULTI-HOST ENUM FROM PAIRWISE INTERSECTIONS: multi-host <=> fits A^B with >= r shared
+     vertices; sup0 = |union of hosts| - r (exact at t=1). Deduped across pairs.
+ (3) EXACT EVENT REPLAY: NO-EARLY-DEATH lemma (nothing inside M dies before l_M = |M|-r, so the
+     region wave at l_M needs no already-dead subtraction) + OWNERSHIP SPLIT (a witness with a
+     host-1 sub lives in exactly ONE region -> owned by that region's wave; all-subs-multi-host
+     witnesses owned by deadW-deduped multi-host deaths -- disjoint, each witness credited once).
+     Wave drop for Q hosted in M = Sum_c (n_c - Q_c) * [Q + e_c has a host-1 sub], closed form.
+     Memoized multi-host/all-subs tests (order-free fingerprints, deadY precedent): 371s -> 10.4s.
+
+CORRECTNESS: 6/6 GATES BIT-EXACT vs the native engine (astro r=3,4,5; dblp r=4,5,6) -- including
+the full distribution merge of closed-form host-1 mass + peeled multi-host cores. The theory
+(no-early-death, ownership split, wave closed form) is validated in practice.
+
+BAND RESULTS (12GB RSS kill, 600s timeout, DIAG_MAX_PATS=50M):
+  astro band edge r=29 RECOVERED: 117.7s / 8.4GB / 10.2M multi-host patterns from just 247 pairs
+    (native: infeasible). dblp band edge r=26 RECOVERED: 15.7s / 1.7GB (native: RSSKILL).
+  Band shrinks: astro [6,29] -> [6,28]; dblp [7,26] -> [7,25].
+  BUT the INTERIOR (astro r=6..28, dblp r=7..25) still RSSKILLs at 12GB in 15-50s -- during the
+  multi-host ENUM itself: mid-band intersections are large (>= r vertices, many classes) and the
+  r-multiset space over even ONE such intersection explodes at mid r (247 pairs -> 10.2M patterns
+  at r=29 shows the per-pair blowup). The wall is NOT host-1 enumeration (removed) -- it is the
+  MULTI-HOST pattern quotient itself.
+HONEST CONCLUSION: the class-multiset representation is exponential in r wherever the carrier
+(region OR intersection) has many classes; the lever moves the wall's edges, not its interior.
+At t=1 the sup0-squeeze certifies NO multi-host pattern (|union| > max|M| strictly for hostSz>=2),
+so FPS-style certification cannot rescue the diagonal interior either. Breaking the interior
+needs compression BELOW the class quotient (recursive intersection quotients / host-set-level
+grouping) -- the §85 pattern wall restated in the r-direction; open research, recorded as such.
+Full-grid status: feasible = bottom rows + top ~half (r >= band_hi, where whole rows are closed
+form) on both graph types; the mid band is the honest boundary of the current representation.
+Data: paper_data/band_{astro,dblp}_2026-07-07.tsv; gates in the session log.
