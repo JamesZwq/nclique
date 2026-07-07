@@ -766,13 +766,23 @@ int main(int argc, char **argv) {
         // the ~2x deep-copy of geometric growth AND the transient ~1.5x peak (which
         // risks OOM on the big cells), at the cost of one extra bare recursion pass.
         {
+            // §131 SCT_MAX_INC guard: the incidence count is known BEFORE the multi-GB allocs, so a
+            // pattern-explosion row can abort cleanly (exit 7) instead of OOMing the machine. The
+            // count recursion itself prunes once past the cap, so the guard costs O(cap) not O(true).
             long long nIncEst = 0;
+            const long long maxInc = getenv("SCT_MAX_INC") ? atoll(getenv("SCT_MAX_INC")) : 0;
             auto cnt = [&](auto &&self, int idx, const vector<int> &cls, int rem) -> void {
+                if (maxInc > 0 && nIncEst > maxInc) return;
                 if (rem == 0) { nIncEst++; return; }
                 for (int i = idx; i < (int)cls.size(); i++) { int c = cls[i], maxj = min(rem, classSize[c]);
                     for (int j = 1; j <= maxj; j++) self(self, i + 1, cls, rem - j); }
             };
-            for (int i = 0; i < nR; i++) cnt(cnt, 0, regionClasses[i], r);
+            for (int i = 0; i < nR; i++) { cnt(cnt, 0, regionClasses[i], r); if (maxInc > 0 && nIncEst > maxInc) break; }
+            if (maxInc > 0 && nIncEst > maxInc) {
+                printf("[rn-peel] PATTERN-EXPLOSION: incidences>%lld (cap) -- clean abort (SCT_MAX_INC)\n", maxInc);
+                fflush(stdout);
+                return 7;
+            }
             rec.reserve((size_t)nIncEst * W2); recReg.reserve((size_t)nIncEst);
         }
         vector<pair<int,int>> cur; int curRid = 0;

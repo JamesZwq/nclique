@@ -5814,3 +5814,28 @@ social. All results bit-exact vs the native engine on every graph and cell teste
 (STEP A/C): formalize the theorem statements + T3 tightness condition for the paper; server-scale
 runs (web-it/dblp + bigger s-ranges, /usr/bin/time -v protocol) for the experiment section; the
 r-direction (Lemma 2 subclique transfer) stays untested (needs cross-r shared build, v2).
+
+## 131. FULL t=1 DIAGONAL BASELINE (all r, s=r+1): the U-shape measured on ca-AstroPh (2026-07-07)
+
+Motivation: the full (r,s) grid to omega costs ~the t=1 diagonal (each r-row's cold cell; the rest
+of the row chain-certifies, §130). BASELINE = independent native runs per row, serial, local M-
+series laptop; driver region_native/diag_baseline.py (ascend to the explosion edge, then descend
+from the top; per-row timeout 240s). Data: paper_data/diag_astro_baseline_2026-07-07.tsv.
+
+ca-AstroPh (omega=57, LOW class-symmetry) -- the diagonal is U-SHAPED:
+  r=1..5 FEASIBLE, geometric growth x5-6/row: 0.7s/15k pats -> 193s/22.1M pats/12.6GB (r=5);
+    compression I/M at r=5 only 2.8x (62.8M r-cliques / 22.1M patterns) -- poor symmetry.
+  r in [6, 29] INFEASIBLE for the current engine (pattern explosion; r=6 projected ~60GB. NOTE:
+    the first run OOMed the user's machine at r=6/7 -- fixed by a triple guard: engine-side
+    SCT_MAX_INC clean abort exit-7 BEFORE the multi-GB allocs (the incidence count precedes them;
+    count recursion prunes at the cap so the guard is O(cap)), driver-side RSS-poll kill + timeout).
+  r=30..43 FEASIBLE and cheap (0.3-48s): few big regions, patterns 33..7.6M shrinking.
+  r=44..56 FREE: every region is r-mergeable -> 0 patterns, whole rows are the closed form
+    C(|M|-r,1) direct-assigned in 0.3s/row -- rows carrying 10^12..10^15 r-cliques! The engine's
+    direct-assign already makes the TOP of the diagonal closed-form.
+INTERPRETATION: (i) the top third of the diagonal is ALREADY free (mergeable = everything);
+(ii) the bottom (r<=5) is cheap; (iii) the middle band r~6..29 is the CLASS-CPI PATTERN WALL
+(§85 in the r-direction): #r-multisets over low-symmetry region classes explodes. host-1 direct-
+out does NOT fix it (host-1 patterns still get enumerated); fixing the band needs pattern-free
+handling of non-mergeable regions (region-level closed forms + overlap IE) -- open. On HIGH-
+symmetry graphs the band should not exist (com-dblp run in progress).
