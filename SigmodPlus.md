@@ -6212,3 +6212,21 @@ cells are a pure certification pass (0.07-0.17s, 100.00% certified); (ii) web-it
 (epin sweep 474s/26GB, residue peel dominates). PHASE B (natives, 2h budget) started 15:01 UTC.
 GOTCHA: the server binary predates §136 (pulled at 32405a6), so SCT_INDEX_OUT was silently
 ignored -- NO indexes written in Phase A; E5 needs a server pull+rebuild+re-sweep (15 min).
+2026-07-08: PHASE B COMPLETE (NSI_V2_DONE 22:21 UTC) -- E1 MAIN TABLE ASSEMBLED, same-machine:
+  config   native cells (s ascending, wall)          native SUM   sweep    SPECTRUM speedup
+  hepph    146.0 / 215.6 / 914.0 / >7200(BUDGET)     >8475s       167.2s   >50.7x
+  astro    66.1 / 241.5 / 1466.1 / >7200(BUDGET)     >8974s       89.7s    >100x
+  dblp4    8.2 / 9.2 / 20.4 / 655.5                  693.3s       9.3s     74.5x
+  dblp5    22.6 / 28.1 / 56.8 / >7200(BUDGET)        >7307s       28.3s    >258x
+  webit    7.4 / 8.0 / 9.0 / 18.6                    43.0s        8.1s     5.3x
+  epin     147.5 / 202.0 / 328.7                     678.2s       474.3s   1.43x (honest)
+  yt       48.5 / 57.8 / 63.0                        169.3s       105.0s   1.61x (honest)
+  MARGINAL-CELL headlines (sweep marginal vs native, same machine): dblp4 s=8: 0.07s vs 655.5s
+  = 9364x; dblp5 s=9: 0.15s vs >7200s = >48000x; hepph s=7: 10.4s vs >7200s = >692x; astro s=8:
+  10.7s vs >7200s = >673x; astro s=7: 3.3s vs 1466s = 439x; hepph s=6: 2.2s vs 914s = 410x.
+  RSS: sweep <= max native cell RSS on every config (e.g. astro sweep 10.3GB vs native 4,7
+  14.7GB). Three EXCEEDS-BUDGET(2h) cells: hepph 3,7 / astro 4,8 / dblp5 5,9 -- natively
+  unattainable within budget, sweep marginals 10.4s / 10.7s / 0.15s.
+  Raw logs: tods2:/home/wenqianz/nsi_main_table/ (sweep_*.log, nat_*.log, v2_summary.log).
+  REMAINING for the paper table: E3 CND columns, E2 multi-trial, E4 same-machine query bench,
+  E5 index numbers (server rebuild needed, §139 gotcha).
