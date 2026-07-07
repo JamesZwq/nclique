@@ -5839,3 +5839,23 @@ INTERPRETATION: (i) the top third of the diagonal is ALREADY free (mergeable = e
 out does NOT fix it (host-1 patterns still get enumerated); fixing the band needs pattern-free
 handling of non-mergeable regions (region-level closed forms + overlap IE) -- open. On HIGH-
 symmetry graphs the band should not exist (com-dblp run in progress).
+
+### 131b. com-dblp diagonal: the U-shape is UNIVERSAL (2026-07-07)
+com-dblp (omega=114, HIGH symmetry), same protocol + guards (240s, 12GB RSS kill, inc-cap 120M):
+  r=1..6 FEASIBLE (2.3s -> 30.3s, x2-3/row; r=6: 7.7M patterns, 4.1e9 r-cliques, 6.6GB).
+  r in [7, 26] INFEASIBLE (RSSKILL at 12GB; r=7 had 17.4M patterns and rising).
+  r=27..113 ALL FEASIBLE at ~1.1s/row -- the top THREE QUARTERS of the diagonal is essentially
+  free (few/mergeable regions; rows carry astronomically many r-cliques as closed forms; counter
+  PRINTS saturate past 2^63 -- cosmetic, cores are computed in doubles).
+So: 93/113 dblp rows feasible vs 32/56 astro rows; the middle band [7,26] persists EVEN ON THE
+HIGH-SYMMETRY graph (prediction "dblp fully feasible" was WRONG -- corrected). The band is the
+class-CPI pattern wall in the r-direction: mid-size overlapping regions x mid r = multiset blowup.
+Data: paper_data/diag_dblp_baseline_2026-07-07.tsv.
+
+NEXT LEVER identified for the band (v2, not built): enumerate ONLY multi-host patterns -- an
+r-multiset is multi-host iff it fits inside some pairwise region intersection A^B, so the multi-
+host candidates cost Sum_pairs C(|A^B|, r) (intersections are SMALL) instead of Sum_M C(|M|, r);
+the host-1 complement per region is C(|M|,r) minus the shared count, all at core |M|-r (SKIP_H1
+theorem) -- no enumeration. The coupling (host-1 deaths lowering multi-host supports) would be
+replayed in closed form per region at level |M|-r, the §130 replay idea at region granularity.
+Would turn the band rows into (small multi-host peel) + (closed-form complement). UNBUILT.
