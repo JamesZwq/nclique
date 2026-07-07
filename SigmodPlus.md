@@ -5657,3 +5657,92 @@ peel), (ii) genuinely peeled but compressed on social graphs (41% certified), (i
 by the two-regime selector. The symmetry-compression-as-speed idea stays dead; the spectrum-redundancy /
 KK-certification is the real algorithmic content and it is measured, sound, and largest exactly on the
 clique-dominated graphs (the win domains + the collaboration loss cells).
+
+## 129. CONSOLIDATED HANDOFF -- the NSI direction + the 4 theorems + the practical-validation plan (2026-07-07)
+
+PICKUP DOC for the post-pivot direction. Read §128-128d for the derivations; this is the self-contained
+plan. USER DIRECTIVE: formalize the theorems below AND validate them in PRACTICE (build the engine, run
+it, prove they are useful) -- not just on paper. Do NOT restart the "faster peel" line (dead, §128).
+
+### 0. WHERE WE ARE (one paragraph)
+The symmetry-compression-as-SPEED idea is dead (measured: supInit alone 23x CND's whole runtime on
+ca-AstroPh 4,6; compression ~1 on real graphs; §128). SHIPPED and real: the a_Y peel engine §117-121
+(1.6-3.9x, bit-identical, server-validated, on main). NEW DIRECTION: the NUCLEUS SPECTRUM INDEX (NSI)
+-- one build from the graph's maximal cliques, exact, queryable over the WHOLE (r,s) plane; at high
+(r,s) the output (a core per r-clique) is otherwise UNWRITABLE (trillions of r-cliques). The
+algorithmic core is theorem-driven: the (r,s)-core SURFACE is a closed form on the clique-settled
+majority, certified by shadow/subclique bounds, with only a residue peeled.
+
+### 1. THE CENTRAL CLAIM (to formalize + validate)
+For a clique-SETTLED r-clique R (its core comes from its largest maximal clique):
+    kappa_{r,s}(R) = C(c(R) - r, s - r),   c(R) = size of R's largest maximal clique.
+=> the ENTIRE (r,s) surface for R is ONE closed form from ONE input c(R); one MCE build -> all (r,s),
+zero peel, for the settled fraction. MEASURED settled (core == this bound): ~100% on clique-dominated
+(web-it/dblp/ca-AstroPh 99.9%/ca-HepPh 99.7%), 46-78% on social (youtube/Epinions).
+
+### 2. THE FOUR THEOREMS (the paper's theoretical spine; state + prove + give tightness conditions)
+- T3 CLIQUE LOWER BOUND: kappa_{r,s}(R) >= C(c(R)-r, s-r), equality iff R's densest cohesive context is
+  a single clique (the overlap peels away). SUFFICIENT CONDITION for equality is the key missing theorem
+  -- characterize it (single-clique membership is sufficient but not necessary; overlaps that peel away
+  still give equality). Free from one MCE build.
+- LEMMA 1 KRUSKAL-KATONA SHADOW (s-direction): kappa_{r,s-1}(R) >= g_{s-r}(kappa_{r,s}(R)), g = KK lower
+  shadow (Lovasz form: C(x,a)=m => C(x,a-1)). CLIQUE-TIGHT (zero slack: g(C(c-r,s-r)) = C(c-r,s-1-r)).
+  Same g as the VERIFIED r=1 spectrum-index nesting. Links the whole s-trajectory.
+- LEMMA 2 SUBCLIQUE TRANSFER (r-direction): kappa_{r,s}(R) >= max over (r+1)-supercliques R+ of
+  kappa_{r+1,s}(R+); and kappa_{r+1,s}(R+) <= min(supp_s(R+), min over r-subcliques of kappa_{r,s}).
+  Links the r-trajectory. UNTESTED empirically (needs shared-build cross-r alignment; see §4).
+- CERTIFICATION / TARSKI SQUEEZE: kappa has an order-free max-min / greatest-fixpoint characterization;
+  iterating the deflationary operator from ANY valid upper bound converges to exactly kappa. Hence if a
+  valid LOWER bound (clique/KK/subclique) EQUALS a valid UPPER bound (sup0/KK-inverse/subclique-min) at
+  R, then kappa(R) is EXACT with NO peel. This is what makes "certify, don't peel" sound.
+HONEST LOWER BOUND (also a theorem, keep it): Theta(omega^2) cell-VISITS unavoidable -- a graph rich in
+(s-1)-cliques can be s-clique-free (kappa_{r,s}=0 gives no info on kappa_{r,s-1}); independence gadget.
+So NO algorithm collapses the whole surface to closed form on adversarial/social graphs; the residue is
+genuinely computed.
+
+### 3. THE MEASURED EVIDENCE (already done, bit-exact, sound)
+- §128b SCT_FLOORGAP (in region_native_sct_peel, cores bit-identical): clique bound C(c-r,s-r) is
+  ACTUALLY tight (core==bound) for ~100% on clique-dominated incl LOSS cells, 46-78% social.
+- §128c: the CHEAP init certificate sup0==bound is SOUND but INCOMPLETE (certifies 12.5-76%; must-peel
+  24-47% everywhere). "core hits bound" != "we cheaply KNOW it hits".
+- §128d scripts/fps_kk_certification_probe.py (PIVOTER_RUN_REF exact per-r-clique dumps at (3,4/5/6),
+  KK s-neighbor sandwich): certifies 99.7% (ca-HepPh), 96.7% (ca-GrQc), 41.2% (soc-Epinions); UNSOUND=0
+  (KK impl verified). CAVEAT: uses BOTH s-neighbors (upper bound on a single-directional sweep); r-dir
+  untested.
+=> FPS residue (must-peel) ~0.3% on clique-dominated (incl the LOSS cells), ~59% on social.
+
+### 4. THE PRACTICAL-VALIDATION PLAN (what the user asked for -- build + prove useful)
+STEP A (theory): write the 4 theorems formally with proofs (proof sketches exist in §128); the KEY new
+one is T3's tightness sufficient condition (when core == clique bound). Add the quotient-invariance
+(pattern = same core, already brute-verified §110).
+STEP B (engine, the real work): build the SHARED-BUILD NSI/FPS engine. Current blocker: region_native
+bakes s into the build (MCE(g,s), scalableBuildClassSCT(...,s), box.T=s-hold). Change: build the class/
+pattern STRUCTURE ONCE at min-clique-size r+1 (regions >= r+1, s-INDEPENDENT); then per s only recompute
+box T=s-hold + support (closed form) so patterns ALIGN across s. On that shared structure: (i) closed-
+form floor C(c(P)-r,s-r) per pattern from one build; (ii) certify via sup0 (init) + KK from the peeled
+s-neighbor + subclique from the r-neighbor; (iii) peel ONLY the uncertified residue, pinning settled.
+STEP C (validate): measure END-TO-END on ca-HepPh/ca-AstroPh (clique-dominated LOSS cells): does the
+whole spectrum build collapse from ~92s/cell peel toward (boundary cold peel + 0.3% residue)? If yes,
+the loss cells are turned around via the spectrum framing. Also social (Epinions/youtube): confirm ~41%
+certified -> ~1.7x, honest. GATE every step bit-identical vs the full peel (verify_tuple_hierarchy +
+corehash).
+
+### 5. TOOLS + FILES (all committed)
+- region_native/region_native_sct_peel.cpp: the a_Y engine + probes SCT_FLOORGAP (§128b/c),
+  SCT_CLOSURE_PROBE (§127), PIVOTER_PEEL_PROFILE (§120). Build:
+  g++ -O3 -std=c++17 -I. -I../src/NucleusDecomposition -o rn region_native_sct_peel.cpp
+- scripts/fps_kk_certification_probe.py: the KK-sandwich certification test (§128d). Uses PIVOTER_RUN_REF
+  per-r-clique dumps: PIVOTER_RUN_REF=1 PIVOTER_DUMP_CORE=<f> ./build/bin/degeneracy_cliques <g> r s.
+- paper_data/cnd_comparison/: the ours-vs-CND grids. Gates: scripts/verify_tuple_hierarchy.py 500.
+- Precedent: the r=1 NSI already exists (SPIN*, REPRODUCE.md, r1Hier/) -- NSI generalizes it to (r,s).
+
+### 6. HONEST BOUNDARIES (do not overclaim)
+- The closed-form surface is EXACT only for the certified fraction (99.7% clique-dominated, 41-76%
+  social). "One shot all (r,s)" holds ONLY for the settled part; the residue needs peeling (proven).
+- Do NOT claim "core = clique value" as a universal theorem -- the tail + social counterexamples are
+  real; claim "closed form on clique-settled, with a characterized sufficient condition + measured
+  coverage". Keep the retracted spectrum-index overclaims (space/build lower bounds, cross-s pair query)
+  retracted.
+- Novelty: "new closed-form floor + certification for the (r,s)-nucleus spectrum, generalizing the r=1
+  spectrum index and the (2,3) EquiTruss quotient" -- pending literature check.
+- The KK §128d number uses both s-neighbors; single-sweep certifies somewhat less. r-direction untested.
