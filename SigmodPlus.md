@@ -5898,3 +5898,30 @@ grouping) -- the §85 pattern wall restated in the r-direction; open research, r
 Full-grid status: feasible = bottom rows + top ~half (r >= band_hi, where whole rows are closed
 form) on both graph types; the mid band is the honest boundary of the current representation.
 Data: paper_data/band_{astro,dblp}_2026-07-07.tsv; gates in the session log.
+
+## 133. STEP A DONE: the theorem set formalized; T5 (diagonal +1) PROVEN and validated (2026-07-07)
+
+docs/nsi_theorems.md: 8 proven theorems + 2 explicit sketches, self-contained proofs.
+  T1 clique floor; T2 KK shadow (zero slack at binomials); T3 s-chain certificate (the §130
+  engine, proof = T1+T2 squeeze via strict monotonicity of Lovasz g); T4 subclique bound
+  (proven, WITH slack -- cannot certify alone); T5 DIAGONAL +1 (NEW, below); T6 no-early-death
+  + host-1 exactness for ALL s (SKIP_H1's empirical caveat removed); T7 quotient invariance
+  (same-class transposition is a clique-complex automorphism -- the §110 735k-check caveat
+  removed); T8 witness ownership split (band-engine replay exactness). P9 peel=max-min (sketch),
+  P10 no-free-spectrum (sketch; write the gadget out before claiming).
+
+T5 (was the "diagonal +/-1 conjecture", NOW PROVEN, 10-line shadow-family proof):
+  kappa_{r+1,r+2}(R+) <= min over r-subcliques of kappa_{r,r+1} - 1.
+  Generalizes the classical truss<=core-1 inequality (r=1) to the whole t=1 diagonal. Proof: take
+  F realizing k at (r+1,r+2); the shadow family F' of (r+1)-cliques gives every covered r-clique
+  R' support >= k+1: its witness W=R'+u lies in >= k members S_i = W+w_i of F, so R'+u and the k
+  distinct R'+w_i are all in F'. Zero slack on cliques -> DIAGONAL CHAIN CERTIFICATE (corollary):
+  min_sub kappa_{r,r+1} == c(R+)-r  =>  kappa_{r+1,r+2}(R+) = c(R+)-r-1 exactly.
+PRACTICE VALIDATION (PIVOTER_RUN_REF per-r-clique dumps, cells (3,4)->(4,5)):
+  ca-GrQc   329,297 4-cliques   VIOLATIONS=0   ceiling EQUALITY 100.0%
+  ca-HepPh  150,281,372         VIOLATIONS=0   ceiling EQUALITY 100.0%
+  soc-Epinions 5,803,397        VIOLATIONS=0   ceiling EQUALITY 23.4%
+On collaboration graphs the T5 bound is an EQUALITY for every single 4-clique measured: the
+diagonal recurrence kappa_{r+1,r+2} = min_sub kappa_{r,r+1} - 1 holds universally there (a
+one-pass diagonal is information-theoretically real on such graphs; the engineering blocker
+remains materialization in the band, §132). Social graphs: bound holds, equality only 23.4%.
