@@ -5798,3 +5798,19 @@ Social (soc-Epinions) measurement running; expected ~40-50% certified (§128d), 
 Files: region_native/region_native_sct_peel.cpp (sweep mode), region_native/ClassSCTScalable.h
 (kOver), region_native/nsi_sweep_gate.py (the gate harness). v1 scope: fixed r, ascending s,
 a_Y forced (t <= 8), no ondemand/hier/probes in sweep mode.
+
+### 130b. The honest boundary measured: soc-Epinions (social), ALL GATES PASS (2026-07-07)
+  soc-Epinions r=3, s=4..6: chain-certified 47.2% (s=5) / 51.2% (s=6) of r-cliques (matches the
+  §128d prediction ~41%, slightly higher because the chain is absorbing). Cell marginals: 3,5 =
+  45.3s vs native 87.8s (1.9x); 3,6 = 92.6s vs native 157.7s (1.7x). Whole spectrum: sweep 258.0s
+  vs native cells 309.1s = 1.2x. Bit-exact everywhere. EXACTLY the §128c honest expectation: on
+  social graphs the certified fraction is ~half, so FPS is a MODEST win (1.2-1.9x), not the
+  231-510x of the clique-dominated families. The residue peel on the shared (finer, s0-granular)
+  structure costs ~the native cell, so the social spectrum is roughly "pay the residue per cell".
+FINAL §129-STEP-B VERDICT: the 4 theorems are PRACTICALLY VALIDATED -- the chain certificate
+(T3+L1) computes 99.96-100% of the spectrum closed-form on clique-dominated graphs (incl. BOTH
+loss families, turned around at 231-510x per cell) and degrades honestly to ~50%/1.2-1.9x on
+social. All results bit-exact vs the native engine on every graph and cell tested. Remaining
+(STEP A/C): formalize the theorem statements + T3 tightness condition for the paper; server-scale
+runs (web-it/dblp + bigger s-ranges, /usr/bin/time -v protocol) for the experiment section; the
+r-direction (Lemma 2 subclique transfer) stays untested (needs cross-r shared build, v2).
