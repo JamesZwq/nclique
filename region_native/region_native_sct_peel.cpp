@@ -2269,6 +2269,18 @@ int main(int argc, char **argv) {
         fprintf(stderr, "[peel-batch] leaf-instances: single-DFS=%lld fallback=%lld (%.1f%% batched, CB-cap=%lld)\n",
                 cbBatch, cbFallback, (cbBatch + cbFallback) ? 100.0 * cbBatch / (cbBatch + cbFallback) : 0.0, cbCap);
     } else {
+    // §127 CLOSURE-DEPTH PROBE (SCT_CLOSURE_PROBE): measure the SYNCHRONOUS closure round-depth d_L
+    // per level = the number of cascade GENERATIONS at each level. roundOf[P] = generation at which P
+    // reaches the current level (seed patterns already at the level when it opens = gen 1; a pattern
+    // pulled down to the level by a gen-g death = gen g+1). max gen at level L = d_L, the synchronous
+    // closure depth if the bulk k=L+1 closure were run on the current graph. This is a LOWER BOUND on
+    // the value-space D&C's median-threshold closure depth D_med (which removes many levels at once),
+    // so a LARGE d_L kills the D&C idea cheaply; a small d_L motivates the full fixed-threshold probe.
+    // Pure instrumentation: reads/writes roundOf + a per-level histogram, does not change peel logic.
+    bool closureProbe = getenv("SCT_CLOSURE_PROBE") != nullptr;
+    vector<int> roundOf; if (closureProbe) roundOf.assign(pats.size(), 0);
+    long long crLastLevel = -1; int crMaxThisLevel = 0, crDeathRound = 0;
+    vector<int> crDepths; long long crLevels = 0;
     while (peeledN < npat) {
         auto it = bk.find(curLevel);
         while (it == bk.end() || it->second.empty()) {
@@ -2276,6 +2288,11 @@ int main(int argc, char **argv) {
             it = bk.find(curLevel);
         }
         if (curLevel > maxKey + 1) break;
+        if (closureProbe && curLevel != crLastLevel) {           // §127: level opens -> seed = gen 1
+            if (crLastLevel >= 0) { crDepths.push_back(crMaxThisLevel); crLevels++; }
+            crMaxThisLevel = 1; crLastLevel = curLevel;
+            for (int qz : it->second) if (pats[qz].alive && pats[qz].key == curLevel) roundOf[qz] = 1;
+        }
         // §118 leaf-kill: once per level, sweep the bucket's live entries (alive && key==curLevel)
         // into the wave: decrement cntAbove on their hosting leaves. Exactly-once per pattern: a
         // pattern is either already at this level when it opens (swept here; keys are pushed at
@@ -2290,6 +2307,7 @@ int main(int argc, char **argv) {
         int pi = it->second.back(); it->second.pop_back();
         Pat &P = pats[pi];
         if (!P.alive || P.key != curLevel) continue;
+        if (closureProbe) { crDeathRound = roundOf[pi] ? roundOf[pi] : 1; }   // §127: this death's generation
         P.alive = false; P.core = (double)curLevel; peeledN++;
         if ((peeledN & 0x3FF) == 0)
             fprintf(stderr, "[peel] %lld/%lld lvl=%lld maxSplit=%zu t=%.1fs\n",
@@ -2763,9 +2781,24 @@ int main(int argc, char **argv) {
                 pats[qi].sup = ns; pats[qi].key = nk; bk[nk].push_back(qi);
                 if (leafKill && nk == curLevel)        // §118: cascade pulled Q into the current wave
                     for (int lid : leavesOf(qi)) cntAbove[lid]--;
+                if (closureProbe && nk == curLevel) {  // §127: Q cascaded into the current level -> next generation
+                    roundOf[qi] = crDeathRound + 1;
+                    if (roundOf[qi] > crMaxThisLevel) crMaxThisLevel = roundOf[qi];
+                }
             }
         }
         if (peelProf) ppTApply += secs(_llS, Clock::now());
+    }
+    if (closureProbe) {
+        if (crLastLevel >= 0) { crDepths.push_back(crMaxThisLevel); crLevels++; }
+        std::sort(crDepths.begin(), crDepths.end());
+        auto pc = [&](double p) { return crDepths.empty() ? 0 : crDepths[std::min((size_t)(p * crDepths.size()), crDepths.size() - 1)]; };
+        double sum = 0; for (int x : crDepths) sum += x;
+        // weight by patterns is not tracked here; report the per-level round-depth distribution.
+        fprintf(stderr, "[closure-probe §127] non-empty levels=%lld  synchronous round-depth d_L: p50=%d p90=%d p99=%d p99.9=%d max=%d  avg=%.2f\n",
+                crLevels, pc(0.5), pc(0.9), pc(0.99), pc(0.999), crDepths.empty() ? 0 : crDepths.back(), crDepths.empty() ? 0.0 : sum / crDepths.size());
+        fprintf(stderr, "[closure-probe §127] INTERPRETATION: d_L is a LOWER BOUND on the D&C median-threshold closure depth. "
+                "d_L p99 <= ~O(10) -> value-space D&C worth building; d_L p99 in the hundreds/thousands -> D&C dead, selector is the answer.\n");
     }
     }
     auto T6 = Clock::now();

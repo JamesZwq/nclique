@@ -5442,3 +5442,39 @@ clean the win numbers; sell as "matching the proven incidence bound", NOT "beati
 by construction, kills the loss column honestly). (3) lead with the THEORY (hypergraph formulation +
 wave-closure + the CORRECT per-pair floor). (4) the value-space D&C is the one stretch bet to convert
 a current loss family (dense large-clique) into wins -- gated entirely on the one histogram.
+
+## 127. CLOSURE-DEPTH PROBE: a clean s=2r phase transition -- value-space D&C viable ONLY for s>2r (2026-07-07)
+
+Built the decisive probe for the §126 value-space D&C idea. SCT_CLOSURE_PROBE instruments the a_Y
+peel (non-batch, t<=3 path) with a per-pattern roundOf[] to measure the SYNCHRONOUS closure round-
+depth d_L per level = the number of cascade generations at each level (seed = gen 1; a pattern pulled
+to the level by a gen-g death = gen g+1; max gen at level L = d_L). d_L is a LOWER BOUND on the D&C's
+median-threshold closure depth. Pure instrumentation, cores bit-identical (verified ca-GrQc 4,6).
+
+RESULT (d_L distribution, the decisive number):
+  cell            s vs 2r   levels   avg d_L   p99    max
+  ca-AstroPh 2,5   s>2r     26233    1.04      2      24
+  ca-HepPh 2,5     s>2r     89603    1.00      1      17
+  ca-AstroPh 3,5   s<2r      1431    2.46      41     204
+  ca-AstroPh 4,6   s<2r      1378    7.17      224    1110
+  com-dblp 5,6     s<2r        77    34.0      1786   1786
+CLEAN PHASE TRANSITION AT s=2r: for s>2r the synchronous closure is essentially FLAT (avg d_L ~1,
+max <=24) -- one bulk recompute round removes a whole level -> the value-space D&C is VIABLE (cost
+~M*logk, beats the event floor when M<<I). For s<=2r a heavy TAIL (max 200-1800 rounds) -> pure
+D&C EXPLODES on the deep cascades -> dead; event-driven + the two-regime selector is the answer.
+This EXACTLY matches §126's adjudication (per-pair batch separation only for s>2r).
+
+THE HONEST CATCH (kills the "D&C fixes the loss cells" hope): ALL the §124 LOSS cells are s<=2r
+(ca-AstroPh 3,4/4,5/4,6/5,6; ca-HepPh 2,3/3,4/4,5; web-Stanford; com-youtube; soc-pokec -- every one
+has s <= 2r). The D&C's viable regime (s>2r) is HIGH-s, which is generally where CND's r-clique count
+explodes and we ALREADY WIN. So the D&C does NOT convert any measured loss into a win; it would only
+speed up the existing s>2r wins (and possibly extend wins to unmeasured high-s dense cells). Net: the
+value-space D&C is a real, cleanly-characterized result but NOT the fix for the "experiments are bad"
+problem. The loss cells (s<=2r) are confirmed FUNDAMENTAL (deep-cascade tail); the honest path for them
+remains the two-regime selector (parity guarantee) + the implementation fixes (narrow to parity).
+
+PAPER UPSHOT: the s=2r closure-depth phase transition is a clean, publishable structural observation
+and gives a PRINCIPLED second selector axis (s vs 2r decides bulk-recompute vs event-driven), on top
+of the M/I compression axis (decides win vs parity vs CND). The engine becomes: (compression high?
+-> win) x (s>2r? -> bulk-recompute D&C, else event-driven peel + parity fallback). Probe kept in the
+binary (SCT_CLOSURE_PROBE, default off, cores identical).
