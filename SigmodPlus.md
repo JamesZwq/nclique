@@ -6247,3 +6247,12 @@ larger (27GB); (ii) dblp5: 262.6M r-cliques, 0.38 B/r-clique, raw table would be
 34-40 B/r-clique (residue dicts dominate). Queries were 200k random r-cliques per graph
 (gen_queries.py greedy sampler). Raw logs: tods2:/home/wenqianz/nsi_e5/.
 REMAINING: E3 (CND columns), E2 (multi-trial), E4 (sorted-table query baseline, same-machine).
+2026-07-08: E3 (CND baseline) LAUNCHED + build scare resolved. The e3 script's "BUILD_RC=2" is a
+FALSE ALARM: degeneracy_cliques itself built cleanly ("[45%] Built target degeneracy_cliques",
+fresh binary 23:00 from HEAD 735c67b which contains the §122 fix line); Error 2 is a downstream
+test target (test_ultra_parallel) failing to link -- irrelevant to CND. web-it CND result CONFIRMED
+as genuine OOM (feasibility story): cnd_webit_3_4.log shows r-clique index growing past 50GB then
+`std::bad_alloc` under the 300GB --as cap (rc=134) at all four cells 3,{4,5,6,7} -- CND cannot index
+web-it, exactly §108/§124. Interim E3 (same-machine): yt 3,4/3,5/3,6 CND = 30s/210s/365s (3.9GB);
+epin 3,4 = 40s. E3 still running (dblp + astro + hepph queued). Post-hoc PIVOTER_COMPARE on a small
+cell recommended after E3 for belt-and-suspenders (the exact binary was already validated in §124).
