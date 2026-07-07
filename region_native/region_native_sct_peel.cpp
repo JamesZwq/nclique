@@ -394,6 +394,14 @@ int main(int argc, char **argv) {
         if (sweepSmax - r > 8) { fprintf(stderr, "[nsi §129] SCT_SWEEP: tail smax-r=%d > 8 unsupported (a_Y cap).\n", sweepSmax - r); return 1; }
         printf("[nsi §129] SWEEP mode: shared build at s0=%d, cells s=%d..%d\n", s, s, sweepSmax);
     }
+    // §136 NSI INDEX WRITE (SCT_INDEX_OUT=<path>, requires SCT_SWEEP): serialize the queryable
+    // spectrum index -- classOf + mergeable regions (vertex lists; their whole spectrum is the
+    // closed form C(|M|-r,s-r)) + per-pattern (comp, c(P), cold-cell core) + per-cell residue
+    // dictionaries + per-cell distributions. Query semantics: see region_native/nsi_query.cpp
+    // (chain walk re-derives certification; T7 guarantees pattern-hit and mergeable cases are
+    // structurally disjoint).
+    const char *nsiIndexOut = getenv("SCT_INDEX_OUT");
+    if (nsiIndexOut && !sweepMode) { fprintf(stderr, "[nsi §136] SCT_INDEX_OUT requires SCT_SWEEP.\n"); return 1; }
 
     auto T0 = Clock::now();
     Graph g = load_graph(gpath);
@@ -427,6 +435,7 @@ int main(int argc, char **argv) {
     // regions -> on sparse graphs that is a tiny fraction of the patterns.
     std::map<double,double> directCoreDist;
     std::map<int,long long> mergSizeHist;   // §129 sweep: |M| histogram of the r-mergeable regions
+    vector<vector<int>> nsiMergV;           // §136 index mode: mergeable regions' vertex lists
     long long nMergeable = 0, nMergedRC = 0;   //   (their per-cell core is the closed form C(|M|-r, s-r))
     // HIER: each r-mergeable region is an ISOLATED (r,s)-nucleus (its r-cliques are
     // s-connected only among themselves, never sharing an s-clique with any active
@@ -512,6 +521,7 @@ int main(int argc, char **argv) {
                 double cv = (N >= (int)s) ? C(N - r, s - r) : 0.0;
                 directCoreDist[cv] += C(N, r);
                 mergSizeHist[N]++;                                     // §129: per-cell closed-form re-derivation
+                if (nsiIndexOut) nsiMergV.push_back(regions[M]);       // §136: vertex list for query-time containment
                 if (wantHier) hierMergeRoots.push_back({cv, (long long)llround(C(N, r))});
                 nMergeable++; nMergedRC += (long long)llround(C(N, r));
             } else active.push_back(std::move(regions[M]));
@@ -522,6 +532,7 @@ int main(int argc, char **argv) {
         fflush(stdout);
         if (regions.empty()) {
             if (sweepMode) {   // §129: every region is an isolated clique -> the WHOLE sweep is closed form
+                std::vector<std::map<double,double>> amDists;
                 for (int cs = sweepS0; cs <= sweepSmax; cs++) {
                     std::map<double,double> d;
                     for (auto &kv : mergSizeHist)
@@ -530,6 +541,21 @@ int main(int argc, char **argv) {
                     printf("[nsi-cell] r=%d s=%d all-mergeable (closed form)\n", r, cs);
                     printf("[sct-peel] Max core: %.0f\n", mx);
                     for (auto &kv : d) printf("core=%.0f count=%.0f\n", kv.first, kv.second);
+                    amDists.push_back(std::move(d));
+                }
+                if (nsiIndexOut) {   // §136: minimal index (mergeables only; no active pattern space)
+                    FILE *f = fopen(nsiIndexOut, "wb");
+                    if (!f) { fprintf(stderr, "[nsi §136] cannot open %s\n", nsiIndexOut); return 1; }
+                    auto w32 = [&](int32_t v) { fwrite(&v, 4, 1, f); };
+                    auto wd  = [&](double v)  { fwrite(&v, 8, 1, f); };
+                    fwrite("NSI1", 4, 1, f);
+                    w32(r); w32(sweepS0); w32(sweepSmax); w32(g.n); w32(0); w32(0); w32((int32_t)nsiMergV.size());
+                    for (int v = 0; v < g.n; v++) w32(-1);
+                    for (auto &M : nsiMergV) { w32((int32_t)M.size()); for (int v : M) w32(v); }
+                    for (int cs = sweepS0 + 1; cs <= sweepSmax; cs++) { int64_t z = 0; fwrite(&z, 8, 1, f); }
+                    for (auto &d : amDists) { w32((int32_t)d.size()); for (auto &kv : d) { wd(kv.first); wd(kv.second); } }
+                    fclose(f);
+                    printf("[nsi-index] wrote %s (all-mergeable minimal index)\n", nsiIndexOut);
                 }
                 return 0;
             }
@@ -1418,6 +1444,9 @@ int main(int argc, char **argv) {
     vector<char> nsiSched;           // per-cell: certified AND hosted on a residue leaf -> death replayed
     vector<char> nsiResLeaf;         // per-cell: leaf hosts >= 1 residue pattern
     double nsiCellsTotal = 0;
+    vector<double> nsiBase;                            // §136: cold-cell kappa_{s0} per pattern
+    vector<vector<pair<int,double>>> nsiResid;         // §136: per cell s0+1..smax, (patternId, core)
+    vector<map<double,double>> nsiDists;               // §136: per cell s0..smax, folded distribution
     for (int nsiCellS = s; nsiCellS <= (sweepMode ? sweepSmax : s); nsiCellS++) {
     auto TcellA = Clock::now();
     s = nsiCellS;
@@ -3408,6 +3437,15 @@ int main(int argc, char **argv) {
         nsiPrevCore.resize(pats.size());
         for (int pi = 0; pi < (int)pats.size(); pi++)
             nsiPrevCore[pi] = (fpsCell && nsiCert[pi]) ? C(nsiCP[pi] - r, s - r) : pats[pi].core;
+        if (nsiIndexOut) {                              // §136: capture the index layers per cell
+            if (!fpsCell) nsiBase = nsiPrevCore;        // cold cell = the base layer
+            else {
+                auto &rl = nsiResid.emplace_back();
+                for (int pi = 0; pi < (int)pats.size(); pi++)
+                    if (!nsiCert[pi]) rl.push_back({pi, pats[pi].core});
+            }
+            nsiDists.push_back(coreDist);               // post-fold distribution (aggregate queries)
+        }
         double cellT = secs(TcellA, Clock::now()); nsiCellsTotal += cellT;
         printf("[nsi-cell] r=%d s=%d cell-time=%.2fs certified=%lld residue=%lld certified-rcliques=%.2f%%\n",
                r, s, cellT, nsiNCert, nsiNRes, nsiTotMult > 0 ? 100.0 * nsiCertMult / nsiTotMult : 0.0);
@@ -3417,5 +3455,38 @@ int main(int argc, char **argv) {
     if (sweepMode)
         printf("[nsi-sweep] cells s=%d..%d  cells-total=%.2fs (+ the shared build, printed above)\n",
                sweepS0, sweepSmax, nsiCellsTotal);
+    // ===================== §136 NSI INDEX SERIALIZATION =====================
+    // Binary format "NSI1" (little-endian):
+    //   int32 r, s0, smax, n, nC, nPats, nMerg
+    //   classOf[n]                                int32 (-1 = in no active region)
+    //   merg regions: nMerg x { int32 size; size x int32 vertex }
+    //   patterns:     nPats x { uint8 len; len x { int32 class; uint8 mult }; int32 cP; double k0 }
+    //   residues:     (smax-s0) x { int64 cnt; cnt x { int32 pid; double core } }
+    //   dists:        (smax-s0+1) x { int32 cnt; cnt x { double core; double count } }
+    if (nsiIndexOut) {
+        FILE *f = fopen(nsiIndexOut, "wb");
+        if (!f) { fprintf(stderr, "[nsi §136] cannot open %s\n", nsiIndexOut); return 1; }
+        auto w32 = [&](int32_t v) { fwrite(&v, 4, 1, f); };
+        auto w64 = [&](int64_t v) { fwrite(&v, 8, 1, f); };
+        auto wd  = [&](double v)  { fwrite(&v, 8, 1, f); };
+        auto w8  = [&](uint8_t v) { fwrite(&v, 1, 1, f); };
+        fwrite("NSI1", 4, 1, f);
+        w32(r); w32(sweepS0); w32(sweepSmax); w32(g.n); w32(nC);
+        w32((int32_t)pats.size()); w32((int32_t)nsiMergV.size());
+        for (int v = 0; v < g.n; v++) w32(classOf[v]);
+        for (auto &M : nsiMergV) { w32((int32_t)M.size()); for (int v : M) w32(v); }
+        for (int pi = 0; pi < (int)pats.size(); pi++) {
+            w8((uint8_t)pats[pi].comp.size());
+            for (auto &cm : pats[pi].comp) { w32(cm.first); w8((uint8_t)cm.second); }
+            w32(nsiCP[pi]); wd(nsiBase.empty() ? -1.0 : nsiBase[pi]);
+        }
+        for (auto &rl : nsiResid) { w64((int64_t)rl.size()); for (auto &pc : rl) { w32(pc.first); wd(pc.second); } }
+        for (auto &d : nsiDists)  { w32((int32_t)d.size()); for (auto &kv : d) { wd(kv.first); wd(kv.second); } }
+        long bytes = ftell(f);
+        fclose(f);
+        long long residTot = 0; for (auto &rl : nsiResid) residTot += (long long)rl.size();
+        printf("[nsi-index] wrote %s: %.1f MB  (patterns=%zu, merg-regions=%zu, residue-entries=%lld over %d cells)\n",
+               nsiIndexOut, bytes / 1048576.0, pats.size(), nsiMergV.size(), residTot, sweepSmax - sweepS0);
+    }
     return 0;
 }

@@ -5950,6 +5950,13 @@ ENGINES (all in region_native/)
       build: g++ -O3 -std=c++17 -o diag_band diag_band.cpp;  run: ./diag_band <graph.edges> r
       env: DIAG_MAX_PATS=<n> (pattern cap, exit 7)
 
+INDEX LAYER (§136, region_native/)
+  nsi_query.cpp .................. load an "NSI1" index; point/spectrum/count/bench/pointfile.
+      build: g++ -O3 -std=c++17 -o nsi_query nsi_query.cpp
+      write an index: SCT_SWEEP=<smax> SCT_INDEX_OUT=<f.nsi> ./region_native_sct_peel <g> r s0
+  nsi_index_gate.py .............. index gate: build + REF-dump (sort "default" = original ids!)
+                                   + query-every-r-clique exact compare + latency + stats.
+
 HARNESSES / DRIVERS (region_native/)
   nsi_sweep_gate.py .............. §130 gate: sweep vs native per-cell distributions (drops the
                                    sweep's core=0 line = r-cliques in no s-clique, absent natively).
@@ -6018,3 +6025,29 @@ REMAINING CODE GAPS (for the paper):
  G4 (defer) a diagonal sweep engine operationalizing T5 (cross-r pattern alignment): theory +
     validation are in the paper; the engine is future work.
  G5 (writing phase) figure scripts for the new tables (make_sigmod_figs.py style).
+
+## 136. G1 DONE: the NSI index layer (serialize + query), fully gated (2026-07-07)
+
+The "queryable index" claim is now an artifact. WRITE: SCT_INDEX_OUT=<path> (requires SCT_SWEEP)
+serializes {classOf + mergeable regions (vertex lists) + per-pattern (comp, c(P), cold-cell core)
++ per-cell residue dictionaries + per-cell distributions} in one binary file ("NSI1" format,
+documented in region_native/nsi_query.cpp). QUERY (region_native/nsi_query.cpp): point
+kappa_{r,s}(R), per-R spectrum, count-at-threshold, batch/bench modes. Query semantics: pattern
+hit -> chain walk from the stored cold core (T3 absorbing: certified once -> closed form for all
+later cells; residue cells -> dictionary); miss -> mergeable containment (isolated-clique closed
+form, T6); else 0. T7 guarantees the pattern-hit and mergeable cases are structurally disjoint.
+GOTCHA fixed: PIVOTER_DUMP_CORE REF dumps use INTERNAL degeneracy-order vertex ids; pass sort
+option "default" for original ids (the §128d/§133 cross-cell checks compared same-binary dumps,
+so they remain valid).
+
+GATES (region_native/nsi_index_gate.py: build index, REF-dump every cell with default sort,
+query every dumped r-clique, require exact equality) -- ALL PASS, 4.5M point queries total:
+  graph         index    patterns  residues  B/r-clique  point-query  spectrum-query
+  ca-GrQc       0.23 MB  7.5k      0         5.1 B       23 ns        49 ns
+  ca-HepPh      33.8 MB  1.25M     2,025     10.6 B      159 ns       313 ns
+  soc-Epinions  59.2 MB  1.54M     1.56M     40.3 B      412 ns       678 ns
+The heavy-residue path (Epinions, 1.56M residue entries over 2 cells) is exercised and exact.
+Compression reading: the index holds the WHOLE spectrum at 5-40 bytes per r-clique vs a raw
+per-cell listing (>= 8 bytes per r-clique PER CELL, unwritable at high (r,s)); nanosecond exact
+queries. Files: region_native/nsi_query.cpp, region_native/nsi_index_gate.py, engine §136 edits.
+G2 (multi-trial) + G3 (CND spectrum baseline) remain; server main table (§135) still running.
