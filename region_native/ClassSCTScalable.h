@@ -118,13 +118,16 @@ struct SparseAdj {
 // as the full-C leaf: the C - |touched| absent classes would all carry
 // n=ell=u=0 and contribute a C(0,0)=1 factor that changes nothing. Each class
 // is in at most one of {spine, pool} for a given leaf, so no aliasing.
+// §129 sweep: kOver >= k widens the OVERSHOOT prunes only (the spine may grow to kOver), so ONE
+// tree serves every slice T in [k, kOver]; the reach prune stays at k (a leaf that cannot reach
+// k cannot reach any larger T either). kOver == k reproduces the original single-k tree exactly.
 static void emitLeaf(int /*C*/, const std::vector<int>& w,
                      const std::vector<std::pair<int,int>>& spine,
-                     const std::vector<OpenC>& pool, int k,
+                     const std::vector<OpenC>& pool, int k, int kOver,
                      std::vector<CCPath>& out) {
     int forced = 0;
     for (auto& sp : spine) forced += sp.second;
-    if (forced > k) return;           // spine alone overshoots
+    if (forced > kOver) return;       // spine alone overshoots every slice in [k, kOver]
     int poolCap = 0;
     for (auto& pc : pool) poolCap += (int)w[pc.c];
     if (forced + poolCap < k) return; // cannot reach k even filling the pool
@@ -176,10 +179,10 @@ static void emitLeaf(int /*C*/, const std::vector<int>& w,
 static void gen(const SparseAdj& G, int C,
                 std::vector<std::pair<int,int>>& spine, int spineSum,
                 std::vector<OpenC>& pool, int poolSum,
-                std::vector<OpenC> P, int k,
+                std::vector<OpenC> P, int k, int kOver,
                 std::vector<CCPath>& out) {
-    if (spineSum > k) return;
-    if (P.empty()) { emitLeaf(C, *G.w, spine, pool, k, out); return; }
+    if (spineSum > kOver) return;
+    if (P.empty()) { emitLeaf(C, *G.w, spine, pool, k, kOver, out); return; }
 
     // ---- pick pivot pc in P maximising residual weight of P adjacent to pc.
     int bestIdx = 0; long bestScore = -1;
@@ -202,7 +205,7 @@ static void gen(const SparseAdj& G, int C,
         Pr.reserve(P.size() - 1);
         for (auto& q : P) if (q.c != pc) Pr.push_back(q);
         pool.push_back(OpenC{pc, /*wres=*/G.weight(pc)});
-        gen(G, C, spine, spineSum, pool, poolSum + G.weight(pc), std::move(Pr), k, out);
+        gen(G, C, spine, spineSum, pool, poolSum + G.weight(pc), std::move(Pr), k, kOver, out);
         pool.pop_back();
         return;
     }
@@ -218,7 +221,7 @@ static void gen(const SparseAdj& G, int C,
         Pp.reserve(P.size());
         for (auto& q : P)
             if (q.c == pc || G.adjacent(pc, q.c)) Pp.push_back(q);
-        gen(G, C, spine, spineSum, pool, poolSum, std::move(Pp), k, out);
+        gen(G, C, spine, spineSum, pool, poolSum, std::move(Pp), k, kOver, out);
     }
 
     // ---------- branch B: the LOWEST non-neighbour-of-pc used is v ----------
@@ -243,10 +246,10 @@ static void gen(const SparseAdj& G, int C,
         }
 
         for (int mtt = 1; mtt <= wv; ++mtt) {
-            if (spineSum + mtt > k) break;
+            if (spineSum + mtt > kOver) break;
             spine.push_back({v, mtt});
             std::vector<OpenC> child = base;     // already excludes v
-            gen(G, C, spine, spineSum + mtt, pool, poolSum, std::move(child), k, out);
+            gen(G, C, spine, spineSum + mtt, pool, poolSum, std::move(child), k, kOver, out);
             spine.pop_back();
         }
     }
@@ -310,9 +313,10 @@ static std::vector<int> degeneracyOrder(int C, const std::vector<int>& w,
 // =====================================================================
 inline std::vector<CCPath>
 scalableBuildClassSCT(int C, const std::vector<int>& w,
-                      const std::vector<std::vector<int>>& adj, int k) {
+                      const std::vector<std::vector<int>>& adj, int k, int kOver = -1) {
     std::vector<CCPath> out;
     if (C <= 0 || k <= 0) return out;
+    if (kOver < k) kOver = k;                 // default: the original single-k tree
 
     std::vector<int> pos = degeneracyOrder(C, w, adj);
 
@@ -339,14 +343,14 @@ scalableBuildClassSCT(int C, const std::vector<int>& w,
         std::sort(later.begin(), later.end(),
                   [](const OpenC& a, const OpenC& b){ return a.c < b.c; });
 
-        int hi = std::min(k, w[c]);
+        int hi = std::min(kOver, w[c]);
         for (int j = 1; j <= hi; ++j) {
             spine.clear();
             spine.push_back({c, j});
             pool.clear();
             std::vector<OpenC> P = later;     // fresh open set per seed-mult
             gen(G, C, spine, /*spineSum=*/j, pool, /*poolSum=*/0,
-                std::move(P), k, out);
+                std::move(P), k, kOver, out);
         }
     }
     return out;

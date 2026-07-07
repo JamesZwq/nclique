@@ -368,6 +368,32 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i], "--verify") && i + 1 < argc) verifyN = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--mce-budget") && i + 1 < argc) mceBudget = atof(argv[++i]);
     }
+    // ===================== §129 NSI/FPS SWEEP (SCT_SWEEP=<smax>) =====================
+    // ONE shared build (regions/classes/patterns/SCT at s = argv-s = the COLD boundary cell s0),
+    // then cells s0..smax on the shared structure. For each cell s > s0, the CHAIN CERTIFICATE
+    // (integer-exact, sound by the clique bound T3 + the Kruskal-Katona shadow Lemma 1, zero
+    // slack at binomials):  kappa_{s-1}(P) == C(c(P)-r, s-1-r)  =>  kappa_s(P) = C(c(P)-r, s-r),
+    // c(P) = largest clique hosting P (s-independent, from the build). Certified patterns skip
+    // supInit + queue + peel (the closed form IS the core); their deaths are REPLAYED at the
+    // closed-form level through the untouched native pop loop, but ONLY on leaves hosting a
+    // residue pattern (a certified-only leaf's kills can credit only certified patterns, which
+    // are untracked -> the whole instance is skipped, the structural FPS saving). Exactness:
+    // certified level == true death level (that is what the certificate proves), and within-
+    // level order is core-invariant (§118 clamp theorem) -> residue cores bit-identical.
+    // v1 scope: a_Y forced (t = s-r <= 8), no ondemand/verify/hier/probes/batch.
+    int sweepSmax = getenv("SCT_SWEEP") ? atoi(getenv("SCT_SWEEP")) : 0;
+    const bool sweepMode = sweepSmax > s;
+    const int sweepS0 = s;
+    if (sweepMode) {
+        const char *bad[] = {"SCT_ONDEMAND", "SCT_VERIFY", "PIVOTER_DUMP_HIER", "SCT_FLOORGAP",
+                             "SCT_CLOSURE_PROBE", "SCT_PROBE_A", "SCT_BATCH_PEEL", "SCT_SLOT_REVERSE",
+                             "SCT_MAPS_VALIDATE", "SCT_ONDEMAND_VERIFY", "SCT_DIRECTBIN_ALL_HOST1", nullptr};
+        for (int i = 0; bad[i]; i++) if (getenv(bad[i])) {
+            fprintf(stderr, "[nsi §129] SCT_SWEEP is incompatible with %s -- unset it.\n", bad[i]); return 1; }
+        if (verifyN) { fprintf(stderr, "[nsi §129] SCT_SWEEP is incompatible with --verify.\n"); return 1; }
+        if (sweepSmax - r > 8) { fprintf(stderr, "[nsi §129] SCT_SWEEP: tail smax-r=%d > 8 unsupported (a_Y cap).\n", sweepSmax - r); return 1; }
+        printf("[nsi §129] SWEEP mode: shared build at s0=%d, cells s=%d..%d\n", s, s, sweepSmax);
+    }
 
     auto T0 = Clock::now();
     Graph g = load_graph(gpath);
@@ -400,7 +426,8 @@ int main(int argc, char **argv) {
     // count. The SCT peel then handles only the OVERLAPPING (non-mergeable)
     // regions -> on sparse graphs that is a tiny fraction of the patterns.
     std::map<double,double> directCoreDist;
-    long long nMergeable = 0, nMergedRC = 0;
+    std::map<int,long long> mergSizeHist;   // §129 sweep: |M| histogram of the r-mergeable regions
+    long long nMergeable = 0, nMergedRC = 0;   //   (their per-cell core is the closed form C(|M|-r, s-r))
     // HIER: each r-mergeable region is an ISOLATED (r,s)-nucleus (its r-cliques are
     // s-connected only among themselves, never sharing an s-clique with any active
     // region). The tuple-native hierarchy below represents each such region as one
@@ -484,6 +511,7 @@ int main(int argc, char **argv) {
                 int N = (int)regions[M].size();
                 double cv = (N >= (int)s) ? C(N - r, s - r) : 0.0;
                 directCoreDist[cv] += C(N, r);
+                mergSizeHist[N]++;                                     // §129: per-cell closed-form re-derivation
                 if (wantHier) hierMergeRoots.push_back({cv, (long long)llround(C(N, r))});
                 nMergeable++; nMergedRC += (long long)llround(C(N, r));
             } else active.push_back(std::move(regions[M]));
@@ -493,6 +521,18 @@ int main(int argc, char **argv) {
                nMergeable, nMergedRC, regions.size(), secs(Trm0, Clock::now()));
         fflush(stdout);
         if (regions.empty()) {
+            if (sweepMode) {   // §129: every region is an isolated clique -> the WHOLE sweep is closed form
+                for (int cs = sweepS0; cs <= sweepSmax; cs++) {
+                    std::map<double,double> d;
+                    for (auto &kv : mergSizeHist)
+                        d[kv.first >= cs ? C(kv.first - r, cs - r) : 0.0] += C(kv.first, r) * (double)kv.second;
+                    double mx = 0; for (auto &kv : d) mx = max(mx, kv.first);
+                    printf("[nsi-cell] r=%d s=%d all-mergeable (closed form)\n", r, cs);
+                    printf("[sct-peel] Max core: %.0f\n", mx);
+                    for (auto &kv : d) printf("core=%.0f count=%.0f\n", kv.first, kv.second);
+                }
+                return 0;
+            }
             double mx = 0; for (auto &kv : directCoreDist) mx = max(mx, kv.first);
             printf("[sct-peel] Max core: %.0f\n", mx);
             // HIER (all-mergeable graph): every nucleus is an isolated root.
@@ -885,7 +925,10 @@ int main(int argc, char **argv) {
         auto &v = qadj[c]; std::sort(v.begin(), v.end());
         v.erase(std::unique(v.begin(), v.end()), v.end());
     }
-    auto baseLeaves = classsct_scalable::scalableBuildClassSCT(nC, qw, qadj, s);  // COMPACT
+    // §129 sweep: ONE tree for every slice T in [s0, smax] -- the builder's overshoot prunes are
+    // widened to smax (kOver) while the reach prune stays at s0. Non-sweep: the original tree.
+    auto baseLeaves = classsct_scalable::scalableBuildClassSCT(nC, qw, qadj, s,
+                                                               sweepMode ? sweepSmax : s);  // COMPACT
     { vector<vector<int>>().swap(qadj); vector<int>().swap(qw); }   // §97: quotient graph dead after the SCT build -> free (build-peak)
     auto Tqg1 = Clock::now();
     memCk("after-SDCT-build(slotPaths)");
@@ -1053,13 +1096,18 @@ int main(int argc, char **argv) {
         // is >0 exactly when an integer point exists. With empty forbidden (the
         // pre-peel leaf box) this is an O(width) feasibility test, no DP. (Falls back
         // to support_count if forbidden is ever non-empty here.)
-        auto hostFeasible = [](const CCPath &box, const Vec &b) -> bool {
+        // §129 sweep: an incidence is registered when P extends to ANY slice T in [s0, smax],
+        // i.e. the leaf's feasible-sum interval [Σmax(ell,b), Σu] intersects [s0, smax]:
+        // Σmax(ell,b) <= smax AND Σu >= s0. Non-sweep: the original single-T test.
+        const int hostTHi = sweepMode ? sweepSmax : 0, hostTLo = sweepMode ? sweepS0 : 0;
+        auto hostFeasible = [hostTHi, hostTLo](const CCPath &box, const Vec &b) -> bool {
             const int M = box.m(); int sl = 0, su = 0;
             for (int c = 0; c < M; c++) {
                 int L = box.ell[c]; if ((int)b[c] > L) L = (int)b[c];
                 int U = (int)box.u[c]; if (L > U) return false;
                 sl += L; su += U;
             }
+            if (hostTHi) return sl <= hostTHi && hostTLo <= su;
             return sl <= box.T && box.T <= su;
         };
         // self-recursive (Y-combinator) -> inlinable, no std::function indirection.
@@ -1336,6 +1384,75 @@ int main(int argc, char **argv) {
                 (long long)pats.size() - mism, pats.size(), mism ? "[FAIL]" : "[OK]");
     }
 
+    // ===================== §129 SWEEP: c(P) + the cell loop =====================
+    // c(P) = size of the largest clique hosting P = max over hosting leaves of Σ n_c (a leaf's
+    // classes are pairwise adjacent -> their union IS a clique of G containing every r-clique of
+    // P; §128b probe-validated: floor C(c-r,s-r) <= core with 0 violations). s-INDEPENDENT:
+    // computed once, drives every cell's closed-form floor + chain certificate.
+    vector<int> nsiCP;
+    if (sweepMode) {
+        nsiCP.assign(pats.size(), 0);
+        for (int pi = 0; pi < (int)pats.size(); pi++) {
+            int cmax = 0;
+            for (int lid : leavesOf(pi)) {
+                if (slotPaths[lid].empty()) continue;
+                const CCPath &bx = slotPaths[lid][0];
+                int sz = 0; for (auto x : bx.n) sz += (int)x;
+                if (sz > cmax) cmax = sz;
+            }
+            nsiCP[pi] = cmax;
+        }
+    }
+    vector<double> nsiPrevCore;      // exact kappa_{r,s-1} per pattern (the chain-certificate input)
+    vector<char> nsiCert;            // per-cell: certified -> closed-form core, no supInit/queue
+    vector<char> nsiSched;           // per-cell: certified AND hosted on a residue leaf -> death replayed
+    vector<char> nsiResLeaf;         // per-cell: leaf hosts >= 1 residue pattern
+    double nsiCellsTotal = 0;
+    for (int nsiCellS = s; nsiCellS <= (sweepMode ? sweepSmax : s); nsiCellS++) {
+    auto TcellA = Clock::now();
+    s = nsiCellS;
+    const bool fpsCell = sweepMode && nsiCellS > sweepS0;
+    long long nsiNCert = 0, nsiNRes = 0; double nsiCertMult = 0, nsiTotMult = 0;
+    if (sweepMode) {
+        for (int lid = 0; lid < nLeaf; lid++)          // re-slice the SAME boxes at T=s; a_Y never
+            for (auto &p : slotPaths[lid]) p.T = s;    // splits/mutates, so boxes stay pristine base
+        for (auto &P : pats) { P.alive = true; P.core = -1; P.sup = 0; P.sup0 = -1; P.key = -1; }
+    }
+    if (fpsCell) {
+        // CHAIN CERTIFICATE (integer-exact): kappa_{s-1}(P) == C(c-r, s-1-r)  =>  kappa_s(P) =
+        // C(c-r, s-r). Sound: KK shadow g is strictly increasing and zero-slack at binomials, so
+        // kappa_s > C(c-r,s-r) would force kappa_{s-1} >= g(C(c-r,s-r)+1) > C(c-r,s-1-r); and the
+        // clique floor gives kappa_s >= C(c-r,s-r). Also covers the zero branches exactly
+        // (kappa_{s-1}=0 -> no (s-1)-clique -> no s-clique -> kappa_s=0). ABSORBING along s.
+        nsiCert.assign(pats.size(), 0);
+        nsiResLeaf.assign(nLeaf, 0);
+        const bool noCert = getenv("SCT_SWEEP_NOCERT") != nullptr;   // A/B: full peel on the shared structure
+        for (int pi = 0; pi < (int)pats.size(); pi++) {
+            double prevClq = C(nsiCP[pi] - r, (s - 1) - r);   // C() = 0 for k<0 or k>n
+            nsiTotMult += (double)pats[pi].mult;
+            if (!noCert && std::fabs(nsiPrevCore[pi] - prevClq) < 0.5) {
+                nsiCert[pi] = 1; pats[pi].alive = false;      // scheduled ones re-armed below
+                nsiNCert++; nsiCertMult += (double)pats[pi].mult;
+            } else {
+                nsiNRes++;
+                for (int lid : leavesOf(pi)) nsiResLeaf[lid] = 1;
+            }
+        }
+        // scheduled = certified hosted on >= 1 residue leaf (their deaths feed residue supports);
+        // enumerated leaf-major over the residue leaves so the cost scales with the residue.
+        nsiSched.assign(pats.size(), 0);
+        long long schedN = 0;
+        for (int lid = 0; lid < nLeaf; lid++) {
+            if (!nsiResLeaf[lid]) continue;
+            for (int pi : leafPats[lid]) {
+                if (!nsiCert[pi] || nsiSched[pi]) continue;
+                if (llround(C(nsiCP[pi] - r, s - r)) >= 1) { nsiSched[pi] = 1; pats[pi].alive = true; schedN++; }
+            }
+        }
+        fprintf(stderr, "[nsi §129] cell (%d,%d): chain-certified=%lld/%zu patterns (%.2f%% of r-cliques)  residue=%lld  replayed-certified-deaths=%lld\n",
+                r, s, nsiNCert, pats.size(), nsiTotMult > 0 ? 100.0 * nsiCertMult / nsiTotMult : 0.0, nsiNRes, schedN);
+        fflush(stderr);
+    }
     // -------- support init: SCT (production) + optional region-IE cross-check (gate G2a) -------
     // P.sup := SCT sum-over-leaves support. Under SCT_VERIFY also compare to the region-IE init
     // (suppOf, set above) per pattern and abort on mismatch. sctSupport is computed either way
@@ -1405,6 +1522,11 @@ int main(int argc, char **argv) {
     {
         int okc = 0, badc = 0; double worst = 0;
         for (int pi = 0; pi < (int)pats.size(); pi++) {
+            if (fpsCell && nsiCert[pi]) {    // §129: certified -> core is the closed form; the ENTIRE
+                if (nsiSched[pi])            // supInit is skipped (the dominant FPS saving). Scheduled
+                    pats[pi].sup = C(nsiCP[pi] - r, s - r);   // deaths replay at the closed-form level.
+                continue;
+            }
             double sSCT = sctSupportFast(pi);
             if (verifyIE) {
                 double sIE = pats[pi].sup;             // region-IE init
@@ -1599,7 +1721,8 @@ int main(int argc, char **argv) {
     // across both paths. t >= 4 stays on antichain+batch (only one small-graph measurement,
     // ca-GrQc 3,7 -- a_Y's δ-space is C(M+t-1,t) per instance and unmeasured on wide leaves).
     // Escapes unchanged: SCT_NO_AY (force antichain), SCT_AY (force a_Y for ALL t).
-    bool ayMode = (getenv("SCT_NO_AY") == nullptr && witnessTail <= 3) || getenv("SCT_AY") != nullptr;
+    bool ayMode = sweepMode                            // §129: sweep requires the non-mutating a_Y path
+               || (getenv("SCT_NO_AY") == nullptr && witnessTail <= 3) || getenv("SCT_AY") != nullptr;
     // Flat open-addressing uint64 set (linear probe, power-of-2): ~5-10x faster per op than std::unordered_set
     // (no node alloc, cache-friendly) -- the per-Y dead-check/mark constant is what decides a_Y on sparse t>=2.
     struct FlatU64 {
@@ -1973,8 +2096,18 @@ int main(int argc, char **argv) {
     long long npat = (long long)pats.size(), peeledN = 0, maxKey = 0;
     for (auto &P : pats) { P.key = (long long)llround(P.sup); P.sup0 = P.sup; maxKey = max(maxKey, P.key); }
     unordered_map<long long, vector<int>> bk;
-    for (int pi = 0; pi < (int)pats.size(); pi++) bk[pats[pi].key].push_back(pi);
+    for (int pi = 0; pi < (int)pats.size(); pi++) {
+        if (fpsCell && nsiCert[pi] && !nsiSched[pi]) continue;   // §129: unscheduled certified never queue
+        bk[pats[pi].key].push_back(pi);
+    }
     map<double,double> coreDist;
+    // §129: UNSCHEDULED certified patterns never enter the queue -- their closed-form core goes to
+    // the distribution in bulk here. Scheduled certified flow through the native pop at the same
+    // closed-form level (their coreDist entry lands there), so no double count.
+    if (fpsCell)
+        for (int pi = 0; pi < (int)pats.size(); pi++)
+            if (nsiCert[pi] && !nsiSched[pi])
+                coreDist[C(nsiCP[pi] - r, s - r)] += (double)pats[pi].mult;
     long long curLevel = 0;
     vector<char> seen(pats.size(), 0);
     vector<double> delta(pats.size(), 0.0);          // per-affected exact drop
@@ -2038,7 +2171,9 @@ int main(int argc, char **argv) {
     // remaining deaths are all same-wave and killed too, so its (stale) slotPaths/antichain state
     // is never read for credits again. Covers a_Y, witness-major, and general-DFS instances alike;
     // the batch-peel loop (t>witCross) is separate and already pre-marks its wave dead (§58).
-    bool leafKill = !ondemand && getenv("SCT_NO_AYKILL") == nullptr;   // default ON (all non-batch instances)
+    bool leafKill = !ondemand && !fpsCell && getenv("SCT_NO_AYKILL") == nullptr;   // default ON (all non-batch
+    // instances). §129 fpsCell OFF: cntAbove would have to count the scheduled certified deaths too for the
+    // kill theorem to hold; the FPS residue-leaf skip is the (stronger) structural kill there instead.
     long long ayKillN = 0;                                        // instances skipped by leaf-kill
     long long lastSwept = -2;                                     // last wave-entry-swept level
     vector<int> cntAbove;                                         // per-leaf #alive hosted with key > curLevel
@@ -2072,6 +2207,7 @@ int main(int argc, char **argv) {
         const long long SAT = 1LL << 60;
         vector<long long> cdp, ndp;
         for (int lid = 0; lid < nLeaf; lid++) {
+            if (fpsCell && !nsiResLeaf[lid]) { witTot[lid] = 0; continue; }   // §129: only residue leaves peel
             if (slotPaths[lid].empty()) { witTot[lid] = 0; continue; }
             const CCPath &bx = slotPaths[lid][0];
             int Mb = bx.m(), Tb = bx.T;
@@ -2366,6 +2502,11 @@ int main(int argc, char **argv) {
         for (size_t k = 0; k < pleaf.size(); k++) {
             int lid = pleaf[k];
             if (slotPaths[lid].empty()) continue;      // leaf fully peeled: no witnesses
+            // §129 FPS: a leaf hosting NO residue pattern can only credit certified patterns,
+            // which are untracked -> the whole instance (witness enum + dead-set + credits) is
+            // dead weight; skip it. This is the structural FPS saving: certified deaths cost
+            // work ONLY on the (few) residue-hosting leaves.
+            if (fpsCell && !nsiResLeaf[lid]) continue;
             if (faninDbg) { fanA++; if (leafLastLevel[lid] != curLevel) { fanB++; leafLastLevel[lid] = curLevel; } }
             // §118/§121 LEAF-KILL: every alive pattern hosted here is same-wave -> every credit this
             // instance could issue is a clamp no-op -> skip the instance whole (see theorem above),
@@ -2454,7 +2595,8 @@ int main(int argc, char **argv) {
                         }
                         if (qi < 0) return;
                     }
-                    if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)) {
+                    if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)
+                        && !(fpsCell && nsiCert[qi])) {   // §129: certified are untracked (closed-form core)
                         if (peelProf) { if (pats[qi].key <= curLevel) ppCredSame++; else ppCredCross++; }
                         if (clampSkip && pats[qi].key <= curLevel) return;   // §118 clamp-skip: same-wave, apply would discard it
                         if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
@@ -2581,6 +2723,7 @@ int main(int argc, char **argv) {
                         if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
                             int qi = qsAll[t];
                             if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)
+                                && !(fpsCell && nsiCert[qi])                     // §129: certified untracked
                                 && !(clampSkip && pats[qi].key <= curLevel)) {   // §118 clamp-skip
                                 if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                                 delta[qi] += w * (double)nAlive;
@@ -2683,6 +2826,7 @@ int main(int argc, char **argv) {
             auto applyIdx = [&](const Vec &ql, int t) {
                 int qi = qsAll[t];
                 if (qi == pi || !pats[qi].alive) return;
+                if (fpsCell && nsiCert[qi]) return;     // §129: certified untracked (closed-form core)
                 if (skipH1 && pats[qi].hostSz == 1) return;  // peels at L_M regardless
                 if (clampSkip && pats[qi].key <= curLevel) return;  // §118 clamp-skip: saves the whole scWithTerms drop
                 dbgHit++;                               // a real candidate pattern reached
@@ -3221,6 +3365,10 @@ int main(int argc, char **argv) {
     }
 
     // fold in the r-mergeable direct-assigned cores
+    if (sweepMode) {   // §129: their per-cell core is the closed form C(|M|-r, s-r), re-derived per cell
+        for (auto &kv : mergSizeHist)
+            coreDist[kv.first >= s ? C(kv.first - r, s - r) : 0.0] += C(kv.first, r) * (double)kv.second;
+    } else
     for (auto &kv : directCoreDist) coreDist[kv.first] += kv.second;
     double maxCore = 0; for (auto &kv : coreDist) maxCore = max(maxCore, kv.first);
     printf("[sct-peel] Max core: %.0f\n", maxCore);
@@ -3243,5 +3391,21 @@ int main(int argc, char **argv) {
         }
     }
     for (auto &kv : coreDist) printf("core=%.0f count=%.0f\n", kv.first, kv.second);
+    if (sweepMode) {
+        // save the EXACT per-pattern cores for the next cell's chain certificate: certified =
+        // the closed form (== what the peel would produce, that is the certificate), peeled =
+        // the peel output. Unscheduled certified have core==-1 (never popped) -> closed form.
+        nsiPrevCore.resize(pats.size());
+        for (int pi = 0; pi < (int)pats.size(); pi++)
+            nsiPrevCore[pi] = (fpsCell && nsiCert[pi]) ? C(nsiCP[pi] - r, s - r) : pats[pi].core;
+        double cellT = secs(TcellA, Clock::now()); nsiCellsTotal += cellT;
+        printf("[nsi-cell] r=%d s=%d cell-time=%.2fs certified=%lld residue=%lld certified-rcliques=%.2f%%\n",
+               r, s, cellT, nsiNCert, nsiNRes, nsiTotMult > 0 ? 100.0 * nsiCertMult / nsiTotMult : 0.0);
+        fflush(stdout);
+    }
+    }   // ===================== end §129 sweep cell loop =====================
+    if (sweepMode)
+        printf("[nsi-sweep] cells s=%d..%d  cells-total=%.2fs (+ the shared build, printed above)\n",
+               sweepS0, sweepSmax, nsiCellsTotal);
     return 0;
 }

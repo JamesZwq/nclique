@@ -5746,3 +5746,55 @@ corehash).
 - Novelty: "new closed-form floor + certification for the (r,s)-nucleus spectrum, generalizing the r=1
   spectrum index and the (2,3) EquiTruss quotient" -- pending literature check.
 - The KK §128d number uses both s-neighbors; single-sweep certifies somewhat less. r-direction untested.
+
+## 130. FPS/NSI SWEEP ENGINE BUILT + VALIDATED: the loss cells are TURNED AROUND (2026-07-07)
+
+STEP B of §129 executed: the shared-build FPS sweep engine is LIVE in region_native_sct_peel.cpp
+(env SCT_SWEEP=<smax>; argv-s = the cold boundary cell s0). Design:
+- ONE shared build: MCE/classes/patterns/maps at s0; the class-SCT builder (ClassSCTScalable.h)
+  gained kOver: overshoot prunes (spine > k, seed cap) widened to smax, reach prune stays at s0 ->
+  ONE tree exactly serves every slice T in [s0, smax] (kOver==k reproduces the old tree bit-for-bit).
+  Maps register a (pattern,leaf) incidence iff feasible at ANY slice: sum-max(ell,b) <= smax &&
+  sum-u >= s0. Cells re-slice box T := s; a_Y never mutates boxes, so they stay pristine.
+- CHAIN CERTIFICATE per cell s > s0 (integer-exact, no real-x KK needed): kappa_{s-1}(P) ==
+  C(c(P)-r, s-1-r)  =>  kappa_s(P) = C(c(P)-r, s-r); c(P) = max hosting-leaf clique size, computed
+  once. Sound by T3 (clique floor) + Lemma 1 (KK shadow strictly increasing, ZERO SLACK at
+  binomials: the squeeze needs no inverse); the zero branches are exact (kappa_{s-1}=0 -> no
+  (s-1)-clique -> kappa_s=0). ABSORBING along s (certified once -> certified at every later cell).
+- Certified patterns: NO supInit (the dominant cost), NO queue, closed-form core to the output in
+  bulk. Their deaths are REPLAYED through the UNTOUCHED native pop loop (key = closed-form level,
+  scheduled into the bucket queue), but ONLY on leaves hosting >= 1 residue pattern; a certified-
+  only leaf's whole instance is skipped (credits could only hit untracked certified patterns) --
+  the structural saving. Within-level order is core-invariant (§118 clamp thm) -> bit-identical.
+- Residue (uncertified) patterns peel through the native machinery unchanged.
+
+BUG FOUND AND FIXED during validation (the A/B that caught it): full-peel-on-shared-structure
+(SCT_SWEEP_NOCERT) failed massively at s > s0 -> the single-k tree PRUNES spine-overshoot leaves
+(the only hosts of (>s0)-cliques) and c(P) was underestimated on the truncated tree (one GrQc
+pattern got a wrong certificate from the wrong c). The kOver fix repairs both; after it, NOCERT
+and FPS both pass every gate.
+
+RESULTS (local M-series laptop, serial, gate = per-cell core distribution vs the NATIVE per-cell
+engine, sweep core=0 line dropped = r-cliques in no s-clique, which the native MCE-floor never
+enumerates; ALL GATES PASS = bit-exact):
+  ca-GrQc r=3, s=4..7:  certified 100% at every cell >4; sweep 0.03s vs native cells 0.20s.
+  ca-HepPh r=3, s=4..6 (clique-dominated LOSS family):
+    cell 3,5: native 104.4s -> sweep marginal 0.27s (~387x), certified 99.97% (residue 1017 pats)
+    cell 3,6: native 411.6s -> sweep marginal 0.87s (~473x), certified 99.97%
+    WHOLE spectrum: native 589.3s -> sweep 76.6s (build 14.4 + cold s=4 59.7 + cells 1.1) = 7.7x
+  ca-AstroPh r=4, s=5..7 (THE flagship loss family; 4,6 was the 60x-loss cell):
+    cell 4,6: native 115.8s -> sweep marginal 0.50s (~231x), certified 99.96% (residue 3571 pats)
+    cell 4,7: native 658.7s -> sweep marginal 1.29s (~510x), certified 99.96%
+    WHOLE spectrum: native 807.4s -> sweep 41.4s = 19.5x. NOTE: the whole sweep (41.4s) is ~3x
+    FASTER than the single native loss cell 4,6 alone -- computing the SPECTRUM is now cheaper
+    than computing one cell natively.
+INTERPRETATION: exactly what §128b/§128d predicted -- on clique-dominated graphs the spectrum above
+the cold boundary is ~all chain-certified, so each extra cell costs ~the residue only. The loss
+cells (ca-HepPh, ca-AstroPh) are turned around via the SPECTRUM framing: their marginal cost
+collapses from minutes to sub-second, bit-exact. The chain needs only the PREVIOUS cell + c(P) --
+no both-neighbor sandwich, so the §128d "upper bound on single-sweep" caveat is RESOLVED: the
+one-directional ascending chain already certifies 99.96-100% on clique-dominated graphs.
+Social (soc-Epinions) measurement running; expected ~40-50% certified (§128d), honest hard case.
+Files: region_native/region_native_sct_peel.cpp (sweep mode), region_native/ClassSCTScalable.h
+(kOver), region_native/nsi_sweep_gate.py (the gate harness). v1 scope: fixed r, ascending s,
+a_Y forced (t <= 8), no ondemand/hier/probes in sweep mode.
