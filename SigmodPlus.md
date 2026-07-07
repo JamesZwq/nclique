@@ -5972,3 +5972,49 @@ DATA (paper_data/, force-added; the dir is gitignored)
 RESULTS SECTIONS: §128 theory derivations; §128b/c/d probes; §129 handoff/plan; §130/130b sweep
 engine + results (loss cells turned around; Epinions honest); §131/131b diagonal U-shape;
 §132 band lever; §133 theorem set + T5 validation. Memory pickup: project_nsi_direction.md.
+
+## 135. PAPER FRAMING (the contribution list) + remaining code gaps (2026-07-07)
+
+ONE-SENTENCE THESIS. Analysts do not know which (r,s) to use, and computing cells independently
+is both unaffordable (full price per cell, OOM at high cells) and provably wasteful (cross-cell
+redundancy); we give the first exact index over a whole segment of the nucleus spectrum: two
+zero-slack transfer theorems compress the spectrum into one cold cell + one integer comparison
+per pattern per cell + a tiny peeled residue, so the whole spectrum costs about one cheap cell.
+
+CONTRIBUTIONS (final deliverables only, per the discipline):
+ C1 PROBLEM/OBJECT: the Nucleus Spectrum Index (NSI) -- the first exact, queryable index over
+    the (r,s)-nucleus spectrum. Motivation: parameter sweeps; the raw high-(r,s) output is
+    unwritable (trillions of r-cliques; the quotient + closed forms make it finite); provable
+    cross-cell redundancy.
+ C2 THEORY: two NEW zero-slack cross-cell transfer theorems -- the s-chain certificate (T3:
+    clique floor + Kruskal-Katona shadow squeeze, integer-exact, absorbing; to our knowledge the
+    first cross-cell transfer theorem for nucleus decomposition) and the diagonal +1 theorem
+    (T5: generalizes the classical truss <= core - 1 to the whole t=1 diagonal; 0 violations in
+    156M checks, EQUALITY on 100 percent of collaboration-graph 4-cliques). Supporting exactness
+    theorems T6-T8 (host-1/no-early-death, quotient invariance, ownership split).
+ C3 ALGORITHM: the FPS sweep engine -- one shared build (one clique tree serves all slices),
+    per-cell chain certification (one integer comparison per pattern), residue-only peel with
+    certified deaths replayed through the unmodified peel machinery; bit-exact per cell.
+ C4 EVALUATION: the spectrum for about the cost of its cheapest cell -- marginal cells 231-510x
+    vs per-cell recomputation (including cells our own per-cell engine formerly lost 60x),
+    whole spectra 7.7-19.5x, whole sweep 3x faster than the single worst native cell; honest
+    social-graph boundary (47-51 percent certified, 1.2-1.9x) with the P10 lower-bound scoping.
+POSITIONING: spectrum-vs-spectrum, never single-cell-vs-CND (CND stays strong at low cells; the
+paper does not fight there). Band/diagonal U-shape (§131-132) = scope/boundary paragraph, NOT a
+contribution. NOVELTY CHECK PENDING (must do before submission): T5's r=1 case is classical;
+KK-for-cores may have precedents; search "nucleus spectrum", "cross-parameter core transfer",
+"Kruskal-Katona core decomposition".
+
+REMAINING CODE GAPS (for the paper):
+ G1 (BIG) the INDEX layer itself: we claim an index but only print distributions. Need:
+    serialize {front-end (regions/classes) + per-pattern c(P) + per-cell residue dictionaries},
+    a query driver (point kappa_{r,s}(R), per-R spectrum, count-at-threshold), and MEASURE
+    index size vs raw output size (the compression story) + query latency. This is the main
+    missing artifact for the "queryable index" claim.
+ G2 (small) multi-trial protocol for the main table (>= 3 runs, median) per the experiment
+    requirements; the current gate harness runs each config once.
+ G3 (runs, not code) CND spectrum-cost baseline on the same configs (per-cell full price +
+    OOM marks at high cells); method already documented in §122.
+ G4 (defer) a diagonal sweep engine operationalizing T5 (cross-r pattern alignment): theory +
+    validation are in the paper; the engine is future work.
+ G5 (writing phase) figure scripts for the new tables (make_sigmod_figs.py style).
