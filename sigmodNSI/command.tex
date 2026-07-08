@@ -1,0 +1,73 @@
+% =============Definitions=============
+% Macros inherit the CND/NuclearCD house style.
+% Additions specific to this submission:
+%  (i)   the NSI index and the SpecND algorithm family
+%  (ii)  spectrum/cell notation, clique bound, chain certificate
+%  (iii) dataset abbreviation macros
+\newcommand{\red}[1]{{#1}}
+\newcommand{\todo}[1]{{\textbf{[TODO: #1]}}}
+
+% ===== Small title helpers (match CND) =====
+\newcommand{\stitle}[1]{{\noindent \bf {#1}}}
+\newcommand{\sstitle}[1]{{\noindent \textit {\underline {#1}}}}
+\newcommand{\ssstitle}[1]{{\noindent \textit {#1}}}
+
+% ===== Experiment counter =====
+\newcounter{expcnt}
+\newcommand{\expsection}[1]{\vspace{0.6ex}\stepcounter{expcnt}\noindent\textbf{Exp-\arabic{expcnt}: #1.}\xspace}
+
+% ===== Typographical helpers =====
+\newcommand{\kw}[1]{{\ensuremath {\mathsf{#1}}}\xspace}
+\newcommand{\bkw}[1]{{\ensuremath {\mathsf{\textbf{#1}}}}\xspace}
+\newcommand{\kwnospace}[1]{{\ensuremath {\mathsf{#1}}}}
+\newcommand{\pluseq}{\mathrel{+}=}
+
+% ================================================================
+% Spectrum objects
+% ================================================================
+\newcommand{\nsi}{\kw{NSI}}                           % the Nucleus Spectrum Index
+\newcommand{\bnsi}{\bkw{NSI}}
+\newcommand{\corev}[1]{\kappa_{#1}}                   % \corev{r,s}(R)
+\newcommand{\cliqb}{c}                                % c(R): largest clique containing R
+\newcommand{\regionset}{\mathcal{M}}                  % set of regions (maximal cliques)
+\newcommand{\region}{M}                               % generic region
+\newcommand{\classset}{\mathcal{C}}                   % set of profile classes
+\newcommand{\pclass}{C}                               % generic class
+\newcommand{\patset}{\mathcal{P}}                     % set of patterns
+\newcommand{\pat}{P}                                  % generic pattern
+
+% ================================================================
+% Algorithms. SpecND is the final algorithm; SpecND-Base is the ablation.
+% ================================================================
+\newcommand{\specnd}{\hyperref[alg:specnd]{\kwnospace{SpecND}}\xspace}
+\newcommand{\bspecnd}{\bkw{SpecND}}
+\newcommand{\specndbase}{\kw{SpecND\text{-}Base}}     % ablation: shared build, per-cell peel
+\newcommand{\cnd}{\kw{CND}}                           % state-of-the-art per-cell baseline
+\newcommand{\percell}{\kw{PerCell}}                   % our engine run cell-by-cell (self-baseline)
+
+% ================================================================
+% Dataset abbreviations
+% ================================================================
+\newcommand{\daWIT}{\kw{WIT}}    % web-it-2004
+\newcommand{\daWUK}{\kw{WUK}}    % web-uk-2005
+\newcommand{\daPKa}{\kw{PK13}}   % sc-pkustk13
+\newcommand{\daPWT}{\kw{PWT}}    % sc-pwtk
+\newcommand{\daLDR}{\kw{LDR}}    % sc-ldoor
+\newcommand{\daRAE}{\kw{RAE}}    % raefsky3
+\newcommand{\daPKb}{\kw{PK11}}   % sc-pkustk11
+\newcommand{\daDBL}{\kw{DBLP}}   % com-dblp
+\newcommand{\daEPN}{\kw{EPN}}    % soc-Epinions1
+\newcommand{\daYTB}{\kw{YTB}}    % com-youtube
+\newcommand{\daAST}{\kw{ASTRO}}  % ca-AstroPh
+\newcommand{\daHEP}{\kw{HEPPH}}  % ca-HepPh
+
+% ===== Theorem environments (shared counter, per section) =====
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{property}[theorem]{Property}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{example}[theorem]{Example}
+\newtheorem*{remark}{Remark}

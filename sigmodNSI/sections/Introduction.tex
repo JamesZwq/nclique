@@ -1,0 +1,136 @@
+\section{Introduction}
+\label{sec:intro}
+
+Graphs are fundamental data structures consisting of vertices and edges that model relational information.
+%
+Dense-subgraph analysis extracts the strongly connected regions of a graph and ranks every element by how deeply it is embedded in them.
+%
+For example, in collaboration networks, dense regions capture long-term research teams~\cite{girvan2002community}; in social networks, they reveal tightly knit communities~\cite{malliaros2013clustering}; in web and infrastructure graphs, they expose clusters of mutually linked pages or components~\cite{gibson1998inferring}; in financial and interaction logs, they isolate coordinated groups acting in lockstep~\cite{jiang2016catching}.
+
+Decomposing a graph into hierarchically cohesive subgraphs is a fundamental and important task in graph mining.
+%
+The $(r,s)$-nucleus decomposition~\cite{firstNucleus} is the unifying model for this task: it ranks each $r$-clique by the number of $s$-cliques that surround it inside the densest possible neighborhood.
+%
+This generalization subsumes classic notions: the $(1,2)$-nucleus corresponds to the $k$-core~\cite{seidman1983network}, the $(2,3)$-nucleus corresponds to the $k$-truss~\cite{cohen2008trusses}, while higher-order $(r,s)$ values yield clique-based, richer structural representations of network cohesiveness~\cite{nuclearTWEB}.
+%
+The two parameters form a plane of decompositions, and different cells of this plane reveal structure at different granularities: $(1,2)$ is coarse and fast, $(3,4)$ separates communities that $k$-core and $k$-truss merge~\cite{firstNucleus}, and larger $(r,s)$ isolate progressively stricter groups.
+%
+We call the family of core values of one $r$-clique across a range of cells its \textit{spectrum}, and the collection over all $r$-cliques the \textit{nucleus spectrum} of the graph.
+%
+In this paper, we aim to compute, store, and query the entire nucleus spectrum at once.
+
+Figure~\ref{fig:running} shows a graph $G$ with nine vertices and three maximal cliques: $M_1=\{v_1,\dots,v_5\}$, $M_2=\{v_3,\dots,v_7\}$, and $M_3=\{v_6,\dots,v_9\}$.
+%
+\begin{example}
+\label{exa:running}
+Consider the graph $G$ in Figure~\ref{fig:running} and the cell $(r,s)=(3,4)$.
+%
+Every triangle inside $M_1\cup M_2$ is contained in at least two $4$-cliques of the shaded region, so the subgraph induced by $M_1\cup M_2$ forms a $2$-$(3,4)$-nucleus.
+%
+The triangles of $M_3$ are contained in exactly one $4$-clique each, so $M_3$ joins only the $1$-$(3,4)$-nucleus.
+%
+Moving one cell up, at $(3,5)$ the triangle $\{v_3,v_4,v_5\}$ lies in one $5$-clique inside $M_1$ and one inside $M_2$, giving it core value $1$, while every triangle of $M_3$ has core value $0$.
+%
+The spectrum of $\{v_3,v_4,v_5\}$ over the cells $(3,4),(3,5),(3,6)$ is therefore $(2,1,0)$.
+\end{example}
+
+\stitle{Applications.}
+The spectrum, rather than any single cell, is the object analysts need.
+%
+\sstitle{Granularity sweeps.}
+In community analysis, the right $(r,s)$ is not known in advance: coarse cells merge communities and strict cells shatter them, so practitioners compute several cells and compare~\cite{firstNucleus, nuclearTWEB}.
+%
+A spectrum index answers every cell of the sweep from one build.
+%
+\sstitle{Multi-resolution forensics.}
+In fraud and collusion detection, a suspicious group is one that survives as $s$ grows; the evidence is the trajectory of its core values across cells, not one number~\cite{jiang2016catching}.
+%
+\sstitle{Interactive exploration.}
+Point queries such as ``how embedded is this author triangle at every order'' require the spectrum of one $r$-clique on demand, which per-run decomposition cannot serve.
+
+\stitle{Existing Methods and Key Limitation.}
+Existing algorithms compute one cell at a time.
+%
+The peeling framework of~\cite{firstNucleus, nuclearTWEB} enumerates all $r$-cliques, counts the $s$-cliques around each, and iteratively removes the minimum; parallel variants accelerate the same per-cell computation~\cite{sotaPrveHierarchy}; the state-of-the-art counting-based algorithm \cnd~\cite{LocalNuclear} avoids explicit $s$-clique enumeration inside one cell.
+%
+However, all existing algorithms share a fundamental limitation: \textbf{\textit{every cell of the spectrum is computed from scratch, at full price, with no information carried from one cell to the next}}.
+%
+The price is steep on three axes.
+%
+First, time: on \daDBL{} at $r{=}5$, the four cells $s=6,\dots,9$ cost $4{,}261$ seconds of repeated per-cell work, and on \daHEP{} the single cell $(3,7)$ alone exceeds a $2$-hour budget.
+%
+Second, memory: per-cell algorithms hold state for every $r$-clique, which reaches $257$GB per cell on \daDBL{} at $r{=}5$ and exceeds a $300$GB budget on every cell of \daWIT{}.
+%
+Third, output: the spectrum itself is unwritable as a table, since a single row of the plane can contain over $10^{12}$ $r$-cliques, so even a solved spectrum cannot be stored or queried naively.
+
+\stitle{Research Question.}
+This leads to the critical research question and the main objective of this paper: \textbf{\textit{Can the exact nucleus spectrum be computed, stored, and queried at once, without paying the full per-cell cost for every $(r,s)$?}}
+
+\stitle{Challenges.}
+Answering this question requires solving three problems that existing frameworks do not address.
+%
+\sstitle{Cross-Cell Certification.}
+Adjacent cells of the spectrum look related, but no existing result pins one cell's value from another: the natural subclique bound between rows has provable slack even on cliques, and a lower bound alone cannot certify a value.
+%
+Knowing that a core value probably equals a closed form is useless for an exact algorithm; the value must be provably squeezed from both sides.
+%
+Therefore, exact and cheaply checkable cross-cell certification is vital.
+%
+\sstitle{Exact Residue Replay.}
+Even when most $r$-cliques are certified, the uncertified residue must be peeled exactly, and its support depends on the certified mass: certified $r$-cliques still die and still take $s$-cliques with them.
+%
+Replaying millions of certified deaths without recomputing them is a correctness problem, not an engineering one.
+%
+Therefore, an exact replay mechanism that touches only the residue is crucial.
+%
+\sstitle{Spectrum Storage.}
+A spectrum over trillions of $r$-cliques cannot be stored as values; it must be stored as structure.
+%
+Therefore, a representation whose size scales with the graph's clique structure rather than its clique count is essential.
+
+\stitle{Our Idea.}
+We show that the nucleus spectrum is governed by a closed-form surface, and that deviations from this surface are certifiable and small.
+%
+Our solution introduces the \textit{Nucleus Spectrum Index} (\nsi), built by a one-build sweep algorithm \specnd.
+%
+\sstitle{Certifying instead of computing.}
+We prove two zero-slack transfer theorems: a Kruskal--Katona shadow bound linking adjacent cells in the $s$-direction, and a squeeze showing that when a cell's value equals the clique closed form, the next cell's value is forced (Theorem~\ref{thm:chain}).
+%
+Certification is absorbing: once an $r$-clique is certified, every later cell follows by one integer comparison.
+%
+\sstitle{Replaying instead of recomputing.}
+We prove that no $r$-clique inside a maximal clique dies before the clique's closed-form level (Theorem~\ref{thm:noearly}), and that every dying $s$-clique is owned by exactly one death event (Theorem~\ref{thm:ownership}); together they let \specnd{} schedule certified deaths at known levels and peel only the residue, with bit-exact output.
+%
+\sstitle{Storing structure instead of values.}
+\nsi{} stores the class quotient, one clique bound per pattern, the cold-cell cores, and per-cell residue dictionaries; certified values are reconstructed by arithmetic at query time.
+%
+On \daWIT{}, the whole four-cell spectrum of $338$ million $r$-cliques occupies $14.5$MB, that is, $0.045$ bytes per $r$-clique.
+
+\stitle{Contributions.}
+Our key contributions are summarized as follows in response to the above challenges.
+%
+\sstitle{Zero-slack cross-cell certification.}
+We give the first cross-cell transfer theory for nucleus decomposition: a clique lower bound (Theorem~\ref{thm:floor}), a Kruskal--Katona shadow bound (Theorem~\ref{thm:kk}), and their squeeze, the chain certificate (Theorem~\ref{thm:chain}), which is integer-exact and absorbing.
+%
+We further prove a diagonal transfer theorem (Theorem~\ref{thm:diagonal}) that generalizes the classical truss-core inequality to the whole $s=r{+}1$ diagonal; across $156$ million measured $4$-cliques it holds with zero violations and is an equality on $100\%$ of them on collaboration graphs.
+%
+\sstitle{One-build sweep with exact residue replay.}
+We design \specnd{} (Algorithm~\ref{alg:specnd}), which builds one shared clique-tree structure serving every cell, cold-peels the cheapest cell, certifies each subsequent cell by one integer comparison per pattern, and replays certified deaths at their closed-form levels while peeling only the residue (Theorems~\ref{thm:noearly},~\ref{thm:ownership},~\ref{thm:quotient}).
+%
+Its output is bit-identical to per-cell recomputation on every feasible cell tested.
+%
+\sstitle{A compact, queryable spectrum index.}
+We design \nsi, to the best of our knowledge the first index over the $(r,s)$ plane: it stores the spectrum at $0.045$ to $40$ bytes per $r$-clique, loads in seconds, and answers exact point and spectrum queries in under a microsecond.
+%
+\sstitle{Comprehensive Experimental Evaluation.}
+On twelve real graphs, \specnd{} computes whole spectra $20$ times faster on average and up to $511$ times faster than the state-of-the-art per-cell algorithm, using up to $140$ times less memory; on five graphs the per-cell algorithm cannot complete any spectrum cell within a $300$GB budget while \specnd{} finishes the whole spectrum in $7.5$ to $81$ seconds.
+%
+Against per-cell recomputation with our own engine, a certified cell costs $0.07$ seconds where recomputation takes $655$ seconds, a $9{,}364\times$ reduction.
+
+% ---------------- Figure 1 ----------------
+\begin{figure}[t]
+  \centering
+  \todo{Figure: 9-vertex running example; M1, M2 K5s sharing v3,v4,v5; M3 K4 on v6..v9; nested contours labeled 1-(3,4)-Nucleus (all) and 2-(3,4)-Nucleus (M1 u M2); side table: spectrum of v3v4v5 = (2,1,0) across s=4,5,6}
+  \caption{An example graph $G$ and its $(3,4)$-nuclei.}
+  \label{fig:running}
+\end{figure}

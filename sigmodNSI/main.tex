@@ -1,0 +1,38 @@
+\documentclass[sigconf, anonymous, nonacm]{acmart}
+\usepackage{xspace}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{subcaption}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{hyperref}
+\input{command}
+
+\settopmatter{printacmref=false}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\pagestyle{plain}
+
+\begin{document}
+
+\title{Indexing the Nucleus Spectrum: Exact Cross-Parameter Core Decomposition at the Cost of One Cell}
+
+\begin{abstract}
+% Drafted LAST (playbook 1.10): triple redundancy copies final numbers.
+\todo{abstract: draft after all sections are final}
+\end{abstract}
+
+\maketitle
+
+\input{sections/Introduction}
+\input{sections/Preliminaries}
+\input{sections/ExistingApproach}
+\input{sections/TransferTheory}
+\input{sections/SweepAlgorithm}
+\input{sections/Index}
+\input{sections/Experiments}
+\input{sections/RelatedWork}
+\input{sections/Conclusion}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

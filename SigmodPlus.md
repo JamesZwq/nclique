@@ -6313,3 +6313,30 @@ THE PAPER'S 8 BIG-ADVANTAGE GRAPHS (§141 pick, diversity-balanced):
 2026-07-08: CND correctness spot-check PASSED (PIVOTER_COMPARE hepph 3,5: "Optimized vs Reference
 correctness verified (exact)") -- the §122 precondition is satisfied, E3 numbers trustworthy.
 EXPERIMENTS.md created at repo root (the experiment-section live status doc).
+
+## 142. PAPER DRAFTING STARTED (sigmodNSI/): slot ledger + Introduction drafted (2026-07-08)
+
+Paper dir: sigmodNSI/ (acmart + bib recovered from vldbNuclearR1 git history 24a932d; teacher =
+NuclearCD house style via paper-architect playbook, Variant B intro shape). BUILDS CLEAN.
+SLOT LEDGER (binding; keep consistent across abstract/intro/conclusion):
+  title: "Indexing the Nucleus Spectrum: Exact Cross-Parameter Core Decomposition at the Cost
+    of One Cell"
+  concept: the Nucleus Spectrum Index (\nsi); algorithm: \specnd (SpecND; ablation SpecND-Base
+    = shared build + per-cell peel, i.e. NOCERT); competitor: \cnd per-cell state of the art.
+  THE 3 CHALLENGE NOUNS (verbatim everywhere): "cross-cell certification" / "exact residue
+    replay" / "spectrum storage".
+  HEADLINE NUMBERS (triple redundancy): 20x average / up to 511x spectrum speedup vs CND;
+    up to 140x memory; 5 of 12 graphs where CND completes NO cell within 300GB while SpecND
+    finishes whole spectra in 7.5-81s; marginal certified cell 0.07s vs 655s = 9,364x (self-
+    comparison); index 0.045-40 B per r-clique; queries < 1 microsecond.
+  RUNNING EXAMPLE (Figure 1, 9 vertices): M1=K5{v1..v5}, M2=K5{v3..v7}, M3=K4{v6..v9};
+    A/B overlap {v3,v4,v5} (multi-host triangle, settled: kappa_{3,4}=2=C(2,1) -> chain-
+    certifies kappa_{3,5}=1); M3 mergeable (closed-form row); spectrum of {v3,v4,v5} =
+    (2,1,0) at s=4,5,6; contours 2-(3,4) = M1 u M2, 1-(3,4) = everything. FIGURE TODO.
+  paper theorem numbering: thm:floor(T1) thm:kk(T2) thm:chain(T3) thm:diagonal(T5)
+    thm:quotient(T7) thm:noearly(T6) thm:ownership(T8) in sections TransferTheory/SweepAlgorithm.
+  section files: Introduction (DRAFTED, full Variant-B: P1/P2/P3 + Example + Applications +
+    Key Limitation w/ measured numbers + Research Question + 3 Challenges + Our Idea + 4
+    Contributions) | Preliminaries, ExistingApproach, TransferTheory, SweepAlgorithm, Index,
+    Experiments, RelatedWork, Conclusion = STUBS with correct labels. Abstract LAST.
+E7 (NOCERT ablation) + E5b (roster indexes) running on tods2 (/home/wenqianz/nsi_e7/).
