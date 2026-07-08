@@ -32,62 +32,91 @@
 \newlabel{sec:prelim}{{2}{2}{Preliminaries}{section.2}{}}
 \newlabel{def:core}{{2.1}{2}{Core Value}{theorem.2.1}{}}
 \newlabel{exa:core}{{2.2}{2}{}{theorem.2.2}{}}
-\newlabel{exa:pattern}{{2.3}{2}{}{theorem.2.3}{}}
 \citation{firstNucleus,nuclearTWEB}
 \citation{LocalNuclear}
 \citation{lovaszKK}
 \citation{kruskal1963number,katona1968theorem}
+\newlabel{exa:pattern}{{2.3}{3}{}{theorem.2.3}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {3}The Per-Cell State of the Art}{3}{section.3}\protected@file@percent }
 \newlabel{sec:sota}{{3}{3}{The Per-Cell State of the Art}{section.3}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {4}The Structure of the Spectrum}{3}{section.4}\protected@file@percent }
 \newlabel{sec:theory}{{4}{3}{The Structure of the Spectrum}{section.4}{}}
 \newlabel{thm:floor}{{4.1}{3}{Clique Floor}{theorem.4.1}{}}
 \newlabel{thm:kk}{{4.2}{3}{Shadow Bound}{theorem.4.2}{}}
-\newlabel{thm:chain}{{4.3}{3}{Chain Certificate}{theorem.4.3}{}}
-\newlabel{exa:chain}{{4.4}{3}{}{theorem.4.4}{}}
 \citation{cohen2008trusses}
+\newlabel{thm:chain}{{4.3}{4}{Chain Certificate}{theorem.4.3}{}}
+\newlabel{exa:chain}{{4.4}{4}{}{theorem.4.4}{}}
 \newlabel{thm:subclique}{{4.5}{4}{Subclique Bound}{theorem.4.5}{}}
 \newlabel{thm:diagonal}{{4.6}{4}{Diagonal Transfer}{theorem.4.6}{}}
 \newlabel{cor:diagcert}{{4.7}{4}{Diagonal Certificate}{theorem.4.7}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {5}One-Build Spectrum Computation}{4}{section.5}\protected@file@percent }
 \newlabel{sec:algo}{{5}{4}{One-Build Spectrum Computation}{section.5}{}}
 \newlabel{thm:quotient}{{5.1}{4}{Quotient Invariance}{theorem.5.1}{}}
-\newlabel{thm:noearly}{{5.2}{4}{No Early Death}{theorem.5.2}{}}
 \citation{Pivoter}
+\newlabel{thm:noearly}{{5.2}{5}{No Early Death}{theorem.5.2}{}}
 \newlabel{thm:levelinv}{{5.3}{5}{Level Invariance}{theorem.5.3}{}}
-\newlabel{exa:sweep}{{5.4}{5}{}{theorem.5.4}{}}
 \@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces {\ensuremath  {\mathsf  {SpecND}}}: one-build spectrum sweep.}}{5}{algocf.1}\protected@file@percent }
 \newlabel{alg:specnd}{{1}{5}{One-Build Spectrum Computation}{algocf.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}The Nucleus Spectrum Index}{5}{section.6}\protected@file@percent }
-\newlabel{sec:index}{{6}{5}{The Nucleus Spectrum Index}{section.6}{}}
+\newlabel{exa:sweep}{{5.4}{5}{}{theorem.5.4}{}}
+\citation{LocalNuclear}
+\@writefile{toc}{\contentsline {section}{\numberline {6}The Nucleus Spectrum Index}{6}{section.6}\protected@file@percent }
+\newlabel{sec:index}{{6}{6}{The Nucleus Spectrum Index}{section.6}{}}
+\newlabel{exa:query}{{6.1}{6}{}{theorem.6.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Experimental Evaluation}{6}{section.7}\protected@file@percent }
+\newlabel{sec:exp}{{7}{6}{Experimental Evaluation}{section.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Datasets.}}{6}{table.caption.5}\protected@file@percent }
+\newlabel{tab:datasets}{{1}{6}{Datasets}{table.caption.5}{}}
+\citation{seidman1983network}
+\citation{batagelj2011fast}
+\citation{cohen2008trusses,wang2012truss}
+\citation{firstNucleus,nuclearTWEB}
+\citation{fastHierarchy,sotaHierarchy}
+\citation{sotaPrveHierarchy,LocalNuclear}
+\citation{LocalNuclear}
+\citation{io-eff}
+\citation{huang2014truss,akbas2017truss}
+\citation{sotaHierarchy}
+\citation{malliaros2020core2}
+\citation{kruskal1963number,katona1968theorem,lovaszKK}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Whole-spectrum time and memory.}}{7}{table.caption.6}\protected@file@percent }
+\newlabel{tab:main}{{2}{7}{Whole-spectrum time and memory}{table.caption.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Index size and query latency.}}{7}{table.caption.7}\protected@file@percent }
+\newlabel{tab:index}{{3}{7}{Index size and query latency}{table.caption.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Certified $r$-cliques per cell above the boundary.}}{7}{table.caption.8}\protected@file@percent }
+\newlabel{tab:cert}{{4}{7}{Certified $r$-cliques per cell above the boundary}{table.caption.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Related Work}{7}{section.8}\protected@file@percent }
+\newlabel{sec:related}{{8}{7}{Related Work}{section.8}{}}
 \bibstyle{ACM-Reference-Format}
 \bibdata{references}
-\bibcite{gibson1998inferring}{{1}{1998}{{Gibson et~al\mbox  {.}}}{{Gibson, Kleinberg, and Raghavan}}}
-\bibcite{girvan2002community}{{2}{2002}{{Girvan and Newman}}{{Girvan and Newman}}}
-\bibcite{Pivoter}{{3}{2020}{{Jain and Seshadhri}}{{Jain and Seshadhri}}}
-\bibcite{jiang2016catching}{{4}{2016}{{Jiang et~al\mbox  {.}}}{{Jiang, Cui, Beutel, Faloutsos, and Yang}}}
-\bibcite{katona1968theorem}{{5}{1968}{{Katona}}{{Katona}}}
-\bibcite{kruskal1963number}{{6}{1963}{{Kruskal}}{{Kruskal}}}
-\bibcite{lovaszKK}{{7}{1979}{{Lov{\'a}sz}}{{Lov{\'a}sz}}}
-\bibcite{malliaros2013clustering}{{8}{2013}{{Malliaros and Vazirgiannis}}{{Malliaros and Vazirgiannis}}}
-\bibcite{LocalNuclear}{{9}{2018}{{Sariy\"{u}ce et~al\mbox  {.}}}{{Sariy\"{u}ce, Seshadhri, and Pinar}}}
-\bibcite{firstNucleus}{{10}{2015}{{Sariyuce et~al\mbox  {.}}}{{Sariyuce, Seshadhri, Pinar, and Catalyurek}}}
-\bibcite{nuclearTWEB}{{11}{2017}{{Sariy\"{u}ce et~al\mbox  {.}}}{{Sariy\"{u}ce, Seshadhri, Pinar, and \c {C}ataly\"{u}rek}}}
-\bibcite{seidman1983network}{{12}{1983}{{Seidman}}{{Seidman}}}
-\bibcite{sotaPrveHierarchy}{{13}{2021}{{Shi et~al\mbox  {.}}}{{Shi, Dhulipala, and Shun}}}
-\bibcite{cohen2008trusses}{{14}{2012}{{Zhao and Tung}}{{Zhao and Tung}}}
+\bibcite{akbas2017truss}{{1}{2017}{{Akbas and Zhao}}{{Akbas and Zhao}}}
+\bibcite{batagelj2011fast}{{2}{2011}{{Batagelj and Zaver\v {s}nik}}{{Batagelj and Zaver\v {s}nik}}}
+\bibcite{gibson1998inferring}{{3}{1998}{{Gibson et~al\mbox  {.}}}{{Gibson, Kleinberg, and Raghavan}}}
+\bibcite{girvan2002community}{{4}{2002}{{Girvan and Newman}}{{Girvan and Newman}}}
+\bibcite{huang2014truss}{{5}{2014}{{Huang et~al\mbox  {.}}}{{Huang, Cheng, Qin, Tian, and Yu}}}
+\bibcite{Pivoter}{{6}{2020}{{Jain and Seshadhri}}{{Jain and Seshadhri}}}
+\bibcite{jiang2016catching}{{7}{2016}{{Jiang et~al\mbox  {.}}}{{Jiang, Cui, Beutel, Faloutsos, and Yang}}}
+\bibcite{katona1968theorem}{{8}{1968}{{Katona}}{{Katona}}}
+\bibcite{kruskal1963number}{{9}{1963}{{Kruskal}}{{Kruskal}}}
+\bibcite{lovaszKK}{{10}{1979}{{Lov{\'a}sz}}{{Lov{\'a}sz}}}
+\bibcite{malliaros2020core2}{{11}{2020}{{Malliaros et~al\mbox  {.}}}{{Malliaros, Giatsidis, Thilikos, and Vazirgiannis}}}
+\bibcite{malliaros2013clustering}{{12}{2013}{{Malliaros and Vazirgiannis}}{{Malliaros and Vazirgiannis}}}
+\bibcite{fastHierarchy}{{13}{2016}{{Sariy\"{u}ce and Pinar}}{{Sariy\"{u}ce and Pinar}}}
+\bibcite{LocalNuclear}{{14}{2018}{{Sariy\"{u}ce et~al\mbox  {.}}}{{Sariy\"{u}ce, Seshadhri, and Pinar}}}
+\bibcite{firstNucleus}{{15}{2015}{{Sariyuce et~al\mbox  {.}}}{{Sariyuce, Seshadhri, Pinar, and Catalyurek}}}
+\bibcite{nuclearTWEB}{{16}{2017}{{Sariy\"{u}ce et~al\mbox  {.}}}{{Sariy\"{u}ce, Seshadhri, Pinar, and \c {C}ataly\"{u}rek}}}
+\bibcite{seidman1983network}{{17}{1983}{{Seidman}}{{Seidman}}}
+\bibcite{sotaPrveHierarchy}{{18}{2021}{{Shi et~al\mbox  {.}}}{{Shi, Dhulipala, and Shun}}}
+\bibcite{sotaHierarchy}{{19}{2024}{{Shi et~al\mbox  {.}}}{{Shi, Dhulipala, and Shun}}}
+\bibcite{wang2012truss}{{20}{2012}{{Wang and Cheng}}{{Wang and Cheng}}}
+\bibcite{io-eff}{{21}{2016}{{Wen et~al\mbox  {.}}}{{Wen, Qin, Zhang, Lin, and Yu}}}
+\bibcite{cohen2008trusses}{{22}{2012}{{Zhao and Tung}}{{Zhao and Tung}}}
 \newlabel{tocindent-1}{0pt}
 \newlabel{tocindent0}{0pt}
 \newlabel{tocindent1}{4.185pt}
 \newlabel{tocindent2}{0pt}
 \newlabel{tocindent3}{0pt}
-\newlabel{exa:query}{{6.1}{6}{}{theorem.6.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Experimental Evaluation}{6}{section.7}\protected@file@percent }
-\newlabel{sec:exp}{{7}{6}{Experimental Evaluation}{section.7}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {8}Related Work}{6}{section.8}\protected@file@percent }
-\newlabel{sec:related}{{8}{6}{Related Work}{section.8}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {9}Conclusion}{6}{section.9}\protected@file@percent }
-\newlabel{sec:conclusion}{{9}{6}{Conclusion}{section.9}{}}
-\@writefile{toc}{\contentsline {section}{References}{6}{section*.6}\protected@file@percent }
-\newlabel{TotPages}{{6}{6}{}{page.6}{}}
-\gdef \@abspage@last{6}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Conclusion}{8}{section.9}\protected@file@percent }
+\newlabel{sec:conclusion}{{9}{8}{Conclusion}{section.9}{}}
+\@writefile{toc}{\contentsline {section}{References}{8}{section*.10}\protected@file@percent }
+\newlabel{TotPages}{{8}{8}{}{page.8}{}}
+\gdef \@abspage@last{8}

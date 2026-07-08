@@ -1,3 +1,22 @@
 \section{Related Work}
 \label{sec:related}
-\todo{nucleus line; per-parameter indexes; interplay ICDE21; KK foundations}
+
+\stitle{Core, truss, and nucleus decomposition.}
+The $k$-core was introduced in~\cite{seidman1983network} and is computed by degree peeling~\cite{batagelj2011fast}; the $k$-truss~\cite{cohen2008trusses, wang2012truss} generalizes it to edges and triangles.
+%
+The $(r,s)$-nucleus~\cite{firstNucleus, nuclearTWEB} unifies both and extends them to general cliques.
+%
+Subsequent work accelerates a single cell: hierarchy construction~\cite{fastHierarchy, sotaHierarchy}, parallel and local algorithms~\cite{sotaPrveHierarchy, LocalNuclear}, and the counting-based method \cnd~\cite{LocalNuclear} that avoids explicit $s$-clique enumeration.
+%
+All of these compute one cell of the plane; none carries information from one cell to the next, which is the gap this paper fills.
+
+\stitle{Indexes and parameter sweeps.}
+Index structures that answer core-type queries for every threshold have been built for a fixed cell: forest indexes for $k$-cores under a second parameter~\cite{io-eff}, truss-community indexes~\cite{huang2014truss, akbas2017truss}, and hierarchy trees~\cite{sotaHierarchy}.
+%
+The interplay between the core and truss decompositions has been studied empirically~\cite{malliaros2020core2}, characterizing how the $(1,2)$ and $(2,3)$ cells relate without an exact transfer.
+%
+Our index is different in kind: it spans the $(r,s)$ plane rather than the threshold within one cell, and the transfer between cells is exact and proved, not observed.
+%
+The Kruskal--Katona theorem~\cite{kruskal1963number, katona1968theorem, lovaszKK} that underlies our shadow bound is classical in extremal set theory; to our knowledge its use as a cross-cell certificate for nucleus decomposition is new.
+%
+Our transfer viewpoint suggests a natural extension to indexing across the order $r$ as well, which we leave as future work.

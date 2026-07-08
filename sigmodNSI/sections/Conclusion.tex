@@ -1,3 +1,12 @@
 \section{Conclusion}
 \label{sec:conclusion}
-\todo{5 sentences, triple redundancy}
+
+In this paper, we presented the first index over the nucleus spectrum, the family of $(r,s)$-nucleus core values across a range of cells.
+%
+By addressing cross-cell certification, exact residue replay, and spectrum storage, we proved two zero-slack transfer theorems and built the one-build sweep algorithm \specnd{} and its index \nsi.
+%
+On twelve real graphs, \specnd{} computes whole spectra $20$ times faster on average and up to $511$ times faster than the state-of-the-art per-cell algorithm, using up to $140$ times less memory, and \nsi{} stores a whole spectrum at as little as $0.045$ bytes per $r$-clique with sub-microsecond queries.
+%
+On five graphs where per-cell decomposition cannot complete a single cell within a $300$GB budget, \specnd{} computes the entire spectrum in seconds.
+%
+Our transfer-and-index viewpoint suggests indexing across the clique order as a natural next direction.

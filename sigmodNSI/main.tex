@@ -16,8 +16,17 @@
 \title{Indexing the Nucleus Spectrum: Exact Cross-Parameter Core Decomposition at the Cost of One Cell}
 
 \begin{abstract}
-% Drafted LAST (playbook 1.10): triple redundancy copies final numbers.
-\todo{abstract: draft after all sections are final}
+Extracting cohesive subgraphs and ranking vertices by how deeply they are embedded is a fundamental task in graph mining, with applications in community detection, fraud analysis, and web structure.
+%
+The $(r,s)$-nucleus decomposition is the unifying model for this task, generalizing the $k$-core and the $k$-truss to cliques; its two parameters form a plane of decompositions whose cells reveal structure at different granularities.
+%
+Analysts need many cells of this plane, but every existing algorithm computes each cell from scratch, at full price, carrying no information from one cell to the next; a single cell can cost hours and hundreds of gigabytes, and a spectrum of cells pays this repeatedly.
+%
+We observe that the spectrum is governed by a closed-form surface and that deviations from it are certifiable and small.
+%
+We prove two zero-slack transfer theorems that pin one cell's core values from the previous cell by a single integer comparison, and we build a one-build sweep algorithm that certifies most cells and peels only a small residue, storing the exact result in a compact, queryable index.
+%
+On twelve real graphs, our approach computes whole spectra $20$ times faster on average and up to $511$ times faster than the state-of-the-art per-cell algorithm, while reducing memory by up to $140$ times; on five graphs where per-cell decomposition cannot complete a single cell within a $300$GB budget, it computes the entire spectrum in seconds, and its index stores a whole spectrum at as little as $0.045$ bytes per $r$-clique with sub-microsecond queries.
 \end{abstract}
 
 \maketitle

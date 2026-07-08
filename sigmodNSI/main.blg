@@ -16,45 +16,47 @@ Warning--page numbers missing in both pages and numpages fields in jiang2016catc
 Warning--empty address in katona1968theorem
 Warning--empty address in kruskal1963number
 Warning--empty address in lovaszKK
-You've used 14 entries,
+Warning--empty publisher in io-eff
+Warning--empty address in io-eff
+You've used 22 entries,
             5901 wiz_defined-function locations,
-            1609 strings with 20185 characters,
-and the built_in function-call counts, 17197 in all, are:
-= -- 2340
-> -- 522
+            1672 strings with 21940 characters,
+and the built_in function-call counts, 27927 in all, are:
+= -- 3909
+> -- 893
 < -- 0
-+ -- 172
-- -- 204
-* -- 1155
-:= -- 1660
-add.period$ -- 74
-call.type$ -- 14
-change.case$ -- 90
-chr.to.int$ -- 14
-cite$ -- 19
-duplicate$ -- 1518
-empty$ -- 1022
-format.name$ -- 224
-if$ -- 4203
++ -- 298
+- -- 336
+* -- 1887
+:= -- 2663
+add.period$ -- 114
+call.type$ -- 22
+change.case$ -- 147
+chr.to.int$ -- 22
+cite$ -- 29
+duplicate$ -- 2429
+empty$ -- 1621
+format.name$ -- 388
+if$ -- 6930
 int.to.chr$ -- 2
 int.to.str$ -- 1
-missing$ -- 50
-newline$ -- 195
-num.names$ -- 112
-pop$ -- 464
+missing$ -- 83
+newline$ -- 283
+num.names$ -- 176
+pop$ -- 741
 preamble$ -- 1
-purify$ -- 216
+purify$ -- 345
 quote$ -- 0
-skip$ -- 596
+skip$ -- 979
 stack$ -- 0
-substring$ -- 1331
-swap$ -- 224
+substring$ -- 2095
+swap$ -- 378
 text.length$ -- 38
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 293
-warning$ -- 5
-while$ -- 108
+type$ -- 449
+warning$ -- 7
+while$ -- 167
 width$ -- 0
-write$ -- 330
-(There were 5 warnings)
+write$ -- 494
+(There were 7 warnings)

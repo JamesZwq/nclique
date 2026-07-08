@@ -6346,3 +6346,13 @@ large residue -> pattern/maps/residue machinery constants; CND is light when the
 is small. Honest reading for the paper: the memory win lives at the infeasibility frontier
 (web/FEM/dblp5, where CND needs 155-300+GB and we need 0.2-29GB); on small social graphs both
 fit easily and CND is lighter. Must appear in the main table's honest rows + EXPERIMENTS.md RQ1.
+
+## 143. FULL PAPER DRAFT COMPLETE (sigmodNSI/, 8 pages, builds clean) (2026-07-08)
+All sections drafted end-to-end, house style (NuclearCD Variant B): Abstract + Introduction +
+Preliminaries + ExistingApproach (per-cell SOTA) + TransferTheory (T1-T5 proved) + SweepAlgorithm
+(T6/T7/level-invariance + SpecND pseudocode + walkthrough + correctness + complexity) + Index +
+Experiments (Exp-1..7 + datasets/main/index/cert tables) + RelatedWork + Conclusion. Build clean:
+0 undefined refs, 0 "??", 0 overfull hboxes, 8 pages. 3 TODOs remain: (a) Figure 1 (running
+example, needs drawing), (b) E7 ablation numbers (Exp-6, running on tods2), (c) E2 multi-trial
+note. Slot ledger = §142. NEXT: draw Figure 1; fill E7 when it lands; add omega column to
+datasets table; late-stage audit + low-context reader pass; then E2 medians for camera-ready.

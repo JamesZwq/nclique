@@ -2,7 +2,7 @@
 %%% Do NOT edit. File created by BibTeX with style
 %%% ACM-Reference-Format-Journals [18-Jan-2012].
 
-\begin{thebibliography}{14}
+\begin{thebibliography}{22}
 
 %%% ====================================================================
 %%% NOTE TO THE USER: you can override these defaults by providing
@@ -36,6 +36,39 @@
 \providecommand\bibinfo[2]{#2}
 \providecommand\natexlab[1]{#1}
 \providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[\protect\citeauthoryear{Akbas and Zhao}{Akbas and Zhao}{2017}]%
+        {akbas2017truss}
+\bibfield{author}{\bibinfo{person}{Esra Akbas} {and} \bibinfo{person}{Peixiang
+  Zhao}.} \bibinfo{year}{2017}\natexlab{}.
+\newblock \showarticletitle{Truss-based community search: a truss-equivalence
+  based indexing approach}.
+\newblock \bibinfo{journal}{\emph{Proc. VLDB Endow.}} \bibinfo{volume}{10},
+  \bibinfo{number}{11} (\bibinfo{date}{Aug.} \bibinfo{year}{2017}),
+  \bibinfo{pages}{1298–1309}.
+\newblock
+\showISSN{2150-8097}
+\urldef\tempurl%
+\url{https://doi.org/10.14778/3137628.3137640}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Batagelj and Zaver\v{s}nik}{Batagelj and
+  Zaver\v{s}nik}{2011}]%
+        {batagelj2011fast}
+\bibfield{author}{\bibinfo{person}{Vladimir Batagelj} {and}
+  \bibinfo{person}{Matja\v{z} Zaver\v{s}nik}.} \bibinfo{year}{2011}\natexlab{}.
+\newblock \showarticletitle{Fast algorithms for determining (generalized) core
+  groups in social networks}.
+\newblock \bibinfo{journal}{\emph{Adv. Data Anal. Classif.}}
+  \bibinfo{volume}{5}, \bibinfo{number}{2} (\bibinfo{date}{July}
+  \bibinfo{year}{2011}), \bibinfo{pages}{129–145}.
+\newblock
+\showISSN{1862-5347}
+\urldef\tempurl%
+\url{https://doi.org/10.1007/s11634-010-0079-y}
+\showDOI{\tempurl}
+
 
 \bibitem[\protect\citeauthoryear{Gibson, Kleinberg, and Raghavan}{Gibson
   et~al\mbox{.}}{1998}]%
@@ -71,6 +104,25 @@
 \url{https://doi.org/10.1073/pnas.122653799}
 \showDOI{\tempurl}
 \showeprint{https://www.pnas.org/doi/pdf/10.1073/pnas.122653799}
+
+
+\bibitem[\protect\citeauthoryear{Huang, Cheng, Qin, Tian, and Yu}{Huang
+  et~al\mbox{.}}{2014}]%
+        {huang2014truss}
+\bibfield{author}{\bibinfo{person}{Xin Huang}, \bibinfo{person}{Hong Cheng},
+  \bibinfo{person}{Lu Qin}, \bibinfo{person}{Wentao Tian}, {and}
+  \bibinfo{person}{Jeffrey~Xu Yu}.} \bibinfo{year}{2014}\natexlab{}.
+\newblock \showarticletitle{Querying k-truss community in large and dynamic
+  graphs}. In \bibinfo{booktitle}{\emph{Proceedings of the 2014 ACM SIGMOD
+  International Conference on Management of Data}} (Snowbird, Utah, USA)
+  \emph{(\bibinfo{series}{SIGMOD '14})}. \bibinfo{publisher}{Association for
+  Computing Machinery}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{1311–1322}.
+\newblock
+\showISBNx{9781450323765}
+\urldef\tempurl%
+\url{https://doi.org/10.1145/2588555.2610495}
+\showDOI{\tempurl}
 
 
 \bibitem[\protect\citeauthoryear{Jain and Seshadhri}{Jain and
@@ -137,6 +189,23 @@
 \newblock
 
 
+\bibitem[\protect\citeauthoryear{Malliaros, Giatsidis, Thilikos, and
+  Vazirgiannis}{Malliaros et~al\mbox{.}}{2020}]%
+        {malliaros2020core2}
+\bibfield{author}{\bibinfo{person}{Fragkiskos~D. Malliaros},
+  \bibinfo{person}{Christos Giatsidis}, \bibinfo{person}{Dimitrios~M.
+  Thilikos}, {and} \bibinfo{person}{Michalis Vazirgiannis}.}
+  \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{The core decomposition of networks: theory,
+  algorithms and applications}.
+\newblock \bibinfo{journal}{\emph{The VLDB Journal}} \bibinfo{volume}{29},
+  \bibinfo{number}{1} (\bibinfo{year}{2020}), \bibinfo{pages}{61--92}.
+\newblock
+\urldef\tempurl%
+\url{https://doi.org/10.1007/s00778-019-00587-4}
+\showDOI{\tempurl}
+
+
 \bibitem[\protect\citeauthoryear{Malliaros and Vazirgiannis}{Malliaros and
   Vazirgiannis}{2013}]%
         {malliaros2013clustering}
@@ -153,6 +222,22 @@
 \showDOI{\tempurl}
 \newblock
 \shownote{Clustering and Community Detection in Directed Networks: A Survey.}
+
+
+\bibitem[\protect\citeauthoryear{Sariy\"{u}ce and Pinar}{Sariy\"{u}ce and
+  Pinar}{2016}]%
+        {fastHierarchy}
+\bibfield{author}{\bibinfo{person}{Ahmet~Erdem Sariy\"{u}ce} {and}
+  \bibinfo{person}{Ali Pinar}.} \bibinfo{year}{2016}\natexlab{}.
+\newblock \showarticletitle{Fast hierarchy construction for dense subgraphs}.
+\newblock \bibinfo{journal}{\emph{Proc. VLDB Endow.}} \bibinfo{volume}{10},
+  \bibinfo{number}{3} (\bibinfo{date}{Nov.} \bibinfo{year}{2016}),
+  \bibinfo{pages}{97–108}.
+\newblock
+\showISSN{2150-8097}
+\urldef\tempurl%
+\url{https://doi.org/10.14778/3021924.3021927}
+\showDOI{\tempurl}
 
 
 \bibitem[\protect\citeauthoryear{Sariy\"{u}ce, Seshadhri, and
@@ -241,6 +326,50 @@
 \urldef\tempurl%
 \url{https://doi.org/10.14778/3494124.3494140}
 \showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Shi, Dhulipala, and Shun}{Shi
+  et~al\mbox{.}}{2024}]%
+        {sotaHierarchy}
+\bibfield{author}{\bibinfo{person}{Jessica Shi}, \bibinfo{person}{Laxman
+  Dhulipala}, {and} \bibinfo{person}{Julian Shun}.}
+  \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{Parallel Algorithms for Hierarchical Nucleus
+  Decomposition}.
+\newblock \bibinfo{journal}{\emph{Proc. ACM Manag. Data}} \bibinfo{volume}{2},
+  \bibinfo{number}{1}, Article \bibinfo{articleno}{32} (\bibinfo{date}{March}
+  \bibinfo{year}{2024}), \bibinfo{numpages}{27}~pages.
+\newblock
+\urldef\tempurl%
+\url{https://doi.org/10.1145/3639287}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Wang and Cheng}{Wang and Cheng}{2012}]%
+        {wang2012truss}
+\bibfield{author}{\bibinfo{person}{Jia Wang} {and} \bibinfo{person}{James
+  Cheng}.} \bibinfo{year}{2012}\natexlab{}.
+\newblock \showarticletitle{Truss decomposition in massive networks}.
+\newblock \bibinfo{journal}{\emph{Proc. VLDB Endow.}} \bibinfo{volume}{5},
+  \bibinfo{number}{9} (\bibinfo{date}{May} \bibinfo{year}{2012}),
+  \bibinfo{pages}{812–823}.
+\newblock
+\showISSN{2150-8097}
+\urldef\tempurl%
+\url{https://doi.org/10.14778/2311906.2311909}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Wen, Qin, Zhang, Lin, and Yu}{Wen
+  et~al\mbox{.}}{2016}]%
+        {io-eff}
+\bibfield{author}{\bibinfo{person}{Dong Wen}, \bibinfo{person}{Lu Qin},
+  \bibinfo{person}{Ying Zhang}, \bibinfo{person}{Xuemin Lin}, {and}
+  \bibinfo{person}{Jeffrey~Xu Yu}.} \bibinfo{year}{2016}\natexlab{}.
+\newblock \showarticletitle{I/O efficient core graph decomposition at web
+  scale}. In \bibinfo{booktitle}{\emph{2016 IEEE 32nd International Conference
+  on Data Engineering (ICDE)}}. IEEE, \bibinfo{pages}{133--144}.
+\newblock
 
 
 \bibitem[\protect\citeauthoryear{Zhao and Tung}{Zhao and Tung}{2012}]%
