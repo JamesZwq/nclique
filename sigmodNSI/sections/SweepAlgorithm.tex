@@ -1,6 +1,157 @@
 \section{One-Build Spectrum Computation}
 \label{sec:algo}
-\begin{theorem}[Quotient Invariance]\label{thm:quotient}\todo{T7}\end{theorem}
-\begin{theorem}[No Early Death]\label{thm:noearly}\todo{T6}\end{theorem}
-\begin{theorem}[Death Ownership]\label{thm:ownership}\todo{T8}\end{theorem}
-\begin{algorithm}[t]\caption{\kwnospace{SpecND}: one-build spectrum sweep}\label{alg:specnd}\todo{pseudocode}\end{algorithm}
+
+In this section, we turn the transfer theory into an algorithm, \specnd, that computes the whole spectrum from a single shared structure.
+%
+We first show that the computation can run at pattern granularity (Theorem~\ref{thm:quotient}), then describe the shared build, and finally present the sweep and prove its correctness (Theorems~\ref{thm:noearly},~\ref{thm:levelinv}).
+
+\stitle{Working at pattern granularity.}
+The spectrum has one entry per $r$-clique, and there can be more than $10^{12}$ $r$-cliques in a single row.
+%
+We avoid materializing them by computing one core value per pattern, which is exact because same-pattern $r$-cliques are interchangeable.
+
+\begin{theorem}[Quotient Invariance]
+\label{thm:quotient}
+Two $r$-cliques with the same pattern have the same core value $\corev{r,s}$ at every cell $s$.
+\end{theorem}
+\begin{proof}
+It suffices to show that swapping two vertices $u,v$ of the same class maps cliques to cliques, since then the swap is an automorphism of the clique complex, hence of the $s$-clique hypergraph for every $s$, and any two same-pattern $r$-cliques are connected by such swaps.
+%
+Let $K$ be a clique with $u\in K$ and $v\notin K$.
+%
+Then $K$ lies in some region $M$ containing $u$, and since $v$ shares the profile of $u$, $v$ also lies in $M$; hence $(K\setminus\{u\})\cup\{v\}\subseteq M$ is a clique.
+%
+Cliques containing both or neither of $u,v$ map to cliques symmetrically.
+\end{proof}
+
+By Theorem~\ref{thm:quotient} the spectrum is well defined on patterns, and its size is bounded by the number of patterns rather than the number of $r$-cliques.
+%
+On \daWIT, this replaces $338$ million $r$-cliques by $425$ thousand patterns.
+
+\stitle{The shared build.}
+\specnd{} builds one structure that serves every cell of the range.
+%
+It first enumerates the regions of $G$, then partitions them into two kinds.
+%
+A region is \textit{mergeable} if it shares no $r$-clique with any other region; Theorem~\ref{thm:noearly} shows the whole spectrum of a mergeable region is a closed form, so these regions are recorded and removed from further work.
+%
+The remaining \textit{active} regions define the classes and patterns of Section~\ref{sec:prelim}.
+%
+On the active regions, \specnd{} builds a single clique tree whose leaves count $s$-cliques, and it widens the tree's pruning bounds to the largest cell $s_{\max}$ so that one tree serves every cell in $[s_0,s_{\max}]$; re-slicing a leaf to a smaller $s$ costs one integer assignment and never rebuilds the tree.
+%
+Finally, for each pattern $P$ it records $\cliqb(P)$, the size of the largest region hosting $P$, which is the only quantity the closed-form floor needs.
+
+\begin{theorem}[No Early Death]
+\label{thm:noearly}
+Let $M$ be a region with $|M|\ge s$ and $L_M=\binom{|M|-r}{s-r}$.
+%
+In the peeling computation: (i) no $r$-clique contained in $M$ is removed before level $L_M$; and (ii) every $r$-clique whose only region is $M$ has core value $L_M$.
+\end{theorem}
+\begin{proof}
+(i) By induction on the level: while no $r$-clique inside $M$ has been removed, every $s$-clique inside $M$ is intact, so every $r$-clique inside $M$ has support at least $\binom{|M|-r}{s-r}=L_M$, and none is removable below level $L_M$.
+%
+(ii) Every $s$-clique containing such an $r$-clique lies in a region containing it, which must be $M$, so its initial support is exactly $L_M$; by (i) it survives until level $L_M$ and is removed there.
+\end{proof}
+
+\begin{remark}
+A mergeable region is a special case: none of its $r$-cliques shares a region, so by Theorem~\ref{thm:noearly}(ii) each has core value $\binom{|M|-r}{s-r}$ at every cell.
+%
+Its spectrum is a closed form in $s$, so \specnd{} emits it by arithmetic and never peels it.
+%
+On \daWUK{} every region is mergeable, so the entire spectrum is closed form with no peeling at all.
+\end{remark}
+
+\stitle{The sweep.}
+\specnd{} computes the boundary cell $s_0$ once by ordinary peeling, then sweeps upward.
+%
+At each subsequent cell $s$ it applies the chain certificate to every pattern: a pattern whose previous core value equals its closed-form floor at $s{-}1$ is \textit{certified}, and by Theorem~\ref{thm:chain} its core value at $s$ is the closed form $\binom{\cliqb(P)-r}{s-r}$, written directly.
+%
+The uncertified patterns form the \textit{residue}, and only they are peeled.
+
+The residue cannot be peeled in isolation, because a certified pattern still dies during the peel and still removes the $s$-cliques that residue patterns are counted against.
+%
+\specnd{} handles this by \textit{replaying}: it schedules each certified pattern's removal at its closed-form level $\binom{\cliqb(P)-r}{s-r}$, which by Theorem~\ref{thm:chain} is its true core value, and runs the ordinary peel over the union of scheduled certified removals and the residue.
+%
+The replay is exact because the order of removals inside one level is immaterial.
+
+\begin{theorem}[Level Invariance]
+\label{thm:levelinv}
+The core value assigned by peeling to each $r$-clique is independent of the order in which the $r$-cliques of minimum current support are removed within one level.
+\end{theorem}
+\begin{proof}
+Peeling assigns core value $k$ to exactly the $r$-cliques removed while the running minimum support equals $k$.
+%
+Within a fixed level $k$, removing an $r$-clique of support $k$ can only lower other supports, and any support driven below $k$ is clamped to $k$ because the running minimum never decreases.
+%
+Hence the set of $r$-cliques removed at level $k$ is closed under these cascades regardless of order, and every schedule removes the same set at level $k$ and leaves the same residual supports for level $k{+}1$.
+%
+By induction on the level, all core values are identical.
+\end{proof}
+
+Because a certified pattern's scheduled level equals its true core value (Theorem~\ref{thm:chain}) and intra-level order does not matter (Theorem~\ref{thm:levelinv}), the replayed peel produces exactly the residue core values of a from-scratch peel at cell $s$.
+
+\begin{example}
+\label{exa:sweep}
+Consider Figure~\ref{fig:running} with $r{=}3$ and the range $s\in[4,6]$.
+%
+Region $M_3$ is mergeable, so its triangles are emitted in closed form: core values $1,0,0$ at $s{=}4,5,6$.
+%
+The boundary cell $s_0{=}4$ is peeled once, giving $\corev{3,4}(\{v_3,v_4,v_5\})=2$.
+%
+At $s{=}5$, this pattern is certified ($2=\binom{2}{1}$), so its core value $\binom{2}{2}=1$ is written with no peeling; the same holds at $s{=}6$.
+%
+The residue at $s{=}5$ and $s{=}6$ is empty, so the two upper cells cost only one comparison per pattern.
+\end{example}
+
+\stitle{The algorithm.}
+Algorithm~\ref{alg:specnd} states \specnd.
+%
+It builds the regions and splits off mergeable ones (Lines~1--3), builds the shared classes, patterns, and clique tree, and records each $\cliqb(P)$ (Lines~4--5).
+%
+It peels the boundary cell once (Line~6).
+%
+For each higher cell, it certifies every pattern against its previous value (Lines~9--12), collects the residue (Line~13), and runs the replayed peel over the certified schedule and the residue (Line~14).
+%
+Certified patterns never enter the peel's support initialization or its queue, which is where the savings come from.
+
+\begin{algorithm}[t]
+\caption{\kwnospace{SpecND}: one-build spectrum sweep.}
+\label{alg:specnd}
+\KwIn{graph $G$, order $r$, cell range $[s_0,s_{\max}]$}
+\KwOut{$\corev{r,s}(P)$ for every pattern $P$ and cell $s$}
+$\regionset\gets$ maximal cliques of $G$ of size $\ge s_0$\;
+$(\regionset_{\mathrm{mrg}},\regionset_{\mathrm{act}})\gets$ split $\regionset$ into mergeable and active regions\;
+\lForEach{$M\in\regionset_{\mathrm{mrg}}$}{emit $s\mapsto\binom{|M|-r}{s-r}$ \tcp*[f]{Thm~\ref{thm:noearly}}}
+build classes, patterns $\patset$, and one clique tree over $\regionset_{\mathrm{act}}$ serving $[s_0,s_{\max}]$\;
+\lForEach{$P\in\patset$}{$\cliqb(P)\gets$ size of the largest region hosting $P$}
+$\corev{r,s_0}\gets\textsc{Peel}(s_0)$ \tcp*{boundary cell, full peel}
+\For{$s\gets s_0+1$ \KwTo $s_{\max}$}{
+  $\mathit{Res}\gets\emptyset$;\quad $\mathit{Sched}\gets\emptyset$\;
+  \ForEach{$P\in\patset$}{
+    \eIf{$\corev{r,s-1}(P)=\binom{\cliqb(P)-r}{s-1-r}$}{
+      $\corev{r,s}(P)\gets\binom{\cliqb(P)-r}{s-r}$ \tcp*{certified, Thm~\ref{thm:chain}}
+      $\mathit{Sched}\gets\mathit{Sched}\cup\{(P,\corev{r,s}(P))\}$\;
+    }{
+      $\mathit{Res}\gets\mathit{Res}\cup\{P\}$\;
+    }
+  }
+  $\corev{r,s}\gets\textsc{ReplayPeel}(s,\mathit{Res},\mathit{Sched})$ \tcp*{Thm~\ref{thm:levelinv}}
+}
+\Return{$\corev{r,\cdot}$}\;
+\end{algorithm}
+
+\stitle{Correctness.}
+The output of \specnd{} is exact.
+%
+Mergeable regions are correct by Theorem~\ref{thm:noearly}, the boundary cell is an ordinary peel, certified patterns are correct by Theorem~\ref{thm:chain}, and the residue is correct by Theorem~\ref{thm:levelinv}; all values are lifted from patterns to $r$-cliques by Theorem~\ref{thm:quotient}.
+%
+In our experiments the output is bit-identical to per-cell recomputation on every cell where a per-cell run completes (Section~\ref{sec:exp}).
+
+\stitle{Complexity.}
+The build enumerates maximal cliques in $O(n\cdot 3^{\alpha/3})$ time in the worst case~\cite{Pivoter}, where $\alpha$ is the degeneracy of $G$, and constructs one clique tree; in practice, clique-tree pruning makes this much smaller than the worst-case bound.
+%
+The boundary cell is one peel.
+%
+Each subsequent cell costs one integer comparison per pattern, which is $O(|\patset|)$, plus the peeling cost of the residue only.
+%
+When every pattern certifies, a cell costs $O(|\patset|)$ regardless of how many $s$-cliques it contains, which is why upper cells collapse to milliseconds on clique-structured graphs.

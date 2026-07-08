@@ -99,7 +99,7 @@ We prove two zero-slack transfer theorems: a Kruskal--Katona shadow bound linkin
 Certification is absorbing: once an $r$-clique is certified, every later cell follows by one integer comparison.
 %
 \sstitle{Replaying instead of recomputing.}
-We prove that no $r$-clique inside a maximal clique dies before the clique's closed-form level (Theorem~\ref{thm:noearly}), and that every dying $s$-clique is owned by exactly one death event (Theorem~\ref{thm:ownership}); together they let \specnd{} schedule certified deaths at known levels and peel only the residue, with bit-exact output.
+We prove that regions sharing no $r$-clique settle in closed form (Theorem~\ref{thm:noearly}), and that the order of removals within one peeling level does not change any core value (Theorem~\ref{thm:levelinv}); together they let \specnd{} schedule certified deaths at their closed-form levels and peel only the residue, with bit-exact output.
 %
 \sstitle{Storing structure instead of values.}
 \nsi{} stores the class quotient, one clique bound per pattern, the cold-cell cores, and per-cell residue dictionaries; certified values are reconstructed by arithmetic at query time.
@@ -115,7 +115,7 @@ We give the first cross-cell transfer theory for nucleus decomposition: a clique
 We further prove a diagonal transfer theorem (Theorem~\ref{thm:diagonal}) that generalizes the classical truss-core inequality to the whole $s=r{+}1$ diagonal; across $156$ million measured $4$-cliques it holds with zero violations and is an equality on $100\%$ of them on collaboration graphs.
 %
 \sstitle{One-build sweep with exact residue replay.}
-We design \specnd{} (Algorithm~\ref{alg:specnd}), which builds one shared clique-tree structure serving every cell, cold-peels the cheapest cell, certifies each subsequent cell by one integer comparison per pattern, and replays certified deaths at their closed-form levels while peeling only the residue (Theorems~\ref{thm:noearly},~\ref{thm:ownership},~\ref{thm:quotient}).
+We design \specnd{} (Algorithm~\ref{alg:specnd}), which builds one shared clique-tree structure serving every cell, cold-peels the cheapest cell, certifies each subsequent cell by one integer comparison per pattern, and replays certified deaths at their closed-form levels while peeling only the residue (Theorems~\ref{thm:quotient},~\ref{thm:noearly},~\ref{thm:levelinv}).
 %
 Its output is bit-identical to per-cell recomputation on every feasible cell tested.
 %
