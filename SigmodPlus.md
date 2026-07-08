@@ -5976,6 +5976,9 @@ DATA (paper_data/, force-added; the dir is gitignored)
   diag_astro_baseline_2026-07-07.tsv / diag_dblp_baseline_2026-07-07.tsv ... §131 diagonal U-shape
   band_astro_2026-07-07.tsv / band_dblp_2026-07-07.tsv ................... §132 band-engine rows
 
+LIVE STATUS DOCS (repo root): EXPERIMENTS.md = the paper's experiment section status (RQ1-RQ5,
+data inventory, remaining runs; update together with §139-141); TODO.md = §140 checklist mirror.
+
 RESULTS SECTIONS: §128 theory derivations; §128b/c/d probes; §129 handoff/plan; §130/130b sweep
 engine + results (loss cells turned around; Epinions honest); §131/131b diagonal U-shape;
 §132 band lever; §133 theorem set + T5 validation. Memory pickup: project_nsi_direction.md.
