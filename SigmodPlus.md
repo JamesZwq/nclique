@@ -6356,3 +6356,18 @@ Experiments (Exp-1..7 + datasets/main/index/cert tables) + RelatedWork + Conclus
 example, needs drawing), (b) E7 ablation numbers (Exp-6, running on tods2), (c) E2 multi-trial
 note. Slot ledger = §142. NEXT: draw Figure 1; fill E7 when it lands; add omega column to
 datasets table; late-stage audit + low-context reader pass; then E2 medians for camera-ready.
+
+## 144. METHODOLOGY FIX (user demand): UNIFORM settings across all graphs (2026-07-09)
+User: "你所有图上面的setting应该是一样的吧？要不这明显是自己选的了" -- CORRECT. The §139/§141
+per-graph (r, s-range) choices are cherry-picked and indefensible. FIX: re-run the whole main
+table at ONE uniform setting r=4, s=5..8 on EVERY graph (tods2:/home/wenqianz/nsi_uniform/,
+running), report all outcomes incl losses/trivial cells honestly. PLUS a sensitivity grid
+(nsi_sens.sh, staged): 3 representatives (pkustk11/dblp/yt) x r=3,4,5,6, s=r+1..r+3, to show the
+advantage's trend across r and absorb the "why r=4" question. E7 ABLATION RESULT (decisive):
+SpecND-Base (shared build, NO certificate) EXCEEDS the 2h/cell budget on hepph AND astro, while
+SpecND with the certificate finishes in 167s/90s -> the certificate alone is worth >40-80x, NOT
+just the shared build (epin certifies ~0 so NOCERT==sweep there, honest). E5b roster indexes:
+web-uk 0.99MB/0.0012 B-per-rclique (all-mergeable), raefsky3 0.022, ldoor/msdoor 0.05, pkustk11
+0.07, pkustk13 0.67, nasasrb 2.15 B/rclique; all tiny, queries 191-985ns. The paper's main table
++ Exp-1/2 MUST be rebuilt on the uniform numbers once nsi_uniform lands; current draft tables are
+the non-uniform data and will be REPLACED.
