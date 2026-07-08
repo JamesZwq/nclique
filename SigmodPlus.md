@@ -6256,3 +6256,24 @@ as genuine OOM (feasibility story): cnd_webit_3_4.log shows r-clique index growi
 web-it, exactly §108/§124. Interim E3 (same-machine): yt 3,4/3,5/3,6 CND = 30s/210s/365s (3.9GB);
 epin 3,4 = 40s. E3 still running (dblp + astro + hepph queued). Post-hoc PIVOTER_COMPARE on a small
 cell recommended after E3 for belt-and-suspenders (the exact binary was already validated in §124).
+2026-07-08: E3 COMPLETE (CND on all 26 cells, tods2, 2h budget + 300GB prlimit cap). BUILD_RC=2
+was a FALSE ALARM: "Built target degeneracy_cliques" succeeded (binary rebuilt 23:00 from
+735c67b, HAS the 8ea7546 fix; the Error 2 came from two unrelated stale drivers
+bench_spectrum_sat/index). PIVOTER_COMPARE spot-check launched (hepph 3,5).
+E3 CND SPECTRUM TABLE (same machine; sums over the row's cells):
+  config  CND spectrum (peak RSS)             NSI sweep   NSI-vs-CND
+  webit   4x MEM-ABORT >=300GB (rc134)        8.1s        INFEASIBLE vs 8s (feasibility)
+  dblp5   4261s (257.3GB flat per cell)       28.3s       150.6x time, 95x memory
+  dblp4   212.2s (16.1GB)                     9.3s        22.8x
+  epin    2807s (40s->15min->31min, grows!)   474.3s      5.9x (social: CND blows up in s)
+  yt      605s                                105.0s      5.8x
+  astro   147.7s (9.2GB; ~40s FLAT per cell)  89.7s       1.65x
+  hepph   137.7s (3-4GB; ~40s flat)           167.2s      0.82x -- CND WINS hepph (honest)
+KEY READING: CND's CPI-combinatorial counting is ~FLAT in s on dense collab graphs (astro/hepph
+~40s/cell at any s) -- there the spectrum-vs-spectrum fight is ~parity (astro +1.65x, hepph
+-0.82x). CND EXPLODES on: memory-bound structure (webit >=300GB, dblp5 257GB) and SOCIAL s-growth
+(epin 40s->31min/cell). NSI wins: feasibility (webit), memory (95x dblp5), socials (5.8-5.9x),
+dblp (23-151x); parity-ish on dense collab; PLUS the queryable index artifact CND does not have
+(no marginal cells, no queries, rerun per cell). The 231-692x marginal numbers are the
+SELF-comparison (vs our native per-cell) demonstrating the chain certificate; the CND table is
+the competitor comparison; the paper must keep the two clearly separated.
