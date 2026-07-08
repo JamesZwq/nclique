@@ -1,3 +1,68 @@
 \section{Preliminaries}
 \label{sec:prelim}
-\todo{prose notation (graph, clique, region, class, pattern), nucleus definition + example on Figure 1, spectrum definition, minimal problem statement}
+
+In this section, we introduce the notation, the nucleus decomposition model, and the problem statement.
+
+\stitle{Graphs and cliques.}
+We consider an undirected simple graph $G=(V,E)$ with $n=|V|$ vertices and $m=|E|$ edges.
+%
+An \textit{$\ell$-clique} is a set of $\ell$ pairwise-adjacent vertices.
+%
+A \textit{maximal clique} is a clique contained in no larger clique; we call the maximal cliques of $G$ its \textit{regions}, denoted as $\regionset$.
+%
+For an $r$-clique $R$, we write $\cliqb(R)$ for the size of the largest clique of $G$ containing $R$; equivalently, $\cliqb(R)$ is the size of the largest region containing $R$.
+%
+We use $\binom{n}{k}$ for the binomial coefficient, with $\binom{n}{k}=0$ whenever $k<0$ or $k>n$.
+
+\stitle{Nucleus decomposition.}
+Fix two integers $r<s$.
+%
+For a family $F$ of $s$-cliques of $G$ and an $r$-clique $R'$, the \textit{support} of $R'$ in $F$, denoted as $\mathrm{sup}_F(R')$, is the number of members of $F$ that contain $R'$; $R'$ is \textit{covered} by $F$ if its support is at least one.
+
+\begin{definition}[Core Value]
+\label{def:core}
+Given a graph $G$, integers $r<s$, and an $r$-clique $R$, the \textit{core value} of $R$, denoted as $\corev{r,s}(R)$, is the largest $k$ such that some family $F$ of $s$-cliques covers $R$ and every $r$-clique covered by $F$ has support at least $k$ in $F$; if $R$ is in no $s$-clique, $\corev{r,s}(R)=0$.
+\end{definition}
+
+This max-min form is equivalent to the standard peeling computation, which repeatedly removes an $r$-clique of minimum current support, where an $s$-clique survives while all of its $r$-subcliques survive~\cite{firstNucleus}.
+%
+The $k$-$(r,s)$-nucleus of~\cite{firstNucleus} is the subgraph induced by the $r$-cliques whose core value is at least $k$, and computing all core values is the $(r,s)$-nucleus decomposition.
+%
+The $(1,2)$ cell recovers the $k$-core~\cite{seidman1983network} and the $(2,3)$ cell recovers the $k$-truss~\cite{cohen2008trusses}.
+
+\begin{example}
+\label{exa:core}
+Consider the graph $G$ in Figure~\ref{fig:running} and the triangle $R=\{v_3,v_4,v_5\}$.
+%
+At $(r,s)=(3,4)$, taking $F$ to be all $4$-cliques inside $M_1\cup M_2$ covers $R$, and every triangle covered by $F$ lies in at least two members, so $\corev{3,4}(R)\ge 2$; no family does better, hence $\corev{3,4}(R)=2$.
+%
+The largest clique containing $R$ is $M_1$ (or $M_2$), so $\cliqb(R)=5$.
+\end{example}
+
+\stitle{The spectrum.}
+Fix $r$ and a range of cells $s_0\le s\le s_{\max}$.
+%
+The \textit{spectrum} of an $r$-clique $R$ is the vector $\big(\corev{r,s_0}(R),\dots,\corev{r,s_{\max}}(R)\big)$, and the \textit{nucleus spectrum} of $G$ is the collection of spectra of all its $r$-cliques.
+%
+Cells with $s>\cliqb(R)$ contribute zero entries, so each $r$-clique's spectrum is effectively bounded by its clique structure.
+
+\stitle{Classes and patterns.}
+Our algorithms operate on a quotient of the $r$-cliques rather than on $r$-cliques individually.
+%
+The \textit{profile} of a vertex is the set of regions containing it, and a \textit{class} is a maximal set of vertices sharing one profile; we denote the classes as $\classset$.
+%
+The \textit{pattern} of an $r$-clique is the multiset of classes of its vertices; we denote the patterns as $\patset$ and write $|\pat|$ for the number of $r$-cliques sharing pattern $\pat$.
+%
+Theorem~\ref{thm:quotient} shows that all $r$-cliques of one pattern share one core value at every cell, so the spectrum is well defined at pattern granularity.
+
+\begin{example}
+\label{exa:pattern}
+In Figure~\ref{fig:running}, vertices $v_1$ and $v_2$ share the profile $\{M_1\}$ and form one class; $v_3$, $v_4$, and $v_5$ share the profile $\{M_1,M_2\}$ and form another.
+%
+The triangles $\{v_1,v_2,v_3\}$ and $\{v_1,v_2,v_4\}$ have the same pattern and, indeed, the same spectrum.
+\end{example}
+
+\stitle{Problem Statement.}
+Given a graph $G$, an order $r$, and a cell range $[s_0,s_{\max}]$, we aim to compute the exact nucleus spectrum of $G$ and to support point queries $\corev{r,s}(R)$ for arbitrary $r$-cliques $R$ and cells $s$.
+%
+The problem generalizes single-cell nucleus decomposition, which is the special case $s_0=s_{\max}$.

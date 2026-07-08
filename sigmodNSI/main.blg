@@ -13,45 +13,48 @@ Reallocated glb_str_end (elt_size=4) to 20 items from 10.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Warning--no journal in jiang2016catching
 Warning--page numbers missing in both pages and numpages fields in jiang2016catching
-You've used 10 entries,
+Warning--empty address in katona1968theorem
+Warning--empty address in kruskal1963number
+Warning--empty address in lovaszKK
+You've used 13 entries,
             5901 wiz_defined-function locations,
-            1579 strings with 19588 characters,
-and the built_in function-call counts, 12978 in all, are:
-= -- 1856
-> -- 424
+            1597 strings with 19904 characters,
+and the built_in function-call counts, 15866 in all, are:
+= -- 2187
+> -- 484
 < -- 0
-+ -- 138
-- -- 164
-* -- 903
-:= -- 1229
-add.period$ -- 51
-call.type$ -- 10
-change.case$ -- 69
-chr.to.int$ -- 10
-cite$ -- 12
-duplicate$ -- 1088
-empty$ -- 735
-format.name$ -- 180
-if$ -- 3233
++ -- 157
+- -- 188
+* -- 1071
+:= -- 1536
+add.period$ -- 69
+call.type$ -- 13
+change.case$ -- 84
+chr.to.int$ -- 13
+cite$ -- 18
+duplicate$ -- 1383
+empty$ -- 937
+format.name$ -- 204
+if$ -- 3888
 int.to.chr$ -- 2
 int.to.str$ -- 1
-missing$ -- 41
-newline$ -- 160
-num.names$ -- 80
-pop$ -- 330
+missing$ -- 45
+newline$ -- 184
+num.names$ -- 104
+pop$ -- 421
 preamble$ -- 1
-purify$ -- 159
+purify$ -- 201
 quote$ -- 0
-skip$ -- 420
+skip$ -- 532
 stack$ -- 0
-substring$ -- 970
-swap$ -- 161
+substring$ -- 1233
+swap$ -- 198
 text.length$ -- 38
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 188
-warning$ -- 2
-while$ -- 69
+type$ -- 263
+warning$ -- 5
+while$ -- 99
 width$ -- 0
-write$ -- 254
-(There were 2 warnings)
+write$ -- 307
+(There were 5 warnings)

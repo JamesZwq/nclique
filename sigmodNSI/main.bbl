@@ -2,7 +2,7 @@
 %%% Do NOT edit. File created by BibTeX with style
 %%% ACM-Reference-Format-Journals [18-Jan-2012].
 
-\begin{thebibliography}{10}
+\begin{thebibliography}{13}
 
 %%% ====================================================================
 %%% NOTE TO THE USER: you can override these defaults by providing
@@ -87,6 +87,36 @@
 \urldef\tempurl%
 \url{https://doi.org/10.1145/2746403}
 \showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Katona}{Katona}{1968}]%
+        {katona1968theorem}
+\bibfield{author}{\bibinfo{person}{Gyula O.~H. Katona}.}
+  \bibinfo{year}{1968}\natexlab{}.
+\newblock \showarticletitle{A Theorem of Finite Sets}.
+\newblock In \bibinfo{booktitle}{\emph{Theory of Graphs}}.
+  \bibinfo{publisher}{Academic Press}, \bibinfo{pages}{187--207}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Kruskal}{Kruskal}{1963}]%
+        {kruskal1963number}
+\bibfield{author}{\bibinfo{person}{Joseph~B. Kruskal}.}
+  \bibinfo{year}{1963}\natexlab{}.
+\newblock \showarticletitle{The Number of Simplices in a Complex}.
+\newblock In \bibinfo{booktitle}{\emph{Mathematical Optimization Techniques}}.
+  \bibinfo{publisher}{University of California Press},
+  \bibinfo{pages}{251--278}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Lov{\'a}sz}{Lov{\'a}sz}{1979}]%
+        {lovaszKK}
+\bibfield{author}{\bibinfo{person}{L{\'a}szl{\'o} Lov{\'a}sz}.}
+  \bibinfo{year}{1979}\natexlab{}.
+\newblock \bibinfo{booktitle}{\emph{Combinatorial Problems and Exercises}}.
+\newblock \bibinfo{publisher}{North-Holland}.
+\newblock
 
 
 \bibitem[\protect\citeauthoryear{Malliaros and Vazirgiannis}{Malliaros and
