@@ -6277,3 +6277,11 @@ dblp (23-151x); parity-ish on dense collab; PLUS the queryable index artifact CN
 (no marginal cells, no queries, rerun per cell). The 231-692x marginal numbers are the
 SELF-comparison (vs our native per-cell) demonstrating the chain certificate; the CND table is
 the competitor comparison; the paper must keep the two clearly separated.
+2026-07-08: §141 WIN-ROSTER HUNT LAUNCHED (tods2:/home/wenqianz/nsi_roster/). Goal: pick the
+paper's 8 big-advantage graphs. Candidates (from the §108-124 win-hunt domains, graphs copied
+tods1 -> tods2:/data/wenqianz/roster_graphs/): FEM/CFD at r=4 s=5..8 (raefsky3, sc-pkustk11/13,
+sc-pwtk, sc-nasasrb, sc-ldoor, sc-msdoor -- CND OOM/timeout at (4,5) per the old hunt) +
+web-uk-2005 at r=3 s=4..7 (CND OOM at (3,4)). Already-measured wins from E1/E3: web-it
+(CND infeasible >=300GB vs 8.1s), dblp5 (150.6x + 95x mem), dblp4 (22.8x), epin (5.9x), yt
+(5.8x). Roster = top 8 by advantage once the FEM/web-uk numbers land; expected paper layout:
+main table = 8 advantage graphs + astro/hepph as the honest parity/loss rows + socials.
