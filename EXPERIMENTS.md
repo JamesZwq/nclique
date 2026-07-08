@@ -74,8 +74,8 @@ paragraph, not a contribution.
   E1 phase gates). Deep cells (native exceeds budget): gate N/A, proofs carry.
 - Index: 4.5M point queries vs REF dumps, exact (3 graphs incl heavy-residue).
 - T5: 0 violations across 156M+ 4-cliques.
-- CND precondition: binary has the 8ea7546 fix; PIVOTER_COMPARE spot-check launched (hepph 3,5,
-  tods2:/home/wenqianz/nsi_e3/compare_hepph35.log) -- CHECK RESULT.
+- CND precondition: binary has the 8ea7546 fix; PIVOTER_COMPARE spot-check PASSED (hepph 3,5:
+  "Optimized vs Reference correctness verified (exact)", tods2:/home/wenqianz/nsi_e3/compare_hepph35.log).
 
 ## Remaining runs (from §140, updated)
 - [ ] E2 multi-trial: >=3 runs/median for RQ1+RQ2+RQ3 headline numbers (script the reruns).

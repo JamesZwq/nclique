@@ -6310,3 +6310,6 @@ THE PAPER'S 8 BIG-ADVANTAGE GRAPHS (§141 pick, diversity-balanced):
   honest secondary rows: epin 5.9x, yt 5.8x, astro 1.65x, hepph 0.82x (CND wins).
   Domain spread: web x2, FEM-structural x4, CFD x1, collaboration x1; 5 infeasibility rows +
   3 large finite ratios. Raw logs: tods2:/home/wenqianz/nsi_roster/.
+2026-07-08: CND correctness spot-check PASSED (PIVOTER_COMPARE hepph 3,5: "Optimized vs Reference
+correctness verified (exact)") -- the §122 precondition is satisfied, E3 numbers trustworthy.
+EXPERIMENTS.md created at repo root (the experiment-section live status doc).
