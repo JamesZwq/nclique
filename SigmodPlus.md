@@ -6285,3 +6285,25 @@ web-uk-2005 at r=3 s=4..7 (CND OOM at (3,4)). Already-measured wins from E1/E3: 
 (CND infeasible >=300GB vs 8.1s), dblp5 (150.6x + 95x mem), dblp4 (22.8x), epin (5.9x), yt
 (5.8x). Roster = top 8 by advantage once the FEM/web-uk numbers land; expected paper layout:
 main table = 8 advantage graphs + astro/hepph as the honest parity/loss rows + socials.
+2026-07-08: §141 ROSTER RESULTS (tods2, same-machine; CND = sum over the row's 4 cells):
+  graph      r,s-range  NSI sweep (RSS)      certified%        CND spectrum (RSS)
+  raefsky3   4,5-8      ~0.6s  (0.2GB)       100% (res=0)      306.7s (27.9GB)   -> 511x, 140x mem
+  pkustk11   4,5-8      ~3.7s  (1.4GB)       100% (res=0)      1349.6s (155.6GB) -> 365x, 111x mem
+  pkustk13   4,5-8      ~81s   (29.4GB)      100% (res=0)      4x MEM-ABORT >=300GB -> INFEASIBLE
+  pwtk       4,5-8      ~22s   (7.6GB)       100% (res~4k)     4x MEM-ABORT -> INFEASIBLE
+  nasasrb    4,5-8      ~25s   (8.5GB)       100% (res=0)      407.3s (61GB) -> 16x, 7x mem
+  ldoor      4,5-8      ~18s   (7.7GB)       100% (res=0)      4x MEM-ABORT -> INFEASIBLE
+  msdoor     4,5-8      ~8.4s  (3.4GB)       100% (res=0)      4x MEM-ABORT -> INFEASIBLE
+  webuk      3,4-7      ~7.5s  (0.37GB)      ALL-MERGEABLE     4x MEM-ABORT -> INFEASIBLE
+NEW HEADLINE: web-uk-2005's ENTIRE spectrum is ALL-MERGEABLE = pure closed form (zero peel, zero
+patterns; the sweep is one MCE + arithmetic). Every FEM/CFD graph certifies 100% with residue 0
+(pwtk ~4k of 3.86M). CND is again ~flat in s per graph; its separations here are MEMORY-driven.
+THE PAPER'S 8 BIG-ADVANTAGE GRAPHS (§141 pick, diversity-balanced):
+  1 web-it-2004 (INFEASIBLE vs 8.1s)   2 web-uk-2005 (INFEASIBLE vs 7.5s, all-closed-form)
+  3 sc-pkustk13 (INFEASIBLE vs 81s)    4 sc-pwtk (INFEASIBLE vs 22s)
+  5 sc-ldoor (INFEASIBLE vs 18s)       6 raefsky3 (511x time, 140x mem)
+  7 sc-pkustk11 (365x, 111x mem)       8 com-dblp r=5 (150.6x, 95x mem)
+  alternates: sc-msdoor (INFEASIBLE), dblp4 (22.8x), nasasrb (16x).
+  honest secondary rows: epin 5.9x, yt 5.8x, astro 1.65x, hepph 0.82x (CND wins).
+  Domain spread: web x2, FEM-structural x4, CFD x1, collaboration x1; 5 infeasibility rows +
+  3 large finite ratios. Raw logs: tods2:/home/wenqianz/nsi_roster/.
