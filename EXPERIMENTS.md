@@ -27,6 +27,9 @@ The 8 big-advantage graphs (picked §141, domain-balanced):
   com-dblp       5,6-9    28.3s (2.7GB)     4261s (257.3GB)         150.6x time, 95x mem
 Honest secondary rows (same table or adjacent): dblp r4 22.8x; nasasrb 16x; epin 5.9x; yt 5.8x;
 astro 1.65x; hepph 0.82x (CND WINS -- keep, framed by CND's s-flat combinatorial counting).
+HONEST MEMORY ROWS: on the social graphs our sweep RSS exceeds CND's (epin 26.2GB vs ~2.0GB,
+yt 7.8GB vs ~3.9GB; residue machinery constants); the memory win is at the infeasibility
+frontier, not universal -- state it plainly in RQ1 prose.
 Alternates: sc-msdoor (infeasible), if a reviewer objects to any pick.
 Data: tods2:/home/wenqianz/nsi_main_table/ + /home/wenqianz/nsi_e3/ + /home/wenqianz/nsi_roster/.
 TODO: copy the three tods2 result dirs into paper_data/ (git, -f) before writing.

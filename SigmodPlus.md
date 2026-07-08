@@ -6340,3 +6340,9 @@ SLOT LEDGER (binding; keep consistent across abstract/intro/conclusion):
     Contributions) | Preliminaries, ExistingApproach, TransferTheory, SweepAlgorithm, Index,
     Experiments, RelatedWork, Conclusion = STUBS with correct labels. Abstract LAST.
 E7 (NOCERT ablation) + E5b (roster indexes) running on tods2 (/home/wenqianz/nsi_e7/).
+2026-07-08 HONEST CAVEAT surfaced (user asked about memory): on the two SOCIAL graphs our sweep
+RSS EXCEEDS CND's: epin 26.2GB vs CND ~2.0GB (13x heavier), yt 7.8GB vs ~3.9GB (2x). Cause:
+large residue -> pattern/maps/residue machinery constants; CND is light when the r-clique count
+is small. Honest reading for the paper: the memory win lives at the infeasibility frontier
+(web/FEM/dblp5, where CND needs 155-300+GB and we need 0.2-29GB); on small social graphs both
+fit easily and CND is lighter. Must appear in the main table's honest rows + EXPERIMENTS.md RQ1.
