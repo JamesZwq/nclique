@@ -114,7 +114,7 @@ Figure~\ref{fig:scal_r} shows how the whole-spectrum time grows with the order $
 %
 The x-axis is the order $r$ and the y-axis is time in seconds on a log scale.
 %
-\specnd{} scales gracefully: on \daWIT{} the whole spectrum grows from $0.8$ seconds at $r{=}3$ to $11$ seconds at $r{=}7$, and on \daDBL{} from $2.9$ to $97$ seconds, while memory stays under $3$ and $14$GB.
+\specnd{} scales gracefully: on \daWIT{} the whole spectrum grows from $0.8$ seconds at $r{=}3$ to $15$ seconds at $r{=}7$, and on \daDBL{} from $2.9$ to $97$ seconds, while memory stays under $3$ and $14$GB.
 %
 By contrast \cnd{} already needs $56$ minutes and $310$GB for the single cell $(3,4)$ on \daWIT{} and exceeds the budget for every larger order, so \specnd{}'s entire $r{=}7$ spectrum is faster than one \cnd{} cell at $r{=}3$.
 %

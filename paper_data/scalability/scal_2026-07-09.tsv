@@ -1,35 +1,35 @@
-# §148 Scalability with (r,s), tods2 same-machine, SpecND single-thread
+# §148 Scalability with (r,s), tods2 same-machine CLEAN re-run (no co-runner), SpecND single-thread
 # Panel A: vary r, s-window [r+1,r+4] (4 cells), whole-spectrum time(s) / mem(GB)
 graph	r	time_s	mem_gb
-webit	3	0.81	0.49
-webit	4	1.52	0.75
-webit	5	2.90	1.13
-webit	6	5.29	1.68
-webit	7	14.82	2.58
-dblp	3	2.92	0.61
-dblp	4	5.94	1.04
-dblp	5	18.14	2.58
-dblp	6	47.08	6.80
-dblp	7	97.01	13.38
-# Panel B: fix r=4, grow smax=5..12, whole-spectrum time(s) / mem(GB)
+webit	3	0.82	0.49
+webit	4	1.54	0.75
+webit	5	2.89	1.13
+webit	6	5.28	1.68
+webit	7	10.50	2.58
+dblp	3	2.06	0.61
+dblp	4	5.41	1.04
+dblp	5	16.04	2.58
+dblp	6	47.07	6.80
+dblp	7	96.47	13.38
+# Panel B: fix r=4, grow smax=6..12, whole-spectrum time(s) / mem(GB)
 graph	smax	time_s	mem_gb
 webit	6	1.41	0.74
-webit	7	1.47	0.74
-webit	8	1.56	0.75
-webit	9	1.58	0.75
-webit	10	1.62	0.75
-webit	11	1.70	0.75
-webit	12	1.73	0.75
-dblp	6	5.27	1.01
-dblp	7	5.34	1.03
-dblp	8	5.46	1.04
+webit	7	1.48	0.74
+webit	8	1.53	0.75
+webit	9	1.57	0.75
+webit	10	1.63	0.75
+webit	11	1.67	0.75
+webit	12	1.71	0.75
+dblp	6	5.25	1.01
+dblp	7	5.35	1.03
+dblp	8	5.41	1.04
 dblp	9	5.47	1.05
-dblp	10	5.58	1.05
-dblp	11	6.00	1.06
-dblp	12	6.09	1.06
-# Panel C: feasible CND single-cell (r,s)=(3,4) time / mem  (vs SpecND whole r=3 spectrum)
-graph	cnd_time	cnd_mem_gb	specnd_whole_r3_time
-raefsky3	10.70	3.2	0.10
-pkustk11	67.46	24.8	0.81
-nasasrb	28.04	11.1	10.46
-dblp	7.71	2.4	2.92
+dblp	10	5.57	1.05
+dblp	11	5.60	1.06
+dblp	12	6.11	1.06
+# Panel C: feasible CND single-cell (3,4) time/mem  (crossover; CND single cell vs SpecND whole r=3 spectrum)
+graph	cnd_time_s	cnd_mem_gb
+raefsky3	12.3	3.2
+pkustk11	76.2	24.8
+nasasrb	27.9	11.1
+dblp	5.5	2.4
