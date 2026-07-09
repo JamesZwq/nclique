@@ -6535,3 +6535,18 @@ Fig 2/3 (monochrome, solid-black primary, dashed secondary) match teacher visual
 formatted, all citations resolve. 0 overfull hboxes, 0 "??", 9pp. Earlier: source HARD-WRAPPED to
 teacher width (§152). Paper is submission-shaped and style-matched. Overleaf project cleaned of
 build junk (only source syncs via Dropbox).
+
+## 154. STYLE BUG (user-caught): run-in headings must be PARAGRAPH breaks, not "%" (2026-07-09)
+User screenshot showed the three Challenges (Cross-Cell Certification / Exact Residue Replay /
+Spectrum Storage) and the Our-Idea features CRAMMED into one paragraph, each \sstitle heading
+running INLINE mid-flow, so the mirrored-triple structure was invisible. ROOT CAUSE: I separated
+run-in headings with a "%" line (same paragraph) instead of a BLANK line (new paragraph). The
+teacher (NuclearCD) puts a BLANK line before EVERY \stitle/\sstitle -- 15/15. FIX: replaced
+"\n%\n\stitle|sstitle|expsection" with "\n\n\..." (13 in Introduction); each run-in heading now
+starts its own paragraph/line, the three-way structure is visible, matches the teacher.
+RULE GOING FORWARD (do not repeat): a run-in heading (\stitle/\sstitle/\ssstitle/\expsection) is
+ALWAYS preceded by a BLANK LINE, never a "%". The "%" one-sentence-separator is only BETWEEN prose
+sentences of the same block. Also: the "(Theorem ??)" the user saw was a stale-aux single-pass
+artifact from my cleaning main.aux; a proper 2-pass build resolves all refs (0 "??" confirmed).
+ALSO record: after ANY edit, do a 2-pass latexmk, then pdftoppm-SCREENSHOT the changed page and
+LOOK, before claiming done -- the wrap/format is invisible in a token diff but obvious in the render.
