@@ -6502,3 +6502,16 @@ Dropbox. Git history of the real files is preserved up to commit 10e946a. GOING 
 the symlink (repo/sigmodNSI/...) exactly as before; the paper is versioned by Overleaf/Dropbox, not
 the repo. (This supersedes the old "paper stays a real tracked dir, never a symlink" rule for THIS
 paper, at the user's explicit request.) Overleaf project builds standalone: 9pp, 0 "??".
+
+## 152. PAPER STYLE PASS vs teacher (user: "换行 wrong, use sub-agents, screenshot-verify") (2026-07-09)
+Screenshotted page 1 (pdftoppm) and compared to the NuclearCD teacher page 1 (same topic).
+FIXED so far: (1) SOURCE now HARD-WRAPPED to ~68 chars matching the teacher style (wrap_tex.py:
+protects algorithm/tabular/table/figure/equation envs + %-lines + \-command lines; wraps prose at
+spaces only so $math$/\cite/\ref stay intact) -- this was the "换行 wrong" complaint (my one-long-
+line-per-sentence looked wrong in the Overleaf editor vs the teacher's neat wrapping). (2) Figure 1
+MOVED before its \ref so [t] lands it at the TOP of page-1 right column, matching the teacher (was
+floating to page 2). Page 1 now structurally matches the teacher: abstract left, Fig 1 top-right,
+Example, Applications, Existing Methods. A sub-agent is doing a rigorous page-1 audit vs the teacher
++ the §1/§3/§5/§12 playbook rules; will batch-fix its findings. Paper builds 9pp, 0 "??".
+NOTE: the paper is on Overleaf now (§151), so edits save to Dropbox directly (not git); this
+SigmodPlus entry is the record.
