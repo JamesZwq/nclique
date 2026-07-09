@@ -1,0 +1,35 @@
+# §148 Scalability with (r,s), tods2 same-machine, SpecND single-thread
+# Panel A: vary r, s-window [r+1,r+4] (4 cells), whole-spectrum time(s) / mem(GB)
+graph	r	time_s	mem_gb
+webit	3	0.81	0.49
+webit	4	1.52	0.75
+webit	5	2.90	1.13
+webit	6	5.29	1.68
+webit	7	14.82	2.58
+dblp	3	2.92	0.61
+dblp	4	5.94	1.04
+dblp	5	18.14	2.58
+dblp	6	47.08	6.80
+dblp	7	97.01	13.38
+# Panel B: fix r=4, grow smax=5..12, whole-spectrum time(s) / mem(GB)
+graph	smax	time_s	mem_gb
+webit	6	1.41	0.74
+webit	7	1.47	0.74
+webit	8	1.56	0.75
+webit	9	1.58	0.75
+webit	10	1.62	0.75
+webit	11	1.70	0.75
+webit	12	1.73	0.75
+dblp	6	5.27	1.01
+dblp	7	5.34	1.03
+dblp	8	5.46	1.04
+dblp	9	5.47	1.05
+dblp	10	5.58	1.05
+dblp	11	6.00	1.06
+dblp	12	6.09	1.06
+# Panel C: feasible CND single-cell (r,s)=(3,4) time / mem  (vs SpecND whole r=3 spectrum)
+graph	cnd_time	cnd_mem_gb	specnd_whole_r3_time
+raefsky3	10.70	3.2	0.10
+pkustk11	67.46	24.8	0.81
+nasasrb	28.04	11.1	10.46
+dblp	7.71	2.4	2.92

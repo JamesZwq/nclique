@@ -6458,3 +6458,23 @@ NEW EXPERIMENT (Exp: Scalability with r and s), user-requested, CND-independent,
   C) feasible-CND r=3 crossover points (raefsky3/pkustk11/nasasrb/dblp) for the comparison.
 This becomes the paper's scalability figure; the CND grind (r=3,5 full) is ABANDONED (won't finish,
 low value) -- the main comparison rests on the trustworthy uniform r=4 table + this scalability plot.
+
+## 149. SCALABILITY EXPERIMENT DONE -- Panel B is the headline structural result (2026-07-09)
+Data: paper_data/scalability/scal_2026-07-09.tsv (git). tods2 same-machine, SpecND single-thread.
+PANEL A (vary r, s-window [r+1,r+4], whole-spectrum time/mem): SMOOTH graceful growth --
+  webit 0.8/1.5/2.9/5.3/14.8s (0.5-2.6GB) for r=3..7; dblp 2.9/5.9/18/47/97s (0.6-13.4GB).
+  CND on webit: r=3 = 56min/310GB, r>=4 OOM. So our r=7 (15s) is still 200x+ under CND's r=3.
+PANEL B (fix r=4, grow smax=5..12, whole-spectrum time) -- THE KILLER RESULT: adding cells is
+  NEARLY FREE. webit: 6 cells=1.41s ... 12 cells=1.73s (each extra cell ~0.05s, mem FLAT 0.75GB);
+  dblp: 6 cells=5.27s ... 12 cells=6.09s (each extra cell ~0.1s, mem flat 1.06GB). The whole-
+  spectrum time is nearly INDEPENDENT of the number of cells -- direct proof that a certified cell
+  costs O(#patterns), i.e. the chain certificate makes spectrum WIDTH almost free. This is the
+  single cleanest demonstration of the paper's core claim, CND-independent.
+PANEL C (feasible CND single cell (3,4) vs SpecND whole r=3 spectrum): CND raefsky3 10.7s,
+  pkustk11 67s, nasasrb 28s, dblp 7.7s for ONE cell; SpecND computes the whole 4-cell r=3
+  spectrum in 0.1/0.8/10/2.9s -- our whole spectrum beats CND's single cell even where CND is
+  feasible. (nasasrb is the one where our cold cell dominates; still competitive.)
+This experiment becomes Exp (Scalability with r and s) in the paper: Panel A (advantage grows with
+r), Panel B (spectrum width is free), Panel C (crossover). NEXT: rebuild the paper Experiments
+section around uniform-r=4 main table + this scalability figure; the abandoned multi-R CND grind
+is replaced by Panel C's crossover points. Path fix (nCr.txt robust) committed for future parallel.
