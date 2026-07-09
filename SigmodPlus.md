@@ -6438,3 +6438,23 @@ scheduler (nsi_sched.py). LESSONS (all recorded so we don't repeat):
 SpecND multi-R sweep magnitudes (parallel, feasibility-confirmed): all 9 graphs feasible at
 r=3,4,5; e.g. pkustk11 0.8/1.4/2.1s, raefsky3 0.1/0.2/0.3s, webit 0.8/1.5/2.9s, dblp 2.1/5.6/17.5s,
 nasasrb 10/26/48s, pkustk13 23/70/(r5 pending), pwtk 11/19/33s, ldoor 5/8/10s, webuk all-mergeable.
+
+## 148. web-it CROSSOVER (real both-ends) + SCALABILITY experiment (user's idea) (2026-07-09)
+KEY DATA POINT (the "advantage grows with r" story with REAL numbers on one graph):
+  web-it CND: r=3 (3,4) FINISHES in 55:54 / 310GB; r=4 -> 4x OOM (uniform); r=5 -> OOM.
+  web-it SpecND: r=3 0.8s/0.5GB, r=4 1.5s/0.7GB, r=5 2.9s/1.1GB.
+  => advantage on web-it: r=3 ~4200x (56min vs 0.8s), r>=4 CND infeasible. This is the clean
+  crossover the user predicted: finite-but-huge at low r, infeasible at higher r.
+  (webuk CND r=3 reported 522GB > 503GB physical = swap-contaminated, DISCARD; RSS-monitor
+  kill had a child-pid bug and did not fire -- do not trust >physical numbers.)
+MULTI-THREADING (user asked): CND is ALREADY 96-thread OpenMP ("Max OpenMP threads: 96") and
+still OOMs -- its wall is MEMORY (holds all r-cliques), not compute, so more threads do not help
+it finish. Our SpecND is SINGLE-THREADED and still beats 96-thread CND, which is a strength to
+state. Parallelizing SpecND (residue peel + supInit; cells sequential via the chain) is future work.
+NEW EXPERIMENT (Exp: Scalability with r and s), user-requested, CND-independent, 2 graphs
+(web-it dense-web, dblp collab), running on tods2:/home/wenqianz/nsi_scal/:
+  A) vary r=3..7 (s-window [r+1,r+4]): whole-spectrum time+memory vs r.
+  B) fix r=4, grow smax=5..12: whole-spectrum time vs #cells (adding certified cells is ~free).
+  C) feasible-CND r=3 crossover points (raefsky3/pkustk11/nasasrb/dblp) for the comparison.
+This becomes the paper's scalability figure; the CND grind (r=3,5 full) is ABANDONED (won't finish,
+low value) -- the main comparison rests on the trustworthy uniform r=4 table + this scalability plot.
