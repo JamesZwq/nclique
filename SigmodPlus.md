@@ -6728,3 +6728,27 @@ replay-as-paragraph). Now a clean index-based paper matching p2033-wen.
 LESSON: for an index-based paper the INDEX is the star -- present naive-index+comparison
 table, then the index structure+query, THEN the construction algorithm (kept simple).
 Never let the construction algorithm (peeling machinery) be the centerpiece.
+
+## 162. THREE-ALGORITHM ABLATION -- launched overnight (user: "run them all now, parallelize
+## as much as possible, get everything done in ~7-8h overnight") (2026-07-10)
+The paper's ONE remaining experiment gap: base + 2 optimizations = 3 algorithms, none measured
+cleanly. Confirmed the exact engine toggles (region_native_sct_peel.cpp):
+  base  = SCT_NO_RMERGE=1 SCT_SWEEP_NOCERT=1   (shared CPI, per-cell FULL peel)
+  +cf   = SCT_SWEEP_NOCERT=1                    (mergeable/closed-form regions ON, certify OFF)
+  +full = default                              (both = SpecND)
+Setting: UNIFORM r=4, s=5..8 (matches RQ1). Metrics: wall+peakRSS (/usr/bin/time -v) + certified%
++ mergeable count from stdout. Driver: region_native/ablation_sweep.sh (fast config first, then
+the two slow ones; per-config timeout ABL_TIMEOUT=1800s -> a config that can't finish is a valid
+"infeasible" result).
+CLEAN TIMING via cross-machine parallelism (same-box parallel would inflate timing, §clean-bench):
+  - tods2 == tods1 == radonduo (ONE box, 96c/503GB, bin ~/UNSW/pivoter/region_native/, graphs
+    /data/wenqianz/*.edges) -- use as ONE machine, SERIAL.
+  - icml2 (SEPARATE box, 64c/503GB, graphs ~/UNSW/pivoter/data/*.edges) -- second machine.
+  Each graph's 3 configs on ONE machine (within-graph ratio is what matters); graphs split across
+  the two boxes; SERIAL within a box.
+GRAPH SET (web-uk/FEM NOT on disk -> closed-form-region's decisive case cited from existing RQ4
+web-uk data, not re-run): collab astro/hepph/condmat/dblp (certification-decisive), web
+web-it/web-Google, social youtube/pokec. Build: cd region_native && g++ -O3 -std=c++17 -I.
+-I../src/NucleusDecomposition -o region_native_sct_peel region_native_sct_peel.cpp.
+Launched via nohup on both boxes (subagent), out at /data/wenqianz/ablation_tods2.tsv +
+icml2:~/ablation_icml2.tsv. COLLECT next session.
