@@ -6571,3 +6571,25 @@ LESSON: contributions vs story is not either/or -- enough substantial contributi
 narrative thread. Don't under-sell (1-algo) OR pile unrelated algorithms; extend the ONE story.
 REMAINING: measure the hierarchy overhead (claim softened to "adds a union-find pass" until run);
 two case studies; deepen SOTA + theory to teacher depth (~2 more pages -> 12-13pp).
+
+## 156. THOROUGH/VISUAL PASS (user: "paper is a big engineering effort -- show the CPI, show the
+## index, list the CPI algorithm, with clear figures") (2026-07-09)
+User: the draft was too light (prose only). A real paper SHOWS its data structures with figures,
+LISTS its algorithms as pseudocode, walks worked examples. DONE:
+- Figure 2 (figures/make_cpi.py -> cpi_structure.pdf): the class-based CPI on the running example
+  -- (a) graph colored by class + regions, (b) class quotient Q with weights, (c) class-SCT tree
+  with disjoint leaves counting cliques by binomials. Wired into §4.
+- Algorithm 1 BuildCPI (in §4): regions -> profile classes -> weighted quotient Q -> degeneracy-
+  seeded pivot recursion emitting disjoint leaves; line-anchored walkthrough (Lines 1/2-3/4/5-8).
+- Figure 3 (figures/make_nsi.py -> nsi_layout.pdf): the NSI index layout + point-query walk --
+  classOf, mergeable regions, pattern table (class multiset, c(P), boundary core), per-cell residue
+  dicts; query flow. Wired into §7.
+The paper now has 5 figures (running example, CPI structure, NSI layout, scal-r, scal-s) + 2
+algorithms (BuildCPI=Alg 1, SpecND=Alg 2) + 3 tables; 10pp, 0 "??", builds clean, all screenshot-
+verified (§4 CPI page: Fig2+Alg1+Def4.1+Prop4.2+Ex4.3; §7: Alg2+Fig3). This addresses the "show the
+structures / list the algorithm / it's a big engineering effort" demand.
+LESSON: a data-structure/algorithm paper is not prose -- every structure needs a FIGURE, every
+algorithm a PSEUDOCODE block, every claim a worked example on the running figure. Screenshot each.
+GOTCHA: building IN the Dropbox/Overleaf folder occasionally hits "can't write main.pdf" (Dropbox
+lock); clean + rebuild resolves it.
+REMAINING to 12-14pp: two case studies; deepen theory proofs/motivation; maybe enlarge Fig 3 text.
