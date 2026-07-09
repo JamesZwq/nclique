@@ -6593,3 +6593,38 @@ algorithm a PSEUDOCODE block, every claim a worked example on the running figure
 GOTCHA: building IN the Dropbox/Overleaf folder occasionally hits "can't write main.pdf" (Dropbox
 lock); clean + rebuild resolves it.
 REMAINING to 12-14pp: two case studies; deepen theory proofs/motivation; maybe enlarge Fig 3 text.
+
+## 157. FOUNDATIONS-FIRST + BASELINE-THEN-OPTIMAL RESTRUCTURE
+## (user: "spend real effort explaining region/class/pattern first -- it takes a long
+## time; then class-based CPI; for algorithms present a BASELINE solution first, then
+## our OPTIMAL solution; optimizations come later one by one") (2026-07-09)
+The user gave the correct paper structure. Two changes:
+(1) FOUNDATIONS. Rewrote Preliminaries so region, class, pattern each get the full
+    teacher treatment: motivation -> definition -> worked example on Fig 1 -> intuition.
+    - Regions (Def 2.1): "where the counting happens", every clique lives in one, cliqb.
+    - Classes (Def 2.6 Profile+Class): profile, weight w_c, interchangeability shown
+      concretely (swap v3<->v4 in class B preserves M1,M2 hence all core values);
+      "true degrees of freedom", source of all compression.
+    - Patterns (Def 2.8): multiset of classes, |P| = product of binomials, one core
+      value per pattern; Example 2.9 counts pattern {A:2,B:1} = C(2,2)C(3,1) = 3 triangles.
+    Named picked = "pattern" (clearer than "tuple").
+(2) BASELINE THEN OPTIMAL. New section order:
+    ClassCPI(4) -> Baseline(5) -> TransferTheory(6) -> SpecND(7).
+    - Moved Quotient Invariance theorem (thm:quotient) OUT of SpecND INTO ClassCPI(4):
+      it justifies the whole quotient, and the baseline needs it to peel at pattern
+      granularity, so it must precede both.
+    - NEW sections/Baseline.tex (5) = Algorithm 2 BaseSweep: build ONE CPI, peel every
+      cell independently. Correct (Prop 4.3 + Def 2.3 + Thm 4.1). "Why it already wins"
+      = no s-clique enumeration, beats CND per cell. "Why it's still wasteful" = a full
+      peel per cell, cost scales with range width, carries nothing across cells ->
+      motivates the transfer theory and SpecND.
+    - Reframed SpecND(7) opening: "the baseline peels every cell from scratch; we use
+      the transfer theory to certify most patterns and peel only the residue."
+Result: 11pp (was 10), builds clean, 0 "??", 3 algorithms (BuildCPI=1, BaseSweep=2,
+SpecND=3), 5 figures. All pages screenshot-verified (Prelim §2, SOTA+CPI §3-4 with
+Thm 4.1, Baseline §5 with Alg 2 + the full base->optimal arc). Contributions list
+UNCHANGED (baseline is a body stepping-stone, NOT a contribution -- per the
+"contributions = final deliverables only" rule).
+NEXT (user: optimizations one by one, later): SpecND currently bundles certify+replay;
+future turns layer named optimizations on top of the baseline one at a time. Still
+pending for 12-14pp: two case studies, deeper SOTA/proof motivation.
