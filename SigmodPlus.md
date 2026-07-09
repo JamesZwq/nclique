@@ -6550,3 +6550,24 @@ sentences of the same block. Also: the "(Theorem ??)" the user saw was a stale-a
 artifact from my cleaning main.aux; a proper 2-pass build resolves all refs (0 "??" confirmed).
 ALSO record: after ANY edit, do a 2-pass latexmk, then pdftoppm-SCREENSHOT the changed page and
 LOOK, before claiming done -- the wrap/format is invisible in a token diff but obvious in the render.
+
+## 155. FULLER STORY (user: contributions must be enough AND flow) -- added Class-CPI + Hierarchy (2026-07-09)
+User rejected my over-correction ("one algorithm, just deepen"). RIGHT calibration: a paper needs
+ENOUGH contributions, but they must FLOW as ONE story, not a pile of algorithms. User named two:
+(1) EXPLAIN the class-based CPI (the foundation the draft hand-waved as "one clique tree"), and
+(2) ADD a Hierarchy contribution. Both flow from the ONE story, not bolted on. DONE:
+- NEW section 4 "The Class-Based Clique Path Index" (sections/ClassCPI.tex): regions->profile
+  classes->quotient graph->class-SCT (disjoint leaves, binomial support_count), Property (Additive
+  Support), one-tree-for-all-cells (kOver), construction cost. Distinguishes from CND's vertex CPI.
+- NEW section 8 "The Nucleus Hierarchy Across the Spectrum" (sections/Hierarchy.tex): Corollary
+  (Cross-Cell Nesting) from the KK shadow (T2) -> nuclei nest in BOTH k and s -> "the cohesion
+  landscape", the multi-resolution dense-subgraph object nucleus decomp was invented for; pattern-
+  granularity forest (polynomial even when nuclei are exponential); free (union-find over the sweep).
+- Intro updated: Our Idea now 4 features (Counting without enumeration + the 3); Contributions now 6
+  (CPI / certification / sweep+replay / index / cohesion landscape / experiments), each citing its
+  theorem/def. STORY FLOW: CPI (foundation) -> theory (insight) -> SpecND (compute) -> NSI (store/
+  query) -> hierarchy (payoff) -> experiments. Paper now 10pp, 0 "??", builds clean.
+LESSON: contributions vs story is not either/or -- enough substantial contributions, all on one
+narrative thread. Don't under-sell (1-algo) OR pile unrelated algorithms; extend the ONE story.
+REMAINING: measure the hierarchy overhead (claim softened to "adds a union-find pass" until run);
+two case studies; deepen SOTA + theory to teacher depth (~2 more pages -> 12-13pp).
