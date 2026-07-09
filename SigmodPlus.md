@@ -6416,3 +6416,25 @@ at r=3,4,5, advantage growing with r (finite Nx at low r -> CND infeasible at hi
 batch launched (tods2:/home/wenqianz/nsi_multir/, r=3,4,5 x 9 graphs x SpecND+CND). Once it
 lands, REBUILD Exp-1/2 tables around it and drop hepph/epin/yt from the headline (yt optional
 as a "even social improves with r" note).
+
+## 147. PARALLELIZATION: attempted, corrected -- CND cannot safely parallelize (2026-07-09)
+User asked to parallelize (server has 96 cores / 503GB). Tried a memory-budgeted parallel
+scheduler (nsi_sched.py). LESSONS (all recorded so we don't repeat):
+- BUG: the scheduler did not cd to the pivoter dir; CND opens a CWD-relative intermediate file,
+  so every parallel CND died in 3s with "file could not be opened" (rc=1, 65MB RSS) -- a SPURIOUS
+  failure, NOT an OOM. All scheduler CND results were garbage; caught by reading the log head.
+- CND CANNOT parallelize for TWO reasons: (i) timing contamination violates the clean-benchmark
+  rule (parallel contention once inflated a peel 3.7x -> wrong conclusion); (ii) CND writes a
+  fixed-name CWD-relative file, so two CND in one dir collide regardless.
+- prlimit --as (virtual address space) is the WRONG memory guard: it throws spurious bad_alloc;
+  use an RSS-monitor-and-kill instead (as diag_baseline.py does locally).
+- What DOES parallelize safely: the fast, low-memory SpecND SWEEPS (rn_sweep, no CWD dependence,
+  no shared temp file). They ran ~8-wide fine, but their TIMING is contended so only their
+  feasibility/magnitude is trusted; clean SpecND timing comes from the serial sensitivity/uniform.
+- REAL speedup vs naive serial = cut REDUNDANCY, not add parallelism: OOM graphs need only ONE
+  confirmation cell per (graph,r) (1 OOM => whole spectrum infeasible), and r=4 CND already exists
+  (E3/uniform), so only r=3,5 remain. Corrected run = nsi_cnd35.sh (clean serial CND r=3,5,
+  correct CWD, RSS-monitor kill at 440GB, OOM graphs single-cell). Running on tods2.
+SpecND multi-R sweep magnitudes (parallel, feasibility-confirmed): all 9 graphs feasible at
+r=3,4,5; e.g. pkustk11 0.8/1.4/2.1s, raefsky3 0.1/0.2/0.3s, webit 0.8/1.5/2.9s, dblp 2.1/5.6/17.5s,
+nasasrb 10/26/48s, pkustk13 23/70/(r5 pending), pwtk 11/19/33s, ldoor 5/8/10s, webuk all-mergeable.
