@@ -6404,3 +6404,15 @@ band engine §132 broke the edges not the interior; T5 diagonal theorem §133). 
 wall and the §131 diagonal wall are the SAME pattern-quotient explosion, two cross-sections.
 DECISION PENDING (user): main table at uniform r=4 with honest hepph/epin scope, + sensitivity
 as the explanatory experiment. Draft tables (non-uniform) must be REPLACED by these.
+
+## 146. SENSITIVITY DONE + MULTI-R main table launched (2026-07-09)
+Sensitivity (SpecND, r=3..6, cells-total/RSS): pkustk11 0.8/1.4/2.1/3.0s (0.8-2.2GB); dblp
+1.9/5.4/16/47s (0.6-7.0GB); yt 58/59/41/37s -- and yt CERTIFICATION RISES with r: 79% -> 95%
+-> 99.56% -> 99.98%. So "advantage grows with r" holds on ALL THREE incl. the social graph;
+the ONLY walls are hepph r=4 (411GB) and epin r=4 (pattern explosion), NEITHER in the 8-graph
+headline set. USER DIRECTIVE (2026-07-09): strong lead on the 8 large graphs is sufficient; do
+NOT chase social/hepph. PLAN: main table (Exp-1) shows the 9 graphs (8 clique-structured + dblp)
+at r=3,4,5, advantage growing with r (finite Nx at low r -> CND infeasible at higher r). MULTI-R
+batch launched (tods2:/home/wenqianz/nsi_multir/, r=3,4,5 x 9 graphs x SpecND+CND). Once it
+lands, REBUILD Exp-1/2 tables around it and drop hepph/epin/yt from the headline (yt optional
+as a "even social improves with r" note).
