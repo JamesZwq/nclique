@@ -6515,3 +6515,23 @@ Example, Applications, Existing Methods. A sub-agent is doing a rigorous page-1 
 + the §1/§3/§5/§12 playbook rules; will batch-fix its findings. Paper builds 9pp, 0 "??".
 NOTE: the paper is on Overleaf now (§151), so edits save to Dropbox directly (not git); this
 SigmodPlus entry is the record.
+
+## 153. STYLE PASS COMPLETE -- sub-agent audit fixes applied, all 9 pages verified vs teacher (2026-07-09)
+Sub-agent page-1 audit returned 11 findings; applied all substantive ones:
+ #1 Figure 1 on page 1 (was already fixed by moving it before its \ref) -- confirmed top-right.
+ #2 KEYWORDS block added.
+ #3/#4 abstract rewritten to short one-sentence-per-line claims (was 46-75 word run-ons).
+ #6 abstract now NAMES \nsi + \specnd and echoes the 3 challenge concepts (certify/residue/store).
+ #5 headline number unified: "as little as 0.001 bytes per r-clique" verbatim in abstract + C3 +
+    conclusion (web-it's 0.045 kept only as a body example); "1,600 times" / "140 times" triple.
+ #7 contribution C3 now cites (Theorems chain, quotient) for the query guarantee.
+ #8 Figure 1 caption expanded to name M1/M2/M3, the shared triangle, and the nested nucleus levels.
+ #9 chopped the >30-word C2 walkthrough into short claims.
+ (#10/#11 minor/optional: skipped.)
+PAGE-BY-PAGE SCREENSHOT VERIFICATION (pdftoppm, all 9pp) vs the NuclearCD teacher: p1 abstract+Fig1+
+Applications matches; p5 Algorithm 1 (algorithm2e, bracket-named theorems, line-anchored walkthrough)
+matches; p6 datasets Table 1 (booktabs) clean; p7 main Table 2 + Exp-1..7 clean; p8 scalability
+Fig 2/3 (monochrome, solid-black primary, dashed secondary) match teacher visual system; refs ACM-
+formatted, all citations resolve. 0 overfull hboxes, 0 "??", 9pp. Earlier: source HARD-WRAPPED to
+teacher width (§152). Paper is submission-shaped and style-matched. Overleaf project cleaned of
+build junk (only source syncs via Dropbox).
