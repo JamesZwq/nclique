@@ -6656,3 +6656,37 @@ per-cell SOTA wall -> §4 class-based CPI (+Quotient Invariance) -> §5 baseline
 §9 hierarchy -> §10 exp. This is the full teacher paradigm the user asked for.
 REMAINING for 12-14pp: two case studies; deeper SOTA/related-work; possibly enlarge
 Fig 3 (NSI) text.
+
+## 159. ALGORITHM STRUCTURE REBUILT AS A LAYERED LADDER (matched NuclearCD source)
+## (user: "the algorithm structure should be LAYER BY LAYER; look again at the two teacher
+## papers, what you wrote is completely still not OK") -> read the FULL NuclearCD source at
+## ~/Downloads/Nuclear CD (Version 112671)/sections/ (2026-07-09)
+The real teacher structure (NuclearCD OurBaseIdea + OurApproach):
+- FRAMEWORK section: an Overview algorithm whose body is NAMED OPERATIONS as black boxes
+  (BuildIndex / s-CliqueCount / UpdateIndex / UpdateSupport); "Key Idea" + "Index Support".
+- LAYER section ("Updating the CPI"): opens with an INSTANTIATION TABLE (same framework,
+  different regimes) + "we first give the general principle, then show how it simplifies ...
+  as implementation optimizations"; then EACH LAYER is its own \subsection: declarative
+  setup -> bracketed-name Theorem + <=8-sentence soundness/completeness proof + Example on
+  running object + Remark(why crucial) -> \input its own algorithm float -> \stitle{Algorithm.}
+  line-anchored walkthrough -> \stitle{Correctness.} -> \stitle{Complexity.}; specialization
+  layers open "our general framework degenerates/specializes to ... as a direct specialization
+  of [general theorem]". Section closes with \subsection{Complexity.} + a complexity table.
+My old §7 was THREE run-in "Optimization 1/2/3" paragraphs in ONE section = a list, not a
+ladder. REBUILT:
+- §5 Baseline.tex -> "The Sweep Framework": Algorithm 2 SweepFramework with named ops
+  BuildCPI / CellSupport / ResolveCell, base instantiation = full peel (\specndbase), plus
+  "framework already wins" / "base sweep wasteful".
+- §7 SweepAlgorithm.tex -> "Accelerating the Sweep" = a LADDER: Table 1 (Base / +closed form
+  / +certify / +replay=SpecND, each row a different ResolveCell + cost), then
+  \subsection{Closed-Form Regions}(Thm 7.1 No Early Death), \subsection{Certifying Cells}
+  (chain cert), \subsection{Exact Residue Replay}(Thm 7.2 Level Invariance + Algorithm 3
+  ReplayPeel + Correctness), \subsection{The SpecND Algorithm}(Algorithm 4 assembled, lines
+  annotated §7.1/7.2/7.3, + Example 7.3 + Correctness + Complexity).
+Now 12pp, builds clean, 0 "??", 4 algorithms (BuildCPI/SweepFramework/ReplayPeel/SpecND),
+5 figures, 1 ladder table. Screenshot-verified p5 (framework), p7 (ladder table + 3 layer
+subsections), p8 (ReplayPeel + assembled SpecND).
+LESSON: a method section is a LADDER of \subsections each refining a named framework operation
+(theorem + own algorithm + correctness + complexity), NOT run-in \stitle "Optimization N"
+paragraphs. Base framework with named ops first; layers refine one op each; close with an
+instantiation/complexity table.
