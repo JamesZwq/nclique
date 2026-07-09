@@ -6690,3 +6690,41 @@ LESSON: a method section is a LADDER of \subsections each refining a named frame
 (theorem + own algorithm + correctness + complexity), NOT run-in \stitle "Optimization N"
 paragraphs. Base framework with named ops first; layers refine one op each; close with an
 instantiation/complexity table.
+
+## 160. INDEX-BASED REFRAME (index is the star, algorithm is just "construction", simple)
+## (user: "we're index-based, the algorithm logic should be very SIMPLE; reference
+## p2033-wen for the index-based structure, the two teacher papers for the writing")
+## + "NSI = compressed spectrum + chain-walk query, PHC-Index category" + "可以的没问题"
+## (2026-07-10)
+Studied /Users/zhangwenqian/Downloads/p2033-wen.pdf (On Querying Historical K-Cores,
+Wen VLDB'21) -- the canonical index-based paradigm: §3 Straightforward (online + NAIVE
+index too-big + a 3-row comparison Table) -> §4 the index (compression principle ->
+structure + FIGURE -> query) -> §5 Index Construction (the algorithm goes HERE, after the
+reader knows what the index is). The INDEX is the star; the algorithm is just "how to
+build it."
+My draft was ALGORITHM-centric (SpecND + ladder + ReplayPeel occupied §5-7; NSI demoted to
+§8). FLIPPED the whole paper to index-centric:
+- NEW §3 StraightforwardMethods.tex: online (=CND, "our baseline throughout") + per-cell
+  wall + a NAIVE index (store every core value per cell -> 10^12/row, unstorable) +
+  Table 1 (Online/Naive/NSI x Query time/Index space/Build time).
+- §4 TransferTheory reframed as "the compression principle": intro "our index is compact
+  because the spectrum is not arbitrary..."; closing retitled "From structure to an index"
+  -> a pattern's whole spectrum = one number c(P) + short residue = exactly what the index
+  stores.
+- §5 Index.tex = THE NSI, now BEFORE construction, opens "Section 4 showed a pattern's
+  whole spectrum is one number plus a short residue; NSI stores exactly that."
+- NEW §6 Construction.tex = "Index Construction" consolidating the old ClassCPI+Baseline+
+  SweepAlgorithm into ONE simple section: §6.1 the CPI (counting tool, Def 6.1 + Prop 6.2
+  + Fig 3 + Alg 1 BuildCPI), §6.2 SpecND (Alg 2) with closed-form regions (Thm 6.3) +
+  certification (the core) + RESIDUE REPLAY DEMOTED TO ONE PARAGRAPH (no more ReplayPeel
+  algorithm float, no ladder table, no SweepFramework float).
+- Moved Quotient Invariance (Thm 2.10) into Preliminaries (patterns need it before §4/§5).
+- main.tex reordered; DROPPED from build: ExistingApproach, ClassCPI, Baseline,
+  SweepAlgorithm (files still on disk, orphaned -- can delete).
+Result: 10pp (was 12; removed the algorithm-ladder bloat), builds clean, 0 "??", no dup
+labels. Screenshot-verified p4 (Table 1 + §3 + §4 start), p5 (§4 "From structure to an
+index" + Fig 2 + §5 NSI), p6 (§5 tail + §6 + §6.1 CPI), p7 (§6.2 Alg 2 SpecND simple +
+replay-as-paragraph). Now a clean index-based paper matching p2033-wen.
+LESSON: for an index-based paper the INDEX is the star -- present naive-index+comparison
+table, then the index structure+query, THEN the construction algorithm (kept simple).
+Never let the construction algorithm (peeling machinery) be the centerpiece.
