@@ -6478,3 +6478,16 @@ This experiment becomes Exp (Scalability with r and s) in the paper: Panel A (ad
 r), Panel B (spectrum width is free), Panel C (crossover). NEXT: rebuild the paper Experiments
 section around uniform-r=4 main table + this scalability figure; the abandoned multi-R CND grind
 is replaced by Panel C's crossover points. Path fix (nCr.txt robust) committed for future parallel.
+
+## 150. Clean scalability re-run + late-stage audit pass (2026-07-09)
+Scalability RE-RAN CLEAN (no co-runner; the earlier run overlapped a stray 522GB CND from the
+failed cnd35 kill). Clean numbers ~identical, slightly better (contention had made us look slower):
+webit r=7 14.8->10.5s, dblp r=5 18.1->16.0s; Panel B webit 1.41->1.71s (6->12 cells) unchanged.
+Swapped into data/figures/text. Lesson re-logged: after kill, pgrep-confirm before launching.
+LATE-STAGE AUDIT (paper-architect back-half): em-dashes in prose = 0; banned/slide terms = 0
+(only \label{sec:sota}, fine); no body rhetorical questions (only the Research Question); headline
+UNIFIED to "up to 1,600 times" + "140 times less memory" verbatim in abstract+intro+conclusion
+(triple redundancy). Build clean 9pp, 0 undefined refs, 0 "??", 0 TODO. Draft is submission-shaped.
+REMAINING (camera-ready): E2 multi-trial medians; omega column in datasets table; novelty deep-read
+(Burkhardt-Faber 1806.05523 / flag-KK / ICDE21 2011.00749); TWO case studies (teacher paradigm; we
+have ZERO -- the biggest gap, needs a scope decision on which graph/story). Paper = sigmodNSI/.
