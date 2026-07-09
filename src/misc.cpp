@@ -46,9 +46,19 @@
 double nCr[1001][401];
 
 void populate_nCr() {
-    std::ifstream infile("src/nCr.txt");
+    // nCr.txt is a fixed, read-only precomputed table. Try several locations so the binary
+    // works regardless of CWD (env override, cwd-relative, then a build-time absolute path),
+    // which lets many CND processes run in parallel from any directory (they only READ it).
+    std::ifstream infile;
+    const char *env = std::getenv("PIVOTER_NCR");
+    if (env) infile.open(env);
+    if (!infile.is_open()) infile.open("src/nCr.txt");
+    if (!infile.is_open()) infile.open("nCr.txt");
+#ifdef PIVOTER_SRC_DIR
+    if (!infile.is_open()) infile.open(PIVOTER_SRC_DIR "/src/nCr.txt");
+#endif
     if (!infile.is_open()) {
-        std::cerr << "file could not be opened" << std::endl;
+        std::cerr << "file could not be opened (set PIVOTER_NCR to the path of nCr.txt)" << std::endl;
         exit(1);
     }
 
