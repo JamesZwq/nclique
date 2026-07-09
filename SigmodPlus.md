@@ -6371,3 +6371,36 @@ web-uk 0.99MB/0.0012 B-per-rclique (all-mergeable), raefsky3 0.022, ldoor/msdoor
 0.07, pkustk13 0.67, nasasrb 2.15 B/rclique; all tiny, queries 191-985ns. The paper's main table
 + Exp-1/2 MUST be rebuilt on the uniform numbers once nsi_uniform lands; current draft tables are
 the non-uniform data and will be REPLACED.
+
+## 145. UNIFORM r=4 RESULTS + the compression-ratio theory (2026-07-09)
+UNIFORM r=4, s=5..8 on all 13 graphs (tods2:/home/wenqianz/nsi_uniform/, DONE). SpecND sweep
+(cells-total, RSS) vs CND (4-cell sum, RSS):
+  STABLE ADVANTAGE (8 graphs, all clique-structured, 100% certified):
+    webit    1.6s/0.8GB    vs CND 4x OOM(>=300GB)  -> infeasible
+    webuk    ~0s/0.37GB    vs CND 4x OOM           -> infeasible (all-mergeable)
+    pkustk13 77s/29GB      vs CND 4x OOM           -> infeasible
+    pwtk     19s/7.6GB     vs CND 4x OOM           -> infeasible
+    ldoor    9s/7.7GB      vs CND 4x OOM           -> infeasible
+    raefsky3 0.18s/0.2GB   vs CND 294s/28GB        -> ~1600x, 140x mem
+    pkustk11 1.7s/1.4GB    vs CND ~1300s/156GB     -> ~770x, 111x mem
+    dblp     5.4s/1.1GB    vs CND 187s/16GB        -> 35x, 15x mem
+    (nasasrb 25s/8.5GB vs 384s/61GB -> 15x, 7x mem: 9th, solid)
+  MIXED / HONEST:
+    astro    66s/10GB      vs CND 98s/9GB          -> 1.5x, slight mem loss
+    yt       83s/10GB      vs CND 81s/5.7GB        -> ~parity (certified drops to 95-96%)
+  OUR WALL (the uniform setting EXPOSED it, user was right):
+    hepph    4254s/411GB   vs CND 2698s/140GB      -> CND WINS (hepph r=4 = 40M patterns,
+                                                       cold cell 4243s/411GB = pattern wall)
+    epin     PATTERN-EXPLOSION (hit 200M incidence cap)  -> cannot run at r=4
+THE THEORY (answers "should advantage grow with r?"): advantage = compression ratio
+#r-cliques/#patterns. On a single clique K_c it is exactly C(c,r), which GROWS with r up to
+r~c/2. So on clique-structured graphs advantage grows with r (why 5 graphs make CND infeasible
+at r=4 while we finish in seconds). But on complex-overlap graphs the pattern count grows with r
+too (compression collapses) and WE hit the wall (hepph/epin at r=4). The correct paper claim is
+NOT "advantage grows with r" (hepph/epin falsify it) but "advantage tracks the compression ratio,
+which grows with r on clique-structured graphs". Sensitivity grid (pkustk11/dblp/yt x r=3,4,5,6)
+running to plot this curve. RE s=r+1 batch: DONE long ago = the §131 t=1 diagonal (U-shape;
+band engine §132 broke the edges not the interior; T5 diagonal theorem §133). The uniform-r=4
+wall and the §131 diagonal wall are the SAME pattern-quotient explosion, two cross-sections.
+DECISION PENDING (user): main table at uniform r=4 with honest hepph/epin scope, + sensitivity
+as the explanatory experiment. Draft tables (non-uniform) must be REPLACED by these.
