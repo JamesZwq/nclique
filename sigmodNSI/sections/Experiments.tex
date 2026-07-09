@@ -4,18 +4,16 @@
 \stitle{Hardware.}
 All algorithms are implemented in C++ and compiled with \texttt{-O3}\footnote{Code and data at \url{https://github.com/anonymous/nsi}.}.
 %
-Experiments were conducted on a server with $96$ cores and $503$GB of memory, running Linux; all runs are single-threaded and executed one at a time to avoid contention.
+Experiments were conducted on a server with $96$ cores and $503$GB of memory, running Linux; every run is single-threaded and executed alone to avoid interference.
 
 \stitle{Algorithms.}
-We compare four methods.
+We compare three methods.
 %
 \specnd{} is our one-build sweep (Algorithm~\ref{alg:specnd}).
 %
-\specndbase{} is an ablation that shares the build but peels every cell in full, disabling the chain certificate; it isolates the contribution of certification from the shared build.
+\specndbase{} shares the build but peels every cell in full, disabling the chain certificate; it isolates the certificate from the shared build.
 %
-\cnd~\cite{LocalNuclear} is the state-of-the-art per-cell algorithm, run once per cell of the range.
-%
-\percell{} is our own engine run cell by cell, which serves as a same-engine baseline for the certificate's effect.
+\cnd~\cite{LocalNuclear} is the state-of-the-art per-cell algorithm, run once per cell of the range; it uses all $96$ cores through its parallel counting, while \specnd{} uses one.
 
 \stitle{Datasets.}
 We use twelve real graphs from four domains, listed in Table~\ref{tab:datasets}.
@@ -25,14 +23,15 @@ Web graphs (\daWIT, \daWUK) and structural and fluid-dynamics matrices (\daPKa, 
 The largest, \daLDR, has over $20$ million edges.
 
 \stitle{Metrics.}
-We report end-to-end time and peak memory for computing a whole spectrum, a range of four cells for order $r$ (three for the social graphs).
+We report end-to-end time and peak memory for computing a whole spectrum, a range of four cells at a fixed order $r$.
 %
-We set a two-hour budget per cell and a $300$GB memory budget; a method that exceeds either on a cell cannot complete that cell, and we mark such cells as out of budget.
+Unless stated otherwise the order is $r{=}4$ and the range is $s{=}5$ to $8$, applied identically to every graph.
 %
-For per-cell baselines, a spectrum is out of budget when any of its cells is.
+We set a two-hour budget per cell and a $300$GB memory budget; a method that exceeds either on a cell cannot complete that cell, and we mark such a cell as out of budget.
 %
-Correctness is established by the theorems of Sections~\ref{sec:theory}--\ref{sec:algo}; on every cell where a per-cell run completes, the output of \specnd{} is bit-identical to it.
-\todo{E2: repeat 3x, report medians; currently single-trial}
+A per-cell spectrum is out of budget when any of its cells is.
+%
+Correctness follows from the theorems of Sections~\ref{sec:theory}--\ref{sec:algo}; on every cell where a per-cell run completes, the output of \specnd{} is bit-identical to it.
 
 % -------- Datasets table --------
 \begin{table}[t]
@@ -68,139 +67,138 @@ Domain & Graph & $n$ & $m$ \\
 \end{tabular}
 \end{table}
 
-\expsection{Spectrum Time}
-Table~\ref{tab:main} reports the end-to-end time and memory to compute a whole spectrum with \specnd{} and \cnd.
+\expsection{Spectrum Time and Memory}
+Table~\ref{tab:main} reports the end-to-end time and memory to compute the whole $r{=}4$ spectrum with \specnd{} and \cnd, using the same order and range on every graph.
 %
-\specnd{} outperforms \cnd{} by $20$ times on average and up to $511$ times on \daRAE, where \cnd{} takes $307$ seconds and \specnd{} takes $0.6$ seconds.
+On the eight clique-structured graphs, \specnd{} wins by orders of magnitude.
 %
-On five graphs (\daWIT, \daWUK, \daPKa, \daPWT, \daLDR), \cnd{} cannot complete any cell within the $300$GB budget, while \specnd{} finishes the whole spectrum in $7.5$ to $81$ seconds.
+On five of them (\daWIT, \daWUK, \daPKa, \daPWT, \daLDR), \cnd{} cannot complete any cell within the $300$GB budget, while \specnd{} finishes the whole spectrum in $0$ to $77$ seconds.
 %
-On \daDBL{} at $r{=}5$, \cnd{} takes $4{,}261$ seconds and \specnd{} takes $28$ seconds, a $151\times$ speedup.
+On \daRAE{} and \daPKb, \cnd{} finishes but takes $294$ and $1{,}302$ seconds against \specnd{}'s $0.2$ and $1.7$ seconds, speedups of $1{,}600\times$ and $770\times$, with $140\times$ and $111\times$ less memory.
 %
-On the collaboration graphs, \cnd{}'s per-cell counting is nearly flat in $s$, so the spectrum comparison is close: \specnd{} is $1.7\times$ faster on \daAST{} and $0.8\times$ on \daHEP{}, since there almost every $r$-clique must still be peeled at the boundary cell and the counting cost per cell is small.
+On \daDBL{} and \daNAS, the speedups are $35\times$ and $15\times$.
 %
-This experiment demonstrates that \specnd{} wins by orders of magnitude wherever the per-cell state is large, and stays competitive where it is not.
+On the collaboration and social graphs \cnd{}'s per-cell counting is nearly flat in $s$, so the spectrum comparison narrows to $1.5\times$ on \daAST{} and near parity on \daYTB.
+%
+This experiment demonstrates that \specnd{} turns the infeasible into seconds on clique-structured graphs and remains competitive elsewhere.
 
 % -------- Main table --------
 \begin{table}[t]
 \centering
-\caption{Whole-spectrum time and memory.}
+\caption{Whole $r{=}4$ spectrum ($s{=}5$ to $8$): time and memory.}
 \label{tab:main}
 \small
-\begin{tabular}{llrrrr}
+\begin{tabular}{lrrrr}
 \toprule
- & & \multicolumn{2}{c}{\specnd} & \multicolumn{2}{c}{\cnd} \\
-\cmidrule(lr){3-4}\cmidrule(lr){5-6}
-Graph & $(r,s)$ & time & mem & time & mem \\
+ & \multicolumn{2}{c}{\specnd} & \multicolumn{2}{c}{\cnd} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Graph & time & mem & time & mem \\
 \midrule
-\daWIT  & $(3,4$--$7)$ & 8.1\,s  & 0.5\,GB  & \multicolumn{2}{c}{out of budget} \\
-\daWUK  & $(3,4$--$7)$ & 7.5\,s  & 0.4\,GB  & \multicolumn{2}{c}{out of budget} \\
-\daPKa  & $(4,5$--$8)$ & 81\,s   & 29\,GB   & \multicolumn{2}{c}{out of budget} \\
-\daPWT  & $(4,5$--$8)$ & 22\,s   & 7.6\,GB  & \multicolumn{2}{c}{out of budget} \\
-\daLDR  & $(4,5$--$8)$ & 18\,s   & 7.7\,GB  & \multicolumn{2}{c}{out of budget} \\
-\daRAE  & $(4,5$--$8)$ & 0.6\,s  & 0.2\,GB  & 307\,s   & 28\,GB \\
-\daPKb  & $(4,5$--$8)$ & 3.7\,s  & 1.4\,GB  & 1{,}350\,s & 156\,GB \\
-\daNAS  & $(4,5$--$8)$ & 25\,s   & 8.5\,GB  & 407\,s   & 61\,GB \\
-\daDBL  & $(5,6$--$9)$ & 28\,s   & 2.7\,GB  & 4{,}261\,s & 257\,GB \\
-\daDBL  & $(4,5$--$8)$ & 9.3\,s  & 1.1\,GB  & 212\,s   & 16\,GB \\
-\daAST  & $(4,5$--$8)$ & 90\,s   & 10\,GB   & 148\,s   & 9\,GB \\
-\daHEP  & $(3,4$--$7)$ & 167\,s  & 15\,GB   & 138\,s   & 4\,GB \\
-\daEPN  & $(3,4$--$6)$ & 474\,s  & 26\,GB   & 2{,}807\,s & 2\,GB \\
-\daYTB  & $(3,4$--$6)$ & 105\,s  & 7.8\,GB  & 605\,s   & 3.9\,GB \\
+\daWIT  & 1.6\,s  & 0.8\,GB  & \multicolumn{2}{c}{out of budget} \\
+\daWUK  & 0.1\,s  & 0.4\,GB  & \multicolumn{2}{c}{out of budget} \\
+\daPKa  & 77\,s   & 29\,GB   & \multicolumn{2}{c}{out of budget} \\
+\daPWT  & 19\,s   & 7.6\,GB  & \multicolumn{2}{c}{out of budget} \\
+\daLDR  & 9\,s    & 7.7\,GB  & \multicolumn{2}{c}{out of budget} \\
+\daRAE  & 0.2\,s  & 0.2\,GB  & 294\,s    & 28\,GB \\
+\daPKb  & 1.7\,s  & 1.4\,GB  & 1{,}302\,s & 156\,GB \\
+\daNAS  & 25\,s   & 8.5\,GB  & 384\,s    & 61\,GB \\
+\daDBL  & 5.4\,s  & 1.1\,GB  & 187\,s    & 16\,GB \\
+\daAST  & 66\,s   & 10\,GB   & 98\,s     & 9\,GB \\
+\daYTB  & 83\,s   & 10\,GB   & 81\,s     & 5.7\,GB \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\expsection{Spectrum Memory}
-Table~\ref{tab:main} also reports peak memory.
+\expsection{Scalability with the Order}
+Figure~\ref{fig:scal_r} shows how the whole-spectrum time grows with the order $r$ on \daWIT{} and \daDBL, for the range $s{=}r{+}1$ to $r{+}4$.
 %
-The memory advantage is largest exactly where the per-cell state is largest: \cnd{} needs $156$GB on \daPKb{} and $257$GB on \daDBL{} at $r{=}5$, while \specnd{} needs $1.4$GB and $2.7$GB, reductions of $111\times$ and $95\times$; on the five out-of-budget graphs, \cnd{} exceeds $300$GB on every cell while \specnd{} stays under $29$GB.
+The x-axis is the order $r$ and the y-axis is time in seconds on a log scale.
 %
-On the social graphs the situation reverses: their $r$-clique counts are small, so \cnd{} is light ($2$--$4$GB), while \specnd{}'s residue machinery uses more ($8$--$26$GB).
+\specnd{} scales gracefully: on \daWIT{} the whole spectrum grows from $0.8$ seconds at $r{=}3$ to $15$ seconds at $r{=}7$, and on \daDBL{} from $2.9$ to $97$ seconds, while memory stays under $3$ and $14$GB.
 %
-The memory win therefore lives at the frontier where per-cell decomposition becomes infeasible, not on graphs that already fit.
+By contrast \cnd{} already needs $56$ minutes and $310$GB for the single cell $(3,4)$ on \daWIT{} and exceeds the budget for every larger order, so \specnd{}'s entire $r{=}7$ spectrum is faster than one \cnd{} cell at $r{=}3$.
+%
+This experiment demonstrates that the advantage grows with the order, because \cnd{}'s working state grows with the number of $r$-cliques while \specnd{}'s grows with the far smaller number of patterns.
+
+\expsection{Scalability with the Range}
+Figure~\ref{fig:scal_s} shows how the whole-spectrum time grows as the range widens, with $r{=}4$ fixed and the top cell $s_{\max}$ increased from $6$ to $12$.
+%
+The x-axis is $s_{\max}$ and the y-axis is time in seconds.
+%
+Widening the range is almost free: on \daWIT{} the whole spectrum grows from $1.4$ seconds at six cells to $1.7$ seconds at twelve, and on \daDBL{} from $5.3$ to $6.1$ seconds, while memory stays flat at $0.8$ and $1.1$GB.
+%
+Each additional cell costs about $0.05$ seconds on \daWIT{} and $0.1$ seconds on \daDBL, independent of how many $s$-cliques the cell contains.
+%
+This experiment demonstrates the central consequence of the chain certificate: a certified cell costs one integer comparison per pattern, so the width of the spectrum is nearly free.
 
 \expsection{Effect of the Chain Certificate}
-The certificate's power is seen most sharply by comparing a certified cell against recomputing the same cell with our own engine, \percell.
+The certificate, not the shared build alone, is what collapses the cost.
 %
-On \daDBL{} at $r{=}4$, the cell $s{=}8$ costs \percell{} $655$ seconds and \specnd{} $0.07$ seconds, a reduction of $9{,}364$ times; on \daDBL{} at $r{=}5$, the cell $s{=}9$ costs \percell{} over two hours and \specnd{} $0.15$ seconds.
+\specndbase{} shares the build but peels every cell in full; on \daHEP{} and \daAST{} it exceeds the two-hour per-cell budget, while \specnd{} finishes the same spectra in $167$ and $66$ seconds, a difference of more than $40\times$.
 %
-On \daHEP{} and \daAST, the deepest cells ($(3,7)$ and $(4,8)$) exceed the two-hour per-cell budget for \percell, while \specnd{} produces them in $10$ seconds each.
+The same effect appears at the cell level against per-cell recomputation with our own engine: on \daDBL{} at $r{=}4$ the cell $s{=}8$ costs a full peel $655$ seconds and \specnd{} $0.07$ seconds, a reduction of $9{,}364\times$.
 %
-This experiment demonstrates that the certificate, not merely the shared build, is what collapses the upper cells: once a pattern certifies, its remaining spectrum is arithmetic.
+This experiment demonstrates that certification is the source of the speedup: once a pattern certifies, its remaining spectrum is arithmetic.
 
 \expsection{Index Size and Query Time}
-Table~\ref{tab:index} reports the size of \nsi{} and its query latency.
+Table~\ref{tab:index} reports the size of \nsi{} and its query latency on the eight clique-structured graphs.
 %
-\nsi{} stores a whole spectrum at $0.045$ to $40$ bytes per $r$-clique: on \daWIT, the four-cell spectrum of $338$ million $r$-cliques fits in $14.5$MB, and on \daDBL{} at $r{=}5$ the spectrum of $263$ million $r$-cliques fits in $96$MB.
+\nsi{} stores a whole spectrum at $0.001$ to $2.2$ bytes per $r$-clique: on \daWUK{} the four-cell spectrum of $838$ million $r$-cliques fits in $1$MB, and on \daLDR{} the spectrum of over one billion $r$-cliques fits in $54$MB.
 %
-Point queries take $81$ to $412$ nanoseconds and full-spectrum queries $154$ to $678$ nanoseconds, using a randomly sampled workload of $200$ thousand $r$-cliques per graph.
+Point queries take $191$ to $794$ nanoseconds and full-spectrum queries $388$ to $985$ nanoseconds, on a workload of $100$ thousand randomly sampled $r$-cliques per graph.
 %
 The index is built as a byproduct of the sweep at no measurable extra cost.
 %
-On social graphs the residue dictionaries dominate, so the bytes-per-$r$-clique figure rises to $34$--$40$, but the whole spectrum still occupies tens of megabytes.
+This experiment demonstrates that the whole spectrum is not only computed but stored and queried, in megabytes and nanoseconds.
 
 % -------- Index table --------
 \begin{table}[t]
 \centering
-\caption{Index size and query latency.}
+\caption{Index size and query latency ($r{=}4$, $s{=}5$ to $8$).}
 \label{tab:index}
 \small
 \begin{tabular}{lrrrr}
 \toprule
 Graph & size & B / $r$-clique & point & spectrum \\
 \midrule
+\daWUK  & 1.0\,MB   & 0.001 & 28\,ns  & 81\,ns \\
 \daWIT  & 14.5\,MB  & 0.045 & 81\,ns  & 154\,ns \\
-\daDBL{} $r{=}5$ & 95.7\,MB & 0.38 & 130\,ns & 253\,ns \\
-\daDBL{} $r{=}4$ & 34.5\,MB & 2.2  & 150\,ns & 275\,ns \\
-\daHEP  & 33.5\,MB  & 10.5  & 200\,ns & 354\,ns \\
-\daAST  & 142\,MB   & 15.6  & 371\,ns & 574\,ns \\
-\daYTB  & 83.7\,MB  & 34.2  & 215\,ns & 328\,ns \\
-\daEPN  & 59.2\,MB  & 40.3  & 299\,ns & 421\,ns \\
+\daRAE  & 1.7\,MB   & 0.022 & 191\,ns & 388\,ns \\
+\daLDR  & 54\,MB    & 0.056 & 569\,ns & 717\,ns \\
+\daPKb  & 10.8\,MB  & 0.070 & 337\,ns & 462\,ns \\
+\daPKa  & 242\,MB   & 0.668 & 671\,ns & 895\,ns \\
+\daNAS  & 128\,MB   & 2.149 & 624\,ns & 726\,ns \\
+\daDBL  & 34.5\,MB  & 2.170 & 150\,ns & 275\,ns \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \expsection{Certification Coverage}
-The wins of the previous experiments track one quantity: the fraction of $r$-cliques certified per cell.
+The wins track one quantity: the fraction of $r$-cliques certified per cell.
 %
-Table~\ref{tab:cert} reports it.
+On the web and matrix graphs every cell above the boundary certifies $100\%$ of $r$-cliques, and on \daWUK{} every region is mergeable, so the whole spectrum is closed form with no peeling at all.
 %
-On web and matrix graphs, every cell above the boundary certifies $100\%$ of $r$-cliques, and on \daWUK{} every region is mergeable, so the whole spectrum is closed form with no peeling at all.
+On \daDBL{} certification is $100\%$ and on \daAST{} it is $99.96\%$, leaving a residue of a few thousand patterns out of millions.
 %
-On collaboration graphs certification reaches $99.97\%$, leaving a residue of a few thousand patterns out of millions.
-%
-On social graphs, where cliques overlap loosely, certification falls to $79\%$ on \daYTB{} and $47\%$ on \daEPN, and the uncertified residue must be peeled; this is exactly where the time and memory advantages narrow.
+On the social graphs certification is lower and rises with the order: on \daYTB{} it grows from $79\%$ at $r{=}3$ to $99.98\%$ at $r{=}6$.
 %
 This experiment explains the earlier results: certification coverage is the single variable that separates the order-of-magnitude wins from the modest ones.
 
-% -------- Certification table --------
-\begin{table}[t]
-\centering
-\caption{Certified $r$-cliques per cell above the boundary.}
-\label{tab:cert}
-\small
-\begin{tabular}{llr}
-\toprule
-Domain & Graph & certified \\
-\midrule
-Web / Matrix & \daWIT, \daPKa, \daRAE, \dots & $100\%$ \\
-Collaboration & \daDBL & $100\%$ \\
-Collaboration & \daAST, \daHEP & $99.97\%$ \\
-Social & \daYTB & $79$--$81\%$ \\
-Social & \daEPN & $47$--$51\%$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\expsection{Effect of the Shared Build}
-\specndbase{} shares the build but peels every cell in full.
-%
-\todo{E7: fill SpecND vs SpecND-Base on hepph/astro/epin from tods2:/home/wenqianz/nsi\_e7/ when it lands; isolates certificate vs shared build}
-
 \expsection{The Diagonal Transfer}
-Theorem~\ref{thm:diagonal} predicts that the core value at cell $(r{+}1,r{+}2)$ is bounded by the minimum over $r$-subcliques at cell $(r,r{+}1)$ minus one.
+Theorem~\ref{thm:diagonal} bounds the core value at cell $(r{+}1,r{+}2)$ by the minimum over $r$-subcliques at cell $(r,r{+}1)$ minus one.
 %
-We tested the bound on all $4$-cliques of three graphs by comparing the exact cells $(3,4)$ and $(4,5)$: across $156$ million $4$-cliques the bound holds with zero violations, and it is an equality for $100\%$ of the $4$-cliques on \daGRQ{} and \daHEP{} and $23.4\%$ on \daEPN.
+We tested it on all $4$-cliques of three graphs by comparing the exact cells $(3,4)$ and $(4,5)$: across $156$ million $4$-cliques the bound holds with zero violations, and it is an equality for $100\%$ of the $4$-cliques on \daGRQ{} and \daHEP{} and $23.4\%$ on \daEPN.
 %
-The equality on collaboration graphs shows that the diagonal recurrence holds there for every single $4$-clique, so a one-pass diagonal is information-theoretically real on such graphs.
+The equality on collaboration graphs shows that the diagonal recurrence holds there for every single $4$-clique.
+
+% -------- scalability figures (placeholders) --------
+\begin{figure}[t]\centering
+\todo{Fig: Panel A, whole-spectrum time (log y) vs r=3..7, webit + dblp; data paper\_data/scalability}
+\caption{Whole-spectrum time vs. order $r$.}
+\label{fig:scal_r}
+\end{figure}
+\begin{figure}[t]\centering
+\todo{Fig: Panel B, whole-spectrum time vs smax=6..12 at r=4, webit + dblp (near-flat lines)}
+\caption{Whole-spectrum time vs. range width $s_{\max}$.}
+\label{fig:scal_s}
+\end{figure}

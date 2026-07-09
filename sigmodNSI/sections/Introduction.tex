@@ -123,9 +123,9 @@ Its output is bit-identical to per-cell recomputation on every feasible cell tes
 We design \nsi, to the best of our knowledge the first index over the $(r,s)$ plane: it stores the spectrum at $0.045$ to $40$ bytes per $r$-clique, loads in seconds, and answers exact point and spectrum queries in under a microsecond.
 %
 \sstitle{Comprehensive Experimental Evaluation.}
-On twelve real graphs, \specnd{} computes whole spectra $20$ times faster on average and up to $511$ times faster than the state-of-the-art per-cell algorithm, using up to $140$ times less memory; on five graphs the per-cell algorithm cannot complete any spectrum cell within a $300$GB budget while \specnd{} finishes the whole spectrum in $7.5$ to $81$ seconds.
+On clique-structured graphs, \specnd{} is up to $1{,}600$ times faster than the state-of-the-art per-cell algorithm and uses up to $140$ times less memory; on five graphs the per-cell algorithm cannot complete any spectrum cell within a $300$GB budget while \specnd{} finishes the whole spectrum in under $80$ seconds, and the advantage grows with the clique order.
 %
-Against per-cell recomputation with our own engine, a certified cell costs $0.07$ seconds where recomputation takes $655$ seconds, a $9{,}364\times$ reduction.
+Against per-cell recomputation with our own engine, a certified cell costs $0.07$ seconds where recomputation takes $655$ seconds, a $9{,}364\times$ reduction, and widening the spectrum from six cells to twelve adds under one second.
 
 % ---------------- Figure 1 ----------------
 \begin{figure}[t]

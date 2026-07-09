@@ -14,7 +14,10 @@ data already exists. Detailed narrative lives in SigmodPlus.md §139-141; update
 - PENDING protocol upgrade: E2 multi-trial (>=3 runs, median) before numbers are camera-ready.
 
 ## RQ1: spectrum cost vs the per-cell baseline (CND) -- THE MAIN TABLE
-Status: DATA COMPLETE (single-trial). SigmodPlus §139 (E1/E3) + §141 (roster).
+Status: REBUILT on UNIFORM r=4, s=5..8 (all graphs same setting, §145). SigmodPlus §145.
+Paper Exp-1 = uniform table (Table tab:main). Stable advantage = 8 clique-structured graphs
+(5 CND-infeasible + raefsky3 1600x/pkustk11 770x/dblp 35x/nasasrb 15x). Honest: astro 1.5x,
+yt parity; hepph/epin DROPPED from headline (pattern wall at r=4, per user 'only need 8 graphs').
 The 8 big-advantage graphs (picked §141, domain-balanced):
   graph          row      NSI sweep (RSS)   CND spectrum (RSS)      advantage
   web-it-2004    3,4-7    8.1s  (0.5GB)     4x >=300GB abort        infeasible vs 8.1s
@@ -58,6 +61,14 @@ exact vs REF (§136 gates, local -- rerun gates on tods2 optional).
 E4 TODO: same-machine sorted-table probe baseline (build lookup tables from REF dumps where
 writable, compare per-probe latency + table size + build cost). Roster graphs' indexes TODO
 (only the 7 E5 configs have .nsi files: tods2:/home/wenqianz/nsi_e5/).
+
+## RQ-SCAL: scalability with (r,s) -- NEW, the strongest experiment (SigmodPlus §149)
+Status: DATA COMPLETE (paper_data/scalability/scal_2026-07-09.tsv). Paper Exp-2/Exp-3 + 2 figures.
+Panel A (vary r=3..7): webit 0.8/1.5/2.9/5.3/15s, dblp 2.9/5.9/18/47/97s -- advantage grows with r.
+Panel B (fix r=4, smax=6..12): webit 1.41->1.73s, dblp 5.27->6.09s, mem FLAT -- spectrum width is
+nearly FREE (each cell ~0.05-0.1s). THE headline structural result, CND-independent.
+Panel C: CND single cell (3,4) raefsky3 10.7s/pkustk11 67s/nasasrb 28s/dblp 7.7s vs SpecND whole
+r=3 spectrum -- crossover. Figures TODO.
 
 ## RQ4: certification anatomy (WHY it works) -- figure
 Status: data embedded in every sweep log ([nsi-cell] lines); AGGREGATION SCRIPT TODO.
