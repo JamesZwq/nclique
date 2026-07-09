@@ -6491,3 +6491,14 @@ UNIFIED to "up to 1,600 times" + "140 times less memory" verbatim in abstract+in
 REMAINING (camera-ready): E2 multi-trial medians; omega column in datasets table; novelty deep-read
 (Burkhardt-Faber 1806.05523 / flag-KK / ICDE21 2011.00749); TWO case studies (teacher paradigm; we
 have ZERO -- the biggest gap, needs a scope decision on which graph/story). Paper = sigmodNSI/.
+
+## 151. PAPER MOVED TO OVERLEAF (2026-07-09)
+Per user: the live paper now lives in the Overleaf-synced Dropbox folder, and the repo path is a
+symlink to it. Real source files: "/Users/zhangwenqian/Library/CloudStorage/Dropbox/应用/Overleaf/
+Nucleus Spectrum Index/" (an Overleaf project, syncs online via Dropbox). Repo path
+sigmodNSI -> that dir (symlink; gitignored so git does not track the fragile absolute-path link).
+Editing/building from repo/sigmodNSI still works through the symlink; changes flow to Overleaf via
+Dropbox. Git history of the real files is preserved up to commit 10e946a. GOING FORWARD: edit via
+the symlink (repo/sigmodNSI/...) exactly as before; the paper is versioned by Overleaf/Dropbox, not
+the repo. (This supersedes the old "paper stays a real tracked dir, never a symlink" rule for THIS
+paper, at the user's explicit request.) Overleaf project builds standalone: 9pp, 0 "??".
