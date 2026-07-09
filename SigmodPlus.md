@@ -6628,3 +6628,31 @@ UNCHANGED (baseline is a body stepping-stone, NOT a contribution -- per the
 NEXT (user: optimizations one by one, later): SpecND currently bundles certify+replay;
 future turns layer named optimizations on top of the baseline one at a time. Still
 pending for 12-14pp: two case studies, deeper SOTA/proof motivation.
+
+## 158. OPTIMIZATIONS INTRODUCED ONE AT A TIME ON THE BASELINE (§7 rewrite)
+## (user "继续" -> continue the baseline-then-optimal plan) (2026-07-09)
+Rewrote SweepAlgorithm.tex (§7) so SpecND is presented as the baseline PLUS three
+named optimizations, each with the teacher micro-structure observation -> theorem ->
+incremental change -> benefit. Opening now frames it: "the baseline peels every cell
+from scratch; its waste has three sources, and we remove them one at a time."
+- Shared build (the common substrate: one CPI serving all cells, record cliqb(P)).
+- Optimization 1: emit closed-form regions (mergeable). Thm 7.1 No Early Death; split
+  mergeable regions off at build, emit s->C(|M|-r,s-r) by arithmetic; WUK all-mergeable
+  => zero peeling.
+- Optimization 2: certify instead of peel (chain certificate Thm 6.3). Replace the
+  baseline's per-cell full peel with one integer comparison per pattern; absorbing =>
+  one check settles the whole remaining spectrum; 655s recomputation -> 0.07s.
+- Optimization 3: replay the certified residue (Thm 7.2 Level Invariance). Certified
+  patterns still die and remove s-cliques; schedule each certified death at its
+  closed-form level and peel the union; intra-level order immaterial => bit-exact,
+  touches only the residue.
+- Algorithm 3 assembles all three; its lines are annotated Opt 1 / Opt 2 / Opt 3.
+Moved No Early Death + Level Invariance proofs to sit next to their optimizations
+(chain certificate stays in §6 transfer theory, cited by Opt 2). 11pp, builds clean,
+0 "??", all screenshot-verified (§6 theory p6, §7 three-opt page p7).
+STORY LINE NOW COMPLETE & LINEAR: §2 foundations (region/class/pattern deep) -> §3
+per-cell SOTA wall -> §4 class-based CPI (+Quotient Invariance) -> §5 baseline BaseSweep
+-> §6 transfer theory -> §7 SpecND = baseline + 3 named optimizations -> §8 NSI index ->
+§9 hierarchy -> §10 exp. This is the full teacher paradigm the user asked for.
+REMAINING for 12-14pp: two case studies; deeper SOTA/related-work; possibly enlarge
+Fig 3 (NSI) text.
