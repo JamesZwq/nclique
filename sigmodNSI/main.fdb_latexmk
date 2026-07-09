@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex main"] 1783591448.71944 "main.aux" "main.bbl" "main" 1783591485.90915 0
+["bibtex main"] 1783591600.45804 "main.aux" "main.bbl" "main" 1783591601.34558 0
   "./ACM-Reference-Format.bst" 1783511816.43537 84856 cdf46f74ac483d72585084276eb3e09d ""
   "./references.bib" 1783512218.34425 140066 144dce1990656c6919b163eecd5ab6b6 ""
-  "main.aux" 1783591485.65835 8072 4466048cf7975eafafd8f07a4682aa2e "pdflatex"
+  "main.aux" 1783591601.11483 8072 91b0c980f6262a7d34bffb5684a26093 "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1783591485.07652 "main.tex" "main.pdf" "main" 1783591485.90927 0
+["pdflatex"] 1783591600.54408 "main.tex" "main.pdf" "main" 1783591601.34569 0
   "/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/inconsolata/i4-t1-4.enc" 1558214095 7693 0f2dce6d313c82989ec3a67fc24df2a0 ""
   "/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/libertine/lbtn_25tcsq.enc" 1490131464 2921 8ca0eb0831f9bc5da080d3697cfe67bf ""
   "/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/libertine/lbtn_76gpa5.enc" 1490131464 2933 9ad527ce78d7c5fa0a642dead095f172 ""
@@ -220,15 +220,18 @@
   "/usr/local/texlive/2026/texmf.cnf" 1772409725 577 648cd9f92f9c0eac486f4c71c85cfbbe ""
   "acmart.cls" 1783511816.42378 96943 22aab88eb4450dc97aba90abe39b216c ""
   "command.tex" 1783513060.16653 3648 d91a6700ddbcbe32e1134f101fb880a4 ""
-  "main.aux" 1783591485.65835 8072 4466048cf7975eafafd8f07a4682aa2e "pdflatex"
-  "main.bbl" 1783591448.79993 15962 f341c5d7cb83089e1745ff6b738a1141 "bibtex main"
-  "main.out" 1783591485.65906 1653 118f2aae3aa3ac94126c66480101a306 "pdflatex"
-  "main.tex" 1783591485.01431 2450 4386641892e2d3391cd5a554f80b1e7c ""
+  "figures/fig1_running.pdf" 1783591599.47277 12719 e0f93632bce54576c31126a85fcafcd0 ""
+  "figures/scal_r.pdf" 1783591537.77269 13969 8eff3e19b402ec2e7ebf4639427908fe ""
+  "figures/scal_s.pdf" 1783591537.80342 15699 c46204130827e22145a2d4e9c052da39 ""
+  "main.aux" 1783591601.11483 8072 91b0c980f6262a7d34bffb5684a26093 "pdflatex"
+  "main.bbl" 1783591600.54152 15962 f341c5d7cb83089e1745ff6b738a1141 "bibtex main"
+  "main.out" 1783591601.11551 1653 118f2aae3aa3ac94126c66480101a306 "pdflatex"
+  "main.tex" 1783591555.48822 2472 c4b020cc1659771dd72cb2583b16ae14 ""
   "sections/Conclusion.tex" 1783591485.0148 961 e57ad566e90b1885eb51d8aaa2a5ed0c ""
   "sections/ExistingApproach.tex" 1783512884.51198 2638 a3495898b7f218046179a9761db55b1c ""
-  "sections/Experiments.tex" 1783591446.90115 10884 6b5804d564f1fe26760a637afc9e902c ""
+  "sections/Experiments.tex" 1783591555.47818 10801 31a8e01f1bc288fda19bb38e5b4ddaaa ""
   "sections/Index.tex" 1783512884.51491 2967 770c41d1cc1ced9db3c2b6e7f8d0eb59 ""
-  "sections/Introduction.tex" 1783591485.01457 10551 508248da0f2c340457ed4abaa9d9eacd ""
+  "sections/Introduction.tex" 1783591599.53631 10398 22d19e4c3c2c6fc3853fa51166d38973 ""
   "sections/Preliminaries.tex" 1783512135.87145 4215 d2b59db916c16ea55a1c445c06990e20 ""
   "sections/RelatedWork.tex" 1783513090.66792 1863 fb0f8572a4ca1d1b97ba5042a59ba2ae ""
   "sections/SweepAlgorithm.tex" 1783512817.1671 9690 f7988192cb2b63fc29102dced6bb1218 ""

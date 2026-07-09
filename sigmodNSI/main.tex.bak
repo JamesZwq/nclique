@@ -1,5 +1,4 @@
 \documentclass[sigconf, anonymous, nonacm]{acmart}
-\usepackage{graphicx}
 \usepackage{xspace}
 \usepackage{booktabs}
 \usepackage{multirow}
