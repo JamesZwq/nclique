@@ -7179,3 +7179,49 @@ native_sct_peel to clean). icml2 = 2nd machine. -march=native on Linux for real 
 codex sandbox can't write the Dropbox paper -> use paper_work/ then sync; keep THIS doc updated
 real-time; clean/serial timing only; commit after changes; paper is gitignored so SigmodPlus is the
 record. Two codex tasks running now: rewrite (a2929f4b/b73e9u0nl) + perf-fix#2 (a5372ede worktree).
+
+## 182. BOTH CODEX TASKS LANDED + INTEGRATED (2026-07-10)
+Picked up from §181. Both codex tasks finished (files stable, 0 procs); verified + merged both.
+
+### (A) PERF-FIX #2 (multi-r plane) VERIFIED + MERGED (commit 102c82b).
+Worktree a5372ede cpp had +147/-91. Built + gated on ca-GrQc:
+- **plane r=3..6 total: 6.3s -> 0.75-0.97s.** Per-r pattern counts DROPPED to fixed-r levels:
+  r=3 7508, r=4 22542, r=5 51738, **r=6 749003 -> 40639 (== fixed-r exactly)**; r=6 column time
+  4.30s -> 0.14s. The fix restricts per-r pattern enumeration/maps/peel to the active
+  (mergeable-reduced) region set instead of the full class space.
+- plane 0.75s vs sum-of-4-fixed-r 0.26s (ca-GrQc): plane ~2.9x the sum on this TINY graph
+  (constant overhead dominates; ratio should improve on big graphs). Consistent with the honest
+  "competitive, not cheaper" abstract wording.
+- **BIT-EXACT preserved** (plane single-r == fixed-r sweep). Merged cpp -> main + pushed.
+- MULTI-R ENGINE IS NOW CORRECT + FAST -- both perf issues (#1 boundary rescan §174, #2 pattern
+  blowup) fixed. Task #22 effectively DONE at the engine level (NSI2 serialization still pending).
+
+### (B) PAPER REWRITE SYNCED -> sigmodNSI + CLEAN BUILD.
+codex rewrote all 12 paper_work/ files. I synced paper_work/{main,command}.tex + sections/*.tex ->
+sigmodNSI/ (I can write the Dropbox symlink; codex can't). **Clean full rebuild: latexmk exit 0,
+14 pages, 0 undefined refs (??), 0 unresolved cites ([?]), 21 bibitems.** (First-pass "undefined
+Reference" warnings are the normal pre-aux artifact; final ?? count = 0.) New title/abstract =
+two-pillar framing (batch decomposition + class-compressed indexing), 4 contributions, two baselines
+(CND external + FixedRows internal), honest "competitive not cheaper" plane scope. Backup of
+pre-rewrite paper at scratchpad/paper_backup_pre_rewrite_1734/.
+
+### (C) PLANE CORRECTNESS GATE FROZEN (ca-GrQc r=3..5): all 9 (r,Smax) cell-configs BIT-EXACT
+(plane single-r column == independent fixed-r sweep). Partially resolves the Experiments.tex
+TODO(data) plane-gate marker (ca-HepPh + com-dblp halves still need a run; graphs are server-side).
+
+### REMAINING (codex left 10 % TODO markers in the live paper):
+- 2x TODO(impl) Index.tex: NSI2 serialization (shared header + r-column directory + per-column
+  offsets) + query executable load/dispatch by r. BIG; paper already honestly scopes this as
+  "current artifact boundary" so NOT blocking the draft. Candidate codex dispatch.
+- 1x TODO(fig) Index.tex: redraw nsi_layout.pdf as shared class-SCT above r-column directory
+  (current fig shows one fixed-r column, caption already says so). Cosmetic.
+- 7x TODO(data) Experiments/Hierarchy: freeze artifact table (compiler/cmdlines/threads),
+  3-trial query median+p95, Table plane 3-trial + a losing-graph, plane-to-summed time range for
+  abstract, plane index MB/per-column bytes (needs NSI2), plane gate HepPh+dblp, union-find cost.
+  Most annotate EXISTING server results / need clean serial plane-vs-summed runs on real graphs.
+- Only ca-GrQc is local; ca-HepPh/com-dblp/web/matrix graphs are on tods2 (/data/wenqianz/*.edges).
+
+### PICKUP: (a) decide NSI2 impl (codex) vs keep honest fixed-r-column scope; (b) delegate a CLEAN
+serial plane-vs-summed + HepPh/dblp gate run (subagent, tods2, -march=native) to freeze the Table
+plane + "competitive" range numbers; (c) regen nsi_layout.pdf. Engine + paper both in a shippable
+state right now; TODOs are camera-ready polish, not draft blockers.
