@@ -6906,3 +6906,17 @@ Construction). HOLDING further paper edits (#25 move-mergeable, #26 connectivity
 design lands, then sequence all paper rewrites coherently. Per user: complex-algo idea+impl -> codex;
 after design returns, dispatch codex to IMPLEMENT multi-r in a worktree.
 Tasks done: #24, #23. In progress: #22. Pending: #25,#26,#27,#28,#29,#30.
+
+## 170. MULTI-R DESIGN LANDED (codex gpt-5.6-sol) -> docs/multir_design.md; dispatching impl (2026-07-10)
+codex verdict: class-SCT LEAF math is r-independent (count = product of binomials; builder takes
+[k,kOver] not r), but the CURRENT engine is r-dependent because it removes r-mergeable regions BEFORE
+building classes/tree. FIX = build one immutable shared tree from the UNSPLIT regions, then per-r
+views. Diagonal theorem is an UPPER bound: certifies a boundary pattern only when U=L (clique floor);
+worst case still needs the boundary peel. HONEST central claim: "one universal CPI suffices for the
+whole bounded (r,s) plane" (the plane being CHEAP is an experimental claim, not a proven bound -- this
+also fixes #6). Full design (verdict, r-dependent state table, BuildPlaneNSI pseudocode, NSI2 layout,
+query, honest cost, 12-step region_native refactor, correctness gate) saved to docs/multir_design.md
+(force-added, docs/ gitignored). Also a paper fix: state the general product-of-binomials leaf count
+first, `\binom{w}{s-r}` as the special case (Construction.tex:72-75); BuildCPI should take [Smin,Smax]
+not r. NEXT: dispatch codex to IMPLEMENT (worktree, additive plane mode preserving fixed-r compat,
+bit-exact gate vs current engine per r-column).
