@@ -7467,3 +7467,20 @@ prose (com-dblp 227MB) kept. Rebuild 13pp, 0 undefined, 0 unresolved cites.
 index size + diagonal ablation). REMAINING: com-dblp/real query-latency bench (qfile-gen fix; ca-GrQc ns
 numbers stand in meanwhile); point-3 elegance pass on final text; review majors (CND threads, size-bound,
 hierarchy connectivity); reproducibility appendix.
+
+## 192. POINT-3 ELEGANCE PASS (Fable, verified) + size-bound fix + minors (2026-07-11)
+### ELEGANCE PASS: Fable subagent (a6354509) did a CONSERVATIVE prose pass on Preliminaries/TransferTheory/
+Construction/Index (backup at scratchpad/paper_backup_pre_elegance). 10 small edits: merged restatement pairs +
+checklist fragments, deleted filler; NO theorem/proof/number/label/ref/cite/claim/algorithm touched.
+VERIFIED by me: rebuild exit 0, 13pp, 0 undefined, 0 unresolved cites; per-section diff-vs-backup technical-
+token scan (label/ref/cite/math/theorem/numbers) = ZERO flagged -> prose-only. KEPT. (Paper already telegraphic
+so gains were modest; further cutting would remove info -- Fable stopped correctly.)
+### REVIEW#2 MAJOR #6 FIXED (size-bound undercount): Index.tex eq:index-size charged O(|leafset|),O(|P_r|)
+which ignore per-leaf class intervals + per-pattern variable composition. Now charges Z_leafset (leaf-class
+incidences) + Z_{P_r} (pattern nonzeros) + serialized pattern-to-leaf map incidences. Rebuild clean.
+### MINOR: "fourteen graphs in total" clarification (13 datasets + ca-GrQc). 
+### DEFERRED (need server / real numbers, ssh flaky): CND thread-normalization experiment (major #2); real-
+graph query-latency bench (qfile-gen fix); budget 300 vs CND "310GB" censoring note (need the real CND web-it
+log, don't fabricate). Also remaining: hierarchy connected-nucleus retrieval (major #8, bigger -- implement or
+restrict claims); CaseStudy cohort-matching (minor); reproducibility appendix. Paper is 13pp, 0 undefined,
+all 4 review#2 reject-triggers resolved + several majors done.
