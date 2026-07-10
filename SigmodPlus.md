@@ -6890,3 +6890,19 @@ STATUS: #24 DONE (archived orphan Baseline/ExistingApproach/ClassCPI/SweepAlgori
  sections/_archive_unused/ -- they had dup labels + contradictory CND claims). #22 codex designing
  multi-r (async). #23 general subagent fixing exp inconsistencies (async). WORKFLOW: complex algo
  idea+impl -> codex; keep THIS doc updated in real time (user instruction).
+
+## 169. FIX PROGRESS (real-time) (2026-07-10)
+#23 DONE (general subagent, evidence-checked vs paper_data): "twelve"->"thirteen" graphs (13 rows);
+GrQc added as a diagonal-only scoping note; thread contradiction fixed (SpecND single-thread vs CND
+96-core, stated as deliberately asymmetric); "six cells to twelve"->"s_max 6 to 12" in Experiments
++ Introduction; and the 338M-vs-8.2B WIT clash reconciled = 338M DISTINCT r-cliques (triple-
+corroborated) vs 8.2B r-clique MEMBERSHIPS across mergeable regions (WIT omega=432, avg multiplicity
+~24x) -- now phrased as two distinct well-defined quantities in one sentence. Edited only
+Experiments.tex + Introduction.tex.
+CAVEAT the subagent flagged: the "r-mergeable: (N r-cliques)" counter's exact loop wasn't read from
+the binary; 8.2B-as-memberships is inferred (defensible: exceeds distinct by 24x, C(432,4)=1.43B).
+STILL RUNNING: #22 codex multi-r whole-plane design (async, critical path -- reshapes Prelim/Index/
+Construction). HOLDING further paper edits (#25 move-mergeable, #26 connectivity) until the multi-r
+design lands, then sequence all paper rewrites coherently. Per user: complex-algo idea+impl -> codex;
+after design returns, dispatch codex to IMPLEMENT multi-r in a worktree.
+Tasks done: #24, #23. In progress: #22. Pending: #25,#26,#27,#28,#29,#30.
