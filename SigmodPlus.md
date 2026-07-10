@@ -7107,3 +7107,12 @@ symlink, outside git; backed up to scratchpad first). PENDING-DATA items (plane-
 experiment numbers; NSI2 plane serialization/query) -> codex writes structure + TODO markers; I
 resolve after the perf fix + plane experiment land. I review + build after.
 STATUS: codex per-r perf fix (a5372ede) still running in parallel.
+
+## 180. REWRITE BLOCKED BY SANDBOX (sigmodNSI outside codex workspace) -> paper_work/ redirect (2026-07-10)
+codex read the whole blueprint + theorems + paper + planned the rewrite, but its sandbox can only
+WRITE inside the repo workspace; sigmodNSI is a symlink to Dropbox (/Users/.../Overleaf/Nucleus
+Spectrum Index) OUTSIDE it -> read-only -> 0 edits made. FIX: created /Users/zhangwenqian/UNSW/
+pivoter/paper_work/ = a writable local copy of main.tex + command.tex + sections/*.tex (copied
+through the symlink with cp -L). Re-dispatching codex to rewrite paper_work/ (writable); after it
+finishes I sync paper_work/*.tex -> sigmodNSI/ (I can write Dropbox) and build. No content lost (the
+first run made no edits).
