@@ -6817,3 +6817,18 @@ figs); kept tab:datasets (Table 2). Fixed a stale prose number (query latency 19
 11pp, builds clean, 0 "??", no dangling table refs, no missing-figure warnings. Screenshot-
 verified p8 (Table 2 + Exp-1 prose), p9 (Fig 4 main + Fig 5 ablation), p10 (Fig 6 index + Fig 7/8
 scal + Fig 9 coverage). Every experiment now has a figure, teacher visual system throughout.
+
+## 166. INTRODUCTION CONTRIBUTIONS ALIGNED TO INDEX-BASED STRUCTURE (2026-07-10)
+Rewrote the Introduction Contributions block from algorithm-first to INDEX-first, mapping 1:1
+to the new sections: (1) "The first index over the (r,s) plane" (NSI, §5) = HEADLINE, lead with
+the deliverable; (2) "A zero-slack cross-cell transfer theory" (§4) = "the principle that makes
+the index compact"; (3) "A one-build construction algorithm" (SpecND, §6) with the class-based
+CPI FOLDED IN as the counting tool (was its own headline contribution -- demoted, per index-based
+framing); (4) "The cohesion landscape" (§7); (5) experiments (§8). Old order led with the CPI (a
+mechanism) -- wrong for an index paper. Existing Methods (online recompute + 3 axes incl.
+unstorable-naive-table) + Research Question + Challenges + Our Idea kept (already index-aware).
+11pp, builds clean, 0 "??", screenshot-verified p2. The intro now reads as an index paper:
+compute+store+query the spectrum -> existing methods fail (recompute or unstorable) -> NSI index,
+compressed by the transfer theory, built by SpecND.
+REMAINING to teacher parity / 12-14pp: two case studies (still zero -- biggest gap vs teacher
+papers).
