@@ -7484,3 +7484,23 @@ graph query-latency bench (qfile-gen fix); budget 300 vs CND "310GB" censoring n
 log, don't fabricate). Also remaining: hierarchy connected-nucleus retrieval (major #8, bigger -- implement or
 restrict claims); CaseStudy cohort-matching (minor); reproducibility appendix. Paper is 13pp, 0 undefined,
 all 4 review#2 reject-triggers resolved + several majors done.
+
+## 193. BUDGET-310 FIX; AUTONOMOUS LOOP WINDING DOWN (remaining needs user/server/data) (2026-07-11)
+### FIXED: Experiments.tex budget 300 vs CND "310GB" silent contradiction -> "\cnd needs 56min and 310GB for
+web-it at (3,4), already past the 300GB budget, and its larger-order cells exceed it further" (no fabrication;
+310 is the measured number, correctly noted as over budget). Rebuild 13pp 0 undefined.
+### CaseStudy cohort-matching (minor) DEFERRED: the 54% (five-largest s=4) vs 98% (all-surviving s=10) is a
+real cohort confound, but producing MATCHED-cohort numbers needs the case-study raw data to recompute -> data
+task, can't fabricate. Note for a case-study re-run.
+### AUTONOMOUS LOOP WIND-DOWN: all remaining review items now need the USER (decision) or a STABLE SERVER or
+DATA -- not safely auto-doable:
+- CND thread-normalization experiment (major #2) -- needs stable tods2 (ssh tunnel kills detached jobs; held
+  ssh drops after ~5.5min; server load 30). BLOCKED on infra.
+- real-graph query-latency bench (fix qfile-gen) -- server. BLOCKED on infra.
+- hierarchy connected-nucleus retrieval (major #8) -- DECISION: implement vs restrict query claims. NEEDS USER.
+- CaseStudy matched-cohort recompute -- needs case-study data run.
+- reproducibility appendix -- needs exact server g++ version + affinity; draftable but placeholder-y.
+=> STOPPED re-arming the wakeup. Paper is at 13pp, 0 undefined, ALL 4 reject-triggers resolved + majors #1
+(plane numbers), #6 (size-bound), diagonal-implemented, elegance-pass, several minors done. Strong shape vs
+the Reject 2/5 start. Pick up = SigmodPlus §182-193; decide hierarchy-connectivity + when server is stable for
+the CND/query experiments.
