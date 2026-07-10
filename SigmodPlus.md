@@ -6920,3 +6920,21 @@ query, honest cost, 12-step region_native refactor, correctness gate) saved to d
 first, `\binom{w}{s-r}` as the special case (Construction.tex:72-75); BuildCPI should take [Smin,Smax]
 not r. NEXT: dispatch codex to IMPLEMENT (worktree, additive plane mode preserving fixed-r compat,
 bit-exact gate vs current engine per r-column).
+
+## 171. #26 CONNECTIVITY FIXED (real-time) (2026-07-10)
+#26 DONE (subagent). The (r,s)-nucleus definition dropped connectivity => Fig 1 was WRONG (drew M3
+as an outer ring nesting M1uM2). Fixes, all verified by a clean build (12pp, 0 "??"):
+- Preliminaries: nucleus now = "maximal set of r-cliques, each core>=k, connected through
+  overlapping s-cliques ... the connected components". Core Value def untouched (support-based).
+- Introduction Fig 1 caption + Example 1.1: M3 shares only edge {v6,v7} with M2 (no triangle) =>
+  M3 is a SEPARATE 1-(3,4)-nucleus, NOT a nesting ring. Spectrum (2,1,0) unchanged (about core
+  values).
+- figures/make_fig1.py regenerated: M1uM2 shows nested 2- then 1-(3,4)-nucleus contours; M3 a
+  SEPARATE dashed 1-nucleus lobe overlapping only at {v6,v7}. Screenshot-verified page 1.
+- Hierarchy: Cross-Cell Nesting proof got the connectivity justification (s>=r+2 => two r-cliques
+  in a common s-clique K stay (s-1)-adjacent because (s-1)-subcliques of K overlap in >=r vertices
+  => share an r-clique); "one forest" reframed to CONNECTED nuclei; region-join stated as the
+  connectivity link.
+STATUS: done #23,#24,#26. #22 multi-r IMPL still running on codex (worktree). Pending #25,#27,#28,
+#29,#30 -- all to be dispatched to codex (gpt-5.6-sol max) after the multi-r impl lands (their final
+form depends on the plane algorithm). Memory added: prefer codex(best model) for subagents.
