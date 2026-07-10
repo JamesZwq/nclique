@@ -7116,3 +7116,66 @@ pivoter/paper_work/ = a writable local copy of main.tex + command.tex + sections
 through the symlink with cp -L). Re-dispatching codex to rewrite paper_work/ (writable); after it
 finishes I sync paper_work/*.tex -> sigmodNSI/ (I can write Dropbox) and build. No content lost (the
 first run made no edits).
+
+## 181. ===== RESUME-HERE HANDOFF (context near full) ===== (2026-07-10)
+BIG PICTURE: responding to a codex (gpt-5.6-sol) hostile review (13 findings, 3 reject-level, §168).
+The paper is being REFRAMED + REWRITTEN around TWO PILLARS and the whole (r,s) plane.
+
+### THE FRAMING (locked; §177-178)
+ONE idea = class symmetry; TWO consequences:
+ (1) BATCH DECOMPOSITION -- one shared build computes a whole FAMILY of (r,s) cells (r-independent
+     class-CPI [Universal CPI thm] + chain certification + shell-order replay). Family = s-spectrum
+     and, by Universal CPI, the whole plane.
+ (2) CLASS-COMPRESSED INDEXING -- store the family as structure (patterns not r-cliques; certified
+     tails = 1 number + arithmetic); 0.001-2 B/r-clique, ns queries.
+TWO baselines: CND per-cell (external SOTA -> orders-of-magnitude win) + summed optimized fixed-r
+(internal control -> COMPETITIVE not cheaper). NEVER claim "plane cheaper than r-by-r" or "at the
+cost of one cell". Title drops "at the Cost of One Cell". MASTER BLUEPRINT = docs/framing_
+recommendation.md (codex, authoritative: new title, paste-ready abstract, 4 contributions, 15
+reviewer-preemptions, 17 forbidden claims, 12-section prescription).
+
+### ENGINE (region_native/region_native_sct_peel.cpp, in git main)
+- Multi-r PLANE mode: env SCT_RSWEEP=1 SCT_RMIN SCT_RMAX SCT_SMAX ./bin g.edges rmin rmin+1. One
+  shared r-independent class-SCT over unsplit regions [Smin=rmin+1,Smax]; per-r columns; diagonal-
+  seeded boundaries (certify only when U=L); residue replay. BIT-EXACT vs fixed-r SCT_SWEEP (§172).
+- Perf fix #1 (boundary-peel full-rescan -> witness-major incremental) MERGED (§174), ca-GrQc r=3
+  >120s->0.18s. Gate graphs: region_native/.multir_gate.edges + .multir_residue_gate.edges.
+- Perf fix #2 IN PROGRESS: codex agent a5372ede (worktree .claude/worktrees/agent-a5372ede...),
+  fixing per-r pattern enumeration over FULL class space (749k patterns at r=6 vs fixed-r's 40k
+  after mergeable-removal). CHECK that worktree: build, run perf gate (plane r=3..6 ca-GrQc should
+  drop toward the 0.74s sum-of-4-fixed-r; per-r pattern counts drop toward fixed-r), bit-exact gate,
+  then cp worktree cpp -> main + commit. (§176: plane build is ~competitive-not-cheaper -- expected.)
+- Reproducer graph: data/ca-GrQc.edges (pulled local). Cost is per-r maps/pattern build, NOT peel.
+
+### PAPER REWRITE (in progress)
+- sigmodNSI = read-only Dropbox symlink from codex sandbox (§180). WRITABLE copy at paper_work/
+  (main.tex+command.tex+sections/*.tex). codex agent a2929f4b (bg b73e9u0nl) is rewriting paper_work/
+  per the blueprint + docs/formal_theory.tex (4 theorems, reviewed OK §175) + docs/multir_design.md.
+- WHEN IT FINISHES: (a) review paper_work/, (b) `cp -L`? no -- cp paper_work/*.tex + main.tex ->
+  sigmodNSI/sections/ + sigmodNSI/main.tex (I CAN write Dropbox), (c) build to scratchpad
+  (latexmk -pdf -output-directory=<scratch> main.tex; check 0 "??"), (d) screenshot-verify, (e)
+  resolve the % TODO markers codex leaves.
+- BACKUP of pre-rewrite paper: scratchpad/paper_backup_pre_rewrite_1734/.
+
+### PENDING % TODO (I resolve after rewrite)
+- TODO(data): the whole-plane experiment (plane NSI vs summed-fixed-r) numbers -- need perf-fix #2
+  done, then a CLEAN server run on tods2 (plane r=3..6 vs 4 fixed-r sweeps, per-graph). Also the
+  external CND-vs-plane numbers.
+- TODO(impl): NSI2 plane serialization + (r,s) query -- current SCT_INDEX_OUT/nsi_query.cpp are
+  fixed-r (NSI1). Either implement NSI2 (per-r columns + shared tree, per multir_design.md) OR keep
+  the honest "plane construction with fixed-r index columns" phrasing the blueprint allows.
+- TODO(fig): a plane-layout figure may be needed (blueprint Index section).
+
+### TASKS: #22 (multi-r, in progress: perf-fix#2 + paper rewrite) ; #25 mergeable-move + #27/#28
+theory-integrate + #29 NSI-formalize + #30 case-study-k/query-exp -- MOSTLY SUBSUMED by the codex
+paper rewrite (it integrates the theory + fixes k + moves defs). After the rewrite lands, re-audit
+which remain.
+
+### SERVER: tods2 (==tods1==radonduo, 96c) has all graphs /data/wenqianz/*.edges + the git repo.
+sweep_driver.sh may still be looping (stale, ssh was flaky -- pkill -9 -f sweep_driver + region_
+native_sct_peel to clean). icml2 = 2nd machine. -march=native on Linux for real timing.
+
+### WORKFLOW RULES (locked): subagents -> codex (gpt-5.6-sol, max) [[feedback_prefer_codex_best_model]];
+codex sandbox can't write the Dropbox paper -> use paper_work/ then sync; keep THIS doc updated
+real-time; clean/serial timing only; commit after changes; paper is gitignored so SigmodPlus is the
+record. Two codex tasks running now: rewrite (a2929f4b/b73e9u0nl) + perf-fix#2 (a5372ede worktree).
