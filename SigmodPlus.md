@@ -6958,3 +6958,19 @@ Problem Statement + Universal CPI theorem + general product-of-binomials leaf co
 query + honest cost. NEXT dispatches -> codex (per user).
 NOTE: #28 was marked in_progress but NOT actually dispatched (multi-r notif preempted); reset to
 pending / dispatch to codex next.
+
+## 173. MULTI-R PERF REGRESSION (bit-exact but pathologically slow) -> codex fixing (2026-07-10)
+Server whole-plane experiment (general subagent, tods2) surfaced the "plane is cheap ALONG s"
+evidence (GrQc r=3: shared build 0.01s; s=5/s=6 certified=7899/residue=0 -> 0.0006s each) BUT a
+severe RED FLAG at the boundary: the r=3,s=4 full boundary peel took 322.5s on ca-GrQc (tiny graph).
+REPRODUCED LOCALLY: fixed-r (SCT_SWEEP=6) r=3 = 0.43s vs plane (SCT_RSWEEP) r=3 = TIMEOUT >120s
+(~700x). Correctness is bit-exact (already verified); ONLY performance is broken -- the bit-exact
+gate used tiny synthetic graphs so it never surfaced. Likely cause: the plane full-peel path does
+NOT reuse the fixed-r sweep's INCREMENTAL support-update machinery (recomputes support over the
+larger UNSPLIT shared tree per peel step, O(tree/patterns) per removal, instead of incremental
+heap/bucket decrements). Pulled data/ca-GrQc.edges local as the reproducer. KILLED the buggy-slow
+server experiment (tods2 pkill plane_driver) -- re-run after the fix. Dispatched codex (gpt-5.6-sol
+max, worktree) to profile+fix: perf gate = plane r=3 on ca-GrQc within ~3x of fixed-r 0.4s (<~2s),
+bit-exact + backward-compat preserved. NOTE: the diagonal seeding for r>rmin boundaries is untested
+(the run died at rmin); need to confirm r=4/5/6 boundaries are diagonal-cheap after the perf fix.
+Also running: codex formal_theory.tex (#27 Gen/peel-equiv + #28 replay + Universal CPI).
