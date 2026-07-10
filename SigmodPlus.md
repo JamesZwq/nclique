@@ -7281,3 +7281,40 @@ fill the tab:plane companion / index section; (b) sync paper_work/TransferTheory
 rebuild, verify 0 undefined; (c) THEN full elegance/simplify pass on final text (point 3); (d) remaining
 majors: CND thread normalization (server exp), size-bound undercount, Hierarchy connected-nucleus retrieval.
 Both rescue agents (a8ec.../a766...) may re-notify when their codex tasks finish; else SendMessage to poll.
+
+## 185. BOTH CODEX OUTPUTS VERIFIED + INTEGRATED -> ALL 4 REJECT-TRIGGERS RESOLVED (2026-07-11)
+### NSI2 (cross-r queryable plane index) VERIFIED + committed (b637725). codex: nsi_query.cpp +1053,
+region_native_sct_peel.cpp +10/-8. Verification (all on ca-GrQc, local):
+- BUILD ok (both binaries). PLANE ENGINE REGRESSION: r=3,4,5 still bit-exact vs fixed-r (codex's +10/-8
+  didn't break it).
+- SERIALIZE: SCT_RSWEEP + SCT_INDEX_OUT writes NSI2 = magic + ONE shared block (classes/profiles/regions/
+  leaves) + r-directory + per-column offsets. stats confirms: shared-once 141828 B + per-column 4227288 B
+  = total 4369116, 3 columns (r=3/4/5) each {boundary,patterns,direct,residues,column-bytes,offset}. Byte
+  accounting exact.
+- CORRECTNESS GATE (scratchpad/nsi2_gate.py, also region_native/nsi2_gate.py): for each (r,s) dump per-clique
+  cores with INDEPENDENT ref build/bin/degeneracy_cliques (PIVOTER_RUN_REF+PIVOTER_DUMP_CORE, default sort),
+  query NSI2 pointfile <r> <s>, require exact. **444,780 point queries across 6 cells r=3..5 ALL BIT-EXACT.**
+- MEASUREMENTS (nsi_query bench): warm median point-kernel 12.5ns/p95 16.2, point-validated 35/47, row-kernel
+  13/17, row-validated 37/45; cold median 1.6-2.3us; index-load 29ms. Exactly review#2's ask (bytes, load,
+  warm/cold, validation-inclusive, median+p95). RESOLVES REJECT-TRIGGER #2.
+  NOTE: these are ca-GrQc (small, proof-of-concept). PAPER needs bigger-graph plane index size/query on the
+  SERVER (ca-HepPh/com-dblp) -- dense plane build slow, next server run. codex left 30 untracked scratch
+  files (class_sct*) -- harmless, can rm.
+### THEORY REPAIR VERIFIED + synced -> sigmodNSI. codex rewrote paper_work/TransferTheory.tex + Hierarchy.tex
++ docs/formal_theory.tex. I checked the two proofs line by line:
+- SHADOW (thm:kk): g_a(0)=0 defined (empty family); k=0 -> nonnegativity; A=K_k^{r,s}, B={(s-1)-cliques in a
+  W_s(A) witness} subset W_{s-1}(A); each R' in A keeps >= g_{s-r}(k) shadow witnesses; integer ceiling
+  h=ceil(g). CORRECT (matches my hand proof + better).
+- DIAGONAL (thm:diagonal): the SUBTLE one I worried about -- CORRECT. B=K_{r-1}(A); for ARBITRARY P in B pick
+  host R'' in A, P inherits R'' + every T_S=S\{v} (S in W_{r+1}(A) over R''), each in W_r(B) since P'+{v} is an
+  r-subset of S hence in A; distinct, none=R''; so d_B(P)>=1+d_A(R'')>=k+1 -> B globally (k+1)-feasible at
+  (r-1,r). Added r>=2 hypothesis. RESOLVES REJECT-TRIGGER #3.
+- Hierarchy: h=ceil(g_{s-r}(k)), k>=1 (integer threshold fix). formal_theory.tex has full proofs (43 hits).
+- Synced TransferTheory+Hierarchy -> sigmodNSI (ONLY these two; my RelatedWork/Experiments/Index/main/
+  Construction edits untouched). REBUILD exit 0, 13pp, 0 undefined, 0 unresolved cites.
+### STATUS: ALL 4 REJECT-TRIGGERS DOWN -- #1 plane numbers (0.38-3.06x + prior-art), #2 NSI2 (built+444k-query
+gate), #3 theory (proofs verified), #4 novelty (prior-art table). Paper 13pp clean.
+### NEXT: (a) bigger-graph NSI2 size/query on server (ca-HepPh/com-dblp) for paper's real index numbers +
+integrate into Experiments index section + tab:plane companion; (b) remaining MAJORS: CND thread
+normalization (decision A: full re-run vs disclose CPU-sec), size-bound undercount, Hierarchy connected-
+nucleus retrieval; (c) point-3 full elegance pass on final text; (d) reproducibility artifact table + minors.

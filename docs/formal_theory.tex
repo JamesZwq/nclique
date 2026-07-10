@@ -1,6 +1,6 @@
 % Standalone section fragment for inclusion in an acmart paper.
 % Required packages/environments: amsmath, amssymb, amsthm, and algorithm2e.
-% The paper preamble must define theorem, lemma, and definition environments.
+% The paper preamble must define theorem, lemma, definition, and corollary environments.
 
 \section{Formal Foundations of Universal Counting and Replay}
 \label{sec:formal-foundations}
@@ -786,4 +786,346 @@ Theorem~\ref{thm:weighted-pattern-equivalence} transfers that value to all indiv
 Finally, each accepted nonstale event deletes one live pattern, and only finitely many stale events are generated per deletion because the pattern and leaf sets are finite.
 %
 Hence the queue empties and the algorithm terminates.
+\end{proof}
+
+\subsection{Rigorous transfer bounds and cross-cell nesting}
+\label{subsec:rigorous-transfer}
+
+We now make the feasibility constructions behind the row and diagonal transfers explicit.
+%
+For every $1\leq p<q$, write
+\[
+\mathcal U_{p,q}=\bigcup_{S\in\mathcal K_q(G)}\mathcal K_p(S),
+\qquad
+\mathcal W_q(A)=\{S\in\mathcal K_q(G):\mathcal K_p(S)\subseteq A\}
+\]
+for $A\subseteq\mathcal U_{p,q}$, and define
+\[
+d_A^{p,q}(R)=|\{S\in\mathcal W_q(A):R\subseteq S\}|.
+\]
+For every integer $k\geq0$, let $K_k^{p,q}$ be the unique largest subset of $\mathcal U_{p,q}$ on which every member has support at least $k$, and let
+\[
+\kappa_{p,q}(R)=\max\{k:R\in K_k^{p,q}\},
+\]
+with value zero outside $\mathcal U_{p,q}$.
+%
+A connected $k$-$(p,q)$-nucleus is a maximal component of $K_k^{p,q}$ when two $p$-cliques are adjacent if a member of $\mathcal W_q(K_k^{p,q})$ contains both.
+
+The earlier zero convention for binomial coefficients continues to govern combinatorial counts.
+%
+In the Lov\'{a}sz interpolation below, a real upper argument instead uses the polynomial extension
+\[
+\binom{x}{j}=\frac{x(x-1)\cdots(x-j+1)}{j!}
+\qquad (j\geq1),
+\quad
+\binom{x}{0}=1.
+\]
+For integers $a\geq2$ and $m\geq1$, let $x\geq a-1$ be the unique real satisfying $m=\binom xa$ and define
+\[
+g_a(m)=\binom{x}{a-1};
+\qquad
+g_a(0)=0.
+\]
+The separate zero value represents the empty family's empty lower shadow.
+%
+The Lov\'{a}sz form of the Kruskal--Katona theorem states that an $a$-uniform family $\mathcal F$ of size $m$ has lower shadow
+\[
+\partial\mathcal F=\{T:|T|=a-1,\ T\subset F\text{ for some }F\in\mathcal F\}
+\]
+of size at least $g_a(m)$~\cite{lovaszKK,kruskal1963number,katona1968theorem}.
+
+\begin{lemma}[Monotonicity of the Lov\'{a}sz shadow function]
+\label{lem:formal-lovasz-monotonicity}
+For every integer $a\geq2$, the function $g_a$ is strictly increasing on the nonnegative integer arguments.
+%
+Moreover, for integers $n\geq a$,
+\[
+g_a\!\left(\binom na\right)=\binom n{a-1}.
+\]
+\end{lemma}
+\begin{proof}
+On $x>a-1$, every factor in the polynomial $\binom xa$ is positive and
+\[
+\frac{d}{dx}\log\binom xa=\sum_{i=0}^{a-1}\frac{1}{x-i}>0.
+\]
+Thus $x\mapsto\binom xa$ is strictly increasing on $(a-1,\infty)$, and its value at $a-1$ is zero.
+%
+It follows that the solution $x=x(m)$ is unique and strictly increases with every positive $m$.
+%
+The same logarithmic-derivative argument shows that $x\mapsto\binom{x}{a-1}$ is strictly increasing for $x\geq a-1$.
+%
+Hence $g_a$ is strictly increasing on the positive integer arguments.
+%
+The remaining endpoint is strict because $g_a(0)=0$ whereas $m=1$ gives $x=a$ and $g_a(1)=\binom a{a-1}=a$.
+%
+Finally, when $m=\binom na$ with $n\geq a$, uniqueness gives $x=n$, which proves the identity.
+\end{proof}
+
+\begin{theorem}[Rigorous shadow transfer]
+\label{thm:formal-shadow-transfer}
+For $s\geq r+2$ and every $r$-clique $R$,
+\[
+\kappa_{r,s-1}(R)\geq g_{s-r}\!\left(\kappa_{r,s}(R)\right).
+\]
+\end{theorem}
+\begin{proof}
+Put $k=\kappa_{r,s}(R)$.
+%
+If $k=0$, then $g_{s-r}(k)=0$ by definition and the conclusion follows from nonnegativity of core values.
+%
+Assume $k\geq1$, set
+\[
+A=K_k^{r,s}
+\qquad\text{and}\qquad
+h=\left\lceil g_{s-r}(k)\right\rceil,
+\]
+and note that $R\in A$.
+%
+Since $k\geq1$, every $R'\in A$ has a surviving $s$-witness, whose contained $(s-1)$-cliques show that $R'$ is supported at $(r,s-1)$.
+%
+Thus $A\subseteq\mathcal U_{r,s-1}$ before we evaluate preceding-cell feasibility.
+%
+Let
+\[
+\mathcal B=\{T\in\mathcal K_{s-1}(G):T\subset S
+\text{ for some }S\in\mathcal W_s(A)\}.
+\]
+Every $r$-subclique of any $T\in\mathcal B$ is an $r$-subclique of the corresponding $S$ and hence belongs to $A$.
+%
+Therefore
+\[
+\mathcal B\subseteq\mathcal W_{s-1}(A).
+\]
+
+Fix an arbitrary $R'\in A$ and consider the $(s-r)$-uniform extension family
+\[
+\mathcal F_{R'}=\{S\setminus R':S\in\mathcal W_s(A),\ R'\subseteq S\}.
+\]
+Distinct witnesses give distinct extensions, so
+\[
+|\mathcal F_{R'}|=d_A^{r,s}(R')\geq k.
+\]
+By the Lov\'{a}sz form of Kruskal--Katona and Lemma~\ref{lem:formal-lovasz-monotonicity},
+\[
+|\partial\mathcal F_{R'}|
+\geq g_{s-r}(|\mathcal F_{R'}|)
+\geq g_{s-r}(k).
+\]
+The left side is an integer, so it is at least $h$.
+%
+For every $T'\in\partial\mathcal F_{R'}$, the set $R'\cup T'$ is an $(s-1)$-clique contained in a witness from $\mathcal W_s(A)$.
+%
+It therefore belongs to $\mathcal B\subseteq\mathcal W_{s-1}(A)$ and contains $R'$.
+%
+The map $T'\mapsto R'\cup T'$ is injective because $T'$ is disjoint from $R'$.
+%
+Consequently
+\[
+d_A^{r,s-1}(R')\geq h
+\]
+for every $R'\in A$.
+%
+Therefore $A$ is globally $h$-feasible at $(r,s-1)$.
+%
+Thus $A\subseteq K_h^{r,s-1}$, and since $R\in A$,
+\[
+\kappa_{r,s-1}(R)\geq h\geq g_{s-r}(k),
+\]
+as required.
+\end{proof}
+
+\begin{theorem}[Rigorous chain certificate]
+\label{thm:formal-chain-certificate}
+Let $s\geq r+2$, let $R$ be an $r$-clique, and let $c$ be the largest size of a maximal clique containing $R$.
+%
+If
+\[
+\kappa_{r,s-1}(R)=\binom{c-r}{s-1-r},
+\]
+then
+\[
+\kappa_{r,s}(R)=\binom{c-r}{s-r}.
+\]
+\end{theorem}
+\begin{proof}
+If $c<s$, no $s$-clique contains $R$, so $\kappa_{r,s}(R)=0=\binom{c-r}{s-r}$ and equality follows.
+%
+Assume $c\geq s$.
+%
+Choose a maximal clique $M$ of size $c$ containing $R$ and let $A_M=\mathcal K_r(M)$.
+%
+Every member of $A_M$ belongs to exactly $\binom{c-r}{s-r}$ $s$-cliques inside $M$, and every $r$-subclique of each such witness also lies in $A_M$.
+%
+Thus $A_M$ is $\binom{c-r}{s-r}$-feasible and
+\[
+\kappa_{r,s}(R)\geq\binom{c-r}{s-r}.
+\]
+Set $a=s-r$ and $n=c-r$.
+%
+Then $a\geq2$, $n\geq a$, and the current and preceding floors are $\binom na$ and $\binom n{a-1}$.
+%
+Suppose for contradiction that the integer $\kappa_{r,s}(R)$ is greater than $\binom na$.
+%
+Theorem~\ref{thm:formal-shadow-transfer} and strict monotonicity from Lemma~\ref{lem:formal-lovasz-monotonicity} give
+\[
+\kappa_{r,s-1}(R)
+\geq g_a(\kappa_{r,s}(R))
+>g_a\!\left(\binom na\right)
+=\binom n{a-1}.
+\]
+This contradicts the assumed preceding-cell equality.
+%
+The lower bound is therefore tight, which proves the certificate.
+\end{proof}
+
+\begin{theorem}[Rigorous diagonal upper bound]
+\label{thm:formal-diagonal-upper-bound}
+Let $r\geq2$ and let $R\in\mathcal U_{r,r+1}$.
+%
+Then
+\[
+\kappa_{r,r+1}(R)
+\leq
+\min_{v\in R}\kappa_{r-1,r}(R\setminus\{v\})-1.
+\]
+When both cells lie in the range of relevant-class symmetry and $R$ has pattern $Q=(q_c)_c$, this bound is
+\[
+\kappa_{r,r+1}(Q)
+\leq
+U_r(Q):=
+\min_{c:q_c>0}\kappa_{r-1,r}(Q-\mathbf e_c)-1.
+\]
+If $U_r(Q)=L_r(Q):=c(Q)-r$, then
+\[
+\kappa_{r,r+1}(Q)=L_r(Q).
+\]
+\end{theorem}
+\begin{proof}
+Put
+\[
+k=\kappa_{r,r+1}(R),
+\qquad
+A=K_k^{r,r+1},
+\qquad
+B=\mathcal K_{r-1}(A):=
+\bigcup_{R_0\in A}\mathcal K_{r-1}(R_0).
+\]
+Because $R$ is supported, it belongs to $A$ by the definition of $k$.
+%
+We prove member by member that $B$ is globally $(k+1)$-feasible at $(r-1,r)$.
+
+Fix any $P\in B$.
+%
+Choose $R_0\in A$ containing $P$, and let $v$ be the unique vertex in $R_0\setminus P$.
+%
+Every $(r-1)$-subclique of $R_0$ belongs to $B$ by definition, so
+\[
+R_0\in\mathcal W_r(B).
+\]
+For every $S\in\mathcal W_{r+1}(A)$ containing $R_0$, define
+\[
+T_S=S\setminus\{v\}.
+\]
+The clique $T_S$ has size $r$ and contains $P$.
+%
+To verify that it survives relative to $B$, take any $X\in\mathcal K_{r-1}(T_S)$.
+%
+Since $v\notin T_S$, the set $X\cup\{v\}$ is an $r$-subclique of $S$.
+%
+The survival of $S$ relative to $A$ gives
+\[
+X\cup\{v\}\in\mathcal K_r(S)\subseteq A.
+\]
+Therefore $X\in B$, and since this holds for every such $X$,
+\[
+T_S\in\mathcal W_r(B).
+\]
+The map $S\mapsto T_S$ is injective because $S=T_S\cup\{v\}$.
+%
+Also $T_S\neq R_0$, because $v\notin T_S$ but $v\in R_0$.
+%
+Hence the witness $R_0$ and the witnesses $T_S$ are all distinct, and
+\[
+d_B^{r-1,r}(P)
+\geq 1+d_A^{r,r+1}(R_0)
+\geq k+1.
+\]
+The choice of $P\in B$ was arbitrary, so $B$ is globally $(k+1)$-feasible and
+\[
+B\subseteq K_{k+1}^{r-1,r}.
+\]
+
+For each $v\in R$, the clique $R\setminus\{v\}$ belongs to $B$ because $R\in A$.
+%
+Consequently
+\[
+\kappa_{r-1,r}(R\setminus\{v\})\geq k+1
+\]
+for every $v\in R$.
+%
+Subtracting one and taking the minimum proves the clique-level upper bound.
+%
+Under relevant-class symmetry, deleting any vertex in a used class $c$ produces pattern $Q-\mathbf e_c$, and all representatives of that pattern have the same preceding-cell value.
+%
+The vertex minimum therefore equals the displayed class minimum $U_r(Q)$.
+%
+Finally, the clique-floor construction in Lemma~\ref{lem:closed-form-certificate}, specialized to $s=r+1$, gives
+\[
+\kappa_{r,r+1}(Q)\geq\binom{c(Q)-r}{1}=c(Q)-r=L_r(Q).
+\]
+If $U_r(Q)=L_r(Q)$, this lower bound and the proved upper bound coincide.
+\end{proof}
+
+\begin{corollary}[Rigorous cross-cell nesting]
+\label{cor:formal-cross-cell-nesting}
+Let $s\geq r+2$ and let $k\geq1$ be an integer.
+%
+Set
+\[
+h=\left\lceil g_{s-r}(k)\right\rceil.
+\]
+If $\kappa_{r,s}(R)\geq k$, then $\kappa_{r,s-1}(R)\geq h$.
+%
+Moreover, every connected $k$-$(r,s)$-nucleus is contained in one connected $h$-$(r,s-1)$-nucleus.
+\end{corollary}
+\begin{proof}
+If $\kappa_{r,s}(R)\geq k$, Theorem~\ref{thm:formal-shadow-transfer} and Lemma~\ref{lem:formal-lovasz-monotonicity} give
+\[
+\kappa_{r,s-1}(R)
+\geq g_{s-r}(\kappa_{r,s}(R))
+\geq g_{s-r}(k).
+\]
+The left side is an integer, so it is at least $h$.
+
+Let $C$ be a connected $k$-$(r,s)$-nucleus and consider one adjacency of $R_1,R_2\in C$ witnessed by
+\[
+S\in\mathcal W_s(K_k^{r,s}).
+\]
+Every $r$-subclique $X$ of $S$ lies in $K_k^{r,s}$.
+%
+The first part of the corollary therefore puts every such $X$ in $K_h^{r,s-1}$.
+%
+Choose a sequence
+\[
+R_1=X_0,X_1,\ldots,X_t=R_2
+\]
+of $r$-subsets of $S$ in which each consecutive pair differs by one exchanged vertex.
+%
+Such a sequence exists by replacing the elements of $R_1\setminus R_2$ one at a time with the elements of $R_2\setminus R_1$.
+%
+For each $i$, the union $X_i\cup X_{i+1}$ has size $r+1\leq s-1$ and can therefore be extended within $S$ to an $(s-1)$-clique $T_i$.
+%
+Every $r$-subclique of $T_i$ is an $r$-subclique of $S$ and lies in $K_h^{r,s-1}$.
+%
+Hence
+\[
+T_i\in\mathcal W_{s-1}(K_h^{r,s-1}),
+\]
+so $X_i$ and $X_{i+1}$ are adjacent at the preceding cell and level $h$.
+%
+The sequence replaces the original $s$-witness adjacency by a preceding-cell witness path.
+%
+Replacing every adjacency along a path in $C$ and concatenating the resulting paths puts all members of $C$ in one component of $K_h^{r,s-1}$.
+%
+The maximal such component is a connected $h$-$(r,s-1)$-nucleus containing $C$.
 \end{proof}
