@@ -480,7 +480,11 @@ static PlaneCellResult planeReplayCell(
         for (const auto &cm : P.comp) r += cm.second;
         break;
     }
-    const bool boundaryWitnessMode = (r > 0 && s == r + 1);
+    // The dead-witness delta invariant applies to every tail t=s-r, not only
+    // the t=1 boundary.  Restricting it to the boundary left t>1 cells with
+    // a full support rescan after each death.
+    const bool witnessDeltaMode = (r > 0 && s > r);
+    const int witnessTail = s - r;
 
     // Per-cell mutable VIEW.  The shared leaves remain byte-immutable across
     // all r columns and s rows; metadata is stripped only from this view.
@@ -506,22 +510,20 @@ static PlaneCellResult planeReplayCell(
         return total;
     };
 
-    // At the boundary s=r+1, use the same witness-major incremental principle
-    // as the fixed-r cold peel.  A dying witness in leaf L is exactly
-    // Y=P+e_a.  Mark Y dead once, then decrement every other face
-    // Q=Y-e_d by its exact per-Q multiplicity n[d]-Q[d].  This replaces the
-    // old full supportOf(Q) rescan over every current split path after every
-    // deletion.  The shared leaves are disjoint, so a per-leaf dead-Y set is
-    // the complete mutable state and no controlled splitting is needed.
+    // For tail t=s-r, use the same witness-major incremental principle as the
+    // fixed-r a_Y peel.  A death marks all Y=P+delta, |delta|=t, once; every
+    // Q=Y-gamma, |gamma|=t, receives its exact embedding-weighted decrement.
+    // Shared leaves are disjoint, so the per-leaf dead-Y set is complete
+    // mutable state and no controlled splitting or support rescan is needed.
     unordered_map<PlaneComp,int,PlaneCompHash> patternByComp;
     vector<unordered_set<Vec,PlaneVecHash>> deadWitness;
-    if (boundaryWitnessMode) {
+    if (witnessDeltaMode) {
         patternByComp.reserve((size_t)nP * 2 + 16);
         for (int pi = 0; pi < nP; ++pi)
             patternByComp.emplace(patterns[pi].comp, pi);
         deadWitness.resize((size_t)nL);
     }
-    vector<double> delta(boundaryWitnessMode ? (size_t)nP : 0, 0.0);
+    vector<double> delta(witnessDeltaMode ? (size_t)nP : 0, 0.0);
     long long witnessProbes = 0, newWitnesses = 0, witnessCredits = 0;
 
     struct Event {
@@ -603,7 +605,7 @@ static PlaneCellResult planeReplayCell(
 
         affected.clear();
         const auto &P = patterns[pi];
-        if (boundaryWitnessMode) {
+        if (witnessDeltaMode) {
             PlaneComp qComp;
             qComp.reserve((size_t)r);
             for (size_t k = 0; k < P.leaves.size(); ++k) {
@@ -612,46 +614,60 @@ static PlaneCellResult planeReplayCell(
                 const CCPath &box = sharedLeaves[lid];
                 const Vec &b = P.localB[k];
                 Vec y = b;
-                for (int a = 0; a < box.m(); ++a) {
-                    witnessProbes++;
-                    if ((int)y[a] >= (int)box.u[a]) continue;
-                    y[a]++;
-                    bool feasible = true;
-                    for (int c = 0; c < box.m(); ++c)
-                        if ((int)y[c] < (int)box.ell[c] || (int)y[c] > (int)box.u[c]) {
-                            feasible = false;
-                            break;
+                // a_Y: enumerate every newly dead s-witness Y=P+delta once,
+                // then credit all r-faces Q=Y-gamma by their exact embedding
+                // multiplicity.  This is the fixed-r incremental delta rule.
+                auto creditFaces = [&](auto &&self, int start, int rem, double w) -> void {
+                    if (rem == 0) {
+                        qComp.clear();
+                        for (int c = 0; c < box.m(); ++c)
+                            if (y[c] != 0) qComp.push_back({(int)box.classIds[c], (int)y[c]});
+                        auto it = patternByComp.find(qComp);
+                        if (it == patternByComp.end()) return;
+                        int qi = it->second;
+                        if (qi != pi && alive[qi] && !certified[qi]) {
+                            if (!seen[qi]) { seen[qi] = 1; affected.push_back(qi); }
+                            delta[qi] += w;
+                            witnessCredits++;
                         }
-                    if (feasible && deadWitness[lid].insert(y).second) {
-                        newWitnesses++;
-                        for (int d = 0; d < box.m(); ++d) {
-                            if (y[d] == 0) continue;
-                            y[d]--;
-                            qComp.clear();
-                            for (int c = 0; c < box.m(); ++c)
-                                if (y[c] != 0)
-                                    qComp.push_back({(int)box.classIds[c], (int)y[c]});
-                            auto it = patternByComp.find(qComp);
-                            if (it == patternByComp.end()) {
-                                fprintf(stderr,
-                                        "[nsi-plane] boundary witness face lookup failed lid=%d\n",
-                                        lid);
-                                abort();
-                            }
-                            int qi = it->second;
-                            if (qi != pi && alive[qi] && !certified[qi]) {
-                                if (!seen[qi]) {
-                                    seen[qi] = 1;
-                                    affected.push_back(qi);
-                                }
-                                delta[qi] += (double)((int)box.n[d] - (int)y[d]);
-                                witnessCredits++;
-                            }
-                            y[d]++;
-                        }
+                        return;
                     }
-                    y[a]--;
-                }
+                    for (int d = start; d < box.m(); ++d) {
+                        int yd = (int)y[d];
+                        if (!yd) continue;
+                        int maxm = yd < rem ? yd : rem;
+                        for (int m = 1; m <= maxm; ++m) {
+                            y[d] = (int16_t)(yd - m);
+                            int avail = (int)box.n[d] - (yd - m);
+                            double wf = (m == 1) ? (double)avail : ccpath_ncr(avail, m);
+                            self(self, d + 1, rem - m, w * wf);
+                        }
+                        y[d] = (int16_t)yd;
+                    }
+                };
+                auto addWitnesses = [&](auto &&self, int start, int rem) -> void {
+                    if (rem == 0) {
+                        witnessProbes++;
+                        for (int c = 0; c < box.m(); ++c)
+                            if ((int)y[c] < (int)box.ell[c] || (int)y[c] > (int)box.u[c]) return;
+                        if (!deadWitness[lid].insert(y).second) return;
+                        newWitnesses++;
+                        creditFaces(creditFaces, 0, witnessTail, 1.0);
+                        return;
+                    }
+                    for (int a = start; a < box.m(); ++a) {
+                        int room = (int)box.u[a] - (int)y[a];
+                        if (room < 1) continue;
+                        int maxm = room < rem ? room : rem;
+                        int ya = (int)y[a];
+                        for (int m = 1; m <= maxm; ++m) {
+                            y[a] = (int16_t)(ya + m);
+                            self(self, a + 1, rem - m);
+                        }
+                        y[a] = (int16_t)ya;
+                    }
+                };
+                addWitnesses(addWitnesses, 0, witnessTail);
             }
         } else {
             for (size_t k = 0; k < P.leaves.size(); ++k) {
@@ -668,7 +684,7 @@ static PlaneCellResult planeReplayCell(
         }
         for (int qi : affected) {
             seen[qi] = 0;
-            if (boundaryWitnessMode) {
+            if (witnessDeltaMode) {
                 support[qi] -= delta[qi];
                 delta[qi] = 0.0;
             } else {
@@ -683,10 +699,10 @@ static PlaneCellResult planeReplayCell(
         }
     }
 
-    if (boundaryWitnessMode && getenv("PIVOTER_PEEL_PROFILE"))
+    if (witnessDeltaMode && getenv("PIVOTER_PEEL_PROFILE"))
         fprintf(stderr,
-                "[nsi-plane-profile] boundary witness-probes=%lld new-witnesses=%lld credits=%lld\n",
-                witnessProbes, newWitnesses, witnessCredits);
+                "[nsi-plane-profile] witness-delta tail=%d probes=%lld new-witnesses=%lld credits=%lld\n",
+                witnessTail, witnessProbes, newWitnesses, witnessCredits);
 
     for (int pi = 0; pi < nP; ++pi)
         if (!patterns[pi].direct && !certified[pi])
@@ -815,7 +831,10 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
 
     vector<PlaneIndexColumn> indexColumns;
     double allCellSeconds = 0.0;
-    const long long maxInc = getenv("SCT_MAX_INC") ? atoll(getenv("SCT_MAX_INC")) : 0;
+    // Plane localB maps are presently uncompressed.  Guard their incidence
+    // count before allocation; SCT_MAX_INC=0 remains the explicit unlimited
+    // override for experiments whose memory budget is known by the caller.
+    const long long maxInc = getenv("SCT_MAX_INC") ? atoll(getenv("SCT_MAX_INC")) : 20000000LL;
 
     // maxOverlap[M] = max_{M' != M} |M intersect M'|.  Compute this ONCE,
     // before the r loop, from the universal profile classes.  A class is
