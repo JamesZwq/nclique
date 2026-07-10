@@ -6984,3 +6984,33 @@ ca-GrQc + both synthetic gates (r=3,4); full plane r=3..5 works. +107/-10 lines,
 pushed. NEXT: re-run the server whole-plane experiment (was killed) to get the real plane-vs-
 per-r-sweep numbers + confirm r>rmin boundaries are diagonal-cheap. codex formal_theory.tex still
 running.
+
+## 175. FORMAL THEORY DONE + REVIEWED (codex gpt-5.6-sol) -> docs/formal_theory.tex (2026-07-10)
+codex produced docs/formal_theory.tex (789 lines, 4 theorem blocks, all with complete proofs). I
+REVIEWED ~700 lines line-by-line; verdict: rigorous, correct, hostile-review-grade. Addresses
+reject-level #2 + #3 + the multi-r Universal-CPI foundation:
+- thm:universal-cpi -- one immutable class-closed class-SCT for [Smin,Smax] gives exact s-support
+  for EVERY (r,s); r enters only via the composition b, s via sum y_c=s. Proof: exact-cover
+  partition + additivity. Lemma relevant-class-symmetry carries the crucial caveat (class symmetry
+  holds only for cliques of size >= Smin, not edges in smaller maximal cliques). This is the
+  theoretical justification for the whole multi-r index.
+- thm:gen-exact-cover + alg:gen-class-sct -- fully specifies Gen (spine/free/open-pool state, pivot,
+  disjoint recurrence), proves disjoint exact cover by induction on |A| + cross-seed via pi-min
+  class. (Fixes #2: Gen was undefined.)
+- thm:additive-support -- support = plain sum over hosting leaves, incl. a dead-witness version.
+- thm:weighted-pattern-equivalence -- pattern-orbit peeling = individual core values, via the
+  Gamma=within-class-symmetry automorphism (K_k = union of complete orbits). KEY nuance proven:
+  support is PER-REPRESENTATIVE, multiplicity m(P) is reporting-only; a witness with several P-reps
+  dies once (multiplying by m(P) overcounts). Exact multiplicity-aware cascade Eq given. (Fixes #2.)
+- thm:shell-order-replay + alg:replay-peel + thm:replay-peel-correctness -- proves certified units
+  of known core k may be scheduled at level k EVEN when current support > k, because all support
+  protecting K_{k+1} is internal to K_{k+1} and survives deleting the core-k shell. Induction: alive
+  set at start of level k = K_k, after = K_{k+1}. This is EXACTLY the gap Level Invariance didn't
+  cover. (Fixes reject-level #3.) ReplayPeel uses per-leaf Pareto-minimal antichains of deleted
+  vectors + stale-event versioning.
+codex flagged NO unproven statements; an audit pass tightened first-draft risks (restricted-profile
+classes). REMAINING: INTEGRATE into the paper (reconcile notation to \corev/\patset/\cliqb; insert
+into Construction/TransferTheory; the Universal CPI theorem anchors the multi-r rewrite). Not yet
+compiled (fragment needs the paper preamble) -- check at integration.
+STILL RUNNING: server whole-plane re-run (plane vs per-r on real graphs) -- collect from
+/data/wenqianz/plane_bench2.tsv.

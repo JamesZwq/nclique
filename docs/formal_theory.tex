@@ -1,0 +1,789 @@
+% Standalone section fragment for inclusion in an acmart paper.
+% Required packages/environments: amsmath, amssymb, amsthm, and algorithm2e.
+% The paper preamble must define theorem, lemma, and definition environments.
+
+\section{Formal Foundations of Universal Counting and Replay}
+\label{sec:formal-foundations}
+
+Let $G=(V,E)$ be a finite simple undirected graph.
+%
+For $t\geq 1$, let $\mathcal K_t(G)$ denote the set of $t$-vertex cliques of $G$.
+%
+We fix integers $1\leq S_{\min}\leq S_{\max}$ and prove that one class-based succinct clique tree for this interval supports exact counting and peeling for every admissible pair $(r,s)$.
+
+\subsection{Universal class-CPI counting}
+\label{subsec:universal-class-cpi}
+
+Let $\mathcal M$ be the set of maximal cliques of $G$ having size at least $S_{\min}$.
+%
+For every vertex $v$, define its relevant-region profile by
+\[
+\rho(v)=\{M\in\mathcal M:v\in M\}.
+\]
+Vertices with the same nonempty profile form an \emph{active class}, while every vertex with empty profile forms its own singleton inactive class.
+%
+Let $\mathcal C$ be the resulting partition of $V$, let $c\subseteq V$ also denote the vertex set of class $c$, and let $w_c=|c|$.
+%
+The relevant quotient $Q$ has node set $\mathcal C$ and an edge $cd$ exactly when $\rho(c)\cap\rho(d)\neq\emptyset$.
+
+\begin{lemma}[Relevant-class symmetry]
+\label{lem:relevant-class-symmetry}
+The following properties hold.
+\begin{enumerate}
+\item Every class $c$ induces a clique, and every quotient edge $cd$ is a complete join between $c$ and $d$.
+\item Every clique $X\in\mathcal K_t(G)$ with $t\geq S_{\min}$ uses only active classes, and the classes met by $X$ induce a clique of $Q$.
+\item Conversely, choosing an arbitrary number of vertices from each node of a quotient clique always gives a clique of $G$.
+\item Every permutation of vertices inside each class maps $\mathcal K_t(G)$ to itself for every $t\in[S_{\min},S_{\max}]$.
+\end{enumerate}
+The last property concerns the relevant clique families; it does not assert that such a permutation preserves edges that occur only in maximal cliques smaller than $S_{\min}$.
+\end{lemma}
+\begin{proof}
+An inactive class is a singleton and hence induces a clique.
+%
+For an active class $c$, choose $M\in\rho(c)$.
+%
+Every vertex of $c$ belongs to $M$, so this class also induces a clique.
+%
+If $cd\in E(Q)$, choose $M\in\rho(c)\cap\rho(d)$.
+%
+Then $c\cup d\subseteq M$, so every vertex of $c$ is adjacent to every vertex of $d$.
+
+Now let $X\in\mathcal K_t(G)$ with $t\geq S_{\min}$.
+%
+Extend $X$ to a maximal clique $M$.
+%
+Since $|M|\geq t\geq S_{\min}$, we have $M\in\mathcal M$.
+%
+Thus every vertex of $X$ has a nonempty profile, and any two classes met by $X$ both contain $M$ in their profiles and hence are adjacent in $Q$.
+%
+Conversely, if $D\subseteq\mathcal C$ is a quotient clique, then every class in $D$ is internally complete and every two distinct classes in $D$ are completely joined by the first paragraph.
+%
+Therefore every vertex subset of $\bigcup_{c\in D}c$ is a clique.
+
+Finally, let $\gamma$ permute vertices independently inside the classes and let $X\in\mathcal K_t(G)$ for $t\geq S_{\min}$.
+%
+Choose a relevant maximal clique $M\supseteq X$.
+%
+If $v\in X\cap c$, then $M\in\rho(c)$, so every vertex of $c$, including $\gamma(v)$, belongs to $M$.
+%
+Consequently $\gamma(X)\subseteq M$ and is a $t$-clique.
+%
+Applying the same argument to $\gamma^{-1}$ proves that $\gamma$ maps $\mathcal K_t(G)$ bijectively to itself.
+\end{proof}
+
+We use the convention $\binom ab=0$ unless $0\leq b\leq a$ and $a,b$ are integers.
+
+\begin{definition}[Class-SCT leaf and exact interval cover]
+\label{def:class-sct-leaf}
+A \emph{class-SCT leaf} $L$ specifies, for every $c\in\mathcal C$, an available set $V_{L,c}\subseteq c$, its capacity $n_{L,c}=|V_{L,c}|$, and integer bounds
+\[
+0\leq \ell_{L,c}\leq u_{L,c}\leq n_{L,c}.
+\]
+Only finitely many capacities are nonzero, and $\bigcup_cV_{L,c}$ is required to be a clique.
+%
+For an integer $t$, the $t$-slice encoded by $L$ is
+\[
+\mathcal K_t(L)=
+\left\{
+X\subseteq\bigcup_cV_{L,c}:
+\substack{
+|X|=t,\\
+\ell_{L,c}\leq |X\cap c|\leq u_{L,c}\ \text{for every }c}
+\right\}.
+\]
+A finite leaf family $\mathcal L$ is an \emph{exact class-SCT for $[S_{\min},S_{\max}]$} when, for every $t$ in that interval,
+\[
+\mathcal K_t(G)=\biguplus_{L\in\mathcal L}\mathcal K_t(L),
+\]
+where $\biguplus$ denotes disjoint union.
+%
+A leaf is \emph{class-closed} when each $V_{L,c}$ is either $c$ or $\emptyset$.
+\end{definition}
+
+Fix an $r$-clique $R$ and write $b_c=|R\cap c|$, so $\sum_cb_c=r$.
+%
+Its class-composition pattern is $P=(b_c)_{c\in\mathcal C}$.
+%
+We say that $L$ \emph{hosts $R$} when $R\cap c\subseteq V_{L,c}$ for every $c$.
+%
+For a class-closed leaf, hosting depends only on $P$, and we then say that $L$ hosts $P$.
+
+\begin{lemma}[General class-leaf count]
+\label{lem:general-class-leaf-count}
+If $L$ hosts $R$, then the number of $s$-cliques in the leaf slice that contain $R$ is
+\begin{equation}
+\label{eq:general-class-leaf-count}
+\operatorname{count}_{L,s}(P)
+=
+\sum_{\substack{
+(y_c)_c\in\mathbb Z_{\geq0}^{\mathcal C}:\ \sum_cy_c=s\\
+\max\{\ell_{L,c},b_c\}\leq y_c\leq u_{L,c}\ \forall c}}
+\prod_{c\in\mathcal C}
+\binom{n_{L,c}-b_c}{y_c-b_c}.
+\end{equation}
+If $L$ does not host $R$, define $\operatorname{count}_{L,s}(P)=0$.
+\end{lemma}
+\begin{proof}
+Fix a feasible composition $\mathbf y=(y_c)_c$ in Equation~\eqref{eq:general-class-leaf-count}.
+%
+The desired clique already contains the $b_c$ vertices of $R\cap c$ and must choose exactly $y_c-b_c$ additional vertices from the $n_{L,c}-b_c$ vertices of $V_{L,c}\setminus R$.
+%
+The classwise choices are independent, so the number of choices is the displayed product.
+%
+Every chosen set lies in $\mathcal K_s(L)$ because its class counts obey the leaf bounds, and it is a clique because the union of the available sets is a clique.
+%
+Conversely, every member of $\mathcal K_s(L)$ containing $R$ has a unique class-count vector $\mathbf y$ and a unique additional subset in every class.
+%
+Distinct vectors or distinct classwise choices give distinct cliques, so the sum is bijective and has no overcount.
+%
+If $L$ does not host $R$, no subset of $\bigcup_cV_{L,c}$ can contain $R$, which proves the zero case.
+\end{proof}
+
+The common one-pool formula is an exact specialization of this count.
+%
+After conditioning on $R$, suppose a leaf offers one unrestricted pool of $w$ additional vertices and no other choice.
+%
+The only free coordinate chooses $s-r$ vertices, and Equation~\eqref{eq:general-class-leaf-count} becomes
+\begin{equation}
+\label{eq:single-pool-special-case}
+\operatorname{count}_{L,s}(P)=\binom{w}{s-r}.
+\end{equation}
+
+\begin{theorem}[Universal CPI, independent of $r$]
+\label{thm:universal-cpi}
+Let $\mathcal L$ be one exact class-closed class-SCT built for $[S_{\min},S_{\max}]$, without taking $r$ as a construction parameter.
+%
+For every $r\geq1$ with $r+1\leq S_{\max}$, every $r$-clique $R$ with pattern $P$, and every
+\[
+s\in[\max\{r+1,S_{\min}\},S_{\max}],
+\]
+the exact initial $s$-support of $R$ is
+\begin{equation}
+\label{eq:universal-support}
+\operatorname{sup}_s(R)
+:=
+|\{S\in\mathcal K_s(G):R\subseteq S\}|
+=
+\sum_{L\in\mathcal L}\operatorname{count}_{L,s}(P).
+\end{equation}
+Thus one immutable class-SCT is an exact counting representation for every cell in the bounded $(r,s)$ plane; $r$ enters only through $\mathbf b$ and $s$ only through the constraint $\sum_cy_c=s$.
+\end{theorem}
+\begin{proof}
+Fix $r$, $s$, and $R$.
+%
+The exact-cover property in Definition~\ref{def:class-sct-leaf} partitions $\mathcal K_s(G)$ into the disjoint leaf slices $\mathcal K_s(L)$.
+%
+Intersecting each slice with $\{S:R\subseteq S\}$ preserves both coverage and disjointness.
+%
+Lemma~\ref{lem:general-class-leaf-count} gives the cardinality of each resulting part, so additivity of cardinality over a disjoint union proves Equation~\eqref{eq:universal-support}.
+%
+If $R$ belongs to no $s$-clique, every intersection is empty and both sides are zero.
+%
+Neither the leaf definition nor the exact-cover property contains $r$, while the same leaf bounds define every $s$-slice in the construction interval.
+%
+Therefore changing the query order or target size does not rebuild or mutate $\mathcal L$.
+\end{proof}
+
+\subsection{Construction by a disjoint pivot recurrence}
+\label{subsec:gen-construction}
+
+We now give a self-contained weighted-class version of the canonical degeneracy and pivot partition used by Pivoter~\cite{Pivoter}.
+%
+Let $\pi$ be a fixed degeneracy order of the quotient nodes, and write $N_Q^+(c)=\{d\in N_Q(c):\pi(d)>\pi(c)\}$.
+%
+A weighted quotient clique is a vector $\mathbf x$ with $0\leq x_c\leq w_c$ whose positive coordinates induce a clique of $Q$; it represents every concrete choice of $x_c$ vertices from each class.
+
+\begin{definition}[State and completion of \textsc{Gen}]
+\label{def:gen-state}
+A \textsc{Gen} state is $(F,U,A,[S_{\min},S_{\max}])$.
+%
+The \emph{spine} $F$ is a map with a fixed positive multiplicity $f_c\in[1,w_c]$ on every $c\in\operatorname{dom}(F)$, the \emph{free pool} $U$ is a set of classes with multiplicity range $[0,w_c]$, and the \emph{open pool} $A$ contains undecided classes.
+%
+The three class sets are disjoint, $\operatorname{dom}(F)\cup U$ induces a quotient clique, and every class in $A$ is adjacent to every class in $\operatorname{dom}(F)\cup U$.
+%
+A concrete completion is a clique $X$ whose class counts $x_c=|X\cap c|$ satisfy
+\[
+\begin{aligned}
+x_c&=f_c &&(c\in\operatorname{dom}(F)),\\
+0\leq x_c&\leq w_c &&(c\in U\cup A),\\
+x_c&=0 &&(c\notin\operatorname{dom}(F)\cup U\cup A),
+\end{aligned}
+\]
+whose positive coordinates induce a quotient clique, and whose size lies in $[S_{\min},S_{\max}]$.
+\end{definition}
+
+For a state, let $\mathfrak C(F,U,A)$ denote its concrete completion family.
+%
+Choose a deterministic pivot $p\in A$, and let $B=A\setminus(\{p\}\cup N_Q(p))=\{v_1<\cdots<v_q\}$ under a fixed class order.
+%
+If $B=\emptyset$, the recurrence is
+\begin{equation}
+\label{eq:gen-universal-recurrence}
+\mathfrak C(F,U,A)
+=
+\mathfrak C(F,U\cup\{p\},A\setminus\{p\}).
+\end{equation}
+If $B\neq\emptyset$, define
+\[
+A_0=A\setminus B,
+\qquad
+A_t=(A\cap N_Q(v_t))\setminus\{v_1,\ldots,v_t\},
+\]
+and obtain the disjoint recurrence
+\begin{equation}
+\label{eq:gen-nonuniversal-recurrence}
+\mathfrak C(F,U,A)
+=
+\mathfrak C(F,U,A_0)
+\ \dot\cup\!
+\mathop{\dot\bigcup}_{t=1}^{q}
+\mathop{\dot\bigcup}_{j=1}^{w_{v_t}}
+\mathfrak C(F\cup\{v_t\mapsto j\},U,A_t),
+\end{equation}
+where a child with forced size above $S_{\max}$ is empty.
+%
+The first family uses no class in $B$, while a $(t,j)$ family uses $v_t$ with multiplicity $j$ and uses no earlier member of $B$.
+
+\begin{algorithm}[t]
+\caption{\textsc{BuildClassSCT} and its recursive procedure \textsc{Gen}.}
+\label{alg:gen-class-sct}
+\DontPrintSemicolon
+\SetKwFunction{Gen}{Gen}
+\SetKwProg{Fn}{Function}{:}{end}
+\KwIn{quotient $Q$, class weights $(w_c)_c$, degeneracy order $\pi$, interval $[S_{\min},S_{\max}]$}
+\KwOut{leaf family $\mathcal L$}
+$\mathcal L\gets\emptyset$
+\;
+\Fn{\Gen{$F,U,A$}}{
+  $a\gets\sum_{c\in\operatorname{dom}(F)}f_c$
+  \;
+  \If{$a>S_{\max}$ \textbf{or} $a+\sum_{c\in U\cup A}w_c<S_{\min}$}{\Return}
+  \If{$A=\emptyset$}{
+    create class-closed $L$ with $V_{L,c}=c$ on $\operatorname{dom}(F)\cup U$ and $V_{L,c}=\emptyset$ otherwise
+    \;
+    set $(n_{L,c},\ell_{L,c},u_{L,c})\gets(w_c,f_c,f_c)$ for $c\in\operatorname{dom}(F)$
+    \;
+    set $(n_{L,c},\ell_{L,c},u_{L,c})\gets(w_c,0,w_c)$ for $c\in U$ and $(0,0,0)$ otherwise
+    \;
+    $\mathcal L\gets\mathcal L\cup\{L\}$; \Return
+    \;
+  }
+  choose the deterministic pivot $p\in A$; $B\gets A\setminus(\{p\}\cup N_Q(p))$
+  \;
+  \eIf{$B=\emptyset$}{
+    \Gen{$F,U\cup\{p\},A\setminus\{p\}$}
+    \;
+  }{
+    order $B$ as $v_1<\cdots<v_q$; \Gen{$F,U,A\setminus B$}
+    \;
+    \For{$t\gets1$ \KwTo $q$}{
+      $A_t\gets(A\cap N_Q(v_t))\setminus\{v_1,\ldots,v_t\}$
+      \;
+      \For{$j\gets1$ \KwTo $w_{v_t}$}{
+        \Gen{$F\cup\{v_t\mapsto j\},U,A_t$}
+        \;
+      }
+    }
+  }
+}
+\ForEach{$c\in\mathcal C$ in increasing $\pi$ order}{
+  \For{$j\gets1$ \KwTo $\min\{w_c,S_{\max}\}$}{
+    \Gen{$\{c\mapsto j\},\emptyset,N_Q^+(c)$}
+    \;
+  }
+}
+\Return{$\mathcal L$}
+\;
+\end{algorithm}
+
+The pivot may, for example, maximize $\sum_{z\in A\cap N_Q(p)}w_z$; the choice affects the tree size but not the recurrence's correctness.
+
+\begin{theorem}[Disjoint leaves and exact cover]
+\label{thm:gen-exact-cover}
+For every valid call $\textsc{Gen}(F,U,A)$, the leaves emitted below that call form a pairwise-disjoint partition of $\mathfrak C(F,U,A)$.
+%
+Across the outer degeneracy seeds in Algorithm~\ref{alg:gen-class-sct}, every concrete clique of every size in $[S_{\min},S_{\max}]$ belongs to exactly one emitted leaf slice.
+%
+Consequently Algorithm~\ref{alg:gen-class-sct} constructs one exact class-SCT for the entire interval, independently of $r$.
+\end{theorem}
+\begin{proof}
+We first prove the per-call assertion by induction on $|A|$.
+%
+If either pruning test succeeds, the forced multiplicity already exceeds $S_{\max}$ or even using every remaining vertex cannot reach $S_{\min}$, so $\mathfrak C(F,U,A)=\emptyset$ and emitting no leaf is exact.
+%
+If $A=\emptyset$ and neither pruning test succeeds, the emitted leaf chooses exactly $f_c$ arbitrary vertices in every spine class and an arbitrary number from $0$ through $w_c$ in every free class.
+%
+These choices are precisely the completions in the size window, so the single leaf is an exact one-part cover.
+
+Assume $A\neq\emptyset$ and that the assertion holds for smaller open pools.
+%
+If $B=\emptyset$, the pivot is adjacent to every other open class and, by the state invariant, to every spine and free class.
+%
+Its multiplicity can therefore vary independently from $0$ through $w_p$.
+%
+Moving $p$ from $A$ to $U$ records exactly that choice, so Equation~\eqref{eq:gen-universal-recurrence} is an equality of concrete completion families.
+%
+The child has a smaller open pool, and the induction hypothesis applies.
+
+Now suppose $B=\{v_1,\ldots,v_q\}\neq\emptyset$ and take any $X\in\mathfrak C(F,U,A)$.
+%
+If $X$ uses no class in $B$, then every open class used by $X$ lies in $A_0=A\setminus B$, so $X$ belongs to the first child of Equation~\eqref{eq:gen-nonuniversal-recurrence}.
+%
+Conversely, no completion of that child uses a class in $B$.
+%
+Otherwise let $v_t$ be the first class of $B$ used by $X$ and let $j=|X\cap v_t|$.
+%
+Because $X$ is a clique, every other open class used by $X$ is adjacent to $v_t$.
+%
+The pivot $p$ is not used because $pv_t\notin E(Q)$, and no $v_i$ with $i<t$ is used by the choice of $t$.
+%
+Thus every remaining open class used by $X$ lies in $A_t$, and $X$ belongs to the unique $(t,j)$ child.
+%
+Conversely, the state invariant and the definition of $A_t$ ensure that every completion of the $(t,j)$ child is a clique, uses $v_t$ exactly $j$ times, and uses no earlier member of $B$.
+%
+Hence the branch labels ``no member of $B$'' and ``first used member $v_t$ with multiplicity $j$'' are mutually exclusive and exhaustive.
+%
+This proves that Equation~\eqref{eq:gen-nonuniversal-recurrence} is a disjoint union.
+%
+Every child has a strictly smaller open pool, so the induction hypothesis partitions each child into leaves, and their union proves the per-call claim.
+
+It remains to prove disjointness across seeds.
+%
+Let $X$ be a nonempty concrete clique in the construction window, let $c$ be the unique $\pi$-minimum class met by $X$, and let $j=|X\cap c|$.
+%
+Every other class met by $X$ is a later quotient neighbour of $c$, so $X$ is a completion of the seed $(\{c\mapsto j\},\emptyset,N_Q^+(c))$.
+%
+No other seed can contain $X$, because its minimum used class or its multiplicity at that class would differ.
+%
+The per-call partition therefore places $X$ in exactly one emitted leaf.
+%
+The argument holds simultaneously for all sizes in the interval, proving the exact-cover property in Definition~\ref{def:class-sct-leaf}.
+%
+Algorithm~\ref{alg:gen-class-sct} has no order-$r$ input, which proves the final assertion.
+\end{proof}
+
+\begin{theorem}[Additive support]
+\label{thm:additive-support}
+Let $\mathcal L$ be the leaves emitted by Algorithm~\ref{alg:gen-class-sct}, fix $s\in[S_{\min},S_{\max}]$, and let $R$ have pattern $P$.
+%
+Then
+\begin{equation}
+\label{eq:additive-support}
+\operatorname{sup}_s(R)
+=
+\sum_{L:\,L\text{ hosts }P}\operatorname{count}_{L,s}(P),
+\end{equation}
+with no inclusion--exclusion between leaves.
+%
+More generally, for any set $Z\subseteq\mathcal K_s(G)$ of dead witnesses, if
+\[
+\operatorname{count}^{Z}_{L,s}(P)
+=
+|\{S\in\mathcal K_s(L)\setminus Z:R\subseteq S\}|,
+\]
+then the surviving support is the plain sum $\sum_L\operatorname{count}^{Z}_{L,s}(P)$.
+\end{theorem}
+\begin{proof}
+Theorem~\ref{thm:gen-exact-cover} gives the disjoint partition
+\[
+\mathcal K_s(G)=\biguplus_L\mathcal K_s(L).
+\]
+%
+After intersecting every part with the witnesses containing $R$, nonhosting leaves contribute the empty set and hosting leaves contribute the sets counted by Lemma~\ref{lem:general-class-leaf-count}.
+%
+Cardinality is additive over this disjoint union, which proves Equation~\eqref{eq:additive-support}.
+%
+For the second statement, the families $\mathcal K_s(L)\setminus Z$ remain pairwise disjoint and cover $\mathcal K_s(G)\setminus Z$.
+%
+Intersecting them with the witnesses containing $R$ and adding their cardinalities proves the surviving formula.
+%
+Inclusion--exclusion may be used internally to evaluate the union of several deletion conditions inside one leaf, but no cross-leaf correction exists or is needed.
+\end{proof}
+
+\subsection{Weighted pattern orbits and exact peeling}
+\label{subsec:weighted-pattern-peeling}
+
+Fix a cell $(r,s)$ with $1\leq r<s$ and $s\in[S_{\min},S_{\max}]$.
+%
+Let $\mathcal W=\mathcal K_s(G)$ be the witness set and let
+\[
+\mathcal U=\bigcup_{S\in\mathcal W}\mathcal K_r(S)
+\]
+be the individual $r$-clique peeling units that occur in at least one witness.
+%
+Every $r$-clique outside $\mathcal U$ has support and core value zero and may be returned separately.
+%
+For $A\subseteq\mathcal U$, define
+\begin{equation}
+\label{eq:induced-witness-support}
+\begin{aligned}
+\mathcal W(A)&=\{S\in\mathcal W:\mathcal K_r(S)\subseteq A\},\\
+d_A(R)&=|\{S\in\mathcal W(A):R\subseteq S\}|.
+\end{aligned}
+\end{equation}
+Thus a witness survives exactly while all of its $r$-subcliques survive.
+
+For an integer $k\geq0$, call $A$ \emph{$k$-feasible} when $d_A(R)\geq k$ for every $R\in A$.
+%
+The union of two $k$-feasible sets is $k$-feasible because $d_A(R)$ is nondecreasing in $A$.
+%
+Hence there is a unique largest $k$-feasible set, denoted $K_k$, and we define
+\begin{equation}
+\label{eq:core-threshold-definition}
+\kappa_{r,s}(R)=\max\{k:R\in K_k\}.
+\end{equation}
+
+\begin{lemma}[Threshold characterization of peeling]
+\label{lem:threshold-peeling}
+In any finite unit--witness system with supports monotone in the survivor set, repeatedly deleting any unit whose current support is below $k$ terminates at the unique largest $k$-feasible set $K_k$, independently of deletion order.
+%
+Consequently, ordinary minimum-support peeling with the clamp $\lambda\gets\max\{\lambda,d_A(x)\}$ assigns every unit $x$ the value $\max\{k:x\in K_k\}$.
+\end{lemma}
+\begin{proof}
+During threshold-$k$ deletion, no member of $K_k$ can be removed.
+%
+Indeed, if the current set $A$ contains $K_k$ and $x\in K_k$, monotonicity gives $d_A(x)\geq d_{K_k}(x)\geq k$.
+%
+The terminal set $A^*$ is itself $k$-feasible because no remaining unit has support below $k$.
+%
+Since $K_k$ survives throughout and is the largest $k$-feasible set, $K_k\subseteq A^*\subseteq K_k$, so $A^*=K_k$.
+
+Run minimum-support peeling and fix $k$.
+%
+Whenever the current survivor set strictly contains $K_k$, it is not $k$-feasible by maximality, so its minimum support is below $k$ and the next minimum-support deletion is also a valid threshold-$k$ deletion.
+%
+Therefore all units outside $K_k$ disappear before the clamped level reaches $k$.
+%
+When the survivor set first becomes $K_k$, every current support is at least $k$, so the next deletion raises the clamped level to at least $k$ and the clamp keeps all later assigned values at least $k$.
+%
+Thus a unit receives value at least $k$ exactly when it belongs to $K_k$.
+%
+This equivalence for every integer $k$ proves the claimed value.
+\end{proof}
+
+A valid pattern $P$ is a composition $\mathbf b^P=(b_c^P)_c$ with $\sum_cb_c^P=r$ for which
+\[
+\mathcal U_P=\{R\in\mathcal U:|R\cap c|=b_c^P\ \text{for every }c\}
+\]
+is nonempty.
+%
+Lemma~\ref{lem:relevant-class-symmetry} implies that arbitrary within-class permutations act transitively on $\mathcal U_P$ and preserve the unit--witness incidence relation.
+%
+Therefore $\mathcal U_P$ contains every independent choice of $b_c^P$ vertices from each class: one realization lies in an $s$-witness, and applying all within-class permutations to that witness produces every such choice in an $s$-witness.
+%
+The pattern super-node consequently has multiplicity
+\begin{equation}
+\label{eq:pattern-multiplicity}
+m(P)=|\mathcal U_P|=\prod_{c\in\mathcal C}\binom{w_c}{b_c^P}.
+\end{equation}
+Its current support is the support of one representative, not the sum over its $m(P)$ representatives.
+
+We next define the exact multiplicity-aware cascade.
+%
+The class-SCT emitted by Algorithm~\ref{alg:gen-class-sct} is class-closed, so leaf hosting and all following tests depend only on compositions.
+%
+Let $\mathcal D$ be the set of pattern orbits already deleted.
+%
+For an alive pattern $Q$ and a leaf $L$, define
+\begin{equation}
+\label{eq:live-leaf-count}
+\operatorname{LiveCount}_{L,s}^{\mathcal D}(Q)
+=
+\sum_{\substack{
+\sum_cy_c=s\\
+\max\{\ell_{L,c},b_c^Q\}\leq y_c\leq u_{L,c}\ \forall c\\
+\mathbf b^D\nleq\mathbf y\ \forall D\in\mathcal D}}
+\prod_c\binom{n_{L,c}-b_c^Q}{y_c-b_c^Q},
+\end{equation}
+with value zero when $L$ does not host $Q$.
+%
+Here $\mathbf a\leq\mathbf y$ means componentwise inequality.
+%
+An $s$-clique of composition $\mathbf y$ contains some representative of pattern $D$ exactly when $\mathbf b^D\leq\mathbf y$.
+%
+Thus
+\begin{equation}
+\label{eq:pattern-live-support}
+\sigma_{\mathcal D}(Q)=\sum_{L\in\mathcal L}\operatorname{LiveCount}_{L,s}^{\mathcal D}(Q)
+\end{equation}
+is the exact current per-representative support.
+
+When an alive pattern $P$ is deleted, the exact decrement to a distinct alive pattern $Q$ is
+\begin{equation}
+\label{eq:aggregate-pattern-decrement}
+\Delta_{\mathcal D}(P\to Q)
+=
+\sum_{L\in\mathcal L}
+\sum_{\substack{
+\sum_cy_c=s\\
+\max\{\ell_{L,c},b_c^P,b_c^Q\}\leq y_c\leq u_{L,c}\ \forall c\\
+\mathbf b^D\nleq\mathbf y\ \forall D\in\mathcal D}}
+\prod_c\binom{n_{L,c}-b_c^Q}{y_c-b_c^Q}.
+\end{equation}
+The cascade rule is
+\begin{equation}
+\label{eq:aggregate-pattern-cascade}
+\sigma_{\mathcal D\cup\{P\}}(Q)
+=
+\sigma_{\mathcal D}(Q)-\Delta_{\mathcal D}(P\to Q).
+\end{equation}
+
+\begin{theorem}[Weighted-pattern peeling equivalence]
+\label{thm:weighted-pattern-equivalence}
+Run minimum-support peeling on pattern super-nodes.
+%
+When pattern $P$ is removed, assign the clamped peel value to all $m(P)$ representatives, delete the entire orbit $\mathcal U_P$, and update every other alive pattern by Equations~\eqref{eq:aggregate-pattern-decrement}--\eqref{eq:aggregate-pattern-cascade}.
+%
+Then every representative $R\in\mathcal U_P$ receives exactly its individual from-scratch value $\kappa_{r,s}(R)$.
+%
+The multiplicity $m(P)$ is used for reporting and for the number of units removed, but it is not a multiplier in either support or decrement.
+\end{theorem}
+\begin{proof}
+Let $\Gamma=\prod_{c\in\mathcal C}\operatorname{Sym}(c)$ act by independent within-class permutations.
+%
+By Lemma~\ref{lem:relevant-class-symmetry}, $\Gamma$ maps $s$-cliques to $s$-cliques and preserves containment, so it is an automorphism group of the unit--witness system in Equation~\eqref{eq:induced-witness-support}.
+%
+Its orbits on $\mathcal U$ are exactly the pattern realization sets: the action preserves every class count, and symmetric groups are transitive on equal-size subsets of each class.
+
+The largest individual $k$-feasible set $K_k$ is unique.
+%
+For any $\gamma\in\Gamma$, the set $\gamma(K_k)$ is also $k$-feasible, so uniqueness gives $\gamma(K_k)=K_k$.
+%
+Hence $K_k$ is a union of complete pattern orbits.
+%
+For a pattern set $\mathcal B$, let $A(\mathcal B)=\bigcup_{P\in\mathcal B}\mathcal U_P$.
+%
+All representatives of a pattern have the same support in this invariant survivor set.
+%
+Therefore $A(\mathcal B)$ is individually $k$-feasible if and only if every pattern in $\mathcal B$ has per-representative support at least $k$.
+%
+The unique largest feasible pattern set is consequently
+\[
+\overline K_k=\{P:\mathcal U_P\subseteq K_k\}.
+\]
+Lemma~\ref{lem:threshold-peeling} applied to the pattern system shows that minimum-support pattern peeling assigns $P$ the value $\max\{k:P\in\overline K_k\}$.
+%
+For every $R\in\mathcal U_P$, this equals $\max\{k:R\in K_k\}=\kappa_{r,s}(R)$.
+
+It remains to prove that the aggregate cascade maintains the support used in this quotient argument.
+%
+Fix a representative $R_Q\in\mathcal U_Q$, a leaf $L$, and a witness $S\in\mathcal K_s(L)$ containing $R_Q$ with class composition $\mathbf y$.
+%
+The witness contains a representative of pattern $P$ if and only if $b_c^P\leq y_c$ for every class: necessity follows from class counts, and sufficiency follows by choosing any $b_c^P$ of the $y_c$ witness vertices in each class.
+%
+The same criterion for every $D\in\mathcal D$ says that $S$ is live before deleting $P$ exactly when $\mathbf b^D\nleq\mathbf y$ for all $D$.
+%
+For fixed $L$ and $\mathbf y$, Lemma~\ref{lem:general-class-leaf-count} counts the witnesses containing $R_Q$ by the product in Equation~\eqref{eq:aggregate-pattern-decrement}.
+%
+Thus that equation counts exactly the witnesses containing $R_Q$ that are live before the deletion and die because they contain at least one representative of $P$.
+%
+Theorem~\ref{thm:additive-support} makes the sum over leaves disjoint, so Equation~\eqref{eq:aggregate-pattern-cascade} is exact.
+%
+A witness that contains several representatives of $P$ still dies once, and the componentwise predicate counts it once; multiplying by $m(P)$ would therefore overcount.
+\end{proof}
+
+\subsection{Shell-order replay and the complete replay algorithm}
+\label{subsec:shell-order-replay}
+
+We state replay first for an arbitrary finite unit--witness system and then instantiate it with weighted pattern orbits.
+%
+Write $\kappa(x)$ for the from-scratch core value of a unit and $K_k=\{x:\kappa(x)\geq k\}$ for its unique largest $k$-feasible set.
+
+\begin{theorem}[Shell-order replay]
+\label{thm:shell-order-replay}
+Partition the units into a certified set $\mathit{Cert}$ and a residue set $\mathit{Res}$, and suppose the exact value $\kappa(x)$ is known for every $x\in\mathit{Cert}$.
+%
+Delete certified units in nondecreasing order of their known values, deleting each certified $x$ at level $\kappa(x)$ even when its current support exceeds $\kappa(x)$.
+%
+Interleave these scheduled deaths with ordinary minimum-current-support peeling of residue units, using the usual clamp to the current level.
+%
+Before advancing beyond an integer level $k$, process every certified death scheduled at $k$ and every residue cascade whose clamped key is at most $k$; ties at level $k$ may be processed in any order.
+%
+Then every residue unit is deleted at, and is assigned, its from-scratch value.
+%
+The conclusion applies to weighted pattern orbits when current supports are per representative and deletions use Equation~\eqref{eq:aggregate-pattern-cascade}.
+\end{theorem}
+\begin{proof}
+We prove by induction on $k\geq0$ that the alive set at the beginning of level $k$ is exactly $K_k$ and that the alive set after level $k$ is exactly $K_{k+1}$.
+%
+The base case holds because supports are nonnegative, so every unit lies in $K_0$.
+
+Assume that level $k$ begins with alive set $K_k$.
+%
+Every scheduled death at this level removes a certified unit of exact core value $k$, hence a member of $K_k\setminus K_{k+1}$.
+%
+No residue unit in $K_{k+1}$ can be removed ordinarily at level $k$.
+%
+Indeed, throughout level $k$ the current alive set contains $K_{k+1}$ until this claim is applied, and every $x\in K_{k+1}$ has support at least $k+1$ inside $K_{k+1}$.
+%
+Support monotonicity gives current support at least $k+1$, so its clamped residue key exceeds $k$.
+%
+By induction over the deletions made within level $k$, every deleted unit therefore belongs to $K_k\setminus K_{k+1}$, and $K_{k+1}$ remains alive.
+
+We show that level $k$ cannot terminate while a shell unit in $K_k\setminus K_{k+1}$ remains.
+%
+After all certified deaths scheduled at $k$ have been processed, every remaining certified unit has core at least $k+1$ and hence lies in $K_{k+1}$.
+%
+Suppose a shell unit remains but no residue unit has current support at most $k$.
+%
+Every remaining residue unit then has support at least $k+1$.
+%
+Every remaining certified unit also has support at least $k+1$, because it lies in $K_{k+1}$ and the alive set contains $K_{k+1}$.
+%
+The entire current alive set would be $(k+1)$-feasible, contradicting the maximality of $K_{k+1}$ because that set contains a shell unit outside $K_{k+1}$.
+%
+Thus a residue deletion at level $k$ remains available until every shell unit has disappeared.
+%
+At the end of the level, exactly $K_{k+1}$ remains, completing the induction.
+
+The induction assigns every residue unit its unique shell value $\kappa(x)$.
+%
+It also explains why a certified core-$k$ unit may be scheduled when its current support is larger than $k$: all support that protects $K_{k+1}$ is internal to $K_{k+1}$ and survives deletion of the core-$k$ shell.
+%
+For weighted patterns, Theorem~\ref{thm:weighted-pattern-equivalence} identifies pattern superlevel sets with individual superlevel sets, and Equation~\eqref{eq:aggregate-pattern-cascade} supplies the exact monotone current supports.
+%
+The same induction therefore applies.
+\end{proof}
+
+By Theorem~\ref{thm:weighted-pattern-equivalence}, all representatives of a pattern have one common value; write it as $\kappa_{r,s}(P)$.
+%
+We now define the closed-form certificate used by replay.
+%
+For an active pattern $P$, let
+\[
+c(P)=\max\{|M|:M\in\mathcal M,\ R\subseteq M\ \text{for every }R\in\mathcal U_P\}
+\]
+and define its clique floor at the cell by
+\begin{equation}
+\label{eq:closed-form-floor}
+F_{r,s}(P)=\binom{c(P)-r}{s-r}.
+\end{equation}
+The maximum exists because an active pattern has a representative in an $s$-witness, every such witness extends to a relevant maximal clique, and that clique contains the entire orbit by class symmetry.
+%
+The hosting-region set, and hence $c(P)$, is independent of the chosen representative because all members of every used class have the same profile.
+
+\begin{lemma}[Clique floor and valid closed-form certificate]
+\label{lem:closed-form-certificate}
+Every representative of $P$ has $\kappa_{r,s}$ value at least $F_{r,s}(P)$.
+%
+If an independently established upper bound $U_{r,s}(P)$ with $\kappa_{r,s}(P)\leq U_{r,s}(P)$ satisfies $U_{r,s}(P)=F_{r,s}(P)$, then
+\[
+\kappa_{r,s}(P)=F_{r,s}(P),
+\]
+and $P$ is a valid certified pattern for shell-order replay.
+\end{lemma}
+\begin{proof}
+Choose a hosting maximal clique $M$ of size $c(P)$ and let $A=\{R\in\mathcal K_r(G):R\subseteq M\}$.
+%
+For every $R\in A$, exactly $\binom{c(P)-r}{s-r}$ witnesses contained in $M$ contain $R$, and all of their $r$-subcliques also belong to $A$.
+%
+Thus $A$ is $F_{r,s}(P)$-feasible, so every representative of $P$ in $A$ belongs to $K_{F_{r,s}(P)}$ and has core value at least the floor.
+%
+If the supplied upper bound equals this lower bound, equality follows immediately.
+\end{proof}
+
+For a fixed cell, let $\mathcal H_s(P)$ be the leaves for which there exists a feasible vector $\mathbf y$ satisfying the leaf bounds, $\sum_cy_c=s$, and $\mathbf b^P\leq\mathbf y$.
+%
+These are exactly the leaves that contain an $s$-witness containing a representative of $P$.
+%
+For every leaf $L$, store a Pareto-minimal antichain $\mathcal A_L$ of deleted pattern vectors.
+%
+The operation $\operatorname{InsertMin}(\mathcal A_L,\mathbf b)$ discards $\mathbf b$ if some $\mathbf a\in\mathcal A_L$ satisfies $\mathbf a\leq\mathbf b$; otherwise it inserts $\mathbf b$ and removes every $\mathbf a$ with $\mathbf b\leq\mathbf a$.
+%
+Dominance removal preserves the upward-closed set $\{\mathbf y:\exists\mathbf a\in\mathcal A_L,\mathbf a\leq\mathbf y\}$.
+%
+Let $\operatorname{LiveCount}(L,s,Q,\mathcal A_L)$ denote Equation~\eqref{eq:live-leaf-count} with the deleted-vector condition represented by this antichain.
+
+An event $(h,\tau,P,v)$ is stale when $P$ is no longer alive, or when $\tau=\mathsf{residue}$ and either $v$ is not the current version of $P$ or $h$ is not its current key.
+%
+Events with equal key may be popped in any order.
+
+\begin{algorithm*}[t]
+\caption{\textsc{ReplayPeel}: exact shell-ordered peeling of certified and residue pattern orbits.}
+\label{alg:replay-peel}
+\DontPrintSemicolon
+\KwIn{cell $(r,s)$; class-SCT $\mathcal L$; active-pattern partition $(\mathit{Cert},\mathit{Res})$; vectors $\mathbf b^P$, multiplicities $m(P)$, and hosting lists $\mathcal H_s(P)$; valid certificates $\widehat\kappa(P)=F_{r,s}(P)=\kappa_{r,s}(P)$ for $P\in\mathit{Cert}$}
+\KwOut{$\kappa_{r,s}(Q)$ for every $Q\in\mathit{Res}$, with multiplicity $m(Q)$}
+\ForEach{$L\in\mathcal L$}{$\mathcal A_L\gets\emptyset$}
+$\mathit{alive}[P]\gets\mathsf{true}$ for every $P\in\mathit{Cert}\cup\mathit{Res}$; initialize an empty min-priority queue $\mathcal Q$
+\;
+\ForEach{$P\in\mathit{Cert}$}{push $(\widehat\kappa(P),\mathsf{scheduled},P,0)$ into $\mathcal Q$}
+\ForEach{$Q\in\mathit{Res}$}{
+  $\sigma[Q]\gets\sum_{L\in\mathcal H_s(Q)}\operatorname{LiveCount}(L,s,Q,\mathcal A_L)$
+  \;
+  $\mathit{key}[Q]\gets\sigma[Q]$; $\mathit{ver}[Q]\gets0$
+  \;
+  push $(\mathit{key}[Q],\mathsf{residue},Q,\mathit{ver}[Q])$ into $\mathcal Q$
+  \;
+}
+$\lambda\gets0$
+\;
+\While{$\mathcal Q\neq\emptyset$}{
+  $(h,\tau,P,v)\gets\operatorname{popMin}(\mathcal Q)$
+  \;
+  \If{$\operatorname{Stale}(h,\tau,P,v)$}{\textbf{continue}}
+  $\lambda\gets\max\{\lambda,h\}$
+  \;
+  \eIf{$\tau=\mathsf{scheduled}$}{$\kappa[P]\gets\widehat\kappa(P)$}{$\kappa[P]\gets\lambda$}
+  assign $\kappa[P]$ to all $m(P)$ representatives; $\mathit{alive}[P]\gets\mathsf{false}$
+  \;
+  $\mathit{Affected}\gets\emptyset$
+  \;
+  \ForEach{$L\in\mathcal H_s(P)$}{
+    $\mathcal A_L\gets\operatorname{InsertMin}(\mathcal A_L,\mathbf b^P)$
+    \;
+    add every alive $Q\in\mathit{Res}$ with $L\in\mathcal H_s(Q)$ to $\mathit{Affected}$
+    \;
+  }
+  \ForEach{$Q\in\mathit{Affected}$}{
+    $\sigma[Q]\gets\sum_{L\in\mathcal H_s(Q)}\operatorname{LiveCount}(L,s,Q,\mathcal A_L)$
+    \;
+    $\mathit{key}[Q]\gets\max\{\lambda,\sigma[Q]\}$; $\mathit{ver}[Q]\gets\mathit{ver}[Q]+1$
+    \;
+    push $(\mathit{key}[Q],\mathsf{residue},Q,\mathit{ver}[Q])$ into $\mathcal Q$
+    \;
+  }
+}
+\Return{$\{(Q,\kappa[Q],m(Q)):Q\in\mathit{Res}\}$}
+\;
+\end{algorithm*}
+
+\begin{theorem}[Correctness of \textsc{ReplayPeel}]
+\label{thm:replay-peel-correctness}
+If every supplied certificate is valid, Algorithm~\ref{alg:replay-peel} terminates and returns the from-scratch value $\kappa_{r,s}(Q)$ for every residue pattern $Q$ and hence for all $m(Q)$ individual representatives.
+\end{theorem}
+\begin{proof}
+We first prove the leaf-state invariant: after any deletion prefix, a witness of composition $\mathbf y$ in leaf $L$ is live if and only if no $\mathbf a\in\mathcal A_L$ satisfies $\mathbf a\leq\mathbf y$.
+%
+Initially every antichain is empty, so the invariant holds.
+%
+Deleting pattern $P$ kills exactly the previously live witnesses with $\mathbf b^P\leq\mathbf y$, by the containment argument in Theorem~\ref{thm:weighted-pattern-equivalence}.
+%
+Inserting $\mathbf b^P$ therefore updates the excluded upward-closed set exactly, and deleting dominated antichain vectors does not change that set.
+%
+The invariant follows by induction on the deletion prefix.
+%
+Equations~\eqref{eq:live-leaf-count} and~\eqref{eq:pattern-live-support}, together with Theorem~\ref{thm:additive-support}, then show that every recomputed $\sigma[Q]$ is the exact current per-representative support.
+
+If deleting $P$ changes the support of a residue pattern $Q$, some newly dead witness contains representatives of both patterns.
+%
+That witness lies in one leaf belonging to both $\mathcal H_s(P)$ and $\mathcal H_s(Q)$, so the algorithm includes $Q$ in $\mathit{Affected}$ and recomputes it.
+%
+Patterns included unnecessarily are merely recomputed to the same exact value.
+%
+Incrementing versions makes all older residue events stale, so every live residue event accepted by the queue has key $\max\{\lambda,\sigma[Q]\}$ with exact current support.
+
+All certified events are inserted at their exact closed-form core levels, and the min-priority queue processes these levels in nondecreasing order.
+%
+Residue events implement ordinary minimum-support peeling with the same nondecreasing-level clamp.
+%
+After a deletion at level $\lambda$, every changed residue key is at least $\lambda$; therefore every resulting cascade at level $\lambda$ is processed before any live event of larger key can advance the level.
+%
+The queue execution consequently satisfies every premise of Theorem~\ref{thm:shell-order-replay}, which gives the from-scratch value of every residue pattern.
+%
+Theorem~\ref{thm:weighted-pattern-equivalence} transfers that value to all individual representatives.
+
+Finally, each accepted nonstale event deletes one live pattern, and only finitely many stale events are generated per deletion because the pattern and leaf sets are finite.
+%
+Hence the queue empties and the algorithm terminates.
+\end{proof}
