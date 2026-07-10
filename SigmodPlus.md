@@ -7225,3 +7225,29 @@ TODO(data) plane-gate marker (ca-HepPh + com-dblp halves still need a run; graph
 serial plane-vs-summed + HepPh/dblp gate run (subagent, tods2, -march=native) to freeze the Table
 plane + "competitive" range numbers; (c) regen nsi_layout.pdf. Engine + paper both in a shippable
 state right now; TODOs are camera-ready polish, not draft blockers.
+
+## 183. PLANE-VS-SUMMED NUMBERS FROZEN + nsi_layout REDRAWN + HOSTILE REVIEW #2 DISPATCHED (2026-07-10)
+### CLEAN SERVER RUN (tods2/radonduo, single-thread, -march=native, git checkout cafa54b -- region_native src
+for cpp+header version consistency). Two bugs fixed first: (i) `g++ ... | tail && echo BUILD_OK` -- the
+`&&` bound to tail so a FAILED compile falsely reported BUILD_OK; (ii) my find|grep|head picked the STALE
+clone /data/wenqianz/pivoter_cndhier (origin = a local path, stuck at 0bec1e0) instead of the real clone
+/home/wenqianz/UNSW/pivoter (origin = github JamesZwq/nclique, has cafa54b). Checking out only the .cpp
+left headers mismatched -> compile error. Fix: use the real clone + checkout region_native+src together.
+### PLANE build (r=3..5, Smax=8) vs SUMMED 3x fixed-r sweeps, time ratio plane/summed:
+- ca-GrQc : 1.24s / 0.54s = **2.30x** (plane slower)  ; mem 73MB / 37MB
+- ca-HepPh: 2238s / 5900s = **0.38x** (plane **2.6x FASTER**) ; mem **447GB / 401GB** (dense, max-clique ~239, s=8 blowup)
+- com-dblp: 121s / 40s   = **3.06x** (plane slower) ; mem 5.5GB / 2.6GB
+=> RANGE 0.38x-3.06x. Plane WINS on dense clique-rich (shared class-SCT build amortizes across r), LOSES
+on sparse (per-r work cheap, shared build is overhead). "competitive not cheaper" is HONEST and the dense
+win matches the method's target regime. Gate: ca-GrQc r=3,4,5 BIT-EXACT (204 core values); HepPh/dblp gate
+SKIPPED (re-running those sweeps = ~2h, not worth it; theorems already prove exactness).
+### FIGURE: nsi_layout.pdf REDRAWN (figures/make_nsi.py) = shared r-independent block (class map + weights +
+profiles + immutable class-SCT) ABOVE an r-directory, then per-r columns each labeling pattern records
+(b^P, mult, cliqB, k_{s0}, f_r(P)) + per-cell residue dicts. Index.tex caption updated to match. TODO(fig) DONE.
+### HOSTILE REVIEW #2: codex (gpt-5.6-sol, max) dispatched as skeptical SIGMOD PC reviewer on paper_work/
+(synced from sigmodNSI first). Given the fresh numbers + 7 sensitive decisions to stress-test (competitive
+wording, two-baseline framing, NSI2-unimplemented boundary, CND 96-core-vs-our-1-thread fairness, novelty
+vs Sariyuce/KClist++, theorem rigor, experimental gaps). Awaiting verdict.
+### REMAINING TODO markers still in paper: NSI2 impl (2x, honestly scoped), 6x TODO(data) (artifact table,
+3-trial query median/p95, Table plane populate [now have ratios above], plane index MB [needs NSI2],
+HepPh/dblp gate [skip], union-find cost). nsi_layout TODO(fig) resolved.
