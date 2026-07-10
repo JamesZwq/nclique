@@ -7090,3 +7090,20 @@ plan for the paper rewrite. Next: user go-ahead, then execute the rewrite sectio
 paste-ready material as source), + implement/verify NSI2 plane serialization+query, + the plane
 experiment.
 STATUS: codex per-r perf fix (a5372ede) still running.
+
+## 179. FULL PAPER REWRITE -> dispatched to codex per framing recommendation (2026-07-10)
+User: let codex do the writing (minimal me). Dispatched codex (gpt-5.6-sol max) to execute the full
+paper rewrite following docs/framing_recommendation.md's section-by-section prescription, integrating
+docs/formal_theory.tex (Universal CPI, Gen exact-cover, weighted-pattern equivalence, shell-order
+replay) and docs/multir_design.md (plane algorithm), in the teacher house style. Scope: new title
+(drop "at the Cost of One Cell"), paste-ready abstract, two-pillar intro (class symmetry -> batch +
+compress), 4 contributions, TWO baselines (CND external + summed-fixed-r internal), plane = headline
+scope with honest cost (T_shared + sum_r T_col), bounded-plane Problem Statement, integrate the 4
+theorems, general product-of-binomials leaf count first, replace Level Invariance -> Shell-Order
+Replay + full ReplayPeel algo, demote hierarchy ("no new decompositions" not "free"), fix case-study
+k semantics, remove RelatedWork "cross-r future work", apply the 15 reviewer-preemptions + avoid the
+17 forbidden claims. Editing sigmodNSI/sections/*.tex + main.tex DIRECTLY (paper is the Dropbox
+symlink, outside git; backed up to scratchpad first). PENDING-DATA items (plane-vs-summed-fixed-r
+experiment numbers; NSI2 plane serialization/query) -> codex writes structure + TODO markers; I
+resolve after the perf fix + plane experiment land. I review + build after.
+STATUS: codex per-r perf fix (a5372ede) still running in parallel.
