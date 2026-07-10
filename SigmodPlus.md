@@ -6854,3 +6854,39 @@ NOTE/CAVEAT: the case-study SUBJECTS (Jiawei Han ego, dblp granularity) + number
 the sibling NuclearCD paper (same group, same case_study/ infra). Reused deliberately per user;
 framed differently (spectrum/index). If both are under double-blind review simultaneously, flag to
 the user (done). Data is real (case_study/cs9_dblp_real, paper_data cs2).
+
+## 168. CODEX (gpt-5.6-sol, max) HOSTILE REVIEW + FIX CAMPAIGN LAUNCHED (2026-07-10)
+User had codex (gpt-5.6-sol banner self-reported "Codex (GPT-5)" -- override passed, exact id not
+echoed) do a SIGMOD-reviewer-grade review vs the index-based reference p2033-wen. 13 findings, 3
+REJECT-level. Full review relayed to user. The findings + fix plan tracked as tasks #22-30:
+REJECT-LEVEL:
+ #1 (task 22) paper sells a whole-(r,s)-PLANE index but formally delivers a FIXED-r s-row (Problem
+    Statement + SpecND fix r; RelatedWork admits cross-r is future work). STRATEGIC PIVOT (user's
+    call): the CPI clique-tree counts by binomials C(w,s-r) => r-INDEPENDENT => BUILD A REAL
+    MULTI-r WHOLE-PLANE INDEX and turn the reject into the headline contribution. codex is
+    designing+implementing it (idea AND impl -> codex, per user).
+ #2 (task 27) BuildCPI's Gen() undefined; weighted-pattern-peel==r-clique-peel asserted not proven.
+ #3 (task 28) Replay exactness: Level Invariance doesn't cover scheduling certified patterns at
+    level k when current support>k, nor aggregate per-pattern items. Need a shell-order theorem +
+    the full ReplayPeel algorithm in the compiled paper.
+ALSO SERIOUS:
+ #4 (task 26) nucleus CONNECTIVITY dropped: Prelim defines nucleus as a coreness superlevel set
+    (no s-witness connectivity); Fig 1 wrongly calls M1uM2uM3 one 1-(3,4)-nucleus (M3 shares only
+    edge {v6,v7}, no triangle at r=3 => disconnected). Hierarchy "one forest" overclaims. Restore
+    connectivity (cs10 has union-find) OR rename to superlevel-set hierarchy.
+ #5 (task 23) experimental contradictions: "twelve" vs 13 graphs (+GrQc); "single-threaded" vs CND
+    "96 cores"; "six cells to twelve" (r=4 gives 2..8 cells); WIT 338M vs 8.2B r-cliques.
+RIGOR: #6 "at cost of one cell" is best-case not proven; #7/#11 NSI has no formal def/query
+ algorithm/complexity/size bound (reads like an algo paper w/ index wrapper); #8 (task 25) §5 Index
+ uses mergeable/No-Early-Death defined only in §6 (forward dep); #9 no z(P) size bound; #10 case
+ studies omit the k-level (s != support threshold k); #12 Table-1 qualitative not asymptotic, mixes
+ point/spectrum query. Tasks #29 (formalize NSI incl #6/#7/#9/#11/#12) + #30 (case-study k + query
+ benchmark protocol + vs online CND + social index sizes).
+STYLE-CONFORMANCE vs p2033-wen: (a) online+naive+3-way table = STRONGEST conformance (present);
+ (b) structure-before-construction order conforms but §5 has forward deps (#8); (c) index branded
+ star but formal weight is on SpecND (#7); (d) compression principle analogous but no size bound
+ (#9).
+STATUS: #24 DONE (archived orphan Baseline/ExistingApproach/ClassCPI/SweepAlgorithm.tex to
+ sections/_archive_unused/ -- they had dup labels + contradictory CND claims). #22 codex designing
+ multi-r (async). #23 general subagent fixing exp inconsistencies (async). WORKFLOW: complex algo
+ idea+impl -> codex; keep THIS doc updated in real time (user instruction).
