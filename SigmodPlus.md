@@ -6938,3 +6938,23 @@ as an outer ring nesting M1uM2). Fixes, all verified by a clean build (12pp, 0 "
 STATUS: done #23,#24,#26. #22 multi-r IMPL still running on codex (worktree). Pending #25,#27,#28,
 #29,#30 -- all to be dispatched to codex (gpt-5.6-sol max) after the multi-r impl lands (their final
 form depends on the plane algorithm). Memory added: prefer codex(best model) for subagents.
+
+## 172. MULTI-R WHOLE-PLANE ENGINE IMPLEMENTED + BIT-EXACT (codex gpt-5.6-sol) (2026-07-10)
+#22 IMPL DONE. codex implemented the plane mode ADDITIVELY in region_native_sct_peel.cpp (+736 lines,
+new env: SCT_RSWEEP=1 SCT_RMIN SCT_RMAX SCT_SMAX; fixed-r + SCT_SWEEP paths untouched). One shared
+r-INDEPENDENT class-SCT built from the UNSPLIT regions ([Smin=rMin+1, Smax]); per-r: r-mergeable mask
++ pattern set + boundary (diagonal-seeded when r>rMin: certify Q at L=c-r only when U=min_c
+kappa_{r-1,r}(Q-e_c)-1 == L, else peel boundary residue) + chain-certify up s + residue replay.
+VERIFIED BIT-EXACT (I re-ran the gate in main myself, comparing core-value distributions core=/Max
+core, NOT trusting codex's log): plane single-column r=3 & r=4 == fixed-r SCT_SWEEP; residue-stress
+graph r=3 & r=4 ==; full-plane r=3..5 one run. (The only diff was log verbiage [nsi-cell] vs
+[nsi-plane-cell] + boundary residue-accounting, same core values.) Merged to main + pushed. Gate
+graphs region_native/.multir_gate.edges + .multir_residue_gate.edges committed as regression fixtures.
+Worktree: .claude/worktrees/agent-ace1b81995429869d (can remove; code is in main).
+REMAINING for #22: (a) SERVER whole-plane experiments on the headline graphs (deploy new binary,
+measure build/size/query + per-r certification rates + residue sizes -- the EMPIRICAL backing the
+"plane is cheap" claim needs, since it's not a proven bound); (b) PAPER rewrite -> plane domain
+Problem Statement + Universal CPI theorem + general product-of-binomials leaf count + NSI2 storage/
+query + honest cost. NEXT dispatches -> codex (per user).
+NOTE: #28 was marked in_progress but NOT actually dispatched (multi-r notif preempted); reset to
+pending / dispatch to codex next.
