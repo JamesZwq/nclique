@@ -7251,3 +7251,33 @@ vs Sariyuce/KClist++, theorem rigor, experimental gaps). Awaiting verdict.
 ### REMAINING TODO markers still in paper: NSI2 impl (2x, honestly scoped), 6x TODO(data) (artifact table,
 3-trial query median/p95, Table plane populate [now have ratios above], plane index MB [needs NSI2],
 HepPh/dblp gate [skip], union-find cost). nsi_layout TODO(fig) resolved.
+
+## 184. HOSTILE REVIEW #2 -> REJECT 2/5; USER PICKED "IMPLEMENT NSI2"; FIXES UNDERWAY + PRESENTATION PASS (2026-07-10)
+### REVIEW #2 (codex gpt-5.6-sol, docs/review2_codex.md): Reject 2/5. 4 reject-triggers: (1) "competitive"
+plane claim unsupported (Table plane all TBD); (2) queryable plane index NSI2 unimplemented (query nums =
+fixed-r kernel only); (3) Shadow theorem FALSE at zero [I VERIFIED: g_a(0)=C(a-1,a-1)=1 -> asserts 0>=1 on
+K_r, s>=r+2]; (4) novelty vs Pivoter unestablished. USER DECISION: implement NSI2 (not reframe).
+### MY WRITING FIXES DONE (sigmodNSI, files codex is NOT touching):
+- #4 novelty: RelatedWork rewritten + NEW prior-art table (tab:priorart) -- concedes SCT COUNTING to
+  Pivoter/kClist [shan2018finding=kClist, YeSIGMOD2022Lightning], claims novelty in class-quotient +
+  weighted-pattern peeling + one-tree-covers-plane + compressed index. Directly answers "repackaging?".
+- #1 plane: tab:plane TBD -> REAL 3-graph plane-vs-summed (0.38x-3.06x); abstract "competitive" -> "2.6x
+  faster on clique-dense to a small constant slower on sparse, not uniformly cheaper"; ca-GrQc gate (204
+  core values bit-exact) written as done. byte/clique unified 0.001-2.2 (was 0.001-2 vs 2.2).
+### PRESENTATION PASS (user's 3 asks this turn): (1) exp figures too big -> make_exp.py + make_scal.py:
+heights -20-25% (thinner strips), fonts 8/9->6-7, tighter; REGENERATED. (2) algorithms not double-col ->
+Construction.tex algorithm* -> algorithm (both); VERIFIED single-col fits, NO overfull, Algorithm 3 SpecND
+renders clean. (3) too-detailed prose -> simplified Index query-contract (6->3 sentences); FULL elegance pass
+DEFERRED to after codex theory lands (polish final text once, not soon-to-change text). Paper now 13pp
+(was 14), 0 undefined refs, 0 unresolved cites.
+### TWO CODEX TASKS IN FLIGHT (both dispatched via codex:codex-rescue which spawned bg codex tasks):
+- NSI2 impl = codex task-mreyhg0y-llolva (region_native_sct_peel.cpp serialization + nsi_query.cpp load/
+  dispatch-by-r + ca-GrQc random-r correctness gate + size/query measurements). DO NOT touch region_native/.
+- Theory repair = codex task-mreymado-61ta0a (paper_work/TransferTheory.tex + Hierarchy.tex + formal_theory.tex:
+  g_a(0)=0, Shadow proof w/ global feasibility [gave it my verified proof], Diagonal proof via B=K_{r-1}(A),
+  Hierarchy ceil/k>=1). DO NOT touch sigmodNSI/TransferTheory.tex or Hierarchy.tex until this syncs.
+### WHEN CODEX LANDS: (a) verify NSI2 (build+ca-GrQc gate+measurements) then run server size/query numbers ->
+fill the tab:plane companion / index section; (b) sync paper_work/TransferTheory+Hierarchy -> sigmodNSI,
+rebuild, verify 0 undefined; (c) THEN full elegance/simplify pass on final text (point 3); (d) remaining
+majors: CND thread normalization (server exp), size-bound undercount, Hierarchy connected-nucleus retrieval.
+Both rescue agents (a8ec.../a766...) may re-notify when their codex tasks finish; else SendMessage to poll.
