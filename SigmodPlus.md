@@ -6752,3 +6752,30 @@ web-it/web-Google, social youtube/pokec. Build: cd region_native && g++ -O3 -std
 -I../src/NucleusDecomposition -o region_native_sct_peel region_native_sct_peel.cpp.
 Launched via nohup on both boxes (subagent), out at /data/wenqianz/ablation_tods2.tsv +
 icml2:~/ablation_icml2.tsv. COLLECT next session.
+
+## 163. ABLATION RESULTS -- clean, honest, validates "1 base + 2 optimizations" (2026-07-10)
+Overnight 3-config ablation DONE on tods2+icml2 (paper_data/20_ablation_3algo.tsv, r=4 s=5..8,
+single-thread, 1800s/config timeout). Ladder base -> +closed-form(cf) -> +certify(full):
+  graph        base_s   +cf_s  +full_s   cf/base   full/cf(CERT)  base/full   mem base->full
+  web-it-2004   154.4    66.9    10.4     2.31x     6.46x         14.9x       2.1->0.8GB (2.7x)
+  web-Google   1140.4  1116.3    93.5     1.02x    11.9x          12.2x       15.9->12.6 (1.3x)
+  ca-CondMat      5.8     4.3     0.6     1.34x     6.89x          9.3x        (1.5x)
+  ca-AstroPh    >1801   >1801    93.7     ~1x      >19x           feasibility  15.9->10.3 (1.6x)
+  com-dblp      >1800   >1800     9.9     ~1x     >181x           feasibility  7.6->1.1GB (6.9x)
+  com-youtube   243.3   262.6   150.3     0.93x     1.75x          1.62x       ~flat 10.5GB
+  ca-HepPh      >1814   >1813   >1814     -         -              BOUNDARY    ~410GB pattern wall
+FINDINGS (this is the honest story the ablation proves):
+1. CERTIFICATION is THE dominant optimization (full/cf step): 6.5-12x on web/collab, FEASIBILITY
+   (>19x astro, >181x dblp: TIMEOUT->seconds) , 1.75x on social youtube (matches 79-81% cert). Also
+   cuts MEMORY up to 6.9x (dblp 7.6->1.1GB). Unambiguously earns its own section (the star).
+2. CLOSED-FORM REGIONS is a SECONDARY, web/disjoint-targeted fast-path (cf/base step): 2.3x on
+   web-it (8.17 BILLION r-cliques handled in closed form!), 1.34x condmat, ~1.0x web-Google, and a
+   slight LOSS 0.93x (~8% overhead) on youtube where mergeable barely fires (8710 rc). Confirms the
+   honest read: decisive on disjoint-region graphs (web-it here; web-uk zero-peel + FEM from RQ4),
+   roughly neutral (guard bounds overhead to ~8%) on dense/social. NOT catastrophic anywhere.
+3. ca-HepPh r=4 = the honest boundary: pattern explosion (~410GB), all 3 configs TIMEOUT -- the
+   pattern wall hits before any peel optimization matters (RQ5 boundary, keep as scope paragraph).
+PAPER: present certification as the headline optimization (huge + universal on feasible graphs);
+present closed-form regions honestly scoped to disjoint-region graphs (web-it 2.3x/8B-rc + web-uk
+zero-peel), noting it is a guarded fast-path (neutral elsewhere). Single-trial -- E2 multi-trial
+still pending for camera-ready.

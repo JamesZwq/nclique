@@ -1,0 +1,22 @@
+machine	graph	config	r	s0	smax	status	wall_s	peak_rss_kb	mergeable_rc	cert_pct_last	exit
+tods2	ca-AstroPh	full	4	5	8	OK	93.73	10277548	311008		0
+tods2	ca-AstroPh	cf	4	5	8	TIMEOUT	1800.7	17164420	311008		124
+tods2	ca-AstroPh	base	4	5	8	TIMEOUT	1800.56	15941436			124
+tods2	web-it-2004	full	4	5	8	OK	10.36	782800	8172728378		0
+tods2	web-it-2004	cf	4	5	8	OK	66.88	926644	8172728378		0
+tods2	web-it-2004	base	4	5	8	OK	154.37	2088336			0
+tods2	ca-CondMat	full	4	5	8	OK	0.63	85160	55841		0
+tods2	ca-CondMat	cf	4	5	8	OK	4.34	104096	55841		0
+tods2	ca-CondMat	base	4	5	8	OK	5.83	131816			0
+tods2	com-youtube	full	4	5	8	OK	150.34	10361032	8710		0
+tods2	com-youtube	cf	4	5	8	OK	262.56	10491708	8710		0
+tods2	com-youtube	base	4	5	8	OK	243.26	10497860			0
+icml2	ca-HepPh	full	4	5	8	TIMEOUT	1813.56	410201660	258921		124
+icml2	ca-HepPh	cf	4	5	8	TIMEOUT	1813.12	410201700	258921		124
+icml2	ca-HepPh	base	4	5	8	TIMEOUT	1814.08	437268896			124
+icml2	com-dblp	full	4	5	8	OK	9.92	1095088	1693191		0
+icml2	com-dblp	cf	4	5	8	TIMEOUT	1800.14	4311984	1693191		124
+icml2	com-dblp	base	4	5	8	TIMEOUT	1800.26	7603956			124
+icml2	web-Google	full	4	5	8	OK	93.48	12636852	1249046		0
+icml2	web-Google	cf	4	5	8	OK	1116.28	15835032	1249046		0
+icml2	web-Google	base	4	5	8	OK	1140.4	15929164			0
