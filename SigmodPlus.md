@@ -6797,3 +6797,23 @@ binary), so the paper presents the ablation as RELATIVE speedups + feasibility, 
 times, and points to Table 1 (tab:main) for the in-budget seconds. If we ever want absolute
 ablation times, rebuild region_native_sct_peel WITH -march=native and re-run. Memory numbers are
 flag-insensitive and consistent (full DBLP 1.1GB matches tab:main).
+
+## 165. EXPERIMENTS FULLY FIGURE-BASED (user: "present experiments with figures, EACH
+## experiment must have a figure; look at the two teacher papers") (2026-07-10)
+Studied NuclearCD Experimental.tex + experimentFig.tex: EVERY \expsection maps to a Figure
+(figure* + per-dataset subfigure panels, shared legend, dataset-abbrev subcaptions, monochrome
+hatch/marker, solid-black = final algo, red x = OOM/OOT). Tables only for dataset stats.
+Converted our experiments from tables to figures. New figures/make_exp.py (house style matching
+make_scal.py) generates:
+- exp_main_time/mem.pdf   -> Fig 4 (figure*, 2 panels): SpecND solid vs CND hatched, red x = OOB.
+- exp_ablation.pdf        -> Fig 5: slowdown vs SpecND(=1), base(white)/+closed-form(gray)/
+  +certify(black), red x = OOB. NORMALIZED (relative) to dodge the -march abs-time issue (§164).
+- exp_index_size/query.pdf-> Fig 6 (figure*, 2 panels): bytes/r-clique + point/spectrum latency.
+- exp_coverage.pdf        -> Fig 9: certified% per graph (100% except EPN ~49%).
+- exp_diagonal.pdf        -> Fig 10: equality rate (GrQc/HepPh 100%, Epin 23.4%).
+Exp-2/3 keep scal_r/scal_s (Fig 7/8). REMOVED tab:main, tab:ablation, tab:index (replaced by
+figs); kept tab:datasets (Table 2). Fixed a stale prose number (query latency 191-794/388-985 ->
+28-671/81-895 to match the E5b index table; workload 100k->200k). All prose "Table X" -> "Figure X".
+11pp, builds clean, 0 "??", no dangling table refs, no missing-figure warnings. Screenshot-
+verified p8 (Table 2 + Exp-1 prose), p9 (Fig 4 main + Fig 5 ablation), p10 (Fig 6 index + Fig 7/8
+scal + Fig 9 coverage). Every experiment now has a figure, teacher visual system throughout.
