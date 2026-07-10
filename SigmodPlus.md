@@ -7356,3 +7356,22 @@ standalone MUST exclude core=0 or state the convention. TODO before cross-engine
 residue= (non-zero at s>r+1 => H1 replay running, cell may not finish, time != method); watch RSS (plane has
 NO map compression, L1); overflow CLEAN for planned runs (breaks only at s-r>~17 on 239-clique, L3); NSI2
 loader caps patterns/col<=1e8 counts<=1e9 (L2). Adversarial graphs worth adding to nsi2_gate.py (M2).
+
+## 187. H1 PERF FIX VERIFIED+MERGED; DIAGONAL CERT DISPATCHED (user: diagonal theorem "非常重要") (2026-07-11)
+User directive: proceed AUTONOMOUSLY (no step confirmation), verify with BOTH Fable 5 and GPT [[feedback_autonomous_dual_verify]].
+### H1 (plane replay perf) VERIFIED + MERGED (a01c806). codex ported the fixed-r fast incremental peel into
+planeReplayCell (+71/-52). Gates I ran: PERF PROOF SCT_SWEEP_NOCERT (all-residue) ca-GrQc (3,5) >10min -> 0.78s
+(cliff gone, ~800x, experiment-stall hazard removed; still ~39x over pure fixed-r 0.02s but now seconds not
+hours). REPLAY-PATH GATE bit-exact (fixed==default==nocert r=3..5). NSI2 gate 444,780 queries bit-exact.
+### DIAGONAL CERTIFICATE (task #31, HIGH) DISPATCHED to codex (agent a34495e63034c9275). This is the theorem
+that makes cross-r batch REAL: certify row r's boundary from row r-1's boundary (kappa_{r-1,r}) instead of
+peeling every boundary. Currently NOT implemented (r-coarsened lookup unsound -> disabled). Spec = implement at
+UNIVERSAL (pre-coarsening) granularity: keep prev row boundary cores by universal (r-1)-pattern; recover each
+active r-pattern's universal composition; U=min_c kappa_{r-1,r}(Q-e_c)-1, L=cliqb-r; certify iff U=L (NEVER U>L,
+U<L=abort). Guardrails: SCT_NO_DIAG=1 ablation flag, report boundary cert rate (0 today->should be >0), if not
+bit-exact then revert+report obstruction. Gates: from-scratch-boundary bit-exact + fixed-r + replay-path +
+NSI2 444k + adversarial floor-gap (must fire diagonal AND leave residue). Resolves Mismatch A.
+### WHEN DIAGONAL LANDS: verify with BOTH Fable 5 (soundness of universal-granularity argument) AND codex/GPT
+(independent), plus my mechanical gates, BEFORE merge. Then: Mismatch A paper wording (claim becomes true if
+diagonal shipped), then bigger-graph server experiments (NSI2 size/query + plane-vs-summed with diagonal ON),
+point-3 elegance pass, remaining majors.
