@@ -7038,3 +7038,25 @@ note. If the fix lands, the paper's plane story = "one index, one shared build, 
 built at ~the combined cost of the per-r sweeps."
 Also: killed 2 stale/contending server experiment drivers (a00bd6d + ab9c3d7) -- they were running
 old buggy binary + contending; ignore their leftover notifications.
+
+## 177. CONTRIBUTION FRAMING CRYSTALLIZED = TWO PILLARS (user) + consult codex (2026-07-10)
+User distilled the paper to TWO PILLARS, and asked to consult codex on the best way to explain it:
+1. BATCH DECOMPOSITION (compute): one shared build computes a WHOLE FAMILY of (r,s)-nucleus cells at
+   once, not one cell at a time. Powered by: r-independent class-CPI (Universal CPI thm) + cross-cell
+   chain certification + residue replay. The family = the s-spectrum (fixed r) and, by Universal CPI,
+   the entire (r,s) plane.
+2. CLASS-BASED COMPRESSION (store+query): store the whole family as STRUCTURE, not values -- class
+   quotient collapses interchangeable vertices so one PATTERN stands for C(w,r) r-cliques; certified
+   patterns store as one number + arithmetic. -> 0.001-2 bytes/r-clique, ns queries.
+ELEGANCE: the CLASS concept does DOUBLE DUTY -- the r-independent counting structure (enables batch)
+AND the compression mechanism (patterns not r-cliques). Both pillars grow from one idea.
+KEY REFRAME (resolves the A/B multi-r debate): the BASELINE is the SOTA (CND, each cell from
+scratch), NOT our own r-by-r engine. vs SOTA, batch wins hugely (Exp-1/2/3). So DO NOT claim "the
+plane build is cheaper than r-by-r" (it is ~competitive, per §176) -- that is not the selling point.
+The claim is "batch-compute + compress-store-query a whole family, vs SOTA." Multi-r/plane is the
+natural SCOPE of batch (Universal CPI proves one CPI covers the plane), not a "cheaper" claim.
+DECISION PENDING: exact positioning -> consulting codex (gpt-5.6-sol) for the strongest honest
+framing (contribution list, title/abstract, how to present multi-r, reviewer-attack preemption).
+STATUS: codex still fixing the per-r pattern-space perf (a5372ede, worktree, no source change seen
+yet). Stale server experiment subagents STOPPED (TaskStop a00bd6d + ab9c3d7); sweep_driver.sh still
+looping on tods2 (ssh flaky, finite loop, clean later). formal_theory.tex reviewed OK (§175).
