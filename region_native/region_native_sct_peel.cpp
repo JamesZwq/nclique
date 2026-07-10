@@ -386,6 +386,15 @@ struct PlaneCompHash {
     }
 };
 
+struct PlaneVecHash {
+    size_t operator()(const ccpath::Vec &a) const noexcept {
+        uint64_t h = 1469598103934665603ULL;
+        for (int16_t x : a)
+            h = (h ^ ((uint64_t)(uint16_t)x + 1)) * 1099511628211ULL;
+        return (size_t)h;
+    }
+};
+
 struct PlanePattern {
     PlaneComp comp;                       // global class composition, sum=r
     vector<int> host;                     // host maximal regions in the unsplit set
@@ -465,6 +474,14 @@ static PlaneCellResult planeReplayCell(
     const int nL = (int)sharedLeaves.size();
     const auto t0 = Clock::now();
 
+    int r = 0;
+    for (const auto &P : patterns) {
+        if (P.direct) continue;
+        for (const auto &cm : P.comp) r += cm.second;
+        break;
+    }
+    const bool boundaryWitnessMode = (r > 0 && s == r + 1);
+
     // Per-cell mutable VIEW.  The shared leaves remain byte-immutable across
     // all r columns and s rows; metadata is stripped only from this view.
     vector<vector<CCPath>> slotPaths((size_t)nL);
@@ -488,6 +505,24 @@ static PlaneCellResult planeReplayCell(
         }
         return total;
     };
+
+    // At the boundary s=r+1, use the same witness-major incremental principle
+    // as the fixed-r cold peel.  A dying witness in leaf L is exactly
+    // Y=P+e_a.  Mark Y dead once, then decrement every other face
+    // Q=Y-e_d by its exact per-Q multiplicity n[d]-Q[d].  This replaces the
+    // old full supportOf(Q) rescan over every current split path after every
+    // deletion.  The shared leaves are disjoint, so a per-leaf dead-Y set is
+    // the complete mutable state and no controlled splitting is needed.
+    unordered_map<PlaneComp,int,PlaneCompHash> patternByComp;
+    vector<unordered_set<Vec,PlaneVecHash>> deadWitness;
+    if (boundaryWitnessMode) {
+        patternByComp.reserve((size_t)nP * 2 + 16);
+        for (int pi = 0; pi < nP; ++pi)
+            patternByComp.emplace(patterns[pi].comp, pi);
+        deadWitness.resize((size_t)nL);
+    }
+    vector<double> delta(boundaryWitnessMode ? (size_t)nP : 0, 0.0);
+    long long witnessProbes = 0, newWitnesses = 0, witnessCredits = 0;
 
     struct Event {
         long long level;
@@ -568,20 +603,77 @@ static PlaneCellResult planeReplayCell(
 
         affected.clear();
         const auto &P = patterns[pi];
-        for (size_t k = 0; k < P.leaves.size(); ++k) {
-            int lid = P.leaves[k];
-            if (!residueLeaf[lid]) continue;
-            if (slotPaths[lid].empty()) continue;
-            planeDeleteFromLeaf(slotPaths[lid], P.localB[k], kmax, out.maxSplit);
-            for (int qi : leafPats[lid]) {
-                if (qi == pi || !alive[qi] || certified[qi] || seen[qi]) continue;
-                seen[qi] = 1;
-                affected.push_back(qi);
+        if (boundaryWitnessMode) {
+            PlaneComp qComp;
+            qComp.reserve((size_t)r);
+            for (size_t k = 0; k < P.leaves.size(); ++k) {
+                int lid = P.leaves[k];
+                if (!residueLeaf[lid]) continue;
+                const CCPath &box = sharedLeaves[lid];
+                const Vec &b = P.localB[k];
+                Vec y = b;
+                for (int a = 0; a < box.m(); ++a) {
+                    witnessProbes++;
+                    if ((int)y[a] >= (int)box.u[a]) continue;
+                    y[a]++;
+                    bool feasible = true;
+                    for (int c = 0; c < box.m(); ++c)
+                        if ((int)y[c] < (int)box.ell[c] || (int)y[c] > (int)box.u[c]) {
+                            feasible = false;
+                            break;
+                        }
+                    if (feasible && deadWitness[lid].insert(y).second) {
+                        newWitnesses++;
+                        for (int d = 0; d < box.m(); ++d) {
+                            if (y[d] == 0) continue;
+                            y[d]--;
+                            qComp.clear();
+                            for (int c = 0; c < box.m(); ++c)
+                                if (y[c] != 0)
+                                    qComp.push_back({(int)box.classIds[c], (int)y[c]});
+                            auto it = patternByComp.find(qComp);
+                            if (it == patternByComp.end()) {
+                                fprintf(stderr,
+                                        "[nsi-plane] boundary witness face lookup failed lid=%d\n",
+                                        lid);
+                                abort();
+                            }
+                            int qi = it->second;
+                            if (qi != pi && alive[qi] && !certified[qi]) {
+                                if (!seen[qi]) {
+                                    seen[qi] = 1;
+                                    affected.push_back(qi);
+                                }
+                                delta[qi] += (double)((int)box.n[d] - (int)y[d]);
+                                witnessCredits++;
+                            }
+                            y[d]++;
+                        }
+                    }
+                    y[a]--;
+                }
+            }
+        } else {
+            for (size_t k = 0; k < P.leaves.size(); ++k) {
+                int lid = P.leaves[k];
+                if (!residueLeaf[lid]) continue;
+                if (slotPaths[lid].empty()) continue;
+                planeDeleteFromLeaf(slotPaths[lid], P.localB[k], kmax, out.maxSplit);
+                for (int qi : leafPats[lid]) {
+                    if (qi == pi || !alive[qi] || certified[qi] || seen[qi]) continue;
+                    seen[qi] = 1;
+                    affected.push_back(qi);
+                }
             }
         }
         for (int qi : affected) {
             seen[qi] = 0;
-            support[qi] = supportOf(qi);
+            if (boundaryWitnessMode) {
+                support[qi] -= delta[qi];
+                delta[qi] = 0.0;
+            } else {
+                support[qi] = supportOf(qi);
+            }
             long long nk = (long long)llround(support[qi]);
             if (nk < curLevel) nk = curLevel;
             if (nk != key[qi]) {
@@ -590,6 +682,11 @@ static PlaneCellResult planeReplayCell(
             }
         }
     }
+
+    if (boundaryWitnessMode && getenv("PIVOTER_PEEL_PROFILE"))
+        fprintf(stderr,
+                "[nsi-plane-profile] boundary witness-probes=%lld new-witnesses=%lld credits=%lld\n",
+                witnessProbes, newWitnesses, witnessCredits);
 
     for (int pi = 0; pi < nP; ++pi)
         if (!patterns[pi].direct && !certified[pi])
