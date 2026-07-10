@@ -7447,3 +7447,23 @@ Construction/SpecND boundary-certification claim is TRUE). Rebuild 13pp 0 undefi
 drop; dense-graph the diagonal's universal enumeration (Fable note#1) may be slow, SCT_MAX_INC guard set).
 tab:plane rows for ca-GrQc/ca-HepPh are still the OLD no-diagonal numbers -> a clean full re-measure on the
 diagonal engine is remaining polish. com-dblp query-latency bench (fix the qfile gen). Then point-3 elegance.
+
+## 191. ca-HepPh INFEASIBLE for plane index -> tab:plane cleaned to a consistent 2-graph diagonal-engine table
+### ca-HepPh NSI2 index (r=3..5 Smax=6): build 53.6 MIN, RSS 481.6GB (near the 503GB limit), then INDEX BUILD
+FAILED (pattern space too large to serialize). CONFIRMS Fable note#1: on ultra-dense graphs (max clique ~239)
+the diagonal's universal enumeration + the r=3..5 plane pattern set explodes. => ca-HepPh is NOT a plane-index
+case; do NOT claim it. The Index.tex honest remark (profiles nearly unique / large columns / no worst-case
+compression) already covers this; don't add a prominent limitation.
+### ca-GrQc RE-MEASURED on the diagonal engine (local): plane diag 0.27s / noDiag 0.58s / summed 0.19s ->
+plane/summed 1.42x, DIAGONAL SPEEDUP 2.14x (0.58->0.27). So both clean graphs: diagonal = 1.85x (com-dblp) /
+2.14x (ca-GrQc) plane-build speedup.
+### PAPER: tab:plane REWRITTEN to a CONSISTENT 2-graph table (ca-GrQc + com-dblp, BOTH diagonal engine):
+columns plane(diagonal) | plane(no diagonal) | summed | diagonal-speedup. Removed ca-HepPh (index infeasible +
+version-mixed). Leads with the diagonal win (1.85-2.14x) + "plane is 1.42-2.30x summed, value = unified index".
+Abstract updated: dropped the unsupported "2.6x faster on clique-dense" (was ca-HepPh 0.38x, no-diagonal) ->
+"within 1.4-2.3x of summed; diagonal cuts plane build up to 2.1x; one exact reusable plane index". Index-size
+prose (com-dblp 227MB) kept. Rebuild 13pp, 0 undefined, 0 unresolved cites.
+### PLANE EXPERIMENT CAMPAIGN = effectively DONE (com-dblp real-graph + ca-GrQc, both diagonal engine, +
+index size + diagonal ablation). REMAINING: com-dblp/real query-latency bench (qfile-gen fix; ca-GrQc ns
+numbers stand in meanwhile); point-3 elegance pass on final text; review majors (CND threads, size-bound,
+hierarchy connectivity); reproducibility appendix.
