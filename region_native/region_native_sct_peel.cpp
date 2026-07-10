@@ -56,6 +56,7 @@
 //   PIVOTER_HIER_MINSIZE=<n>: drop forest nodes whose nucleus never reached n
 //   r-cliques (default 1). Verifier: scripts/verify_tuple_hierarchy.py.
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <chrono>
 #include <cmath>
@@ -65,6 +66,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <random>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -203,8 +205,8 @@ static Graph load_graph(const char *path) {
         noff[i + 1] = noff[i] + (int)(ne - b);
         for (int *p = b; p < ne; p++) nadj.push_back(*p);
     }
-    g.off = move(noff);
-    g.adj = move(nadj);
+    g.off = std::move(noff);
+    g.adj = std::move(nadj);
     return g;
 }
 
@@ -312,7 +314,7 @@ struct MCE {
             }
             sort(P.begin(), P.end()); sort(X.begin(), X.end());
             R.assign(1, v);
-            rec(R, move(P), move(X));
+            rec(R, std::move(P), std::move(X));
             if (aborted) return false;
         }
         return !aborted;
@@ -357,6 +359,732 @@ static double rssGB() {
 #endif
 }
 
+// ===================== MULTI-R WHOLE-PLANE ENGINE =====================
+// Opt-in only; the fixed-r engine below is deliberately left untouched.
+//
+//   SCT_RSWEEP=1       enable the whole-plane engine
+//   SCT_RMIN=<rmin>    first r column (default: argv[2])
+//   SCT_RMAX=<rmax>    last r column, inclusive (default: rmin)
+//   SCT_SMAX=<smax>    last s row, inclusive (default: argv[3])
+//
+// The universal class-SCT is built once from UNSPLIT maximal regions of size
+// >= Smin=rmin+1, with slice range [Smin,Smax].  SCT_NO_RMERGE disables the
+// per-r direct-region mask, SCT_SWEEP_NOCERT disables both diagonal and chain
+// certificates (full replay in every cell), and SCT_INDEX_OUT writes NSI2.
+// SCT_SWEEP remains the fixed-r sweep flag and is rejected when SCT_RSWEEP is
+// active so the two independently backward-compatible modes are unambiguous.
+using PlaneComp = vector<pair<int,int>>;
+
+struct PlaneCompHash {
+    size_t operator()(const PlaneComp &a) const noexcept {
+        uint64_t h = 1469598103934665603ULL;
+        for (auto &cm : a) {
+            h = (h ^ ((uint64_t)(uint32_t)cm.first + 1)) * 1099511628211ULL;
+            h = (h ^ ((uint64_t)(uint32_t)cm.second + 1)) * 1099511628211ULL;
+        }
+        return (size_t)h;
+    }
+};
+
+struct PlanePattern {
+    PlaneComp comp;                       // global class composition, sum=r
+    vector<int> host;                     // host maximal regions in the unsplit set
+    long long mult = 1;                   // actual r-cliques represented by this orbit
+    int cP = 0;                           // largest host-region size
+    bool direct = false;                  // unique host is r-mergeable
+    vector<int> leaves;                   // r-specific view over the shared tree
+    vector<ccpath::Vec> localB;            // parallel local composition per leaf
+};
+
+struct PlaneCellResult {
+    vector<double> core;                  // all patterns; direct entries remain -1
+    map<double,double> activeDist;         // active patterns only; caller folds direct regions
+    vector<pair<int,double>> residue;      // (global pattern id, exact core)
+    long long nCertified = 0;
+    long long nResidue = 0;
+    long long nReplayedCertified = 0;
+    size_t maxSplit = 0;
+    double seconds = 0.0;
+};
+
+struct PlaneIndexPattern {
+    PlaneComp comp;
+    long long mult = 0;
+    int cP = 0;
+    double boundaryCore = -1;
+    int closedFrom = -1;
+};
+
+struct PlaneIndexColumn {
+    int r = 0, boundary = 0;
+    vector<int> mergeableRegions;
+    vector<PlaneIndexPattern> patterns;                    // active patterns only
+    vector<vector<pair<int,double>>> residueByCell;        // boundary+1 .. Smax
+    vector<map<double,double>> dists;                       // boundary .. Smax
+};
+
+static void planeDeleteFromLeaf(vector<ccpath::CCPath> &paths,
+                                const ccpath::Vec &tuple, int kmax,
+                                size_t &maxSplit) {
+    vector<ccpath::CCPath> next;
+    next.reserve(paths.size() + 4);
+    for (const auto &path : paths) {
+        ccpath::Vec a = ccpath::tuple_to_threshold(path, tuple);
+        if (ccpath::impossible(path, a)) {
+            next.push_back(path);
+            continue;
+        }
+        if (ccpath::covers_whole_path(path, a)) continue;
+        ccpath::CCPath changed = path;
+        ccpath::insert_antichain(changed.forbidden, a);
+        if ((int)changed.forbidden.size() > kmax) {
+            auto children = ccpath::controlled_split(changed, kmax);
+            for (auto &child : children) next.push_back(std::move(child));
+        } else {
+            next.push_back(std::move(changed));
+        }
+    }
+    paths.swap(next);
+    if (paths.size() > maxSplit) maxSplit = paths.size();
+}
+
+// Exact seeded replay.  Certified patterns are not peeled as residue: their
+// theorem-proved exact cores are scheduled as death events.  Those deaths are
+// applied to the same mutable leaf view at their exact level, so every residue
+// support sees precisely the deletions it would see in a full peel.
+static PlaneCellResult planeReplayCell(
+        int s,
+        const vector<ccpath::CCPath> &sharedLeaves,
+        const vector<PlanePattern> &patterns,
+        const vector<vector<int>> &leafPats,
+        const vector<char> &certified,
+        const vector<double> &certCore) {
+    using ccpath::CCPath;
+    using ccpath::Vec;
+    const int nP = (int)patterns.size();
+    const int nL = (int)sharedLeaves.size();
+    const auto t0 = Clock::now();
+
+    // Per-cell mutable VIEW.  The shared leaves remain byte-immutable across
+    // all r columns and s rows; metadata is stripped only from this view.
+    vector<vector<CCPath>> slotPaths((size_t)nL);
+    for (int lid = 0; lid < nL; ++lid) {
+        CCPath p = sharedLeaves[lid];
+        p.T = s;
+        p.forbidden.clear();
+        p.classIds.clear();
+        p.tupleIdxs.clear();
+        slotPaths[lid].push_back(std::move(p));
+    }
+
+    auto supportOf = [&](int pi) -> double {
+        double total = 0.0;
+        const auto &P = patterns[pi];
+        for (size_t k = 0; k < P.leaves.size(); ++k) {
+            int lid = P.leaves[k];
+            const Vec &b = P.localB[k];
+            for (const auto &path : slotPaths[lid])
+                total += ccpath::support_count(path, b, ccpath_ncr);
+        }
+        return total;
+    };
+
+    struct Event {
+        long long level;
+        uint64_t seq;
+        int pi;
+        bool scheduled;
+    };
+    struct Later {
+        bool operator()(const Event &a, const Event &b) const {
+            if (a.level != b.level) return a.level > b.level;
+            return a.seq > b.seq;
+        }
+    };
+    priority_queue<Event, vector<Event>, Later> events;
+    vector<char> alive((size_t)nP, 0);
+    vector<char> residueLeaf((size_t)nL, 0);
+    vector<double> support((size_t)nP, 0.0);
+    vector<long long> key((size_t)nP, -1);
+    uint64_t seq = 0;
+    long long remaining = 0;
+
+    PlaneCellResult out;
+    out.core.assign((size_t)nP, -1.0);
+    for (int pi = 0; pi < nP; ++pi)
+        if (!patterns[pi].direct && !certified[pi])
+            for (int lid : patterns[pi].leaves) residueLeaf[lid] = 1;
+    for (int pi = 0; pi < nP; ++pi) {
+        if (patterns[pi].direct) continue;
+        if (certified[pi]) {
+            long long k = (long long)llround(certCore[pi]);
+            out.core[pi] = certCore[pi];
+            out.activeDist[certCore[pi]] += (double)patterns[pi].mult;
+            out.nCertified++;
+            bool replay = false;
+            for (int lid : patterns[pi].leaves)
+                if (residueLeaf[lid]) { replay = true; break; }
+            if (replay) {
+                alive[pi] = 1;
+                remaining++;
+                events.push({k, seq++, pi, true});
+                out.nReplayedCertified++;
+            }
+        } else {
+            alive[pi] = 1;
+            remaining++;
+            support[pi] = supportOf(pi);
+            key[pi] = (long long)llround(support[pi]);
+            events.push({key[pi], seq++, pi, false});
+            out.nResidue++;
+        }
+    }
+
+    int kmax = getenv("SCT_KMAX") ? atoi(getenv("SCT_KMAX")) : 1;
+    if (kmax < 1) kmax = 1;
+    long long curLevel = 0;
+    vector<char> seen((size_t)nP, 0);
+    vector<int> affected;
+    while (remaining > 0) {
+        if (events.empty()) {
+            fprintf(stderr, "[nsi-plane] replay invariant failed: %lld live patterns without events\n", remaining);
+            break;
+        }
+        Event ev = events.top();
+        events.pop();
+        int pi = ev.pi;
+        if (!alive[pi]) continue;
+        if (ev.scheduled) {
+            if (!certified[pi] || ev.level != (long long)llround(certCore[pi])) continue;
+        } else {
+            if (certified[pi] || ev.level != key[pi]) continue;   // stale residue key
+        }
+        if (ev.level > curLevel) curLevel = ev.level;
+        alive[pi] = 0;
+        remaining--;
+        double death = ev.scheduled ? certCore[pi] : (double)curLevel;
+        out.core[pi] = death;
+        if (!ev.scheduled) out.activeDist[death] += (double)patterns[pi].mult;
+
+        affected.clear();
+        const auto &P = patterns[pi];
+        for (size_t k = 0; k < P.leaves.size(); ++k) {
+            int lid = P.leaves[k];
+            if (!residueLeaf[lid]) continue;
+            if (slotPaths[lid].empty()) continue;
+            planeDeleteFromLeaf(slotPaths[lid], P.localB[k], kmax, out.maxSplit);
+            for (int qi : leafPats[lid]) {
+                if (qi == pi || !alive[qi] || certified[qi] || seen[qi]) continue;
+                seen[qi] = 1;
+                affected.push_back(qi);
+            }
+        }
+        for (int qi : affected) {
+            seen[qi] = 0;
+            support[qi] = supportOf(qi);
+            long long nk = (long long)llround(support[qi]);
+            if (nk < curLevel) nk = curLevel;
+            if (nk != key[qi]) {
+                key[qi] = nk;
+                events.push({nk, seq++, qi, false});
+            }
+        }
+    }
+
+    for (int pi = 0; pi < nP; ++pi)
+        if (!patterns[pi].direct && !certified[pi])
+            out.residue.push_back({pi, out.core[pi]});
+    out.seconds = secs(t0, Clock::now());
+    return out;
+}
+
+static int runMultiRPlane(const char *gpath, int argvR, int argvS,
+                          int verifyN, double mceBudget) {
+    using ccpath::CCPath;
+    using ccpath::Vec;
+    const int rMin = getenv("SCT_RMIN") ? atoi(getenv("SCT_RMIN")) : argvR;
+    const int rMax = getenv("SCT_RMAX") ? atoi(getenv("SCT_RMAX")) : rMin;
+    const int sMax = getenv("SCT_SMAX") ? atoi(getenv("SCT_SMAX")) : argvS;
+    const int sMin = rMin + 1;
+    if (rMin < 1 || rMax < rMin || sMax < rMax + 1) {
+        fprintf(stderr, "[nsi-plane] require 1 <= SCT_RMIN <= SCT_RMAX and SCT_SMAX >= SCT_RMAX+1\n");
+        return 1;
+    }
+    if (getenv("SCT_SWEEP")) {
+        fprintf(stderr, "[nsi-plane] SCT_RSWEEP and SCT_SWEEP are distinct modes; unset SCT_SWEEP.\n");
+        return 1;
+    }
+    if (verifyN) {
+        fprintf(stderr, "[nsi-plane] SCT_RSWEEP is incompatible with --verify; use distribution gates against fixed-r runs.\n");
+        return 1;
+    }
+    const bool noRMerge = getenv("SCT_NO_RMERGE") != nullptr;
+    const bool noCert = getenv("SCT_SWEEP_NOCERT") != nullptr;
+    const char *indexOut = getenv("SCT_INDEX_OUT");
+    printf("[nsi-plane] MULTI-R WHOLE-PLANE r=%d..%d s<=%d Smin=%d cert=%s rmerge=%s\n",
+           rMin, rMax, sMax, sMin, noCert ? "OFF" : "ON", noRMerge ? "OFF" : "ON");
+
+    auto t0 = Clock::now();
+    Graph g = load_graph(gpath);
+    auto tLoad = Clock::now();
+    MCE mce(g, sMin, mceBudget);
+    if (!mce.run()) {
+        printf("[rn] MCE exceeded %.0fs budget; abort.\n", mceBudget);
+        return 0;
+    }
+    vector<vector<int>> regions = std::move(mce.cliques);
+    for (auto &M : regions) sort(M.begin(), M.end());
+    auto tMce = Clock::now();
+    printf("[rn] graph n=%d m=%ld  regions(>=Smin=%d)=%zu  load=%.2fs MCE=%.2fs\n",
+           g.n, (long)g.adj.size() / 2, sMin, regions.size(), secs(t0, tLoad), secs(tLoad, tMce));
+    if (regions.empty()) {
+        printf("[rn] no region >= Smin.\n");
+        return 0;
+    }
+
+    int maxMC = 0;
+    for (auto &M : regions) maxMC = max(maxMC, (int)M.size());
+    build_ncr(maxMC + 2);
+    const int nR = (int)regions.size();
+
+    // Build the immutable global class/profile representation BEFORE any
+    // r-merge decision.  Smaller Smin regions may refine a class, but never
+    // disappear from or mutate this shared representation.
+    vector<vector<int>> vtxR((size_t)g.n);
+    for (int rid = 0; rid < nR; ++rid)
+        for (int v : regions[rid]) vtxR[v].push_back(rid);
+    unordered_map<string,int> profKey;
+    profKey.reserve((size_t)g.n);
+    vector<int> classOf((size_t)g.n, -1);
+    vector<vector<int>> classRegions;
+    vector<int> classSize;
+    auto profileKey = [](const vector<int> &p) {
+        string k;
+        k.reserve(p.size() * sizeof(int));
+        for (int x : p) k.append((const char *)&x, sizeof(int));
+        return k;
+    };
+    for (int v = 0; v < g.n; ++v) {
+        if (vtxR[v].empty()) continue;
+        string k = profileKey(vtxR[v]);
+        auto it = profKey.find(k);
+        int c;
+        if (it == profKey.end()) {
+            c = (int)classRegions.size();
+            profKey.emplace(std::move(k), c);
+            classRegions.push_back(vtxR[v]);
+            classSize.push_back(0);
+        } else c = it->second;
+        classOf[v] = c;
+        classSize[c]++;
+    }
+    const int nC = (int)classRegions.size();
+    vector<vector<int>> regionClasses((size_t)nR);
+    for (int c = 0; c < nC; ++c)
+        for (int rid : classRegions[c]) regionClasses[rid].push_back(c);
+    for (auto &cs : regionClasses) sort(cs.begin(), cs.end());
+    for (int rid = 0; rid < nR; ++rid) {
+        long long sz = 0;
+        for (int c : regionClasses[rid]) sz += classSize[c];
+        if (sz != (long long)regions[rid].size()) {
+            fprintf(stderr, "[nsi-plane] class/region invariant failed at region %d\n", rid);
+            return 2;
+        }
+    }
+
+    // Universal quotient and class-SCT: built ONCE for [Smin,Smax].
+    auto tTree0 = Clock::now();
+    vector<vector<int>> qadj((size_t)nC);
+    for (const auto &rc : regionClasses)
+        for (size_t i = 0; i < rc.size(); ++i)
+            for (size_t j = i + 1; j < rc.size(); ++j) {
+                qadj[rc[i]].push_back(rc[j]);
+                qadj[rc[j]].push_back(rc[i]);
+            }
+    for (auto &a : qadj) {
+        sort(a.begin(), a.end());
+        a.erase(unique(a.begin(), a.end()), a.end());
+    }
+    vector<int> qweight = classSize;
+    const vector<CCPath> sharedLeaves =
+        classsct_scalable::scalableBuildClassSCT(nC, qweight, qadj, sMin, sMax);
+    vector<vector<int>> sharedClasses(sharedLeaves.size());
+    for (size_t lid = 0; lid < sharedLeaves.size(); ++lid)
+        sharedClasses[lid].assign(sharedLeaves[lid].classIds.begin(), sharedLeaves[lid].classIds.end());
+    vector<vector<int>>().swap(qadj);
+    vector<int>().swap(qweight);
+    auto tTree1 = Clock::now();
+    printf("[nsi-plane] shared classes=%d leaves=%zu tree-range=[%d,%d] build=%.2fs RSS=%.2fG\n",
+           nC, sharedLeaves.size(), sMin, sMax, secs(tTree0, tTree1), rssGB());
+
+    unordered_map<PlaneComp,double,PlaneCompHash> prevDiagonal;
+    vector<PlaneIndexColumn> indexColumns;
+    double allCellSeconds = 0.0;
+    const long long maxInc = getenv("SCT_MAX_INC") ? atoll(getenv("SCT_MAX_INC")) : 0;
+
+    for (int r = rMin; r <= rMax; ++r) {
+        const int boundary = r + 1;
+        auto tCol0 = Clock::now();
+
+        // Enumerate the all-region pattern incidence relation first.  A region
+        // is r-mergeable iff none of its emitted r-patterns has a second host;
+        // this is exactly max_{M'} |M intersect M'| < r, without mutating M.
+        vector<PlanePattern> patterns;
+        unordered_map<PlaneComp,int,PlaneCompHash> patByComp;
+        patByComp.reserve((size_t)nR * 16 + 16);
+        PlaneComp cur;
+        cur.reserve((size_t)r);
+        long long incidences = 0;
+        bool exploded = false;
+        auto emitRegion = [&](auto &&self, int rid, int at, int rem) -> void {
+            if (exploded) return;
+            if (rem == 0) {
+                incidences++;
+                if (maxInc > 0 && incidences > maxInc) { exploded = true; return; }
+                auto it = patByComp.find(cur);
+                int pi;
+                if (it == patByComp.end()) {
+                    pi = (int)patterns.size();
+                    PlanePattern P;
+                    P.comp = cur;
+                    patterns.push_back(std::move(P));
+                    patByComp.emplace(patterns.back().comp, pi);
+                } else pi = it->second;
+                patterns[pi].host.push_back(rid);
+                return;
+            }
+            const auto &cls = regionClasses[rid];
+            for (int i = at; i < (int)cls.size(); ++i) {
+                int c = cls[i], cap = min(rem, classSize[c]);
+                for (int m = 1; m <= cap; ++m) {
+                    cur.push_back({c, m});
+                    self(self, rid, i + 1, rem - m);
+                    cur.pop_back();
+                    if (exploded) return;
+                }
+            }
+        };
+        for (int rid = 0; rid < nR && !exploded; ++rid) {
+            if ((int)regions[rid].size() < r) continue;
+            cur.clear();
+            emitRegion(emitRegion, rid, 0, r);
+        }
+        if (exploded) {
+            fprintf(stderr, "[nsi-plane] PATTERN-EXPLOSION at r=%d: incidences>%lld (SCT_MAX_INC)\n", r, maxInc);
+            return 7;
+        }
+
+        vector<char> mergeable((size_t)nR, noRMerge ? 0 : 1);
+        if (!noRMerge) {
+            for (const auto &P : patterns)
+                if (P.host.size() >= 2)
+                    for (int rid : P.host) mergeable[rid] = 0;
+        }
+        for (auto &P : patterns) {
+            P.cP = 0;
+            for (int rid : P.host) P.cP = max(P.cP, (int)regions[rid].size());
+            long long mu = 1;
+            for (auto &cm : P.comp)
+                mu *= (long long)llround(C(classSize[cm.first], cm.second));
+            P.mult = mu;
+            P.direct = !noRMerge && P.host.size() == 1 && mergeable[P.host[0]];
+        }
+        // Fixed-r starts MCE at s=r+1, hence it intentionally omits r-cliques
+        // with no boundary witness.  Filter precisely those c(P)<r+1 patterns
+        // so a single plane column has the same zero-core domain as fixed-r.
+        vector<PlanePattern> kept;
+        kept.reserve(patterns.size());
+        for (auto &P : patterns) if (P.cP >= boundary) kept.push_back(std::move(P));
+        patterns.swap(kept);
+        patByComp.clear();
+        patByComp.reserve(patterns.size() * 2 + 16);
+        for (int pi = 0; pi < (int)patterns.size(); ++pi)
+            patByComp.emplace(patterns[pi].comp, pi);
+
+        long long mergeRegions = 0, activePats = 0, directPats = 0;
+        for (int rid = 0; rid < nR; ++rid)
+            if (mergeable[rid] && (int)regions[rid].size() >= boundary) mergeRegions++;
+        for (const auto &P : patterns) {
+            if (P.direct) directPats++;
+            else activePats++;
+        }
+
+        // r-specific pattern<->leaf VIEW.  Enumerating local r-compositions
+        // avoids a patterns x leaves scan; the shared leaves themselves are not
+        // stripped, retargeted, forbidden, or otherwise modified.
+        vector<vector<int>> leafPats(sharedLeaves.size());
+        for (int lid = 0; lid < (int)sharedLeaves.size(); ++lid) {
+            const CCPath &leaf = sharedLeaves[lid];
+            const auto &gcls = sharedClasses[lid];
+            Vec b((size_t)leaf.m(), 0);
+            PlaneComp lc;
+            lc.reserve((size_t)r);
+            auto enumLeaf = [&](auto &&self, int at, int rem) -> void {
+                if (rem == 0) {
+                    auto it = patByComp.find(lc);
+                    if (it == patByComp.end()) return;
+                    int pi = it->second;
+                    if (patterns[pi].direct) return;
+                    int sumL = 0, sumU = 0;
+                    for (int c = 0; c < leaf.m(); ++c) {
+                        int lo = max((int)leaf.ell[c], (int)b[c]);
+                        int hi = (int)leaf.u[c];
+                        if (lo > hi) return;
+                        sumL += lo; sumU += hi;
+                    }
+                    if (sumL > sMax || sumU < boundary) return;
+                    patterns[pi].leaves.push_back(lid);
+                    patterns[pi].localB.push_back(b);
+                    leafPats[lid].push_back(pi);
+                    return;
+                }
+                for (int i = at; i < leaf.m(); ++i) {
+                    int cap = min(rem, (int)leaf.u[i]);
+                    for (int m = 1; m <= cap; ++m) {
+                        b[i] = (int16_t)m;
+                        lc.push_back({gcls[i], m});
+                        self(self, i + 1, rem - m);
+                        lc.pop_back();
+                        b[i] = 0;
+                    }
+                }
+            };
+            enumLeaf(enumLeaf, 0, r);
+        }
+        for (int pi = 0; pi < (int)patterns.size(); ++pi) {
+            if (!patterns[pi].direct && patterns[pi].leaves.empty()) {
+                fprintf(stderr, "[nsi-plane] pattern-map invariant failed r=%d pi=%d c(P)=%d\n", r, pi, patterns[pi].cP);
+                return 3;
+            }
+        }
+        printf("[nsi-plane-col] r=%d patterns=%zu active=%lld direct=%lld merge-regions=%lld incidences=%lld maps=%.2fs\n",
+               r, patterns.size(), activePats, directPats, mergeRegions, incidences,
+               secs(tCol0, Clock::now()));
+
+        PlaneIndexColumn idxCol;
+        vector<int> activeOrdinal(patterns.size(), -1);
+        if (indexOut) {
+            idxCol.r = r;
+            idxCol.boundary = boundary;
+            for (int rid = 0; rid < nR; ++rid)
+                if (mergeable[rid] && (int)regions[rid].size() >= boundary)
+                    idxCol.mergeableRegions.push_back(rid);
+            for (int pi = 0; pi < (int)patterns.size(); ++pi) if (!patterns[pi].direct) {
+                activeOrdinal[pi] = (int)idxCol.patterns.size();
+                PlaneIndexPattern ip;
+                ip.comp = patterns[pi].comp;
+                ip.mult = patterns[pi].mult;
+                ip.cP = patterns[pi].cP;
+                idxCol.patterns.push_back(std::move(ip));
+            }
+        }
+
+        vector<char> certified(patterns.size(), 0);
+        vector<double> certifiedCore(patterns.size(), -1.0);
+        if (r > rMin && !noCert) {
+            for (int pi = 0; pi < (int)patterns.size(); ++pi) {
+                if (patterns[pi].direct) continue;
+                long long U = LLONG_MAX;
+                for (size_t j = 0; j < patterns[pi].comp.size(); ++j) {
+                    PlaneComp sub = patterns[pi].comp;
+                    if (--sub[j].second == 0) sub.erase(sub.begin() + (long)j);
+                    auto it = prevDiagonal.find(sub);
+                    if (it == prevDiagonal.end()) {
+                        fprintf(stderr, "[nsi-plane] diagonal lookup missing at r=%d pi=%d\n", r, pi);
+                        return 4;
+                    }
+                    U = min(U, (long long)llround(it->second) - 1);
+                }
+                long long L = patterns[pi].cP - r;
+                if (U < L) {
+                    fprintf(stderr, "[nsi-plane] diagonal invariant U>=L failed r=%d pi=%d U=%lld L=%lld\n",
+                            r, pi, U, L);
+                    assert(U >= L);
+                    return 5;
+                }
+                assert(U >= L);
+                // U is an UPPER bound only.  Equality certifies the clique
+                // floor; strict inequality means residue replay at this cell.
+                // In particular, never schedule a pattern at U when U>L.
+                if (U == L) {
+                    certified[pi] = 1;
+                    certifiedCore[pi] = (double)L;
+                }
+            }
+        }
+
+        vector<int> closedFrom(patterns.size(), INT_MAX);
+        PlaneCellResult cell = planeReplayCell(boundary, sharedLeaves, patterns,
+                                               leafPats, certified, certifiedCore);
+        allCellSeconds += cell.seconds;
+        vector<double> prevCore(patterns.size(), -1.0);
+        for (int pi = 0; pi < (int)patterns.size(); ++pi) {
+            if (patterns[pi].direct) {
+                prevCore[pi] = C(patterns[pi].cP - r, 1);
+            } else {
+                prevCore[pi] = cell.core[pi];
+                if (fabs(prevCore[pi] - C(patterns[pi].cP - r, 1)) < 0.5)
+                    closedFrom[pi] = boundary;
+            }
+        }
+
+        auto foldDirect = [&](int cs, map<double,double> &dist) {
+            if (noRMerge) return;
+            for (int rid = 0; rid < nR; ++rid) {
+                if (!mergeable[rid] || (int)regions[rid].size() < boundary) continue;
+                int N = (int)regions[rid].size();
+                dist[C(N - r, cs - r)] += C(N, r);
+            }
+        };
+        auto emitCell = [&](int cs, const PlaneCellResult &cr) -> map<double,double> {
+            map<double,double> dist = cr.activeDist;
+            foldDirect(cs, dist);
+            double mx = 0.0;
+            for (auto &kv : dist) mx = max(mx, kv.first);
+            printf("[nsi-plane-cell] r=%d s=%d certified=%lld residue=%lld replayed-certified=%lld replay=%.4fs maxSplit=%zu\n",
+                   r, cs, cr.nCertified, cr.nResidue, cr.nReplayedCertified,
+                   cr.seconds, cr.maxSplit);
+            printf("[sct-peel] Max core: %.0f\n", mx);
+            for (auto &kv : dist) printf("core=%.0f count=%.0f\n", kv.first, kv.second);
+            fflush(stdout);
+            return dist;
+        };
+        map<double,double> boundaryDist = emitCell(boundary, cell);
+        if (indexOut) {
+            for (int pi = 0; pi < (int)patterns.size(); ++pi) if (!patterns[pi].direct) {
+                int id = activeOrdinal[pi];
+                idxCol.patterns[id].boundaryCore = prevCore[pi];
+            }
+            idxCol.dists.push_back(boundaryDist);
+        }
+
+        // Preserve the exact diagonal view for the next r column.  It includes
+        // both active replay results and mergeable closed forms.
+        prevDiagonal.clear();
+        prevDiagonal.reserve(patterns.size() * 2 + 16);
+        for (int pi = 0; pi < (int)patterns.size(); ++pi)
+            prevDiagonal.emplace(patterns[pi].comp, prevCore[pi]);
+
+        for (int cs = boundary + 1; cs <= sMax; ++cs) {
+            fill(certified.begin(), certified.end(), 0);
+            fill(certifiedCore.begin(), certifiedCore.end(), -1.0);
+            if (!noCert) {
+                for (int pi = 0; pi < (int)patterns.size(); ++pi) {
+                    if (patterns[pi].direct) continue;
+                    double prevFloor = C(patterns[pi].cP - r, (cs - 1) - r);
+                    if (fabs(prevCore[pi] - prevFloor) < 0.5) {
+                        certified[pi] = 1;
+                        certifiedCore[pi] = C(patterns[pi].cP - r, cs - r);
+                    }
+                }
+            }
+            cell = planeReplayCell(cs, sharedLeaves, patterns, leafPats,
+                                   certified, certifiedCore);
+            allCellSeconds += cell.seconds;
+            for (int pi = 0; pi < (int)patterns.size(); ++pi) {
+                if (patterns[pi].direct) {
+                    prevCore[pi] = C(patterns[pi].cP - r, cs - r);
+                } else {
+                    prevCore[pi] = cell.core[pi];
+                    if (closedFrom[pi] == INT_MAX &&
+                        fabs(prevCore[pi] - C(patterns[pi].cP - r, cs - r)) < 0.5)
+                        closedFrom[pi] = cs;
+                }
+            }
+            map<double,double> dist = emitCell(cs, cell);
+            if (indexOut) {
+                auto &rr = idxCol.residueByCell.emplace_back();
+                for (auto &pc : cell.residue)
+                    rr.push_back({activeOrdinal[pc.first], pc.second});
+                idxCol.dists.push_back(std::move(dist));
+            }
+        }
+        if (indexOut) {
+            for (int pi = 0; pi < (int)patterns.size(); ++pi)
+                if (!patterns[pi].direct)
+                    idxCol.patterns[activeOrdinal[pi]].closedFrom =
+                        closedFrom[pi] == INT_MAX ? -1 : closedFrom[pi];
+            indexColumns.push_back(std::move(idxCol));
+        }
+        printf("[nsi-plane-col] r=%d complete column-time=%.2fs\n", r, secs(tCol0, Clock::now()));
+    }
+
+    // NSI2 (little-endian) owns ONE shared class/profile/region/tree block,
+    // followed by an absolute-offset directory and r-column blocks:
+    //   magic; rmin,rmax,smin,smax,n,nC,nR,nLeaf,nCols
+    //   classOf; class sizes+profiles; regions; immutable leaves
+    //   int64 columnOffset[nCols]
+    //   each column: r,boundary,mergeable region ids, active pattern table
+    //     {comp,mult,cP,boundaryCore,closedFrom}, residue dictionaries, dists.
+    // The legacy fixed-r writer remains NSI1 and is byte/semantics unchanged.
+    if (indexOut) {
+        FILE *f = fopen(indexOut, "wb");
+        if (!f) { fprintf(stderr, "[nsi-plane] cannot open SCT_INDEX_OUT=%s\n", indexOut); return 1; }
+        auto w8  = [&](uint8_t v) { fwrite(&v, 1, 1, f); };
+        auto w16 = [&](int16_t v) { fwrite(&v, 2, 1, f); };
+        auto w32 = [&](int32_t v) { fwrite(&v, 4, 1, f); };
+        auto w64 = [&](int64_t v) { fwrite(&v, 8, 1, f); };
+        auto wd  = [&](double v) { fwrite(&v, 8, 1, f); };
+        fwrite("NSI2", 4, 1, f);
+        w32(rMin); w32(rMax); w32(sMin); w32(sMax); w32(g.n); w32(nC);
+        w32(nR); w32((int32_t)sharedLeaves.size()); w32((int32_t)indexColumns.size());
+        for (int c : classOf) w32(c);
+        for (int c = 0; c < nC; ++c) {
+            w32(classSize[c]);
+            w32((int32_t)classRegions[c].size());
+            for (int rid : classRegions[c]) w32(rid);
+        }
+        for (const auto &M : regions) {
+            w32((int32_t)M.size());
+            for (int v : M) w32(v);
+        }
+        for (const auto &p : sharedLeaves) {
+            w32(p.m()); w32(p.T);
+            for (int i = 0; i < p.m(); ++i) {
+                w32(p.classIds[i]); w16(p.h[i]); w16(p.n[i]);
+                w16(p.ell[i]); w16(p.u[i]);
+            }
+        }
+        long dirPos = ftell(f);
+        for (size_t i = 0; i < indexColumns.size(); ++i) w64(0);
+        vector<int64_t> offsets(indexColumns.size(), 0);
+        for (size_t ci = 0; ci < indexColumns.size(); ++ci) {
+            offsets[ci] = (int64_t)ftell(f);
+            const auto &col = indexColumns[ci];
+            w32(col.r); w32(col.boundary);
+            w32((int32_t)col.mergeableRegions.size());
+            for (int rid : col.mergeableRegions) w32(rid);
+            w32((int32_t)col.patterns.size());
+            for (const auto &P : col.patterns) {
+                w8((uint8_t)P.comp.size());
+                for (auto &cm : P.comp) { w32(cm.first); w16((int16_t)cm.second); }
+                w64(P.mult); w32(P.cP); wd(P.boundaryCore); w32(P.closedFrom);
+            }
+            w32((int32_t)col.residueByCell.size());
+            for (const auto &rr : col.residueByCell) {
+                w64((int64_t)rr.size());
+                for (auto &pc : rr) { w32(pc.first); wd(pc.second); }
+            }
+            w32((int32_t)col.dists.size());
+            for (const auto &d : col.dists) {
+                w32((int32_t)d.size());
+                for (auto &kv : d) { wd(kv.first); wd(kv.second); }
+            }
+        }
+        long endPos = ftell(f);
+        fseek(f, dirPos, SEEK_SET);
+        for (int64_t off : offsets) w64(off);
+        fseek(f, endPos, SEEK_SET);
+        fclose(f);
+        printf("[nsi-plane-index] wrote %s %.1fMB columns=%zu shared-leaves=%zu\n",
+               indexOut, endPos / 1048576.0, indexColumns.size(), sharedLeaves.size());
+    }
+
+    printf("[nsi-plane] complete r=%d..%d cells-total=%.2fs total=%.2fs RSS=%.2fG\n",
+           rMin, rMax, allCellSeconds, secs(t0, Clock::now()), rssGB());
+    return 0;
+}
+
 int main(int argc, char **argv) {
     bool memDbg = getenv("MEM_DBG") != nullptr;
     auto memCk = [&](const char *tag) { if (memDbg) fprintf(stderr, "[mem] %-22s RSS=%.2fG\n", tag, rssGB()); };
@@ -368,6 +1096,11 @@ int main(int argc, char **argv) {
         if (!strcmp(argv[i], "--verify") && i + 1 < argc) verifyN = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--mce-budget") && i + 1 < argc) mceBudget = atof(argv[++i]);
     }
+    // Additive whole-plane entry point.  With SCT_RSWEEP unset (or explicitly
+    // set to 0), execution falls through to the original fixed-r code below.
+    const char *rSweepEnv = getenv("SCT_RSWEEP");
+    if (rSweepEnv && strcmp(rSweepEnv, "0") != 0)
+        return runMultiRPlane(gpath, r, s, verifyN, mceBudget);
     // ===================== §129 NSI/FPS SWEEP (SCT_SWEEP=<smax>) =====================
     // ONE shared build (regions/classes/patterns/SCT at s = argv-s = the COLD boundary cell s0),
     // then cells s0..smax on the shared structure. For each cell s > s0, the CHAIN CERTIFICATE
