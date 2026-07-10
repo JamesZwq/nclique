@@ -7060,3 +7060,33 @@ framing (contribution list, title/abstract, how to present multi-r, reviewer-att
 STATUS: codex still fixing the per-r pattern-space perf (a5372ede, worktree, no source change seen
 yet). Stale server experiment subagents STOPPED (TaskStop a00bd6d + ab9c3d7); sweep_driver.sh still
 looping on tods2 (ssh flaky, finite loop, clean later). formal_theory.tex reviewed OK (§175).
+
+## 178. CODEX FRAMING RECOMMENDATION (gpt-5.6-sol) -> docs/framing_recommendation.md (2026-07-10)
+codex endorsed the two-pillar framing, SHARPENED to: "ONE structural idea (class symmetry) with TWO
+consequences: (1) batch decomposition [family-at-a-time], (2) class-compressed indexing." Plane =
+HEADLINE scope (Universal CPI is a real thm + engine bit-exact), but NEVER a cheaper-than-r-by-r
+claim. Key prescriptions (full paste-ready material in the doc):
+- DELETE "at the Cost of One Cell" from the title (false for the plane, only conditional for a row).
+  NEW TITLE: "NSI: Batch Decomposition and Class-Compressed Indexing of the (r,s)-Nucleus Plane".
+- TWO explicitly-roled BASELINES: (external) CND per-cell = SOTA, orders-of-magnitude win; (internal)
+  our own optimized fixed-r once per r = competitive-not-cheaper, isolates the sharing value. This
+  preempts the straw-baseline attack.
+- 4 CONTRIBUTIONS: (1) Universal class representation (Universal CPI + weighted-pattern equivalence),
+  (2) Exact batch decomposition (chain cert + conditional diagonal + shell-order replay), (3) Class-
+  compressed plane index, (4) Evidence-separated evaluation (both baselines). Paste-ready abstract +
+  contribution wording in the doc.
+- HONEST cost formula: T_shared + sum_r T_col(r); "Universal CPI is a sufficiency theorem for
+  counting, not a claim that all r-specific work vanishes."
+- 15 hostile-reviewer attacks + exact preemption sentences; 17 CLAIMS THAT MUST NOT APPEAR (incl.
+  "at cost of one cell", "cheaper than r-by-r", "every cell free", "algorithm is r-independent",
+  "one pattern = C(w,r)" as general, "diagonal determines next row", "hierarchy is free", etc.).
+- Section-by-section rewrite prescription (12 sections). Two-stage algorithm exposition: fixed-r row
+  first, then a "From One Spectrum Row to the Bounded Plane" subsection.
+- FLAG: the multi-r plane INDEX (NSI2 layout + (r,s) query) must be actually serialized+queried, or
+  weaken "plane index" -> "plane construction with fixed-r index columns" (current NSI1 serializer is
+  fixed-r; need to check/extend). And add the plane-vs-summed-fixed-r experiment.
+MY ASSESSMENT: adopt it wholesale -- it is the honest, review-proof blueprint. This is the master
+plan for the paper rewrite. Next: user go-ahead, then execute the rewrite section-by-section (codex's
+paste-ready material as source), + implement/verify NSI2 plane serialization+query, + the plane
+experiment.
+STATUS: codex per-r perf fix (a5372ede) still running.
