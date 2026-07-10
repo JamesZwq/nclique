@@ -7014,3 +7014,27 @@ into Construction/TransferTheory; the Universal CPI theorem anchors the multi-r 
 compiled (fragment needs the paper preamble) -- check at integration.
 STILL RUNNING: server whole-plane re-run (plane vs per-r on real graphs) -- collect from
 /data/wenqianz/plane_bench2.tsv.
+
+## 176. MULTI-R PLANE: BUILD-COST FINDING (patterns over full space) -> codex fixing #2 (2026-07-10)
+Controlled server run (ca-GrQc, after killing the stale/contending experiments): plane r=3..6 total
+6.3s vs SUM of 4 fixed-r sweeps 0.74s -> plane 8.6x SLOWER. Per-cell data: CERTIFICATION IS PERFECT
+(after each r-boundary, all cells certified, residue=0, cell-total 0.54s). The cost is per-r SETUP:
+maps= (pattern-leaf incidence) growing with pattern count -- r=3 col 0.11s ... r=6 col 4.30s
+(maps=3.18s, patterns=749,003).
+ROOT CAUSE (diagnosed via fixed-r r=6 breakdown): fixed-r r-mergeable-removes 41 isolated regions
+(1.87M r-cliques) FIRST -> active=36 regions, 58 classes, 40,639 patterns, 0.20s. The plane keeps
+ALL regions for the r-independent shared tree -> 1302 classes -> enumerates 749,003 patterns per r
+(18x) even though it marks the same 41 mergeable (direct=1353). So the plane processes the FULL
+class/pattern space per r instead of the per-r ACTIVE (mergeable-reduced) space. This is the cost of
+r-independence, but FIXABLE: per r, restrict pattern enumeration+maps+peel to the ACTIVE regions
+(mergeable patterns are closed-form, their support never comes from active regions), while keeping
+ONE shared tree for query-time counting. Dispatched codex (worktree) to fix; perf gate = plane
+r=3..6 competitive with the 0.74s sum-of-4-sweeps, per-r pattern counts drop toward fixed-r's.
+HONEST FRAMING (regardless of the fix): even fully fixed, plane ~= sum of per-r active work + shared
+tree (amortized), i.e. ~COMPETITIVE with r-by-r, NOT cheaper. The multi-r contribution's real value
+is a SINGLE UNIFIED QUERYABLE whole-plane index (any (r,s) in ns) + all cells free after the boundary
+-- NOT "at the cost of one cell" / "cheaper than r-by-r". This matches codex's original honest design
+note. If the fix lands, the paper's plane story = "one index, one shared build, every cell free,
+built at ~the combined cost of the per-r sweeps."
+Also: killed 2 stale/contending server experiment drivers (a00bd6d + ab9c3d7) -- they were running
+old buggy binary + contending; ignore their leftover notifications.
