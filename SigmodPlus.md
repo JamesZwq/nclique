@@ -6779,3 +6779,21 @@ PAPER: present certification as the headline optimization (huge + universal on f
 present closed-form regions honestly scoped to disjoint-region graphs (web-it 2.3x/8B-rc + web-uk
 zero-peel), noting it is a guarded fast-path (neutral elsewhere). Single-trial -- E2 multi-trial
 still pending for camera-ready.
+
+## 164. ABLATION INTO THE PAPER (Exp-4) + a build-flag caveat (2026-07-10)
+Upgraded Experiments Exp-4 "Effect of the Chain Certificate" -> "Ablation of the Optimizations":
+a proper 3-config study (base sweep / +closed-form / +certify=SpecND). Table 4 reports the
+per-optimization speedup on the two graphs where the base sweep completes (WIT 2.3x/6.5x, YTB
+0.9x/1.8x); prose covers the feasibility wins (ASTRO/DBLP base+cf both OOB, certification alone
+-> within budget), the 6.9x memory cut (DBLP 7.6->1.1GB), the cell-level 9364x, and the honest
+closed-form scoping (2.3x on WIT settling 8.2B r-cliques + WUK all-mergeable; NEUTRAL on YTB).
+Updated the Algorithms para to define the three ablation configs. 11pp, builds clean, 0 "??",
+screenshot-verified p9.
+CAVEAT (recorded so we don't trip on it): the overnight ablation binary was rebuilt WITHOUT
+-march=native (the build comment only drops it on macOS; Linux normally keeps it), so ABSOLUTE
+times are inflated ~6x (WIT full 10.4s vs the main table's 1.6s on the SAME machine; multiple
+prior runs + §149 scal agree WIT r=4 ~1.5s). RATIOS are unaffected (all 3 configs use the same
+binary), so the paper presents the ablation as RELATIVE speedups + feasibility, NOT absolute
+times, and points to Table 1 (tab:main) for the in-budget seconds. If we ever want absolute
+ablation times, rebuild region_native_sct_peel WITH -march=native and re-run. Memory numbers are
+flag-insensitive and consistent (full DBLP 1.1GB matches tab:main).
