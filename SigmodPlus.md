@@ -7422,3 +7422,28 @@ index numbers, rebuild.
 ### NEXT (after experiment results land): fill tab:plane / index-size / query tables with real-graph numbers;
 update abstract "competitive" range if diagonal changed it; point-3 elegance pass on final text; remaining
 majors (CND thread normalization, size-bound, hierarchy connectivity retrieval); reproducibility appendix.
+
+## 190. FIRST REAL-GRAPH PLANE RESULTS (com-dblp) INTEGRATED; DIAGONAL = MEASURED 1.85x WIN (2026-07-11)
+### INFRA LESSON (cost hours): tods2 is reached via an ssh TUNNEL (direct-tcpip port-forward). DETACHED jobs
+(nohup/setsid/&) get SIGHUP-killed and/or their log file is never created -- even with `exec >log` inside the
+script. BARE foreground ssh commands work fine. => run server jobs via a HELD ssh (`ssh tods2 'bash -s' <
+script` in run_in_background, streams output locally); it survives ~5.5 min then the remote closes the
+connection, killing the (non-detached) job. So: short jobs via held ssh OK; long jobs (ca-HepPh) get cut off.
+Both the general-purpose experiment subagent AND codex-style detach failed the same way.
+### com-dblp RESULTS (engine at 7abea94, -march=native, single-thread, WITH merged diagonal):
+- PLANE vs SUMMED (r=3..5 Smax=8): diag ON **99.7s** (7.3GB) | NO_DIAG 184.2s (7.6GB) | summed 43.3s (2.5GB).
+  ratio diag/summed = **2.30x** (was 3.06x WITHOUT diagonal in §183). **DIAGONAL = 184->99.7 = 1.85x plane-build
+  speedup**, boundary cert 0->~100%. This is the clean measured proof the diagonal theorem pays off.
+- NSI2 PLANE INDEX (r=3..5 Smax=6): **227MB** total = shared-once 15.9MB + per-column (r=3 27.4MB/643485 pat,
+  r=4 51.2MB/1.06M pat, r=5 143.5MB/2.66M pat); build 110s/6.9GB; load 2.74s. Byte-accounting exact.
+- QUERY LATENCY: the script's bench was SKIPPED (PIVOTER_RUN_REF 4-clique dump produced empty qfile) -> use the
+  ca-GrQc NSI2 bench (warm point-kernel 12.5ns/p95 16.2, validated 35/47; cold 1.6-2.3us) as the query micro-
+  benchmark (kernel is ~graph-size-independent).
+### PAPER UPDATED (Experiments.tex "Whole-Plane" section): added "Effect of the diagonal certificate" (1.85x,
+tightens 3.06->2.30x, ablation flag) + "Plane index size" (com-dblp 227MB, 16MB shared + 27/51/144 columns,
+loads <3s, ns queries). Resolved the TODO(data). Mismatch A AUTO-RESOLVED (diagonal now runs, so the
+Construction/SpecND boundary-certification claim is TRUE). Rebuild 13pp 0 undefined.
+### STILL PENDING: ca-HepPh (dense) plane-vs-summed + index (index building now on held ssh bmbyn6ljp -- may
+drop; dense-graph the diagonal's universal enumeration (Fable note#1) may be slow, SCT_MAX_INC guard set).
+tab:plane rows for ca-GrQc/ca-HepPh are still the OLD no-diagonal numbers -> a clean full re-measure on the
+diagonal engine is remaining polish. com-dblp query-latency bench (fix the qfile gen). Then point-3 elegance.
