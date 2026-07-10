@@ -7375,3 +7375,27 @@ NSI2 444k + adversarial floor-gap (must fire diagonal AND leave residue). Resolv
 (independent), plus my mechanical gates, BEFORE merge. Then: Mismatch A paper wording (claim becomes true if
 diagonal shipped), then bigger-graph server experiments (NSI2 size/query + plane-vs-summed with diagonal ON),
 point-3 elegance pass, remaining majors.
+
+## 188. DIAGONAL IMPLEMENTED + VERIFIED (my gates + Opus self-review + Fable SOUND); codex verify pending (2026-07-11)
+codex implemented the diagonal at UNIVERSAL granularity (region_native_sct_peel.cpp +154/-8, UNCOMMITTED). Env
+SCT_NO_DIAG=1 ablation + SCT_DIAG_AUDIT=1 internal per-pattern seeded-vs-full check. Boundary cert rate 0 -> r=4
+22541/22542, r=5 51738/51738 (near-100%). Core design (correct): diagonal evaluated ONLY on universal patterns;
+an active replay orbit certified IFF every universal composition it represents is certified at the same clique
+floor -> coarsening can only REDUCE certification, never make it unsound. prevBoundary keyed by universal comp
+(sorted/canonical), U<L=abort, U>L=residue, missing-face=0->U<L->abort (fail-loud).
+### VERIFICATION (3-way): (a) MY mechanical gates: SCT_NO_DIAG==default==fixed-r bit-exact ca-GrQc r=3..5;
+NSI2 444k gate; cert fires. (b) MY Opus self-review of the diff logic: sound. (c) FABLE 5 (agent ac421015):
+SOUND, SAFE TO MERGE -- static proof + 21 ADVERSARIAL gate runs incl g5 (two classes merge at r=3 but their
+(2,3) face cores diverge 4 vs 5 = the exact coarsening bug -> bit-exact PASS), g7 (within-orbit eligibility
+split -> correct residue), octahedron floor-gap (core 2 > floor 1 -> correctly residue, not mis-certified),
+8x random G(28,p). Fable proved: true universal granularity, every face lookup-able (fail-loud else), U=L-only,
+floor-gap L-correct (cP uniform per orbit since all universal classes in one active class share the active
+region profile).
+### FABLE NON-SOUNDNESS NOTES (perf, address before/at scale): #1 emitUniversal enumerates FULL universal
+r-composition space of EVERY region>=r each row (incl mergeable/direct), NO SCT_MAX_INC guard (guard at L979
+only covers active enum) -> on mergeable-heavy graphs (web-uk all-closed-form) universalIncidences could dwarf
+active; EXACT but benchmark/guard before scale. #2 per-incidence map<int,int> activeCounts alloc (L1039) =
+cosmetic constant. -> add as a follow-up perf task; NOT a merge blocker.
+### STATUS: NOT MERGED YET (user: "全过了才合并" = both Fable AND codex). Fable PASSED. codex/GPT code-review
+BLOCKED by usage limit (resets ~3:39 AM) -> ScheduleWakeup set to retry codex + merge-if-clear. Merge is held
+only on the codex second-opinion; correctness confidence already very high (3-way).
