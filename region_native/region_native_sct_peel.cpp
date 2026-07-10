@@ -733,9 +733,11 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
     }
     const bool noRMerge = getenv("SCT_NO_RMERGE") != nullptr;
     const bool noCert = getenv("SCT_SWEEP_NOCERT") != nullptr;
+    const bool noDiag = getenv("SCT_NO_DIAG") != nullptr;
     const char *indexOut = getenv("SCT_INDEX_OUT");
-    printf("[nsi-plane] MULTI-R WHOLE-PLANE r=%d..%d s<=%d Smin=%d cert=%s rmerge=%s\n",
-           rMin, rMax, sMax, sMin, noCert ? "OFF" : "ON", noRMerge ? "OFF" : "ON");
+    printf("[nsi-plane] MULTI-R WHOLE-PLANE r=%d..%d s<=%d Smin=%d cert=%s diag=%s rmerge=%s\n",
+           rMin, rMax, sMax, sMin, noCert ? "OFF" : "ON", noDiag ? "OFF" : "ON",
+           noRMerge ? "OFF" : "ON");
 
     auto t0 = Clock::now();
     Graph g = load_graph(gpath);
@@ -836,6 +838,10 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
     // override for experiments whose memory budget is known by the caller.
     const long long maxInc = getenv("SCT_MAX_INC") ? atoll(getenv("SCT_MAX_INC")) : 20000000LL;
 
+    // Previous boundary, at immutable universal-class granularity.  This is
+    // intentionally independent of every per-r active-class quotient.
+    unordered_map<PlaneComp,double,PlaneCompHash> prevBoundary;
+
     // maxOverlap[M] = max_{M' != M} |M intersect M'|.  Compute this ONCE,
     // before the r loop, from the universal profile classes.  A class is
     // wholly in or out of every region, so summing its weight over common
@@ -908,6 +914,7 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
         activeByProfile.reserve((size_t)nC);
         vector<int> activeClassSize, activeClassRep;
         vector<vector<int>> activeClassRegions;
+        vector<int> universalToActive((size_t)nC, -1);
         for (int c = 0; c < nC; ++c) {
             vector<int> profile;
             profile.reserve(classRegions[c].size());
@@ -925,6 +932,7 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                 activeClassRegions.push_back(std::move(profile));
             } else ac = it->second;
             activeClassSize[ac] += classSize[c];
+            universalToActive[c] = ac;
         }
         const int activeNC = (int)activeClassSize.size();
         vector<vector<int>> activeRegionClasses((size_t)nR);
@@ -1012,6 +1020,72 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
             P.direct = false;
         }
 
+        // UNIVERSAL boundary view.  The active quotient is valid for the
+        // replay, but it is not a valid diagonal key: several universal
+        // classes can coalesce into one active class.  Enumerate the exact
+        // universal r-compositions hosted by this row's original regions and
+        // associate each with its active replay orbit (or its direct closed
+        // form).  This is also the complete domain written to PrevBoundary.
+        unordered_map<PlaneComp,int,PlaneCompHash> universalOwner;
+        unordered_map<PlaneComp,int,PlaneCompHash> universalDirectCP;
+        universalOwner.reserve((size_t)patterns.size() * 2 + 16);
+        universalDirectCP.reserve((size_t)patterns.size() / 2 + 16);
+        PlaneComp ucur;
+        ucur.reserve((size_t)r);
+        long long universalIncidences = 0;
+        auto emitUniversal = [&](auto &&self, int rid, int at, int rem) -> void {
+            if (rem == 0) {
+                universalIncidences++;
+                map<int,int> activeCounts;
+                const bool isActive = activeRegion[rid];
+                if (isActive) {
+                    for (const auto &cm : ucur) {
+                        int ac = universalToActive[cm.first];
+                        if (ac < 0) {
+                            fprintf(stderr, "[nsi-plane] active universal class vanished r=%d region=%d\n", r, rid);
+                            abort();
+                        }
+                        activeCounts[ac] += cm.second;
+                    }
+                }
+                int owner = -1;
+                if (isActive) {
+                    PlaneComp acmp;
+                    acmp.reserve(activeCounts.size());
+                    for (const auto &cm : activeCounts) acmp.push_back(cm);
+                    auto it = patByComp.find(acmp);
+                    if (it == patByComp.end()) {
+                        fprintf(stderr, "[nsi-plane] universal->active map invariant failed r=%d region=%d\n", r, rid);
+                        abort();
+                    }
+                    owner = it->second;
+                }
+                auto it = universalOwner.find(ucur);
+                if (it == universalOwner.end()) {
+                    universalOwner.emplace(ucur, owner);
+                    if (owner < 0) universalDirectCP.emplace(ucur, (int)regions[rid].size());
+                } else if (it->second != owner) {
+                    fprintf(stderr, "[nsi-plane] universal ownership invariant failed r=%d\n", r);
+                    abort();
+                }
+                return;
+            }
+            const auto &cls = regionClasses[rid];
+            for (int i = at; i < (int)cls.size(); ++i) {
+                const int c = cls[i], cap = min(rem, classSize[c]);
+                for (int m = 1; m <= cap; ++m) {
+                    ucur.push_back({c, m});
+                    self(self, rid, i + 1, rem - m);
+                    ucur.pop_back();
+                }
+            }
+        };
+        for (int rid = 0; rid < nR; ++rid) {
+            if ((int)regions[rid].size() < r) continue;
+            ucur.clear();
+            emitUniversal(emitUniversal, rid, 0, r);
+        }
+
         // r-specific pattern<->leaf VIEW.  Enumerating local r-compositions
         // avoids a patterns x leaves scan.  It touches only the transient
         // active-region leaves; the shared tree remains byte-immutable.
@@ -1087,16 +1161,67 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
 
         vector<char> certified(patterns.size(), 0);
         vector<double> certifiedCore(patterns.size(), -1.0);
-        // Active equivalence classes change with r.  A composition coordinate
-        // at r can contain several universal subclasses whose (r-1)-column
-        // cores differ, so subtracting a transient coordinate is not a sound
-        // diagonal lookup.  Replay the exact boundary over the small active
-        // view (the same work performed by a fixed-r sweep); chain
-        // certification below remains valid within this column.
+        // The diagonal certificate is evaluated ONLY on universal patterns.
+        // An active replay orbit is scheduled iff every universal composition
+        // represented by it is certified at the same clique floor.  Thus a
+        // coarsening can reduce certification, never make it unsound.
+        if (r > rMin && !noDiag) {
+            vector<char> diagonalEligible(patterns.size(), 1);
+            vector<long long> diagonalVariants(patterns.size(), 0);
+            for (const auto &entry : universalOwner) {
+                const PlaneComp &q = entry.first;
+                const int pi = entry.second;
+                if (pi < 0) continue;  // direct regions use their closed form
+                diagonalVariants[pi]++;
+                double u = numeric_limits<double>::infinity();
+                for (int j = 0; j < (int)q.size(); ++j) {
+                    PlaneComp face = q;
+                    if (--face[j].second == 0) face.erase(face.begin() + j);
+                    auto it = prevBoundary.find(face);
+                    // A supported face should be present because it is hosted
+                    // by the same maximal region.  Keep the theorem's explicit
+                    // missing-entry convention (core zero) nonetheless.
+                    const double prev = it == prevBoundary.end() ? 0.0 : it->second;
+                    u = min(u, prev - 1.0);
+                }
+                const double l = (double)(patterns[pi].cP - r);
+                if (u + 0.5 < l) {
+                    fprintf(stderr,
+                            "[nsi-plane] DIAGONAL INVARIANT FAILED r=%d pi=%d U=%.0f L=%.0f\n",
+                            r, pi, u, l);
+                    abort();
+                }
+                if (fabs(u - l) >= 0.5) diagonalEligible[pi] = 0;
+            }
+            for (int pi = 0; pi < (int)patterns.size(); ++pi) {
+                if (diagonalVariants[pi] == 0) {
+                    fprintf(stderr, "[nsi-plane] diagonal universal-domain invariant failed r=%d pi=%d\n", r, pi);
+                    abort();
+                }
+                if (diagonalEligible[pi]) {
+                    certified[pi] = 1;
+                    certifiedCore[pi] = (double)(patterns[pi].cP - r);
+                }
+            }
+        }
 
         vector<int> closedFrom(patterns.size(), INT_MAX);
         PlaneCellResult cell = planeReplayCell(boundary, activeLeaves, patterns,
                                                leafPats, certified, certifiedCore);
+        if (getenv("SCT_DIAG_AUDIT") && r > rMin && !noDiag) {
+            vector<char> none(patterns.size(), 0);
+            vector<double> noValues(patterns.size(), -1.0);
+            PlaneCellResult full = planeReplayCell(boundary, activeLeaves, patterns,
+                                                   leafPats, none, noValues);
+            for (int pi = 0; pi < (int)patterns.size(); ++pi)
+                if (!patterns[pi].direct && fabs(cell.core[pi] - full.core[pi]) >= 0.5) {
+                    fprintf(stderr,
+                            "[nsi-plane] DIAGONAL AUDIT FAILED r=%d pi=%d seeded=%.0f full=%.0f\n",
+                            r, pi, cell.core[pi], full.core[pi]);
+                    abort();
+                }
+            printf("[nsi-plane] diagonal-audit r=%d boundary=%d PASS\n", r, boundary);
+        }
         allCellSeconds += cell.seconds;
         vector<double> prevCore(patterns.size(), -1.0);
         for (int pi = 0; pi < (int)patterns.size(); ++pi) {
@@ -1108,6 +1233,27 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                     closedFrom[pi] = boundary;
             }
         }
+
+        // Publish this completed boundary under the universal keys.  This
+        // includes direct/mergeable patterns, whose exact closed form makes
+        // every supported (r-1)-face lookup-able in the next column.
+        prevBoundary.clear();
+        prevBoundary.reserve(universalOwner.size() * 2 + 16);
+        for (const auto &entry : universalOwner) {
+            const int pi = entry.second;
+            if (pi >= 0) {
+                prevBoundary.emplace(entry.first, cell.core[pi]);
+            } else {
+                auto dit = universalDirectCP.find(entry.first);
+                if (dit == universalDirectCP.end()) {
+                    fprintf(stderr, "[nsi-plane] direct universal-domain invariant failed r=%d\n", r);
+                    abort();
+                }
+                prevBoundary.emplace(entry.first, (double)(dit->second - r));
+            }
+        }
+        printf("[nsi-plane-diagonal] r=%d boundary=%d certified=%lld residue=%lld universal-patterns=%zu incidences=%lld\n",
+               r, boundary, cell.nCertified, cell.nResidue, universalOwner.size(), universalIncidences);
 
         auto foldDirect = [&](int cs, map<double,double> &dist) {
             if (noRMerge) return;
