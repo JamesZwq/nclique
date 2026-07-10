@@ -6974,3 +6974,13 @@ max, worktree) to profile+fix: perf gate = plane r=3 on ca-GrQc within ~3x of fi
 bit-exact + backward-compat preserved. NOTE: the diagonal seeding for r>rmin boundaries is untested
 (the run died at rmin); need to confirm r=4/5/6 boundaries are diagonal-cheap after the perf fix.
 Also running: codex formal_theory.tex (#27 Gen/peel-equiv + #28 replay + Universal CPI).
+
+## 174. MULTI-R PERF FIX VERIFIED + MERGED (2026-07-10)
+codex (gpt-5.6-sol, worktree) fixed the plane boundary-peel perf: root cause = full supportOf(Q)
+rescan over every current split path after EVERY deletion (O(paths) per removal); replaced with
+witness-major INCREMENTAL support updates (deadWitness tracking + support[qi] -= delta). I VERIFIED
+in main myself: plane r=3 on ca-GrQc 0.40s (was >120s, ~300x faster); bit-exact preserved on
+ca-GrQc + both synthetic gates (r=3,4); full plane r=3..5 works. +107/-10 lines, merged to main +
+pushed. NEXT: re-run the server whole-plane experiment (was killed) to get the real plane-vs-
+per-r-sweep numbers + confirm r>rmin boundaries are diagonal-cheap. codex formal_theory.tex still
+running.
