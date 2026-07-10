@@ -7318,3 +7318,41 @@ gate), #3 theory (proofs verified), #4 novelty (prior-art table). Paper 13pp cle
 integrate into Experiments index section + tab:plane companion; (b) remaining MAJORS: CND thread
 normalization (decision A: full re-run vs disclose CPU-sec), size-bound undercount, Hierarchy connected-
 nucleus retrieval; (c) point-3 full elegance pass on final text; (d) reproducibility artifact table + minors.
+
+## 186. FABLE 5 PRE-EXPERIMENT REVIEW (correctness+soundness) -> METHOD CORRECT, ONE PERF CLIFF (2026-07-11)
+User: before slow experiments, Fable 5 reviews思路+code; then a perf agent (codex, may modify code). Fable done.
+### APPROACH VERDICT: SOUND. Fable attacked all 4 soundness questions + could not break any:
+- class quotient / per-r active coarsening PRESERVES peeling (verified the load-bearing chain: coarsened class
+  still wholly in every active region of its profile; active-pattern witnesses can't lie in a mergeable region;
+  the abort() at :634-640 is UNREACHABLE; small regions can't flip a big region's mergeability -> maxOverlap
+  computed once is exact per column).
+- r-independence REAL (scalableBuildClassSCT takes only [k,kOver]; widened prunes discard only all-slice-
+  infeasible leaves; disjointness independent of T).
+- weighted-pattern peeling = individual peeling (order-free max-k-feasible characterization; Fable's INDEPENDENT
+  BRUTE-FORCE peel of actual r-cliques matched the pattern engine on every cell).
+- certificates+seeded replay sound & bit-exact (chain absorbing, integer-exact; replay per-leaf-additive).
+- WORDING: engine does NOT peel the shared tree -- builds a transient per-r ACTIVE tree (:920-937); shared tree
+  only for serialization; NSI2 queries never read the tree block. "One tree serves every cell" = counting-
+  sufficiency THEOREM, not the executable's peel.
+- Adversarial floor-gap graph (K_{2,2,2,2} core 4 > floor 2 + K6 + K4): FULL brute-force 344/344 & 196/196 EXACT.
+### H1 (HIGH, PERFORMANCE not correctness): planeReplayCell non-boundary residue replay is NAIVE -- per death a
+full supportOf rescan of every co-hosted pattern (:656-682,:497-507), NONE of the fixed-r a_Y/witness-major/
+wave-closure/slot machinery. ca-GrQc (3,5) all-residue (SCT_SWEEP_NOCERT) >10min(killed) vs 0.02s fixed-r =
+>=30,000x. GrQc gate missed it (100% chain-certified, residue=0). ANY HepPh/dblp cell w/ non-trivial residue
+stalls hours-days. THIS is the "competitive not cheaper" root cause + experiment-stall hazard.
+=> PERF AGENT DISPATCHED (codex a598f5116d): port fixed-r fast peel into planeReplayCell; gates must all pass
+incl SCT_SWEEP_NOCERT replay-path gate + nsi2_gate.py(444k) + adversarial floor-gap; perf proof (3,5)<<1s.
+### MISMATCH A (honesty, HELD pending perf agent): Construction/SpecND CLAIM a conditional diagonal certificate
+(U=L) runs at boundaries, but the code NEVER computes U -- comment says diagonal lookup unsound in coarsened
+per-r active space. Boundary-cert rate is 0 by construction; reporting it = fabrication. FIX = either paper
+("proven certificate the artifact does not currently exploit") OR perf agent implements it at UNIVERSAL
+granularity (secondary task). HOLD the paper wording until perf agent reports which.
+### MISMATCH B (FIXED): Index.tex "current artifact boundary (NSI2 not implemented)" -> "Implemented index"
+(NSI2 serialized+queryable, 444k-query gate). Resolves 2 TODO(impl).
+### M1 (convention): plane emits core=0 bucket for boundary-universe zero-support cliques; standalone fixed-r
+omits them. ALL NONZERO buckets bit-exact; point queries unaffected. Distribution/total comparisons vs CND/
+standalone MUST exclude core=0 or state the convention. TODO before cross-engine distribution checks.
+### PRE-EXPERIMENT CHECKLIST (Fable): export SCT_MAX_INC (L1: default 0=disabled -> OOM risk); monitor per-cell
+residue= (non-zero at s>r+1 => H1 replay running, cell may not finish, time != method); watch RSS (plane has
+NO map compression, L1); overflow CLEAN for planned runs (breaks only at s-r>~17 on 239-clique, L3); NSI2
+loader caps patterns/col<=1e8 counts<=1e9 (L2). Adversarial graphs worth adding to nsi2_gate.py (M2).
