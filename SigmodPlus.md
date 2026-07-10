@@ -6832,3 +6832,25 @@ compute+store+query the spectrum -> existing methods fail (recompute or unstorab
 compressed by the transfer theory, built by SpecND.
 REMAINING to teacher parity / 12-14pp: two case studies (still zero -- biggest gap vs teacher
 papers).
+
+## 167. TWO CASE STUDIES ADDED (Exp-8, Exp-9) -- the biggest teacher-parity gap filled
+## (user: "add the two case studies") (2026-07-10)
+Matched the teacher CaseStudy formula (playbook §9 + NuclearCD CaseStudy.tex): one quantitative
+knob study + one nameable real story, each with inline metric defs, hard counts, a practical
+guideline, and a figure; continue the Exp-N counter (no own section, under Experimental Eval).
+- Exp-8 Case Study I "Choosing Granularity on DBLP": (1,s)-nucleus sweep on com-dblp (317,080
+  authors, (1,2)=k-core). Findings: sweeping s distills 234x (317,080 -> 1,358 at s=30); top-100
+  STABLE across s (Jaccard 1.00), tail is where s acts; k-core = coarse endpoint; NSI holds every
+  cell so granularity is chosen AFTER the build. Fig 11 (cs_granularity.pdf, real cs2 data).
+- Exp-9 Case Study II "A Research Team on DBLP": Jiawei Han's 1-hop coauthor ego net, r=3, s=4 vs
+  s=10. Inline metrics (separability m_in/m_cut, conductance, active ratio). Findings: 1,328->540
+  authors / 65->27 comps, intra-frac 0.319->0.528, separability 0.270->0.750, conductance
+  0.712->0.475; active ratio 54%->98%. Fig 12 (cs_ego.pdf, real cs9 data).
+Both FRAMED around the SPECTRUM/index (every cell from one build; analyst reads the trajectory) to
+differentiate from the single-cell angle. figures/make_cs.py generates both. sections/CaseStudy.tex
+input after Experiments. 12pp, builds clean, 0 "??", screenshot-verified p11 (Fig 11+12 + both CS
+prose). 
+NOTE/CAVEAT: the case-study SUBJECTS (Jiawei Han ego, dblp granularity) + numbers are SHARED with
+the sibling NuclearCD paper (same group, same case_study/ infra). Reused deliberately per user;
+framed differently (spectrum/index). If both are under double-blind review simultaneously, flag to
+the user (done). Data is real (case_study/cs9_dblp_real, paper_data cs2).
