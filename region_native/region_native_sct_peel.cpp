@@ -369,7 +369,7 @@ static double rssGB() {
 //
 // The universal class-SCT is built once from UNSPLIT maximal regions of size
 // >= Smin=rmin+1, with slice range [Smin,Smax].  SCT_NO_RMERGE disables the
-// per-r direct-region mask, SCT_SWEEP_NOCERT disables both diagonal and chain
+// per-r direct-region mask, SCT_SWEEP_NOCERT disables within-column chain
 // certificates (full replay in every cell), and SCT_INDEX_OUT writes NSI2.
 // SCT_SWEEP remains the fixed-r sweep flag and is rejected when SCT_RSWEEP is
 // active so the two independently backward-compatible modes are unambiguous.
@@ -397,7 +397,7 @@ struct PlaneVecHash {
 
 struct PlanePattern {
     PlaneComp comp;                       // global class composition, sum=r
-    vector<int> host;                     // host maximal regions in the unsplit set
+    vector<int> host;                     // host maximal regions in the per-r active set
     long long mult = 1;                   // actual r-cliques represented by this orbit
     int cP = 0;                           // largest host-region size
     bool direct = false;                  // unique host is r-mergeable
@@ -805,30 +805,140 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
     vector<int> qweight = classSize;
     const vector<CCPath> sharedLeaves =
         classsct_scalable::scalableBuildClassSCT(nC, qweight, qadj, sMin, sMax);
-    vector<vector<int>> sharedClasses(sharedLeaves.size());
-    for (size_t lid = 0; lid < sharedLeaves.size(); ++lid)
-        sharedClasses[lid].assign(sharedLeaves[lid].classIds.begin(), sharedLeaves[lid].classIds.end());
     vector<vector<int>>().swap(qadj);
     vector<int>().swap(qweight);
     auto tTree1 = Clock::now();
     printf("[nsi-plane] shared classes=%d leaves=%zu tree-range=[%d,%d] build=%.2fs RSS=%.2fG\n",
            nC, sharedLeaves.size(), sMin, sMax, secs(tTree0, tTree1), rssGB());
 
-    unordered_map<PlaneComp,double,PlaneCompHash> prevDiagonal;
     vector<PlaneIndexColumn> indexColumns;
     double allCellSeconds = 0.0;
     const long long maxInc = getenv("SCT_MAX_INC") ? atoll(getenv("SCT_MAX_INC")) : 0;
+
+    // maxOverlap[M] = max_{M' != M} |M intersect M'|.  Compute this ONCE,
+    // before the r loop, from the universal profile classes.  A class is
+    // wholly in or out of every region, so summing its weight over common
+    // profiles is exactly the vertex intersection size.  This replaces the
+    // old circular route which enumerated the full universal r-pattern space
+    // merely to discover the same per-r mergeable mask.
+    auto tOverlap0 = Clock::now();
+    vector<int> maxOverlap((size_t)nR, 0), overlap((size_t)nR, 0), dirty;
+    dirty.reserve(256);
+    for (int rid = 0; rid < nR; ++rid) {
+        for (int c : regionClasses[rid]) {
+            const int w = classSize[c];
+            for (int other : classRegions[c]) if (other != rid) {
+                if (overlap[other] == 0) dirty.push_back(other);
+                overlap[other] += w;
+            }
+        }
+        int best = 0;
+        for (int other : dirty) {
+            best = max(best, overlap[other]);
+            overlap[other] = 0;
+        }
+        dirty.clear();
+        maxOverlap[rid] = best;
+    }
+    printf("[nsi-plane] region max-overlap precompute=%.2fs\n", secs(tOverlap0, Clock::now()));
 
     for (int r = rMin; r <= rMax; ++r) {
         const int boundary = r + 1;
         auto tCol0 = Clock::now();
 
-        // Enumerate the all-region pattern incidence relation first.  A region
-        // is r-mergeable iff none of its emitted r-patterns has a second host;
-        // this is exactly max_{M'} |M intersect M'| < r, without mutating M.
+        // Per-r ACTIVE view, matching the fixed-r pipeline exactly: first drop
+        // r-mergeable regions, then coarsen universal classes by their profile
+        // restricted to the remaining regions.  Universal classes which differ
+        // only through removed regions become one active class; classes with an
+        // empty active profile disappear.  The universal classes/tree above stay
+        // immutable and remain the one persistent/query-time representation.
+        vector<char> mergeable((size_t)nR, 0), activeRegion((size_t)nR, 0);
+        vector<int> activeRids;
+        activeRids.reserve((size_t)nR);
+        long long mergeRegions = 0;
+        for (int rid = 0; rid < nR; ++rid) {
+            if ((int)regions[rid].size() < boundary) continue;
+            mergeable[rid] = !noRMerge && maxOverlap[rid] < r;
+            if (mergeable[rid]) {
+                mergeRegions++;
+            } else {
+                activeRegion[rid] = 1;
+                activeRids.push_back(rid);
+            }
+        }
+        if (activeRids.empty() && mergeRegions == 0) {
+            // The fixed-r run starts MCE at this boundary and returns without
+            // emitting a distribution when no such maximal region exists.
+            // Preserve the same observable column semantics inside a wider
+            // plane (while retaining an empty zero-query column in NSI2).
+            printf("[nsi-plane-col] r=%d no region >= boundary=%d; skipped\n", r, boundary);
+            if (indexOut) {
+                PlaneIndexColumn empty;
+                empty.r = r;
+                empty.boundary = boundary;
+                empty.residueByCell.resize((size_t)max(0, sMax - boundary));
+                empty.dists.resize((size_t)max(0, sMax - boundary + 1));
+                indexColumns.push_back(std::move(empty));
+            }
+            continue;
+        }
+
+        unordered_map<string,int> activeByProfile;
+        activeByProfile.reserve((size_t)nC);
+        vector<int> activeClassSize, activeClassRep;
+        vector<vector<int>> activeClassRegions;
+        for (int c = 0; c < nC; ++c) {
+            vector<int> profile;
+            profile.reserve(classRegions[c].size());
+            for (int rid : classRegions[c])
+                if (activeRegion[rid]) profile.push_back(rid);
+            if (profile.empty()) continue;
+            string key = profileKey(profile);
+            auto it = activeByProfile.find(key);
+            int ac;
+            if (it == activeByProfile.end()) {
+                ac = (int)activeClassSize.size();
+                activeByProfile.emplace(std::move(key), ac);
+                activeClassSize.push_back(0);
+                activeClassRep.push_back(c);       // canonical universal representative
+                activeClassRegions.push_back(std::move(profile));
+            } else ac = it->second;
+            activeClassSize[ac] += classSize[c];
+        }
+        const int activeNC = (int)activeClassSize.size();
+        vector<vector<int>> activeRegionClasses((size_t)nR);
+        for (int ac = 0; ac < activeNC; ++ac)
+            for (int rid : activeClassRegions[ac])
+                activeRegionClasses[rid].push_back(ac);
+
+        // A transient active-region SCT is the per-r construction view.  It is
+        // not serialized and does not replace/mutate the universal SCT.  Its
+        // quotient contains exactly the witnesses that can couple active
+        // patterns; mergeable-region witnesses are disjoint closed forms.
+        vector<vector<int>> activeAdj((size_t)activeNC);
+        for (int rid : activeRids) {
+            const auto &rc = activeRegionClasses[rid];
+            for (size_t i = 0; i < rc.size(); ++i)
+                for (size_t j = i + 1; j < rc.size(); ++j) {
+                    activeAdj[rc[i]].push_back(rc[j]);
+                    activeAdj[rc[j]].push_back(rc[i]);
+                }
+        }
+        for (auto &a : activeAdj) {
+            sort(a.begin(), a.end());
+            a.erase(unique(a.begin(), a.end()), a.end());
+        }
+        const vector<CCPath> activeLeaves =
+            classsct_scalable::scalableBuildClassSCT(activeNC, activeClassSize,
+                                                       activeAdj, boundary, sMax);
+        vector<vector<int>>().swap(activeAdj);
+
+        // Enumerate ONLY active-region incidences in the coarsened per-r class
+        // space.  Direct patterns are represented by the mergeable-region size
+        // histogram in foldDirect and never enter this vector or its maps.
         vector<PlanePattern> patterns;
         unordered_map<PlaneComp,int,PlaneCompHash> patByComp;
-        patByComp.reserve((size_t)nR * 16 + 16);
+        patByComp.reserve(activeRids.size() * 16 + 16);
         PlaneComp cur;
         cur.reserve((size_t)r);
         long long incidences = 0;
@@ -850,9 +960,9 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                 patterns[pi].host.push_back(rid);
                 return;
             }
-            const auto &cls = regionClasses[rid];
+            const auto &cls = activeRegionClasses[rid];
             for (int i = at; i < (int)cls.size(); ++i) {
-                int c = cls[i], cap = min(rem, classSize[c]);
+                int c = cls[i], cap = min(rem, activeClassSize[c]);
                 for (int m = 1; m <= cap; ++m) {
                     cur.push_back({c, m});
                     self(self, rid, i + 1, rem - m);
@@ -861,8 +971,8 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                 }
             }
         };
-        for (int rid = 0; rid < nR && !exploded; ++rid) {
-            if ((int)regions[rid].size() < r) continue;
+        for (int rid : activeRids) {
+            if (exploded) break;
             cur.clear();
             emitRegion(emitRegion, rid, 0, r);
         }
@@ -871,48 +981,22 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
             return 7;
         }
 
-        vector<char> mergeable((size_t)nR, noRMerge ? 0 : 1);
-        if (!noRMerge) {
-            for (const auto &P : patterns)
-                if (P.host.size() >= 2)
-                    for (int rid : P.host) mergeable[rid] = 0;
-        }
         for (auto &P : patterns) {
             P.cP = 0;
             for (int rid : P.host) P.cP = max(P.cP, (int)regions[rid].size());
             long long mu = 1;
             for (auto &cm : P.comp)
-                mu *= (long long)llround(C(classSize[cm.first], cm.second));
+                mu *= (long long)llround(C(activeClassSize[cm.first], cm.second));
             P.mult = mu;
-            P.direct = !noRMerge && P.host.size() == 1 && mergeable[P.host[0]];
-        }
-        // Fixed-r starts MCE at s=r+1, hence it intentionally omits r-cliques
-        // with no boundary witness.  Filter precisely those c(P)<r+1 patterns
-        // so a single plane column has the same zero-core domain as fixed-r.
-        vector<PlanePattern> kept;
-        kept.reserve(patterns.size());
-        for (auto &P : patterns) if (P.cP >= boundary) kept.push_back(std::move(P));
-        patterns.swap(kept);
-        patByComp.clear();
-        patByComp.reserve(patterns.size() * 2 + 16);
-        for (int pi = 0; pi < (int)patterns.size(); ++pi)
-            patByComp.emplace(patterns[pi].comp, pi);
-
-        long long mergeRegions = 0, activePats = 0, directPats = 0;
-        for (int rid = 0; rid < nR; ++rid)
-            if (mergeable[rid] && (int)regions[rid].size() >= boundary) mergeRegions++;
-        for (const auto &P : patterns) {
-            if (P.direct) directPats++;
-            else activePats++;
+            P.direct = false;
         }
 
         // r-specific pattern<->leaf VIEW.  Enumerating local r-compositions
-        // avoids a patterns x leaves scan; the shared leaves themselves are not
-        // stripped, retargeted, forbidden, or otherwise modified.
-        vector<vector<int>> leafPats(sharedLeaves.size());
-        for (int lid = 0; lid < (int)sharedLeaves.size(); ++lid) {
-            const CCPath &leaf = sharedLeaves[lid];
-            const auto &gcls = sharedClasses[lid];
+        // avoids a patterns x leaves scan.  It touches only the transient
+        // active-region leaves; the shared tree remains byte-immutable.
+        vector<vector<int>> leafPats(activeLeaves.size());
+        for (int lid = 0; lid < (int)activeLeaves.size(); ++lid) {
+            const CCPath &leaf = activeLeaves[lid];
             Vec b((size_t)leaf.m(), 0);
             PlaneComp lc;
             lc.reserve((size_t)r);
@@ -921,7 +1005,6 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                     auto it = patByComp.find(lc);
                     if (it == patByComp.end()) return;
                     int pi = it->second;
-                    if (patterns[pi].direct) return;
                     int sumL = 0, sumU = 0;
                     for (int c = 0; c < leaf.m(); ++c) {
                         int lo = max((int)leaf.ell[c], (int)b[c]);
@@ -939,7 +1022,7 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                     int cap = min(rem, (int)leaf.u[i]);
                     for (int m = 1; m <= cap; ++m) {
                         b[i] = (int16_t)m;
-                        lc.push_back({gcls[i], m});
+                        lc.push_back({(int)leaf.classIds[i], m});
                         self(self, i + 1, rem - m);
                         lc.pop_back();
                         b[i] = 0;
@@ -949,13 +1032,13 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
             enumLeaf(enumLeaf, 0, r);
         }
         for (int pi = 0; pi < (int)patterns.size(); ++pi) {
-            if (!patterns[pi].direct && patterns[pi].leaves.empty()) {
+            if (patterns[pi].leaves.empty()) {
                 fprintf(stderr, "[nsi-plane] pattern-map invariant failed r=%d pi=%d c(P)=%d\n", r, pi, patterns[pi].cP);
                 return 3;
             }
         }
         printf("[nsi-plane-col] r=%d patterns=%zu active=%lld direct=%lld merge-regions=%lld incidences=%lld maps=%.2fs\n",
-               r, patterns.size(), activePats, directPats, mergeRegions, incidences,
+               r, patterns.size(), (long long)patterns.size(), 0LL, mergeRegions, incidences,
                secs(tCol0, Clock::now()));
 
         PlaneIndexColumn idxCol;
@@ -970,6 +1053,11 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                 activeOrdinal[pi] = (int)idxCol.patterns.size();
                 PlaneIndexPattern ip;
                 ip.comp = patterns[pi].comp;
+                // Persist canonical UNIVERSAL representatives, not transient
+                // active-class ordinals.  A query reconstructs the same active
+                // profile by masking the stored universal profiles with this
+                // column's mergeable-region list.
+                for (auto &cm : ip.comp) cm.first = activeClassRep[cm.first];
                 ip.mult = patterns[pi].mult;
                 ip.cP = patterns[pi].cP;
                 idxCol.patterns.push_back(std::move(ip));
@@ -978,40 +1066,15 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
 
         vector<char> certified(patterns.size(), 0);
         vector<double> certifiedCore(patterns.size(), -1.0);
-        if (r > rMin && !noCert) {
-            for (int pi = 0; pi < (int)patterns.size(); ++pi) {
-                if (patterns[pi].direct) continue;
-                long long U = LLONG_MAX;
-                for (size_t j = 0; j < patterns[pi].comp.size(); ++j) {
-                    PlaneComp sub = patterns[pi].comp;
-                    if (--sub[j].second == 0) sub.erase(sub.begin() + (long)j);
-                    auto it = prevDiagonal.find(sub);
-                    if (it == prevDiagonal.end()) {
-                        fprintf(stderr, "[nsi-plane] diagonal lookup missing at r=%d pi=%d\n", r, pi);
-                        return 4;
-                    }
-                    U = min(U, (long long)llround(it->second) - 1);
-                }
-                long long L = patterns[pi].cP - r;
-                if (U < L) {
-                    fprintf(stderr, "[nsi-plane] diagonal invariant U>=L failed r=%d pi=%d U=%lld L=%lld\n",
-                            r, pi, U, L);
-                    assert(U >= L);
-                    return 5;
-                }
-                assert(U >= L);
-                // U is an UPPER bound only.  Equality certifies the clique
-                // floor; strict inequality means residue replay at this cell.
-                // In particular, never schedule a pattern at U when U>L.
-                if (U == L) {
-                    certified[pi] = 1;
-                    certifiedCore[pi] = (double)L;
-                }
-            }
-        }
+        // Active equivalence classes change with r.  A composition coordinate
+        // at r can contain several universal subclasses whose (r-1)-column
+        // cores differ, so subtracting a transient coordinate is not a sound
+        // diagonal lookup.  Replay the exact boundary over the small active
+        // view (the same work performed by a fixed-r sweep); chain
+        // certification below remains valid within this column.
 
         vector<int> closedFrom(patterns.size(), INT_MAX);
-        PlaneCellResult cell = planeReplayCell(boundary, sharedLeaves, patterns,
+        PlaneCellResult cell = planeReplayCell(boundary, activeLeaves, patterns,
                                                leafPats, certified, certifiedCore);
         allCellSeconds += cell.seconds;
         vector<double> prevCore(patterns.size(), -1.0);
@@ -1055,13 +1118,6 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
             idxCol.dists.push_back(boundaryDist);
         }
 
-        // Preserve the exact diagonal view for the next r column.  It includes
-        // both active replay results and mergeable closed forms.
-        prevDiagonal.clear();
-        prevDiagonal.reserve(patterns.size() * 2 + 16);
-        for (int pi = 0; pi < (int)patterns.size(); ++pi)
-            prevDiagonal.emplace(patterns[pi].comp, prevCore[pi]);
-
         for (int cs = boundary + 1; cs <= sMax; ++cs) {
             fill(certified.begin(), certified.end(), 0);
             fill(certifiedCore.begin(), certifiedCore.end(), -1.0);
@@ -1075,7 +1131,7 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                     }
                 }
             }
-            cell = planeReplayCell(cs, sharedLeaves, patterns, leafPats,
+            cell = planeReplayCell(cs, activeLeaves, patterns, leafPats,
                                    certified, certifiedCore);
             allCellSeconds += cell.seconds;
             for (int pi = 0; pi < (int)patterns.size(); ++pi) {
