@@ -1,7 +1,8 @@
-// nsi_query.cpp -- §136 NSI query tool: load a serialized Nucleus Spectrum Index (SCT_INDEX_OUT
-// of region_native_sct_peel, format "NSI1") and answer exact spectrum queries.
+// nsi_query.cpp -- serialized Nucleus Spectrum Index query tool.  It loads both
+// legacy fixed-r NSI1 and the additive multi-r plane format NSI2 emitted by
+// SCT_RSWEEP + SCT_INDEX_OUT, and answers exact point/row queries.
 //
-// QUERY SEMANTICS for an r-clique R (caller guarantees R is a clique) and cell s in [s0, smax]:
+// LEGACY NSI1 QUERY SEMANTICS for an r-clique R (caller guarantees R is a clique) and cell s in [s0, smax]:
 //  1. Map vertices to classes. If every vertex is classed, form the class composition and look
 //     it up in the pattern table. On a hit, walk the chain from the stored cold-cell core:
 //     at each step, certified (kappa_prev equals the clique value at the previous cell) implies
@@ -29,6 +30,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
+#include <limits>
+#include <numeric>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -186,7 +191,7 @@ struct Query {
     }
 };
 
-int main(int argc, char **argv) {
+static int mainNSI1(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: %s idx.nsi stats|point|spectrum|count|bench ...\n", argv[0]); return 1; }
     NSI x;
     auto TL0 = Clock::now();
@@ -266,5 +271,1045 @@ int main(int argc, char **argv) {
         return 0;
     }
     fprintf(stderr, "bad mode/args\n");
+    return 1;
+}
+
+// -----------------------------------------------------------------------------
+// NSI2: multi-r whole-plane index.  NSI1 above intentionally remains isolated
+// so that its byte format, CLI, and query semantics stay backward compatible.
+
+using SteadyClock = chrono::steady_clock;
+
+struct LEReader {
+    FILE *f = nullptr;
+    int64_t pos = 0, size = 0, limit = 0;
+    string error;
+
+    explicit LEReader(const char *path) {
+        f = fopen(path, "rb");
+        if (!f) { error = string("cannot open ") + path; return; }
+        if (fseek(f, 0, SEEK_END) != 0) { error = "cannot seek to end"; return; }
+        long z = ftell(f);
+        if (z < 0) { error = "cannot determine file size"; return; }
+        size = limit = (int64_t)z;
+        if (fseek(f, 0, SEEK_SET) != 0) { error = "cannot rewind file"; return; }
+    }
+    ~LEReader() { if (f) fclose(f); }
+    bool ok() const { return f && error.empty(); }
+    void fail(const string &s) { if (error.empty()) error = s; }
+    bool bytes(void *dst, size_t n) {
+        if (!ok()) return false;
+        if ((uint64_t)n > (uint64_t)(limit - pos)) {
+            fail("truncated block at byte " + to_string(pos));
+            return false;
+        }
+        if (n && fread(dst, 1, n, f) != n) {
+            fail("read failure at byte " + to_string(pos));
+            return false;
+        }
+        pos += (int64_t)n;
+        return true;
+    }
+    bool skip(int64_t n) {
+        if (!ok()) return false;
+        if (n < 0 || n > limit - pos) {
+            fail("invalid skip at byte " + to_string(pos));
+            return false;
+        }
+        if (n && fseek(f, (long)n, SEEK_CUR) != 0) {
+            fail("seek failure at byte " + to_string(pos));
+            return false;
+        }
+        pos += n;
+        return true;
+    }
+    bool seek(int64_t p, int64_t lim) {
+        if (!ok()) return false;
+        if (p < 0 || lim < p || lim > size) { fail("invalid block bounds"); return false; }
+        if (fseek(f, (long)p, SEEK_SET) != 0) { fail("seek failure"); return false; }
+        pos = p; limit = lim;
+        return true;
+    }
+    uint8_t u8() { uint8_t v = 0; bytes(&v, 1); return v; }
+    uint16_t u16() {
+        uint8_t b[2] = {0,0}; bytes(b, 2);
+        return (uint16_t)b[0] | ((uint16_t)b[1] << 8);
+    }
+    int16_t i16() { return (int16_t)u16(); }
+    uint32_t u32() {
+        uint8_t b[4] = {0,0,0,0}; bytes(b, 4);
+        return (uint32_t)b[0] | ((uint32_t)b[1] << 8) |
+               ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
+    }
+    int32_t i32() { return (int32_t)u32(); }
+    uint64_t u64() {
+        uint8_t b[8] = {0,0,0,0,0,0,0,0}; bytes(b, 8);
+        uint64_t v = 0;
+        for (int i = 0; i < 8; ++i) v |= (uint64_t)b[i] << (8 * i);
+        return v;
+    }
+    int64_t i64() { return (int64_t)u64(); }
+    double f64() {
+        uint64_t bits = u64(); double v = 0;
+        memcpy(&v, &bits, sizeof(v));
+        return v;
+    }
+};
+
+struct IntVecHash {
+    size_t operator()(const vector<int32_t> &v) const noexcept {
+        uint64_t h = 1469598103934665603ULL;
+        for (int32_t x : v) h = (h ^ ((uint64_t)(uint32_t)x + 1)) * 1099511628211ULL;
+        return (size_t)h;
+    }
+};
+
+using Comp2 = vector<pair<int32_t,int16_t>>;
+
+struct NSI2Pattern {
+    Comp2 comp;
+    int64_t mult = 0;
+    int32_t cP = 0;
+    double boundaryCore = -1;
+    int32_t closedFrom = -1;
+};
+
+struct NSI2Column {
+    int32_t r = 0, boundary = 0;
+    vector<int32_t> mergeableRegions;
+    vector<uint8_t> mergeMask;
+    vector<int32_t> classRep;                 // universal class -> coarsened active representative
+    vector<NSI2Pattern> patterns;
+    unordered_map<uint64_t, vector<int32_t>> patIdx;
+    vector<vector<pair<int32_t,double>>> resid;
+    vector<vector<pair<double,double>>> dists;
+    int64_t fileOffset = 0, fileBytes = 0;
+};
+
+struct NSI2 {
+    int32_t rmin = 0, rmax = 0, smin = 0, smax = 0;
+    int32_t n = 0, nC = 0, nR = 0, nLeaf = 0, nCols = 0;
+    vector<int32_t> classOf, classSize, regionSize;
+    vector<vector<int32_t>> classRegions;
+    vector<int64_t> directory;
+    vector<NSI2Column> columns;
+    vector<int32_t> rToColumn;
+    int64_t fileBytes = 0, sharedBytes = 0;
+};
+
+// NSI2 only needs k <= Smax-rmin.  A flat, banded Pascal table preserves the
+// engine's exact recurrence/rounding while avoiding the NSI1 O(max-clique^2)
+// table on a large graph with a small indexed plane.
+static int NCR2N = -1, NCR2K = -1;
+static vector<double> NCR2;
+static bool build_ncr2(int N, int K) {
+    if (N < 0 || K < 0) return false;
+    const size_t stride = (size_t)K + 1;
+    if ((size_t)N + 1 > numeric_limits<size_t>::max() / stride) return false;
+    try { NCR2.assign(((size_t)N + 1) * stride, 0.0); }
+    catch (const bad_alloc &) { return false; }
+    NCR2N = N; NCR2K = K;
+    for (int n = 0; n <= N; ++n) {
+        NCR2[(size_t)n * stride] = 1.0;
+        for (int k = 1; k <= min(n, K); ++k)
+            NCR2[(size_t)n * stride + k] =
+                NCR2[(size_t)(n - 1) * stride + k - 1] +
+                NCR2[(size_t)(n - 1) * stride + k];
+    }
+    return true;
+}
+static inline double C2(int n, int k) {
+    if (n < 0 || k < 0 || k > n || n > NCR2N || k > NCR2K) return 0.0;
+    return NCR2[(size_t)n * ((size_t)NCR2K + 1) + k];
+}
+
+static bool saneCount(int64_t count, int64_t unit, int64_t remaining) {
+    return count >= 0 && unit >= 0 && count <= 1000000000LL &&
+           (unit == 0 || count <= remaining / unit);
+}
+
+static bool buildColumnRepresentatives(const NSI2 &x, NSI2Column &col, string &error) {
+    col.mergeMask.assign((size_t)x.nR, 0);
+    for (int32_t rid : col.mergeableRegions) {
+        if (rid < 0 || rid >= x.nR) { error = "mergeable region id out of range"; return false; }
+        if (col.mergeMask[rid]) { error = "duplicate mergeable region id"; return false; }
+        if (x.regionSize[rid] < col.boundary) {
+            error = "mergeable region is smaller than the column boundary"; return false;
+        }
+        col.mergeMask[rid] = 1;
+    }
+
+    col.classRep.assign((size_t)x.nC, -1);
+    unordered_map<vector<int32_t>,int32_t,IntVecHash> byProfile;
+    byProfile.reserve((size_t)x.nC * 2 + 1);
+    vector<int32_t> active;
+    for (int32_t c = 0; c < x.nC; ++c) {
+        active.clear();
+        for (int32_t rid : x.classRegions[c])
+            if (x.regionSize[rid] >= col.boundary && !col.mergeMask[rid])
+                active.push_back(rid);
+        if (active.empty()) continue;
+        auto it = byProfile.find(active);
+        if (it == byProfile.end()) {
+            byProfile.emplace(active, c);
+            col.classRep[c] = c;
+        } else {
+            col.classRep[c] = it->second;
+        }
+    }
+    return true;
+}
+
+static bool loadNSI2(const char *path, NSI2 &x, string &error) {
+    LEReader rd(path);
+    if (!rd.ok()) { error = rd.error; return false; }
+    x.fileBytes = rd.size;
+    char magic[4] = {};
+    if (!rd.bytes(magic, 4) || memcmp(magic, "NSI2", 4) != 0) {
+        error = "not an NSI2 file"; return false;
+    }
+    x.rmin = rd.i32(); x.rmax = rd.i32(); x.smin = rd.i32(); x.smax = rd.i32();
+    x.n = rd.i32(); x.nC = rd.i32(); x.nR = rd.i32(); x.nLeaf = rd.i32(); x.nCols = rd.i32();
+    if (!rd.ok()) { error = rd.error; return false; }
+    if (x.rmin < 1 || x.rmax < x.rmin || x.rmax > UINT8_MAX ||
+        x.smin != x.rmin + 1 || x.smax < x.rmax + 1 ||
+        x.n < 0 || x.nC < 0 || x.nR < 0 || x.nLeaf < 0 ||
+        x.nCols != x.rmax - x.rmin + 1 ||
+        x.nC > x.n || x.n > rd.size / 4 || x.nC > rd.size / 8 ||
+        x.nR > rd.size / 4 || x.nLeaf > rd.size / 8) {
+        error = "invalid NSI2 header"; return false;
+    }
+    if (!saneCount(x.n, 4, rd.limit - rd.pos)) { error = "invalid vertex count"; return false; }
+    x.classOf.resize((size_t)x.n);
+    vector<int32_t> observed((size_t)x.nC, 0);
+    for (int32_t v = 0; v < x.n; ++v) {
+        int32_t c = rd.i32();
+        if (c < -1 || c >= x.nC) { error = "classOf id out of range"; return false; }
+        x.classOf[v] = c;
+        if (c >= 0) observed[c]++;
+    }
+
+    x.classSize.resize((size_t)x.nC);
+    x.classRegions.resize((size_t)x.nC);
+    for (int32_t c = 0; c < x.nC; ++c) {
+        int32_t w = rd.i32(), z = rd.i32();
+        if (w <= 0 || w != observed[c] || !saneCount(z, 4, rd.limit - rd.pos)) {
+            error = "invalid class weight/profile"; return false;
+        }
+        x.classSize[c] = w;
+        auto &p = x.classRegions[c]; p.resize((size_t)z);
+        int32_t prev = -1;
+        for (int32_t &rid : p) {
+            rid = rd.i32();
+            if (rid < 0 || rid >= x.nR || rid <= prev) {
+                error = "class profile is not a sorted region-id set"; return false;
+            }
+            prev = rid;
+        }
+    }
+
+    x.regionSize.resize((size_t)x.nR);
+    for (int32_t rid = 0; rid < x.nR; ++rid) {
+        int32_t z = rd.i32();
+        if (z < x.smin || z > x.n || !saneCount(z, 4, rd.limit - rd.pos)) {
+            error = "invalid region size"; return false;
+        }
+        x.regionSize[rid] = z;
+        // Verify the serialized list against the equivalent shared profiles,
+        // but do not duplicate it in RAM: query containment uses the profiles.
+        int32_t prevVertex = -1;
+        for (int32_t i = 0; i < z; ++i) {
+            int32_t v = rd.i32();
+            if (v < 0 || v >= x.n || v <= prevVertex || x.classOf[v] < 0 ||
+                !binary_search(x.classRegions[x.classOf[v]].begin(),
+                               x.classRegions[x.classOf[v]].end(), rid)) {
+                error = "region vertex list disagrees with shared class profiles"; return false;
+            }
+            prevVertex = v;
+        }
+    }
+    for (int32_t c = 0; c < x.nC; ++c)
+        for (int32_t rid : x.classRegions[c])
+            if (x.classSize[c] > x.regionSize[rid]) {
+                error = "class weight exceeds a containing region size"; return false;
+            }
+    vector<int64_t> reconstructedRegionSize((size_t)x.nR, 0);
+    for (int32_t c = 0; c < x.nC; ++c)
+        for (int32_t rid : x.classRegions[c]) reconstructedRegionSize[rid] += x.classSize[c];
+    for (int32_t rid = 0; rid < x.nR; ++rid)
+        if (reconstructedRegionSize[rid] != x.regionSize[rid]) {
+            error = "region size disagrees with shared class profiles"; return false;
+        }
+
+    for (int32_t lid = 0; lid < x.nLeaf; ++lid) {
+        int32_t m = rd.i32(); (void)rd.i32();             // m, immutable leaf target T
+        if (m < 0 || m > x.nC || !saneCount(m, 12, rd.limit - rd.pos)) {
+            error = "invalid shared leaf"; return false;
+        }
+        // Each coordinate is {class:int32,h:int16,n:int16,ell:int16,u:int16}.
+        if (!rd.skip((int64_t)m * 12)) { error = rd.error; return false; }
+    }
+
+    x.directory.resize((size_t)x.nCols);
+    const int64_t dirStart = rd.pos;
+    if (!saneCount(x.nCols, 8, rd.limit - rd.pos)) { error = "truncated r-directory"; return false; }
+    for (int32_t i = 0; i < x.nCols; ++i) {
+        uint64_t off = rd.u64();
+        if (off > (uint64_t)numeric_limits<int64_t>::max()) { error = "column offset overflow"; return false; }
+        x.directory[i] = (int64_t)off;
+    }
+    const int64_t dirEnd = rd.pos;
+    (void)dirStart;
+    x.sharedBytes = dirEnd;
+    for (int32_t i = 0; i < x.nCols; ++i) {
+        int64_t end = (i + 1 < x.nCols) ? x.directory[i + 1] : x.fileBytes;
+        if (x.directory[i] < dirEnd || end <= x.directory[i] || end > x.fileBytes ||
+            (i > 0 && x.directory[i] <= x.directory[i - 1])) {
+            error = "invalid or non-monotone r-directory"; return false;
+        }
+    }
+    if (!x.directory.empty() && x.directory.front() != dirEnd) {
+        error = "unexpected bytes between the r-directory and first column"; return false;
+    }
+
+    x.columns.resize((size_t)x.nCols);
+    x.rToColumn.assign((size_t)(x.rmax - x.rmin + 1), -1);
+    int maxCombN = x.smax;
+    for (int32_t ci = 0; ci < x.nCols; ++ci) {
+        const int64_t begin = x.directory[ci];
+        const int64_t end = (ci + 1 < x.nCols) ? x.directory[ci + 1] : x.fileBytes;
+        if (!rd.seek(begin, end)) { error = rd.error; return false; }
+        NSI2Column &col = x.columns[ci];
+        col.fileOffset = begin; col.fileBytes = end - begin;
+        col.r = rd.i32(); col.boundary = rd.i32();
+        if (col.r < x.rmin || col.r > x.rmax || col.boundary != col.r + 1 ||
+            x.rToColumn[col.r - x.rmin] != -1) {
+            error = "invalid or duplicate r-column header"; return false;
+        }
+        x.rToColumn[col.r - x.rmin] = ci;
+
+        int32_t nm = rd.i32();
+        if (!saneCount(nm, 4, rd.limit - rd.pos)) { error = "invalid mergeable-region list"; return false; }
+        col.mergeableRegions.resize((size_t)nm);
+        for (int32_t &rid : col.mergeableRegions) rid = rd.i32();
+        if (!buildColumnRepresentatives(x, col, error)) return false;
+
+        int32_t np = rd.i32();
+        if (np < 0 || np > 100000000 || !saneCount(np, 31, rd.limit - rd.pos)) {
+            error = "invalid pattern count"; return false;
+        }
+        col.patterns.resize((size_t)np);
+        col.patIdx.reserve((size_t)np * 2 + 1);
+        for (int32_t pi = 0; pi < np; ++pi) {
+            NSI2Pattern &p = col.patterns[pi];
+            uint8_t len = rd.u8();
+            if (len == 0 || len > col.r || !saneCount(len, 6, rd.limit - rd.pos)) {
+                error = "invalid pattern composition length"; return false;
+            }
+            p.comp.resize(len);
+            int sum = 0; int32_t prevClass = -1; uint64_t h = 0;
+            for (auto &cm : p.comp) {
+                cm.first = rd.i32(); cm.second = rd.i16();
+                if (cm.first < 0 || cm.first >= x.nC || cm.first <= prevClass ||
+                    cm.second <= 0 || sum + cm.second > col.r) {
+                    error = "invalid pattern composition"; return false;
+                }
+                if (col.classRep[cm.first] != cm.first) {
+                    error = "pattern coordinate is not the canonical active representative"; return false;
+                }
+                prevClass = cm.first; sum += cm.second; h ^= mixCV(cm.first, cm.second);
+            }
+            p.mult = rd.i64(); p.cP = rd.i32(); p.boundaryCore = rd.f64(); p.closedFrom = rd.i32();
+            if (sum != col.r || p.mult <= 0 || p.cP < col.boundary || p.cP > x.n ||
+                !isfinite(p.boundaryCore) || p.boundaryCore < 0 ||
+                (p.closedFrom != -1 && (p.closedFrom < col.boundary || p.closedFrom > x.smax))) {
+                error = "invalid pattern metadata"; return false;
+            }
+            col.patIdx[h].push_back(pi);
+            maxCombN = max(maxCombN, p.cP);
+        }
+
+        int32_t nr = rd.i32();
+        const int32_t expectedResid = x.smax - col.boundary;
+        if (nr != expectedResid || !saneCount(nr, 8, rd.limit - rd.pos)) {
+            error = "wrong residue-cell count"; return false;
+        }
+        col.resid.resize((size_t)nr);
+        for (auto &cell : col.resid) {
+            int64_t z = rd.i64();
+            if (!saneCount(z, 12, rd.limit - rd.pos)) { error = "invalid residue dictionary"; return false; }
+            cell.resize((size_t)z);
+            for (auto &pc : cell) {
+                pc.first = rd.i32(); pc.second = rd.f64();
+                if (pc.first < 0 || pc.first >= np || !isfinite(pc.second) || pc.second < 0) {
+                    error = "invalid residue entry"; return false;
+                }
+            }
+            sort(cell.begin(), cell.end());
+            for (size_t i = 1; i < cell.size(); ++i)
+                if (cell[i-1].first == cell[i].first) { error = "duplicate residue pattern id"; return false; }
+        }
+
+        int32_t nd = rd.i32();
+        const int32_t expectedDists = x.smax - col.boundary + 1;
+        if (nd != expectedDists) { error = "wrong distribution-cell count"; return false; }
+        col.dists.resize((size_t)nd);
+        for (auto &dist : col.dists) {
+            int32_t z = rd.i32();
+            if (!saneCount(z, 16, rd.limit - rd.pos)) { error = "invalid distribution"; return false; }
+            dist.resize((size_t)z);
+            for (auto &kv : dist) {
+                kv.first = rd.f64(); kv.second = rd.f64();
+                if (!isfinite(kv.first) || !isfinite(kv.second) || kv.first < 0 || kv.second < 0) {
+                    error = "invalid distribution entry"; return false;
+                }
+            }
+        }
+        if (!rd.ok() || rd.pos != end) {
+            error = rd.ok() ? "column byte count disagrees with its directory extent" : rd.error;
+            return false;
+        }
+    }
+    for (int32_t ri : x.rToColumn) if (ri < 0) { error = "missing r-column"; return false; }
+    for (int32_t z : x.regionSize) maxCombN = max(maxCombN, z);
+    if (!build_ncr2(maxCombN, x.smax - x.rmin)) {
+        error = "cannot allocate NSI2 binomial table"; return false;
+    }
+    return true;
+}
+
+enum class QueryCode {
+    Ok,
+    ROutOfRange,
+    SOutOfRange,
+    BadVertex,
+    NotClique,
+    CorruptIndex
+};
+
+static const char *queryCodeName(QueryCode c) {
+    switch (c) {
+        case QueryCode::Ok: return "ok";
+        case QueryCode::ROutOfRange: return "r out of range";
+        case QueryCode::SOutOfRange: return "s out of range";
+        case QueryCode::BadVertex: return "vertex out of range";
+        case QueryCode::NotClique: return "vertices do not form an r-clique";
+        case QueryCode::CorruptIndex: return "missing/corrupt index entry";
+    }
+    return "unknown query error";
+}
+
+struct ValidationGraph {
+    int n = 0;
+    vector<int32_t> off, adj;
+    bool adjacent(int u, int v) const {
+        if (u < 0 || v < 0 || u >= n || v >= n) return false;
+        return binary_search(adj.begin() + off[u], adj.begin() + off[u + 1], v);
+    }
+};
+
+static bool loadValidationGraph(const char *path, ValidationGraph &g, string &error) {
+    FILE *f = fopen(path, "r");
+    if (!f) { error = string("cannot open graph ") + path; return false; }
+    long long hn = 0, hm = 0;
+    if (fscanf(f, "%lld %lld", &hn, &hm) != 2 || hn < 0 || hn > INT32_MAX || hm < 0) {
+        fclose(f); error = "invalid graph header"; return false;
+    }
+    vector<pair<int32_t,int32_t>> es;
+    if (hm <= (long long)numeric_limits<size_t>::max() / 2)
+        es.reserve((size_t)hm * 2);
+    int u = 0, v = 0, maxId = (int)hn - 1;
+    while (fscanf(f, "%d %d", &u, &v) == 2) {
+        if (u < 0 || v < 0) { fclose(f); error = "negative graph vertex id"; return false; }
+        maxId = max(maxId, max(u, v));
+        if (u == v) continue;
+        es.push_back({u, v}); es.push_back({v, u});
+    }
+    if (ferror(f)) { fclose(f); error = "graph read failure"; return false; }
+    fclose(f);
+    if (maxId == INT32_MAX) { error = "graph vertex id overflow"; return false; }
+    g.n = maxId + 1;
+    sort(es.begin(), es.end());
+    es.erase(unique(es.begin(), es.end()), es.end());
+    g.off.assign((size_t)g.n + 1, 0);
+    for (auto &e : es) g.off[(size_t)e.first + 1]++;
+    for (int i = 0; i < g.n; ++i) g.off[i + 1] += g.off[i];
+    g.adj.resize(es.size());
+    vector<int32_t> cur(g.off.begin(), g.off.end() - 1);
+    for (auto &e : es) g.adj[cur[e.first]++] = e.second;
+    return true;
+}
+
+struct Query2 {
+    const NSI2 &x;
+    vector<int16_t> repMultiplicity;
+    vector<int32_t> touchedReps;
+    vector<int32_t> queryClasses;
+
+    explicit Query2(const NSI2 &x_) : x(x_) {
+        repMultiplicity.assign((size_t)x.nC, 0);
+        touchedReps.reserve((size_t)x.rmax);
+        queryClasses.reserve((size_t)x.rmax);
+    }
+
+    const NSI2Column *column(int r) const {
+        if (r < x.rmin || r > x.rmax) return nullptr;
+        int32_t ci = x.rToColumn[r - x.rmin];
+        return ci < 0 ? nullptr : &x.columns[ci];
+    }
+
+    int lookupPattern(const NSI2Column &col, const int *vs) {
+        touchedReps.clear();
+        auto clearCounts = [&]() {
+            for (int32_t c : touchedReps) repMultiplicity[c] = 0;
+        };
+        for (int i = 0; i < col.r; ++i) {
+            int v = vs[i];
+            if (v < 0 || v >= x.n) { clearCounts(); return -1; }
+            int32_t c = x.classOf[v];
+            if (c < 0) { clearCounts(); return -1; }
+            int32_t rep = col.classRep[c];
+            if (rep < 0) { clearCounts(); return -1; }
+            if (repMultiplicity[rep] == 0) touchedReps.push_back(rep);
+            ++repMultiplicity[rep];
+        }
+        uint64_t h = 0;
+        for (int32_t rep : touchedReps) h ^= mixCV(rep, repMultiplicity[rep]);
+        auto hit = col.patIdx.find(h);
+        int found = -1;
+        if (hit != col.patIdx.end()) {
+            for (int32_t pi : hit->second) {
+                const Comp2 &candidate = col.patterns[pi].comp;
+                if (candidate.size() != touchedReps.size()) continue;
+                bool same = true;
+                for (const auto &cm : candidate)
+                    if (repMultiplicity[cm.first] != cm.second) { same = false; break; }
+                if (same) { found = pi; break; }
+            }
+        }
+        clearCounts();
+        return found;
+    }
+
+    int lookupMergeable(const NSI2Column &col, const int *vs) {
+        queryClasses.clear();
+        int base = -1;
+        size_t best = numeric_limits<size_t>::max();
+        for (int i = 0; i < col.r; ++i) {
+            int v = vs[i];
+            if (v < 0 || v >= x.n) return -1;
+            int32_t c = x.classOf[v];
+            if (c < 0) return -1;
+            queryClasses.push_back(c);
+            if (x.classRegions[c].size() < best) { best = x.classRegions[c].size(); base = i; }
+        }
+        if (base < 0) return -1;
+        const auto &seed = x.classRegions[queryClasses[base]];
+        for (int32_t rid : seed) {
+            if (!col.mergeMask[rid]) continue;
+            bool inAll = true;
+            for (int i = 0; i < col.r; ++i) {
+                if (i == base) continue;
+                const auto &p = x.classRegions[queryClasses[i]];
+                if (!binary_search(p.begin(), p.end(), rid)) { inAll = false; break; }
+            }
+            if (inAll) return rid;
+        }
+        return -1;
+    }
+
+    struct Resolved {
+        const NSI2Column *col = nullptr;
+        int32_t pattern = -1;
+        int32_t mergeable = -1;
+    };
+
+    QueryCode resolve(const int *vs, int r, Resolved &out) {
+        out = {};
+        out.col = column(r);
+        if (!out.col) return QueryCode::ROutOfRange;
+        for (int i = 0; i < r; ++i)
+            if (vs[i] < 0 || vs[i] >= x.n) return QueryCode::BadVertex;
+        out.pattern = lookupPattern(*out.col, vs);
+        if (out.pattern < 0) out.mergeable = lookupMergeable(*out.col, vs);
+        return QueryCode::Ok;
+    }
+
+    double value(const Resolved &q, int s, QueryCode &code) const {
+        const NSI2Column &col = *q.col;
+        if (s < col.boundary || s > x.smax) { code = QueryCode::SOutOfRange; return 0; }
+        if (q.pattern >= 0) {
+            const NSI2Pattern &p = col.patterns[q.pattern];
+            if (p.closedFrom >= 0 && s >= p.closedFrom) {
+                code = QueryCode::Ok;
+                return C2(p.cP - col.r, s - col.r);
+            }
+            if (s == col.boundary) { code = QueryCode::Ok; return p.boundaryCore; }
+            const auto &cell = col.resid[s - col.boundary - 1];
+            auto it = lower_bound(cell.begin(), cell.end(), make_pair(q.pattern, -numeric_limits<double>::infinity()));
+            if (it == cell.end() || it->first != q.pattern) {
+                code = QueryCode::CorruptIndex; return 0;
+            }
+            code = QueryCode::Ok; return it->second;
+        }
+        if (q.mergeable >= 0) {
+            code = QueryCode::Ok;
+            return C2(x.regionSize[q.mergeable] - col.r, s - col.r);
+        }
+        code = QueryCode::Ok;                              // not supported by any indexed s-clique
+        return 0.0;
+    }
+
+    double pointKernel(const int *vs, int r, int s, QueryCode &code) {
+        Resolved q;
+        code = resolve(vs, r, q);
+        return code == QueryCode::Ok ? value(q, s, code) : 0.0;
+    }
+
+    QueryCode rowKernel(const int *vs, int r, vector<double> &out) {
+        Resolved q;
+        QueryCode code = resolve(vs, r, q);
+        if (code != QueryCode::Ok) { out.clear(); return code; }
+        out.resize((size_t)(x.smax - q.col->boundary + 1));
+        for (int s = q.col->boundary; s <= x.smax; ++s) {
+            out[s - q.col->boundary] = value(q, s, code);
+            if (code != QueryCode::Ok) { out.clear(); return code; }
+        }
+        return QueryCode::Ok;
+    }
+
+    static QueryCode validateClique(const ValidationGraph &g, const int *vs, int r) {
+        for (int i = 0; i < r; ++i) {
+            if (vs[i] < 0 || vs[i] >= g.n) return QueryCode::BadVertex;
+            for (int j = 0; j < i; ++j)
+                if (vs[i] == vs[j] || !g.adjacent(vs[i], vs[j])) return QueryCode::NotClique;
+        }
+        return QueryCode::Ok;
+    }
+
+    double pointValidated(const ValidationGraph &g, const int *vs, int r, int s, QueryCode &code) {
+        code = validateClique(g, vs, r);
+        return code == QueryCode::Ok ? pointKernel(vs, r, s, code) : 0.0;
+    }
+
+    QueryCode rowValidated(const ValidationGraph &g, const int *vs, int r, vector<double> &out) {
+        QueryCode code = validateClique(g, vs, r);
+        if (code != QueryCode::Ok) { out.clear(); return code; }
+        return rowKernel(vs, r, out);
+    }
+};
+
+static bool parseIntArg(const char *s, int &v) {
+    if (!s || !*s) return false;
+    char *e = nullptr; errno = 0;
+    long z = strtol(s, &e, 10);
+    if (errno || !e || *e || z < INT32_MIN || z > INT32_MAX) return false;
+    v = (int)z; return true;
+}
+
+static bool readFixedCliques(const char *path, int r, vector<int> &flat, string &error) {
+    ifstream in(path);
+    if (!in) { error = string("cannot open ") + path; return false; }
+    string line; long long lineNo = 0;
+    while (getline(in, line)) {
+        ++lineNo;
+        size_t hash = line.find('#'); if (hash != string::npos) line.resize(hash);
+        istringstream ss(line);
+        vector<long long> row; long long z;
+        while (ss >> z) row.push_back(z);
+        if (row.empty()) continue;
+        if ((int)row.size() != r) {
+            error = "query line " + to_string(lineNo) + " must contain exactly " + to_string(r) + " vertices";
+            return false;
+        }
+        for (long long q : row) {
+            if (q < INT32_MIN || q > INT32_MAX) { error = "vertex id overflow on query line " + to_string(lineNo); return false; }
+            flat.push_back((int)q);
+        }
+    }
+    return true;
+}
+
+struct BenchQuery2 { int32_t r = 0, s = 0; uint32_t off = 0; };
+
+static bool readBenchQueries(const char *path, const NSI2 &x,
+                             vector<BenchQuery2> &queries, vector<int> &flat,
+                             string &error) {
+    ifstream in(path);
+    if (!in) { error = string("cannot open ") + path; return false; }
+    string line; long long lineNo = 0;
+    while (getline(in, line)) {
+        ++lineNo;
+        size_t hash = line.find('#'); if (hash != string::npos) line.resize(hash);
+        istringstream ss(line);
+        vector<long long> a; long long z;
+        while (ss >> z) a.push_back(z);
+        if (a.empty()) continue;
+        if (a[0] < x.rmin || a[0] > x.rmax) {
+            error = "r out of range on query line " + to_string(lineNo); return false;
+        }
+        int r = (int)a[0], s = 0, firstVertex = 0;
+        if ((int)a.size() == r + 1) {
+            const NSI2Column &col = x.columns[x.rToColumn[r - x.rmin]];
+            s = col.boundary + (int)(queries.size() % (size_t)(x.smax - col.boundary + 1));
+            firstVertex = 1;                              // r v1 ... vr; cycle point cells
+        } else if ((int)a.size() == r + 2) {
+            s = (int)a[1]; firstVertex = 2;               // r s v1 ... vr
+        } else {
+            error = "query line " + to_string(lineNo) + " must be 'r v...' or 'r s v...'";
+            return false;
+        }
+        const NSI2Column &col = x.columns[x.rToColumn[r - x.rmin]];
+        if (s < col.boundary || s > x.smax) {
+            error = "s out of range on query line " + to_string(lineNo); return false;
+        }
+        if (flat.size() > UINT32_MAX) { error = "query file is too large"; return false; }
+        BenchQuery2 q; q.r = r; q.s = s; q.off = (uint32_t)flat.size();
+        for (int i = 0; i < r; ++i) {
+            long long v = a[firstVertex + i];
+            if (v < INT32_MIN || v > INT32_MAX) { error = "vertex id overflow on query line " + to_string(lineNo); return false; }
+            flat.push_back((int)v);
+        }
+        queries.push_back(q);
+    }
+    return true;
+}
+
+struct LatencySummary { double median = 0, p95 = 0; size_t samples = 0; };
+
+static LatencySummary summarizeLatency(vector<double> ns) {
+    LatencySummary s; s.samples = ns.size();
+    if (ns.empty()) return s;
+    sort(ns.begin(), ns.end());
+    const size_t n = ns.size();
+    s.median = (n & 1) ? ns[n/2] : 0.5 * (ns[n/2 - 1] + ns[n/2]);
+    size_t p = (size_t)ceil(0.95 * (double)n);
+    if (p == 0) p = 1;
+    s.p95 = ns[min(n - 1, p - 1)];
+    return s;
+}
+
+static volatile double latencySink = 0;
+static volatile uint64_t evictionSink = 0;
+
+static void evictSoftwareCache(const vector<uint64_t> &eviction) {
+    uint64_t z = evictionSink;
+    // One word per 64-byte line: allocate every line in cache while avoiding
+    // timing the eviction itself as part of the query.
+    for (size_t i = 0; i < eviction.size(); i += 8) z += eviction[i];
+    evictionSink = z;
+}
+
+template<class F>
+static LatencySummary measureLatency(size_t samples, int repetitions,
+                                     const vector<uint64_t> *eviction, F &&fn) {
+    vector<double> times; times.reserve(samples);
+    for (size_t i = 0; i < samples; ++i) {
+        if (eviction) evictSoftwareCache(*eviction);
+        auto a = SteadyClock::now();
+        double z = 0;
+        for (int rep = 0; rep < repetitions; ++rep) z += fn(i);
+        auto b = SteadyClock::now();
+        latencySink += z;
+        times.push_back(chrono::duration<double,nano>(b - a).count() / repetitions);
+    }
+    return summarizeLatency(std::move(times));
+}
+
+static void printNSI2Usage(const char *prog) {
+    fprintf(stderr,
+        "NSI2 usage:\n"
+        "  %s INDEX stats\n"
+        "  %s INDEX point R S V1 ... VR                    # kernel-only\n"
+        "  %s INDEX point-validated GRAPH R S V1 ... VR    # includes clique validation\n"
+        "  %s INDEX row R V1 ... VR                        # all S=R+1..Smax\n"
+        "  %s INDEX row-validated GRAPH R V1 ... VR\n"
+        "  %s INDEX count R S K                             # K > 0\n"
+        "  %s INDEX pointfile R S FILE\n"
+        "  %s INDEX pointfile-validated GRAPH R S FILE\n"
+        "  %s INDEX rowfile R FILE\n"
+        "  %s INDEX rowfile-validated GRAPH R FILE\n"
+        "  %s INDEX bench GRAPH QUERIES [--cold-mib N] [--warm-reps N]\n"
+        "Bench query lines are either 'R V1 ... VR' (S cycles over the row) or\n"
+        "'R S V1 ... VR'.  At least 1000 validated clique lines are required.\n",
+        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
+}
+
+static int printQueryError(QueryCode code) {
+    fprintf(stderr, "query failed: %s\n", queryCodeName(code));
+    return 2;
+}
+
+static int mainNSI2(int argc, char **argv) {
+    if (argc < 3) { printNSI2Usage(argv[0]); return 1; }
+    NSI2 x; string error;
+    auto load0 = SteadyClock::now();
+    if (!loadNSI2(argv[1], x, error)) {
+        fprintf(stderr, "cannot load NSI2 %s: %s\n", argv[1], error.c_str()); return 1;
+    }
+    auto load1 = SteadyClock::now();
+    const double loadMs = chrono::duration<double,milli>(load1 - load0).count();
+    const string mode = argv[2];
+    Query2 q(x);
+
+    if (mode == "stats") {
+        int64_t colTotal = 0;
+        printf("index=%s format=NSI2 bytes=%lld shared-once=%lld per-column-bytes=%lld load=%.3f ms\n",
+               argv[1], (long long)x.fileBytes, (long long)x.sharedBytes,
+               (long long)(x.fileBytes - x.sharedBytes), loadMs);
+        printf("plane r=%d..%d s<=%d n=%d classes=%d regions=%d shared-leaves=%d columns=%d\n",
+               x.rmin, x.rmax, x.smax, x.n, x.nC, x.nR, x.nLeaf, x.nCols);
+        printf("r  boundary  patterns  direct-regions  residues  column-bytes  offset\n");
+        for (const auto &col : x.columns) {
+            long long residues = 0;
+            for (const auto &cell : col.resid) residues += (long long)cell.size();
+            printf("%d  %d  %zu  %zu  %lld  %lld  %lld\n", col.r, col.boundary,
+                   col.patterns.size(), col.mergeableRegions.size(), residues,
+                   (long long)col.fileBytes, (long long)col.fileOffset);
+            colTotal += col.fileBytes;
+        }
+        printf("byte-accounting shared-once(%lld) + per-column(%lld) = total(%lld)\n",
+               (long long)x.sharedBytes, (long long)colTotal, (long long)x.fileBytes);
+        return (x.sharedBytes + colTotal == x.fileBytes) ? 0 : 2;
+    }
+
+    if (mode == "point") {
+        int r = 0, s = 0;
+        if (argc < 5 || !parseIntArg(argv[3], r) || !parseIntArg(argv[4], s)) {
+            printNSI2Usage(argv[0]); return 1;
+        }
+        if (!q.column(r)) return printQueryError(QueryCode::ROutOfRange);
+        if (argc != 5 + r) { printNSI2Usage(argv[0]); return 1; }
+        vector<int> vs((size_t)r);
+        for (int i = 0; i < r; ++i) if (!parseIntArg(argv[5+i], vs[i])) { fprintf(stderr, "bad vertex id\n"); return 1; }
+        QueryCode code; double ans = q.pointKernel(vs.data(), r, s, code);
+        if (code != QueryCode::Ok) return printQueryError(code);
+        printf("kappa_{%d,%d} = %.0f\n", r, s, ans); return 0;
+    }
+
+    if (mode == "point-validated") {
+        int r = 0, s = 0;
+        if (argc < 6 || !parseIntArg(argv[4], r) || !parseIntArg(argv[5], s)) {
+            printNSI2Usage(argv[0]); return 1;
+        }
+        if (!q.column(r)) return printQueryError(QueryCode::ROutOfRange);
+        if (argc != 6 + r) { printNSI2Usage(argv[0]); return 1; }
+        ValidationGraph g;
+        if (!loadValidationGraph(argv[3], g, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        if (g.n != x.n) { fprintf(stderr, "validation graph/index vertex-count mismatch\n"); return 1; }
+        vector<int> vs((size_t)r);
+        for (int i = 0; i < r; ++i) if (!parseIntArg(argv[6+i], vs[i])) { fprintf(stderr, "bad vertex id\n"); return 1; }
+        QueryCode code; double ans = q.pointValidated(g, vs.data(), r, s, code);
+        if (code != QueryCode::Ok) return printQueryError(code);
+        printf("kappa_{%d,%d} = %.0f (clique validated)\n", r, s, ans); return 0;
+    }
+
+    if (mode == "row" || mode == "spectrum") {
+        int r = 0;
+        if (argc < 4 || !parseIntArg(argv[3], r)) { printNSI2Usage(argv[0]); return 1; }
+        if (!q.column(r)) return printQueryError(QueryCode::ROutOfRange);
+        if (argc != 4 + r) { printNSI2Usage(argv[0]); return 1; }
+        vector<int> vs((size_t)r); vector<double> row;
+        for (int i = 0; i < r; ++i) if (!parseIntArg(argv[4+i], vs[i])) { fprintf(stderr, "bad vertex id\n"); return 1; }
+        QueryCode code = q.rowKernel(vs.data(), r, row);
+        if (code != QueryCode::Ok) return printQueryError(code);
+        int boundary = q.column(r)->boundary;
+        for (size_t i = 0; i < row.size(); ++i) printf("s=%d kappa=%.0f\n", boundary + (int)i, row[i]);
+        return 0;
+    }
+
+    if (mode == "row-validated") {
+        int r = 0;
+        if (argc < 5 || !parseIntArg(argv[4], r)) { printNSI2Usage(argv[0]); return 1; }
+        if (!q.column(r)) return printQueryError(QueryCode::ROutOfRange);
+        if (argc != 5 + r) { printNSI2Usage(argv[0]); return 1; }
+        ValidationGraph g;
+        if (!loadValidationGraph(argv[3], g, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        if (g.n != x.n) { fprintf(stderr, "validation graph/index vertex-count mismatch\n"); return 1; }
+        vector<int> vs((size_t)r); vector<double> row;
+        for (int i = 0; i < r; ++i) if (!parseIntArg(argv[5+i], vs[i])) { fprintf(stderr, "bad vertex id\n"); return 1; }
+        QueryCode code = q.rowValidated(g, vs.data(), r, row);
+        if (code != QueryCode::Ok) return printQueryError(code);
+        int boundary = q.column(r)->boundary;
+        for (size_t i = 0; i < row.size(); ++i) printf("s=%d kappa=%.0f\n", boundary + (int)i, row[i]);
+        return 0;
+    }
+
+    if (mode == "count") {
+        int r = 0, s = 0;
+        if (argc != 6 || !parseIntArg(argv[3], r) || !parseIntArg(argv[4], s)) {
+            printNSI2Usage(argv[0]); return 1;
+        }
+        char *e = nullptr; double k = strtod(argv[5], &e);
+        const NSI2Column *col = q.column(r);
+        if (!col) return printQueryError(QueryCode::ROutOfRange);
+        if (s < col->boundary || s > x.smax) return printQueryError(QueryCode::SOutOfRange);
+        if (!e || *e || !isfinite(k) || k <= 0) {
+            fprintf(stderr, "K must be positive (zero-core cliques outside the indexed boundary are not materialized)\n");
+            return 1;
+        }
+        double total = 0;
+        for (auto &kv : col->dists[s - col->boundary]) if (kv.first >= k) total += kv.second;
+        printf("count(kappa_{%d,%d} >= %.0f) = %.0f\n", r, s, k, total); return 0;
+    }
+
+    if (mode == "pointfile" || mode == "pointfile-validated") {
+        const bool validated = mode == "pointfile-validated";
+        int ai = validated ? 4 : 3, r = 0, s = 0;
+        const int need = validated ? 7 : 6;
+        if (argc != need || !parseIntArg(argv[ai], r) || !parseIntArg(argv[ai+1], s)) {
+            printNSI2Usage(argv[0]); return 1;
+        }
+        const NSI2Column *pointCol = q.column(r);
+        if (!pointCol) return printQueryError(QueryCode::ROutOfRange);
+        if (s < pointCol->boundary || s > x.smax)
+            return printQueryError(QueryCode::SOutOfRange);
+        ValidationGraph g;
+        if (validated && !loadValidationGraph(argv[3], g, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        if (validated && g.n != x.n) { fprintf(stderr, "validation graph/index vertex-count mismatch\n"); return 1; }
+        vector<int> flat;
+        if (!readFixedCliques(argv[ai+2], r, flat, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        const size_t nq = r > 0 ? flat.size() / (size_t)r : 0;
+        for (size_t i = 0; i < nq; ++i) {
+            QueryCode code; const int *vs = &flat[i * (size_t)r];
+            double ans = validated ? q.pointValidated(g, vs, r, s, code) : q.pointKernel(vs, r, s, code);
+            if (code != QueryCode::Ok) {
+                fprintf(stderr, "query %zu failed: %s\n", i, queryCodeName(code)); return 2;
+            }
+            printf("%.0f\n", ans);
+        }
+        return 0;
+    }
+
+    if (mode == "rowfile" || mode == "rowfile-validated") {
+        const bool validated = mode == "rowfile-validated";
+        int ai = validated ? 4 : 3, r = 0;
+        const int need = validated ? 6 : 5;
+        if (argc != need || !parseIntArg(argv[ai], r)) { printNSI2Usage(argv[0]); return 1; }
+        if (!q.column(r)) return printQueryError(QueryCode::ROutOfRange);
+        ValidationGraph g;
+        if (validated && !loadValidationGraph(argv[3], g, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        if (validated && g.n != x.n) { fprintf(stderr, "validation graph/index vertex-count mismatch\n"); return 1; }
+        vector<int> flat; vector<double> row;
+        if (!readFixedCliques(argv[ai+1], r, flat, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        const size_t nq = r > 0 ? flat.size() / (size_t)r : 0;
+        for (size_t i = 0; i < nq; ++i) {
+            const int *vs = &flat[i * (size_t)r];
+            QueryCode code = validated ? q.rowValidated(g, vs, r, row) : q.rowKernel(vs, r, row);
+            if (code != QueryCode::Ok) {
+                fprintf(stderr, "query %zu failed: %s\n", i, queryCodeName(code)); return 2;
+            }
+            for (size_t j = 0; j < row.size(); ++j) printf("%s%.0f", j ? " " : "", row[j]);
+            putchar('\n');
+        }
+        return 0;
+    }
+
+    if (mode == "bench") {
+        if (argc < 5) { printNSI2Usage(argv[0]); return 1; }
+        int coldMiB = 128, warmReps = 1;
+        for (int i = 5; i < argc; ++i) {
+            if (!strcmp(argv[i], "--cold-mib") && i + 1 < argc) {
+                if (!parseIntArg(argv[++i], coldMiB) || coldMiB < 1 || coldMiB > 4096) { fprintf(stderr, "bad --cold-mib\n"); return 1; }
+            } else if (!strcmp(argv[i], "--warm-reps") && i + 1 < argc) {
+                if (!parseIntArg(argv[++i], warmReps) || warmReps < 1 || warmReps > 100000) { fprintf(stderr, "bad --warm-reps\n"); return 1; }
+            } else { fprintf(stderr, "unknown bench option: %s\n", argv[i]); return 1; }
+        }
+        ValidationGraph g;
+        auto graph0 = SteadyClock::now();
+        if (!loadValidationGraph(argv[3], g, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        auto graph1 = SteadyClock::now();
+        if (g.n != x.n) { fprintf(stderr, "validation graph/index vertex-count mismatch\n"); return 1; }
+        vector<BenchQuery2> queries; vector<int> flat;
+        if (!readBenchQueries(argv[4], x, queries, flat, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        if (queries.size() < 1000) { fprintf(stderr, "bench requires at least 1000 queries (got %zu)\n", queries.size()); return 1; }
+
+        vector<double> row;
+        for (size_t i = 0; i < queries.size(); ++i) {
+            const auto &b = queries[i]; const int *vs = &flat[b.off]; QueryCode code;
+            (void)q.pointValidated(g, vs, b.r, b.s, code);
+            if (code != QueryCode::Ok) {
+                fprintf(stderr, "benchmark query %zu is invalid: %s\n", i, queryCodeName(code)); return 2;
+            }
+            code = q.rowKernel(vs, b.r, row);
+            if (code != QueryCode::Ok) {
+                fprintf(stderr, "benchmark query %zu hits %s\n", i, queryCodeName(code)); return 2;
+            }
+        }
+
+        const size_t warmN = queries.size();
+        const size_t coldN = min<size_t>(queries.size(), 1000);
+        vector<uint64_t> eviction((size_t)coldMiB * 1024 * 1024 / sizeof(uint64_t));
+        for (size_t i = 0; i < eviction.size(); ++i) eviction[i] = i * 0x9E3779B97F4A7C15ULL + 1;
+        bool failed = false;
+        auto pointKernelOp = [&](size_t i) {
+            const auto &b = queries[i]; QueryCode code;
+            double z = q.pointKernel(&flat[b.off], b.r, b.s, code); failed |= code != QueryCode::Ok; return z;
+        };
+        auto pointValidOp = [&](size_t i) {
+            const auto &b = queries[i]; QueryCode code;
+            double z = q.pointValidated(g, &flat[b.off], b.r, b.s, code); failed |= code != QueryCode::Ok; return z;
+        };
+        auto rowKernelOp = [&](size_t i) {
+            const auto &b = queries[i]; QueryCode code = q.rowKernel(&flat[b.off], b.r, row);
+            failed |= code != QueryCode::Ok; return row.empty() ? 0.0 : row.back();
+        };
+        auto rowValidOp = [&](size_t i) {
+            const auto &b = queries[i]; QueryCode code = q.rowValidated(g, &flat[b.off], b.r, row);
+            failed |= code != QueryCode::Ok; return row.empty() ? 0.0 : row.back();
+        };
+
+        // One full, untimed pass establishes the warm working set.
+        for (size_t i = 0; i < warmN; ++i) {
+            latencySink += pointKernelOp(i) + pointValidOp(i) + rowKernelOp(i) + rowValidOp(i);
+        }
+        vector<double> emptyIntervals; emptyIntervals.reserve(warmN);
+        for (size_t i = 0; i < warmN; ++i) {
+            auto a = SteadyClock::now(); auto b = SteadyClock::now();
+            emptyIntervals.push_back(chrono::duration<double,nano>(b - a).count());
+        }
+        LatencySummary timerCost = summarizeLatency(std::move(emptyIntervals));
+        LatencySummary pkW = measureLatency(warmN, warmReps, nullptr, pointKernelOp);
+        LatencySummary pvW = measureLatency(warmN, warmReps, nullptr, pointValidOp);
+        LatencySummary rkW = measureLatency(warmN, warmReps, nullptr, rowKernelOp);
+        LatencySummary rvW = measureLatency(warmN, warmReps, nullptr, rowValidOp);
+        LatencySummary pkC = measureLatency(coldN, 1, &eviction, pointKernelOp);
+        LatencySummary pvC = measureLatency(coldN, 1, &eviction, pointValidOp);
+        LatencySummary rkC = measureLatency(coldN, 1, &eviction, rowKernelOp);
+        LatencySummary rvC = measureLatency(coldN, 1, &eviction, rowValidOp);
+        if (failed) { fprintf(stderr, "query failure during timed benchmark\n"); return 2; }
+
+        printf("benchmark index-load=%.3f ms graph-load=%.3f ms queries=%zu warm-reps=%d cold-samples=%zu\n",
+               loadMs, chrono::duration<double,milli>(graph1 - graph0).count(), warmN, warmReps, coldN);
+        printf("method: warm timings amortize each steady-state call over %d repetitions; cold timings are one call\n", warmReps);
+        printf("after an untimed %d MiB cache-eviction sweep (CPU-cache-cold, not disk-cold; eviction time excluded).\n", coldMiB);
+        printf("row materializes all admissible s answers into a reused output buffer; validated includes O(r^2) adjacency checks.\n");
+        printf("empty steady_clock interval: median=%.1f ns p95=%.1f ns (not subtracted)\n",
+               timerCost.median, timerCost.p95);
+        printf("operation  path       warm-med(ns)  warm-p95(ns)  cold-med(ns)  cold-p95(ns)\n");
+        auto line = [&](const char *op, const char *path, const LatencySummary &w, const LatencySummary &c) {
+            printf("%-9s  %-9s  %12.1f  %12.1f  %12.1f  %12.1f\n", op, path,
+                   w.median, w.p95, c.median, c.p95);
+        };
+        line("point", "kernel", pkW, pkC); line("point", "validated", pvW, pvC);
+        line("row", "kernel", rkW, rkC); line("row", "validated", rvW, rvC);
+        printf("sink=%.0f\n", (double)latencySink);
+        return 0;
+    }
+
+    printNSI2Usage(argv[0]); return 1;
+}
+
+int main(int argc, char **argv) {
+    if (argc < 2) { fprintf(stderr, "usage: %s INDEX MODE ...\n", argv[0]); return 1; }
+    FILE *f = fopen(argv[1], "rb");
+    if (!f) { fprintf(stderr, "cannot open %s\n", argv[1]); return 1; }
+    char magic[4] = {};
+    bool got = fread(magic, 1, 4, f) == 4;
+    fclose(f);
+    if (!got) { fprintf(stderr, "%s is too short to be an NSI index\n", argv[1]); return 1; }
+    if (!memcmp(magic, "NSI1", 4)) return mainNSI1(argc, argv);
+    if (!memcmp(magic, "NSI2", 4)) return mainNSI2(argc, argv);
+    fprintf(stderr, "%s has unknown index magic\n", argv[1]);
     return 1;
 }

@@ -703,8 +703,8 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
     const int rMax = getenv("SCT_RMAX") ? atoi(getenv("SCT_RMAX")) : rMin;
     const int sMax = getenv("SCT_SMAX") ? atoi(getenv("SCT_SMAX")) : argvS;
     const int sMin = rMin + 1;
-    if (rMin < 1 || rMax < rMin || sMax < rMax + 1) {
-        fprintf(stderr, "[nsi-plane] require 1 <= SCT_RMIN <= SCT_RMAX and SCT_SMAX >= SCT_RMAX+1\n");
+    if (rMin < 1 || rMax < rMin || rMax > UINT8_MAX || sMax < rMax + 1) {
+        fprintf(stderr, "[nsi-plane] require 1 <= SCT_RMIN <= SCT_RMAX <= 255 and SCT_SMAX >= SCT_RMAX+1\n");
         return 1;
     }
     if (getenv("SCT_SWEEP")) {
@@ -735,8 +735,10 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
     printf("[rn] graph n=%d m=%ld  regions(>=Smin=%d)=%zu  load=%.2fs MCE=%.2fs\n",
            g.n, (long)g.adj.size() / 2, sMin, regions.size(), secs(t0, tLoad), secs(tLoad, tMce));
     if (regions.empty()) {
-        printf("[rn] no region >= Smin.\n");
-        return 0;
+        // This is still a valid (all-zero) indexed plane.  Keep flowing
+        // through the empty shared representation/column path so NSI2 is
+        // serialized and every admissible point/row query can return 0.
+        printf("[rn] no region >= Smin; writing empty plane when SCT_INDEX_OUT is set.\n");
     }
 
     int maxMC = 0;
