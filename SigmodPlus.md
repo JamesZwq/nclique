@@ -7523,3 +7523,22 @@ Rebuild 13pp 0 undefined. crossr tmux log = /data/wenqianz/crossr_exp.out.
 ### NEXT: poll crossr (add ca-AstroPh/com-amazon if they finish, else record TO honestly); OFFERED the user a
 whole-plane-vs-CND experiment (plane one build vs CND per-cell x #cells + OOM) -- awaiting their go. Remaining:
 CND thread-normalization (now unblocked via tmux), reproducibility appendix, CaseStudy matched-cohort.
+
+## 195. WHOLE-PLANE vs PER-CELL CND -- THE BATCH KILLER RESULT (2026-07-11)
+User said "要的" -> ran it. CND GOTCHA: the server's build/bin/degeneracy_cliques (old, 2026-07-07) hardcodes
+"src/nCr.txt" cwd-relative (PIVOTER_NCR fix 6f2d619 NOT in that binary) -> ran from region_native/ = "file could
+not be opened" = exit 1 on ALL cells. FIX: cp pivoter/nCr.txt -> src/nCr.txt + run CND with cwd=repo-root. Then
+CND works. (tmux 'pvc', /data/wenqianz/plane_vs_cnd.out.)
+### RESULTS (our 1-thread plane ONE build of r=3..5 s<=8 = 12 cells, vs CND 96-core per-cell summed):
+- ca-CondMat: OUR PLANE 2.96s vs CND 23.91s/12-cells = **8.1x** (each CND cell ~2s).
+- com-dblp: OUR PLANE 97.1s vs CND: r=3 cells ~9-11s, r=4 ~51-58s, **r=5 cells EXPLODE: (5,6)=1112s/245GB,
+  (5,7)=1104s/245GB** ((5,8) still running). 11-cell sum = 2484s => **>26x** (12th cell pushes to ~37x). A
+  SINGLE (5,6) CND cell (1112s/245GB) alone > 11x our whole 12-cell family (97s). This is the batch effect:
+  family = one build, not one build per cell; and per-cell CND approaches the 503GB budget while our plane
+  stays <8GB.
+### PAPER: added \expsection{Whole-Plane Construction versus Per-Cell CND} to Experiments (8.1x ca-CondMat,
+>26x com-dblp, single-cell 1112s/245GB blowup, "family costs one build not one build per cell"). Uses safe
+lower-bound ">26x" (doesn't need (5,8)). Rebuild 13pp 0 undefined. This is the strongest external-baseline
+framing for the batch-decomposition contribution -- complements the fixed-row main table (up to 1600x + 5 OOM).
+### (5,8) pending (~18min or OOM near 503GB); final com-dblp = ~37x -- can strengthen ">26x" to the exact
+12-cell number later. crossr was killed (3 cross-r graphs suffice). Server fully usable via tmux now.
