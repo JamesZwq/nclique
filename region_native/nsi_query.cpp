@@ -33,8 +33,11 @@
 #include <fstream>
 #include <limits>
 #include <numeric>
+#include <queue>
+#include <functional>
 #include <sstream>
 #include <string>
+#include <sys/resource.h>
 #include <unordered_map>
 #include <vector>
 
@@ -708,6 +711,19 @@ struct ValidationGraph {
     }
 };
 
+// macOS reports ru_maxrss in bytes while Linux reports KiB.  We use this
+// process high-water mark only as an incremental retrieval measurement: the
+// baseline is sampled after the index and graph loads, immediately before retrieval.
+static double peakRssMiB() {
+    rusage ru{};
+    if (getrusage(RUSAGE_SELF, &ru) != 0) return 0.0;
+#ifdef __APPLE__
+    return (double)ru.ru_maxrss / (1024.0 * 1024.0);
+#else
+    return (double)ru.ru_maxrss / 1024.0;
+#endif
+}
+
 static bool loadValidationGraph(const char *path, ValidationGraph &g, string &error) {
     FILE *f = fopen(path, "r");
     if (!f) { error = string("cannot open graph ") + path; return false; }
@@ -899,6 +915,192 @@ struct Query2 {
     }
 };
 
+struct UnionFind {
+    vector<int32_t> parent;
+    vector<uint8_t> rank;
+    explicit UnionFind(size_t n = 0) : parent(n), rank(n, 0) {
+        iota(parent.begin(), parent.end(), 0);
+    }
+    int32_t find(int32_t x) {
+        int32_t root = x;
+        while (parent[root] != root) root = parent[root];
+        while (parent[x] != x) { int32_t next = parent[x]; parent[x] = root; x = next; }
+        return root;
+    }
+    void unite(int32_t a, int32_t b) {
+        a = find(a); b = find(b);
+        if (a == b) return;
+        if (rank[a] < rank[b]) swap(a, b);
+        parent[b] = a;
+        if (rank[a] == rank[b]) ++rank[a];
+    }
+};
+
+template<class Emit>
+static void enumerateCliques(const ValidationGraph &g, int cliqueSize, Emit emit) {
+    vector<int32_t> prefix;
+    prefix.reserve((size_t)cliqueSize);
+    vector<int32_t> all((size_t)g.n);
+    iota(all.begin(), all.end(), 0);
+    function<void(const vector<int32_t>&)> visit = [&](const vector<int32_t> &candidates) {
+        if ((int)prefix.size() == cliqueSize) { emit(prefix); return; }
+        const int needed = cliqueSize - (int)prefix.size();
+        for (size_t i = 0; i + (size_t)needed <= candidates.size(); ++i) {
+            const int32_t v = candidates[i];
+            prefix.push_back(v);
+            vector<int32_t> next;
+            next.reserve(candidates.size() - i - 1);
+            for (size_t j = i + 1; j < candidates.size(); ++j)
+                if (g.adjacent(v, candidates[j])) next.push_back(candidates[j]);
+            visit(next);
+            prefix.pop_back();
+        }
+    };
+    if (cliqueSize > 0) visit(all);
+}
+
+static void appendRSubcliques(const vector<int32_t> &witness, int r,
+                              vector<vector<int32_t>> &out) {
+    vector<int32_t> current;
+    current.reserve((size_t)r);
+    function<void(int)> choose = [&](int at) {
+        if ((int)current.size() == r) { out.push_back(current); return; }
+        const int remaining = r - (int)current.size();
+        for (int i = at; i + remaining <= (int)witness.size(); ++i) {
+            current.push_back(witness[i]); choose(i + 1); current.pop_back();
+        }
+    };
+    choose(0);
+}
+
+static vector<int32_t> sizesFromUnionFind(UnionFind &uf, const vector<uint8_t> *keep = nullptr) {
+    unordered_map<int32_t,int32_t> sizes;
+    for (size_t i = 0; i < uf.parent.size(); ++i) {
+        if (keep && !(*keep)[i]) continue;
+        ++sizes[uf.find((int32_t)i)];
+    }
+    vector<int32_t> ans;
+    ans.reserve(sizes.size());
+    for (const auto &kv : sizes) ans.push_back(kv.second);
+    sort(ans.begin(), ans.end());
+    return ans;
+}
+
+static void printSizesRLE(const vector<int32_t> &sizes) {
+    for (size_t i = 0; i < sizes.size();) {
+        size_t j = i + 1;
+        while (j < sizes.size() && sizes[j] == sizes[i]) ++j;
+        printf("%s%d%s", i ? "," : "", sizes[i], j - i > 1 ? "x" : "");
+        if (j - i > 1) printf("%zu", j - i);
+        i = j;
+    }
+}
+
+struct NucleiResult {
+    size_t selected = 0, survivingWitnesses = 0, incidences = 0;
+    double collectMs = 0, witnessMs = 0, unionMs = 0, totalMs = 0;
+    double peakExtraMiB = 0;
+    vector<int32_t> sizes;
+};
+
+// Retrieval path: core membership comes exclusively from NSI2; graph work is
+// restricted to materializing the requested r-cliques and s-witness adjacency.
+static bool retrieveConnectedNuclei(const NSI2 &x, Query2 &q, const ValidationGraph &g,
+                                    int r, int s, int k, double rssAfterLoad,
+                                    NucleiResult &result, string &error) {
+    if (!q.column(r)) { error = "r out of range"; return false; }
+    if (s < r + 1 || s > x.smax) { error = "s out of range"; return false; }
+    unordered_map<vector<int32_t>,int32_t,IntVecHash> selected;
+    auto total0 = SteadyClock::now();
+    auto collect0 = SteadyClock::now();
+    enumerateCliques(g, r, [&](const vector<int32_t> &clique) {
+        QueryCode code;
+        const double core = q.pointKernel(clique.data(), r, s, code);
+        if (code != QueryCode::Ok) { error = queryCodeName(code); return; }
+        if (core >= k) selected.emplace(clique, (int32_t)selected.size());
+    });
+    if (!error.empty()) return false;
+    result.collectMs = chrono::duration<double,milli>(SteadyClock::now() - collect0).count();
+    result.selected = selected.size();
+    UnionFind uf(selected.size());
+    auto witness0 = SteadyClock::now();
+    enumerateCliques(g, s, [&](const vector<int32_t> &witness) {
+        vector<vector<int32_t>> rs;
+        appendRSubcliques(witness, r, rs);
+        vector<int32_t> ids; ids.reserve(rs.size());
+        for (const auto &rc : rs) {
+            auto it = selected.find(rc);
+            if (it == selected.end()) return;
+            ids.push_back(it->second);
+        }
+        ++result.survivingWitnesses;
+        result.incidences += ids.size();
+        auto union0 = SteadyClock::now();
+        for (size_t i = 1; i < ids.size(); ++i) uf.unite(ids[0], ids[i]);
+        result.unionMs += chrono::duration<double,milli>(SteadyClock::now() - union0).count();
+    });
+    result.witnessMs = chrono::duration<double,milli>(SteadyClock::now() - witness0).count();
+    result.sizes = sizesFromUnionFind(uf);
+    result.totalMs = chrono::duration<double,milli>(SteadyClock::now() - total0).count();
+    result.peakExtraMiB = max(0.0, peakRssMiB() - rssAfterLoad);
+    return true;
+}
+
+// Independent reference: enumerate the complete r/s incidence hypergraph and
+// run ordinary minimum-support peeling before constructing witness components.
+static void directConnectedNuclei(const ValidationGraph &g, int r, int s, int k,
+                                  size_t &selectedCount, vector<int32_t> &sizes) {
+    unordered_map<vector<int32_t>,int32_t,IntVecHash> ids;
+    vector<vector<int32_t>> witnesses;
+    vector<vector<int32_t>> incident;
+    enumerateCliques(g, s, [&](const vector<int32_t> &witness) {
+        vector<vector<int32_t>> rs;
+        appendRSubcliques(witness, r, rs);
+        vector<int32_t> w; w.reserve(rs.size());
+        for (const auto &rc : rs) {
+            auto it = ids.find(rc);
+            int32_t id;
+            if (it == ids.end()) {
+                id = (int32_t)ids.size(); ids.emplace(rc, id); incident.emplace_back();
+            } else id = it->second;
+            w.push_back(id);
+        }
+        const int32_t wi = (int32_t)witnesses.size();
+        for (int32_t id : w) incident[id].push_back(wi);
+        witnesses.push_back(std::move(w));
+    });
+    vector<int32_t> degree(ids.size()), core(ids.size());
+    for (size_t i = 0; i < ids.size(); ++i) degree[i] = (int32_t)incident[i].size();
+    priority_queue<pair<int32_t,int32_t>, vector<pair<int32_t,int32_t>>,
+                   greater<pair<int32_t,int32_t>>> heap;
+    for (size_t i = 0; i < degree.size(); ++i) heap.push({degree[i], (int32_t)i});
+    vector<uint8_t> dead(ids.size(), 0), liveWitness(witnesses.size(), 1);
+    while (!heap.empty()) {
+        auto [d, u] = heap.top(); heap.pop();
+        if (dead[u] || d != degree[u]) continue;
+        dead[u] = 1; core[u] = d;
+        for (int32_t wi : incident[u]) {
+            if (!liveWitness[wi]) continue;
+            liveWitness[wi] = 0;
+            for (int32_t v : witnesses[wi])
+                if (!dead[v] && degree[v] > d) {
+                    --degree[v]; heap.push({degree[v], v});
+                }
+        }
+    }
+    vector<uint8_t> keep(ids.size(), 0);
+    selectedCount = 0;
+    for (size_t i = 0; i < core.size(); ++i)
+        if (core[i] >= k) { keep[i] = 1; ++selectedCount; }
+    UnionFind uf(ids.size());
+    for (const auto &w : witnesses) {
+        bool survives = true;
+        for (int32_t id : w) if (!keep[id]) { survives = false; break; }
+        if (survives) for (size_t i = 1; i < w.size(); ++i) uf.unite(w[0], w[i]);
+    }
+    sizes = sizesFromUnionFind(uf, &keep);
+}
+
 static bool parseIntArg(const char *s, int &v) {
     if (!s || !*s) return false;
     char *e = nullptr; errno = 0;
@@ -1029,10 +1231,11 @@ static void printNSI2Usage(const char *prog) {
         "  %s INDEX pointfile-validated GRAPH R S FILE\n"
         "  %s INDEX rowfile R FILE\n"
         "  %s INDEX rowfile-validated GRAPH R FILE\n"
+        "  %s INDEX nuclei R S K GRAPH                     # connected k-(r,s)-nuclei + direct check\n"
         "  %s INDEX bench GRAPH QUERIES [--cold-mib N] [--warm-reps N]\n"
         "Bench query lines are either 'R V1 ... VR' (S cycles over the row) or\n"
         "'R S V1 ... VR'.  At least 1000 validated clique lines are required.\n",
-        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
+        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
 }
 
 static int printQueryError(QueryCode code) {
@@ -1071,6 +1274,43 @@ static int mainNSI2(int argc, char **argv) {
         printf("byte-accounting shared-once(%lld) + per-column(%lld) = total(%lld)\n",
                (long long)x.sharedBytes, (long long)colTotal, (long long)x.fileBytes);
         return (x.sharedBytes + colTotal == x.fileBytes) ? 0 : 2;
+    }
+
+    if (mode == "nuclei") {
+        int r = 0, s = 0, k = 0;
+        if (argc != 7 || !parseIntArg(argv[3], r) || !parseIntArg(argv[4], s) ||
+            !parseIntArg(argv[5], k) || k <= 0) {
+            fprintf(stderr, "nuclei requires positive integer K: INDEX nuclei R S K GRAPH\n");
+            return 1;
+        }
+        const NSI2Column *col = q.column(r);
+        if (!col) return printQueryError(QueryCode::ROutOfRange);
+        if (s < col->boundary || s > x.smax) return printQueryError(QueryCode::SOutOfRange);
+        ValidationGraph g;
+        if (!loadValidationGraph(argv[6], g, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        if (g.n != x.n) { fprintf(stderr, "graph/index vertex-count mismatch\n"); return 1; }
+        const double rssAfterLoad = peakRssMiB();
+        NucleiResult got;
+        if (!retrieveConnectedNuclei(x, q, g, r, s, k, rssAfterLoad, got, error)) {
+            fprintf(stderr, "nuclei retrieval failed: %s\n", error.c_str()); return 2;
+        }
+        auto reference0 = SteadyClock::now();
+        size_t refSelected = 0; vector<int32_t> refSizes;
+        directConnectedNuclei(g, r, s, k, refSelected, refSizes);
+        const double referenceMs = chrono::duration<double,milli>(SteadyClock::now() - reference0).count();
+        const bool exact = got.selected == refSelected && got.sizes == refSizes;
+        printf("nuclei r=%d s=%d k=%d selected=%zu components=%zu sizes=", r, s, k,
+               got.selected, got.sizes.size());
+        printSizesRLE(got.sizes);
+        printf("\n");
+        printf("index_load_ms=%.3f retrieval_collect_ms=%.3f witness_scan_ms=%.3f union_find_ms=%.3f retrieval_total_ms=%.3f\n",
+               loadMs, got.collectMs, got.witnessMs, got.unionMs, got.totalMs);
+        printf("retrieval_peak_extra_mib=%.3f (RSS high-water after index load) surviving_witnesses=%zu incidences=%zu\n",
+               got.peakExtraMiB, got.survivingWitnesses, got.incidences);
+        printf("reference_selected=%zu reference_components=%zu reference_sizes=", refSelected, refSizes.size());
+        printSizesRLE(refSizes);
+        printf("\ncorrectness_direct_reference=%s reference_ms=%.3f\n", exact ? "EXACT-MATCH" : "MISMATCH", referenceMs);
+        return exact ? 0 : 2;
     }
 
     if (mode == "point") {
