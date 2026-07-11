@@ -7542,3 +7542,12 @@ lower-bound ">26x" (doesn't need (5,8)). Rebuild 13pp 0 undefined. This is the s
 framing for the batch-decomposition contribution -- complements the fixed-row main table (up to 1600x + 5 OOM).
 ### (5,8) pending (~18min or OOM near 503GB); final com-dblp = ~37x -- can strengthen ">26x" to the exact
 12-cell number later. crossr was killed (3 cross-r graphs suffice). Server fully usable via tmux now.
+
+## 196. CND EXPERIMENT COMPLETE (com-dblp 36.2x) -- LOOP WIND-DOWN (2026-07-11)
+FINAL: com-dblp OUR PLANE 97.1s vs CND 3511.69s/12-cells (all completed, 0 failed) = **36.2x**; each order-5
+CND cell ~1000-1112s/245GB. Paper updated ">26x" -> exact "36x, 3,512s". ca-CondMat 8.1x. Rebuild 13pp 0
+undefined. Server cleaned (tmux kill-server + pkill degeneracy_cliques). LOOP WINDING DOWN -- all substantive
+work done. Remaining (need user/data): CND thread-normalization at 1/mid/96 threads (nice-to-have, tmux-ready),
+reproducibility appendix (needs exact g++ ver), CaseStudy matched-cohort (needs data). Paper state: all 4
+review#2 reject-triggers resolved + majors (#2 partial via disclosure, #6 size-bound, #8 hierarchy) + whole-
+plane-vs-CND 8-36x + diagonal 1.37-2.14x + elegance pass. Strong shape vs the Reject 2/5 open.
