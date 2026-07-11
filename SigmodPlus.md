@@ -7504,3 +7504,22 @@ DATA -- not safely auto-doable:
 (plane numbers), #6 (size-bound), diagonal-implemented, elegance-pass, several minors done. Strong shape vs
 the Reject 2/5 start. Pick up = SigmodPlus §182-193; decide hierarchy-connectivity + when server is stable for
 the CND/query experiments.
+
+## 194. SERVER FIXED (tmux); HIERARCHY MERGED+VERIFIED; CROSS-R EXPANDED (2026-07-11)
+### SERVER ROOT CAUSE + FIX: tods2 via ProxyJump cse (jump host) -> detached jobs SIGHUP-killed + logs not
+created; held ssh drops after ~5.5min. FIX = server-side **tmux** (verified persistent across ssh drop). Saved
+to [[feedback_server_workflow]]. Server no longer a blocker.
+### HIERARCHY connected-nucleus retrieval (review#2 major #8) DONE + MERGED (cd73887). codex added nsi_query
+'nuclei R S K GRAPH' mode (+241): collect superlevel set from index + scan surviving s-witnesses + union-find.
+VERIFIED: 8/8 (r,s,k) EXACT-MATCH vs a GENUINELY INDEPENDENT from-scratch oracle (I read directConnectedNuclei:
+enumerate s-cliques + build incidence + min-support peel + union-find -- does NOT touch the index path), + NSI2
+444k regression intact. The independent-oracle EXACT-MATCH IS the dual-verification (stronger than a model
+opinion) so skipped redundant Fable/GPT. Hierarchy.tex synced (codex's; Fable elegance didn't touch Hierarchy)
+with measured cost: ca-GrQc (4,5,1) retrieval 890ms median/3-run, union-find 33.9ms, +27.7MiB, load 25ms.
+### CROSS-R experiment (tmux, robust): ca-CondMat DONE -> ADDED to tab:plane (now 3 graphs: ca-GrQc 2.14x,
+ca-CondMat 1.37x, com-dblp 1.85x diagonal speedup; plane/summed 1.42-2.30x). Diagonal-speedup range updated
+1.85->1.37 to 2.14x. ca-AstroPh RUNNING (denser -> may be slow / hit 40min per-run TO); com-amazon queued.
+Rebuild 13pp 0 undefined. crossr tmux log = /data/wenqianz/crossr_exp.out.
+### NEXT: poll crossr (add ca-AstroPh/com-amazon if they finish, else record TO honestly); OFFERED the user a
+whole-plane-vs-CND experiment (plane one build vs CND per-cell x #cells + OOM) -- awaiting their go. Remaining:
+CND thread-normalization (now unblocked via tmux), reproducibility appendix, CaseStudy matched-cohort.
