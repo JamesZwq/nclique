@@ -7551,3 +7551,32 @@ work done. Remaining (need user/data): CND thread-normalization at 1/mid/96 thre
 reproducibility appendix (needs exact g++ ver), CaseStudy matched-cohort (needs data). Paper state: all 4
 review#2 reject-triggers resolved + majors (#2 partial via disclosure, #6 size-bound, #8 hierarchy) + whole-
 plane-vs-CND 8-36x + diagonal 1.37-2.14x + elegance pass. Strong shape vs the Reject 2/5 open.
+
+## 197. CROSS-DOMAIN CND: THE 36x DOES **NOT** GENERALIZE (2026-07-20)
+User challenged "dblp这个数据集太特殊了". CORRECT. Ran whole-plane (1 build, r=3..5, s<=8, OMP=1) vs CND
+per-cell (12 cells, 96-core) on FOUR non-collaboration graphs, tods2, same binary/machine, PTO=2400/CTO=1200,
+SCT_MAX_INC=2e8. Script /data/wenqianz/crossdomain_cnd.sh, log crossdomain_cnd.out, tmux 'xdom' (08:28-10:11).
+
+| graph | domain | OUR PLANE | CND 12-cell sum | ratio |
+|---|---|---|---|---|
+| com-amazon.ungraph | co-purchase | 4.77s / 0.5GB | 23.73s (12/12 ok) | **5.0x WIN** |
+| web-Google | web | 642.78s / 24.5GB | 820.1s (12/12 ok, peak 97.6GB) | **1.3x** (mem 4x) |
+| web-Stanford | web | **FAILED exit=7** / 3.5GB | 1410.84s (9/12; 3 OOM @499GB) | **we FAIL** |
+| email-Eu-core | email | 757.6s / 4.7GB | 40.18s (12/12 ok) | **0.1x = 19x SLOWER** |
+
+vs collaboration: ca-CondMat 8.1x, com-dblp 36.2x (§195-196).
+
+MECHANISM (why): the batch win is bought by CLASS-QUOTIENT COMPRESSION, which needs repeated relevant-region
+profiles. Collaboration (co-authorship overlap) + co-purchase => profiles highly repeated => one build amortizes
+the whole family. Dense-small (email-Eu-core, 1005 nodes, dense core) => profiles near-unique => compression
+FAILS, we pay full cost PLUS pattern-machinery overhead, while CND's direct per-cell enumeration on a tiny graph
+is seconds => we lose 19x. Same failure mode as the known ca-HepPh 0.82x / ca-AstroPh 1.65x weak spots.
+web-Stanford exit=7 = SCT_MAX_INC pattern-explosion guard fired (plane build never completed); note CND ALSO
+OOM'd 3 cells @499GB there, but OUR failure is a REAL failure and must not be excused by the baseline's.
+
+PAPER IMPACT (unresolved, needs user decision): Experiments 'Whole-Plane vs Per-Cell CND' currently cites only
+ca-CondMat 8.1x + com-dblp 36.2x. As written it is REFUTABLE by one email graph. Recommended fix = SCOPE the
+claim to the mechanism, not delete it: add com-amazon 5.0x (genuinely different domain, confirms cross-domain
+batching) + web-Google memory 4x; reword from "batching is N x faster" to "when maximal-clique profiles repeat,
+one plane build amortizes the whole cell family". Do not volunteer web-Stanford/email-Eu-core, but the wording
+must be such that they are NOT counterexamples. HONEST STATUS: batch-killer claim is domain-scoped, not universal.
