@@ -7670,3 +7670,32 @@ web-Google + ca-AstroPh. If scheduled share < ~25% everywhere, SLP caps at 25% -
 F2 (~free): offline over existing NSI2 residue dumps, count entries T3+ certifies that T3 does not. <5% -> T3+ is
 a remark, not a contribution.
 Proposition I: brute-force the 22-vertex gadget (seconds). codex verification in flight.
+
+### §199 ADDENDUM -- INDEPENDENT VERIFICATION DONE BY ME (2026-07-21). Both claims CONFIRMED.
+codex-rescue detached to an unretrievable background task again (known failure mode), so I verified directly.
+Scripts committed: scripts/verify_gadget.py, scripts/verify_t3plus.py.
+
+(1) PROPOSITION I GADGET -- brute-forced, EXACT MATCH to Fable's claim:
+    |V|=22 |E|=82 deg(u)=11 deg(w0)=6 deg(w3)=5
+    kappa_(1,2): u=8  w0=w1=w2=w3=5   L1=8 R0=8
+    kappa_(1,3): u=3  w0=w1=w2=w3=10  L1=0 R0=0   (blob is triangle-free -> 0, as expected)
+    cell(1,2): u(8) > w(5).  cell(1,3): u(3) < w(10).  INTERACTING reversal CONFIRMED
+    (3 triangles u-w_i-w_j in cell (1,3); 3 edges u-w_i in cell (1,2)).
+    => the forcing argument is sound: (1,2) needs u AFTER all w_1..3, (1,3) needs u BEFORE the first w_j.
+    SCOPE STILL STANDS: proven for PASSIVE-REPLAY stamping only. NOT a general one-pass impossibility.
+    Paper must state it as "no universal elimination order under replay stamping", never more.
+
+(2) T3+ -- CONFIRMED sound and strictly stronger:
+    monotonicity of C(x,a) on [a,inf): verified a=2,4,5.
+    worked example r=3,c=9,kappa_(3,7)=16: floor_7=C(6,4)=15 so T3 DEAD; x*=6.068525 (C(x*,4)=16.000000);
+      C(x*,5)=6.619279 -> floor 6 = C(6,5) = floor_8 => T3+ FIRES, certifies kappa_(3,8)=6. EXACT.
+    subsumption: m=floor gives x*=c-r exactly in all tested (r,c,s) -- T3+ reproduces T3. CONFIRMED.
+    SOUNDNESS SWEEP: 12,200 (r,c,s,m) combos, T3+ fired 530, **0 unsound cases** (never derives an upper
+      bound below the T1 lower bound).
+    LOGIC: T3+ reduces to T2 (KK shadow) applied at s+1 plus monotonicity + integrality. So its soundness
+      INHERITS from T2, which is already in docs/nsi_theorems.md. No new unproven assumption introduced.
+    CAVEAT: the 530/12200 = 4.3% firing rate is over a SYNTHETIC grid (m swept floor..floor+40) and is NOT
+      the real-data rate. F2 (offline, free, over existing NSI2 residue dumps) is still required before
+      claiming T3+ shrinks real residue.
+
+STATUS: both claims survive adversarial checking. Decision gate unchanged: run F1 before building SLP.
