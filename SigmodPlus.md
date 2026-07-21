@@ -7580,3 +7580,45 @@ claim to the mechanism, not delete it: add com-amazon 5.0x (genuinely different 
 batching) + web-Google memory 4x; reword from "batching is N x faster" to "when maximal-clique profiles repeat,
 one plane build amortizes the whole cell family". Do not volunteer web-Stanford/email-Eu-core, but the wording
 must be such that they are NOT counterexamples. HONEST STATUS: batch-killer claim is domain-scoped, not universal.
+
+## 198. WHY WE LOSE ON email-Eu-core: STRUCTURAL (class quotient compresses 1.0x) + PLANE OVERHEAD (2026-07-21)
+Follow-up to §197. Instrumented CONTRAST, email-Eu-core (we lose 19x) vs com-amazon (we win 5.0x), tods2,
+OMP=1. GOTCHA FIRST: plane mode (SCT_RSWEEP) returns at region_native_sct_peel.cpp:1423 (runMultiRPlane),
+BEFORE every compression counter ([regcls] 1685, [comp] 2415, [cls-leaf] 2443, per-cell certs 2544). Those are
+reachable ONLY on the fixed-r SCT_SWEEP path. First diagnostic attempt printed nothing for this reason.
+Script scripts/email_diag.sh -> /data/wenqianz/email_diag.out.
+
+### THE SMOKING GUN: the class quotient does literally nothing on email
+| metric | com-amazon (WIN 5.0x) | email-Eu-core (LOSE 19x) |
+|---|---|---|
+| biggest region | 7 verts -> 4 classes | **18 verts -> 18 classes (1.0x, ZERO compression)** |
+| R-EXCLUSIVE / SHARED(boundary) | 1 / 3 | **0 / 18** (every class is boundary) |
+| comp/pat ratio (r=3) | 0.71 | **177.68** |
+| avg s-compositions per leaf (r=3/4/5) | 2.5 / 1.6 / 1.0 | **351 / 671 / 1050** |
+| max compositions/leaf | 35 / 21 / 7 | 3,060 / 8,568 / 18,564 |
+| chain-certified r=3 | **100.00%**, residue 0-20 | **58.5-64.2%**, residue 37k-43k |
+| chain-certified r=4 | **100.00%**, residue 0 | 76.9-78.4%, residue 91k-98k |
+| chain-certified r=5 | **100.00%**, residue 0 | 87.2%, residue 156k |
+| classes / avg leaves per class | 124,181 / 3.9 | 804 / **632.9** (maxlist 19,284) |
+
+CAUSAL CHAIN (structural, NOT a bug): dense email core => relevant-region profiles near-unique => class quotient
+compresses 1.0x => per-leaf s-composition count explodes 400-1000x => and the chain certificate (needs the clique
+bound tight) fires on only 59-87% instead of 100%, so 12-41% of patterns still need a REAL peel. Meanwhile CND on
+a 1005-vertex graph just enumerates directly in 40s total. You cannot compress what has no repeated structure.
+
+### SECOND FINDING: on this graph the PLANE ITSELF is a net loss vs not sharing
+email plane per-r (smax=8): r=3 249.4s, r=4 289.8s, r=5 244.3s -> sum 783.4s; plane all-r = 753.2s, so the shared
+build saves only **3.8%**. But the fixed-r SCT_SWEEP path does the SAME cells in 58.6+81.2+94.4 = **234.2s**, i.e.
+the plane path is **3.2x SLOWER than simply running three independent fixed-r sweeps**. The universal-class /
+diagonal / index-column machinery is pure overhead when the quotient does not compress.
+s-growth: smax 6/7/8 = 114.6 / 302.5 / 753.2s (~2.5x per +1 s). Cost is UNIFORM across r (no single r dominates).
+
+### VERDICT: not fixable as a speedup; but the regime is cheaply PREDICTABLE
+(a) Better certificates cannot close 19x: even at 100% certification the 18.5M-50M composition enumeration
+remains, and that is the dominant cost. (b) The 18->18 fragmentation is a property of the GRAPH. (c) The only
+honest lever is a COST GUARD: both [regcls] region-compression and [comp] comp/pat are computed EARLY (1685 /
+2435, before the peel at 3390) and separate win/loss by 2-3 orders of magnitude (0.71 vs 177.68). A guard could
+fall back to per-r sweeps, turning 753s -> 234s. That is damage control (still 5.8x slower than CND's 40s), NOT
+a win. UNVALIDATED: predictor tested on n=2 only; would need com-dblp/ca-CondMat (wins) + web-Stanford (failure)
+to claim it generalizes. Do NOT put the predictor in the paper without that run.
+PAPER: this DIAGNOSIS JUSTIFIES the §197 scoping already applied to Exp-9; no further paper change required.
