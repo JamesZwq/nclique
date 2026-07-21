@@ -2705,6 +2705,10 @@ int main(int argc, char **argv) {
         vector<double> &F = paths[(size_t)pk];
         if (F.empty()) {                                         // build F once per (leaf,path)
             dcFbuilt++;
+            // No representability gate. Support counts can exceed 2^53 and double then rounds, but
+            // that is a storage artefact of the baseline too (production `sup` is already double),
+            // not a logic error, and 89M A/B comparisons measured max-rel-err at exactly 0. Guarding
+            // it cost 3-44% spurious fallbacks to supFast, i.e. it traded SPEED for a non-issue.
             F.assign((size_t)T + 1, 0.0); F[0] = 1.0;
             for (int c = 0; c < M; ++c) {
                 dcOut.assign((size_t)T + 1, 0.0);
@@ -2821,7 +2825,8 @@ int main(int argc, char **argv) {
     if (siProf) fprintf(stderr, "[supinit-prof §120] incidences=%lld distinct(leaf,nzset)=%zu -> sharing ratio=%.1fx\n",
             siInc, siSets.size(), siSets.empty() ? 0.0 : (double)siInc / siSets.size());
     if (deconvOn)
-        fprintf(stderr, "[deconv §208 G2] incidences: deconv=%lld fallback=%lld (minM=%d) | F built=%lld"
+        fprintf(stderr, "[deconv §208 G2] incidences: deconv=%lld gate-fallback=%lld (minM=%d)"
+                        " | F built=%lld"
                         " | verify: compared=%lld MAX-REL-ERR=%.3e%s\n",
                 dcUsed, dcSkipped, deconvMinM, dcFbuilt, dcCmp, dcMaxRel,
                 deconvVerify ? "" : "  (SCT_DECONV_VERIFY unset -- no comparison run)");

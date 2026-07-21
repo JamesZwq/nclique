@@ -26,8 +26,12 @@ fi
 echo "guard supDeconv   = $(grep -c 'supDeconv' region_native/region_native_sct_peel.cpp)"
 echo "guard SCT_DECONV  = $(grep -c 'SCT_DECONV' region_native/region_native_sct_peel.cpp)"
 echo "guard G1 probe    = $(grep -c '208 G1' region_native/region_native_sct_peel.cpp)"
-if [ "$(grep -c 'supDeconv' region_native/region_native_sct_peel.cpp)" -lt 3 ]; then
+# supDeconv appears exactly twice: the lambda definition and its one call site.
+if [ "$(grep -c 'supDeconv' region_native/region_native_sct_peel.cpp)" -lt 2 ]; then
   echo "FATAL: supDeconv missing from source -- refusing to run"; exit 1
+fi
+if [ "$(grep -c 'SCT_DECONV' region_native/region_native_sct_peel.cpp)" -lt 3 ]; then
+  echo "FATAL: SCT_DECONV knobs missing from source -- refusing to run"; exit 1
 fi
 
 cd "$REPO/region_native" || exit 1
