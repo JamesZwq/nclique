@@ -8273,3 +8273,63 @@ Value of the probe: it cost one counter and stopped me implementing a 1.1x chang
 CONSEQUENCE: the only remaining lever on addDelta is enumerating FEWER compositions (the grouped
 walk), whose honest ceiling is the already-dead share (54.7-89.8%, §208 G2), not the 71-163x of §203.
 On ca-AstroPh (4,6) addDelta is 65% of peel, so that ceiling is worth ~2.2x there and ~1.2x on ca-HepPh.
+
+## 209. §208 G4: W DECOMPOSES EXACTLY INTO TWO STRUCTURAL FACTORS -- there are TWO different ways to lose, and §198 only found one (2026-07-22)
+
+### The identity (algebraic, not a fit)
+  W = incidences / #r-cliques
+  hostSz_avg = incidences / #patterns          compression = #r-cliques / #patterns
+=>                **W = hostSz_avg / compression**                (exact; verified numerically,
+  e.g. ca-HepPh (3,4): 36.55 / 2.655 = 13.77 = W)
+So the method wins (W < 1) exactly when **compression exceeds host multiplicity**. Two independent
+structural quantities, and a graph can fail on EITHER.
+
+### Measured (local, SCT_W_ONLY, counts are machine-independent)
+| graph | cell | W | compression | hostSz_avg | clsMean | clsMax | twinFrac |
+|---|---|---|---|---|---|---|---|
+| ca-GrQc | 4,6 | **0.271** | 18.11x | 4.90 | 2.54 | 21 | 0.751 |
+| com-dblp | 4,6 | **0.324** | 20.64x | 6.69 | 1.85 | 54 | 0.662 |
+| ca-GrQc | 3,5 | 0.963 | 6.25x | 6.01 | 1.99 | 20 | 0.706 |
+| com-dblp | 3,5 | 1.308 | 3.46x | 4.52 | 1.56 | 52 | 0.554 |
+| ca-GrQc | 3,4 | 1.318 | 4.29x | 5.66 | 1.48 | 19 | 0.483 |
+| com-dblp | 3,4 | 1.481 | 2.61x | 3.87 | 1.33 | 47 | 0.397 |
+| ca-CondMat | 4,6 | 1.476 | 2.12x | 3.12 | 1.61 | 10 | 0.579 |
+| ca-CondMat | 3,4 | 1.903 | 1.49x | 2.84 | 1.32 | 9 | 0.399 |
+| ca-CondMat | 3,5 | 2.110 | 1.62x | 3.43 | 1.46 | 9 | 0.504 |
+| ca-AstroPh | 3,4 | 5.137 | 1.54x | 7.91 | 1.25 | 27 | 0.291 |
+| ca-AstroPh | 4,6 | 5.284 | 2.15x | 11.38 | 1.36 | 25 | 0.378 |
+| ca-AstroPh | 3,5 | 8.614 | 1.59x | 13.73 | 1.30 | 26 | 0.340 |
+| email-Eu-core | 3,4 | 9.489 | **1.002x** | 9.51 | 1.00 | 2 | **0.005** |
+| ca-HepPh | 3,4 | 13.768 | 2.66x | **36.55** | 1.40 | 48 | 0.377 |
+| ca-HepPh | 3,5 | 14.198 | 2.83x | **40.24** | 1.69 | 50 | 0.533 |
+| email-Eu-core | 4,6 | 21.735 | **1.003x** | 21.79 | 1.01 | 2 | 0.012 |
+| email-Eu-core | 3,5 | 31.524 | **1.002x** | 31.60 | 1.00 | 2 | **0.005** |
+
+### THE TWO FAILURE MODES ARE DIFFERENT AND NEED DIFFERENT FIXES
+- **email-Eu-core fails on COMPRESSION.** twinFrac = 0.005: essentially NO vertex in the graph shares
+  its maximal-clique membership with another, so the class quotient has nothing to quotient
+  (compression 1.002x). §198 diagnosed this from ONE region ("biggest region 18 verts -> 18 classes");
+  this is the whole-graph quantification. Nothing about the peel can fix it.
+- **ca-HepPh fails on HOST MULTIPLICITY.** Its compression is a respectable 2.66-2.83x, but
+  hostSz_avg is 36-40: each pattern is spread over ~40 class-SCT leaves, so we pay ~40 support
+  evaluations per pattern. It compresses fine, it just smears. **§198 never identified this mode**,
+  and the two have been conflated ever since.
+This matters for direction: the deconvolution (§208 G2) attacks the COST PER INCIDENCE and is
+therefore the right medicine for the ca-HepPh mode (measured 1.82-2.03x there) and no medicine at all
+for the email mode (measured 1.004x there). Both measurements now have a mechanism.
+
+### HONEST LIMITS OF THE twinFrac STORY (do not overstate this)
+twinFrac (fraction of classified vertices in a class of size >= 2) tracks compression strongly but is
+**NOT monotone in it**: 0.483 -> 4.29x while 0.504 -> 1.62x, and 0.706 -> 6.25x while 0.662 -> 20.64x.
+The reason is that compression = (Sum_P Prod_c C(n_c, b_c)) / #patterns depends on **r as well as on the
+class-size distribution**: com-dblp at fixed structure goes 2.61x (r=3,s=4) -> 3.46x (3,5) -> 20.64x
+(4,6). So twinFrac is a first-order summary, not the law. A real theorem must use the class-size
+DISTRIBUTION and r, e.g. bound #patterns via the twin-quotient size Q over N region vertices. Until
+that exists this is a measured regularity, not a characterization. 17 cells / 6 graphs is also small.
+
+### WHY THIS ANSWERS FABLE'S "W IS CIRCULAR" OBJECTION, PARTLY
+The objection was that W = (our work units)/(CND's work units) predicts the race from the runners'
+step counts. The decomposition weakens that: **compression and twinFrac are properties of the GRAPH,
+independent of our algorithm**, and hostSz_avg is a property of the class-SCT construction. The
+prediction now has a mechanism instead of a correlation. It does NOT fully answer the objection:
+hostSz_avg is still ours, and the win/loss labels still mix time-wins with CND-OOM events.
