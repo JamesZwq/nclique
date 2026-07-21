@@ -7887,7 +7887,11 @@ measured ratio is what rules it out here.
 
 ## 204. SLP step 1 FLIPS ca-AstroPh from a 1.95x LOSS to parity vs CND (2026-07-21)
 scripts/astro_recompare.sh, tods2, same machine. ca-AstroPh, plane r=3..5 s<=8.
-OURS = 1 THREAD, ONE build producing all 12 cells. CND = 96 CORES, 12 independent per-cell builds.
+OURS = 1 THREAD, ONE build producing all 12 cells. CND = MULTI-CORE, 12 independent per-cell builds.
+**CORRECTION (see §205): I originally wrote "96 CORES" here. That was wrong.** Measured CPU% shows CND
+actually uses 5.5-43 cores depending on the cell (3,8)=4320%, (4,6)=1908%, (5,6)=546%; ours is 99% = truly
+1 thread. Also note: grepping for `pragma omp` in the CND path returns ZERO -- its parallelism is not OpenMP
+(TBB or similar), so source-grep is the WRONG way to check this. Use `Percent of CPU` from /usr/bin/time -v.
 
   CND 12-cell sum (96c): **657.17s**, peak **59.9GB**   (r=3 25.59s | r=4 97.85s | r=5 533.73s)
   OURS whole plane (1 thread): BEFORE §201 1283.20s -> **CND was 1.95x FASTER than us**
@@ -7909,3 +7913,35 @@ build covers the whole family in 644.88s at 40.7GB.
 The script measured CND per cell but NOT ours per cell, so I cannot say which individual cells flipped
 (notably (4,6), the historical flagship-loss cell). Only the whole-plane-vs-CND-sum comparison is measured.
 Do not state per-cell claims from this run.
+
+## 205. THREAD NORMALIZATION ANSWERED FROM EXISTING LOGS: we do **10.19x LESS CPU WORK** than CND (2026-07-21)
+The §204 caveat "thread asymmetry unresolved, must re-run" was WRONG -- the answer was already in the logs.
+`/usr/bin/time -v` records User+System time, i.e. TOTAL CPU WORK, which is thread-count independent.
+No re-run needed. ca-AstroPh, plane r=3..5 s<=8, same machine.
+
+| | total CPU-seconds (user+sys) |
+|---|---|
+| CND, 12 per-cell runs | **6,572.03** |
+| OURS, whole plane, 1 thread | **644.83** |
+| | **we do 10.19x LESS CPU work** |
+
+Per-cell CND CPU-seconds: (3,4) 140.4 (3,5) 216.1 (3,6) 227.4 (3,7) 241.0 (3,8) 260.0 | (4,5) 413.5
+(4,6) 450.2 (4,7) 490.0 (4,8) 488.0 | (5,6) 1124.9 (5,7) 1246.6 (5,8) 1274.0.
+Measured CPU%: CND ranges 546%-4320% (5.5 to 43 cores); ours is 99% (genuinely serial).
+
+**REFRAMING: the wall-clock "parity" (657.17s vs 644.88s) was HIDING that CND burned 10x the CPU to reach it.**
+The honest headline is now: our SINGLE-THREADED whole-plane build matches 12 multi-core CND runs in wall-clock
+while using 10.19x less total CPU and 1.47x less memory.
+
+### CAVEATS (must travel with the number)
+1. Parallel overhead (spinning, sync, memory pressure) inflates CND's CPU time somewhat. 10x is far beyond
+   plausible overhead, but the honest phrasing is "less total CPU work", not "10x more efficient algorithm".
+2. The 10.19x BUNDLES two effects: (a) batch sharing, one build vs twelve; (b) per-cell efficiency. This run
+   cannot separate them. Do not attribute it wholly to either.
+3. Still ca-AstroPh only. Must be reproduced on the other graphs before it becomes a paper-wide claim.
+
+### METHOD LESSON (cost me a wrong statement in §204)
+I checked "is CND parallel?" by grepping for `pragma omp` and got ZERO hits, and nearly concluded CND was
+serial. It is not -- it hits 4320% CPU. Its parallelism is not OpenMP. **Never infer runtime parallelism from
+a source grep; read `Percent of CPU` from /usr/bin/time -v.** Conversely our engine has 0 omp pragmas AND 99%
+CPU, so there OMP_NUM_THREADS=1 is a no-op and the serial claim is real.
