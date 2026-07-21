@@ -8008,3 +8008,188 @@ That is a modest, defensible result. It is NOT a headline speedup and must not b
 3. "1.47x leaner memory" -- wrong, inverted; serial CND is 2.15x leaner than us.
 The common cause: I validated numbers less hard when they flattered us. Every future ours-vs-CND number gets
 the serial baseline and a stated memory column before it is reported.
+
+## 208. THE COST ANATOMY: a computable WIN PREDICTOR + two large UNEXPLOITED redundancies; §203's step-2 greenlight was based on an INFLATED number (2026-07-22)
+Zero-code measurement, existing counters only (PIVOTER_PEEL_PROFILE on the fixed-r native path).
+**CAVEAT ON PROVENANCE: run LOCALLY (M-series laptop), not tods2. The COUNTS below (patterns, r-cliques,
+incidences, enumerated-Y, newly-dead-Y) are deterministic and machine-independent, so they are citable.
+The TIMES are local and are NOT paper numbers (EXPERIMENTS.md protocol: same-machine tods2 only).**
+
+### (1) §203's 71-163x IS INFLATED. SLP step 2 should be DE-GREENLIT.
+§203 green-lit the grouped walk on probes/new-witnesses = 71.3x (ca-AstroPh) / 162.9x (web-Google), while
+honestly flagging that `witnessProbes` lumps bounds-rejects (ungroupable) with hash-rejects (groupable) and
+that a splitting counter was required before any claim. **That counter already existed.** The two paths
+increment on opposite sides of the feasibility test:
+  plane   `planeReplayCell`  :668  witnessProbes++  BEFORE the ell/u test   -> DIRTY
+  fixed-r `addDelta`         :3805 ppYEnum++        AFTER  the ell/u test   -> CLEAN
+So `ppYEnum/ppYNewDead` is the pure hash-reject redundancy, and it is ONE ORDER OF MAGNITUDE SMALLER:
+  ca-GrQc  (3,4) 2.59x  (3,5) 4.79x  (3,6) 7.14x  (4,6) 8.08x
+  ca-CondMat (3,5) 4.40x  (4,6) 6.49x | ca-HepPh (3,5) 7.31x | com-dblp (4,6) 8.55x
+  ca-AstroPh (4,6) 9.80x | web-it-2004 (3,4) 2.21x
+Clean redundancy 2.2-9.8x, not 71-163x. Grouping's ceiling is the already-dead share (54.7-89.8%), NOT 99%.
+
+### (2) THE WIN PREDICTOR: W = (Sum_P hostSz(P)) / #r-cliques. It orders win/loss MONOTONICALLY.
+supInit costs one bounded-composition DP per (pattern, leaf) incidence. W is that work divided by the work
+CND does (one unit per r-clique). Measured, sorted by W:
+| graph | (r,s) | patterns | r-cliques | pattern compression | incidences | **W** | known outcome vs CND |
+|---|---|---|---|---|---|---|---|
+| web-it-2004 | 3,4 | 425,135 | 218,921,906 | **515x** | 1,357,098 | **0.0062** | CND INFEASIBLE (>=300GB) |
+| com-dblp | 4,6 | 708,161 | 14,617,859 | 20.6x | 4,734,551 | **0.32** | we win (150.6x at r=5) |
+| ca-CondMat | 3,5 | 76,277 | 123,819 | 1.62x | 261,261 | **2.11** | borderline |
+| ca-AstroPh | 4,6 | 4,271,948 | 9,201,933 | 2.15x | 48,619,297 | **5.28** | 1.65x (thin win) |
+| ca-HepPh | 3,5 | 1,168,941 | 3,312,649 | 2.83x | 47,033,416 | **14.2** | **0.82x -- CND WINS** |
+W < 1 => large win; W ~ 2-5 => thin; W > 10 => loss. This is the quantitative form of the §198 finding
+("the quotient only pays when profiles repeat") and it is COMPUTABLE BEFORE PEELING. On ca-HepPh we perform
+14.2x MORE work units than there are r-cliques in order to exploit a 2.83x pattern compression: that single
+ratio is the whole loss. NOTE: this EXPLAINS the cherry-picking problem, it does not by itself SOLVE it.
+
+### (3) WHICH TERM DOMINATES **FLIPS** BETWEEN CELLS. Do not generalize from one cell (I did; I was wrong).
+| graph | (r,s) | total | supInit | addDelta | MCE |
+|---|---|---|---|---|---|
+| web-it-2004 | 3,4 | 4.61s | 0.30s (6.5%) | 0.07s (1.5%) | **3.76s (81.6%)** |
+| com-dblp | 4,6 | 5.51s | **3.23s (58.6%)** | 1.23s (22.3%) | 0.27s |
+| ca-AstroPh | 4,6 | 128.98s | 34.46s (26.7%) | **79.04s (61.3%)** | 0.20s |
+| ca-HepPh | 3,5 | 121.29s | **83.24s (68.6%)** | 23.95s (19.7%) | 0.16s |
+MY ERROR THIS SESSION: I declared the addDelta direction dead (ceiling 1.20x) from ca-HepPh (3,5) ALONE,
+where addDelta is 19.7% of total. On ca-AstroPh (4,6) it is **61.3% of total** and the ceiling there is
+0.898 x 61.3% = **2.2x**. n=1 generalization. The error direction happened to be against us, but it was
+still an error, and it nearly discarded the larger of the two levers.
+On the WIN side the peel is nearly free and **MCE dominates** (web-it 81.6%), which is the mirror image:
+we win precisely where the peel disappears.
+
+### (4) grouped supInit WAS KILLED BY MEASURING THE WRONG SHARING QUANTITY
+`[supinit-prof §120]` reports sharing keyed on **(leaf, nz-position-set)** and returns 1.0x everywhere
+(HepPh 47,033,416 incidences vs 47,030,221 distinct; dblp 1.0x; AstroPh 1.0x; web-it 1.1x), which is why the
+grouped design was shelved. **That keying is unnecessarily strict.** From `supFast` (:2643): support is
+[x^T] Prod_c f_c(x) with f_c(x) = Sum_{y=max(ell_c,b_c)}^{u_c} C(n_c-b_c, y-b_c) x^y, and the footprint b has
+AT MOST r NONZEROS, so every b_c=0 factor is pattern-independent. Writing F(x) = Prod_c f_c^{(0)}(x) for the
+whole leaf, a pattern with nonzero set S needs only
+    Prod_{c not in S} f_c^{(0)}(x)  =  F(x) / Prod_{c in S} f_c^{(0)}(x)
+i.e. compute F ONCE PER LEAF, then divide out <=r factors and multiply in <=r corrected ones. Cost per
+incidence drops from O(M*T) to O(r*T*deg). **This requires only the LEAF to repeat, not the nz-set.** Leaf
+reuse is large and already measured: incidences/leaf = web-it 3.19, CondMat 3.43, dblp 6.69, AstroPh 11.4,
+**HepPh 40.2**. Expected speedup ~ M/r, with M = classes per leaf (NOT YET MEASURED -- this is the gate).
+RISKS, all real: (a) polynomial deconvolution in double may amplify error (mitigation: divide from the low
+end, where f_c's x^{ell_c} coefficient is a nonzero pivot; note the baseline `sup` is ALREADY double, so the
+bar is "no worse", not "exact"); (b) NOT bit-identical, so the existing bit-exact gates do not apply and a
+tolerance or exact-integer gate must be built first; (c) the whole gain is proportional to M/r and dies if
+leaves are class-poor. MEASURE M FIRST.
+
+### COMBINED CEILING (hypothesis, not a result)
+If both levers land fully: ca-HepPh ~4.7x, ca-AstroPh (4,6) ~4.7x. That would flip ca-HepPh from 0.82x
+(CND wins) to roughly 4x ours. This is the direct test of the user's standing thesis
+(feedback_own_algorithm_not_graft): the compression is proven efficient, so residual slowness is WORK ABOVE
+THE MINIMUM, i.e. an implementation excess, not a design limit. W in (2) says the excess is real and large.
+
+### NEXT (decision-first, cheap-first, in order)
+G1 (~free): probe M = classes-per-leaf distribution. If median M/r < 3, kill the deconvolution idea outright.
+G2 (~1h): prototype the deconvolution supInit on ca-HepPh (3,5) behind a flag; gate on max relative error vs
+the current double DP over all patterns, plus wall-time on supInit only.
+G3: addDelta grouping on ca-AstroPh (4,6), where it is 61.3% of total, NOT on ca-HepPh.
+G4: recompute W on the 7 win-hunt graphs + the loss set to confirm the predictor's threshold; that table is
+publishable on its own as the honest "when does this method apply" characterization.
+
+### §208 G1 RESULT (2026-07-22): GATE **PASSED**, and it passes hardest exactly where we LOSE
+Probe added to `region_native_sct_peel.cpp` (incidence-weighted M/T histogram on the `[supinit-prof]` line).
+Local run, counts are machine-independent.
+| graph | (r,s) | M avg | **M p50** | M p90 | T p50 | r | **M/r p50** | supInit % of total | inc/leaf |
+|---|---|---|---|---|---|---|---|---|---|
+| web-it-2004 | 3,4 | 6.6 | 6 | 8 | 4 | 3 | 2.0x | 6.5% | 3.19 |
+| ca-CondMat | 3,5 | 8.8 | 8 | 14 | 5 | 3 | 2.7x | 27.3% | 3.43 |
+| ca-AstroPh | 4,6 | 24.8 | 24 | 37 | 6 | 4 | 6.0x | 26.7% | 11.4 |
+| com-dblp | 4,6 | 28.5 | 29 | 44 | 6 | 4 | 7.2x | 58.6% | 6.69 |
+| **ca-HepPh** | **3,5** | **122.0** | **139** | **170** | 5 | 3 | **46.3x** | **68.6%** | **40.2** |
+Gate was "median M/r < 3 => kill". ca-HepPh 46.3x, com-dblp 7.2x, ca-AstroPh 6.0x: PASS.
+**M moves WITH W.** The graph we lose on (ca-HepPh, W=14.2, 0.82x vs CND) simultaneously has the largest M,
+the highest leaf reuse, and the largest supInit share. The deconvolution's payoff is largest exactly where
+the method currently fails, which is the shape required to attack the cherry-picking problem.
+
+### THE GAIN IS NOT M/r -- F(x) MUST BE AMORTIZED, AND ON 2 OF 5 CELLS IT IS A **LOSS**
+Per-incidence cost becomes 2r*T*deg (divide out <=r, multiply in <=r) plus the once-per-leaf M*T*deg for
+F(x) spread over incPerLeaf incidences, so
+    speedup ~ M / (2r + M/incPerLeaf)
+  ca-HepPh 122/(6+3.03)=**13.5x** | ca-AstroPh 24.8/(8+2.18)=2.4x | com-dblp 28.5/(8+4.26)=2.3x
+  ca-CondMat 8.8/(6+2.57)=1.03x (nothing) | **web-it-2004 6.6/(6+2.07)=0.82x (SLOWER)**
+=> the optimization MUST be per-leaf self-gated on M/(2r + M/incPerLeaf) > 1. Every input to that test is
+known before entering the leaf, so the gate is O(1) and cannot itself cost anything.
+
+### PROJECTED TOTALS (PROJECTION FROM OP COUNTS, **NOT A MEASUREMENT** -- do not cite as a result)
+  ca-HepPh (3,5): supInit 68.6% / 13.5x  => **2.74x total**, i.e. 0.82x (CND wins) -> **~2.2x ours**
+  com-dblp (4,6): supInit 58.6% / 2.3x   => 1.49x total
+  ca-AstroPh (4,6): supInit 26.7% / 2.4x => 1.18x; with G3 (addDelta 61.3%, redundancy 9.8x) ~2.6x total
+Constant factors (memory traffic, the deconvolution inner loop) are NOT in this model and can eat it.
+STILL OPEN AND UNMEASURED: deconvolution error in double; the change is NOT bit-identical, so a tolerance
+or exact-integer gate must exist BEFORE G2 is believed.
+
+### §208 G2 RESULT (2026-07-22): deconvolution supInit SHIPS A MEASURED 1.71x, BIT-IDENTICAL -- and ca-HepPh FLIPS
+Implemented in region_native_sct_peel.cpp: `supDeconv` + SCT_DECONV / SCT_DECONV_MINM (default 4r, per-leaf
+self-gate) / SCT_DECONV_VERIFY. Local runs; TIMES are local, COUNTS and the bit-exactness are not.
+
+| ca-HepPh (3,5) | baseline | deconv | ratio |
+|---|---|---|---|
+| **total** | **125.43s** | **73.42s** | **1.71x** |
+| peel | 113.66s | 61.42s | 1.85x |
+| **supInit** | **86.4s (76% of peel)** | **34.4s (56%)** | **2.51x** |
+| addDelta | 26.1s | 25.2s | 1.0x (untouched) |
+| peak RSS | 11.47GB | 13.07GB | **+14% WORSE** |
+| ca-AstroPh (4,6) | 169.34s | 157.89s | 1.07x (supInit only 26% there) |
+
+CORRECTNESS: core distributions **BIT-IDENTICAL** on both graphs (171 / 64 lines) and on 5 small-graph cells.
+A/B verify compared **88,951,957** incidences across the two big graphs with **MAX-REL-ERR = 0.000e+00**, plus
+709,185 on the small cells, also exactly 0. Not "small error": EXACT. Reason: T is 4-6, so every intermediate
+stays under 2^53 and double represents it exactly. **The existing bit-exact gates therefore still apply** -- no
+tolerance gate and no big-integer fallback needed. CAVEAT: this is a property of small T. Any production use
+must gate on T, because the argument fails once intermediates exceed 2^53.
+
+### WHY 2.51x AND NOT THE PROJECTED 13.5x -- MY COST MODEL WAS WRONG, AND THE PROTOTYPE IS THE REASON
+The model assumed per-incidence cost falls to O(r*T*deg). It does not, because the prototype still makes
+**THREE O(M) SCANS per incidence**: the bounds guard (`for c<M: sumL+=Lc, sumU+=Uc`), the divide scan
+(`for c<M: if(!b[c]) continue`), and the multiply scan. With T=5 the DP work per class is tiny, so plain
+O(M) scanning is the same order as the O(M*T*deg) DP it replaced. I removed the DP and left the scan.
+=> **2.51x is a LOWER BOUND on this idea, not its ceiling.**
+G2b (clear, not blocked): `localB` (:2338) already identifies the <=r nonzero positions inside its merge walk
+(the `i` it writes to), so emitting that index list costs nothing; Sum ell_c and Sum u_c are per-leaf constants
+needing only <=r corrections. That makes supDeconv genuinely O(r*T*deg).
+
+### THE HEADLINE, WITH ITS CAVEAT
+ca-HepPh was the one graph where CND BEAT us (0.82x, EXPERIMENTS.md RQ1). 0.82 x 1.71 = **1.40x**, i.e. this
+cell flips from a loss to a win, bit-identically, with the addDelta lever (G3) not yet applied.
+**CAVEAT THAT MUST TRAVEL WITH THIS:** the 0.82x was measured on tods2 and the 1.71x locally. Multiplying
+across machines is NOT a valid same-machine claim. A serial same-machine CND run on ca-HepPh (3,5) is required
+before the flip is stated anywhere. Until then this is "the loss term shrank by 1.71x", not "we now win".
+UNEXPLAINED AND MUST NOT BE IGNORED: peak RSS rose 11.47 -> 13.07GB (+14%). The siF cache is under 1MB
+(11,508 leaves x (T+1) doubles), so it does NOT account for 1.6GB. On a method already 2.15x fatter than CND
+(§207) a 14% memory regression is not acceptable as-is. FIND THE CAUSE BEFORE G2b.
+
+### §208 MEMORY INVESTIGATION (2026-07-22): the "+14% regression" was an ARTIFACT. The real hog is leafFlat at 87.5%.
+I reported "+14% peak RSS, cause unexplained". That was wrong on both counts and the user was right to reject it.
+
+RETRACTION -- there is no deconvolution memory regression:
+  (a) `[mem-bd]` is byte-identical between baseline and deconv: deadY=410MB(26,565,637 ent), pats=150MB,
+      comp=37MB, leafPats=269MB(47,033,416 inc), leafFlat=16,395MB, slotPaths=2MB.
+  (b) DECISIVE BISECT: `siF.assign` is at :2688 but the `after-maps` checkpoint is at :2494, so up to that
+      checkpoint BOTH RUNS EXECUTE IDENTICAL CODE (deconvOn is not read until :2686) -- and RSS there still
+      differs 9.43G vs 11.26G. A 1.83GB gap on identical code means RSS is measuring page residency, not
+      allocation.
+  (c) The allocator high-water mark (`peak memory footprint`) differs by only 18.73 -> 19.02GB = **1.5%**,
+      and the BASELINE alone varies ~1GB run to run (10.38 vs 11.47GB max-RSS across two runs).
+=> On macOS use `peak memory footprint`, NOT `maximum resident set size`, for allocation claims. Add this to
+the method warnings: max-RSS here is noisier than the effect it was being used to detect.
+
+### THE ACTUAL MEMORY PROBLEM, FOUND BY THIS INVESTIGATION
+  leafFlat = 16,395MB = **87.5% of the 18.7GB footprint**. Everything else together is under 900MB.
+leafFlat (the L3 CSR, :2213) stores, for EVERY (pattern,leaf) incidence, a DENSE M-long int16 footprint at
+stride t*Mloc. On ca-HepPh: 47,033,416 incidences x M=122 x 2B = 11.5GB of payload (capacity brings it to
+16.4GB). **But a footprint has AT MOST r NONZEROS.** We spend 122 int16 to represent 3 values.
+  dense  M x int16                : 16.4 GB
+  sparse <=r (idx,val) int16 pairs: 47,033,416 x 3 x 4B = **0.56 GB**   => ~29x, total 18.7GB -> ~2.9GB
+That is a far larger prize than G2's 1.71x, and it is the metric that actually binds: tods2 is old and
+memory-tight, and §207 has us 2.15x FATTER than serial CND. This would invert that.
+
+### IT IS THE SAME CHANGE AS G2b
+Sparsifying the footprint simultaneously (i) cuts leafFlat ~29x, (ii) deletes supDeconv's three O(M) scans
+(it wants the nonzero list anyway -- see the G2 post-mortem above), and (iii) drops `hashSpan`/`spanEq`/
+`leafFP` from O(M) to O(r) per call. One representation change, three payoffs.
+COST: the `t*Mloc` stride arithmetic has several consumers that must all be converted. Mechanical, not small.
+NEXT: G2b/G5 merged = sparse footprint representation. Do NOT start before the Fable review lands, since a
+verdict that the whole direction should be reframed would reprioritize this work.

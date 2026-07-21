@@ -2671,11 +2671,92 @@ int main(int argc, char **argv) {
         }
         return siDP[(size_t)p.T];
     };
+    // ===== §208 G2: DECONVOLUTION SUPPORT-INIT (SCT_DECONV=1) =====
+    // supFast costs O(M*T*deg) per (pattern,leaf) incidence. But the footprint b has AT MOST r
+    // nonzeros, so every b_c=0 factor  f_c^(0)(x) = sum_{y=ell_c}^{u_c} C(n_c,y) x^y  is
+    // PATTERN-INDEPENDENT. Cache F(x) = prod_c f_c^(0)(x), truncated at T, ONCE per (leaf,path);
+    // then per pattern divide out the <=r touched factors and multiply the corrected ones back:
+    // O(r*T*deg). The §120 probe reported 1.0x sharing only because it keyed on (leaf, nz-POSITION-
+    // SET); this formulation needs only the LEAF to repeat, and leaf reuse is 3.2-40.2x (§208 G1).
+    // TRUNCATION IS SAFE: the answer needs the quotient only up to degree T - dS with
+    // dS = sum_{c in S} max(ell_c,b_c), and the divisor's min degree eS = sum_{c in S} ell_c <= dS,
+    // so coefficients 0..T-eS -- all recoverable from F truncated at T -- always suffice.
+    const bool deconvOn     = getenv("SCT_DECONV") != nullptr;
+    const bool deconvVerify = getenv("SCT_DECONV_VERIFY") != nullptr;
+    const int  deconvMinM   = getenv("SCT_DECONV_MINM") ? atoi(getenv("SCT_DECONV_MINM")) : 4 * r;
+    vector<vector<vector<double>>> siF;        // siF[lid][pk] = F coeffs [0..T]; empty => not built
+    if (deconvOn) siF.assign(nLeaf, {});
+    vector<double> dcQ, dcOut;                 // hoisted scratch (no allocation in the hot path)
+    long long dcUsed = 0, dcSkipped = 0, dcCmp = 0, dcFbuilt = 0; double dcMaxRel = 0.0;
+    auto supDeconv = [&](int lid, int pk, const CCPath &p, const Vec &b) -> double {
+        const int M = p.m(), T = p.T;
+        int sumL = 0, sumU = 0;                                  // guards identical to supFast
+        for (int c = 0; c < M; ++c) {
+            const int bc = (int)b[c];
+            if (bc < 0 || bc > (int)p.n[c]) return 0.0;
+            int Lc = (int)p.ell[c]; if (bc > Lc) Lc = bc;
+            const int Uc = (int)p.u[c];
+            if (Lc > Uc) return 0.0;
+            sumL += Lc; sumU += Uc;
+        }
+        if (sumL > T || sumU < T) return 0.0;
+        auto &paths = siF[lid];
+        if ((int)paths.size() <= pk) paths.resize((size_t)pk + 1);
+        vector<double> &F = paths[(size_t)pk];
+        if (F.empty()) {                                         // build F once per (leaf,path)
+            dcFbuilt++;
+            F.assign((size_t)T + 1, 0.0); F[0] = 1.0;
+            for (int c = 0; c < M; ++c) {
+                dcOut.assign((size_t)T + 1, 0.0);
+                const int lc = (int)p.ell[c], uc = (int)p.u[c], nc = (int)p.n[c];
+                for (int k = 0; k <= T; ++k) { const double w = F[(size_t)k]; if (w == 0.0) continue;
+                    for (int y = lc; y <= uc && k + y <= T; ++y)
+                        dcOut[(size_t)(k + y)] += w * ccpath_ncr(nc, y); }
+                F.swap(dcOut);
+            }
+        }
+        dcQ.assign(F.begin(), F.end());
+        for (int c = 0; c < M; ++c) {                            // divide out the <=r touched factors
+            if (!b[c]) continue;
+            const int lc = (int)p.ell[c], uc = (int)p.u[c], nc = (int)p.n[c];
+            const double piv = ccpath_ncr(nc, lc);
+            if (piv == 0.0) return 0.0;
+            dcOut.assign((size_t)T + 1, 0.0);                    // low-end forward substitution:
+            for (int d = 0; d + lc <= T; ++d) {                  // pivot is f's x^{ell_c} coefficient
+                double acc = dcQ[(size_t)(d + lc)];
+                for (int j = lc + 1; j <= uc && j - lc <= d; ++j)
+                    acc -= ccpath_ncr(nc, j) * dcOut[(size_t)(d - (j - lc))];
+                dcOut[(size_t)d] = acc / piv;
+            }
+            dcQ.swap(dcOut);
+        }
+        for (int c = 0; c < M; ++c) {                            // multiply the corrected ones back
+            const int bc = (int)b[c]; if (!bc) continue;
+            const int uc = (int)p.u[c], nc = (int)p.n[c];
+            int Lc = (int)p.ell[c]; if (bc > Lc) Lc = bc;
+            dcOut.assign((size_t)T + 1, 0.0);
+            for (int k = 0; k <= T; ++k) { const double w = dcQ[(size_t)k]; if (w == 0.0) continue;
+                for (int y = Lc; y <= uc && k + y <= T; ++y)
+                    dcOut[(size_t)(k + y)] += w * ccpath_ncr(nc - bc, y - bc); }
+            dcQ.swap(dcOut);
+        }
+        return dcQ[(size_t)T];
+    };
     // §120 probe (under PIVOTER_PEEL_PROFILE): class-set sharing ratio. The grouped supInit
     // design computes the zero-classes product ONCE per distinct (leaf, nz-position-set) and
     // applies each footprint's <=r nonzero factors on top; its win = incidences / distinct sets.
     bool siProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr;
     std::unordered_set<uint64_t> siSets; long long siInc = 0;
+    // §208 G1 probe: the deconvolution supInit replaces the per-incidence O(M*T) DP by O(r*T*deg),
+    // so its ceiling is M/r. Record the INCIDENCE-WEIGHTED distribution of M (classes per leaf) and
+    // T (target), since a leaf touched many times matters proportionally more than a rare one.
+    std::vector<long long> siMhist, siThist; long long siPathInc = 0;
+    auto siRec = [&](int Mv, int Tv) {
+        if (Mv < 0 || Mv > 1000000 || Tv < 0 || Tv > 1000000) return;
+        if ((int)siMhist.size() <= Mv) siMhist.resize(Mv + 1, 0);
+        if ((int)siThist.size() <= Tv) siThist.resize(Tv + 1, 0);
+        siMhist[Mv]++; siThist[Tv]++; siPathInc++;
+    };
     auto sctSupportFast = [&](int pi) -> double {
         double tot = 0.0;
         const auto &ls = leavesOf(pi);
@@ -2686,9 +2767,23 @@ int main(int argc, char **argv) {
                 uint64_t h = 1469598103934665603ULL ^ (uint64_t)ls[k] * 0x9E3779B97F4A7C15ULL;
                 for (size_t c = 0; c < b.size(); c++) if (b[c]) { h ^= c + 1; h *= 1099511628211ULL; }
                 siSets.insert(h); siInc++;
+                for (auto &pp : slotPaths[ls[k]]) siRec(pp.m(), pp.T);
             }
-            for (auto &p : slotPaths[ls[k]])
-                tot += p.forbidden.empty() ? supFast(p, b) : ccpath::support_count(p, b, ccpath_ncr);
+            int pk = 0;
+            for (auto &p : slotPaths[ls[k]]) {
+                double v;
+                if (!p.forbidden.empty()) v = ccpath::support_count(p, b, ccpath_ncr);
+                else if (deconvOn && p.m() >= deconvMinM) {      // §208 G2: self-gate on M
+                    v = supDeconv(ls[k], pk, p, b); dcUsed++;
+                    if (deconvVerify) {                          // A/B against the production DP
+                        const double ref = supFast(p, b); dcCmp++;
+                        const double d = v > ref ? v - ref : ref - v;
+                        const double den = (ref > 1.0 ? ref : (ref < -1.0 ? -ref : 1.0));
+                        if (d / den > dcMaxRel) dcMaxRel = d / den;
+                    }
+                } else { v = supFast(p, b); dcSkipped++; }
+                tot += v; pk++;
+            }
         }
         return tot;
     };
@@ -2725,6 +2820,26 @@ int main(int argc, char **argv) {
     double tSupInit = secs(TsupA, Clock::now());       // §120: support-init cost (inside the T5..T6 "peel" window)
     if (siProf) fprintf(stderr, "[supinit-prof §120] incidences=%lld distinct(leaf,nzset)=%zu -> sharing ratio=%.1fx\n",
             siInc, siSets.size(), siSets.empty() ? 0.0 : (double)siInc / siSets.size());
+    if (deconvOn)
+        fprintf(stderr, "[deconv §208 G2] incidences: deconv=%lld fallback=%lld (minM=%d) | F built=%lld"
+                        " | verify: compared=%lld MAX-REL-ERR=%.3e%s\n",
+                dcUsed, dcSkipped, deconvMinM, dcFbuilt, dcCmp, dcMaxRel,
+                deconvVerify ? "" : "  (SCT_DECONV_VERIFY unset -- no comparison run)");
+    if (siProf && siPathInc > 0) {                       // §208 G1: incidence-weighted M and T
+        auto pct = [&](const std::vector<long long> &h, double q) {
+            long long want = (long long)(q * (double)siPathInc), acc = 0;
+            for (size_t v = 0; v < h.size(); v++) { acc += h[v]; if (acc >= want) return (int)v; }
+            return (int)(h.size() ? h.size() - 1 : 0);
+        };
+        double mAvg = 0; for (size_t v = 0; v < siMhist.size(); v++) mAvg += (double)v * (double)siMhist[v];
+        mAvg /= (double)siPathInc;
+        int mMax = (int)siMhist.size() - 1; while (mMax > 0 && !siMhist[mMax]) mMax--;
+        fprintf(stderr, "[supinit-prof §208 G1] path-incidences=%lld | M(classes/leaf) avg=%.1f p50=%d p90=%d p99=%d max=%d"
+                        " | T p50=%d p90=%d max=%d | r=%d -> DECONV CEILING M/r: avg=%.1fx p50=%.1fx\n",
+                siPathInc, mAvg, pct(siMhist,0.5), pct(siMhist,0.9), pct(siMhist,0.99), mMax,
+                pct(siThist,0.5), pct(siThist,0.9), (int)siThist.size() - 1,
+                r, mAvg / (double)r, (double)pct(siMhist,0.5) / (double)r);
+    }
 
     // §128 FLOOR-GAP PROBE (SCT_FLOORGAP): the decisive measurement for the KK-sandwich / FPS spectrum
     // idea. For each pattern P compute the CLIQUE lower bound f(P) = C(c(P)-r, s-r), c(P) = size of the
