@@ -7699,3 +7699,45 @@ Scripts committed: scripts/verify_gadget.py, scripts/verify_t3plus.py.
       claiming T3+ shrinks real residue.
 
 STATUS: both claims survive adversarial checking. Decision gate unchanged: run F1 before building SLP.
+
+## 200. F1 DECISION EXPERIMENT: SLP GATE **PASSED** -- 84% of plane time is certified-replay waste (2026-07-21)
+Instrumented planeReplayCell (F1_PROFILE, committed eed122e) to split per-death witness-enumeration time into
+SCHED (certified pattern replayed because it shares a leaf with a residue pattern) vs RESIDUE (genuine residue
+death). tods2, OMP=1, plane r=3..5 s<=8. Script scripts/f1_profile.sh -> /data/wenqianz/f1_profile.out.
+GATE (set by Fable in advance, not relaxed after the fact): if SCHED share < ~25% everywhere, SLP caps at 25%
+=> build nothing, keep T3+ only.
+
+| graph | cellSec | enumSec | SCHED s | RESIDUE s | SCHED %enum | **SCHED %cell** | #sched | #res |
+|---|---|---|---|---|---|---|---|---|
+| web-Google  | 332.62 | 265.54 | 110.71 | 154.83 | 41.7% | **33.3%** | 934,735 | 6,454,987 |
+| ca-AstroPh  | 928.89 | 888.33 | **782.91** | 105.42 | 88.1% | **84.3%** | 2,345,123 | 935,219 |
+
+**BOTH PASS. ca-AstroPh passes by 3.4x the threshold.**
+Worst single cell, ca-AstroPh (3,8): cellSec 597.88, of which **534.70s (89.4%) is certified replay** --
+101,022 certified patterns re-enumerated to serve only **3,373** residue patterns (30 replays per residue).
+ca-AstroPh (3,5)/(3,6)/(3,7) are all 89-92% SCHED. web-Google is milder but consistently 43-68% of enum.
+Note (3,4) rows are 0% SCHED by construction: the boundary cell has no certified patterns yet.
+
+UPPER BOUNDS if certified replay were fully eliminated (NOT achievable; mode 2 reduces, does not remove):
+  ca-AstroPh 928.9s -> 146.0s = **6.36x**;  web-Google 332.6s -> 221.9s = **1.50x**.
+
+WHY THIS MATTERS BEYOND THE NUMBER: ca-AstroPh is our KNOWN FLAGSHIP LOSS graph (see
+project_nsi_direction / project_cnd_comparison: ca-AstroPh 4,6 was the 60x-loss cell, and CND still wins on
+dense collaboration). The measurement says the loss there is NOT the peel and NOT the quotient -- it is 84%
+pure re-enumeration of work we already proved we do not need. That is an implementation-shaped hole, not a
+structural one, which is exactly the kind that CAN be closed.
+CONTRAST with email-Eu-core (§198): there the wall is the BOUNDARY-cell residue peel + quotient failure
+(18 verts -> 18 classes), which SLP does NOT address. So SLP is predicted to help ca-AstroPh/web-Google-class
+graphs and NOT email-class graphs. Fable predicted exactly this ordering in advance.
+
+METHOD NOTE (a near-miss worth remembering): the FIRST F1 run silently produced nothing. Server `git pull`
+aborted on a dirty tree, so it rebuilt from OLD source with no F1_PROFILE at all -- yet build_exit=0, both
+graphs ran to completion, exit=0, wall-clock looked normal. "Ran without error" did NOT mean "measured
+anything". Before the re-run I gated on three preconditions (HEAD hash, grep F1_PROFILE in source, build exit).
+Also verified the server tree was byte-identical to origin/main apart from my F1 block BEFORE reset --hard,
+so nothing server-side was lost. Second gotcha: server awk rejects ternaries inside printf args; aggregation
+moved off-server to Python.
+
+NEXT: build SLP (skeleton factorization + ledger mode 2, the provably-never-worse variant) and gate it on
+bit-exactness vs the current plane on ca-CondMat + ca-AstroPh. F2 (T3+ real-data firing rate) still pending
+and still free.
