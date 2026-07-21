@@ -7945,3 +7945,30 @@ I checked "is CND parallel?" by grepping for `pragma omp` and got ZERO hits, and
 serial. It is not -- it hits 4320% CPU. Its parallelism is not OpenMP. **Never infer runtime parallelism from
 a source grep; read `Percent of CPU` from /usr/bin/time -v.** Conversely our engine has 0 omp pragmas AND 99%
 CPU, so there OMP_NUM_THREADS=1 is a no-op and the serial claim is real.
+
+## 206. **§205's 10.19x IS RETRACTED.** CPU-time proxy measured CND's PARALLEL OVERHEAD, not its work (2026-07-21)
+User pushed back on §205: "用 CPU time 推单线程肯定不准，要真跑单线程". CORRECT. Single-cell proof, ca-AstroPh (4,6):
+
+| run | CPU% | user time | **wall** |
+|---|---|---|---|
+| CND default (parallel) | 1908% | **424.03s** | **23.58s** |
+| CND `OMP_NUM_THREADS=1` | 99% | **22.61s** | **24.07s** |
+
+The parallel run burns **424 CPU-seconds to reach the same wall time** that 1 thread reaches with **22.61**.
+The 18.8x user-time gap is almost entirely SPIN/CONTENTION, not work. So §205's "we do 10.19x less CPU work"
+measured CND's parallel tax and is **RETRACTED**. Do not cite it.
+
+ALSO ESTABLISHED: **`OMP_NUM_THREADS=1` DOES control CND** (CPU% drops 1908%->99%), despite `pragma omp`
+returning zero hits in the CND path files I grepped. The global `-fopenmp` in CMakeLists is what matters.
+
+PER-CELL PARALLEL BENEFIT VARIES ENORMOUSLY, which is why the full sweep is required and why no single cell
+generalizes: (4,6) 1908% CPU but parallel gains NOTHING (23.58 vs 24.07 wall); (3,8) 4320% CPU / 6.01s wall /
+258.25s user, so there parallelism plausibly gives a large real speedup. Running all 12 cells at 1 thread now
+(scripts/, /data/wenqianz/cnd_1thread.out) to get the honest thread-matched ratio against our 644.88s.
+
+### METHOD LESSON (the important one)
+**Never substitute user+sys CPU time for an actual single-threaded run.** A parallel program's CPU time is
+work PLUS overhead, and the overhead can dominate (here 95% of it). The only sound thread-normalization is to
+pin the baseline to one thread and compare wall to wall. I reached for the cheap proxy because the data was
+already in the logs; cheap and already-collected is not the same as valid. This is the second time this
+session that "the number was already sitting there" led me somewhere wrong.
