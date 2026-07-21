@@ -7858,3 +7858,29 @@ per-cell peel cheaper, not batched anything. Everything below follows from takin
    and confirmed only my own 8 instrumentation lines differed, so nothing server-side was lost.
 5. **codex-rescue detaches to an unretrievable background task.** Verdicts do not come back. Verify
    subtle math myself (both Proposition I and T3+ were verified by my own brute force, not by codex).
+
+## 203. STEP 2 HEADROOM: witness enumeration is **71-163x redundant** -> grouped walk GREEN-LIT (2026-07-21)
+Zero-code measurement (PIVOTER_PEEL_PROFILE on the existing binary). scripts/step2_headroom.sh.
+MECHANISM FIRST: `deadWitness[lid].insert(y).second` is a per-leaf hash set of already-dead witnesses, so the
+current code is ALREADY CORRECT (no double-crediting). The waste is purely that we recurse all the way to a
+complete composition before the hash rejects it. Step 2's ceiling is therefore probes/new-witnesses.
+
+| graph | total probes | new witnesses | **redundancy** | credits |
+|---|---|---|---|---|
+| ca-AstroPh | 2,496,349,696 | 35,022,458 | **71.3x** | 109,829,936 |
+| web-Google | 5,201,510,352 | 31,928,542 | **162.9x** | 398,546,371 |
+
+Grows with tail = s-r: web-Google tail=1 19.7x -> tail=5 **352.6x**; ca-AstroPh tail=1 53.7x -> tail=5 77.3x.
+
+**HONEST CAVEAT (do not drop this when citing):** witnessProbes counts every complete composition reached.
+Rejections split between (a) the ell/u bounds test, which grouping CANNOT remove, and (b) the deadWitness hash,
+which it can. This run CANNOT separate them, so 71x/163x is an UPPER BOUND on step 2's gain, not the achievable
+number. TODO before claiming any step-2 speedup: add a counter splitting bounds-reject from hash-reject.
+Theory says the hash share is the dominant term: an s-clique witness has C(s,r) r-faces (56 for r=3,s=8), so a
+witness can be reached up to C(s,r) times -- which matches the observed 53-77x at r=3 and the growth with tail.
+
+WHY GROUPED WALK CAN WIN (the cost model Fable left as a GAP): per-face enumeration costs
+Sum_{P in D} |supersets(P)| <= C(s,r) x |witnesses|; a grouped walk enumerates each valid composition ONCE and
+tests membership, costing ~|valid compositions| + test. So the ceiling is exactly the C(s,r) factor measured
+above. If instead most compositions contained NO dead face, grouping would LOSE -- that is the risk, and the
+measured ratio is what rules it out here.
