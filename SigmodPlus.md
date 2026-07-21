@@ -7741,3 +7741,41 @@ moved off-server to Python.
 NEXT: build SLP (skeleton factorization + ledger mode 2, the provably-never-worse variant) and gate it on
 bit-exactness vs the current plane on ca-CondMat + ca-AstroPh. F2 (T3+ real-data firing rate) still pending
 and still free.
+
+## 201. SLP STEP 1 MEASURED: ca-AstroPh 2.01x BIT-EXACT; web-Google 1.00x; **T3+ FAILS ITS OWN GATE** (2026-07-21)
+Implemented SLP step 1 (liveResidueLeaf skip, commit 0c7f65b) + F2 instrumentation. tods2, OMP=1, plane
+r=3..5 s<=8, baseline = HEAD~1 binary, same machine/flags. Script scripts/slp_measure.sh.
+
+### RESULT A -- SLP step 1 speedup (SLP run carried F1+F2 profiling overhead, so this UNDERSTATES it)
+| graph | baseline | SLP step1 | speedup | bit-exact |
+|---|---|---|---|---|
+| ca-AstroPh | 1283.20s (21:23) | **638.21s (10:38)** | **2.01x** | **PASS (1040 lines)** |
+| web-Google | 634.42s (10:34)  | 633.47s (10:33)     | **1.00x (nothing)** | PASS (574 lines) |
+
+Per-cell on ca-AstroPh: (3,8) 597.9->159.6s = **3.75x**; (3,7) 155.6->40.9 = 3.8x; (3,6) 34.8->9.0 = 3.9x;
+(3,5) 7.1->2.0 = 3.6x; (4,8) 52.3->19.9 = 2.6x. Leaf visits skipped: 6.5M-32M per cell.
+SCHED share at ca-AstroPh (3,8) fell 89.4% -> 62.5% of cell, so step 2 still has headroom there.
+
+WHY web-Google GOT NOTHING (mechanism, matches the skip counts): the skip fires only once a leaf's residue is
+ALL dead. ca-AstroPh residue is tiny (3,373-4,078 vs 845,398 certified at r=3) so leaves empty out fast and
+skipping is massive. web-Google residue is large and spread (32,913-50,467 at r=3; 6.1M at the boundary cell),
+so leaves stay populated and almost nothing is skippable (cell time moved only ~2.5%, 332.6->324.3s).
+=> step 1 helps the FEW-RESIDUE regime only. web-Google needs the real grouped walk (step 2), which dedups
+witnesses ACROSS certified deaths rather than skipping empty leaves.
+
+### RESULT B -- T3+ **FAILS** the F2 gate. It is NOT a contribution.
+Gate (set in advance): <5% of uncertified => downgrade T3+ to a remark.
+  ca-AstroPh  T3plus-would-add per cell: 0, 36, 109, 24, 0, 0, 0, 0, 0  -> max **2.96%**, median 0%
+  web-Google  T3plus-would-add per cell: 0, 10, 23, 242, 0, 0, 0, 0, 0  -> max **0.74%**, median 0%
+T3+ is mathematically sound and strictly stronger than T3 (verified §199 addendum, 12,200 combos, 0 unsound),
+but on real data the chain certificate is ALREADY at ~99.6% (845,398 certified vs 3,373 uncertified on
+ca-AstroPh r=3), and the surviving residue is uncertified for structural reasons T3+ does not touch.
+**VERDICT: do NOT put T3+ in the paper as a contribution. At most one remark. Fable's headline "new theorem"
+does not survive contact with data.** This is exactly what F2 was built to catch, and it caught it.
+
+### HONEST STANDING
+Real, verified: a 2.01x bit-exact speedup on ca-AstroPh, our known FLAGSHIP LOSS graph, obtained by deleting
+provably-useless work. Narrow: it is regime-dependent (few-residue), zero on web-Google, and §198 says it
+cannot help email-class graphs at all. The one-pass ambition remains unrealised; what exists is a real but
+bounded implementation win plus a scoped impossibility result (Proposition I, verified).
+NEXT: step 2 grouped walk (the only thing that can move web-Google, and more headroom on ca-AstroPh).
