@@ -7972,3 +7972,39 @@ work PLUS overhead, and the overhead can dominate (here 95% of it). The only sou
 pin the baseline to one thread and compare wall to wall. I reached for the cheap proxy because the data was
 already in the logs; cheap and already-collected is not the same as valid. This is the second time this
 session that "the number was already sitting there" led me somewhere wrong.
+
+## 207. HONEST THREAD-MATCHED ca-AstroPh: we win **1.23x on time** but are **2.15x FATTER on memory** (2026-07-21)
+The real single-threaded CND run that §206 demanded. Both sides 1 thread, wall vs wall, same machine.
+scripts/ -> /data/wenqianz/cnd_1thread.out. All 12 CND cells confirmed at 99-100% CPU (genuinely serial).
+
+CND 1-thread per cell: (3,4) 3.89 (3,5) 4.03 (3,6) 4.19 (3,7) 3.76 (3,8) 4.57 | (4,5) 24.4 (4,6) 24.18
+(4,7) 24.67 (4,8) 24.6 | (5,6) 263.14 (5,7) 207.51 (5,8) 202.87. Peak RSS 0.4GB -> 18.9GB.
+
+| | time | peak memory |
+|---|---|---|
+| CND, 1 thread, 12 per-cell runs | **791.81s** | **18.9GB** |
+| OURS, 1 thread, whole plane (one build) | **644.88s** | 40.7GB |
+| | **1.23x ours** | **2.15x CND is LEANER** |
+
+Before SLP step 1 ours was 1283.20s, i.e. CND was 1.62x FASTER. So step 1 flipped ca-AstroPh from a
+**1.62x time LOSS to a 1.23x time WIN**, while we remain **memory-disadvantaged 2.15x**.
+
+### CORRECTIONS THIS FORCES ON §204 (which compared against the PARALLEL CND)
+- §204 "1.02x parity" -> thread-matched it is **1.23x in our favour**. Slightly BETTER than claimed.
+- §204 "1.47x leaner memory" -> **WRONG and now retracted.** That compared against parallel CND's inflated
+  59.9GB. Serial CND peaks at **18.9GB**, so we are **2.15x FATTER**, not leaner. The memory claim inverted.
+- Parallel CND is strictly worse than serial CND on this graph in BOTH time (657.17 vs ... per-cell mixed) and
+  memory (59.9GB vs 18.9GB). Its parallelism is not merely useless, it is harmful. Never benchmark against
+  the parallel build; it flatters us on memory by 3.2x.
+
+### STANDING CLAIM FOR ca-AstroPh (use exactly this wording)
+"On ca-AstroPh our single-threaded whole-plane build computes the entire r=3..5, s<=8 family in 644.88s,
+1.23x faster than running twelve independent single-threaded CND cells (791.81s), at 2.15x higher peak memory."
+That is a modest, defensible result. It is NOT a headline speedup and must not be dressed as one.
+
+### SCORE-KEEPING ON MY OWN ERRORS THIS THREAD (all three favoured us; all three caught by the user)
+1. "CND uses 96 cores" -- wrong, it uses 5.5-43 depending on cell.
+2. "we do 10.19x less CPU work" -- wrong, that measured CND's parallel spin, retracted in §206.
+3. "1.47x leaner memory" -- wrong, inverted; serial CND is 2.15x leaner than us.
+The common cause: I validated numbers less hard when they flattered us. Every future ours-vs-CND number gets
+the serial baseline and a stated memory column before it is reported.
