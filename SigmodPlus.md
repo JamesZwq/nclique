@@ -7884,3 +7884,28 @@ Sum_{P in D} |supersets(P)| <= C(s,r) x |witnesses|; a grouped walk enumerates e
 tests membership, costing ~|valid compositions| + test. So the ceiling is exactly the C(s,r) factor measured
 above. If instead most compositions contained NO dead face, grouping would LOSE -- that is the risk, and the
 measured ratio is what rules it out here.
+
+## 204. SLP step 1 FLIPS ca-AstroPh from a 1.95x LOSS to parity vs CND (2026-07-21)
+scripts/astro_recompare.sh, tods2, same machine. ca-AstroPh, plane r=3..5 s<=8.
+OURS = 1 THREAD, ONE build producing all 12 cells. CND = 96 CORES, 12 independent per-cell builds.
+
+  CND 12-cell sum (96c): **657.17s**, peak **59.9GB**   (r=3 25.59s | r=4 97.85s | r=5 533.73s)
+  OURS whole plane (1 thread): BEFORE §201 1283.20s -> **CND was 1.95x FASTER than us**
+                               AFTER  §201  **644.88s / 40.7GB** -> **1.02x, parity**, and 1.47x leaner
+
+So the step-1 change flipped our KNOWN FLAGSHIP LOSS graph from a ~2x deficit to a tie on time plus a
+memory advantage. CND's cost is concentrated in r=5 (533.73s of 657.17s, 59.9GB per cell); our single
+build covers the whole family in 644.88s at 40.7GB.
+
+### DO NOT OVERSELL -- three caveats that must travel with this number
+1. **It is PARITY, not a win.** 1.02x is inside noise. Claim "matches", never "beats".
+2. **THREAD ASYMMETRY IS UNRESOLVED.** 1 thread (ours) vs 96 cores (CND). This framing matches §195/196,
+   but a reviewer will attack it immediately. The deferred "CND thread-normalization at 1/mid/96" item is
+   now the SINGLE most important missing experiment -- it is what decides whether this is a real result or
+   an artifact of the comparison setup. Do this before putting the flip in the paper.
+3. The **memory** advantage (40.7 vs 59.9GB, 1.47x) is the thread-independent part and is the safer claim.
+
+### PER-CELL COMPARISON IS MISSING
+The script measured CND per cell but NOT ours per cell, so I cannot say which individual cells flipped
+(notably (4,6), the historical flagship-loss cell). Only the whole-plane-vs-CND-sum comparison is measured.
+Do not state per-cell claims from this run.
