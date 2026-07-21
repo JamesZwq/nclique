@@ -7622,3 +7622,51 @@ fall back to per-r sweeps, turning 753s -> 234s. That is damage control (still 5
 a win. UNVALIDATED: predictor tested on n=2 only; would need com-dblp/ca-CondMat (wins) + web-Stanford (failure)
 to claim it generalizes. Do NOT put the predictor in the paper without that run.
 PAPER: this DIAGNOSIS JUSTIFIES the §197 scoping already applied to Exp-9; no further paper change required.
+
+## 199. ONE-PASS PLANE: impossibility of the strong form + T3+ certificate + SLP (Fable, UNVERIFIED) (2026-07-21)
+User's critique (CORRECT, accepted): the plane has NO challenge -- 1 tree + 3 pattern enumerations + **12 separate
+planeReplayCell calls** (:826 shared, :872 per-r, :1209 boundary cell, :1301 per-s). We did not batch; we made each
+of 12 per-cell peels cheaper. Dispatched Fable to invent a true one-pass algorithm. Result below is FABLE'S CLAIM,
+codex adversarial verification IN FLIGHT -- do not cite until confirmed.
+
+### (1) Proposition I -- no universal order (IMPOSSIBILITY, scoped)
+Gadget (22 verts): K_{8,8} (triangle-free) DISJOINT-UNION K_6{w_1..w_6}, plus u in the blob's left part joined to
+w_1,w_2,w_3. Claimed kappa_{1,2}(u)=8 > kappa_{1,2}(w)=5, but kappa_{1,3}(u)=3 < kappa_{1,3}(w)=10: an INTERACTING
+order REVERSAL between cells (1,2) and (1,3). Then cell (1,2) forces u removed AFTER w_1..3 while cell (1,3) forces
+u BEFORE the first w_j => no single order works. SCOPE CAVEAT (mine, flagged to codex): stated only for PASSIVE
+REPLAY stamping (level:=max(level,sup); stamp:=level). It does NOT self-evidently rule out all one-pass schemes.
+Do not state it as a general impossibility until that scope is pinned down.
+
+### (2) T3+ "Lovasz band collapse" -- NEW certificate, claimed strictly stronger than T3
+Fix r,P,c=c(P),s,a=s-r, c>=s+1. m=kappa_{r,s}(P); x*>=a the real with C(x*,a)=m. If floor(C(x*,a+1))==C(c-r,a+1)
+then kappa_{r,s+1}(P)=C(c-r,a+1). Proof: T2 at s+1 gives m>=C(z,a) where M=kappa_{r,s+1}=C(z,a+1); monotonicity of
+C(.,a) => z<=x* => M<=floor(C(x*,a+1)); T1 lower; equality by hypothesis. Subsumes T3 (m=floor => x*=c-r).
+Worked ex: r=3,c=9,kappa_{3,7}=16: floor_7=C(6,4)=15 so T3 DEAD; x*~6.07, floor(C(6.07,5))=6=C(6,5) => T3+ FIRES,
+kappa_{3,8}=6. Arithmetic re-checked by me: C(6.07,5)=6.63 -> floor 6 = C(6,5). OK.
+
+### (3) THE ACTUAL WASTE FABLE FOUND IN OUR CODE (corroborated by our OWN §198 data, no new run needed)
+planeReplayCell replays EVERY certified pattern sharing a leaf with any residue pattern as a scheduled death with
+a FULL witness-slice enumeration (:561-569 -> addWitnesses/creditFaces :608-671), once PER CELL. Certificates skip
+the peel but NOT the witness replay. §198 numbers confirm:
+  email (5,7): certified 1,060,428 residue 155,959 **replayed-certified-deaths 705,906** (4.5x the residue!)
+  email (4,6): 323,744 / 97,534 / **220,133**   email (3,5): 61,051 / 43,431 / **51,087**
+  amazon (3,5): 422,566 / 20 / **8**            amazon (3,6-8): residue 0 / **replayed 0**
+=> amazon's 12 calls are genuinely near-free (replayed=0, hence the 5.0x); email pays 706k re-enumerations PER CELL.
+This is the missing algorithmic content and it is measurable in data we already have.
+
+### (4) SLP (Skeleton-Ledger Plane) -- proposed algorithm
+Skeleton factorization: certified patterns die at C(c_P-r,s-r), and their relative order is ascending c_P and
+IDENTICAL in every cell of the row (equal-c die together, order-free by the §118 clamp theorem). So the certified
+part of all 12 peels is ONE precomputed object. Ledger lemma replaces per-cell certified enumeration with
+closed-form counts + an overlap correction calendar; mode 1 = truncated inclusion-exclusion (risk: antichain-curse
+term count, IDENTIFIED GAP), mode 2 = grouped trie walk, provably never worse than today's replay and reduces
+walks per cell from #replayed-certified-deaths to #distinct c-values (<= c_max-s+1).
+HONEST: Fable states SLP does NOT fix email-Eu-core (its wall is the boundary-cell residue peel = §198 quotient
+failure). Predicted main beneficiary = web-Google (mid certification => maximal replay waste).
+
+### NEXT (decision-first, cheap-first)
+F1 (DECISIVE, ~1h): split planeReplayCell timing into scheduled(certified-replay) vs residue enumeration on
+web-Google + ca-AstroPh. If scheduled share < ~25% everywhere, SLP caps at 25% -> BUILD NOTHING, keep T3+ only.
+F2 (~free): offline over existing NSI2 residue dumps, count entries T3+ certifies that T3 does not. <5% -> T3+ is
+a remark, not a contribution.
+Proposition I: brute-force the 22-vertex gadget (seconds). codex verification in flight.
