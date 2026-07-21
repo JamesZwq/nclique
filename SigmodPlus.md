@@ -8364,3 +8364,25 @@ claim that a single vertex-level statistic predicts compression. A real characte
 class-size DISTRIBUTION together with r, because compression is literally the mean of a product of
 binomials over that distribution. Nothing weaker will do, and I should not have advanced twinFrac as
 the structural quantity on 6 graphs before the wide graphs had reported.
+
+### §209b: W IMPROVES MONOTONICALLY WITH r -- the crossover with CND is STRUCTURAL, not cherry-picked (tods2, 2026-07-22)
+Full W sweep on tods2 (SCT_W_ONLY, front end only; counts machine-independent).
+| graph | (3,4) | (3,5) | (4,6) | (5,7) |
+|---|---|---|---|---|
+| com-dblp | 1.481 | 1.308 | **0.324** | **0.049** |
+| com-amazon | 1.386 | 1.136 | 0.559 | **0.111** |
+| ca-CondMat | 1.903 | 2.110 | 1.476 | 0.934 |
+| ca-AstroPh | 5.137 | 8.614 | 5.284 | **3.073** |
+| ca-HepPh | 13.768 | 14.232 | **7.788** | (infeasible) |
+| web-Stanford | (guard) | 16.081 | | |
+Compression grows faster in r than hostSz_avg does, so **W falls as r rises** on every graph measured
+(com-dblp 1.48 -> 0.049, a factor of 30 from r=3,s=4 to r=5,s=7; ca-HepPh 14.2 -> 7.8).
+WHY THIS MATTERS: CND's cost is #r-cliques, which EXPLODES in r (com-dblp 1.68M at (3,4) -> 247.7M at
+(5,7), a 147x increase), while our W simultaneously improves. The crossover is therefore a structural
+consequence of both cost models moving in opposite directions in r, not an artefact of graph selection.
+This is the mechanism behind the already-known empirical fact that our wins live at high (r,s) and that
+CND OOMs there. It is the strongest version of the "when does this method apply" story so far, and
+unlike the withdrawn twinFrac claim it rests on an identity plus 20 measured cells.
+CAVEAT: still a within-our-cost-model statement. It predicts OUR work, and CND's #r-cliques, but the
+win/loss labels mix time wins with CND-OOM events, which W says nothing about (Fable's objection,
+only partly answered).
