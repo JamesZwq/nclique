@@ -8419,3 +8419,54 @@ Every future ours-vs-ours number gets a phase breakdown, not just a total.
 ALSO: the per-leaf gate (minM = 4r) is doing its job -- on the graphs where deconvolution cannot pay it
 mostly or entirely declines to run (com-amazon 0 of 284,549; web-it 95,522 of 1,357,098 = 7%;
 com-youtube 2.2M of 30.0M = 7%), while on ca-HepPh it takes 46,921,485 of 47,146,186 = 99.5%.
+
+### §210b: after G2+G5 the bottleneck has MOVED. addDelta is now dominant everywhere.
+Segment split (profiling run; read the RATIOS, the absolutes are inflated by siProf hashing):
+| | ca-HepPh (3,5) | ca-AstroPh (4,6) |
+|---|---|---|
+| supInit before -> after | 88.51s -> **31.47s (2.81x)** | 34.36s -> 27.55s (1.25x) |
+| addDelta before -> after | 23.85s -> 23.06s | 83.72s -> **88.64s** |
+| addDelta share of peel | 21% -> **41%** | 67% -> **72%** |
+Two readings. (1) The deconvolution did its job and **the problem is now addDelta**, on both graphs.
+(2) On ca-AstroPh sparse footprints make addDelta WORSE (83.72 -> 88.64, +5.9%), consistent with the
++3% peel cost seen locally: at M ~ 25 the sparse indirection in the a_Y confirm path costs more than
+the O(M)->O(r) comparison saves. That is a real effect, not noise, and it means SPARSE NEEDS ITS OWN
+PER-LEAF GATE on M exactly as the deconvolution has one. Not yet implemented.
+
+### §210c: THE CLAMP PRE-FILTER (measured motivation, bit-exact, implemented)
+Probe: of ALL credits, the fraction discarded by the §118 clamp is
+  ca-AstroPh (4,6) **62.7%** (322,167,663) | ca-HepPh (3,5) **60.8%** (80,134,780)
+  ca-CondMat (3,5) 46.9% | com-dblp (4,6) 44.1%
+and the split is **CURRENT-WAVE = 100%, ALREADY-PEELED = 0 on every graph**. That is structural, not
+luck: `pats[qi].alive` is tested before the clamp, so peeled patterns never reach it. The wasted set is
+therefore exactly "alive and key == curLevel", i.e. the current wave, which is bounded and small.
+THE WASTE IS NOT THE CLAMP, IT IS WHAT WE PAY TO REACH IT: credit() first hashes, then runs a FOOTPRINT
+COMPARISON per bucket candidate to identify qi, and only then discovers qi is in the current wave.
+alive/key are integer reads and far cheaper. So: scan the bucket first, and if no candidate is alive
+with key > curLevel, return before any footprint comparison.
+BIT-EXACT BY CONSTRUCTION: when no candidate survives, the original found some qi and returned at
+either the !alive test or the clamp, writing nothing to delta[]/aff[]. Verified on 7 cells, alone and
+combined with sparse+deconv.
+
+### §210d: the clamp pre-filter regressed, was DIAGNOSED as my own cache bug, and now wins on all three graphs
+FIRST VERSION (read pats[q].alive/.key directly): ca-AstroPh (4,6) **1.135x** but ca-HepPh (3,5)
+**0.926x -- an 8% REGRESSION**. Two graphs, opposite signs.
+DIAGNOSIS (read the code, did not average the two): the loop being optimised is SEQUENTIAL over
+leafFlat and never touches pats[] until it matches. My pre-filter touched `pats[q]` for EVERY bucket
+candidate: random access into 1.17M x sizeof(Pat) ~= 150MB on ca-HepPh. I had replaced cache-friendly
+reads with cache-hostile ones, and on the graph with the most patterns the misses swamped the saving.
+FIX: `patLive[q] = alive ? key : -1`, one long long per pattern (9.4MB, cache-resident), maintained at
+the 4 mutation sites plus one full resync after declaration (key is initialised earlier in the file).
+AFTER (3-trial PEEL medians, clean serial):
+| graph | cell | PF off | PF on | speedup | was |
+|---|---|---|---|---|---|
+| **ca-AstroPh** | 4,6 | 102.64 | **75.59** | **1.358** | 1.135 |
+| com-dblp | 4,6 | 3.14 | 2.90 | **1.083** | -- |
+| **ca-HepPh** | 3,5 | 82.37 | **79.52** | **1.036** | **0.926 (regression)** |
+Correctness: 7/7 cells identical to the PRE-§208 binary with the flag off, with it on, and combined
+with sparse+deconv. Kept behind SCT_CLAMP_PF, default OFF, until a wider tods2 sweep confirms it.
+
+THE METHOD POINT, which is the reusable part: two graphs disagreed in SIGN. Averaging them, or
+picking either one, both give a wrong decision. The idea was right and the IMPLEMENTATION was wrong,
+and only reading the code told me which. A cross-graph disagreement is a signal to diagnose, not a
+signal to compromise.

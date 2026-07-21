@@ -3549,6 +3549,20 @@ int main(int argc, char **argv) {
     // batch-peel (t>=4) already exploits this wave closure by pre-marking the wave dead -- untouched.
     // Escapes: SCT_NO_CLAMPSKIP / SCT_NO_AYKILL (independently correct, A/B-testable alone).
     bool clampSkip = getenv("SCT_NO_CLAMPSKIP") == nullptr;       // default ON (all 3 credit sites)
+    // §210c CLAMP PRE-FILTER (SCT_CLAMP_PF=1, default OFF: measured +13.5% on ca-AstroPh (4,6) but
+    // -8% on ca-HepPh (3,5)). 44-63% of all credits target a pattern in the CURRENT wave and are
+    // discarded by the §118 clamp, but only AFTER the footprint comparison that identifies which
+    // candidate it is. Scanning the bucket first skips that comparison.
+    // WHY THE FIRST VERSION REGRESSED: it read pats[q].alive/.key, i.e. RANDOM access into the fat
+    // Pat array (1.17M x sizeof(Pat) = ~150MB on ca-HepPh), while the loop it was trying to save is
+    // SEQUENTIAL over leafFlat and never touches pats[] until it matches. It traded cache-friendly
+    // reads for cache-hostile ones. patLive is the fix: one long long per pattern (9.4MB), holding
+    // key when alive and -1 when not, so the test is a single cheap indexed read.
+    const bool clampPF = getenv("SCT_CLAMP_PF") != nullptr;
+    vector<long long> patLive(pats.size(), -1);
+    auto setLive = [&](int q) { patLive[(size_t)q] = pats[q].alive ? pats[q].key : -1LL; };
+    (void)setLive;
+    for (size_t _q = 0; _q < pats.size(); ++_q) patLive[_q] = pats[_q].alive ? pats[_q].key : -1LL;
     // ondemand excluded: there leavesOf() is a per-call hash-probe recompute, so the cntAbove
     // maintenance (init + one call per wave-entering pattern) costs more than the kills save
     // (measured ca-AstroPh 3,4 SCT_ONDEMAND peel 8.49s -> 11.39s). ondemand keeps clamp-skip only.
@@ -3577,7 +3591,7 @@ int main(int argc, char **argv) {
     long long ppLeafRun = 0, ppLeafNoop = 0;     // addDelta leaf-instances run / of those, crediting 0 new dead
     long long ppYEnum = 0, ppYNewDead = 0;       // enumerated feasible Y / newly dead Y (insert==true)
     long long ppScanSlots = 0, ppScanActive = 0; // §208 G3: addDelta DFS coordinate scans / usable ones
-    long long ppCredSame = 0, ppCredCross = 0;   // §118 probe: credits to same-wave Q (key==curLevel, clamp-wasted) vs level-crossing Q
+    long long ppCredSame = 0, ppCredCross = 0, ppCredWave = 0, ppCredOld = 0;   // §118 probe: credits to same-wave Q (key==curLevel, clamp-wasted) vs level-crossing Q
     double ppTAddDelta = 0.0, ppTSkipChk = 0.0;  // time in addDelta vs the §103 skip check
     // §120 residual attribution: after §117/§119 addDelta is only 6-29% of peel -- time the other
     // segments. leafLoop = whole per-death leaf loop (prep = leafLoop - addDelta - skipChk),
@@ -3671,7 +3685,7 @@ int main(int argc, char **argv) {
                 taskLL.clear();
                 for (int pi : wave) {
                     Pat &P = pats[pi];
-                    P.alive = false; P.core = (double)curLevel; peeledN++;
+                    P.alive = false; P.core = (double)curLevel; peeledN++; patLive[(size_t)pi] = -1LL; patLive[(size_t)pi] = -1LL;
                     coreDist[P.core] += (double)P.mult;
                     if (skipH1 && P.hostSz == 1) {        // SOURCE-SKIP (sec: M-exclusive witnesses)
                         bool aff2 = false;
@@ -3811,7 +3825,8 @@ int main(int argc, char **argv) {
                     delta[qi] = 0.0;
                     long long nk = (long long)llround(ns);
                     if (nk < curLevel) nk = curLevel;
-                    if (nk != pats[qi].key) { pats[qi].sup = ns; pats[qi].key = nk; bk[nk].push_back(qi); }
+                    if (nk != pats[qi].key) { pats[qi].sup = ns; pats[qi].key = nk; bk[nk].push_back(qi);
+                        patLive[(size_t)qi] = pats[qi].alive ? nk : -1LL; }
                 }
                 aff.clear();
             }
@@ -3976,6 +3991,24 @@ int main(int argc, char **argv) {
                     if (ondemand) { qi = globalLookup(lid, Yscr, Mloc); if (qi < 0) return; }
                     else {
                         auto it = q2p.find(hQ); if (it == q2p.end()) return; qi = -1;
+                        // §210 CLAMP PRE-FILTER. Measured: 44-63% of all credits target a pattern in
+                        // the CURRENT wave and are then discarded by the §118 clamp -- but only AFTER
+                        // the expensive footprint comparison that identifies which candidate it is.
+                        // (The probe also showed ALREADY-PEELED = 0 on every graph, because !alive is
+                        // tested first, so the wasted set is exactly the current wave.) alive/key are
+                        // integer reads, far cheaper than a footprint compare, so scan the bucket for
+                        // any candidate that could survive and bail out if none can.
+                        // BIT-EXACT: if no candidate is alive with key > curLevel, the original would
+                        // have found some qi and returned at either the !alive test or the clamp, with
+                        // no write to delta[]/aff[]. Skipping reproduces that exactly.
+                        if (clampPF) {
+                            bool anySurvivor = false;
+                            for (int t : it->second) {
+                                const int q = qsAll[t];
+                                if (patLive[q] > curLevel) { anySurvivor = true; break; }
+                            }
+                            if (!anySurvivor) return;
+                        }
                         for (int t : it->second) {
                             bool eq = true;
                             if (sparseFP) {                    // same predicate, O(r) lookups
@@ -3993,7 +4026,16 @@ int main(int argc, char **argv) {
                     }
                     if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)
                         && !(fpsCell && nsiCert[qi])) {   // §129: certified are untracked (closed-form core)
-                        if (peelProf) { if (pats[qi].key <= curLevel) ppCredSame++; else ppCredCross++; }
+                        if (peelProf) {
+                            if (pats[qi].key <= curLevel) {
+                                ppCredSame++;
+                                // §210 probe: split the clamp-wasted credits. A credit to a pattern in
+                                // the CURRENT wave (key == curLevel) could be filtered BEFORE the q2p
+                                // lookup by a small wave-fingerprint set; one to an already-peeled
+                                // pattern (key < curLevel) could not, since the dead set is unbounded.
+                                if (pats[qi].key == curLevel) ppCredWave++; else ppCredOld++;
+                            } else ppCredCross++;
+                        }
                         if (clampSkip && pats[qi].key <= curLevel) return;   // §118 clamp-skip: same-wave, apply would discard it
                         if (!seen[qi]) { seen[qi] = 1; aff.push_back(qi); }
                         delta[qi] += w;
@@ -4347,6 +4389,7 @@ int main(int argc, char **argv) {
             if (nk < curLevel) nk = curLevel;          // monotone clamp
             if (nk != pats[qi].key) {
                 pats[qi].sup = ns; pats[qi].key = nk; bk[nk].push_back(qi);
+                patLive[(size_t)qi] = pats[qi].alive ? nk : -1LL;
                 if (leafKill && nk == curLevel)        // §118: cascade pulled Q into the current wave
                     for (int lid : leavesOf(qi)) cntAbove[lid]--;
                 if (closureProbe && nk == curLevel) {  // §127: Q cascaded into the current level -> next generation
@@ -4444,6 +4487,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "[peel-prof a_Y] addDelta-leaf-instances=%lld  NO-OP(0 new dead)=%lld (%.1f%%)  | enumerated-Y=%lld newly-dead-Y=%lld  already-dead-Y=%lld (%.1f%% of enumerated)\n",
                 ppLeafRun, ppLeafNoop, ppLeafRun ? 100.0*ppLeafNoop/ppLeafRun : 0.0,
                 ppYEnum, ppYNewDead, ppYEnum - ppYNewDead, ppYEnum ? 100.0*(ppYEnum-ppYNewDead)/ppYEnum : 0.0);
+        fprintf(stderr, "[peel-prof §210] clamp-wasted credits split: CURRENT-WAVE=%lld (%.1f%% of all credits,"
+                        " pre-lookup filterable) ALREADY-PEELED=%lld (%.1f%%, not filterable)\n",
+                ppCredWave, (ppCredSame+ppCredCross) ? 100.0*ppCredWave/(ppCredSame+ppCredCross) : 0.0,
+                ppCredOld,  (ppCredSame+ppCredCross) ? 100.0*ppCredOld /(ppCredSame+ppCredCross) : 0.0);
         fprintf(stderr, "[peel-prof §208 G3] addDelta DFS coord-scans=%lld usable=%lld (%.1f%%)"
                         " -> active-class list would cut the per-node scan %.1fx\n",
                 ppScanSlots, ppScanActive, ppScanSlots ? 100.0*ppScanActive/ppScanSlots : 0.0,
