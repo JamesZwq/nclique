@@ -2211,6 +2211,20 @@ int main(int argc, char **argv) {
     vector<vector<int>> leafPats(nLeaf);
     vector<vector<Vec>> pbLocal(pats.size());         // parallel to patLeaves[pi]
     vector<vector<int16_t>> leafFlat(nLeaf);          // L3 CSR: per-leaf FLAT footprints (size leafPats[lid].size()*Mloc)
+    // ---- §208 G5: SPARSE footprints (SCT_SPARSE_FP=1). A footprint is an r-composition, so it has
+    // AT MOST r nonzeros, yet leafFlat stores all Mloc entries: on ca-HepPh that is 47,033,416
+    // incidences x M=122 x 2B = 16.4GB, 87.5% of the whole footprint, to represent 3 values each.
+    // Sparse layout: fixed stride 2r per footprint, holding (classIdx, mult) int16 pairs sorted by
+    // idx and padded with idx=-1.  47,033,416 x 3 x 4B = 0.56GB, ~29x less.
+    // BIT-EXACTNESS: the leaf fingerprint is hashVecInc/hashSpanInc = XOR of mixCV(coord,value) over
+    // NONZEROS ONLY (zeros contribute nothing), so the sparse hash is IDENTICAL, not merely equivalent.
+    // Equality confirm stays exact: footprints are r-compositions, so matching every stored pair and
+    // Sum(pair values) == r proves the dense vectors are equal.
+    const bool sparseFP = getenv("SCT_SPARSE_FP") != nullptr;
+    const int  spCap    = r;                          // max nonzeros in an r-composition
+    const int  spStride = 2 * spCap;
+    vector<vector<int16_t>> leafSp(sparseFP ? nLeaf : 0);
+    Vec spScr, spScrDense;                            // recompute-path scratch (pairs / dense)
     // integer rolling-hash key (was a std::string compKey: a per-r-multiset heap
     // alloc + string hash, the bulk of the maps phase on dense graphs). Hash
     // collisions are resolved by comparing the actual comp, so lookup stays exact.
@@ -2302,8 +2316,19 @@ int main(int argc, char **argv) {
                     if (pats[pi].hostSz >= 2) hasH2[lid] = 1;       // §96b: hasH2 computed here (host freed; leafPats droppable)
                     if (!(ondemand && (s - r) == 1)) leafPats[lid].push_back(pi);   // §96b: ondemand t=1 resolves Q via global hash
                     if (!recomputePB) pbLocal[pi].push_back(blocal);          // cold map: skip under PB or full
-                    if (!mapsRecompute && !leafRecomp[lid] && !(ondemand && (s - r) == 1))   // §3b: ondemand t=1 resolves Q via global hash -> leafFlat unused
-                        leafFlat[lid].insert(leafFlat[lid].end(), blocal.begin(), blocal.end());  // hot map (flat)
+                    if (!mapsRecompute && !leafRecomp[lid] && !(ondemand && (s - r) == 1)) {  // §3b: ondemand t=1 resolves Q via global hash -> leafFlat unused
+                        if (sparseFP) {                                  // §208 G5: <=r (idx,mult) pairs
+                            size_t base = leafSp[lid].size();
+                            leafSp[lid].resize(base + (size_t)spStride, (int16_t)-1);
+                            int np = 0;
+                            for (size_t ci = 0; ci < blocal.size(); ++ci) if (blocal[ci]) {
+                                leafSp[lid][base + 2 * np] = (int16_t)ci;
+                                leafSp[lid][base + 2 * np + 1] = blocal[ci];
+                                ++np;
+                            }
+                        } else
+                            leafFlat[lid].insert(leafFlat[lid].end(), blocal.begin(), blocal.end());  // hot map (flat)
+                    }
                     mapInc++;
                 }
                 return;
@@ -2368,7 +2393,47 @@ int main(int argc, char **argv) {
     auto spanEqFP = [&](int lid, int t, int Mloc, Vec &scr, const Vec &v) -> bool {   // footprint(lid,t) == v ?
         auto fp = leafFP(lid, t, Mloc, scr); return spanEq(fp.first, fp.second, v);
     };
+    // splitmix64 finalizer of a (class,value) seed. Hoisted here (was at the a_Y section) so the
+    // sparse footprint fingerprint uses the SAME function: the additive hash XORs mixCV over nonzeros
+    // only, so sparse and dense footprints hash IDENTICALLY.
+    auto mixCVg = [](int c, int v) -> uint64_t {
+        uint64_t x = ((uint64_t)(uint32_t)c << 20) ^ (uint64_t)(uint32_t)(uint16_t)v ^ 0x9E3779B97F4A7C15ULL;
+        x ^= x >> 30; x *= 0xbf58476d1ce4e5b9ULL; x ^= x >> 27; x *= 0x94d049bb133111ebULL; x ^= x >> 31;
+        return x;
+    };
+    // ---- §208 G5 sparse accessors. spGet/spEqVec are O(r); the dense forms were O(Mloc).
+    auto leafFPSp = [&](int lid, int t) -> std::pair<const int16_t *, int> {
+        if (mapsRecompute || leafRecomp[lid]) {          // recompute path: pack on the fly
+            localB(leafPats[lid][t], lid, spScrDense);
+            spScr.clear();
+            for (size_t i = 0; i < spScrDense.size(); ++i) if (spScrDense[i]) {
+                spScr.push_back((int16_t)i); spScr.push_back(spScrDense[i]); }
+            return {spScr.data(), (int)spScr.size() / 2};
+        }
+        const int16_t *base = leafSp[lid].data() + (size_t)t * (size_t)spStride;
+        int np = 0; while (np < spCap && base[2 * np] >= 0) ++np;
+        return {base, np};
+    };
+    auto spGet = [](const int16_t *p, int np, int c) -> int {      // footprint value at coord c (0 if absent)
+        for (int i = 0; i < np; ++i) if ((int)p[2 * i] == c) return (int)p[2 * i + 1];
+        return 0;
+    };
+    auto spHashInc = [&](const int16_t *p, int np) -> uint64_t {   // == hashSpanInc(dense): XOR over nonzeros
+        uint64_t h = 0;
+        for (int i = 0; i < np; ++i) h ^= mixCVg((int)p[2 * i], (int)p[2 * i + 1]);
+        return h;
+    };
+    auto spEqVec = [&](const int16_t *p, int np, const Vec &v) -> bool {   // footprint == v (both r-compositions)
+        int sum = 0;
+        for (int i = 0; i < np; ++i) {
+            const int c = (int)p[2 * i], val = (int)p[2 * i + 1];
+            if (c >= (int)v.size() || (int)v[c] != val) return false;
+            sum += val;
+        }
+        return sum == r;                                  // v sums to r, so no unmatched nonzero can remain
+    };
     (void)spanEq; (void)hashSpan; (void)leafFP; (void)spanEqFP;
+    (void)leafFPSp; (void)spGet; (void)spHashInc; (void)spEqVec;
     if (getenv("SCT_MAPS_VALIDATE") && !recomputePB) {   // prove recompute == stored (needs full storage), abort-on-mismatch
         long long chk = 0, bad = 0; Vec rb;
         for (int pi = 0; pi < (int)pats.size(); pi++)
@@ -2749,7 +2814,7 @@ int main(int argc, char **argv) {
     // §120 probe (under PIVOTER_PEEL_PROFILE): class-set sharing ratio. The grouped supInit
     // design computes the zero-classes product ONCE per distinct (leaf, nz-position-set) and
     // applies each footprint's <=r nonzero factors on top; its win = incidences / distinct sets.
-    bool siProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr;
+    bool siProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr || getenv("SCT_W_ONLY") != nullptr;
     std::unordered_set<uint64_t> siSets; long long siInc = 0;
     // §208 G1 probe: the deconvolution supInit replaces the per-incidence O(M*T) DP by O(r*T*deg),
     // so its ceiling is M/r. Record the INCIDENCE-WEIGHTED distribution of M (classes per leaf) and
@@ -2830,6 +2895,18 @@ int main(int argc, char **argv) {
                         " | verify: compared=%lld MAX-REL-ERR=%.3e%s\n",
                 dcUsed, dcSkipped, deconvMinM, dcFbuilt, dcCmp, dcMaxRel,
                 deconvVerify ? "" : "  (SCT_DECONV_VERIFY unset -- no comparison run)");
+    // §208 G4: W = (Sum_P hostSz(P)) / #r-cliques is the win predictor, and every input to it is
+    // known HERE, before the peel. SCT_W_ONLY=1 prints it and exits, so W can be swept over every
+    // graph for the price of the front end instead of the price of a full decomposition.
+    if (getenv("SCT_W_ONLY")) {
+        const double W = totalRCliques > 0 ? (double)siInc / (double)totalRCliques : -1.0;
+        fprintf(stderr, "[W §208] patterns=%zu r-cliques=%.0f incidences=%lld leaves=%d"
+                        " compression=%.2fx W=%.4f\n",
+                pats.size(), (double)totalRCliques, siInc, nLeaf,
+                totalRCliques > 0 ? (double)totalRCliques / (double)pats.size() : 0.0, W);
+        fflush(stderr);
+        return 0;
+    }
     if (siProf && siPathInc > 0) {                       // §208 G1: incidence-weighted M and T
         auto pct = [&](const std::vector<long long> &h, double q) {
             long long want = (long long)(q * (double)siPathInc), acc = 0;
@@ -3349,11 +3426,7 @@ int main(int argc, char **argv) {
     // The a_Y dead-set is a pure FlatU64 fingerprint set (no value compare, never matched against the q2p
     // keys), so any good 64-bit hash is exact here -- same collision profile as the FNV it replaces, caught
     // by the corehash check. mix() is the splitmix64 finalizer of a (class,value) seed (strong avalanche).
-    auto mixCV = [](int c, int v) -> uint64_t {
-        uint64_t x = ((uint64_t)(uint32_t)c << 20) ^ (uint64_t)(uint32_t)(uint16_t)v ^ 0x9E3779B97F4A7C15ULL;
-        x ^= x >> 30; x *= 0xbf58476d1ce4e5b9ULL; x ^= x >> 27; x *= 0x94d049bb133111ebULL; x ^= x >> 31;
-        return x;
-    };
+    auto mixCV = mixCVg;   // §208 G5: single implementation, hoisted above (was defined here)
     auto hashVecInc = [&](const Vec &v) -> uint64_t {              // full additive fingerprint (init per leaf-instance)
         uint64_t h = 0;
         for (size_t i = 0; i < v.size(); i++) if (v[i]) h ^= mixCV((int)i, (int)v[i]);
@@ -3380,8 +3453,13 @@ int main(int argc, char **argv) {
         int Mw = (int)supC[lid].size();
         mp.reserve((size_t)nt * 2);
         for (int t = 0; t < nt; t++) {
-            auto fp = leafFP(lid, t, Mw, elmScr);              // (ptr,len) span: recompute or CSR view
-            mp[hashSpanInc(fp.first, fp.second)].push_back(t);
+            if (sparseFP) {                                   // §208 G5: same key, O(r) instead of O(Mw)
+                auto sp = leafFPSp(lid, t);
+                mp[spHashInc(sp.first, sp.second)].push_back(t);
+            } else {
+                auto fp = leafFP(lid, t, Mw, elmScr);          // (ptr,len) span: recompute or CSR view
+                mp[hashSpanInc(fp.first, fp.second)].push_back(t);
+            }
         }
         if (peelProf) ppTMap += secs(_mpS, Clock::now());
     };
@@ -3631,7 +3709,9 @@ int main(int argc, char **argv) {
                         auto itc = q2p.find(h);
                         if (itc == q2p.end()) return;
                         for (int t : itc->second)
-                            if (spanEqFP(lid, t, Mloc, qlScr, ql)) {
+                            if (sparseFP                       // §208 G5: O(r) confirm, same predicate
+                                    ? [&] { auto sp = leafFPSp(lid, t); return spEqVec(sp.first, sp.second, ql); }()
+                                    : spanEqFP(lid, t, Mloc, qlScr, ql)) {
                                 int qi = qsAll[t];
                                 if (!pats[qi].alive) return;       // peeled (incl. the whole wave)
                                 if (skipH1 && pats[qi].hostSz == 1) return;
@@ -3880,10 +3960,16 @@ int main(int argc, char **argv) {
                     else {
                         auto it = q2p.find(hQ); if (it == q2p.end()) return; qi = -1;
                         for (int t : it->second) {
-                            auto fp = leafFP(lid, t, Mloc, qlScr);
                             bool eq = true;
-                            for (int ni = 0; ni < ayNZn; ni++) { int c = ayNZ[ni];
-                                if (fp.first[c] != Yscr[c]) { eq = false; break; } }
+                            if (sparseFP) {                    // same predicate, O(r) lookups
+                                auto sp = leafFPSp(lid, t);
+                                for (int ni = 0; ni < ayNZn; ni++) { int c = ayNZ[ni];
+                                    if (spGet(sp.first, sp.second, c) != (int)Yscr[c]) { eq = false; break; } }
+                            } else {
+                                auto fp = leafFP(lid, t, Mloc, qlScr);
+                                for (int ni = 0; ni < ayNZn; ni++) { int c = ayNZ[ni];
+                                    if (fp.first[c] != Yscr[c]) { eq = false; break; } }
+                            }
                             if (eq) { qi = qsAll[t]; break; }
                         }
                         if (qi < 0) return;
@@ -4013,7 +4099,9 @@ int main(int argc, char **argv) {
                     auto it = q2p.find(hashVecInc(Yscr));
                     if (it == q2p.end()) return;
                     for (int t : it->second)
-                        if (spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
+                        if (sparseFP                           // §208 G5: O(r) confirm, same predicate
+                                ? [&] { auto sp = leafFPSp(lid, t); return spEqVec(sp.first, sp.second, Yscr); }()
+                                : spanEqFP(lid, t, Mloc, qlScr, Yscr)) {
                             int qi = qsAll[t];
                             if (qi != pi && pats[qi].alive && !(skipH1 && pats[qi].hostSz == 1)
                                 && !(fpsCell && nsiCert[qi])                     // §129: certified untracked
