@@ -473,6 +473,11 @@ static PlaneCellResult planeReplayCell(
     const int nP = (int)patterns.size();
     const int nL = (int)sharedLeaves.size();
     const auto t0 = Clock::now();
+    // F1 (§199): split per-death enumeration time into certified-replay vs residue.
+    // Decides whether the SLP skeleton/ledger redesign is worth building at all.
+    const bool f1Prof = getenv("F1_PROFILE") != nullptr;
+    double f1SchedSec = 0.0, f1ResSec = 0.0;
+    long long f1SchedN = 0, f1ResN = 0;
 
     int r = 0;
     for (const auto &P : patterns) {
@@ -604,6 +609,7 @@ static PlaneCellResult planeReplayCell(
         if (!ev.scheduled) out.activeDist[death] += (double)patterns[pi].mult;
 
         affected.clear();
+        const auto f1t0 = Clock::now();
         const auto &P = patterns[pi];
         if (witnessDeltaMode) {
             PlaneComp qComp;
@@ -697,6 +703,11 @@ static PlaneCellResult planeReplayCell(
                 events.push({nk, seq++, qi, false});
             }
         }
+        if (f1Prof) {
+            const double f1dt = secs(f1t0, Clock::now());
+            if (ev.scheduled) { f1SchedSec += f1dt; f1SchedN++; }
+            else              { f1ResSec   += f1dt; f1ResN++;   }
+        }
     }
 
     if (witnessDeltaMode && getenv("PIVOTER_PEEL_PROFILE"))
@@ -708,6 +719,16 @@ static PlaneCellResult planeReplayCell(
         if (!patterns[pi].direct && !certified[pi])
             out.residue.push_back({pi, out.core[pi]});
     out.seconds = secs(t0, Clock::now());
+    if (f1Prof) {
+        const double enumSec = f1SchedSec + f1ResSec;
+        fprintf(stderr,
+                "[f1] s=%d cellSec=%.3f enumSec=%.3f | SCHED(certified-replay) n=%lld %.3fs (%.1f%% of enum, "
+                "%.1f%% of cell) | RESIDUE n=%lld %.3fs (%.1f%% of enum)\n",
+                s, out.seconds, enumSec,
+                f1SchedN, f1SchedSec, enumSec > 0 ? 100.0 * f1SchedSec / enumSec : 0.0,
+                out.seconds > 0 ? 100.0 * f1SchedSec / out.seconds : 0.0,
+                f1ResN, f1ResSec, enumSec > 0 ? 100.0 * f1ResSec / enumSec : 0.0);
+    }
     return out;
 }
 
