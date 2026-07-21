@@ -2560,12 +2560,27 @@ int main(int argc, char **argv) {
     // right after the maps phase: mapInc IS Sum_P hostSz(P). SCT_W_ONLY=1 prints and exits before
     // supInit, so W can be swept over every graph for the price of the front end only.
     if (getenv("SCT_W_ONLY")) {
+        // STRUCTURAL EXPLANATION of W, not just its value. #r-cliques = Sum_P mult(P) with
+        // mult(P) = Prod_c C(n_c, b_c), so W is small exactly when class sizes n_c are LARGE, i.e.
+        // when regions contain many TWINS (vertices with identical maximal-clique membership).
+        // twinFrac = fraction of classified vertices sitting in a class of size >= 2; classes of
+        // size 1 contribute nothing to compression. This is the quantity a structural theorem
+        // would have to bound (Fable review, 2026-07-22).
+        long long vTot = 0, vTwin = 0; int cMax = 0; double cMean = 0.0;
+        for (int c = 0; c < nC; c++) {
+            vTot += classSize[c];
+            if (classSize[c] >= 2) vTwin += classSize[c];
+            if (classSize[c] > cMax) cMax = classSize[c];
+        }
+        cMean = nC ? (double)vTot / (double)nC : 0.0;
         fprintf(stderr, "[W §208] patterns=%zu r-cliques=%lld incidences=%lld leaves=%d"
-                        " compression=%.3fx hostSz-avg=%.2f W=%.4f\n",
+                        " compression=%.3fx hostSz-avg=%.2f W=%.4f"
+                        " | classes=%d clsMean=%.2f clsMax=%d twinFrac=%.4f\n",
                 pats.size(), totalRCliques, mapInc, nLeaf,
                 pats.empty() ? 0.0 : (double)totalRCliques / (double)pats.size(),
                 pats.empty() ? 0.0 : (double)mapInc / (double)pats.size(),
-                totalRCliques > 0 ? (double)mapInc / (double)totalRCliques : -1.0);
+                totalRCliques > 0 ? (double)mapInc / (double)totalRCliques : -1.0,
+                nC, cMean, cMax, vTot ? (double)vTwin / (double)vTot : 0.0);
         fflush(stderr);
         return 0;
     }
@@ -3561,6 +3576,7 @@ int main(int argc, char **argv) {
     // peel time into addDelta vs the §103-skip overhead, and counts enumerated-Y vs newly-dead-Y.
     long long ppLeafRun = 0, ppLeafNoop = 0;     // addDelta leaf-instances run / of those, crediting 0 new dead
     long long ppYEnum = 0, ppYNewDead = 0;       // enumerated feasible Y / newly dead Y (insert==true)
+    long long ppScanSlots = 0, ppScanActive = 0; // §208 G3: addDelta DFS coordinate scans / usable ones
     long long ppCredSame = 0, ppCredCross = 0;   // §118 probe: credits to same-wave Q (key==curLevel, clamp-wasted) vs level-crossing Q
     double ppTAddDelta = 0.0, ppTSkipChk = 0.0;  // time in addDelta vs the §103 skip check
     // §120 residual attribution: after §117/§119 addDelta is only 6-29% of peel -- time the other
@@ -4029,7 +4045,9 @@ int main(int argc, char **argv) {
                         return;
                     }
                     for (int a = start; a < Mloc; a++) {
+                        if (peelProf) { ppScanSlots++; }                     // §208 G3 probe: DFS node scan cost
                         int room = (int)uEp[a] - (int)Yscr[a];               // Y[a] may grow (Y <= u)
+                        if (peelProf && room >= 1) ppScanActive++;           // ...of which are actually usable
                         if (room < 1) continue;
                         int maxm = room < rem ? room : rem;
                         int Ya = (int)Yscr[a];
@@ -4426,6 +4444,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "[peel-prof a_Y] addDelta-leaf-instances=%lld  NO-OP(0 new dead)=%lld (%.1f%%)  | enumerated-Y=%lld newly-dead-Y=%lld  already-dead-Y=%lld (%.1f%% of enumerated)\n",
                 ppLeafRun, ppLeafNoop, ppLeafRun ? 100.0*ppLeafNoop/ppLeafRun : 0.0,
                 ppYEnum, ppYNewDead, ppYEnum - ppYNewDead, ppYEnum ? 100.0*(ppYEnum-ppYNewDead)/ppYEnum : 0.0);
+        fprintf(stderr, "[peel-prof §208 G3] addDelta DFS coord-scans=%lld usable=%lld (%.1f%%)"
+                        " -> active-class list would cut the per-node scan %.1fx\n",
+                ppScanSlots, ppScanActive, ppScanSlots ? 100.0*ppScanActive/ppScanSlots : 0.0,
+                ppScanActive ? (double)ppScanSlots/(double)ppScanActive : 0.0);
         fprintf(stderr, "[peel-prof a_Y] credits: same-wave(clamp-wasted)=%lld  level-crossing=%lld  (%.1f%% wasted)\n",
                 ppCredSame, ppCredCross,
                 (ppCredSame + ppCredCross) ? 100.0 * ppCredSame / (ppCredSame + ppCredCross) : 0.0);

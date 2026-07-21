@@ -8193,3 +8193,83 @@ Sparsifying the footprint simultaneously (i) cuts leafFlat ~29x, (ii) deletes su
 COST: the `t*Mloc` stride arithmetic has several consumers that must all be converted. Mechanical, not small.
 NEXT: G2b/G5 merged = sparse footprint representation. Do NOT start before the Fable review lands, since a
 verdict that the whole direction should be reframed would reprioritize this work.
+
+### §208 G5 (2026-07-22): SPARSE FOOTPRINTS -- 7.56x MEMORY on ca-HepPh at neutral time, but it is NOT a universal win
+leafFlat stored a DENSE Mloc-long int16 footprint per (pattern,leaf) incidence although a footprint is
+an r-composition with AT MOST r nonzeros. SCT_SPARSE_FP=1 stores <=r (classIdx,mult) int16 pairs at
+stride 2r. Bit-exactness is STRUCTURAL: the leaf fingerprint (hashVecInc/hashSpanInc) is an XOR of
+mixCV(coord,value) over NONZEROS ONLY, so the sparse hash is identical, not merely equivalent; and the
+equality confirm stays exact because footprints sum to r, so matching every stored pair plus
+Sum(values)==r proves dense equality. mixCV is now hoisted to ONE definition shared by both paths.
+8/8 cells bit-exact (sparse alone and sparse+deconv).
+
+LOCAL, CLEAN SERIAL, MEM_BREAKDOWN + peak-memory-footprint:
+| ca-HepPh (3,5) | time | peak mem | leafFlat |
+|---|---|---|---|
+| dense | 93.53s | 18.38GB | 16,395MB |
+| sparse | 91.33s | **2.43GB** | 0MB |
+| deconv | 46.12s | 18.62GB | 16,395MB |
+| **sparse+deconv** | **47.46s** | **2.43GB** | 0MB |
+=> vs dense: **1.97x time AND 7.56x memory. Both win.**
+
+| ca-AstroPh (4,6) | time | peak mem |
+|---|---|---|
+| dense | 97.99s | 8.73GB |
+| sparse | **101.20s (3.3% SLOWER)** | 6.94GB |
+| deconv | 87.51s | 8.73GB |
+| sparse+deconv | 92.18s | 6.94GB |
+=> vs dense: 1.06x time and 1.26x memory. Both win, but marginally, and SPARSE ALONE LOSES TIME THERE.
+
+**DO NOT STATE "SPARSE IS A WIN" WITHOUT THE GRAPH.** The memory saving is proportional to leafFlat's
+SHARE of the footprint, and that share swings hugely: ca-HepPh 16,395MB of 18.38GB = 89%, ca-AstroPh
+3,486MB of 8.73GB = 40%. Where the share is low the sparse indirection is still paid in full and the
+net time effect turns negative. 3-trial medians on tods2 are queued precisely because 3-5% effects
+cannot be separated from noise by one run.
+
+### CORRECTION TO THE §208 G2 NUMBERS: they were measured WITH PROFILING ON
+The 125.43s baseline / 73.42s deconv (1.71x) both ran under PIVOTER_PEEL_PROFILE, whose siProf block
+hashes every incidence. Clean serial numbers are 93.53s -> 46.12s = **2.03x**. The RATIO survived but
+both absolutes were inflated ~34%. Never quote a time taken under a profiling env var.
+
+### tods2 CROSS-GRAPH deconvolution (partial, run continuing): THE SPREAD IS THE RESULT
+| graph | cell | base | deconv | speedup | mem ratio | core |
+|---|---|---|---|---|---|---|
+| ca-GrQc | 3,5 | 0.07 | 0.06 | 1.167 | 1.002 | bit-exact |
+| ca-GrQc | 4,6 | 0.15 | 0.14 | 1.071 | 1.005 | bit-exact |
+| email-Eu-core | 3,5 | 5.56 | 5.54 | 1.004 | 1.004 | bit-exact |
+| ca-CondMat | 3,5 | 0.48 | 0.37 | 1.297 | 1.003 | bit-exact |
+| ca-CondMat | 4,6 | 0.44 | 0.44 | 1.000 | 1.005 | bit-exact |
+| **ca-HepPh** | **3,5** | **199.36** | **109.58** | **1.819** | **1.000** | bit-exact |
+| ca-AstroPh | 4,6 | 203.19 | 196.42 | 1.034 | 1.000 | bit-exact |
+| com-amazon | 3,5 | 0.74 | 0.75 | **0.987 (SLOWER)** | 1.005 | bit-exact |
+| com-dblp | 4,6 | 8.61 | 7.21 | 1.194 | 1.000 | bit-exact |
+Range so far **0.987x to 1.819x**. The deconvolution pays exactly where supInit dominates and is a
+wash or a small loss elsewhere. Any single-graph claim about it is wrong by construction.
+ALSO SETTLED: memory ratio is 1.000-1.005 on the server across every cell, which independently kills
+the "+14% RSS regression" (a macOS max-RSS artefact) with Linux numbers.
+
+### METHOD NOTES EARNED TONIGHT
+1. I ran a W probe CONCURRENTLY with a timing benchmark and had to discard the measurement. The
+   project already records this (feedback_clean_benchmarking, contention once inflated a peel 3.7x).
+   Timing runs get the machine to themselves, no exceptions.
+2. THIRD occurrence of the zsh `set -- $spec` word-splitting trap (§202 warning 3), this time silently
+   producing an EMPTY bit-exactness gate that reported PASS on 0 lines of output. Every gate now checks
+   the reference is non-empty before comparing. Rule: loops go in a file and run under bash, never inline.
+3. Numbers taken under a profiling env var are not comparable to production numbers (see the G2
+   correction above).
+
+### §208 G3-lite: DEAD on measurement. addDelta's cost IS the enumeration, not scan overhead.
+Hypothesis: addDelta's DFS scans all Mloc coordinates at every node (`for a in [start,Mloc): room =
+uEp[a]-Yscr[a]; if (room<1) continue`), so precomputing a per-leaf ACTIVE-CLASS list would cut the
+per-node cost. Probe (one counter pair, PIVOTER_PEEL_PROFILE):
+| graph | cell | DFS coord-scans | usable | active-list would cut |
+|---|---|---|---|---|
+| ca-CondMat | 3,5 | 2.61e9 | 70.8% | 1.4x |
+| **ca-HepPh** | 3,5 | 2.11e9 | **92.7%** | **1.1x** |
+| ca-AstroPh | 4,6 | 4.77e9 | 85.3% | 1.2x |
+| com-dblp | 4,6 | 6.85e7 | 85.0% | 1.2x |
+85-93% of scanned coordinates are ALREADY usable, so there is essentially nothing to skip. KILLED.
+Value of the probe: it cost one counter and stopped me implementing a 1.1x change.
+CONSEQUENCE: the only remaining lever on addDelta is enumerating FEWER compositions (the grouped
+walk), whose honest ceiling is the already-dead share (54.7-89.8%, §208 G2), not the 71-163x of §203.
+On ca-AstroPh (4,6) addDelta is 65% of peel, so that ceiling is worth ~2.2x there and ~1.2x on ca-HepPh.
