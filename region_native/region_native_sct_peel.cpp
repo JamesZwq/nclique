@@ -478,6 +478,7 @@ static PlaneCellResult planeReplayCell(
     const bool f1Prof = getenv("F1_PROFILE") != nullptr;
     double f1SchedSec = 0.0, f1ResSec = 0.0;
     long long f1SchedN = 0, f1ResN = 0;
+    long long slpSkippedLeaves = 0;   // §201: leaf visits avoided by the live-residue test
 
     int r = 0;
     for (const auto &P : patterns) {
@@ -553,9 +554,14 @@ static PlaneCellResult planeReplayCell(
 
     PlaneCellResult out;
     out.core.assign((size_t)nP, -1.0);
+    // §201 SLP step 1: residueLeaf is a STATIC "leaf ever hosted a residue pattern" flag.
+    // liveResidueLeaf counts residue patterns still ALIVE in each leaf.  Once it hits 0 the
+    // leaf can no longer produce any credit (creditFaces only credits alive non-certified
+    // patterns), so certified replays may skip it.  Exact, not heuristic.
+    vector<int> liveResidueLeaf((size_t)nL, 0);
     for (int pi = 0; pi < nP; ++pi)
         if (!patterns[pi].direct && !certified[pi])
-            for (int lid : patterns[pi].leaves) residueLeaf[lid] = 1;
+            for (int lid : patterns[pi].leaves) { residueLeaf[lid] = 1; liveResidueLeaf[lid]++; }
     for (int pi = 0; pi < nP; ++pi) {
         if (patterns[pi].direct) continue;
         if (certified[pi]) {
@@ -604,6 +610,10 @@ static PlaneCellResult planeReplayCell(
         if (ev.level > curLevel) curLevel = ev.level;
         alive[pi] = 0;
         remaining--;
+        // §201: a residue pattern just died -> its leaves hold one fewer live residue.
+        if (!ev.scheduled)
+            for (int lid : patterns[pi].leaves)
+                if (liveResidueLeaf[lid] > 0) liveResidueLeaf[lid]--;
         double death = ev.scheduled ? certCore[pi] : (double)curLevel;
         out.core[pi] = death;
         if (!ev.scheduled) out.activeDist[death] += (double)patterns[pi].mult;
@@ -616,7 +626,9 @@ static PlaneCellResult planeReplayCell(
             qComp.reserve((size_t)r);
             for (size_t k = 0; k < P.leaves.size(); ++k) {
                 int lid = P.leaves[k];
-                if (!residueLeaf[lid]) continue;
+                // §201: skip leaves with no LIVE residue left. creditFaces only credits
+                // alive non-certified patterns, so such a leaf provably yields no credit.
+                if (!liveResidueLeaf[lid]) { slpSkippedLeaves++; continue; }
                 const CCPath &box = sharedLeaves[lid];
                 const Vec &b = P.localB[k];
                 Vec y = b;
@@ -728,14 +740,41 @@ static PlaneCellResult planeReplayCell(
                 f1SchedN, f1SchedSec, enumSec > 0 ? 100.0 * f1SchedSec / enumSec : 0.0,
                 out.seconds > 0 ? 100.0 * f1SchedSec / out.seconds : 0.0,
                 f1ResN, f1ResSec, enumSec > 0 ? 100.0 * f1ResSec / enumSec : 0.0);
+        fprintf(stderr, "[slp] s=%d leaf-visits-skipped(live-residue==0)=%lld\n", s, slpSkippedLeaves);
     }
     return out;
+}
+
+// ---- T3+ (Lovasz band collapse) helpers, §199 ----------------------------------
+// Generalized binomial C(x,a) for real x >= a-1, and its inverse in x.
+// Verified against scripts/verify_t3plus.py (12,200 combos, 0 unsound).
+static double realBinom(double x, int a) {
+    if (a <= 0) return 1.0;
+    if (x < (double)a - 1.0 + 1e-12) return 0.0;
+    double p = 1.0;
+    for (int i = 0; i < a; ++i) p *= (x - (double)i);
+    double f = 1.0;
+    for (int i = 2; i <= a; ++i) f *= (double)i;
+    return p / f;
+}
+// unique real x* >= a with C(x*,a) = m  (bisection; returns -1 if m <= 0)
+static double invRealBinom(double m, int a) {
+    if (m <= 0.0 || a <= 0) return -1.0;
+    double lo = (double)a - 1.0, hi = (double)a;
+    int guard = 0;
+    while (realBinom(hi, a) < m && guard++ < 200) hi *= 2.0;
+    for (int i = 0; i < 200; ++i) {
+        double mid = 0.5 * (lo + hi);
+        if (realBinom(mid, a) < m) lo = mid; else hi = mid;
+    }
+    return hi;
 }
 
 static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                           int verifyN, double mceBudget) {
     using ccpath::CCPath;
     using ccpath::Vec;
+    const bool f2Prof = getenv("F2_PROFILE") != nullptr;
     const int rMin = getenv("SCT_RMIN") ? atoi(getenv("SCT_RMIN")) : argvR;
     const int rMax = getenv("SCT_RMAX") ? atoi(getenv("SCT_RMAX")) : rMin;
     const int sMax = getenv("SCT_SMAX") ? atoi(getenv("SCT_SMAX")) : argvS;
@@ -1309,6 +1348,7 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
         for (int cs = boundary + 1; cs <= sMax; ++cs) {
             fill(certified.begin(), certified.end(), 0);
             fill(certifiedCore.begin(), certifiedCore.end(), -1.0);
+            long long f2T3 = 0, f2T3plus = 0, f2Elig = 0;
             if (!noCert) {
                 for (int pi = 0; pi < (int)patterns.size(); ++pi) {
                     if (patterns[pi].direct) continue;
@@ -1316,9 +1356,29 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                     if (fabs(prevCore[pi] - prevFloor) < 0.5) {
                         certified[pi] = 1;
                         certifiedCore[pi] = C(patterns[pi].cP - r, cs - r);
+                        f2T3++;
+                    } else if (f2Prof) {
+                        // F2 (§199): would T3+ (Lovasz band collapse) certify what T3 misses?
+                        // MEASUREMENT ONLY -- behaviour deliberately unchanged this pass.
+                        f2Elig++;
+                        const int a = (cs - 1) - r;         // exponent at the PREVIOUS cell
+                        const int cr = patterns[pi].cP - r;
+                        if (a >= 1 && cr >= a + 1 && prevCore[pi] > 0.0) {
+                            const double xs = invRealBinom(prevCore[pi], a);
+                            if (xs > 0.0) {
+                                const double ub = realBinom(xs, a + 1);
+                                const double lo = C(cr, a + 1);
+                                if (std::floor(ub + 1e-9) == lo) f2T3plus++;
+                            }
+                        }
                     }
                 }
             }
+            if (f2Prof)
+                fprintf(stderr, "[f2] r=%d s=%d T3-certified=%lld uncertified=%lld "
+                                "T3plus-would-add=%lld (%.2f%% of uncertified)\n",
+                        r, cs, f2T3, f2Elig, f2T3plus,
+                        f2Elig ? 100.0 * (double)f2T3plus / (double)f2Elig : 0.0);
             cell = planeReplayCell(cs, activeLeaves, patterns, leafPats,
                                    certified, certifiedCore);
             allCellSeconds += cell.seconds;
