@@ -2556,6 +2556,19 @@ int main(int argc, char **argv) {
         fprintf(stderr, "[maps-mem] pbLocal=%.1fMB(%lld inc, stored=%s) leafFlat(CSR)=%.1fMB(%lld inc) -> PB drops pbLocal, CSR drops per-Vec overhead\n",
                 pbB / 1e6, pbInc, recomputePB ? "no" : "yes", lpB / 1e6, lpInc);
     }
+    // §208 G4: W = (Sum_P hostSz(P)) / #r-cliques is the win predictor. Every input is known HERE,
+    // right after the maps phase: mapInc IS Sum_P hostSz(P). SCT_W_ONLY=1 prints and exits before
+    // supInit, so W can be swept over every graph for the price of the front end only.
+    if (getenv("SCT_W_ONLY")) {
+        fprintf(stderr, "[W §208] patterns=%zu r-cliques=%lld incidences=%lld leaves=%d"
+                        " compression=%.3fx hostSz-avg=%.2f W=%.4f\n",
+                pats.size(), totalRCliques, mapInc, nLeaf,
+                pats.empty() ? 0.0 : (double)totalRCliques / (double)pats.size(),
+                pats.empty() ? 0.0 : (double)mapInc / (double)pats.size(),
+                totalRCliques > 0 ? (double)mapInc / (double)totalRCliques : -1.0);
+        fflush(stderr);
+        return 0;
+    }
     memCk("after-maps(patLeaves/pbLocal)");
     fflush(stdout);
     // COMP_DBG: count feasible s-COMPOSITIONS per leaf (integer pts Sum y=T, 0<=y<=u). This is
@@ -2814,7 +2827,7 @@ int main(int argc, char **argv) {
     // §120 probe (under PIVOTER_PEEL_PROFILE): class-set sharing ratio. The grouped supInit
     // design computes the zero-classes product ONCE per distinct (leaf, nz-position-set) and
     // applies each footprint's <=r nonzero factors on top; its win = incidences / distinct sets.
-    bool siProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr || getenv("SCT_W_ONLY") != nullptr;
+    bool siProf = getenv("PIVOTER_PEEL_PROFILE") != nullptr;
     std::unordered_set<uint64_t> siSets; long long siInc = 0;
     // §208 G1 probe: the deconvolution supInit replaces the per-incidence O(M*T) DP by O(r*T*deg),
     // so its ceiling is M/r. Record the INCIDENCE-WEIGHTED distribution of M (classes per leaf) and
@@ -2895,18 +2908,6 @@ int main(int argc, char **argv) {
                         " | verify: compared=%lld MAX-REL-ERR=%.3e%s\n",
                 dcUsed, dcSkipped, deconvMinM, dcFbuilt, dcCmp, dcMaxRel,
                 deconvVerify ? "" : "  (SCT_DECONV_VERIFY unset -- no comparison run)");
-    // §208 G4: W = (Sum_P hostSz(P)) / #r-cliques is the win predictor, and every input to it is
-    // known HERE, before the peel. SCT_W_ONLY=1 prints it and exits, so W can be swept over every
-    // graph for the price of the front end instead of the price of a full decomposition.
-    if (getenv("SCT_W_ONLY")) {
-        const double W = totalRCliques > 0 ? (double)siInc / (double)totalRCliques : -1.0;
-        fprintf(stderr, "[W §208] patterns=%zu r-cliques=%.0f incidences=%lld leaves=%d"
-                        " compression=%.2fx W=%.4f\n",
-                pats.size(), (double)totalRCliques, siInc, nLeaf,
-                totalRCliques > 0 ? (double)totalRCliques / (double)pats.size() : 0.0, W);
-        fflush(stderr);
-        return 0;
-    }
     if (siProf && siPathInc > 0) {                       // §208 G1: incidence-weighted M and T
         auto pct = [&](const std::vector<long long> &h, double q) {
             long long want = (long long)(q * (double)siPathInc), acc = 0;
