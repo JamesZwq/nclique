@@ -8386,3 +8386,36 @@ unlike the withdrawn twinFrac claim it rests on an identity plus 20 measured cel
 CAVEAT: still a within-our-cost-model statement. It predicts OUR work, and CND's #r-cliques, but the
 win/loss labels mix time wins with CND-OOM events, which W says nothing about (Fable's objection,
 only partly answered).
+
+## 210. **RETRACTION of the §208 "deconvolution loses on three graphs".** It never regressed the peel; the losses were in phases it cannot touch (2026-07-22)
+
+I reported a tods2 range of "0.943x to 1.819x, net loss on web-it-2004 / web-Google / com-amazon"
+from TOTAL time. Phase attribution refutes it. Deconvolution only touches supInit, i.e. the PEEL.
+| graph | cell | peel base | peel deconv | **peel** | total | where the total went |
+|---|---|---|---|---|---|---|
+| **ca-HepPh** | 3,5 | 173.40 | 83.57 | **2.075** | 1.819 | maps 24.76s untouched |
+| ca-CondMat | 3,5 | 0.28 | 0.21 | 1.333 | 1.297 | |
+| ca-AstroPh | 4,6 | 184.79 | 177.66 | 1.040 | 1.034 | |
+| web-Google | 3,5 | 28.48 | **27.87** | **1.022** | 0.973 | maps 8.15 -> 10.07 (deconv runs AFTER maps) |
+| web-it-2004 | 3,4 | 0.66 | **0.65** | **1.015** | 0.943 | MCE 5.55 -> 5.96 (deconv runs AFTER MCE) |
+| com-amazon | 3,5 | 0.13 | 0.13 | 1.000 | 0.987 | **deconv=0: it never fired at all** |
+| com-youtube | 3,5 | 20.23 | 20.28 | 0.998 | 1.027 | MCE 10.77 -> 9.28, noise the OTHER way |
+**Peel range 0.998x-2.075x. No graph shows a real regression.**
+
+THE THREE DECISIVE CHECKS:
+1. com-amazon reported `deconv=0 gate-fallback=284549`: the code never executed, and all four phase
+   timings are identical to the baseline. A 0.987x "loss" from a code path that did not run is
+   definitionally noise.
+2. web-it-2004's regression is entirely MCE (5.55 -> 5.96). MCE is maximal-clique enumeration and runs
+   BEFORE any deconvolution code; SCT_DECONV cannot reach it. Its peel got FASTER.
+3. com-youtube's 1.027x "win" is the same MCE noise pointing the other way (10.77 -> 9.28). Had I only
+   looked at totals I would have banked a win and a loss that are the same measurement error.
+
+METHOD LESSON, stronger than the one I started with. "Measure on many graphs" is not sufficient. On
+MCE-dominated graphs (web-it: MCE is 81.6% of total) the total-time metric is dominated by a phase the
+change cannot affect, so cross-graph total-time comparison manufactures both false wins and false
+losses. **Attribute the metric to the phase you changed, then check the untouched phases are equal.**
+Every future ours-vs-ours number gets a phase breakdown, not just a total.
+ALSO: the per-leaf gate (minM = 4r) is doing its job -- on the graphs where deconvolution cannot pay it
+mostly or entirely declines to run (com-amazon 0 of 284,549; web-it 95,522 of 1,357,098 = 7%;
+com-youtube 2.2M of 30.0M = 7%), while on ca-HepPh it takes 46,921,485 of 47,146,186 = 99.5%.
