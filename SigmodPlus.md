@@ -8333,3 +8333,34 @@ step counts. The decomposition weakens that: **compression and twinFrac are prop
 independent of our algorithm**, and hostSz_avg is a property of the class-SCT construction. The
 prediction now has a mechanism instead of a correlation. It does NOT fully answer the objection:
 hostSz_avg is still ours, and the win/loss labels still mix time-wins with CND-OOM events.
+
+### §209 CORRECTION (same night, 2026-07-22): the twinFrac story is REFUTED by web-it-2004. Do not use it.
+I wrote above that twinFrac "tracks compression strongly but is not monotone". The completed local sweep
+contains a counterexample strong enough that the hedge is not sufficient: the claim should be withdrawn.
+| graph | cell | compression | twinFrac | clsMean | **clsMax** |
+|---|---|---|---|---|---|
+| **web-it-2004** | 3,4 | **514.9x** | **0.422** | 1.65 | **430** |
+| web-it-2004 | 4,6 | **25278.5x** | 0.420 | 1.64 | 430 |
+| ca-CondMat | 3,5 | 1.62x | **0.504** | 1.46 | 9 |
+| ca-AstroPh | 3,5 | 1.59x | 0.340 | 1.30 | 26 |
+| ca-HepPh | 3,5 | 2.83x | 0.533 | 1.69 | 50 |
+| amazon0302 | 4,6 | 5.38x | 0.705 | 2.07 | 5 |
+| email-Eu-core | 3,5 | 1.002x | 0.005 | 1.00 | 2 |
+web-it-2004 has MIDDLING twin fraction (0.42, between ca-AstroPh's 0.34 and ca-HepPh's 0.53) and the
+LARGEST compression measured anywhere (515x, and 25,278x at (4,6)); ca-CondMat has a HIGHER twinFrac
+(0.504) and 1.6x. amazon0302 has twinFrac 0.705 and only 5.38x. The fraction of vertices sitting in a
+twin class is simply not the operative quantity.
+
+MECHANISM (why the hedge was not enough): mult(P) = Prod_c C(n_c, b_c) is **convex and explosive in
+class SIZE**, so one class of 430 contributes C(430,3) = 13.1M while 200 classes of size 2 contribute
+1 each. twinFrac weights those identically. clsMax orders the data far better (email 2 -> 1.002x;
+amazon 5-6 -> 1.2-2.6x; CondMat 9 -> 1.6x; GrQc 21 -> 18x; dblp 54 -> 20.6x; web-it 430 -> 515x) but
+it also inverts (ca-AstroPh clsMax 25 -> 1.5x vs ca-GrQc clsMax 19 -> 4.3x), so it is not the law either.
+
+WHAT SURVIVES: the ALGEBRAIC decomposition W = hostSz_avg / compression (an identity, unaffected), and
+the two-failure-mode observation (email fails on compression, ca-HepPh on host multiplicity), which
+rests on the measured compression and hostSz values, not on twinFrac. What does NOT survive is any
+claim that a single vertex-level statistic predicts compression. A real characterization needs the
+class-size DISTRIBUTION together with r, because compression is literally the mean of a product of
+binomials over that distribution. Nothing weaker will do, and I should not have advanced twinFrac as
+the structural quantity on 6 graphs before the wide graphs had reported.
