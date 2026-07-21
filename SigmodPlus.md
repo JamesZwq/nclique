@@ -6,8 +6,16 @@ Graphs*.  Covers (1) the setup we benchmark under, (2) how to run any
 piece of the bench from scratch, and (3) how the resulting CSV/TSV
 files map to the paper's figures and tables.
 
-Paper source lives in `Sigmod2027Nuclear/` (Dropbox/Overleaf symlink
-from the repo root).
+Paper sources are Dropbox/Overleaf symlinks from the repo root, and both
+are gitignored (edits sync to Overleaf, they do NOT get committed here):
+
+| dir | paper | status |
+|---|---|---|
+| `sigmodNSI/` | *Nucleus Spectrum Index* | **CURRENT. All §182+ work targets this one.** |
+| `Sigmod2027Nuclear/` | *Efficient (r,s)-Nucleus Decomposition...* | older submission |
+
+**Live status and where to pick up: see the last numbered section of this file
+(currently §202), which is kept as the single entry point.**
 
 ---
 
@@ -7623,7 +7631,9 @@ a win. UNVALIDATED: predictor tested on n=2 only; would need com-dblp/ca-CondMat
 to claim it generalizes. Do NOT put the predictor in the paper without that run.
 PAPER: this DIAGNOSIS JUSTIFIES the §197 scoping already applied to Exp-9; no further paper change required.
 
-## 199. ONE-PASS PLANE: impossibility of the strong form + T3+ certificate + SLP (Fable, UNVERIFIED) (2026-07-21)
+## 199. ONE-PASS PLANE: impossibility of the strong form + T3+ certificate + SLP (Fable) (2026-07-21)
+> STATUS UPDATE: both claims were VERIFIED by me (see §199 ADDENDUM below). T3+ was later
+> KILLED EMPIRICALLY by F2 in §201 -- sound, but fires on <3% of real residue. Read §201 too.
 User's critique (CORRECT, accepted): the plane has NO challenge -- 1 tree + 3 pattern enumerations + **12 separate
 planeReplayCell calls** (:826 shared, :872 per-r, :1209 boundary cell, :1301 per-s). We did not batch; we made each
 of 12 per-cell peels cheaper. Dispatched Fable to invent a true one-pass algorithm. Result below is FABLE'S CLAIM,
@@ -7779,3 +7789,72 @@ provably-useless work. Narrow: it is regime-dependent (few-residue), zero on web
 cannot help email-class graphs at all. The one-pass ambition remains unrealised; what exists is a real but
 bounded implementation win plus a scoped impossibility result (Proposition I, verified).
 NEXT: step 2 grouped walk (the only thing that can move web-Google, and more headroom on ca-AstroPh).
+
+## 202. ===== LIVE STATUS / PICKUP POINT (2026-07-21) =====
+Single entry point. Read this first, then only the sections it names.
+
+### WHERE WE STAND
+The plane's headline claim was challenged by the user and the challenge was CORRECT:
+"one build serves the whole plane" is 1 tree + (rmax-rmin+1) pattern enumerations +
+**Sum_r (smax-r) separate planeReplayCell calls** (12 for r=3..5, s<=8). We had made each
+per-cell peel cheaper, not batched anything. Everything below follows from taking that seriously.
+
+### WHAT IS SOLID (verified, safe to cite)
+1. **§197 cross-domain**: the 36x batch win does NOT generalize. com-amazon 5.0x, web-Google 1.3x,
+   web-Stanford our-plane FAILS (exit=7 guard), email-Eu-core **0.1x (19x SLOWER)**.
+   Paper Exp-9 ALREADY REWRITTEN to scope the claim to the mechanism ("the saving materializes
+   when relevant-region profiles repeat"). Build verified: latexmk exit 0, 0 undefined refs, 13pp.
+2. **§198 why email loses**: class quotient compresses **1.0x** there (biggest region 18 verts ->
+   18 classes, R-EXCLUSIVE=0). Structural, NOT a bug, NOT fixable. Also: on that graph the plane
+   is a NET LOSS vs not sharing (753s shared vs 234s for three independent fixed-r sweeps).
+3. **§199 + ADDENDUM Proposition I**: no universal elimination order. 22-vertex gadget brute-forced
+   by me, exact match (kappa_(1,2) u=8/w=5; kappa_(1,3) u=3/w=10). **SCOPE: proven for passive-replay
+   stamping ONLY. Never state it as a general one-pass impossibility.**
+4. **§200 F1**: 84.3% of ca-AstroPh plane time was certified-replay re-enumeration (782.9s of 928.9s).
+   Decision gate passed; this is what justified building anything at all.
+5. **§201 SLP step 1**: ca-AstroPh **2.01x, BIT-EXACT** (1283.2->638.2s; cell (3,8) 3.75x).
+   Gate 16/16 bit-exact locally (scripts/slp_bitexact_gate.sh). Commit 0c7f65b.
+
+### WHAT IS DEAD (do not resurrect)
+- **T3+ certificate**: mathematically sound and strictly stronger than T3 (12,200 combos, 0 unsound),
+  but **F2 killed it empirically** -- fires on max 2.96% / median 0% of real residue, because the chain
+  certificate is already at ~99.6%. NOT a contribution. At most one remark. (§201)
+- **Universal-order one-pass**: dead by Proposition I (§199).
+- **Fixing email-Eu-core**: structural (§198). SLP does not and cannot help there.
+
+### WHAT IS OPEN
+- **SLP step 2 (grouped walk)** -- the only thing that can move web-Google (step 1 gave it 1.00x,
+  because the skip needs a leaf's residue to be ALL dead and web-Google residue stays populated).
+  ca-AstroPh also still has headroom: SCHED share only fell 89.4% -> 62.5% at (3,8).
+  Design in §199(4): skeleton factorization + ledger mode 2 (grouped trie walk, provably never worse;
+  reduces walks per cell from #replayed-certified-deaths to #distinct c-values). Mode 1 (truncated
+  inclusion-exclusion) has an UNRESOLVED antichain-blowup risk -- do NOT start there.
+- Deferred, needs user/data: CND thread-normalization (1/mid/96), reproducibility appendix (needs exact
+  g++ version), CaseStudy matched-cohort recompute.
+
+### HOW TO RUN THINGS (all verified working this session)
+- Server: **tods2 via tmux ONLY** (`ssh tods2 "tmux new-session -d -s NAME 'bash /path/x.sh'"`), then poll
+  with bare short ssh. ProxyJump kills detached jobs; held ssh dies at ~5.5 min.
+- Deploy: git only. **The server tree drifts** -- it sat at §174 with stale staged edits. Verify with
+  `git log --oneline -1` after pull; a dirty tree makes `git pull` ABORT SILENTLY.
+- Env knobs added this session: `F1_PROFILE` (certified-replay vs residue timing), `F2_PROFILE` (T3+
+  would-add counting), plus existing SCT_RSWEEP/RMIN/RMAX/SMAX, SCT_SWEEP, SCT_MAX_INC.
+- Scripts: scripts/{crossdomain_cnd,email_diag,f1_profile,slp_measure,slp_bitexact_gate}.sh,
+  scripts/verify_{gadget,t3plus}.py.
+
+### METHOD WARNINGS EARNED THE HARD WAY THIS SESSION (all cost real time)
+1. **"Ran without error" != "measured anything."** F1 run #1: server git pull aborted on a dirty tree,
+   rebuilt from OLD source, `build_exit=0`, both graphs completed, exit=0, normal wall-clock -- and
+   produced ZERO instrumentation lines. Now I gate on HEAD hash + grep the symbol in source + build exit
+   BEFORE waiting on any long run.
+2. **Plane mode returns at :1423** (`runMultiRPlane`), BEFORE every compression counter ([regcls] :1685,
+   [comp] :2415, [cls-leaf] :2443, per-cell certs :2544). Those are reachable ONLY via fixed-r SCT_SWEEP.
+   A whole diagnostic run printed nothing because of this.
+3. **Tooling failures masquerade as experimental results.** Hit 3x: server awk rejects ternaries inside
+   printf args; zsh `set -- $cfg` mis-splits (made a bit-exact gate report 16/16 FAIL spuriously); the
+   clang LSP reports 10 bogus errors because it lacks -I../src/NucleusDecomposition. Always confirm a
+   failure is real before interpreting it.
+4. **Verify before destroying.** Before `reset --hard` on the server I diffed its source against local
+   and confirmed only my own 8 instrumentation lines differed, so nothing server-side was lost.
+5. **codex-rescue detaches to an unretrievable background task.** Verdicts do not come back. Verify
+   subtle math myself (both Proposition I and T3+ were verified by my own brute force, not by codex).
