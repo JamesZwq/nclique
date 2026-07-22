@@ -8495,3 +8495,22 @@ sparse indirection costs more in the a_Y confirm path than the O(M)->O(r) saving
 be per-leaf gated on M exactly as deconvolution is gated on M, with a crossover around M ~ 30-50 to be
 pinned down. Until then sparse is a MEMORY win that is time-neutral-to-slightly-negative on small-M
 graphs, i.e. SPLIT there, which does not meet the both-win bar.
+
+### §210f: sparse's TIME sign FLIPS BETWEEN MACHINES on the same graph -- unresolved, must be settled on tods2
+The a_Y confirm under sparse was O(r^2): spGet scans np pairs PER coord in ayNZ. The dense path is
+O(r) (direct index). So sparsifying that one site made it WORSE. Replaced with spEqVec (O(r), same
+predicate since footprint and Yscr are both r-compositions). Bit-exact 8/8 including ca-AstroPh.
+LOCAL peel medians, 3-trial, sparse ALONE:
+| graph | cell | dense | sparse OLD O(r^2) | sparse NEW O(r) |
+|---|---|---|---|---|
+| ca-AstroPh | 4,6 | 106.65 | 92.77 (1.150x) | 87.22 (**1.223x**) |
+| ca-HepPh | 3,5 | 86.94 | 81.69 (1.064x) | 84.22 (1.032x) |
+**CONTRADICTION, recorded not resolved:** locally sparse SPEEDS UP ca-AstroPh peel (1.15-1.22x); on
+tods2 phase-2 the SAME graph regressed (sparse total 0.948x, ~0.94x peel-attributed). Same graph,
+opposite sign, different machine (local ARM M-series vs tods2 Xeon x86). The sparse indirection's
+cache/prefetch behaviour differs by architecture. The O(r) fix ALSO behaves inconsistently: better on
+ca-AstroPh (1.223 vs 1.150) but slightly worse on ca-HepPh (1.032 vs 1.064).
+CONSEQUENCE: NO conclusion on sparse's time effect is warranted right now. Only two things are settled:
+memory (~5x, machine-independent) and bit-exactness (8/8). The sign must be resolved by an OLD-vs-NEW
+sparse A/B on tods2 (the paper machine), peel-attributed, 3 trials, BEFORE sparse's time story is
+written anywhere. Do NOT quote the flattering local 1.22x.

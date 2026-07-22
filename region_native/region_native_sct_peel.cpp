@@ -4011,10 +4011,11 @@ int main(int argc, char **argv) {
                         }
                         for (int t : it->second) {
                             bool eq = true;
-                            if (sparseFP) {                    // same predicate, O(r) lookups
-                                auto sp = leafFPSp(lid, t);
-                                for (int ni = 0; ni < ayNZn; ni++) { int c = ayNZ[ni];
-                                    if (spGet(sp.first, sp.second, c) != (int)Yscr[c]) { eq = false; break; } }
+                            if (sparseFP) {                    // §210f: spEqVec is O(r); the earlier
+                                auto sp = leafFPSp(lid, t);    // spGet loop was O(r^2) (a scan PER coord)
+                                eq = spEqVec(sp.first, sp.second, Yscr);   // and REGRESSED small-M graphs.
+                                // Equivalent to the dense predicate: footprint and Yscr both sum to r,
+                                // so "footprint matches Yscr on Yscr's nonzeros" == "footprint == Yscr".
                             } else {
                                 auto fp = leafFP(lid, t, Mloc, qlScr);
                                 for (int ni = 0; ni < ayNZn; ni++) { int c = ayNZ[ni];
