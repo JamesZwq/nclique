@@ -8818,3 +8818,41 @@ equality measurement points at for social graphs.
 scan); (2) boundary cells switch cold -> residue-mode with waves; (3) rows processed ascending r
 (teeth parallelize freely after their boundary). Index format unchanged -- BUILD-side design only.
 Gates: bit-exact vs current engine, full graph matrix, sweep AND single-cell AND plane.
+
+## 218. phi_q MEASURED: the diagonal certificate covers ~100% of the boundary on collab, ~22% on social; and phi_q > raw-T5-equality because T6 host-1 certifies independently (2026-07-23)
+The seeded-comb gate (§217): what fraction of each diagonal boundary cell (q,q+1) is certified by
+[T6 host-1] OR [Lemma-W: exists a (q-1)-subclique child at its own clique floor with equal c].
+Offline probe over EXACT reference-engine kappa dumps (PIVOTER_RUN_REF + PIVOTER_DUMP_CORE), clique
+level, LOCAL (machine-independent structural fraction, not a timing number). scripts/measure_diagonal_certificate.py + dump_maximal_cliques.py.
+
+ca-GrQc (collab, clique-structured):
+| q | #q-cliques | host-1% | W% | phi_q |
+|---|---|---|---|---|
+| 2 | 12,878    | 75.44 | 79.02   | 92.31  |
+| 3 | 48,260    | 61.74 | 99.86   | 99.88  |
+| 4 | 329,297   | 56.15 | 99.9997 | 100.00 |
+| 5 | 2,215,500 | 53.20 | 100.00  | 100.00 |
+
+soc-Epinions1 (social; q>=3 killed by LOCAL mem cap, needs tods2 to finish):
+| q | #q-cliques | host-1% | W% | phi_q |
+|---|---|---|---|---|
+| 2 | 311,608 | 21.43 | 4.94 | 21.78 |
+(the exact (4,5) ref dump DID complete: 5.80M cliques, 275.6s, 1.83GB; the kill was the q>=3 host/c
+aggregation, not the decomposition.)
+
+THREE FINDINGS.
+(1) ON COLLAB THE HEADLINE HOLDS: from q=3 down the diagonal certifies ~100% of the boundary, so
+    (T3 absorbing => whole-row certified >= boundary phi) the ENTIRE plane is essentially residue-free
+    on the clique-structured class. The whole spectrum genuinely IS "one (1,2) seed peel + arithmetic."
+(2) THE RESIDUE IS FRONT-LOADED AND DRAINS: the weakest diagonal step is the FIRST, q=2 cell (2,3)
+    at 92.31%, strengthening to ~100% as q grows (high-q survivors are more clique-locked). Residue
+    concentrates at the top of the plane, not the bottom.
+(3) CORRECTION to §217's stated invariant "phi_q <= raw T5-equality": FALSE. T6 host-1 certifies
+    INDEPENDENTLY of the T5 recurrence, so phi_q = host-1 OR W can EXCEED the raw recurrence-equality
+    rate (GrQc q2 92.31 vs W 79.02; Epin q2 21.78 vs W 4.94). The usable certified fraction is LARGER
+    than the T5-equality numbers (100%/23.4%) suggested, not smaller. host-1 (T6) is the bigger
+    single certifier at low q on BOTH classes.
+SOCIAL still ~1/5 certified at the boundary (matches §215 honest scope; residue-heavy, no claimed
+win). NEXT: finish Epinions q>=3 on tods2 (server, larger mem) + one web/collab flagship for the
+paper's phi table; the probe using TRUE child-kappa measures the engine-achievable superset
+(residue-at-floor children serve as witnesses, Thm B), so these are the real achievable fractions.
