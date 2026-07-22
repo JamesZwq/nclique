@@ -8514,3 +8514,67 @@ CONSEQUENCE: NO conclusion on sparse's time effect is warranted right now. Only 
 memory (~5x, machine-independent) and bit-exactness (8/8). The sign must be resolved by an OLD-vs-NEW
 sparse A/B on tods2 (the paper machine), peel-attributed, 3 trials, BEFORE sparse's time story is
 written anywhere. Do NOT quote the flattering local 1.22x.
+
+## 212. THE TECHNICAL MAP: us vs CND, settled and quantified; explicit debt list (2026-07-22)
+Written at the user's request before absorbing tonight's data into the docs: one authoritative
+statement of what each method IS, where the gap comes from, and what debt remains.
+
+### Shared foundation
+Both engines run the SAME degeneracy-ordered BK-pivot maximal-clique recursion and count s-cliques
+by nCr. Neither materializes s-cliques. The gap is NOT "who enumerates s-cliques" (recorded past
+error, §107).
+
+### The one-sentence divergence
+**CND makes the r-clique the first-class citizen; we make the pattern the first-class citizen.**
+CND indexes every r-clique (StaticCliqueIndex), sizes its peel heap at #r-cliques, and does O(1)
+work per r-clique per update, with small constants and sequential access. We quotient vertices by
+maximal-clique membership, form patterns (class multisets), and peel one pattern on behalf of
+mult(P) = Prod_c C(n_c, b_c) r-cliques.
+
+### Cost models
+  CND:  time ~ #r-cliques            memory ~ #r-cliques index  <- the thing that OOMs (300GB-class)
+  us:   time ~ front-end (MCE + quotient + maps; CND does not pay this)
+             + Sum_P hostSz(P) (supInit)  + death enumeration (addDelta)
+        memory ~ leaves + maps (dominant term removed by sparse footprints, §210)
+Work ratio, an identity (§209): **W = incidences/#r-cliques = hostSz_avg / compression**, computable
+BEFORE the peel (SCT_W_ONLY). W<1 we win.
+
+### The two failure modes (previously conflated; §209)
+1. compression ~ 1 (email type): nothing to quotient. We pay CND's work + a front-end CND does not
+   pay (55% of our email total) + pattern-machinery constants. STRUCTURAL, NOT FIXABLE: tonight's
+   full stack moved email only 1.048x, exactly as this model predicts.
+2. hostSz large (HepPh type): compression fine (2.8x) but each pattern smeared over ~40 leaves.
+   IMPLEMENTATION, FIXABLE: tonight's stack took it to 1.97x peel + 5.03x memory, bit-exact. This
+   validates the standing thesis (feedback_own_algorithm_not_graft): where compression is healthy,
+   residual slowness is work above the minimum.
+
+### The r-direction crossover is structural (§209b)
+W falls monotonically in r on every measured graph while CND's #r-cliques explodes in r (com-dblp:
+W 1.48->0.049 as #r-cliques goes 1.68M->247.7M). The two cost models move in OPPOSITE directions, so
+the crossover is asymptotic, not curated. "We could only pick 7 graphs" really meant: those are the
+graphs whose crossover falls inside the commonly-benchmarked (r,s) range. W turns cherry-picking
+into an a-priori applicability characterization.
+
+### State per graph class after tonight (phase-3, tods2, peel-attributed, 3-trial, all bit-exact)
+| class | example | before | after | remaining gap |
+|---|---|---|---|---|
+| high-compression (home turf) | web-it, dblp | huge win / CND OOM | unchanged (peel was never the bottleneck) | none |
+| hostSz-type loss | ca-HepPh | CND wins | **1.971x peel + 5.03x mem** | addDelta (~41% of peel); NO same-machine CND number yet |
+| middle | AstroPh, CondMat | thin win | +1.07-1.20x | addDelta 65% |
+| compression-type loss | email | 19x loss | unchanged (1.048x) | NOT FIXABLE -- this is the method boundary |
+
+### EXPLICIT DEBT LIST (ranked)
+1. **The PLANE engine got NONE of tonight's optimizations.** runMultiRPlane/planeReplayCell have
+   their own supportOf/addWitnesses. All three optimizations live in main() and cover the fixed-r
+   single-cell AND SCT_SWEEP paths (regression-verified bit-exact); the multi-r plane path is
+   untouched, so §207's plane-vs-CND numbers (1.23x time, 2.15x memory deficit) are UNCHANGED by
+   tonight. Porting is the next structural task; similar gains expected (same waste, same design).
+2. **No same-machine CND baseline for tonight's cells.** Every number tonight is ours-vs-ours. The
+   "ca-HepPh flip" claim is FORBIDDEN until a serial CND (3,5) run on tods2 exists.
+3. Three flags default OFF (SCT_DECONV, SCT_SPARSE_FP, SCT_CLAMP_PF); flip criteria undecided,
+   waiting on the sparse old-vs-new A/B (running).
+4. Doc state mixed: snapshot source at 26c6224 vs journal at §212; EXPERIMENTS.md RQ tables have
+   not absorbed tonight's data.
+5. Env-var surface ~60 knobs (+5 tonight). A named "recommended configuration" must be defined or
+   the experiment matrix explodes.
+6. Minor: com-amazon SPLIT (2% memory, 3MB absolute); sparse cross-machine sign A/B in flight.
