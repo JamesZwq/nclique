@@ -21,6 +21,15 @@
 - [x] ~~SLP step 2 grouped walk~~ **DE-GREENLIT (§208)**: §203's 71-163x lumped ungroupable
       bounds-rejects in; the clean redundancy is 2.2-9.8x
 
+## ACCEPTANCE STANDARD (user, 2026-07-23 -- binding)
+>= 8 graphs, all million-scale+ (aim for one billion-scale), from 3-4 common domains, ALL excellent
+under the index-first metrics (build feasibility, index size, query). Consequences:
+- [ ] retire sub-million graphs from the headline roster (raefsky3 733k, ca-* series, epin)
+- [ ] W-prescreen the big candidates: dblp-coauthor 30.8M, soc-pokec 30M, com-lj 34M, com-orkut 117M (RUNNING)
+- [ ] acquire billion-scale WEB graphs (our strongest domain): LAW it-2004 full 1.15B / uk-2005 936M / sk-2005 1.9B
+- [ ] acquire larger FEM matrices (SuiteSparse: nlpkkt160/200/240, Queen_4147, Flan_1565)
+- [ ] com-friendster 1.8B (server) -- W-prescreen before committing (social, weak domain)
+
 ## Paper
 - [ ] P1 verify SIGMOD/VLDB round dates (do NOT trust memory)
 - [ ] P2 write in order: Intro+Fig1 -> Theory -> Algorithm -> Index -> Experiments -> Related -> Abstract
