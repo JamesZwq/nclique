@@ -8714,3 +8714,30 @@ not) is optimal-in-kind.
 web-it CND row (grinding, trial 2/3) -> Axis 3's headline. Residue cross-cell compression probe ->
 Axis 1's remaining fat (residue dicts are the size floor). E4 sorted-table + recompute baseline ->
 Axis 2's table. Skeleton v1 -> Axis 3's per-cell term. All four feed one coherent claim structure.
+
+## 216. FIRST SAME-MACHINE CND-vs-STACK TABLE COMPLETE -- web-it-2004 (3,4): **742x time, 226x memory** (2026-07-23)
+scripts/cnd_vs_stack_tods2.sh, tods2, BOTH sides serial (OMP_NUM_THREADS=1), 3-trial medians, CND from
+repo root with the 8ea7546-fixed binary, 300GB cap. Ours = the §210 full stack (bit-exact vs pre-208).
+| graph | cell | CND s / RSS | ours s / RSS | TIME ratio | MEM ratio |
+|---|---|---|---|---|---|
+| **web-it-2004 (7.2M edges)** | 3,4 | **5581 / 101.2GB** | **7.52 / 458MB** | **742.2** | **226.2** |
+| com-dblp | 4,6 | 43.81 / 5.69GB | 7.14 / 516MB | 6.14 | 11.03 |
+| com-amazon | 3,5 | 2.33 / 520MB | 0.76 / 145MB | 3.07 | 3.59 |
+| ca-GrQc | 3,5 | 0.16 | 0.06 | 2.67 | 3.54 |
+| ca-CondMat | 3,5 | 0.43 | 0.48 | 0.90 | 1.48 |
+| web-Google | 3,5 | 25.10 | 52.22 | 0.48 | 0.90 |
+| com-youtube | 3,5 | 22.12 | 53.20 | 0.42 | 0.32 |
+| email-Eu-core | 3,5 | 1.20 | 5.64 | 0.21 | 0.11 |
+| ca-AstroPh | 4,6 | 25.15 | 179.55 | 0.14 | 0.36 |
+| ca-HepPh | 3,5 | 11.99 | 108.31 | 0.11 | 0.34 |
+READINGS.
+1. The headline is at the LOWEST cell (3,4), and §209b says the ratio grows with r. CND took 93min +
+   101GB for ONE low cell of a 7.2M-edge web graph; we took 7.5s + 458MB. (History note: §141's
+   ">=300GB abort" was the 4-cell spectrum; a single (3,4) cell fits at 101GB. State precisely.)
+2. Of the 6 losing rows, 4 are sub-million graphs being retired by the acceptance standard (ca-*,
+   email). The REAL exposure is web-Google (0.48) and com-youtube (0.42) at (3,5): million-scale
+   graphs losing at a low cell. The grid experiment (user directive: beat CND across ALL (r,s), r>=3,
+   no cherry-picked cells) must show their crossover at r=4 (yt's old r=4 spectrum 5.8x suggests it
+   flips); otherwise they do not enter the roster.
+3. This table supersedes nothing -- it is the FIRST same-machine ours-vs-CND data for the §210 stack.
+   The single-cell losses on retired graphs match the W model (§209) quantitatively.
