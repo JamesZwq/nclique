@@ -8668,3 +8668,49 @@ V1 SCOPE (queue bypass only; credit-walk grouping deferred to v2):
 GATES: bit-exact vs pre-change binary on email r=3 s<=8 and youtube r=4 s<=8 sweeps (covers BOTH
 loops), plus the standard 7-cell single-cell matrix, plus plane untouched. Measure = row peel + the
 popMachinery segment share before/after.
+
+## 215. THE THREE EXPONENTIAL SEPARATIONS -- the paper's formal claim skeleton, with the theorem behind each axis and the one honest scope (2026-07-23)
+User's expectation, which the theory DOES support on a characterized class: exponential advantage on
+ALL THREE axes -- build, index size, query -- vs the two-sided baseline (query side: CND online
+recompute; storage side: materialize the raw archive of every kappa value).
+BE PRECISE ABOUT THE PARAMETER: the separations are exponential IN r (and width-free in s), not "in n".
+
+### Axis 1 -- SIZE, vs the raw archive.  Theorems: T7 + T3 + T6.
+Raw archive: one value per r-clique per cell. Within one class of size n_c the r-cliques number
+C(n_c, r) ~ n_c^r / r! -- EXPONENTIAL in r. Under the quotient (T7, exactness) all r-cliques with the
+same class composition share one entry, and #compositions of r over M classes is C(r+M-1, M-1) ~
+r^(M-1) -- POLYNOMIAL in r. Separation: ~(n_c/const)^r vs r^(M-1). Measured face: web-it (4,6)
+compression 25,278x and growing with r; GrQc (5,7) 110x; dblp (5,7) 138x.
+The s-axis collapses separately: a certified pattern stores O(1) (boundary core + cP) for its ENTIRE
+tail regardless of how many cells the row has (T3 absorbing); mergeable regions store nothing at all
+beyond the region list (T6). Raw archive pays #r-cliques PER CELL.
+### Axis 2 -- QUERY, vs online recompute.  Theorems: T3 (reconstruction) + T7 (lookup soundness).
+Ours: map vertices -> classes (O(r)), hash the composition, then EITHER closed-form arithmetic (T3,
+certified; O(1)) or one residue-dict probe. Measured 81-574ns.
+Baseline: recomputing the cell from scratch = the full decomposition, which at high (r,s) is itself
+exponential-in-r work (and CND cannot finish it at 300GB). The query separation IS the build cost of
+the baseline, by construction: that is the classic index argument, and the archive alternative that
+would make queries cheap is the one Axis 1 kills on size.
+### Axis 3 -- BUILD, vs CND over the plane.  Theorems: T3 + T5 + T6/T7 (+ the layer decomposition).
+CND: Theta(#r-cliques) time AND memory per cell, summed over cells -- exponential in r, and the
+memory side is what aborts at 300GB (measured).
+Ours: front-end (poly) + per-r pattern work (~#patterns, poly in r) + boundary peel + per-cell
+residue only (P10 lower-bounds this residual for EVERY algorithm; certified fraction pays zero peel
+by T3/T5, zero supInit, and -- once the §214 skeleton lands -- near-zero scheduling).
+On the high-certification class the whole build is polynomial where CND's is exponential. Measured
+face: web-it (3,4) CND ~56min/55GB per trial vs ours 7.3s/0.45GB (~460x at ONE low cell; the gap
+grows with r because the two cost models diverge exponentially -- §209b's W-vs-r monotonicity).
+### THE ONE HONEST SCOPE (state it as a theorem, not a confession)
+All three separations hold ON THE CLASS where the quotient is nontrivial and certification is high --
+the class characterized A PRIORI by W = hostSz/compression and the certified fraction, both
+computable before building (SCT_W_ONLY, front-end price). Outside it (email-type: compression 1.0,
+twin-free) the quotient degenerates, #patterns = #r-cliques, and NOTHING in our theory claims a win
+there (measured: we lose 0.21x). The paper states this as the applicability characterization
+(turning the old cherry-picking objection into a contribution), NOT as a limitation buried in the
+evaluation. P10 additionally bounds what ANY competitor could do on the residue, so the design's
+shape (closed form everywhere it is information-theoretically possible, explicit residue where it is
+not) is optimal-in-kind.
+### What each running/queued task feeds
+web-it CND row (grinding, trial 2/3) -> Axis 3's headline. Residue cross-cell compression probe ->
+Axis 1's remaining fat (residue dicts are the size floor). E4 sorted-table + recompute baseline ->
+Axis 2's table. Skeleton v1 -> Axis 3's per-cell term. All four feed one coherent claim structure.
