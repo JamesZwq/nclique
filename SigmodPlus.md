@@ -8643,3 +8643,28 @@ closed-form levels as WAVES (no per-death queue traffic), and apply their credit
 patterns grouped per (leaf, cohort) instead of per death. Expected: removes most of the 60-84%.
 Correctness gates as always: bit-exact vs the pre-change binary on the full matrix of graphs, sweep
 AND single-cell AND plane untouched.
+
+### §214b: skeleton v1 IMPLEMENTATION DESIGN (recon done; flag SCT_SKELETON, default OFF)
+RECON FACTS. Two pop loops serve the sweep: the main per-pattern loop (:3849, a_Y, tail<=3) and the
+batch loop (:3670, tail>witCross=3). Both drain bk = unordered_map<level, vector<pi>> with a ++curLevel
+linear advance. Per scheduled death today: bk find/push/pop + alive/key staleness + coreDist red-black
+insert + periodic fprintf -- x 1.7-2.2M certified deaths per cell on youtube. leafKill is OFF in
+fpsCell mode (:3575), so no interaction there. Certified patterns never RECEIVE credits
+(!(fpsCell && nsiCert[qi]) guards at :4029/:4169/:4272), they only EMIT at death; so bypassing the
+queue for them cannot change any other pattern's trajectory ordering beyond within-level reordering,
+which §118 (equal-level deaths are order-free) already licenses.
+COHORTS ARE PER-CELL, NOT PER-ROW: certification is absorbing, the certified set GROWS with s
+(email 61,051 -> 66,998 across the row), so cohort construction runs where nsiSched runs today
+(O(npat) per cell, already paid).
+V1 SCOPE (queue bypass only; credit-walk grouping deferred to v2):
+ 1. cohort[L] = scheduled certified patterns with closed-form level L = C(cP-r, s-r); do NOT insert
+    them into bk; set pats[pi].key = L at build.
+ 2. Level advance in BOTH loops additionally considers the next pending cohort level; maxKey extended
+    over cohort levels; peeledN accounting unchanged.
+ 3. At level open: emit the whole cohort first (order-free within the level), THEN drain bk. Emission
+    per pattern runs the SAME death body (refactored into a lambda around the existing inline code so
+    the arithmetic is untouched); coreDist for a cohort is bulk-added in ONE map op per (cohort,level).
+ 4. Batch loop: cohort pis are appended into the level's wave so they join the leaf-major grouping.
+GATES: bit-exact vs pre-change binary on email r=3 s<=8 and youtube r=4 s<=8 sweeps (covers BOTH
+loops), plus the standard 7-cell single-cell matrix, plus plane untouched. Measure = row peel + the
+popMachinery segment share before/after.

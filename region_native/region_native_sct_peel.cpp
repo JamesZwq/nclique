@@ -3685,7 +3685,7 @@ int main(int argc, char **argv) {
                 taskLL.clear();
                 for (int pi : wave) {
                     Pat &P = pats[pi];
-                    P.alive = false; P.core = (double)curLevel; peeledN++; patLive[(size_t)pi] = -1LL; patLive[(size_t)pi] = -1LL;
+                    P.alive = false; P.core = (double)curLevel; peeledN++; patLive[(size_t)pi] = -1LL;
                     coreDist[P.core] += (double)P.mult;
                     if (skipH1 && P.hostSz == 1) {        // SOURCE-SKIP (sec: M-exclusive witnesses)
                         bool aff2 = false;
