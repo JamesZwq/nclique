@@ -8470,3 +8470,28 @@ THE METHOD POINT, which is the reusable part: two graphs disagreed in SIGN. Aver
 picking either one, both give a wrong decision. The idea was right and the IMPLEMENTATION was wrong,
 and only reading the code told me which. A cross-graph disagreement is a signal to diagnose, not a
 signal to compromise.
+
+### §210e: tods2 phase-2 (3-trial) -- ca-HepPh full stack is BOTH-WIN 1.70x time + 5.04x mem; sparse confirmed to need an M-gate
+The clean, unambiguous rows (peel-dominated graphs, so total ~= peel):
+| graph | cell | config | speedup | mem_save | verdict |
+|---|---|---|---|---|---|
+| **ca-HepPh** | 3,5 | **all three** | **1.697x** | **5.04x** | **BOTH-WIN** |
+| ca-HepPh | 3,5 | deconv | 1.604x | 1.00 | BOTH-WIN |
+| ca-HepPh | 3,5 | sparse | 1.026x | 5.05x | BOTH-WIN |
+| **com-dblp** | 4,6 | **all three** | **1.162x** | **1.38x** | **BOTH-WIN** |
+ca-HepPh (3,5) is the cell where CND beats us. All three optimisations together: 193.88 -> 114.24s and
+13,100 -> 2,597MB, bit-exact.
+
+CAVEAT ON THIS TABLE, and it is my own rule from §210: it uses TOTAL time, which on MCE-dominated
+graphs (web-it-2004 MCE = 81.6%) is dominated by a phase none of these changes touch. The web-it /
+com-youtube 0.98x "SPLIT" rows are almost certainly that MCE noise, NOT peel regressions, and must be
+re-read with a peel breakdown before being believed. The phase-3 script (combined_tods2.sh) fixes this:
+PEEL is its primary column.
+
+SPARSE NEEDS AN M-GATE -- now confirmed on tods2, not just locally. ca-AstroPh (4,6): deconv alone is
+1.050x BOTH-WIN, but adding sparse drags it to 0.988x SPLIT, and sparse alone is 0.948x. At M ~ 25 the
+sparse indirection costs more in the a_Y confirm path than the O(M)->O(r) saving returns (measured
++5.9% on addDelta, §210b). ca-HepPh at M ~ 122 has the opposite sign (sparse 1.026x). So sparse must
+be per-leaf gated on M exactly as deconvolution is gated on M, with a crossover around M ~ 30-50 to be
+pinned down. Until then sparse is a MEMORY win that is time-neutral-to-slightly-negative on small-M
+graphs, i.e. SPLIT there, which does not meet the both-win bar.
