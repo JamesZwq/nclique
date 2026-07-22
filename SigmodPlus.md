@@ -8875,3 +8875,28 @@ CND, which §207 proved is slower AND fatter on these inputs. CONSEQUENCES:
    Each headline must be re-earned serially. The scout grid + acceptance-roster runs are the vehicle.
 3. Method note: the reuse idea died in ONE cross-check against a fresh measurement. Checking before
    reusing is the whole §202 discipline; it held.
+
+## 218. SCOUT GRID COMPLETE: 5 graphs x 9 cells in ~2.5h (old protocol: days). Roster verdicts + the serial-CND grid data (2026-07-23)
+scripts/grid_scout_tods2.sh, tods2, serial CND (1 trial, 1800s budget, 300GB cap, skip-on-blowup),
+ours = full stack via SCT_SWEEP (marginal cell times; row totals). All CND cells SERIAL-protocol clean.
+
+### web-it-2004 (7.2M edges, web): CND 0/9 cells within budget; our whole ROWS take seconds
+r=3: CND (3,4) rc=124 (>1800s; full-budget §216 run: 5581s) -> rest skipped. OURS whole row 0.81s.
+r=4: CND (4,5) **rc=134 = 300GB MEMORY KILL** -> rest skipped. OURS whole row 1.60s.
+r=5: CND (5,6) rc=124 -> rest skipped. OURS whole row 3.18s.
+### web-Google (5.1M edges, web): 9/9 wins, ratio explodes along r and s exactly as §209b predicts
+(3,4) 1.43 | (3,5) 11.9 | (3,6) 5.1 | (4,5) 1.67 | (4,6) 43.9 | (4,7) 51.5 | (5,6) 3.12 | (5,7) 121.8 | (5,8) 131.4
+### com-dblp (1.05M edges, collab): all wins
+(3,4) 2.94 | (3,5) 64.6 | (3,6) 90.6 | (4,5) 12.4 | (4,6) 541 | (4,7) 626 | r=5 rows in log
+### com-amazon (926k edges, co-purchase): all wins, 14.9x-163x+ (deep cells sub-10ms marginal)
+### com-youtube (3M edges, social): FAILS the strict bar -- (3,5) 0.993, (3,6) 0.770; r=4/5 all wins (to 13.4)
+### Roster consequences
+IN: web-it-2004, web-Google, com-dblp, com-amazon (4 graphs, 3 domains, serial-clean grids).
+OUT: com-youtube (r=3 losses), soc-pokec (compression 1.001x, prescreen), com-lj/orkut (deprioritized,
+same social twin-free structure), dblp-coauthor (**third boundary type: PATTERN WALL** -- MCE completes
+in ~1h but incidences blow the 500M cap at both (3,4) and (4,6); distinct from the twin-free mode and
+from hostSz smear; goes into the characterization as its own negative class).
+REFINE QUEUE (3-trial + standalone ours needed): web-Google (3,4)(4,5), com-dblp (3,4) only.
+PENDING for the acceptance standard: FEM re-fetch running (old files survive on neither server; old
+infeasibility claims §217-quarantined; Flan_1565 59M nz + Queen_4147 166M nz added), then LAW web
+billions (java 17 confirmed on tods2), then the FEM/LAW scout batch.
