@@ -8612,3 +8612,34 @@ Everything else (deconvolution supInit, sparse footprints, clamp pre-filter, ske
 E4 baseline (sorted-table + CND-recompute cost); row-wide polynomial supInit (layer 2) after its
 ceiling probe; skeleton mode-2 (layer 3) after its ceiling probe; P7: write P10 out or demote; P1:
 verify SIGMOD deadline dates (do NOT trust memory).
+
+## 214. LAYER CEILINGS MEASURED: layer 2 (row supInit) is 3-8% -- SMALL; layer 3 (per-cell certified replay through the pop machinery) is 60-84% -- BUILD THE SKELETON (2026-07-22)
+Probe: full sweep (SCT_SWEEP) on residue-heavy graphs, F1_PROFILE + PIVOTER_PEEL_PROFILE + segments,
+full §210 stack on. Local; shares are what matters, not absolutes. (epin died at SCT_MAX_INC=50M,
+exit 7 -- rerun with the server cap later.)
+| row (whole sweep) | email r=3 s<=8 | com-youtube r=4 s<=8 |
+|---|---|---|
+| **popMachinery** | **60% of peel** | **84% of peel** |
+| addDelta (credit walks) | 30% | 10% |
+| supInit | 8% | 3% |
+| replayed-certified-deaths per marginal cell | 43-51k | **1.67-2.18M** |
+| residue deaths per cell | 37-43k | 167-217k |
+TWO CONSEQUENCES.
+(1) **Layer 2 (row-wide polynomial supInit) is NOT the lever.** I projected it as the main prize;
+    measured ceiling is 3-8% of row peel, because certified patterns already skip supInit in the
+    sweep and residue supInit is small. Park it (still elegant for the paper's algorithm statement --
+    the polynomial IS the mechanism -- but build nothing until something makes it matter).
+(2) **Layer 3 is the lever: 60-84%.** The cost is per-death FIXED OVERHEAD (bucket scan, pop,
+    staleness) x millions of certified deaths x per cell, NOT the witness-walk redundancy I measured
+    when de-greenlighting SLP step 2 (that was the within-cell hash-reject share, 2.2-9.8x). The
+    de-greenlight is therefore HALF-REVERSED: the cohort/skeleton form is green-lit; mode 1
+    (truncated inclusion-exclusion) stays dead (antichain risk unchanged).
+### Skeleton design (row-level, sweep path)
+Certified cohorts are PER-ROW invariants: cohort_c = {certified P : c(P)=c}. In cell s the whole
+cohort dies at level C(c-r,s-r) (T3), equal-c deaths are order-free within the wave (§118 clamp
+theorem), and relative cohort order (ascending c) is identical in every cell. So: precompute the
+cohort sequence ONCE per row; per cell, merge cohorts into the residue level stream at their
+closed-form levels as WAVES (no per-death queue traffic), and apply their credits to residue
+patterns grouped per (leaf, cohort) instead of per death. Expected: removes most of the 60-84%.
+Correctness gates as always: bit-exact vs the pre-change binary on the full matrix of graphs, sweep
+AND single-cell AND plane untouched.
