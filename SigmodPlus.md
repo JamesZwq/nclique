@@ -8856,3 +8856,22 @@ SOCIAL still ~1/5 certified at the boundary (matches §215 honest scope; residue
 win). NEXT: finish Epinions q>=3 on tods2 (server, larger mem) + one web/collab flagship for the
 paper's phi table; the probe using TRUE child-kappa measures the engine-achievable superset
 (residue-at-floor children serve as witnesses, Thm B), so these are the real achievable fractions.
+
+## 217. E3's CND LOGS ARE PARALLEL-CND -- NOT REUSABLE, and every pre-§207 CND ratio must be regenerated serially (2026-07-23)
+Attempted to reuse the 26 CND cell logs in tods2:/home/wenqianz/nsi_e3/ to fill the grid for free.
+Verification against fresh serial measurements KILLED the reuse and exposed a protocol problem:
+| cell | E3 log | fresh serial (§216/§207) | reading |
+|---|---|---|---|
+| webit (3,4) | 316s / **307GB** | **5581s / 101GB** | E3 hit the 300GB prlimit and ABORTED; 316s is time-to-OOM. Serial COMPLETES at 101GB in 93min |
+| hepph (3,5) | 39.5s | 11.99s | E3 3.3x slower |
+| astro (4,6) | 38.8s | 24.2s | E3 60% slower |
+E3 (2026-07-08) predates the serial-CND-only rule (§206/§207, 2026-07-21). The E3 runs are parallel
+CND, which §207 proved is slower AND fatter on these inputs. CONSEQUENCES:
+1. E3 logs fill NOTHING. The scout grid regenerates every needed cell under the unified serial protocol.
+2. **Every CND-based ratio currently in EXPERIMENTS.md (RQ1 main table, E3 spectrum columns,
+   "webit >=300GB abort" style markers) is parallel-CND-based and is HEREBY QUARANTINED from the
+   paper.** Direction of correction is not uniform: serial CND is FASTER on hepph-type cells (ratios
+   get worse for us) but COMPLETES where parallel aborted (webit: "infeasible" becomes a clean 742x).
+   Each headline must be re-earned serially. The scout grid + acceptance-roster runs are the vehicle.
+3. Method note: the reuse idea died in ONE cross-check against a fresh measurement. Checking before
+   reusing is the whole §202 discipline; it held.
