@@ -8741,3 +8741,80 @@ READINGS.
    flips); otherwise they do not enter the roster.
 3. This table supersedes nothing -- it is the FIRST same-machine ours-vs-CND data for the §210 stack.
    The single-cell losses on retired graphs match the W model (§209) quantitatively.
+
+## 217. THE SEEDED COMB -- single-seed batch construction of the whole (r,s) plane (design + lemma-level proofs; answers §213's "computes the plane 12 times" complaint) (2026-07-23)
+DESIGN VERDICT: the single-seed hypothesis is CORRECT in the precise sense below. One cold peel
+(cell (1,2) = k-core on the class quotient) + arithmetic grows the certified skeleton of the ENTIRE
+plane; every other cell (including every row-boundary cell, previously cold) becomes residue-only.
+The plane's dependency shape is a COMB: one diagonal spine (1,2)->(2,3)->...->(w-1,w) carried by T5,
+horizontal teeth (each row's ascending-s sweep) carried by T3, every cell on exactly one tooth.
+
+### Lemma W (witness form of the T5 corollary; the reduction is EXISTS, not MIN)
+For any (r+1)-clique R+ and r-subclique R: c(R) >= c(R+), so T1 gives kappa_{r,r+1}(R) >= c(R)-r
+>= c(R+)-r; hence min_children >= c(R+)-r UNCONDITIONALLY, and the T5-corollary hypothesis
+"min = c(R+)-r" is equivalent to: EXISTS a child P with c(P) = c(P+) AND kappa_{r,r+1}(P) = c(P)-r
+(child at its own floor, equal c). One witness suffices; the scan is <= r+1 hash lookups per
+(r+1)-pattern into the previous boundary table, short-circuit on first hit. Operates on PATTERNS
+(T7; children = remove-one-class sub-multisets, all realized; hosts(R) = intersection of class
+membership sets => c is a pattern invariant).
+
+### Lemma R (scheduled-replay exactness; strengthens §118/T8, the composition backbone)
+Let C be any subset of patterns with a-priori-known EXACT kappa values. The peel that (a) never
+tracks C's supports, (b) removes each P in C at any point within level kappa(P), (c) cascades the
+rest normally, assigns every pattern its true kappa. Proof via the maximal-family characterization:
+kappa(P) >= k iff P is covered by M_k = union of all families with min-support >= k (union stays
+>= k since sup only grows). Then (i) every s-clique of M_{L+1} has all sub-patterns of kappa >= L+1,
+so it survives all levels <= L intact regardless of WHICH kappa<=L patterns were already removed and
+in what order => no kappa >= L+1 pattern ever dips to support <= L during level L => EARLY emission
+of scheduled deaths (support possibly still > L) is harmless; (ii) if the level-L cascade stalls,
+every alive pattern has current support >= L+1 (support 0 <= L would be removable), so the alive
+family witnesses kappa >= L+1 for everything alive => D_L is exhausted exactly. QED. Consequence:
+ANY partition of each level's death set into scheduled-known + cascade-discovered is exact -- this
+licenses cohort waves (§214b) at EVERY cell including the boundary, and bulk emission.
+
+### Theorem A (diagonal descent exactness) + Theorem B (pure single-seed skeleton)
+A: induction on r. Base: (1,2) peeled exactly (P9). Step: given cell (r,r+1) EXACT (certified +
+residue), certify each (r+1)-pattern by Lemma W (value c-r-1, exact by T1 floor meets T5 ceiling,
+P9 certification principle) or leave to residue; compute cell (r+1,r+2) by Lemma R replay
+(certified as waves at closed-form level c-r-1, residue dynamic, supports from the row polynomial).
+Well-founded: uses ONLY the previous diagonal cell; no circularity; row teeth never feed the spine.
+B (the paper's claim): define PF_1 = {classes at floor in the seed}, PF_{r+1} = {host-1 patterns
+(T6)} u {P+ : exists child in PF_r with equal c}. Every PF member's ENTIRE row is closed-form
+(boundary by W+T5+T1, tail by T3 absorbing: boundary value c-r-1 = C(c-(r+1),1) is exactly T3's
+hypothesis at s = r+3), reachable from the ONE seed by arithmetic alone. The implemented descent
+certifies a SUPERSET of PF (residue-discovered floor patterns also serve as witnesses -- residue
+work feeds back into the skeleton). Composition: every cell is on exactly one tooth, every pattern
+in every cell is certified (closed form) xor residue (Lemma R replay); bit-exact vs P9.
+
+### Residue structure (the honest P10 side)
+Boundary-uncertified P+ <=> every child is (above-floor at (r,r+1), hence was residue there) or
+c-drop (c(child) > c(P+)): residue only appears over previous-row residue or host-overlap structure
+(LIFTING). Along a row, residue pools are NESTED decreasing (T3 absorbing): each pattern is residue
+on a PREFIX (r,r+1)..(r,s*) and closed-form after. What is genuinely shared (one-pass): SCT +
+quotient + hosts + c (plane-wide); polynomial supports + shrinking pool + wave schedule (per-row).
+What P10 forces per-cell: the residue death sequence, Theta(|Res_{r,s}|) decisions -- a vectorized
+multi-s peel cannot beat this (per-cell alive-sets differ; only locality would improve). Our shape
+matches the bound: closed form everywhere information-theoretically possible, explicit residue where
+not. (P10 still needs its gadget write-out -- unchanged debt.)
+### Complexity / separation / scope
+New total = SCT + O(m) seed + sum_r O(r*Pi_r) scan + sum_cells ResiduePeel + O(w*Pi) row certs.
+Replaces w-1 COLD boundary peels with scans + residue-only peels: the delta per row is
+coldpeel(all Pi_r) -> O(r*Pi_r) + peel(uncertified only). On the high-certification class
+(a-priori W + host-1 fraction; web-uk measured ALL-closed-form) boundary residue ~ 0: "the whole
+spectrum for the price of one k-core plus the P10 residue". Twin-free/low-cert graphs: scan is
+wasted-but-dwarfed, graceful degradation to per-cell peels (email-type, honest loss unchanged).
+### Risks (proven vs open)
+PROVEN here: Lemma W, Lemma R, Thm A, Thm B, nesting, lifting. MEASURED-NOT-PROVEN: T5 EQUALITY
+(100% collab 4-cliques, 23.4% epin) -- equality is NOT usable as a certificate alone. OPEN: P10
+write-out; boundary certified-fraction phi_r NOT yet measured (probe offline from existing exact
+cell dumps BEFORE building -- step 1). EXTENSION E1 (above-floor diagonal certificates): kappa is
+SUBGRAPH-MONOTONE (any family in H <= G is a family in G, same covered supports => kappa^H <=
+kappa^G), so a local witness peel on a few-host closure (2-host union = 3-class quotient, poly(r)
+pattern peel, effectively closed form) gives a LOWER bound; when it meets the T5 ceiling min-1 the
+value is exact ABOVE floor. Coverage unmeasured; correctness proven; this is the lever the 100%
+equality measurement points at for social graphs.
+### Implementation delta (small; reuses §214b cohorts)
+(1) T5 scan before each boundary cell (gather form, previous boundary table alive only during the
+scan); (2) boundary cells switch cold -> residue-mode with waves; (3) rows processed ascending r
+(teeth parallelize freely after their boundary). Index format unchanged -- BUILD-side design only.
+Gates: bit-exact vs current engine, full graph matrix, sweep AND single-cell AND plane.
