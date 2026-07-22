@@ -8578,3 +8578,37 @@ into an a-priori applicability characterization.
 5. Env-var surface ~60 knobs (+5 tonight). A named "recommended configuration" must be defined or
    the experiment matrix explodes.
 6. Minor: com-amazon SPLIT (2% memory, 3MB absolute); sparse cross-machine sign A/B in flight.
+
+## 213. PAPER SHAPE DECIDED (user granted full autonomy; elegance is the binding constraint) (2026-07-22)
+User directive: the final goal is a SIGMOD paper; the presented algorithm MUST be simple, elegant,
+efficient; implementation detail is unlimited but stays off the main line. Direction: INDEX-first
+(user proposed, I concurred; the fresh CND single-cell data supports it: we lose the single-cell race
+7-9x on hostSz graphs, but CND has no entry in the index race at all).
+
+### The algorithm, as the paper will present it (four sentences)
+1. **Quotient**: vertices with identical maximal-clique membership are interchangeable (T7); an
+   r-clique's class multiset is its pattern; peel patterns, not cliques.
+2. **Polynomial**: a pattern's support in EVERY cell is a coefficient of one generating polynomial
+   per (pattern, leaf); the leaf product F(x) is plane-invariant, the quotient polynomial is
+   row-invariant, so support init for a whole row costs one polynomial build ([x^s] is free).
+3. **Certificate**: once kappa touches the clique floor it stays there (T3, absorbing); certified
+   tails are pure arithmetic: zero storage, zero peel, closed-form reconstruction at query time.
+4. **Residue**: only uncertified patterns are peeled and stored, and P10 (to be written out) says
+   per-cell residue work is unavoidable for ANY algorithm -- the design is optimal in shape.
+Everything else (deconvolution supInit, sparse footprints, clamp pre-filter, skeleton/ledger,
+60 env knobs) is implementation, presented as "an efficient implementation" + appendix.
+
+### The paper's claims (index-first)
+- Feasibility: the plane is unwritable raw (trillions of r-cliques; webit r=3 table ~27GB) and CND
+  cannot compute the high cells at 300GB. One quotiented index holds the WHOLE plane in 0.045-40
+  B/r-clique (measured), queries in 81-574ns.
+- The a-priori characterization W = hostSz/compression (computable before building) says when the
+  index is small -- the honest scoping that preempts the cherry-picking objection.
+- Impossibility scoping: Prop I (no universal order) + P10 (no o(omega^2) full spectrum) bound what
+  any competitor could do; our residue-only design matches the bound's shape.
+- Build efficiency: layer decomposition -- structure once, supports once per row, certified skeleton
+  once per row, only residue dynamics per cell. (Layers 2-3 partially built; ceilings to be probed.)
+### Standing TODO for this shape
+E4 baseline (sorted-table + CND-recompute cost); row-wide polynomial supInit (layer 2) after its
+ceiling probe; skeleton mode-2 (layer 3) after its ceiling probe; P7: write P10 out or demote; P1:
+verify SIGMOD deadline dates (do NOT trust memory).
