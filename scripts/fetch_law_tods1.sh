@@ -9,20 +9,31 @@ set -u
 D=/data/wenqianz/law; mkdir -p "$D"; cd "$D" || exit 1
 echo "=== FETCH LAW START $(date) ==="
 
-# --- webgraph tooling (site bundle includes all deps) ---
-if [ ! -d deps ] || ! ls webgraph-*.jar >/dev/null 2>&1; then
-  ok=0
-  for V in 3.6.11 3.6.10 3.6.9 3.6.8; do
-    wget -q "https://webgraph.di.unimi.it/webgraph-$V-bin.tar.gz" -O wg.tar.gz || continue
-    tar xzf wg.tar.gz && cp webgraph-$V/webgraph-$V.jar . && ok=1 && echo "webgraph $V" && break
-  done
-  [ $ok -eq 1 ] || { echo "FATAL: webgraph jar download failed (all versions tried)"; exit 1; }
-  wget -q "https://webgraph.di.unimi.it/webgraph-deps.tar.gz" -O deps.tar.gz \
-    || { echo "FATAL: webgraph-deps download failed"; exit 1; }
-  mkdir -p deps && tar xzf deps.tar.gz -C deps
-  rm -f wg.tar.gz deps.tar.gz
-fi
-CP="$(ls webgraph-*.jar | head -1):$(ls deps/*.jar | tr '\n' ':')"
+# --- webgraph tooling via Maven Central (the site tarball path 404s; maven URLs are stable) ---
+M=https://repo1.maven.org/maven2
+JARS="
+it/unimi/dsi/webgraph/3.6.10/webgraph-3.6.10.jar
+it/unimi/dsi/dsiutils/2.7.3/dsiutils-2.7.3.jar
+it/unimi/dsi/fastutil/8.5.12/fastutil-8.5.12.jar
+it/unimi/dsi/sux4j/5.2.3/sux4j-5.2.3.jar
+com/martiansoftware/jsap/2.1/jsap-2.1.jar
+org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar
+org/slf4j/slf4j-simple/1.7.36/slf4j-simple-1.7.36.jar
+org/apache/commons/commons-lang3/3.12.0/commons-lang3-3.12.0.jar
+commons-io/commons-io/2.11.0/commons-io-2.11.0.jar
+org/apache/commons/commons-configuration2/2.8.0/commons-configuration2-2.8.0.jar
+commons-beanutils/commons-beanutils/1.9.4/commons-beanutils-1.9.4.jar
+org/apache/commons/commons-collections4/4.4/commons-collections4-4.4.jar
+commons-logging/commons-logging/1.2/commons-logging-1.2.jar
+org/apache/commons/commons-text/1.10.0/commons-text-1.10.0.jar
+com/google/guava/guava/31.1-jre/guava-31.1-jre.jar
+"
+mkdir -p deps
+for j in $JARS; do
+  f=deps/$(basename "$j")
+  [ -f "$f" ] && continue
+  wget -q "$M/$j" -O "$f" || { echo "FATAL: maven download failed: $j"; exit 1; }
+done
 echo "classpath jars: $(ls deps/*.jar | wc -l) + main"
 
 for G in it-2004 uk-2005; do
