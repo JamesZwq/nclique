@@ -34,7 +34,8 @@ for j in $JARS; do
   [ -f "$f" ] && continue
   wget -q "$M/$j" -O "$f" || { echo "FATAL: maven download failed: $j"; exit 1; }
 done
-echo "classpath jars: $(ls deps/*.jar | wc -l) + main"
+CP="$(ls deps/*.jar | tr '\n' ':')"
+echo "classpath jars: $(ls deps/*.jar | wc -l)"
 
 for G in it-2004 uk-2005; do
   [ -f "/data/wenqianz/$G.full.edges" ] && { echo "$G.full.edges exists, skip"; continue; }
