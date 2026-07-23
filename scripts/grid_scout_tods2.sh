@@ -38,7 +38,7 @@ for G in $GRAPHS; do
   for R in 3 4 5; do
     SMAX=$((R+3))
     # ---- ours: ONE sweep covers s = R+1 .. R+3 ----
-    timeout 7200 /usr/bin/time -v env $STACK SCT_SWEEP=$SMAX /tmp/rn_scout "$GR" "$R" $((R+1)) \
+    timeout 21600 /usr/bin/time -v env $STACK SCT_SWEEP=$SMAX /tmp/rn_scout "$GR" "$R" $((R+1)) --mce-budget 7200 \
         >/tmp/s_${G}_${R}.out 2>/tmp/s_${G}_${R}.err
     ORC=$?
     ORSS=$(grep -oP 'Maximum resident set size \(kbytes\): \K[0-9]+' /tmp/s_${G}_${R}.err 2>/dev/null || echo 0)
