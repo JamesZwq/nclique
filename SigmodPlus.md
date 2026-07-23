@@ -8900,3 +8900,38 @@ REFINE QUEUE (3-trial + standalone ours needed): web-Google (3,4)(4,5), com-dblp
 PENDING for the acceptance standard: FEM re-fetch running (old files survive on neither server; old
 infeasibility claims §217-quarantined; Flan_1565 59M nz + Queen_4147 166M nz added), then LAW web
 billions (java 17 confirmed on tods2), then the FEM/LAW scout batch.
+
+## 219. FEM SCOUT GRID: 4 mesh graphs, ALL 9/9 wins, deep cells CND-infeasible -- roster now 8 graphs / 4 domains (2026-07-24)
+scripts/grid_scout_tods2.sh, tods2 serial CND (1800s budget, 300GB cap), ours full stack via SCT_SWEEP.
+FEM/mesh matrices re-fetched from SuiteSparse (§217: old files gone, old claims quarantined). ROWS are
+whole-sweep; the deep cells' CND all hit rc=124 (budget) or rc=134 (300GB kill).
+| graph | edges | (3,4) | (3,5) | (3,6) | (4,5) | (4,6)+ | (5,6)+ |
+|---|---|---|---|---|---|---|---|
+| nasasrb | 1.31M | 6.5 | 164 | 123 | 32 | inf | inf |
+| pkustk11 | 2.57M | 199 | 1563 | 2781 | inf | inf | inf |
+| pkustk13 | 3.26M | 15.8 | 1358 | 1448 | inf | inf | inf |
+| pwtk | 5.71M | 76.6 | 546 | 383 | inf | inf | inf |
+(inf = CND infeasible in budget/memory; our whole ROW for each of these is 1-66s.) nasasrb prescreen
+W=0.65, compression 8.3x, twinFrac 0.83 -- textbook home-turf (mesh => heavy twins).
+
+### THE ROSTER IS MET (8 graphs, 4 domains, all grid-clean)
+| domain | graph | edges | grid |
+|---|---|---|---|
+| web | web-it-2004 | 7.2M | CND 0/9 feasible |
+| web | web-Google | 5.1M | 9/9, to 131x |
+| collab | com-dblp | 1.05M | 9/9, to 626x |
+| co-purchase | com-amazon | 926k | 9/9, to 163x |
+| FEM | pwtk | 5.71M | 9/9, deep cells inf |
+| FEM | pkustk13 | 3.26M | 9/9, deep cells inf |
+| FEM | pkustk11 | 2.57M | 9/9, deep cells inf |
+| FEM | nasasrb | 1.31M | 9/9, deep cells inf |
+Sizes 0.9-7.2M edges -- all million-scale, meeting the floor. STILL WANTED per the acceptance
+standard: a billion-scale graph (LAW it-2004 1.15B / uk-2005 936M downloading on tods1) and, ideally,
+1-2 larger FEM (Flan_1565 59M, Queen_4147 162M) once the ours-side budget is raised -- both aborted
+this round (Queen MCE >120s default; Flan r=5 maps >7200s), scout budgets now raised to MCE 2h /
+timeout 6h and requeued.
+### Domain balance note
+4 domains cleanly (web, collab, co-purchase, FEM), FEM contributing 4 of 8. If a reviewer objects to
+FEM weight, the billion web graph + a second collab/co-purchase at scale rebalances. Social is
+deliberately absent (twin-free structural loss, §209/§218) and that ABSENCE is explained by the
+characterization, not hidden.
