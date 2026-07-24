@@ -26,6 +26,7 @@ commons-beanutils/commons-beanutils/1.9.4/commons-beanutils-1.9.4.jar
 org/apache/commons/commons-collections4/4.4/commons-collections4-4.4.jar
 commons-logging/commons-logging/1.2/commons-logging-1.2.jar
 org/apache/commons/commons-text/1.10.0/commons-text-1.10.0.jar
+org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar
 com/google/guava/guava/31.1-jre/guava-31.1-jre.jar
 "
 mkdir -p deps
