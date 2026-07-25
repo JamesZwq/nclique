@@ -9085,3 +9085,53 @@ Projected from the measured sections: ca-GrQc 4.17MB -> ~0.05MB (**~85x**), ca-C
 ~0.36MB (**~52x**), i.e. 0.024 and 0.46 B/r-clique. This is also the cleanest statement of the design:
 **the index stores only what the theory cannot reconstruct**, and P10 proves the residue is exactly
 what no algorithm can avoid storing.
+
+## 223. NSI3 SHIPPED: the slim plane index is 52-85x smaller, bit-identical, and FASTER cold (2026-07-25)
+Implementation of the §222 design. Writer `SCT_INDEX_SLIM=1` (plane mode), loader + query in
+nsi_query.cpp behind magic "NSI3" sharing the entire NSI2 query layer.
+
+### What it stores, and what it does not
+KEEPS  classOf | per-class (size, region profile) | per-column (r, boundary, mergeable ids,
+       EXCEPTION patterns only, their residue cells, dists)
+DROPS  shared leaves (the loader always skipped them) | region vertex lists (validation-only) |
+       region sizes (reconstructed as Sum of classSize over profiles) | EVERY fully-certified
+       pattern record (value() reads only cP for s >= closedFrom, and cP is recovered from profiles)
+
+### MEASURED
+| | ca-GrQc (plane r=3..5, s<=8) | ca-CondMat |
+|---|---|---|
+| index | 4,372,724 B -> **51,664 B (84.6x)** | 19,653,775 B -> **375,892 B (52.2x)** |
+| B/r-clique | 2.10 -> **0.0248** | 25.14 -> **0.481** |
+| patterns stored | 81,788 -> **0** (100.00% dropped) | 365,769 -> **4** (100.00% dropped) |
+| index load | 37.3 ms -> **1.2 ms** | -- |
+| cold point (median) | 1250 -> **750 ns** | 1583 -> **1042 ns** |
+| cold row (median) | 1416 -> **875 ns** | 1625 -> **1084 ns** |
+| warm point kernel | 14.0 -> 27.7 ns | 69.3 -> **41.7 ns** |
+| **correctness** | **120,000 spectrum rows over r=3,4,5 on both graphs: BIT-IDENTICAL** | |
+Cold latency improves on ALL EIGHT measured operations (1.4-1.9x) because a 52-85x smaller structure
+misses cache far less. Warm goes both ways and is near the timer floor on this box (the harness
+itself reports an empty-interval p95 of 42 ns, not subtracted), so warm differences of tens of ns
+must not be over-read.
+
+### The early-exit that recovered warm latency
+First cut scanned the whole seed profile and was 2.5x slower warm (69.7 vs 28.0 ns). Only the LARGEST
+hosting region matters, so the profile is also kept ordered by DECREASING |M| (built at load, zero
+file bytes) and the walk stops at the first region present in every other profile. That restored warm
+parity (27.7 vs 28.0 on ca-GrQc) with correctness re-gated afterwards, not before.
+
+### TWO BUGS WORTH RECORDING (both silent, both caught by the gate)
+1. **Binomial table under-sized.** NSI2 sizes its nCr table from the STORED pattern cP values; NSI3
+   has no stored patterns, so the table stayed at smax=8 and C2(41,1) silently returned 0 -- every
+   certified answer was 0 while every structure was perfect. Fixed by sizing from the reconstructed
+   region sizes, which upper-bound cP. A smaller index that answers 0 everywhere would have looked
+   like a triumph on size alone; only the answer-level gate caught it.
+2. **The verification workload was garbage for r != 3.** verify-cp fed r=3 samples to the r=4 and
+   r=5 columns as 4- and 5-tuples, which are not cliques, and reported 1,577 bogus mismatches. It now
+   infers r from the workload. nsi_query gained a `sample R COUNT` mode so each column is gated with
+   real r-cliques of its own r.
+
+### Where this leaves the index story
+0.0248-0.481 B/r-clique against an archive at 4r + 4*cells = 28+ B/r-clique, i.e. **58x-1100x
+smaller than the materialized alternative**, at equal warm latency and better cold latency, with the
+whole (r,s) plane in ONE structure. And the design statement is now exact: the index stores classOf,
+the class-to-region profiles, and the exceptions the theory cannot reconstruct -- nothing else.

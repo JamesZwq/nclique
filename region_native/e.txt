@@ -1,0 +1,17 @@
+region_native_sct_peel.cpp:119:13: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  119 |     g.off = move(noff);
+      |             ^
+      |             std::
+region_native_sct_peel.cpp:120:13: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  120 |     g.adj = move(nadj);
+      |             ^
+      |             std::
+region_native_sct_peel.cpp:227:20: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  227 |             rec(R, move(P), move(X));
+      |                    ^
+      |                    std::
+region_native_sct_peel.cpp:227:29: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  227 |             rec(R, move(P), move(X));
+      |                             ^
+      |                             std::
+4 warnings generated.

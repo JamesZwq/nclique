@@ -383,6 +383,7 @@ struct NSI2Column {
     vector<uint8_t> mergeMask;
     vector<int32_t> classRep;                 // universal class -> coarsened active representative
     vector<NSI2Pattern> patterns;
+    vector<int32_t> origPid;                       // §222 NSI3: exception -> its original pattern id
     unordered_map<uint64_t, vector<int32_t>> patIdx;
     vector<vector<pair<int32_t,double>>> resid;
     vector<vector<pair<double,double>>> dists;
@@ -394,7 +395,9 @@ struct NSI2 {
     int32_t n = 0, nC = 0, nR = 0, nLeaf = 0, nCols = 0;
     vector<int32_t> classOf, classSize, regionSize;
     vector<vector<int32_t>> classRegions;
+    vector<vector<int32_t>> classRegionsBySize;    // §222: same sets, ordered by decreasing |M|
     vector<int64_t> directory;
+    bool slim = false;                             // §222: NSI3 -- only EXCEPTION patterns are stored
     vector<NSI2Column> columns;
     vector<int32_t> rToColumn;
     int64_t fileBytes = 0, sharedBytes = 0;
@@ -460,6 +463,134 @@ static bool buildColumnRepresentatives(const NSI2 &x, NSI2Column &col, string &e
             col.classRep[c] = it->second;
         }
     }
+    return true;
+}
+
+// §222 NSI3 loader: the slim plane index. Reuses the NSI2 in-memory structures so the whole query
+// layer above is shared; the differences are that region sizes are RECONSTRUCTED from the class
+// profiles (the NSI2 loader already recomputed them as a cross-check, so this is the same arithmetic
+// promoted to the source of truth) and that only EXCEPTION patterns exist in a column.
+static bool loadNSI3(const char *path, NSI2 &x, string &error) {
+    LEReader rd(path);
+    if (!rd.ok()) { error = rd.error; return false; }
+    x.fileBytes = rd.size; x.slim = true;
+    char magic[4] = {};
+    if (!rd.bytes(magic, 4) || memcmp(magic, "NSI3", 4) != 0) { error = "not an NSI3 file"; return false; }
+    x.rmin = rd.i32(); x.rmax = rd.i32(); x.smin = rd.i32(); x.smax = rd.i32();
+    x.n = rd.i32(); x.nC = rd.i32(); x.nR = rd.i32(); x.nCols = rd.i32();
+    x.nLeaf = 0;
+    if (!rd.ok()) { error = rd.error; return false; }
+    if (x.rmin < 1 || x.rmax < x.rmin || x.smin != x.rmin + 1 || x.smax < x.rmax + 1 ||
+        x.n < 0 || x.nC < 0 || x.nR < 0 || x.nCols != x.rmax - x.rmin + 1 || x.nC > x.n) {
+        error = "invalid NSI3 header"; return false;
+    }
+    if (!saneCount(x.n, 4, rd.limit - rd.pos)) { error = "invalid vertex count"; return false; }
+    x.classOf.resize((size_t)x.n);
+    for (int32_t v = 0; v < x.n; ++v) {
+        int32_t c = rd.i32();
+        if (c < -1 || c >= x.nC) { error = "classOf id out of range"; return false; }
+        x.classOf[v] = c;
+    }
+    x.classSize.resize((size_t)x.nC);
+    x.classRegions.resize((size_t)x.nC);
+    x.regionSize.assign((size_t)x.nR, 0);
+    for (int32_t c = 0; c < x.nC; ++c) {
+        int32_t w = rd.i32(), z = rd.i32();
+        if (!rd.ok() || w < 0 || z < 0 || !saneCount(z, 4, rd.limit - rd.pos)) {
+            error = "invalid class record"; return false; }
+        x.classSize[c] = w;
+        x.classRegions[c].resize((size_t)z);
+        int32_t prev = -1;
+        for (int32_t i = 0; i < z; ++i) {
+            int32_t rid = rd.i32();
+            if (rid < 0 || rid >= x.nR || rid <= prev) { error = "class profile not sorted/in range"; return false; }
+            prev = rid;
+            x.classRegions[c][i] = rid;
+            x.regionSize[rid] += w;                       // reconstruct |M| = Sum of its class weights
+        }
+    }
+    if (!rd.ok()) { error = rd.error; return false; }
+    x.directory.resize((size_t)x.nCols);
+    for (int32_t i = 0; i < x.nCols; ++i) x.directory[i] = (int64_t)rd.u64();
+    if (!rd.ok()) { error = rd.error; return false; }
+    x.columns.resize((size_t)x.nCols);
+    x.rToColumn.assign((size_t)(x.rmax - x.rmin + 1), -1);
+    for (int32_t ci = 0; ci < x.nCols; ++ci) {
+        const int64_t begin = x.directory[ci];
+        const int64_t end = (ci + 1 < x.nCols) ? x.directory[ci + 1] : x.fileBytes;
+        if (!rd.seek(begin, end)) { error = rd.error; return false; }
+        NSI2Column &col = x.columns[ci];
+        col.fileOffset = begin; col.fileBytes = end - begin;
+        col.r = rd.i32(); col.boundary = rd.i32();
+        if (col.r < x.rmin || col.r > x.rmax || col.boundary != col.r + 1 ||
+            x.rToColumn[col.r - x.rmin] != -1) { error = "invalid NSI3 column header"; return false; }
+        x.rToColumn[col.r - x.rmin] = ci;
+        int32_t nm = rd.i32();
+        if (!saneCount(nm, 4, rd.limit - rd.pos)) { error = "invalid mergeable list"; return false; }
+        col.mergeableRegions.resize((size_t)nm);
+        for (int32_t &rid : col.mergeableRegions) rid = rd.i32();
+        if (!buildColumnRepresentatives(x, col, error)) return false;
+        int32_t np = rd.i32();
+        if (!rd.ok() || np < 0 || !saneCount(np, 8, rd.limit - rd.pos)) {
+            error = "invalid exception-pattern count"; return false; }
+        col.patterns.resize((size_t)np);
+        col.origPid.resize((size_t)np);
+        for (int32_t pi = 0; pi < np; ++pi) {
+            col.origPid[pi] = rd.i32();
+            int32_t len = rd.u8();
+            if (!rd.ok() || len <= 0 || len > col.r) { error = "invalid exception comp"; return false; }
+            NSI2Pattern &P = col.patterns[pi];
+            P.comp.resize((size_t)len);
+            int sum = 0;
+            for (int32_t i = 0; i < len; ++i) {
+                int32_t c = rd.i32(); int16_t b = (int16_t)rd.u16();
+                if (c < 0 || c >= x.nC || b <= 0 || b > col.r) { error = "invalid exception comp entry"; return false; }
+                P.comp[i] = {c, b}; sum += b;
+            }
+            if (sum != col.r) { error = "exception comp does not sum to r"; return false; }
+            P.boundaryCore = rd.f64(); P.closedFrom = rd.i32();
+            P.cP = -1;                                     // never stored; recovered from profiles
+            uint64_t h = 0;
+            for (auto &cm : P.comp) h ^= mixCV(cm.first, cm.second);
+            col.patIdx[h].push_back(pi);
+        }
+        int32_t nCells = rd.i32();
+        if (!rd.ok() || nCells < 0) { error = "invalid residue cell count"; return false; }
+        col.resid.resize((size_t)nCells);
+        for (auto &rr : col.resid) {
+            int64_t m = (int64_t)rd.u64();
+            if (!rd.ok() || m < 0 || !saneCount((int32_t)m, 12, rd.limit - rd.pos)) {
+                error = "invalid residue list"; return false; }
+            rr.resize((size_t)m);
+            for (auto &pc : rr) { pc.first = rd.i32(); pc.second = rd.f64(); }
+        }
+        int32_t nd = rd.i32();
+        if (!rd.ok() || nd < 0) { error = "invalid dists count"; return false; }
+        col.dists.resize((size_t)nd);
+        for (auto &d : col.dists) {
+            int32_t m = rd.i32();
+            if (!rd.ok() || m < 0 || !saneCount(m, 16, rd.limit - rd.pos)) { error = "invalid dist"; return false; }
+            d.resize((size_t)m);
+            for (auto &kv : d) { kv.first = rd.f64(); kv.second = rd.f64(); }
+        }
+        if (!rd.ok()) { error = rd.error; return false; }
+    }
+    // The binomial table must cover the largest cP a query can produce. NSI2 sizes it from the
+    // STORED pattern cP values; NSI3 has none, so it is sized from the reconstructed region sizes,
+    // which upper-bound cP by definition. Getting this wrong silently returns 0 for EVERY certified
+    // answer, because C2 is table-based and clamps out of range.
+    {
+        int maxCombN = x.smax;
+        for (int32_t z : x.regionSize) maxCombN = max(maxCombN, z);
+        if (!build_ncr2(maxCombN, x.smax - x.rmin)) { error = "binomial table build failed"; return false; }
+    }
+    x.classRegionsBySize = x.classRegions;
+    for (auto &pr : x.classRegionsBySize)
+        sort(pr.begin(), pr.end(), [&](int32_t a, int32_t b) { return x.regionSize[a] > x.regionSize[b]; });
+    x.classRegionsBySize = x.classRegions;
+    for (auto &pr : x.classRegionsBySize)
+        sort(pr.begin(), pr.end(), [&](int32_t a, int32_t b) { return x.regionSize[a] > x.regionSize[b]; });
+    x.sharedBytes = x.directory.empty() ? x.fileBytes : x.directory[0];
     return true;
 }
 
@@ -838,6 +969,7 @@ struct Query2 {
         const NSI2Column *col = nullptr;
         int32_t pattern = -1;
         int32_t mergeable = -1;
+        int32_t cpComputed = -1;                   // §222 NSI3: cP recovered from class profiles
     };
 
     QueryCode resolve(const int *vs, int r, Resolved &out) {
@@ -847,7 +979,11 @@ struct Query2 {
         for (int i = 0; i < r; ++i)
             if (vs[i] < 0 || vs[i] >= x.n) return QueryCode::BadVertex;
         out.pattern = lookupPattern(*out.col, vs);
-        if (out.pattern < 0) out.mergeable = lookupMergeable(*out.col, vs);
+        if (x.slim) out.cpComputed = cpFromProfiles(vs, r);       // needed by both slim branches
+        if (out.pattern < 0) {
+            if (x.slim) { /* cP already recovered above */ }      // §222: certified => closed form
+            else        out.mergeable  = lookupMergeable(*out.col, vs);
+        }
         return QueryCode::Ok;
     }
 
@@ -856,14 +992,16 @@ struct Query2 {
         if (s < col.boundary || s > x.smax) { code = QueryCode::SOutOfRange; return 0; }
         if (q.pattern >= 0) {
             const NSI2Pattern &p = col.patterns[q.pattern];
+            const int32_t pid = x.slim ? col.origPid[q.pattern] : q.pattern;
             if (p.closedFrom >= 0 && s >= p.closedFrom) {
                 code = QueryCode::Ok;
-                return C2(p.cP - col.r, s - col.r);
+                // slim stores no cP: recover it exactly the same way the certified path does
+                return C2((x.slim ? q.cpComputed : p.cP) - col.r, s - col.r);
             }
             if (s == col.boundary) { code = QueryCode::Ok; return p.boundaryCore; }
             const auto &cell = col.resid[s - col.boundary - 1];
-            auto it = lower_bound(cell.begin(), cell.end(), make_pair(q.pattern, -numeric_limits<double>::infinity()));
-            if (it == cell.end() || it->first != q.pattern) {
+            auto it = lower_bound(cell.begin(), cell.end(), make_pair(pid, -numeric_limits<double>::infinity()));
+            if (it == cell.end() || it->first != pid) {
                 code = QueryCode::CorruptIndex; return 0;
             }
             code = QueryCode::Ok; return it->second;
@@ -871,6 +1009,10 @@ struct Query2 {
         if (q.mergeable >= 0) {
             code = QueryCode::Ok;
             return C2(x.regionSize[q.mergeable] - col.r, s - col.r);
+        }
+        if (x.slim && q.cpComputed >= 0) {                 // §222: certified, reconstructed
+            code = QueryCode::Ok;
+            return C2(q.cpComputed - col.r, s - col.r);
         }
         code = QueryCode::Ok;                              // not supported by any indexed s-clique
         return 0.0;
@@ -893,17 +1035,20 @@ struct Query2 {
             if (x.classRegions[c].size() < best) { best = x.classRegions[c].size(); base = i; }
         }
         if (base < 0) return -1;
-        int32_t bestSize = -1;
-        for (int32_t rid : x.classRegions[queryClasses[base]]) {
+        // Only the LARGEST hosting region matters, so walk the seed profile in decreasing size order
+        // and stop at the first region present in every other profile. Membership uses the id-sorted
+        // copy, so this is the same predicate with an early exit instead of a full scan.
+        const auto &seed = x.classRegionsBySize[queryClasses[base]];
+        for (int32_t rid : seed) {
             bool inAll = true;
             for (int i = 0; i < r && inAll; ++i) {
                 if (i == base) continue;
                 const auto &p2 = x.classRegions[queryClasses[i]];
                 if (!binary_search(p2.begin(), p2.end(), rid)) inAll = false;
             }
-            if (inAll && x.regionSize[rid] > bestSize) bestSize = x.regionSize[rid];
+            if (inAll) return x.regionSize[rid];
         }
-        return bestSize;
+        return -1;
     }
 
     double pointKernel(const int *vs, int r, int s, QueryCode &code) {
@@ -1277,8 +1422,13 @@ static int mainNSI2(int argc, char **argv) {
     if (argc < 3) { printNSI2Usage(argv[0]); return 1; }
     NSI2 x; string error;
     auto load0 = SteadyClock::now();
-    if (!loadNSI2(argv[1], x, error)) {
-        fprintf(stderr, "cannot load NSI2 %s: %s\n", argv[1], error.c_str()); return 1;
+    {
+        FILE *mf = fopen(argv[1], "rb"); char mg[4] = {};
+        bool isSlim = mf && fread(mg, 4, 1, mf) == 1 && !memcmp(mg, "NSI3", 4);
+        if (mf) fclose(mf);
+        if (!(isSlim ? loadNSI3(argv[1], x, error) : loadNSI2(argv[1], x, error))) {
+            fprintf(stderr, "cannot load %s: %s\n", argv[1], error.c_str()); return 1;
+        }
     }
     auto load1 = SteadyClock::now();
     const double loadMs = chrono::duration<double,milli>(load1 - load0).count();
@@ -1475,6 +1625,62 @@ static int mainNSI2(int argc, char **argv) {
         return 0;
     }
 
+    if (mode == "sample") {                             // emit real r-cliques for gating/benching
+        if (argc < 5) { fprintf(stderr, "usage: INDEX sample R COUNT\n"); return 1; }
+        int r = atoi(argv[3]); long long want = atoll(argv[4]);
+        const NSI2Column *colp = q.column(r);
+        if (!colp) { fprintf(stderr, "no column for r=%d\n", r); return 1; }
+        const NSI2Column &col = *colp;
+        if (col.patterns.empty()) { fprintf(stderr, "index has no pattern table (slim); sample from the full index\n"); return 1; }
+        vector<vector<int32_t>> clsVerts((size_t)x.nC);
+        for (int32_t v = 0; v < x.n; ++v) if (x.classOf[v] >= 0) clsVerts[x.classOf[v]].push_back(v);
+        // a column comp is in REP space; expand a rep to any raw class that maps to it
+        vector<vector<int32_t>> repRaw((size_t)x.nC);
+        for (int32_t c = 0; c < x.nC; ++c) { int32_t rp = col.classRep[c]; if (rp >= 0) repRaw[rp].push_back(c); }
+        unsigned seed = 987654321u;
+        auto rnd = [&] { seed = seed * 1664525u + 1013904223u; return seed >> 1; };
+        long long made = 0, guard = 0;
+        vector<int32_t> out;
+        while (made < want && guard++ < want * 60) {
+            const auto &P = col.patterns[rnd() % col.patterns.size()];
+            out.clear(); bool ok = true;
+            for (const auto &cm : P.comp) {
+                const auto &raws = repRaw[cm.first];
+                if (raws.empty()) { ok = false; break; }
+                int need = cm.second, tries = 0;
+                while (need > 0 && tries++ < 60) {
+                    int32_t rc = raws[rnd() % raws.size()];
+                    if (clsVerts[rc].empty()) continue;
+                    int32_t v = clsVerts[rc][rnd() % clsVerts[rc].size()];
+                    if (find(out.begin(), out.end(), v) != out.end()) continue;
+                    out.push_back(v); --need;
+                }
+                if (need > 0) { ok = false; break; }
+            }
+            if (!ok || (int)out.size() != r) continue;
+            sort(out.begin(), out.end());
+            for (int i = 0; i < r; ++i) printf("%d%c", out[i], i + 1 == r ? '\n' : ' ');
+            ++made;
+        }
+        fprintf(stderr, "sampled %lld r-cliques for r=%d\n", made, r);
+        return 0;
+    }
+    if (mode == "dbg-cp") {                             // one-shot diagnostic for the slim path
+        if (argc < 4 + x.rmin) { fprintf(stderr, "usage: INDEX dbg-cp R V1..VR\n"); return 1; }
+        int r = atoi(argv[3]);
+        vector<int> vs; for (int i = 0; i < r; ++i) vs.push_back(atoi(argv[4 + i]));
+        fprintf(stderr, "slim=%d nC=%d nR=%d\n", (int)x.slim, x.nC, x.nR);
+        for (int i = 0; i < r; ++i) {
+            int c = vs[i] < x.n ? x.classOf[vs[i]] : -99;
+            fprintf(stderr, "  v=%d class=%d |profile|=%zu\n", vs[i], c,
+                    (c >= 0 && c < x.nC) ? x.classRegions[c].size() : 0);
+        }
+        fprintf(stderr, "  cpFromProfiles=%d\n", q.cpFromProfiles(vs.data(), r));
+        long long nzRegion = 0; for (int32_t i = 0; i < x.nR; ++i) if (x.regionSize[i] > 0) nzRegion++;
+        fprintf(stderr, "  regionSize: nonzero=%lld of %d, max=%d\n", nzRegion, x.nR,
+                x.regionSize.empty() ? -1 : *max_element(x.regionSize.begin(), x.regionSize.end()));
+        return 0;
+    }
     if (mode == "verify-cp") {                          // §222: is cP recoverable from class profiles?
         if (argc < 4) { fprintf(stderr, "usage: INDEX verify-cp QUERYFILE\n"); return 1; }
         FILE *qf = fopen(argv[3], "r");
@@ -1657,6 +1863,7 @@ int main(int argc, char **argv) {
     if (!got) { fprintf(stderr, "%s is too short to be an NSI index\n", argv[1]); return 1; }
     if (!memcmp(magic, "NSI1", 4)) return mainNSI1(argc, argv);
     if (!memcmp(magic, "NSI2", 4)) return mainNSI2(argc, argv);
+    if (!memcmp(magic, "NSI3", 4)) return mainNSI2(argc, argv);   // §222: slim, same query layer
     fprintf(stderr, "%s has unknown index magic\n", argv[1]);
     return 1;
 }

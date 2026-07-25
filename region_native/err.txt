@@ -1,0 +1,41 @@
+region_native.cpp:93:13: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+   93 |     g.off = move(noff);
+      |             ^
+      |             std::
+region_native.cpp:94:13: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+   94 |     g.adj = move(nadj);
+      |             ^
+      |             std::
+region_native.cpp:201:20: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  201 |             rec(R, move(P), move(X));
+      |                    ^
+      |                    std::
+region_native.cpp:201:29: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  201 |             rec(R, move(P), move(X));
+      |                             ^
+      |                             std::
+region_native.cpp:367:43: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  367 |             if (vs >= s) inter.push_back({move(cs), vs});
+      |                                           ^
+      |                                           std::
+region_native.cpp:390:42: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  390 |                 if (!dom) keep.push_back(move(nd));
+      |                                          ^
+      |                                          std::
+region_native.cpp:392:21: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  392 |             inter = move(keep);
+      |                     ^
+      |                     std::
+region_native.cpp:473:35: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  473 |                 samples.push_back(move(sm));
+      |                                   ^
+      |                                   std::
+region_native.cpp:543:26: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  543 |                 common = move(out);
+      |                          ^
+      |                          std::
+region_native.cpp:549:26: warning: unqualified call to 'std::move' [-Wunqualified-std-cast-call]
+  549 |                 common = move(out);
+      |                          ^
+      |                          std::
+10 warnings generated.

@@ -1420,6 +1420,88 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
     //   each column: r,boundary,mergeable region ids, active pattern table
     //     {comp,mult,cP,boundaryCore,closedFrom}, residue dictionaries, dists.
     // The legacy fixed-r writer remains NSI1 and is byte/semantics unchanged.
+    // ===== §222 NSI3: the SLIM plane index (SCT_INDEX_SLIM=1) =====
+    // Stores ONLY what the theory cannot reconstruct:
+    //   classOf + per-class (size, region profile) + per-column (mergeables, EXCEPTION patterns, dists)
+    // Dropped, each for a reason established in §222:
+    //   shared leaves      -- the loader skips them; nothing reads them
+    //   region vertex lists-- validation-only; query containment uses the profiles
+    //   region sizes       -- reconstructible as Sum of classSize over the profiles
+    //   certified patterns -- value() returns C(cP-r, s-r) for s >= closedFrom and reads nothing else,
+    //                         and cP is recoverable as max regionSize over the profile intersection
+    //                         (verified: 60,000 queries + 1,039 mergeable cliques, 0 mismatches)
+    if (indexOut && getenv("SCT_INDEX_SLIM")) {
+        FILE *f = fopen(indexOut, "wb");
+        if (!f) { fprintf(stderr, "[nsi-plane] cannot open SCT_INDEX_OUT=%s\n", indexOut); return 1; }
+        auto w8  = [&](uint8_t v) { fwrite(&v, 1, 1, f); };
+        auto w16 = [&](int16_t v) { fwrite(&v, 2, 1, f); };
+        auto w32 = [&](int32_t v) { fwrite(&v, 4, 1, f); };
+        auto w64 = [&](int64_t v) { fwrite(&v, 8, 1, f); };
+        auto wd  = [&](double v)  { fwrite(&v, 8, 1, f); };
+        fwrite("NSI3", 4, 1, f);
+        w32(rMin); w32(rMax); w32(sMin); w32(sMax); w32(g.n); w32(nC);
+        w32(nR); w32((int32_t)indexColumns.size());
+        long b0 = ftell(f);
+        for (int c : classOf) w32(c);
+        long b1 = ftell(f);
+        for (int c = 0; c < nC; ++c) {
+            w32(classSize[c]);
+            w32((int32_t)classRegions[c].size());
+            for (int rid : classRegions[c]) w32(rid);
+        }
+        long b2 = ftell(f);
+        long dirPos = ftell(f);
+        for (size_t i = 0; i < indexColumns.size(); ++i) w64(0);
+        vector<int64_t> offs(indexColumns.size(), 0);
+        long long keptPat = 0, dropPat = 0; long bExc = 0;
+        for (size_t ci = 0; ci < indexColumns.size(); ++ci) {
+            offs[ci] = (int64_t)ftell(f);
+            const auto &col = indexColumns[ci];
+            w32(col.r); w32(col.boundary);
+            w32((int32_t)col.mergeableRegions.size());
+            for (int rid : col.mergeableRegions) w32(rid);
+            // exception patterns: everything the closed form cannot answer on its own.
+            // Their ORIGINAL index is kept so the residue cells stay referentially valid.
+            vector<int32_t> keep;
+            for (size_t pi = 0; pi < col.patterns.size(); ++pi) {
+                const auto &P = col.patterns[pi];
+                if (!(P.closedFrom >= 0 && P.closedFrom <= col.boundary)) keep.push_back((int32_t)pi);
+            }
+            long e0 = ftell(f);
+            w32((int32_t)keep.size());
+            for (int32_t pi : keep) {
+                const auto &P = col.patterns[pi];
+                w32(pi);
+                w8((uint8_t)P.comp.size());
+                for (auto &cm : P.comp) { w32(cm.first); w16((int16_t)cm.second); }
+                wd(P.boundaryCore); w32(P.closedFrom);
+            }
+            bExc += ftell(f) - e0;
+            keptPat += (long long)keep.size();
+            dropPat += (long long)col.patterns.size() - (long long)keep.size();
+            w32((int32_t)col.residueByCell.size());
+            for (const auto &rr : col.residueByCell) {
+                w64((int64_t)rr.size());
+                for (auto &pc : rr) { w32(pc.first); wd(pc.second); }
+            }
+            w32((int32_t)col.dists.size());
+            for (const auto &d : col.dists) {
+                w32((int32_t)d.size());
+                for (auto &kv : d) { wd(kv.first); wd(kv.second); }
+            }
+        }
+        long endPos = ftell(f);
+        fseek(f, dirPos, SEEK_SET);
+        for (int64_t o : offs) w64(o);
+        fclose(f);
+        fprintf(stderr, "[nsi3-slim §222] wrote %s %.3fMB | classOf=%ld profiles=%ld exceptions=%ld"
+                        " | patterns kept=%lld dropped=%lld (%.2f%% dropped)\n",
+                indexOut, endPos / 1048576.0, b1 - b0, b2 - b1, bExc, keptPat, dropPat,
+                (keptPat + dropPat) ? 100.0 * dropPat / (keptPat + dropPat) : 0.0);
+        printf("[nsi-plane-index] wrote %s %.3fMB (NSI3 slim) columns=%zu\n",
+               indexOut, endPos / 1048576.0, indexColumns.size());
+        return 0;
+    }
     if (indexOut) {
         FILE *f = fopen(indexOut, "wb");
         if (!f) { fprintf(stderr, "[nsi-plane] cannot open SCT_INDEX_OUT=%s\n", indexOut); return 1; }
