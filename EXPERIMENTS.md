@@ -1,3 +1,17 @@
+> # !! READ THIS BEFORE USING ANY NUMBER BELOW (2026-07-26) !!
+> **Every CND-based ratio in the RQ1/RQ2/RQ3 tables of this file predates the serial-CND rule and was
+> measured against PARALLEL CND. They are QUARANTINED by SigmodPlus.md §217 and must not go in the
+> paper.** §207 proved parallel CND is both slower and fatter on these inputs, so the corrections do
+> not even point the same way: serial CND is FASTER on dense-collab cells (ratios get worse for us)
+> but COMPLETES where parallel aborted (web-it's "infeasible" becomes a clean, much stronger 742x).
+>
+> **The current, serial-protocol, same-machine data lives in `../docs/RESULTS.md` and in
+> SigmodPlus.md §216 (single-cell table), §218-219 (the full (r,s) grid over the acceptance roster),
+> §221-223 (the index).** The direction also changed: the paper is now INDEX-first (§213), so the
+> RQ structure below is being superseded, not merely re-measured.
+>
+> Retained here because the RQ *questions* and the data inventory are still the right skeleton.
+
 # EXPERIMENTS.md -- the paper's experiment section, live status
 (Maintained per user directive 2026-07-08. Source of truth for WHAT goes in the paper and WHICH
 data already exists. Detailed narrative lives in SigmodPlus.md §139-141; update BOTH on change.)
@@ -110,3 +124,61 @@ paragraph, not a contribution.
   tods2:/home/wenqianz/nsi_roster/     §141 roster (sweep_*.log, cnd_*.log, roster.log)
   docs/nsi_theorems.md                 the theory section source
   SigmodPlus.md §128-141               full narrative + every table above
+
+---
+
+## CURRENT STATUS (2026-07-26) -- what actually exists now
+
+### Acceptance standard (user, binding)
+>= 8 graphs, all million-scale, 3-4 domains, all excellent. **MET** on 8 graphs / 4 domains, plus two
+59M-162M-edge FEM additions. Billion-scale web (it-2004 1.03B edges, uk-2005 783M) is downloaded and
+converted but blocked at MCE (>3h budget) -- recorded as an honest scaling boundary, not hidden.
+
+### The roster and its (r,s) grid vs SERIAL CND (§218, §219)
+| domain | graph | edges | grid verdict |
+|---|---|---|---|
+| web | web-it-2004 | 7.2M | CND 0/9 cells feasible (budget or 300GB kill); our whole rows 0.8-3.2s |
+| web | web-Google | 5.1M | 9/9 wins, 1.43x -> 131x along r and s |
+| collab | com-dblp | 1.05M | all wins, to 626x |
+| co-purchase | com-amazon | 926k | all wins, 14.9x -> 163x |
+| FEM | pwtk | 5.71M | 9/9, deep cells CND-infeasible |
+| FEM | pkustk13 | 3.26M | 9/9, to 1448x |
+| FEM | pkustk11 | 2.57M | 9/9, to 2781x |
+| FEM | nasasrb | 1.31M | 9/9, to 1661x |
+| FEM (large) | Flan_1565 | 59M | CND infeasible at every cell; our r=3 row 282s |
+| FEM (large) | Queen_4147 | 163M | CND infeasible at every cell; our r=3 row 895s |
+Single-cell headline (§216, 3-trial medians, both sides serial): **web-it-2004 (3,4) 5581s / 101GB
+for CND vs 7.52s / 458MB for us = 742x time, 226x memory.**
+
+### Deliberate exclusions, each explained by the characterization (§209, §218, §220)
+com-youtube (r=3 losses), soc-pokec (compression 1.001x), com-lj / com-orkut (same twin-free
+structure), dblp-coauthor (a THIRD boundary type: the pattern wall -- MCE finishes but incidences
+blow the 500M cap). Social is absent by structure, and W predicts that before any build.
+
+### The index (§221-223) -- now the paper's main axis
+NSI3, the slim plane index, stores only classOf + class-to-region profiles + the exceptions the
+theory cannot reconstruct. Measured against the full NSI2 plane index, same graphs, gate = every
+answer identical:
+| graph | NSI2 | NSI3 | shrink | gate |
+|---|---|---|---|---|
+| pkustk13 | 1.86 GB | **1.4 MB** | **1359x** | PASS (150,000 spectrum rows) |
+| nasasrb | 825 MB | **1.5 MB** | **558x** | PASS |
+| pwtk | 404 MB | 3.2 MB | 127x | PASS |
+| pkustk11 | 91 MB | 0.83 MB | 109x | PASS |
+| com-dblp | 238 MB | 4.2 MB | 57x | PASS |
+| com-amazon | 38 MB | 4.3 MB | 8.9x | PASS |
+| ca-CondMat | 18.7 MB | 376 KB | 52x | PASS (120,000 rows, r=3,4,5) |
+| ca-GrQc | 4.17 MB | 51.7 KB | 85x | PASS |
+Query: cold latency improves on all measured operations (1.4-1.9x, the structure misses cache far
+less); warm is at parity after the decreasing-size profile order with early exit; index load 30x
+faster. Against a materialized archive at 4r + 4*cells bytes per r-clique, NSI3 is 58x-1100x smaller.
+
+### Remaining experiment gaps (ranked)
+1. **E4 query baseline vs the archive on the ROSTER** (the tool exists: region_native/nsi_baseline.cpp
+   builds the sorted table and probes it; pilot on ca-GrQc gave index 5.5x smaller AND 1.4x faster
+   than the archive probe). Needed for the index paper's query axis.
+2. Index build on the roster via the OPTIMIZED path: NSI2/NSI3 are written by the PLANE engine, which
+   still has none of the §210 optimizations (debt #1). Either port them or build per-r and merge.
+3. Multi-trial medians for every number that will be quoted; the grid used the §fast-protocol
+   (1 trial where the ratio is lopsided, refine queue for cells in [1/3, 3]).
+4. Billion-scale: the MCE wall, and whether a k-core prefilter is legitimate to report.

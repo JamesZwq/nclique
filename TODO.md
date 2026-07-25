@@ -21,6 +21,19 @@
 - [x] ~~SLP step 2 grouped walk~~ **DE-GREENLIT (§208)**: §203's 71-163x lumped ungroupable
       bounds-rejects in; the clean redundancy is 2.2-9.8x
 
+## INDEX TRACK (§213 decided the paper is index-first; this is now the main line)
+- [x] §221/§222 byte anatomy + slim design VERIFIED (cP recoverable, 0 mismatches)
+- [x] §223 NSI3 shipped: 52-1359x smaller, bit-identical, faster cold, warm at parity
+- [ ] **E4 query baseline on the roster**: nsi_baseline builds the sorted archive and probes it;
+      pilot on ca-GrQc gave index 5.5x smaller AND 1.4x faster than the archive probe. Needed for
+      the paper's query axis on real graphs.
+- [ ] build the roster indexes through the OPTIMIZED path: NSI2/NSI3 come from the PLANE engine,
+      which still has none of the §210 optimizations (debt #1). Port, or build per-r and merge.
+- [ ] a motivating query workload (currently uniform samples); the application is interactive
+      multi-resolution dense-subgraph exploration
+- [ ] slim the surviving records (kappa is an integer stored as a double; class ids are w32 where a
+      sorted delta-varint is 1-2B) -- ~2.5x on what NSI3 still keeps
+
 ## ACCEPTANCE STANDARD (user, 2026-07-23 -- binding)
 >= 8 graphs, all million-scale+ (aim for one billion-scale), from 3-4 common domains, ALL excellent
 under the index-first metrics (build feasibility, index size, query). Consequences:
