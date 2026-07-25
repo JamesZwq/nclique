@@ -21,6 +21,9 @@
 - [x] ~~SLP step 2 grouped walk~~ **DE-GREENLIT (§208)**: §203's 71-163x lumped ungroupable
       bounds-rejects in; the clean redundancy is 2.2-9.8x
 
+> Before adding anything to this list, check `DO_NOT_REPEAT.md`: ten directions are already dead
+> with the measurement that killed them.
+
 ## INDEX TRACK (§213 decided the paper is index-first; this is now the main line)
 - [x] §221/§222 byte anatomy + slim design VERIFIED (cP recoverable, 0 mismatches)
 - [x] §223 NSI3 shipped: 52-1359x smaller, bit-identical, faster cold, warm at parity

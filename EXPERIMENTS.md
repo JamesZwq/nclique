@@ -17,6 +17,11 @@
 data already exists. Detailed narrative lives in SigmodPlus.md §139-141; update BOTH on change.)
 
 ## Protocol (binding for every number)
+> **STILL BINDING, with two additions (2026-07-26).** (a) CND must be run SERIAL
+> (`OMP_NUM_THREADS=1`) from the repo root; every pre-2026-07-21 number here violates that.
+> (b) Attribute a metric to the PHASE you changed: on MCE-dominated graphs total-time comparison
+> manufactures false wins AND false losses from the same noise (§210).
+
 - SAME-MACHINE ONLY: all paper numbers from tods2 (96-core, 503GB; serial single-thread runs;
   another user's idle IDE daemons noted for the reproducibility paragraph). Local M-series
   numbers are sanity checks only, NEVER in tables.
@@ -28,6 +33,14 @@ data already exists. Detailed narrative lives in SigmodPlus.md §139-141; update
 - PENDING protocol upgrade: E2 multi-trial (>=3 runs, median) before numbers are camera-ready.
 
 ## RQ1: spectrum cost vs the per-cell baseline (CND) -- THE MAIN TABLE
+> ## !!! EVERY NUMBER IN THIS SECTION IS VOID !!!
+> All of its CND columns are **parallel** CND (§217). Serial CND is faster on dense-collab cells
+> and COMPLETES where parallel aborted, so the corrections do not even share a direction.
+> The `>=300GB abort` markers in particular are wrong: serial CND FINISHES web-it (3,4) at 101GB
+> in 93 min, which is a far stronger and defensible **742x / 226x** (§216).
+> **REPLACEMENT: SigmodPlus §216 (single cell) and §218-219 (the full (r,s) grid).**
+> Do not re-measure this table; the grid already supersedes it on a bigger, cleaner roster.
+
 Status: REBUILT on UNIFORM r=4, s=5..8 (all graphs same setting, §145). SigmodPlus §145.
 Paper Exp-1 = uniform table (Table tab:main). Stable advantage = 8 clique-structured graphs
 (5 CND-infeasible + raefsky3 1600x/pkustk11 770x/dblp 35x/nasasrb 15x). Honest: astro 1.5x,
@@ -52,6 +65,11 @@ Data: tods2:/home/wenqianz/nsi_main_table/ + /home/wenqianz/nsi_e3/ + /home/wenq
 TODO: copy the three tods2 result dirs into paper_data/ (git, -f) before writing.
 
 ## RQ2: the chain certificate's power -- SELF-comparison (sweep marginal vs native per-cell)
+> **STILL VALID as data (ours-vs-ours, no CND involved), but DEMOTED in role.** Per the standing
+> instruction that the paper's numbers are vs CND, this is an ABLATION, not a result. It also
+> predates the §210 optimization stack, so the absolute times are stale even though the ratios
+> illustrate the certificate correctly.
+
 Status: DATA COMPLETE (single-trial). SigmodPlus §139 (E1 Phase B).
 Marginal-cell headlines (same machine): dblp5 s=9: 0.15s vs >7200s (>48000x); dblp4 s=8: 0.07s
 vs 655.5s (9364x); hepph s=7: 10.4s vs >7200s (>692x); astro s=8: 10.7s vs >7200s (>673x);
@@ -60,6 +78,15 @@ astro >100x, dblp4 74.5x, dblp5 >258x, webit 5.3x, epin 1.43x, yt 1.61x.
 KEEP STRICTLY SEPARATE from RQ1 in the paper (self vs competitor comparison).
 
 ## RQ3: the index -- build/size/query
+> ## !!! SUPERSEDED -- and the old numbers made the index look WORSE than it is !!!
+> The table below measures the FAT index format. Its 40.30 B/r-clique on epin and 34.23 on yt are
+> **larger than the archive they replace** (4r + 4*cells = 28 B/r-clique at r=3 over 4 cells).
+> That was an ENCODING problem, diagnosed in §221: the pattern table was 86-99% of the file.
+> **REPLACEMENT: §223-224. NSI3 drops every certified pattern record and is 8.9x-1359x smaller
+> than the full plane index, verified answer-for-answer on 1.2M spectrum rows across 8 graphs.**
+> E4 (the query baseline) is no longer 'PENDING with no tool': `region_native/nsi_baseline.cpp`
+> builds the sorted archive and probes it. Pilot: index 5.5x smaller AND 1.4x faster than the probe.
+
 Status: E5 DATA COMPLETE; E4 (baseline) PENDING. SigmodPlus §139 (E5 table).
   config  index-MB  B/r-clique  load   point-q  spectrum-q     (200k random r-clique queries)
   hepph   33.5      10.47       0.62s  200ns    354ns
@@ -77,6 +104,11 @@ writable, compare per-probe latency + table size + build cost). Roster graphs' i
 (only the 7 E5 configs have .nsi files: tods2:/home/wenqianz/nsi_e5/).
 
 ## RQ-SCAL: scalability with (r,s) -- NEW, the strongest experiment (SigmodPlus §149)
+> **STILL VALID (CND-independent) and now EXPLAINED.** The 'advantage grows with r' observation
+> has a mechanism and a formula: the class alphabet is r-INDEPENDENT while mult(P) grows
+> binomially, so compression = E_P[prod_c C(n_c,b_c)] rises with r (§220), and W = hostSz/compression
+> falls monotonically in r on every graph measured (§209b). Cite the mechanism, not just the curve.
+
 Status: DATA COMPLETE (paper_data/scalability/scal_2026-07-09.tsv). Paper Exp-2/Exp-3 + 2 figures.
 Panel A (vary r=3..7): webit 0.8/1.5/2.9/5.3/15s, dblp 2.9/5.9/18/47/97s -- advantage grows with r.
 Panel B (fix r=4, smax=6..12): webit 1.41->1.73s, dblp 5.27->6.09s, mem FLAT -- spectrum width is
@@ -85,6 +117,10 @@ Panel C: CND single cell (3,4) raefsky3 10.7s/pkustk11 67s/nasasrb 28s/dblp 7.7s
 r=3 spectrum -- crossover. Figures TODO.
 
 ## RQ4: certification anatomy (WHY it works) -- figure
+> **STILL VALID, and now load-bearing for the INDEX, not just for speed.** The certified fraction
+> is exactly the fraction of pattern records NSI3 can drop (measured 99.99-100% on the roster,
+> §223-224), so this figure doubles as the index-size explanation.
+
 Status: data embedded in every sweep log ([nsi-cell] lines); AGGREGATION SCRIPT TODO.
 Certified% per cell: FEM/CFD 100% (residue 0; pwtk ~4k/3.86M); web-it 100%, web-uk ALL-MERGEABLE
 (closed form, no patterns at all); dblp 100.00% (residue literally 0); collab 99.96-99.97%;
@@ -92,6 +128,12 @@ yt 79-81%; epin 47-51%. Figure: per-graph-family certified fraction per cell (ba
 the T5 equality rates (GrQc/HepPh 100%, epin 23.4%, §133) as the diagonal analogue.
 
 ## RQ5: honest boundary
+> **SUPERSEDED BY A STRONGER, PREDICTIVE VERSION.** 'Social graphs only get 1.4-5.9x' is now a
+> computable a-priori statement: W = hostSz_avg / compression, with compression = E_P[prod C(n_c,b_c)],
+> both available from the front end alone (`SCT_W_ONLY=1`). There are THREE distinct boundary types,
+> not one (§209, §218): compression ~ 1 (email/pokec, twin-free), host-multiplicity smear (ca-HepPh),
+> and the pattern wall (dblp-coauthor). Write the characterization, not the apology.
+
 Status: DATA COMPLETE. Social graphs (epin/yt) ~50-80% certified -> 1.4-5.9x only; astro/hepph
 parity/loss vs CND (s-flat counting); P10 no-free-spectrum (sketch -- MUST either write the
 gadget out or demote before submission, §140 P7). Band/diagonal wall (§131-132) = one scope
@@ -106,6 +148,10 @@ paragraph, not a contribution.
   "Optimized vs Reference correctness verified (exact)", tods2:/home/wenqianz/nsi_e3/compare_hepph35.log).
 
 ## Remaining runs (from §140, updated)
+> **THIS LIST IS OBSOLETE.** It was written for the decomposition-speed paper. The current
+> ranked gaps are at the bottom of this file under CURRENT STATUS, and the live checklist is
+> `TODO.md` (INDEX TRACK section).
+
 - [ ] E2 multi-trial: >=3 runs/median for RQ1+RQ2+RQ3 headline numbers (script the reruns).
 - [ ] E4 query baseline: sorted-table probe vs nsi_query, same-machine.
 - [ ] E5b: indexes for the 8 roster graphs (sweep with SCT_INDEX_OUT; webit/webuk/FEM row).
@@ -114,6 +160,10 @@ paragraph, not a contribution.
 - [ ] (stretch) E8 one extra large graph (as-skitter / soc-pokec r=3).
 
 ## Data inventory
+> **The tods2 paths below still exist but hold PARALLEL-CND era output (§217).** Current output:
+> `/data/wenqianz/{grid_scout_batch1,grid_scout_fem,cnd_vs_stack,nsi3}.out` and the indexes in
+> `/data/wenqianz/nsi3idx/`.
+
   paper_data/cnd_comparison/           §124 old per-cell grids (context only; superseded for
                                        spectrum claims by E3)
   paper_data/diag_{astro,dblp}_baseline_2026-07-07.tsv   §131 diagonal U-shape
