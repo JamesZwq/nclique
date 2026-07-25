@@ -9135,3 +9135,29 @@ parity (27.7 vs 28.0 on ca-GrQc) with correctness re-gated afterwards, not befor
 smaller than the materialized alternative**, at equal warm latency and better cold latency, with the
 whole (r,s) plane in ONE structure. And the design statement is now exact: the index stores classOf,
 the class-to-region profiles, and the exceptions the theory cannot reconstruct -- nothing else.
+
+## 224. NSI3 ON THE ACCEPTANCE ROSTER: 8.9x-1359x smaller, EVERY answer identical, 8/8 graphs (2026-07-26)
+scripts/nsi3_tods2.sh on tods2. Per graph: build the full plane index (NSI2) and the slim one (NSI3)
+over r=3..5, s<=8, then gate the slim one ANSWER-FOR-ANSWER per r using r-cliques sampled for that r
+(50,000 per r, so 150,000 full spectrum rows per graph).
+| domain | graph | full plane index | slim (NSI3) | **shrink** | load | gate |
+|---|---|---|---|---|---|---|
+| FEM | **pkustk13** | 1,857,228,707 B (1.86GB) | **1,366,552 B (1.4MB)** | **1359.1x** | 53.8 ms | PASS |
+| FEM | **nasasrb** | 824,894,053 B (825MB) | **1,478,058 B (1.5MB)** | **558.1x** | 58.1 ms | PASS |
+| FEM | pwtk | 403,984,213 B (404MB) | 3,190,086 B | 126.6x | 81.4 ms | PASS |
+| FEM | pkustk11 | 91,040,688 B | 833,932 B | 109.2x | 35.4 ms | PASS |
+| web | **web-Google** | 2,006,183,608 B (2.0GB) | **25,231,344 B (25MB)** | **79.5x** | 531 ms | PASS |
+| collab | com-dblp | 238,127,871 B | 4,161,375 B | 57.2x | 95.3 ms | PASS |
+| web | web-it-2004 | 139,209,117 B | 4,333,646 B | 32.1x | 78.7 ms | PASS |
+| co-purchase | com-amazon | 38,011,346 B | 4,276,080 B | 8.9x | 114 ms | PASS |
+**8/8 graphs, 1.2 MILLION spectrum rows compared, zero mismatches.** Two indexes that were GIGABYTES
+(pkustk13 1.86GB, web-Google 2.0GB) are now 1.4MB and 25MB: the whole r=3..5 x s<=8 plane in a file
+that fits in L3 or close to it. This is the paper's size axis, and it is the same number in the
+build-cost story (a 1.4MB artifact is trivially shippable/reproducible alongside the paper).
+CAVEAT KEPT: the B/r-clique columns in the raw log are broken (the awk that was supposed to total
+r-cliques matched nothing, so it divided by 1). The byte counts and shrink factors are correct and
+are what matter; per-r-clique densities come from the [nsi2-bytes]/[nsi3-slim] detail lines instead.
+NOTE ON SPREAD: com-amazon's 8.9x is the low end and it is the graph with the LOWEST compression in
+the roster, exactly as §220 predicts -- fewer certified patterns to drop means less to gain. The FEM
+graphs, with the largest class sizes, gain the most. The slim index's advantage tracks the same
+class-size law as everything else in this project.
