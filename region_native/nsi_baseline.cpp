@@ -92,26 +92,6 @@ int main(int argc, char **argv) {
     vector<vector<int32_t>> clsV(x.nC);
     for (int v = 0; v < x.n; v++) if (x.classOf[v] >= 0 && x.classOf[v] < x.nC) clsV[x.classOf[v]].push_back(v);
 
-    // exact #r-cliques: patterns carry mult = prod C(|class|, b); mergeable regions carry C(|M|, r)
-    double patRC = 0.0;
-    for (int p = 0; p < x.nPats; p++) {
-        double m = 1.0;
-        for (int i = x.compOff[p]; i < x.compOff[p + 1]; i++)
-            m *= nCr((long long)clsV[x.compFlat[i].first].size(), x.compFlat[i].second);
-        patRC += m;
-    }
-    double mergRC = 0.0;
-    for (int m = 0; m < x.nMerg; m++) mergRC += nCr(x.mergSize[m], r);
-    const double totRC = patRC + mergRC;
-
-    // archive layout: r int32 key + one int32 core per cell, per r-clique
-    const double archBytes = totRC * (double)(4 * r + 4 * nCells);
-    printf("index    : %s  r=%d  cells=%d (s=%d..%d)  patterns=%d\n", argv[2], r, nCells, x.s0, x.smax, x.nPats);
-    printf("index    : %.2f MB  (%.4f B / r-clique)\n", x.bytes / 1048576.0, x.bytes / (totRC > 0 ? totRC : 1));
-    printf("r-cliques: %.0f  (pattern-side %.0f + mergeable-side %.0f)\n", totRC, patRC, mergRC);
-    printf("ARCHIVE  : %.2f MB  (%.1f B / r-clique)  -> INDEX IS %.1fx SMALLER\n",
-           archBytes / 1048576.0, 4.0 * r + 4.0 * nCells, x.bytes > 0 ? archBytes / x.bytes : 0.0);
-    if (mode == "size") return 0;
     if (mode == "sample") {                            // emit random REAL r-cliques from the pattern table
         const long long want = argc >= 4 ? atoll(argv[3]) : 100000;
         unsigned seed = 12345;
@@ -143,6 +123,27 @@ int main(int argc, char **argv) {
         fprintf(stderr, "sampled %lld r-cliques\n", made);
         return 0;
     }
+
+    // exact #r-cliques: patterns carry mult = prod C(|class|, b); mergeable regions carry C(|M|, r)
+    double patRC = 0.0;
+    for (int p = 0; p < x.nPats; p++) {
+        double m = 1.0;
+        for (int i = x.compOff[p]; i < x.compOff[p + 1]; i++)
+            m *= nCr((long long)clsV[x.compFlat[i].first].size(), x.compFlat[i].second);
+        patRC += m;
+    }
+    double mergRC = 0.0;
+    for (int m = 0; m < x.nMerg; m++) mergRC += nCr(x.mergSize[m], r);
+    const double totRC = patRC + mergRC;
+
+    // archive layout: r int32 key + one int32 core per cell, per r-clique
+    const double archBytes = totRC * (double)(4 * r + 4 * nCells);
+    printf("index    : %s  r=%d  cells=%d (s=%d..%d)  patterns=%d\n", argv[2], r, nCells, x.s0, x.smax, x.nPats);
+    printf("index    : %.2f MB  (%.4f B / r-clique)\n", x.bytes / 1048576.0, x.bytes / (totRC > 0 ? totRC : 1));
+    printf("r-cliques: %.0f  (pattern-side %.0f + mergeable-side %.0f)\n", totRC, patRC, mergRC);
+    printf("ARCHIVE  : %.2f MB  (%.1f B / r-clique)  -> INDEX IS %.1fx SMALLER\n",
+           archBytes / 1048576.0, 4.0 * r + 4.0 * nCells, x.bytes > 0 ? archBytes / x.bytes : 0.0);
+    if (mode == "size") return 0;
     if (argc < 4) { fprintf(stderr, "bench needs a queryfile\n"); return 1; }
 
     const double cap = argc >= 5 ? atof(argv[4]) : 3e8;

@@ -1431,16 +1431,20 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
         fwrite("NSI2", 4, 1, f);
         w32(rMin); w32(rMax); w32(sMin); w32(sMax); w32(g.n); w32(nC);
         w32(nR); w32((int32_t)sharedLeaves.size()); w32((int32_t)indexColumns.size());
+        long bHdr2 = ftell(f);
         for (int c : classOf) w32(c);
+        long bClassOf = ftell(f);
         for (int c = 0; c < nC; ++c) {
             w32(classSize[c]);
             w32((int32_t)classRegions[c].size());
             for (int rid : classRegions[c]) w32(rid);
         }
+        long bProfiles = ftell(f);
         for (const auto &M : regions) {
             w32((int32_t)M.size());
             for (int v : M) w32(v);
         }
+        long bRegions = ftell(f);
         for (const auto &p : sharedLeaves) {
             w32(p.m()); w32(p.T);
             for (int i = 0; i < p.m(); ++i) {
@@ -1448,31 +1452,45 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                 w16(p.ell[i]); w16(p.u[i]);
             }
         }
+        long bLeaves = ftell(f);                       // §222 byte accounting (see report below)
         long dirPos = ftell(f);
         for (size_t i = 0; i < indexColumns.size(); ++i) w64(0);
         vector<int64_t> offsets(indexColumns.size(), 0);
+        long acPat = 0, acResid = 0, acDists = 0, acHdr = 0;
+        long long acNPat = 0, acNResid = 0, acFullCert = 0;
+        double acRC = 0.0;
         for (size_t ci = 0; ci < indexColumns.size(); ++ci) {
             offsets[ci] = (int64_t)ftell(f);
             const auto &col = indexColumns[ci];
+            long q0 = ftell(f);
             w32(col.r); w32(col.boundary);
             w32((int32_t)col.mergeableRegions.size());
             for (int rid : col.mergeableRegions) w32(rid);
             w32((int32_t)col.patterns.size());
+            long q1 = ftell(f);
             for (const auto &P : col.patterns) {
                 w8((uint8_t)P.comp.size());
                 for (auto &cm : P.comp) { w32(cm.first); w16((int16_t)cm.second); }
                 w64(P.mult); w32(P.cP); wd(P.boundaryCore); w32(P.closedFrom);
+                acRC += (double)P.mult;
+                if (P.closedFrom <= col.boundary) acFullCert++;   // certified from the boundary on
             }
+            long q2 = ftell(f);
             w32((int32_t)col.residueByCell.size());
             for (const auto &rr : col.residueByCell) {
                 w64((int64_t)rr.size());
                 for (auto &pc : rr) { w32(pc.first); wd(pc.second); }
+                acNResid += (long long)rr.size();
             }
+            long q3 = ftell(f);
             w32((int32_t)col.dists.size());
             for (const auto &d : col.dists) {
                 w32((int32_t)d.size());
                 for (auto &kv : d) { wd(kv.first); wd(kv.second); }
             }
+            long q4 = ftell(f);
+            acHdr += q1 - q0; acPat += q2 - q1; acResid += q3 - q2; acDists += q4 - q3;
+            acNPat += (long long)col.patterns.size();
         }
         long endPos = ftell(f);
         fseek(f, dirPos, SEEK_SET);
@@ -1481,6 +1499,32 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
         fclose(f);
         printf("[nsi-plane-index] wrote %s %.1fMB columns=%zu shared-leaves=%zu\n",
                indexOut, endPos / 1048576.0, indexColumns.size(), sharedLeaves.size());
+        {   // §222 EXACT byte anatomy of the plane index, so slimming targets the real hot spot.
+            long total = endPos;
+            auto pc = [&](long v) { return total > 0 ? 100.0 * v / total : 0.0; };
+            long bCls = bClassOf - bHdr2, bProf = bProfiles - bClassOf;
+            long bReg = bRegions - bProfiles, bLf = bLeaves - bRegions;
+            long bDir = (long)(offsets.empty() ? 0 : offsets[0]) - bLeaves;
+            fprintf(stderr,
+                "[nsi2-bytes §222] total=%.2fMB | classOf=%ld(%.1f%%) class-profiles=%ld(%.1f%%) "
+                "regions=%ld(%.1f%%) shared-leaves=%ld(%.1f%%) dir=%ld(%.1f%%) col-hdr=%ld(%.1f%%) "
+                "**patterns=%ld(%.1f%%)** residue=%ld(%.1f%%) dists=%ld(%.1f%%)\n",
+                total / 1048576.0, bCls, pc(bCls), bProf, pc(bProf), bReg, pc(bReg),
+                bLf, pc(bLf), bDir, pc(bDir), acHdr, pc(acHdr), acPat, pc(acPat),
+                acResid, pc(acResid), acDists, pc(acDists));
+            fprintf(stderr,
+                "[nsi2-bytes §222] patterns=%lld (%.1f B/pat) fully-certified=%lld (%.2f%%) "
+                "residue-entries=%lld | r-cliques=%.0f -> %.4f B/r-clique\n",
+                acNPat, acNPat ? (double)acPat / acNPat : 0.0, acFullCert,
+                acNPat ? 100.0 * acFullCert / acNPat : 0.0, acNResid, acRC,
+                acRC > 0 ? (double)total / acRC : 0.0);
+            // what the slim design would cost: drop fully-certified pattern records entirely
+            double keptFrac = acNPat ? (double)(acNPat - acFullCert) / acNPat : 1.0;
+            double slim = (double)total - (double)acPat * (1.0 - keptFrac);
+            fprintf(stderr, "[nsi2-bytes §222] IF FULLY-CERTIFIED RECORDS ARE DROPPED: %.2fMB -> %.1fx smaller"
+                            "  (cP recoverable from the class-profiles already stored above)\n",
+                    slim / 1048576.0, slim > 0 ? total / slim : 0.0);
+        }
     }
 
     printf("[nsi-plane] complete r=%d..%d cells-total=%.2fs total=%.2fs RSS=%.2fG\n",

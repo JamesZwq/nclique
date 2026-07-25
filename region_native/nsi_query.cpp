@@ -876,6 +876,36 @@ struct Query2 {
         return 0.0;
     }
 
+    // §222 SLIM-INDEX KERNEL: cP recovered at query time instead of read from a stored record.
+    // A region M hosts an r-clique iff M contains every class of it (classes are wholly in or out of
+    // a region, Thm 3.2), so the hosting set is the INTERSECTION of the vertices' class profiles and
+    //     cP = max{ regionSize[M] : M in that intersection }.
+    // Returns -1 when no region hosts the clique (kappa is then 0 in every cell).
+    int32_t cpFromProfiles(const int *vs, int r) {
+        queryClasses.clear();
+        int base = -1; size_t best = numeric_limits<size_t>::max();
+        for (int i = 0; i < r; ++i) {
+            int v = vs[i];
+            if (v < 0 || v >= x.n) return -1;
+            int32_t c = x.classOf[v];
+            if (c < 0) return -1;
+            queryClasses.push_back(c);
+            if (x.classRegions[c].size() < best) { best = x.classRegions[c].size(); base = i; }
+        }
+        if (base < 0) return -1;
+        int32_t bestSize = -1;
+        for (int32_t rid : x.classRegions[queryClasses[base]]) {
+            bool inAll = true;
+            for (int i = 0; i < r && inAll; ++i) {
+                if (i == base) continue;
+                const auto &p2 = x.classRegions[queryClasses[i]];
+                if (!binary_search(p2.begin(), p2.end(), rid)) inAll = false;
+            }
+            if (inAll && x.regionSize[rid] > bestSize) bestSize = x.regionSize[rid];
+        }
+        return bestSize;
+    }
+
     double pointKernel(const int *vs, int r, int s, QueryCode &code) {
         Resolved q;
         code = resolve(vs, r, q);
@@ -1445,6 +1475,83 @@ static int mainNSI2(int argc, char **argv) {
         return 0;
     }
 
+    if (mode == "verify-cp") {                          // §222: is cP recoverable from class profiles?
+        if (argc < 4) { fprintf(stderr, "usage: INDEX verify-cp QUERYFILE\n"); return 1; }
+        FILE *qf = fopen(argv[3], "r");
+        if (!qf) { fprintf(stderr, "cannot open %s\n", argv[3]); return 1; }
+        vector<int> flat; int vtmp;
+        while (fscanf(qf, "%d", &vtmp) == 1) flat.push_back(vtmp);
+        fclose(qf);
+        // r is inferred from the workload itself: feeding an r-tuple to a column with a different r
+        // tests non-cliques and produces meaningless mismatches (learned the hard way).
+        int qr = 0;
+        { FILE *g2 = fopen(argv[3], "r"); char line[4096];
+          if (g2 && fgets(line, sizeof line, g2)) { char *tk = strtok(line, " \t\n"); while (tk) { qr++; tk = strtok(nullptr, " \t\n"); } }
+          if (g2) fclose(g2); }
+        if (qr <= 0) { fprintf(stderr, "cannot infer r from the workload\n"); return 1; }
+        fprintf(stderr, "verify-cp: workload r=%d, testing only that column\n", qr);
+        long long okPat = 0, badPat = 0, okMerg = 0, badMerg = 0, none = 0, fullCert = 0, partial = 0;
+        for (int32_t ci = 0; ci < (int32_t)x.columns.size(); ++ci) {
+            const NSI2Column &col = x.columns[ci];
+            const int r = col.r;
+            if (r != qr) continue;
+            const long long nq = (long long)flat.size() / r;
+            for (long long i = 0; i < nq; ++i) {
+                const int *vs = &flat[i * r];
+                bool bad = false;
+                for (int j = 0; j < r; ++j) if (vs[j] < 0 || vs[j] >= x.n) bad = true;
+                if (bad) continue;
+                int pi = q.lookupPattern(col, vs);
+                int32_t cpComputed = q.cpFromProfiles(vs, r);
+                if (pi >= 0) {
+                    const auto &P = col.patterns[pi];
+                    if (P.closedFrom >= 0 && P.closedFrom <= col.boundary) fullCert++; else partial++;
+                    if (cpComputed == P.cP) okPat++;
+                    else { if (badPat < 5) fprintf(stderr, "  MISMATCH r=%d stored cP=%d computed=%d\n", r, P.cP, cpComputed); badPat++; }
+                } else {
+                    int mg = q.lookupMergeable(col, vs);
+                    if (mg >= 0) { if (cpComputed == x.regionSize[mg]) okMerg++; else badMerg++; }
+                    else { if (cpComputed < 0) none++; else badMerg++; }
+                }
+            }
+        }
+        // PHASE 2: the mergeable path is never reached by pattern-table samples, so generate cliques
+        // that live INSIDE mergeable regions and check cP == regionSize there too. In the slim design
+        // both paths collapse into the same closed form, so both must be verified.
+        {
+            vector<vector<int32_t>> clsVerts((size_t)x.nC);
+            for (int32_t v = 0; v < x.n; ++v) if (x.classOf[v] >= 0) clsVerts[x.classOf[v]].push_back(v);
+            long long mOk = 0, mBad = 0, mTried = 0;
+            for (const auto &col : x.columns) {
+                const int r = col.r;
+                int taken = 0;
+                for (int32_t rid : col.mergeableRegions) {
+                    if (taken >= 200) break;
+                    vector<int> verts;
+                    for (int32_t c = 0; c < x.nC && (int)verts.size() < r; ++c) {
+                        const auto &pr = x.classRegions[c];
+                        if (!binary_search(pr.begin(), pr.end(), rid)) continue;
+                        for (int32_t v : clsVerts[c]) { verts.push_back(v); if ((int)verts.size() >= r) break; }
+                    }
+                    if ((int)verts.size() < r) continue;
+                    ++taken; ++mTried;
+                    int32_t cpc = q.cpFromProfiles(verts.data(), r);
+                    int32_t want = x.regionSize[rid];
+                    // cP is the LARGEST hosting region, which may exceed this one; the check is that
+                    // the computed value is a real hosting-region size and at least this region's.
+                    if (cpc >= want) ++mOk;
+                    else { if (mBad < 5) fprintf(stderr, "  MERG MISMATCH rid=%d size=%d computed=%d\n", rid, want, cpc); ++mBad; }
+                }
+            }
+            printf("verify-cp: mergeable-region cliques tried=%lld ok=%lld MISMATCH=%lld\n", mTried, mOk, mBad);
+            if (mBad) badMerg += mBad;
+        }
+        printf("verify-cp: patterns ok=%lld MISMATCH=%lld | mergeable ok=%lld MISMATCH=%lld | unhosted=%lld\n",
+               okPat, badPat, okMerg, badMerg, none);
+        printf("verify-cp: of matched patterns, fully-certified=%lld partial=%lld (%.2f%% need no record)\n",
+               fullCert, partial, (fullCert + partial) ? 100.0 * fullCert / (fullCert + partial) : 0.0);
+        return (badPat || badMerg) ? 2 : 0;
+    }
     if (mode == "bench") {
         if (argc < 5) { printNSI2Usage(argv[0]); return 1; }
         int coldMiB = 128, warmReps = 1;

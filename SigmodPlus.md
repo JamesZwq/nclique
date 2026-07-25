@@ -9037,3 +9037,51 @@ the theory cannot reconstruct, and P10 says the residue is exactly what no algor
 3. Residue cross-cell delta coding -- DEPRIORITIZED, it is 0.1% of the file on these graphs. Revisit
    only if a low-certification graph (epin/yt) shows a different anatomy; that measurement is queued.
 Gate for all three: answers must be identical to the current index on the same sampled workload.
+
+## 222. THE SLIM PLANE INDEX: design VERIFIED (0 mismatches), and the plane index is 90-97% pure redundancy (2026-07-25)
+Following §221 on NSI1, the same accounting was added to the NSI2 plane writer ([nsi2-bytes §222]).
+The plane index is worse, not better, and the redundancy is now proven recoverable.
+
+### (a) NSI2 byte anatomy (plane r=3..5, s<=8)
+| graph | total | classOf | class-profiles | regions | shared-leaves | **patterns** | residue | dists | B/pat | B/r-clique |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ca-GrQc | 4.17MB | 0.5% | 0.5% | 0.5% | 1.8% | **96.6%** | 0.0% | 0.1% | 51.6 | 2.10 |
+| ca-CondMat | 18.74MB | 0.5% | 1.3% | 1.2% | 6.1% | **90.8%** | 0.0% | 0.0% | 48.8 | **25.14** |
+ca-CondMat at 25.14 B/r-clique is again WORSE than the archive it replaces. The record is
+`w8(len) + len*(w32 class + w16 mult) + w64(mult) + w32(cP) + wd(boundaryCore) + w32(closedFrom)`
+= 43 bytes at r=3/3-classes, fatter than NSI1's 28.
+
+### (b) THREE INDEPENDENT REDUNDANCIES, read out of the loader itself
+1. **shared leaves (1.8-6.1%) are read and THROWN AWAY**: `rd.skip((int64_t)m * 12)`; the NSI2 struct
+   has no leaves field at all.
+2. **region vertex lists (0.5-1.2%) are validation-only**: the loader says verbatim
+   "do not duplicate it in RAM: query containment uses the profiles".
+3. **region sizes are themselves reconstructible**: the loader already recomputes them as
+   `reconstructedRegionSize[rid] += classSize[c]` over the profiles and aborts on disagreement.
+4. **the pattern record is unnecessary whenever the pattern is certified**: `value()` shows that for
+   `s >= closedFrom` the answer is `C2(p.cP - r, s - r)` and NOTHING ELSE from the record is read.
+
+### (c) THE ONE UNCERTAIN ASSUMPTION, NOW VERIFIED
+cP must be recoverable at query time. Since classes are wholly in or out of a region (Thm 3.2),
+    cP = max{ regionSize[M] : M in INTERSECTION over the clique's classes of classRegions[M] }
+New `nsi_query INDEX verify-cp WORKLOAD` checks this against the stored cP:
+| graph | active patterns | mismatches | mergeable-region cliques | mismatches | fully-certified |
+|---|---|---|---|---|---|
+| ca-GrQc | 30,000 | **0** | 439 | **0** | **100.00%** |
+| ca-CondMat | 30,000 | **0** | 600 | **0** | 99.99% (3 partial) |
+Both query paths were tested deliberately: pattern-table samples never reach the mergeable branch, so
+phase 2 generates cliques from inside mergeable regions specifically. METHOD NOTE: the first run
+reported 1,577 bogus mergeable mismatches because it fed r=3 samples to the r=4 and r=5 columns as
+4- and 5-tuples, which are not cliques. verify-cp now infers r from the workload and tests only the
+matching column.
+
+### (d) NSI3, the slim format
+  shared: magic + header + classOf + per-class (size, region profile)
+  column: r, boundary, mergeable ids, EXCEPTION patterns only (closedFrom > boundary or < 0),
+          their residue cells, dists
+  dropped: shared leaves, region vertex lists, region sizes, and every fully-certified pattern record
+  query : reps -> exception table; miss => cP from profiles => C(cP-r, s-r); no host => 0
+Projected from the measured sections: ca-GrQc 4.17MB -> ~0.05MB (**~85x**), ca-CondMat 18.74MB ->
+~0.36MB (**~52x**), i.e. 0.024 and 0.46 B/r-clique. This is also the cleanest statement of the design:
+**the index stores only what the theory cannot reconstruct**, and P10 proves the residue is exactly
+what no algorithm can avoid storing.
