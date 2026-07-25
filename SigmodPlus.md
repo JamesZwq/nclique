@@ -8935,3 +8935,60 @@ timeout 6h and requeued.
 FEM weight, the billion web graph + a second collab/co-purchase at scale rebalances. Social is
 deliberately absent (twin-free structural loss, §209/§218) and that ABSENCE is explained by the
 characterization, not hidden.
+
+## 220. COMPRESSION IS A CLASS-SIZE STATEMENT, NOT A CLASS-COUNT ONE. The exact formula, and the theorem statement it licenses (2026-07-24)
+Question raised: must #classes always be smaller than #r-cliques? Answer and the trap it exposes.
+
+### (a) #classes < #r-cliques ALWAYS, and trivially
+Classes PARTITION the vertex set, so **#classes <= n**. On any graph where nucleus decomposition is
+interesting #r-cliques >> n. Concretely (two intersecting regions -> 3 classes, the raised example):
+two maximal cliques of size >= s >= r+1 contribute >= 2*C(r+1,r) = 2(r+1) r-cliques against 3 classes.
+Measured #classes: pkustk13 31,872 (n=94,893); Queen 1,382,374 (n=4,147,110); pwtk 41,408 (n=217,918);
+web-Google 361,690 (n=875,713) -- i.e. n/2.4 to n/5.3 everywhere. Class count is a VERTEX-SCALE
+quantity, and it is r-INDEPENDENT by definition (only s enters, through the region filter |M| >= s;
+on FEM graphs even that is inert: pkustk13 and Queen have literally identical class counts at r=3,4,5,
+while web-Google drops 361,690 -> 274,706 -> 218,757 because web graphs have many small maximal
+cliques that the filter removes).
+
+### (b) THE TRAP: small class count does NOT imply compression
+email-Eu-core (3,5) is the decisive counterexample:
+  n=1005 | regions=40,283 | **classes=740** | patterns=102,508 | r-cliques=102,747 | **compression 1.002x**
+Classes are **139x fewer** than r-cliques, exactly as the intuition predicts, and there is STILL no
+compression, because `clsMean=1.00, clsMax=2`: almost every class is a SINGLETON, so
+mult(P) = Prod_c C(n_c, b_c) = C(1,1)^r = 1 and one pattern represents one r-clique. 740 classes are
+plenty to generate 102,508 distinct r-multisets.
+
+### (c) THE EXACT FORMULA (this is what the withdrawn twinFrac story should have been)
+  #r-cliques = Sum_{P realized} mult(P),  mult(P) = Prod_c C(n_c, b_c)
+=>  **compression = #r-cliques / #patterns = MEAN of mult(P) over realized patterns**
+So compression is the mean of a product of binomials over the CLASS-SIZE DISTRIBUTION restricted to
+realized patterns. Not class count, not the fraction of vertices in a twin class (§209 correction),
+but the size distribution itself. Measured, and note count and compression are ANTI-correlated here:
+| graph | classes | clsMean | clsMax | compression |
+|---|---|---|---|---|
+| email-Eu-core | 740 | **1.00** | 2 | **1.002x** |
+| ca-CondMat | 5,017 | 1.46 | 9 | 1.62x |
+| ca-GrQc | **277** | **1.99** | 20 | **6.25x** |
+| web-it-2004 | -- | 1.65 | **430** | **515x** (25,278x at (4,6)) |
+ca-GrQc has the FEWEST classes and the BEST compression; email has more classes and none.
+
+### (d) THEOREM STATEMENT this licenses (for the paper's characterization section)
+  THEOREM (compression law). For a graph whose realized r-patterns have class multiplicities
+  {n_c}, the quotient's compression ratio is E_P[Prod_c C(n_c, b_c)], with the two extremes
+  attained: all classes singletons => ratio 1 (no compression, the quotient is vacuous), and a
+  single class of size w carrying the pattern => ratio C(w, r), exponential in r.
+  COROLLARY (why the advantage grows in r): with class sizes fixed, mult(P) grows as a product of
+  binomials in r while #patterns grows only polynomially over a FIXED class alphabet, so compression
+  is increasing in r. Measured: pkustk13 20.5x -> 43.9x -> 84.9x and pwtk 65.5x -> 157.8x -> 337.5x
+  for r = 3 -> 4 -> 5, on class alphabets that are IDENTICAL across those r (31,872 / 41,4xx).
+This is the mechanism behind §209b (W falls monotonically in r) and behind §215's "exponential in r,
+not in n". It also delimits the failure mode precisely: the quotient is vacuous exactly when the
+class-size distribution is concentrated at 1, which is a property of the graph, computable before any
+peeling (SCT_W_ONLY reports classes/clsMean/clsMax/compression from the front end alone).
+
+### (e) How intersections are handled, for the record
+(i) Each class lies wholly inside or wholly outside each region (paper_summary Thm 3.2), so all
+intersection work happens at CLASS granularity, never vertex granularity. (ii) class-SCT leaves are
+DISJOINT (each weighted s-clique witness lives in exactly one leaf, ClassSCTScalable.h:14-67), so
+support is a plain SUM with no inclusion-exclusion. (iii) A pattern is the class r-multiset and
+mult(P) = Prod_c C(n_c, b_c) converts pattern-level results back to r-clique-level output.
