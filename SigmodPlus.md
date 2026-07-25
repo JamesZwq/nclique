@@ -8992,3 +8992,48 @@ intersection work happens at CLASS granularity, never vertex granularity. (ii) c
 DISJOINT (each weighted s-clique witness lives in exactly one leaf, ClassSCTScalable.h:14-67), so
 support is a plain SUM with no inclusion-exclusion. (iii) A pattern is the class r-multiset and
 mult(P) = Prod_c C(n_c, b_c) converts pattern-level results back to r-clique-level output.
+
+## 221. INDEX BYTE ANATOMY: the pattern table IS the index (86-99%), residue is ~0, and certified patterns need not be stored at all (2026-07-25)
+Direction check: the existing index results were judged "not good enough", correctly. E5/RQ3 measured
+0.045 B/r-clique on webit but **40.30 on epin and 34.23 on yt** -- and a raw archive costs only
+4r + 4*cells = 28 B/r-clique at r=3 over 4 cells, so ON THOSE GRAPHS THE INDEX IS BIGGER THAN THE
+ARCHIVE IT REPLACES. That is a loss, not a weak win. This section finds why and what to do.
+
+### (a) EXACT byte accounting (new, [nsi-bytes §221] in the NSI1 writer)
+| graph | index | header | classOf | mergeable | **patterns** | residue | dists | B/pattern | B/r-clique |
+|---|---|---|---|---|---|---|---|---|---|
+| ca-GrQc | 0.23MB | 0.0% | 8.8% | 4.1% | **86.5%** | 0.0% | 0.6% | 27.5 | 7.40 |
+| ca-CondMat | 2.56MB | 0.0% | 3.4% | 2.2% | **94.3%** | 0.0% | 0.0% | 27.5 | 19.55 |
+| ca-HepPh | 33.79MB | 0.0% | 1.0% | 0.1% | **98.8%** | 0.1% | 0.0% | 28.0 | 10.67 |
+**The pattern table is 86-99% of the file and residue is ~0.** This REVERSES the plan I had drafted:
+residue cross-cell delta coding (which I had ranked as the fix for epin/yt) attacks 0.1% of the bytes.
+27.5-28.0 B/pattern matches the writer exactly: `w8(len) + len*(w32 class + w8 mult) + w32(cP) + wd(k0)`
+= 1 + 15 + 4 + 8 = 28 for r=3 over 3 classes. So on a graph with compression ~1 (epin, §220) the
+pattern table alone equals the whole archive before residue is even counted. The old index's failure
+mode is an ENCODING one, not a theoretical one.
+
+### (b) THE ARCHITECTURAL FIX, and its measured ceiling
+T3 says a certified pattern's whole tail is kappa = C(cP-r, s-r). So a certified pattern needs NO
+stored record at all, PROVIDED cP is recoverable at query time. It is: a region M hosts pattern P iff
+M contains every class of P's comp (classes are wholly in or out of a region), hence
+    **cP(P) = max{ |M| : M in INTERSECTION over c in comp of classRegions[c] }**
+which needs only class->region profiles + region sizes. New probe [nsi-bytes §221b]:
+| graph | class-profiles | avg / max profile | profiles MB | pattern-table MB | **CEILING** |
+|---|---|---|---|---|---|
+| ca-GrQc | 1,957 ints | 3.0 / 45 | 0.01 | 0.20 | **5.7x** |
+| ca-CondMat | 31,875 ints | 4.3 / 194 | 0.15 | 2.41 | **8.8x** |
+| ca-HepPh | 65,996 ints | 17.1 / 1410 | 0.28 | **33.39** | **49.3x** |
+Query cost becomes an intersection of <= r sorted lists of average length 3-17, which is the same
+order as the hash lookup it replaces. Certification rates make this near-total: ca-HepPh residue is
+2,952 entries against 1,251,355 patterns (**99.76% certified**), ca-CondMat 10 against 91,932.
+=> **Index = classOf + class-profiles + region sizes + mergeables + a residue EXCEPTION list.**
+That is also the cleanest possible statement of the design for the paper: the index stores only what
+the theory cannot reconstruct, and P10 says the residue is exactly what no algorithm can avoid.
+
+### (c) Ranked plan (revised by the measurement, not by my earlier guess)
+1. **Drop certified patterns** (5.7-49.3x measured ceiling) -- architectural, needs writer+reader+query.
+2. Slim the surviving records: kappa is an INTEGER stored as double (8B), class ids are w32 where a
+   sorted delta-varint costs 1-2B, cP is w32 where uint16 suffices. ~2.5x on what remains.
+3. Residue cross-cell delta coding -- DEPRIORITIZED, it is 0.1% of the file on these graphs. Revisit
+   only if a low-certification graph (epin/yt) shows a different anatomy; that measurement is queued.
+Gate for all three: answers must be identical to the current index on the same sampled workload.

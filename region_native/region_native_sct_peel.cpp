@@ -73,6 +73,8 @@
 
 using namespace std;
 using Clock = chrono::high_resolution_clock;
+static long long g_profTot = 0, g_profMax = 0, g_nRegions = 0;
+static double g_profAvg = 0.0;
 static double secs(Clock::time_point a, Clock::time_point b) {
     return chrono::duration_cast<chrono::duration<double>>(b - a).count();
 }
@@ -1744,6 +1746,14 @@ int main(int argc, char **argv) {
     printf("[rn] classes=%d  build(vtxR+class)=%.2fs\n", nC, secs(T2, T3));
     memCk("after-classes(pats not yet)");
 
+    {   // §221b: cost of the class->region profiles, the structure that would REPLACE the pattern
+        // table if certified patterns were dropped (cP is then computed at query time as
+        // max|M| over the intersection of the comp's class profiles).
+        g_profTot = 0; g_profMax = 0; g_nRegions = nR;
+        for (int c = 0; c < nC; c++) { g_profTot += (long long)classRegions[c].size();
+            if ((long long)classRegions[c].size() > g_profMax) g_profMax = (long long)classRegions[c].size(); }
+        g_profAvg = nC ? (double)g_profTot / nC : 0.0;
+    }
     // region -> sorted class ids present in it (each class wholly in/out)
     vector<vector<int>> regionClasses(nR);
     for (int c = 0; c < nC; c++)
@@ -4886,16 +4896,46 @@ int main(int argc, char **argv) {
         fwrite("NSI1", 4, 1, f);
         w32(r); w32(sweepS0); w32(sweepSmax); w32(g.n); w32(nC);
         w32((int32_t)pats.size()); w32((int32_t)nsiMergV.size());
+        // §221 byte accounting: exact section sizes, so index-size work targets the real hot spot
+        // instead of an estimate. Zero cost (six ftell calls).
+        long bHdr = ftell(f);
         for (int v = 0; v < g.n; v++) w32(classOf[v]);
+        long bClassOf = ftell(f);
         for (auto &M : nsiMergV) { w32((int32_t)M.size()); for (int v : M) w32(v); }
+        long bMerg = ftell(f);
         for (int pi = 0; pi < (int)pats.size(); pi++) {
             w8((uint8_t)pats[pi].comp.size());
             for (auto &cm : pats[pi].comp) { w32(cm.first); w8((uint8_t)cm.second); }
             w32(nsiCP[pi]); wd(nsiBase.empty() ? -1.0 : nsiBase[pi]);
         }
+        long bPats = ftell(f);
         for (auto &rl : nsiResid) { w64((int64_t)rl.size()); for (auto &pc : rl) { w32(pc.first); wd(pc.second); } }
+        long bResid = ftell(f);
         for (auto &d : nsiDists)  { w32((int32_t)d.size()); for (auto &kv : d) { wd(kv.first); wd(kv.second); } }
         long bytes = ftell(f);
+        {
+            // §221b: stats captured at class-build time (classRegions is not alive here)
+            if (g_profTot > 0) {
+                long long profBytes = g_profTot * 4 + (long long)g_nRegions * 4;
+                double patBytes = (double)(bPats - bMerg);
+                double after = (double)bytes - patBytes + (double)profBytes;
+                fprintf(stderr, "[nsi-bytes §221b] class-profiles=%lld ints (max=%lld avg=%.1f) -> %.2fMB"
+                                " vs pattern-table %.2fMB  => CEILING IF CERTIFIED PATTERNS DROPPED: %.1fx\n",
+                        g_profTot, g_profMax, g_profAvg, profBytes / 1048576.0, patBytes / 1048576.0,
+                        after > 0 ? (double)bytes / after : 0.0);
+            }
+            long long nRC = 0; for (auto &P : pats) nRC += (long long)P.mult;
+            auto pc = [&](long v) { return bytes > 0 ? 100.0 * v / bytes : 0.0; };
+            fprintf(stderr, "[nsi-bytes §221] total=%.2fMB | header=%ld(%.1f%%) classOf=%ld(%.1f%%) "
+                            "mergeable=%ld(%.1f%%) **patterns=%ld(%.1f%%)** residue=%ld(%.1f%%) dists=%ld(%.1f%%)"
+                            " | patterns=%zu -> %.1f B/pat | r-cliques=%lld -> %.3f B/r-clique\n",
+                    bytes / 1048576.0,
+                    bHdr, pc(bHdr), bClassOf - bHdr, pc(bClassOf - bHdr), bMerg - bClassOf, pc(bMerg - bClassOf),
+                    bPats - bMerg, pc(bPats - bMerg), bResid - bPats, pc(bResid - bPats),
+                    bytes - bResid, pc(bytes - bResid),
+                    pats.size(), pats.empty() ? 0.0 : (double)(bPats - bMerg) / pats.size(),
+                    nRC, nRC > 0 ? (double)bytes / nRC : 0.0);
+        }
         fclose(f);
         long long residTot = 0; for (auto &rl : nsiResid) residTot += (long long)rl.size();
         printf("[nsi-index] wrote %s: %.1f MB  (patterns=%zu, merg-regions=%zu, residue-entries=%lld over %d cells)\n",
