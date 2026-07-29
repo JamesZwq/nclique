@@ -9258,3 +9258,26 @@ reports `leaf-maps=SKIPPED residue=0`. Roster A/B is `scripts/plane228_tods2.sh`
 WHY THIS IS THE RIGHT SHAPE FOR THE PAPER: §213's four-sentence algorithm already claims certified
 tails cost "zero storage, zero peel". That was true of storage and of the peel, and FALSE of the map
 construction feeding the peel. The engine now matches the sentence.
+
+## 229. T6 HOST-1 AT r=rMIN: measured, ranked, NOT built (2026-07-29)
+§228 left one visible gap: the diagonal certificate is gated on `r > rMin`, because there is no
+previous row to transfer from, so the FIRST row is 100% residue by construction (pkustk13 r=3:
+2,201,284 patterns, certified=0). §218 finding 3 established that T6 host-1 certifies INDEPENDENTLY
+of the T5 recurrence, so it could apply to that row.
+Probed before building (a `hostCnt` counter on the emission loop, reporting only, index still
+byte-identical). ca-GrQc:
+| r | patterns | host-1 | host-1 AND still uncertified |
+|---|---|---|---|
+| 3 (first row) | 7,508 | 3,339 (44.5%) | **3,339 (44.5%)** |
+| 4 | 22,542 | 8,334 (37.0%) | 1 (0.00%) |
+| 5 | 51,738 | 23,071 (44.6%) | 0 (0.00%) |
+So host-1 is worth **nothing above the first row** -- the diagonal already certifies everything it
+would -- and worth ~44% of the first row.
+CEILING, on the graph where it matters most: pkustk13's first row is 60.5s of a 415.7s build, and its
+boundary cell (3,4) is 35.9s of the 82.9s spent in cells. Removing 44% of that residue saves on the
+order of **4% of the build**. Against that: host-1 must be argued at the UNIVERSAL pattern level (the
+active coarsening can merge classes with different host sets), which is a soundness argument, not an
+encoding change.
+VERDICT: measured, ranked below everything currently open, NOT built. The counter stays in the engine
+so the number can be re-read on any graph without a code change. If the first row ever becomes the
+bottleneck this is the first thing to reach for; today it is not.

@@ -404,6 +404,7 @@ struct PlanePattern {
     // pattern to carry a single running maximum, so cP is now accumulated as incidences are
     // emitted and the list is never materialized.
     long long mult = 1;                   // actual r-cliques represented by this orbit
+    int hostCnt = 0;                      // §229 probe: how many active regions host this pattern
     int cP = 0;                           // largest host-region size
     bool direct = false;                  // unique host is r-mergeable
     vector<int> leaves;                   // r-specific view over the shared tree
@@ -1092,6 +1093,7 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                 }
                 const int rsz = (int)regions[rid].size();
                 if (patterns[(size_t)pi].cP < rsz) patterns[(size_t)pi].cP = rsz;
+                patterns[(size_t)pi].hostCnt++;
                 return;
             }
             const auto &cls = activeRegionClasses[rid];
@@ -1242,6 +1244,20 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
         // then read by nothing.  Certification depends only on cP and the previous row's boundary,
         // both known before the maps exist, so the test can be made BEFORE paying for them.
         // (SCT_DIAG_AUDIT replays with certification disabled, so it needs the maps regardless.)
+        {   // §229 PROBE (reporting only, no behaviour change): T6 host-1 certifies a pattern whose
+            // witnesses all live in ONE region, INDEPENDENTLY of the T5 diagonal recurrence (§218
+            // finding 3). The diagonal above is gated on r > rMin, so the FIRST row is 100% residue
+            // by construction. This counts how much of the residue host-1 could remove, per row.
+            long long h1 = 0, h1res = 0, tot = 0;
+            for (int pi = 0; pi < (int)patterns.size(); ++pi) {
+                if (patterns[pi].direct) continue;
+                ++tot;
+                if (patterns[pi].hostCnt == 1) { ++h1; if (!certified[pi]) ++h1res; }
+            }
+            printf("[nsi-plane-probe §229] r=%d patterns=%lld host-1=%lld (%.2f%%) "
+                   "host-1-AND-uncertified=%lld (%.2f%% of all)\n",
+                   r, tot, h1, tot ? 100.0 * h1 / tot : 0.0, h1res, tot ? 100.0 * h1res / tot : 0.0);
+        }
         const double diagSec = secs(tDiag0, Clock::now());
         const auto tMaps0 = Clock::now();
         long long nResidueP = 0;
