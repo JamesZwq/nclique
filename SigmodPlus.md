@@ -9281,3 +9281,36 @@ encoding change.
 VERDICT: measured, ranked below everything currently open, NOT built. The counter stays in the engine
 so the number can be re-read on any graph without a code change. If the first row ever becomes the
 bottleneck this is the first thing to reach for; today it is not.
+
+## 230-231. THE KERNEL ALREADY VALIDATES, SO THE FAIR COMPARISON IS THE KERNEL NUMBER (2026-07-29)
+An archive probe validates IMPLICITLY: a tuple that is not an r-clique is simply absent from the
+table. Our index has a separate `validated` path that adds O(r^2) adjacency checks against the graph,
+and on nasasrb r=5 that path costs 1105 ns against the archive's 1160 ns -- near parity, where the
+kernel is 401 ns. Which number is the honest one to compare depends on whether the kernel can be
+fooled by a non-clique. It cannot, and here is why:
+**A region is a clique and a class is wholly inside or outside one (Thm 3.2), so a non-empty
+intersection of the query's class profiles means all r vertices share a region and are therefore
+pairwise adjacent.** An empty intersection gives kappa = 0, which is exactly the information an
+archive miss carries. So the kernel answers the same question, on the same input domain, as the
+archive probe.
+TESTED, NOT ASSUMED (`nsi_query INDEX clique-test GRAPH R COUNT`): 200,000 tuples per r on ca-GrQc,
+half of them NEAR-MISSES (a real r-clique with one vertex swapped for a neighbour of another member,
+drawn by walking the GRAPH so the test does not assume what it tests). Uniformly random tuples were
+tried first and are useless -- in a sparse graph they are never close to a clique, so they cannot
+provoke a rep-multiset collision.
+| index | r | real cliques | non-cliques | near-misses | **non-cliques given a nonzero kernel answer** |
+|---|---|---|---|---|---|
+| NSI3 | 3 | 24,686 | 175,268 | 55,867 | **0** |
+| NSI3 | 4 | 22,772 | 177,129 | 55,533 | **0** |
+| NSI3 | 5 | 28,715 | 171,060 | 54,788 | **0** |
+| NSI2 | 3,4,5 | same | same | same | **0** |
+CONSEQUENCE FOR THE PAPER: quote the KERNEL row against the archive probe. The `validated` row stays
+in the benchmark output because it is the honest cost if a caller wants an explicit clique verdict
+from the graph, but it is not the comparison the archive forces.
+SEPARATELY (§230) the nuclei application query got a sound prune: every edge of a surviving witness
+lies in some selected r-clique, so the s-clique scan runs on that subgraph instead of the whole
+graph. ca-GrQc (3,5): an empty answer went 969 ms -> 39 ms against a 1272 ms reference (32.7x), a
+one-component answer 2.0x, and a low-k answer is unchanged because its surviving subgraph IS the
+dense core. HONEST READING recorded with it: the index's own contribution is retrieval_collect
+(~30 ms, flat in k) against a ~1400 ms from-scratch decomposition; the rest is connected-component
+assembly, inherent to the query and paid by both sides. It is an application demo, not the query axis.

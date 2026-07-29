@@ -1922,6 +1922,85 @@ static int mainNSI2(int argc, char **argv) {
         fprintf(stderr, "sampled %lld r-cliques for r=%d\n", made, r);
         return 0;
     }
+    // §231: does the SLIM kernel already validate?  A region is a clique and classes are wholly in
+    // or out of one, so a non-empty profile intersection means all r vertices share a region and are
+    // therefore pairwise adjacent.  If that holds, the fair comparison against an archive probe --
+    // which validates implicitly, because a non-clique is simply absent from the table -- is the
+    // KERNEL number, not the O(r^2)-adjacency validated one.  Tested, not assumed.
+    if (mode == "clique-test") {
+        if (argc < 6) { fprintf(stderr, "usage: INDEX clique-test GRAPH R COUNT\n"); return 1; }
+        int r = 0, want = 0;
+        if (!parseIntArg(argv[4], r) || !parseIntArg(argv[5], want) || want <= 0) { fprintf(stderr, "bad R/COUNT\n"); return 1; }
+        ValidationGraph g;
+        if (!loadValidationGraph(argv[3], g, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        if (g.n != x.n) { fprintf(stderr, "graph/index vertex-count mismatch\n"); return 1; }
+        unsigned seed = 20260729u;
+        auto rnd = [&] { seed = seed * 1664525u + 1013904223u; return seed >> 1; };
+        long long cliques = 0, nonCliques = 0, agree = 0, disagree = 0, falseNonZero = 0, nearMiss = 0;
+        vector<int> vs((size_t)r);
+        // Half the samples are NEAR-MISSES: a real r-clique with one vertex swapped for a neighbour
+        // of another member. Uniformly random tuples in a sparse graph are never close to cliques,
+        // so they cannot exercise a rep-multiset collision; near-misses are exactly where one would
+        // show up. Real cliques are drawn by walking the graph, not the index, so the test does not
+        // assume what it is testing.
+        vector<int32_t> deg((size_t)x.n);
+        for (int32_t v = 0; v < g.n; ++v) deg[v] = g.off[v + 1] - g.off[v];
+        auto sampleRealClique = [&](vector<int> &out) -> bool {
+            for (int tries = 0; tries < 200; ++tries) {
+                int v = (int)(rnd() % (unsigned)g.n);
+                if (deg[v] < r - 1) continue;
+                out.clear(); out.push_back(v);
+                for (int need = 1; need < r; ++need) {
+                    bool ok = false;
+                    for (int a2 = 0; a2 < 60 && !ok; ++a2) {
+                        int u = g.adj[g.off[v] + (int)(rnd() % (unsigned)deg[v])];
+                        bool good = true;
+                        for (int z : out) if (z == u || !g.adjacent(z, u)) { good = false; break; }
+                        if (good) { out.push_back(u); ok = true; }
+                    }
+                    if (!ok) break;
+                }
+                if ((int)out.size() == r) return true;
+            }
+            return false;
+        };
+        vector<int> base;
+        for (int t = 0; t < want; ++t) {
+            bool made = false;
+            if ((t & 1) && sampleRealClique(base)) {          // near-miss branch
+                vs = base;
+                const int i = (int)(rnd() % (unsigned)r), j = (i + 1) % r;
+                if (deg[vs[j]] > 0) {
+                    const int u = g.adj[g.off[vs[j]] + (int)(rnd() % (unsigned)deg[vs[j]])];
+                    bool inSet = false;
+                    for (int z : vs) if (z == u) inSet = true;
+                    if (!inSet) { vs[i] = u; made = true; ++nearMiss; }
+                }
+            }
+            if (!made) for (int i = 0; i < r; ++i) vs[i] = (int)(rnd() % (unsigned)x.n);
+            bool dup = false;
+            for (int i = 0; i < r && !dup; ++i)
+                for (int j = 0; j < i; ++j) if (vs[i] == vs[j]) { dup = true; break; }
+            if (dup) continue;
+            const bool isClique = Query2::validateClique(g, vs.data(), r) == QueryCode::Ok;
+            Query2::Resolved res;
+            if (q.resolve(vs.data(), r, res) != QueryCode::Ok) continue;
+            QueryCode code = QueryCode::Ok;
+            const double kv = q.value(res, x.columns[x.rToColumn[r - x.rmin]].boundary, code);
+            if (isClique) ++cliques; else ++nonCliques;
+            // The claim: for a non-clique the kernel must not invent a nonzero core.
+            if (!isClique && kv != 0.0) { ++falseNonZero; if (falseNonZero <= 3)
+                fprintf(stderr, "  NON-CLIQUE WITH NONZERO KERNEL: kappa=%.0f cp=%d pattern=%d\n",
+                        kv, res.cpComputed, res.pattern); }
+            if (isClique == (res.cpComputed >= 0 || res.pattern >= 0 || res.mergeable >= 0)) ++agree; else ++disagree;
+        }
+        printf("clique-test r=%d slim=%d sampled cliques=%lld non-cliques=%lld (near-miss tuples=%lld)\n",
+               r, (int)x.slim, cliques, nonCliques, nearMiss);
+        printf("clique-test NON-CLIQUES GIVEN A NONZERO KERNEL ANSWER: %lld  (must be 0 for the kernel to validate for free)\n",
+               falseNonZero);
+        printf("clique-test resolve-agrees-with-adjacency: %lld  disagrees: %lld\n", agree, disagree);
+        return falseNonZero ? 2 : 0;
+    }
     if (mode == "dbg-cp") {                             // one-shot diagnostic for the slim path
         if (argc < 4 + x.rmin) { fprintf(stderr, "usage: INDEX dbg-cp R V1..VR\n"); return 1; }
         int r = atoi(argv[3]);
