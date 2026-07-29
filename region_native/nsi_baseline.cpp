@@ -160,8 +160,10 @@ int main(int argc, char **argv) {
     const size_t N = (size_t)totRC;
     vector<int32_t> keys; keys.reserve(N * r);
     vector<int32_t> vals; vals.reserve(N);            // one cell's core (s0) is enough to probe
-    vector<int32_t> cur(r);
-    // recursive product over the pattern's classes
+    vector<int32_t> cur(r), keyBuf(r);
+    // recursive product over the pattern's classes.  The emitted key must be sorted, but sorting
+    // `cur` IN PLACE permutes the blocks the OUTER recursion levels still own, so every later tuple
+    // comes out corrupted (it cost a 3.6% phantom miss rate before it was found).  Sort into keyBuf.
     for (int p = 0; p < x.nPats; p++) {
         const int b0 = x.compOff[p], b1 = x.compOff[p + 1];
         const int32_t core = (int32_t)x.k0[p];
@@ -170,8 +172,9 @@ int main(int argc, char **argv) {
         // iterative product via recursion lambda
         auto rec = [&](auto &&self, int ci, int filled) -> void {
             if (ci == b1) {
-                sort(cur.begin(), cur.begin() + filled);
-                for (int i = 0; i < filled; i++) keys.push_back(cur[i]);
+                copy(cur.begin(), cur.begin() + filled, keyBuf.begin());
+                sort(keyBuf.begin(), keyBuf.begin() + filled);
+                for (int i = 0; i < filled; i++) keys.push_back(keyBuf[i]);
                 vals.push_back(core);
                 return;
             }

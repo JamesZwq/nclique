@@ -1408,9 +1408,12 @@ static void printNSI2Usage(const char *prog) {
         "  %s INDEX rowfile-validated GRAPH R FILE\n"
         "  %s INDEX nuclei R S K GRAPH                     # connected k-(r,s)-nuclei + direct check\n"
         "  %s INDEX bench GRAPH QUERIES [--cold-mib N] [--warm-reps N]\n"
+        "  %s INDEX archive [--vs SLIM.nsi3]               # E4 baseline: archive size accounting\n"
+        "  %s INDEX archive-bench R QUERIES [--cap-gb N] [--cold-mib N]\n"
         "Bench query lines are either 'R V1 ... VR' (S cycles over the row) or\n"
-        "'R S V1 ... VR'.  At least 1000 validated clique lines are required.\n",
-        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
+        "'R S V1 ... VR'.  At least 1000 validated clique lines are required.\n"
+        "archive modes need the FULL index (NSI2); the slim NSI3 drops the multiplicities.\n",
+        prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
 }
 
 static int printQueryError(QueryCode code) {
@@ -1626,8 +1629,14 @@ static int mainNSI2(int argc, char **argv) {
     }
 
     if (mode == "sample") {                             // emit real r-cliques for gating/benching
-        if (argc < 5) { fprintf(stderr, "usage: INDEX sample R COUNT\n"); return 1; }
+        if (argc < 5) { fprintf(stderr, "usage: INDEX sample R COUNT [--by-clique]\n"); return 1; }
         int r = atoi(argv[3]); long long want = atoll(argv[4]);
+        // Default: uniform over PATTERNS (what the §223 gates use, kept byte-compatible).
+        // --by-clique: uniform over R-CLIQUES, i.e. patterns drawn proportionally to mult. That is
+        // the honest workload for a latency benchmark, because a real query stream is over cliques,
+        // not over the index's internal orbits.
+        bool byClique = false;
+        for (int i = 5; i < argc; ++i) if (!strcmp(argv[i], "--by-clique")) byClique = true;
         const NSI2Column *colp = q.column(r);
         if (!colp) { fprintf(stderr, "no column for r=%d\n", r); return 1; }
         const NSI2Column &col = *colp;
@@ -1639,10 +1648,22 @@ static int mainNSI2(int argc, char **argv) {
         for (int32_t c = 0; c < x.nC; ++c) { int32_t rp = col.classRep[c]; if (rp >= 0) repRaw[rp].push_back(c); }
         unsigned seed = 987654321u;
         auto rnd = [&] { seed = seed * 1664525u + 1013904223u; return seed >> 1; };
+        vector<double> cum;                                  // mult prefix sums for --by-clique
+        if (byClique) {
+            cum.reserve(col.patterns.size());
+            double acc = 0;
+            for (const auto &P : col.patterns) { acc += (double)P.mult; cum.push_back(acc); }
+            if (acc <= 0) { fprintf(stderr, "column r=%d has no r-cliques\n", r); return 1; }
+        }
+        auto pickPattern = [&]() -> size_t {
+            if (!byClique) return (size_t)(rnd() % col.patterns.size());
+            const double u = (double)rnd() / 2147483648.0 * cum.back();
+            return (size_t)(lower_bound(cum.begin(), cum.end(), u) - cum.begin());
+        };
         long long made = 0, guard = 0;
         vector<int32_t> out;
         while (made < want && guard++ < want * 60) {
-            const auto &P = col.patterns[rnd() % col.patterns.size()];
+            const auto &P = col.patterns[min(pickPattern(), col.patterns.size() - 1)];
             out.clear(); bool ok = true;
             for (const auto &cm : P.comp) {
                 const auto &raws = repRaw[cm.first];
@@ -1758,6 +1779,270 @@ static int mainNSI2(int argc, char **argv) {
                fullCert, partial, (fullCert + partial) ? 100.0 * fullCert / (fullCert + partial) : 0.0);
         return (badPat || badMerg) ? 2 : 0;
     }
+    // ===== §225 E4: the MATERIALIZED-ARCHIVE baseline =====
+    // The archive is the only structure that answers the same queries without this index: for every
+    // r-clique, kappa in every cell of its row, sorted by the clique key and probed by binary search.
+    // EVERY choice below is deliberately made in the ARCHIVE's favour, so the reported gap is a
+    // lower bound on the real one:
+    //   * rows = SUM over patterns of mult. Distinct patterns own disjoint clique sets (a clique
+    //     determines its rep-multiset), so this is a strict LOWER bound on #r-cliques. Cliques that
+    //     live only in a mergeable region are reported separately and NOT charged to the archive,
+    //     because they can overlap the pattern side and charging them would inflate the baseline.
+    //   * 4-byte vertex ids, 4-byte kappa, and ONE key shared by the whole row's cells.
+    //   * the probe workload comes from the pattern table, so every probe HITS: no early exit.
+    // Where the row count exceeds the cap the archive cannot be built at all, and saying so IS the
+    // result: that is the regime the index exists for.
+    if (mode == "archive" || mode == "archive-bench") {
+        if (x.slim) {
+            fprintf(stderr,
+                "archive accounting needs the FULL plane index (NSI2). The slim format drops pattern\n"
+                "multiplicities on purpose, so #r-cliques cannot be read back from it. Run this mode on\n"
+                "the NSI2 file and compare its output against the NSI3 file size.\n");
+            return 1;
+        }
+        auto nCrD = [](double a, int b) {
+            if (b < 0 || (double)b > a) return 0.0;
+            if ((double)b > a - b) b = (int)(a - (double)b);
+            double z = 1.0;
+            for (int i = 0; i < b; ++i) z = z * (a - i) / (double)(i + 1);
+            return z;
+        };
+
+        vector<vector<int32_t>> clsVerts((size_t)x.nC);
+        for (int32_t v = 0; v < x.n; ++v) if (x.classOf[v] >= 0) clsVerts[x.classOf[v]].push_back(v);
+
+        double archBytes = 0, patRCall = 0, mergRCall = 0;
+        long long multMismatch = 0;
+        printf("archive index=%s plane r=%d..%d s<=%d\n", argv[1], x.rmin, x.rmax, x.smax);
+        printf("r  cells  patterns  pattern-r-cliques  mergeable-r-cliques  row-bytes  archive-MB\n");
+        for (const auto &col : x.columns) {
+            const int cells = x.smax - col.boundary + 1;
+            vector<double> repN((size_t)x.nC, 0.0);
+            for (int32_t c = 0; c < x.nC; ++c) {
+                int32_t rp = col.classRep[c];
+                if (rp >= 0) repN[rp] += (double)clsVerts[c].size();
+            }
+            double patRC = 0;
+            for (const auto &P : col.patterns) {
+                patRC += (double)P.mult;
+                double m = 1.0;
+                for (const auto &cm : P.comp) m *= nCrD(repN[cm.first], cm.second);
+                if (fabs(m - (double)P.mult) > 1e-6 * max(1.0, (double)P.mult)) ++multMismatch;
+            }
+            double mergRC = 0;
+            for (int32_t rid : col.mergeableRegions) mergRC += nCrD((double)x.regionSize[rid], col.r);
+            const double rowBytes = 4.0 * col.r + 4.0 * cells;
+            const double b = patRC * rowBytes;
+            printf("%d  %d  %zu  %.0f  %.0f  %.0f  %.2f\n", col.r, cells, col.patterns.size(),
+                   patRC, mergRC, rowBytes, b / 1048576.0);
+            archBytes += b; patRCall += patRC; mergRCall += mergRC;
+        }
+        printf("ARCHIVE   %.0f rows  %.2f MB  (%.2f GB)\n",
+               patRCall, archBytes / 1048576.0, archBytes / 1073741824.0);
+        printf("INDEX     %s  %.2f MB\n", argv[1], x.fileBytes / 1048576.0);
+        printf("RATIO     archive / this-index = %.1fx\n",
+               x.fileBytes > 0 ? archBytes / (double)x.fileBytes : 0.0);
+        printf("bytes-per-r-clique  archive=%.2f  this-index=%.4f\n",
+               patRCall > 0 ? archBytes / patRCall : 0.0,
+               patRCall > 0 ? (double)x.fileBytes / patRCall : 0.0);
+        // an optional second index path (typically the NSI3 slim file) closes the comparison here so
+        // no shell arithmetic sits between the measurement and the reported ratio
+        for (int i = 3; i < argc; ++i) {
+            if (strcmp(argv[i], "--vs") || i + 1 >= argc) continue;
+            FILE *sf = fopen(argv[++i], "rb");
+            if (!sf) { fprintf(stderr, "cannot open --vs %s\n", argv[i]); return 1; }
+            fseek(sf, 0, SEEK_END); double sb = (double)ftell(sf); fclose(sf);
+            printf("SLIM      %s  %.2f MB\n", argv[i], sb / 1048576.0);
+            printf("RATIO     archive / slim-index = %.1fx   bytes-per-r-clique slim=%.4f\n",
+                   sb > 0 ? archBytes / sb : 0.0, patRCall > 0 ? sb / patRCall : 0.0);
+        }
+        if (multMismatch)
+            printf("WARNING   %lld patterns whose stored mult disagrees with prod C(|rep|,b);"
+                   " expansion below emits the enumerated count, not mult\n", multMismatch);
+        if (mode == "archive") return 0;
+
+        // ---- materialize one row of the archive and probe it ----
+        if (argc < 5) { fprintf(stderr, "usage: INDEX archive-bench R QUERYFILE [--cap-gb N] [--cold-mib N]\n"); return 1; }
+        int rWant = 0;
+        if (!parseIntArg(argv[3], rWant)) { fprintf(stderr, "bad R\n"); return 1; }
+        double capGB = 64.0; int coldMiB = 128;
+        for (int i = 5; i < argc; ++i) {
+            if (!strcmp(argv[i], "--cap-gb") && i + 1 < argc) capGB = atof(argv[++i]);
+            else if (!strcmp(argv[i], "--cold-mib") && i + 1 < argc) {
+                if (!parseIntArg(argv[++i], coldMiB) || coldMiB < 1 || coldMiB > 4096) { fprintf(stderr, "bad --cold-mib\n"); return 1; }
+            } else if (!strcmp(argv[i], "--vs") && i + 1 < argc) ++i;
+            else { fprintf(stderr, "unknown archive-bench option: %s\n", argv[i]); return 1; }
+        }
+        const NSI2Column *colp = q.column(rWant);
+        if (!colp) { fprintf(stderr, "no column for r=%d\n", rWant); return 1; }
+        const NSI2Column &col = *colp;
+        const int cells = x.smax - col.boundary + 1;
+        double rows = 0;
+        for (const auto &P : col.patterns) rows += (double)P.mult;
+        // peak = keys + values + the permutation + the sorted copy of both
+        const double peakBytes = rows * (4.0 * rWant + 4.0 * cells) * 2.0 + rows * 4.0;
+        if (peakBytes > capGB * 1073741824.0) {
+            printf("ARCHIVE-BENCH r=%d **CANNOT BE MATERIALIZED**: %.0f rows would need %.1f GB "
+                   "(cap %.1f GB)\n", rWant, rows, peakBytes / 1073741824.0, capGB);
+            printf("           No sorted table exists to probe, so the only alternative to the index\n"
+                   "           is recomputing the cell per query. This outcome is the result.\n");
+            return 0;
+        }
+
+        vector<vector<int32_t>> repV((size_t)x.nC);
+        for (int32_t c = 0; c < x.nC; ++c) {
+            int32_t rp = col.classRep[c];
+            if (rp < 0) continue;
+            auto &dst = repV[rp];
+            dst.insert(dst.end(), clsVerts[c].begin(), clsVerts[c].end());
+        }
+
+        auto expand0 = SteadyClock::now();
+        vector<int32_t> keys, vals;
+        keys.reserve((size_t)rows * rWant); vals.reserve((size_t)rows * cells);
+        // `cur` holds the tuple as the recursion built it, one block per comp entry. The emitted key
+        // must be sorted, but sorting `cur` IN PLACE permutes the blocks the OUTER levels still own,
+        // so every later tuple comes out corrupted. Sort into a separate buffer.
+        vector<int32_t> cur((size_t)rWant), keyBuf((size_t)rWant), rowKappa((size_t)cells);
+        for (size_t pi = 0; pi < col.patterns.size(); ++pi) {
+            Query2::Resolved res; res.col = &col; res.pattern = (int32_t)pi;
+            bool bad = false;
+            for (int s = col.boundary; s <= x.smax; ++s) {
+                QueryCode code = QueryCode::Ok;
+                double kv = q.value(res, s, code);
+                if (code != QueryCode::Ok) { bad = true; break; }
+                rowKappa[s - col.boundary] = (int32_t)kv;
+            }
+            if (bad) { fprintf(stderr, "pattern %zu has no value at some cell\n", pi); return 2; }
+            const Comp2 &comp = col.patterns[pi].comp;
+            auto rec = [&](auto &&self, size_t ci, int filled) -> void {
+                if (ci == comp.size()) {
+                    copy(cur.begin(), cur.begin() + filled, keyBuf.begin());
+                    sort(keyBuf.begin(), keyBuf.begin() + filled);
+                    keys.insert(keys.end(), keyBuf.begin(), keyBuf.begin() + filled);
+                    vals.insert(vals.end(), rowKappa.begin(), rowKappa.end());
+                    return;
+                }
+                const auto &V = repV[comp[ci].first];
+                const int b = comp[ci].second, m = (int)V.size();
+                if (b > m) return;
+                vector<int> idx((size_t)b);
+                for (int i = 0; i < b; ++i) idx[i] = i;
+                while (true) {
+                    for (int i = 0; i < b; ++i) cur[filled + i] = V[idx[i]];
+                    self(self, ci + 1, filled + b);
+                    int i = b - 1;
+                    while (i >= 0 && idx[i] == m - b + i) --i;
+                    if (i < 0) break;
+                    ++idx[i];
+                    for (int j = i + 1; j < b; ++j) idx[j] = idx[j - 1] + 1;
+                }
+            };
+            rec(rec, 0, 0);
+        }
+        const size_t M = vals.size() / (size_t)cells;
+        const double expandS = chrono::duration<double>(SteadyClock::now() - expand0).count();
+
+        auto sort0 = SteadyClock::now();
+        vector<uint32_t> ord(M);
+        for (size_t i = 0; i < M; ++i) ord[i] = (uint32_t)i;
+        sort(ord.begin(), ord.end(), [&](uint32_t a, uint32_t b) {
+            const int32_t *ka = &keys[(size_t)a * rWant], *kb = &keys[(size_t)b * rWant];
+            for (int i = 0; i < rWant; ++i) if (ka[i] != kb[i]) return ka[i] < kb[i];
+            return false;
+        });
+        vector<int32_t> sk((size_t)M * rWant), sv((size_t)M * cells);
+        for (size_t i = 0; i < M; ++i) {
+            memcpy(&sk[i * rWant], &keys[(size_t)ord[i] * rWant], sizeof(int32_t) * rWant);
+            memcpy(&sv[i * cells], &vals[(size_t)ord[i] * cells], sizeof(int32_t) * cells);
+        }
+        keys.clear(); keys.shrink_to_fit(); vals.clear(); vals.shrink_to_fit();
+        ord.clear(); ord.shrink_to_fit();
+        const double sortS = chrono::duration<double>(SteadyClock::now() - sort0).count();
+        const double realBytes = (double)M * (4.0 * rWant + 4.0 * cells);
+        printf("ARCHIVE-BENCH r=%d materialized rows=%zu cells=%d  %.2f MB  build=%.1fs "
+               "(expand %.1fs + sort %.1fs)  peak-rss=%.0f MiB\n",
+               rWant, M, cells, realBytes / 1048576.0, expandS + sortS, expandS, sortS, peakRssMiB());
+        if (M == 0) { fprintf(stderr, "empty archive\n"); return 2; }
+
+        vector<BenchQuery2> allQ; vector<int> flat;
+        if (!readBenchQueries(argv[4], x, allQ, flat, error)) { fprintf(stderr, "%s\n", error.c_str()); return 1; }
+        vector<BenchQuery2> queries;
+        for (const auto &b : allQ) if (b.r == rWant) queries.push_back(b);
+        if (queries.size() < 1000) {
+            fprintf(stderr, "archive-bench needs >=1000 queries at r=%d (got %zu)\n", rWant, queries.size());
+            return 1;
+        }
+
+        vector<int32_t> probe((size_t)rWant);
+        long long hits = 0, misses = 0;
+        auto probeOp = [&](size_t i) -> double {
+            const auto &b = queries[i];
+            memcpy(probe.data(), &flat[b.off], sizeof(int32_t) * rWant);
+            sort(probe.begin(), probe.end());
+            size_t lo = 0, hi = M;
+            while (lo < hi) {
+                size_t mid = lo + ((hi - lo) >> 1);
+                const int32_t *km = &sk[mid * rWant];
+                int c = 0;
+                for (int j = 0; j < rWant; ++j) if (km[j] != probe[j]) { c = km[j] < probe[j] ? -1 : 1; break; }
+                if (c < 0) lo = mid + 1; else hi = mid;
+            }
+            bool eq = lo < M;
+            if (eq) { const int32_t *km = &sk[lo * rWant];
+                      for (int j = 0; j < rWant; ++j) if (km[j] != probe[j]) { eq = false; break; } }
+            if (!eq) {
+                if (misses < 3) {                       // a miss means the workload and the archive
+                    fprintf(stderr, "  archive MISS:");  // disagree about what an r-clique is
+                    for (int j = 0; j < rWant; ++j) fprintf(stderr, " %d", probe[j]);
+                    fprintf(stderr, "  (pattern=%d mergeable=%d)\n",
+                            q.lookupPattern(col, probe.data()), q.lookupMergeable(col, probe.data()));
+                }
+                ++misses; return 0.0;
+            }
+            ++hits;
+            return (double)sv[lo * cells + (b.s - col.boundary)];       // point query: one cell
+        };
+        auto rowOp = [&](size_t i) -> double {
+            const auto &b = queries[i];
+            memcpy(probe.data(), &flat[b.off], sizeof(int32_t) * rWant);
+            sort(probe.begin(), probe.end());
+            size_t lo = 0, hi = M;
+            while (lo < hi) {
+                size_t mid = lo + ((hi - lo) >> 1);
+                const int32_t *km = &sk[mid * rWant];
+                int c = 0;
+                for (int j = 0; j < rWant; ++j) if (km[j] != probe[j]) { c = km[j] < probe[j] ? -1 : 1; break; }
+                if (c < 0) lo = mid + 1; else hi = mid;
+            }
+            if (lo >= M) return 0.0;
+            const int32_t *km = &sk[lo * rWant];
+            for (int j = 0; j < rWant; ++j) if (km[j] != probe[j]) return 0.0;
+            double z = 0;
+            for (int cIdx = 0; cIdx < cells; ++cIdx) z += sv[lo * cells + cIdx];   // whole row
+            return z;
+        };
+
+        const size_t warmN = queries.size(), coldN = min<size_t>(queries.size(), 1000);
+        for (size_t i = 0; i < warmN; ++i) latencySink += probeOp(i) + rowOp(i);
+        const long long hitsWarm = hits, missWarm = misses;
+        vector<uint64_t> eviction((size_t)coldMiB * 1024 * 1024 / sizeof(uint64_t));
+        for (size_t i = 0; i < eviction.size(); ++i) eviction[i] = i * 0x9E3779B97F4A7C15ULL + 1;
+        LatencySummary pW = measureLatency(warmN, 1, nullptr, probeOp);
+        LatencySummary rW = measureLatency(warmN, 1, nullptr, rowOp);
+        LatencySummary pC = measureLatency(coldN, 1, &eviction, probeOp);
+        LatencySummary rC = measureLatency(coldN, 1, &eviction, rowOp);
+        printf("ARCHIVE-BENCH probes=%zu hits=%lld misses=%lld hit-rate=%.4f "
+               "(a miss is an unfairly CHEAP probe for the archive)\n",
+               warmN, hitsWarm, missWarm,
+               (hitsWarm + missWarm) ? (double)hitsWarm / (double)(hitsWarm + missWarm) : 0.0);
+        printf("operation  path       warm-med(ns)  warm-p95(ns)  cold-med(ns)  cold-p95(ns)\n");
+        printf("%-9s  %-9s  %12.1f  %12.1f  %12.1f  %12.1f\n", "point", "archive", pW.median, pW.p95, pC.median, pC.p95);
+        printf("%-9s  %-9s  %12.1f  %12.1f  %12.1f  %12.1f\n", "row", "archive", rW.median, rW.p95, rC.median, rC.p95);
+        printf("sink=%.0f\n", (double)latencySink);
+        return 0;
+    }
+
     if (mode == "bench") {
         if (argc < 5) { printNSI2Usage(argv[0]); return 1; }
         int coldMiB = 128, warmReps = 1;
