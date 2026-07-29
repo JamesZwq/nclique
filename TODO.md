@@ -4,7 +4,7 @@
 - [ ] E1 main table 7 configs (RUNNING on tods2; poller will report)
 - [ ] E2 multi-trial (>=3 runs, median) for every paper number (--trials flag)
 - [ ] E3 CND same-machine spectrum baseline (cell list in §140.1; neutral OOM markers)
-- [ ] E4 same-machine query bench (NSI vs sorted-table probe) -- local "parity" claim void until then
+- [x] E4 same-machine query bench (NSI vs materialized-archive probe) -- **DONE, §233**
 - [ ] E5 server-scale index build/size/latency for all 7 configs
 - [ ] E6 certification-anatomy figure (cert% per cell per graph)
 - [ ] E7 NOCERT ablation (certificate contribution vs shared build)
@@ -21,8 +21,8 @@
 - [x] ~~SLP step 2 grouped walk~~ **DE-GREENLIT (§208)**: §203's 71-163x lumped ungroupable
       bounds-rejects in; the clean redundancy is 2.2-9.8x
 
-> Before adding anything to this list, check `DO_NOT_REPEAT.md`: ten directions are already dead
-> with the measurement that killed them.
+> Before adding anything to this list, check `DO_NOT_REPEAT.md`: TWELVE directions are already dead
+> with the measurement that killed them, and sixteen traps already produced wrong results.
 
 ## INDEX TRACK (§213 decided the paper is index-first; this is now the main line)
 - [x] §221/§222 byte anatomy + slim design VERIFIED (cP recoverable, 0 mismatches)
