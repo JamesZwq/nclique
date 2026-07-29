@@ -587,9 +587,6 @@ static bool loadNSI3(const char *path, NSI2 &x, string &error) {
     x.classRegionsBySize = x.classRegions;
     for (auto &pr : x.classRegionsBySize)
         sort(pr.begin(), pr.end(), [&](int32_t a, int32_t b) { return x.regionSize[a] > x.regionSize[b]; });
-    x.classRegionsBySize = x.classRegions;
-    for (auto &pr : x.classRegionsBySize)
-        sort(pr.begin(), pr.end(), [&](int32_t a, int32_t b) { return x.regionSize[a] > x.regionSize[b]; });
     x.sharedBytes = x.directory.empty() ? x.fileBytes : x.directory[0];
     return true;
 }
@@ -1779,6 +1776,128 @@ static int mainNSI2(int argc, char **argv) {
                fullCert, partial, (fullCert + partial) ? 100.0 * fullCert / (fullCert + partial) : 0.0);
         return (badPat || badMerg) ? 2 : 0;
     }
+    // ===== §226: byte anatomy of the LOADED index, and what a packed encoding would cost =====
+    // §221 did this for NSI2 and it is what identified the pattern table as the only worthwhile
+    // target; the same discipline decides whether slimming NSI3 further is worth building at all.
+    // This mode WRITES NOTHING: it re-derives each block's byte cost from the loaded structures and
+    // prices a packed alternative (bit-packed class labels, delta-varint id lists, varint integers),
+    // so the payoff is known before any format change is implemented.
+    if (mode == "anatomy") {
+        auto vlen = [](uint64_t v) { int b = 1; while (v >= 128) { v >>= 7; ++b; } return b; };
+        auto zlen = [&](int64_t v) { return vlen(((uint64_t)v << 1) ^ (uint64_t)(v >> 63)); };
+        auto ilen = [&](double d, int wide) {                       // integral -> varint, else raw 8B
+            double r0 = nearbyint(d);
+            return (fabs(d - r0) < 1e-9 && fabs(r0) < 9e18) ? zlen((int64_t)r0) : wide;
+        };
+        int labelBits = 1; while ((1LL << labelBits) < (long long)x.nC + 1) ++labelBits;
+
+        struct Blk { const char *name; double now, packed; };
+        vector<Blk> blk;
+        double nonIntegral = 0, integralTotal = 0;
+
+        // A vertex whose class hosts no region can never appear in an answer, so its label is dead
+        // weight. Price the alternative: a presence bitmap plus packed labels for the live ones only.
+        long long liveV = 0;
+        for (int32_t v = 0; v < x.n; ++v) {
+            const int32_t c = x.classOf[v];
+            if (c >= 0 && c < x.nC && !x.classRegions[c].empty()) ++liveV;
+        }
+        int liveBits = 1; while ((1LL << liveBits) < (long long)x.nC + 1) ++liveBits;
+        const double classOfPacked = ceil((double)x.n * labelBits / 8.0);
+        const double classOfBitmap = ceil((double)x.n / 8.0) + ceil((double)liveV * liveBits / 8.0);
+        blk.push_back({"classOf", 4.0 * x.n, min(classOfPacked, classOfBitmap)});
+
+        double profNow = 0, profPk = 0; long long profEnt = 0;
+        for (int32_t c = 0; c < x.nC; ++c) {
+            const auto &pr = x.classRegions[c];
+            profNow += 8.0 + 4.0 * pr.size();
+            profPk += vlen((uint64_t)max(0, x.classSize.empty() ? 0 : x.classSize[c])) + vlen(pr.size());
+            int32_t prev = -1;
+            for (int32_t rid : pr) { profPk += zlen((int64_t)rid - prev); prev = rid; }
+            profEnt += (long long)pr.size();
+        }
+        blk.push_back({"class-profiles", profNow, profPk});
+
+        double mgNow = 0, mgPk = 0, exNow = 0, exPk = 0, rsNow = 0, rsPk = 0, dsNow = 0, dsPk = 0;
+        long long nExc = 0, nRes = 0, nDist = 0;
+        for (const auto &col : x.columns) {
+            mgNow += 8.0 + 4.0 + 4.0 * col.mergeableRegions.size();
+            vector<int32_t> mg = col.mergeableRegions;
+            sort(mg.begin(), mg.end());
+            mgPk += 2.0 + vlen(mg.size());
+            int32_t prev = -1;
+            for (int32_t rid : mg) { mgPk += zlen((int64_t)rid - prev); prev = rid; }
+
+            exNow += 4.0; exPk += vlen(col.patterns.size());
+            int32_t prevPid = -1;
+            for (size_t pi = 0; pi < col.patterns.size(); ++pi) {
+                const auto &P = col.patterns[pi];
+                const int32_t opid = x.slim && pi < col.origPid.size() ? col.origPid[pi] : (int32_t)pi;
+                exNow += 4.0 + 1.0 + 6.0 * P.comp.size() + 8.0 + 4.0;
+                exPk += zlen((int64_t)opid - prevPid) + 1.0; prevPid = opid;
+                for (const auto &cm : P.comp) exPk += vlen((uint64_t)cm.first) + vlen((uint64_t)cm.second);
+                exPk += ilen(P.boundaryCore, 8) + vlen((uint64_t)(P.closedFrom + 1));
+                integralTotal += 1; if (ilen(P.boundaryCore, 8) == 8) nonIntegral += 1;
+                ++nExc;
+            }
+            rsNow += 4.0; rsPk += vlen(col.resid.size());
+            for (const auto &rr : col.resid) {
+                rsNow += 8.0 + 12.0 * rr.size();
+                rsPk += vlen(rr.size());
+                int32_t pp = -1;
+                for (const auto &pc : rr) {
+                    rsPk += zlen((int64_t)pc.first - pp) + ilen(pc.second, 8); pp = pc.first;
+                    integralTotal += 1; if (ilen(pc.second, 8) == 8) nonIntegral += 1;
+                }
+                nRes += (long long)rr.size();
+            }
+            dsNow += 4.0; dsPk += vlen(col.dists.size());
+            for (const auto &d : col.dists) {
+                dsNow += 4.0 + 16.0 * d.size();
+                dsPk += vlen(d.size());
+                for (const auto &kv : d) {
+                    dsPk += ilen(kv.first, 8) + ilen(kv.second, 8);
+                    integralTotal += 2;
+                    if (ilen(kv.first, 8) == 8) nonIntegral += 1;
+                    if (ilen(kv.second, 8) == 8) nonIntegral += 1;
+                }
+                nDist += (long long)d.size();
+            }
+        }
+        blk.push_back({"mergeables", mgNow, mgPk});
+        blk.push_back({"exceptions", exNow, exPk});
+        blk.push_back({"residue", rsNow, rsPk});
+        blk.push_back({"dists", dsNow, dsPk});
+        const double hdr = 36.0 + 8.0 * x.nCols;
+        blk.push_back({"header+dir", hdr, hdr});
+
+        double now = 0, packed = 0;
+        for (const auto &b : blk) { now += b.now; packed += b.packed; }
+        printf("anatomy index=%s %s file=%.3f MB accounted=%.3f MB (delta %.0f B)\n",
+               argv[1], x.slim ? "NSI3" : "NSI2", x.fileBytes / 1048576.0, now / 1048576.0,
+               (double)x.fileBytes - now);
+        printf("n=%d nC=%d nR=%d class-label-bits=%d profile-entries=%lld exceptions=%lld "
+               "residue=%lld dist-entries=%lld\n",
+               x.n, x.nC, x.nR, labelBits, profEnt, nExc, nRes, nDist);
+        printf("block            now-B    now%%    packed-B  packed%%   shrink\n");
+        for (const auto &b : blk)
+            printf("%-14s %10.0f  %5.1f%%  %10.0f   %5.1f%%   %6.2fx\n", b.name, b.now,
+                   now > 0 ? 100.0 * b.now / now : 0.0, b.packed,
+                   packed > 0 ? 100.0 * b.packed / packed : 0.0,
+                   b.packed > 0 ? b.now / b.packed : 0.0);
+        printf("%-14s %10.0f  100.0%%  %10.0f   100.0%%   %6.2fx   (%.3f MB -> %.3f MB)\n",
+               "TOTAL", now, packed, packed > 0 ? now / packed : 0.0,
+               now / 1048576.0, packed / 1048576.0);
+        printf("non-integral stored reals: %.0f of %.0f (%.4f%%) -- these are the only values a varint "
+               "cannot take\n", nonIntegral, integralTotal,
+               integralTotal > 0 ? 100.0 * nonIntegral / integralTotal : 0.0);
+        printf("class labels: %lld of %d vertices are in a class that hosts a region (%.1f%%); "
+               "flat-packed=%.0f B bitmap+live=%.0f B (chose %s)\n",
+               liveV, x.n, x.n ? 100.0 * (double)liveV / x.n : 0.0, classOfPacked, classOfBitmap,
+               classOfBitmap < classOfPacked ? "bitmap" : "flat");
+        return 0;
+    }
+
     // ===== §225 E4: the MATERIALIZED-ARCHIVE baseline =====
     // The archive is the only structure that answers the same queries without this index: for every
     // r-clique, kappa in every cell of its row, sorted by the clique key and probed by binary search.

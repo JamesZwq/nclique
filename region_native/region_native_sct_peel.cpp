@@ -1444,16 +1444,20 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
         long b0 = ftell(f);
         for (int c : classOf) w32(c);
         long b1 = ftell(f);
+        long long acProfEnt = 0;
         for (int c = 0; c < nC; ++c) {
             w32(classSize[c]);
             w32((int32_t)classRegions[c].size());
             for (int rid : classRegions[c]) w32(rid);
+            acProfEnt += (long long)classRegions[c].size();
         }
         long b2 = ftell(f);
         long dirPos = ftell(f);
         for (size_t i = 0; i < indexColumns.size(); ++i) w64(0);
         vector<int64_t> offs(indexColumns.size(), 0);
         long long keptPat = 0, dropPat = 0; long bExc = 0;
+        long bMerg = 0, bRes = 0, bDist = 0;
+        long long acResid = 0, acDist = 0;
         for (size_t ci = 0; ci < indexColumns.size(); ++ci) {
             offs[ci] = (int64_t)ftell(f);
             const auto &col = indexColumns[ci];
@@ -1479,21 +1483,45 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
             bExc += ftell(f) - e0;
             keptPat += (long long)keep.size();
             dropPat += (long long)col.patterns.size() - (long long)keep.size();
+            long e1 = ftell(f);
             w32((int32_t)col.residueByCell.size());
             for (const auto &rr : col.residueByCell) {
                 w64((int64_t)rr.size());
                 for (auto &pc : rr) { w32(pc.first); wd(pc.second); }
+                acResid += (long long)rr.size();
             }
+            long e2 = ftell(f);
             w32((int32_t)col.dists.size());
             for (const auto &d : col.dists) {
                 w32((int32_t)d.size());
                 for (auto &kv : d) { wd(kv.first); wd(kv.second); }
+                acDist += (long long)d.size();
             }
+            long e3 = ftell(f);
+            bMerg += e0 - offs[ci]; bRes += e2 - e1; bDist += e3 - e2;
         }
         long endPos = ftell(f);
         fseek(f, dirPos, SEEK_SET);
         for (int64_t o : offs) w64(o);
         fclose(f);
+        // §226 byte anatomy of the SLIM index. §221 did this for NSI2 and it is what identified the
+        // pattern table as the only target worth attacking; the same discipline applies to whatever
+        // NSI3 still keeps, so the next slimming step is chosen by measurement rather than intuition.
+        {
+            const long total = endPos;
+            auto pc = [&](long v) { return total > 0 ? 100.0 * v / total : 0.0; };
+            const long bCls = b1 - b0, bProf = b2 - b1, bDir = (long)(offs.empty() ? b2 : offs[0]) - b2;
+            fprintf(stderr,
+                "[nsi3-bytes §226] total=%.3fMB | classOf=%ld(%.1f%%) class-profiles=%ld(%.1f%%) "
+                "dir=%ld(%.1f%%) mergeables=%ld(%.1f%%) exceptions=%ld(%.1f%%) residue=%ld(%.1f%%) "
+                "dists=%ld(%.1f%%)\n",
+                total / 1048576.0, bCls, pc(bCls), bProf, pc(bProf), bDir, pc(bDir),
+                bMerg, pc(bMerg), bExc, pc(bExc), bRes, pc(bRes), bDist, pc(bDist));
+            fprintf(stderr,
+                "[nsi3-bytes §226] n=%d nC=%d nR=%d profile-entries=%lld exceptions=%lld "
+                "residue-entries=%lld dist-entries=%lld\n",
+                g.n, nC, nR, acProfEnt, keptPat, acResid, acDist);
+        }
         fprintf(stderr, "[nsi3-slim §222] wrote %s %.3fMB | classOf=%ld profiles=%ld exceptions=%ld"
                         " | patterns kept=%lld dropped=%lld (%.2f%% dropped)\n",
                 indexOut, endPos / 1048576.0, b1 - b0, b2 - b1, bExc, keptPat, dropPat,
