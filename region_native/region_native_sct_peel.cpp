@@ -1263,7 +1263,12 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
         long long nResidueP = 0;
         for (int pi = 0; pi < (int)patterns.size(); ++pi)
             if (!patterns[pi].direct && !certified[pi]) ++nResidueP;
-        const bool needLeafMaps = nResidueP > 0 || getenv("SCT_DIAG_AUDIT") != nullptr;
+        // noCert re-derives certification per cell ABOVE the boundary and would hand
+        // planeReplayCell an all-zero certified[] there.  The boundary being fully certified does
+        // NOT imply the higher cells are, once that ablation is on, so the maps must exist.
+        // (Without certification the T3-absorbing induction that makes the skip safe is gone.)
+        const bool needLeafMaps = nResidueP > 0 || noCert ||
+                                  getenv("SCT_DIAG_AUDIT") != nullptr;
 
         // r-specific pattern<->leaf VIEW.  Enumerating local r-compositions
         // avoids a patterns x leaves scan.  It touches only the transient
