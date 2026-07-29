@@ -2332,6 +2332,11 @@ static int mainNSI2(int argc, char **argv) {
     //     live only in a mergeable region are reported separately and NOT charged to the archive,
     //     because they can overlap the pattern side and charging them would inflate the baseline.
     //   * 4-byte vertex ids, 4-byte kappa, and ONE key shared by the whole row's cells.
+    //     4-byte kappa is itself generous to the archive: kappa = C(cP-r, s-r) exceeds int32 on the
+    //     dense FEM graphs (C(427,5) ~ 1.0e11), so a CORRECT archive needs 8 bytes per cell and is
+    //     ~1.7x larger than accounted here. The materialized table truncates to int32 deliberately:
+    //     it exists to be PROBED, not read as an oracle, and a truncated value cannot change a
+    //     latency measurement.
     //   * the probe workload comes from the pattern table, so every probe HITS: no early exit.
     // Where the row count exceeds the cap the archive cannot be built at all, and saying so IS the
     // result: that is the regime the index exists for.
