@@ -1358,8 +1358,8 @@ static void printSizesRLE(const vector<int32_t> &sizes) {
 }
 
 struct NucleiResult {
-    size_t selected = 0, survivingWitnesses = 0, incidences = 0;
-    double collectMs = 0, witnessMs = 0, unionMs = 0, totalMs = 0;
+    size_t selected = 0, survivingWitnesses = 0, incidences = 0, prunedEdges = 0;
+    double collectMs = 0, witnessMs = 0, unionMs = 0, totalMs = 0, pruneMs = 0;
     double peakExtraMiB = 0;
     vector<int32_t> sizes;
 };
@@ -1384,8 +1384,42 @@ static bool retrieveConnectedNuclei(const NSI2 &x, Query2 &q, const ValidationGr
     result.collectMs = chrono::duration<double,milli>(SteadyClock::now() - collect0).count();
     result.selected = selected.size();
     UnionFind uf(selected.size());
+
+    // §230 WITNESS PRUNE.  A surviving witness is an s-clique EVERY r-subset of which is selected.
+    // For any two of its vertices there is an r-subset containing both, and that subset is selected,
+    // so every EDGE of a surviving witness is an edge of some selected r-clique.  Enumerating
+    // s-cliques in the subgraph spanned by those edges is therefore both sound and complete, and it
+    // is the difference between scanning the whole graph and scanning the answer's neighbourhood.
+    // Without it the scan costs the same whether the answer is the entire graph or empty.
+    auto prune0 = SteadyClock::now();
+    ValidationGraph gp;
+    {
+        vector<vector<int32_t>> nb((size_t)g.n);
+        for (const auto &kv : selected) {
+            const auto &c = kv.first;
+            for (size_t i = 0; i < c.size(); ++i)
+                for (size_t j = i + 1; j < c.size(); ++j) {
+                    nb[(size_t)c[i]].push_back(c[j]);
+                    nb[(size_t)c[j]].push_back(c[i]);
+                }
+        }
+        gp.n = g.n;
+        gp.off.assign((size_t)g.n + 1, 0);
+        for (int32_t v = 0; v < g.n; ++v) {
+            auto &a2 = nb[(size_t)v];
+            sort(a2.begin(), a2.end());
+            a2.erase(unique(a2.begin(), a2.end()), a2.end());
+            gp.off[(size_t)v + 1] = gp.off[(size_t)v] + (int32_t)a2.size();
+        }
+        gp.adj.resize((size_t)gp.off[(size_t)g.n]);
+        for (int32_t v = 0; v < g.n; ++v)
+            copy(nb[(size_t)v].begin(), nb[(size_t)v].end(), gp.adj.begin() + gp.off[(size_t)v]);
+        result.prunedEdges = (size_t)gp.adj.size() / 2;
+        result.pruneMs = chrono::duration<double,milli>(SteadyClock::now() - prune0).count();
+    }
+
     auto witness0 = SteadyClock::now();
-    enumerateCliques(g, s, [&](const vector<int32_t> &witness) {
+    enumerateCliques(gp, s, [&](const vector<int32_t> &witness) {
         vector<vector<int32_t>> rs;
         appendRSubcliques(witness, r, rs);
         vector<int32_t> ids; ids.reserve(rs.size());
@@ -1401,6 +1435,7 @@ static bool retrieveConnectedNuclei(const NSI2 &x, Query2 &q, const ValidationGr
         result.unionMs += chrono::duration<double,milli>(SteadyClock::now() - union0).count();
     });
     result.witnessMs = chrono::duration<double,milli>(SteadyClock::now() - witness0).count();
+    result.witnessMs += result.pruneMs;                       // the prune is part of the scan's cost
     result.sizes = sizesFromUnionFind(uf);
     result.totalMs = chrono::duration<double,milli>(SteadyClock::now() - total0).count();
     result.peakExtraMiB = max(0.0, peakRssMiB() - rssAfterLoad);
@@ -1651,9 +1686,16 @@ static int mainNSI2(int argc, char **argv) {
 
     if (mode == "nuclei") {
         int r = 0, s = 0, k = 0;
-        if (argc != 7 || !parseIntArg(argv[3], r) || !parseIntArg(argv[4], s) ||
+        // --skip-reference: the direct reference materializes EVERY s-clique and every r-subclique
+        // of each, so on a roster graph it is the thing that cannot run. Skipping it is how the
+        // index side gets measured in exactly the regime that motivates the index.
+        bool skipRef = false;
+        int argn = argc;
+        for (int i = 3; i < argc; ++i)
+            if (!strcmp(argv[i], "--skip-reference")) { skipRef = true; argn = argc - 1; break; }
+        if (argn != 7 || !parseIntArg(argv[3], r) || !parseIntArg(argv[4], s) ||
             !parseIntArg(argv[5], k) || k <= 0) {
-            fprintf(stderr, "nuclei requires positive integer K: INDEX nuclei R S K GRAPH\n");
+            fprintf(stderr, "nuclei requires positive integer K: INDEX nuclei R S K GRAPH [--skip-reference]\n");
             return 1;
         }
         const NSI2Column *col = q.column(r);
@@ -1669,9 +1711,10 @@ static int mainNSI2(int argc, char **argv) {
         }
         auto reference0 = SteadyClock::now();
         size_t refSelected = 0; vector<int32_t> refSizes;
-        directConnectedNuclei(g, r, s, k, refSelected, refSizes);
-        const double referenceMs = chrono::duration<double,milli>(SteadyClock::now() - reference0).count();
-        const bool exact = got.selected == refSelected && got.sizes == refSizes;
+        if (!skipRef) directConnectedNuclei(g, r, s, k, refSelected, refSizes);
+        const double referenceMs = skipRef ? -1.0
+            : chrono::duration<double,milli>(SteadyClock::now() - reference0).count();
+        const bool exact = skipRef || (got.selected == refSelected && got.sizes == refSizes);
         printf("nuclei r=%d s=%d k=%d selected=%zu components=%zu sizes=", r, s, k,
                got.selected, got.sizes.size());
         printSizesRLE(got.sizes);
@@ -1680,9 +1723,12 @@ static int mainNSI2(int argc, char **argv) {
                loadMs, got.collectMs, got.witnessMs, got.unionMs, got.totalMs);
         printf("retrieval_peak_extra_mib=%.3f (RSS high-water after index load) surviving_witnesses=%zu incidences=%zu\n",
                got.peakExtraMiB, got.survivingWitnesses, got.incidences);
+        printf("witness_prune_ms=%.3f pruned_edges=%zu (the s-clique scan runs on the subgraph spanned by selected r-cliques)\n",
+               got.pruneMs, got.prunedEdges);
         printf("reference_selected=%zu reference_components=%zu reference_sizes=", refSelected, refSizes.size());
         printSizesRLE(refSizes);
-        printf("\ncorrectness_direct_reference=%s reference_ms=%.3f\n", exact ? "EXACT-MATCH" : "MISMATCH", referenceMs);
+        printf("\ncorrectness_direct_reference=%s reference_ms=%.3f\n",
+               skipRef ? "SKIPPED" : (exact ? "EXACT-MATCH" : "MISMATCH"), referenceMs);
         return exact ? 0 : 2;
     }
 
