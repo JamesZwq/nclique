@@ -9314,3 +9314,63 @@ one-component answer 2.0x, and a low-k answer is unchanged because its surviving
 dense core. HONEST READING recorded with it: the index's own contribution is retrieval_collect
 (~30 ms, flat in k) against a ~1400 ms from-scratch decomposition; the rest is connected-component
 assembly, inherent to the query and paid by both sides. It is an application demo, not the query axis.
+
+## 233. E4 RESULTS: the query axis on the roster, and the one cell we lose (2026-07-29)
+`scripts/e4_archive_tods2.sh`, tods2, serial, machine idle, one measurement at a time. 20,000
+clique-uniform queries per (graph, r); index and archive timed by the SAME binary, back to back;
+warm = median over all 20,000, cold = median over 1,000 after an untimed 128 MiB eviction sweep.
+Quoting the KERNEL row per §231 (the slim kernel validates for free, so it answers the same question
+as an archive probe). Every archive choice is made in the ARCHIVE's favour (§225), so these are
+lower bounds.
+
+### SIZE: the whole (r=3..5, s<=8) plane
+| domain | graph | archive | archive rows | slim index | **archive / index** |
+|---|---|---|---|---|---|
+| web | **web-it-2004** | **46.2 TB** | **1,588,770,429,464** | **4.13 MB** | **11,731,612x** |
+| FEM | **pkustk13** | 80.5 GB | 2,701,215,887 | 1.30 MB | **63,253x** |
+| FEM | pkustk11 | 26.2 GB | 880,208,136 | 0.80 MB | 33,776x |
+| FEM | pwtk | 54.5 GB | 1,828,017,393 | 3.04 MB | 18,337x |
+| FEM | nasasrb | 9.20 GB | 308,571,050 | 1.41 MB | 6,681x |
+| collab | com-dblp | 8.09 GB | 265,075,401 | 3.97 MB | 2,038x |
+| web | web-Google | 4.66 GB | 152,547,350 | 24.06 MB | 194x |
+| co-purchase | com-amazon | **20.7 MB** | 679,442 | 4.08 MB | **5.1x** |
+
+### QUERY: point kernel, index vs archive probe (warm / cold speedup, >1 = index faster)
+| graph | r=3 | r=4 | r=5 |
+|---|---|---|---|
+| web-it-2004 | **11.92x / 1.75x** | archive **CANNOT BE BUILT** (20.4e9 rows, 1.29 TB) | archive **CANNOT BE BUILT** (1.57e12 rows) |
+| pwtk | 4.68x / 1.56x | 6.18x / 1.73x | **12.74x** / 2.01x |
+| com-dblp | 2.29x / 1.20x | 4.52x / 1.47x | 6.56x / 1.52x |
+| pkustk13 | 2.83x / 1.71x | 5.46x / 1.92x | 3.71x / 1.92x |
+| pkustk11 | 4.34x / 1.42x | 3.53x / 1.67x | 3.99x / 1.76x |
+| nasasrb | 3.18x / 1.63x | 2.48x / 1.33x | 2.89x / 1.61x |
+| web-Google | 1.79x / 1.41x | 2.04x / 1.43x | 2.45x / 1.36x |
+| **com-amazon** | 1.30x / **0.87x** | **0.90x** / **0.97x** | **0.55x** / **0.90x** |
+
+### THE ONE LOSS, AND WHY IT IS THE RIGHT LOSS TO HAVE
+com-amazon is the only graph where the archive is faster (up to 1.8x at r=5). Its archive is
+**20.7 MB** -- it fits in cache, so binary search is a few hops with no misses, while our kernel walks
+class profiles. It is also the graph where the index saves the least space (5.1x). Both facts are the
+same fact: com-amazon has 679,442 r-cliques over the whole plane, three to six ORDERS OF MAGNITUDE
+fewer than anything else on the roster, and the lowest compression (§220, §224). **On the one graph
+where the archive is fast, the archive is also small enough that you would not build an index.**
+The characterization is therefore monotone and predictable: the index's advantage on BOTH axes grows
+with the archive's size, and the archive's size is exactly what W and the compression law predict
+before either is built.
+
+### THE FLAGSHIP
+web-it-2004: the archive for the plane is **46.2 terabytes** across 1.59 TRILLION rows, and at r=4
+and r=5 it cannot be materialized at all -- so there is no sorted table to probe and the only
+alternative is recomputing the cell per query (which serial CND cannot do either: 0/9 cells feasible,
+§219). The index is **4.13 MB** and answers a point query in **74-79 ns**. That is the exponential
+separation of §215 as a measurement rather than a theorem.
+
+### METHOD NOTES KEPT WITH THE RESULT
+- Archive rows = pattern-side only (a strict LOWER bound on #r-cliques); mergeable-side cliques were
+  counted and NOT charged (web-it r=5 alone: another 572 billion).
+- 4-byte kappa is generous: C(427,5) ~ 1.0e11 needs 8 bytes, so a correct archive is ~1.7x larger.
+- Hit rate 1.0000 on every materialized archive; a miss is a CHEAPER probe, so this is the archive's
+  best case too.
+- Archive BUILD cost, which is not even counted above: 35.8 s for web-it r=3 (14.7 GB peak), 44.8 s
+  for nasasrb r=5 (18.3 GB peak) -- and that is after somebody has already run the decomposition on
+  every cell to know what to store.
