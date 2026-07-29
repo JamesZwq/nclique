@@ -9423,3 +9423,36 @@ The ratio columns in the raw log print as `x` because the server awk rejects a t
 printf argument -- **DO_NOT_REPEAT T11, which I wrote**. The byte columns are correct so nothing was
 lost, but the lesson is that reading the trap list is not the same as applying it: check the awk
 before launching, not after.
+
+## 235. §228 ON THE ROSTER: faster AND leaner on 8/8, index BYTE-IDENTICAL on 8/8 (2026-07-30)
+`scripts/plane228_tods2.sh`, tods2, serial, machine idle, one build at a time. Base = e176118 (before
+§228), opt = HEAD. Both write the full plane index (NSI2, r=3..5, s<=8) and the gate is `cmp` on that
+file: if a single certification decision or one cP had changed, the file changes.
+| domain | graph | base | opt | **time** | base peak | opt peak | **memory** | gate | why |
+|---|---|---|---|---|---|---|---|---|---|
+| FEM | **pkustk13** | 421.88s | **217.05s** | **1.94x** | 51.6 GB | **24.2 GB** | **2.13x** | BYTE-IDENTICAL | r=5 SKIPPED (26.8M patterns) |
+| FEM | **nasasrb** | 141.05s | **87.79s** | **1.61x** | 15.4 GB | **8.2 GB** | **1.88x** | BYTE-IDENTICAL | r=5 SKIPPED (10.6M) |
+| FEM | pkustk11 | 17.74s | 12.69s | 1.40x | 1.9 GB | 1.6 GB | 1.21x | BYTE-IDENTICAL | r=5 SKIPPED (0.7M) |
+| FEM | pwtk | 74.22s | 70.62s | 1.05x | 7.2 GB | 6.8 GB | 1.06x | BYTE-IDENTICAL | no column fully certified |
+| collab | com-dblp | 84.12s | 66.54s | 1.26x | 7.8 GB | 4.9 GB | **1.60x** | BYTE-IDENTICAL | r=5 SKIPPED (2.7M) |
+| co-purchase | com-amazon | 5.02s | 3.62s | 1.39x | 0.6 GB | 0.5 GB | 1.07x | BYTE-IDENTICAL | r=4 AND r=5 SKIPPED |
+| web | web-it-2004 | 32.28s | 26.97s | 1.20x | 2.3 GB | 1.6 GB | 1.43x | BYTE-IDENTICAL | r=5 SKIPPED (1.3M) |
+| web | web-Google | 644.34s | 599.12s | 1.08x | 28.1 GB | 24.0 GB | 1.17x | BYTE-IDENTICAL | no column fully certified |
+**BOTH AXES IMPROVE ON ALL EIGHT GRAPHS.** Worst case 1.05x time and 1.06x memory; best case 1.94x
+and 2.13x. There is no cell where speed was traded for memory or the reverse, which is the standing
+requirement on this project.
+### THE GAIN IS EXACTLY THE FRACTION OF THE BUILD SPENT ON FULLY CERTIFIED COLUMNS
+The residue counts printed by every column say in advance who gains: pkustk13 r=5 has 26,823,054
+patterns and **residue 0**, so its entire leaf-map construction is skipped and that column WAS the
+build. pwtk and web-Google gain least and for the same reason from the other side -- **no** column of
+either is fully certified (pwtk r=5 residue 8,160; web-Google r=5 residue 13,163), so the maps are
+genuinely needed and only the two allocation fixes apply. Nothing here is heuristic: the predicate is
+"is this column's residue empty", it is exact, and it is printed.
+### WHAT THIS RETIRES
+Old debt #1 was "port the §210 peel optimizations into the plane engine". §228's phase split showed
+the peel is not where the plane build's time is, and this table is the confirmation: without touching
+the peel at all, the build is up to 1.94x faster and 2.13x leaner. Re-measure before porting anything.
+### CAVEAT KEPT
+Single trial per cell. Per §234's variance datapoint, the small ratios (pwtk 1.05x, web-Google 1.08x)
+are within the range a single run can misreport; the large ones (1.94x/2.13x on pkustk13) are far
+outside it. The byte-identical gate is not a timing measurement and is not subject to this.
