@@ -470,6 +470,195 @@ static bool buildColumnRepresentatives(const NSI2 &x, NSI2Column &col, string &e
 // layer above is shared; the differences are that region sizes are RECONSTRUCTED from the class
 // profiles (the NSI2 loader already recomputed them as a cross-check, so this is the same arithmetic
 // promoted to the source of truth) and that only EXCEPTION patterns exist in a column.
+// §227 NSI4 loader: the PACKED slim index. It fills the SAME in-memory NSI2 structures as loadNSI3,
+// so the entire query layer above is untouched -- NSI4 is an encoding of NSI3, not a second design.
+// The whole file is read into memory once and decoded from a cursor: varints are not seekable, and
+// a stream of one-byte reads through stdio costs far more than the file itself.
+struct PackReader {
+    const uint8_t *p = nullptr, *end = nullptr;
+    bool bad = false;
+    uint64_t var() {
+        uint64_t v = 0; int sh = 0;
+        while (p < end) {
+            uint8_t b = *p++;
+            v |= (uint64_t)(b & 127) << sh;
+            if (!(b & 128)) return v;
+            sh += 7;
+            if (sh > 63) break;
+        }
+        bad = true; return 0;
+    }
+    int64_t zig() { uint64_t u = var(); return (int64_t)(u >> 1) ^ -(int64_t)(u & 1); }
+    uint8_t u8() { if (p >= end) { bad = true; return 0; } return *p++; }
+    uint64_t u64() {
+        if (end - p < 8) { bad = true; return 0; }
+        uint64_t v = 0; for (int i = 0; i < 8; ++i) v |= (uint64_t)p[i] << (8 * i);
+        p += 8; return v;
+    }
+    double f64() { uint64_t u = u64(); double d; memcpy(&d, &u, 8); return d; }
+};
+
+static bool loadNSI4(const char *path, NSI2 &x, string &error) {
+    FILE *f = fopen(path, "rb");
+    if (!f) { error = string("cannot open ") + path; return false; }
+    fseek(f, 0, SEEK_END); long z = ftell(f); fseek(f, 0, SEEK_SET);
+    if (z < 8) { fclose(f); error = "file too short"; return false; }
+    vector<uint8_t> raw((size_t)z);
+    if (fread(raw.data(), 1, (size_t)z, f) != (size_t)z) { fclose(f); error = "short read"; return false; }
+    fclose(f);
+    if (memcmp(raw.data(), "NSI4", 4)) { error = "not an NSI4 file"; return false; }
+    x = NSI2{};
+    x.fileBytes = z; x.slim = true;
+    PackReader rd{raw.data() + 4, raw.data() + z};
+    x.rmin = (int32_t)rd.var(); x.rmax = (int32_t)rd.var();
+    x.smin = (int32_t)rd.var(); x.smax = (int32_t)rd.var();
+    x.n = (int32_t)rd.var(); x.nC = (int32_t)rd.var(); x.nR = (int32_t)rd.var();
+    x.nCols = (int32_t)rd.var();
+    const bool allInt = rd.u8() != 0;
+    x.nLeaf = 0;
+    if (rd.bad || x.rmin < 1 || x.rmax < x.rmin || x.smin != x.rmin + 1 || x.smax < x.rmax + 1 ||
+        x.n < 0 || x.nC < 0 || x.nR < 0 || x.nCols != x.rmax - x.rmin + 1 || x.nC > x.n) {
+        error = "invalid NSI4 header"; return false;
+    }
+    auto num = [&]() { return allInt ? (double)rd.zig() : rd.f64(); };
+
+    const size_t presBytes = ((size_t)x.n + 7) / 8;
+    if ((size_t)(rd.end - rd.p) < presBytes) { error = "truncated presence bitmap"; return false; }
+    const uint8_t *pres = rd.p; rd.p += presBytes;
+    const uint64_t live = rd.var();
+    int labelBits = 1; while ((1LL << labelBits) < (long long)x.nC + 1) ++labelBits;
+    const size_t labelBytes = (size_t)((live * (uint64_t)labelBits + 7) / 8);
+    if (rd.bad || (size_t)(rd.end - rd.p) < labelBytes) { error = "truncated class labels"; return false; }
+    const uint8_t *lab = rd.p; rd.p += labelBytes;
+    x.classOf.assign((size_t)x.n, -1);
+    {
+        uint64_t bitPos = 0, seen = 0;
+        const uint64_t mask = labelBits >= 64 ? ~0ULL : ((1ULL << labelBits) - 1);
+        for (int32_t v = 0; v < x.n; ++v) {
+            if (!(pres[(size_t)v >> 3] & (1u << (v & 7)))) continue;
+            if (seen++ >= live) { error = "presence bitmap and label count disagree"; return false; }
+            uint64_t acc = 0;
+            const size_t byteAt = (size_t)(bitPos >> 3);
+            const int shift = (int)(bitPos & 7);
+            for (int i = 0; i < 9 && byteAt + i < labelBytes; ++i) {
+                if (i * 8 - shift >= labelBits + 8) break;
+                acc |= (uint64_t)lab[byteAt + i] << (8 * i);
+            }
+            const int32_t c = (int32_t)((acc >> shift) & mask);
+            if (c < 0 || c >= x.nC) { error = "class label out of range"; return false; }
+            x.classOf[v] = c;
+            bitPos += (uint64_t)labelBits;
+        }
+        if (seen != live) { error = "presence bitmap and label count disagree"; return false; }
+    }
+
+    x.classSize.resize((size_t)x.nC);
+    x.classRegions.resize((size_t)x.nC);
+    x.regionSize.assign((size_t)x.nR, 0);
+    for (int32_t c = 0; c < x.nC; ++c) {
+        const int32_t w = (int32_t)rd.var();
+        const uint64_t m = rd.var();
+        if (rd.bad || w < 0 || m > (uint64_t)x.nR) { error = "invalid class record"; return false; }
+        x.classSize[c] = w;
+        x.classRegions[c].resize((size_t)m);
+        int32_t prev = -1;
+        for (uint64_t i = 0; i < m; ++i) {
+            const int32_t rid = (int32_t)(prev + rd.zig());
+            if (rid < 0 || rid >= x.nR || rid <= prev) { error = "class profile not sorted/in range"; return false; }
+            prev = rid;
+            x.classRegions[c][i] = rid;
+            x.regionSize[rid] += w;                        // |M| = Sum of its class weights, as NSI3
+        }
+    }
+    if (rd.bad) { error = "truncated class block"; return false; }
+
+    x.directory.resize((size_t)x.nCols);
+    for (int32_t i = 0; i < x.nCols; ++i) x.directory[i] = (int64_t)rd.u64();
+    if (rd.bad) { error = "truncated directory"; return false; }
+    x.columns.resize((size_t)x.nCols);
+    x.rToColumn.assign((size_t)(x.rmax - x.rmin + 1), -1);
+    for (int32_t ci = 0; ci < x.nCols; ++ci) {
+        const int64_t begin = x.directory[ci];
+        const int64_t fin = (ci + 1 < x.nCols) ? x.directory[ci + 1] : (int64_t)z;
+        if (begin < 0 || fin < begin || fin > (int64_t)z) { error = "invalid column bounds"; return false; }
+        PackReader c{raw.data() + begin, raw.data() + fin};
+        NSI2Column &col = x.columns[ci];
+        col.fileOffset = begin; col.fileBytes = fin - begin;
+        col.r = (int32_t)c.var(); col.boundary = (int32_t)c.var();
+        if (c.bad || col.r < x.rmin || col.r > x.rmax || col.boundary != col.r + 1 ||
+            x.rToColumn[col.r - x.rmin] != -1) { error = "invalid NSI4 column header"; return false; }
+        x.rToColumn[col.r - x.rmin] = ci;
+        const uint64_t nm = c.var();
+        if (c.bad || nm > (uint64_t)x.nR) { error = "invalid mergeable list"; return false; }
+        col.mergeableRegions.resize((size_t)nm);
+        { int32_t prev = -1;
+          for (uint64_t i = 0; i < nm; ++i) { prev = (int32_t)(prev + c.zig()); col.mergeableRegions[i] = prev; } }
+        if (!buildColumnRepresentatives(x, col, error)) return false;
+        const uint64_t np = c.var();
+        if (c.bad) { error = "invalid exception count"; return false; }
+        col.patterns.resize((size_t)np);
+        col.origPid.resize((size_t)np);
+        int32_t prevPid = -1;
+        for (uint64_t pi = 0; pi < np; ++pi) {
+            prevPid = (int32_t)(prevPid + c.zig());
+            col.origPid[pi] = prevPid;
+            const int len = c.u8();
+            if (c.bad || len <= 0 || len > col.r) { error = "invalid exception comp"; return false; }
+            NSI2Pattern &P = col.patterns[pi];
+            P.comp.resize((size_t)len);
+            int sum = 0;
+            for (int i = 0; i < len; ++i) {
+                const int32_t cc = (int32_t)c.var(); const int16_t b = (int16_t)c.var();
+                if (cc < 0 || cc >= x.nC || b <= 0 || b > col.r) { error = "invalid exception comp entry"; return false; }
+                P.comp[i] = {cc, b}; sum += b;
+            }
+            if (sum != col.r) { error = "exception comp does not sum to r"; return false; }
+            P.boundaryCore = allInt ? (double)c.zig() : c.f64();
+            P.closedFrom = (int32_t)c.zig();
+            P.cP = -1;                                     // never stored; recovered from profiles
+            uint64_t h = 0;
+            for (auto &cm : P.comp) h ^= mixCV(cm.first, cm.second);
+            col.patIdx[h].push_back((int32_t)pi);
+        }
+        const uint64_t nCells = c.var();
+        if (c.bad) { error = "invalid residue cell count"; return false; }
+        col.resid.resize((size_t)nCells);
+        for (auto &rr : col.resid) {
+            const uint64_t m = c.var();
+            if (c.bad) { error = "invalid residue list"; return false; }
+            rr.resize((size_t)m);
+            int32_t prev = -1;
+            for (auto &pc : rr) {
+                prev = (int32_t)(prev + c.zig()); pc.first = prev;
+                pc.second = allInt ? (double)c.zig() : c.f64();
+            }
+        }
+        const uint64_t nd = c.var();
+        if (c.bad) { error = "invalid dists count"; return false; }
+        col.dists.resize((size_t)nd);
+        for (auto &d : col.dists) {
+            const uint64_t m = c.var();
+            if (c.bad) { error = "invalid dist"; return false; }
+            d.resize((size_t)m);
+            for (auto &kv : d) {
+                kv.first = allInt ? (double)c.zig() : c.f64();
+                kv.second = allInt ? (double)c.zig() : c.f64();
+            }
+        }
+        if (c.bad) { error = "truncated column"; return false; }
+    }
+    {   // same sizing rule as NSI3: from the reconstructed region sizes, which upper-bound cP
+        int maxCombN = x.smax;
+        for (int32_t v : x.regionSize) maxCombN = max(maxCombN, v);
+        if (!build_ncr2(maxCombN, x.smax - x.rmin)) { error = "binomial table build failed"; return false; }
+    }
+    x.classRegionsBySize = x.classRegions;
+    for (auto &pr : x.classRegionsBySize)
+        sort(pr.begin(), pr.end(), [&](int32_t a, int32_t b) { return x.regionSize[a] > x.regionSize[b]; });
+    x.sharedBytes = x.directory.empty() ? x.fileBytes : x.directory[0];
+    return true;
+}
+
 static bool loadNSI3(const char *path, NSI2 &x, string &error) {
     LEReader rd(path);
     if (!rd.ok()) { error = rd.error; return false; }
@@ -1424,9 +1613,13 @@ static int mainNSI2(int argc, char **argv) {
     auto load0 = SteadyClock::now();
     {
         FILE *mf = fopen(argv[1], "rb"); char mg[4] = {};
-        bool isSlim = mf && fread(mg, 4, 1, mf) == 1 && !memcmp(mg, "NSI3", 4);
+        const bool got = mf && fread(mg, 4, 1, mf) == 1;
         if (mf) fclose(mf);
-        if (!(isSlim ? loadNSI3(argv[1], x, error) : loadNSI2(argv[1], x, error))) {
+        const bool isSlim = got && !memcmp(mg, "NSI3", 4);
+        const bool isPack = got && !memcmp(mg, "NSI4", 4);
+        if (!(isPack ? loadNSI4(argv[1], x, error)
+                     : isSlim ? loadNSI3(argv[1], x, error)
+                              : loadNSI2(argv[1], x, error))) {
             fprintf(stderr, "cannot load %s: %s\n", argv[1], error.c_str()); return 1;
         }
     }
@@ -2268,6 +2461,7 @@ int main(int argc, char **argv) {
     if (!memcmp(magic, "NSI1", 4)) return mainNSI1(argc, argv);
     if (!memcmp(magic, "NSI2", 4)) return mainNSI2(argc, argv);
     if (!memcmp(magic, "NSI3", 4)) return mainNSI2(argc, argv);   // §222: slim, same query layer
+    if (!memcmp(magic, "NSI4", 4)) return mainNSI2(argc, argv);   // §227: packed slim, same layer
     fprintf(stderr, "%s has unknown index magic\n", argv[1]);
     return 1;
 }

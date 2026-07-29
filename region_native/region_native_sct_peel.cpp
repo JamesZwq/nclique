@@ -1430,6 +1430,137 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
     //   certified patterns -- value() returns C(cP-r, s-r) for s >= closedFrom and reads nothing else,
     //                         and cP is recoverable as max regionSize over the profile intersection
     //                         (verified: 60,000 queries + 1,039 mergeable cliques, 0 mismatches)
+    // ===== §227 NSI4: the PACKED slim index (SCT_INDEX_PACK=1) =====
+    // Same content as NSI3, same query semantics, a smaller encoding. NSI3 stores everything at its
+    // natural machine width; §226's anatomy showed that is where the remaining bytes are:
+    //   * a class label is one of nC values, not one of 2^32          -> bit-pack it
+    //   * a vertex whose class hosts no region can never be in an answer -> a presence bitmap, and
+    //     labels only for the live vertices
+    //   * every id list (class profiles, mergeables, residue pids) is SORTED -> delta + varint
+    //   * every stored real is a core number or a clique count, i.e. an INTEGER in a double
+    //     -> varint. The writer verifies this over the whole file and falls back to raw doubles for
+    //        the entire file if any value is not integral, so the format is never lossy.
+    // This is an encoding, not an algorithm: nothing about the theory or the query path changes.
+    if (indexOut && getenv("SCT_INDEX_PACK")) {
+        struct Buf {
+            vector<uint8_t> b;
+            void u8(uint8_t v) { b.push_back(v); }
+            void var(uint64_t v) { while (v >= 128) { b.push_back((uint8_t)(v & 127) | 128); v >>= 7; } b.push_back((uint8_t)v); }
+            void zig(int64_t v) { var(((uint64_t)v << 1) ^ (uint64_t)(v >> 63)); }
+            void raw(double d) { uint64_t u; memcpy(&u, &d, 8); for (int i = 0; i < 8; ++i) b.push_back((uint8_t)(u >> (8 * i))); }
+            size_t size() const { return b.size(); }
+        };
+        // pass 1: is every stored real an exact integer that survives the int64 round trip?
+        bool allInt = true;
+        auto isInt = [&](double d) {
+            double r0 = nearbyint(d);
+            return fabs(d - r0) == 0.0 && fabs(r0) < 9.0e18;
+        };
+        for (const auto &col : indexColumns) {
+            for (const auto &P : col.patterns)
+                if (!(P.closedFrom >= 0 && P.closedFrom <= col.boundary) && !isInt(P.boundaryCore)) allInt = false;
+            for (const auto &rr : col.residueByCell) for (const auto &pc : rr) if (!isInt(pc.second)) allInt = false;
+            for (const auto &d : col.dists) for (const auto &kv : d) if (!isInt(kv.first) || !isInt(kv.second)) allInt = false;
+        }
+        Buf head;
+        head.var((uint64_t)rMin); head.var((uint64_t)rMax); head.var((uint64_t)sMin); head.var((uint64_t)sMax);
+        head.var((uint64_t)g.n); head.var((uint64_t)nC); head.var((uint64_t)nR);
+        head.var((uint64_t)indexColumns.size()); head.u8(allInt ? 1 : 0);
+        auto num = [&](Buf &o, double d) { if (allInt) o.zig((int64_t)nearbyint(d)); else o.raw(d); };
+
+        // live vertex = its class hosts at least one region; the rest can never appear in an answer
+        int labelBits = 1; while ((1LL << labelBits) < (long long)nC + 1) ++labelBits;
+        vector<uint8_t> present(((size_t)g.n + 7) / 8, 0);
+        vector<int32_t> liveLabel; liveLabel.reserve((size_t)g.n);
+        for (int v = 0; v < g.n; ++v) {
+            const int c = classOf[v];
+            if (c >= 0 && c < nC && !classRegions[c].empty()) {
+                present[(size_t)v >> 3] |= (uint8_t)(1u << (v & 7));
+                liveLabel.push_back(c);
+            }
+        }
+        Buf labels;
+        labels.var(liveLabel.size());
+        {   // little-endian bit stream, labelBits per live vertex
+            uint64_t acc = 0; int nbits = 0;
+            for (int32_t c : liveLabel) {
+                acc |= (uint64_t)(uint32_t)c << nbits; nbits += labelBits;
+                while (nbits >= 8) { labels.u8((uint8_t)(acc & 0xFF)); acc >>= 8; nbits -= 8; }
+            }
+            if (nbits > 0) labels.u8((uint8_t)(acc & 0xFF));
+        }
+        Buf prof;
+        for (int c = 0; c < nC; ++c) {
+            prof.var((uint64_t)max(0, classSize[c]));
+            prof.var(classRegions[c].size());
+            int32_t prev = -1;
+            for (int rid : classRegions[c]) { prof.zig((int64_t)rid - prev); prev = rid; }
+        }
+        vector<Buf> cols(indexColumns.size());
+        long long keptPat = 0, dropPat = 0;
+        for (size_t ci = 0; ci < indexColumns.size(); ++ci) {
+            const auto &col = indexColumns[ci];
+            Buf &o = cols[ci];
+            o.var((uint64_t)col.r); o.var((uint64_t)col.boundary);
+            vector<int> mg(col.mergeableRegions.begin(), col.mergeableRegions.end());
+            sort(mg.begin(), mg.end());
+            o.var(mg.size());
+            { int32_t prev = -1; for (int rid : mg) { o.zig((int64_t)rid - prev); prev = rid; } }
+            vector<int32_t> keep;
+            for (size_t pi = 0; pi < col.patterns.size(); ++pi) {
+                const auto &P = col.patterns[pi];
+                if (!(P.closedFrom >= 0 && P.closedFrom <= col.boundary)) keep.push_back((int32_t)pi);
+            }
+            o.var(keep.size());
+            int32_t prevPid = -1;
+            for (int32_t pi : keep) {
+                const auto &P = col.patterns[pi];
+                o.zig((int64_t)pi - prevPid); prevPid = pi;
+                o.u8((uint8_t)P.comp.size());
+                for (auto &cm : P.comp) { o.var((uint64_t)cm.first); o.var((uint64_t)cm.second); }
+                num(o, P.boundaryCore); o.zig((int64_t)P.closedFrom);
+            }
+            keptPat += (long long)keep.size();
+            dropPat += (long long)col.patterns.size() - (long long)keep.size();
+            o.var(col.residueByCell.size());
+            for (const auto &rr : col.residueByCell) {
+                o.var(rr.size());
+                int32_t prev = -1;
+                for (auto &pc : rr) { o.zig((int64_t)pc.first - prev); prev = pc.first; num(o, pc.second); }
+            }
+            o.var(col.dists.size());
+            for (const auto &d : col.dists) {
+                o.var(d.size());
+                for (auto &kv : d) { num(o, kv.first); num(o, kv.second); }
+            }
+        }
+        // absolute column offsets need a fixed-width directory, so it is emitted as u64 and the
+        // offsets are computed from the already-serialized block sizes (no patch-back pass)
+        const size_t dirBytes = 8 * indexColumns.size();
+        size_t off = 4 + head.size() + labels.size() + present.size() + prof.size() + dirBytes;
+        vector<uint64_t> offs(indexColumns.size(), 0);
+        for (size_t ci = 0; ci < indexColumns.size(); ++ci) { offs[ci] = off; off += cols[ci].size(); }
+        FILE *f = fopen(indexOut, "wb");
+        if (!f) { fprintf(stderr, "[nsi-plane] cannot open SCT_INDEX_OUT=%s\n", indexOut); return 1; }
+        fwrite("NSI4", 4, 1, f);
+        fwrite(head.b.data(), 1, head.size(), f);
+        fwrite(present.data(), 1, present.size(), f);
+        fwrite(labels.b.data(), 1, labels.size(), f);
+        fwrite(prof.b.data(), 1, prof.size(), f);
+        for (uint64_t o2 : offs) { uint8_t t[8]; for (int i = 0; i < 8; ++i) t[i] = (uint8_t)(o2 >> (8 * i)); fwrite(t, 1, 8, f); }
+        for (auto &c : cols) fwrite(c.b.data(), 1, c.size(), f);
+        const long endPos = ftell(f);
+        fclose(f);
+        size_t colBytes = 0; for (auto &c : cols) colBytes += c.size();
+        fprintf(stderr,
+            "[nsi4-pack §227] wrote %s %.3fMB | header=%zu presence=%zu labels=%zu(%d bits x %zu live "
+            "of %d) profiles=%zu dir=%zu columns=%zu | patterns kept=%lld dropped=%lld | all-integral=%d\n",
+            indexOut, endPos / 1048576.0, head.size(), present.size(), labels.size(), labelBits,
+            liveLabel.size(), g.n, prof.size(), dirBytes, colBytes, keptPat, dropPat, (int)allInt);
+        printf("[nsi-plane-index] wrote %s %.3fMB (NSI4 packed) columns=%zu\n",
+               indexOut, endPos / 1048576.0, indexColumns.size());
+        return 0;
+    }
     if (indexOut && getenv("SCT_INDEX_SLIM")) {
         FILE *f = fopen(indexOut, "wb");
         if (!f) { fprintf(stderr, "[nsi-plane] cannot open SCT_INDEX_OUT=%s\n", indexOut); return 1; }
