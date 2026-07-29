@@ -1164,11 +1164,18 @@ struct Query2 {
         if (!out.col) return QueryCode::ROutOfRange;
         for (int i = 0; i < r; ++i)
             if (vs[i] < 0 || vs[i] >= x.n) return QueryCode::BadVertex;
-        out.pattern = lookupPattern(*out.col, vs);
-        if (x.slim) out.cpComputed = cpFromProfiles(vs, r);       // needed by both slim branches
-        if (out.pattern < 0) {
-            if (x.slim) { /* cP already recovered above */ }      // §222: certified => closed form
-            else        out.mergeable  = lookupMergeable(*out.col, vs);
+        // §232: two lookups that provably cannot succeed, skipped.
+        //  (a) a column with no stored pattern record cannot produce a pattern hit -- on a fully
+        //      certified column that is EVERY query, and the hash of the rep-multiset is not free;
+        //  (b) cP is only read by value() when the answer is a closed form, i.e. when there is no
+        //      pattern hit or the pattern has a closedFrom at all.  An exception pattern that is
+        //      never certified (closedFrom < 0) is answered from its residue and needs no cP.
+        out.pattern = out.col->patterns.empty() ? -1 : lookupPattern(*out.col, vs);
+        if (x.slim) {
+            if (out.pattern < 0 || out.col->patterns[out.pattern].closedFrom >= 0)
+                out.cpComputed = cpFromProfiles(vs, r);
+        } else if (out.pattern < 0) {
+            out.mergeable = lookupMergeable(*out.col, vs);
         }
         return QueryCode::Ok;
     }
