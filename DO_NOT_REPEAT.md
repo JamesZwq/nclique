@@ -166,3 +166,40 @@ Read these before proposing anything, because they bound most ideas:
   r=3,4,5); only s enters, through the `|M| >= s` region filter.
 - P10 lower-bounds the residue: no algorithm avoids per-cell work there. The index's shape is
   therefore optimal in kind, and that is the right way to present it.
+
+---
+
+## PART 4 — ADDED 2026-07-29 (§225-§229)
+
+### D11. "Port the §210 optimization stack into the plane engine" (old debt #1) — RE-RANKED, measure first
+It was the top build-side item for weeks. The plane build's phase split says the §210 stack aims at
+the wrong phase: the peel is 13-50% of the plane build, the leaf/pattern maps were 28-52%, and the
+MCE + class quotient is **0.3%** (pkustk13: 1.3s of 415.7s). That last number also retires the
+standing suspicion that maximal-clique enumeration is the plane engine's bottleneck. §228 fixed the
+map waste instead; re-measure the split before porting anything.
+
+### D12. T6 host-1 certification above the first row — worth nothing
+The diagonal certificate already certifies everything host-1 would, everywhere except r=rMin (which
+has no previous row to transfer from). Measured on ca-GrQc: host-1-AND-still-uncertified is 44.5% at
+r=3 and **0.00% at r=4 and r=5**. Ceiling on the graph where it matters most (pkustk13) is ~4% of the
+build, against a soundness argument that has to be made at the universal-pattern level. §229.
+
+### T13. Sorting a tuple IN PLACE inside a recursion that still owns its prefix
+The archive expansion sorted `cur[0..r)` to emit a canonical key, which permutes the blocks the OUTER
+recursion levels still own, so every tuple after the first came out corrupted. It presented as a 3.6%
+"miss" rate on a workload that is 100% real cliques -- i.e. as a plausible-looking property of the
+data, not as a crash. **Sort into a separate buffer.** Latent in `nsi_baseline.cpp` since it was
+written; found only because a pattern-sampled workload MUST hit an archive built from those patterns.
+
+### T14. A gate whose reference file is in the wrong FORMAT reports NO-REF, not FAIL
+`rowfile R FILE` wants R vertices per line; the bench format is `R v1 ... vR`. Feeding one to the
+other produces an empty reference, and a gate that only compares outputs would have called that a
+pass. Every gate here checks the reference is non-empty FIRST (the same rule T1 produced), and it
+fired immediately.
+
+### Cheap probes that are now one command
+- `nsi_query INDEX anatomy` — exact byte breakdown of a loaded index plus the price of a packed
+  encoding, self-checked against the file size. Run this BEFORE proposing any format change.
+- `nsi_query NSI2 archive --vs SLIM` — archive size, index size, and the ratio, no expansion.
+- `[nsi-plane-col] ... residue=N leaf-maps=built|SKIPPED` and `[nsi-plane-probe §229]` — how much of
+  a plane column is certified, and how much host-1 would add, printed by every build.

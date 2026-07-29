@@ -27,15 +27,22 @@
 ## INDEX TRACK (§213 decided the paper is index-first; this is now the main line)
 - [x] §221/§222 byte anatomy + slim design VERIFIED (cP recoverable, 0 mismatches)
 - [x] §223 NSI3 shipped: 52-1359x smaller, bit-identical, faster cold, warm at parity
-- [ ] **E4 query baseline on the roster**: nsi_baseline builds the sorted archive and probes it;
-      pilot on ca-GrQc gave index 5.5x smaller AND 1.4x faster than the archive probe. Needed for
-      the paper's query axis on real graphs.
-- [ ] build the roster indexes through the OPTIMIZED path: NSI2/NSI3 come from the PLANE engine,
-      which still has none of the §210 optimizations (debt #1). Port, or build per-r and merge.
-- [ ] a motivating query workload (currently uniform samples); the application is interactive
-      multi-resolution dense-subgraph exploration
-- [ ] slim the surviving records (kappa is an integer stored as a double; class ids are w32 where a
-      sorted delta-varint is 1-2B) -- ~2.5x on what NSI3 still keeps
+- [x] **§225 E4 query baseline built** -- `nsi_query INDEX archive` / `archive-bench R QUERIES`,
+      plane-aware, in the SAME binary as the index so both are timed identically. Every choice is
+      made in the ARCHIVE's favour (see §225), so the gap is a lower bound. `scripts/e4_archive_tods2.sh`
+- [x] §226 anatomy of what NSI3 still keeps (`nsi_query INDEX anatomy`, prices a packed encoding
+      without writing anything) -> §227 NSI4 packed format: **3.85x** on ca-GrQc, load 1.7x faster,
+      60,000 rows byte-identical vs BOTH NSI3 and NSI2. `scripts/nsi4_tods2.sh`
+- [x] §228 the plane BUILD: certify before building the leaf maps; skip them, and the per-cell leaf
+      view, when a column/cell has no residue. Byte-identical index; ca-GrQc memory 1.40x.
+      `scripts/plane228_tods2.sh` for the roster A/B
+- [ ] RUN the three scripts above on the roster and fold the tables into §225/§227/§228
+- [ ] a motivating query workload (currently uniform over r-cliques via `sample --by-clique`); the
+      application is interactive multi-resolution dense-subgraph exploration
+- [ ] ~~port the §210 stack into the plane engine (old debt #1)~~ **RE-RANKED by §228**: the §210
+      stack is a PEEL optimization and the plane build's peel is 13-50%, while the leaf maps were
+      28-52% and largely wasted. Fix the waste first (done); re-measure before porting anything.
+- [ ] (ranked last, §229) T6 host-1 at r=rMin: ~44% of the first row, ~0% above it, ~4% of the build
 
 ## ACCEPTANCE STANDARD (user, 2026-07-23 -- binding)
 >= 8 graphs, all million-scale+ (aim for one billion-scale), from 3-4 common domains, ALL excellent
