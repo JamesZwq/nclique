@@ -67,6 +67,27 @@ for G in $GRAPHS; do
 done
 
 echo ""
+echo "=== query latency: NSI4 vs NSI3 (same workload, same binary, back to back) ==="
+echo "A smaller index is a smaller working set, so the COLD row is where a packed encoding should"
+echo "pay off. Warm should be unchanged: both decode into identical in-memory structures."
+for G in $GRAPHS; do
+  F2="$IX/$G.nsi2"; F3="$IX/$G.nsi3"; F4="$IX/$G.nsi4"; GR="/data/wenqianz/$G.edges"
+  [ -s "$F4" ] && [ -s "$GR" ] || continue
+  echo "---- $G ----"
+  for R in 3 4 5; do
+    Q=/tmp/b_$G$R.txt
+    if [ -s "$F2" ]; then /tmp/nq5 "$F2" sample $R 20000 --by-clique 2>/dev/null | awk -v r=$R 'NF{print r, $0}' >"$Q"
+    else                  /tmp/nq5 "$F3" sample $R 20000            2>/dev/null | awk -v r=$R 'NF{print r, $0}' >"$Q"; fi
+    [ "$(wc -l <"$Q")" -lt 1000 ] && { rm -f "$Q"; continue; }
+    for V in "$F3" "$F4"; do
+      printf 'r=%s %-5s ' "$R" "$(basename "$V" | sed 's/.*\.//')"
+      /tmp/nq5 "$V" bench "$GR" "$Q" 2>/dev/null | awk '/^point +kernel/{printf "point warm=%s cold=%s  ", $3, $5} /^row +kernel/{printf "row warm=%s cold=%s\n", $3, $5}'
+    done
+    rm -f "$Q"
+  done
+done
+
+echo ""
 echo "=== §226 byte anatomy of what NSI3 still keeps (the reason NSI4 exists) ==="
 for G in $GRAPHS; do
   F3="$IX/$G.nsi3"; [ -s "$F3" ] || continue
