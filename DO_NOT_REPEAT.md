@@ -203,3 +203,17 @@ fired immediately.
 - `nsi_query NSI2 archive --vs SLIM` — archive size, index size, and the ratio, no expansion.
 - `[nsi-plane-col] ... residue=N leaf-maps=built|SKIPPED` and `[nsi-plane-probe §229]` — how much of
   a plane column is certified, and how much host-1 would add, printed by every build.
+
+### T15. Editing a shell script that is currently RUNNING
+Killed a queued job chain silently. Bash reads a script incrementally from a byte offset, so an
+in-place `sed` that changes line lengths makes it resume in the middle of a different line. The
+symptom is a tmux session that simply disappears with no error. **Edit a copy and relaunch, never the
+running file.** (The same chain also had a second bug worth its own line: it invoked scripts by path
+from a server tree pinned to an OLDER commit, so the scripts it was waiting to run did not exist yet.
+Sync the tree BEFORE launching anything that references new files.)
+
+### T16. T11 again -- reading the trap list is not the same as applying it
+The awk ternary-in-printf trap is entry T11 of this file, written by the same person who then shipped
+two roster scripts containing `printf "%.2f", b>0?a/b:0`. Both ratio columns printed as `x`. Nothing
+was lost because the raw columns were also printed -- **always print the inputs next to the derived
+number**, which is the actual defence. Branch in the awk ACTION: `BEGIN{ if (b>0) printf "%.2f", a/b }`.

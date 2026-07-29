@@ -36,7 +36,11 @@
 - [x] §228 the plane BUILD: certify before building the leaf maps; skip them, and the per-cell leaf
       view, when a column/cell has no residue. Byte-identical index; ca-GrQc memory 1.40x.
       `scripts/plane228_tods2.sh` for the roster A/B
-- [ ] RUN the three scripts above on the roster and fold the tables into §225/§227/§228
+- [x] all three roster runs DONE and written up: **§233** (query axis), **§234** (NSI4),
+      **§235** (the build A/B: faster AND leaner on 8/8, index byte-identical on 8/8)
+- [ ] **E2 multi-trial medians** -- now the single most load-bearing gap. §234 caught the same cell
+      re-measuring 199 -> 305 ns hours apart on an idle machine. Every latency and every small build
+      ratio in §233/§234/§235 is ONE run. The byte-identical gates are not affected.
 - [ ] a motivating query workload (currently uniform over r-cliques via `sample --by-clique`); the
       application is interactive multi-resolution dense-subgraph exploration
 - [ ] ~~port the §210 stack into the plane engine (old debt #1)~~ **RE-RANKED by §228**: the §210
