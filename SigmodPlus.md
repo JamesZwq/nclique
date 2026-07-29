@@ -9161,3 +9161,63 @@ NOTE ON SPREAD: com-amazon's 8.9x is the low end and it is the graph with the LO
 the roster, exactly as §220 predicts -- fewer certified patterns to drop means less to gain. The FEM
 graphs, with the largest class sizes, gain the most. The slim index's advantage tracks the same
 class-size law as everything else in this project.
+
+## 225. E4 THE QUERY AXIS: the materialized archive, and how the comparison is kept honest (2026-07-29)
+The index's size story (§223/§224) is only half an index paper. The other half is: does anything
+CHEAPER answer the same queries faster? The only structure that can is the **materialized archive** --
+for every r-clique, kappa in every cell of its row, sorted by the clique key, probed by binary
+search. It is what a practitioner would actually build, and it is the right baseline because it, like
+the index, answers a point query without touching the graph.
+`nsi_query INDEX archive` and `INDEX archive-bench R QUERIES` implement it INSIDE nsi_query, so the
+index and its baseline are timed by the same binary, on the same workload, back to back. Every
+methodological choice is deliberately made in the ARCHIVE's favour, so every reported gap is a LOWER
+bound on the real one:
+1. **Rows = pattern-side r-cliques only.** Distinct patterns own disjoint clique sets (a clique
+   determines its rep-multiset), so `SUM mult` is a strict LOWER bound on #r-cliques. Cliques that
+   live only inside a mergeable region are reported separately and NOT charged to the archive,
+   because they can overlap the pattern side and charging them would inflate the baseline.
+2. **4-byte vertex ids, 4-byte kappa, and ONE key shared across the whole row's cells** -- the
+   tightest layout an archive can have while staying binary-searchable.
+3. **The workload hits 100%.** A miss short-circuits after the final comparison, i.e. a miss is a
+   CHEAPER probe than a hit. `sample R COUNT --by-clique` draws patterns proportionally to mult, so
+   the workload is uniform over r-cliques rather than over the index's internal orbits.
+4. Same cache-eviction methodology as `bench` (an untimed 128 MiB sweep before each cold sample).
+BUG FOUND AND FIXED WHILE BUILDING THIS (it had been latent in `nsi_baseline.cpp` since that file was
+written): the expansion sorted the tuple IN PLACE, which permutes the blocks the OUTER recursion
+levels still own, so every tuple after the first came out corrupted. It presented as a 3.6% "miss"
+rate on a workload that is 100% real cliques. The fix is a separate key buffer; the invariant that
+caught it is that a pattern-sampled workload MUST hit an archive built from the same patterns.
+INVARIANT THAT VALIDATES THE EXPANSION: for every pattern, `prod_c C(|rep_c|, b_c)` must equal the
+stored `mult`. It holds with zero mismatches on every index tested, which is why the archive's row
+count can be trusted without re-enumerating cliques from the graph.
+
+## 226. WHERE THE REMAINING NSI3 BYTES ARE, MEASURED BEFORE ANYTHING WAS BUILT (2026-07-29)
+§221 did this for NSI2 and it is the reason the pattern table (86-99%) was the only thing worth
+attacking. The same discipline, applied to what NSI3 still keeps: `nsi_query INDEX anatomy` re-derives
+each block's byte cost from the loaded index (self-checked against the file size, delta 0 B) and
+PRICES a packed alternative without writing anything.
+ca-GrQc, r=3..5, s<=8: classOf 40.6%, class-profiles 45.4%, dists 8.4%, mergeables 5.3%, residue
+0.2%, exceptions 0.0%. So **86% of the slim index is the class/region incidence structure**, stored at
+natural machine width. Three facts price the alternative:
+- a class label is one of nC values, not one of 2^32 (ca-GrQc: 11 bits, not 32);
+- a vertex whose class hosts NO region can never appear in an answer (ca-GrQc: 54.8% of vertices),
+  so a presence bitmap plus labels for the live ones only beats a flat packed array;
+- every id list stored is SORTED (class profiles, mergeables, residue pids) -> delta + varint;
+- **every stored real is a core number or a clique count: 0 of 536 values are non-integral.**
+Predicted 3.85x. Measured after building: 3.85x. The point of the section is the ORDER -- price it,
+then build it.
+
+## 227. NSI4: THE PACKED SLIM INDEX (2026-07-29)
+An ENCODING of NSI3, not a second design: NSI4 decodes into the exact same in-memory structures and
+runs the identical query kernel, so nothing in the theory, the algorithm statement, or the query path
+changes. It belongs in the appendix, not on the paper's main line.
+Format: bit-packed class labels behind a presence bitmap; delta+varint for every sorted id list;
+varint for every stored real. The writer VERIFIES integrality over the whole file and falls back to
+raw doubles for the entire file if any value fails, so the format is never lossy -- there is no
+tolerance and no precision argument anywhere in it.
+ca-GrQc: 51,664 B -> 13,411 B (**3.85x**), load 0.424 ms -> 0.245 ms (less to read), and **60,000
+spectrum rows byte-identical against BOTH NSI3 and the full NSI2**.
+TWO PATHS, ONE FORMAT: the engine writes NSI4 directly (`SCT_INDEX_PACK=1`), and `nsi_query IN.nsi3
+pack OUT.nsi4` re-encodes an existing slim index. Their outputs are gated BYTE-FOR-BYTE identical,
+which is what makes it legitimate to convert the roster instead of rebuilding it (a 40-minute job
+becomes a 1-minute one) and is also a strong check that NSI3 and NSI4 carry the same information.
