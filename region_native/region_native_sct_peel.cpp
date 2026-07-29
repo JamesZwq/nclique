@@ -399,7 +399,10 @@ struct PlaneVecHash {
 
 struct PlanePattern {
     PlaneComp comp;                       // global class composition, sum=r
-    vector<int> host;                     // host maximal regions in the per-r active set
+    // §228: the host-region LIST used to be stored here and was read exactly once, to take
+    // max |M| over it.  At tens of millions of patterns that is one heap-allocated vector per
+    // pattern to carry a single running maximum, so cP is now accumulated as incidences are
+    // emitted and the list is never materialized.
     long long mult = 1;                   // actual r-cliques represented by this orbit
     int cP = 0;                           // largest host-region size
     bool direct = false;                  // unique host is r-mergeable
@@ -1028,8 +1031,22 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
         // space.  Direct patterns are represented by the mergeable-region size
         // histogram in foldDirect and never enter this vector or its maps.
         vector<PlanePattern> patterns;
-        unordered_map<PlaneComp,int,PlaneCompHash> patByComp;
-        patByComp.reserve(activeRids.size() * 16 + 16);
+        // §228: index the pattern table by a 64-bit fingerprint of the composition, chaining
+        // collisions through a per-pattern int.  The previous map was keyed by the composition
+        // ITSELF, so every pattern stored its comp twice -- once in the pattern, once as the map
+        // key -- costing a second heap-allocated vector per pattern.  Verification of a candidate
+        // is unchanged (compare the full comp), so this is byte-identical by construction.
+        unordered_map<uint64_t,int> patHead;
+        patHead.reserve(activeRids.size() * 16 + 16);
+        vector<int> patNext;
+        const PlaneCompHash compHash{};
+        auto findPat = [&](const PlaneComp &c) -> int {           // -1 when absent
+            auto it = patHead.find((uint64_t)compHash(c));
+            if (it == patHead.end()) return -1;
+            for (int t = it->second; t >= 0; t = patNext[(size_t)t])
+                if (patterns[(size_t)t].comp == c) return t;
+            return -1;
+        };
         PlaneComp cur;
         cur.reserve((size_t)r);
         long long incidences = 0;
@@ -1039,16 +1056,20 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
             if (rem == 0) {
                 incidences++;
                 if (maxInc > 0 && incidences > maxInc) { exploded = true; return; }
-                auto it = patByComp.find(cur);
-                int pi;
-                if (it == patByComp.end()) {
+                const uint64_t h = (uint64_t)compHash(cur);
+                auto ins = patHead.emplace(h, -1);
+                int pi = -1;
+                for (int t = ins.first->second; t >= 0; t = patNext[(size_t)t])
+                    if (patterns[(size_t)t].comp == cur) { pi = t; break; }
+                if (pi < 0) {
                     pi = (int)patterns.size();
-                    PlanePattern P;
-                    P.comp = cur;
-                    patterns.push_back(std::move(P));
-                    patByComp.emplace(patterns.back().comp, pi);
-                } else pi = it->second;
-                patterns[pi].host.push_back(rid);
+                    patterns.emplace_back();
+                    patterns.back().comp = cur;
+                    patNext.push_back(ins.first->second);
+                    ins.first->second = pi;
+                }
+                const int rsz = (int)regions[rid].size();
+                if (patterns[(size_t)pi].cP < rsz) patterns[(size_t)pi].cP = rsz;
                 return;
             }
             const auto &cls = activeRegionClasses[rid];
@@ -1072,9 +1093,7 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
             return 7;
         }
 
-        for (auto &P : patterns) {
-            P.cP = 0;
-            for (int rid : P.host) P.cP = max(P.cP, (int)regions[rid].size());
+        for (auto &P : patterns) {                     // cP already accumulated during emission
             long long mu = 1;
             for (auto &cm : P.comp)
                 mu *= (long long)llround(C(activeClassSize[cm.first], cm.second));
@@ -1115,12 +1134,11 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                     PlaneComp acmp;
                     acmp.reserve(activeCounts.size());
                     for (const auto &cm : activeCounts) acmp.push_back(cm);
-                    auto it = patByComp.find(acmp);
-                    if (it == patByComp.end()) {
+                    owner = findPat(acmp);
+                    if (owner < 0) {
                         fprintf(stderr, "[nsi-plane] universal->active map invariant failed r=%d region=%d\n", r, rid);
                         abort();
                     }
-                    owner = it->second;
                 }
                 auto it = universalOwner.find(ucur);
                 if (it == universalOwner.end()) {
@@ -1148,79 +1166,7 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
             emitUniversal(emitUniversal, rid, 0, r);
         }
 
-        // r-specific pattern<->leaf VIEW.  Enumerating local r-compositions
-        // avoids a patterns x leaves scan.  It touches only the transient
-        // active-region leaves; the shared tree remains byte-immutable.
-        vector<vector<int>> leafPats(activeLeaves.size());
-        for (int lid = 0; lid < (int)activeLeaves.size(); ++lid) {
-            const CCPath &leaf = activeLeaves[lid];
-            Vec b((size_t)leaf.m(), 0);
-            PlaneComp lc;
-            lc.reserve((size_t)r);
-            auto enumLeaf = [&](auto &&self, int at, int rem) -> void {
-                if (rem == 0) {
-                    auto it = patByComp.find(lc);
-                    if (it == patByComp.end()) return;
-                    int pi = it->second;
-                    int sumL = 0, sumU = 0;
-                    for (int c = 0; c < leaf.m(); ++c) {
-                        int lo = max((int)leaf.ell[c], (int)b[c]);
-                        int hi = (int)leaf.u[c];
-                        if (lo > hi) return;
-                        sumL += lo; sumU += hi;
-                    }
-                    if (sumL > sMax || sumU < boundary) return;
-                    patterns[pi].leaves.push_back(lid);
-                    patterns[pi].localB.push_back(b);
-                    leafPats[lid].push_back(pi);
-                    return;
-                }
-                for (int i = at; i < leaf.m(); ++i) {
-                    int cap = min(rem, (int)leaf.u[i]);
-                    for (int m = 1; m <= cap; ++m) {
-                        b[i] = (int16_t)m;
-                        lc.push_back({(int)leaf.classIds[i], m});
-                        self(self, i + 1, rem - m);
-                        lc.pop_back();
-                        b[i] = 0;
-                    }
-                }
-            };
-            enumLeaf(enumLeaf, 0, r);
-        }
-        for (int pi = 0; pi < (int)patterns.size(); ++pi) {
-            if (patterns[pi].leaves.empty()) {
-                fprintf(stderr, "[nsi-plane] pattern-map invariant failed r=%d pi=%d c(P)=%d\n", r, pi, patterns[pi].cP);
-                return 3;
-            }
-        }
-        printf("[nsi-plane-col] r=%d patterns=%zu active=%lld direct=%lld merge-regions=%lld incidences=%lld maps=%.2fs\n",
-               r, patterns.size(), (long long)patterns.size(), 0LL, mergeRegions, incidences,
-               secs(tCol0, Clock::now()));
-
-        PlaneIndexColumn idxCol;
-        vector<int> activeOrdinal(patterns.size(), -1);
-        if (indexOut) {
-            idxCol.r = r;
-            idxCol.boundary = boundary;
-            for (int rid = 0; rid < nR; ++rid)
-                if (mergeable[rid] && (int)regions[rid].size() >= boundary)
-                    idxCol.mergeableRegions.push_back(rid);
-            for (int pi = 0; pi < (int)patterns.size(); ++pi) if (!patterns[pi].direct) {
-                activeOrdinal[pi] = (int)idxCol.patterns.size();
-                PlaneIndexPattern ip;
-                ip.comp = patterns[pi].comp;
-                // Persist canonical UNIVERSAL representatives, not transient
-                // active-class ordinals.  A query reconstructs the same active
-                // profile by masking the stored universal profiles with this
-                // column's mergeable-region list.
-                for (auto &cm : ip.comp) cm.first = activeClassRep[cm.first];
-                ip.mult = patterns[pi].mult;
-                ip.cP = patterns[pi].cP;
-                idxCol.patterns.push_back(std::move(ip));
-            }
-        }
-
+        const auto tDiag0 = Clock::now();
         vector<char> certified(patterns.size(), 0);
         vector<double> certifiedCore(patterns.size(), -1.0);
         // The diagonal certificate is evaluated ONLY on universal patterns.
@@ -1264,6 +1210,95 @@ static int runMultiRPlane(const char *gpath, int argvR, int argvS,
                     certified[pi] = 1;
                     certifiedCore[pi] = (double)(patterns[pi].cP - r);
                 }
+            }
+        }
+
+        // §228: the leaf maps exist ONLY to feed the peel, and the peel never touches a pattern
+        // the diagonal already certified unless it shares a leaf with a residue pattern.  When a
+        // column has NO residue -- the common case on the graphs this index targets, where every
+        // pattern's whole row is the closed form C(cP-r, s-r) -- the maps are built at full cost and
+        // then read by nothing.  Certification depends only on cP and the previous row's boundary,
+        // both known before the maps exist, so the test can be made BEFORE paying for them.
+        // (SCT_DIAG_AUDIT replays with certification disabled, so it needs the maps regardless.)
+        const double diagSec = secs(tDiag0, Clock::now());
+        const auto tMaps0 = Clock::now();
+        long long nResidueP = 0;
+        for (int pi = 0; pi < (int)patterns.size(); ++pi)
+            if (!patterns[pi].direct && !certified[pi]) ++nResidueP;
+        const bool needLeafMaps = nResidueP > 0 || getenv("SCT_DIAG_AUDIT") != nullptr;
+
+        // r-specific pattern<->leaf VIEW.  Enumerating local r-compositions
+        // avoids a patterns x leaves scan.  It touches only the transient
+        // active-region leaves; the shared tree remains byte-immutable.
+        vector<vector<int>> leafPats(activeLeaves.size());
+        for (int lid = 0; needLeafMaps && lid < (int)activeLeaves.size(); ++lid) {
+            const CCPath &leaf = activeLeaves[lid];
+            Vec b((size_t)leaf.m(), 0);
+            PlaneComp lc;
+            lc.reserve((size_t)r);
+            auto enumLeaf = [&](auto &&self, int at, int rem) -> void {
+                if (rem == 0) {
+                    const int pi = findPat(lc);
+                    if (pi < 0) return;
+                    int sumL = 0, sumU = 0;
+                    for (int c = 0; c < leaf.m(); ++c) {
+                        int lo = max((int)leaf.ell[c], (int)b[c]);
+                        int hi = (int)leaf.u[c];
+                        if (lo > hi) return;
+                        sumL += lo; sumU += hi;
+                    }
+                    if (sumL > sMax || sumU < boundary) return;
+                    patterns[pi].leaves.push_back(lid);
+                    patterns[pi].localB.push_back(b);
+                    leafPats[lid].push_back(pi);
+                    return;
+                }
+                for (int i = at; i < leaf.m(); ++i) {
+                    int cap = min(rem, (int)leaf.u[i]);
+                    for (int m = 1; m <= cap; ++m) {
+                        b[i] = (int16_t)m;
+                        lc.push_back({(int)leaf.classIds[i], m});
+                        self(self, i + 1, rem - m);
+                        lc.pop_back();
+                        b[i] = 0;
+                    }
+                }
+            };
+            enumLeaf(enumLeaf, 0, r);
+        }
+        if (needLeafMaps)
+            for (int pi = 0; pi < (int)patterns.size(); ++pi) {
+                if (patterns[pi].leaves.empty()) {
+                    fprintf(stderr, "[nsi-plane] pattern-map invariant failed r=%d pi=%d c(P)=%d\n", r, pi, patterns[pi].cP);
+                    return 3;
+                }
+            }
+        printf("[nsi-plane-col] r=%d patterns=%zu active=%lld direct=%lld merge-regions=%lld incidences=%lld maps=%.2fs residue=%lld leaf-maps=%s\n",
+               r, patterns.size(), (long long)patterns.size(), 0LL, mergeRegions, incidences,
+               secs(tCol0, Clock::now()), nResidueP, needLeafMaps ? "built" : "SKIPPED");
+        printf("[nsi-plane-col] r=%d phase-split diagonal=%.2fs leaf-maps=%.2fs\n",
+               r, diagSec, secs(tMaps0, Clock::now()));
+
+        PlaneIndexColumn idxCol;
+        vector<int> activeOrdinal(patterns.size(), -1);
+        if (indexOut) {
+            idxCol.r = r;
+            idxCol.boundary = boundary;
+            for (int rid = 0; rid < nR; ++rid)
+                if (mergeable[rid] && (int)regions[rid].size() >= boundary)
+                    idxCol.mergeableRegions.push_back(rid);
+            for (int pi = 0; pi < (int)patterns.size(); ++pi) if (!patterns[pi].direct) {
+                activeOrdinal[pi] = (int)idxCol.patterns.size();
+                PlaneIndexPattern ip;
+                ip.comp = patterns[pi].comp;
+                // Persist canonical UNIVERSAL representatives, not transient
+                // active-class ordinals.  A query reconstructs the same active
+                // profile by masking the stored universal profiles with this
+                // column's mergeable-region list.
+                for (auto &cm : ip.comp) cm.first = activeClassRep[cm.first];
+                ip.mult = patterns[pi].mult;
+                ip.cP = patterns[pi].cP;
+                idxCol.patterns.push_back(std::move(ip));
             }
         }
 
