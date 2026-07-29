@@ -1969,6 +1969,112 @@ static int mainNSI2(int argc, char **argv) {
                fullCert, partial, (fullCert + partial) ? 100.0 * fullCert / (fullCert + partial) : 0.0);
         return (badPat || badMerg) ? 2 : 0;
     }
+    // ===== §227: re-encode a loaded slim index as NSI4 =====
+    // The engine can write NSI4 directly, but converting an existing NSI3 turns a 40-minute rebuild
+    // of the roster into a one-minute job. The two paths must agree BYTE FOR BYTE, which is gated
+    // locally (engine-written .nsi4 vs converted .nsi4) and is the reason this shares the format
+    // description below rather than paraphrasing it.
+    if (mode == "pack") {
+        if (argc < 4) { fprintf(stderr, "usage: INDEX pack OUT.nsi4\n"); return 1; }
+        if (!x.slim) { fprintf(stderr, "pack expects a slim index (NSI3/NSI4)\n"); return 1; }
+        struct Buf {
+            vector<uint8_t> b;
+            void u8(uint8_t v) { b.push_back(v); }
+            void var(uint64_t v) { while (v >= 128) { b.push_back((uint8_t)(v & 127) | 128); v >>= 7; } b.push_back((uint8_t)v); }
+            void zig(int64_t v) { var(((uint64_t)v << 1) ^ (uint64_t)(v >> 63)); }
+            void raw(double d) { uint64_t u; memcpy(&u, &d, 8); for (int i = 0; i < 8; ++i) b.push_back((uint8_t)(u >> (8 * i))); }
+            size_t size() const { return b.size(); }
+        };
+        auto isInt = [](double d) { double r0 = nearbyint(d); return fabs(d - r0) == 0.0 && fabs(r0) < 9.0e18; };
+        bool allInt = true;
+        for (const auto &col : x.columns) {
+            for (const auto &P : col.patterns) if (!isInt(P.boundaryCore)) allInt = false;
+            for (const auto &rr : col.resid) for (const auto &pc : rr) if (!isInt(pc.second)) allInt = false;
+            for (const auto &d : col.dists) for (const auto &kv : d) if (!isInt(kv.first) || !isInt(kv.second)) allInt = false;
+        }
+        Buf head;
+        head.var((uint64_t)x.rmin); head.var((uint64_t)x.rmax); head.var((uint64_t)x.smin); head.var((uint64_t)x.smax);
+        head.var((uint64_t)x.n); head.var((uint64_t)x.nC); head.var((uint64_t)x.nR);
+        head.var((uint64_t)x.columns.size()); head.u8(allInt ? 1 : 0);
+        auto num = [&](Buf &o, double d) { if (allInt) o.zig((int64_t)nearbyint(d)); else o.raw(d); };
+
+        int labelBits = 1; while ((1LL << labelBits) < (long long)x.nC + 1) ++labelBits;
+        vector<uint8_t> present(((size_t)x.n + 7) / 8, 0);
+        vector<int32_t> liveLabel; liveLabel.reserve((size_t)x.n);
+        for (int32_t v = 0; v < x.n; ++v) {
+            const int32_t c = x.classOf[v];
+            if (c >= 0 && c < x.nC && !x.classRegions[c].empty()) {
+                present[(size_t)v >> 3] |= (uint8_t)(1u << (v & 7));
+                liveLabel.push_back(c);
+            }
+        }
+        Buf labels;
+        labels.var(liveLabel.size());
+        { uint64_t acc = 0; int nbits = 0;
+          for (int32_t c : liveLabel) {
+              acc |= (uint64_t)(uint32_t)c << nbits; nbits += labelBits;
+              while (nbits >= 8) { labels.u8((uint8_t)(acc & 0xFF)); acc >>= 8; nbits -= 8; }
+          }
+          if (nbits > 0) labels.u8((uint8_t)(acc & 0xFF)); }
+        Buf prof;
+        for (int32_t c = 0; c < x.nC; ++c) {
+            prof.var((uint64_t)max(0, x.classSize[c]));
+            prof.var(x.classRegions[c].size());
+            int32_t prev = -1;
+            for (int32_t rid : x.classRegions[c]) { prof.zig((int64_t)rid - prev); prev = rid; }
+        }
+        vector<Buf> cols(x.columns.size());
+        for (size_t ci = 0; ci < x.columns.size(); ++ci) {
+            const auto &col = x.columns[ci];
+            Buf &o = cols[ci];
+            o.var((uint64_t)col.r); o.var((uint64_t)col.boundary);
+            vector<int32_t> mg = col.mergeableRegions;
+            sort(mg.begin(), mg.end());
+            o.var(mg.size());
+            { int32_t prev = -1; for (int32_t rid : mg) { o.zig((int64_t)rid - prev); prev = rid; } }
+            o.var(col.patterns.size());
+            int32_t prevPid = -1;
+            for (size_t pi = 0; pi < col.patterns.size(); ++pi) {
+                const auto &P = col.patterns[pi];
+                const int32_t opid = pi < col.origPid.size() ? col.origPid[pi] : (int32_t)pi;
+                o.zig((int64_t)opid - prevPid); prevPid = opid;
+                o.u8((uint8_t)P.comp.size());
+                for (const auto &cm : P.comp) { o.var((uint64_t)cm.first); o.var((uint64_t)cm.second); }
+                num(o, P.boundaryCore); o.zig((int64_t)P.closedFrom);
+            }
+            o.var(col.resid.size());
+            for (const auto &rr : col.resid) {
+                o.var(rr.size());
+                int32_t prev = -1;
+                for (const auto &pc : rr) { o.zig((int64_t)pc.first - prev); prev = pc.first; num(o, pc.second); }
+            }
+            o.var(col.dists.size());
+            for (const auto &d : col.dists) {
+                o.var(d.size());
+                for (const auto &kv : d) { num(o, kv.first); num(o, kv.second); }
+            }
+        }
+        const size_t dirBytes = 8 * x.columns.size();
+        size_t off = 4 + head.size() + present.size() + labels.size() + prof.size() + dirBytes;
+        vector<uint64_t> offs(x.columns.size(), 0);
+        for (size_t ci = 0; ci < x.columns.size(); ++ci) { offs[ci] = off; off += cols[ci].size(); }
+        FILE *of = fopen(argv[3], "wb");
+        if (!of) { fprintf(stderr, "cannot write %s\n", argv[3]); return 1; }
+        fwrite("NSI4", 4, 1, of);
+        fwrite(head.b.data(), 1, head.size(), of);
+        fwrite(present.data(), 1, present.size(), of);
+        fwrite(labels.b.data(), 1, labels.size(), of);
+        fwrite(prof.b.data(), 1, prof.size(), of);
+        for (uint64_t o2 : offs) { uint8_t t[8]; for (int i = 0; i < 8; ++i) t[i] = (uint8_t)(o2 >> (8 * i)); fwrite(t, 1, 8, of); }
+        for (auto &c : cols) fwrite(c.b.data(), 1, c.size(), of);
+        const long endPos = ftell(of);
+        fclose(of);
+        printf("packed %s (%.3f MB) -> %s (%.3f MB)  %.2fx smaller  all-integral=%d\n",
+               argv[1], x.fileBytes / 1048576.0, argv[3], endPos / 1048576.0,
+               endPos > 0 ? (double)x.fileBytes / endPos : 0.0, (int)allInt);
+        return 0;
+    }
+
     // ===== §226: byte anatomy of the LOADED index, and what a packed encoding would cost =====
     // §221 did this for NSI2 and it is what identified the pattern table as the only worthwhile
     // target; the same discipline decides whether slimming NSI3 further is worth building at all.
