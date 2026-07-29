@@ -61,8 +61,10 @@ for G in $GRAPHS; do
 
   L3=$(/tmp/nq5 "$F3" stats 2>/dev/null | grep -oP 'load=\K[0-9.]+' | head -1)
   L4=$(/tmp/nq5 "$F4" stats 2>/dev/null | grep -oP 'load=\K[0-9.]+' | head -1)
-  R34=$(awk -v a="$B3" -v b="$B4" 'BEGIN{printf "%.2f", b>0?a/b:0}')
-  R24=$(awk -v a="$B2" -v b="$B4" 'BEGIN{printf "%.1f", b>0?a/b:0}')
+  # DO_NOT_REPEAT T11: the server awk rejects a ternary inside a printf ARGUMENT.
+  # Branch in the action instead; it costs nothing and it actually runs.
+  R34=$(awk -v a="$B3" -v b="$B4" 'BEGIN{ if (b>0) printf "%.2f", a/b; else printf "0" }')
+  R24=$(awk -v a="$B2" -v b="$B4" 'BEGIN{ if (b>0) printf "%.1f", a/b; else printf "0" }')
   printf '%-22s %12s %12s %12s %7sx %7sx %10s %10s %s\n' "$G" "$B2" "$B3" "$B4" "$R34" "$R24" "${L3:-?}" "${L4:-?}" "$GATE"
 done
 

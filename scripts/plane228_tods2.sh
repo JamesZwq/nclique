@@ -49,8 +49,9 @@ for G in $GRAPHS; do
   done
   [ ${#R[@]} -eq 4 ] || continue
   if cmp -s "$WK/$G.base.nsi2" "$WK/$G.opt.nsi2"; then GATE="BYTE-IDENTICAL"; else GATE="**INDEX DIFFERS**"; fi
-  SP=$(awk -v a="${R[0]}" -v b="${R[2]}" 'BEGIN{printf "%.2f", b>0?a/b:0}')
-  MG=$(awk -v a="${R[1]}" -v b="${R[3]}" 'BEGIN{printf "%.2f", b>0?a/b:0}')
+  # DO_NOT_REPEAT T11: the server awk rejects a ternary inside a printf ARGUMENT.
+  SP=$(awk -v a="${R[0]}" -v b="${R[2]}" 'BEGIN{ if (b>0) printf "%.2f", a/b; else printf "0" }')
+  MG=$(awk -v a="${R[1]}" -v b="${R[3]}" 'BEGIN{ if (b>0) printf "%.2f", a/b; else printf "0" }')
   printf '%-22s %10s %10s %7sx %12s %12s %7sx %s\n' "$G" "${R[0]}" "${R[2]}" "$SP" "${R[1]}" "${R[3]}" "$MG" "$GATE"
   rm -f "$WK/$G.base.nsi2" "$WK/$G.opt.nsi2"
 done
