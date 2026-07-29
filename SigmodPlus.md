@@ -9221,3 +9221,40 @@ TWO PATHS, ONE FORMAT: the engine writes NSI4 directly (`SCT_INDEX_PACK=1`), and
 pack OUT.nsi4` re-encodes an existing slim index. Their outputs are gated BYTE-FOR-BYTE identical,
 which is what makes it legitimate to convert the roster instead of rebuilding it (a 40-minute job
 becomes a 1-minute one) and is also a strong check that NSI3 and NSI4 carry the same information.
+
+## 228. THE PLANE ENGINE BUILT ITS LEAF MAPS BEFORE ASKING WHETHER IT NEEDED THEM (2026-07-29)
+Debt #1 (§212) was "port the §210 stack into the plane engine". Measuring the plane build first said
+that is NOT where the time is. Phase split of the existing roster builds (`/tmp/n2_*.out`, tods2):
+| graph | total | shared class-SCT | maps (leaf/pattern) | cells (peel) |
+|---|---|---|---|---|
+| pkustk13 | 415.7s | 1.3s (0.3%) | 214.2s (**51.5%**) | 82.9s (20.0%) |
+| web-Google | 635.9s | 2.5s | 177.8s (28.0%) | 321.1s (50.5%) |
+| com-dblp | 81.4s | 0.6s | 31.0s (38.0%) | 10.3s (12.6%) |
+The §210 optimizations are peel optimizations. **The MCE + class quotient is 0.3% of the plane build**,
+which retires a long-standing suspicion that it is the bottleneck: it is not, in the plane engine.
+Then the actual finding, from the diagonal counters:
+| graph | r | patterns | certified at the boundary | residue |
+|---|---|---|---|---|
+| pkustk13 | 5 | 26,823,054 | **26,823,054** | **0** |
+| pkustk13 | 4 | 8,656,999 | 8,656,998 | 1 |
+| web-Google | 5 | 29,397,997 | 19,987,922 | 13,163 |
+pkustk13 at r=5 built a pattern-to-leaf map for **26.8 million patterns, every one of which was
+already certified**, and then read it for nothing. The leaf maps exist ONLY to feed the peel, and the
+peel never touches a certified pattern unless it shares a leaf with a residue pattern.
+THE FIX IS AN ORDERING, NOT AN ALGORITHM. The diagonal certificate reads exactly three things: cP,
+the previous row's boundary map, and the universal enumeration. All three are available BEFORE the
+leaf maps exist. It was nevertheless computed AFTER them. Moved ahead, so:
+- a column with no residue skips the leaf-map construction entirely (`leaf-maps=SKIPPED`);
+- a cell with no residue returns its closed form without building the per-cell leaf view at all
+  (that view copies one CCPath per shared leaf and is the entire cost of a fully certified cell).
+Two smaller allocation fixes rode along: `PlanePattern::host` was a heap-allocated vector per pattern
+read exactly once to take max |M| (now accumulated during emission), and the pattern table was keyed
+by the composition ITSELF, so every pattern stored its comp twice (now a 64-bit fingerprint with
+collisions chained through one int, verifying candidates against the full comp as before).
+GATES: the written NSI2 is BYTE-IDENTICAL and every core-distribution line is identical. If one
+certification decision or one cP had changed, the file changes.
+ca-GrQc (local, direction-finding only per T8): peak memory 84.6 MB -> 60.6 MB, **1.40x**, and r=5
+reports `leaf-maps=SKIPPED residue=0`. Roster A/B is `scripts/plane228_tods2.sh`.
+WHY THIS IS THE RIGHT SHAPE FOR THE PAPER: §213's four-sentence algorithm already claims certified
+tails cost "zero storage, zero peel". That was true of storage and of the peel, and FALSE of the map
+construction feeding the peel. The engine now matches the sentence.
