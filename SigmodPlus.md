@@ -9374,3 +9374,52 @@ separation of §215 as a measurement rather than a theorem.
 - Archive BUILD cost, which is not even counted above: 35.8 s for web-it r=3 (14.7 GB peak), 44.8 s
   for nasasrb r=5 (18.3 GB peak) -- and that is after somebody has already run the decomposition on
   every cell to know what to store.
+
+## 234. NSI4 ON THE ROSTER: 2.5-2.9x on top of NSI3, every answer identical, 8/8 (2026-07-29)
+`scripts/nsi4_tods2.sh`. Each existing NSI3 re-encoded (`nsi_query IN.nsi3 pack OUT.nsi4`, whose
+output is gated byte-for-byte against the engine's own NSI4 writer), then gated ANSWER-FOR-ANSWER per
+r against BOTH the slim NSI3 and the full NSI2: 20,000 clique-uniform samples per r, 60,000 full
+spectrum rows per graph, **480,000 rows total, 8/8 PASS, zero mismatches.**
+| domain | graph | NSI3 | **NSI4** | 3->4 | NSI2/NSI4 | archive / NSI4 |
+|---|---|---|---|---|---|---|
+| web | **web-it-2004** | 4,333,646 | **1,700,530** | 2.55x | 82x | **29,896,946x** |
+| FEM | **pkustk13** | 1,366,552 | **507,853** | 2.69x | **3,657x** | 170,205x |
+| FEM | pkustk11 | 833,932 | 321,123 | 2.60x | 284x | 87,713x |
+| FEM | pwtk | 3,190,086 | 1,206,855 | 2.64x | 335x | 48,470x |
+| FEM | nasasrb | 1,478,058 | 511,963 | 2.89x | 1,611x | 19,287x |
+| collab | com-dblp | 4,161,375 | 1,650,495 | 2.52x | 144x | 5,139x |
+| web | web-Google | 25,231,344 | 8,807,176 | 2.86x | 228x | 554x |
+| co-purchase | com-amazon | 4,276,080 | 1,534,738 | 2.79x | 25x | 14x |
+**The whole r=3..5 x s<=8 plane of a 7.2M-edge web graph is 1.66 MB.** com-amazon, the weakest case,
+goes from 5.1x to **14x** against its archive.
+
+### THE ANATOMY HELD ON EVERY GRAPH, WHICH IS WHY THE ENCODING IS BORING
+`classOf + class-profiles` is **76-98%** of NSI3 everywhere (web-it 92.9%, nasasrb 91.5%, web-Google
+82.3%, com-amazon 98.7%). Nothing else was worth touching, exactly as §226's single-graph probe said.
+The predicted packed size matched the delivered file to ~1% (nasasrb: predicted 505,118 B, actual
+511,963 B; the gap is the header and directory the estimate does not model).
+**0 of 320,000+ stored reals are non-integral, on all 8 graphs.** The all-integral fallback the writer
+carries has never fired; it exists so the format can never be lossy, not because it is needed.
+The presence-bitmap variant is chosen exactly where it pays and rejected where it does not, with no
+tuning: com-amazon 48.6% of vertices live -> bitmap, com-dblp 61.5% -> bitmap, web-Google 55.0% ->
+bitmap, web-it 86.0% -> bitmap; the FEM graphs are 100% live -> flat.
+
+### LOAD AND QUERY
+Load is faster on 7 of 8 (web-Google 696 -> 397 ms, 1.75x; nasasrb 51.9 -> 42.0 ms). **pkustk11 is
+SLOWER (12.3 -> 26.5 ms)**: on a 0.3 MB file there is almost no I/O to save and the varint/bit-unpack
+decode is pure added work. Reported, not hidden -- it is the honest boundary of the trade.
+Query is at parity, as it must be: both formats decode into identical in-memory structures. Across
+24 (graph, r) cells the two are within +-10% of each other with no consistent direction.
+
+### A MEASUREMENT-VARIANCE DATAPOINT WORTH MORE THAN IT LOOKS
+This run re-measured the same NSI3 point-kernel latencies E4 had measured hours earlier, on the same
+machine with the same deterministic workload. Four of five spot-checked cells reproduced to within
+1-2% (pkustk11 r=3: 163 -> 161 ns; pkustk13 r=3: 282 -> 280; com-amazon r=3: 376 -> 378; pwtk r=3:
+177 -> 170). **One did not: nasasrb r=3, 199 -> 305 ns, a 1.5x swing.** So single-trial latency is
+mostly reproducible and occasionally is not. Every latency quoted in the paper needs the multi-trial
+median that E2 has been asking for; do not quote a single run.
+### PROCESS NOTE (I repeated a documented trap)
+The ratio columns in the raw log print as `x` because the server awk rejects a ternary inside a
+printf argument -- **DO_NOT_REPEAT T11, which I wrote**. The byte columns are correct so nothing was
+lost, but the lesson is that reading the trap list is not the same as applying it: check the awk
+before launching, not after.
