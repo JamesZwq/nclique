@@ -497,6 +497,28 @@ static PlaneCellResult planeReplayCell(
     const bool witnessDeltaMode = (r > 0 && s > r);
     const int witnessTail = s - r;
 
+    // §228: with no residue pattern in this cell, residueLeaf stays all-zero, so no certified
+    // pattern is ever scheduled for replay and no deletion can fire.  Every non-direct pattern's
+    // value IS its certified closed form.  The per-cell view below copies one CCPath per shared
+    // leaf -- on a fully certified column that is the entire cost of the cell, paid for nothing.
+    {
+        bool anyResidue = false;
+        for (int pi = 0; pi < nP && !anyResidue; ++pi)
+            if (!patterns[pi].direct && !certified[pi]) anyResidue = true;
+        if (!anyResidue) {
+            PlaneCellResult done;
+            done.core.assign((size_t)nP, -1.0);
+            for (int pi = 0; pi < nP; ++pi) {
+                if (patterns[pi].direct) continue;
+                done.core[pi] = certCore[pi];
+                done.activeDist[certCore[pi]] += (double)patterns[pi].mult;
+                done.nCertified++;
+            }
+            done.seconds = secs(t0, Clock::now());
+            return done;
+        }
+    }
+
     // Per-cell mutable VIEW.  The shared leaves remain byte-immutable across
     // all r columns and s rows; metadata is stripped only from this view.
     vector<vector<CCPath>> slotPaths((size_t)nL);
