@@ -9394,8 +9394,15 @@ spectrum rows per graph, **480,000 rows total, 8/8 PASS, zero mismatches.**
 goes from 5.1x to **14x** against its archive.
 
 ### THE ANATOMY HELD ON EVERY GRAPH, WHICH IS WHY THE ENCODING IS BORING
-`classOf + class-profiles` is **76-98%** of NSI3 everywhere (web-it 92.9%, nasasrb 91.5%, web-Google
-82.3%, com-amazon 98.7%). Nothing else was worth touching, exactly as §226's single-graph probe said.
+`classOf + class-profiles` is **70.5%-99.9%** of NSI3, i.e. the index is essentially the class/region
+incidence structure and nothing else: pkustk13 99.9%, com-amazon 98.7%, pkustk11 96.5%, web-it 92.9%,
+com-dblp 92.6%, nasasrb 91.5%, web-Google 82.3%, **pwtk 70.5%**. Nothing else was worth touching,
+exactly as §226's single-graph probe said.
+CORRECTION (2026-08-02): this line first read "76-98%", which excluded pwtk at the bottom and
+understated pkustk13 at the top. The ordering is not noise -- **the remainder is exactly the residue
+content**, so the share of the file that is NOT shared geometry ranks the graphs by how much of their
+plane fails to certify. pwtk is the one roster graph with NO fully certified column (§235), and it is
+also the one whose index is least dominated by the shared block. Same fact, two places.
 The predicted packed size matched the delivered file to ~1% (nasasrb: predicted 505,118 B, actual
 511,963 B; the gap is the header and directory the estimate does not model).
 **0 of 320,000+ stored reals are non-integral, on all 8 graphs.** The all-integral fallback the writer
