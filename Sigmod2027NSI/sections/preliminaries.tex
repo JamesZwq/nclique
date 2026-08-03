@@ -1,4 +1,93 @@
 \section{Preliminaries}\label{sec:preliminaries}
-% TODO: draft per SigmodPlus.md 239 (contract below) under the paper-architect skill.
-% CONTRACT: notation table; formal kappa_{r,s}; the bounded plane; maximal cliques.
-% Symbols become legal from here on (none before). Running example re-invoked.
+% Drafted per SigmodPlus.md 239 contract. Symbols become legal from here on.
+In this section, we fix notation, formalize the core number of an $r$-clique, and state the plane-indexing problem.
+
+\stitle{Graph notation.}
+We consider a simple, undirected, unweighted graph $G=(V,E)$ with $n=|V|$ vertices and $m=|E|$ edges.
+%
+For $V'\subseteq V$, we write $G[V']$ for the subgraph of $G$ induced by $V'$.
+%
+Table~\ref{tab:notation} summarizes the notation used across sections; symbols local to one lemma or algorithm are introduced where they are used.
+
+\begin{table}[t]
+\centering
+\caption{Notation used across sections.}\label{tab:notation}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning}\\
+\midrule
+$G=(V,E)$ & input graph, $n=|V|$, $m=|E|$\\
+$r$, $s$ & scored-clique size and witness-clique size, $r<s$\\
+$R$, $S$ & an $r$-clique (scored) and an $s$-clique (witness)\\
+$\deg_{(s)}(R)$ & $s$-clique support of $R$ (Definition~\ref{def:support})\\
+$\kappa_s(R)$ & core number of $R$ at witness size $s$ (Definition~\ref{def:corenumber})\\
+$\mathcal{M}(G)$ & the maximal cliques of $G$\\
+$\omega(R)$ & local clique number: size of the largest clique containing $R$\\
+$\mathcal{P}$ & the indexed plane: $r\in[r_{\min},r_{\max}]$, $r<s\le s_{\max}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{definition}[$\ell$-Clique]\label{def:clique}
+For an integer $\ell>0$, a vertex set $X\subseteq V$ with $|X|=\ell$ is an \emph{$\ell$-clique} of $G$ if every two distinct vertices of $X$ are adjacent.
+\end{definition}
+
+Following the convention of nucleus decomposition \cite{firstNucleus,NuclearCD}, we call an $r$-clique a \emph{scored clique}: the decomposition computes a core number for it.
+%
+An $s$-clique is a \emph{witness clique}: it certifies the cohesion of the scored cliques it contains.
+
+\stitle{Maximal cliques.}
+A clique is \emph{maximal} if no outside vertex can be added to it while preserving a clique; $\mathcal{M}(G)$ denotes the set of maximal cliques of $G$.
+%
+Every clique of $G$ is contained in at least one maximal clique.
+%
+We write $\omega(R)$ for the size of the largest clique of $G$ that contains the clique $R$, and call it the \emph{local clique number} of $R$.
+%
+In Figure~\ref{fig:example}, $\omega(\{v_1,v_2,v_3\})=6$ by $M_1$, $\omega(\{v_7,v_8,v_9\})=5$ by $M_2$, and $\omega(\{v_7,v_8,v_{10}\})=4$ by $M_3$.
+
+\begin{definition}[$s$-Clique Support]\label{def:support}
+The \emph{$s$-clique support} of an $r$-clique $R$ in $G$ is
+$\deg_{(s)}(R)=|\{S\subseteq V: R\subseteq S,\ S\text{ is an $s$-clique of } G\}|$.
+\end{definition}
+
+In Figure~\ref{fig:example}, $\deg_{(4)}(\{v_1,v_2,v_3\})=3$: the three $4$-cliques obtained by adding $v_4$, $v_5$, or $v_6$.
+
+\stitle{Nucleus and core number.}
+Cohesion is certified by a family of witness cliques that sustains all of its own scored cliques \cite{firstNucleus}.
+%
+For a family $\mathcal{S}$ of $s$-cliques, write $R(\mathcal{S})$ for the set of $r$-cliques contained in at least one member of $\mathcal{S}$.
+%
+Write $G[\mathcal{S}]$ for the subgraph induced by the union of the members.
+
+\begin{definition}[$k$-$(r,s)$-Nucleus]\label{def:nucleus}
+A \emph{$k$-$(r,s)$-nucleus} of $G$ is a subgraph $G[\mathcal{S}]$ induced by a family $\mathcal{S}$ of $s$-cliques such that
+(i) every $R\in R(\mathcal{S})$ is contained in at least $k$ members of $\mathcal{S}$;
+(ii) any two members are linked inside $\mathcal{S}$ by a chain of members in which consecutive cliques share at least $r$ vertices;
+and (iii) $\mathcal{S}$ is maximal under inclusion among families satisfying (i) and (ii).
+\end{definition}
+
+Support in condition (i) is counted within the family, not in $G$: a nucleus must sustain its own scored cliques.
+%
+Condition (ii) links consecutive witnesses through shared scored cliques, since two $s$-cliques share $r$ vertices exactly when they contain a common $r$-clique.
+
+\begin{definition}[Core Number]\label{def:corenumber}
+The \emph{core number} $\kappa_s(R)$ of an $r$-clique $R$ is the largest $k$ such that $R\in R(\mathcal{S})$ for the defining family $\mathcal{S}$ of some $k$-$(r,s)$-nucleus, and $0$ if $R$ lies in no $s$-clique.
+\end{definition}
+
+The size of the scored clique is implicit in its argument, so the single notation $\kappa_s(R)$ serves every cell of the plane.
+%
+The nucleus model subsumes the classical models: $(r,s)=(1,2)$ yields the $k$-core \cite{seidman1983network} and $(r,s)=(2,3)$ yields the $k$-truss \cite{cohen2008trusses,firstNucleus}.
+%
+In Figure~\ref{fig:example}, $\kappa_4(\{v_1,v_2,v_3\})=3$, as computed in Example~\ref{exa:running}.
+
+\sstitle{Problem statement (plane indexing).}
+A \emph{plane} $\mathcal{P}$ is the set of cells $(r,s)$ with $r_{\min}\le r\le r_{\max}$ and $r<s\le s_{\max}$.
+%
+Given $G$ and $\mathcal{P}$, the problem is to build an index that, for any $s$ and any $r$-clique $R$ with $(|R|,s)\in\mathcal{P}$, returns $\kappa_s(R)$.
+%
+A scored clique contained in no witness has core number $0$.
+%
+The algorithmic sections therefore focus on scored cliques that lie in at least one maximal clique of size at least $s$.
+
+The next section recalls how the state of the art computes one cell, and measures where its cost concentrates.

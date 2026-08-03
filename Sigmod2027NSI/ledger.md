@@ -10,13 +10,22 @@ Architecture: SigmodPlus.md §237 (spine/story) + §239 (skeleton). Sentences: �
 - Helpers (never versioned): \peelcell, \buildalg, \queryalg.
 - New-term budget (4): class, pattern, certificate, residue. "clique quotient" = the umbrella
   concept naming the grouping (introduced in §1, defined in sec:quotient).
-- NOT in the paper's main line: SCT, region (say "maximal clique"), NSI2/3/4 format names, cP as a
-  symbol in §1 (body defines its notation in sec:quotient — TODO pick glyph, per notation rules
-  visually related to the quantity, e.g. $\mu(R)$ "largest maximal clique containing R").
+- NOT in the paper's main line: SCT, "region" as a term (the RegND draft uses it; WE say "maximal
+  clique" — budget rule), NSI2/3/4 format names.
+- DECIDED notation (group conventions inherited from NuclearCD/RegND):
+  * kappa_s(R) — core number; r = |R| is implicit, so one glyph serves the whole plane.
+  * deg_{(s)}(R) — s-clique support.
+  * M(G) — maximal cliques; omega(R) = size of the largest clique of G containing R
+    ("local clique number"; standard omega glyph localized — the spine's one number).
+  * Plane P: r in [rmin,rmax], r < s <= smax. Query contract: (R, s) with (|R|, s) in P.
+  * Inherited vocabulary (group's published usage, not part of the 4-term budget):
+    "scored clique" (= r-clique), "witness clique" (= s-clique).
+- Exact object counts, web-it-2004 (archive accounting, integer-exact):
+  3-cliques 338,786,461; 4-cliques 28,530,662,583; 5-cliques 2,140,698,950,272.
 
 ## The spine sentence (paper = this, unfolded)
-For almost every r-clique R, kappa_{r,s}(R) = C(mu(R)-r, s-r) where mu(R) is one number: the size
-of the largest maximal clique containing R. The paper certifies where this holds, computes the
+For almost every r-clique R, kappa_s(R) = C(omega(R)-r, s-r) where omega(R) is one number: the size
+of the largest clique containing R. The paper certifies where this holds, computes the
 residue where it fails, and stores only the quotient + residue (P10: unavoidable).
 
 ## Running example (verified by two independent scripts; figures/fig1_example.pdf)

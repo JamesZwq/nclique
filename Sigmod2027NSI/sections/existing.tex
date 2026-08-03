@@ -1,5 +1,84 @@
 \section{The State-of-the-Art Approach}\label{sec:existing}
-% TODO: draft per SigmodPlus.md 239 (contract below) under the paper-architect skill.
-% CONTRACT (239): fair-SOTA section. Alg 1 = CND skeleton (~10 lines) with the
-% exploding line visible (enumerate all r-cliques). Cost anatomy; the object-count
-% table (web-it r=5: 1.57e12). Closes by naming the difficulty the next section answers.
+% Drafted per SigmodPlus.md 239 contract: fair-SOTA section, exploding line visible,
+% cost anatomy on named data, closes by naming the difficulty sec:quotient answers.
+In this section, we recall the peeling skeleton that all existing algorithms instantiate, and we measure where its cost concentrates.
+
+\stitle{The peeling skeleton.}
+Every existing algorithm computes one cell $(r,s)$ by the same skeleton, shown in Algorithm~\ref{alg:explicit} \cite{firstNucleus,NuclearCD}.
+%
+It materializes the scored cliques, initializes their supports, and repeatedly removes a clique of minimum support.
+%
+The level $k$ never decreases, and each clique receives the level at which it is removed.
+
+\begin{algorithm}[t]
+\caption{The explicit peel of existing algorithms.}
+\label{alg:explicit}
+\algfontsize
+\KwIn{Graph $G$, cell $(r,s)$}
+\KwOut{$\kappa_s(R)$ for every $r$-clique $R$ of $G$}
+$\mathcal{R} \leftarrow$ all $r$-cliques of $G$\tcp*{one record per clique}\label{ln:enum}
+\ForEach{$R \in \mathcal{R}$}{
+    $sup(R) \leftarrow \deg_{(s)}(R)$\label{ln:supinit}
+}
+$k \leftarrow 0$\;
+\While{$\mathcal{R} \neq \emptyset$}{\label{ln:loop}
+    $R^{*} \leftarrow$ a clique of minimum $sup$ in $\mathcal{R}$\label{ln:min}\;
+    $k \leftarrow \max(k,\, sup(R^{*}))$;\quad $\kappa_s(R^{*}) \leftarrow k$\label{ln:assign}\;
+    \ForEach{witness $S \supseteq R^{*}$ not yet destroyed}{\label{ln:witness}
+        \ForEach{$R' \subset S$ with $R' \in \mathcal{R},\ R' \neq R^{*}$}{
+            $sup(R') \leftarrow sup(R') - 1$\label{ln:dec}
+        }
+    }
+    remove $R^{*}$ from $\mathcal{R}$\label{ln:remove}\;
+}
+\Return{$\kappa_s$}
+\end{algorithm}
+
+Algorithm~\ref{alg:explicit} enumerates the scored cliques and allocates one mutable record per clique (Line~\ref{ln:enum}).
+%
+It initializes each support (Line~\ref{ln:supinit}) and then peels: extract a minimum (Line~\ref{ln:min}), assign the current level (Line~\ref{ln:assign}), and credit every scored clique that loses a witness (Lines~\ref{ln:witness}--\ref{ln:dec}).
+%
+The state of the art, \cnd~\cite{NuclearCD}, realizes Lines~\ref{ln:supinit} and \ref{ln:witness}--\ref{ln:dec} by aggregated counting, so no witness clique is ever listed one by one.
+%
+This counting is what made single cells with millions of edges practical, and we adopt it as our baseline throughout.
+
+\stitle{Cost anatomy.}
+The skeleton's remaining cost sits in Line~\ref{ln:enum}: every scored clique of the cell exists as a record, and every record carries mutable peel state.
+%
+Memory is therefore at least proportional to the number of scored cliques, and time to the stream of per-clique updates.
+%
+Both grow combinatorially with $r$, as Table~\ref{tab:objects} shows for \webit.
+
+\begin{table}[t]
+\centering
+\caption{Scored cliques on \webit\ ($7.2$ million edges).}\label{tab:objects}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+$r$ & \#$r$-cliques & one record each\\
+\midrule
+$3$ & $338{,}786{,}461$ & $2.7$\,GB\\
+$4$ & $28{,}530{,}662{,}583$ & $228$\,GB\\
+$5$ & $2{,}140{,}698{,}950{,}272$ & $17$\,TB\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The second column of Table~\ref{tab:objects} counts the objects of Line~\ref{ln:enum}; the third charges a conservative eight bytes per record.
+%
+At $r=4$ the records alone exceed the memory of a large server, and at $r=5$ they exceed it by two orders of magnitude.
+%
+The measured behavior matches: on \webit, \cnd{} spends $5{,}581$ seconds and $101$\,GB on the single shallow cell $(3,4)$.
+%
+Within a $1{,}800$-second, $300$\,GB budget, it finishes none of the nine cells of our evaluation grid (Section~\ref{sec:experiments}).
+
+\stitle{What a plane demands.}
+The skeleton is also strictly per cell: nothing computed at $(r,s)$ is reused at $(r,s{+}1)$ or $(r{+}1,s)$.
+%
+A plane therefore multiplies the cost by its number of cells.
+%
+Aggregated counting removed the witness side of the cost; the scored side, one record per clique per cell, remains.
+%
+Removing it requires a representation in which many scored cliques share one record and all cells share one representation.
+%
+Building that representation is the subject of the next section.
