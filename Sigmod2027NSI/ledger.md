@@ -8,8 +8,10 @@ Architecture: SigmodPlus.md §237 (spine/story) + §239 (skeleton). Sentences: �
 - Competitor: **CND** (\cnd, \cite{NuclearCD}) — the group's published PACMMOD'26 counting-based
   algorithm; serial protocol only (§217 quarantine).
 - Helpers (never versioned): \peelcell, \buildalg, \queryalg.
-- New-term budget (4): class, pattern, certificate, residue. "clique quotient" = the umbrella
-  concept naming the grouping (introduced in §1, defined in sec:quotient).
+- New-term budget (4+1): class, pattern, certificate, residue, **box** (spent deliberately in
+  sec:peelcell -- the s-side needs one container noun; SCT stays out of the main line).
+  "clique quotient" = the umbrella concept naming the grouping (introduced in §1, defined in
+  sec:quotient).
 - NOT in the paper's main line: SCT, "region" as a term (the RegND draft uses it; WE say "maximal
   clique" — budget rule), NSI2/3/4 format names.
 - DECIDED notation (group conventions inherited from NuclearCD/RegND):
@@ -58,6 +60,13 @@ residue where it fails, and stores only the quotient + residue (P10: unavoidable
 | example collapse | 33 → 7 | ledger above |
 | query kernel false positives | 0 / 165k near-miss + 700k random | §231 (body only; NOT a
   correctness experiment — correctness is by lemma) |
+
+## Section-5 worked numbers (verified by script 2026-08-03)
+- Toy boxes: B1={A,B} free; B2={B,C} with ell_C>=1; B3={C,D} with ell_D>=1. Exact partition at
+  every size. s=4 counts 15/5/1 (sum 21 ✓); s=5 counts 6/1/0 (sum 7 ✓).
+- sup(A^2B)@(3,4)=3 on B1. sup(C^3)=2(B2)+1(B3)=3; after C^2D removed, antichain {(2,1)} on B3
+  kills its contribution -> 2 (the cascade). sup(B^2C)=2.
+- pkustk13 (3,4): 2.2M patterns vs 45.2M cliques; r=5: 26.8M vs 2.28B.
 
 ## Claim → evidence map (contributions)
 1. First index over the plane → reconstruction lemma (sec:index) + §233/§234 sizes + 74ns.

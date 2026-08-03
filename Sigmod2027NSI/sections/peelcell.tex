@@ -1,5 +1,160 @@
 \section{Peeling in the Quotient}\label{sec:peelcell}
-% TODO: draft per SigmodPlus.md 239 (contract below) under the paper-architect skill.
-% CONTRACT (239): support = coefficient (displayed equation + correctness lemma; DP
-% in appendix); deletion via forbidden antichain (lemma); Alg 2 = PeelCell (~15
-% lines) + line-anchored walkthrough; complexity paragraph. No s-clique enumerated.
+% Drafted per SigmodPlus.md 239: boxes, support-as-coefficient (one formula covers
+% init AND every deletion via the forbidden antichain), Alg 2 PeelCell, orbit
+% correctness, worked example incl. the cascade. Construction details -> appendix.
+Patterns are the peel unit, but the peel is driven by supports, and supports count witnesses.
+%
+This section computes every support, and every update to it, without listing a single witness clique.
+%
+We first partition the witnesses into boxes, then express support as one coefficient, and then assemble the cell algorithm \peelcell.
+
+\stitle{Boxes.}
+Inside one maximal clique, counting is trivial.
+%
+All classes of $M_1$ in Figure~\ref{fig:example} lie wholly inside it (Lemma~\ref{lem:containment}), so the witnesses inside $M_1$ are counted by binomials over class sizes.
+%
+Across maximal cliques, however, witnesses of overlaps would be counted twice.
+%
+The remedy is a classical pivoting argument \cite{Pivoter,NuclearCD}, lifted from vertices to classes: the witnesses split into disjoint groups, each with a product structure.
+
+\begin{definition}[Box]\label{def:box}
+A \emph{box} $B$ is a set of classes $C_B$, together with per-class bounds $\ell_c\le u_c\le n_c$ for $c\in C_B$, where $n_c=|c|$.
+%
+A clique \emph{belongs to} $B$ if it uses $y_c$ vertices of each class $c\in C_B$ with $\ell_c\le y_c\le u_c$, and no vertex outside $C_B$.
+\end{definition}
+
+\begin{lemma}[Box Partition]\label{lem:boxes}
+From $\mathcal{M}(G)$ one can compute, once for the whole plane, a family $\mathcal{B}$ of boxes such that every clique of every size $s\le s_{\max}$ belongs to exactly one box, and the classes of each box are pairwise adjacent.
+\end{lemma}
+
+The construction runs a pivoted recursion over the class graph and is deferred to Appendix~\ref{app:boxes}; only the two properties above are used in the sequel.
+
+\begin{example}\label{exa:boxes}
+Consider the graph $G$ in Figure~\ref{fig:example} with $s_{\max}=8$.
+%
+Three boxes suffice: $B_1=\{A,B\}$ with free bounds, $B_2=\{B,C\}$ requiring at least one $C$ vertex, and $B_3=\{C,D\}$ requiring at least one $D$ vertex.
+%
+The two lower bounds make the split disjoint at every size.
+%
+At $s=4$ the boxes hold $\binom{6}{4}=15$, $\binom{5}{4}=5$, and $\binom{4}{4}=1$ witnesses: $21$ in total, and each witness in exactly one box.
+%
+At $s=5$ the counts are $6$, $1$, and $0$, matching the $7$ witnesses of $G$.
+\end{example}
+
+\stitle{Support as one coefficient.}
+Fix a box $B$ and a pattern $P$ whose classes all lie in $C_B$, with composition $b$ on those classes.
+%
+During the peel, some patterns have already been removed; on box $B$, let $A_B$ collect the compositions of the removed patterns hosted by $B$.
+
+\begin{definition}[Box Coefficient]\label{def:coef}
+For a box $B$, a composition $b$, a witness size $s$, and a set $A_B$ of removed compositions,
+\begin{equation}\label{eq:coef}
+\mathrm{Coef}_s(B,b,A_B)\;=\;
+\sum_{\substack{y:\ \ell\vee b\,\le\, y\,\le\, u,\ \sum_c y_c=s\\ \nexists\, a\in A_B:\ a\le y}}
+\ \prod_{c\in C_B}\binom{n_c-b_c}{\,y_c-b_c\,}.
+\end{equation}
+\end{definition}
+
+With $A_B=\emptyset$, Equation~\eqref{eq:coef} is the coefficient of $x^{s}$ in the polynomial $\prod_{c\in C_B}\bigl(\sum_{j}\binom{n_c-b_c}{j-b_c}x^{j}\bigr)$, and is computed in $O(|C_B|\cdot s)$ time by one pass of dynamic programming.
+%
+A witness is \emph{surviving} if it contains no removed scored clique.
+
+\begin{lemma}[Residual Support]\label{lem:residual}
+At any point of a peel that removes whole patterns, and for any instance $R$ of a pattern $P$,
+the number of surviving witnesses of size $s$ containing $R$ equals
+$\sum_{B}\mathrm{Coef}_s(B,b_P,A_B)$, summed over the boxes hosting $P$.
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:boxes}, the witnesses containing $R$ split disjointly over the boxes whose classes cover $P$, so it suffices to count within one box $B$.
+%
+The witnesses of $B$ containing $R$ are the choices of $y_c-b_c$ further vertices per class outside the $b_c$ vertices of $R$, giving the product of Equation~\eqref{eq:coef} for each admissible $y$.
+%
+It remains to show a witness $W$ with composition $y$ is destroyed exactly when $a\le y$ for some removed composition $a\in A_B$.
+%
+If $a\le y$, then choosing $a_c$ vertices of $W$ per class yields a removed scored clique inside $W$, since the classes of $B$ are pairwise adjacent.
+%
+Conversely, a removed clique inside $W$ uses at most $y_c$ vertices per class, so its composition $a$ satisfies $a\le y$.
+%
+Filtering these $y$ out of the sum is precisely the third constraint of Equation~\eqref{eq:coef}.
+\end{proof}
+
+One formula therefore serves the whole peel: initialization is the case $A_B=\emptyset$, and every deletion is one insertion into $A_B$.
+%
+The implementation never expands the filtered sum; it credits the compositions that die at each removal, as detailed in Appendix~\ref{app:delta}.
+
+\stitle{The cell algorithm.}
+Algorithm~\ref{alg:peelcell} assembles the pieces.
+
+\begin{algorithm}[t]
+\caption{\peelcell: peel one cell in the quotient.}
+\label{alg:peelcell}
+\algfontsize
+\KwIn{Boxes $\mathcal{B}$, patterns of size $r$ with multiplicities, cell $(r,s)$}
+\KwOut{$\kappa_s(P)$ for every pattern $P$}
+\ForEach{pattern $P$}{
+    $sup(P) \leftarrow \sum_{B}\mathrm{Coef}_s(B, b_P, \emptyset)$\label{lnp:init}
+}
+$k \leftarrow 0$;\quad $A_B \leftarrow \emptyset$ for every box $B$\label{lnp:reset}\;
+\While{some pattern is unpeeled}{
+    $P^{*} \leftarrow$ an unpeeled pattern of minimum $sup$\label{lnp:min}\;
+    $k \leftarrow \max(k,\, sup(P^{*}))$;\quad $\kappa_s(P^{*}) \leftarrow k$\label{lnp:assign}\;
+    \ForEach{box $B$ hosting $P^{*}$}{
+        insert $b_{P^{*}}$ into $A_B$\label{lnp:antichain}
+    }
+    \ForEach{unpeeled pattern $Q$ sharing a box with $P^{*}$}{
+        $sup(Q) \leftarrow \sum_{B}\mathrm{Coef}_s(B, b_Q, A_B)$\label{lnp:update}
+    }
+    mark $P^{*}$ peeled\label{lnp:done}\;
+}
+\Return{$\kappa_s$}
+\end{algorithm}
+
+\peelcell{} initializes every support by the closed form (Line~\ref{lnp:init}), then peels patterns exactly as Algorithm~\ref{alg:explicit} peels cliques: extract a minimum (Line~\ref{lnp:min}), assign the level (Line~\ref{lnp:assign}), record the removal in each hosting box (Line~\ref{lnp:antichain}), and refresh the neighbors' supports through Lemma~\ref{lem:residual} (Line~\ref{lnp:update}).
+%
+No witness clique appears anywhere: Lines~\ref{lnp:init} and \ref{lnp:update} manipulate coefficients, and Line~\ref{lnp:antichain} manipulates compositions.
+
+\begin{theorem}[Orbit Peel]\label{thm:orbit}
+Algorithm~\ref{alg:peelcell} outputs $\kappa_s(P)=\kappa_s(R)$ for every pattern $P$ and every instance $R$ of $P$.
+\end{theorem}
+
+\begin{proof}
+The removed set is always a union of whole patterns, hence invariant under every within-class automorphism of Corollary~\ref{cor:pattern}.
+%
+Such automorphisms map surviving witnesses to surviving witnesses, so at every step all instances of one pattern have equal surviving support, and Lemma~\ref{lem:residual} computes it.
+%
+The output of the explicit peel does not depend on which minimum-support clique is removed first \cite{firstNucleus}, so we may run Algorithm~\ref{alg:explicit} exhausting one minimum pattern at a time.
+%
+While an orbit is being exhausted, internal removals only lower the supports of its remaining instances, which stay minimal and receive the same level $k$ by Line~\ref{ln:assign} of Algorithm~\ref{alg:explicit}.
+%
+Between removals of other patterns, supports evolve exactly as $A_B$ records.
+%
+Hence Algorithm~\ref{alg:peelcell} simulates a valid run of Algorithm~\ref{alg:explicit} and assigns each pattern the common core number of its instances.
+\end{proof}
+
+\begin{example}\label{exa:peel}
+Consider the cell $(3,4)$ of the graph $G$ in Figure~\ref{fig:example}.
+%
+Line~\ref{lnp:init} gives $sup(\{A^2B\})=3$ on $B_1$, $sup(\{C^3\})=2+1=3$ across $B_2$ and $B_3$, and $sup(\{C^2D\})=1$.
+%
+The first extraction removes $\{C^2D\}$ at level $1$, inserting $(2,1)$ into $A_{B_3}$.
+%
+The refresh of $\{C^3\}$ now filters every $y\ge(3,0)$ with $y\ge(2,1)$ out of $B_3$, so its support drops to $2$: the removal cascaded through a shared witness, and Equation~\eqref{eq:coef} accounted for it without listing that witness.
+%
+Two further rounds remove the patterns at levels $2$ and $3$, reproducing the values of Example~\ref{exa:running} for all $33$ triangles at once.
+\end{example}
+
+\sstitle{Complexity.}
+Line~\ref{lnp:init} costs $O(|C_B|\cdot s)$ per hosted pattern and box.
+%
+Each removal inserts one composition per hosting box and refreshes only the patterns sharing a box, by crediting the compositions that die (Appendix~\ref{app:delta}).
+%
+The peel therefore scales with patterns and their box incidences, never with cliques.
+%
+On \pkustk{} at $(3,4)$, \peelcell{} peels $2.2$ million patterns in place of $45.2$ million scored cliques.
+%
+At $r=5$ the gap widens to $26.8$ million against $2.28$ billion.
+
+One cell is now affordable.
+%
+The next section makes one cell pay for the entire plane.
