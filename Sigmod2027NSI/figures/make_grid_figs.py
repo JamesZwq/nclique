@@ -73,7 +73,9 @@ BUDGET_S = 1800.0
 BUDGET_MB = 300*1024.0
 
 def panelize(metric):
-    fig, axes = plt.subplots(2, 4, figsize=(9.6, 3.4), sharey=False)
+    # figure* renders at \textwidth (~7.0 in); draw at that size so every glyph
+    # keeps its true point size (skill rule: no element below 7 pt after rendering).
+    fig, axes = plt.subplots(2, 4, figsize=(7.05, 3.0), sharey=False)
     x = range(9); w = 0.38
     for ax, key in zip(axes.flat, ORDER):
         g = G[key]
@@ -90,25 +92,26 @@ def panelize(metric):
             else:
                 glyph = r"$\times$" if kind == "x" else r"$-$"
                 ax.text(i - w/2, top*0.72, glyph, color="red", ha="center",
-                        va="center", fontsize=8, fontweight="bold", zorder=4)
+                        va="center", fontsize=9, fontweight="bold", zorder=4)
             ax.bar(i + w/2, ov, w, color="black", edgecolor="black", linewidth=0.4, zorder=3)
         ax.set_yscale("log")
         if metric == "time":
             ax.set_ylim(0.008, 4000); ax.axhline(BUDGET_S, lw=0.5, ls=":", color="gray")
         else:
             ax.set_ylim(20, 500000); ax.axhline(BUDGET_MB, lw=0.5, ls=":", color="gray")
-        ax.set_xticks(list(x)); ax.set_xticklabels(CELLS, fontsize=5.4, rotation=60)
-        ax.set_title(key, fontsize=8, fontweight="bold", pad=2)
-        ax.tick_params(axis="y", labelsize=6); ax.spines[["top","right"]].set_visible(False)
+        # compact 2-digit cell labels ("34" = cell (3,4)) fit unrotated at 7 pt
+        ax.set_xticks(list(x)); ax.set_xticklabels([c.replace(",","") for c in CELLS], fontsize=7)
+        ax.set_title(key, fontsize=8.5, fontweight="bold", pad=2)
+        ax.tick_params(axis="y", labelsize=7); ax.spines[["top","right"]].set_visible(False)
     for ax in axes[:,0]:
-        ax.set_ylabel("time (s)" if metric=="time" else "memory (MB)", fontsize=7)
+        ax.set_ylabel("time (s)" if metric=="time" else "memory (MB)", fontsize=8)
     # shared legend strip
     import matplotlib.patches as mp
     handles=[mp.Patch(facecolor="white",edgecolor="black",label="CND (per cell)"),
              mp.Patch(facecolor="black",label="NSI build (marginal per cell)")]
-    fig.legend(handles=handles, ncol=2, loc="upper center", fontsize=7.5,
-               frameon=False, bbox_to_anchor=(0.5, 1.02))
-    fig.tight_layout(rect=(0,0,1,0.95), h_pad=0.9, w_pad=0.7)
+    fig.legend(handles=handles, ncol=2, loc="upper center", fontsize=8,
+               frameon=False, bbox_to_anchor=(0.5, 1.03))
+    fig.tight_layout(rect=(0,0,1,0.94), h_pad=0.8, w_pad=0.6)
     out = f"fig_grid_{metric}.pdf"
     fig.savefig(out); print("wrote", out)
 
