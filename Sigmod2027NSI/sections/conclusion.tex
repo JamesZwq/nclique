@@ -1,2 +1,12 @@
 \section{Conclusion}\label{sec:conclusion}
-% TODO: draft per SigmodPlus.md 239 (contract below) under the paper-architect skill.
+In this paper, we presented \nsi, the first index that answers every cell of a bounded $(r,s)$-nucleus plane from one structure.
+%
+The clique quotient collapses scored cliques into patterns, coefficients replace witness enumeration, and two transfer certificates reduce the whole plane to a single peeled cell.
+%
+The certified part of the plane is reconstructed at query time, so the index stores the quotient and the residue and nothing else.
+%
+On real graphs the index is up to seven orders of magnitude smaller than the explicit table it replaces, and it answers point queries in $74$ nanoseconds.
+%
+Its builder outperforms the state of the art by up to $742\times$ in time and $226\times$ in memory on matched cells.
+%
+One structure answers every cell of the plane.

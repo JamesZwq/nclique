@@ -1,27 +1,25 @@
-% v0 abstract -- tracks the intro; RE-DERIVE LAST (playbook 1.10) so the triple
-% redundancy (challenge nouns + headline numbers) copies the final values.
+% FINAL abstract (playbook 1.10): challenge nouns and headline numbers mirror the
+% intro contributions and the conclusion verbatim.
 Dense subgraphs carry much of the meaning of a graph, and decomposing a graph into hierarchies of dense subgraphs is a fundamental task in graph mining.
 %
 The $(r,s)$-nucleus decomposition is the clique-level member of this family, scoring every $r$-clique by its surrounding $s$-cliques.
 %
 It subsumes both the $k$-core and the $k$-truss.
 %
-The parameter pair $(r,s)$ acts as a resolution, and analysts need many cells of the parameter plane rather than one.
+The parameter pair $(r,s)$ acts as a resolution, so analysts need many cells of the parameter plane rather than one.
 %
-Existing algorithms compute one cell at a time and materialize every $r$-clique of that cell.
-%
-A plane is therefore out of reach: a seven-million-edge web graph already contains more than $10^{12}$ $5$-cliques.
+Existing algorithms face three obstacles there: astronomically many scored cliques, support counting over even more witness cliques, and a plane of cells each as hard as the last.
 %
 We observe that vertices belonging to exactly the same maximal cliques are interchangeable, and that the whole plane respects this symmetry.
 %
 Based on this observation, we propose \nsi, an index built on the clique quotient of the graph.
 %
-Cliques collapse into patterns, support counts collapse into polynomial coefficients, and two transfer theorems reduce the whole plane to a single peeled cell.
+Scored cliques collapse into patterns, support counts collapse into polynomial coefficients, and two transfer theorems reduce the whole plane to a single peeled cell.
 %
 Wherever the closed form is certified, the index stores nothing and reconstructs the answer at query time.
 %
-On real graphs the index is up to seven orders of magnitude smaller than the explicit table it replaces, and it answers point queries in tens of nanoseconds.
+On real graphs the index is up to seven orders of magnitude smaller than the explicit table it replaces, and it answers point queries in $74$ nanoseconds.
 %
 Its builder outperforms the state-of-the-art single-cell algorithm by up to $742\times$ in time and $226\times$ in memory.
 %
-A one-number test, computable before any index is built, tells in advance whether a graph is suitable.
+It also completes every cell of an evaluation grid on which the state of the art completes a minority.

@@ -149,9 +149,9 @@ Our key contributions are summarized as follows.
 \sstitle{The first index over the nucleus plane.}
 We propose \nsi{} (Section~\ref{sec:index}), the first index that answers every cell of a bounded $(r,s)$ plane from one structure.
 % TODO(thm-ref): upgrade the section reference to the reconstruction lemma once labeled.
-On \webit, the explicit table behind the same queries would occupy $46.2$\,TB, and it cannot be built at all for $r\ge4$.
+On \webit, the explicit table behind the same queries would occupy $50.8$\,TB, and it cannot be built at all for $r\ge4$.
 %
-\nsi{} occupies $1.66$\,MB and answers a point query in $74$ nanoseconds.
+\nsi{} occupies $1.70$\,MB and answers a point query in $74$ nanoseconds.
 %
 \sstitle{A quotient framework with certified transfer.}
 We develop the clique quotient and its peel (Sections~\ref{sec:quotient}--\ref{sec:plane}): interchangeability, coefficient counting, and two transfer certificates that reduce the whole plane to one peeled cell.
@@ -168,7 +168,7 @@ On \pokec{} the quotient compresses by a factor of only $1.001$, and the test re
 \sstitle{Comprehensive Experimental Evaluation.}
 We evaluate on eight graphs from four domains, all with at least a million edges (Section~\ref{sec:experiments}).
 %
-Against \cnd{} run serially on the same machine, our builder wins every cell of the evaluation grid, by up to $742\times$ in time and $226\times$ in memory.
+Against \cnd{} run serially on the same machine, our builder wins all $42$ grid cells that \cnd{} finishes, by up to $5{,}806\times$, and completes the other $30$ within seconds.
 %
-It also completes the deep cells on which \cnd{} exceeds every budget.
+On a matched standalone cell it is $742\times$ faster and $226\times$ leaner.
 % TODO(avg): add the average speedup once multi-trial medians (E2) land.

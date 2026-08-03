@@ -6,6 +6,7 @@ Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
 Database file #1: references.bib
+Warning--I didn't find a database entry for "distributed_k-core"
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated wiz_functions (elt_size=4) to 9000 items from 6000.
 Reallocated glb_str_ptr (elt_size=4) to 20 items from 10.
@@ -18,48 +19,53 @@ Warning--empty address in tsourakakis2013finding
 Warning--page numbers missing in both pages and numpages fields in tsourakakis2013finding
 Warning--no journal in jiang2016catching
 Warning--page numbers missing in both pages and numpages fields in jiang2016catching
+Warning--empty publisher in nr
+Warning--empty address in nr
+Warning--page numbers missing in both pages and numpages fields in nr
 Warning--empty booktitle in huang2014graph
 Warning--can't use both volume and number fields in huang2014graph
 Warning--page numbers missing in both pages and numpages fields in huang2014graph
-You've used 23 entries,
+Warning--empty publisher in zhang2023efficient
+Warning--empty address in zhang2023efficient
+You've used 34 entries,
             6273 wiz_defined-function locations,
-            1733 strings with 24140 characters,
-and the built_in function-call counts, 28151 in all, are:
-= -- 3892
-> -- 821
+            1818 strings with 26398 characters,
+and the built_in function-call counts, 40863 in all, are:
+= -- 5758
+> -- 1178
 < -- 0
-+ -- 280
-- -- 355
-* -- 1965
-:= -- 2601
-add.period$ -- 118
-call.type$ -- 23
-change.case$ -- 166
-chr.to.int$ -- 23
-cite$ -- 32
-duplicate$ -- 2446
-empty$ -- 1655
-format.name$ -- 371
-if$ -- 6991
++ -- 404
+- -- 480
+* -- 2832
+:= -- 3715
+add.period$ -- 170
+call.type$ -- 34
+change.case$ -- 243
+chr.to.int$ -- 34
+cite$ -- 48
+duplicate$ -- 3559
+empty$ -- 2402
+format.name$ -- 540
+if$ -- 10253
 int.to.chr$ -- 2
 int.to.str$ -- 1
-missing$ -- 88
-newline$ -- 257
-num.names$ -- 163
-pop$ -- 835
+missing$ -- 125
+newline$ -- 368
+num.names$ -- 240
+pop$ -- 1211
 preamble$ -- 1
-purify$ -- 350
+purify$ -- 513
 quote$ -- 0
-skip$ -- 975
+skip$ -- 1441
 stack$ -- 0
-substring$ -- 2114
-swap$ -- 338
+substring$ -- 3004
+swap$ -- 496
 text.length$ -- 114
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 493
-warning$ -- 9
-while$ -- 145
+type$ -- 725
+warning$ -- 14
+while$ -- 203
 width$ -- 0
-write$ -- 527
-(There were 9 warnings)
+write$ -- 755
+(There were 15 warnings)

@@ -51,10 +51,12 @@ residue where it fails, and stores only the quotient + residue (P10: unavoidable
 | ours vs CND, web-it (3,4) | 742x time / 226x memory | §216 |
 | CND on web-it grid (1800s/300GB) | 0/9 cells | §219 |
 | grid vs serial CND, 8 graphs/4 domains | no losing cell | §218–219 |
-| explicit plane table, web-it | 46.2 TB; unbuildable r≥4 | §233 |
-| NSI size, web-it whole plane | 1.66 MB (NSI4) | §234 |
+| explicit plane table, web-it | **50.8 TB decimal** (log prints MiB-as-MB: 46.2 TiB); unbuildable r≥4 | §233 |
+| NSI size, web-it whole plane | **1.70 MB decimal** (1,700,530 B; earlier "1.66 MB" was a units slip) | §234 |
+| UNIT RULE | the engine logs print MiB/GiB as "MB/GB"; the PAPER uses decimal SI everywhere -- convert at transcription | this file |
 | point query | 74 ns (web-it r=3 kernel) | §233 |
-| archive/index size ratio range | 14x – 29,896,946x | §233–234 |
+| archive/index size ratio range | 14x – 3.0e7 (ratios from BYTES, unit-safe) | §233–234 |
+| grid protocol split | standalone matched cell: 742x/226x (web-it (3,4)); amortized grid: 42/42 won, up to 5,806x (DB (5,8)), 30/72 CND-infeasible | §216/§218–219 |
 | certificates ablation | no-T3 22.6x (cells 67–5406x); no-T5 2.4–3.0x; answers identical | §236 |
 | index bytes that are the quotient | 70.5–99.9% | §234 corrected |
 | residue bytes | 0.0–0.1% | §221 |

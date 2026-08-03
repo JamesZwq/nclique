@@ -1,2 +1,16 @@
 \section{Related Work}\label{sec:related}
-% TODO: draft per SigmodPlus.md 239 (contract below) under the paper-architect skill.
+\stitle{Cohesive decompositions.}
+The $k$-core \cite{seidman1983network,batagelj2011fast} and the $k$-truss \cite{cohen2008trusses,wang2012truss,huang2014truss} are the classical peel-based decompositions, and the $(r,s)$-nucleus generalizes both to cliques \cite{firstNucleus}.
+%
+The work \cite{sotaPrveHierarchy} accelerates nucleus decomposition and its hierarchy, \cite{fastHierarchy,sotaHierarchy} construct the nucleus hierarchy efficiently, and \cite{LocalNuclear} computes nuclei locally; all of them, like \cnd~\cite{NuclearCD}, compute one cell at a time over explicit scored cliques, whereas we answer a bounded plane of cells from one structure.
+%
+Parallel and distributed core computation \cite{montresor2013distributed,distributed_k-core} scales single cells rather than removing their per-object cost.
+
+\stitle{Clique counting and indexes.}
+Pivot-based clique counting \cite{Pivoter,BronKerbosch,bitsetClique} counts cliques without listing them, and \cnd{} brought aggregated counting into nucleus decomposition \cite{NuclearCD}; our boxes lift the same pivoting from vertices to classes, so counting serves patterns instead of single cliques.
+%
+Index structures for cohesive search, such as the truss-equivalence index \cite{akbas2017truss} and core-maintenance structures \cite{zhang2023efficient}, support one fixed decomposition; \nsi{} instead stores the quotient from which a whole plane of decompositions is reconstructed.
+%
+Treating vertices with identical neighborhoods as one object is classical in graph compression; our classes coarsen by maximal-clique membership, which is exactly the granularity the nucleus values respect.
+% TODO(P6): novelty reading against Burkhardt-Faber 1806.05523, Frohmader flag
+% Kruskal-Katona, and ICDE'21 2011.00749 before submission.

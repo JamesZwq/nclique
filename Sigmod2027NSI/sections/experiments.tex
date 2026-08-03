@@ -1,12 +1,225 @@
 \section{Experiments}\label{sec:experiments}
-% TODO: draft per SigmodPlus.md 239 (contract below) under the paper-architect skill.
-% CONTRACT (239): four \stitle setup blocks then \expsection blocks.
-% Exp-1 build vs serial CND grid (no losing cell; 742x/226x web-it (3,4)).
-% Exp-2 whole-plane build on the roster (+ phase split).
-% Exp-3 index size vs archive (14x-29.9Mx; unbuildable cells) and vs full plane.
-% Exp-4 query latency kernel vs archive probe (74ns; com-amazon cell conceded and
-%       explained by design: its archive fits in cache and needs no index).
-% Exp-5 ablations: certificates (22.6x / 2.4-3.0x), NOCERT variants.
-% Exp-6 applicability: W prediction table incl. predicted-negative social.
-% Case studies continue Exp-N numbering: multi-resolution exploration demo.
-% Lead figure: the three-panel feasibility/size/latency figure (from 237).
+% Drafted per SigmodPlus.md 239. All numbers single-run scout protocol (E2 medians
+% pending; refresh per ledger before submission). Case studies: TODO, continue Exp-N.
+In this section, we evaluate the builder against the state of the art, and the index against the only baseline that answers the same queries.
+
+\stitle{Hardware.}
+All experiments run on a server with two Intel Xeon Gold 6342 processors and $503$\,GB of memory, on a single thread\footnote{Code will be released upon publication.}.
+%
+All algorithms are implemented in C++ and compiled with \textsf{-O3}.
+
+\stitle{Algorithms.}
+\cnd{} is the published state of the art \cite{NuclearCD}, run from its authors' implementation one cell at a time.
+%
+\buildalg{} is our plane builder (Algorithm~\ref{alg:build}); \queryalg{} is the index query (Algorithm~\ref{alg:query}).
+%
+The query baseline is the \emph{archive}: one sorted record per scored clique holding its values across the row, probed by binary search.
+%
+Every archive choice favors the archive: four-byte keys and values, rows counted at their exact number, and a workload that always hits.
+
+\begin{table}[t]
+\centering
+\caption{Datasets: four domains, eight graphs.}\label{tab:datasets}
+\small
+\begin{tabular}{@{}llrr@{}}
+\toprule
+ & graph & $|V|$ & $|E|$\\
+\midrule
+web & \textsf{web-it-2004} (WI) & $509{,}338$ & $7{,}178{,}413$\\
+web & \textsf{web-Google} (WG) & $875{,}713$ & $5{,}105{,}039$\\
+collaboration & \textsf{com-dblp} (DB) & $317{,}080$ & $1{,}049{,}866$\\
+co-purchase & \textsf{com-amazon} (AZ) & $334{,}863$ & $925{,}872$\\
+mesh & \textsf{nasasrb} (NS) & $54{,}870$ & $1{,}311{,}227$\\
+mesh & \textsf{pkustk11} (PK1) & $87{,}804$ & $2{,}565{,}054$\\
+mesh & \textsf{pkustk13} (PK3) & $94{,}893$ & $3{,}260{,}967$\\
+mesh & \textsf{pwtk} (PW) & $217{,}918$ & $5{,}708{,}253$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\stitle{Datasets.}
+Table~\ref{tab:datasets} lists the eight graphs: two web crawls, a collaboration network, a co-purchase network, and four finite-element meshes \cite{nr,Stanford}.
+% TODO(dataset-cites): verify the exact source keys for each graph before submission.
+The indexed plane is $r\in[3,5]$, $s\le8$ throughout; the grid experiments use the nine cells $s\le r+3$ of that plane.
+
+\stitle{Metrics.}
+Time is end-to-end and memory is the peak of the process, both of a single run on an idle machine.
+%
+\cnd{} receives a $1{,}800$-second budget and a $300$\,GB cap per cell.
+%
+A red $\times$ marks a cell over the budget, and a red $-$ marks a memory kill.
+%
+\buildalg{} computes a whole row per sweep, so a cell is charged its marginal time and the row's peak memory.
+%
+Times below the harness resolution of $0.01$ seconds are drawn at that resolution.
+
+\expsection{Build time against the state of the art}
+Figure~\ref{fig:gridtime} shows build time per grid cell on all eight graphs.
+%
+The y-axis is time in seconds on a log scale, and the x-axis lists the cells of each row.
+%
+\cnd{} completes $42$ of the $72$ cells; \buildalg{} completes all $72$.
+%
+It is faster on every one of the $42$.
+%
+The closest cell is WG at $(3,4)$ with $1.4\times$; the widest is DB at $(5,8)$ with $5{,}806\times$.
+%
+The gap widens along both parameters, exactly as the certificates predict.
+%
+Within a row, absorption turns later cells into arithmetic: on DB, $43.31$ seconds against $0.08$ at $(4,6)$.
+%
+Across rows, the diagonal starts each boundary warm.
+%
+On WI, \cnd{} finishes none of the nine cells, while our whole rows take $0.81$, $1.60$, and $3.18$ seconds.
+%
+On a single matched cell computed standalone, WI at $(3,4)$, \cnd{} needs $5{,}581$ seconds and $101$\,GB against our $7.5$ seconds and $0.45$\,GB.
+%
+That is $742\times$ in time and $226\times$ in memory.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_grid_time.pdf}
+\caption{Build time per grid cell (log scale).}
+\label{fig:gridtime}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_grid_memory.pdf}
+\caption{Build memory per grid cell (log scale).}
+\label{fig:gridmem}
+\end{figure*}
+
+\expsection{Build memory against the state of the art}
+Figure~\ref{fig:gridmem} shows peak memory for the same cells.
+%
+\cnd's memory follows its scored-clique count and crosses $93$\,GB already on the one-million-edge DB at row $5$.
+%
+Two mesh cells and one WI cell die at the $300$\,GB cap.
+%
+Our peak follows the pattern count instead and stays between $36$\,MB and $57$\,GB across all $72$ cells.
+%
+The one graph where \cnd{} is leaner at $r=3$, WG, is the graph with the weakest quotient of the eight; its rows still win on time.
+
+\expsection{Building the whole plane}
+Table~\ref{tab:plane} reports the end-to-end cost of \buildalg{} for the full plane $r\in[3,5]$, $s\le8$.
+%
+Every graph builds in minutes, six of eight in under two, on one thread.
+%
+For scale, the one standalone \cnd{} cell of Exp-1 costs $207\times$ the whole WI plane.
+
+\begin{table}[t]
+\centering
+\caption{Whole-plane build: time and peak memory.}\label{tab:plane}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+graph & time (s) & memory (GB)\\
+\midrule
+WI & $27.0$ & $1.7$\\
+WG & $599.1$ & $25.8$\\
+DB & $66.5$ & $5.2$\\
+AZ & $3.6$ & $0.6$\\
+NS & $87.8$ & $8.8$\\
+PK1 & $12.7$ & $1.7$\\
+PK3 & $217.1$ & $25.9$\\
+PW & $70.6$ & $7.3$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\expsection{Index size against the archive}
+Table~\ref{tab:size} compares \nsi{} against the archive over the same plane.
+%
+The archive column counts its exact rows at four bytes per key and cell; the \nsi{} column is the file as written.
+%
+On WI the archive would occupy $50.8$\,TB across $1.59$ trillion rows, and for $r\ge4$ it cannot be materialized at all; \nsi{} answers the same queries from $1.70$\,MB.
+%
+The ratio tracks the quotient: it is seven orders of magnitude on WI and smallest on AZ, the graph whose archive is itself only $20.7$\,MB.
+
+\begin{table}[t]
+\centering
+\caption{Size of the archive and of \nsi{} for the whole plane.}\label{tab:size}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+graph & archive & \nsi & ratio\\
+\midrule
+WI & $50.8$\,TB & $1.70$\,MB & $3.0\times10^{7}$\\
+PK3 & $86.4$\,GB & $0.51$\,MB & $1.7\times10^{5}$\\
+PW & $58.5$\,GB & $1.21$\,MB & $4.8\times10^{4}$\\
+PK1 & $28.2$\,GB & $0.32$\,MB & $8.8\times10^{4}$\\
+NS & $9.9$\,GB & $0.51$\,MB & $1.9\times10^{4}$\\
+DB & $8.5$\,GB & $1.65$\,MB & $5.1\times10^{3}$\\
+WG & $4.9$\,GB & $8.81$\,MB & $5.5\times10^{2}$\\
+AZ & $21.7$\,MB & $1.53$\,MB & $14$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\expsection{Query latency against the archive}
+Table~\ref{tab:query} reports the median point-query latency of \queryalg{} against the archive probe, on $20{,}000$ uniformly sampled scored cliques per row.
+%
+Warm queries repeat over a resident working set; cold queries follow a cache eviction.
+%
+\queryalg{} answers in $74$ to $433$ nanoseconds warm, and it wins $20$ of the $22$ comparisons the archive can enter, by up to $12.7\times$.
+%
+On WI at $r\ge4$ the archive cannot be built, so the index is the only structure that answers at all.
+%
+The archive wins only on AZ at $r\ge4$: its $22$\,MB fit in cache, and a graph whose archive fits in cache does not need an index.
+
+\begin{table}[t]
+\centering
+\caption{Warm point-query latency (ns) and speedups over the archive probe.}\label{tab:query}
+\tiny
+\begin{tabular}{@{}lrrrrrrrrr@{}}
+\toprule
+ & \multicolumn{3}{c}{$r=3$} & \multicolumn{3}{c}{$r=4$} & \multicolumn{3}{c}{$r=5$}\\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}
+graph & \nsi & arch. & speedup & \nsi & arch. & speedup & \nsi & arch. & speedup\\
+\midrule
+WI & $79$ & $942$ & $11.9\times$ & $74$ & --- & --- & $80$ & --- & ---\\
+WG & $354$ & $632$ & $1.8\times$ & $401$ & $820$ & $2.0\times$ & $414$ & $1016$ & $2.5\times$\\
+DB & $173$ & $397$ & $2.3\times$ & $132$ & $597$ & $4.5\times$ & $156$ & $1023$ & $6.6\times$\\
+AZ & $376$ & $490$ & $1.3\times$ & $433$ & $388$ & $0.9\times$ & $408$ & $226$ & $0.6\times$\\
+NS & $199$ & $632$ & $3.2\times$ & $354$ & $879$ & $2.5\times$ & $401$ & $1160$ & $2.9\times$\\
+PK1 & $163$ & $708$ & $4.3\times$ & $292$ & $1031$ & $3.5\times$ & $344$ & $1372$ & $4.0\times$\\
+PK3 & $282$ & $798$ & $2.8\times$ & $221$ & $1207$ & $5.5\times$ & $426$ & $1582$ & $3.7\times$\\
+PW & $177$ & $829$ & $4.7\times$ & $185$ & $1143$ & $6.2\times$ & $204$ & $2598$ & $12.7\times$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\expsection{The certificates, ablated}
+Table~\ref{tab:ablation} disables each transfer theorem in turn and rebuilds the plane.
+%
+Without absorption, every cell above a boundary is peeled in full: NS slows by $22.6\times$, and PK3 exceeds a $5{,}400$-second budget against its $204$-second default.
+%
+Without the diagonal, every boundary is peeled cold: $2.4\times$ on NS and $3.0\times$ on PK3, with memory more than doubling.
+%
+The completed ablations return the same core-number distribution as the default build.
+
+\begin{table}[t]
+\centering
+\caption{Whole-plane build time under ablations.}\label{tab:ablation}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+graph & default & no diagonal & no absorption\\
+\midrule
+NS & $83.7$\,s & $197.9$\,s\ \ ($2.4\times$) & $1{,}894.6$\,s\ \ ($22.6\times$)\\
+PK3 & $204.5$\,s & $615.8$\,s\ \ ($3.0\times$) & $>5{,}400$\,s\ \ ($>26\times$)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\expsection{Applicability, decided in advance}
+The build test of Section~\ref{sec:index} was computed for every candidate graph before any build.
+%
+It accepted all eight graphs of Table~\ref{tab:datasets}, and it rejected the social networks: \pokec{} at a ratio of $1.001$ and \textsf{email-Eu-core} at $1.002$.
+%
+In those graphs the vertices are pairwise distinguishable, so the quotient is the graph itself.
+%
+The rejections cost the front end only, and no index was built to learn them.
+% TODO(case-studies): two case studies continue the Exp-N numbering (multi-resolution
+% exploration on a named graph; the nuclei retrieval demo). Pending.
