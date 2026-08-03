@@ -68,6 +68,14 @@ under the index-first metrics (build feasibility, index size, query). Consequenc
       Write TO that section; do not re-derive the story.
 - [ ] P6 novelty reading: Burkhardt-Faber 1806.05523, Frohmader flag-KK, ICDE'21 2011.00749
 - [ ] P7 P10 gadget: write out formally OR demote to remark (no "sketch" in contributions)
+- [x] **FULL DRAFT COMPLETE (2026-08-03, 11 pages)**: sections 1-10 + appendix drafted, all
+      gates green (build/refs/overfull/sentence detector). Remaining to submission:
+      * refresh every single-run number with E2 medians, then re-run the ledger sweep
+      * two case studies (continue Exp-N); P6 novelty reading; P10 formalize-or-stay-out
+      * prose-cadence + teacher_vocab_diff register pass over every section
+      * appendix: box construction + delta rule are stubs; write them out
+      * dataset source citations (TODO in experiments.tex); code-release footnote
+      * IELTS-6 cold-reader audit per section; late-stage-audit.md sweep; title bikeshed
 - [x] P8 **Sigmod2027NSI/ created and building**: acmart+bst+bib from Sigmod2027Nuclear, house
       macros reused, main.tex + 10 section files, frozen ledger.md, Fig 1 generated from the
       verified running example. Abstract v0 + FULL Introduction drafted (detector gate: intro avg
