@@ -9615,3 +9615,51 @@ runs the sentence-length detector as a gate before it counts as done.
 RECONCILIATION: plain-writing-rulebook A1 says cap ~25; sentence-length-detector says 29-35
 borderline. Under the user's directive the stricter reading wins: 10-22 target, 28 cap, the two
 licensed exceptions only.
+
+## 239. THE CONCRETE PRE-WRITING SKELETON: 4 pseudocode blocks, 10 sections, per-technique presentation forms (2026-08-03)
+(Presented to the user and approved; recorded here as the binding skeleton for P2. Corrects the
+previous message's claim that this section already existed -- it did not until now.)
+
+### PSEUDOCODE BUDGET: exactly 4 algorithms
+| # | name | ~lines | section | why it exists |
+|---|---|---|---|---|
+| Alg 1 | CND (baseline skeleton) | 10 | S3 Existing Approach | fair-SOTA section; the reader sees WHERE it explodes (enumerate all r-cliques) |
+| Alg 2 | PeelCell (peel one cell in the quotient) | 15 | S5 | "peel patterns, not cliques"; supInit by coefficient; multiplicity-weighted decrements |
+| Alg 3 | Build (whole-plane master loop) | 18 | S6 | MCE -> quotient -> per r: patterns -> T5 certify -> PeelCell only if residue -> T3 absorb -> emit |
+| Alg 4 | Query | 4 | S7 | deliberately tiny; "the rest of this paper proves why these four lines are legal" |
+NOT pseudocode: support counting (displayed equation + correctness lemma; DP in appendix),
+class-SCT construction, witness-delta internals, mergeable regions (a Remark), W (Definition +
+prediction table), NSI4 encoding, S228 ordering.
+
+### SECTION SKELETON (10 sections; the question chain of S237)
+S1 Intro (Fig 1 example + spine + roadmap + 4 contributions) | S2 Preliminaries | S3 Existing
+Approach and its wall (Alg 1; the object-count table) | S4 The Clique Quotient (class/pattern defs,
+Interchangeability Thm, compression law; running example enters) | S5 Peeling in the Quotient
+(coefficient equation + deletion lemma + Alg 2) | S6 From One Cell to the Plane (T3 Thm, T5 Thm,
+Alg 3; E7 numbers 22.6x / 2.4-3.0x; 12 cells -> 1 peel) | S7 The Index and Its Query
+(reconstruction Lemma, validation Corollary, P10, Alg 4, W) | S8 Experiments | S9 Related | S10
+Conclusion. Maps to the explainer animation acts: S4=acts2-5, S5=act6, S6=acts7-8, S7=acts9-11.
+NOTE (teacher override of S237's Fig-1 idea): Fig 1 is the RUNNING EXAMPLE with the answer overlaid
+(teacher convention; algorithmic paper, no speedup teaser in S1). The three-panel
+feasibility/size/latency figure moves to S8 as the experiments' lead figure.
+
+### PER-TECHNIQUE PRESENTATION (form + drafted intuition sentence + attached number)
+class -> Definition; "Two vertices that belong to exactly the same maximal cliques are
+indistinguishable to every cell of the plane."; #classes <= n, roster n/2.4-n/5.3.
+pattern -> Definition; "an r-clique is described by how many vertices it takes from each class, not
+which vertices"; 33->7 example, 84.9x-1.17Mx real.
+support=coefficient -> Equation+Lemma; "the number of s-cliques containing a pattern is a
+coefficient of one polynomial"; 1.02M boxes vs 2.28B s-cliques.
+pattern peel -> Alg 2 + walkthrough; "the peel runs unchanged, except its unit is a pattern and
+every decrement carries a multiplicity"; peel 2.2M not 45.2M.
+T3 -> Theorem (intuition first, proof <=8 sentences, full proof appendix); "once a pattern's score
+falls to its clique floor, no smaller structure supports it, and the floor persists"; 22.6x/67-5406x.
+T5 -> Theorem; "a pattern's boundary score at r is already determined by the boundary scores of its
+faces at r-1"; 2.4-3.0x, guards each row's first cell.
+reconstruction -> Lemma + 2 Corollaries; "the certified part needs no storage: cP is recomputed from
+the quotient at query time"; index 70.5-99.9% quotient; 0 false positives / 865k probes.
+P10 -> Theorem IF formalizable during writing, else Remark and contributions say "minimal in kind"
+(never "sketch"); residue 0.0-0.1% bytes.
+W -> Definition + prediction table; "whether the quotient compresses is known before anything is
+built"; soc-pokec 1.001x predicted-negative confirmed.
+Case study: nuclei retrieval demo goes to S8 as a case study (teacher has a CaseStudy section).
