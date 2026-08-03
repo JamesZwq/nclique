@@ -9663,3 +9663,28 @@ P10 -> Theorem IF formalizable during writing, else Remark and contributions say
 W -> Definition + prediction table; "whether the quotient compresses is known before anything is
 built"; soc-pokec 1.001x predicted-negative confirmed.
 Case study: nuclei retrieval demo goes to S8 as a case study (teacher has a CaseStudy section).
+
+## 240. FULL PAPER DRAFT COMPLETE (2026-08-03, one day, 11 pages)
+Sigmod2027NSI/ at commit b443fdc: sections 1-10 + appendix, 4 algorithms, 7 theorems/lemmas with
+proofs (<=8 sentences each; Shadow Bound proof in the appendix), 8 tables, 3 figures (running
+example + the two 8-panel grid figures generated from the authoritative scout logs), Exp-1..7.
+Every section passed: latexmk clean, pdftotext '??' == 0, overfull == 0, sentence detector
+(target 10-22, cap 28, licensed exceptions only), proofs <= 8 sentences.
+
+### Corrections that came OUT of the writing (writing as an audit)
+1. **Units**: the engine logs print MiB/GiB as "MB/GB". Every size the project has been quoting is
+   binary: "46.2 TB" is really 46.2 TiB = **50.8 TB decimal**; "1.66 MB" was additionally a slip for
+   1,700,530 B = **1.70 MB**. The paper now uses decimal SI throughout; the ledger carries the rule.
+2. **Protocol split**: "742x/226x" (standalone matched cell, web-it (3,4)) had been conflated with
+   the amortized grid claim. The grid's own numbers: 42/72 cells CND-feasible, all 42 won, 1.4x to
+   **5,806x** (com-dblp (5,8)), the other 30 completed by us in seconds.
+3. Query comparisons: index wins **20 of 22** (not 21) -- com-amazon r=4 AND r=5 go to the archive,
+   both explained by its 22 MB cache-resident size.
+4. pkustk13 no-absorption ablation: exceeded the 5,400 s budget (>26x vs 204.5 s default); the
+   earlier "22.6x" is nasasrb's completed number. E7 is DONE (both graphs, both ablations).
+5. com-dblp (4,6) is 43.31 s not 43.61 (transcription); "37x" for plane-vs-cell was wrong, it is 207x.
+
+### What the draft still owes (mirrors TODO)
+E2 medians -> requote everything; case studies; P6 novelty reading; P10 formalize or stay out;
+appendix stubs (box construction, delta rule); dataset citations; cadence/register pass;
+cold-reader audit; title. Venue target: SIGMOD 2027 round of 2026-10-17.
