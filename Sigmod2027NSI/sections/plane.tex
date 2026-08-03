@@ -1,5 +1,195 @@
 \section{From One Cell to the Plane}\label{sec:plane}
-% TODO: draft per SigmodPlus.md 239 (contract below) under the paper-architect skill.
-% CONTRACT (239): T3 absorption theorem (intuition sentence first); T5 diagonal
-% theorem; Alg 3 = Build (~18 lines) + walkthrough; E7 numbers (22.6x, 67-5406x per
-% cell, 2.4-3.0x) placed next to their theorems; 12 cells -> 1 peel on the example.
+% Drafted per SigmodPlus.md 239: max-min bridge, clique floor, shadow bound (proof in
+% appendix), Absorption thm, Diagonal Ceiling thm (both proved in text), Alg 3 Build,
+% E7 evidence next to each certificate, toy example (12 cells -> 1 peel).
+\peelcell{} prices one cell, but the plane contains dozens, and each is a full decomposition.
+%
+This section proves two transfer theorems: values travel along $s$ within a row, and across the boundary from one row to the next.
+%
+Together they leave a single cell to peel; every other cell of the plane follows by arithmetic.
+
+\stitle{The clique floor.}
+The proofs work with a support form of the core number, which the peel view of Section~\ref{sec:existing} suggests \cite{firstNucleus}.
+
+\begin{lemma}[Max--Min Form]\label{lem:maxmin}
+For every $r$-clique $R$, the core number $\kappa_s(R)$ equals the largest $k$ for which some family $\mathcal{S}$ of $s$-cliques covers $R$ and every $r$-clique covered by $\mathcal{S}$ lies in at least $k$ members.
+\end{lemma}
+
+\begin{proof}
+The defining family of a nucleus witnessing $\kappa_s(R)$ satisfies the condition, so the maximum is at least $\kappa_s(R)$.
+%
+Conversely, let $\mathcal{S}$ attain the maximum $k$, and let $\mathcal{S}_0$ be the members reachable from a clique through $R$ by chains of members sharing $r$ vertices.
+%
+Two members that contain a common $r$-clique share $r$ vertices, so every $r$-clique covered by $\mathcal{S}_0$ has all its containing members inside $\mathcal{S}_0$, and its support is unchanged.
+%
+Hence $\mathcal{S}_0$ is $k$-admissible and $s$-connected, and by finiteness it extends to a maximal such family.
+%
+That family defines a $k$-$(r,s)$-nucleus whose scored cliques include $R$, so $\kappa_s(R)\ge k$.
+\end{proof}
+
+\begin{lemma}[Clique Floor]\label{lem:floor}
+For every $r$-clique $R$ and every $s$,
+$\kappa_s(R)\ \ge\ \binom{\omega(R)-r}{\,s-r\,}$.
+\end{lemma}
+
+\begin{proof}
+If $\omega(R)<s$ the right side is $0$ and there is nothing to prove.
+%
+Otherwise let $K$ be a largest clique containing $R$ and let $\mathcal{S}$ be all $s$-cliques inside $K$.
+%
+Every $r$-clique covered by $\mathcal{S}$ lies in $K$ and is contained in exactly $\binom{|K|-r}{s-r}$ members, and some member contains $R$.
+%
+Lemma~\ref{lem:maxmin} gives the bound.
+\end{proof}
+
+Both $\omega$ and the floor are pattern-level quantities, since automorphisms preserve them; we write $\omega(P)$ for the shared value.
+%
+In Example~\ref{exa:running}, every computed value equals its floor: $6-3$, $5-3$, and $4-3$.
+%
+The two theorems below explain why this is the typical situation, and turn it into a certificate.
+
+\stitle{Ascending in $s$.}
+The transfer along a row rests on a shadow argument in the style of Kruskal and Katona \cite{kruskal1963,katona1968}.
+%
+For a real $x\ge a$, write $\binom{x}{a}$ for $x(x-1)\cdots(x-a+1)/a!$, and let $g_a(m)=\binom{x}{a-1}$ where $x$ solves $m=\binom{x}{a}$; this is the Lov\'asz form of the shadow function \cite{lovasz1979}.
+
+\begin{lemma}[Shadow Bound]\label{lem:shadow}
+For $s\ge r+2$ and every $r$-clique $R$,
+$\kappa_{s-1}(R)\ \ge\ g_{s-r}\bigl(\kappa_{s}(R)\bigr)$.
+\end{lemma}
+
+The proof lowers a witness family by one vertex and bounds the loss by the Kruskal--Katona theorem; it appears in Appendix~\ref{app:shadow}.
+
+\begin{theorem}[Absorption]\label{thm:absorb}
+Let $R$ be an $r$-clique and $s\ge r+2$.
+%
+If $\kappa_{s-1}(R)=\binom{\omega(R)-r}{\,s-1-r\,}$, then $\kappa_{s}(R)=\binom{\omega(R)-r}{\,s-r\,}$.
+\end{theorem}
+
+\begin{proof}
+Write $w=\omega(R)$ and $a=s-r$.
+%
+The floor gives $\kappa_s(R)\ge\binom{w-r}{a}$, and for $w<s$ both sides are $0$, so assume $w\ge s$ and suppose $\kappa_s(R)\ge\binom{w-r}{a}+1$.
+%
+Lemma~\ref{lem:shadow} then gives $\kappa_{s-1}(R)\ge g_a\bigl(\binom{w-r}{a}+1\bigr)$.
+%
+The solution $x(m)$ of $\binom{x}{a}=m$ increases strictly with $m$, and $x\mapsto\binom{x}{a-1}$ increases strictly for $x>a-1$.
+%
+At the integer point $x=w-r\ge a$ this yields $g_a\bigl(\tbinom{w-r}{a}+1\bigr)>\binom{w-r}{a-1}=\kappa_{s-1}(R)$, a contradiction.
+\end{proof}
+
+\begin{corollary}[Absorbing Chain]\label{cor:absorb}
+If $\kappa_{s}(R)$ equals its floor, then $\kappa_{s'}(R)$ equals its floor for every $s'>s$.
+\end{corollary}
+
+\begin{proof}
+The conclusion of Theorem~\ref{thm:absorb} is the hypothesis at $s+1$ with the same $\omega(R)$; induction on $s'$ finishes the proof.
+\end{proof}
+
+One integer comparison per pattern therefore certifies a whole cell from its left neighbor, and certification, once gained, is never lost.
+%
+The comparison is also what the plane's cost hinges on.
+%
+Disabling it and peeling every cell in full slows the whole build by $22.6\times$ on \nasasrb, and single cells by $67\times$ to $5{,}406\times$ (Section~\ref{sec:experiments}).
+
+\stitle{Stepping in $r$.}
+The second certificate crosses rows at their boundary cells $(r,r+1)$ and $(r+1,r+2)$.
+
+\begin{theorem}[Diagonal Ceiling]\label{thm:diag}
+For every $(r{+}1)$-clique $R^{+}$,
+$\kappa_{r+2}(R^{+})\ \le\ \min_{v\in R^{+}}\ \kappa_{r+1}\bigl(R^{+}\setminus\{v\}\bigr)\;-\;1$.
+\end{theorem}
+
+\begin{proof}
+Let $\mathcal{S}$ realize $k=\kappa_{r+2}(R^{+})$ in Lemma~\ref{lem:maxmin}, and let $\mathcal{S}'$ be all $(r{+}1)$-cliques contained in members of $\mathcal{S}$.
+%
+Let $R'$ be any $r$-clique covered by $\mathcal{S}'$, and pick a member $W=R'\cup\{u\}$ of $\mathcal{S}'$ containing it.
+%
+$W$ is covered by $\mathcal{S}$, so distinct members $S_1,\dots,S_k$ of $\mathcal{S}$ contain $W$; write $S_i=W\cup\{w_i\}$ with the $w_i$ pairwise distinct and outside $W$.
+%
+Each $R'\cup\{w_i\}$ is an $(r{+}1)$-subset of the clique $S_i$, hence a member of $\mathcal{S}'$, and these members differ from $W$ and from one another.
+%
+Therefore $R'$ lies in at least $k+1$ members of $\mathcal{S}'$.
+%
+Since $R^{+}$ lies in a member of $\mathcal{S}$, the family $\mathcal{S}'$ covers every face $R^{+}\setminus\{v\}$, and Lemma~\ref{lem:maxmin} gives $\kappa_{r+1}(R^{+}\setminus\{v\})\ge k+1$ for each.
+\end{proof}
+
+\begin{corollary}[Diagonal Certificate]\label{cor:diag}
+If $\min_{v\in R^{+}}\kappa_{r+1}(R^{+}\setminus\{v\})=\omega(R^{+})-r$, then $\kappa_{r+2}(R^{+})=\omega(R^{+})-r-1$.
+\end{corollary}
+
+\begin{proof}
+Theorem~\ref{thm:diag} bounds $\kappa_{r+2}(R^{+})$ from above by $\omega(R^{+})-r-1$, and Lemma~\ref{lem:floor} matches it from below.
+\end{proof}
+
+\begin{remark}
+The case $r=1$ of Theorem~\ref{thm:diag} is the classical relation between the trussness of an edge and the coreness of its endpoints \cite{cohen2008trusses,huang2014truss}; the theorem extends it to every consecutive pair of rows.
+\end{remark}
+
+At pattern level the faces of $P$ are the patterns $P-c$ with $b_c\ge1$, so the certificate is again one comparison per pattern.
+%
+It guards exactly the cells the absorption cannot reach, the first cell of each row.
+%
+Disabling it slows the build by $2.4\times$ to $3.0\times$ while every other cell stays certified (Section~\ref{sec:experiments}).
+
+\stitle{The plane algorithm.}
+Algorithm~\ref{alg:build} assembles the plane sweep.
+
+\begin{algorithm}[t]
+\caption{\buildalg: compute every cell of the plane.}
+\label{alg:build}
+\algfontsize
+\KwIn{Graph $G$, plane $\mathcal{P}$ with $r\in[r_{\min},r_{\max}]$, $s\le s_{\max}$}
+\KwOut{$\kappa_s(P)$ for every pattern $P$ and every cell of $\mathcal{P}$}
+compute $\mathcal{M}(G)$, the classes, and the boxes $\mathcal{B}$\label{lnb:front}\;
+\For{$r \leftarrow r_{\min}$ \KwTo $r_{\max}$}{
+    enumerate the patterns of size $r$, with multiplicities and $\omega$\label{lnb:pats}\;
+    \eIf{$r = r_{\min}$}{
+        $\kappa_{r+1} \leftarrow \peelcell(\mathcal{B},\text{patterns},(r,r{+}1))$\label{lnb:cold}\;
+    }{
+        \ForEach{pattern $P$ with $\min_{c:b_c\ge1}\kappa_{r}(P{-}c)-1 = \omega(P)-r$}{\label{lnb:diag}
+            certify $\kappa_{r+1}(P) \leftarrow \omega(P)-r$\label{lnb:diagset}
+        }
+        peel the rest by \peelcell{}, seeded with the certified values\label{lnb:seed1}\;
+    }
+    \For{$s \leftarrow r+2$ \KwTo $s_{\max}$}{
+        \ForEach{pattern $P$ with $\kappa_{s-1}(P)=\binom{\omega(P)-r}{s-1-r}$}{\label{lnb:abs}
+            certify $\kappa_{s}(P) \leftarrow \binom{\omega(P)-r}{s-r}$\label{lnb:absset}
+        }
+        peel the rest by \peelcell{}, seeded with the certified values\label{lnb:seed2}\;
+    }
+}
+\Return{all $\kappa$}
+\end{algorithm}
+
+\buildalg{} computes the shared front end once (Line~\ref{lnb:front}): the same classes and boxes serve every cell of the plane.
+%
+The first row is peeled cold at its boundary (Line~\ref{lnb:cold}).
+%
+Every later boundary is filled by the diagonal certificate from the row below (Lines~\ref{lnb:diag}--\ref{lnb:diagset}), and every later cell of a row by absorption from its left neighbor (Lines~\ref{lnb:abs}--\ref{lnb:absset}).
+%
+Patterns that neither certificate reaches are the \emph{residue}; \peelcell{} peels them with the certified patterns entering the removal order at their known levels (Lines~\ref{lnb:seed1} and \ref{lnb:seed2}).
+%
+Seeding is sound by the certification principle: where a lower and an upper bound meet, the value is known before any peeling.
+
+\begin{example}\label{exa:plane}
+Consider the graph $G$ of Figure~\ref{fig:example} with the plane $r\in[3,5]$, $s\le8$: twelve cells.
+%
+\buildalg{} peels exactly one of them, the cell $(3,4)$ of Example~\ref{exa:peel}.
+%
+Every value of row $3$ equals its floor, so absorption certifies the cells $(3,5)$ through $(3,8)$ outright.
+%
+At the boundary $(4,5)$, the pattern $\{A^{4}\}$ has faces $\{A^{3}\}$ with $\kappa_4=3$, so the ceiling is $2$ and meets the floor $6-4$; the same happens for every pattern of rows $4$ and $5$.
+%
+Twelve cells, one peel.
+\end{example}
+
+On real graphs the residue is just as thin.
+%
+On \pkustk, the boundary of row $4$ leaves $1$ uncertified pattern out of $8.66$ million, and the boundary of row $5$ leaves none out of $26.8$ million.
+%
+The whole plane of a graph with $3.3$ million edges is one boundary peel plus arithmetic.
+
+Everything the plane needs is now computed.
+%
+The next section shows that almost none of it needs to be stored.

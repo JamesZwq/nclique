@@ -2,7 +2,7 @@
 %%% Do NOT edit. File created by BibTeX with style
 %%% ACM-Reference-Format-Journals [18-Jan-2012].
 
-\begin{thebibliography}{19}
+\begin{thebibliography}{23}
 
 %%% ====================================================================
 %%% NOTE TO THE USER: you can override these defaults by providing
@@ -109,6 +109,22 @@
 \href{https://doi.org/10.1073/pnas.122653799}{doi:\nolinkurl{10.1073/pnas.122653799}}
 
 
+\bibitem[Huang et~al\mbox{.}(2014)]%
+        {huang2014truss}
+\bibfield{author}{\bibinfo{person}{Xin Huang}, \bibinfo{person}{Hong Cheng},
+  \bibinfo{person}{Lu Qin}, \bibinfo{person}{Wentao Tian}, {and}
+  \bibinfo{person}{Jeffrey~Xu Yu}.} \bibinfo{year}{2014}\natexlab{}.
+\newblock \showarticletitle{Querying k-truss community in large and dynamic
+  graphs}. In \bibinfo{booktitle}{\emph{Proceedings of the 2014 ACM SIGMOD
+  International Conference on Management of Data}} (Snowbird, Utah, USA)
+  \emph{(\bibinfo{series}{SIGMOD '14})}. \bibinfo{publisher}{Association for
+  Computing Machinery}, \bibinfo{address}{New York, NY, USA},
+  \bibinfo{pages}{1311–1322}.
+\newblock
+\showISBNx{9781450323765}
+\href{https://doi.org/10.1145/2588555.2610495}{doi:\nolinkurl{10.1145/2588555.2610495}}
+
+
 \bibitem[Jain and Seshadhri(2020)]%
         {Pivoter}
 \bibfield{author}{\bibinfo{person}{Shweta Jain} {and} \bibinfo{person}{C.
@@ -137,6 +153,17 @@
 \href{https://doi.org/10.1145/2746403}{doi:\nolinkurl{10.1145/2746403}}
 
 
+\bibitem[Katona(1968)]%
+        {katona1968}
+\bibfield{author}{\bibinfo{person}{Gyula O.~H. Katona}.}
+  \bibinfo{year}{1968}\natexlab{}.
+\newblock \showarticletitle{A Theorem of Finite Sets}.
+\newblock In \bibinfo{booktitle}{\emph{Theory of Graphs}}.
+  \bibinfo{publisher}{Akad{\'e}miai Kiad{\'o}}, \bibinfo{address}{Budapest},
+  \bibinfo{pages}{187--207}.
+\newblock
+
+
 \bibitem[Kempe et~al\mbox{.}(2003)]%
         {kempe2003maximizing}
 \bibfield{author}{\bibinfo{person}{David Kempe}, \bibinfo{person}{Jon
@@ -153,6 +180,18 @@
 \href{https://doi.org/10.1145/956750.956769}{doi:\nolinkurl{10.1145/956750.956769}}
 
 
+\bibitem[Kruskal(1963)]%
+        {kruskal1963}
+\bibfield{author}{\bibinfo{person}{Joseph~B. Kruskal}.}
+  \bibinfo{year}{1963}\natexlab{}.
+\newblock \showarticletitle{The Number of Simplices in a Complex}.
+\newblock In \bibinfo{booktitle}{\emph{Mathematical Optimization Techniques}},
+  \bibfield{editor}{\bibinfo{person}{Richard Bellman}} (Ed.).
+  \bibinfo{publisher}{University of California Press},
+  \bibinfo{address}{Berkeley}, \bibinfo{pages}{251--278}.
+\newblock
+
+
 \bibitem[Li et~al\mbox{.}(2015)]%
         {li2015influential}
 \bibfield{author}{\bibinfo{person}{Rong-Hua Li}, \bibinfo{person}{Lu Qin},
@@ -165,6 +204,15 @@
 \newblock
 \showISSN{2150-8097}
 \href{https://doi.org/10.14778/2735479.2735484}{doi:\nolinkurl{10.14778/2735479.2735484}}
+
+
+\bibitem[Lov{\'a}sz(1979)]%
+        {lovasz1979}
+\bibfield{author}{\bibinfo{person}{L{\'a}szl{\'o} Lov{\'a}sz}.}
+  \bibinfo{year}{1979}\natexlab{}.
+\newblock \bibinfo{booktitle}{\emph{Combinatorial Problems and Exercises}}.
+\newblock \bibinfo{publisher}{North-Holland}, \bibinfo{address}{Amsterdam}.
+\newblock
 
 
 \bibitem[Malliaros and Vazirgiannis(2013)]%

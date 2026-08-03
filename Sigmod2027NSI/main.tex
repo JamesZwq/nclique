@@ -26,6 +26,11 @@
 
 \input{command}
 
+% acmart does not predefine a remark environment; share the theorem counter.
+% acmart creates its theorem environments in \AtEndPreamble, so ours must queue
+% AFTER that hook (hooks run first-registered-first).
+\AtEndPreamble{\theoremstyle{acmdefinition}\newtheorem{remark}[theorem]{Remark}}
+
 % ==== ACM metadata (anonymous review draft) ====
 \setcopyright{none}
 \settopmatter{printacmref=false, printccs=false, printfolios=true}

@@ -21,45 +21,45 @@ Warning--page numbers missing in both pages and numpages fields in jiang2016catc
 Warning--empty booktitle in huang2014graph
 Warning--can't use both volume and number fields in huang2014graph
 Warning--page numbers missing in both pages and numpages fields in huang2014graph
-You've used 19 entries,
+You've used 23 entries,
             6273 wiz_defined-function locations,
-            1699 strings with 23421 characters,
-and the built_in function-call counts, 23912 in all, are:
-= -- 3402
-> -- 719
+            1733 strings with 24140 characters,
+and the built_in function-call counts, 28151 in all, are:
+= -- 3892
+> -- 821
 < -- 0
-+ -- 247
-- -- 318
-* -- 1689
-:= -- 2182
-add.period$ -- 95
-call.type$ -- 19
-change.case$ -- 142
-chr.to.int$ -- 19
-cite$ -- 28
-duplicate$ -- 2021
-empty$ -- 1372
-format.name$ -- 330
-if$ -- 6001
++ -- 280
+- -- 355
+* -- 1965
+:= -- 2601
+add.period$ -- 118
+call.type$ -- 23
+change.case$ -- 166
+chr.to.int$ -- 23
+cite$ -- 32
+duplicate$ -- 2446
+empty$ -- 1655
+format.name$ -- 371
+if$ -- 6991
 int.to.chr$ -- 2
 int.to.str$ -- 1
-missing$ -- 79
-newline$ -- 224
-num.names$ -- 133
-pop$ -- 702
+missing$ -- 88
+newline$ -- 257
+num.names$ -- 163
+pop$ -- 835
 preamble$ -- 1
-purify$ -- 294
+purify$ -- 350
 quote$ -- 0
-skip$ -- 796
+skip$ -- 975
 stack$ -- 0
-substring$ -- 1758
-swap$ -- 272
+substring$ -- 2114
+swap$ -- 338
 text.length$ -- 114
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 388
+type$ -- 493
 warning$ -- 9
-while$ -- 113
+while$ -- 145
 width$ -- 0
-write$ -- 442
+write$ -- 527
 (There were 9 warnings)

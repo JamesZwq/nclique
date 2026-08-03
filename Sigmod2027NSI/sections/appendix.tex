@@ -6,6 +6,23 @@
 % correctness of the partition, and the [smin, smax] size window. Cite \cite{Pivoter}.
 The construction lifts the pivoting recursion of \cite{Pivoter} from vertices to classes and records hold and pivot bounds per class; details to be included in the full version of this appendix.
 
+\subsection{Proof of the Shadow Bound}\label{app:shadow}
+We restate Lemma~\ref{lem:shadow}: for $s\ge r+2$ and every $r$-clique $R$, $\kappa_{s-1}(R)\ge g_{s-r}(\kappa_s(R))$.
+
+\begin{proof}
+Let $k=\kappa_s(R)$, realized by the family $\mathcal{S}$ of Lemma~\ref{lem:maxmin}, and let $\mathcal{S}'$ be all $(s{-}1)$-cliques contained in members of $\mathcal{S}$.
+%
+Let $R'$ be any $r$-clique covered by $\mathcal{S}'$, and consider the family $E=\{S\setminus R': S\in\mathcal{S},\ R'\subseteq S\}$ of $(s{-}r)$-sets, with $|E|\ge k$.
+%
+For every $(s{-}1{-}r)$-set $T$ in the lower shadow of $E$, the set $R'\cup T$ is an $(s{-}1)$-clique inside a member of $\mathcal{S}$, hence a member of $\mathcal{S}'$ containing $R'$.
+%
+The Kruskal--Katona theorem in Lov\'asz form \cite{kruskal1963,katona1968,lovasz1979} bounds the shadow by $g_{s-r}(|E|)\ge g_{s-r}(k)$, so $R'$ lies in at least $g_{s-r}(k)$ members of $\mathcal{S}'$.
+%
+Since $s-r\ge2$, dropping one vertex outside $R$ from a member containing $R$ keeps a clique containing $R$, so $\mathcal{S}'$ covers $R$.
+%
+Lemma~\ref{lem:maxmin} then gives $\kappa_{s-1}(R)\ge g_{s-r}(k)$.
+\end{proof}
+
 \subsection{Incremental Evaluation of the Filtered Coefficient}\label{app:delta}
 % TODO: the credit rule -- enumerate compositions newly dominated by an inserted
 % removal once, credit each co-hosted pattern by the product of remaining choices;

@@ -681,6 +681,13 @@ INPUT ./sections/plane.tex
 INPUT ./sections/plane.tex
 INPUT ./sections/plane.tex
 INPUT sections/plane.tex
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/vf/public/newtx/ntxexx.vf
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/newtx/txexs.tfm
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/vf/public/newtx/ntxexx.vf
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/newtx/txexs.tfm
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/libertine/LinBiolinumT-tlf-ot1.tfm
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/vf/public/libertine/LinBiolinumT-tlf-ot1.vf
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/libertine/LinBiolinumT-tlf-ot1--base.tfm
 INPUT ./sections/index.tex
 INPUT ./sections/index.tex
 INPUT ./sections/index.tex
@@ -704,10 +711,6 @@ INPUT sections/conclusion.tex
 INPUT ./main.bbl
 INPUT ./main.bbl
 INPUT main.bbl
-INPUT /usr/local/texlive/2026/texmf-dist/fonts/vf/public/newtx/ntxexx.vf
-INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/newtx/txexs.tfm
-INPUT /usr/local/texlive/2026/texmf-dist/fonts/vf/public/newtx/ntxexx.vf
-INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/newtx/txexs.tfm
 INPUT ./sections/appendix.tex
 INPUT ./sections/appendix.tex
 INPUT ./sections/appendix.tex
