@@ -9581,3 +9581,37 @@ Left: the (r,s) grid colored by who can compute each cell (CND-feasible corner /
 archive-unbuildable), overlaid "our single index answers every cell". Middle: the size bars
 (46.2 TB dashed "cannot be built" -> 2.0 GB full plane -> 1.66 MB ours). Right: the 4-line query
 kernel with "74 ns".
+
+## 238. SENTENCE CRAFT, MEASURED FROM THE TEACHER (binding for all paper prose) (2026-08-03)
+User directive: sentences are paramount; no long or muddy sentences, ever. The gold standard is the
+hyperkcore paper ("every sentence, everywhere, is perfect"). Both teacher sources live in
+`~/.claude/skills/paper-architect/references/teacher-papers/`; the `paper-architect` skill already
+codifies most of the style. This section adds what a fresh sentence-level pass over the hyperkcore
+TECHNICAL sections measured, and the seven sentence molds that carry that paper.
+
+MEASURED: average sentence length 18.6 words (Efficiency_Core_evaluation), 18.9 (main), 22.2
+(Balance...). Working discipline: target 10-22, soft cap 28, >35 licensed ONLY for the semicolon
+citation sweep and line-anchored algorithm walk-throughs (imitation rule 11). Source format: one
+sentence per line with a bare `%` line between sentences -- both teachers do this everywhere.
+
+THE SEVEN MOLDS (copy the shape, never the words):
+1. SIGNPOST -- "In this section, we introduce filter strategies to reduce redundant computation."
+   One per (sub)section opening; says what and why in one breath.
+2. OBSERVATION -- "We observe that the majority of vertices did not change their core values."
+   The pivot of every optimization; always plain SVO, always before the proposal.
+3. EVIDENCE -- "The results show that only 2.2% of the vertices changed on KW and 2.1% on KW."
+   A number in the same sentence as the claim; datasets named.
+4. CONSEQUENCE -- "This leads to a large number of redundant vertex computations." Short (8-12
+   words), starts with This/Consequently/Therefore, carries exactly one causal step.
+5. PROPOSAL -- "To solve the problem, we first propose a strict pruning method that eliminates all
+   unnecessary vertex computations." Purpose clause first, deliverable named, one verb.
+6. DEFINITION-BY-NEED -- cost sentence, then pain sentence, THEN "we propose a new concept of KW,
+   extending the definition of core weight." A concept never appears before its failure does.
+7. PROOF CHAIN -- "According to Theorem X, ... which means ... Therefore, ..." <=8 sentences,
+   each link one inference.
+The rhythm of a technical subsection is molds 1-2-3-4-5 in order, then definitions/theorems, then
+the algorithm walk-through. Our sections in P2 are drafted TO this rhythm, and every drafted section
+runs the sentence-length detector as a gate before it counts as done.
+RECONCILIATION: plain-writing-rulebook A1 says cap ~25; sentence-length-detector says 29-35
+borderline. Under the user's directive the stricter reading wins: 10-22 target, 28 cap, the two
+licensed exceptions only.
