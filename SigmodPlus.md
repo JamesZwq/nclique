@@ -9463,3 +9463,121 @@ the peel at all, the build is up to 1.94x faster and 2.13x leaner. Re-measure be
 Single trial per cell. Per §234's variance datapoint, the small ratios (pwtk 1.05x, web-Google 1.08x)
 are within the range a single run can misreport; the large ones (1.94x/2.13x on pkustk13) are far
 outside it. The byte-identical gate is not a timing measurement and is not subject to this.
+
+## 236. E7 CERTIFICATE ABLATION: T3 buys 22.6x, T5 buys 2.4-3.0x, answers byte-identical (2026-08-03)
+`scripts/e7_cert_ablation_tods2.sh`, tods2, serial, machine idle, one run at a time. Three configs
+per graph: default, SCT_NO_DIAG=1 (kill the VERTICAL transfer T5), SCT_SWEEP_NOCERT=1 (kill the
+HORIZONTAL transfer T3). Gate: the core-number distribution md5 must be IDENTICAL across all three,
+otherwise the ablation measures something other than what it claims. It is identical, on both graphs
+measured so far.
+
+### nasasrb, whole plane r=3..5 s<=8 (COMPLETE)
+| config | wall | peak RSS | vs default | dist |
+|---|---|---|---|---|
+| default (both certificates) | 83.7 s | 7.29 GB | -- | 887ff7e9a469 |
+| no T5 (vertical off) | 197.9 s | 15.68 GB | **2.36x time, 2.15x mem** | identical |
+| no T3 (horizontal off) | **1894.6 s** | 20.22 GB | **22.6x time, 2.77x mem** | identical |
+
+Per-cell replay, default vs no-T3 (the exponential the certificate flattens):
+| cell | default | no T3 | factor |
+|---|---|---|---|
+| (3,4) boundary | 14.75 s | 14.70 s | 1.0x |
+| (3,5) | 0.52 s | 35.10 s | 67x |
+| (3,6) | 0.62 s | 79.64 s | 129x |
+| (3,7) | 0.85 s | 168.68 s | 199x |
+| (3,8) | 1.27 s | 323.46 s | **254x** |
+| (4,6) | 0.072 s | 80.87 s | 1131x |
+| (4,7) | 0.071 s | 186.84 s | **2617x** |
+| (4,8) | 0.072 s | 389.26 s | **5406x** |
+| (5,7) | 0.169 s | 151.71 s | 897x |
+| (5,8) | 0.169 s | 353.52 s | 2092x |
+Total peel across the 12 cells: default **20.4 s**, no-T3 **~1785 s**.
+
+### THE TWO CERTIFICATES GUARD COMPLEMENTARY EDGES (visible in the per-cell tables)
+- With T3 off, boundary cells (3,4)/(4,5)/(5,6) stay CHEAP -- T5 still certifies them from the row
+  below. With T5 off, exactly those boundary cells become full peels ((4,5): 1.7 -> 33.3 s,
+  (5,6): 0.17 -> 61.8 s) while everything above stays cheap because T3 still absorbs.
+- So: **T5 guards each row's first cell; T3 guards every cell after it.** Killing the first costs
+  2.4-3.0x; killing the second costs 22.6x; killing either changes NO answer.
+- The no-T3 growth in s (35 -> 80 -> 169 -> 323 s along r=3) is the witness-enumeration explosion:
+  the certificate does not save a constant, it FLATTENS AN EXPONENTIAL. This is why a bounded plane
+  is affordable at all.
+
+### pkustk13 (nocert still running; will complete this section)
+default 204.5 s / 22.4 GB; no-T5 615.8 s / 52.98 GB = **3.01x time, 2.37x mem**, dist identical.
+The no-T3 run has already exceeded 8 minutes against a 3.4-minute default.
+
+E7 (TODO experiments list) is hereby DONE in substance: each certificate now has its own measured
+"what it buys" number, with an answer-identity gate behind it.
+
+## 237. PAPER NARRATIVE ARCHITECTURE: one sentence, four unfoldings, every sentence carries a number (2026-08-03)
+The risk: the project now holds ~10 individually novel pieces (quotient, patterns, coefficient
+counting, T3, T5, reconstruction identity, P10, W, kernel-validates-for-free, index formats).
+Presented as a LIST they read as a grab-bag and the paper dies by enumeration. The fix is not to cut
+content; it is to make everything grow out of ONE sentence, so complexity reads as inevitability.
+"Impressive" = extreme numbers x tiny-looking mechanism. The numbers are already extreme
+(46.2 TB -> 1.66 MB; 74 ns; CND 0/9 cells; 22.6x from one theorem). The remaining work is to make
+the mechanism LOOK tiny and push everything else into "the proof that the tiny thing is legal".
+
+### THE SPINE (the paper's one sentence)
+> For almost every r-clique R of an applicable graph, kappa_{r,s}(R) = C(cP(R)-r, s-r), where cP(R)
+> is ONE number: the size of the largest maximal clique containing R. The paper certifies exactly
+> where this holds, computes exactly the residue where it fails, and observes that "where it holds"
+> needs no storage at all -- so the index IS the clique quotient of the graph, plus the residue no
+> algorithm can avoid (P10).
+Empirical license for "almost every" (not rhetoric): residue fractions on the roster are 0.00-0.10%
+(pkustk13 r=5: 0 of 26.8M patterns; nasasrb (3,5): 1,456 of 1.41M; web-Google r=5: 13,163 of 29.4M),
+and the byte anatomy says the same from the storage side: 70.5-99.9% of the index IS the quotient.
+
+### THE ARCHITECTURE IS A QUESTION CHAIN, NOT A CONTRIBUTION LIST
+Each section opens with the question the previous section forced; each is ONE theorem plus ONE
+measured consequence. The roadmap table (this belongs IN the intro):
+| skeleton sentence | theorem | what it kills (measured) |
+|---|---|---|
+| quotient: same-profile vertices are interchangeable | interchangeability + compression law | 84.9x-1,167,073x fewer objects; index is 70.5-99.9% this structure |
+| polynomial: support is a coefficient | coefficient identity + forbidden-antichain deletion | s-cliques never enumerated: 1.02M boxes cover s=4..8 vs 2.28B s-cliques |
+| certificate: T3 absorbs, T5 transfers | absorption thm; diagonal thm | one peel per plane; E7: no-T3 = 22.6x slower, single cells 67-5406x; no-T5 = 2.4-3.0x; answers identical |
+| residue: store only exceptions | reconstruction identity + P10 lower bound | residue = 0.0-0.1% of bytes, and NO algorithm avoids it => the index's shape is optimal in kind |
+Question chain: Q1 why can nobody compute the plane -> Q2 what is redundant (quotient) -> Q3 how to
+count support without s-enumeration (polynomial) -> Q4 must every cell be peeled (two certificates,
+one peel) -> Q5 what must be stored (reconstruction + P10) -> Q6 when does this apply (W, in advance).
+
+### SEVEN WRITING DEVICES (how "simple" is manufactured)
+1. ONE running example through the whole paper: the 10-vertex / 3-clique graph from the explainer
+   animation. It already exercises the cascade, multiple floors, both certificates, and both query
+   outcomes. The 11-act animation IS the paper's storyboard; each section maps to 1-2 acts.
+2. New-term budget = 4: class, pattern, certificate, residue. "Maximal clique" is standard; SCT,
+   profile, NSI3/4, region stay in the appendix. Every extra term deepens the reader's stack.
+3. Show the END STATE first: the query kernel is 4 lines (classOf -> profile intersection, largest
+   survivor -> empty means 0 (and "not a clique") -> C(cP-r, s-r)). Put those 4 lines in the intro
+   with the sentence "the rest of this paper proves why these four lines are legal." That sentence
+   IS the impressiveness mechanism.
+4. Every skeleton sentence gets its ablation next to its theorem (E7 for the certificates; the
+   enumeration ratios for the quotient; the anatomy for the residue). Theory and system co-sign.
+5. Every section ends with one ledger sentence: "this section reduced X from exponential to Y,
+   measured Zx."
+6. The honest boundary is a PREDICTION THEOREM, not an apology: W is computable before building =>
+   "we can refuse in advance." Social graphs are predicted-negative and confirmed. (This also keeps
+   the no-self-exposed-weaknesses discipline: it is a capability, not a confession.)
+7. Elevator consistency: 1 sentence -> 4 sentences (S213) -> 1 paragraph -> full paper. Same story
+   at four resolutions; before writing any section, re-check it sits on the line.
+
+### WHAT GOES OFF THE MAIN LINE (each gets <=1 sentence + a pointer)
+a_Y witness-delta mechanics, deconvolution supInit, sparse footprints, NSI4 encoding, S228 build
+ordering, mergeable-region machinery, the nuclei retrieval demo. They are evidence, not plot.
+
+### CONTRIBUTIONS = 4 DELIVERABLES (per the binding style discipline)
+1. NSI: the first index covering an entire bounded (r,s)-nucleus plane -- one structure, every cell.
+2. The theorem set that makes it possible: interchangeability, coefficient counting, the two
+   transfer certificates, the reconstruction identity, and the P10 residue lower bound (shape
+   optimality).
+3. The applicability characterization W, computable before building, with predicted-negative
+   domains confirmed.
+4. The evaluation: 8 graphs / 4 domains, full grid vs serial CND with no losing cell; 46.2 TB
+   archive (unbuildable at r>=4) vs 1.66 MB; 74 ns point queries.
+
+### FIG 1, THREE PANELS (page one delivers the claim)
+Left: the (r,s) grid colored by who can compute each cell (CND-feasible corner / CND-infeasible /
+archive-unbuildable), overlaid "our single index answers every cell". Middle: the size bars
+(46.2 TB dashed "cannot be built" -> 2.0 GB full plane -> 1.66 MB ours). Right: the 4-line query
+kernel with "74 ns".
