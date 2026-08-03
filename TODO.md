@@ -72,6 +72,9 @@ under the index-first metrics (build feasibility, index size, query). Consequenc
 ## Style discipline (binding, from memory)
 no em-dashes | contributions = final deliverables | no self-exposed weaknesses |
 spectrum-vs-spectrum only | storytelling voice | teacher-paper architecture | 1 sentence/line LaTeX
+**sentences (user, 2026-08-03): hyperkcore is the gold standard. Target 10-22 words, cap 28;
+>35 only for citation sweeps / algorithm walk-throughs. The seven molds: SigmodPlus 238.
+Draft under the paper-architect skill and run its sentence-length detector as a gate per section.**
 
 ## Idea backlog (do not block the paper)
 P10 gadget theorem | general diagonal transfer | band sub-quotient | T5 engine |
