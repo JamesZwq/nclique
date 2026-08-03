@@ -1,0 +1,64 @@
+% SIGMOD 2027 submission -- double-blind. Target round: October 17, 2026.
+% DO NOT add author information before the polish phase.
+\documentclass[sigconf, anonymous, nonacm]{acmart}
+\makeatletter
+\global\@ACM@balancefalse
+\makeatother
+
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{xspace}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{xcolor}
+\usepackage[font=footnotesize,labelfont=bf]{subcaption}
+\usepackage{comment}
+\usepackage{multirow}
+\usepackage[skip=4pt]{caption}
+\usepackage{bm}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{placeins}
+
+\newcommand{\algfontsize}{\fontsize{7pt}{7.5pt}\selectfont}
+
+\input{command}
+
+% ==== ACM metadata (anonymous review draft) ====
+\setcopyright{none}
+\settopmatter{printacmref=false, printccs=false, printfolios=true}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\pagestyle{plain}
+
+\begin{document}
+
+% TODO(title): working title; alternatives to bikeshed at polish time:
+%   "One Peel for the Whole Plane: Indexing (r,s)-Nucleus Decompositions"
+%   "Efficient (r,s)-Nucleus Decomposition over the Full Parameter Plane"
+\title{Indexing All $(r,s)$-Nucleus Decompositions}
+
+% Author block intentionally omitted: double-blind review.
+
+\begin{abstract}
+\input{sections/abstract}
+\end{abstract}
+
+\maketitle
+
+\input{sections/introduction}
+\input{sections/preliminaries}
+\input{sections/existing}
+\input{sections/quotient}
+\input{sections/peelcell}
+\input{sections/plane}
+\input{sections/index}
+\input{sections/experiments}
+\input{sections/related}
+\input{sections/conclusion}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

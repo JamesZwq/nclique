@@ -1,0 +1,31 @@
+% Macros for the NSI plane-index paper.
+% Convention source: the group's house macros (\stitle/\sstitle/\kw ...), reused verbatim
+% per the teacher-paper playbook; paper-specific names below them.
+
+\newcommand{\stitle}[1]{{\noindent \bf {#1}}}
+\newcommand{\sstitle}[1]{{\noindent \textit {\underline {#1}}}}
+\newcommand{\ssstitle}[1]{{\noindent \textit {#1}}}
+\newcommand{\kw}[1]{{\ensuremath {\mathsf{#1}}}\xspace}
+\newcommand{\bkw}[1]{{\ensuremath {\mathsf{\textbf{#1}}}}\xspace}
+\newcommand{\kwnospace}[1]{{\ensuremath {\mathsf{#1}}}}
+\newcommand{\pluseq}{\mathrel{+}=}
+
+% Exp-N counter for the experiments section.
+\newcounter{expcnt}
+\newcommand{\expsection}[1]{\vspace{0.6ex}\stepcounter{expcnt}\noindent\textbf{Exp-\arabic{expcnt}: #1.}\xspace}
+
+% ---- paper-specific names ----
+% The index (the paper's one branded artifact).
+\newcommand{\nsi}{\kw{NSI}}
+\newcommand{\bnsi}{\bkw{NSI}}
+% The state-of-the-art baseline: the published counting-based algorithm.
+\newcommand{\cnd}{\kw{CND}}
+% Helper algorithms (descriptive names, never versioned).
+\newcommand{\peelcell}{\kw{PeelCell}}
+\newcommand{\buildalg}{\kw{Build}}
+\newcommand{\queryalg}{\kw{Query}}
+% Datasets named in prose.
+\newcommand{\webit}{\textsf{web-it-2004}\xspace}
+\newcommand{\pkustk}{\textsf{pkustk13}\xspace}
+\newcommand{\pokec}{\textsf{soc-pokec}\xspace}
+\newcommand{\nasasrb}{\textsf{nasasrb}\xspace}

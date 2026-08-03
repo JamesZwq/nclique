@@ -1,0 +1,300 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{18}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{} and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showURL}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showURL #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[Akoglu et~al\mbox{.}(2015)]%
+        {akoglu2015graph}
+\bibfield{author}{\bibinfo{person}{Leman Akoglu}, \bibinfo{person}{Hanghang
+  Tong}, {and} \bibinfo{person}{Danai Koutra}.}
+  \bibinfo{year}{2015}\natexlab{}.
+\newblock \showarticletitle{Graph-based anomaly detection and description: a
+  survey}.
+\newblock \bibinfo{journal}{\emph{Data Mining and Knowledge Discovery}}
+  \bibinfo{volume}{29}, \bibinfo{number}{3} (\bibinfo{year}{2015}),
+  \bibinfo{pages}{626--688}.
+\newblock
+
+
+\bibitem[Batagelj and Zaver\v{s}nik(2011)]%
+        {batagelj2011fast}
+\bibfield{author}{\bibinfo{person}{Vladimir Batagelj} {and}
+  \bibinfo{person}{Matja\v{z} Zaver\v{s}nik}.} \bibinfo{year}{2011}\natexlab{}.
+\newblock \showarticletitle{Fast algorithms for determining (generalized) core
+  groups in social networks}.
+\newblock \bibinfo{journal}{\emph{Adv. Data Anal. Classif.}}
+  \bibinfo{volume}{5}, \bibinfo{number}{2} (\bibinfo{date}{July}
+  \bibinfo{year}{2011}), \bibinfo{pages}{129–145}.
+\newblock
+\showISSN{1862-5347}
+\href{https://doi.org/10.1007/s11634-010-0079-y}{doi:\nolinkurl{10.1007/s11634-010-0079-y}}
+
+
+\bibitem[Dupont et~al\mbox{.}(2006)]%
+        {tsourakakis2013finding}
+\bibfield{author}{\bibinfo{person}{Pierre Dupont},
+  \bibinfo{person}{J{\'e}r{\^o}me Callut}, \bibinfo{person}{Gr{\'e}goire
+  Dooms}, \bibinfo{person}{Jean-No{\"e}l Monette}, {and} \bibinfo{person}{Yves
+  Deville}.} \bibinfo{year}{2006}\natexlab{}.
+\newblock \showarticletitle{Relevant subgraph extraction from random walks in a
+  graph}.
+\newblock
+\urldef\tempurl%
+\url{https://api.semanticscholar.org/CorpusID:15222702}
+\showURL{%
+\tempurl}
+
+
+\bibitem[Gibson et~al\mbox{.}(1998)]%
+        {gibson1998inferring}
+\bibfield{author}{\bibinfo{person}{David Gibson}, \bibinfo{person}{Jon
+  Kleinberg}, {and} \bibinfo{person}{Prabhakar Raghavan}.}
+  \bibinfo{year}{1998}\natexlab{}.
+\newblock \showarticletitle{Inferring Web communities from link topology}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the Ninth ACM Conference on
+  Hypertext and Hypermedia: Links, Objects, Time and Space---Structure in
+  Hypermedia Systems: Links, Objects, Time and Space---Structure in Hypermedia
+  Systems}} (Pittsburgh, Pennsylvania, USA) \emph{(\bibinfo{series}{HYPERTEXT
+  '98})}. \bibinfo{publisher}{Association for Computing Machinery},
+  \bibinfo{address}{New York, NY, USA}, \bibinfo{pages}{225–234}.
+\newblock
+\showISBNx{0897919726}
+\href{https://doi.org/10.1145/276627.276652}{doi:\nolinkurl{10.1145/276627.276652}}
+
+
+\bibitem[Girvan and Newman(2002)]%
+        {girvan2002community}
+\bibfield{author}{\bibinfo{person}{M. Girvan} {and} \bibinfo{person}{M.~E.~J.
+  Newman}.} \bibinfo{year}{2002}\natexlab{}.
+\newblock \showarticletitle{Community structure in social and biological
+  networks}.
+\newblock \bibinfo{journal}{\emph{Proceedings of the National Academy of
+  Sciences}} \bibinfo{volume}{99}, \bibinfo{number}{12} (\bibinfo{year}{2002}),
+  \bibinfo{pages}{7821--7826}.
+\newblock
+\showeprint{https://www.pnas.org/doi/pdf/10.1073/pnas.122653799}
+\href{https://doi.org/10.1073/pnas.122653799}{doi:\nolinkurl{10.1073/pnas.122653799}}
+
+
+\bibitem[Jiang et~al\mbox{.}(2016)]%
+        {jiang2016catching}
+\bibfield{author}{\bibinfo{person}{Meng Jiang}, \bibinfo{person}{Peng Cui},
+  \bibinfo{person}{Alex Beutel}, \bibinfo{person}{Christos Faloutsos}, {and}
+  \bibinfo{person}{Shiqiang Yang}.} \bibinfo{year}{2016}\natexlab{}.
+\newblock \showarticletitle{Catching Synchronized Behaviors in Large Networks:
+  A Graph Mining Approach}.
+\newblock  \bibinfo{volume}{10}, \bibinfo{number}{4} (\bibinfo{year}{2016}).
+\newblock
+\showISSN{1556-4681}
+\href{https://doi.org/10.1145/2746403}{doi:\nolinkurl{10.1145/2746403}}
+
+
+\bibitem[Kempe et~al\mbox{.}(2003)]%
+        {kempe2003maximizing}
+\bibfield{author}{\bibinfo{person}{David Kempe}, \bibinfo{person}{Jon
+  Kleinberg}, {and} \bibinfo{person}{\'{E}va Tardos}.}
+  \bibinfo{year}{2003}\natexlab{}.
+\newblock \showarticletitle{Maximizing the spread of influence through a social
+  network}. In \bibinfo{booktitle}{\emph{Proceedings of the Ninth ACM SIGKDD
+  International Conference on Knowledge Discovery and Data Mining}}
+  (Washington, D.C.) \emph{(\bibinfo{series}{KDD '03})}.
+  \bibinfo{publisher}{Association for Computing Machinery},
+  \bibinfo{address}{New York, NY, USA}, \bibinfo{pages}{137–146}.
+\newblock
+\showISBNx{1581137370}
+\href{https://doi.org/10.1145/956750.956769}{doi:\nolinkurl{10.1145/956750.956769}}
+
+
+\bibitem[Li et~al\mbox{.}(2015)]%
+        {li2015influential}
+\bibfield{author}{\bibinfo{person}{Rong-Hua Li}, \bibinfo{person}{Lu Qin},
+  \bibinfo{person}{Jeffrey~Xu Yu}, {and} \bibinfo{person}{Rui Mao}.}
+  \bibinfo{year}{2015}\natexlab{}.
+\newblock \showarticletitle{Influential community search in large networks}.
+\newblock \bibinfo{journal}{\emph{Proc. VLDB Endow.}} \bibinfo{volume}{8},
+  \bibinfo{number}{5} (\bibinfo{date}{Jan.} \bibinfo{year}{2015}),
+  \bibinfo{pages}{509–520}.
+\newblock
+\showISSN{2150-8097}
+\href{https://doi.org/10.14778/2735479.2735484}{doi:\nolinkurl{10.14778/2735479.2735484}}
+
+
+\bibitem[Malliaros and Vazirgiannis(2013)]%
+        {malliaros2013clustering}
+\bibfield{author}{\bibinfo{person}{Fragkiskos~D. Malliaros} {and}
+  \bibinfo{person}{Michalis Vazirgiannis}.} \bibinfo{year}{2013}\natexlab{}.
+\newblock \showarticletitle{Clustering and community detection in directed
+  networks: A survey}.
+\newblock \bibinfo{journal}{\emph{Physics Reports}} \bibinfo{volume}{533},
+  \bibinfo{number}{4} (\bibinfo{year}{2013}), \bibinfo{pages}{95--142}.
+\newblock
+\showISSN{0370-1573}
+\href{https://doi.org/10.1016/j.physrep.2013.08.002}{doi:\nolinkurl{10.1016/j.physrep.2013.08.002}}
+\newblock
+\shownote{Clustering and Community Detection in Directed Networks: A Survey}.
+
+
+\bibitem[O'Reilly et~al\mbox{.}(2023)]%
+        {sharan2006modeling}
+\bibfield{author}{\bibinfo{person}{Francis~J O'Reilly}, \bibinfo{person}{Andrea
+  Graziadei}, \bibinfo{person}{Christian Forbrig}, \bibinfo{person}{Rica
+  Bremenkamp}, \bibinfo{person}{Kristine Charles}, \bibinfo{person}{Swantje
+  Lenz}, \bibinfo{person}{Christoph Elfmann}, \bibinfo{person}{Lutz Fischer},
+  \bibinfo{person}{J\"{o}rg St\"{u}lke}, {and} \bibinfo{person}{Juri
+  Rappsilber}.} \bibinfo{year}{2023}\natexlab{}.
+\newblock \showarticletitle{Protein complexes in cells by AI\&\#x2010;assisted
+  structural proteomics}.
+\newblock \bibinfo{journal}{\emph{Molecular Systems Biology}}
+  \bibinfo{volume}{19}, \bibinfo{number}{4} (\bibinfo{year}{2023}),
+  \bibinfo{pages}{e11544}.
+\newblock
+\showeprint{https://www.embopress.org/doi/pdf/10.15252/msb.202311544}
+\href{https://doi.org/10.15252/msb.202311544}{doi:\nolinkurl{10.15252/msb.202311544}}
+
+
+\bibitem[Rossetti and Cazabet(2018)]%
+        {rossetti2019community}
+\bibfield{author}{\bibinfo{person}{Giulio Rossetti} {and}
+  \bibinfo{person}{R\'{e}my Cazabet}.} \bibinfo{year}{2018}\natexlab{}.
+\newblock \showarticletitle{Community Discovery in Dynamic Networks: A Survey}.
+\newblock \bibinfo{journal}{\emph{ACM Comput. Surv.}} \bibinfo{volume}{51},
+  \bibinfo{number}{2}, Article \bibinfo{articleno}{35} (\bibinfo{date}{Feb.}
+  \bibinfo{year}{2018}), \bibinfo{numpages}{37}~pages.
+\newblock
+\showISSN{0360-0300}
+\href{https://doi.org/10.1145/3172867}{doi:\nolinkurl{10.1145/3172867}}
+
+
+\bibitem[Rossi et~al\mbox{.}(2018)]%
+        {huang2014graph}
+\bibfield{author}{\bibinfo{person}{Ryan~A. Rossi}, \bibinfo{person}{Nesreen~K.
+  Ahmed}, \bibinfo{person}{Rong Zhou}, {and} \bibinfo{person}{Hoda Eldardiry}.}
+  \bibinfo{year}{2018}\natexlab{}.
+\newblock \showarticletitle{Interactive Visual Graph Mining and Learning},
+  Vol.~\bibinfo{volume}{9}. \bibinfo{publisher}{Association for Computing
+  Machinery}, \bibinfo{address}{New York, NY, USA}.
+\newblock
+\showISSN{2157-6904}
+\href{https://doi.org/10.1145/3200764}{doi:\nolinkurl{10.1145/3200764}}
+
+
+\bibitem[Sariyuce et~al\mbox{.}(2015)]%
+        {firstNucleus}
+\bibfield{author}{\bibinfo{person}{Ahmet~Erdem Sariyuce}, \bibinfo{person}{C.
+  Seshadhri}, \bibinfo{person}{Ali Pinar}, {and} \bibinfo{person}{Umit~V.
+  Catalyurek}.} \bibinfo{year}{2015}\natexlab{}.
+\newblock \showarticletitle{Finding the Hierarchy of Dense Subgraphs using
+  Nucleus Decompositions}. In \bibinfo{booktitle}{\emph{Proceedings of the 24th
+  International Conference on World Wide Web}} (Florence, Italy)
+  \emph{(\bibinfo{series}{WWW '15})}. \bibinfo{publisher}{International World
+  Wide Web Conferences Steering Committee}, \bibinfo{address}{Republic and
+  Canton of Geneva, CHE}, \bibinfo{pages}{927–937}.
+\newblock
+\showISBNx{9781450334693}
+\href{https://doi.org/10.1145/2736277.2741640}{doi:\nolinkurl{10.1145/2736277.2741640}}
+
+
+\bibitem[Sariy\"{u}ce et~al\mbox{.}(2017)]%
+        {nuclearTWEB}
+\bibfield{author}{\bibinfo{person}{Ahmet~Erdem Sariy\"{u}ce},
+  \bibinfo{person}{C. Seshadhri}, \bibinfo{person}{Ali Pinar}, {and}
+  \bibinfo{person}{\"{U}mit~V. \c{C}ataly\"{u}rek}.}
+  \bibinfo{year}{2017}\natexlab{}.
+\newblock \showarticletitle{Nucleus Decompositions for Identifying Hierarchy of
+  Dense Subgraphs}.
+\newblock \bibinfo{journal}{\emph{ACM Trans. Web}} \bibinfo{volume}{11},
+  \bibinfo{number}{3}, Article \bibinfo{articleno}{16} (\bibinfo{date}{July}
+  \bibinfo{year}{2017}), \bibinfo{numpages}{27}~pages.
+\newblock
+\showISSN{1559-1131}
+\href{https://doi.org/10.1145/3057742}{doi:\nolinkurl{10.1145/3057742}}
+
+
+\bibitem[Seidman(1983)]%
+        {seidman1983network}
+\bibfield{author}{\bibinfo{person}{Stephen~B. Seidman}.}
+  \bibinfo{year}{1983}\natexlab{}.
+\newblock \showarticletitle{Network structure and minimum degree}.
+\newblock \bibinfo{journal}{\emph{Social Networks}} \bibinfo{volume}{5},
+  \bibinfo{number}{3} (\bibinfo{year}{1983}), \bibinfo{pages}{269--287}.
+\newblock
+\showISSN{0378-8733}
+\href{https://doi.org/10.1016/0378-8733(83)90028-X}{doi:\nolinkurl{10.1016/0378-8733(83)90028-X}}
+
+
+\bibitem[Wang and Cheng(2012)]%
+        {wang2012truss}
+\bibfield{author}{\bibinfo{person}{Jia Wang} {and} \bibinfo{person}{James
+  Cheng}.} \bibinfo{year}{2012}\natexlab{}.
+\newblock \showarticletitle{Truss decomposition in massive networks}.
+\newblock \bibinfo{journal}{\emph{Proc. VLDB Endow.}} \bibinfo{volume}{5},
+  \bibinfo{number}{9} (\bibinfo{date}{May} \bibinfo{year}{2012}),
+  \bibinfo{pages}{812–823}.
+\newblock
+\showISSN{2150-8097}
+\href{https://doi.org/10.14778/2311906.2311909}{doi:\nolinkurl{10.14778/2311906.2311909}}
+
+
+\bibitem[Zhang et~al\mbox{.}(2026)]%
+        {NuclearCD}
+\bibfield{author}{\bibinfo{person}{Wenqian Zhang}, \bibinfo{person}{Zhengyi
+  Yang}, \bibinfo{person}{Dong Wen}, \bibinfo{person}{Yi Ding},
+  \bibinfo{person}{Wenjie Zhang}, {and} \bibinfo{person}{Xuemin Lin}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \showarticletitle{Nucleus Decomposition Revisited: An Efficient
+  Counting-Based Approach}.
+\newblock \bibinfo{journal}{\emph{Proc. ACM Manag. Data}} \bibinfo{volume}{4},
+  \bibinfo{number}{3}, Article \bibinfo{articleno}{215} (\bibinfo{date}{May}
+  \bibinfo{year}{2026}), \bibinfo{numpages}{26}~pages.
+\newblock
+\href{https://doi.org/10.1145/3802092}{doi:\nolinkurl{10.1145/3802092}}
+
+
+\bibitem[Zhao and Tung(2012)]%
+        {cohen2008trusses}
+\bibfield{author}{\bibinfo{person}{Feng Zhao} {and} \bibinfo{person}{Anthony
+  K.~H. Tung}.} \bibinfo{year}{2012}\natexlab{}.
+\newblock \showarticletitle{Large scale cohesive subgraphs discovery for social
+  network visual analysis}.
+\newblock \bibinfo{journal}{\emph{Proc. VLDB Endow.}} \bibinfo{volume}{6},
+  \bibinfo{number}{2} (\bibinfo{date}{Dec.} \bibinfo{year}{2012}),
+  \bibinfo{pages}{85–96}.
+\newblock
+\showISSN{2150-8097}
+\href{https://doi.org/10.14778/2535568.2448942}{doi:\nolinkurl{10.14778/2535568.2448942}}
+
+
+\end{thebibliography}

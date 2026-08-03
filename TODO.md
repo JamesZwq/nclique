@@ -59,14 +59,19 @@ under the index-first metrics (build feasibility, index size, query). Consequenc
 - [ ] com-friendster 1.8B (server) -- W-prescreen before committing (social, weak domain)
 
 ## Paper
-- [ ] P1 verify SIGMOD/VLDB round dates (do NOT trust memory)
+- [x] P1 SIGMOD 2027 rounds: Jan 17 / Apr 17 / Jul 17 / Oct 17 -> **target 2026-10-17** (~10.5
+      weeks from 2026-08-03). Re-verify on the official CFP page before submitting (bot-checked).
+- [ ] P1b decide fallback if 10-17 slips (Jan 17 round)
 - [ ] P2 write in order: Intro+Fig1 -> Theory -> Algorithm -> Index -> Experiments -> Related -> Abstract
       **The narrative architecture is DECIDED: §237** (the spine sentence, the question chain, the
       roadmap table, the 4-term budget, the 4-line kernel shown first, Fig 1's three panels).
       Write TO that section; do not re-derive the story.
 - [ ] P6 novelty reading: Burkhardt-Faber 1806.05523, Frohmader flag-KK, ICDE'21 2011.00749
 - [ ] P7 P10 gadget: write out formally OR demote to remark (no "sketch" in contributions)
-- [ ] P8 create paper dir from acmart template (tracked real dir); commit every edit
+- [x] P8 **Sigmod2027NSI/ created and building**: acmart+bst+bib from Sigmod2027Nuclear, house
+      macros reused, main.tex + 10 section files, frozen ledger.md, Fig 1 generated from the
+      verified running example. Abstract v0 + FULL Introduction drafted (detector gate: intro avg
+      16.5 w, 0 over-cap; build clean, 0 unresolved refs)
 - [ ] P9 reproducibility appendix from §134
 
 ## Style discipline (binding, from memory)

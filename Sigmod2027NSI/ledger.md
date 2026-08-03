@@ -1,0 +1,71 @@
+# FROZEN LEDGER — the NSI plane-index paper (per paper-architect A.2 + section-writing-protocol)
+
+Every section drafts AGAINST this file; edits to shared facts happen HERE first.
+Architecture: SigmodPlus.md §237 (spine/story) + §239 (skeleton). Sentences: §238.
+
+## Names
+- Index brand: **NSI** (\nsi, "Nucleus Spectrum Index") — the one branded artifact.
+- Competitor: **CND** (\cnd, \cite{NuclearCD}) — the group's published PACMMOD'26 counting-based
+  algorithm; serial protocol only (§217 quarantine).
+- Helpers (never versioned): \peelcell, \buildalg, \queryalg.
+- New-term budget (4): class, pattern, certificate, residue. "clique quotient" = the umbrella
+  concept naming the grouping (introduced in §1, defined in sec:quotient).
+- NOT in the paper's main line: SCT, region (say "maximal clique"), NSI2/3/4 format names, cP as a
+  symbol in §1 (body defines its notation in sec:quotient — TODO pick glyph, per notation rules
+  visually related to the quantity, e.g. $\mu(R)$ "largest maximal clique containing R").
+
+## The spine sentence (paper = this, unfolded)
+For almost every r-clique R, kappa_{r,s}(R) = C(mu(R)-r, s-r) where mu(R) is one number: the size
+of the largest maximal clique containing R. The paper certifies where this holds, computes the
+residue where it fails, and stores only the quotient + residue (P10: unavoidable).
+
+## Running example (verified by two independent scripts; figures/fig1_example.pdf)
+- G: 10 vertices v1..v10; maximal cliques M1={v1..v6}(6), M2={v5..v9}(5), M3={v7..v10}(4).
+- Classes: A={v1..v4}[M1], B={v5,v6}[M1,M2], C={v7,v8,v9}[M2,M3], D={v10}[M3].
+- Objects: 33 triangles, 21 4-cliques, 7 5-cliques; 61 cliques of size 3..5 total.
+- Patterns: r=3 → 7; r=4 → 6; r=5 → 3; total 16 (compression 33/7=4.7x at r=3).
+- (3,4) values: AAA/AAB/ABB → 3; BBC/BCC/CCC → 2; CCD → 1. Peel has 3 rounds and ONE cascade
+  (CCC support 3 → 2 when CCD dies). All values land on the clique floor.
+- Cross-cell: (3,5) {v1,v2,v3}=3; (4,5) {v1,v2,v3,v4}=2. Plane r=3..5,s≤8: 12 cells, ONE peel.
+
+## Headline numbers (single-run; refresh after E2 medians — do NOT requote elsewhere without
+## checking this table first)
+| claim | number | source |
+|---|---|---|
+| 5-cliques on web-it-2004 (7.2M edges) | >1.5e12 | §233 archive accounting |
+| CND serial, web-it (3,4) | 5,581 s / 101 GB | §216 |
+| ours vs CND, web-it (3,4) | 742x time / 226x memory | §216 |
+| CND on web-it grid (1800s/300GB) | 0/9 cells | §219 |
+| grid vs serial CND, 8 graphs/4 domains | no losing cell | §218–219 |
+| explicit plane table, web-it | 46.2 TB; unbuildable r≥4 | §233 |
+| NSI size, web-it whole plane | 1.66 MB (NSI4) | §234 |
+| point query | 74 ns (web-it r=3 kernel) | §233 |
+| archive/index size ratio range | 14x – 29,896,946x | §233–234 |
+| certificates ablation | no-T3 22.6x (cells 67–5406x); no-T5 2.4–3.0x; answers identical | §236 |
+| index bytes that are the quotient | 70.5–99.9% | §234 corrected |
+| residue bytes | 0.0–0.1% | §221 |
+| soc-pokec compression (predicted negative) | 1.001x | §220/D10 |
+| pattern collapse, real graphs | 84.9x – 1,167,073x | §233 |
+| example collapse | 33 → 7 | ledger above |
+| query kernel false positives | 0 / 165k near-miss + 700k random | §231 (body only; NOT a
+  correctness experiment — correctness is by lemma) |
+
+## Claim → evidence map (contributions)
+1. First index over the plane → reconstruction lemma (sec:index) + §233/§234 sizes + 74ns.
+2. Quotient framework + certified transfer → interchangeability thm, coefficient lemma, T3, T5
+   (sec:quotient..sec:plane) + E7 ablation §236.
+3. Applicability test in advance → W definition + prediction table (sec:index) + §220/D10.
+4. Experiments → grid (§218-219), plane build (§235), size/query (§233-234), ablations (§236).
+
+## Style gates (every section, before it counts as drafted)
+1. sentence detector: target 10–22, cap 28; licensed >28 only for semicolon citation sweeps,
+   the research-question hinge, and line-anchored walkthroughs.
+2. build: latexmk clean AND `pdftotext main.pdf - | grep -c "??"` == 0.
+3. prose-cadence pass + teacher_vocab_diff (register gate) at polish time.
+4. No symbols before sec:preliminaries; no correctness-as-experiment claims (skill HC-12);
+   no self-exposed weaknesses (advisor rule) — applicability is a capability, framed predictive.
+
+## Venue
+SIGMOD 2027 rounds: Jan 17 / Apr 17 / Jul 17 / Oct 17. Target: **2026-10-17** (next open round).
+Re-verify on the official page before submission (site was behind a bot-check when checked
+2026-08-03; dates from the CFP search snippet + chairs' announcement).
