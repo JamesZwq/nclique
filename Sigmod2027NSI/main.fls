@@ -711,6 +711,10 @@ INPUT sections/conclusion.tex
 INPUT ./main.bbl
 INPUT ./main.bbl
 INPUT main.bbl
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/vf/public/newtx/nxlmia.vf
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/newtx/LibertineMathRM.tfm
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/newtx/txmiaSTbb.tfm
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/newtx/txmiaX.tfm
 INPUT ./sections/appendix.tex
 INPUT ./sections/appendix.tex
 INPUT ./sections/appendix.tex
@@ -729,6 +733,7 @@ INPUT /usr/local/texlive/2026/texmf-dist/fonts/type1/public/inconsolata/Inconsol
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/type1/public/newtx/LibertineMathMI.pfb
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/type1/public/newtx/LibertineMathMI5.pfb
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/type1/public/newtx/LibertineMathMI7.pfb
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/type1/public/newtx/LibertineMathRM.pfb
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/type1/public/libertine/LinBiolinumT.pfb
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/type1/public/libertine/LinBiolinumTB.pfb
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/type1/public/libertine/LinLibertineT.pfb

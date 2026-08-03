@@ -22,6 +22,9 @@ Architecture: SigmodPlus.md §237 (spine/story) + §239 (skeleton). Sentences: �
   * Plane P: r in [rmin,rmax], r < s <= smax. Query contract: (R, s) with (|R|, s) in P.
   * Inherited vocabulary (group's published usage, not part of the 4-term budget):
     "scored clique" (= r-clique), "witness clique" (= s-clique).
+  * sigma(P) — the certification point: first s with kappa at the floor (Absorbing Chain
+    locks all later s; always sigma(P) <= omega(P)+1). Storage contract: store P iff
+    sigma(P) > r+1, with its residue values. Defined in sec:index.
 - Exact object counts, web-it-2004 (archive accounting, integer-exact):
   3-cliques 338,786,461; 4-cliques 28,530,662,583; 5-cliques 2,140,698,950,272.
 
@@ -56,6 +59,7 @@ residue where it fails, and stores only the quotient + residue (P10: unavoidable
 | index bytes that are the quotient | 70.5–99.9% | §234 corrected |
 | residue bytes | 0.0–0.1% | §221 |
 | soc-pokec compression (predicted negative) | 1.001x | §220/D10 |
+| compression endpoints quoted in sec:index | nasasrb 8.3x, web-it 515x (do NOT claim a full-roster range without per-graph numbers) | §219/§220 |
 | pattern collapse, real graphs | 84.9x – 1,167,073x | §233 |
 | example collapse | 33 → 7 | ledger above |
 | query kernel false positives | 0 / 165k near-miss + 700k random | §231 (body only; NOT a

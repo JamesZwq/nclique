@@ -1,7 +1,110 @@
 \section{The Index and Its Query}\label{sec:index}
-% TODO: draft per SigmodPlus.md 239 (contract below) under the paper-architect skill.
-% CONTRACT (239): what is stored (quotient + exceptions); reconstruction lemma
-% (cP = max |M| over profile intersection); corollary: certified patterns cost 0
-% bytes; corollary: the kernel validates cliques for free; P10 residue lower bound
-% (Theorem if formalizable, else Remark + "minimal in kind"); Alg 4 = Query (4
-% lines); W definition + prediction table; byte anatomy 70.5-99.9%.
+% Drafted per SigmodPlus.md 239: storage contract, Reconstruction lemma, zero-byte
+% corollary, membership corollary, Alg 4 Query + correctness, when-to-build test.
+% P10 (residue lower bound) deliberately omitted until formalized (TODO P7).
+\buildalg{} computes the whole plane, and this section decides what of it to keep.
+%
+The answer is almost nothing: the certified part of the plane reconstructs itself at query time, so the index stores the quotient, the residue, and no more.
+
+\stitle{What is stored.}
+By Corollary~\ref{cor:absorb}, once a pattern's value reaches its floor it stays there.
+%
+Each pattern $P$ of row $r$ therefore has a first such witness size, which we denote $\sigma(P)$.
+%
+For $s\ge\sigma(P)$ the value is the floor $\binom{\omega(P)-r}{s-r}$; for $s<\sigma(P)$ it is not, and those values are the row's \emph{residue}.
+%
+Every pattern certifies eventually: for $s>\omega(P)$ no witness inside a clique remains and both the value and the floor are $0$, so $\sigma(P)\le\omega(P)+1$.
+%
+\nsi{} therefore stores three blocks:
+(i) the class label of every vertex;
+(ii) for every class $c$, its size and the list $\mathcal{M}(c)$ of maximal cliques containing it;
+(iii) for every row $r$, the patterns with $\sigma(P)>r+1$, each with $\sigma(P)$ and its residue values.
+%
+Blocks (i) and (ii) are the quotient itself, shared by every row and every cell.
+%
+Block (iii) is the only per-row data, and on our evaluation graphs it occupies between $0.1$ and $29.5$ percent of the file; the quotient is the rest.
+
+\stitle{Reconstruction.}
+The floor needs $\omega$, and the quotient already knows it.
+
+\begin{lemma}[Reconstruction]\label{lem:reconstruct}
+Let $R=\{v_1,\dots,v_r\}$ be an $r$-clique with classes $c_1,\dots,c_r$.
+%
+Then a maximal clique $M$ contains $R$ if and only if $M\in\bigcap_i\mathcal{M}(c_i)$, and
+$\omega(R)=\max\{|M|: M\in\bigcap_i\mathcal{M}(c_i)\}$, where each $|M|$ is the sum of $|c|$ over the classes $c$ with $M\in\mathcal{M}(c)$.
+\end{lemma}
+
+\begin{proof}
+If $M$ contains $R$, it contains a vertex of each $c_i$, and Lemma~\ref{lem:containment} puts every $c_i$ wholly inside $M$, so $M\in\mathcal{M}(c_i)$ for each $i$.
+%
+Conversely, $M\in\bigcap_i\mathcal{M}(c_i)$ places every $v_i$ in $M$.
+%
+The largest clique containing $R$ is a maximal clique containing $R$, which gives the expression for $\omega(R)$.
+%
+Finally, the classes partition $V$, and $M$ is the disjoint union of the classes it contains, again by Lemma~\ref{lem:containment}, which gives $|M|$.
+\end{proof}
+
+\begin{corollary}[Zero-Byte Certificates]\label{cor:zerobyte}
+A pattern with $\sigma(P)=r+1$ contributes nothing to the index: every one of its values is $\binom{\omega(P)-r}{s-r}$, and $\omega(P)$ is recomputed from blocks (i) and (ii) at query time.
+\end{corollary}
+
+On \pkustk, all $26.8$ million patterns of row $5$ and all but one of row $4$ are such patterns.
+%
+This is why the index is small: the plane's answers live in the quotient, not beside it.
+
+\begin{corollary}[Membership for Free]\label{cor:member}
+For distinct vertices $v_1,\dots,v_r$, the set $\{v_1,\dots,v_r\}$ is a clique if and only if $\bigcap_i\mathcal{M}(c_i)\neq\emptyset$.
+\end{corollary}
+
+\begin{proof}
+A clique lies in some maximal clique, which then lies in every $\mathcal{M}(c_i)$ by Lemma~\ref{lem:reconstruct}.
+%
+Conversely, a common maximal clique contains all $v_i$, which are then pairwise adjacent.
+\end{proof}
+
+\stitle{The query.}
+Algorithm~\ref{alg:query} answers a point query; the graph itself is never touched.
+
+\begin{algorithm}[t]
+\caption{\queryalg: answer $\kappa_s$ for given vertices.}
+\label{alg:query}
+\algfontsize
+\KwIn{Distinct vertices $v_1,\dots,v_r$ and $s$ with $(r,s)\in\mathcal{P}$}
+\KwOut{$\kappa_s(\{v_1,\dots,v_r\})$, or $0$ if the vertices form no clique}
+$c_i \leftarrow$ class of $v_i$ for all $i$;\quad $P \leftarrow$ the multiset $\{c_1,\dots,c_r\}$\label{lnq:cls}\;
+$\Omega \leftarrow \bigcap_{i}\mathcal{M}(c_i)$\label{lnq:cap}\;
+\lIf{$\Omega=\emptyset$}{\Return{$0$}\label{lnq:zero}}
+\lIf{$P$ is stored with $s<\sigma(P)$}{\Return{the stored value}\label{lnq:exc}}
+\Return{$\binom{\max_{M\in\Omega}|M|\;-\;r}{\,s-r\,}$}\label{lnq:floor}\;
+\end{algorithm}
+
+\begin{theorem}[Query Correctness]\label{thm:query}
+Algorithm~\ref{alg:query} returns $\kappa_s(\{v_1,\dots,v_r\})$ whenever the input vertices form a clique, and $0$ otherwise.
+\end{theorem}
+
+\begin{proof}
+If the vertices form no clique, Corollary~\ref{cor:member} makes Line~\ref{lnq:cap} empty and Line~\ref{lnq:zero} returns $0$.
+%
+Otherwise the input is an $r$-clique $R$ with pattern $P$, and $\kappa_s(R)=\kappa_s(P)$ by Corollary~\ref{cor:pattern}.
+%
+If $s<\sigma(P)$, the value is a residue value, and Line~\ref{lnq:exc} returns what \buildalg{} stored.
+%
+If $s\ge\sigma(P)$, the value equals the floor by Corollary~\ref{cor:absorb}, and Line~\ref{lnq:floor} computes it with $\omega(R)$ supplied by Lemma~\ref{lem:reconstruct}.
+\end{proof}
+
+The intersection of Line~\ref{lnq:cap} walks the shortest membership list and probes the others, largest maximal clique first, so the maximum of Line~\ref{lnq:floor} is found at the first common member.
+%
+A row query, all admissible $s$ at once, resolves $P$ and $\Omega$ once and reuses them.
+% TODO(P10): if the residue lower bound is formalized, state here that block (iii)
+% is information any plane index must carry, and upgrade contribution 1 accordingly.
+
+\stitle{When to build.}
+Equation~\eqref{eq:compression} is computable after the pattern enumeration, before any peeling and before any storage is committed.
+%
+It is the build decision: a ratio near $1$ means the graph has no interchangeable vertices to exploit, and the index degenerates toward the explicit table.
+%
+On \pokec, a social network, the ratio is $1.001$, and the test rejects the build without running it.
+%
+On the mesh \nasasrb{} the ratio is $8.3$, on the web graph \webit{} it is $515$, and the test accepts every graph of Section~\ref{sec:experiments}.
+%
+The applicability of \nsi{} is thus itself a queryable quantity, settled in advance on the cheap side of the computation.
