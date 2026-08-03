@@ -7,7 +7,8 @@
 - [x] E4 same-machine query bench (NSI vs materialized-archive probe) -- **DONE, §233**
 - [ ] E5 server-scale index build/size/latency for all 7 configs
 - [ ] E6 certification-anatomy figure (cert% per cell per graph)
-- [ ] E7 NOCERT ablation (certificate contribution vs shared build)
+- [x] E7 certificate ablation **DONE in substance (§236)**: no-T3 = **22.6x** slower (cells 67-5406x),
+      no-T5 = 2.4-3.0x, answers byte-identical on both graphs; pkustk13 no-T3 completing
 - [ ] E8 (stretch) one extra large graph
 
 ## Cost anatomy / turn the loss cells around (§208, LIVE -- this is the active thread)
@@ -60,6 +61,9 @@ under the index-first metrics (build feasibility, index size, query). Consequenc
 ## Paper
 - [ ] P1 verify SIGMOD/VLDB round dates (do NOT trust memory)
 - [ ] P2 write in order: Intro+Fig1 -> Theory -> Algorithm -> Index -> Experiments -> Related -> Abstract
+      **The narrative architecture is DECIDED: §237** (the spine sentence, the question chain, the
+      roadmap table, the 4-term budget, the 4-line kernel shown first, Fig 1's three panels).
+      Write TO that section; do not re-derive the story.
 - [ ] P6 novelty reading: Burkhardt-Faber 1806.05523, Frohmader flag-KK, ICDE'21 2011.00749
 - [ ] P7 P10 gadget: write out formally OR demote to remark (no "sketch" in contributions)
 - [ ] P8 create paper dir from acmart template (tracked real dir); commit every edit
