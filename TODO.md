@@ -67,10 +67,13 @@ under the index-first metrics (build feasibility, index size, query). Consequenc
       roadmap table, the 4-term budget, the 4-line kernel shown first, Fig 1's three panels).
       Write TO that section; do not re-derive the story.
 - [x] P6 novelty reading DONE (§241): all three cleared; Burkhardt-Faber + Liu-Sariyuce now cited as positioning, Frohmader cited neutrally in the appendix
-- [ ] P7 P10 gadget: write out formally OR demote to remark (no "sketch" in contributions)
+- [x] P7/P10 CLOSED (§242): attempted, obstruction found -- the quotient reconstructs the graph, so
+      no storage bound beyond the quotient exists; residue-necessity is a cell-probe question, out of
+      scope. P10 permanently out; contributions make no optimality claim (already compliant)
 - [x] **FULL DRAFT COMPLETE (2026-08-03, 11 pages)**: sections 1-10 + appendix drafted, all
       gates green (build/refs/overfull/sentence detector). Remaining to submission:
       * refresh every single-run number with E2 medians, then re-run the ledger sweep
+      * P10: closed-out (§242); case studies: DONE (Exp-8/9)
       * two case studies (continue Exp-N); P6 novelty reading; P10 formalize-or-stay-out
       * prose-cadence + teacher_vocab_diff register pass over every section
       * appendix: box construction + delta rule are stubs; write them out

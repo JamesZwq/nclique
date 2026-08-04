@@ -9704,3 +9704,39 @@ cold-reader audit; title. Venue target: SIGMOD 2027 round of 2026-10-17.
    interplay ... has been studied empirically [cite]; Theorem [Diagonal Ceiling] gives the formal
    inequality for every consecutive pair of rows."
 E2 medians running meanwhile (first rows within 3% of the single-run numbers).
+
+## 242. P10 RESOLVED: OUT, with the obstruction that settles it (2026-08-04)
+P7's discipline was "formalize P10 or keep it out, never a sketch". Attempted today, in two steps,
+and the attempt settled the question -- negatively, with a proof-shaped reason.
+
+### Step 1: the real gadget, extracted not invented
+Took the strongest above-floor triangle from the Exp-9 ego (Aggarwal-Pei-Liu, kappa4=6 vs floor 5)
+and greedily minimized its supporting subgraph under brute-force peeling: an **11-vertex** graph
+(Aggarwal, Pei, X. Liu, P.S. Yu, Karypis, X. He, W. Fan, T. Derr, B. Liu, S. Wang, Y. Wang) with
+omega=4, kappa4=2 > floor=1. Mechanism: a K4-fabric -- every triangle in >=2 4-cliques, no K5.
+
+### Step 2: the clean synthetic family, and then the wall
+The fabric generalizes to cocktail-party gadgets K_{s x m} (s parts of m pairwise non-adjacent
+vertices): omega = s, every r-clique lies in C(s-r, s'-r) * m^(s'-r) witnesses at cell (r,s'),
+support is uniform, so kappa = that value while the floor is 1. Tunable by m, silent above s.
+This gives a standard information bound (2^t answer functions from t gadgets => Omega(t) bits for
+ANY exact point-query structure) -- true but generic, and NOT the claim the paper would want.
+
+### The obstruction (why "the index must store the residue" cannot be a theorem)
+The quotient -- class sizes plus class-to-maximal-clique membership -- RECONSTRUCTS the graph:
+u ~ v iff some maximal clique contains both (Lemma Class Containment turns membership lists into
+the exact edge set). So information-theoretically, blocks (i)-(ii) alone already determine every
+answer of every cell; no unconditional storage lower bound "beyond the quotient" can exist.
+Residue-necessity is really a TIME-space claim (answer in near-constant time without re-running a
+peel), i.e. a cell-probe lower bound -- out of scope for this paper and probably a paper of its own.
+
+### Consequences
+1. P10 stays OUT of the paper, permanently, and the contributions never say "optimal/minimal in
+   kind". The current text already complies ("stores the quotient, the residue, and no more" is a
+   description, not an optimality claim). TODO P7 closed.
+2. The K_{s x m} family is recorded as the extreme anti-quotient example: classes are singletons
+   (parts are false twins -- same neighborhoods, DIFFERENT maximal-clique memberships), compression
+   is 1, everything is residue. It is the clean synthetic face of the social-graph failure mode and
+   may serve the applicability discussion or a rebuttal.
+3. The 11-vertex real gadget is kept in /tmp/cs/gadget.json spirit -- the han-derived K4-fabric --
+   as the smallest observed natural above-floor structure.
