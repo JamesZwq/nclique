@@ -90,7 +90,13 @@ residue where it fails, and stores only the quotient + residue (P10: unavoidable
 - Stored records across the whole han1 plane: **45, all in row 3** (r=4's 196 and r=5's 1 are
   boundary-diagonal residue that lands ON floor -> sigma=r+2 -> zero records; verified via
   (4,6)/(5,7) residue = 0).
-- Exp numbering: case studies are Exp-8 and Exp-9.
+- WI ladder (from E2 plane log, trial 1; STRUCTURAL): ~116-121 distinct levels per cell.
+  Top level (3,4)=429 with 13,343,760 = C(432,3) triangles (a 432-page complete cluster;
+  cross-row check C(432,4)=1,431,118,260 at (4,5) ✓). Top level (3,8) = 118,289,506,335.
+  Second level 428, one integer below at (3,4); gap at (3,8) = 1.38e9 levels. Do NOT claim
+  ratio-spreading for near-twin omegas (ratio stays ~1.01); the claim is ABSOLUTE separation.
+  Do NOT run nuclei retrieval on WI mega-cliques (witness-exponential).
+- Exp numbering: case studies are Exp-8 (WI + DB) and Exp-9 (han ego).
 
 ## Claim → evidence map (contributions)
 1. First index over the plane → reconstruction lemma (sec:index) + §233/§234 sizes + 74ns.

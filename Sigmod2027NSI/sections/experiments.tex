@@ -222,10 +222,26 @@ It accepted all eight graphs of Table~\ref{tab:datasets}, and it rejected the so
 In those graphs the vertices are pairwise distinguishable, so the quotient is the graph itself.
 %
 The rejections cost the front end only, and no index was built to learn them.
-\expsection{Case study: reading a collaboration network's ladder}
-We read the whole plane of DB through the index.
+\expsection{Case study: reading an unreadable graph, and a readable one}
+This study reads level ladders through the index.
 %
-Cells are compared at the same rank of their level ladder, not at the same $k$, since absolute levels are incomparable across cells.
+Cells are compared at the same rank of their ladder, not at the same $k$, since absolute levels are incomparable across cells.
+%
+\sstitle{WI: the plane no other method reaches.}
+On WI, \cnd{} finishes no cell and the archive cannot be written, so the numbers below have exactly one source: point and row queries against the $1.70$\,MB index.
+%
+Each cell of the WI plane carries only about $120$ distinct levels.
+%
+The top level of $(3,4)$ is $429$: a complete cluster of $432$ pages whose $\binom{432}{3}=13{,}343{,}760$ triangles all share it, confirmed across rows by $\binom{432}{4}=1{,}431{,}118{,}260$ at $(4,5)$.
+%
+At $(3,8)$ the same cluster's level is $118{,}289{,}506{,}335$, an eleven-digit core number that no peel ever computed and no table ever stored.
+%
+The second level sits one integer below the first at $(3,4)$, and $1.38$ billion integers below it at $(3,8)$.
+%
+A threshold between the two is razor-thin at the boundary cell and robust at the deep one.
+%
+\sstitle{DB: the same reading, verifiable by hand.}
+On DB every number below can be checked against a single \cnd{} run, and the reading is the same.
 %
 \sstitle{The top of every cell is one paper.}
 The four highest levels of every cell are the floors of four author lists: papers with $114$, $102$, $65$, and $63$ authors.
@@ -241,7 +257,9 @@ The top two levels sit $1.12\times$ apart at $s=4$ and $1.79\times$ apart at $s=
 %
 Retrieval shows what close levels cost at $(3,4)$.
 %
-Level $111$ selects one component of $240{,}464$ triangles, level $99$ adds the $102$-author paper as a second component, and level $62$ merges the $65$-author paper into the first.
+Level $111$ selects one component of $240{,}464$ triangles, and level $99$ adds the $102$-author paper as a second component.
+%
+Level $62$ merges the $65$-author paper into the first.
 %
 Level $60$ then adds the $63$-author paper as a third, separate component.
 %
@@ -258,7 +276,9 @@ When two levels sit close at a small $s$, raising $s$ spreads them apart before 
 \expsection{Case study: the residue names the teams}
 We index the DBLP coauthor ego network of Jiawei Han: $1{,}358$ coauthors, $21{,}699$ edges, and $297{,}899$ scored triangles at $r=3$.
 %
-Call a triangle \emph{explained by one paper} if its value equals its floor at every cell; the exceptions are exactly the residue that \nsi{} stores.
+Call a triangle \emph{floor-bound} if its value equals its floor at every cell.
+%
+A floor-bound value is what a single largest paper would produce, and the exceptions are exactly the residue that \nsi{} stores.
 %
 \sstitle{The upper levels are consortium papers.}
 As on DB, the top of every cell is a large author list.
@@ -282,6 +302,8 @@ At $s=8$ a single triangle still exceeds its floor: Aggarwal, Pei, and Liu.
 \sstitle{What the index keeps is the story.}
 Across the three rows, $9.0$ million patterns produce $45$ stored records, all in row $3$, and those records are precisely the multi-paper teams.
 %
-Everything else is one paper's arithmetic, reconstructed on demand.
+Every other value is floor arithmetic, reconstructed on demand.
+%
+The ego is deliberately small, so every claim above can be checked by hand; the same query stream runs unchanged on the graphs of Table~\ref{tab:datasets}, where it cannot.
 % NOTE: all case-study numbers are structural (counts, levels, names) and
 % machine-independent; no timings are reported here.
