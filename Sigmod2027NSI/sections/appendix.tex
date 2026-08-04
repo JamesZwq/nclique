@@ -2,9 +2,39 @@
 \section{Deferred Constructions}\label{app:deferred}
 
 \subsection{Building the Boxes}\label{app:boxes}
-% TODO: the class-level pivoted recursion (degeneracy-ordered, hold/pivot bounds),
-% correctness of the partition, and the [smin, smax] size window. Cite \cite{Pivoter}.
-The construction lifts the pivoting recursion of \cite{Pivoter} from vertices to classes and records hold and pivot bounds per class; details to be included in the full version of this appendix.
+The construction lifts the pivoted clique-tree recursion of \cite{Pivoter} from vertices to weighted classes.
+%
+Form the \emph{class graph}: one node per class, weighted by the class size.
+%
+Two classes are adjacent when their vertices are pairwise adjacent in $G$, which by Lemma~\ref{lem:containment} holds exactly when some maximal clique contains both.
+%
+Compute a degeneracy order of the class graph by repeatedly removing a minimum-degree node.
+%
+Every clique of $G$ projects to a set of pairwise-adjacent classes, and that set has a unique earliest class in the degeneracy order, its \emph{seed}.
+%
+For each seed $c$ and each count $j\in[1,|c|]$, the builder opens a box with the fixed entry $(c,j)$.
+%
+It then runs the canonical pivot recursion of \cite{Pivoter} over the neighbors of $c$ that come after it in the order.
+%
+The recursion fixes some classes at exact counts and releases the others as free, which yields the per-class bounds $\ell$ and $u$ of Definition~\ref{def:box}.
+%
+The bounds are trimmed to the size window $[r_{\min}{+}1, s_{\max}]$, so one family of boxes serves every witness size of the plane.
+
+\begin{proof}[Proof of Lemma~\ref{lem:boxes}]
+Every clique determines its seed uniquely, so cliques of different seeds lie in different boxes.
+%
+Within one seed, the canonical branching of the pivot recursion assigns each clique to exactly one leaf, which is the disjointness invariant of the clique tree \cite{Pivoter}, carried unchanged by the class weights.
+%
+Each box therefore receives every clique that matches its bounds and no other, and the boxes of one seed cover all cliques seeded there, so the family partitions the cliques of every size in the window.
+%
+Finally, the recursion only ever adds classes adjacent to everything already on the path, so the classes of one box are pairwise adjacent.
+\end{proof}
+
+Per seed, the builder touches only the classes after it in the degeneracy order.
+%
+Its cost is therefore governed by the degeneracy of the class graph, not by the number of classes.
+%
+The construction is a negligible share of the build: $1.3$ seconds on \pkustk{} and $2.5$ on \textsf{web-Google}, against plane builds of $217$ and $599$ seconds.
 
 \subsection{Proof of the Shadow Bound}\label{app:shadow}
 We restate Lemma~\ref{lem:shadow}: for $s\ge r+2$ and every $r$-clique $R$, $\kappa_{s-1}(R)\ge g_{s-r}(\kappa_s(R))$.
@@ -24,7 +54,26 @@ Lemma~\ref{lem:maxmin} then gives $\kappa_{s-1}(R)\ge g_{s-r}(k)$.
 \end{proof}
 
 \subsection{Incremental Evaluation of the Filtered Coefficient}\label{app:delta}
-% TODO: the credit rule -- enumerate compositions newly dominated by an inserted
-% removal once, credit each co-hosted pattern by the product of remaining choices;
-% equivalence with Equation (2); cost accounting.
-Each insertion into $A_B$ enumerates only the compositions it newly dominates and credits the co-hosted patterns by closed-form products; details to be included in the full version of this appendix.
+Line~\ref{lnp:update} of Algorithm~\ref{alg:peelcell} never re-expands the filtered sum; it applies the following credit rule.
+
+\begin{lemma}[Credit Rule]\label{lem:credit}
+Let $A_B$ be the removed compositions of box $B$ and let $a$ be inserted.
+%
+Call a composition $y$ \emph{newly dominated} if $a\le y$, no earlier member of $A_B$ is below $y$, and $y$ respects the bounds of $B$ with $\sum_c y_c=s$.
+%
+Then for every pattern $P$ hosted by $B$,
+$\mathrm{Coef}_s(B,b_P,A_B\cup\{a\})=\mathrm{Coef}_s(B,b_P,A_B)-\sum_{y}\prod_{c}\binom{n_c-b_{P,c}}{y_c-b_{P,c}}$,
+summed over the newly dominated $y$ with $b_P\le y$.
+\end{lemma}
+
+\begin{proof}
+The index set of Equation~\eqref{eq:coef} for $A_B\cup\{a\}$ is that for $A_B$ minus exactly the newly dominated compositions.
+%
+Each removed index contributes its product term, which gives the difference.
+\end{proof}
+
+The implementation enumerates the newly dominated compositions once per insertion, walking upward from $a$ within the bounds, and credits each co-hosted pattern $P$ with $b_P\le y$ by the closed-form product.
+%
+A composition therefore dies exactly once per box over the whole peel.
+%
+The total update work is proportional to the number of dead-composition and co-hosted-pattern pairs, never to the number of witnesses those compositions stand for.
