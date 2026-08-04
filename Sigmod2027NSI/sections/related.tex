@@ -6,7 +6,7 @@ The interplay between the core and truss levels has been studied empirically \ci
 %
 The work \cite{sotaPrveHierarchy} accelerates nucleus decomposition and its hierarchy, \cite{fastHierarchy,sotaHierarchy} construct the nucleus hierarchy efficiently, and \cite{LocalNuclear} computes nuclei locally; all of them, like \cnd~\cite{NuclearCD}, compute one cell at a time over explicit scored cliques, whereas we answer a bounded plane of cells from one structure.
 %
-Parallel and distributed core computation \cite{montresor2013distributed,distributed_k-core} scales single cells rather than removing their per-object cost.
+Parallel and distributed core computation \cite{montresor2013distributed} scales single cells rather than removing their per-object cost.
 
 \stitle{Clique counting and indexes.}
 Pivot-based clique counting \cite{Pivoter,BronKerbosch,bitsetClique} counts cliques without listing them, and \cnd{} brought aggregated counting into nucleus decomposition \cite{NuclearCD}; our boxes lift the same pivoting from vertices to classes, so counting serves patterns instead of single cliques.

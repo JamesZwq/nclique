@@ -222,5 +222,66 @@ It accepted all eight graphs of Table~\ref{tab:datasets}, and it rejected the so
 In those graphs the vertices are pairwise distinguishable, so the quotient is the graph itself.
 %
 The rejections cost the front end only, and no index was built to learn them.
-% TODO(case-studies): two case studies continue the Exp-N numbering (multi-resolution
-% exploration on a named graph; the nuclei retrieval demo). Pending.
+\expsection{Case study: reading a collaboration network's ladder}
+We read the whole plane of DB through the index.
+%
+Cells are compared at the same rank of their level ladder, not at the same $k$, since absolute levels are incomparable across cells.
+%
+\sstitle{The top of every cell is one paper.}
+The four highest levels of every cell are the floors of four author lists: papers with $114$, $102$, $65$, and $63$ authors.
+%
+At $(3,4)$ the levels read $111$, $99$, $62$, $60$; at $(3,8)$ they read $128{,}164{,}707$, $71{,}523{,}144$, $6{,}471{,}002$, $5{,}461{,}512$.
+%
+The order never changes, because the floor is monotone in the local clique number at every cell.
+%
+\sstitle{The spacing is the resolution.}
+What changes with $s$ is the spacing.
+%
+The top two levels sit $1.12\times$ apart at $s=4$ and $1.79\times$ apart at $s=8$, and the gap to the third tier grows from $1.6\times$ to $11\times$.
+%
+Retrieval shows what close levels cost at $(3,4)$.
+%
+Level $111$ selects one component of $240{,}464$ triangles, level $99$ adds the $102$-author paper as a second component, and level $62$ merges the $65$-author paper into the first.
+%
+Level $60$ then adds the $63$-author paper as a third, separate component.
+%
+\sstitle{Two integer levels catch a shared author list.}
+The $65$-author level holds only $2{,}016$ triangles, which is $\binom{65}{3}-\binom{64}{3}$.
+%
+That paper shares $64$ of its $65$ authors with the $114$-author paper, and the plane separates the two lists by one ladder step.
+%
+\sstitle{Practical guideline.}
+Exploration should start below the top level, where cells genuinely differ.
+%
+When two levels sit close at a small $s$, raising $s$ spreads them apart before a threshold has to be chosen.
+
+\expsection{Case study: the residue names the teams}
+We index the DBLP coauthor ego network of Jiawei Han: $1{,}358$ coauthors, $21{,}699$ edges, and $297{,}899$ scored triangles at $r=3$.
+%
+Call a triangle \emph{explained by one paper} if its value equals its floor at every cell; the exceptions are exactly the residue that \nsi{} stores.
+%
+\sstitle{The upper levels are consortium papers.}
+As on DB, the top of every cell is a large author list.
+%
+The highest level of $(3,4)$ is $93$, the floor of a $96$-author paper whose $\binom{96}{3}=142{,}880$ triangles all share it.
+%
+\sstitle{The residue names the standing teams.}
+Only $45$ of the $297{,}899$ triangles exceed their floor at $s=4$, spanning $53$ researchers, and they read as the standing collaborations around the ego.
+%
+The strongest is Charu Aggarwal, Jian Pei, and Xiaorui Liu.
+%
+Their triangle holds $6$ supporting $4$-cliques against a floor of $5$, and $14$ supporting $5$-cliques against a floor of $10$.
+%
+The others include a sensor-network circle (Kaplan, Szymanski, Abdelzaher), a language-processing circle (Ji, Gao, Zhu), and a cohort of the ego's recent students (Meng, Shen, Zhang, Mao).
+%
+\sstitle{Raising the witness size dissolves coincidence.}
+The residue thins from $45$ patterns at $s=5$ to $38$ at $s=7$ and $9$ at $s=8$.
+%
+At $s=8$ a single triangle still exceeds its floor: Aggarwal, Pei, and Liu.
+%
+\sstitle{What the index keeps is the story.}
+Across the three rows, $9.0$ million patterns produce $45$ stored records, all in row $3$, and those records are precisely the multi-paper teams.
+%
+Everything else is one paper's arithmetic, reconstructed on demand.
+% NOTE: all case-study numbers are structural (counts, levels, names) and
+% machine-independent; no timings are reported here.

@@ -6,7 +6,6 @@ Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
 Database file #1: references.bib
-Warning--I didn't find a database entry for "distributed_k-core"
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated wiz_functions (elt_size=4) to 9000 items from 6000.
 Reallocated glb_str_ptr (elt_size=4) to 20 items from 10.
@@ -32,7 +31,7 @@ Warning--empty publisher in zhang2023efficient
 Warning--empty address in zhang2023efficient
 You've used 38 entries,
             6273 wiz_defined-function locations,
-            1839 strings with 26926 characters,
+            1838 strings with 26908 characters,
 and the built_in function-call counts, 45372 in all, are:
 = -- 6380
 > -- 1288
@@ -71,4 +70,4 @@ warning$ -- 17
 while$ -- 240
 width$ -- 0
 write$ -- 829
-(There were 18 warnings)
+(There were 17 warnings)

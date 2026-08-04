@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.21)  4 AUG 2026 20:29
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.21)  4 AUG 2026 21:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -3882,7 +3882,177 @@ LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 220.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 220.
+
+Class acmart Warning: \vspace should only be used to provide space above/below 
+surrounding objects on input line 225.
+
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 228.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 230.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 231.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 231.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 231.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 231.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 233.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 237.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 238.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 240.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 240.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 240.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 240.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 240.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 240.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 242.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 244.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 244.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 244.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 244.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 244.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 244.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 246.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 246.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 248.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 249.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 249.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 249.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 251.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 251.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 251.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 253.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 256.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 256.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 257.
+ [9.9 <./figures/fig_grid_time.pdf> <./figures/fig_grid_memory.pdf>]
+
+Class acmart Warning: \vspace should only be used to provide space above/below 
+surrounding objects on input line 258.
+
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 259.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 259.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 259.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 259.
+LaTeX Font Info:    Undo math alphabet allocation in version normal on input li
+ne 261.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 263.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 266.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 266.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 266.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 266.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 268.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 269.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 269.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 269.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 269.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 273.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 273.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 273.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 273.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 273.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 273.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 277.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 278.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 278.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 278.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 278.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 278.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 278.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 280.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 282.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 283.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 283.
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 283.
 ) (./sections/related.tex
+Overfull \hbox (4.425pt too wide) in paragraph at lines 258--1
+\T1/LinuxLibertineT-TLF/m/n/9 (-20) Mao). $[]$ The residue thins
+ []
+
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 3.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
@@ -3891,23 +4061,13 @@ LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 3.
 LaTeX Font Info:    Undo math alphabet allocation in version normal on input li
 ne 7.
-
-
-Package natbib Warning: Citation `distributed_k-core' on page 9 undefined on in
-put line 9.
-
-
-Underfull \vbox (badness 1668) has occurred while \output is active []
-
-LaTeX Font Info:    No math alphabet change to frozen version normal on input l
-ine 10.
- [9.9 <./figures/fig_grid_time.pdf> <./figures/fig_grid_memory.pdf>]
 LaTeX Font Info:    Undo math alphabet allocation in version normal on input li
 ne 12.
 LaTeX Font Info:    Undo math alphabet allocation in version normal on input li
 ne 14.
-)
-(./sections/conclusion.tex
+) (./sections/conclusion.tex
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
 LaTeX Font Info:    Undo math alphabet allocation in version normal on input li
 ne 2.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
@@ -3918,7 +4078,8 @@ LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 10.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 10.
-) (./main.bbl
+)
+(./main.bbl
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 50.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
@@ -3937,6 +4098,7 @@ LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 201.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 214.
+ [10.10]
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 241.
 LaTeX Info: Redefining \tempurl on input line 266.
@@ -3979,16 +4141,15 @@ LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 474.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 488.
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [10.10]
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 503.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 516.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 531.
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 556.
 )
@@ -4088,6 +4249,9 @@ ine 51.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 53.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
+ine 59.
+ [11.11]
+LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 63.
 LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 63.
@@ -4129,9 +4293,6 @@ LaTeX Font Info:    No math alphabet change to frozen version normal on input l
 ine 78.
 )
 
-Package natbib Warning: There were undefined citations.
-
-
 Class acmart Warning: Some images may lack descriptions.
 (acmart)              ACM is committed to complying with the upcoming US ADA ht
 tps://accessiblyapp.com/accessibility-compliance/ada/ and European Accessibilit
@@ -4146,14 +4307,14 @@ portant to optimize color contrast for the visually impaired. Taking these impo
 rtant steps when creating your papers will ensure that the widest possible audi
 ence can ingest your work..
 
-LaTeX Font Info:    No math alphabet change to frozen version normal on input l
-ine 71.
 (/usr/local/texlive/2026/texmf-dist/tex/generic/stringenc/se-pdfdoc.def
 File: se-pdfdoc.def 2019/11/29 v1.12 stringenc: PDFDocEncoding
 )
 (/usr/local/texlive/2026/texmf-dist/tex/generic/stringenc/se-utf8.def
 File: se-utf8.def 2019/11/29 v1.12 stringenc: UTF-8
-) [11.11]
+) [12.12
+
+]
 (./main.aux)
  ***********
 LaTeX2e <2025-11-01>
@@ -4163,13 +4324,13 @@ Package rerunfilecheck Info: File `main.out' has not changed.
 (rerunfilecheck)             Checksum: 2B5CF9F69B642C9DFA58511E38B2D282;2604.
  ) 
 Here is how much of TeX's memory you used:
- 24215 strings out of 467525
- 400924 string characters out of 5418982
- 883471 words of memory out of 5000000
+ 24216 strings out of 467525
+ 400931 string characters out of 5418982
+ 877330 words of memory out of 5000000
  51433 multiletter control sequences out of 15000+600000
- 961730 words of font info for 810 fonts, out of 8000000 for 9000
+ 961738 words of font info for 810 fonts, out of 8000000 for 9000
  1302 hyphenation exceptions out of 8191
- 90i,18n,131p,1001b,775s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 90i,18n,131p,1001b,732s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026/texmf-dist/fonts/type1/public/inconsolata/Inconsolat
 a-zi4r.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/newtx/Liberti
 neMathMI.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/newtx/Liber
@@ -4188,10 +4349,10 @@ type1/public/newtx/txexs.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/pu
 blic/newtx/txmiaX.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/ne
 wtx/txsym.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/public/newtx/txsy
 s.pfb>
-Output written on main.pdf (11 pages, 685934 bytes).
+Output written on main.pdf (12 pages, 690438 bytes).
 PDF statistics:
- 811 PDF objects out of 1000 (max. 8388607)
- 638 compressed objects within 7 object streams
- 170 named destinations out of 1000 (max. 500000)
+ 815 PDF objects out of 1000 (max. 8388607)
+ 641 compressed objects within 7 object streams
+ 171 named destinations out of 1000 (max. 500000)
  178848 words of extra memory for PDF output out of 184870 (max. 10000000)
 

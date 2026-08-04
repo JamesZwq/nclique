@@ -74,6 +74,24 @@ residue where it fails, and stores only the quotient + residue (P10: unavoidable
   kills its contribution -> 2 (the cascade). sup(B^2C)=2.
 - pkustk13 (3,4): 2.2M patterns vs 45.2M cliques; r=5: 26.8M vs 2.28B.
 
+## Case-study numbers (frozen 2026-08-04; all STRUCTURAL, machine-independent, local runs)
+- com-dblp ladder: papers of 114/102/65/63 authors; kappa_4 = 111/99/62/60; kappa_8 =
+  128,164,707 / 71,523,144 / 6,471,002 / 5,461,512. Counts C(114,3)=240,464, C(102,3)=171,700,
+  2,016 = C(65,3)-C(64,3) (the 64-shared-author discovery), C(63,3)=39,711.
+- com-dblp retrieval (3,4): k=111 -> 1 comp (240,464); k=99 -> 2 comps; k=62 -> 65-paper MERGES
+  (242,480 = 240,464+2,016); k=60 -> third separate comp 39,711.
+- (3,8) nuclei retrieval on mega-cliques is witness-exponential (C(114,8) 8-cliques) -- do NOT
+  attempt; connectivity claims at high s stay reasoned, not run.
+- han1 ego (built from name-based coauthor.tsv; n=1,358 == cs9 meta cross-check; m=21,699;
+  297,899 triangles; anchor id 484 = Jiawei Han 0001): top level (3,4)=93 (96-author paper,
+  C(96,3)=142,880 ✓). Residue: 45 @ (3,5) == 45 flagged by the kappa5 != C(kappa4,2) detector
+  (exact match with engine); 53 researchers; thins 45/45/38/9 at s=5..8; only survivor above
+  floor AT s=8: Aggarwal-Pei-Liu (omega=8, k4=6, k5=14, k8=2 vs floor 1).
+- Stored records across the whole han1 plane: **45, all in row 3** (r=4's 196 and r=5's 1 are
+  boundary-diagonal residue that lands ON floor -> sigma=r+2 -> zero records; verified via
+  (4,6)/(5,7) residue = 0).
+- Exp numbering: case studies are Exp-8 and Exp-9.
+
 ## Claim → evidence map (contributions)
 1. First index over the plane → reconstruction lemma (sec:index) + §233/§234 sizes + 74ns.
 2. Quotient framework + certified transfer → interchangeability thm, coefficient lemma, T3, T5
@@ -84,7 +102,9 @@ residue where it fails, and stores only the quotient + residue (P10: unavoidable
 ## Style gates (every section, before it counts as drafted)
 1. sentence detector: target 10–22, cap 28; licensed >28 only for semicolon citation sweeps,
    the research-question hinge, and line-anchored walkthroughs.
-2. build: latexmk clean AND `pdftotext main.pdf - | grep -c "??"` == 0.
+2. build: latexmk clean AND `pdftotext` shows 0 "??" AND 0 "[N?]" citations AND
+   `grep -c "undefined" main.log` == 0 (a missing bib key renders as [22?], which the
+   plain ?? grep does NOT catch -- learned 2026-08-04).
 3. prose-cadence pass + teacher_vocab_diff (register gate) at polish time.
 4. No symbols before sec:preliminaries; no correctness-as-experiment claims (skill HC-12);
    no self-exposed weaknesses (advisor rule) — applicability is a capability, framed predictive.
