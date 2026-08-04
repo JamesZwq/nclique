@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex main"] 1785839195.74752 "main.aux" "main.bbl" "main" 1785839252.71546 0
+["bibtex main"] 1785839364.12804 "main.aux" "main.bbl" "main" 1785839365.27319 0
   "./ACM-Reference-Format.bst" 1785755880.08572 93560 12e0ced1522ea2bfa9b2fb12855c7e9e ""
-  "./references.bib" 1785839191.92391 83469 9d233f55a22e885aefdef759b69c5dc6 ""
-  "main.aux" 1785839252.37177 15328 0427a261a0c9a387cc887739bcba3f3b "pdflatex"
+  "./references.bib" 1785839361.76494 84232 5a1733cfbdda451f2ad6fcd38f5d84d6 ""
+  "main.aux" 1785839364.94129 15596 e7d83999e4a028658c4920881d1090ae "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1785839251.65486 "main.tex" "main.pdf" "main" 1785839252.7156 0
+["pdflatex"] 1785839364.20553 "main.tex" "main.pdf" "main" 1785839365.2733 0
   "/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/inconsolata/i4-t1-4.enc" 1558214095 7693 0f2dce6d313c82989ec3a67fc24df2a0 ""
   "/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/libertine/lbtn_25tcsq.enc" 1490131464 2921 8ca0eb0831f9bc5da080d3697cfe67bf ""
   "/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/libertine/lbtn_76gpa5.enc" 1490131464 2933 9ad527ce78d7c5fa0a642dead095f172 ""
@@ -241,12 +241,12 @@
   "figures/fig1_example.pdf" 1785756089.57572 14652 68bf70f6b3772deedc1b7bc64fe35c15 ""
   "figures/fig_grid_memory.pdf" 1785764568.33141 27277 a23120938bee6fafda590e2479b1a3ac ""
   "figures/fig_grid_time.pdf" 1785764567.84436 24192 22ad2c64c86f866e7f00c0a188abd63b ""
-  "main.aux" 1785839252.37177 15328 0427a261a0c9a387cc887739bcba3f3b "pdflatex"
-  "main.bbl" 1785839195.82385 22490 4d6c6cbaed61a7b5d8f92c1d6c2842a6 "bibtex main"
-  "main.out" 1785839252.37281 2604 2b5cf9f69b642c9dfa58511e38b2d282 "pdflatex"
+  "main.aux" 1785839364.94129 15596 e7d83999e4a028658c4920881d1090ae "pdflatex"
+  "main.bbl" 1785839364.2028 23701 cf5544e2745247e98b4cdc6e9c5a9618 "bibtex main"
+  "main.out" 1785839364.9423 2604 2b5cf9f69b642c9dfa58511e38b2d282 "pdflatex"
   "main.tex" 1785762335.38847 2031 72f695da96296ff69ba2e56ce6ea7718 ""
   "sections/abstract.tex" 1785763918.61807 1680 640f15d55687b3eb9fe8a3606db03b6f ""
-  "sections/appendix.tex" 1785839251.59369 4851 1f0e71f7f710cb44b67ce63bd0e10fd9 ""
+  "sections/appendix.tex" 1785839361.78621 5057 e342c53d182a395836c7f672ff63d8ef ""
   "sections/conclusion.tex" 1785763918.61796 813 0f76d5e9a0282fe40c7ab996dc8e4b04 ""
   "sections/existing.tex" 1785759307.38289 4175 e5ac39cd1b2ca408499f7fbe90b5de2f ""
   "sections/experiments.tex" 1785839191.98074 10085 c374b06ed8838e787b848ba274a5ba62 ""
@@ -256,7 +256,7 @@
   "sections/plane.tex" 1785762421.962 10137 6aa484954b5378d7e02d3c42378c4296 ""
   "sections/preliminaries.tex" 1785759307.38276 5260 425ac5c1701c8e1815ab2405a27cd6e2 ""
   "sections/quotient.tex" 1785759467.82521 6910 f0b9bb4f954e803ca179020ce1632f8d ""
-  "sections/related.tex" 1785763888.17578 1836 b8950f3ff4e28a9aa3da6bcfb5b80656 ""
+  "sections/related.tex" 1785839361.78606 2229 221a12379fc41588499c1c7b55567cef ""
   (generated)
   "main.aux"
   "main.log"

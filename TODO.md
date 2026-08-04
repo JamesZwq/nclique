@@ -66,7 +66,7 @@ under the index-first metrics (build feasibility, index size, query). Consequenc
       **The narrative architecture is DECIDED: §237** (the spine sentence, the question chain, the
       roadmap table, the 4-term budget, the 4-line kernel shown first, Fig 1's three panels).
       Write TO that section; do not re-derive the story.
-- [ ] P6 novelty reading: Burkhardt-Faber 1806.05523, Frohmader flag-KK, ICDE'21 2011.00749
+- [x] P6 novelty reading DONE (§241): all three cleared; Burkhardt-Faber + Liu-Sariyuce now cited as positioning, Frohmader cited neutrally in the appendix
 - [ ] P7 P10 gadget: write out formally OR demote to remark (no "sketch" in contributions)
 - [x] **FULL DRAFT COMPLETE (2026-08-03, 11 pages)**: sections 1-10 + appendix drafted, all
       gates green (build/refs/overfull/sentence detector). Remaining to submission:

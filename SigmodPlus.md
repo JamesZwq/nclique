@@ -9688,3 +9688,19 @@ Every section passed: latexmk clean, pdftotext '??' == 0, overfull == 0, sentenc
 E2 medians -> requote everything; case studies; P6 novelty reading; P10 formalize or stay out;
 appendix stubs (box construction, delta rule); dataset citations; cadence/register pass;
 cold-reader audit; title. Venue target: SIGMOD 2027 round of 2026-10-17.
+
+## 241. P6 NOVELTY READING: three suspects cleared, two turned into positioning (2026-08-04)
+1. **Burkhardt-Faber, "Bounds and algorithms for graph trusses" (JGAA 24(3), 2020; arXiv
+   1806.05523)**: truss-only edge-count bounds and two truss algorithms. No (r,s) generalization, no
+   cross-cell transfer, no threat to the Diagonal Ceiling. Added to the truss citation cluster.
+2. **Frohmader, "Face vectors of flag complexes" (Israel J. Math 164, 2008)**: a SHARPER
+   Kruskal-Katona for flag complexes. No collision: our Shadow Bound applies plain KK to the
+   extension family (not a flag complex), and at the binomial points the certificate compares, the
+   plain bound is already tight, so the sharper form buys nothing where we certify. Cited neutrally
+   in the appendix.
+3. **arXiv 2011.00749 = Liu-Sariyuce, "Characterizing and Utilizing the Interplay Between Core and
+   Truss Decompositions" (IEEE BigData 2020, not ICDE'21 as the TODO guessed)**: EMPIRICAL core-truss
+   interplay plots and an anomaly detector. No theorem. Turned into a foil in Related Work: "the
+   interplay ... has been studied empirically [cite]; Theorem [Diagonal Ceiling] gives the formal
+   inequality for every consecutive pair of rows."
+E2 medians running meanwhile (first rows within 3% of the single-run numbers).

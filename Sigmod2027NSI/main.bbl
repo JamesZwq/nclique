@@ -2,7 +2,7 @@
 %%% Do NOT edit. File created by BibTeX with style
 %%% ACM-Reference-Format-Journals [18-Jan-2012].
 
-\begin{thebibliography}{35}
+\begin{thebibliography}{38}
 
 %%% ====================================================================
 %%% NOTE TO THE USER: you can override these defaults by providing
@@ -91,6 +91,17 @@
 \href{https://doi.org/10.1145/362342.362367}{doi:\nolinkurl{10.1145/362342.362367}}
 
 
+\bibitem[Burkhardt and Faber(2020)]%
+        {burkhardt2020trusses}
+\bibfield{author}{\bibinfo{person}{Paul Burkhardt} {and} \bibinfo{person}{Vance
+  Faber}.} \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{Bounds and Algorithms for Graph Trusses}.
+\newblock \bibinfo{journal}{\emph{Journal of Graph Algorithms and
+  Applications}} \bibinfo{volume}{24}, \bibinfo{number}{3}
+  (\bibinfo{year}{2020}), \bibinfo{pages}{191--214}.
+\newblock
+
+
 \bibitem[Davis and Hu(2011)]%
         {suitesparse}
 \bibfield{author}{\bibinfo{person}{Timothy~A. Davis} {and}
@@ -116,6 +127,16 @@
 \url{https://api.semanticscholar.org/CorpusID:15222702}
 \showURL{%
 \tempurl}
+
+
+\bibitem[Frohmader(2008)]%
+        {frohmader2008}
+\bibfield{author}{\bibinfo{person}{Andrew Frohmader}.}
+  \bibinfo{year}{2008}\natexlab{}.
+\newblock \showarticletitle{Face Vectors of Flag Complexes}.
+\newblock \bibinfo{journal}{\emph{Israel Journal of Mathematics}}
+  \bibinfo{volume}{164} (\bibinfo{year}{2008}), \bibinfo{pages}{153--164}.
+\newblock
 
 
 \bibitem[Gibson et~al\mbox{.}(1998)]%
@@ -259,6 +280,16 @@
 \newblock
 \showISSN{2150-8097}
 \href{https://doi.org/10.14778/2735479.2735484}{doi:\nolinkurl{10.14778/2735479.2735484}}
+
+
+\bibitem[Liu and Sar{\i}y{\"u}ce(2020)]%
+        {liu2020interplay}
+\bibfield{author}{\bibinfo{person}{Penghang Liu} {and}
+  \bibinfo{person}{A.~Erdem Sar{\i}y{\"u}ce}.} \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{Characterizing and Utilizing the Interplay Between
+  Core and Truss Decompositions}. In \bibinfo{booktitle}{\emph{IEEE
+  International Conference on Big Data}}.
+\newblock
 
 
 \bibitem[Lov{\'a}sz(1979)]%

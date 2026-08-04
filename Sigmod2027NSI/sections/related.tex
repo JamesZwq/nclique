@@ -1,6 +1,8 @@
 \section{Related Work}\label{sec:related}
 \stitle{Cohesive decompositions.}
-The $k$-core \cite{seidman1983network,batagelj2011fast} and the $k$-truss \cite{cohen2008trusses,wang2012truss,huang2014truss} are the classical peel-based decompositions, and the $(r,s)$-nucleus generalizes both to cliques \cite{firstNucleus}.
+The $k$-core \cite{seidman1983network,batagelj2011fast} and the $k$-truss \cite{cohen2008trusses,wang2012truss,huang2014truss,burkhardt2020trusses} are the classical peel-based decompositions, and the $(r,s)$-nucleus generalizes both to cliques \cite{firstNucleus}.
+%
+The interplay between the core and truss levels has been studied empirically \cite{liu2020interplay}; Theorem~\ref{thm:diag} gives the formal inequality, for every consecutive pair of rows.
 %
 The work \cite{sotaPrveHierarchy} accelerates nucleus decomposition and its hierarchy, \cite{fastHierarchy,sotaHierarchy} construct the nucleus hierarchy efficiently, and \cite{LocalNuclear} computes nuclei locally; all of them, like \cnd~\cite{NuclearCD}, compute one cell at a time over explicit scored cliques, whereas we answer a bounded plane of cells from one structure.
 %
@@ -12,5 +14,7 @@ Pivot-based clique counting \cite{Pivoter,BronKerbosch,bitsetClique} counts cliq
 Index structures for cohesive search, such as the truss-equivalence index \cite{akbas2017truss} and core-maintenance structures \cite{zhang2023efficient}, support one fixed decomposition; \nsi{} instead stores the quotient from which a whole plane of decompositions is reconstructed.
 %
 Treating vertices with identical neighborhoods as one object is classical in graph compression; our classes coarsen by maximal-clique membership, which is exactly the granularity the nucleus values respect.
-% TODO(P6): novelty reading against Burkhardt-Faber 1806.05523, Frohmader flag
-% Kruskal-Katona, and ICDE'21 2011.00749 before submission.
+% P6 DONE (2026-08-04): Burkhardt-Faber = truss-only bounds/algorithms, no (r,s)
+% transfer; Frohmader = sharper KK for flag complexes, cited in the appendix, no
+% collision (our bound is tight at the certified points); Liu-Sariyuce = the
+% EMPIRICAL core-truss interplay, cited above as the foil for Theorem thm:diag.
