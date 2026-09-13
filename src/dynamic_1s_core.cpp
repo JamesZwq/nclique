@@ -548,6 +548,30 @@ int main(int argc, char **argv) {
         idxEmitSct(fullW.data(), He, PiLe, 0);
     }
     double newCliques = (idxLeaves() > leavesBefore) ? 1.0 : 0.0;
+    // [dbg] per-vertex new-clique attribution from T_e: deltaMax = max_z #new
+    // s-cliques through z; deltaTot = total new s-cliques. (Lemma: c'(x) <=
+    // c(x) + deltaMax for ALL x — see audit notes.)
+    double deltaMax = 0.0, deltaTot = 0.0;
+    if (dbg) {
+        static std::vector<double> deltaV;
+        static std::vector<uint32_t> deltaTouched;
+        for (uint32_t w : deltaTouched) deltaV[w] = 0.0;
+        deltaTouched.clear();
+        if (deltaV.size() < (size_t)n) deltaV.assign(n, 0.0);
+        for (size_t li = leavesBefore; li < idxLeaves(); ++li) {
+            const uint32_t *d = leafData.data() + leafStart[li];
+            const int hl = leafHLen[li];
+            const int pl = (int)(leafStart[li + 1] - leafStart[li]) - hl;
+            deltaTot += nCr(pl, S - hl);
+            const double aH = nCr(pl, S - hl), aP = nCr(pl - 1, S - hl - 1);
+            for (int i = 0; i < hl + pl; ++i) {
+                uint32_t w = d[i];
+                if (deltaV[w] == 0.0) deltaTouched.push_back(w);
+                deltaV[w] += (i < hl) ? aH : aP;
+            }
+        }
+        for (uint32_t w : deltaTouched) deltaMax = std::max(deltaMax, deltaV[w]);
+    }
 
     // Insert e into adjacency NOW (in every case — the graph is G' from here;
     // in streaming mode the next update needs current adjacency even when e
@@ -655,6 +679,20 @@ int main(int argc, char **argv) {
     auto tl1 = std::chrono::steady_clock::now();
     double lambda_us = std::chrono::duration<double, std::micro>(tl1 - tp1).count();
 
+    if (dbg) {
+        size_t nSat = 0;
+        for (size_t i = 0; i < NS; ++i) nSat += (sState[i] == 1);
+        std::fprintf(stderr,
+                     "[dbg] LAMBDA seeds=%zu sat=%zu deltaMax=%.0f deltaTot=%.0f iv=[",
+                     NS, nSat, deltaMax, deltaTot);
+        for (size_t i = 0; i < lambdaIv.size() && i < 12; ++i)
+            std::fprintf(stderr, "%s(%.0f,%s]", i ? " " : "", lambdaIv[i].first,
+                         lambdaIv[i].second == INF
+                             ? "inf"
+                             : std::to_string((long long)lambdaIv[i].second).c_str());
+        std::fprintf(stderr, "%s]\n", lambdaIv.size() > 12 ? " ..." : "");
+    }
+
     if (lambdaIv.empty()) {
         // Corollary 9a: no active level anywhere => R* = ∅, no core changes.
         auto t1 = std::chrono::steady_clock::now();
@@ -728,6 +766,24 @@ int main(int argc, char **argv) {
 
     auto tp2a = std::chrono::steady_clock::now();
     double p2test_us = std::chrono::duration<double, std::micro>(tp2a - tl1).count();
+
+    if (dbg && !fallback) {
+        // admitted-core distribution per Λ̂ interval (bin by c(y)+1)
+        std::vector<size_t> ivCnt(lambdaIv.size(), 0);
+        double cmin = INF, cmax = 0.0;
+        for (uint32_t x : Cvec) {
+            double l = coreBase[x] + 1.0;
+            cmin = std::min(cmin, coreBase[x]);
+            cmax = std::max(cmax, coreBase[x]);
+            for (size_t i = 0; i < lambdaIv.size(); ++i)
+                if (lambdaIv[i].first < l && l <= lambdaIv[i].second) { ++ivCnt[i]; break; }
+        }
+        std::fprintf(stderr, "[dbg] ADMIT |C|=%zu coreRange=[%.0f,%.0f] perIv=[",
+                     Cvec.size(), cmin, cmax);
+        for (size_t i = 0; i < ivCnt.size() && i < 12; ++i)
+            std::fprintf(stderr, "%s%zu", i ? " " : "", ivCnt[i]);
+        std::fprintf(stderr, "]\n");
+    }
 
     if (fallback) {
         auto t1 = std::chrono::steady_clock::now();

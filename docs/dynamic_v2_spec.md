@@ -1,5 +1,42 @@
 # Dynamic (1,s)-core Maintenance — v2 Specification
 
+> ## ⏸ ARCHIVED / HANDOFF (2026-09-13)
+> **Verdict (user, 2026-09-13): this dynamic-maintenance line is NOT enough to
+> support a standalone paper on its own.** Archived here as a complete,
+> resumable record; active writing goes back to the R=1 STATIC peel paper
+> (`vldbNuclearR1` on Overleaf: *Efficient s-Clique Core Decomposition on
+> Billion-Scale Graphs*, SPIN★/SPIN★Hier/ParaBuild).
+>
+> **What EXISTS and is SOLID (all committed):**
+> - Problem is NOVEL: dynamic (1,s)-core / s-clique-core maintenance under edge
+>   updates, s>=3 — zero prior art (k-core/truss maintenance exist; s>=3 does not).
+> - Algorithm v4 (BEST): index-backed. Insert = 3-phase (additive EdgeTree
+>   §22 Lemma 10 + Λ̂ seed-cut §18 + closure/eviction §6 + one pinned peel §8);
+>   delete = symmetric core-fall (cleaner, no ring). `src/dynamic_1s_core.cpp`
+>   (insert, frozen `build/bin/dynamic_1s_core_v4final`), `src/dynamic_1s_core_del.cpp`.
+> - Correctness: INSERT 0 mismatch / 1180 single-edge + 50-edge streaming;
+>   DELETE 0 mismatch / 838 edges. Harnesses: bench_dynamic_{insert,delete,stream}.py.
+> - Theory: Lemmas 0–10 proven in this doc; additivity E1-verified bit-exact.
+> - Performance (clean single-thread): SPARSE win (dblp s5 262us/insert = 833x
+>   full-recompute, 48x peel-only), DENSE-HUB loss vs peel-only (Epinions;
+>   intrinsic same-level-shell hardness).
+>
+> **Why NOT a paper yet (the honest gap):**
+> - No stable 1000x: dense/low-core graphs hit an irreducible same-level-shell
+>   wall — v5 (order certificate) and v6 (tight adjacency grow) BOTH tried and
+>   FAILED to beat v4 there (v6 measured WORSE; v5 naive cert falsified). The
+>   win is sparse-only + feasibility, not universal.
+> - Deletion prototype uses a naive recompute-per-pop peel (v4 peel opts not
+>   ported) → hub tail catastrophic (region tight but per-pop count expensive).
+>
+> **To RESUME (if revived):** (1) port v4 τ-view/delta peel into deletion;
+> (2) leaf surgery §23 for streaming delete (E2 cost measured cheap);
+> (3) try to PROVE dense-hub hardness as a conditional lower bound (turns the
+> negative into a theorem); (4) batch updates §17. Full timeline + every dead
+> end in memory `project_dynamic_1s_core.md`. Reusable insight for OTHER papers:
+> the preserved-index → **additive index maintenance** (CPI(G+e)=CPI(G)⊎EdgeTree,
+> Lemma 10) may feed a future dynamic angle on the SPIN★ index.
+
 **Status**: authoritative design + theory document for the v2 rewrite.
 **Audience**: an implementing agent with access to this repository. Read this
 document END TO END before writing code. Every design decision here is
