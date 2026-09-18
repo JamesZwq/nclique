@@ -135,6 +135,15 @@ The index size is therefore bounded by n bits plus data proportional to
 the number of chains, which is empirically below the number of canonical
 nodes, not by a theorem in terms of the hierarchy alone.
 
+Update (13-graph run, RESULTS_FINAL.md): the observation fails on four
+of thirteen graphs. chains / canonical nodes = 1.08 (soc-Slashdot0902),
+1.77 (cit-HepPh), 1.91 (com-youtube), 5.67 (soc-pokec, 383,206 chains on
+67,544 nodes); it stays at 0.32-0.68 on the collaboration, web, product
+and the other social graphs. Recombination is real on social and citation
+graphs, exactly where core values across sizes are least coherent. The
+index still beats per-vertex S trees there (1.5x-3.9x) because chains
+collapse 2-12 vertices each.
+
 ## 8. Toward r >= 2
 
 For r >= 2 the items are r-cliques and the nuclei partition the r-cliques

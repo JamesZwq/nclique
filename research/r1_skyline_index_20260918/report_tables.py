@@ -51,17 +51,27 @@ def final():
     data = by_graph(rec); vert = by_graph(load('index_vertices.json'))
     def vbytes(g, r): return r.get('baseline_vertex_bytes', vert[g]['base_with_d'] if g in vert else 0)
     print('### Final module: size')
-    print('| Graph | n | s_max | chains | canonical nodes | (chain,s) pairs | runs | map B | chains B | layers B | total B | file B | perm B | build form total B | per-vertex S trees B | ratio |')
-    print('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+    print('| Graph | n | s_max | W bits | chains | n / chains | canonical nodes | chains / nodes | (chain,s) pairs | runs | map B | chains B | layers B | total B | file B | perm B | build form total B | per-vertex S trees B | ratio | ratio with perm |')
+    print('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
     for g, r in data.items():
         v = vbytes(g, r)
-        print(f"| {g} | {fmt(r['n'])} | {r['s_max']} | {fmt(r['chains'])} | {fmt(r['canonical_nodes'])} | {fmt(r['pairs_total'])} | {fmt(r['runs_total'])} | {fmt(r['bytes_map'])} | {fmt(r['bytes_chains'])} | {fmt(r['bytes_layers'])} | {fmt(r['bytes_total'])} | {fmt(r['file_bytes'])} | {fmt(r['perm_bytes'])} | {fmt(r['slice_bytes_total'])} | {fmt(v)} | {v/r['bytes_total']:.2f}x |")
+        print(f"| {g} | {fmt(r['n'])} | {r['s_max']} | {r['count_bits']} | {fmt(r['chains'])} | {r['n']/r['chains']:.1f} | {fmt(r['canonical_nodes'])} | {r['chains']/r['canonical_nodes']:.2f} | {fmt(r['pairs_total'])} | {fmt(r['runs_total'])} | {fmt(r['bytes_map'])} | {fmt(r['bytes_chains'])} | {fmt(r['bytes_layers'])} | {fmt(r['bytes_total'])} | {fmt(r['file_bytes'])} | {fmt(r['perm_bytes'])} | {fmt(r['slice_bytes_total'])} | {fmt(v)} | {v/r['bytes_total']:.2f}x | {v/(r['bytes_total']+r['perm_bytes']):.2f}x |")
     print()
-    print('### Final module: build, save, load (ms, single thread)')
-    print('| Graph | solve (all-size peel) | trees | chains + labels | layout | build total | compact | save | load |')
-    print('|---|---:|---:|---:|---:|---:|---:|---:|---:|')
+    def wall_rss(g):
+        p = HERE / 'final-logs' / f'{g}.log'
+        if not p.exists(): return '-', '-'
+        wall = rss = '-'
+        for line in p.read_text().splitlines():
+            t = line.split()
+            if len(t) >= 2 and t[1] == 'real': wall = t[0]
+            if 'maximum resident set size' in line: rss = f'{int(t[0])/1048576:,.0f}'
+        return wall, rss
+    print('### Final module: build, save, load (ms, single thread); whole-process wall time (s) and peak RSS (MB)')
+    print('| Graph | solve (all-size peel) | trees | chains + labels | layout | build total | compact | save | load | process wall s | peak RSS MB |')
+    print('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
     for g, r in data.items():
-        print(f"| {g} | {fmt(r['solve_ms'])} | {fmt(r['trees_ms'])} | {fmt(r['chains_ms'])} | {fmt(r['layout_ms'])} | {fmt(r['build_ms'])} | {r['compact_ms']:.2f} | {r['save_ms']:.1f} | {r['load_ms']:.1f} |")
+        wall, rss = wall_rss(g)
+        print(f"| {g} | {fmt(r['solve_ms'])} | {fmt(r['trees_ms'])} | {fmt(r['chains_ms'])} | {fmt(r['layout_ms'])} | {fmt(r['build_ms'])} | {r['compact_ms']:.2f} | {r['save_ms']:.1f} | {r['load_ms']:.1f} | {wall} | {rss} |")
     print()
     print('### Final module: community queries, ns per query (compact form, loaded from disk)')
     print('| Graph | regime | output vertices | ranges | locate (pointer) | ranges copied | explicit ids | per-vertex S trees memcpy | build form ranges | build form explicit |')
