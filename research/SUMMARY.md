@@ -11,6 +11,25 @@ transitions and a proof gate. Tests check the implementation, not the theorem.
 
 ## Current Decisions
 
+2026-09-18 direction change (user-driven, later the same day): the peel
+line is closed for now; the target is the STORED index for r=1 across all
+sizes, including community (nucleus) storage, which must be as compact as
+the values. Measured verdict on the paper's maximal-clique forest as r=1
+community storage: 2-27x LARGER than S explicit merge trees on seven
+collaboration/citation/product graphs (cost sum_v |M(v)| against
+sum_v top(v)); it wins only on web/mesh inputs. The user pointed to the
+SIGMOD 2026 SGL bi-component index (~/Downloads/3802129.pdf); its
+zero-redundancy retrieval transfers once dominance is defined through
+iterated Kruskal-Katona shadows. [Theory](r1_skyline_index_20260918/THEORY.md)
+proves the order, the chain/level-exactness lemmas that reduce SGL's
+summary graph to per-size merge trees with one cross-size pointer per
+node, the certified-tail collapse and the twin quotient, plus query and
+construction correctness and an exact break-even against S trees. An
+independent brute-force checker (1,501 graphs up to 11 vertices, 58,924
+retrieval queries) found no violation. The user authorized the counting
+gate of its Section 11 ("开始吧"); [spec](r1_skyline_index_20260918/IMPLEMENTATION.md).
+No index code, no timing claim, no paper edit.
+
 2026-09-18 implementation authorization: the user explicitly requested C++
 and measurements of the latest branch-factoring theory. The isolated
 `r1_terminal_20260918` implementation includes full/partial grouping, a
