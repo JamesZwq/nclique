@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/count --graph data/ca-HepPh.edges
+{"passed":true,"n":12008,"m":118489,"d":238,"s_max":239,"count_bits":256,"n_cls":9559,"max_class_size":44,"active_pairs_vertex":172963,"active_pairs_class":114694,"E_vertex":16378,"E_class":13909,"avg_traj":14.406380,"mu":1.364151,"avg_traj_class":12.001046,"mu_class":1.455373,"N_T":3538,"N_T_max":381,"empty_nodes":2669,"chain_nodes":2220,"max_depth":132,"residue_cells":6004,"residue_zero_delta":895,"certified_cells":166959,"F2_checked":160957,"F2_violations":0,"L1_checks":172963,"L2_checks":156585,"words_S_trees":128846,"words_skyline":38614,"lhs":100806.091347,"rhs":10553.977687,"verdict":"skyline smaller"}
+        2.85 real         2.79 user         0.03 sys
+           321093632  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               19780  page reclaims
+                   7  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   3  voluntary context switches
+                2361  involuntary context switches
+         58207493504  instructions retired
+         10205747517  cycles elapsed
+           320602712  peak memory footprint

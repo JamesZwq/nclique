@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/count --graph data/ca-GrQc.edges
+{"passed":true,"n":5242,"m":14484,"d":43,"s_max":44,"count_bits":64,"n_cls":4105,"max_class_size":32,"active_pairs_vertex":20045,"active_pairs_class":12704,"E_vertex":5919,"E_class":4780,"avg_traj":3.824652,"mu":1.129365,"avg_traj_class":3.095517,"mu_class":1.164717,"N_T":1517,"N_T_max":448,"empty_nodes":844,"chain_nodes":353,"max_depth":27,"residue_cells":1058,"residue_zero_delta":171,"certified_cells":18987,"F2_checked":14804,"F2_violations":0,"L1_checks":20045,"L2_checks":14126,"words_S_trees":18772,"words_skyline":15077,"lhs":7925.930799,"rhs":4229.291179,"verdict":"skyline smaller"}
+        0.02 real         0.02 user         0.00 sys
+            11386880  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 883  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                  10  involuntary context switches
+           460254468  instructions retired
+            97287174  cycles elapsed
+            10797392  peak memory footprint

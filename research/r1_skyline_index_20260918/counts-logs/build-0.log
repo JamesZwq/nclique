@@ -1,0 +1,4 @@
+$ cmake -S /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918 -B /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build -DCMAKE_BUILD_TYPE=Release -DSANITIZE=OFF
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build

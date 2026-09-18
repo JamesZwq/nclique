@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/count --graph data/com-dblp.edges
+{"passed":true,"n":317080,"m":1049866,"d":113,"s_max":114,"count_bits":128,"n_cls":256983,"max_class_size":38,"active_pairs_vertex":1246933,"active_pairs_class":928980,"E_vertex":377320,"E_class":316949,"avg_traj":3.932550,"mu":1.189984,"avg_traj_class":3.614947,"mu_class":1.233346,"N_T":33979,"N_T_max":6459,"empty_nodes":23761,"chain_nodes":7095,"max_depth":158,"residue_cells":84010,"residue_zero_delta":13524,"certified_cells":1162923,"F2_checked":929853,"F2_violations":0,"L1_checks":1246933,"L2_checks":869613,"words_S_trees":1064896,"words_skyline":600060,"lhs":612031.000000,"rhs":147195.250000,"verdict":"skyline smaller"}
+        2.43 real         2.04 user         0.18 sys
+          1578139648  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               98031  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                 791  involuntary context switches
+         32180679031  instructions retired
+          8951121230  cycles elapsed
+          1546143256  peak memory footprint

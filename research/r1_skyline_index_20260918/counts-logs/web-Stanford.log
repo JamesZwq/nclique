@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/count --graph graphs/web-Stanford.edges
+{"passed":true,"n":281903,"m":1992636,"d":71,"s_max":72,"count_bits":64,"n_cls":270303,"max_class_size":35,"active_pairs_vertex":1607989,"active_pairs_class":1429928,"E_vertex":782912,"E_class":721162,"avg_traj":5.704051,"mu":2.777239,"avg_traj_class":5.290093,"mu_class":2.667976,"N_T":53239,"N_T_max":5451,"empty_nodes":14869,"chain_nodes":44039,"max_depth":2139,"residue_cells":872260,"residue_zero_delta":238442,"certified_cells":735729,"F2_checked":1326086,"F2_violations":0,"L1_checks":1607989,"L2_checks":825077,"words_S_trees":1642884,"words_skyline":1220886,"lhs":708766.000000,"rhs":286768.500000,"verdict":"skyline smaller"}
+        6.42 real         6.18 user         0.15 sys
+          1057996800  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               70654  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                8099  involuntary context switches
+         88218205053  instructions retired
+         23903715744  cycles elapsed
+          1030587664  peak memory footprint
