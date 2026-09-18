@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --bench graphs/cit-HepPh.edges /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/cx/cit-HepPh.cx
+{"passed":true,"n":34546,"m":420877,"s_max":31,"count_bits":64,"chains":16623,"canonical_nodes":9369,"max_depth":1062,"pairs_total":104308,"runs_total":61217,"vertex_pairs":169637,"vertex_residue_cells":146399,"baseline_vertex_bytes":3199324,"bytes_map":72980,"bytes_chains":1345614,"bytes_layers":752308,"bytes_total":2170902,"file_bytes":2134722,"perm_bytes":138184,"slice_bytes_layers":642088,"slice_bytes_total":2060682,"solve_ms":1397.647,"trees_ms":241.155,"chains_ms":4.835,"layout_ms":5.330,"build_ms":1649.921,"compact_ms":0.499,"save_ms":1.622,"load_ms":0.634,"slice_range_own_ns":17257.160,"slice_range_half_ns":16172.681,"slice_range_root_ns":20030.875,"slice_explicit_own_ns":19325.085,"slice_explicit_half_ns":20584.548,"slice_explicit_root_ns":23786.125,"slice_ladder_ns":122035.550,"slice_own_ranges":3693.721,"slice_half_ranges":4107.761,"slice_root_ranges":4941.047,"ptr_own_ns":12.838,"ptr_half_ns":61.744,"ptr_root_ns":20.750,"ptr_checksum":926284728,"range_own_ns":1639.419,"range_half_ns":1880.454,"range_root_ns":2613.125,"explicit_own_ns":4327.408,"explicit_half_ns":6643.710,"explicit_root_ns":10264.459,"own_output":18252.493,"half_output":21347.797,"root_output":26460.514,"own_ranges":3693.721,"half_ranges":4107.761,"root_ranges":4941.047,"own_chains":3693.721,"half_chains":4107.761,"root_chains":4941.047,"member_ns":33.782,"member_checksum":74418,"value_ns":13.490,"value_checksum":0,"ladder_ns":23999.929,"ladder_steps":48.101}
+       30.27 real        29.79 user         0.19 sys
+           231129088  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               14295  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   7  voluntary context switches
+               25004  involuntary context switches
+        492925533440  instructions retired
+         81199471890  cycles elapsed
+           230621784  peak memory footprint
