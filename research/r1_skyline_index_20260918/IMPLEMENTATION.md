@@ -54,8 +54,14 @@ graph path as argv and uses cwd = repo root). Full range: s_max = d + 1.
    sum. Unit-test it: sigma_s(C(a, s)) == C(a, s-1) for a in [s, 40];
    sigma_2(3) = 3 (3 = C(3,2), shadow C(3,1)); sigma_2(4) = 4
    (4 = C(3,2) + C(1,1), shadow C(3,1) + C(1,0) = 3 + 1);
-   sigma_3(21) = 21 (21 = C(7,3), shadow C(7,2) = 21);
-   sigma_3(22) = 23 (22 = C(7,3) + C(2,2), shadow C(7,2) + C(2,1) = 21 + 2);
+   sigma_2(21) = 7 (21 = C(7,2), shadow C(7,1); this is K_8: kappa_3 = 21,
+   kappa_2 = 7); sigma_3(35) = 21 (35 = C(7,3), shadow C(7,2); K_8 again:
+   kappa_4 = 35, kappa_3 = 21); sigma_3(21) = 17 (21 = C(6,3) + C(2,2),
+   shadow C(6,2) + C(2,1) = 15 + 2); sigma_3(22) = 18
+   (22 = C(6,3) + C(2,2) + C(1,1), shadow 15 + 2 + 1).
+   CAUTION: sigma_s takes the s-cascade of kappa_{s+1}; the earlier draft
+   of this file had wrong sigma_3 examples, the values above are correct
+   and are confirmed by the colex brute force below;
    check sigma_s(k) nondecreasing on a sweep k = 0..200 for s = 2..6, and
    compare against a brute-force shadow: for k <= 60 and s <= 4 take the
    first k s-subsets of {1..12} in colex order and count their distinct
