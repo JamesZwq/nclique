@@ -1,4 +1,4 @@
-#include "../r1_terminal_20260918/terminal.hpp"
+#include "common.hpp"
 #include <boost/multiprecision/cpp_int.hpp>
 #include <iomanip>
 #include <iostream>

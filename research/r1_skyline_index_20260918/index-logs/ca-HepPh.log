@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph data/ca-HepPh.edges
+{"passed":true,"n":12008,"m":118489,"s_max":239,"count_bits":256,"classes":9559,"active_pairs":114694,"skyline_entries":13909,"canonical_nodes":3538,"bytes_shared":134304,"bytes_base_nodes":155672,"bytes_base_pairs":955792,"bytes_sky_nodes":169824,"bytes_sky_entries":69545,"bytes_sky_location":146025,"bytes_sky_cross":27724,"bytes_block_d":286638,"bytes_block_d_variant_b":258318,"base_without_d":1245768,"sky_without_d":547422,"base_with_d":1532406,"sky_with_d":834060,"own_base_ns":9668.123,"own_sky_ns":22343.612,"own_output":5332.137,"half_base_ns":10013.513,"half_sky_ns":26044.862,"half_output":6226.688,"root_base_ns":11129.083,"root_sky_ns":29246.583,"root_output":7101.633,"member_base_ns":12.993,"member_sky_ns":63.270,"member_checksum":62544,"member_checksum_sky":62544,"value_ns":5.355,"value_checksum":0}
+       15.00 real        14.84 user         0.07 sys
+           460931072  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               28315  page reclaims
+                   8  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   4  voluntary context switches
+                7489  involuntary context switches
+        175659777096  instructions retired
+         56788509182  cycles elapsed
+           460407528  peak memory footprint
