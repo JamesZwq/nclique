@@ -142,3 +142,68 @@ patterns refine chains, and the r-clique-to-chain map factors through the
 paper's pattern lookup. For certified patterns the paper's forest already
 answers communities without per-pattern storage; chains would replace the
 per-cell residue nodes. This is a theory step, not started.
+
+## 9. The Final Layout: Aligned Labels, Lexicographic Ranks, Run Arrays
+
+Implemented in `chain_index.hpp` (2026-09-19); measured in
+[RESULTS_FINAL.md](RESULTS_FINAL.md). Everything below is about labels
+and arrays; the hierarchy itself is the canonical-node forest of THEORY.md.
+
+Definitions. Fix for every size s a preorder pre_s of T_s (any child
+order). The key of a chain c is the tuple key(c) = (pre_2(X_2(c)),
+pre_3(X_3(c)), ..., pre_omega(X_omega(c))). Ranks are assigned in the
+lexicographic order of keys; the vertices with omega < 2 form one chain
+ranked last. Labels are aligned to ranks: chain r is the label interval
+[start_pos[r], start_pos[r + 1]).
+
+Lemma C4 (size 2 is one range). For every k >= 1 the labels of a
+(2, k)-nucleus N form one interval.
+Proof. N is the vertex set of the subtree of T_2 rooted at some node X.
+A chain c lies in N iff X_2(c) is a descendant-or-self of X (X_2(c) is
+the (2, kappa_2(c))-nucleus containing c; it is inside N iff c is in N,
+by laminarity). The preorder ids of that subtree form an interval, and
+the chains whose first key lies in an interval are contiguous in the
+lexicographic order, whatever their later keys; the inactive chain is
+outside. Contiguous ranks are contiguous labels.
+
+Lemma C5 (DFS arrays). Let A_s be the sequence of chains with omega >= s
+produced by a DFS of T_s that visits, at every node, its own chains and
+its child subtrees in ascending order of the smallest rank they contain
+(roots in the same order). Then (i) the chains of any node's subtree are
+a contiguous segment of A_s; (ii) the first chain of node x's segment is
+the smallest rank in x's subtree; (iii) A_2 is the rank order.
+Proof. (i) is the DFS. (ii) by induction: the first item visited at x is
+the one with the smallest key, either x's smallest own rank or the child
+whose subtree minimum is smallest, and the first chain emitted inside
+that child is its minimum. (iii) at s = 2 the own chains of x have first
+key pre_2(x), smaller than every descendant's, and the minima of the
+children are ordered as their preorder ids because ranks are ordered by
+the first key; so the DFS visits nodes in preorder and, within a node,
+chains by rank, which is the rank order. All active chains have ranks
+0 .. C - 2, so A_2 lists consecutive ranks: one run of labels.
+
+Run array. Positions j, j + 1 of A_s lie in one run iff the two chains
+have consecutive ranks (then their label intervals abut). Store the
+maximal runs as (lo, hi) label pairs, and for every node x its entry:
+the index r_x of the run containing the first position b_x of its
+segment and the label v_x = start_pos[A_s[b_x]]; add a sentinel entry
+(M, .) after the last node, M the number of runs.
+
+Lemma C6 (retrieval). Let y be the node following x's subtree in
+preorder (the sentinel if none). The labels of x's community are
+[v_x, v_y) if r_x = r_y, and otherwise [v_x, hi(r_x)), the whole runs
+r_x + 1 .. r_y - 1, and [lo(r_y), v_y) (empty when b_y starts a run).
+The number of ranges reported is the number of maximal runs of the
+segment, one at s = 2. After the climb, locating the answer is O(1).
+Proof. The segment is the position interval [b_x, b_y). Runs are maximal
+in the whole array, so inside the segment they can only be cut at the
+two boundaries: the run holding b_x contributes from v_x on, the run
+holding b_y - 1 contributes up to v_y, and the runs strictly between are
+whole. Each piece is a maximal run of the segment. At s = 2 the whole
+array is one run (C5 iii), so every community is one range (C4 again).
+
+Bytes. Per node: W (top) + 4 (parent) + 4 (subtree size) + 8 (entry); the
+jump pointer (4) is derived at load time and not stored. Per run: 8. The
+build form stores instead 4 per node (bucket) and 4 per (chain, s) pair;
+the compact form is smaller exactly when 8 runs + 4 nodes < 4 pairs.
+Both forms are exact; the compact form is the file format.

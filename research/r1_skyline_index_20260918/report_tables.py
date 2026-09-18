@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Print the RESULTS_FINAL.md tables from the stage-2 layout evidence (index*.json) and the final module evidence (final.json)."""
+import json
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+LAYOUTS = [('vertices', 'index_vertices.json'), ('twins', 'index.json'), ('chains', 'index_chains.json'), ('aligned', 'index_aligned.json')]
+
+def load(name):
+    p = HERE / name
+    return json.loads(p.read_text()) if p.exists() else None
+
+def by_graph(record):
+    return {Path(r['graph']).stem: r['result'] for r in record['runs']}
+
+def fmt(x, digits=0):
+    if isinstance(x, float) and digits:
+        return f'{x:,.{digits}f}'
+    return f'{round(x):,}'
+
+def layouts():
+    data = {k: by_graph(load(f)) for k, f in LAYOUTS}
+    graphs = list(data['aligned'].keys())
+    print('### Bytes with values (Block D), stage-2 layouts')
+    print('| Graph | per-vertex S trees | over twins | over chains | aligned chains (index.cpp) | aligned vs per-vertex |')
+    print('|---|---:|---:|---:|---:|---:|')
+    for g in graphs:
+        v = data['vertices'][g]['base_with_d']; t = data['twins'][g]['base_with_d']; c = data['chains'][g]['base_with_d']
+        a = data['aligned'][g]; ab = a['bytes_shared_aligned'] + a['bytes_base_nodes'] + a['bytes_base_pairs'] + a['bytes_block_d']
+        print(f'| {g} | {fmt(v)} | {fmt(t)} | {fmt(c)} | {fmt(ab)} | {v/ab:.2f}x |')
+    print()
+    print('### Community listing, own level (k = kappa_s(v)), ns per query, explicit ids unless noted')
+    print('| Graph | output vertices | per-vertex S trees (memcpy) | over twins | over chains | aligned explicit | aligned ranges only |')
+    print('|---|---:|---:|---:|---:|---:|---:|')
+    for g in graphs:
+        a = data['aligned'][g]
+        print(f"| {g} | {fmt(a['own_output'])} | {fmt(data['vertices'][g]['own_base_ns'])} | {fmt(data['twins'][g]['own_base_ns'])} | {fmt(data['chains'][g]['own_base_ns'])} | {fmt(a['aligned_own_ns'])} | {fmt(a['aligned_range_own_ns'])} |")
+    print()
+    print('### Membership and value queries, ns per query (stage-2 layouts)')
+    print('| Graph | member: per-vertex | twins | chains | aligned | value: per-vertex | chains | aligned |')
+    print('|---|---:|---:|---:|---:|---:|---:|---:|')
+    for g in graphs:
+        a = data['aligned'][g]
+        print(f"| {g} | {data['vertices'][g]['member_base_ns']:.1f} | {data['twins'][g]['member_base_ns']:.1f} | {data['chains'][g]['member_base_ns']:.1f} | {a['aligned_member_ns']:.1f} | {data['vertices'][g]['value_ns']:.1f} | {data['chains'][g]['value_ns']:.1f} | {a['value_ns']:.1f} |")
+    print()
+
+def final():
+    rec = load('final.json')
+    if rec is None:
+        print('(final.json not present yet)'); return
+    data = by_graph(rec); vert = by_graph(load('index_vertices.json'))
+    print('### Final module: size')
+    print('| Graph | n | s_max | chains | canonical nodes | (chain,s) pairs | runs | map B | chains B | layers B | total B | file B | perm B | build form total B | per-vertex S trees B | ratio |')
+    print('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+    for g, r in data.items():
+        v = vert[g]['base_with_d']
+        print(f"| {g} | {fmt(r['n'])} | {r['s_max']} | {fmt(r['chains'])} | {fmt(r['canonical_nodes'])} | {fmt(r['pairs_total'])} | {fmt(r['runs_total'])} | {fmt(r['bytes_map'])} | {fmt(r['bytes_chains'])} | {fmt(r['bytes_layers'])} | {fmt(r['bytes_total'])} | {fmt(r['file_bytes'])} | {fmt(r['perm_bytes'])} | {fmt(r['slice_bytes_total'])} | {fmt(v)} | {v/r['bytes_total']:.2f}x |")
+    print()
+    print('### Final module: build, save, load (ms, single thread)')
+    print('| Graph | solve (all-size peel) | trees | chains + labels | layout | build total | compact | save | load |')
+    print('|---|---:|---:|---:|---:|---:|---:|---:|---:|')
+    for g, r in data.items():
+        print(f"| {g} | {fmt(r['solve_ms'])} | {fmt(r['trees_ms'])} | {fmt(r['chains_ms'])} | {fmt(r['layout_ms'])} | {fmt(r['build_ms'])} | {r['compact_ms']:.2f} | {r['save_ms']:.1f} | {r['load_ms']:.1f} |")
+    print()
+    print('### Final module: community queries, ns per query (compact form, loaded from disk)')
+    print('| Graph | regime | output vertices | ranges | locate (pointer) | ranges copied | explicit ids | per-vertex S trees memcpy | build form ranges | build form explicit |')
+    print('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|')
+    for g, r in data.items():
+        for reg, key in [('own', 'own'), ('half', 'half'), ('root', 'root')]:
+            memcpy = vert[g][f'{key}_base_ns']
+            print(f"| {g} | {reg} | {fmt(r[f'{key}_output'])} | {r[f'{key}_ranges']:.1f} | {r[f'ptr_{key}_ns']:.1f} | {fmt(r[f'range_{key}_ns'])} | {fmt(r[f'explicit_{key}_ns'])} | {fmt(memcpy)} | {fmt(r[f'slice_range_{key}_ns'])} | {fmt(r[f'slice_explicit_{key}_ns'])} |")
+    print()
+    print('### Final module: membership, value, ladder (ns per query)')
+    print('| Graph | member | value | ladder (compact) | ladder steps | ladder (build form) | max depth |')
+    print('|---|---:|---:|---:|---:|---:|---:|')
+    for g, r in data.items():
+        print(f"| {g} | {r['member_ns']:.1f} | {r['value_ns']:.1f} | {fmt(r['ladder_ns'])} | {r['ladder_steps']:.2f} | {fmt(r['slice_ladder_ns'])} | {r['max_depth']} |")
+    print()
+    print('### Explicit listing cost per output vertex (ns)')
+    print('| Graph | final module (own) | per-vertex S trees (own) | final module (root) | per-vertex S trees (root) |')
+    print('|---|---:|---:|---:|---:|')
+    for g, r in data.items():
+        print(f"| {g} | {r['explicit_own_ns']/r['own_output']:.3f} | {vert[g]['own_base_ns']/vert[g]['own_output']:.3f} | {r['explicit_root_ns']/r['root_output']:.3f} | {vert[g]['root_base_ns']/vert[g]['root_output']:.3f} |")
+    print()
+    print('selftests:', json.dumps(rec['selftests']))
+
+if __name__ == '__main__':
+    layouts(); final()
