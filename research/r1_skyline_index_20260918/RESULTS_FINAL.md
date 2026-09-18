@@ -383,10 +383,22 @@ Measured facts.
 Hypotheses (not measured): a branchless or prefetching fill would cut the
 per-range constant on the fragmented graphs; a per-node vertex count
 (4 bytes per node) would make ladders O(depth) (pokec 132 us, cit-HepPh
-23 us today); the permutation compresses to about n log2(C) bits (dblp
-0.55 MB instead of 1.27 MB) with a wavelet tree over the chain ids in
-input order; the build's dense core matrix and per-size own arrays can be
+23 us today); the build's dense core matrix and per-size own arrays can be
 streamed size by size.
+
+The permutation, computed (not a hypothesis): perm[v] = start_pos[chain(v)]
+plus the number of earlier input vertices in the same chain, so it is a
+rank query over the chain-id sequence in input order and compresses to
+n ceil(log2 C) bits (a wavelet tree): dblp 0.55 MB instead of 1.27 MB,
+youtube 2.27 MB instead of 4.54 MB, pokec 3.9 MB instead of 6.5 MB. The
+byte ratios against per-vertex S trees would move from 1.39x-4.98x
+(4 n permutation) to 1.43x-6.20x (compressed) against 1.47x-8.42x
+(aligned storage, no permutation). Each lookup would then cost about
+log2 C bit-vector ranks (50-100 ns), more than the 3-51 ns community
+locate itself, so the compressed form is a fallback for label-bound
+deployments, not the default; storing the graph in the index's order
+(this codebase already relabels by degeneracy order at load) removes the
+cost entirely.
 
 Algorithmic versus engineering gains: the chain partition and the
 lexicographic rank order (one range at s = 2, few ranges elsewhere) are
@@ -443,8 +455,10 @@ role of the chain structure (CHAINS.md Section 10).
    to 1.9x on every graph tried against the scalar-tail fill of
    `final_v2.json`); a prefetch of the next run could shave the remaining
    per-range constant on the fragmented graphs.
-3. Compress the permutation to n log2(C) bits (wavelet tree over chain
-   ids), or store the graph in aligned order and drop it.
+3. Store the graph in the aligned order and drop the permutation; the
+   compressed wavelet-tree form (numbers in Section 10) is only for
+   deployments that must keep input labels and can pay 50-100 ns per
+   lookup.
 4. Stream the build size by size to cut the 5 GB peak on pokec-sized
    inputs; then com-lj and com-orkut on the server.
 5. A bound on the number of chains for graphs with monotone core
