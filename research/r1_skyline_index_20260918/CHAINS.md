@@ -214,3 +214,108 @@ jump pointer (4) is derived at load time and not stored. Per run: 8. The
 build form stores instead 4 per node (bucket) and 4 per (chain, s) pair;
 the compact form is smaller exactly when 8 runs + 4 nodes < 4 pairs.
 Both forms are exact; the compact form is the file format.
+
+## 10. r >= 2: Chains Of r-Cliques (theory, 2026-09-19)
+
+Setting (NSI paper, Sections 2-3 and 5): for a row r and a size s > r the
+items are the r-cliques; a witness is an s-clique; the k-(r, s)-nucleus
+is a maximal set of r-cliques in which every member is a face of at least
+k witnesses whose faces are all members, connected under sharing such a
+witness; kappa_s(R) is the largest k with R in a k-nucleus; omega(R) is
+the size of the largest clique containing R, so kappa_s(R) >= 1 for
+r < s <= omega(R) (all r-cliques of a maximal clique of size >= s form
+an admissible linked family) and kappa_s(R) = 0 beyond. Nuclei of one
+cell and level are disjoint or equal, and they are laminar in k, so each
+size has a canonical merge tree T_s^(r); the own node X_s(R) is the
+(s, kappa_s(R))-nucleus containing R, and
+chain(R) = (X_{r+1}(R), ..., X_{omega(R)}(R)).
+
+Lemmas C1 (chain = hierarchy equivalence) and C2 (every nucleus is a
+union of chains) hold verbatim: their proofs use only laminarity and the
+own-node definition.
+
+Classes are the true-twin classes (paper, Definition Class and Remark);
+the pattern of R is the multiset of classes of its vertices (Definition
+Pattern); r-cliques of one pattern have equal kappa_s at every s
+(Corollary after Definition Pattern).
+
+Lemma C7 (patterns refine chains). Two r-cliques with the same pattern
+have the same chain.
+Proof. Equal patterns give equal kappa_s for every s, hence equal omega.
+By C1 it remains to show that for every s and every 1 <= k <= kappa_s(R)
+the two cliques lie in one (s, k)-nucleus. A within-class permutation
+mapping R onto R' is a product of transpositions of same-class pairs, and
+each transposition maps an r-clique to an r-clique of the same pattern,
+so it suffices to treat R' = R - u + v with u in R, v not in R, u and v
+in one class. Let phi be the transposition (u v); it is an automorphism
+(Theorem Interchangeability), and automorphisms map k-nuclei to k-nuclei
+because the definition of a nucleus is isomorphism-invariant. Let N be
+the (s, k)-nucleus containing R; phi(N) is an (s, k)-nucleus containing
+R'. If N contains a member fixed by phi, then N and phi(N) intersect,
+hence coincide, and R' lies in N. Since k >= 1, R is a face of a witness
+S all of whose faces lie in N.
+Case 1, v not in S: S - u has s - 1 >= r vertices, none equal to u or v;
+any r-subset Q of S - u is a face of S, so Q is in N, and phi(Q) = Q.
+Case 2, v in S and s >= r + 2: S - u - v has s - 2 >= r vertices; an
+r-subset Q of it is a fixed member of N.
+Case 3, v in S and s = r + 1, so S = R + v: if r >= 2 pick w in R - u;
+Q = S - w contains u and v, is a face of S, lies in N and is fixed by
+phi. If r = 1 the faces of S = {u, v} are {u} = R and {v} = R', so R' is
+in N directly.
+In every case phi(N) = N and R' is in N.
+
+Corollary C7'. Chains are unions of patterns, so the number of chains is
+at most the number of realized patterns, and the chain of an r-clique is
+a function of its class multiset. Every per-pattern block of the NSI
+index (certification point, residue values) can be stored per chain
+instead, and every nucleus at every size is a union of chains.
+
+Lemma C8 (the certified tail of a trajectory is inherited from a largest
+maximal clique; all r >= 1). Let R be an r-clique, sigma(R) its
+certification point (kappa_s(R) = C(omega(R) - r, s - r) for all
+s >= sigma(R)), and M* a largest maximal clique containing R, so
+|M*| = omega(R). Then for every sigma(R) <= s <= omega(R),
+X_s(R) = X_s(M*), the (s, C(|M*| - r, s - r))-nucleus that contains all
+r-cliques of M*.
+Proof. By Lemma Nucleus Joins (i) all r-cliques of M* lie in one
+k-nucleus for k = C(|M*| - r, s - r), the floor of M* at s. That nucleus
+contains R and has level kappa_s(R), so it is the own node of R.
+
+Consequences. (a) For a fully certified pattern (sigma = r + 1) the whole
+chain is chain(M*) := (X_s(M*))_s, read from a table indexed by maximal
+cliques after omega and M* are found by Lemma Reconstruction
+(intersection of the class membership lists); no per-pattern entry is
+needed, exactly the patterns the NSI index already omits. (b) For a
+residue pattern only the prefix X_{r+1}(P), ..., X_{sigma(P)-1}(P) is its
+own; the rest is chain(M*). (c) The same holds at r = 1: the trajectory
+block of `chain_index.hpp` (omega - 1 node ids per chain) could keep only
+sigma - 2 entries plus a pointer to the trajectory of a largest maximal
+clique; whether that saves bytes depends on how many distinct
+maximal-clique trajectories exist, which is a count to take.
+
+What the chain index would be for r >= 2. Items: maximal cliques and
+residue patterns (the nodes of the paper's forest), each with a chain
+(its trajectory of own nodes over sizes r + 1 .. omega). Per size s: the
+canonical merge tree over chains with a DFS array (or run array over
+chain ids ordered lexicographically by trajectory, as in Section 9). A
+community query for an r-clique R at (s, k): classes of R's vertices,
+pattern lookup (residue table) or Lemma Reconstruction (certified), chain,
+own node, climb, then the answer as chain ranges; listing the r-cliques
+expands each chain into its maximal cliques (all their r-cliques of
+value >= k) and residue patterns (their instances, Lemma Pattern
+Multiplicity), as the paper's query does. What changes against the
+paper's storage is the hierarchy part: per-size trees over chains instead
+of a forest per cell (nodes = maximal cliques plus residue patterns
+present in the cell, each with a parent and a join level), and one
+trajectory per chain instead of one node per item per cell.
+
+Counting gate (before any implementation). For r = 2 and r = 3 on the
+evaluation graphs: per cell (r, s), the number of forest nodes
+(maximal cliques with |M| >= s plus residue patterns present) and joins;
+per size, the number of canonical nodes; the number of distinct chains
+over items; and the two byte totals: forest per cell (paper) against
+canonical nodes per size plus one trajectory per chain. The gate passes
+if the chain form is smaller on the graphs where the paper's index is
+large (the dense collaboration graphs) and no larger elsewhere. This
+needs the forest builder of the paper's experiments (Build algorithm) to
+expose per-item own nodes per cell.
