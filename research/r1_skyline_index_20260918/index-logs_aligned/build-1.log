@@ -1,0 +1,4 @@
+$ cmake --build /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build -j 12
+[ 33%] Built target index
+[100%] Built target chains
+[100%] Built target count

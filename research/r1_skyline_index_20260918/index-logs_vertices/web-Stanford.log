@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph graphs/web-Stanford.edges vertices
+{"passed":true,"mode":"vertices","bytes_shared_aligned":2308082,"n":281903,"m":1992636,"s_max":72,"count_bits":64,"classes":281903,"active_pairs":1607989,"skyline_entries":782912,"canonical_nodes":53239,"bytes_shared":0,"bytes_base_nodes":1064780,"bytes_base_pairs":13991528,"bytes_sky_nodes":1277736,"bytes_sky_entries":3914560,"bytes_sky_location":6169792,"bytes_sky_cross":422172,"bytes_block_d":9797118,"bytes_block_d_variant_b":7889582,"base_without_d":15056308,"sky_without_d":11784260,"base_with_d":24853426,"sky_with_d":21581378,"own_base_ns":11982.510,"own_sky_ns":327458.248,"own_output":82832.592,"half_base_ns":12156.954,"half_sky_ns":399485.600,"half_output":102620.104,"root_base_ns":19273.959,"root_sky_ns":466632.334,"root_output":126319.517,"aligned_own_ns":0.000,"aligned_half_ns":0.000,"aligned_root_ns":0.000,"aligned_range_own_ns":0.000,"aligned_range_half_ns":0.000,"aligned_range_root_ns":0.000,"aligned_member_ns":0.000,"aligned_member_checksum":0,"member_base_ns":45.429,"member_sky_ns":101.037,"member_checksum":43272,"member_checksum_sky":43272,"value_ns":9.172,"value_checksum":0}
+      242.71 real       238.88 user         1.59 sys
+          1354104832  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               90601  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+              276390  involuntary context switches
+       2146291145397  instructions retired
+        841428605026  cycles elapsed
+          1363756592  peak memory footprint

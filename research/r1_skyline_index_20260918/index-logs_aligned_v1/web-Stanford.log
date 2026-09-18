@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph graphs/web-Stanford.edges aligned
+{"passed":true,"mode":"aligned","bytes_shared_aligned":196562,"n":281903,"m":1992636,"s_max":72,"count_bits":64,"classes":17963,"active_pairs":151364,"skyline_entries":106840,"canonical_nodes":53239,"bytes_shared":268424,"bytes_base_nodes":1064780,"bytes_base_pairs":1282768,"bytes_sky_nodes":1277736,"bytes_sky_entries":534200,"bytes_sky_location":677912,"bytes_sky_cross":422172,"bytes_block_d":1088302,"bytes_block_d_variant_b":962702,"base_without_d":2615972,"sky_without_d":3180444,"base_with_d":3704274,"sky_with_d":4268746,"own_base_ns":31126.500,"own_sky_ns":198472.979,"own_output":82832.592,"half_base_ns":36811.427,"half_sky_ns":222043.148,"half_output":102620.104,"root_base_ns":48709.041,"root_sky_ns":251451.667,"root_output":126319.517,"aligned_own_ns":77586.423,"aligned_half_ns":93654.315,"aligned_root_ns":114046.791,"aligned_range_own_ns":8284.729,"aligned_range_half_ns":9693.127,"aligned_range_root_ns":10147.333,"aligned_member_ns":31.859,"aligned_member_checksum":43272,"member_base_ns":45.656,"member_sky_ns":55.872,"member_checksum":43272,"member_checksum_sky":43272,"value_ns":5.504,"value_checksum":0}
+      284.16 real       279.83 user         1.76 sys
+          1245708288  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               77047  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+              308820  involuntary context switches
+       2886899186517  instructions retired
+       1016305969453  cycles elapsed
+          1246971368  peak memory footprint

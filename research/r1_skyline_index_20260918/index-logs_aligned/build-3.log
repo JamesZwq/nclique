@@ -1,0 +1,2 @@
+$ /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/count --selftest
+{"passed":true,"graphs":34075,"cells":844230,"partitions_compared":93057}

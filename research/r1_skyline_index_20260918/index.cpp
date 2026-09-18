@@ -102,7 +102,9 @@ template<class T> struct Built {
         return n;
     }
     static void ranges_to_ids(const std::vector<uint32_t>& ranges, std::vector<Vertex>& out) {
-        out.clear(); for (size_t j = 0; j < ranges.size(); j += 2) for (uint32_t x = ranges[j]; x < ranges[j + 1]; ++x) out.push_back(x); }
+        size_t total = 0; for (size_t j = 0; j < ranges.size(); j += 2) total += ranges[j + 1] - ranges[j];
+        out.resize(total); Vertex* w = out.data();
+        for (size_t j = 0; j < ranges.size(); j += 2) { const uint32_t lo = ranges[j], hi = ranges[j + 1]; for (uint32_t x = lo; x < hi; ++x) *w++ = x; } }
     bool aligned_member(Vertex uint_, Vertex vint, int s, const T& k) const {
         const uint32_t lv = base_leaf(chain_of_internal(vint), s), lu = base_leaf(chain_of_internal(uint_), s); if (lv == none || lu == none) return false;
         const uint32_t n = climb(lv, s, k); return lu >= n && lu < n + nodes[s][n].size;

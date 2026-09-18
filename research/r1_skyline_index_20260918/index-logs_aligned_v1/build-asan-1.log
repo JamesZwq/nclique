@@ -1,0 +1,4 @@
+$ cmake --build /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build-asan -j 12
+[ 33%] Built target index
+[ 66%] Built target count
+[100%] Built target chains

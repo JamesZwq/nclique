@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph data/com-dblp.edges vertices
+{"passed":true,"mode":"vertices","bytes_shared_aligned":2596095,"n":317080,"m":1049866,"s_max":114,"count_bits":128,"classes":317080,"active_pairs":1246933,"skyline_entries":377320,"canonical_nodes":33979,"bytes_shared":0,"bytes_base_nodes":951412,"bytes_base_pairs":11243788,"bytes_sky_nodes":1087328,"bytes_sky_entries":1886600,"bytes_sky_location":4423248,"bytes_sky_cross":269212,"bytes_block_d":4514968,"bytes_block_d_variant_b":4298584,"base_without_d":12195200,"sky_without_d":7666388,"base_with_d":16710168,"sky_with_d":12181356,"own_base_ns":23492.979,"own_sky_ns":636173.467,"own_output":164595.000,"half_base_ns":26143.785,"half_sky_ns":714928.838,"half_output":199753.310,"root_base_ns":30258.958,"root_sky_ns":798175.834,"root_output":229883.745,"aligned_own_ns":0.000,"aligned_half_ns":0.000,"aligned_root_ns":0.000,"aligned_range_own_ns":0.000,"aligned_range_half_ns":0.000,"aligned_range_root_ns":0.000,"aligned_member_ns":0.000,"aligned_member_checksum":0,"member_base_ns":13.487,"member_sky_ns":36.786,"member_checksum":75036,"member_checksum_sky":75036,"value_ns":5.715,"value_checksum":0}
+      436.85 real       429.13 user         2.91 sys
+          2265284608  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              147287  page reclaims
+                   8  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   4  voluntary context switches
+              533687  involuntary context switches
+       3435999466967  instructions retired
+       1501398728341  cycles elapsed
+          2298677552  peak memory footprint

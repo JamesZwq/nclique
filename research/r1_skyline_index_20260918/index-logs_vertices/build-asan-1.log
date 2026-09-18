@@ -1,0 +1,11 @@
+$ cmake --build /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build-asan -j 12
+[ 83%] Building CXX object CMakeFiles/index.dir/index.cpp.o
+[ 83%] Built target chains
+[ 83%] Built target count
+[100%] Linking CXX executable index
+[100%] Built target index
+In file included from /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/index.cpp:8:
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/count.cpp:134:660: warning: non-void function does not return a value in all control paths [-Wreturn-type]
+  134 | int main(int argc,char** argv){try{if(argc==2&&std::string(argv[1])=="--selftest"){selftest();return 0;}require(argc==3&&std::string(argv[1])=="--graph","usage: count --selftest | --graph path");Input in=prepare(argv[2]);int maximum=std::max(2,static_cast<int>(in.d)+1);Layout l(in.graph,maximum);l.prepare(in.graph.n);unsigned b=width(count_bound(in.graph,l,in.d));if(b==64)print(measure<uint64_t>(in,b));else if(b==128)print(measure<unsigned __int128>(in,b));else if(b==256)print(measure<boost::multiprecision::uint256_t>(in,b));else print(measure<boost::multiprecision::uint512_t>(in,b));}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ^
+1 warning generated.

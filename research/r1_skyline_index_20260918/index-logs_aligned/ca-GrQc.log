@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph data/ca-GrQc.edges aligned
+{"passed":true,"mode":"aligned","bytes_shared_aligned":6712,"n":5242,"m":14484,"s_max":44,"count_bits":64,"classes":716,"active_pairs":2079,"skyline_entries":835,"canonical_nodes":1517,"bytes_shared":9584,"bytes_base_nodes":30340,"bytes_base_pairs":19500,"bytes_sky_nodes":36408,"bytes_sky_entries":4175,"bytes_sky_location":9911,"bytes_sky_cross":10508,"bytes_block_d":8576,"bytes_block_d_variant_b":8312,"base_without_d":59424,"sky_without_d":70586,"base_with_d":68000,"sky_with_d":79162,"own_base_ns":673.506,"own_sky_ns":2266.417,"own_output":1656.487,"half_base_ns":827.977,"half_sky_ns":2498.635,"half_output":2112.454,"root_base_ns":772.458,"root_sky_ns":2499.500,"root_output":2295.732,"aligned_own_ns":821.665,"aligned_half_ns":813.254,"aligned_root_ns":975.250,"aligned_range_own_ns":230.683,"aligned_range_half_ns":213.150,"aligned_range_root_ns":178.166,"aligned_member_ns":8.308,"aligned_member_checksum":45906,"member_base_ns":5.433,"member_sky_ns":14.460,"member_checksum":45906,"member_checksum_sky":45906,"value_ns":3.829,"value_checksum":0}
+        2.79 real         2.74 user         0.01 sys
+            15859712  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                1136  page reclaims
+                  21  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   5  voluntary context switches
+                3398  involuntary context switches
+         38520584676  instructions retired
+          9374580691  cycles elapsed
+            15188376  peak memory footprint

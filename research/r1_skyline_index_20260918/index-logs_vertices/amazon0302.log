@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph graphs/amazon0302.edges vertices
+{"passed":true,"mode":"vertices","bytes_shared_aligned":2146036,"n":262111,"m":899792,"s_max":7,"count_bits":64,"classes":262111,"active_pairs":824991,"skyline_entries":468714,"canonical_nodes":65134,"bytes_shared":0,"bytes_base_nodes":1302680,"bytes_base_pairs":7648376,"bytes_sky_nodes":1563216,"bytes_sky_entries":2343570,"bytes_sky_location":4440466,"bytes_sky_cross":519044,"bytes_block_d":5463158,"bytes_block_d_variant_b":4863502,"base_without_d":8951056,"sky_without_d":8866296,"base_with_d":14414214,"sky_with_d":14329454,"own_base_ns":14277.358,"own_sky_ns":280650.825,"own_output":107060.831,"half_base_ns":24757.202,"half_sky_ns":430330.394,"half_output":151317.689,"root_base_ns":23021.917,"root_sky_ns":423469.417,"root_output":165615.866,"aligned_own_ns":0.000,"aligned_half_ns":0.000,"aligned_root_ns":0.000,"aligned_range_own_ns":0.000,"aligned_range_half_ns":0.000,"aligned_range_root_ns":0.000,"aligned_member_ns":0.000,"aligned_member_checksum":0,"member_base_ns":17.372,"member_sky_ns":32.873,"member_checksum":64578,"member_checksum_sky":64578,"value_ns":7.240,"value_checksum":0}
+      297.15 real       292.70 user         1.79 sys
+           272318464  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               17967  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+              328916  involuntary context switches
+       2723444359390  instructions retired
+       1000208578857  cycles elapsed
+           271811184  peak memory footprint
