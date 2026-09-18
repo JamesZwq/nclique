@@ -5,6 +5,9 @@ Date: 2026-09-19. Same program, harness and protocol as stage 2
 definition: hierarchy-equivalence chains ([CHAINS.md](CHAINS.md)) in place
 of closed-neighbourhood twins. Evidence: `index_chains.json`,
 `index-logs_chains/`. The twin-class run of stage 2 is untouched.
+Superseded as the final design by [RESULTS_FINAL.md](RESULTS_FINAL.md)
+(aligned labels and run arrays); the numbers here remain the chain-id
+layout with an explicit vertex-to-chain map.
 
 ## 1. Problem Summary
 

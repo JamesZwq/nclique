@@ -1,7 +1,9 @@
 # Hierarchy-Equivalence Chains: The Atomic Unit For r = 1 All-Size Storage
 
-Date: 2026-09-19. Theory plus counts. No index over chains implemented yet;
-the byte figures in Section 4 are projections from measured counts.
+Date: 2026-09-19. Sections 1-5 are the theory and counts written before
+any chain index existed (Section 4 bytes are projections); Section 6 points
+to the measured S trees over chains, Section 9 to the final layout
+([RESULTS_FINAL.md](RESULTS_FINAL.md)).
 
 ## 1. Motivation
 
@@ -106,6 +108,11 @@ Done: [RESULTS_CHAINS.md](RESULTS_CHAINS.md). S trees over chains are
 2.5x to 4.5x smaller than S trees over twins as measured (3.9x to 8.3x
 projected with aligned labels) and 1.7x to 8.6x faster on community
 listing; the skyline over chains is dominated.
+
+Final module (later the same day): [RESULTS_FINAL.md](RESULTS_FINAL.md).
+Aligned labels, lexicographic ranks and run arrays (Section 9): 3.7x to
+7.8x fewer bytes than per-vertex S trees, communities located in O(1)
+(3-40 ns) and listed at 0.08-0.19 ns per vertex.
 
 ## 7. How Many Chains Can There Be
 
