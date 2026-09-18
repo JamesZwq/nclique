@@ -319,3 +319,31 @@ if the chain form is smaller on the graphs where the paper's index is
 large (the dense collaboration graphs) and no larger elsewhere. This
 needs the forest builder of the paper's experiments (Build algorithm) to
 expose per-item own nodes per cell.
+
+Addendum (same day, after reading SigmodPlus 250-250b and `nsi_forest.h`).
+The paper's engine already stores, per row r, ONE size forest over the
+maximal cliques (regions) with thresholds in |M| units, and reads it at a
+cell's floors C(|M| - r, s - r); the (a)-joins of two regions happen at
+min(|A|, |B|) in size units, which the threshold map carries monotonically
+to every s. Hence for a region M the own node X_s(M) at every size s is
+the SAME size-forest component (the one at threshold |M|), and the chain
+of a region is exactly its size-forest own node: the pair (component at
+threshold |M|, |M|). FULL cells (residue patterns, (b)/(c) joins) are
+stored as patches over that forest (NSI6). So for r >= 2 the paper's
+design is already s-independent for the certified part, and what chains
+can add is only the merge of regions that share a size-forest own node
+(same size, same component at that size): a saving inside the forest
+block (39-65 percent of the index bytes on GrQc, CondMat, amazon per
+SigmodPlus 250) bounded by the collapse factor regions / own nodes, plus
+O(1) community location instead of a forest walk. This is a bounded,
+engineering-sized gain, unlike r = 1, where the items (vertices) are far
+fewer than the maximal cliques and the S-tree redundancy across sizes is
+what chains remove.
+
+Revised counting gate (cheap, no engine change): from an NSI5/NSI6 file,
+per row, count regions R, size-forest own nodes O = distinct
+(rep(rid, |M_rid|), |M_rid|) pairs, and residue nodes per FULL cell; the
+forest block can shrink by at most R / O. Run on the local evaluation
+graphs at r = 2 and 3 before deciding whether an r >= 2 chain layout is
+worth building. Lemmas C7 and C8 stand and are what makes the per-pattern
+part of that layout well defined.
