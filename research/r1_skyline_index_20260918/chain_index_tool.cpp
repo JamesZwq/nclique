@@ -198,7 +198,7 @@ template<class T> static void bench(const Input& in, unsigned bits, const std::s
     // per-vertex S trees with values, stage-2 `vertices` accounting (index.cpp): nodes (W + 12) each, 8 bytes per (vertex, size) pair
     // (DFS array entry + own-node pointer), 4 (n + 1) offsets, 2 n omega/sigma, 8 (n + 1) residue offsets, W per residue cell
     uint64_t pairs_v = 0, residue_v = 0; for (uint32_t c = 0; c < ix.chains; ++c) { const uint64_t sz = ix.start_pos[c + 1] - ix.start_pos[c]; if (ix.omega[c] >= 2) { pairs_v += sz * (ix.omega[c] - 1); residue_v += sz * (ix.sigma[c] - 2); } }
-    const uint64_t baseline_vertex_bytes = ix.node_count() * (Traits<T>::W + 12) + 8ull * pairs_v + 4ull * (n + 1) + 2ull * n + 8ull * (n + 1) + Traits<T>::W * residue_v;
+    const uint64_t baseline_vertex_bytes = ix.node_count() * (chainindex::Traits<T>::W + 12) + 8ull * pairs_v + 4ull * (n + 1) + 2ull * n + 8ull * (n + 1) + chainindex::Traits<T>::W * residue_v;
     uint64_t depth_max = 0; for (const auto& L : ix.layers) { std::vector<uint32_t> d(L.top.size(), 0); for (uint32_t x = 0; x < L.top.size(); ++x) { if (L.parent[x] != kNone) d[x] = d[L.parent[x]] + 1; depth_max = std::max<uint64_t>(depth_max, d[x]); } }
     std::cout << std::fixed << std::setprecision(3) << "{\"passed\":true,\"n\":" << n << ",\"m\":" << in.graph.m << ",\"s_max\":" << ix.max_size << ",\"count_bits\":" << bits << ",\"chains\":" << ix.chains
         << ",\"canonical_nodes\":" << ix.node_count() << ",\"max_depth\":" << depth_max
