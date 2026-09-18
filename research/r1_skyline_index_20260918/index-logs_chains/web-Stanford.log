@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph graphs/web-Stanford.edges chains
+{"passed":true,"mode":"chains","bytes_shared_aligned":196562,"n":281903,"m":1992636,"s_max":72,"count_bits":64,"classes":17963,"active_pairs":151364,"skyline_entries":106840,"canonical_nodes":53239,"bytes_shared":2327080,"bytes_base_nodes":1064780,"bytes_base_pairs":1282768,"bytes_sky_nodes":1277736,"bytes_sky_entries":534200,"bytes_sky_location":677912,"bytes_sky_cross":422172,"bytes_block_d":1088302,"bytes_block_d_variant_b":962702,"base_without_d":4674628,"sky_without_d":5239100,"base_with_d":5762930,"sky_with_d":6327402,"own_base_ns":27139.838,"own_sky_ns":171661.246,"own_output":82832.592,"half_base_ns":34460.877,"half_sky_ns":197737.996,"half_output":102620.104,"root_base_ns":40847.250,"root_sky_ns":219551.583,"root_output":126319.517,"member_base_ns":28.634,"member_sky_ns":54.129,"member_checksum":43272,"member_checksum_sky":43272,"value_ns":5.925,"value_checksum":0}
+      185.70 real       184.15 user         0.66 sys
+          1247330304  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               76761  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   3  voluntary context switches
+               93092  involuntary context switches
+       1874885280610  instructions retired
+        691612795156  cycles elapsed
+          1247462888  peak memory footprint

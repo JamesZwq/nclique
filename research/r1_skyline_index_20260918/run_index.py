@@ -29,11 +29,15 @@ def run(command, log):
     return child.stdout.strip()
 
 def main():
-    logs = HERE / 'index-logs'
-    if (HERE / 'index.json').exists() or logs.exists():
+    import sys
+    mode = sys.argv[1] if len(sys.argv) > 1 else 'twins'
+    assert mode in ('twins', 'chains')
+    suffix = '' if mode == 'twins' else '_' + mode
+    logs = HERE / ('index-logs' if mode == 'twins' else f'index-logs{suffix}')
+    if (HERE / f'index{suffix}.json').exists() or logs.exists():
         raise SystemExit('refusing to overwrite evidence')
     logs.mkdir()
-    record = {'started': datetime.datetime.now().astimezone().isoformat(), 'commands': [],
+    record = {'mode': mode, 'started': datetime.datetime.now().astimezone().isoformat(), 'commands': [],
               'sources': {str(p.relative_to(ROOT)): sha(p) for p in
                           (HERE / 'index.cpp', HERE / 'count.cpp', HERE / 'common.hpp', HERE / 'CMakeLists.txt',
                            HERE / 'run_index.py', HERE / 'IMPLEMENTATION2.md', HERE / 'THEORY.md')},
@@ -51,12 +55,12 @@ def main():
                 record['selftests'][f'{name}-{Path(command[0]).name}'] = json.loads(out.splitlines()[-1])
     for graph in GRAPHS:
         tag = Path(graph).stem
-        command = ['/usr/bin/time', '-l', str(HERE / 'build' / 'index'), '--graph', graph]
+        command = ['/usr/bin/time', '-l', str(HERE / 'build' / 'index'), '--graph', graph, mode]
         record['commands'].append(command)
         output = run(command, logs / f'{tag}.log')
         line = next(x for x in output.splitlines() if x.startswith('{'))
         record['runs'].append({'graph': graph, 'input_sha256': sha(ROOT / graph), 'result': json.loads(line)})
-    (HERE / 'index.json').write_text(json.dumps(record, indent=1) + '\n')
+    (HERE / f'index{suffix}.json').write_text(json.dumps(record, indent=1) + '\n')
 
 if __name__ == '__main__':
     main()

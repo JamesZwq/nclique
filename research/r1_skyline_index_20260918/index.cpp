@@ -96,7 +96,8 @@ template<class T> struct Built {
     }
 };
 
-template<class T> static Built<T> build_index(const Input& in, unsigned bits) {
+enum class ClassMode { twins, chains };
+template<class T> static Built<T> build_index(const Input& in, unsigned bits, ClassMode mode) {
     Built<T> b; const Graph& g = in.graph; const Vertex n = g.n;
     b.g = &g; b.maximum = std::max(2, static_cast<int>(in.d) + 1); b.bits = bits; b.choose.emplace(in.d + 1, b.maximum);
     const int S = b.maximum;
@@ -108,8 +109,31 @@ template<class T> static Built<T> build_index(const Input& in, unsigned bits) {
     const auto& flat = out.common.data.core;
     b.core.assign(S + 1, std::vector<T>(n));
     for (int s = 2; s <= S; ++s) for (Vertex v = 0; v < n; ++v) b.core[s][v] = flat[static_cast<size_t>(s) * n + v];
-    // classes, omega, sigma, skyline
-    b.cls = twins(g, b.groups); const size_t nc = b.groups.size();
+    // Phase A: per-size trees, DFS numbering, per-vertex own nodes
+    b.nodes.resize(S + 1); b.base_bucket.resize(S + 1); b.base_classes.resize(S + 1); b.sky_classes.resize(S + 1); b.sky_gamma.resize(S + 1);
+    std::vector<std::vector<uint32_t>> vertex_leaf(S + 1);        // [s][v] -> node id, none if inactive
+    std::vector<std::vector<Vertex>> creator(S + 1);              // [s][node] -> a vertex attached at that node (from make_tree)
+    for (int s = 2; s <= S; ++s) {
+        auto tr = make_tree(g, ti, flat, s);
+        std::vector<uint32_t> renum(tr.nodes.size(), none);
+        std::function<void(int, uint32_t)> dfs = [&](int x, uint32_t p) {
+            const uint32_t id = static_cast<uint32_t>(b.nodes[s].size()); renum[x] = id;
+            b.nodes[s].push_back({static_cast<T>(tr.nodes[x].hi), p, 0, 0, none}); creator[s].push_back(static_cast<Vertex>(tr.nodes[x].creator));
+            for (int y : tr.nodes[x].children) dfs(y, id);
+            b.nodes[s][id].size = static_cast<uint32_t>(b.nodes[s].size()) - id; };
+        for (size_t i = 0; i < tr.nodes.size(); ++i) if (tr.nodes[i].parent < 0) dfs(static_cast<int>(i), none);
+        require(b.nodes[s].size() == tr.nodes.size(), "DFS lost nodes");
+        vertex_leaf[s].assign(n, none); for (Vertex v = 0; v < n; ++v) if (tr.leaf[v] >= 0) vertex_leaf[s][v] = renum[tr.leaf[v]];
+    }
+    // Phase B: classes = twins (closed neighbourhoods) or chains (tuple of own nodes over all sizes)
+    if (mode == ClassMode::twins) b.cls = twins(g, b.groups);
+    else {
+        std::vector<int> om(n, 0); for (Vertex v = 0; v < n; ++v) for (int s = 2; s <= S; ++s) if (b.core[s][v] > T{0}) om[v] = s;
+        std::map<std::vector<uint32_t>, uint32_t> ids; b.cls.assign(n, 0); b.groups.clear();
+        for (Vertex v = 0; v < n; ++v) { std::vector<uint32_t> key; for (int s = 2; s <= om[v]; ++s) { require(vertex_leaf[s][v] != none, "active vertex without own node"); key.push_back(vertex_leaf[s][v]); }
+            auto [it, fresh] = ids.emplace(std::move(key), static_cast<uint32_t>(ids.size())); if (fresh) b.groups.emplace_back(); b.cls[v] = static_cast<int>(it->second); b.groups[it->second].push_back(v); }
+    }
+    const size_t nc = b.groups.size();
     b.omega.assign(nc, 0); b.sigma.assign(nc, 0); b.sky.assign(nc, std::vector<uint8_t>(S + 1, 0));
     std::map<std::pair<int, cpp_int>, cpp_int> cache;
     auto sig = [&](int s, const T& x) { auto q = std::make_pair(s, cpp_int(x)); auto it = cache.find(q);
@@ -124,22 +148,12 @@ template<class T> static Built<T> build_index(const Input& in, unsigned bits) {
             require(a >= d, "F2 shadow bound"); b.sky[c][s] = a != d; }
         if (b.omega[c] >= 2) b.sky[c][b.omega[c]] = 1;
     }
-    // per-size trees, DFS numbering, buckets
-    b.nodes.resize(S + 1); b.base_bucket.resize(S + 1); b.base_classes.resize(S + 1); b.sky_classes.resize(S + 1); b.sky_gamma.resize(S + 1);
+    // Phase C: per-size buckets over classes
     std::vector<std::vector<uint32_t>> leaf(S + 1);                // [s][class] -> node id, none if inactive (temporary)
-    std::vector<std::vector<Vertex>> creator(S + 1);              // [s][node] -> a vertex attached at that node (from make_tree)
     for (int s = 2; s <= S; ++s) {
-        auto tr = make_tree(g, ti, flat, s);
-        std::vector<uint32_t> renum(tr.nodes.size(), none);
-        std::function<void(int, uint32_t)> dfs = [&](int x, uint32_t p) {
-            const uint32_t id = static_cast<uint32_t>(b.nodes[s].size()); renum[x] = id;
-            b.nodes[s].push_back({static_cast<T>(tr.nodes[x].hi), p, 0, 0, none}); creator[s].push_back(static_cast<Vertex>(tr.nodes[x].creator));
-            for (int y : tr.nodes[x].children) dfs(y, id);
-            b.nodes[s][id].size = static_cast<uint32_t>(b.nodes[s].size()) - id; };
-        for (size_t i = 0; i < tr.nodes.size(); ++i) if (tr.nodes[i].parent < 0) dfs(static_cast<int>(i), none);
-        require(b.nodes[s].size() == tr.nodes.size(), "DFS lost nodes");
         leaf[s].assign(nc, none);
-        for (size_t c = 0; c < nc; ++c) if (s <= b.omega[c]) { const int l = tr.leaf[b.groups[c][0]]; require(l >= 0, "active class without leaf"); leaf[s][c] = renum[l]; }
+        for (size_t c = 0; c < nc; ++c) if (s <= b.omega[c]) { const uint32_t l = vertex_leaf[s][b.groups[c][0]]; require(l != none, "active class without leaf"); leaf[s][c] = l;
+            for (Vertex u : b.groups[c]) require(vertex_leaf[s][u] == l, "class members with different own nodes"); }
         const size_t N = b.nodes[s].size();
         // own classes per node (baseline) and skyline entries per node, then packed in node id order (= DFS preorder, own first)
         std::vector<uint32_t> own_cnt(N + 1, 0), sky_cnt(N + 1, 0);
@@ -206,8 +220,8 @@ template<class T> static void expand(const Built<T>& b, const std::vector<uint32
 }
 
 // ---------------------------------------------------------------- selftest against brute force
-template<class T> static void selftest_graph(const Graph& g, uint64_t& queries, uint64_t& members, uint64_t& values) {
-    Seeds z(g); Input in{g, z.ordinary, z.maximum}; auto b = build_index<T>(in, 64);
+template<class T> static void selftest_graph(const Graph& g, uint64_t& queries, uint64_t& members, uint64_t& values, ClassMode mode) {
+    Seeds z(g); Input in{g, z.ordinary, z.maximum}; auto b = build_index<T>(in, 64, mode);
     const int S = b.maximum; std::vector<uint32_t> cls_out, adm, next; std::vector<Vertex> va, vb;
     for (int s = 2; s <= S; ++s) {
         auto cl = bottomup::clique_masks(g, s);
@@ -231,7 +245,7 @@ template<class T> static void selftest_graph(const Graph& g, uint64_t& queries, 
 }
 static void index_selftest() {
     uint64_t graphs = 0, queries = 0, members = 0, values = 0; std::mt19937_64 rng(20260918);
-    auto one = [&](const Graph& g) { try { selftest_graph<uint64_t>(g, queries, members, values); } catch (const std::exception& e) {
+    auto one = [&](const Graph& g) { try { selftest_graph<uint64_t>(g, queries, members, values, ClassMode::twins); selftest_graph<uint64_t>(g, queries, members, values, ClassMode::chains); } catch (const std::exception& e) {
         std::cerr << "selftest failure on n=" << g.n << " edges:"; for (Vertex u = 0; u < g.n; ++u) for (Vertex w : g.row(u)) if (u < w) std::cerr << ' ' << u << '-' << w; std::cerr << '\n'; throw; } ++graphs; };
     for (Vertex n = 0; n <= 6; ++n) { std::vector<std::pair<Vertex, Vertex>> p; for (Vertex a = 0; a < n; ++a) for (Vertex c = a + 1; c < n; ++c) p.emplace_back(a, c);
         for (uint64_t mask = 0; mask < (uint64_t{1} << p.size()); ++mask) { std::vector<std::pair<Vertex, Vertex>> e; for (size_t i = 0; i < p.size(); ++i) if (mask >> i & 1) e.push_back(p[i]); one(Graph::from_edges(n, std::move(e))); } }
@@ -242,8 +256,8 @@ static void index_selftest() {
 }
 
 // ---------------------------------------------------------------- measurement
-template<class T> static void run_graph(const Input& in, unsigned bits) {
-    auto b = build_index<T>(in, bits); const Graph& g = in.graph;
+template<class T> static void run_graph(const Input& in, unsigned bits, ClassMode mode) {
+    auto b = build_index<T>(in, bits, mode); const Graph& g = in.graph;
     std::vector<Vertex> active; for (Vertex v = 0; v < g.n; ++v) if (b.omega[b.cls[v]] >= 2) active.push_back(v);
     struct Q { Vertex v, u; int s; T k; };
     std::mt19937_64 rng(20260918);
@@ -278,7 +292,8 @@ template<class T> static void run_graph(const Input& in, unsigned bits) {
     const auto bo = time_community(own, false), so = time_community(own, true), bh = time_community(half, false), sh = time_community(half, true),
                br = time_community(root, false), sr = time_community(root, true); const auto bm = time_member(false), sm = time_member(true); const auto val = time_value();
     const uint64_t base_no_d = b.bytes_shared + b.bytes_base_nodes + b.bytes_base_pairs, sky_no_d = b.bytes_shared + b.bytes_sky_nodes + b.bytes_sky_entries + b.bytes_sky_location + b.bytes_sky_cross;
-    std::cout << std::fixed << std::setprecision(3) << "{\"passed\":true,\"n\":" << g.n << ",\"m\":" << g.m << ",\"s_max\":" << b.maximum << ",\"count_bits\":" << bits
+    const uint64_t aligned_map = (g.n + 7) / 8 + (g.n + 63) / 64 * 4 + 8ull * b.groups.size();   // bitmap + rank directory + one range per class (projection)
+    std::cout << std::fixed << std::setprecision(3) << "{\"passed\":true,\"mode\":\"" << (mode == ClassMode::twins ? "twins" : "chains") << "\",\"bytes_shared_aligned\":" << aligned_map << ",\"n\":" << g.n << ",\"m\":" << g.m << ",\"s_max\":" << b.maximum << ",\"count_bits\":" << bits
         << ",\"classes\":" << b.groups.size() << ",\"active_pairs\":" << b.active_pairs << ",\"skyline_entries\":" << b.skyline_entries << ",\"canonical_nodes\":" << b.canonical_nodes
         << ",\"bytes_shared\":" << b.bytes_shared << ",\"bytes_base_nodes\":" << b.bytes_base_nodes << ",\"bytes_base_pairs\":" << b.bytes_base_pairs
         << ",\"bytes_sky_nodes\":" << b.bytes_sky_nodes << ",\"bytes_sky_entries\":" << b.bytes_sky_entries << ",\"bytes_sky_location\":" << b.bytes_sky_location << ",\"bytes_sky_cross\":" << b.bytes_sky_cross
@@ -294,10 +309,11 @@ template<class T> static void run_graph(const Input& in, unsigned bits) {
 int main(int argc, char** argv) {
     try {
         if (argc == 2 && std::string(argv[1]) == "--selftest") { index_selftest(); return 0; }
-        require(argc == 3 && std::string(argv[1]) == "--graph", "usage: index --selftest | --graph path");
+        require((argc == 3 || argc == 4) && std::string(argv[1]) == "--graph", "usage: index --selftest | --graph path [twins|chains]");
+        const ClassMode mode = argc == 4 && std::string(argv[3]) == "chains" ? ClassMode::chains : ClassMode::twins;
         Input in = prepare(argv[2]); Layout l(in.graph, std::max(2, static_cast<int>(in.d) + 1)); l.prepare(in.graph.n);
         const unsigned w = width(count_bound(in.graph, l, in.d));
-        if (w == 64) run_graph<uint64_t>(in, w); else if (w == 128) run_graph<unsigned __int128>(in, w);
-        else if (w == 256) run_graph<boost::multiprecision::uint256_t>(in, w); else run_graph<boost::multiprecision::uint512_t>(in, w);
+        if (w == 64) run_graph<uint64_t>(in, w, mode); else if (w == 128) run_graph<unsigned __int128>(in, w, mode);
+        else if (w == 256) run_graph<boost::multiprecision::uint256_t>(in, w, mode); else run_graph<boost::multiprecision::uint512_t>(in, w, mode);
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

@@ -100,8 +100,9 @@ is one rank plus one interval test, values are one lookup per chain.
 - The skyline dedup of stage 2 can still be applied on top of chains,
   but the (chain, s) pairs are now a minor block; it is not needed.
 
-## 6. Next Step
+## 6. Measured (2026-09-19)
 
-Replace the twin classes by chain classes in `index.cpp` (the baseline
-code does not depend on what a class is), keep the brute-force selftest,
-and measure bytes and latency of S trees over chains on the five inputs.
+Done: [RESULTS_CHAINS.md](RESULTS_CHAINS.md). S trees over chains are
+2.5x to 4.5x smaller than S trees over twins as measured (3.9x to 8.3x
+projected with aligned labels) and 1.7x to 8.6x faster on community
+listing; the skyline over chains is dominated.
