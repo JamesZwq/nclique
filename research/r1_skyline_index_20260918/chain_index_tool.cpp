@@ -109,7 +109,7 @@ template<class T> static void selftest_graph(const Graph& g, const std::string& 
                     ChainIndex<T>::expand(ranges, ids);
                     for (auto& x : ids) x = inv[x]; std::sort(ids.begin(), ids.end()); require(ids == truth, "community differs from brute force"); ++queries;
                     if (ix.compact) { typename ChainIndex<T>::Runs r; uint32_t nd = kNone; require(ix.community_runs(perm[v], s, k, r, nd) && nd == node && r.count() * 2 == ranges.size(), "pointer form");
-                        std::vector<uint32_t> ex(ChainIndex<T>::total(r)); require(ChainIndex<T>::expand(r, ex.data()) == ex.data() + ex.size(), "pointer expand");
+                        std::vector<uint32_t> ex(ChainIndex<T>::total(r) + ChainIndex<T>::kSlack); require(ChainIndex<T>::expand(r, ex.data()) == ex.data() + ex.size() - ChainIndex<T>::kSlack, "pointer expand"); ex.resize(ex.size() - ChainIndex<T>::kSlack);
                         for (auto& x : ex) x = inv[x]; std::sort(ex.begin(), ex.end()); require(ex == truth, "pointer form differs from brute force"); }
                     for (uint32_t u = 0; u < n; ++u) { const bool t = inside[u] && brute.find(u) == brute.find(v); require(ix.member(perm[u], perm[v], s, k) == t, "membership"); ++members; }
                     if (k == kv) { ix.ladder(perm[v], s, lad); require(!lad.empty() && lad.front().first == kv, "ladder start");
@@ -154,7 +154,7 @@ template<class T> static void bench(const Input& in, unsigned bits, const std::s
         const T k = regime == 0 ? x : (regime == 1 ? std::max<T>(T{1}, x / 2) : T{1}); qs.push_back({v, static_cast<uint32_t>(rng() % n), s, k}); } return qs; };
     const std::vector<Q> own = draw(0, 20000), half = draw(1, 20000), root = draw(2, 1000);
     const std::vector<Q> mq = [&] { std::vector<Q> m; for (int r = 0; r < 3; ++r) { auto q = draw(r, 6667); m.insert(m.end(), q.begin(), q.end()); } return m; }();
-    std::vector<uint32_t> ranges; ranges.reserve(1 << 20); std::vector<uint32_t> ids(n); std::vector<std::pair<T, uint64_t>> lad;   // ids: caller-owned output buffer
+    std::vector<uint32_t> ranges; ranges.reserve(1 << 20); std::vector<uint32_t> ids(static_cast<size_t>(n) + ChainIndex<T>::kSlack); std::vector<std::pair<T, uint64_t>> lad;   // ids: caller-owned output buffer with slack
     auto median5 = [](std::array<double, 5> t) { std::sort(t.begin(), t.end()); return t[2]; };
     auto time_ptr = [&](const std::vector<Q>& qs) { std::array<double, 5> ts{}; uint64_t z = 0;   // compact form: climb + pointer, no copy
         for (int pass = 0; pass < 6; ++pass) { const auto st = Clock::now(); for (const auto& q : qs) { typename ChainIndex<T>::Runs r; uint32_t nd = 0; ix.community_runs(q.v, q.s, q.k, r, nd); z += r.nmid + r.lo0 + nd; }

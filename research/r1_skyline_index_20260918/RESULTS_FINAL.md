@@ -314,7 +314,7 @@ selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816
 
 ### 9.6 The four stage-2 layouts for reference (five graphs)
 
-### Bytes with values (Block D), stage-2 layouts
+#### Bytes with values (Block D), stage-2 layouts
 | Graph | per-vertex S trees | over twins | over chains | aligned chains (index.cpp) | aligned vs per-vertex |
 |---|---:|---:|---:|---:|---:|
 | ca-GrQc | 272,564 | 256,238 | 103,220 | 65,128 | 4.19x |
@@ -323,7 +323,7 @@ selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816
 | web-Stanford | 24,853,426 | 26,086,394 | 5,762,930 | 3,632,412 | 6.84x |
 | amazon0302 | 14,414,214 | 17,079,748 | 5,744,638 | 3,860,362 | 3.73x |
 
-### Community listing, own level (k = kappa_s(v)), ns per query, explicit ids unless noted
+#### Community listing, own level (k = kappa_s(v)), ns per query, explicit ids unless noted
 | Graph | output vertices | per-vertex S trees (memcpy) | over twins | over chains | aligned explicit | aligned ranges only |
 |---|---:|---:|---:|---:|---:|---:|
 | ca-GrQc | 1,656 | 225 | 2,903 | 574 | 822 | 231 |

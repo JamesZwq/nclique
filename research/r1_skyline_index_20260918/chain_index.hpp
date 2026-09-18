@@ -104,17 +104,23 @@ template<class T> struct ChainIndex {
     }
     static uint64_t total(const std::vector<uint32_t>& ranges) { uint64_t t = 0; for (size_t j = 0; j < ranges.size(); j += 2) t += ranges[j + 1] - ranges[j]; return t; }
     static uint64_t total(const Runs& r) { uint64_t t = (r.hi0 - r.lo0) + (r.hi1 - r.lo1); for (uint32_t j = 0; j < r.nmid; ++j) t += r.mid[2 * static_cast<size_t>(j) + 1] - r.mid[2 * static_cast<size_t>(j)]; return t; }
-    // explicit vertex ids of `ranges` written to out[0, total); returns one past the last id written (eight ids per step, scalar tail)
+    // explicit vertex ids of `ranges` written to out[0, total); returns one past the last id written.  Branchless per range:
+    // every block of eight ids is stored unconditionally and the pointer advances by the true length, so the caller's
+    // buffer must have kSlack spare slots after `total`.
+    static constexpr size_t kSlack = 8;
     typedef uint32_t V4 __attribute__((vector_size(16)));
+    static inline void store8(uint32_t x, uint32_t* w) { const V4 i0 = {0, 1, 2, 3}, i1 = {4, 5, 6, 7}; const V4 xs = {x, x, x, x}; const V4 a = i0 + xs, b = i1 + xs; std::memcpy(w, &a, 16); std::memcpy(w + 4, &b, 16); }
     static uint32_t* fill(uint32_t x, const uint32_t hi, uint32_t* w) {
-        const V4 i0 = {0, 1, 2, 3}, i1 = {4, 5, 6, 7};
-        for (; hi - x >= 8; x += 8, w += 8) { const V4 xs = {x, x, x, x}; const V4 a = i0 + xs, b = i1 + xs; std::memcpy(w, &a, 16); std::memcpy(w + 4, &b, 16); }
-        for (; x < hi; ++x) *w++ = x;
-        return w;
+        const uint32_t len = hi - x; store8(x, w);
+        if (len <= 8) return w + len;
+        uint32_t* const end = w + len; x += 8; w += 8;
+        for (; w + 8 <= end; x += 8, w += 8) store8(x, w);
+        store8(x, w);                      // tail, over-writes into the slack
+        return end;
     }
     static uint32_t* expand(const std::vector<uint32_t>& ranges, uint32_t* out) { uint32_t* w = out; for (size_t j = 0; j < ranges.size(); j += 2) w = fill(ranges[j], ranges[j + 1], w); return w; }
     static uint32_t* expand(const Runs& r, uint32_t* out) { uint32_t* w = fill(r.lo0, r.hi0, out); for (uint32_t j = 0; j < r.nmid; ++j) w = fill(r.mid[2 * static_cast<size_t>(j)], r.mid[2 * static_cast<size_t>(j) + 1], w); return fill(r.lo1, r.hi1, w); }
-    static void expand(const std::vector<uint32_t>& ranges, std::vector<uint32_t>& out) { out.resize(total(ranges)); if (!out.empty()) expand(ranges, out.data()); }
+    static void expand(const std::vector<uint32_t>& ranges, std::vector<uint32_t>& out) { const size_t t = total(ranges); out.resize(t + kSlack); expand(ranges, out.data()); out.resize(t); }
     bool member(uint32_t u, uint32_t v, int s, const T& k) const {
         const uint32_t xv = own_node(chain_of(v), s), xu = own_node(chain_of(u), s); if (xv == kNone || xu == kNone) return false;
         const uint32_t node = climb(s, xv, k); return xu >= node && xu < node + layers[s].size[node];
