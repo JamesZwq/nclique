@@ -106,3 +106,39 @@ Done: [RESULTS_CHAINS.md](RESULTS_CHAINS.md). S trees over chains are
 2.5x to 4.5x smaller than S trees over twins as measured (3.9x to 8.3x
 projected with aligned labels) and 1.7x to 8.6x faster on community
 listing; the skyline over chains is dominated.
+
+## 7. How Many Chains Can There Be
+
+Upper bounds that hold: chains <= n, chains <= twin classes (C3), and
+chains <= the number of distinct tuples, which is at most the product
+over sizes of |T_s|. The observation chains <= sum_s |T_s| (the total
+number of canonical nodes) is NOT a theorem. Recombination defeats it:
+take two vertices u, u' with the same own node at size 3 but different
+own nodes at size 2 (equal kappa_3 in one 3-nucleus, different kappa_2),
+and two vertices w, w' with a second common size-3 node and the same two
+size-2 nodes; all four share one size-4 node. That is four chains on five
+nodes, and stacking the construction over t sizes gives 2^t chains on
+2t + 1 nodes. Nothing in F3 forbids it: the size-2 own node only has to
+lie inside the container of the size-3 own node, and containers nest.
+
+What the counts say is that real graphs recombine little: on the five
+inputs the ratio chains / nodes is 0.47, 0.32, 0.40, 0.34 and 0.63. A
+vertex's core values across sizes are coherent, so the tuples cluster.
+The index size is therefore bounded by n bits plus data proportional to
+the number of chains, which is empirically below the number of canonical
+nodes, not by a theorem in terms of the hierarchy alone.
+
+## 8. Toward r >= 2
+
+For r >= 2 the items are r-cliques and the nuclei partition the r-cliques
+of core value at least k into s-connected components. The chain of an
+r-clique is again its tuple of own nodes, and Lemmas C1 and C2 go through
+verbatim (per-size laminarity and the own-node definition are all that is
+used). Two instances of one pattern (the class multiset of the NSI paper)
+lie in exactly the same maximal cliques, so whenever some maximal clique
+of at least s vertices contains the pattern they share an s-clique and
+hence a nucleus at every level, and otherwise both have value zero; so
+patterns refine chains, and the r-clique-to-chain map factors through the
+paper's pattern lookup. For certified patterns the paper's forest already
+answers communities without per-pattern storage; chains would replace the
+per-cell residue nodes. This is a theory step, not started.
