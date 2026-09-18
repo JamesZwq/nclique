@@ -98,7 +98,8 @@ is one rank plus one interval test, values are one lookup per chain.
 - The bitmap variant needs the index to use aligned vertex labels; the
   permutation from input labels costs 4 bytes per vertex unless the graph
   is stored in that order.
-- chains <= canonical nodes holds on the five inputs without proof.
+- chains <= canonical nodes held on the first five inputs without proof;
+  the 13-graph run refuted it on four graphs (Section 7 update).
 - The skyline dedup of stage 2 can still be applied on top of chains,
   but the (chain, s) pairs are now a minor block; it is not needed.
 
