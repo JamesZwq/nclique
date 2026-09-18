@@ -340,10 +340,23 @@ engineering-sized gain, unlike r = 1, where the items (vertices) are far
 fewer than the maximal cliques and the S-tree redundancy across sizes is
 what chains remove.
 
-Revised counting gate (cheap, no engine change): from an NSI5/NSI6 file,
-per row, count regions R, size-forest own nodes O = distinct
-(rep(rid, |M_rid|), |M_rid|) pairs, and residue nodes per FULL cell; the
-forest block can shrink by at most R / O. Run on the local evaluation
-graphs at r = 2 and 3 before deciding whether an r >= 2 chain layout is
-worth building. Lemmas C7 and C8 stand and are what makes the per-pattern
-part of that layout well defined.
+Verdict for r >= 2 (accounting, no run needed). A query for an r-clique R
+must reach its host region M* through the quotient block (class lists,
+Lemma Reconstruction), and from M* its own node; so any layout needs one
+record per region mapping it to its node, which is what the paper's size
+forest record (parent, death, size after; var-int, 3-9 bytes) already
+is. Merging regions that share an own node cannot remove that record, so
+an r >= 2 chain layout saves no bytes; the query gain (O(1) locate versus
+a short climb) is dwarfed by expanding regions into r-cliques. Chains at
+r >= 2 therefore coincide with the paper's row-level size forest, and
+Lemmas C7-C8 are the reason: the certified tail of every item is
+inherited from its largest maximal clique, so once items are regions the
+structure is s-independent by itself. The r = 1 case is different because
+its items (vertices) are far fewer than the maximal cliques on
+collaboration, citation and product graphs (the maximal-clique forest was
+measured 2-27x larger than S trees there, THEORY.md), so the per-vertex
+S trees were the right baseline and chains the right lever. For the
+paper this is a unifying remark, not a second index: the r = 1 chain
+index is the vertex-level analogue of the size forest, built on
+hierarchy equivalence instead of maximal cliques. No r >= 2 chain index
+will be built.
