@@ -49,11 +49,12 @@ def final():
     if rec is None:
         print('(final.json not present yet)'); return
     data = by_graph(rec); vert = by_graph(load('index_vertices.json'))
+    def vbytes(g, r): return r.get('baseline_vertex_bytes', vert[g]['base_with_d'] if g in vert else 0)
     print('### Final module: size')
     print('| Graph | n | s_max | chains | canonical nodes | (chain,s) pairs | runs | map B | chains B | layers B | total B | file B | perm B | build form total B | per-vertex S trees B | ratio |')
     print('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
     for g, r in data.items():
-        v = vert[g]['base_with_d']
+        v = vbytes(g, r)
         print(f"| {g} | {fmt(r['n'])} | {r['s_max']} | {fmt(r['chains'])} | {fmt(r['canonical_nodes'])} | {fmt(r['pairs_total'])} | {fmt(r['runs_total'])} | {fmt(r['bytes_map'])} | {fmt(r['bytes_chains'])} | {fmt(r['bytes_layers'])} | {fmt(r['bytes_total'])} | {fmt(r['file_bytes'])} | {fmt(r['perm_bytes'])} | {fmt(r['slice_bytes_total'])} | {fmt(v)} | {v/r['bytes_total']:.2f}x |")
     print()
     print('### Final module: build, save, load (ms, single thread)')
@@ -67,8 +68,8 @@ def final():
     print('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|')
     for g, r in data.items():
         for reg, key in [('own', 'own'), ('half', 'half'), ('root', 'root')]:
-            memcpy = vert[g][f'{key}_base_ns']
-            print(f"| {g} | {reg} | {fmt(r[f'{key}_output'])} | {r[f'{key}_ranges']:.1f} | {r[f'ptr_{key}_ns']:.1f} | {fmt(r[f'range_{key}_ns'])} | {fmt(r[f'explicit_{key}_ns'])} | {fmt(memcpy)} | {fmt(r[f'slice_range_{key}_ns'])} | {fmt(r[f'slice_explicit_{key}_ns'])} |")
+            memcpy = fmt(vert[g][f'{key}_base_ns']) if g in vert else '-'
+            print(f"| {g} | {reg} | {fmt(r[f'{key}_output'])} | {r[f'{key}_ranges']:.1f} | {r[f'ptr_{key}_ns']:.1f} | {fmt(r[f'range_{key}_ns'])} | {fmt(r[f'explicit_{key}_ns'])} | {memcpy} | {fmt(r[f'slice_range_{key}_ns'])} | {fmt(r[f'slice_explicit_{key}_ns'])} |")
     print()
     print('### Final module: membership, value, ladder (ns per query)')
     print('| Graph | member | value | ladder (compact) | ladder steps | ladder (build form) | max depth |')
@@ -80,6 +81,7 @@ def final():
     print('| Graph | final module (own) | per-vertex S trees (own) | final module (root) | per-vertex S trees (root) |')
     print('|---|---:|---:|---:|---:|')
     for g, r in data.items():
+        if g not in vert: print(f"| {g} | {r['explicit_own_ns']/r['own_output']:.3f} | - | {r['explicit_root_ns']/r['root_output']:.3f} | - |"); continue
         print(f"| {g} | {r['explicit_own_ns']/r['own_output']:.3f} | {vert[g]['own_base_ns']/vert[g]['own_output']:.3f} | {r['explicit_root_ns']/r['root_output']:.3f} | {vert[g]['root_base_ns']/vert[g]['root_output']:.3f} |")
     print()
     print('selftests:', json.dumps(rec['selftests']))

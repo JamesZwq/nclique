@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Final chain index: Release and ASan/UBSan builds of chain_index_tool, both
 selftests (brute force + disk round trip), then build/save/load/query on the
-five graphs, one at a time. Refuses to overwrite existing evidence."""
+five graphs plus any extra graph paths given on the command line, one at a
+time. Refuses to overwrite existing evidence."""
 import datetime
 import hashlib
 import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -47,7 +49,7 @@ def main():
             out = run(command, logs / f'{name}-{i}.log')
             if i == 2:
                 record['selftests'][name] = json.loads(out.splitlines()[-1])
-    for graph in GRAPHS:
+    for graph in GRAPHS + sys.argv[1:]:
         tag = Path(graph).stem
         command = ['/usr/bin/time', '-l', str(HERE / 'build' / 'chain_index_tool'), '--bench', graph, str(cx / f'{tag}.cx')]
         record['commands'].append(command)
