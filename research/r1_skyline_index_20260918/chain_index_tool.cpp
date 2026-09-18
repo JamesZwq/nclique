@@ -13,6 +13,9 @@ using chainindex::ChainIndex; using chainindex::kNone;
 struct BuildTimes { double solve_ms = 0, trees_ms = 0, chains_ms = 0, layout_ms = 0; };
 
 // Build the index from an Input; perm[v_input] = internal id.  Returns the index (finished) and perm.
+// Chain ranks follow the lexicographic order of the tuple of preorder ids (X_2, X_3, ...), so at s = 2 every community
+// is one id range.  Each DFS array visits a node's own chains and child subtrees by ascending smallest rank, so runs of
+// consecutive ranks stay adjacent and community_ranges merges them.
 template<class T> static ChainIndex<T> build_chain_index(const Input& in, std::vector<uint32_t>& perm, BuildTimes& bt) {
     using Clock = std::chrono::steady_clock; auto ms = [](Clock::time_point a) { return std::chrono::duration<double, std::milli>(Clock::now() - a).count(); };
     const Graph& g = in.graph; const uint32_t n = g.n; const int S = std::max(2, static_cast<int>(in.d) + 1);
@@ -21,51 +24,63 @@ template<class T> static ChainIndex<T> build_chain_index(const Input& in, std::v
     terminal::Index ti(S); terminal::build(g, ti, 0); ti.prepare(n);
     auto out = terminal::Solver<T>::solve(g, ti, choose, in.ordinary); const auto& core = out.common.data.core;
     bt.solve_ms = ms(t0); t0 = Clock::now();
-    // per-size trees: preorder node ids, per-vertex own node
     ChainIndex<T> ix; ix.n = n; ix.max_size = S; ix.layers.resize(S + 1);
-    std::vector<std::vector<uint32_t>> own(S + 1);
-    for (int s = 2; s <= S; ++s) {
-        auto tr = make_tree(g, ti, core, s); auto& L = ix.layers[s]; std::vector<uint32_t> renum(tr.nodes.size(), kNone);
-        std::function<void(int, uint32_t)> dfs = [&](int x, uint32_t p) { const uint32_t id = static_cast<uint32_t>(L.top.size()); renum[x] = id;
-            L.top.push_back(static_cast<T>(tr.nodes[x].hi)); L.parent.push_back(p); L.size.push_back(0);
-            for (int y : tr.nodes[x].children) dfs(y, id); L.size[id] = static_cast<uint32_t>(L.top.size()) - id; };
-        for (size_t i = 0; i < tr.nodes.size(); ++i) if (tr.nodes[i].parent < 0) dfs(static_cast<int>(i), kNone);
-        own[s].assign(n, kNone); for (uint32_t v = 0; v < n; ++v) if (tr.leaf[v] >= 0) own[s][v] = renum[tr.leaf[v]];
-    }
+    // per-size trees in creation ids: parent, top, children, preorder id (creation child order); per-vertex own node
+    struct Tree0 { std::vector<int> parent; std::vector<T> hi; std::vector<std::vector<int>> children; std::vector<uint32_t> pre; };
+    std::vector<Tree0> trees(S + 1); std::vector<std::vector<uint32_t>> own(S + 1);
+    for (int s = 2; s <= S; ++s) { auto tr = make_tree(g, ti, core, s); auto& t = trees[s]; const size_t N = tr.nodes.size();
+        t.parent.resize(N); t.hi.resize(N); t.children.resize(N); t.pre.assign(N, kNone);
+        for (size_t i = 0; i < N; ++i) { t.parent[i] = tr.nodes[i].parent; t.hi[i] = static_cast<T>(tr.nodes[i].hi); t.children[i] = tr.nodes[i].children; }
+        uint32_t next = 0; std::function<void(int)> dfs0 = [&](int x) { t.pre[x] = next++; for (int y : t.children[x]) dfs0(y); };
+        for (size_t i = 0; i < N; ++i) if (t.parent[i] < 0) dfs0(static_cast<int>(i));
+        own[s].assign(n, kNone); for (uint32_t v = 0; v < n; ++v) if (tr.leaf[v] >= 0) own[s][v] = static_cast<uint32_t>(tr.leaf[v]); }
     bt.trees_ms = ms(t0); t0 = Clock::now();
-    // chains: group vertices by their own-node tuple; order chains by the size-2 node (preorder => own-first contiguity at s = 2), inactive last
+    // chains: vertices with the same own-node tuple; ranks by lexicographic order of the preorder-id tuple; inactive vertices last
     std::vector<int> om(n, 0); for (uint32_t v = 0; v < n; ++v) for (int s = 2; s <= S; ++s) if (core[static_cast<size_t>(s) * n + v] > T{0}) om[v] = s;
-    std::map<std::vector<uint32_t>, uint32_t> ids; std::vector<uint32_t> tmpchain(n); std::vector<std::vector<uint32_t>> members;
-    for (uint32_t v = 0; v < n; ++v) { std::vector<uint32_t> key; for (int s = 2; s <= om[v]; ++s) key.push_back(own[s][v]);
-        auto [it, fresh] = ids.emplace(std::move(key), static_cast<uint32_t>(ids.size())); if (fresh) members.emplace_back(); tmpchain[v] = it->second; members[it->second].push_back(v); }
-    const uint32_t C = static_cast<uint32_t>(members.size());
-    std::vector<uint32_t> order(C); std::iota(order.begin(), order.end(), 0);
-    auto key2 = [&](uint32_t c) { const uint32_t v = members[c][0]; return om[v] >= 2 ? own[2][v] : kNone; };
-    std::stable_sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) { return key2(a) < key2(b); });
-    std::vector<uint32_t> rank_of(C); for (uint32_t r = 0; r < C; ++r) rank_of[order[r]] = r;
+    std::map<std::vector<uint32_t>, std::vector<uint32_t>> groups;
+    for (uint32_t v = 0; v < n; ++v) { std::vector<uint32_t> key; for (int s = 2; s <= om[v]; ++s) key.push_back(trees[s].pre[own[s][v]]); groups[std::move(key)].push_back(v); }
+    std::vector<const std::vector<uint32_t>*> members;
+    for (const auto& [key, mem] : groups) if (!key.empty()) members.push_back(&mem);
+    if (auto it = groups.find(std::vector<uint32_t>{}); it != groups.end()) members.push_back(&it->second);
+    const uint32_t C = static_cast<uint32_t>(members.size()); auto rep = [&](uint32_t r) { return (*members[r])[0]; };
     perm.assign(n, kNone); ix.chains = C; ix.start_pos.assign(C + 1, 0); uint32_t next = 0;
-    for (uint32_t r = 0; r < C; ++r) { ix.start_pos[r] = next; for (uint32_t v : members[order[r]]) perm[v] = next++; }
+    for (uint32_t r = 0; r < C; ++r) { ix.start_pos[r] = next; for (uint32_t v : *members[r]) perm[v] = next++; }
     ix.start_pos[C] = next; require(next == n, "relabel incomplete");
     ix.start_bits.assign((n + 63) / 64, 0); for (uint32_t r = 0; r < C; ++r) { const uint32_t p = ix.start_pos[r]; ix.start_bits[p >> 6] |= 1ull << (p & 63); }
     ix.start_cum.assign(ix.start_bits.size() + 1, 0); for (size_t w = 0; w < ix.start_bits.size(); ++w) ix.start_cum[w + 1] = ix.start_cum[w] + static_cast<uint32_t>(__builtin_popcountll(ix.start_bits[w]));
     bt.chains_ms = ms(t0); t0 = Clock::now();
-    // per chain: omega, sigma, trajectory, residue (chain r's representative vertex)
+    // per chain: omega, sigma, trajectory offsets, residue (chain r's representative vertex)
     ix.omega.assign(C, 0); ix.sigma.assign(C, 0); ix.traj_off.assign(C + 1, 0); ix.residue_off.assign(C + 1, 0);
-    for (uint32_t r = 0; r < C; ++r) { const uint32_t v = members[order[r]][0]; const int o = om[v]; require(o < 256, "omega exceeds a byte");
+    for (uint32_t r = 0; r < C; ++r) { const uint32_t v = rep(r); const int o = om[v]; require(o < 256, "omega exceeds a byte");
         ix.omega[r] = static_cast<uint8_t>(o); int sg = o + 1;
         for (int s = 2; s <= o; ++s) if (sg == o + 1 && cpp_int(core[static_cast<size_t>(s) * n + v]) == choose_int(o - 1, s - 1)) sg = s;
         ix.sigma[r] = static_cast<uint8_t>(sg);
         ix.traj_off[r + 1] = ix.traj_off[r] + (o >= 2 ? o - 1 : 0); ix.residue_off[r + 1] = ix.residue_off[r] + (o >= 2 ? sg - 2 : 0); }
     ix.traj_node.assign(ix.traj_off[C], kNone); ix.residue.assign(ix.residue_off[C], T{0});
-    for (uint32_t r = 0; r < C; ++r) { const uint32_t v = members[order[r]][0]; const int o = om[v];
-        for (int s = 2; s <= o; ++s) ix.traj_node[ix.traj_off[r] + (s - 2)] = own[s][v];
-        for (int s = 2; s < ix.sigma[r]; ++s) ix.residue[ix.residue_off[r] + (s - 2)] = core[static_cast<size_t>(s) * n + v]; }
-    // per size: slice of chain ids in preorder of their own node (own-first), bucket offsets
-    for (int s = 2; s <= S; ++s) { auto& L = ix.layers[s]; const size_t N = L.top.size(); std::vector<uint32_t> cnt(N + 1, 0);
-        for (uint32_t r = 0; r < C; ++r) if (s <= ix.omega[r]) ++cnt[ix.traj_node[ix.traj_off[r] + (s - 2)] + 1];
+    for (uint32_t r = 0; r < C; ++r) { const uint32_t v = rep(r); for (int s = 2; s < ix.sigma[r]; ++s) ix.residue[ix.residue_off[r] + (s - 2)] = core[static_cast<size_t>(s) * n + v]; }
+    // per size: own chains per node (ranks ascending), smallest rank per subtree, DFS by ascending smallest rank => final ids, DFS array, buckets
+    for (int s = 2; s <= S; ++s) { const auto& t = trees[s]; const size_t N = t.parent.size(); auto& L = ix.layers[s];
+        std::vector<uint32_t> cnt(N + 1, 0); for (uint32_t r = 0; r < C; ++r) if (s <= ix.omega[r]) ++cnt[own[s][rep(r)] + 1];
         for (size_t i = 0; i < N; ++i) cnt[i + 1] += cnt[i];
-        L.bucket.assign(cnt.begin(), cnt.end() - 1); L.slice.assign(cnt[N], kNone); std::vector<uint32_t> fill(cnt.begin(), cnt.end() - 1);
-        for (uint32_t r = 0; r < C; ++r) if (s <= ix.omega[r]) { const uint32_t x = ix.traj_node[ix.traj_off[r] + (s - 2)]; L.slice[fill[x]++] = r; } }
+        std::vector<uint32_t> ownlist(cnt[N]), fill(cnt.begin(), cnt.end() - 1);
+        for (uint32_t r = 0; r < C; ++r) if (s <= ix.omega[r]) ownlist[fill[own[s][rep(r)]]++] = r;
+        std::vector<uint32_t> minrank(N, kNone), bypre(N); for (size_t x = 0; x < N; ++x) bypre[t.pre[x]] = static_cast<uint32_t>(x);
+        for (size_t i = N; i-- > 0;) { const uint32_t x = bypre[i]; if (cnt[x + 1] > cnt[x]) minrank[x] = std::min(minrank[x], ownlist[cnt[x]]);
+            if (t.parent[x] >= 0) minrank[t.parent[x]] = std::min(minrank[t.parent[x]], minrank[x]); }
+        std::vector<uint32_t> renum(N, kNone);
+        std::function<void(uint32_t, uint32_t)> dfs = [&](uint32_t x, uint32_t p) {
+            const uint32_t id = static_cast<uint32_t>(L.top.size()); renum[x] = id;
+            L.top.push_back(t.hi[x]); L.parent.push_back(p); L.size.push_back(0); L.bucket.push_back(static_cast<uint32_t>(L.slice.size()));
+            std::vector<std::pair<uint32_t, int64_t>> items;   // (key, item): item < 0 encodes own chain rank -(r + 1), item >= 0 a child node
+            for (uint32_t j = cnt[x]; j < cnt[x + 1]; ++j) items.emplace_back(ownlist[j], -static_cast<int64_t>(ownlist[j]) - 1);
+            for (int y : t.children[x]) items.emplace_back(minrank[y], static_cast<int64_t>(y));
+            std::sort(items.begin(), items.end());
+            for (const auto& [key, item] : items) { if (item < 0) L.slice.push_back(static_cast<uint32_t>(-item - 1)); else dfs(static_cast<uint32_t>(item), id); }
+            L.size[id] = static_cast<uint32_t>(L.top.size()) - id; };
+        std::vector<std::pair<uint32_t, uint32_t>> roots; for (size_t x = 0; x < N; ++x) if (t.parent[x] < 0) roots.emplace_back(minrank[x], static_cast<uint32_t>(x));
+        std::sort(roots.begin(), roots.end()); for (const auto& [key, x] : roots) dfs(x, kNone);
+        require(L.slice.size() == cnt[N] && L.top.size() == N, "dfs array incomplete");
+        for (uint32_t r = 0; r < C; ++r) if (s <= ix.omega[r]) ix.traj_node[ix.traj_off[r] + (s - 2)] = renum[own[s][rep(r)]]; }
     ix.finish(); bt.layout_ms = ms(t0);
     return ix;
 }
@@ -73,31 +88,45 @@ template<class T> static ChainIndex<T> build_chain_index(const Input& in, std::v
 // ------------------------------------------------------------ selftest: brute force + disk round trip
 template<class T> static void selftest_graph(const Graph& g, const std::string& tmp, uint64_t& queries, uint64_t& members, uint64_t& values, uint64_t& ladders) {
     Seeds z(g); Input in{g, z.ordinary, z.maximum}; std::vector<uint32_t> perm; BuildTimes bt; auto built = build_chain_index<T>(in, perm, bt);
-    built.save(tmp); auto ix = ChainIndex<T>::load(tmp);
-    require(ix.n == built.n && ix.chains == built.chains && ix.max_size == built.max_size && ix.bytes_total() == built.bytes_total(), "round trip header");
     std::vector<uint32_t> inv(g.n); for (uint32_t v = 0; v < g.n; ++v) inv[perm[v]] = v;
-    const int S = ix.max_size; const uint32_t n = g.n;
+    const int S = built.max_size; const uint32_t n = g.n;
     // reference core matrix from the frozen control
     Layout layout(g, S); layout.prepare(n); typename Kernel<T>::Combinations choose(in.d + 1, S);
     const auto core = Kernel<T>{}.template fixed_sparse<true>(layout, n, choose, in.ordinary).core;
     std::vector<uint32_t> ranges, ids; std::vector<std::pair<T, uint64_t>> lad;
-    for (int s = 2; s <= S + 1; ++s) for (uint32_t v = 0; v < n; ++v) { const T truth = s <= S ? core[static_cast<size_t>(s) * n + v] : T{0}; require(ix.value(perm[v], s) == truth, "value"); ++values; }
-    for (int s = 2; s <= S; ++s) { auto cl = bottomup::clique_masks(g, s);
-        for (uint32_t v = 0; v < n; ++v) { const T kv = core[static_cast<size_t>(s) * n + v]; if (kv == T{0}) continue;
-            for (T k = 1; k <= kv; ++k) {
-                std::vector<uint8_t> inside(n); for (uint32_t u = 0; u < n; ++u) inside[u] = core[static_cast<size_t>(s) * n + u] >= k;
-                CountDSU brute(n);
-                for (auto mask : cl) { bool ok = true; for (uint32_t u = 0; u < n; ++u) if ((mask >> u) & 1) ok &= inside[u];
-                    if (ok) { uint32_t first = kNone; for (uint32_t u = 0; u < n; ++u) if ((mask >> u) & 1) { if (first == kNone) first = u; else brute.join(first, u); } } }
-                std::vector<uint32_t> truth; for (uint32_t u = 0; u < n; ++u) if (inside[u] && brute.find(u) == brute.find(v)) truth.push_back(u);
-                ranges.clear(); require(ix.community_ranges(perm[v], s, k, ranges) != kNone, "community missing"); ChainIndex<T>::expand(ranges, ids);
-                for (auto& x : ids) x = inv[x]; std::sort(ids.begin(), ids.end()); require(ids == truth, "community differs from brute force"); ++queries;
-                for (uint32_t u = 0; u < n; ++u) { const bool t = inside[u] && brute.find(u) == brute.find(v); require(ix.member(perm[u], perm[v], s, k) == t, "membership"); ++members; }
-                if (k == kv) { ix.ladder(perm[v], s, lad); require(!lad.empty() && lad.front().first == kv, "ladder start");
-                    for (size_t i = 0; i < lad.size(); ++i) { ranges.clear(); ix.community_ranges(perm[v], s, lad[i].first, ranges); uint64_t cnt = 0; for (size_t j = 0; j < ranges.size(); j += 2) cnt += ranges[j + 1] - ranges[j];
-                        require(cnt == lad[i].second, "ladder count"); if (i) require(lad[i].first < lad[i - 1].first, "ladder order"); } ++ladders; }
-            } } }
+    auto check = [&](const ChainIndex<T>& ix) {
+        for (int s = 2; s <= S + 1; ++s) for (uint32_t v = 0; v < n; ++v) { const T truth = s <= S ? core[static_cast<size_t>(s) * n + v] : T{0}; require(ix.value(perm[v], s) == truth, "value"); ++values; }
+        for (int s = 2; s <= S; ++s) { auto cl = bottomup::clique_masks(g, s);
+            for (uint32_t v = 0; v < n; ++v) { const T kv = core[static_cast<size_t>(s) * n + v]; if (kv == T{0}) continue;
+                for (T k = 1; k <= kv; ++k) {
+                    std::vector<uint8_t> inside(n); for (uint32_t u = 0; u < n; ++u) inside[u] = core[static_cast<size_t>(s) * n + u] >= k;
+                    CountDSU brute(n);
+                    for (auto mask : cl) { bool ok = true; for (uint32_t u = 0; u < n; ++u) if ((mask >> u) & 1) ok &= inside[u];
+                        if (ok) { uint32_t first = kNone; for (uint32_t u = 0; u < n; ++u) if ((mask >> u) & 1) { if (first == kNone) first = u; else brute.join(first, u); } } }
+                    std::vector<uint32_t> truth; for (uint32_t u = 0; u < n; ++u) if (inside[u] && brute.find(u) == brute.find(v)) truth.push_back(u);
+                    const uint32_t node = ix.community_ranges(perm[v], s, k, ranges); require(node != kNone, "community missing");
+                    for (size_t j = 0; j < ranges.size(); j += 2) require(ranges[j] < ranges[j + 1] && (j == 0 || ranges[j] != ranges[j - 1]), "ranges well formed and fully merged");
+                    ChainIndex<T>::expand(ranges, ids);
+                    for (auto& x : ids) x = inv[x]; std::sort(ids.begin(), ids.end()); require(ids == truth, "community differs from brute force"); ++queries;
+                    if (ix.compact) { typename ChainIndex<T>::Runs r; uint32_t nd = kNone; require(ix.community_runs(perm[v], s, k, r, nd) && nd == node && r.count() * 2 == ranges.size(), "pointer form");
+                        std::vector<uint32_t> ex(ChainIndex<T>::total(r)); require(ChainIndex<T>::expand(r, ex.data()) == ex.data() + ex.size(), "pointer expand");
+                        for (auto& x : ex) x = inv[x]; std::sort(ex.begin(), ex.end()); require(ex == truth, "pointer form differs from brute force"); }
+                    for (uint32_t u = 0; u < n; ++u) { const bool t = inside[u] && brute.find(u) == brute.find(v); require(ix.member(perm[u], perm[v], s, k) == t, "membership"); ++members; }
+                    if (k == kv) { ix.ladder(perm[v], s, lad); require(!lad.empty() && lad.front().first == kv, "ladder start");
+                        for (size_t i = 0; i < lad.size(); ++i) { ix.community_ranges(perm[v], s, lad[i].first, ranges); const uint64_t cnt = ChainIndex<T>::total(ranges);
+                            require(cnt == lad[i].second, "ladder count"); if (i) require(lad[i].first < lad[i - 1].first, "ladder order"); } ++ladders; }
+                } } }
+        // s = 2: every community is one range (chains ranked by the size-2 preorder)
+        for (uint32_t v = 0; v < n; ++v) { const T kv = core[static_cast<size_t>(2) * n + v]; for (T k = 1; k <= kv; ++k) { ix.community_ranges(perm[v], 2, k, ranges); require(ranges.size() == 2, "size-2 community is one range"); } }
+    };
+    check(built);                                            // build form (chain ids)
+    const uint64_t pairs = built.pairs_total(); built.compact_runs(); require(built.compact && built.runs_total() <= pairs, "compaction");
+    check(built);                                            // compact form (runs)
+    built.save(tmp); auto ix = ChainIndex<T>::load(tmp);
+    require(ix.n == built.n && ix.chains == built.chains && ix.max_size == built.max_size && ix.bytes_total() == built.bytes_total() && ix.runs_total() == built.runs_total(), "round trip header");
+    check(ix);                                               // loaded
 }
+
 static void tool_selftest() {
     const std::string tmp = (std::filesystem::temp_directory_path() / "chainindex_selftest.cx").string();
     uint64_t graphs = 0, queries = 0, members = 0, values = 0, ladders = 0; std::mt19937_64 rng(20260919);
@@ -115,26 +144,30 @@ static void tool_selftest() {
 template<class T> static void bench(const Input& in, unsigned bits, const std::string& outpath) {
     using Clock = std::chrono::steady_clock; auto ms = [](Clock::time_point a) { return std::chrono::duration<double, std::milli>(Clock::now() - a).count(); };
     std::vector<uint32_t> perm; BuildTimes bt; auto t0 = Clock::now(); auto built = build_chain_index<T>(in, perm, bt); const double build_ms = ms(t0);
-    t0 = Clock::now(); built.save(outpath); const double save_ms = ms(t0);
-    { std::ofstream pf(outpath + ".perm", std::ios::binary); pf.write(reinterpret_cast<const char*>(perm.data()), perm.size() * 4); }
-    t0 = Clock::now(); auto ix = ChainIndex<T>::load(outpath); const double load_ms = ms(t0);
-    require(ix.bytes_total() == built.bytes_total() && ix.chains == built.chains, "load mismatch");
-    const uint64_t file_bytes = std::filesystem::file_size(outpath);
-    const uint32_t n = ix.n; std::vector<uint32_t> active; for (uint32_t v = 0; v < n; ++v) if (ix.omega[ix.chain_of(v)] >= 2) active.push_back(v);
+    const uint64_t slice_bytes_layers = built.bytes_layers(), slice_bytes_total = built.bytes_total(), pairs = built.pairs_total();
+    const uint32_t n = built.n; std::vector<uint32_t> active; for (uint32_t v = 0; v < n; ++v) if (built.omega[built.chain_of(v)] >= 2) active.push_back(v);
+    const ChainIndex<T>* px = &built;   // the index under measurement: build form first, then the loaded compact form
+    const ChainIndex<T>& ix = *px;
     struct Q { uint32_t v, u; int s; T k; }; std::mt19937_64 rng(20260918);
     auto draw = [&](int regime, int count) { std::vector<Q> qs; for (int i = 0; i < count; ++i) { const uint32_t v = active[rng() % active.size()]; const uint32_t c = ix.chain_of(v);
         const int s = 2 + static_cast<int>(rng() % static_cast<uint64_t>(ix.omega[c] - 1)); const T x = ix.value(v, s);
         const T k = regime == 0 ? x : (regime == 1 ? std::max<T>(T{1}, x / 2) : T{1}); qs.push_back({v, static_cast<uint32_t>(rng() % n), s, k}); } return qs; };
     const std::vector<Q> own = draw(0, 20000), half = draw(1, 20000), root = draw(2, 1000);
     const std::vector<Q> mq = [&] { std::vector<Q> m; for (int r = 0; r < 3; ++r) { auto q = draw(r, 6667); m.insert(m.end(), q.begin(), q.end()); } return m; }();
-    std::vector<uint32_t> ranges, ids; ranges.reserve(1 << 20); ids.reserve(1 << 22); std::vector<std::pair<T, uint64_t>> lad;
+    std::vector<uint32_t> ranges; ranges.reserve(1 << 20); std::vector<uint32_t> ids(n); std::vector<std::pair<T, uint64_t>> lad;   // ids: caller-owned output buffer
     auto median5 = [](std::array<double, 5> t) { std::sort(t.begin(), t.end()); return t[2]; };
-    auto time_ranges = [&](const std::vector<Q>& qs, bool explicit_ids) { std::array<double, 5> ts{}; uint64_t outputs = 0;
+    auto time_ptr = [&](const std::vector<Q>& qs) { std::array<double, 5> ts{}; uint64_t z = 0;   // compact form: climb + pointer, no copy
+        for (int pass = 0; pass < 6; ++pass) { const auto st = Clock::now(); for (const auto& q : qs) { typename ChainIndex<T>::Runs r; uint32_t nd = 0; ix.community_runs(q.v, q.s, q.k, r, nd); z += r.nmid + r.lo0 + nd; }
+            const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / qs.size(); if (pass) ts[pass - 1] = el; }
+        return std::pair<double, uint64_t>{median5(ts), z}; };
+    struct RangeStat { double ns, vertices, ranges, chains; };   // per query: latency, output vertices, merged ranges, chains in the segment
+    auto time_ranges = [&](const std::vector<Q>& qs, bool explicit_ids) { std::array<double, 5> ts{}; uint64_t outputs = 0, nr = 0, nc = 0;
         for (int pass = 0; pass < 6; ++pass) { uint64_t cnt = 0; const auto st = Clock::now();
-            for (const auto& q : qs) { ranges.clear(); ix.community_ranges(q.v, q.s, q.k, ranges);
-                if (explicit_ids) { ChainIndex<T>::expand(ranges, ids); cnt += ids.size(); } else { uint64_t m = 0; for (size_t j = 0; j < ranges.size(); j += 2) m += ranges[j + 1] - ranges[j]; cnt += m; } }
+            for (const auto& q : qs) { const uint32_t node = ix.community_ranges(q.v, q.s, q.k, ranges);
+                if (explicit_ids) cnt += static_cast<uint64_t>(ChainIndex<T>::expand(ranges, ids.data()) - ids.data()); else cnt += ChainIndex<T>::total(ranges);
+                if (pass == 0) { nr += ranges.size() / 2; if (ix.compact) nc += ranges.size() / 2; else { uint32_t b, e; ChainIndex<T>::slice_bounds(ix.layers[q.s], node, b, e); nc += e - b; } } }
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / qs.size(); if (pass == 0) outputs = cnt; else ts[pass - 1] = el; }
-        return std::pair<double, double>{median5(ts), double(outputs) / qs.size()}; };
+        return RangeStat{median5(ts), double(outputs) / qs.size(), double(nr) / qs.size(), double(nc) / qs.size()}; };
     auto time_member = [&]() { std::array<double, 5> ts{}; uint64_t sum = 0;
         for (int pass = 0; pass < 6; ++pass) { uint64_t z = 0; const auto st = Clock::now(); for (const auto& q : mq) z += ix.member(q.u, q.v, q.s, q.k);
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / mq.size(); sum += z; if (pass) ts[pass - 1] = el; }
@@ -148,16 +181,36 @@ template<class T> static void bench(const Input& in, unsigned bits, const std::s
         for (int pass = 0; pass < 6; ++pass) { uint64_t z = 0; const auto st = Clock::now(); for (const auto& q : own) { ix.ladder(q.v, q.s, lad); z += lad.size(); }
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / own.size(); if (pass == 0) steps = z; else ts[pass - 1] = el; }
         return std::pair<double, double>{median5(ts), double(steps) / own.size()}; };
+    // build form (chain-id DFS arrays): the ablation
+    const auto sro = time_ranges(own, false), srh = time_ranges(half, false), srr = time_ranges(root, false), seo = time_ranges(own, true), seh = time_ranges(half, true), ser = time_ranges(root, true);
+    const auto sll = time_ladder();
+    // compact form: convert, save, load, measure on the loaded index
+    t0 = Clock::now(); built.compact_runs(); const double compact_ms = ms(t0);
+    t0 = Clock::now(); built.save(outpath); const double save_ms = ms(t0);
+    { std::ofstream pf(outpath + ".perm", std::ios::binary); pf.write(reinterpret_cast<const char*>(perm.data()), perm.size() * 4); }
+    t0 = Clock::now(); auto loaded = ChainIndex<T>::load(outpath); const double load_ms = ms(t0);
+    require(loaded.bytes_total() == built.bytes_total() && loaded.chains == built.chains && loaded.runs_total() == built.runs_total(), "load mismatch");
+    const uint64_t file_bytes = std::filesystem::file_size(outpath); px = &loaded;
     const auto ro = time_ranges(own, false), rh = time_ranges(half, false), rr = time_ranges(root, false), eo = time_ranges(own, true), eh = time_ranges(half, true), er = time_ranges(root, true);
+    require(ro.vertices == sro.vertices && rh.vertices == srh.vertices && rr.vertices == srr.vertices && eo.vertices == seo.vertices, "forms disagree on output size");
+    const auto po = time_ptr(own), ph = time_ptr(half), pr = time_ptr(root);
     const auto mm = time_member(); const auto vv = time_value(); const auto ll = time_ladder();
     uint64_t depth_max = 0; for (const auto& L : ix.layers) { std::vector<uint32_t> d(L.top.size(), 0); for (uint32_t x = 0; x < L.top.size(); ++x) { if (L.parent[x] != kNone) d[x] = d[L.parent[x]] + 1; depth_max = std::max<uint64_t>(depth_max, d[x]); } }
     std::cout << std::fixed << std::setprecision(3) << "{\"passed\":true,\"n\":" << n << ",\"m\":" << in.graph.m << ",\"s_max\":" << ix.max_size << ",\"count_bits\":" << bits << ",\"chains\":" << ix.chains
         << ",\"canonical_nodes\":" << ix.node_count() << ",\"max_depth\":" << depth_max
+        << ",\"pairs_total\":" << pairs << ",\"runs_total\":" << ix.runs_total()
         << ",\"bytes_map\":" << ix.bytes_map() << ",\"bytes_chains\":" << ix.bytes_chains() << ",\"bytes_layers\":" << ix.bytes_layers() << ",\"bytes_total\":" << ix.bytes_total() << ",\"file_bytes\":" << file_bytes << ",\"perm_bytes\":" << 4ull * n
-        << ",\"solve_ms\":" << bt.solve_ms << ",\"trees_ms\":" << bt.trees_ms << ",\"chains_ms\":" << bt.chains_ms << ",\"layout_ms\":" << bt.layout_ms << ",\"build_ms\":" << build_ms << ",\"save_ms\":" << save_ms << ",\"load_ms\":" << load_ms
-        << ",\"range_own_ns\":" << ro.first << ",\"range_half_ns\":" << rh.first << ",\"range_root_ns\":" << rr.first
-        << ",\"explicit_own_ns\":" << eo.first << ",\"explicit_half_ns\":" << eh.first << ",\"explicit_root_ns\":" << er.first
-        << ",\"own_output\":" << eo.second << ",\"half_output\":" << eh.second << ",\"root_output\":" << er.second
+        << ",\"slice_bytes_layers\":" << slice_bytes_layers << ",\"slice_bytes_total\":" << slice_bytes_total
+        << ",\"solve_ms\":" << bt.solve_ms << ",\"trees_ms\":" << bt.trees_ms << ",\"chains_ms\":" << bt.chains_ms << ",\"layout_ms\":" << bt.layout_ms << ",\"build_ms\":" << build_ms << ",\"compact_ms\":" << compact_ms << ",\"save_ms\":" << save_ms << ",\"load_ms\":" << load_ms
+        << ",\"slice_range_own_ns\":" << sro.ns << ",\"slice_range_half_ns\":" << srh.ns << ",\"slice_range_root_ns\":" << srr.ns
+        << ",\"slice_explicit_own_ns\":" << seo.ns << ",\"slice_explicit_half_ns\":" << seh.ns << ",\"slice_explicit_root_ns\":" << ser.ns << ",\"slice_ladder_ns\":" << sll.first
+        << ",\"slice_own_ranges\":" << sro.ranges << ",\"slice_half_ranges\":" << srh.ranges << ",\"slice_root_ranges\":" << srr.ranges
+        << ",\"ptr_own_ns\":" << po.first << ",\"ptr_half_ns\":" << ph.first << ",\"ptr_root_ns\":" << pr.first << ",\"ptr_checksum\":" << (po.second ^ ph.second ^ pr.second)
+        << ",\"range_own_ns\":" << ro.ns << ",\"range_half_ns\":" << rh.ns << ",\"range_root_ns\":" << rr.ns
+        << ",\"explicit_own_ns\":" << eo.ns << ",\"explicit_half_ns\":" << eh.ns << ",\"explicit_root_ns\":" << er.ns
+        << ",\"own_output\":" << eo.vertices << ",\"half_output\":" << eh.vertices << ",\"root_output\":" << er.vertices
+        << ",\"own_ranges\":" << ro.ranges << ",\"half_ranges\":" << rh.ranges << ",\"root_ranges\":" << rr.ranges
+        << ",\"own_chains\":" << ro.chains << ",\"half_chains\":" << rh.chains << ",\"root_chains\":" << rr.chains
         << ",\"member_ns\":" << mm.first << ",\"member_checksum\":" << mm.second << ",\"value_ns\":" << vv.first << ",\"value_checksum\":" << vv.second
         << ",\"ladder_ns\":" << ll.first << ",\"ladder_steps\":" << ll.second << "}\n";
 }
