@@ -108,7 +108,9 @@ N_T on every input measured but not by a theorem (CHAINS.md Section 7).
 - `chain_index.hpp` (about 180 lines): `ChainIndex<T>` with the blocks
   above, `chain_of`, `own_node`, `climb`, `value`, `community_runs`
   (pointer form), `community_ranges` (vector form, both forms),
-  `expand` (eight ids per step with 128-bit vector stores, scalar tail),
+  `expand` (branchless fill: every block of eight ids is stored
+  unconditionally with 128-bit vector stores and the pointer advances by
+  the true length, so the caller's buffer carries eight spare slots),
   `member`, `ladder`, `compact_runs`, `save`, `load`, byte counters.
 - `chain_index_tool.cpp`: `build_chain_index` (solve, trees with initial
   preorder ids, chains keyed by preorder tuples in lexicographic order
@@ -165,10 +167,13 @@ per-vertex S-tree bytes are computed by the tool with the stage-2
 `vertices` accounting (verified equal to `index_vertices.json` on the
 five stage-2 graphs, 16,710,168 bytes on dblp); the memcpy listing
 baseline exists only for those five graphs (stage-2 run, same protocol,
-its own query draw). The first five-graph run of this module, before the
-baseline field and the eight extra graphs were added, is kept as
-`final_v1.json` / `final-logs_v1/`; its numbers agree with the tables
-below within run-to-run noise.
+its own query draw). Evidence lineage: `final_v1.json` / `final-logs_v1/` is the
+first five-graph run (before the baseline field and the extra graphs);
+`final_v2.json` / `final-logs_v2/` is the 13-graph run with the earlier
+fill (eight ids per step, scalar tail); `final.json` / `final-logs/` is
+the 13-graph run with the branchless fill that the module now uses.
+Bytes, build times and every non-listing latency agree across the runs
+within run-to-run noise; the explicit-listing columns differ by the fill.
 
 Commands:
 ```
@@ -434,8 +439,10 @@ role of the chain structure (CHAINS.md Section 10).
 
 1. Per-node vertex counts (4 bytes per node) for O(depth) ladders and
    O(1) community sizes.
-2. Branchless or prefetching range fill for fragmented graphs
-   (cit-HepPh, AstroPh, pokec); measure the per-range constant.
+2. The branchless fill is in (it cut the per-vertex listing cost 1.3x
+   to 1.9x on every graph tried against the scalar-tail fill of
+   `final_v2.json`); a prefetch of the next run could shave the remaining
+   per-range constant on the fragmented graphs.
 3. Compress the permutation to n log2(C) bits (wavelet tree over chain
    ids), or store the graph in aligned order and drop it.
 4. Stream the build size by size to cut the 5 GB peak on pokec-sized
