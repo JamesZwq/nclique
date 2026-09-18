@@ -520,3 +520,34 @@ with H inside it and the clique inside the row's family) and the clique
 property of rows; the earlier verification of F2 on real graphs. No
 performance or size claim is made; the benefit gate of the proof
 protocol is open until the counts of Section 11 exist.
+
+## 13. Empty Canonical Nodes Cannot Be Dropped (added after the counts)
+
+The counts show that 56 to 75 percent of canonical nodes carry no skyline
+entry on four of the five graphs. Dropping them, as SGL drops empty
+SNodes, does not save words here, for two reasons.
+
+Lemma L5 (every node is a chain target or a bucket). Let N be a canonical
+node of T_s and let v be any vertex with X_s(v) = N (the creating vertex
+of N is one). Put s' = nxt(v, s). If s' = s then N holds the entry of v's
+class and is not empty. If s' > s then delta_t(v) = 0 for s <= t < s', so
+by L2 iterated N = A_hi^{(s'-s)}(X_{s'}(v)): N is the target of the
+cross-size pointer of A_hi^{(s'-s-1)}(X_{s'}(v)), a node of T_{s+1}.
+Proof. L1 gives k_hi(N) = kappa_s(v), and the rest is F7(b) with L2.
+
+Consequence. An empty node is always the container of some node of the
+next size, and the walk of Q2 step 2 stops at it whenever the queried
+size s lies strictly between two skyline sizes of the queried class. At
+that point its DFS range and its top level are read. Removing the record
+would require re-deriving the range from the children (contiguous, so
+one child pointer plus a size would do) and the top level from the
+parent's interval, and would leave the cross-size pointer of the
+T_{s+1} node dangling unless it is redirected to a child, which is wrong
+whenever that node straddles several children. SGL's remedy, co-nesting
+edges among the children with the parent's level, costs one word per
+child, which is at least the one word of range and one word of level
+saved. The node records therefore stay; the only exact saving available
+is the bucket offset of an empty node, one word, which the layout below
+recovers by storing bucket offsets only for nodes with entries (a bitmap
+plus rank, or by letting empty nodes share the offset of the next node).
+This is a constant-factor layout detail, not a design change.
