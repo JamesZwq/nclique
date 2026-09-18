@@ -31,7 +31,7 @@ def run(command, log):
 def main():
     import sys
     mode = sys.argv[1] if len(sys.argv) > 1 else 'twins'
-    assert mode in ('twins', 'chains')
+    assert mode in ('twins', 'chains', 'vertices', 'aligned')
     suffix = '' if mode == 'twins' else '_' + mode
     logs = HERE / ('index-logs' if mode == 'twins' else f'index-logs{suffix}')
     if (HERE / f'index{suffix}.json').exists() or logs.exists():

@@ -86,6 +86,27 @@ template<class T> struct Built {
         }
         return n;
     }
+    // aligned labels: internal ids where every chain is one id range; rank over a bitmap of chain starts
+    std::vector<Vertex> perm, inv;                 // external -> internal, internal -> external (perm is input translation, inv is test-only)
+    std::vector<uint64_t> start_bits; std::vector<uint32_t> start_cum;   // bitmap + cumulative popcount per word
+    std::vector<uint32_t> start_pos, chain_at_rank, rank_of_chain;       // range start per rank, rank -> class id, class id -> rank
+    uint32_t rank_of(Vertex vint) const { const uint64_t w = vint >> 6; const uint64_t mask = (vint & 63) == 63 ? ~0ull : ((2ull << (vint & 63)) - 1);
+        return start_cum[w] + static_cast<uint32_t>(__builtin_popcountll(start_bits[w] & mask)) - 1; }
+    uint32_t chain_of_internal(Vertex vint) const { return chain_at_rank[rank_of(vint)]; }
+    // community as internal-id ranges (start, end) per chain; returns the node
+    uint32_t aligned_community_ranges(Vertex vint, int s, const T& k, std::vector<uint32_t>& ranges) const {
+        const uint32_t c = chain_of_internal(vint); const uint32_t l = base_leaf(c, s); if (l == none) return none;
+        const uint32_t n = climb(l, s, k); const auto& ns = nodes[s]; const auto& a = base_classes[s];
+        const uint32_t b = base_bucket[s][n], e = n + ns[n].size < ns.size() ? base_bucket[s][n + ns[n].size] : static_cast<uint32_t>(a.size());
+        for (uint32_t j = b; j < e; ++j) { const uint32_t r = rank_of_chain[a[j]]; ranges.push_back(start_pos[r]); ranges.push_back(start_pos[r + 1]); }
+        return n;
+    }
+    static void ranges_to_ids(const std::vector<uint32_t>& ranges, std::vector<Vertex>& out) {
+        out.clear(); for (size_t j = 0; j < ranges.size(); j += 2) for (uint32_t x = ranges[j]; x < ranges[j + 1]; ++x) out.push_back(x); }
+    bool aligned_member(Vertex uint_, Vertex vint, int s, const T& k) const {
+        const uint32_t lv = base_leaf(chain_of_internal(vint), s), lu = base_leaf(chain_of_internal(uint_), s); if (lv == none || lu == none) return false;
+        const uint32_t n = climb(lv, s, k); return lu >= n && lu < n + nodes[s][n].size;
+    }
     bool base_member(Vertex u, Vertex v, int s, const T& k) const {
         const uint32_t lv = base_leaf(cls[v], s), lu = base_leaf(cls[u], s); if (lv == none || lu == none) return false;
         const uint32_t n = climb(lv, s, k); return lu >= n && lu < n + nodes[s][n].size;
@@ -96,7 +117,7 @@ template<class T> struct Built {
     }
 };
 
-enum class ClassMode { twins, chains };
+enum class ClassMode { twins, chains, vertices, aligned };
 template<class T> static Built<T> build_index(const Input& in, unsigned bits, ClassMode mode) {
     Built<T> b; const Graph& g = in.graph; const Vertex n = g.n;
     b.g = &g; b.maximum = std::max(2, static_cast<int>(in.d) + 1); b.bits = bits; b.choose.emplace(in.d + 1, b.maximum);
@@ -127,6 +148,7 @@ template<class T> static Built<T> build_index(const Input& in, unsigned bits, Cl
     }
     // Phase B: classes = twins (closed neighbourhoods) or chains (tuple of own nodes over all sizes)
     if (mode == ClassMode::twins) b.cls = twins(g, b.groups);
+    else if (mode == ClassMode::vertices) { b.cls.resize(n); b.groups.assign(n, {}); for (Vertex v = 0; v < n; ++v) { b.cls[v] = static_cast<int>(v); b.groups[v] = {v}; } }
     else {
         std::vector<int> om(n, 0); for (Vertex v = 0; v < n; ++v) for (int s = 2; s <= S; ++s) if (b.core[s][v] > T{0}) om[v] = s;
         std::map<std::vector<uint32_t>, uint32_t> ids; b.cls.assign(n, 0); b.groups.clear();
@@ -212,6 +234,22 @@ template<class T> static Built<T> build_index(const Input& in, unsigned bits, Cl
     for (int s = 2; s < S; ++s) b.bytes_sky_cross += 4ull * (b.rev_off[s].size() + b.rev_ids[s].size());
     uint64_t bentries = 0; for (size_t c = 0; c < nc; ++c) for (int s = 2; s < b.sigma[c]; ++s) if (b.sky[c][s]) ++bentries;
     b.bytes_block_d = 2ull * nc + 8ull * (nc + 1) + W * b.residue.size(); b.bytes_block_d_variant_b = 2ull * nc + 8ull * (nc + 1) + W * bentries;
+    if (mode == ClassMode::vertices) b.bytes_shared = 0;   // classes are the vertices themselves: no map needed
+    if (mode == ClassMode::aligned) {
+        // chain order: DFS order of the size-2 array first (so size-2 communities are single ranges), then the rest
+        std::vector<uint32_t> order; std::vector<uint8_t> seen(nc, 0);
+        for (uint32_t c : b.base_classes[2]) if (!seen[c]) { seen[c] = 1; order.push_back(c); }
+        for (uint32_t c = 0; c < nc; ++c) if (!seen[c]) { seen[c] = 1; order.push_back(c); }
+        b.perm.assign(n, absent); b.inv.assign(n, absent); b.start_pos.assign(nc + 1, 0); b.chain_at_rank.assign(nc, 0); b.rank_of_chain.assign(nc, 0);
+        Vertex next = 0;
+        for (uint32_t r = 0; r < nc; ++r) { const uint32_t c = order[r]; b.chain_at_rank[r] = c; b.rank_of_chain[c] = r; b.start_pos[r] = next;
+            for (Vertex v : b.groups[c]) { b.perm[v] = next; b.inv[next] = v; ++next; } }
+        b.start_pos[nc] = next; require(next == n, "aligned relabel incomplete");
+        b.start_bits.assign((n + 63) / 64, 0); for (uint32_t r = 0; r < nc; ++r) { const Vertex p = b.start_pos[r]; b.start_bits[p >> 6] |= 1ull << (p & 63); }
+        b.start_cum.assign(b.start_bits.size() + 1, 0); for (size_t w = 0; w < b.start_bits.size(); ++w) b.start_cum[w + 1] = b.start_cum[w] + static_cast<uint32_t>(__builtin_popcountll(b.start_bits[w]));
+        for (Vertex v = 0; v < n; ++v) require(b.chain_of_internal(b.perm[v]) == static_cast<uint32_t>(b.cls[v]), "rank disagrees with the class map");
+        b.bytes_shared = 8ull * b.start_bits.size() + 4ull * b.start_cum.size() + 4ull * b.start_pos.size() + 4ull * b.chain_at_rank.size() + 4ull * b.rank_of_chain.size();
+    }
     return b;
 }
 
@@ -237,15 +275,19 @@ template<class T> static void selftest_graph(const Graph& g, uint64_t& queries, 
                 cls_out.clear(); require(b.base_community(v, s, k, cls_out) != none, "baseline community missing"); expand(b, cls_out, va); std::sort(va.begin(), va.end());
                 cls_out.clear(); require(b.sky_community(v, s, k, cls_out, adm, next) != none, "skyline community missing"); expand(b, cls_out, vb); std::sort(vb.begin(), vb.end());
                 require(va == truth, "baseline community differs from brute force"); require(vb == truth, "skyline community differs from brute force"); ++queries;
+                if (!b.perm.empty()) { std::vector<uint32_t> rg; require(b.aligned_community_ranges(b.perm[v], s, k, rg) != none, "aligned community missing");
+                    std::vector<Vertex> ids; Built<T>::ranges_to_ids(rg, ids); for (auto& x : ids) x = b.inv[x]; std::sort(ids.begin(), ids.end()); require(ids == truth, "aligned community differs from brute force");
+                    require(b.value(b.chain_of_internal(b.perm[v]), s) == b.core[s][v], "aligned value"); }
                 for (Vertex u = 0; u < g.n; ++u) { const bool t = inside[u] && brute.find(u) == brute.find(v);
-                    require(b.base_member(u, v, s, k) == t, "baseline membership"); require(b.sky_member(u, v, s, k) == t, "skyline membership"); ++members; }
+                    require(b.base_member(u, v, s, k) == t, "baseline membership"); require(b.sky_member(u, v, s, k) == t, "skyline membership"); ++members;
+                    if (!b.perm.empty()) require(b.aligned_member(b.perm[u], b.perm[v], s, k) == t, "aligned membership"); }
             }
         }
     }
 }
 static void index_selftest() {
     uint64_t graphs = 0, queries = 0, members = 0, values = 0; std::mt19937_64 rng(20260918);
-    auto one = [&](const Graph& g) { try { selftest_graph<uint64_t>(g, queries, members, values, ClassMode::twins); selftest_graph<uint64_t>(g, queries, members, values, ClassMode::chains); } catch (const std::exception& e) {
+    auto one = [&](const Graph& g) { try { selftest_graph<uint64_t>(g, queries, members, values, ClassMode::twins); selftest_graph<uint64_t>(g, queries, members, values, ClassMode::chains); selftest_graph<uint64_t>(g, queries, members, values, ClassMode::vertices); selftest_graph<uint64_t>(g, queries, members, values, ClassMode::aligned); } catch (const std::exception& e) {
         std::cerr << "selftest failure on n=" << g.n << " edges:"; for (Vertex u = 0; u < g.n; ++u) for (Vertex w : g.row(u)) if (u < w) std::cerr << ' ' << u << '-' << w; std::cerr << '\n'; throw; } ++graphs; };
     for (Vertex n = 0; n <= 6; ++n) { std::vector<std::pair<Vertex, Vertex>> p; for (Vertex a = 0; a < n; ++a) for (Vertex c = a + 1; c < n; ++c) p.emplace_back(a, c);
         for (uint64_t mask = 0; mask < (uint64_t{1} << p.size()); ++mask) { std::vector<std::pair<Vertex, Vertex>> e; for (size_t i = 0; i < p.size(); ++i) if (mask >> i & 1) e.push_back(p[i]); one(Graph::from_edges(n, std::move(e))); } }
@@ -266,18 +308,34 @@ template<class T> static void run_graph(const Input& in, unsigned bits, ClassMod
         const T k = regime == 0 ? x : (regime == 1 ? std::max<T>(T{1}, x / 2) : T{1}); qs.push_back({v, static_cast<Vertex>(rng() % g.n), s, k}); } return qs; };
     const std::vector<Q> own = draw(0, 20000), half = draw(1, 20000), root = draw(2, 1000), mq = [&] { std::vector<Q> m; for (int r = 0; r < 3; ++r) { auto q = draw(r, 6667); m.insert(m.end(), q.begin(), q.end()); } return m; }();
     std::vector<uint32_t> co, adm, next; std::vector<Vertex> va, vb; co.reserve(1 << 20); va.reserve(1 << 22); vb.reserve(1 << 22);
+    std::vector<uint32_t> rg; rg.reserve(1 << 20);
     // correctness pass: both designs agree on every timed query
     for (const auto* qs : {&own, &half, &root}) for (const auto& q : *qs) {
         co.clear(); b.base_community(q.v, q.s, q.k, co); expand(b, co, va); std::sort(va.begin(), va.end());
         co.clear(); b.sky_community(q.v, q.s, q.k, co, adm, next); expand(b, co, vb); std::sort(vb.begin(), vb.end());
-        require(va == vb, "timed community cross-check"); }
-    for (const auto& q : mq) require(b.base_member(q.u, q.v, q.s, q.k) == b.sky_member(q.u, q.v, q.s, q.k), "timed membership cross-check");
+        require(va == vb, "timed community cross-check");
+        if (!b.perm.empty()) { rg.clear(); b.aligned_community_ranges(b.perm[q.v], q.s, q.k, rg); std::vector<Vertex> ids; Built<T>::ranges_to_ids(rg, ids); for (auto& x : ids) x = b.inv[x]; std::sort(ids.begin(), ids.end()); require(ids == va, "timed aligned cross-check"); } }
+    for (const auto& q : mq) { require(b.base_member(q.u, q.v, q.s, q.k) == b.sky_member(q.u, q.v, q.s, q.k), "timed membership cross-check");
+        if (!b.perm.empty()) require(b.aligned_member(b.perm[q.u], b.perm[q.v], q.s, q.k) == b.base_member(q.u, q.v, q.s, q.k), "timed aligned membership cross-check"); }
     auto median5 = [](std::array<double, 5> t) { std::sort(t.begin(), t.end()); return t[2]; };
-    auto time_community = [&](const std::vector<Q>& qs, bool sky) { std::array<double, 5> ts{}; uint64_t outputs = 0;
+    const bool direct = mode == ClassMode::vertices;           // class ids are vertex ids: the slice copy is the answer
+    auto time_aligned = [&](const std::vector<Q>& qs, bool explicit_ids) { std::array<double, 5> ts{}; uint64_t outputs = 0;
         for (int pass = 0; pass < 6; ++pass) { uint64_t n = 0; const auto st = std::chrono::steady_clock::now();
-            for (const auto& q : qs) { co.clear(); if (sky) b.sky_community(q.v, q.s, q.k, co, adm, next); else b.base_community(q.v, q.s, q.k, co); expand(b, co, va); n += va.size(); }
+            for (const auto& q : qs) { rg.clear(); b.aligned_community_ranges(b.perm[q.v], q.s, q.k, rg);
+                if (explicit_ids) { Built<T>::ranges_to_ids(rg, va); n += va.size(); } else { uint64_t m = 0; for (size_t j = 0; j < rg.size(); j += 2) m += rg[j + 1] - rg[j]; n += m; } }
             const auto en = std::chrono::steady_clock::now(); if (pass == 0) outputs = n; else ts[pass - 1] = std::chrono::duration<double, std::nano>(en - st).count() / qs.size(); }
         return std::pair<double, double>{median5(ts), double(outputs) / qs.size()}; };
+    auto time_community = [&](const std::vector<Q>& qs, bool sky) { std::array<double, 5> ts{}; uint64_t outputs = 0;
+        for (int pass = 0; pass < 6; ++pass) { uint64_t n = 0; const auto st = std::chrono::steady_clock::now();
+            for (const auto& q : qs) { co.clear(); if (sky) b.sky_community(q.v, q.s, q.k, co, adm, next); else b.base_community(q.v, q.s, q.k, co);
+                if (direct) { va.assign(co.begin(), co.end()); n += va.size(); } else { expand(b, co, va); n += va.size(); } }
+            const auto en = std::chrono::steady_clock::now(); if (pass == 0) outputs = n; else ts[pass - 1] = std::chrono::duration<double, std::nano>(en - st).count() / qs.size(); }
+        return std::pair<double, double>{median5(ts), double(outputs) / qs.size()}; };
+    auto time_member_aligned = [&]() { std::array<double, 5> ts{}; uint64_t sum = 0; std::vector<std::pair<Vertex, Vertex>> pv; for (const auto& q : mq) pv.emplace_back(b.perm[q.u], b.perm[q.v]);
+        for (int pass = 0; pass < 6; ++pass) { uint64_t z = 0; const auto st = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < mq.size(); ++i) z += b.aligned_member(pv[i].first, pv[i].second, mq[i].s, mq[i].k);
+            const auto en = std::chrono::steady_clock::now(); sum += z; if (pass) ts[pass - 1] = std::chrono::duration<double, std::nano>(en - st).count() / mq.size(); }
+        return std::pair<double, uint64_t>{median5(ts), sum}; };
     auto time_member = [&](bool sky) { std::array<double, 5> ts{}; uint64_t sum = 0;
         for (int pass = 0; pass < 6; ++pass) { uint64_t z = 0; const auto st = std::chrono::steady_clock::now();
             for (const auto& q : mq) z += sky ? b.sky_member(q.u, q.v, q.s, q.k) : b.base_member(q.u, q.v, q.s, q.k);
@@ -291,9 +349,11 @@ template<class T> static void run_graph(const Input& in, unsigned bits, ClassMod
         return std::pair<double, uint64_t>{median5(ts), h}; };
     const auto bo = time_community(own, false), so = time_community(own, true), bh = time_community(half, false), sh = time_community(half, true),
                br = time_community(root, false), sr = time_community(root, true); const auto bm = time_member(false), sm = time_member(true); const auto val = time_value();
+    std::pair<double, double> ao{0, 0}, ah{0, 0}, ar{0, 0}, ro{0, 0}, rh{0, 0}, rr{0, 0}; std::pair<double, uint64_t> am{0, 0};
+    if (!b.perm.empty()) { ao = time_aligned(own, true); ah = time_aligned(half, true); ar = time_aligned(root, true); ro = time_aligned(own, false); rh = time_aligned(half, false); rr = time_aligned(root, false); am = time_member_aligned(); }
     const uint64_t base_no_d = b.bytes_shared + b.bytes_base_nodes + b.bytes_base_pairs, sky_no_d = b.bytes_shared + b.bytes_sky_nodes + b.bytes_sky_entries + b.bytes_sky_location + b.bytes_sky_cross;
     const uint64_t aligned_map = (g.n + 7) / 8 + (g.n + 63) / 64 * 4 + 8ull * b.groups.size();   // bitmap + rank directory + one range per class (projection)
-    std::cout << std::fixed << std::setprecision(3) << "{\"passed\":true,\"mode\":\"" << (mode == ClassMode::twins ? "twins" : "chains") << "\",\"bytes_shared_aligned\":" << aligned_map << ",\"n\":" << g.n << ",\"m\":" << g.m << ",\"s_max\":" << b.maximum << ",\"count_bits\":" << bits
+    std::cout << std::fixed << std::setprecision(3) << "{\"passed\":true,\"mode\":\"" << (mode == ClassMode::twins ? "twins" : mode == ClassMode::chains ? "chains" : mode == ClassMode::vertices ? "vertices" : "aligned") << "\",\"bytes_shared_aligned\":" << aligned_map << ",\"n\":" << g.n << ",\"m\":" << g.m << ",\"s_max\":" << b.maximum << ",\"count_bits\":" << bits
         << ",\"classes\":" << b.groups.size() << ",\"active_pairs\":" << b.active_pairs << ",\"skyline_entries\":" << b.skyline_entries << ",\"canonical_nodes\":" << b.canonical_nodes
         << ",\"bytes_shared\":" << b.bytes_shared << ",\"bytes_base_nodes\":" << b.bytes_base_nodes << ",\"bytes_base_pairs\":" << b.bytes_base_pairs
         << ",\"bytes_sky_nodes\":" << b.bytes_sky_nodes << ",\"bytes_sky_entries\":" << b.bytes_sky_entries << ",\"bytes_sky_location\":" << b.bytes_sky_location << ",\"bytes_sky_cross\":" << b.bytes_sky_cross
@@ -302,6 +362,8 @@ template<class T> static void run_graph(const Input& in, unsigned bits, ClassMod
         << ",\"own_base_ns\":" << bo.first << ",\"own_sky_ns\":" << so.first << ",\"own_output\":" << bo.second
         << ",\"half_base_ns\":" << bh.first << ",\"half_sky_ns\":" << sh.first << ",\"half_output\":" << bh.second
         << ",\"root_base_ns\":" << br.first << ",\"root_sky_ns\":" << sr.first << ",\"root_output\":" << br.second
+        << ",\"aligned_own_ns\":" << ao.first << ",\"aligned_half_ns\":" << ah.first << ",\"aligned_root_ns\":" << ar.first
+        << ",\"aligned_range_own_ns\":" << ro.first << ",\"aligned_range_half_ns\":" << rh.first << ",\"aligned_range_root_ns\":" << rr.first << ",\"aligned_member_ns\":" << am.first << ",\"aligned_member_checksum\":" << am.second
         << ",\"member_base_ns\":" << bm.first << ",\"member_sky_ns\":" << sm.first << ",\"member_checksum\":" << bm.second << ",\"member_checksum_sky\":" << sm.second
         << ",\"value_ns\":" << val.first << ",\"value_checksum\":" << val.second << "}\n";
 }
@@ -310,7 +372,9 @@ int main(int argc, char** argv) {
     try {
         if (argc == 2 && std::string(argv[1]) == "--selftest") { index_selftest(); return 0; }
         require((argc == 3 || argc == 4) && std::string(argv[1]) == "--graph", "usage: index --selftest | --graph path [twins|chains]");
-        const ClassMode mode = argc == 4 && std::string(argv[3]) == "chains" ? ClassMode::chains : ClassMode::twins;
+        const std::string m = argc == 4 ? argv[3] : "twins";
+        const ClassMode mode = m == "chains" ? ClassMode::chains : m == "vertices" ? ClassMode::vertices : m == "aligned" ? ClassMode::aligned : ClassMode::twins;
+        require(m == "twins" || m == "chains" || m == "vertices" || m == "aligned", "unknown class mode");
         Input in = prepare(argv[2]); Layout l(in.graph, std::max(2, static_cast<int>(in.d) + 1)); l.prepare(in.graph.n);
         const unsigned w = width(count_bound(in.graph, l, in.d));
         if (w == 64) run_graph<uint64_t>(in, w, mode); else if (w == 128) run_graph<unsigned __int128>(in, w, mode);
