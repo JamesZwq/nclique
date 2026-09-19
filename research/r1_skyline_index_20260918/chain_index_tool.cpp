@@ -10,84 +10,156 @@
 
 using chainindex::ChainIndex; using chainindex::kNone;
 
-struct BuildTimes { double solve_ms = 0, trees_ms = 0, chains_ms = 0, layout_ms = 0; };
+#include <mach/mach.h>
+static uint64_t rss_now() {   // current resident set size in bytes (macOS)
+    mach_task_basic_info info; mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) != KERN_SUCCESS) return 0;
+    return info.resident_size;
+}
+static double g_ti_ms = 0;   // time to build the shared row index (outside build_chain_index)
+struct BuildTimes { double solve_ms = 0, trees_ms = 0, chains_ms = 0, layout_ms = 0;
+                    uint64_t rss_start = 0, rss_solve = 0, rss_trees = 0, rss_chains = 0, rss_layout = 0, ti_bytes = 0, core_bytes = 0, own_bytes = 0; };
 
-// Build the index from an Input; perm[v_input] = internal id.  Returns the index (finished) and perm.
-// Chain ranks follow the lexicographic order of the tuple of preorder ids (X_2, X_3, ...), so at s = 2 every community
-// is one id range.  Each DFS array visits a node's own chains and child subtrees by ascending smallest rank, so runs of
-// consecutive ranks stay adjacent and community_ranges merges them.
-template<class T> static ChainIndex<T> build_chain_index(const Input& in, std::vector<uint32_t>& perm, BuildTimes& bt) {
+// The clique-tree row index of the terminal solver, built once per graph and shared by every count width.
+static terminal::Index build_terminal_index(const Input& in) {
+    const int S = std::max(2, static_cast<int>(in.d) + 1);
+    terminal::Index ti(S); terminal::build(in.graph, ti, 0); ti.prepare(in.graph.n); return ti;
+}
+static uint64_t terminal_index_bytes(const terminal::Index& ti) {
+    return ti.rows.size() * sizeof(terminal::Row) + 4ull * (ti.members.size() + ti.reverse.size() + ti.group_row.size()) + 8ull * ti.reverse_off.size() + ti.zero_choice.size();
+}
+// Upper bound on every count the solver accumulates, from the rows themselves: a row whose free part (pivots and
+// choices) has q members holds at most C(q, floor(q/2)) cliques of any one size through any member, so a member's
+// support is at most the sum of those peaks over its rows.  One spare bit; the solver still checks every addition.
+static cpp_int count_bound_terminal(const terminal::Index& ti, uint32_t n, int d) {
+    std::vector<cpp_int> peaks(d + 2); for (int q = 0; q <= d + 1; ++q) peaks[q] = choose_int(q, q / 2);
+    std::vector<cpp_int> bound(n);
+    for (const auto& row : ti.rows) { const int q = static_cast<int>(row.end - row.hold_end); require(q >= 0 && q < static_cast<int>(peaks.size()), "row free part exceeds the clique bound");
+        for (Vertex i = row.begin; i < row.end; ++i) bound[ti.members[i]] += peaks[q]; }
+    cpp_int maximum = d; for (const auto& b : bound) if (b > maximum) maximum = b; return maximum * 2;
+}
+// Run f(T{}, bits) at the first width that holds `bound`; if the solver reports an overflow, retry one width up.
+template<class F> static void dispatch_width(const cpp_int& bound, F&& f) {
+    for (unsigned bits : {64u, 128u, 256u, 512u}) {
+        if (bound >= (cpp_int(1) << bits) - 1) continue;
+        try { if (bits == 64) f(uint64_t{}, bits); else if (bits == 128) f((unsigned __int128){}, bits); else if (bits == 256) f(boost::multiprecision::uint256_t{}, bits); else f(boost::multiprecision::uint512_t{}, bits); return; }
+        catch (const std::overflow_error& e) { std::cerr << "[width] " << bits << " bits overflowed (" << e.what() << "); retrying wider\n"; if (bits == 512) throw; }
+    }
+    throw std::overflow_error("count bound exceeds 512 bits");
+}
+
+// Build the index from an Input and the shared row index; perm[v_input] = internal id.  Memory O(n + chains x sizes):
+// the solver streams one core row at a time (two-row window), each row is turned into that size's canonical tree at
+// once, and the chains are refined size by size in a prefix trie (one node per distinct own-node prefix), so neither
+// the s_max x n core matrix nor per-size own-node arrays exist.  Chain ranks follow the lexicographic order of the
+// preorder-id tuple (X_2, X_3, ...): a trie DFS that emits a node's terminating chain before its children, which are
+// created in key order.  Each DFS array visits a node's own chains and child subtrees by ascending smallest rank.
+template<class T> static ChainIndex<T> build_chain_index(const Input& in, const terminal::Index& ti, std::vector<uint32_t>& perm, BuildTimes& bt) {
     using Clock = std::chrono::steady_clock; auto ms = [](Clock::time_point a) { return std::chrono::duration<double, std::milli>(Clock::now() - a).count(); };
-    const Graph& g = in.graph; const uint32_t n = g.n; const int S = std::max(2, static_cast<int>(in.d) + 1);
-    auto t0 = Clock::now();
-    Layout layout(g, S); layout.prepare(n); typename Kernel<T>::Combinations choose(in.d + 1, S);
-    terminal::Index ti(S); terminal::build(g, ti, 0); ti.prepare(n);
-    auto out = terminal::Solver<T>::solve(g, ti, choose, in.ordinary); const auto& core = out.common.data.core;
-    bt.solve_ms = ms(t0); t0 = Clock::now();
+    const Graph& g = in.graph; const uint32_t n = g.n; const int S = ti.maximum; require(S >= 2, "size bound");
+    bt.rss_start = rss_now(); bt.ti_bytes = terminal_index_bytes(ti); bt.core_bytes = 2ull * n * sizeof(T); bt.own_bytes = 0;
+    typename Kernel<T>::Combinations choose(in.d + 1, S);
     ChainIndex<T> ix; ix.n = n; ix.max_size = S; ix.layers.resize(S + 1);
-    // per-size trees in creation ids: parent, top, children, preorder id (creation child order); per-vertex own node
+    // per-size trees in creation ids: parent, top, children, preorder id (creation child order)
     struct Tree0 { std::vector<int> parent; std::vector<T> hi; std::vector<std::vector<int>> children; std::vector<uint32_t> pre; };
-    std::vector<Tree0> trees(S + 1); std::vector<std::vector<uint32_t>> own(S + 1);
-    for (int s = 2; s <= S; ++s) { auto tr = make_tree(g, ti, core, s); auto& t = trees[s]; const size_t N = tr.nodes.size();
+    std::vector<Tree0> trees(S + 1);
+    // prefix trie: node = (chain prefix up to some size); level, parent, own tree node (creation id) at that size, kappa there,
+    // the chain that terminates here (-1 if none), children in key order
+    struct Trie { std::vector<int32_t> parent; std::vector<uint8_t> level; std::vector<uint32_t> own; std::vector<T> kappa; std::vector<int32_t> chain; std::vector<std::vector<int32_t>> children; };
+    Trie trie; std::vector<int32_t> cls(n, -1); std::vector<uint8_t> active(n, 0); std::vector<int32_t> chain_of(n, -1);
+    std::vector<int32_t> chain_node; uint32_t next_chain = 0;             // per chain in creation order: its trie node
+    auto terminate = [&](Vertex v) { const int32_t t = cls[v]; int32_t& c = trie.chain[t];
+        if (c < 0) { c = static_cast<int32_t>(next_chain++); chain_node.push_back(t); } chain_of[v] = c; active[v] = 0; };
+    double trees_ms = 0; std::vector<std::pair<uint64_t, Vertex>> keys;
+    auto on_row = [&](int s, std::span<const T> row) {
+        if (s < 2 || s > S) return; const auto t0 = Clock::now();
+        auto tr = make_tree_row<T>(g, ti, row, s); auto& t = trees[s]; const size_t N = tr.nodes.size();
         t.parent.resize(N); t.hi.resize(N); t.children.resize(N); t.pre.assign(N, kNone);
         for (size_t i = 0; i < N; ++i) { t.parent[i] = tr.nodes[i].parent; t.hi[i] = static_cast<T>(tr.nodes[i].hi); t.children[i] = tr.nodes[i].children; }
         uint32_t next = 0; std::function<void(int)> dfs0 = [&](int x) { t.pre[x] = next++; for (int y : t.children[x]) dfs0(y); };
         for (size_t i = 0; i < N; ++i) if (t.parent[i] < 0) dfs0(static_cast<int>(i));
-        own[s].assign(n, kNone); for (uint32_t v = 0; v < n; ++v) if (tr.leaf[v] >= 0) own[s][v] = static_cast<uint32_t>(tr.leaf[v]); }
-    bt.trees_ms = ms(t0); t0 = Clock::now();
-    // chains: vertices with the same own-node tuple; ranks by lexicographic order of the preorder-id tuple; inactive vertices last
-    std::vector<int> om(n, 0); for (uint32_t v = 0; v < n; ++v) for (int s = 2; s <= S; ++s) if (core[static_cast<size_t>(s) * n + v] > T{0}) om[v] = s;
-    std::map<std::vector<uint32_t>, std::vector<uint32_t>> groups;
-    for (uint32_t v = 0; v < n; ++v) { std::vector<uint32_t> key; for (int s = 2; s <= om[v]; ++s) key.push_back(trees[s].pre[own[s][v]]); groups[std::move(key)].push_back(v); }
-    std::vector<const std::vector<uint32_t>*> members;
-    for (const auto& [key, mem] : groups) if (!key.empty()) members.push_back(&mem);
-    if (auto it = groups.find(std::vector<uint32_t>{}); it != groups.end()) members.push_back(&it->second);
-    const uint32_t C = static_cast<uint32_t>(members.size()); auto rep = [&](uint32_t r) { return (*members[r])[0]; };
-    perm.assign(n, kNone); ix.chains = C; ix.start_pos.assign(C + 1, 0); uint32_t next = 0;
-    for (uint32_t r = 0; r < C; ++r) { ix.start_pos[r] = next; for (uint32_t v : *members[r]) perm[v] = next++; }
-    ix.start_pos[C] = next; require(next == n, "relabel incomplete");
-    ix.start_bits.assign((n + 63) / 64, 0); for (uint32_t r = 0; r < C; ++r) { const uint32_t p = ix.start_pos[r]; ix.start_bits[p >> 6] |= 1ull << (p & 63); }
+        // refine: a vertex active at s extends its prefix by pre_s(own node); one active at s-1 only terminates (omega = s-1)
+        keys.clear();
+        for (Vertex v = 0; v < n; ++v) {
+            if (tr.leaf[v] >= 0) { require(s == 2 || active[v], "support nesting: active at s but not at s-1");
+                const uint64_t parent = s == 2 ? 0xFFFFFFFFull : static_cast<uint32_t>(cls[v]); keys.emplace_back((parent << 32) | t.pre[tr.leaf[v]], v); }
+            else if (active[v]) terminate(v);
+        }
+        std::sort(keys.begin(), keys.end());
+        for (size_t i = 0; i < keys.size();) { size_t j = i; while (j < keys.size() && keys[j].first == keys[i].first) ++j;
+            const Vertex v0 = keys[i].second; const int32_t id = static_cast<int32_t>(trie.parent.size()); const int32_t parent = s == 2 ? -1 : cls[v0];
+            trie.parent.push_back(parent); trie.level.push_back(static_cast<uint8_t>(s)); trie.own.push_back(static_cast<uint32_t>(tr.leaf[v0])); trie.kappa.push_back(row[v0]); trie.chain.push_back(-1); trie.children.emplace_back();
+            if (parent >= 0) trie.children[parent].push_back(id);
+            for (size_t k = i; k < j; ++k) { cls[keys[k].second] = id; active[keys[k].second] = 1; }
+            i = j; }
+        trees_ms += ms(t0);
+    };
+    const auto tsolve = Clock::now();
+    terminal::Solver<T>::solve(g, ti, choose, in.ordinary, nullptr, on_row);
+    for (Vertex v = 0; v < n; ++v) if (active[v]) terminate(v);           // rows past the last delivered one are zero
+    bt.solve_ms = ms(tsolve) - trees_ms; bt.trees_ms = trees_ms; bt.rss_solve = rss_now(); bt.rss_trees = bt.rss_solve; auto t0 = Clock::now();
+    keys.clear(); keys.shrink_to_fit();
+    // chain ranks: trie DFS, a node's terminating chain before its children (children were created in key order); inactive vertices last
+    std::vector<uint32_t> rank_of(next_chain, kNone); uint32_t r = 0;
+    std::function<void(int32_t)> dfs = [&](int32_t t) { if (trie.chain[t] >= 0) rank_of[static_cast<size_t>(trie.chain[t])] = r++; for (int32_t c : trie.children[t]) dfs(c); };
+    for (size_t t = 0; t < trie.parent.size() && trie.level[t] == 2; ++t) dfs(static_cast<int32_t>(t));
+    require(r == next_chain, "chain ranking incomplete");
+    uint32_t inactive = 0; for (Vertex v = 0; v < n; ++v) if (chain_of[v] < 0) ++inactive;
+    const uint32_t C = next_chain + (inactive ? 1 : 0); ix.chains = C;
+    std::vector<uint32_t> crank(n); for (Vertex v = 0; v < n; ++v) crank[v] = chain_of[v] < 0 ? next_chain : rank_of[static_cast<size_t>(chain_of[v])];
+    ix.start_pos.assign(C + 1, 0); for (Vertex v = 0; v < n; ++v) ++ix.start_pos[crank[v] + 1];
+    for (uint32_t c = 0; c < C; ++c) ix.start_pos[c + 1] += ix.start_pos[c];
+    { std::vector<uint32_t> fill(ix.start_pos.begin(), ix.start_pos.end() - 1); perm.assign(n, kNone); for (Vertex v = 0; v < n; ++v) perm[v] = fill[crank[v]]++; }
+    ix.start_bits.assign((n + 63) / 64, 0); for (uint32_t c = 0; c < C; ++c) { const uint32_t p = ix.start_pos[c]; ix.start_bits[p >> 6] |= 1ull << (p & 63); }
     ix.start_cum.assign(ix.start_bits.size() + 1, 0); for (size_t w = 0; w < ix.start_bits.size(); ++w) ix.start_cum[w + 1] = ix.start_cum[w] + static_cast<uint32_t>(__builtin_popcountll(ix.start_bits[w]));
-    bt.chains_ms = ms(t0); t0 = Clock::now();
-    // per chain: omega, sigma, trajectory offsets, residue (chain r's representative vertex)
+    std::vector<int32_t> node_of_rank(C, -1); for (uint32_t c = 0; c < next_chain; ++c) node_of_rank[rank_of[c]] = chain_node[c];
+    bt.chains_ms = ms(t0); bt.rss_chains = rss_now(); t0 = Clock::now();
+    // per chain (by rank): omega = trie level, kappa along the trie path, sigma, residues, trajectory in creation ids
     ix.omega.assign(C, 0); ix.sigma.assign(C, 0); ix.traj_off.assign(C + 1, 0); ix.residue_off.assign(C + 1, 0);
-    for (uint32_t r = 0; r < C; ++r) { const uint32_t v = rep(r); const int o = om[v]; require(o < 256, "omega exceeds a byte");
-        ix.omega[r] = static_cast<uint8_t>(o); int sg = o + 1;
-        for (int s = 2; s <= o; ++s) if (sg == o + 1 && cpp_int(core[static_cast<size_t>(s) * n + v]) == choose_int(o - 1, s - 1)) sg = s;
-        ix.sigma[r] = static_cast<uint8_t>(sg);
-        ix.traj_off[r + 1] = ix.traj_off[r] + (o >= 2 ? o - 1 : 0); ix.residue_off[r + 1] = ix.residue_off[r] + (o >= 2 ? sg - 2 : 0); }
+    std::vector<T> path; std::vector<uint32_t> ownpath;
+    auto walk = [&](int32_t t) { path.clear(); ownpath.clear(); for (int32_t x = t; x >= 0; x = trie.parent[x]) { path.push_back(trie.kappa[x]); ownpath.push_back(trie.own[x]); }
+        std::reverse(path.begin(), path.end()); std::reverse(ownpath.begin(), ownpath.end()); };   // index s-2
+    for (uint32_t c = 0; c < C; ++c) { const int32_t t = node_of_rank[c]; const int o = t < 0 ? 0 : trie.level[t]; require(o < 256, "omega exceeds a byte");
+        ix.omega[c] = static_cast<uint8_t>(o); int sg = o + 1;
+        if (t >= 0) { walk(t); require(static_cast<int>(path.size()) == o - 1, "trie path length");
+            for (int s = 2; s <= o; ++s) if (sg == o + 1 && cpp_int(path[s - 2]) == choose_int(o - 1, s - 1)) sg = s; }
+        ix.sigma[c] = static_cast<uint8_t>(sg);
+        ix.traj_off[c + 1] = ix.traj_off[c] + (o >= 2 ? o - 1 : 0); ix.residue_off[c + 1] = ix.residue_off[c] + (o >= 2 ? sg - 2 : 0); }
     ix.traj_node.assign(ix.traj_off[C], kNone); ix.residue.assign(ix.residue_off[C], T{0});
-    for (uint32_t r = 0; r < C; ++r) { const uint32_t v = rep(r); for (int s = 2; s < ix.sigma[r]; ++s) ix.residue[ix.residue_off[r] + (s - 2)] = core[static_cast<size_t>(s) * n + v]; }
+    for (uint32_t c = 0; c < C; ++c) { const int32_t t = node_of_rank[c]; if (t < 0) continue; walk(t); const int o = ix.omega[c];
+        for (int s = 2; s <= o; ++s) ix.traj_node[ix.traj_off[c] + (s - 2)] = ownpath[s - 2];
+        for (int s = 2; s < ix.sigma[c]; ++s) ix.residue[ix.residue_off[c] + (s - 2)] = path[s - 2]; }
     // per size: own chains per node (ranks ascending), smallest rank per subtree, DFS by ascending smallest rank => final ids, DFS array, buckets
     for (int s = 2; s <= S; ++s) { const auto& t = trees[s]; const size_t N = t.parent.size(); auto& L = ix.layers[s];
-        std::vector<uint32_t> cnt(N + 1, 0); for (uint32_t r = 0; r < C; ++r) if (s <= ix.omega[r]) ++cnt[own[s][rep(r)] + 1];
+        auto own0 = [&](uint32_t c) { return ix.traj_node[ix.traj_off[c] + (s - 2)]; };
+        std::vector<uint32_t> cnt(N + 1, 0); for (uint32_t c = 0; c < C; ++c) if (s <= ix.omega[c]) ++cnt[own0(c) + 1];
         for (size_t i = 0; i < N; ++i) cnt[i + 1] += cnt[i];
         std::vector<uint32_t> ownlist(cnt[N]), fill(cnt.begin(), cnt.end() - 1);
-        for (uint32_t r = 0; r < C; ++r) if (s <= ix.omega[r]) ownlist[fill[own[s][rep(r)]]++] = r;
+        for (uint32_t c = 0; c < C; ++c) if (s <= ix.omega[c]) ownlist[fill[own0(c)]++] = c;
         std::vector<uint32_t> minrank(N, kNone), bypre(N); for (size_t x = 0; x < N; ++x) bypre[t.pre[x]] = static_cast<uint32_t>(x);
         for (size_t i = N; i-- > 0;) { const uint32_t x = bypre[i]; if (cnt[x + 1] > cnt[x]) minrank[x] = std::min(minrank[x], ownlist[cnt[x]]);
             if (t.parent[x] >= 0) minrank[t.parent[x]] = std::min(minrank[t.parent[x]], minrank[x]); }
         std::vector<uint32_t> renum(N, kNone);
-        std::function<void(uint32_t, uint32_t)> dfs = [&](uint32_t x, uint32_t p) {
+        std::function<void(uint32_t, uint32_t)> dfs1 = [&](uint32_t x, uint32_t p) {
             const uint32_t id = static_cast<uint32_t>(L.top.size()); renum[x] = id;
             L.top.push_back(t.hi[x]); L.parent.push_back(p); L.size.push_back(0); L.bucket.push_back(static_cast<uint32_t>(L.slice.size()));
             std::vector<std::pair<uint32_t, int64_t>> items;   // (key, item): item < 0 encodes own chain rank -(r + 1), item >= 0 a child node
             for (uint32_t j = cnt[x]; j < cnt[x + 1]; ++j) items.emplace_back(ownlist[j], -static_cast<int64_t>(ownlist[j]) - 1);
             for (int y : t.children[x]) items.emplace_back(minrank[y], static_cast<int64_t>(y));
             std::sort(items.begin(), items.end());
-            for (const auto& [key, item] : items) { if (item < 0) L.slice.push_back(static_cast<uint32_t>(-item - 1)); else dfs(static_cast<uint32_t>(item), id); }
+            for (const auto& [key, item] : items) { if (item < 0) L.slice.push_back(static_cast<uint32_t>(-item - 1)); else dfs1(static_cast<uint32_t>(item), id); }
             L.size[id] = static_cast<uint32_t>(L.top.size()) - id; };
         std::vector<std::pair<uint32_t, uint32_t>> roots; for (size_t x = 0; x < N; ++x) if (t.parent[x] < 0) roots.emplace_back(minrank[x], static_cast<uint32_t>(x));
-        std::sort(roots.begin(), roots.end()); for (const auto& [key, x] : roots) dfs(x, kNone);
+        std::sort(roots.begin(), roots.end()); for (const auto& [key, x] : roots) dfs1(x, kNone);
         require(L.slice.size() == cnt[N] && L.top.size() == N, "dfs array incomplete");
-        for (uint32_t r = 0; r < C; ++r) if (s <= ix.omega[r]) ix.traj_node[ix.traj_off[r] + (s - 2)] = renum[own[s][rep(r)]]; }
-    ix.finish(); bt.layout_ms = ms(t0);
+        for (uint32_t c = 0; c < C; ++c) if (s <= ix.omega[c]) ix.traj_node[ix.traj_off[c] + (s - 2)] = renum[own0(c)]; }
+    ix.finish(); bt.layout_ms = ms(t0); bt.rss_layout = rss_now();
     return ix;
 }
 
 // ------------------------------------------------------------ selftest: brute force + disk round trip
 template<class T> static void selftest_graph(const Graph& g, const std::string& tmp, uint64_t& queries, uint64_t& members, uint64_t& values, uint64_t& ladders) {
-    Seeds z(g); Input in{g, z.ordinary, z.maximum}; std::vector<uint32_t> perm; BuildTimes bt; auto built = build_chain_index<T>(in, perm, bt);
+    Seeds z(g); Input in{g, z.ordinary, z.maximum}; std::vector<uint32_t> perm; BuildTimes bt; const terminal::Index ti = build_terminal_index(in); auto built = build_chain_index<T>(in, ti, perm, bt);
     std::vector<uint32_t> inv(g.n); for (uint32_t v = 0; v < g.n; ++v) inv[perm[v]] = v;
     const int S = built.max_size; const uint32_t n = g.n;
     // reference core matrix from the frozen control
@@ -141,9 +213,9 @@ static void tool_selftest() {
 }
 
 // ------------------------------------------------------------ benchmark
-template<class T> static void bench(const Input& in, unsigned bits, const std::string& outpath) {
+template<class T> static void bench(const Input& in, const terminal::Index& ti, unsigned bits, const std::string& outpath) {
     using Clock = std::chrono::steady_clock; auto ms = [](Clock::time_point a) { return std::chrono::duration<double, std::milli>(Clock::now() - a).count(); };
-    std::vector<uint32_t> perm; BuildTimes bt; auto t0 = Clock::now(); auto built = build_chain_index<T>(in, perm, bt); const double build_ms = ms(t0);
+    std::vector<uint32_t> perm; BuildTimes bt; auto t0 = Clock::now(); auto built = build_chain_index<T>(in, ti, perm, bt); const double build_ms = ms(t0);
     const uint64_t slice_bytes_layers = built.bytes_layers(), slice_bytes_total = built.bytes_total(), pairs = built.pairs_total();
     const uint32_t n = built.n; std::vector<uint32_t> active; for (uint32_t v = 0; v < n; ++v) if (built.omega[built.chain_of(v)] >= 2) active.push_back(v);
     const ChainIndex<T>* px = &built;   // the index under measurement: build form first, then the loaded compact form
@@ -206,6 +278,7 @@ template<class T> static void bench(const Input& in, unsigned bits, const std::s
         << ",\"bytes_map\":" << ix.bytes_map() << ",\"bytes_chains\":" << ix.bytes_chains() << ",\"bytes_layers\":" << ix.bytes_layers() << ",\"bytes_total\":" << ix.bytes_total() << ",\"file_bytes\":" << file_bytes << ",\"perm_bytes\":" << 4ull * n
         << ",\"slice_bytes_layers\":" << slice_bytes_layers << ",\"slice_bytes_total\":" << slice_bytes_total
         << ",\"solve_ms\":" << bt.solve_ms << ",\"trees_ms\":" << bt.trees_ms << ",\"chains_ms\":" << bt.chains_ms << ",\"layout_ms\":" << bt.layout_ms << ",\"build_ms\":" << build_ms << ",\"compact_ms\":" << compact_ms << ",\"save_ms\":" << save_ms << ",\"load_ms\":" << load_ms
+        << ",\"ti_ms\":" << g_ti_ms << ",\"ti_bytes\":" << bt.ti_bytes << ",\"rss_start\":" << bt.rss_start << ",\"rss_after_solve\":" << bt.rss_solve << ",\"rss_after_chains\":" << bt.rss_chains << ",\"rss_after_layout\":" << bt.rss_layout
         << ",\"slice_range_own_ns\":" << sro.ns << ",\"slice_range_half_ns\":" << srh.ns << ",\"slice_range_root_ns\":" << srr.ns
         << ",\"slice_explicit_own_ns\":" << seo.ns << ",\"slice_explicit_half_ns\":" << seh.ns << ",\"slice_explicit_root_ns\":" << ser.ns << ",\"slice_ladder_ns\":" << sll.first
         << ",\"slice_own_ranges\":" << sro.ranges << ",\"slice_half_ranges\":" << srh.ranges << ",\"slice_root_ranges\":" << srr.ranges
@@ -222,10 +295,19 @@ template<class T> static void bench(const Input& in, unsigned bits, const std::s
 int main(int argc, char** argv) {
     try {
         if (argc == 2 && std::string(argv[1]) == "--selftest") { tool_selftest(); return 0; }
-        require(argc == 4 && std::string(argv[1]) == "--bench", "usage: chain_index_tool --selftest | --bench <graph> <out.cx>");
-        Input in = prepare(argv[2]); Layout l(in.graph, std::max(2, static_cast<int>(in.d) + 1)); l.prepare(in.graph.n);
-        const unsigned w = width(count_bound(in.graph, l, in.d)); const std::string out = argv[3];
-        if (w == 64) bench<uint64_t>(in, w, out); else if (w == 128) bench<unsigned __int128>(in, w, out);
-        else if (w == 256) bench<boost::multiprecision::uint256_t>(in, w, out); else bench<boost::multiprecision::uint512_t>(in, w, out);
+        require((argc == 3 && std::string(argv[1]) == "--build-only") || (argc == 4 && std::string(argv[1]) == "--bench"), "usage: chain_index_tool --selftest | --build-only <graph> | --bench <graph> <out.cx>");
+        Input in = prepare(argv[2]); const uint64_t rss_loaded = rss_now(); const auto tti = std::chrono::steady_clock::now();
+        const terminal::Index ti = build_terminal_index(in); const cpp_int bound = count_bound_terminal(ti, in.graph.n, in.d); const uint64_t rss_ti = rss_now();
+        g_ti_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tti).count();
+        if (std::string(argv[1]) == "--build-only") {
+            dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); std::vector<uint32_t> perm; BuildTimes bt; auto ix = build_chain_index<T>(in, ti, perm, bt);
+                std::cout << "{\"n\":" << in.graph.n << ",\"count_bits\":" << bits << ",\"chains\":" << ix.chains << ",\"index_bytes\":" << ix.bytes_total()
+                    << ",\"ti_ms\":" << g_ti_ms << ",\"ti_bytes\":" << bt.ti_bytes << ",\"rss_loaded\":" << rss_loaded << ",\"rss_with_ti\":" << rss_ti
+                    << ",\"rss_start\":" << bt.rss_start << ",\"rss_after_solve\":" << bt.rss_solve << ",\"rss_after_chains\":" << bt.rss_chains << ",\"rss_after_layout\":" << bt.rss_layout
+                    << ",\"solve_ms\":" << bt.solve_ms << ",\"trees_ms\":" << bt.trees_ms << ",\"chains_ms\":" << bt.chains_ms << ",\"layout_ms\":" << bt.layout_ms << "}\n"; });
+            return 0;
+        }
+        const std::string out = argv[3];
+        dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); bench<T>(in, ti, bits, out); });
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

@@ -37,18 +37,18 @@ template<class T> struct Tree {
     std::map<cpp_int,std::vector<int>,std::greater<cpp_int>> snapshot;
 };
 
-template<class T> static Tree<T> make_tree(const Graph& g,const terminal::Index& index,
-        const std::vector<T>& core,int s,bool save_snapshots=false) {
-    const Vertex n=g.n; Tree<T> out; out.leaf.assign(n,-1);
-    std::vector<Vertex> order; for(Vertex v=0;v<n;++v)if(core[static_cast<size_t>(s)*n+v]>0)order.push_back(v);
-    std::sort(order.begin(),order.end(),[&](Vertex a,Vertex b){return core[static_cast<size_t>(s)*n+a]>core[static_cast<size_t>(s)*n+b];});
+template<class T> static Tree<T> make_tree_row(const Graph& g,const terminal::Index& index,
+        std::span<const T> core,int s,bool save_snapshots=false) {
+    const Vertex n=g.n; Tree<T> out; out.leaf.assign(n,-1); require(core.size()==n,"row size");
+    std::vector<Vertex> order; for(Vertex v=0;v<n;++v)if(core[v]>0)order.push_back(v);
+    std::sort(order.begin(),order.end(),[&](Vertex a,Vertex b){return core[a]>core[b];});
     CountDSU uf(n); std::vector<uint8_t> active(n),live(index.rows.size());
     std::vector<uint32_t> ah(index.rows.size()),aq(index.rows.size()); std::vector<int> rep(index.rows.size(),-1),cur(n,-1);
     std::vector<std::vector<int>> pending(n); std::vector<uint64_t> marked; uint64_t stamp=0;
     auto add_child=[&](Vertex root,int child){ if(child<0)return; if(marked.size()<=static_cast<size_t>(child))marked.resize(child+1); if(marked[child]!=stamp){marked[child]=stamp;pending[root].push_back(child);} };
     size_t at=0;
     while(at<order.size()) {
-        const T value=core[static_cast<size_t>(s)*n+order[at]]; size_t end=at;while(end<order.size()&&core[static_cast<size_t>(s)*n+order[end]]==value)++end;
+        const T value=core[order[at]]; size_t end=at;while(end<order.size()&&core[order[end]]==value)++end;
         ++stamp; std::vector<Vertex> touched;
         auto touch=[&](Vertex r){r=uf.find(r);touched.push_back(r);};
         auto unite=[&](Vertex a,Vertex b) {
@@ -77,11 +77,16 @@ template<class T> static Tree<T> make_tree(const Graph& g,const terminal::Index&
         if(save_snapshots) { std::vector<int> labels(n,-1);std::map<Vertex,int> ids;int next=0;for(Vertex v:order)if(active[v]){Vertex r=uf.find(v);if(!ids.contains(r))ids[r]=next++;labels[v]=ids[r];}out.snapshot.emplace(cpp_int(value),std::move(labels)); }
         at=end;
     }
-    for(Vertex v=0;v<n;++v)if(core[static_cast<size_t>(s)*n+v]>0){require(out.leaf[v]>=0,"missing leaf");require(out.nodes[out.leaf[v]].hi==cpp_int(core[static_cast<size_t>(s)*n+v]),"L1 leaf level");++out.l1;}
+    for(Vertex v=0;v<n;++v)if(core[v]>0){require(out.leaf[v]>=0,"missing leaf");require(out.nodes[out.leaf[v]].hi==cpp_int(core[v]),"L1 leaf level");++out.l1;}
     for(const auto& node:out.nodes)if(!node.children.empty())for(int c:node.children)require(node.hi<out.nodes[c].hi,"L1 parent order");
     for(const auto& node:out.nodes)if(node.children.size()==1)++out.chains;
     for(size_t x=0;x<out.nodes.size();++x){uint64_t d=1;for(int p=out.nodes[x].parent;p>=0;p=out.nodes[p].parent)++d;out.depth=std::max(out.depth,d);}
     return out;
+}
+
+template<class T> static Tree<T> make_tree(const Graph& g,const terminal::Index& index,
+        const std::vector<T>& core,int s,bool save_snapshots=false) {
+    return make_tree_row<T>(g,index,std::span<const T>(core).subspan(static_cast<size_t>(s)*g.n,g.n),s,save_snapshots);
 }
 
 static std::vector<int> twins(const Graph& g,std::vector<std::vector<Vertex>>& groups) {
