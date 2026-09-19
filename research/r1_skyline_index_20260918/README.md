@@ -5,12 +5,16 @@ hierarchy of a graph over every clique size s: core values kappa_s(v),
 every (s, k)-nucleus as a vertex set, membership, and the ladder of a
 vertex. Exact; brute-force verified; measured on 13 graphs.
 
-Headline (13 graphs, one thread, RESULTS_FINAL.md Sections 9 and 14):
-2.0x-11.2x fewer bytes than one S tree per size (median 4.8x, dblp
-10.3x); a community is located in 3.5-45 ns and listed at 0.04-0.28 ns
-per vertex (faster than a memcpy of the vertex list on 13 of 15 measured
-points); membership 5-28 ns; values 6-20 ns; build 15 ms (GrQc) to 34 s
-(pokec, 1.6 M vertices) with 157 MB (dblp) to 2.9 GB (pokec) peak memory.
+Headline (17 graphs of five families, one thread, RESULTS_FINAL.md
+Sections 9 and 14): 1.3x-11.7x fewer bytes than one S tree per size
+(median 4.95x; dblp 10.3x; the 4.05 M-vertex dense dblp-coauthor 11.7x;
+the 1,005-vertex email-Eu-core 1.3x is the worst case); a community is
+located in 3.5-59 ns and listed at 0.04-0.28 ns per vertex on all but the
+most fragmented graphs (faster than a memcpy of the vertex list on 13 of
+15 measured points); membership 5-31 ns; values 6-20 ns; build 15 ms
+(GrQc) to 34 s (pokec) and 189 s (dblp-coauthor, 512-bit counts) with
+157 MB (dblp) to 8.8 GB (dblp-coauthor) peak memory. com-lj and com-orkut
+exceed the solver's 32-bit member ids (see RESULTS_FINAL.md Section 11).
 
 ## What the index is
 
@@ -25,7 +29,8 @@ points); membership 5-28 ns; values 6-20 ns; build 15 ms (GrQc) to 34 s
    (2, k)-community is exactly one range (C4).
 3. Values per chain: omega, the certification point sigma, and residues
    for s < sigma; for s >= sigma the value is C(omega - 1, s - 1).
-4. Node tops and residues at per-size byte widths; file format CHAINX03.
+4. Node tops and residues at per-size byte widths; file format CHAINX04
+   (omega and sigma 16-bit, so clique sizes above 255 are fine).
 
 ## Layout
 
@@ -42,6 +47,7 @@ points); membership 5-28 ns; values 6-20 ns; build 15 ms (GrQc) to 34 s
 | `CHAINS.md` | chains: Lemmas C1-C8, chain counts, the final layout (Section 9), the r >= 2 verdict (Section 10) |
 | `RESULTS_FINAL.md` | the 13-section report of the final module; Section 14 = build memory and per-size widths |
 | `final.json`, `final-logs/` | evidence of the current module (13 graphs, latencies, bytes, build) |
+| `more.json`, `more-logs/` | the same for four more graphs (ca-HepTh, email-Eu-core, com-amazon, dblp-coauthor) |
 | `buildonly.json`, `buildonly-logs/` | build phases and resident memory of the current module |
 | `stages/` | stage 1 (counting gate) and stage 2 (four layouts: per-vertex S trees, twins, chains, aligned; skyline dedup): `IMPLEMENTATION*.md`, `RESULTS.md`, `RESULTS_INDEX.md`, `RESULTS_CHAINS.md`, `index.cpp`, `chains.cpp`, `verify_theory.py`, `run.py`, `run_index.py`, `counts.json`, `index*.json` and their logs |
 | `archive/` | superseded evidence of earlier module versions: `final_v1` (five graphs), `final_v2` (13, scalar-tail fill), `final_v3` (13, branchless fill, fixed-width values), `index_aligned_v1` |
@@ -67,6 +73,7 @@ ones to `archive/` first):
 
 ```
 python3 research/r1_skyline_index_20260918/run_final.py graphs/ca-AstroPh.edges graphs/ca-CondMat.edges graphs/cit-HepPh.edges graphs/loc-Brightkite.edges graphs/soc-Epinions1.edges graphs/soc-Slashdot0902.edges graphs/com-youtube.edges graphs/soc-pokec.edges
+python3 research/r1_skyline_index_20260918/run_final.py --tag more --only graphs/ca-HepTh.edges graphs/email-Eu-core.edges graphs/amazon-copurchase.edges graphs/dblp-coauthor.edges
 python3 research/r1_skyline_index_20260918/run_buildonly.py
 python3 research/r1_skyline_index_20260918/report_tables.py
 ```

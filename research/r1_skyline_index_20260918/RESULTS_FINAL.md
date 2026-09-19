@@ -539,9 +539,16 @@ vectorised fill and the Myers skip pointers are engineering.
 - The memcpy baseline was measured only on the five stage-2 graphs, in
   the stage-2 binary with its own query draw (same seed, protocol and
   machine); output sizes differ by 0.1-0.3 percent between the draws.
-- One machine, thirteen graphs up to 1.6 M vertices, in-memory
+- One machine, seventeen graphs up to 4.05 M vertices, in-memory
   single-process timing; no cold-cache or multi-process protocol; no
   comparison with a reimplemented SGL (its inputs are bipartite).
+- com-lj (4.0 M vertices, 34.7 M edges) does not build here: the
+  solver's clique-tree row index of `r1_terminal_20260918` stores member
+  ids in 32 bits and its `append` stops with "member ID overflow" after
+  208 s and 10.8 GB. com-orkut (117 M edges) was not attempted. Both need
+  either 64-bit member ids in that solver or a server with more memory;
+  neither is a limit of the index itself (dblp-coauthor, larger in
+  vertices and far denser, builds in 189 s).
 
 ## 12. Final Conclusion
 
@@ -586,6 +593,9 @@ role of the chain structure (CHAINS.md Section 10).
    test cases.
 6. r >= 2 is closed (CHAINS.md Section 10 verdict): no separate chain
    index; the unifying remark belongs in the paper's discussion.
+7. com-lj and com-orkut: widen the solver's member ids to 64 bits (or
+   split the row index) and run on a server; with 64-bit counts their
+   row indexes will be several GB.
 
 ## 14. Build Memory And Per-Size Widths (added later on 2026-09-19)
 
