@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/tech-as-skitter.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/tech-as-skitter.cx
+{"passed":true,"n":1694616,"m":11094209,"s_max":112,"count_bits":128,"chains":163053,"canonical_nodes":261039,"max_depth":18560,"pairs_total":1328339,"runs_total":917920,"vertex_pairs":4583250,"vertex_residue_cells":3498992,"baseline_vertex_bytes":123683600,"bytes_map":969968,"bytes_chains":12827047,"bytes_layers":14278117,"bytes_total":28075132,"file_bytes":27035640,"perm_bytes":6778464,"slice_bytes_layers":11578292,"slice_bytes_total":29684900,"solve_ms":359168.099,"trees_ms":392745.713,"chains_ms":51.418,"layout_ms":249.903,"build_ms":752239.140,"compact_ms":15.981,"save_ms":14.675,"load_ms":7.864,"ti_ms":176162.969,"ti_bytes":11231683420,"rss_start":11371761664,"rss_after_solve":11579621376,"rss_after_chains":11552505856,"rss_after_layout":11553689600,"slice_range_own_ns":296336.377,"slice_range_half_ns":304137.408,"slice_range_root_ns":318423.353,"slice_explicit_own_ns":469325.784,"slice_explicit_half_ns":509604.041,"slice_explicit_root_ns":552605.748,"slice_own_ranges":18859.499,"slice_half_ranges":19195.527,"slice_root_ranges":22697.636,"full_bytes_total":28450355,"full_bytes_layers":14653340,"full_range_own_ns":10298.974,"full_range_half_ns":10675.289,"full_range_root_ns":12958.466,"full_explicit_own_ns":169903.425,"full_climb_own_ns":12.476,"full_climb_half_ns":38.426,"full_climb_root_ns":14.569,"full_ptr_own_ns":20.052,"full_ptr_half_ns":44.184,"full_ptr_root_ns":16.546,"full_value_ns":22.417,"climb_own_ns":18.693,"climb_half_ns":47.095,"climb_root_ns":19.056,"slice_climb_own_ns":12.500,"slice_climb_half_ns":38.327,"slice_climb_root_ns":15.595,"ptr_own_ns":22.882,"ptr_half_ns":51.263,"ptr_root_ns":23.182,"ptr_checksum":108275640874,"range_own_ns":10275.423,"range_half_ns":10779.371,"range_root_ns":12975.955,"explicit_own_ns":168913.661,"explicit_half_ns":206585.405,"explicit_root_ns":241609.589,"own_output":891236.233,"half_output":1137312.076,"root_output":1328075.634,"own_ranges":18859.499,"half_ranges":19195.527,"root_ranges":22697.636,"own_chains":18859.499,"half_chains":19195.527,"root_chains":22697.636,"value_ns":22.418,"value_checksum":0}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/tech-as-skitter.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/tech-as-skitter.cx"
+	User time (seconds): 1115.39
+	System time (seconds): 86.08
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 20:01.53
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 14207364
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 55453393
+	Voluntary context switches: 1
+	Involuntary context switches: 2083
+	Swaps: 0
+	File system inputs: 291160
+	File system outputs: 66048
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

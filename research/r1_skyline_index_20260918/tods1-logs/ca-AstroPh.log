@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/ca-AstroPh.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/ca-AstroPh.cx
+{"passed":true,"n":18772,"m":198050,"s_max":57,"count_bits":64,"chains":3331,"canonical_nodes":6462,"max_depth":571,"pairs_total":36381,"runs_total":25743,"vertex_pairs":205525,"vertex_residue_cells":22527,"baseline_vertex_bytes":2216476,"bytes_map":16860,"bytes_chains":232019,"bytes_layers":368361,"bytes_total":617240,"file_bytes":593801,"perm_bytes":75088,"slice_bytes_layers":300612,"slice_bytes_total":616488,"solve_ms":164.233,"trees_ms":185.203,"chains_ms":0.593,"layout_ms":5.024,"build_ms":355.788,"compact_ms":0.414,"save_ms":1.186,"load_ms":0.210,"ti_ms":235.338,"ti_bytes":8266272,"rss_start":17747968,"rss_after_solve":23670784,"rss_after_chains":23670784,"rss_after_layout":23670784,"slice_range_own_ns":4725.081,"slice_range_half_ns":4953.677,"slice_range_root_ns":5633.871,"slice_explicit_own_ns":6412.480,"slice_explicit_half_ns":6738.808,"slice_explicit_root_ns":7938.786,"slice_own_ranges":960.820,"slice_half_ranges":984.634,"slice_root_ranges":1140.781,"full_bytes_total":636207,"full_bytes_layers":387328,"full_range_own_ns":363.136,"full_range_half_ns":398.993,"full_range_root_ns":437.476,"full_explicit_own_ns":2606.489,"full_climb_own_ns":9.686,"full_climb_half_ns":37.027,"full_climb_root_ns":18.704,"full_ptr_own_ns":14.703,"full_ptr_half_ns":41.888,"full_ptr_root_ns":23.418,"full_value_ns":14.609,"climb_own_ns":20.304,"climb_half_ns":46.873,"climb_root_ns":23.500,"slice_climb_own_ns":9.710,"slice_climb_half_ns":36.702,"slice_climb_root_ns":13.907,"ptr_own_ns":22.648,"ptr_half_ns":51.247,"ptr_root_ns":26.057,"ptr_checksum":2080164414,"range_own_ns":364.838,"range_half_ns":405.950,"range_root_ns":446.009,"explicit_own_ns":2610.175,"explicit_half_ns":2765.020,"explicit_root_ns":3293.142,"own_output":8853.509,"half_output":9703.158,"root_output":11775.012,"own_ranges":960.820,"half_ranges":984.634,"root_ranges":1140.781,"own_chains":960.820,"half_chains":984.634,"root_chains":1140.781,"value_ns":14.600,"value_checksum":0}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/ca-AstroPh.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/ca-AstroPh.cx"
+	User time (seconds): 4.78
+	System time (seconds): 0.01
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:04.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 24760
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 7315
+	Voluntary context switches: 2
+	Involuntary context switches: 13
+	Swaps: 0
+	File system inputs: 3888
+	File system outputs: 1312
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

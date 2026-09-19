@@ -1,0 +1,25 @@
+START 2026-09-19T10:11:47+00:00 host=radonduo load=6.36 7.49 16.40
+/data/wenqianz/graphs/ca-GrQc.edges ok 61,440 B
+/data/wenqianz/graphs/ca-HepPh.edges ok 193,074 B
+/data/wenqianz/graphs/com-dblp.edges ok 1,641,981 B
+/data/wenqianz/graphs/web-Stanford.edges ok 3,552,754 B
+/data/wenqianz/graphs/ca-AstroPh.edges ok 617,240 B
+/data/wenqianz/graphs/ca-CondMat.edges ok 177,574 B
+/data/wenqianz/graphs/soc-Epinions1.edges ok 1,117,672 B
+/data/wenqianz/graphs/email-Eu-core.edges ok 145,590 B
+/data/wenqianz/graphs/dblp-core30.edges ok 50,114 B
+/data/wenqianz/graphs/com-amazon.ungraph.edges ok 3,263,670 B
+/data/wenqianz/graphs/web-Google.edges ok 11,156,521 B
+/data/wenqianz/graphs/ca-dblp-2012.edges ok 1,641,301 B
+/data/wenqianz/graphs/ca-MathSciNet.edges ok 1,234,250 B
+/data/wenqianz/graphs/com-youtube.edges ok 3,104,309 B
+/data/wenqianz/graphs/soc-pokec-relationships.edges ok 32,391,325 B
+/data/wenqianz/graphs/tech-as-skitter.edges ok 28,075,132 B
+/data/wenqianz/graphs/wiki-Talk.edges ok 3,964,777 B
+/data/wenqianz/graphs/ca-coauthors-dblp.edges ok 4,619,939 B
+/data/wenqianz/graphs/web-uk-2005.edges ok 4,093,454 B
+/data/wenqianz/graphs/web-it-2004.edges ok 9,866,036 B
+/data/wenqianz/graphs/com-lj.edges FAILED: member ID overflow
+/data/wenqianz/graphs/ca-hollywood-2009.edges FAILED: member ID overflow
+/data/wenqianz/graphs/com-orkut.edges FAILED: failed
+END 2026-09-19T11:35:53+00:00 rc=0

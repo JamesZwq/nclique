@@ -1,0 +1,10 @@
+$ cmake -S /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918 -B /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build-asan -DCMAKE_BUILD_TYPE=Release -DSANITIZE=ON
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build-asan

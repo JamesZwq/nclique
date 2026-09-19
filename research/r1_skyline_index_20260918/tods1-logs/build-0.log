@@ -1,0 +1,4 @@
+$ cmake -S /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918 -B /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build -DCMAKE_BUILD_TYPE=Release -DSANITIZE=OFF
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build

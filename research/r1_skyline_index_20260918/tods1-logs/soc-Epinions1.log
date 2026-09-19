@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/soc-Epinions1.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/soc-Epinions1.cx
+{"passed":true,"n":75879,"m":405740,"s_max":68,"count_bits":64,"chains":8821,"canonical_nodes":12886,"max_depth":1614,"pairs_total":55344,"runs_total":38882,"vertex_pairs":153594,"vertex_residue_cells":84091,"baseline_vertex_bytes":3221518,"bytes_map":49524,"bytes_chains":456481,"bytes_layers":611667,"bytes_total":1117672,"file_bytes":1068988,"perm_bytes":303516,"slice_bytes_layers":530640,"slice_bytes_total":1304016,"solve_ms":1911.038,"trees_ms":2731.307,"chains_ms":0.837,"layout_ms":7.901,"build_ms":4651.966,"compact_ms":0.795,"save_ms":1.144,"load_ms":0.356,"ti_ms":4245.354,"ti_bytes":223061316,"rss_start":235458560,"rss_after_solve":325996544,"rss_after_chains":325996544,"rss_after_layout":325996544,"slice_range_own_ns":13020.121,"slice_range_half_ns":13116.528,"slice_range_root_ns":13661.188,"slice_explicit_own_ns":22281.052,"slice_explicit_half_ns":24032.138,"slice_explicit_root_ns":25156.205,"slice_own_ranges":922.543,"slice_half_ranges":973.655,"slice_root_ranges":1149.830,"full_bytes_total":1178405,"full_bytes_layers":672400,"full_range_own_ns":381.073,"full_range_half_ns":416.420,"full_range_root_ns":483.944,"full_explicit_own_ns":9329.815,"full_climb_own_ns":11.800,"full_climb_half_ns":21.310,"full_climb_root_ns":12.035,"full_ptr_own_ns":13.581,"full_ptr_half_ns":23.337,"full_ptr_root_ns":14.445,"full_value_ns":18.008,"climb_own_ns":15.665,"climb_half_ns":28.832,"climb_root_ns":16.346,"slice_climb_own_ns":12.747,"slice_climb_half_ns":23.193,"slice_climb_root_ns":10.020,"ptr_own_ns":17.103,"ptr_half_ns":30.363,"ptr_root_ns":18.004,"ptr_checksum":959043996,"range_own_ns":385.199,"range_half_ns":421.847,"range_root_ns":486.973,"explicit_own_ns":9334.730,"explicit_half_ns":10772.124,"explicit_root_ns":11687.807,"own_output":49093.776,"half_output":57371.703,"root_output":61008.560,"own_ranges":922.543,"half_ranges":973.655,"root_ranges":1149.830,"own_chains":922.543,"half_chains":973.655,"root_chains":1149.830,"value_ns":18.014,"value_checksum":0}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/soc-Epinions1.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/soc-Epinions1.cx"
+	User time (seconds): 21.74
+	System time (seconds): 0.19
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:21.94
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 318356
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 140163
+	Voluntary context switches: 2
+	Involuntary context switches: 23
+	Swaps: 0
+	File system inputs: 7960
+	File system outputs: 2688
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

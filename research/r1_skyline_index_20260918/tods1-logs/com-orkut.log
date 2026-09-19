@@ -1,0 +1,1 @@
+$ /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/com-orkut.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/com-orkut.cx
