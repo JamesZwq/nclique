@@ -3,7 +3,7 @@
 Research line, 2026-09-18/19. One index for the whole (1, s)-nucleus
 hierarchy of a graph over every clique size s: core values kappa_s(v),
 every (s, k)-nucleus as a vertex set, membership, and the ladder of a
-vertex. Exact; brute-force verified; measured on 13 graphs.
+vertex. Exact; brute-force verified; measured on 17 graphs of five families.
 
 Headline (17 graphs of five families, one thread, RESULTS_FINAL.md
 Sections 9 and 14): 1.3x-11.7x fewer bytes than one S tree per size
