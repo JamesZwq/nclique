@@ -706,3 +706,91 @@ earlier latency evidence was measured on the index compacted in place
 rather than on the loaded copy (a reference bound once before the target
 pointer changed); the two hold identical arrays, so those numbers stand,
 and the bench now measures the loaded copy.
+
+## 15. Server Runs (tods1, tods2; added 2026-09-19 evening)
+
+Both UNSW servers (Ubuntu 22.04, GCC 11.4, 96 cores, 503 GB; one thread
+per run, other users' load 1-8 on 96 cores) built the same sources
+(commit 0c7e43a and later), passed the brute-force selftest with the
+same counts as the laptop, and ran `run_final.py` on every graph present
+there: tods1 20 graphs (`tods1.json`, `tods1-logs/`), tods2 7 graphs
+(`tods2.json`, `tods2-logs/`); a second tods1 run covers the three
+largest graphs after the 64-bit fix below (`tods1_big.json`). Launchers:
+`tods1_run.sh`, `tods1_big.sh`, `tods2_run.sh`.
+
+Portability findings. (1) The index does not depend on the input's edge
+order: com-dblp, web-Stanford, com-amazon and web-Google exist on both
+servers as files with different sha256 (different edge orders) and give
+byte-identical indexes. (2) Laptop and server indexes of the same graph
+differ by at most 0.2 percent in bytes (GrQc 61,328 against 61,440): the
+per-size trees are built from unstable sorts whose tie order differs
+between libc++ and libstdc++, which changes node preorder ids, hence
+chain ranks, hence how many runs merge; every form is checked against
+brute force on both platforms. (3) Single-thread query latencies on the
+servers are 1.5-3x those of the Apple M-series laptop (locate 14-35 ns,
+listing 0.10-0.31 ns per vertex, values 15-35 ns), consistent with the
+CPUs; ratios between configurations are the same.
+
+The 32-bit member limit. com-lj (4.0 M vertices, 34.7 M edges),
+ca-hollywood-2009 (1.07 M vertices, 56.3 M edges, cliques up to 2,209)
+and com-orkut (3.07 M vertices, 117 M edges) stopped in the solver's
+clique-tree row index with "member ID overflow": the number of (row,
+vertex) incidences exceeds 2^32. The offsets into the member array are
+64-bit as of commit 0c7e43a (`Row::begin/hold_end/pivot_end/end`,
+choice offsets; solver and index selftests pass, dblp index
+byte-identical); the second tods1 run uses that build. Results are
+appended to the merged table when they finish. hollywood additionally
+needs core values up to about 10^660 (C(2208, 1104)), beyond 512-bit
+integers and beyond double (10^308); the exact solver will report the
+count bound as exceeded, and a long-double or log-domain count type is
+the only way to cover such cliques.
+
+New graphs and what they say. web-uk-2005 (cliques up to 500, 155
+vertices per chain) and ca-coauthors-dblp (cliques up to 337, 58 per
+chain) give the largest ratios so far, 48.7x and 45.8x: large cliques
+make many vertices hierarchy-equivalent. web-NotreDame 24.7x and
+web-BerkStan 19.2x show the same on web graphs with cliques of 150-200.
+cit-Patents (3.8 M vertices) is 12.1x, so the poor 2.0x of cit-HepPh is
+not a property of citation graphs but of that small dense one.
+wiki-Talk (2.4 M vertices, 81 per chain) is 15.9x. The two slowest
+builds, tech-as-skitter (928 s, 13.9 GB) and wiki-Talk (734 s, 20 GB),
+spend that time and memory in the solver's row index, not in the index
+(28 MB and 4 MB).
+
+### All inputs, one row per distinct graph (29 graphs; laptop = Apple M-series, tods1/tods2 = Ubuntu 22.04, GCC 11, 96 cores, 503 GB; one thread everywhere)
+| Graph | machine | n | s_max | W bits | chains | n / chains | index B | per-vertex S trees B | ratio | locate own ns | list ns per vertex | value ns | build s | peak RSS MB |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| email-Eu-core | tods1 | 1,005 | 35 | 64 | 667 | 1.5 | 145,590 | 186,738 | 1.28x | 17.0 | 0.823 | 18.5 | 0.2 | 16 |
+| cit-HepPh | laptop | 34,546 | 31 | 64 | 16,623 | 2.1 | 1,610,959 | 3,199,324 | 1.99x | 5.1 | 0.204 | 7.1 | 0.9 | 0 |
+| soc-Epinions1 | tods1 | 75,879 | 68 | 64 | 8,821 | 8.6 | 1,117,672 | 3,221,518 | 2.88x | 17.1 | 0.190 | 18.0 | 8.9 | 311 |
+| soc-pokec-relationships | tods1 | 1,632,803 | 48 | 64 | 383,206 | 4.3 | 32,391,325 | 101,770,646 | 3.14x | 27.0 | 0.313 | 24.8 | 73.3 | 2,807 |
+| loc-Brightkite | laptop | 58,228 | 53 | 64 | 6,326 | 9.2 | 811,068 | 2,628,872 | 3.24x | 11.5 | 0.056 | 9.7 | 1.1 | 0 |
+| ca-AstroPh | tods1 | 18,772 | 57 | 64 | 3,331 | 5.6 | 617,240 | 2,216,476 | 3.59x | 22.6 | 0.295 | 14.6 | 0.6 | 24 |
+| tech-as-skitter | tods1 | 1,694,616 | 112 | 128 | 163,053 | 10.4 | 28,075,132 | 123,683,600 | 4.41x | 22.9 | 0.190 | 22.4 | 928.4 | 13,874 |
+| ca-GrQc | tods1 | 5,242 | 44 | 64 | 716 | 7.3 | 61,440 | 272,564 | 4.44x | 27.8 | 0.141 | 18.4 | 0.0 | 10 |
+| amazon0302 | laptop | 262,111 | 7 | 64 | 40,867 | 6.4 | 3,081,868 | 14,414,214 | 4.68x | 15.2 | 0.050 | 10.7 | 0.5 | 0 |
+| com-amazon.ungraph | tods1 | 334,863 | 7 | 64 | 46,023 | 7.3 | 3,263,670 | 15,545,122 | 4.76x | 31.1 | 0.112 | 19.9 | 0.9 | 115 |
+| amazon-copurchase | laptop | 548,552 | 7 | 64 | 56,315 | 9.7 | 3,975,343 | 19,697,700 | 4.95x | 21.7 | 0.056 | 6.1 | 0.5 | 0 |
+| soc-Slashdot0902 | laptop | 82,168 | 56 | 64 | 6,798 | 12.1 | 601,127 | 2,995,392 | 4.98x | 8.0 | 0.057 | 7.2 | 2.2 | 0 |
+| ca-HepTh | laptop | 9,877 | 32 | 64 | 1,104 | 8.9 | 76,147 | 422,086 | 5.54x | 14.8 | 0.072 | 9.5 | 0.0 | 0 |
+| web-Google | tods1 | 875,713 | 45 | 64 | 73,836 | 11.9 | 11,156,521 | 63,649,906 | 5.71x | 31.0 | 0.161 | 21.5 | 6.3 | 355 |
+| web-Stanford | tods1 | 281,903 | 72 | 64 | 17,963 | 15.7 | 3,552,754 | 24,853,426 | 7.00x | 24.3 | 0.138 | 21.8 | 5.1 | 228 |
+| ca-CondMat | tods1 | 23,133 | 26 | 64 | 1,917 | 12.1 | 177,574 | 1,299,206 | 7.32x | 20.6 | 0.169 | 14.4 | 0.1 | 14 |
+| ca-HepPh | tods1 | 12,008 | 239 | 256 | 1,136 | 10.6 | 193,074 | 1,899,628 | 9.84x | 22.1 | 0.128 | 20.1 | 0.7 | 18 |
+| ca-MathSciNet | tods1 | 332,689 | 25 | 64 | 15,869 | 21.0 | 1,234,250 | 12,339,606 | 10.00x | 23.2 | 0.099 | 16.9 | 0.8 | 101 |
+| com-dblp | tods1 | 317,080 | 114 | 128 | 13,459 | 23.6 | 1,641,981 | 16,710,168 | 10.18x | 24.3 | 0.188 | 15.8 | 2.1 | 113 |
+| com-youtube | tods1 | 1,134,890 | 52 | 64 | 42,815 | 26.5 | 3,104,309 | 33,847,412 | 10.90x | 18.8 | 0.200 | 17.1 | 7.5 | 494 |
+| dblp-core30 | tods1 | 1,206 | 114 | 128 | 35 | 34.5 | 50,114 | 549,992 | 10.97x | 25.1 | 0.772 | 28.9 | 0.0 | 10 |
+| dblp-coauthor | laptop | 4,049,537 | 450 | 512 | 363,201 | 11.1 | 44,284,853 | 530,275,990 | 11.97x | 10.6 | 0.111 | 7.7 | 221.0 | 0 |
+| cit-Patents | tods2 | 3,774,768 | 65 | 64 | 203,819 | 18.5 | 12,079,564 | 146,173,956 | 12.10x | 23.8 | 0.157 | 22.0 | 19.5 | 2,005 |
+| web-it-2004 | tods1 | 509,338 | 432 | 512 | 35,402 | 14.4 | 9,866,036 | 135,833,300 | 13.77x | 34.9 | 0.202 | 20.0 | 66.5 | 524 |
+| wiki-Talk | tods1 | 2,394,385 | 132 | 64 | 29,699 | 80.6 | 3,964,777 | 63,192,530 | 15.94x | 14.0 | 0.195 | 15.1 | 733.6 | 20,141 |
+| web-BerkStan | tods2 | 685,230 | 202 | 256 | 39,559 | 17.3 | 8,607,977 | 165,295,380 | 19.20x | 27.0 | 0.213 | 24.0 | 65.6 | 1,069 |
+| web-NotreDame | tods2 | 325,729 | 156 | 256 | 9,122 | 35.7 | 1,007,187 | 24,840,466 | 24.66x | 19.0 | 0.175 | 18.4 | 4.2 | 189 |
+| ca-coauthors-dblp | tods1 | 540,486 | 337 | 512 | 9,326 | 58.0 | 4,619,939 | 211,523,396 | 45.78x | 23.1 | 0.195 | 34.6 | 106.8 | 876 |
+| web-uk-2005 | tods1 | 129,632 | 500 | 512 | 839 | 154.5 | 4,093,454 | 199,316,948 | 48.69x | 21.5 | 0.193 | 144.5 | 69.5 | 296 |
+
+byte ratio over 29 distinct graphs: min 1.28x, median 7.00x, max 48.69x
+failed on tods1: com-lj: member ID overflow
+failed on tods1: ca-hollywood-2009: member ID overflow
+failed on tods1: com-orkut: failed

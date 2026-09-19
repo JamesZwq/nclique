@@ -118,5 +118,32 @@ def final():
     ratios = sorted(vbytes(g, r) / r['bytes_total'] for g, r in data.items())
     print(f"byte ratio over {len(ratios)} graphs: min {ratios[0]:.2f}x, median {ratios[len(ratios)//2]:.2f}x, max {ratios[-1]:.2f}x")
 
+def merged():
+    """One row per distinct graph (by vertex and edge count) across the laptop and server runs; servers preferred for the row shown."""
+    import statistics
+    sources = [('tods1', 'tods1.json'), ('tods1', 'tods1_big.json'), ('tods2', 'tods2.json'), ('laptop', 'final.json'), ('laptop', 'more.json')]
+    best = {}
+    for where, f in sources:
+        rec = load(f)
+        if rec is None: continue
+        for r in rec['runs']:
+            if 'result' not in r: continue
+            key = (r['result']['n'], r['result']['m'])   # the same graph appears under several file names and edge orders; (n, m) identifies it
+            if key not in best: best[key] = (where, Path(r['graph']).stem, r)
+    rows = sorted(best.values(), key=lambda t: t[2]['result']['baseline_vertex_bytes'] / t[2]['result']['bytes_total'])
+    print(f'### All inputs, one row per distinct graph ({len(rows)} graphs; laptop = Apple M-series, tods1/tods2 = Ubuntu 22.04, GCC 11, 96 cores, 503 GB; one thread everywhere)')
+    print('| Graph | machine | n | s_max | W bits | chains | n / chains | index B | per-vertex S trees B | ratio | locate own ns | list ns per vertex | value ns | build s | peak RSS MB |')
+    print('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+    for where, g, r in rows:
+        x = r['result']; peak = r.get('peak_rss_bytes') or 0
+        print(f"| {g} | {where} | {fmt(x['n'])} | {x['s_max']} | {x['count_bits']} | {fmt(x['chains'])} | {x['n']/x['chains']:.1f} | {fmt(x['bytes_total'])} | {fmt(x['baseline_vertex_bytes'])} | {x['baseline_vertex_bytes']/x['bytes_total']:.2f}x | {x['ptr_own_ns']:.1f} | {x['explicit_own_ns']/x['own_output']:.3f} | {x['value_ns']:.1f} | {(x['ti_ms']+x['build_ms']+x['compact_ms'])/1000:.1f} | {peak/1048576:,.0f} |")
+    rat = [t[2]['result']['baseline_vertex_bytes'] / t[2]['result']['bytes_total'] for t in rows]
+    print(f"\nbyte ratio over {len(rows)} distinct graphs: min {min(rat):.2f}x, median {statistics.median(rat):.2f}x, max {max(rat):.2f}x")
+    for where, f in sources:
+        rec = load(f)
+        if rec is None: continue
+        for r in rec['runs']:
+            if 'error' in r: print(f"failed on {where}: {Path(r['graph']).stem}: {r['error']}")
+
 if __name__ == '__main__':
-    layouts(); final()
+    layouts(); final(); merged()
