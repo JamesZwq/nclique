@@ -10,12 +10,20 @@
 
 using chainindex::ChainIndex; using chainindex::kNone;
 
+#if defined(__APPLE__)
 #include <mach/mach.h>
 static uint64_t rss_now() {   // current resident set size in bytes (macOS)
     mach_task_basic_info info; mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
     if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) != KERN_SUCCESS) return 0;
     return info.resident_size;
 }
+#else
+#include <unistd.h>
+static uint64_t rss_now() {   // current resident set size in bytes (Linux: /proc/self/statm, second field in pages)
+    std::ifstream f("/proc/self/statm"); uint64_t size = 0, resident = 0; if (!(f >> size >> resident)) return 0;
+    return resident * static_cast<uint64_t>(sysconf(_SC_PAGESIZE));
+}
+#endif
 static double g_ti_ms = 0;   // time to build the shared row index (outside build_chain_index)
 struct BuildTimes { double solve_ms = 0, trees_ms = 0, chains_ms = 0, layout_ms = 0;
                     uint64_t rss_start = 0, rss_solve = 0, rss_trees = 0, rss_chains = 0, rss_layout = 0, ti_bytes = 0, core_bytes = 0, own_bytes = 0; };
