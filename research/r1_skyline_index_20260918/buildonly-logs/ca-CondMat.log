@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only graphs/ca-CondMat.edges
+{"n":23133,"count_bits":64,"chains":1917,"canonical_nodes":3357,"index_bytes":173828,"build_form_bytes":200374,"compact_ms":0.124667,"bytes_map":12020,"bytes_chains":57438,"bytes_layers":104370,"ti_ms":52.1114,"ti_bytes":2550144,"rss_loaded":5013504,"rss_with_ti":7258112,"rss_start":7274496,"rss_after_solve":11796480,"rss_after_chains":11812864,"rss_after_layout":12140544,"solve_ms":25.9502,"trees_ms":44.4721,"chains_ms":0.193833,"layout_ms":0.98925}
+        0.21 real         0.11 user         0.00 sys
+            12271616  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 939  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                 399  involuntary context switches
+           892040303  instructions retired
+           315116573  cycles elapsed
+            11616592  peak memory footprint

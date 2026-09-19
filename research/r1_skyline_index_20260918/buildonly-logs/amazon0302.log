@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only graphs/amazon0302.edges
+{"n":262111,"count_bits":64,"chains":40867,"canonical_nodes":65134,"index_bytes":3000134,"build_form_bytes":3793970,"compact_ms":1.62196,"bytes_map":212628,"bytes_chains":1040604,"bytes_layers":1746902,"ti_ms":237.182,"ti_bytes":29625400,"rss_loaded":35913728,"rss_with_ti":83836928,"rss_start":83853312,"rss_after_solve":139657216,"rss_after_chains":139673600,"rss_after_layout":139952128,"solve_ms":154.764,"trees_ms":390.779,"chains_ms":1.80367,"layout_ms":17.4546}
+        1.26 real         1.17 user         0.03 sys
+           140001280  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                8731  page reclaims
+                   5  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   4  voluntary context switches
+                1508  involuntary context switches
+          7933705336  instructions retired
+          2953424045  cycles elapsed
+           139477520  peak memory footprint

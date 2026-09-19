@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only data/ca-GrQc.edges
+{"n":5242,"count_bits":64,"chains":716,"canonical_nodes":1517,"index_bytes":59896,"build_form_bytes":65472,"compact_ms":0.046167,"bytes_map":3856,"bytes_chains":15889,"bytes_layers":40151,"ti_ms":1.93087,"ti_bytes":385400,"rss_loaded":2506752,"rss_with_ti":3309568,"rss_start":3325952,"rss_after_solve":4882432,"rss_after_chains":4898816,"rss_after_layout":4947968,"solve_ms":1.85283,"trees_ms":4.04996,"chains_ms":0.045875,"layout_ms":0.311959}
+        0.41 real         0.01 user         0.00 sys
+             4980736  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 494  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   5  voluntary context switches
+                 142  involuntary context switches
+           169273214  instructions retired
+            53209464  cycles elapsed
+             4325712  peak memory footprint

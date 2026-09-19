@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only data/ca-HepPh.edges
+{"n":12008,"count_bits":256,"chains":1136,"canonical_nodes":3538,"index_bytes":215578,"build_form_bytes":311136,"compact_ms":0.500334,"bytes_map":6808,"bytes_chains":49845,"bytes_layers":158925,"ti_ms":70.7755,"ti_bytes":3223068,"rss_loaded":5521408,"rss_with_ti":8699904,"rss_start":8732672,"rss_after_solve":26738688,"rss_after_chains":26771456,"rss_after_layout":30474240,"solve_ms":167.792,"trees_ms":137.652,"chains_ms":0.224667,"layout_ms":2.43975}
+        0.41 real         0.36 user         0.01 sys
+            30588928  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                2057  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   3  voluntary context switches
+                1343  involuntary context switches
+          5126870543  instructions retired
+          1285041891  cycles elapsed
+            29917568  peak memory footprint

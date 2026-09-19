@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only data/com-dblp.edges
+{"n":317080,"count_bits":128,"chains":13459,"canonical_nodes":33979,"index_bytes":1626879,"build_form_bytes":2052686,"compact_ms":0.417292,"bytes_map":113304,"bytes_chains":433259,"bytes_layers":1080316,"ti_ms":334.307,"ti_bytes":29113540,"rss_loaded":40960000,"rss_with_ti":76857344,"rss_start":76890112,"rss_after_solve":162725888,"rss_after_chains":162742272,"rss_after_layout":164282368,"solve_ms":253.035,"trees_ms":505.385,"chains_ms":1.65529,"layout_ms":4.93717}
+        2.46 real         1.55 user         0.05 sys
+           164544512  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               10233  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   3  voluntary context switches
+                3623  involuntary context switches
+         13869232454  instructions retired
+          4214212636  cycles elapsed
+           163938808  peak memory footprint
