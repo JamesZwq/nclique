@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Build-only sweep: bytes, build phases, resident memory for every graph (no query passes). Writes buildonly.json and buildonly-logs/."""
+"""Build-only sweep: bytes, build phases, resident memory for every graph (no query passes).
+Usage: run_buildonly.py [TAG] [--only graph ...]  -> TAG.json and TAG-logs/ (default buildonly); --only skips the 13 defaults."""
 import datetime, hashlib, json, os, subprocess, sys
 from pathlib import Path
 HERE = Path(__file__).resolve().parent; ROOT = HERE.parents[1]
@@ -8,13 +9,16 @@ GRAPHS = ['data/ca-GrQc.edges', 'data/ca-HepPh.edges', 'data/com-dblp.edges', 'g
           'graphs/soc-Slashdot0902.edges', 'graphs/com-youtube.edges', 'graphs/soc-pokec.edges']
 def sha(p): return hashlib.file_digest(open(p, 'rb'), 'sha256').hexdigest()
 def main():
-    tag = sys.argv[1] if len(sys.argv) > 1 else 'buildonly'
+    args = sys.argv[1:]; tag = 'buildonly'
+    if args and not args[0].startswith('--'): tag = args[0]; args = args[1:]
+    graphs = GRAPHS
+    if args[:1] == ['--only']: graphs = args[1:]
     out = HERE / f'{tag}.json'; logs = HERE / f'{tag}-logs'
     if out.exists() or logs.exists(): raise SystemExit('refusing to overwrite evidence')
     logs.mkdir(); binary = HERE / 'build' / 'chain_index_tool'
     rec = {'started': datetime.datetime.now().astimezone().isoformat(), 'binary_sha256': sha(binary), 'git': subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True).stdout.strip(),
            'sources': {str(p.relative_to(ROOT)): sha(p) for p in (HERE / 'chain_index.hpp', HERE / 'chain_index_tool.cpp', HERE / 'count.cpp', ROOT / 'research/r1_terminal_20260918/terminal.hpp')}, 'runs': []}
-    for g in GRAPHS:
+    for g in graphs:
         cmd = ['/usr/bin/time', '-l', str(binary), '--build-only', g]
         child = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, env={**os.environ, 'OMP_NUM_THREADS': '1'})
         (logs / (Path(g).stem + '.log')).write_text('$ ' + ' '.join(cmd) + '\n' + child.stdout + child.stderr)
