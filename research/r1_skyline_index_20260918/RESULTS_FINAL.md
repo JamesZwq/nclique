@@ -805,3 +805,43 @@ byte ratio over 29 distinct graphs: min 1.28x, median 7.00x, max 48.69x
 failed on tods1: com-lj: member ID overflow
 failed on tods1: ca-hollywood-2009: member ID overflow
 failed on tods1: com-orkut: failed
+
+## 16. The Production Single-Size Pipeline as the Prior Tool (added 2026-09-20)
+
+The repository's production code (`src/`, `degeneracy_cliques <graph> 1 <s>`
+with `PIVOTER_RUN_ST_V3=1` and `PIVOTER_DUMP_HIER`) computes the r = 1
+core values of one clique size with its own pivoting clique tree (CPI)
+and builds that size's hierarchy (`BuildHierarchyR1`, the paper's
+BuildHier: one branch per vertex birth, elder rule, parent pointers).
+Obtaining every size's hierarchy with it means one run per size. That is
+the natural prior tool, and `src-r1index/scripts/prior_sweep.py` runs it
+for s = 2 .. s_max on the five laptop graphs (`prior/prior_<graph>.json`).
+Two different clique-tree implementations are involved: the production
+CPI (rebuilt per size) and the terminal solver's row index (built once for
+all sizes); the comparison is pipeline against pipeline.
+
+Its representation per size is the branch table (40 bytes per branch,
+`sizeof(HierarchyIndexNode)`) plus an owner id per vertex (4 bytes), which
+is a per-vertex-per-size representation like `STrees` but heavier: on
+com-dblp at s = 3 it has 269,181 branches for 317,080 vertices.
+
+| Graph | sizes | prior tool: wall s (all sizes) | prior tool: in-process s | prior tool: peak RSS MB (one size) | prior hierarchy bytes | chain index: build s | build peak MB | chain index bytes | S trees bytes | time ratio (wall) | bytes ratio (prior / chain) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| ca-GrQc | 43 | 0.9 | 0.1 | 10 | 1,703,424 | 0.01 | 5 | 61,328 | 272,564 | 90x | 27.8x |
+| ca-HepPh | 238 | 19.2 | 5.5 | 26 | 18,350,136 | 0.67 | 29 | 193,082 | 1,899,628 | 29x | 95.0x |
+| com-dblp | 113 | 87.5 | 15.7 | 154 | 193,197,480 | 0.84 | 157 | 1,641,813 | 16,710,168 | 105x | 117.7x |
+| web-Stanford | 71 | 266.4 | 201.4 | 573 | 144,380,012 | 3.75 | 299 | 3,552,706 | 24,853,426 | 71x | 40.6x |
+| amazon0302 | 6 | 4.0 | 1.2 | 144 | 39,290,304 | 0.47 | 134 | 3,081,868 | 14,414,214 | 9x | 12.7x |
+
+"prior tool: wall" is the sum over sizes of whole-process wall times
+(each run reloads the graph, sorts it and rebuilds the CPI); "in-process"
+is the sum of the CPI build, peel and hierarchy-build timers only. The
+chain index build is one process for all sizes. Bytes: the prior
+per-size hierarchies are 10.6x (amazon0302) to 118x (com-dblp) larger
+than the chain index and 1.1x to 11.6x larger than the tighter `STrees`
+accounting used elsewhere in this report, so `STrees` remains the
+stronger storage baseline; the prior tool is the build-time baseline.
+Build time: 8.5x to 105x (wall) or 2.5x to 54x (in-process) slower than
+the chain index for all sizes. Peak memory: the largest single-size run
+of the prior tool (web-Stanford 573 MB) is above the chain index's
+all-size build (299 MB).

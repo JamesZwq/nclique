@@ -98,10 +98,25 @@ def table_layouts():
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'layouts.tex').write_text('\n'.join(lines) + '\n')
 
+def table_prior():
+    """The production single-size pipeline run once per size (prior tool) against the chain index build, five laptop graphs."""
+    ours = {}
+    for f in ('final.json', 'more.json'):
+        for r in load(f)['runs']: ours[Path(r['graph']).stem] = r['result']
+    bo = {Path(r['graph']).stem: r for r in load('buildonly.json')['runs']}
+    lines = [r'\begin{tabular}{@{}lrrrrrrr@{}}', r'\toprule', r'Graph & Sizes & Prior tool, all sizes (s) & Prior peak RSS (MB) & Prior hierarchies (MB) & \chainidx build (s) & Build peak RSS (MB) & \chainidx (MB) \\', r'\midrule']
+    for g in ['ca-GrQc', 'ca-HepPh', 'com-dblp', 'web-Stanford', 'amazon0302']:
+        p = load(f'prior/prior_{g}.json')
+        if p is None: continue
+        o = ours[g]; b = bo[g]; peak = max(e['peak_rss_bytes'] or 0 for e in p['sizes'])
+        lines.append(f"{tex_escape(g)} & {p['sizes_ok']} & {p['total_wall_s']:.1f} & {peak/1048576:,.0f} & {p['total_prior_bytes']/1048576:.1f} & {(o['ti_ms']+o['build_ms']+o['compact_ms'])/1000:.2f} & {b['peak_rss_bytes']/1048576:,.0f} & {o['bytes_total']/1048576:.2f} \\\\")
+    lines += [r'\bottomrule', r'\end{tabular}']
+    (OUT / 'prior.tex').write_text('\n'.join(lines) + '\n')
+
 def table_selftest():
     rec = load('final.json'); s = rec['selftests']['build']
     (OUT / 'selftest.tex').write_text(f"\\newcommand{{\\selfgraphs}}{{{fmt(s['graphs'])}}}\n\\newcommand{{\\selfcommunities}}{{{fmt(s['community_queries'])}}}\n\\newcommand{{\\selfvalues}}{{{fmt(s['value_checks'])}}}\n\\newcommand{{\\selfmembers}}{{{fmt(s['membership_checks'])}}}\n")
 
 if __name__ == '__main__':
-    table_size(); table_queries(); table_build(); table_layouts(); table_selftest()
+    table_size(); table_queries(); table_build(); table_layouts(); table_prior(); table_selftest()
     print('tables written to', OUT)

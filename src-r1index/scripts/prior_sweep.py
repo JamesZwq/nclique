@@ -3,8 +3,8 @@
 PIVOTER_RUN_ST_V3=1 and PIVOTER_DUMP_HIER) run once per clique size s = 2 .. s_max.  Records per size the CPI build,
 peel and hierarchy-build times, the wall time of the process, the peak RSS, and the number of hierarchy branches
 (rows of the dumped CSV); sums them into the cost of obtaining every size's hierarchy with the existing tool.
-Bytes of the prior representation: HierarchyIndexNode is 32 bytes (id, k_birth, k_death, parent, size_birth,
-size_death) and owner[] is 4 bytes per vertex, per size.
+Bytes of the prior representation: sizeof(HierarchyIndexNode) = 40 (int id, double k_birth, double k_death, int parent,
+int size_birth, int size_death, with alignment) and owner[] is 4 bytes per vertex, per size.
 
 Usage: prior_sweep.py <graph> <s_max> [tag]   -> scripts/prior_<tag>.json, hierarchy CSVs discarded."""
 import json, os, re, subprocess, sys, tempfile, time
@@ -46,7 +46,7 @@ def main():
             if hier.exists(): hier.unlink()
             entry = {'s': s, 'rc': child.returncode, 'build_ms': took(text, 'ST_V3 Build'), 'peel_ms': took(text, 'ST_V3 r=1 (peel)'),
                      'hier_ms': took(text, 'hier r=1'), 'wall_s': wall, 'peak_rss_bytes': peak, 'branches': rows,
-                     'prior_bytes': (rows * 32 + 4 * n) if rows is not None else None}
+                     'prior_bytes': (rows * 40 + 4 * n) if rows is not None else None}
             rec['sizes'].append(entry)
             print(f"s={s:4d} rc={child.returncode} build {entry['build_ms']} ms peel {entry['peel_ms']} ms hier {entry['hier_ms']} ms wall {wall} s branches {rows}", flush=True)
             out.write_text(json.dumps(rec, indent=1) + '\n')

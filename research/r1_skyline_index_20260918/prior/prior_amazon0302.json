@@ -1,0 +1,80 @@
+{
+ "graph": "graphs/amazon0302.edges",
+ "n": 262111,
+ "s_max": 7,
+ "binary": "/Users/zhangwenqian/UNSW/pivoter/build/bin/degeneracy_cliques",
+ "started": "2026-09-20T08:54:36",
+ "sizes": [
+  {
+   "s": 2,
+   "rc": 0,
+   "build_ms": 118.716,
+   "peel_ms": 29.001,
+   "hier_ms": 83.456,
+   "wall_s": 0.6,
+   "peak_rss_bytes": 150945792,
+   "branches": 262111,
+   "prior_bytes": 11532884
+  },
+  {
+   "s": 3,
+   "rc": 0,
+   "build_ms": 163.422,
+   "peel_ms": 60.515,
+   "hier_ms": 119.006,
+   "wall_s": 0.72,
+   "peak_rss_bytes": 145260544,
+   "branches": 245821,
+   "prior_bytes": 10881284
+  },
+  {
+   "s": 4,
+   "rc": 0,
+   "build_ms": 149.241,
+   "peel_ms": 30.578,
+   "hier_ms": 82.91,
+   "wall_s": 0.8,
+   "peak_rss_bytes": 91619328,
+   "branches": 187178,
+   "prior_bytes": 8535564
+  },
+  {
+   "s": 5,
+   "rc": 0,
+   "build_ms": 128.478,
+   "peel_ms": 7.277,
+   "hier_ms": 47.212,
+   "wall_s": 0.67,
+   "peak_rss_bytes": 74170368,
+   "branches": 101075,
+   "prior_bytes": 5091444
+  },
+  {
+   "s": 6,
+   "rc": 0,
+   "build_ms": 102.981,
+   "peel_ms": 1.291,
+   "hier_ms": 13.962,
+   "wall_s": 0.63,
+   "peak_rss_bytes": 62341120,
+   "branches": 28701,
+   "prior_bytes": 2196484
+  },
+  {
+   "s": 7,
+   "rc": 0,
+   "build_ms": 83.763,
+   "peel_ms": 0.385,
+   "hier_ms": 0.819,
+   "wall_s": 0.54,
+   "peak_rss_bytes": 60276736,
+   "branches": 105,
+   "prior_bytes": 1052644
+  }
+ ],
+ "total_wall_s": 3.96,
+ "total_prior_bytes": 39290304,
+ "total_inproc_ms": 1223.013,
+ "sizes_ok": 6,
+ "node_bytes": 40
+}
