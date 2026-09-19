@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/ca-hollywood-2009.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/ca-hollywood-2009.cx
+Command terminated by signal 9
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/ca-hollywood-2009.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/ca-hollywood-2009.cx"
+	User time (seconds): 5574.48
+	System time (seconds): 384.98
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:39:46
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 434932932
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 225927
+	Minor (reclaiming a frame) page faults: 222547999
+	Voluntary context switches: 226247
+	Involuntary context switches: 15324
+	Swaps: 0
+	File system inputs: 4064224
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

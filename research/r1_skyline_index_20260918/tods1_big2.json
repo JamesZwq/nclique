@@ -1,0 +1,127 @@
+{
+ "started": "2026-09-19T12:34:07.505979+00:00",
+ "commands": [
+  [
+   "cmake",
+   "-S",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918",
+   "-B",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build",
+   "-DCMAKE_BUILD_TYPE=Release",
+   "-DSANITIZE=OFF"
+  ],
+  [
+   "cmake",
+   "--build",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build",
+   "-j",
+   "12",
+   "--target",
+   "chain_index_tool"
+  ],
+  [
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool",
+   "--selftest"
+  ],
+  [
+   "cmake",
+   "-S",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918",
+   "-B",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build-asan",
+   "-DCMAKE_BUILD_TYPE=Release",
+   "-DSANITIZE=ON"
+  ],
+  [
+   "cmake",
+   "--build",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build-asan",
+   "-j",
+   "12",
+   "--target",
+   "chain_index_tool"
+  ],
+  [
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build-asan/chain_index_tool",
+   "--selftest"
+  ],
+  [
+   "/usr/bin/time",
+   "-v",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool",
+   "--bench",
+   "/data/wenqianz/graphs/com-lj.edges",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/com-lj.cx"
+  ],
+  [
+   "/usr/bin/time",
+   "-v",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool",
+   "--bench",
+   "/data/wenqianz/graphs/ca-hollywood-2009.edges",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/ca-hollywood-2009.cx"
+  ],
+  [
+   "/usr/bin/time",
+   "-v",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool",
+   "--bench",
+   "/data/wenqianz/graphs/com-orkut.edges",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/com-orkut.cx"
+  ]
+ ],
+ "sources": {
+  "research/r1_skyline_index_20260918/chain_index.hpp": "95bea897c3d127dd842fbc7837b3d4cc45e878f006020ddc51d3eb724c1cf849",
+  "research/r1_skyline_index_20260918/chain_index_tool.cpp": "3ee4df1cc4449feb9f4aeee920beb8f17e7790d439b930a94be6d932d992415f",
+  "research/r1_skyline_index_20260918/count.cpp": "af88645184bcbb32d229cd5891cd076b9e3dab9557fc706c7fe08671e11d2009",
+  "research/r1_skyline_index_20260918/common.hpp": "831a520ccd9d2d556e5bf6c9ff31a9aba2a34849a79a356140092036647ac430",
+  "research/r1_skyline_index_20260918/CMakeLists.txt": "ea2d3b73abe268131512092b810bab7de8194ea1c64de1e19154b8446339487d",
+  "research/r1_skyline_index_20260918/run_final.py": "aee16a371bcec448f096467dff6d1208d0008d072a2ef5c647f5c743b2970110",
+  "research/r1_skyline_index_20260918/CHAINS.md": "0792e1f8bbc2fdcc0ccbfe453cef20171b66008f10a85daa4e32c2fabafda29b",
+  "research/r1_skyline_index_20260918/THEORY.md": "e8423553ed259d2c5a4fc2c52c9500c9941bb18a2dd9087b555d3c44ca7979ef"
+ },
+ "selftests": {
+  "build": {
+   "passed": true,
+   "graphs": 34075,
+   "community_queries": 4844536,
+   "membership_checks": 29215144,
+   "value_checks": 5123368,
+   "ladder_checks": 2772392
+  },
+  "build-asan": {
+   "passed": true,
+   "graphs": 34075,
+   "community_queries": 4844536,
+   "membership_checks": 29215144,
+   "value_checks": 5123368,
+   "ladder_checks": 2772392
+  }
+ },
+ "runs": [
+  {
+   "graph": "/data/wenqianz/graphs/com-lj.edges",
+   "input_sha256": "47ba0214b871c10070ec98b66b7e44e7de412c37a7f063684d54ddda93699344",
+   "error": "std::bad_alloc",
+   "peak_rss_bytes": 358766231552,
+   "wall_s": 2548.18,
+   "host": "radonduo"
+  },
+  {
+   "graph": "/data/wenqianz/graphs/ca-hollywood-2009.edges",
+   "input_sha256": "c880d6e0131c732dfc0842db21dfae7bc0e672be559923dc3957d58eed6eec5e",
+   "error": "failed",
+   "peak_rss_bytes": 445371322368,
+   "wall_s": 5986.0,
+   "host": "radonduo"
+  },
+  {
+   "graph": "/data/wenqianz/graphs/com-orkut.edges",
+   "input_sha256": "496654eb377d9f060426ceb56bf4348336e149a616ffd6a0f7c66dd80a41f882",
+   "error": "failed",
+   "peak_rss_bytes": 10102730752,
+   "wall_s": 275.47,
+   "host": "radonduo"
+  }
+ ]
+}

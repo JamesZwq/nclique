@@ -1,0 +1,5 @@
+START 2026-09-19T12:34:07+00:00 host=radonduo load=7.61 7.83 7.94
+/data/wenqianz/graphs/com-lj.edges FAILED: std::bad_alloc
+/data/wenqianz/graphs/ca-hollywood-2009.edges FAILED: failed
+/data/wenqianz/graphs/com-orkut.edges FAILED: failed
+END 2026-09-19T15:06:27+00:00 rc=0
