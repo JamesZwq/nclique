@@ -1,0 +1,265 @@
+#pragma once
+
+#include "../components.hpp"
+
+namespace orderdp {
+using namespace allsize;
+
+struct Extra {
+    uint64_t heap_initial=0,heap_inserts=0,heap_pops=0,heap_decreases=0,heap_comparisons=0;
+    uint64_t implicit_pops=0,order_reads=0,peak_heap=0,skipped_layers=0;
+};
+
+struct Result {
+    tworoads::Result common;
+    Extra extra;
+};
+
+class Queue {
+    struct Item { Count key; Vertex vertex; };
+    std::vector<Item> heap_;
+    Vertices position_;
+    Extra& work_;
+    bool less(size_t a,size_t b) {
+        ++work_.heap_comparisons;
+        const auto& x=heap_[a]; const auto& y=heap_[b];
+        return x.key<y.key || (x.key==y.key && x.vertex<y.vertex);
+    }
+    void swap_at(size_t a,size_t b) {
+        std::swap(heap_[a],heap_[b]);
+        position_[heap_[a].vertex]=a;
+        position_[heap_[b].vertex]=b;
+    }
+    void up(size_t at) {
+        while (at && less(at,(at-1)/2)) {
+            const size_t parent=(at-1)/2;
+            swap_at(at,parent); at=parent;
+        }
+    }
+    void down(size_t at) {
+        while (2*at+1<heap_.size()) {
+            size_t child=2*at+1;
+            if (child+1<heap_.size() && less(child+1,child)) ++child;
+            if (!less(child,at)) break;
+            swap_at(child,at); at=child;
+        }
+    }
+public:
+    Queue(std::span<const Count> raw,std::span<const Count> upper,bool all,Extra& work)
+        : position_(raw.size(),absent),work_(work) {
+        size_t size=0;
+        for (Vertex v=0; v<raw.size(); ++v) size+=raw[v] && (all || raw[v]<upper[v]);
+        heap_.reserve(size);
+        for (Vertex v=0; v<raw.size(); ++v) if (raw[v] && (all || raw[v]<upper[v])) {
+            position_[v]=heap_.size();
+            heap_.push_back({std::min(raw[v],upper[v]),v});
+        }
+        for (size_t i=heap_.size()/2; i; --i) down(i-1);
+        work_.heap_initial+=heap_.size();
+        work_.peak_heap=std::max<uint64_t>(work_.peak_heap,heap_.size());
+    }
+    bool empty() const { return heap_.empty(); }
+    bool contains(Vertex v) const { return position_[v]!=absent; }
+    Count first_key() const { return empty() ? infinity : heap_.front().key; }
+    Count key(Vertex v) const { return heap_[position_[v]].key; }
+    Vertex pop() {
+        require(!empty(),"pop empty exception queue");
+        const Vertex v=heap_.front().vertex;
+        swap_at(0,heap_.size()-1); heap_.pop_back(); position_[v]=absent;
+        if (!empty()) down(0);
+        ++work_.heap_pops;
+        return v;
+    }
+    void insert(Vertex v,Count value) {
+        require(!contains(v),"duplicate exception insertion");
+        position_[v]=heap_.size(); heap_.push_back({value,v}); up(heap_.size()-1);
+        ++work_.heap_inserts;
+        work_.peak_heap=std::max<uint64_t>(work_.peak_heap,heap_.size());
+    }
+    void decrease(Vertex v,Count value) {
+        require(contains(v) && value<=key(v),"invalid exception decrease");
+        heap_[position_[v]].key=value; up(position_[v]);
+        ++work_.heap_decreases;
+    }
+    size_t bytes() const { return heap_.capacity()*sizeof(Item)+position_.capacity()*sizeof(Vertex); }
+    void audit() {
+        for (size_t i=0; i<heap_.size(); ++i) {
+            require(position_[heap_[i].vertex]==i,"exception handle differs");
+            require(!i || !less(i,(i-1)/2),"exception heap order differs");
+        }
+    }
+};
+
+template<bool Transfer,bool AllHeap=false,bool Audit=false>
+Result solve(const Graph& graph,const Layout& index,const Combinations& choose,
+             const Vertices& ordinary,const std::vector<Count>* expected=nullptr) {
+    const auto start=Clock::now();
+    const Vertex n=graph.n;
+    Result result;
+    auto& data=result.common.data;
+    auto& stats=result.common.stats;
+    auto& work=data.work;
+    auto& extra=result.extra;
+    data.core.assign(static_cast<size_t>(index.maximum+1)*n,0);
+    std::copy(ordinary.begin(),ordinary.end(),data.core.begin()+2*static_cast<size_t>(n));
+    Vertices previous_order(n),next_order;
+    std::iota(previous_order.begin(),previous_order.end(),0);
+    if (!std::is_sorted(ordinary.begin(),ordinary.end()))
+        std::sort(previous_order.begin(),previous_order.end(),[&](Vertex u,Vertex v) {
+            return ordinary[u]<ordinary[v] || (ordinary[u]==ordinary[v] && u<v);
+        });
+    next_order.reserve(n);
+    const Vertex maximum=ordinary.empty() ? 0 : *std::max_element(ordinary.begin(),ordinary.end());
+    struct Cache { Count key=infinity,value=0; };
+    std::vector<Cache> cache(4096);
+    for (int s=3; s<=index.maximum; ++s) {
+        auto upper=std::span<Count>(data.core).subspan(static_cast<size_t>(s)*n,n);
+        const auto previous=std::span<const Count>(data.core).subspan(static_cast<size_t>(s-1)*n,n);
+        std::vector<Count> support(n,0),wh(index.paths.size(),0),wp(index.paths.size(),0);
+        Vertices count(index.paths.size(),0);
+        std::vector<uint8_t> live(n,0),touched(index.paths.size(),0),dead(index.paths.size(),1),dirty(n,0);
+        for (size_t p=0; p<index.paths.size(); ++p) if (index.valid(p,s)) {
+            dead[p]=0;
+            count[p]=index.paths.row(p).size()-index.paths.holds[p];
+            wh[p]=contribution(index,p,false,s,count[p],choose);
+            wp[p]=contribution(index,p,true,s,count[p],choose);
+            for (size_t i=index.paths.off[p]; i<index.paths.off[p+1]; ++i) {
+                ++work.count_reads;
+                checked_add(support[index.paths.vertices[i]],index.pivot(i) ? wp[p] : wh[p]);
+            }
+        }
+        next_order.clear();
+        Vertex remaining=0;
+        const auto bounding=Clock::now();
+        std::fill(cache.begin(),cache.end(),Cache{});
+        for (Vertex v=0; v<n; ++v) {
+            if (!support[v]) { next_order.push_back(v); continue; }
+            live[v]=1; ++remaining;
+            const Count a=Transfer ? previous[v] : ordinary[v];
+            Cache& entry=cache[(a^(a>>17)^(a>>37))&(cache.size()-1)];
+            if (entry.key!=a) {
+                ++stats.cache_misses;
+                if constexpr (Transfer) entry={a,tworoads::integer_upper(a,s-2,maximum,stats)};
+                else entry={a,tworoads::capped_choose(a,s-1,infinity-1,stats)};
+            } else ++stats.cache_hits;
+            upper[v]=entry.value;
+            stats.initial_capped+=upper[v]<support[v];
+            require(upper[v]>0,"zero upper bound for a clique member");
+            if constexpr (Audit) {
+                require(expected && upper[v]>=(*expected)[static_cast<size_t>(s)*n+v],"stream upper below answer");
+                if constexpr (Transfer) {
+                    const Count ord=tworoads::capped_choose(ordinary[v],s-1,infinity-1,stats);
+                    const unsigned __int128 ratio=static_cast<unsigned __int128>(previous[v])*(ordinary[v]-s+2)/(s-1);
+                    require(upper[v]<=ord && upper[v]<=ratio,"Phi is not the combined parent upper");
+                }
+            }
+        }
+        stats.bounds_ms+=ms(bounding);
+        Queue heap(support,upper,AllHeap,extra);
+        Vertices batch,affected,changed;
+        size_t cursor=0;
+        auto stream_key=[&]() -> Count {
+            if constexpr (AllHeap) return infinity;
+            while (cursor<previous_order.size() && !live[previous_order[cursor]]) { ++cursor; ++extra.order_reads; }
+            return cursor<previous_order.size() ? upper[previous_order[cursor]] : infinity;
+        };
+        std::vector<uint64_t> cliques;
+        if constexpr (Audit) cliques=bottomup::clique_masks(graph,s);
+        auto audit=[&] {
+            if constexpr (Audit) {
+                ++stats.audits;
+                uint64_t mask=0;
+                for (Vertex v=0; v<n; ++v) if (live[v]) mask|=uint64_t{1}<<v;
+                std::vector<Count> actual(n,0);
+                for (uint64_t clique : cliques) if ((clique&mask)==clique)
+                    for (Vertex v=0; v<n; ++v) if ((clique>>v)&1) ++actual[v];
+                Count minimum=infinity,last=0;
+                for (Vertex v : previous_order) if (live[v]) {
+                    require(upper[v]>=last,"upper stream not sorted"); last=upper[v];
+                    require(support[v]==actual[v],"stream raw degree differs");
+                    require(heap.contains(v)==(AllHeap || support[v]<upper[v]),"exception membership differs");
+                    if (heap.contains(v)) require(heap.key(v)==std::min(upper[v],support[v]),"stored heap key differs");
+                    minimum=std::min(minimum,std::min(upper[v],support[v]));
+                }
+                for (Vertex v=0; v<n; ++v) if (!live[v])
+                    require(upper[v]==(*expected)[static_cast<size_t>(s)*n+v],"completed stream output differs");
+                require(minimum==std::min(stream_key(),heap.first_key()),"two-stream minimum differs");
+                heap.audit();
+            }
+        };
+        auto memory=[&] {
+            data.state_bytes=std::max(data.state_bytes,(support.capacity()+wh.capacity()+wp.capacity())*sizeof(Count)
+                +(count.capacity()+batch.capacity()+affected.capacity()+changed.capacity()+previous_order.capacity()+next_order.capacity())*sizeof(Vertex)
+                +live.capacity()+touched.capacity()+dead.capacity()+dirty.capacity()+heap.bytes()+cache.capacity()*sizeof(Cache));
+        };
+        audit(); memory();
+        if (!remaining) { extra.skipped_layers=index.maximum-s; break; }
+        Count level=0;
+        while (remaining) {
+            ++stats.batches;
+            level=std::max(level,std::min(stream_key(),heap.first_key()));
+            require(level!=infinity,"unfinished stream without a minimum");
+            batch.clear();
+            while (std::min(stream_key(),heap.first_key())<=level) {
+                Vertex v;
+                if (heap.first_key()<=level) v=heap.pop();
+                else {
+                    require(cursor<previous_order.size(),"exhausted upper stream");
+                    v=previous_order[cursor++]; ++extra.order_reads; ++extra.implicit_pops;
+                    require(!heap.contains(v),"implicit removal still in heap");
+                }
+                require(live[v],"duplicate stream removal");
+                live[v]=0; --remaining;
+                stats.early_removals+=support[v]>level;
+                upper[v]=level;
+                next_order.push_back(v); batch.push_back(v); ++work.events;
+            }
+            if (!remaining) { audit(); memory(); break; }
+            affected.clear(); changed.clear();
+            for (Vertex v : batch) for (Vertex occurrence : index.touching(v)) {
+                ++work.source_reads;
+                const size_t p=index.owner[occurrence];
+                if (dead[p]) continue;
+                if (!touched[p]) { touched[p]=1; affected.push_back(p); }
+                if (index.pivot(occurrence)) { require(count[p]>0,"negative stream optional count"); --count[p]; }
+                else dead[p]=1;
+            }
+            for (Vertex p : affected) {
+                if (count[p]<static_cast<Vertex>(s)-index.paths.holds[p]) dead[p]=1;
+                const Count next_h=dead[p] ? 0 : contribution(index,p,false,s,count[p],choose);
+                const Count next_p=dead[p] ? 0 : contribution(index,p,true,s,count[p],choose);
+                require(next_h<=wh[p] && next_p<=wp[p],"negative stream path loss");
+                const Count loss_h=wh[p]-next_h,loss_p=wp[p]-next_p;
+                wh[p]=next_h; wp[p]=next_p; touched[p]=0;
+                if (!loss_h && !loss_p) continue;
+                for (size_t i=index.paths.off[p]; i<index.paths.off[p+1]; ++i) {
+                    ++work.target_reads;
+                    const Count delta=index.pivot(i) ? loss_p : loss_h;
+                    const Vertex v=index.paths.vertices[i];
+                    if (!delta || !live[v]) continue;
+                    require(support[v]>=delta,"stream raw degree underflow");
+                    support[v]-=delta;
+                    if (!dirty[v]) { dirty[v]=1; changed.push_back(v); }
+                }
+            }
+            for (Vertex v : changed) {
+                dirty[v]=0;
+                const Count next=std::min(upper[v],support[v]);
+                if (heap.contains(v)) {
+                    if (next<heap.key(v)) { heap.decrease(v,next); ++work.updates; }
+                    else ++stats.unchanged_keys;
+                } else if (support[v]<upper[v]) { heap.insert(v,next); ++work.updates; }
+                else ++stats.unchanged_keys;
+            }
+            audit(); memory();
+        }
+        require(next_order.size()==n,"incomplete next-layer order");
+        if constexpr (Audit)
+            for (size_t i=1; i<next_order.size(); ++i)
+                require(upper[next_order[i-1]]<=upper[next_order[i]],"next core order differs");
+        if constexpr (Transfer) previous_order.swap(next_order);
+    }
+    data.peel_ms=ms(start);
+    return result;
+}
+}
