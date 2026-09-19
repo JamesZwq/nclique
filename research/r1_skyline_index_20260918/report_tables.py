@@ -87,6 +87,19 @@ def final():
     for g, r in data.items():
         print(f"| {g} | {r['member_ns']:.1f} | {r['value_ns']:.1f} | {fmt(r['ladder_ns'])} | {r['ladder_steps']:.2f} | {fmt(r['slice_ladder_ns'])} | {r['max_depth']} |")
     print()
+    if all('full_bytes_total' in r for r in data.values()):
+        print('### Top encoding ablation, same process: compact form with tops as T against packed tops (ns per query)')
+        print('| Graph | bytes T tops | bytes packed | climb own T / packed | climb half T / packed | climb root T / packed | locate own T / packed | member T / packed | value T / packed | ladder T / packed |')
+        print('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+        for g, r in data.items():
+            print(f"| {g} | {fmt(r['full_bytes_total'])} | {fmt(r['bytes_total'])} | {r['full_climb_own_ns']:.1f} / {r['climb_own_ns']:.1f} | {r['full_climb_half_ns']:.1f} / {r['climb_half_ns']:.1f} | {r['full_climb_root_ns']:.1f} / {r['climb_root_ns']:.1f} | {r['full_ptr_own_ns']:.1f} / {r['ptr_own_ns']:.1f} | {r['full_member_ns']:.1f} / {r['member_ns']:.1f} | {r['full_value_ns']:.1f} / {r['value_ns']:.1f} | {fmt(r['full_ladder_ns'])} / {fmt(r['ladder_ns'])} |")
+        print()
+        print('### Climb only (own node lookup + climb), ns per query: build form (T tops, chain-id arrays) against the loaded packed index')
+        print('| Graph | own build / packed | half build / packed | root build / packed |')
+        print('|---|---:|---:|---:|')
+        for g, r in data.items():
+            print(f"| {g} | {r['slice_climb_own_ns']:.1f} / {r['climb_own_ns']:.1f} | {r['slice_climb_half_ns']:.1f} / {r['climb_half_ns']:.1f} | {r['slice_climb_root_ns']:.1f} / {r['climb_root_ns']:.1f} |")
+        print()
     print('### Explicit listing cost per output vertex (ns)')
     print('| Graph | final module (own) | per-vertex S trees (own) | final module (root) | per-vertex S trees (root) |')
     print('|---|---:|---:|---:|---:|')
