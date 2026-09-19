@@ -13,8 +13,11 @@ located in 3.5-59 ns and listed at 0.04-0.28 ns per vertex on all but the
 most fragmented graphs (faster than a memcpy of the vertex list on 13 of
 15 measured points); values 6-24 ns; build 15 ms
 (GrQc) to 34 s (pokec) and 189 s (dblp-coauthor, 512-bit counts) with
-157 MB (dblp) to 8.8 GB (dblp-coauthor) peak memory. com-lj and com-orkut
-exceed the solver's 32-bit member ids (see RESULTS_FINAL.md Section 11).
+157 MB (dblp) to 8.8 GB (dblp-coauthor) peak memory. On the servers 29
+distinct graphs in total: 1.3x-48.7x, median 7.0x (web-uk-2005 48.7x,
+ca-coauthors-dblp 45.8x, web-NotreDame 24.7x). com-lj, hollywood and orkut
+exceed the solver's memory (clique trees of more than 350-435 GB; see
+RESULTS_FINAL.md Section 15).
 
 ## What the index is
 
@@ -51,6 +54,7 @@ exceed the solver's 32-bit member ids (see RESULTS_FINAL.md Section 11).
 | `RESULTS_FINAL.md` | the 13-section report of the final module; Section 14 = build memory and per-size widths |
 | `final.json`, `final-logs/` | evidence of the current module (13 graphs, latencies, bytes, build) |
 | `more.json`, `more-logs/` | the same for four more graphs (ca-HepTh, email-Eu-core, com-amazon, dblp-coauthor) |
+| `tods1.json`, `tods2.json`, `tods1_big*.json` and their `-logs/` | server runs (20 + 7 graphs; the big-graph attempts), launchers `tods1_run.sh`, `tods2_run.sh`, `tods1_big*.sh` |
 | `buildonly.json`, `buildonly-logs/` | build phases and resident memory of the current module |
 | `stages/` | stage 1 (counting gate) and stage 2 (four layouts: per-vertex S trees, twins, chains, aligned; skyline dedup): `IMPLEMENTATION*.md`, `RESULTS.md`, `RESULTS_INDEX.md`, `RESULTS_CHAINS.md`, `index.cpp`, `chains.cpp`, `verify_theory.py`, `run.py`, `run_index.py`, `counts.json`, `index*.json` and their logs |
 | `archive/` | superseded evidence of earlier module versions: `final_v1` (five graphs), `final_v2` (13, scalar-tail fill), `final_v3` (13, branchless fill, fixed-width values), `index_aligned_v1` |
@@ -107,7 +111,6 @@ per vertex) and is unnecessary if the graph is stored in that order.
 
 ## Status
 
-Complete locally. Open: runs on the servers (tods1/tods2) when they are
-back; r >= 2 is closed (CHAINS.md Section 10: the
+Complete; measured on the laptop and both servers. r >= 2 is closed (CHAINS.md Section 10: the
 paper's size forest already is the chain structure). No production code
 (`src/`) or paper text was changed.

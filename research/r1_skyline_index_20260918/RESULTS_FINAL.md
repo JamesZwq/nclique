@@ -745,10 +745,13 @@ solver materialises every row of the clique tree, and com-lj's tree does
 not fit. That is the solver's design boundary, recorded for this line
 earlier as "com-lj is a fundamental clique explosion"; the chain index
 itself would be small (the graphs with the largest cliques give the
-largest ratios). hollywood and orkut are expected to end the same way
-(orkut has 3.4x the edges of com-lj); hollywood would additionally need
-core values up to about 10^660 (C(2208, 1104)), beyond 512-bit integers
-and beyond double. Double counts inside the peel are not an option: the
+largest ratios). ca-hollywood-2009 ended the same way: 1 h 40 min, 435 GB
+resident, killed by the kernel's out-of-memory handler. com-orkut (3.4x
+the edges of com-lj) was stopped by hand after 4.5 minutes so as not to
+take the shared machine's memory for a predictable failure. hollywood
+would additionally need core values up to about 10^660 (C(2208, 1104)),
+beyond 512-bit integers and beyond double. Records: `tods1_big.json`
+(row-id overflow), `tods1_big2.json` (memory). Double counts inside the peel are not an option: the
 peel subtracts exact losses from supports that are sums over many
 leaves, and in double the small-leaf terms vanish, merging levels that
 are distinct; only the stored index values are double.
