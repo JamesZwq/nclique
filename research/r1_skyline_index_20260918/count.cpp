@@ -60,8 +60,8 @@ template<class T> static Tree<T> make_tree_row(const Graph& g,const terminal::In
         };
         for(size_t z=at;z<end;++z) {
             Vertex v=order[z];active[v]=1;touch(v);
-            for(Vertex code:index.touching(v)) {
-                Vertex p=code>>2,role=code&3;const auto& row=index.rows[p];if(!row.valid(s))continue;
+            for(uint64_t code:index.touching(v)) {
+                const size_t p=code>>2;const unsigned role=code&3;const auto& row=index.rows[p];if(!row.valid(s))continue;
                 if(role==0)++ah[p]; else if(role==1)++aq[p];
                 if(!live[p] && ah[p]==row.holds() && row.holds()+aq[p]>=static_cast<Vertex>(s)) {
                     live[p]=1;rep[p]=v;

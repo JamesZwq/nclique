@@ -51,7 +51,7 @@ static void coverage_and_residuals(const Graph& graph,const terminal::Index& ind
             for(uint64_t mask:wanted)if((mask&live)==mask)
                 for(Vertex v=0;v<n;++v)if((mask>>v)&1)++actual[v];
             terminal::Metrics metrics;
-            for(Vertex p=0;p<index.rows.size();++p) {
+            for(terminal::RowId p=0;p<index.rows.size();++p) {
                 const auto& row=index.rows[p];if(!row.valid(s))continue;
                 bool holds=true;Vertex q=0,z=0;
                 for(terminal::Offset i=row.begin;i<row.end;++i) {

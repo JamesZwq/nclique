@@ -5,7 +5,8 @@ template<class Count> class ReplayPlan {
     const Choose& choose_;
     orderreplay::Metrics& metrics_;
     std::vector<Count> value_;
-    Vertices top_,ranks_,ordered_,first_,before_,active_rows_,active_order_;
+    Vertices top_,ranks_,ordered_,first_,before_,active_order_;
+    std::vector<RowId> active_rows_;   // row ids may exceed 2^32
     bool valid_=false;
 
     Count coefficient(int q,int r) {++metrics_.coefficient_calls;return choose_(q,r);}
@@ -17,7 +18,7 @@ template<class Count> class ReplayPlan {
     void add(Vertex v,Count value) {
         if(value){Base::checked_add(value_[v],value);++metrics_.nonzero_additions;}
     }
-    Count common(Vertex p,Vertex q,Vertex z,int r) {
+    Count common(RowId p,Vertex q,Vertex z,int r) {
         Count value=product(coefficient(q,r-1),z);
         if(index_.zero_choice[index_.rows[p].group])Base::checked_add(value,coefficient(q,r));
         return value;
@@ -25,13 +26,13 @@ template<class Count> class ReplayPlan {
     void memory() {
         metrics_.scratch_bytes=value_.capacity()*sizeof(Count)
             +(top_.capacity()+ranks_.capacity()+ordered_.capacity()+first_.capacity()+before_.capacity()
-              +active_rows_.capacity()+active_order_.capacity())*sizeof(Vertex);
+              +active_order_.capacity())*sizeof(Vertex)+active_rows_.capacity()*sizeof(RowId);
     }
     void compile(const Vertices& order) {
         const auto begin=Clock::now();
         for(Vertex i=0;i<order.size();++i)ranks_[order[i]]=i;
         ordered_.resize(index_.members.size());first_.resize(index_.rows.size());before_.resize(index_.rows.size());
-        for(Vertex p:active_rows_) {
+        for(RowId p:active_rows_) {
             const auto& row=index_.rows[p];Vertex first=index_.members[row.begin];
             for(Offset i=row.begin;i<row.hold_end;++i) {
                 ++metrics_.compile_reads;
@@ -49,7 +50,7 @@ template<class Count> class ReplayPlan {
         valid_=true;++metrics_.compilations;metrics_.compile_ms+=ms(begin);memory();
     }
     void forward_counts(int s) {
-        for(Vertex p:active_rows_) {
+        for(RowId p:active_rows_) {
             const auto& row=index_.rows[p];if(!row.valid(s))continue;
             const int r=s-static_cast<int>(row.holds());
             if(row.group==absent) {
@@ -80,7 +81,7 @@ template<class Count> class ReplayPlan {
         }
     }
     void certificate(int s,std::span<const Count> upper) {
-        for(Vertex p:active_rows_) {
+        for(RowId p:active_rows_) {
             const auto& row=index_.rows[p];if(!row.valid(s))continue;
             const int r=s-static_cast<int>(row.holds());const Count level=upper[first_[p]];
             if(row.group==absent) {
@@ -148,7 +149,7 @@ public:
     size_t bytes() const{return metrics_.scratch_bytes;}
     const std::vector<Count>& counts() const{return value_;}
     void forward(int s,const Vertices& order,std::span<Count> upper) {
-        std::erase_if(active_rows_,[&](Vertex p){return index_.rows[p].hi<static_cast<Vertex>(s);});
+        std::erase_if(active_rows_,[&](RowId p){return index_.rows[p].hi<static_cast<Vertex>(s);});
         if(!valid_) {
             active_order_.clear();std::fill(value_.begin(),value_.end(),0);
             for(Vertex v:order)if(top_[v]>=static_cast<Vertex>(s))active_order_.push_back(v);

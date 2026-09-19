@@ -40,7 +40,7 @@ static terminal::Index build_terminal_index(const Input& in) {
     terminal::Index ti(S); terminal::build(in.graph, ti, 0); ti.prepare(in.graph.n); return ti;
 }
 static uint64_t terminal_index_bytes(const terminal::Index& ti) {
-    return ti.rows.size() * sizeof(terminal::Row) + 4ull * (ti.members.size() + ti.reverse.size() + ti.group_row.size()) + 8ull * ti.reverse_off.size() + ti.zero_choice.size();
+    return ti.rows.size() * sizeof(terminal::Row) + 4ull * ti.members.size() + 8ull * (ti.reverse.size() + ti.group_row.size()) + 8ull * ti.reverse_off.size() + ti.zero_choice.size();
 }
 // Upper bound on every count the solver accumulates, from the rows themselves: a row whose free part (pivots and
 // choices) has q members holds at most C(q, floor(q/2)) cliques of any one size through any member, so a member's

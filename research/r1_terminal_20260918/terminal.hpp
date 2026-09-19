@@ -13,6 +13,7 @@ struct BuildWork {
 };
 
 using Offset = uint64_t;   // position in `members`; a graph's clique tree can hold more than 2^32 incidences (com-lj, hollywood)
+using RowId = uint64_t;    // row (leaf) index; com-lj has more than 2^30 rows.  Reverse codes pack (row << 2) | role in 64 bits.
 struct Row {
     Offset begin, hold_end, pivot_end, end;
     Vertex group, lo, hi;
@@ -23,7 +24,9 @@ struct Row {
 
 struct Index {
     std::vector<Row> rows;
-    Vertices members, reverse, group_row;
+    Vertices members;
+    std::vector<uint64_t> reverse;        // per vertex: (row << 2) | role, role 0 hold, 1 pivot, 2 choice
+    std::vector<RowId> group_row;
     std::vector<size_t> reverse_off;
     std::vector<uint8_t> zero_choice;
     BuildWork work;
@@ -32,7 +35,7 @@ struct Index {
 
     void append(const Vertices& h,const Vertices& q,const Vertices& x={},bool zero=false) {
         require(!h.empty(),"terminal requires a hold");
-        require(rows.size()<(uint64_t{1}<<30),"packed row ID overflow");
+        require(group_row.size()<absent,"group ID overflow");
         const Offset begin=members.size(),mid=begin+h.size(),last=mid+q.size();
         const Vertex low=std::max<size_t>(2,h.size()+(!x.empty() && !zero));
         const Vertex high=std::min<size_t>(maximum,h.size()+q.size()+!x.empty());
@@ -55,20 +58,20 @@ struct Index {
         std::partial_sum(reverse_off.begin(),reverse_off.end(),reverse_off.begin());
         reverse.resize(members.size());
         auto cursor=reverse_off;
-        for(Vertex p=0;p<rows.size();++p) {
+        for(RowId p=0;p<rows.size();++p) {
             const auto& row=rows[p];
             for(Offset i=row.begin;i<row.end;++i) {
-                const Vertex role=i<row.hold_end?0:(i<row.pivot_end?1:2);
+                const uint64_t role=i<row.hold_end?0:(i<row.pivot_end?1:2);
                 reverse[cursor[members[i]]++]=(p<<2)|role;
             }
         }
     }
-    std::span<const Vertex> touching(Vertex v) const {
-        return std::span<const Vertex>(reverse).subspan(reverse_off[v],reverse_off[v+1]-reverse_off[v]);
+    std::span<const uint64_t> touching(Vertex v) const {
+        return std::span<const uint64_t>(reverse).subspan(reverse_off[v],reverse_off[v+1]-reverse_off[v]);
     }
     size_t bytes() const {
         return rows.capacity()*sizeof(Row)
-            +(members.capacity()+reverse.capacity()+group_row.capacity())*sizeof(Vertex)
+            +members.capacity()*sizeof(Vertex)+(reverse.capacity()+group_row.capacity())*sizeof(uint64_t)
             +reverse_off.capacity()*sizeof(size_t)+zero_choice.capacity();
     }
 };
@@ -180,7 +183,7 @@ template<class Count> struct Solver {
         if(value>=Base::infinity)throw std::overflow_error("factored product overflow");
         return static_cast<Count>(value);
     }
-    static Value coefficients(const Index& index,Vertex p,int s,Vertex q,Vertex z,const Choose& choose,
+    static Value coefficients(const Index& index,RowId p,int s,Vertex q,Vertex z,const Choose& choose,
                               Metrics& metrics) {
         const Row& row=index.rows[p];const int r=s-static_cast<int>(row.holds());
         Value value;
@@ -246,7 +249,7 @@ template<class Count> struct Solver {
             Vertices count(index.rows.size(),0),choices(index.group_row.size(),0);
             std::vector<Offset> choice_off(index.group_row.size(),0);Vertices choice_size(index.group_row.size(),0),scratch;
             std::vector<uint8_t> live(n,0),touched(index.rows.size(),0),dead(index.rows.size(),1),dirty(n,0);
-            for(Vertex p=0;p<index.rows.size();++p) {
+            for(RowId p=0;p<index.rows.size();++p) {
                 const auto& row=index.rows[p];if(!row.valid(s))continue;
                 dead[p]=0;count[p]=row.pivots();
                 const Vertex z=row.end-row.pivot_end;
@@ -281,7 +284,7 @@ template<class Count> struct Solver {
             }
             stats.bounds_ms+=ms(bounds);
             Queue heap(support,upper,false,extra);
-            Vertices batch,affected,changed;size_t cursor=0;
+            Vertices batch,changed;std::vector<RowId> affected;size_t cursor=0;
             auto stream_key=[&]() -> Count {
                 while(cursor<order.size() && !live[order[cursor]]){++cursor;++extra.order_reads;}
                 return cursor<order.size()?upper[order[cursor]]:Base::infinity;
@@ -329,8 +332,8 @@ template<class Count> struct Solver {
                 }
                 if(!remaining){audit();memory();break;}
                 affected.clear();changed.clear();
-                for(Vertex v:batch)for(Vertex code:index.touching(v)) {
-                    ++work.source_reads;const Vertex p=code>>2,role=code&3;
+                for(Vertex v:batch)for(uint64_t code:index.touching(v)) {
+                    ++work.source_reads;const RowId p=code>>2;const unsigned role=code&3;
                     if(dead[p])continue;
                     if(!touched[p]){touched[p]=1;affected.push_back(p);}
                     if(role==0)dead[p]=1;
@@ -347,7 +350,7 @@ template<class Count> struct Solver {
                     work.target_reads+=end-begin;
                     for(Offset i=begin;i<end;++i)subtract(index.members[i],loss);
                 };
-                for(Vertex p:affected) {
+                for(RowId p:affected) {
                     ++metrics.affected_rows;const auto& row=index.rows[p];const Vertex g=row.group;
                     const Value value=dead[p]?Value{}:coefficients(index,p,s,count[p],g==absent?0:choices[g],choose,metrics);
                     require(value.h<=wh[p] && value.q<=wp[p],"negative factored common loss");
