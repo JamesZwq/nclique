@@ -200,8 +200,9 @@ template<class T> static void selftest_graph(const Graph& g, const std::string& 
         for (uint32_t v = 0; v < n; ++v) { const T kv = core[static_cast<size_t>(2) * n + v]; for (T k = 1; k <= kv; ++k) { ix.community_ranges(perm[v], 2, k, ranges); require(ranges.size() == 2, "size-2 community is one range"); } }
     };
     check(built);                                            // build form (chain ids)
-    const uint64_t pairs = built.pairs_total(); built.compact_runs(); require(built.compact && built.runs_total() <= pairs, "compaction");
-    check(built);                                            // compact form (runs)
+    { auto full = built; full.compact_runs(false); require(full.compact && !full.packed_tops, "compaction (full tops)"); check(full); }   // compact form, tops as T
+    const uint64_t pairs = built.pairs_total(); built.compact_runs(true); require(built.compact && built.packed_tops && built.runs_total() <= pairs, "compaction");
+    check(built);                                            // compact form (runs, packed tops)
     built.save(tmp); auto ix = ChainIndex<T>::load(tmp);
     require(ix.n == built.n && ix.chains == built.chains && ix.max_size == built.max_size && ix.bytes_total() == built.bytes_total() && ix.runs_total() == built.runs_total(), "round trip header");
     check(ix);                                               // loaded
@@ -226,8 +227,8 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
     std::vector<uint32_t> perm; BuildTimes bt; auto t0 = Clock::now(); auto built = build_chain_index<T>(in, ti, perm, bt); const double build_ms = ms(t0);
     const uint64_t slice_bytes_layers = built.bytes_layers(), slice_bytes_total = built.bytes_total(), pairs = built.pairs_total();
     const uint32_t n = built.n; std::vector<uint32_t> active; for (uint32_t v = 0; v < n; ++v) if (built.omega[built.chain_of(v)] >= 2) active.push_back(v);
-    const ChainIndex<T>* px = &built;   // the index under measurement: build form first, then the loaded compact form
-    const ChainIndex<T>& ix = *px;
+    const ChainIndex<T>* px = &built;   // the index under measurement: build form, then the compact form with T tops, then the loaded packed form
+#define ix (*px)
     struct Q { uint32_t v, u; int s; T k; }; std::mt19937_64 rng(20260918);
     auto draw = [&](int regime, int count) { std::vector<Q> qs; for (int i = 0; i < count; ++i) { const uint32_t v = active[rng() % active.size()]; const uint32_t c = ix.chain_of(v);
         const int s = 2 + static_cast<int>(rng() % static_cast<uint64_t>(ix.omega[c] - 1)); const T x = ix.value(v, s);
@@ -236,6 +237,10 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
     const std::vector<Q> mq = [&] { std::vector<Q> m; for (int r = 0; r < 3; ++r) { auto q = draw(r, 6667); m.insert(m.end(), q.begin(), q.end()); } return m; }();
     std::vector<uint32_t> ranges; ranges.reserve(1 << 20); std::vector<uint32_t> ids(static_cast<size_t>(n) + ChainIndex<T>::kSlack); std::vector<std::pair<T, uint64_t>> lad;   // ids: caller-owned output buffer with slack
     auto median5 = [](std::array<double, 5> t) { std::sort(t.begin(), t.end()); return t[2]; };
+    auto time_climb = [&](const std::vector<Q>& qs) { std::array<double, 5> ts{}; uint64_t z = 0;   // own node lookup + climb only (the part the top encoding touches)
+        for (int pass = 0; pass < 6; ++pass) { const auto st = Clock::now(); for (const auto& q : qs) { const uint32_t x = ix.own_node(ix.chain_of(q.v), q.s); z += ix.climb(q.s, x, q.k); }
+            const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / qs.size(); if (pass) ts[pass - 1] = el; }
+        return std::pair<double, uint64_t>{median5(ts), z}; };
     auto time_ptr = [&](const std::vector<Q>& qs) { std::array<double, 5> ts{}; uint64_t z = 0;   // compact form: climb + pointer, no copy
         for (int pass = 0; pass < 6; ++pass) { const auto st = Clock::now(); for (const auto& q : qs) { typename ChainIndex<T>::Runs r; uint32_t nd = 0; ix.community_runs(q.v, q.s, q.k, r, nd); z += r.nmid + r.lo0 + nd; }
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / qs.size(); if (pass) ts[pass - 1] = el; }
@@ -263,9 +268,15 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
         return std::pair<double, double>{median5(ts), double(steps) / own.size()}; };
     // build form (chain-id DFS arrays): the ablation
     const auto sro = time_ranges(own, false), srh = time_ranges(half, false), srr = time_ranges(root, false), seo = time_ranges(own, true), seh = time_ranges(half, true), ser = time_ranges(root, true);
-    const auto sll = time_ladder();
-    // compact form: convert, save, load, measure on the loaded index
-    t0 = Clock::now(); built.compact_runs(); const double compact_ms = ms(t0);
+    const auto sll = time_ladder(); const auto sco = time_climb(own), sch = time_climb(half), scr = time_climb(root);
+    // compact form with tops kept as T (isolates the top encoding), measured on a copy
+    ChainIndex<T> full = built; full.compact_runs(false); px = &full;
+    const auto fro = time_ranges(own, false), frh = time_ranges(half, false), frr = time_ranges(root, false), feo = time_ranges(own, true);
+    const auto fco = time_climb(own), fch = time_climb(half), fcr = time_climb(root); const auto fpo = time_ptr(own), fph = time_ptr(half), fpr = time_ptr(root);
+    const auto fmm = time_member(); const auto fvv = time_value(); const auto fll = time_ladder(); const uint64_t full_bytes_total = full.bytes_total(), full_bytes_layers = full.bytes_layers();
+    full = ChainIndex<T>{}; px = &built;
+    // compact form with packed tops (the file format): convert, save, load, measure on the loaded index
+    t0 = Clock::now(); built.compact_runs(true); const double compact_ms = ms(t0);
     t0 = Clock::now(); built.save(outpath); const double save_ms = ms(t0);
     { std::ofstream pf(outpath + ".perm", std::ios::binary); pf.write(reinterpret_cast<const char*>(perm.data()), perm.size() * 4); }
     t0 = Clock::now(); auto loaded = ChainIndex<T>::load(outpath); const double load_ms = ms(t0);
@@ -273,13 +284,16 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
     const uint64_t file_bytes = std::filesystem::file_size(outpath); px = &loaded;
     const auto ro = time_ranges(own, false), rh = time_ranges(half, false), rr = time_ranges(root, false), eo = time_ranges(own, true), eh = time_ranges(half, true), er = time_ranges(root, true);
     require(ro.vertices == sro.vertices && rh.vertices == srh.vertices && rr.vertices == srr.vertices && eo.vertices == seo.vertices, "forms disagree on output size");
-    const auto po = time_ptr(own), ph = time_ptr(half), pr = time_ptr(root);
+    const auto po = time_ptr(own), ph = time_ptr(half), pr = time_ptr(root); const auto co = time_climb(own), ch = time_climb(half), cr = time_climb(root);
+    require(co.second == sco.second && ch.second == sch.second && cr.second == scr.second, "climbs differ between forms");
     const auto mm = time_member(); const auto vv = time_value(); const auto ll = time_ladder();
+#undef ix
+    const ChainIndex<T>& ix = loaded;
     // per-vertex S trees with values, stage-2 `vertices` accounting (index.cpp): nodes (W + 12) each, 8 bytes per (vertex, size) pair
     // (DFS array entry + own-node pointer), 4 (n + 1) offsets, 2 n omega/sigma, 8 (n + 1) residue offsets, W per residue cell
     uint64_t pairs_v = 0, residue_v = 0; for (uint32_t c = 0; c < ix.chains; ++c) { const uint64_t sz = ix.start_pos[c + 1] - ix.start_pos[c]; if (ix.omega[c] >= 2) { pairs_v += sz * (ix.omega[c] - 1); residue_v += sz * (ix.sigma[c] - 2); } }
     const uint64_t baseline_vertex_bytes = ix.node_count() * (chainindex::Traits<T>::W + 12) + 8ull * pairs_v + 4ull * (n + 1) + 2ull * n + 8ull * (n + 1) + chainindex::Traits<T>::W * residue_v;
-    uint64_t depth_max = 0; for (const auto& L : ix.layers) { std::vector<uint32_t> d(L.top.size(), 0); for (uint32_t x = 0; x < L.top.size(); ++x) { if (L.parent[x] != kNone) d[x] = d[L.parent[x]] + 1; depth_max = std::max<uint64_t>(depth_max, d[x]); } }
+    uint64_t depth_max = 0; for (const auto& L : ix.layers) { std::vector<uint32_t> d(L.size.size(), 0); for (uint32_t x = 0; x < L.size.size(); ++x) { if (L.parent[x] != kNone) d[x] = d[L.parent[x]] + 1; depth_max = std::max<uint64_t>(depth_max, d[x]); } }
     std::cout << std::fixed << std::setprecision(3) << "{\"passed\":true,\"n\":" << n << ",\"m\":" << in.graph.m << ",\"s_max\":" << ix.max_size << ",\"count_bits\":" << bits << ",\"chains\":" << ix.chains
         << ",\"canonical_nodes\":" << ix.node_count() << ",\"max_depth\":" << depth_max
         << ",\"pairs_total\":" << pairs << ",\"runs_total\":" << ix.runs_total() << ",\"vertex_pairs\":" << pairs_v << ",\"vertex_residue_cells\":" << residue_v << ",\"baseline_vertex_bytes\":" << baseline_vertex_bytes
@@ -290,6 +304,13 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
         << ",\"slice_range_own_ns\":" << sro.ns << ",\"slice_range_half_ns\":" << srh.ns << ",\"slice_range_root_ns\":" << srr.ns
         << ",\"slice_explicit_own_ns\":" << seo.ns << ",\"slice_explicit_half_ns\":" << seh.ns << ",\"slice_explicit_root_ns\":" << ser.ns << ",\"slice_ladder_ns\":" << sll.first
         << ",\"slice_own_ranges\":" << sro.ranges << ",\"slice_half_ranges\":" << srh.ranges << ",\"slice_root_ranges\":" << srr.ranges
+        << ",\"full_bytes_total\":" << full_bytes_total << ",\"full_bytes_layers\":" << full_bytes_layers
+        << ",\"full_range_own_ns\":" << fro.ns << ",\"full_range_half_ns\":" << frh.ns << ",\"full_range_root_ns\":" << frr.ns << ",\"full_explicit_own_ns\":" << feo.ns
+        << ",\"full_climb_own_ns\":" << fco.first << ",\"full_climb_half_ns\":" << fch.first << ",\"full_climb_root_ns\":" << fcr.first
+        << ",\"full_ptr_own_ns\":" << fpo.first << ",\"full_ptr_half_ns\":" << fph.first << ",\"full_ptr_root_ns\":" << fpr.first
+        << ",\"full_member_ns\":" << fmm.first << ",\"full_value_ns\":" << fvv.first << ",\"full_ladder_ns\":" << fll.first
+        << ",\"climb_own_ns\":" << co.first << ",\"climb_half_ns\":" << ch.first << ",\"climb_root_ns\":" << cr.first
+        << ",\"slice_climb_own_ns\":" << sco.first << ",\"slice_climb_half_ns\":" << sch.first << ",\"slice_climb_root_ns\":" << scr.first
         << ",\"ptr_own_ns\":" << po.first << ",\"ptr_half_ns\":" << ph.first << ",\"ptr_root_ns\":" << pr.first << ",\"ptr_checksum\":" << (po.second ^ ph.second ^ pr.second)
         << ",\"range_own_ns\":" << ro.ns << ",\"range_half_ns\":" << rh.ns << ",\"range_root_ns\":" << rr.ns
         << ",\"explicit_own_ns\":" << eo.ns << ",\"explicit_half_ns\":" << eh.ns << ",\"explicit_root_ns\":" << er.ns
