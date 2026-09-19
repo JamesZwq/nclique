@@ -49,6 +49,8 @@ def final():
     if rec is None:
         print('(final.json not present yet)'); return
     data = by_graph(rec); vert = by_graph(load('stages/index_vertices.json'))
+    more = load('more.json')
+    if more is not None: data.update(by_graph(more))   # the four graphs added on 2026-09-19 (ca-HepTh, email-Eu-core, com-amazon, dblp-coauthor)
     def vbytes(g, r): return r.get('baseline_vertex_bytes', vert[g]['base_with_d'] if g in vert else 0)
     print('### Final module: size')
     print('| Graph | n | s_max | W bits | chains | n / chains | canonical nodes | chains / nodes | (chain,s) pairs | runs | map B | chains B | layers B | total B | file B | perm B | build form total B | per-vertex S trees B | ratio | ratio with perm |')
@@ -59,6 +61,7 @@ def final():
     print()
     def wall_rss(g):
         p = HERE / 'final-logs' / f'{g}.log'
+        if not p.exists(): p = HERE / 'more-logs' / f'{g}.log'
         if not p.exists(): return '-', '-'
         wall = rss = '-'
         for line in p.read_text().splitlines():
@@ -107,7 +110,10 @@ def final():
         if g not in vert: print(f"| {g} | {r['explicit_own_ns']/r['own_output']:.3f} | - | {r['explicit_root_ns']/r['root_output']:.3f} | - |"); continue
         print(f"| {g} | {r['explicit_own_ns']/r['own_output']:.3f} | {vert[g]['own_base_ns']/vert[g]['own_output']:.3f} | {r['explicit_root_ns']/r['root_output']:.3f} | {vert[g]['root_base_ns']/vert[g]['root_output']:.3f} |")
     print()
-    print('selftests:', json.dumps(rec['selftests']))
+    print('selftests (final.json):', json.dumps(rec['selftests']))
+    if more is not None: print('selftests (more.json):', json.dumps(more['selftests']))
+    ratios = sorted(vbytes(g, r) / r['bytes_total'] for g, r in data.items())
+    print(f"byte ratio over {len(ratios)} graphs: min {ratios[0]:.2f}x, median {ratios[len(ratios)//2]:.2f}x, max {ratios[-1]:.2f}x")
 
 if __name__ == '__main__':
     layouts(); final()
