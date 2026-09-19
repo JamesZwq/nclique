@@ -474,3 +474,85 @@ role of the chain structure (CHAINS.md Section 10).
    test cases.
 6. r >= 2 is closed (CHAINS.md Section 10 verdict): no separate chain
    index; the unifying remark belongs in the paper's discussion.
+
+## 14. Build Memory And Per-Size Widths (added later on 2026-09-19)
+
+Two changes after the 13-graph run above, both in `chain_index_tool.cpp`
+and `chain_index.hpp`; the solver gained an optional row sink
+(`research/r1_terminal_20260918/terminal.hpp`, default path unchanged,
+its own selftest still passes). Evidence: `buildonly.json`,
+`buildonly-logs/` (one `--build-only` process per graph, no query passes).
+
+**Build memory.** The all-size solver now streams one core row at a time
+(a two-row window instead of the s_max x n matrix), each row becomes its
+canonical tree immediately, and chains are refined size by size in a
+prefix trie (one node per distinct own-node prefix) instead of keeping
+one own-node array per size; the count width is derived from the
+solver's own rows (with an overflow retry) instead of the joint clique
+path index that the earlier tool built only for that purpose (1.7 GB and
+about 40 s on pokec). The produced index is byte-identical (GrQc, HepPh
+sha256 against `final.json`; every selftest form passes). What remains
+is the solver's shared row index (`ti`), the graph, and O(n + pairs)
+working arrays.
+
+| Graph | row index ms | solve ms | trees + trie ms | chains ms | layout ms | compact ms | total ms | total before ms | peak RSS MB after | before | row index MB |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| ca-GrQc | 2 | 2 | 4 | 0 | 0 | 0.0 | 8 | 14 | 5 | 14 | 0 |
+| ca-HepPh | 71 | 168 | 138 | 0 | 2 | 0.5 | 379 | 503 | 29 | 178 | 3 |
+| com-dblp | 334 | 253 | 505 | 2 | 5 | 0.4 | 1,100 | 1,371 | 157 | 899 | 28 |
+| web-Stanford | 2,024 | 1,126 | 1,927 | 4 | 15 | 2.2 | 5,098 | 4,866 | 299 | 869 | 115 |
+| amazon0302 | 237 | 155 | 391 | 2 | 17 | 1.6 | 804 | 801 | 134 | 205 | 28 |
+| ca-AstroPh | 205 | 159 | 250 | 1 | 14 | 0.5 | 630 | 595 | 28 | 54 | 8 |
+| ca-CondMat | 52 | 26 | 44 | 0 | 1 | 0.1 | 124 | 106 | 12 | 26 | 2 |
+| cit-HepPh | 879 | 285 | 359 | 1 | 8 | 0.9 | 1,532 | 1,650 | 95 | 220 | 42 |
+| loc-Brightkite | 350 | 423 | 690 | 1 | 11 | 3.9 | 1,479 | 1,753 | 95 | 238 | 41 |
+| soc-Epinions1 | 4,305 | 1,519 | 3,128 | 1 | 7 | 0.7 | 8,960 | 8,167 | 448 | 1,124 | 213 |
+| soc-Slashdot0902 | 1,426 | 1,054 | 2,105 | 1 | 4 | 0.4 | 4,590 | 3,753 | 257 | 634 | 107 |
+| com-youtube | 4,652 | 1,037 | 2,469 | 5 | 16 | 1.8 | 8,180 | 7,283 | 557 | 1,663 | 210 |
+| soc-pokec | 37,275 | 12,907 | 16,545 | 14 | 211 | 28.0 | 66,980 | 63,386 | 2,889 | 6,100 | 1,455 |
+
+"total before" is `build_ms` of `final.json`, which included the joint
+Layout build; times are on the loaded laptop (1-minute load 10-13 while
+this sweep ran) and agree with the earlier run within noise, so the build
+is not slower; the memory columns are load-independent.
+
+**Per-size widths.** Node tops and residue values are stored at the width
+of the widest value of their size, rounded to 1, 2, 4, 8, 16 or 32 bytes
+(file format `CHAINX03`); a field of w bytes at index y sits at offset
+y w, aligned, so every decode is one constant-size load, dispatched once
+per query. Residue packing has no hot-path cost (value queries equal or
+faster in every in-process comparison). Top packing puts one width
+dispatch (a 5-way jump) in front of each climb: when consecutive queries
+alternate between sizes of different widths that jump mispredicts, which
+costs about 1-3 ns per query in the worst case and nothing when the size
+repeats. In-process two-round comparisons of "compact, tops as T" against
+"compact, packed tops" on GrQc, HepPh, amazon and dblp (fields `full_*`
+against the unprefixed ones in the bench JSON) show no consistent
+direction under the machine load at the time (the same code varies 2-3x
+between rounds), so the effect is below what this laptop can resolve; a
+quiet-machine or server measurement is pending. Packing is on by default
+and switchable (`compact_runs(false)` keeps tops as T; the file records
+the choice).
+
+| Graph | index B before | index B after | change | vs per-vertex S trees | map B | chains B | layers B |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ca-GrQc | 68,560 | 59,896 | -12.6% | 4.55x | 3,856 | 15,889 | 40,151 |
+| ca-HepPh | 333,072 | 215,578 | -35.3% | 8.81x | 6,808 | 49,845 | 158,925 |
+| com-dblp | 2,138,946 | 1,626,879 | -23.9% | 10.27x | 113,304 | 433,259 | 1,080,316 |
+| web-Stanford | 4,086,330 | 3,516,780 | -13.9% | 7.07x | 124,720 | 1,279,808 | 2,112,252 |
+| amazon0302 | 3,859,326 | 3,000,134 | -22.3% | 4.80x | 212,628 | 1,040,604 | 1,746,902 |
+| ca-AstroPh | 696,534 | 610,570 | -12.3% | 3.63x | 16,860 | 225,357 | 368,353 |
+| ca-CondMat | 208,494 | 173,828 | -16.6% | 7.47x | 12,020 | 57,438 | 104,370 |
+| cit-HepPh | 2,170,902 | 1,577,713 | -27.3% | 2.03x | 72,980 | 798,209 | 706,524 |
+| loc-Brightkite | 977,340 | 798,416 | -18.3% | 3.29x | 36,232 | 306,945 | 455,239 |
+| soc-Epinions1 | 1,428,086 | 1,099,982 | -23.0% | 2.93x | 49,524 | 438,839 | 611,619 |
+| soc-Slashdot0902 | 764,640 | 587,531 | -23.2% | 5.10x | 42,608 | 255,723 | 289,200 |
+| com-youtube | 4,021,798 | 3,017,695 | -25.0% | 11.22x | 384,064 | 1,392,191 | 1,241,440 |
+| soc-pokec | 43,724,688 | 31,624,721 | -27.7% | 3.22x | 1,838,988 | 18,481,448 | 11,304,285 |
+
+The ratio against per-vertex S trees is now 2.03x (cit-HepPh) to 11.22x
+(youtube), median about 4.8x; dblp 10.27x. The earlier latency evidence
+(`final.json`) was measured on the index compacted in place rather than
+on the loaded copy (a reference bound once before the target pointer
+changed); the two hold identical arrays, so those numbers stand, and the
+bench now measures the loaded copy.

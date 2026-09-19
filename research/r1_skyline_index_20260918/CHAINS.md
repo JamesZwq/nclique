@@ -219,11 +219,13 @@ holding b_y - 1 contributes up to v_y, and the runs strictly between are
 whole. Each piece is a maximal run of the segment. At s = 2 the whole
 array is one run (C5 iii), so every community is one range (C4 again).
 
-Bytes. Per node: W (top) + 4 (parent) + 4 (subtree size) + 8 (entry); the
-jump pointer (4) is derived at load time and not stored. Per run: 8. The
-build form stores instead 4 per node (bucket) and 4 per (chain, s) pair;
-the compact form is smaller exactly when 8 runs + 4 nodes < 4 pairs.
-Both forms are exact; the compact form is the file format.
+Bytes. Per node: w_s (top, the width of the widest top of size s,
+rounded to a power of two, W at most) + 4 (parent) + 4 (subtree size) +
+8 (entry); the jump pointer (4) is derived at load time and not stored.
+Per run: 8. Residue values likewise take the per-size width of the widest
+residue of that size. The build form stores instead 4 per node (bucket),
+4 per (chain, s) pair and W per top and residue. Both forms are exact;
+the compact form is the file format (RESULTS_FINAL.md Section 14).
 
 ## 10. r >= 2: Chains Of r-Cliques (theory, 2026-09-19)
 
