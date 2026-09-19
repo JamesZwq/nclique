@@ -1,0 +1,5 @@
+\section{Conclusion}\label{sec:conclusion}
+
+Hierarchy equivalence is a partition of the vertices, and that partition is the right unit for indexing every clique-core hierarchy of a graph at once.
+Storing chains instead of vertices, aligning labels to chains, ordering chains lexicographically and keeping each size's DFS array as runs with entry points gives an index that is \ratiomin$\times$ to \ratiomax$\times$ smaller than one tree per size, locates any community in tens of nanoseconds and lists it at memory-copy speed.
+The construction is one all-size peel and one pass per size; its memory is the peel's, not the index's.

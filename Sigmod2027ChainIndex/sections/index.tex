@@ -1,0 +1,64 @@
+\section{The Chain Index}\label{sec:index}
+
+The index has three blocks, all flat arrays: the vertex-to-chain map, one record per chain, and one tree with a run array per size.
+We describe each with the property it rests on.
+
+\subsection{Aligned labels}\label{sec:labels}
+Chains partition $V$, so the vertices can be relabelled so that every chain is one interval of labels: chain $c$ owns $[\mathrm{start}(c),\mathrm{start}(c+1))$.
+The map from a vertex to its chain is then a bitmap with a one at every chain start plus a rank directory (one 32-bit count per 64 labels): $\mathrm{chain}(v)=\mathrm{rank}_1(v)-1$ in constant time, at 1 bit plus 1/16 byte per vertex.
+A community, being a union of chains (Lemma~\ref{lem:union}), becomes a list of label ranges rather than a list of vertex ids.
+If the graph is kept under its original labels, a permutation of $4n$ bytes accompanies the index; if the graph is stored in the index's order, nothing is added.
+
+\subsection{Chain order}\label{sec:order}
+The number of ranges an answer needs depends on how chains are ordered.
+Fix any preorder numbering $\mathrm{pre}_s$ of each forest $\Tree{s}$ and give chain $c$ the key $\mathrm{key}(c)=(\mathrm{pre}_2(\own{2}{c}),\mathrm{pre}_3(\own{3}{c}),\dots)$; chains are ranked in lexicographic key order, the vertices without edges forming one last chain.
+
+\begin{theorem}[size-2 communities are single ranges]\label{thm:onerange}
+Under the lexicographic order, the labels of every $\Nuc{2}{k}$ form one interval.
+\end{theorem}
+\begin{proof}
+An $\Nuc{2}{k}$ is the vertex set of the subtree of $\Tree{2}$ rooted at some node $X$; a chain lies in it if and only if $\own{2}{c}$ is in that subtree.
+The preorder numbers of a subtree form an interval, and the chains whose first key component lies in an interval are contiguous in lexicographic order.
+Contiguous ranks are contiguous labels.
+\end{proof}
+
+For $s\ge3$ the DFS array of $\Tree{s}$ visits, at every node, its own chains and its child subtrees in increasing order of the smallest rank they contain (roots likewise).
+Then the chains of any subtree are a contiguous segment of the array, the first chain of a node's segment is the smallest rank in its subtree, and for $s=2$ the array is the rank order itself.
+
+\subsection{Run arrays and entry points}\label{sec:runs}
+Along the DFS array of size $s$, two consecutive chains with consecutive ranks own adjacent label intervals.
+We merge maximal sequences of such chains into \emph{runs} and store the array as the list of run endpoints $(lo,hi)$.
+Every node $x$ stores one \emph{entry}: the run index $r_x$ that contains the first position of its segment and the label $v_x$ at that position; a sentinel entry follows the last node.
+
+\begin{theorem}[retrieval]\label{thm:retrieval}
+Let $y$ be the node that follows the subtree of $x$ in preorder (the sentinel if none).
+The labels of the community of $x$ are $[v_x,v_y)$ if $r_x=r_y$, and otherwise the head $[v_x,hi(r_x))$, the whole runs $r_x+1,\dots,r_y-1$, and the tail $[lo(r_y),v_y)$.
+The number of ranges reported equals the number of maximal runs inside the segment; at $s=2$ it is one.
+\end{theorem}
+\begin{proof}
+The segment of $x$ is the position interval from its entry to the entry of $y$.
+Runs are maximal over the whole array, so inside the segment they can be cut only at its two ends: the run holding the first position contributes from $v_x$ on, the run holding the last position contributes up to $v_y$, and the runs strictly between are whole.
+At $s=2$ the whole array is one run by Theorem~\ref{thm:onerange}.
+\end{proof}
+
+After the climb to the right node (Section~\ref{sec:queries}) the community is therefore located with two entry reads and reported with the fewest ranges possible for the given order.
+
+\subsection{Values}\label{sec:values}
+Core values are constant on a chain (Theorem~\ref{thm:chains}), so each chain stores $\omega$, the certification point $\sigma$, and its residue $\core{s}{c}$ for $2\le s<\sigma$; for $s\ge\sigma$ the value is $\binomc{\omega-1}{s-1}$ from a table (Theorem~\ref{thm:tail}), and for $s>\omega$ it is $0$.
+Each chain also stores its trajectory, the own node of every size it participates in, which the community query starts from.
+
+Node tops and residues are stored at a per-size byte width: for every size, the widest value of that size determines whether 1, 2, 4 or 8 bytes are used, fields are aligned to their width, and a query dispatches on the width once.
+Values are stored as doubles (integers below $2^{32}$ as 1-, 2- or 4-byte integers); the decomposition itself is computed with exact integers, and values below $2^{53}$ are stored exactly.
+
+\subsection{Size}\label{sec:size}
+Let $C$ be the number of chains, $N$ the number of canonical nodes over all sizes, $P=\sum_c(\omega(c)-1)$ the number of (chain, size) pairs and $R$ the number of runs over all sizes.
+The index takes $n/8+n/16+4C$ bytes for the map, $4C+4P+\text{(residue bytes)}$ for the chain records, and $16N+\text{(top bytes)}+8R$ for the trees.
+\strees takes $8\sum_v(\omg{v}-1)$ bytes for its arrays and pointers plus a value per active pair plus $12N$ plus the tops.
+The saving is the collapse of the vertex axis: $\sum_v(\omg{v}-1)$ against $P$, and the residue count against the number of active pairs.
+
+\stitle{Example, continued.}
+With the chains ranked $\{b_i\}<\{a_i\}<\{u,w\}<\{x\}$ the labels are $[0,3)$, $[3,8)$, $[8,14)$, $[14,15)$.
+At $s=3$ the forest has two roots, $N_2=B\cup W$ (top 3, chains $\{b_i\},\{u,w\},\{x\}$) and $A$ (top 6, chain $\{a_i\}$); the DFS array is $\{b_i\},\{u,w\},\{x\},\{a_i\}$, whose runs are $[0,3)$, $[8,15)$, $[3,8)$ (the last two chains of $N_2$ merge).
+The entries are $N_2\to(\text{run }0,\,0)$ and $A\to(\text{run }2,\,3)$.
+The community of $b_1$ at $(3,3)$ is $N_2$: head $[0,3)$, whole run $[8,15)$, empty tail, that is $\{b_1,b_2,b_3\}\cup\{u_1,\dots,w_3,x\}$.
+The values stored are three numbers in total: $\core{2}{x}=4$ for chain $\{x\}$ ($\omega=4,\sigma=3$) and $\core{2}{}=4,\core{3}{}=3$ for chain $\{u,w\}$ ($\omega=3,\sigma=4$); chains $\{a_i\}$ and $\{b_i\}$ are certified from $s=2$.

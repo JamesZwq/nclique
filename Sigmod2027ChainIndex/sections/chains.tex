@@ -1,0 +1,59 @@
+\section{Chains: Hierarchy Equivalence}\label{sec:chains}
+
+The redundancy of \strees is on the vertex axis: a vertex is stored once per size although many vertices are indistinguishable by every query.
+This section makes that precise.
+
+\begin{definition}[chain]\label{def:chain}
+For a vertex $v$ with $\omg{v}\ge2$ let $\chain{v}=(\own{2}{v},\own{3}{v},\dots,\own{\omg{v}}{v})$ be the tuple of its own nodes over the sizes it participates in.
+The vertices with equal tuples form a \emph{chain}.
+\end{definition}
+
+\begin{theorem}[chains are hierarchy equivalence]\label{thm:chains}
+For $u,v$ with $\omg{u},\omg{v}\ge2$ the following are equivalent:
+(a) $\chain{u}=\chain{v}$;
+(b) $\core{s}{u}=\core{s}{v}$ for every $s$, and for every $s$ and every $1\le k\le\core{s}{u}$ the vertices $u$ and $v$ lie in the same $\Nuc{s}{k}$.
+\end{theorem}
+\begin{proof}
+(a)$\Rightarrow$(b): $\own{s}{u}=\own{s}{v}$ gives $\core{s}{u}=\mathrm{top}(\own{s}{u})=\core{s}{v}$; for $k\le\core{s}{u}$ the $\Nuc{s}{k}$ containing $u$ is the unique ancestor-or-self of $\own{s}{u}$ whose level interval contains $k$, the same node for $v$.
+(b)$\Rightarrow$(a): with $\core{s}{u}=\core{s}{v}=k$, the $\Nuc{s}{k}$ containing $u$ is $\own{s}{u}$ by definition; it contains $v$ and is therefore the $\Nuc{s}{\core{s}{v}}$ containing $v$, that is $\own{s}{v}$.
+\end{proof}
+
+Condition (b) says that no value query and no community query distinguishes $u$ from $v$.
+An index over chains therefore loses nothing, and the answers stay whole:
+
+\begin{lemma}[communities are unions of chains]\label{lem:union}
+If $u$ lies in an $\Nuc{s}{k}$ $N$ with $k\ge1$ and $\chain{w}=\chain{u}$, then $w\in N$.
+\end{lemma}
+\begin{proof}
+$\core{s}{w}=\core{s}{u}\ge k$, and $\own{s}{w}=\own{s}{u}\subseteq N$ because the top of $\own{s}{u}$ is $\core{s}{u}\ge k$.
+\end{proof}
+
+\begin{lemma}[twins refine chains]\label{lem:twins}
+If $u$ and $w$ have the same closed neighbourhood then $\chain{u}=\chain{w}$.
+\end{lemma}
+\begin{proof}
+The transposition of $u$ and $w$ is an automorphism of $G$; it preserves every core value and maps every nucleus to a nucleus containing the other vertex, so condition (b) holds.
+\end{proof}
+
+Chains are much coarser than twin classes on real graphs: twin classes have 1.03 to 1.28 vertices on average on our inputs, while \dblp has 13,459 chains for 317,080 vertices and \webuk has 839 chains for 129,632 vertices.
+
+\stitle{Relation to other atomic units.}
+The SGL index for bipartite bi-components \cite{SGL} also builds its index from cohesive units that are neither nested nor overlapping, so that each vertex is retrieved once per query; there, however, a vertex belongs to one unit per non-dominated parameter pair, so the units overlap and a vertex is stored several times.
+In the $(1,s)$-nucleus setting the per-size laminarity together with Theorem~\ref{thm:chains} makes the units a partition: each vertex is stored once and retrieved once.
+
+\stitle{How many chains.}
+Chains are at most as many as vertices and at most as many as twin classes.
+They are not bounded by the number of canonical nodes: two vertices with the same size-3 node and different size-2 nodes, together with two more vertices in a second size-3 node sharing those two size-2 nodes, give four chains on five nodes, and stacking the construction gives $2^t$ chains on $2t+1$ nodes.
+On our graphs the ratio of chains to nodes ranges from 0.26 to 5.67, so the saving is empirical: it is the number of vertices per chain, and Section~\ref{sec:exp} shows that this single quantity predicts the compression.
+
+\stitle{Example.}
+Figure~\ref{fig:example} shows a 15-vertex graph: a 5-clique $A=\{a_1,\dots,a_5\}$, a 4-clique $B=\{x,b_1,b_2,b_3\}$, a complete bipartite $K_{3,3}$ on $\{u_1,u_2,u_3\}\times\{w_1,w_2,w_3\}$ joined to $x$ ($W$), and one edge $a_5b_3$ that lies in no triangle.
+Core values: $A$ has $4,6,4,1$ at $s=2..5$; $b_i$ have $3,3,1$; $x$ has $4,3,1$; the six vertices of $W$ have $4,3$.
+The own nodes give four chains: $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$, $\{u_1,\dots,w_3\}$ and $\{x\}$.
+The vertex $a_5$ has one more edge than $a_1$ but the same own node at every size; $x$ shares the own nodes of $W$ at $s=2,3$ and leaves them at $s=4$, where it lies in the 4-clique $B$ and the vertices of $W$ lie in no 4-clique.
+\begin{figure}[t]
+\centering
+% TODO: TikZ drawing of the example (three parts A, B, W; colours by chain).  Placeholder box.
+\fbox{\parbox{0.9\linewidth}{\centering\small Example graph: $A=K_5$, $B=K_4\ni x$, $W=x+K_{3,3}$, edge $a_5b_3$. Chains: $\{b_1,b_2,b_3\}$, $\{a_1..a_5\}$, $\{u_1..w_3\}$, $\{x\}$.}}
+\caption{The running example (15 vertices, 4 chains).}\label{fig:example}
+\end{figure}

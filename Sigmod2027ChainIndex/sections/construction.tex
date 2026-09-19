@@ -1,0 +1,27 @@
+\section{Construction}\label{sec:construction}
+
+The index is built from one all-size peel and one pass per size, without ever holding all core values at once.
+
+\stitle{Core values.}
+We reuse the all-size vertex peel of the clique-tree line \cite{Pivoter}: a pivoting clique tree is built once, every vertex's number of $s$-cliques is a sum of binomial coefficients over the tree's leaves, and a bucket peel per size removes the vertex of smallest count and updates the counts of the affected leaves in closed form.
+Sizes share work: the previous size's order and values bound the next size's, and a vertex whose value has reached its floor (Theorem~\ref{thm:tail}) is settled for all larger sizes.
+The peel delivers the values of one size at a time; the index keeps a two-row window, not the $s_{\max}\times n$ matrix.
+
+\stitle{One tree per size, on arrival.}
+When the values of size $s$ arrive, the vertices are activated from the highest value down.
+A leaf of the clique tree becomes live when its mandatory vertices are active and at least $s$ of its vertices are active; the active vertices of a live leaf are pairwise adjacent inside a common clique, so they are joined in a union-find structure.
+After each level the components that changed are the canonical nodes created at that level, and every activated vertex records its own node.
+This is the pass that produces $\Tree{s}$ with tops, parents and own nodes.
+
+\stitle{Chains by refinement.}
+Chains are refined size by size in a prefix trie: at $s=2$ vertices are grouped by their own node; at each later size every group is split by the own node of that size; a vertex whose $\omega$ has been reached terminates at its current trie node.
+The trie's DFS order, terminating chains before children, is the lexicographic key order of Section~\ref{sec:order}, so it yields the chain ranks, the aligned labels and the bitmap directly.
+Working memory beyond the peel is one trie node per distinct own-node prefix and $O(n)$ words.
+
+\stitle{Run arrays and values.}
+For each size, the tree is traversed with children ordered by their smallest chain rank; the resulting chain sequence is merged into runs and every node's entry is recorded.
+Each chain then receives $\omega$, $\sigma$, its residue and its trajectory, and the per-size widths are chosen from the maxima.
+
+\stitle{Cost.}
+The peel and the clique tree dominate; the trie, the ranks, the run arrays and the values add a few percent (Section~\ref{sec:exp}).
+Peak memory is the peel's clique tree plus the graph; the chain index itself is small.

@@ -1,0 +1,14 @@
+\section{Related Work}\label{sec:related}
+
+\stitle{Nucleus decompositions.}
+Sariy{\"u}ce et al.\ introduced $(r,s)$-nucleus decompositions and their hierarchies \cite{firstNucleus}; later work sped up their computation with local, parallel and counting-based algorithms \cite{Pivoter}.
+% TODO: cite the parallel nucleus papers and CND already in references.bib; check keys.
+The clique-tree line \cite{Pivoter} counts $s$-cliques for all $s$ from a pivoting tree without enumerating them; the all-size peel we build on uses that tree.
+These works compute the decomposition; the present paper stores every size's hierarchy for querying.
+
+\stitle{Community-search indexes.}
+Indexes for core-based community search store the hierarchy of one parameter and answer containment queries from it; the recent SGL index for bipartite bi-components \cite{SGL} stores units that are neither nested nor overlapping so that each vertex is retrieved once, while a vertex still appears in one unit per non-dominated parameter pair.
+Our units, the chains, are a partition of the vertices, which the per-size laminarity of nuclei makes possible; the storage redundancy and the retrieval redundancy vanish together.
+
+\stitle{Kruskal--Katona.}
+The certified tail (Theorem~\ref{thm:tail}) rests on the shadow theorem of Kruskal and Katona \cite{kruskal1963,katona1968}, which bounds the number of $(s-1)$-cliques through a vertex by the number of $s$-cliques through it.

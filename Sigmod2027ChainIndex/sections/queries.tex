@@ -1,0 +1,17 @@
+\section{Queries}\label{sec:queries}
+
+\stitle{Value $(v,s)$.}
+The bitmap rank gives the chain $c$ of $v$.
+If $s>\omega(c)$ the value is $0$; if $s\ge\sigma(c)$ it is $\binomc{\omega(c)-1}{s-1}$ from the binomial table; otherwise it is the residue of $c$ at $s$, at a byte offset given by the chain's residue start and the prefix sum of the per-size widths.
+Four memory reads, constant time.
+
+\stitle{Community $(v,s,k)$.}
+The chain gives the own node $x=\own{s}{c}$ from the trajectory.
+The community is the highest ancestor of $x$ with top at least $k$; the climb follows parent pointers, accelerated by one skip pointer per node in the style of Myers \cite{Myers1983}, so it takes $O(\log d)$ steps for a climb of $d$ levels.
+The entries of the reached node and of its successor in preorder then give the answer by Theorem~\ref{thm:retrieval}: a head range, a pointer to the whole runs, and a tail range, in constant time.
+Reporting the ranges costs their number; expanding them into vertex labels costs the number of vertices, written eight labels per vector store.
+
+\stitle{Complexity.}
+Value: $O(1)$.
+Community: $O(\log d)$ to locate plus the size of the answer in the chosen form.
+The bound on $d$ is the depth of $\Tree{s}$, at most the number of distinct core values of size $s$.

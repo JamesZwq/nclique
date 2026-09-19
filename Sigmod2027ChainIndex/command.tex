@@ -1,0 +1,25 @@
+% Macros for the chain-index paper.  House macros first (\stitle/\kw ...), paper-specific names below.
+\newcommand{\stitle}[1]{{\noindent \bf {#1}}}
+\newcommand{\sstitle}[1]{{\noindent \textit {\underline {#1}}}}
+\newcommand{\kw}[1]{{\ensuremath {\mathsf{#1}}}\xspace}
+\newcommand{\bkw}[1]{{\ensuremath {\mathsf{\textbf{#1}}}}\xspace}
+
+\newcounter{expcnt}
+\newcommand{\expsection}[1]{\vspace{0.6ex}\stepcounter{expcnt}\noindent\textbf{Exp-\arabic{expcnt}: #1.}\xspace}
+
+% ---- paper-specific names ----
+\newcommand{\chainidx}{\kw{ChainIndex}}          % the index (the paper's one branded artifact)
+\newcommand{\strees}{\kw{STrees}}                 % the baseline: one tree and one DFS array per size
+\newcommand{\core}[2]{\kappa_{#1}(#2)}            % core value kappa_s(v)
+\newcommand{\own}[2]{X_{#1}(#2)}                  % own node
+\newcommand{\omg}[1]{\omega(#1)}                  % largest clique containing #1
+\newcommand{\sig}[1]{\sigma(#1)}                  % certification point
+\newcommand{\chain}[1]{\mathrm{chain}(#1)}
+\newcommand{\Tree}[1]{T_{#1}}
+\newcommand{\Nuc}[2]{(#1,#2)\text{-nucleus}}
+\newcommand{\binomc}[2]{\binom{#1}{#2}}
+\newcommand{\dblp}{\textsf{com-dblp}\xspace}
+\newcommand{\webuk}{\textsf{web-uk-2005}\xspace}
+\newcommand{\emailcore}{\textsf{email-Eu-core}\xspace}
+\input{tables/size_stats}
+\input{tables/selftest}

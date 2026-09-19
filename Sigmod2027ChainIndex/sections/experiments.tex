@@ -1,0 +1,65 @@
+\section{Experiments}\label{sec:exp}
+
+\stitle{Setup.}
+All code is C++23, single-threaded, compiled at \texttt{-O3}.
+Three machines: a laptop (Apple M-series) and two Ubuntu 22.04 servers (GCC 11.4, 96 cores, 503~GB); no timing run shared a machine with another timing run of ours, and the servers carried a background load of 1 to 8 from other users.
+Datasets: \numgraphs{} graphs from five families (collaboration, citation, web, product, social and communication), from 1,005 to 4,049,537 vertices, with largest cliques from 7 to 500 vertices; Table~\ref{tab:size} lists them.
+The baseline \strees is one tree and one DFS array per size with all core values stored (Section~\ref{sec:prelim}); its size is computed from the same decomposition, and its query latency was measured on the five laptop graphs of the design study.
+Queries are drawn from the active vertices and their sizes $2\le s\le\omg{v}$: 20,000 community queries at the vertex's own level ($k=\core{s}{v}$), 20,000 at half that level, 1,000 at $k=1$, and 200,000 value queries; every latency is the median of five passes after one warm-up.
+Every number in the tables is generated from the recorded JSON evidence.
+
+\expsection{Size against one tree per size}
+Table~\ref{tab:size} gives, for every graph, the number of chains, the vertices per chain, the index size and the size of \strees.
+The index is \ratiomin$\times$ to \ratiomax$\times$ smaller, median \ratiomedian$\times$.
+The ratio follows the vertices per chain: \emailcore (1,005 vertices, 667 chains) is the worst case at \ratiomin$\times$, and \webuk (129,632 vertices, 839 chains, cliques up to 500) the best at \ratiomax$\times$; the two coauthorship graphs with the largest cliques compress by 45.8$\times$ and 12.0$\times$, the web graphs by 5.7$\times$ to 48.7$\times$, the social graphs by 2.9$\times$ to 15.9$\times$.
+The label permutation, if the graph is not stored in the index's order, adds $4n$ bytes and lowers the ratios to 1.25$\times$--8.8$\times$ on the laptop set.
+
+\begin{table*}[t]
+\centering\footnotesize
+\caption{Index size against \strees on \numgraphs{} graphs (one row per distinct graph). $n/$chains is the average number of vertices per chain.}\label{tab:size}
+\input{tables/size}
+\end{table*}
+
+\expsection{Where the bytes go}
+On the collaboration, web and product graphs the per-size trees with their run arrays are 58 to 74 percent of the index and the chain records 23 to 41 percent; on the social and citation graphs, where chains are shorter, the chain records reach 44 to 58 percent, most of it the trajectories (one node id per chain per size).
+The map is 3 to 13 percent.
+Core values are a small part everywhere once residues and per-size widths are in place: \dblp stores 9,737 residue values for 1,246,933 active (vertex, size) pairs.
+
+\expsection{Design study}
+Table~\ref{tab:layouts} isolates the steps on the five graphs of the design study.
+Trees over twin classes do not help (twin classes have 1.03 to 1.28 vertices); trees over chains with an explicit vertex-to-chain map are 2.5$\times$ to 4.5$\times$ smaller than \strees and already faster to list because a community is a few chain slices; aligned labels remove the map and turn answers into ranges; run arrays with entry points and per-size widths give the final sizes and make the location constant-time.
+The skyline deduplication of SGL \cite{SGL}, which we also implemented over chains, was 0.99$\times$ to 2.28$\times$ smaller than the corresponding tree layout but 2 to 3 times slower to query and is dominated by chains; it is not part of the index.
+
+\begin{table*}[t]
+\centering\footnotesize
+\caption{Design study on five graphs: bytes (top) and own-level community listing in ns (bottom) for the successive layouts.}\label{tab:layouts}
+\input{tables/layouts}
+\end{table*}
+
+\expsection{Query latency}
+Table~\ref{tab:queries} reports, at the own level, the time to locate a community (climb and two entry reads), the number of ranges of the answer, the time to copy the range list, and the time to expand it into vertex labels, together with the value query.
+Locating takes 4 to 76~ns on every graph; a community of 1.9 million vertices on the 4-million-vertex coauthorship graph is located in 11~ns and listed in 167~$\mu$s.
+Listing costs 0.04 to 0.31~ns per vertex; the per-vertex cost is lowest where runs are long and highest on the two most fragmented graphs (\emailcore, 2.3 vertices per range).
+Against the memory copy of \strees, measured on the five laptop graphs, expansion is faster on 13 of the 15 (graph, level) points, by 0.9$\times$ to 2.0$\times$: a run costs eight bytes to read however many labels it expands to.
+Value queries take 6 to 24~ns on the laptop and 15 to 35~ns on the servers.
+
+\begin{table*}[t]
+\centering\footnotesize
+\caption{Own-level community queries and value queries, ns, one thread. Laptop and server latencies are not directly comparable (the servers' single-core speed is 1.5 to 3 times lower).}\label{tab:queries}
+\input{tables/queries}
+\end{table*}
+
+\expsection{Construction}
+Table~\ref{tab:build} splits the build into the clique tree, the all-size peel, and the index passes, with the peak resident memory of the process.
+The index passes (trees, chains, run arrays, values) are a few percent of the total; the peel and its clique tree are the rest, and the peak memory is the clique tree.
+Three graphs did not build: \textsf{com-lj}, \textsf{ca-hollywood-2009} and \textsf{com-orkut} exhaust the 503~GB of the server inside the peel's clique tree (350~GB and 435~GB before failure for the first two); this is a limit of the peel, whose clique tree materializes every leaf, not of the index.
+
+\begin{table*}[t]
+\centering\footnotesize
+\caption{Construction time (s, one thread) and peak resident memory of the whole process; the index passes are trees, chains, run arrays and values.}\label{tab:build}
+\input{tables/build}
+\end{table*}
+
+\expsection{Correctness}
+For every labelled graph on at most six vertices, 200 random graphs on 7 to 10 vertices, split graphs and $K_8$ (\selfgraphs{} graphs) plus $K_{300}$, the nuclei were computed by brute force from clique enumeration and union-find, and every $(v,s,k)$ with $1\le k\le\core{s}{v}$ was queried: \selfcommunities{} community queries compared as sets, \selfvalues{} value checks, and \selfmembers{} membership checks across the build form, the compact form and the form loaded from disk, with exact-integer and double values, under a release build and under AddressSanitizer and UndefinedBehaviorSanitizer.
+On the real graphs the number of canonical nodes agrees with an independent implementation, and the index of a graph is byte-identical across the two servers even when the input files list the edges in different orders.

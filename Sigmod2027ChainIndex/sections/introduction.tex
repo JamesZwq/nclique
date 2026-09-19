@@ -1,0 +1,47 @@
+\section{Introduction}\label{sec:intro}
+% FRAMING (user decision, drafted partition-first as requested): the contribution starts from the
+% chain partition, not from "store S trees"; S trees over vertices are the baseline beaten on both axes.
+
+Dense-subgraph hierarchies are the standard way to expose the community structure of a graph at every level of cohesion.
+The $(1,s)$-nucleus decomposition \cite{firstNucleus} is the clique-based family: for a clique size $s$, the $\Nuc{s}{k}$s are the maximal vertex sets in which every vertex lies in at least $k$ $s$-cliques of the set and which are connected through shared $s$-cliques; $s=2$ gives the $k$-core, $s=3$ the triangle-based hierarchy, and larger $s$ progressively denser and smaller communities.
+A query in this setting is a triple: a vertex $v$, a size $s$, and a level $k$, and the answer is the community of $v$, or just $v$'s core value $\core{s}{v}$.
+Because the size $s$ is part of the query, an index must hold the hierarchy of every size at once.
+
+\stitle{The obvious index and its cost.}
+Each size's hierarchy is a laminar family, so it is a tree; with the vertices written in DFS order, every community is a contiguous slice of one array, and listing it is a memory copy.
+One tree per size is therefore the natural index, and it is fast.
+It is also large: a vertex that participates in sizes $2,\dots,\omg{v}$ appears in $\omg{v}-1$ arrays and carries $\omg{v}-1$ core values.
+On \dblp the trees total 16.7~MB for a 317,080-vertex graph; on a coauthorship graph with cliques of 337 vertices they total 202~MB for 540,486 vertices.
+Every previous index for a related hierarchy pays a version of this bill: indexes for $k$-core community search store the hierarchy of one size, and the recent SGL index for bipartite bi-components \cite{SGL} stores a vertex once per non-dominated pair of parameters, so a vertex still appears many times.
+
+\stitle{Hierarchy equivalence.}
+Our starting point is a question about the queries rather than about the storage.
+Which pairs of vertices can no query distinguish?
+Call $u$ and $v$ hierarchy-equivalent when $\core{s}{u}=\core{s}{v}$ for every size $s$ and, for every size and every level $k$ up to that value, $u$ and $v$ lie in the same $\Nuc{s}{k}$.
+Such vertices are interchangeable for every value query and every community query, so an index that stores them separately stores redundant information.
+We prove that hierarchy equivalence has a concrete characterization: $u$ and $v$ are equivalent exactly when, at every size, they belong to the same \emph{own node}, the deepest hierarchy node containing them.
+The equivalence classes, which we call \emph{chains}, are therefore computable from the hierarchies themselves, and every community of every size is a union of whole chains.
+Chains form a partition of the vertex set.
+This is where the clique-core setting differs from the bipartite one: in SGL the atomic units overlap because non-dominated parameter pairs do, whereas here nesting is strong enough that the atomic unit is a partition, and storage redundancy and retrieval redundancy disappear together.
+On real graphs the partition is coarse: \dblp has 13,459 chains for 317,080 vertices, and a coauthorship graph with large cliques has 58 vertices per chain.
+
+\stitle{The index.}
+Chains suggest an index in which the vertex axis is replaced by the chain axis, and the remaining design turns the partition into contiguous memory.
+We relabel the vertices so that every chain is an interval of ids, which makes the vertex-to-chain map a bitmap with a rank directory and turns community answers into lists of id ranges.
+We order the chains lexicographically by the preorder numbers of their own nodes, which makes every size-2 community exactly one range and keeps the communities of larger sizes close to that.
+For each size we store the tree over chains and its DFS array as maximal runs of consecutive ids, with one entry point per node, so that the community of a node is a head range, a sequence of whole runs, and a tail range, found in constant time after a jump-pointer climb.
+Core values are stored per chain and only for the sizes where a closed form fails: a vertex whose value at some size equals the binomial floor given by its largest clique keeps that floor at every larger size, so the tail of every value trajectory costs nothing.
+
+\stitle{Results.}
+On \numgraphs{} graphs from five families, measured on a laptop and two servers, the index is \ratiomin$\times$ to \ratiomax$\times$ smaller than one tree per size, with median \ratiomedian$\times$; the ratio grows with the number of vertices per chain, and graphs with large cliques compress the most.
+A community is located in 4 to 76 nanoseconds and its vertices are listed at 0.04 to 0.3 nanoseconds each, faster than the memory copy of the per-size trees on 13 of 15 measured points.
+The build is one all-size peel plus one pass per size, with working memory that is dominated by the clique tree of the peel.
+Correctness is checked against brute force on \selfgraphs{} small graphs, in four storage forms.
+
+\stitle{Contributions.}
+\begin{itemize}[leftmargin=*]
+\item A characterization of hierarchy equivalence for $(1,s)$-nucleus decompositions (Theorem~\ref{thm:chains}): two vertices are indistinguishable by every value and community query at every size if and only if they share their own node at every size; the classes (chains) partition the vertices and every community is a union of chains.
+\item \chainidx, an index over chains: aligned labels with a bitmap map, a lexicographic chain order under which every size-2 community is one id range (Theorem~\ref{thm:onerange}), per-size run arrays with node entry points that return any community as the fewest id ranges in constant time after the climb (Theorem~\ref{thm:retrieval}), and per-chain values reduced to their uncertified prefix (Theorem~\ref{thm:tail}).
+\item A build that streams the all-size peel one size at a time and needs working memory linear in the vertices and the chains beyond the peel's own structures.
+\item An evaluation on \numgraphs{} graphs: \ratiomin$\times$ to \ratiomax$\times$ fewer bytes than one tree per size, constant-time community location, listing at memory-copy speed, and brute-force verification.
+\end{itemize}

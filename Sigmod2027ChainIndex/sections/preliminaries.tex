@@ -1,0 +1,26 @@
+\section{Preliminaries}\label{sec:prelim}
+
+$G=(V,E)$ is a simple undirected graph with $n$ vertices.
+An $s$-clique is a set of $s$ pairwise adjacent vertices; $\omg{v}$ is the number of vertices of a largest clique containing $v$.
+
+\begin{definition}[$(s,k)$-nucleus]\label{def:nucleus}
+For $s\ge 2$ and $k\ge 1$, an $\Nuc{s}{k}$ is a maximal set $N\subseteq V$ such that every vertex of $N$ lies in at least $k$ $s$-cliques contained in $N$, and any two vertices of $N$ are joined by a sequence of $s$-cliques contained in $N$ in which consecutive cliques share a vertex.
+\end{definition}
+
+This is the $(1,s)$-nucleus of Sariy{\"u}ce et al.\ \cite{firstNucleus} with the vertex as the $r$-clique; for $s=2$ it is the connected $k$-core.
+The \emph{core value} $\core{s}{v}$ is the largest $k$ such that $v$ belongs to an $\Nuc{s}{k}$, and $0$ if $v$ lies in no $s$-clique.
+The \emph{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$; it is unique because nuclei of one size and level are disjoint.
+
+\stitle{Queries.}
+The index answers two queries over every size at once:
+\begin{itemize}[leftmargin=*]
+\item \textbf{Value}: given $(v,s)$, return $\core{s}{v}$.
+\item \textbf{Community}: given $(v,s,k)$ with $1\le k\le\core{s}{v}$, return the vertex set of the community of $v$ at $(s,k)$.
+\end{itemize}
+Membership of a vertex in a community and the ladder of nested communities above a vertex follow from the community query and are not separate targets.
+
+\stitle{The baseline: one tree per size.}
+For a fixed $s$ the nuclei are laminar in $k$ (Section~\ref{sec:hierarchy}), so they form a tree, and a DFS order of the vertices makes every community a contiguous slice of one array.
+Storing that tree and array for every size, together with every value $\core{s}{v}$, is the fastest simple exact representation: a community is one memory copy.
+We call it \strees and use it as the baseline throughout.
+Its size is governed by two sums over vertices: $\sum_v(\omg{v}-1)$ array entries and as many stored values.
