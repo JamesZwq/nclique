@@ -2,7 +2,10 @@
 """Final chain index: Release and ASan/UBSan builds of chain_index_tool, both
 selftests (brute force + disk round trip), then build/save/load/query on the
 five graphs plus any extra graph paths given on the command line, one at a
-time. Refuses to overwrite existing evidence."""
+time. Refuses to overwrite existing evidence.
+Usage: run_final.py [--tag NAME] [--only] [graph ...]
+  --tag NAME  write NAME.json and NAME-logs/ instead of final.json / final-logs/
+  --only      run only the graphs given on the command line (skip the five defaults)"""
 import datetime
 import hashlib
 import json
@@ -30,8 +33,12 @@ def run(command, log):
     return child.stdout.strip()
 
 def main():
-    logs = HERE / 'final-logs'; cx = HERE / 'cx'
-    if (HERE / 'final.json').exists() or logs.exists():
+    args = sys.argv[1:]; tag = 'final'; only = False
+    if args[:1] == ['--tag']: tag = args[1]; args = args[2:]
+    if args[:1] == ['--only']: only = True; args = args[1:]
+    graphs = ([] if only else GRAPHS) + args
+    logs = HERE / f'{tag}-logs'; cx = HERE / 'cx'
+    if (HERE / f'{tag}.json').exists() or logs.exists():
         raise SystemExit('refusing to overwrite evidence')
     logs.mkdir(); cx.mkdir(exist_ok=True)
     record = {'started': datetime.datetime.now().astimezone().isoformat(), 'commands': [],
@@ -49,7 +56,7 @@ def main():
             out = run(command, logs / f'{name}-{i}.log')
             if i == 2:
                 record['selftests'][name] = json.loads(out.splitlines()[-1])
-    for graph in GRAPHS + sys.argv[1:]:
+    for graph in graphs:
         tag = Path(graph).stem
         command = ['/usr/bin/time', '-l', str(HERE / 'build' / 'chain_index_tool'), '--bench', graph, str(cx / f'{tag}.cx')]
         record['commands'].append(command)
@@ -57,7 +64,7 @@ def main():
         line = next(x for x in output.splitlines() if x.startswith('{'))
         record['runs'].append({'graph': graph, 'input_sha256': sha(ROOT / graph), 'result': json.loads(line),
                                'file_sha256': sha(cx / f'{tag}.cx')})
-    (HERE / 'final.json').write_text(json.dumps(record, indent=1) + '\n')
+    (HERE / f'{tag}.json').write_text(json.dumps(record, indent=1) + '\n')
 
 if __name__ == '__main__':
     main()

@@ -78,7 +78,7 @@ template<class T> static ChainIndex<T> build_chain_index(const Input& in, const 
     std::vector<Tree0> trees(S + 1);
     // prefix trie: node = (chain prefix up to some size); level, parent, own tree node (creation id) at that size, kappa there,
     // the chain that terminates here (-1 if none), children in key order
-    struct Trie { std::vector<int32_t> parent; std::vector<uint8_t> level; std::vector<uint32_t> own; std::vector<T> kappa; std::vector<int32_t> chain; std::vector<std::vector<int32_t>> children; };
+    struct Trie { std::vector<int32_t> parent; std::vector<uint16_t> level; std::vector<uint32_t> own; std::vector<T> kappa; std::vector<int32_t> chain; std::vector<std::vector<int32_t>> children; };
     Trie trie; std::vector<int32_t> cls(n, -1); std::vector<uint8_t> active(n, 0); std::vector<int32_t> chain_of(n, -1);
     std::vector<int32_t> chain_node; uint32_t next_chain = 0;             // per chain in creation order: its trie node
     auto terminate = [&](Vertex v) { const int32_t t = cls[v]; int32_t& c = trie.chain[t];
@@ -101,7 +101,7 @@ template<class T> static ChainIndex<T> build_chain_index(const Input& in, const 
         std::sort(keys.begin(), keys.end());
         for (size_t i = 0; i < keys.size();) { size_t j = i; while (j < keys.size() && keys[j].first == keys[i].first) ++j;
             const Vertex v0 = keys[i].second; const int32_t id = static_cast<int32_t>(trie.parent.size()); const int32_t parent = s == 2 ? -1 : cls[v0];
-            trie.parent.push_back(parent); trie.level.push_back(static_cast<uint8_t>(s)); trie.own.push_back(static_cast<uint32_t>(tr.leaf[v0])); trie.kappa.push_back(row[v0]); trie.chain.push_back(-1); trie.children.emplace_back();
+            trie.parent.push_back(parent); trie.level.push_back(static_cast<uint16_t>(s)); trie.own.push_back(static_cast<uint32_t>(tr.leaf[v0])); trie.kappa.push_back(row[v0]); trie.chain.push_back(-1); trie.children.emplace_back();
             if (parent >= 0) trie.children[parent].push_back(id);
             for (size_t k = i; k < j; ++k) { cls[keys[k].second] = id; active[keys[k].second] = 1; }
             i = j; }
@@ -132,11 +132,11 @@ template<class T> static ChainIndex<T> build_chain_index(const Input& in, const 
     std::vector<T> path; std::vector<uint32_t> ownpath;
     auto walk = [&](int32_t t) { path.clear(); ownpath.clear(); for (int32_t x = t; x >= 0; x = trie.parent[x]) { path.push_back(trie.kappa[x]); ownpath.push_back(trie.own[x]); }
         std::reverse(path.begin(), path.end()); std::reverse(ownpath.begin(), ownpath.end()); };   // index s-2
-    for (uint32_t c = 0; c < C; ++c) { const int32_t t = node_of_rank[c]; const int o = t < 0 ? 0 : trie.level[t]; require(o < 256, "omega exceeds a byte");
-        ix.omega[c] = static_cast<uint8_t>(o); int sg = o + 1;
+    for (uint32_t c = 0; c < C; ++c) { const int32_t t = node_of_rank[c]; const int o = t < 0 ? 0 : trie.level[t]; require(o < 65535, "omega exceeds 16 bits");
+        ix.omega[c] = static_cast<uint16_t>(o); int sg = o + 1;
         if (t >= 0) { walk(t); require(static_cast<int>(path.size()) == o - 1, "trie path length");
             for (int s = 2; s <= o; ++s) if (sg == o + 1 && cpp_int(path[s - 2]) == choose_int(o - 1, s - 1)) sg = s; }
-        ix.sigma[c] = static_cast<uint8_t>(sg);
+        ix.sigma[c] = static_cast<uint16_t>(sg);
         ix.traj_off[c + 1] = ix.traj_off[c] + (o >= 2 ? o - 1 : 0); ix.residue_off[c + 1] = ix.residue_off[c] + (o >= 2 ? sg - 2 : 0); }
     ix.traj_node.assign(ix.traj_off[C], kNone); ix.residue.assign(ix.residue_off[C], T{0});
     for (uint32_t c = 0; c < C; ++c) { const int32_t t = node_of_rank[c]; if (t < 0) continue; walk(t); const int o = ix.omega[c];
@@ -213,6 +213,20 @@ template<class T> static void selftest_graph(const Graph& g, const std::string& 
     check(ix);                                               // loaded
 }
 
+// K_m for m > 255: one chain, omega = m, every s in [2, m] certified (kappa_s = C(m-1, s-1)), one node per size, one range per community.
+static void large_clique_test(const std::string& tmp) {
+    const Vertex m = 300; Graph g = complete(m); Seeds z(g); Input in{g, z.ordinary, z.maximum}; std::vector<uint32_t> perm; BuildTimes bt;
+    const terminal::Index ti = build_terminal_index(in); auto built = build_chain_index<boost::multiprecision::uint512_t>(in, ti, perm, bt);
+    built.compact_runs(true); built.save(tmp); auto ix = ChainIndex<boost::multiprecision::uint512_t>::load(tmp);
+    require(ix.chains == 1 && ix.omega[0] == m && ix.sigma[0] == 2 && ix.max_size >= static_cast<int>(m), "K_300 chain block");
+    boost::multiprecision::uint512_t expect = 1;   // C(m-1, s-1) for s = 1 is 1; iterate s = 2..m
+    std::vector<uint32_t> ranges;
+    for (Vertex s = 2; s <= m; ++s) { expect = expect * (m - s + 1) / (s - 1);   // C(m-1, s-1) from C(m-1, s-2)
+        for (Vertex v : {Vertex{0}, Vertex{m / 2}, Vertex{m - 1}}) { require(ix.value(perm[v], static_cast<int>(s)) == expect, "K_300 value");
+            require(ix.community_ranges(perm[v], static_cast<int>(s), expect, ranges) != kNone && ranges.size() == 2 && ranges[0] == 0 && ranges[1] == m, "K_300 community");
+            require(ix.member(perm[(v + 1) % m], perm[v], static_cast<int>(s), expect), "K_300 member"); } }
+    require(ix.value(perm[0], static_cast<int>(m) + 1) == 0, "K_300 beyond omega");
+}
 static void tool_selftest() {
     const std::string tmp = (std::filesystem::temp_directory_path() / "chainindex_selftest.cx").string();
     uint64_t graphs = 0, queries = 0, members = 0, values = 0, ladders = 0; std::mt19937_64 rng(20260919);
@@ -222,7 +236,9 @@ static void tool_selftest() {
         for (uint64_t mask = 0; mask < (uint64_t{1} << p.size()); ++mask) { std::vector<std::pair<Vertex, Vertex>> e; for (size_t i = 0; i < p.size(); ++i) if (mask >> i & 1) e.push_back(p[i]); one(Graph::from_edges(n, std::move(e))); } }
     for (int t = 0; t < 200; ++t) { Vertex n = 7 + rng() % 4; std::vector<std::pair<Vertex, Vertex>> e; for (Vertex a = 0; a < n; ++a) for (Vertex c = a + 1; c < n; ++c) if (rng() % 2) e.emplace_back(a, c); one(Graph::from_edges(n, std::move(e))); }
     for (bool x : {false, true}) for (Vertex h : {1, 2, 4}) one(split_graph(h, 4, x));
-    one(complete(8)); std::filesystem::remove(tmp);
+    one(complete(8));
+    large_clique_test(tmp);   // s_max > 255: 16-bit omega/sigma/level
+    std::filesystem::remove(tmp);
     std::cout << "{\"passed\":true,\"graphs\":" << graphs << ",\"community_queries\":" << queries << ",\"membership_checks\":" << members << ",\"value_checks\":" << values << ",\"ladder_checks\":" << ladders << "}\n";
 }
 

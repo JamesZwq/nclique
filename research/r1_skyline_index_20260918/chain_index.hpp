@@ -7,7 +7,7 @@
 // after the climb and reported as head range + whole runs + tail range (Lemma C6); every (2,k)-community is
 // one range (Lemma C4).  Values: per chain omega, sigma and the residues for s < sigma; s >= sigma is
 // C(omega-1, s-1).  Node tops and residues are stored at per-size byte widths (1, 2, 4, 8, 16 or 32 bytes;
-// aligned constant-width loads, one width dispatch per query).  Flat arrays only; file format CHAINX03.
+// aligned constant-width loads, one width dispatch per query).  Flat arrays only; file format CHAINX04.
 // Header-only, templated on the count type T (64/128-bit builtins or boost fixed-width integers).
 #pragma once
 #include <algorithm>
@@ -55,11 +55,11 @@ template<class T> struct ChainIndex {
     // block 1: vertex -> chain (bitmap of chain starts + rank directory), chain -> vertex range
     std::vector<uint64_t> start_bits; std::vector<uint32_t> start_cum; std::vector<uint32_t> start_pos;   // start_pos[chains] = n
     // block 2: per chain
-    std::vector<uint8_t> omega, sigma; std::vector<uint32_t> traj_off, traj_node;   // traj_node[traj_off[c] + (s-2)] = own node of chain c at size s
+    std::vector<uint16_t> omega, sigma; std::vector<uint32_t> traj_off, traj_node;  // omega, sigma < 65536; traj_node[traj_off[c] + (s-2)] = own node of chain c at size s
     std::vector<uint32_t> residue_off; std::vector<T> residue;                     // build form: residue values for 2 <= s < sigma(c), element offsets
     // compact form: per size s a byte width res_w[s] (the widest residue stored at s), res_prefix[s] = sum of res_w[2..s-1];
     // chain c's residues are the bytes residue_bytes[residue_boff[c] + res_prefix[s], +res_w[s]) for 2 <= s < sigma(c)
-    std::vector<uint8_t> res_w; std::vector<uint32_t> res_prefix, residue_boff; std::vector<uint8_t> residue_bytes;
+    std::vector<uint8_t> res_w; std::vector<uint32_t> res_prefix, residue_boff; std::vector<uint8_t> residue_bytes;   // res_w[s] in {1,2,4,8,16,32,64}
     // block 3: per size s (index s, 0 and 1 unused).  Nodes in DFS preorder; node x's subtree is [x, x + size[x]).
     // build form:   slice = DFS array of chain ids; node x holds slice[bucket[x], bucket[x + size[x]]).
     // compact form: runs = the DFS array as maximal runs of consecutive vertex ids (lo, hi pairs);
@@ -198,7 +198,7 @@ template<class T> struct ChainIndex {
     uint64_t pairs_total() const { uint64_t r = 0; for (const auto& L : layers) r += L.slice.size(); return r; }
     // ---- bytes (in memory; jump pointers are derived and not stored on disk)
     uint64_t bytes_map() const { return 8ull * start_bits.size() + 4ull * start_cum.size() + 4ull * start_pos.size(); }
-    uint64_t bytes_chains() const { return omega.size() + sigma.size() + 4ull * traj_off.size() + 4ull * traj_node.size() + 4ull * residue_off.size() + Traits<T>::W * residue.size()
+    uint64_t bytes_chains() const { return 2ull * omega.size() + 2ull * sigma.size() + 4ull * traj_off.size() + 4ull * traj_node.size() + 4ull * residue_off.size() + Traits<T>::W * residue.size()
         + res_w.size() + 4ull * res_prefix.size() + 4ull * residue_boff.size() + residue_bytes.size(); }
     uint64_t bytes_layers() const { uint64_t b = 0; for (const auto& L : layers) b += Traits<T>::W * L.top.size() + L.top_bytes.size() + 4ull * (L.parent.size() + L.size.size() + L.jump.size() + L.bucket.size() + L.slice.size() + L.entry.size() + L.runs.size()); return b; }
     uint64_t bytes_total() const { return bytes_map() + bytes_chains() + bytes_layers(); }
@@ -229,7 +229,7 @@ template<class T> struct ChainIndex {
     void save(const std::string& path) const {
         if (!compact) throw std::runtime_error("save needs the compact form (call compact_runs first)");
         std::ofstream f(path, std::ios::binary); if (!f) throw std::runtime_error("cannot write " + path);
-        const char magic[8] = {'C','H','A','I','N','X','0','3'}; f.write(magic, 8);
+        const char magic[8] = {'C','H','A','I','N','X','0','4'}; f.write(magic, 8);
         const uint32_t hdr[4] = {n, chains, static_cast<uint32_t>(max_size), static_cast<uint32_t>(Traits<T>::W)}; f.write(reinterpret_cast<const char*>(hdr), 16);
         const uint8_t flags = packed_tops ? 1 : 0; f.write(reinterpret_cast<const char*>(&flags), 1);
         wv(f, start_bits); wv(f, start_cum); wv(f, start_pos); wv(f, omega); wv(f, sigma); wv(f, traj_off); wv(f, traj_node); wv(f, res_w); wv(f, res_prefix); wv(f, residue_boff); wv(f, residue_bytes);
@@ -238,7 +238,7 @@ template<class T> struct ChainIndex {
     }
     static ChainIndex load(const std::string& path) {
         std::ifstream f(path, std::ios::binary); if (!f) throw std::runtime_error("cannot read " + path);
-        char magic[8]; f.read(magic, 8); if (std::memcmp(magic, "CHAINX03", 8) != 0) throw std::runtime_error("bad magic");
+        char magic[8]; f.read(magic, 8); if (std::memcmp(magic, "CHAINX04", 8) != 0) throw std::runtime_error("bad magic");
         uint32_t hdr[4]; f.read(reinterpret_cast<char*>(hdr), 16); ChainIndex ix; ix.n = hdr[0]; ix.chains = hdr[1]; ix.max_size = static_cast<int>(hdr[2]);
         if (hdr[3] != Traits<T>::W) throw std::runtime_error("count width mismatch");
         uint8_t flags = 0; f.read(reinterpret_cast<char*>(&flags), 1); ix.packed_tops = (flags & 1) != 0;
