@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/dsets/web-Google.edges /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/cx/web-Google.cx
+{"passed":true,"n":875713,"m":4322051,"s_max":45,"count_bits":64,"chains":73836,"canonical_nodes":188362,"max_depth":407,"pairs_total":507155,"runs_total":293481,"vertex_pairs":4386851,"vertex_residue_cells":1565983,"baseline_vertex_bytes":63649906,"bytes_map":459560,"bytes_chains":3805974,"bytes_layers":6890987,"bytes_total":11156521,"file_bytes":10404990,"perm_bytes":3502852,"slice_bytes_layers":6549308,"slice_bytes_total":12200784,"solve_ms":1719.033,"trees_ms":2775.569,"chains_ms":6.842,"layout_ms":74.094,"build_ms":4586.134,"compact_ms":6.497,"save_ms":5.594,"load_ms":2.997,"ti_ms":1307.689,"ti_bytes":123475112,"rss_start":207491072,"rss_after_solve":372359168,"rss_after_chains":372359168,"rss_after_layout":372359168,"slice_range_own_ns":64898.437,"slice_range_half_ns":70268.625,"slice_range_root_ns":79122.173,"slice_explicit_own_ns":130979.414,"slice_explicit_half_ns":148715.649,"slice_explicit_root_ns":170356.460,"slice_own_ranges":2076.336,"slice_half_ranges":2258.861,"slice_root_ranges":3082.422,"full_bytes_total":11887870,"full_bytes_layers":7622336,"full_range_own_ns":868.185,"full_range_half_ns":968.331,"full_range_root_ns":1272.183,"full_explicit_own_ns":62502.185,"full_climb_own_ns":18.282,"full_climb_half_ns":45.152,"full_climb_root_ns":16.609,"full_ptr_own_ns":26.512,"full_ptr_half_ns":53.062,"full_ptr_root_ns":21.514,"full_value_ns":21.068,"climb_own_ns":25.098,"climb_half_ns":54.033,"climb_root_ns":19.887,"slice_climb_own_ns":17.660,"slice_climb_half_ns":44.391,"slice_climb_root_ns":14.585,"ptr_own_ns":31.399,"ptr_half_ns":59.908,"ptr_root_ns":23.589,"ptr_checksum":10286789286,"range_own_ns":869.861,"range_half_ns":974.819,"range_root_ns":1276.501,"explicit_own_ns":62450.963,"explicit_half_ns":74781.954,"explicit_root_ns":89143.708,"own_output":367438.882,"half_output":438493.953,"root_output":497748.333,"own_ranges":2076.336,"half_ranges":2258.861,"root_ranges":3082.422,"own_chains":2076.336,"half_chains":2258.861,"root_chains":3082.422,"value_ns":20.983,"value_checksum":0}
+	Command being timed: "/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/dsets/web-Google.edges /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/cx/web-Google.cx"
+	User time (seconds): 84.21
+	System time (seconds): 0.28
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:24.50
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 363632
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 183983
+	Voluntary context switches: 2
+	Involuntary context switches: 263
+	Swaps: 0
+	File system inputs: 111368
+	File system outputs: 27176
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

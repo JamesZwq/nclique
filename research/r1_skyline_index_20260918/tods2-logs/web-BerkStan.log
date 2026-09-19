@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/dsets/web-BerkStan.edges /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/cx/web-BerkStan.cx
+{"passed":true,"n":685230,"m":6649470,"s_max":202,"count_bits":256,"chains":39559,"canonical_nodes":120579,"max_depth":2892,"pairs_total":357626,"runs_total":225649,"vertex_pairs":5514744,"vertex_residue_cells":3321210,"baseline_vertex_bytes":165295380,"bytes_map":286728,"bytes_chains":3341711,"bytes_layers":4979538,"bytes_total":8607977,"file_bytes":8134015,"perm_bytes":2740920,"slice_bytes_layers":4324400,"slice_bytes_total":8616820,"solve_ms":48813.310,"trees_ms":12886.756,"chains_ms":7.730,"layout_ms":75.545,"build_ms":61789.468,"compact_ms":4.526,"save_ms":4.680,"load_ms":2.357,"ti_ms":3847.111,"ti_bytes":367327060,"rss_start":459939840,"rss_after_solve":587964416,"rss_after_chains":587964416,"rss_after_layout":587964416,"slice_range_own_ns":25560.500,"slice_range_half_ns":30161.634,"slice_range_root_ns":36167.831,"slice_explicit_own_ns":69479.599,"slice_explicit_half_ns":86192.671,"slice_explicit_root_ns":103923.126,"slice_own_ranges":1546.224,"slice_half_ranges":1664.555,"slice_root_ranges":2355.974,"full_bytes_total":8811451,"full_bytes_layers":5183012,"full_range_own_ns":664.424,"full_range_half_ns":763.577,"full_range_root_ns":1013.089,"full_explicit_own_ns":43052.100,"full_climb_own_ns":14.231,"full_climb_half_ns":54.166,"full_climb_root_ns":17.619,"full_ptr_own_ns":22.144,"full_ptr_half_ns":62.427,"full_ptr_root_ns":23.776,"full_value_ns":23.644,"climb_own_ns":21.033,"climb_half_ns":61.608,"climb_root_ns":22.899,"slice_climb_own_ns":13.864,"slice_climb_half_ns":53.174,"slice_climb_root_ns":15.864,"ptr_own_ns":27.002,"ptr_half_ns":68.448,"ptr_root_ns":26.694,"ptr_checksum":60824567246,"range_own_ns":660.725,"range_half_ns":767.352,"range_root_ns":1016.940,"explicit_own_ns":43098.290,"explicit_half_ns":55111.432,"explicit_root_ns":66899.097,"own_output":201895.003,"half_output":257819.233,"root_output":306971.338,"own_ranges":1546.224,"half_ranges":1664.555,"root_ranges":2355.974,"own_chains":1546.224,"half_chains":1664.555,"root_chains":2355.974,"value_ns":23.967,"value_checksum":0}
+	Command being timed: "/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/dsets/web-BerkStan.edges /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/cx/web-BerkStan.cx"
+	User time (seconds): 81.09
+	System time (seconds): 31.57
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:52.69
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1095144
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 23124977
+	Voluntary context switches: 3
+	Involuntary context switches: 458
+	Swaps: 0
+	File system inputs: 169184
+	File system outputs: 21248
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

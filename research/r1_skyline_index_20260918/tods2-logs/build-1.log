@@ -1,0 +1,3 @@
+$ cmake --build /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build -j 12 --target chain_index_tool
+Consolidate compiler generated dependencies of target chain_index_tool
+[100%] Built target chain_index_tool

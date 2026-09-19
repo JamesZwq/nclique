@@ -1,0 +1,9 @@
+START 2026-09-19T10:13:59+00:00 host=radonduo load=1.48 1.17 1.05
+/data/wenqianz/dsets/com-dblp.edges ok 1,641,981 B
+/data/wenqianz/dsets/web-Stanford.edges ok 3,552,754 B
+/data/wenqianz/dsets/com-amazon.edges ok 3,263,670 B
+/data/wenqianz/dsets/web-NotreDame.edges ok 1,007,187 B
+/data/wenqianz/dsets/web-Google.edges ok 11,156,521 B
+/data/wenqianz/dsets/web-BerkStan.edges ok 8,607,977 B
+/data/wenqianz/dsets/cit-Patents.edges ok 12,079,564 B
+END 2026-09-19T10:30:10+00:00 rc=0
