@@ -43,13 +43,14 @@ def parse_time(text):
             hms = line.rsplit(' ', 1)[1].split(':'); wall = sum(float(x) * 60 ** i for i, x in enumerate(reversed(hms)))
     return peak, wall
 
-def run(command, log):
+def run(command, log, tolerate=False):
     child = subprocess.run(command, cwd=ROOT, text=True, capture_output=True,
                            env={**os.environ, 'OMP_NUM_THREADS': '1',
                                 'ASAN_OPTIONS': 'halt_on_error=1',
                                 'UBSAN_OPTIONS': 'halt_on_error=1:print_stacktrace=1'})
     log.write_text('$ ' + ' '.join(command) + '\n' + child.stdout + child.stderr)
     if child.returncode:
+        if tolerate: return None
         raise SystemExit('failed: ' + ' '.join(command))
     return child.stdout.strip()
 
@@ -81,11 +82,18 @@ def main():
         tag = Path(graph).stem
         command = ['/usr/bin/time', TIME_FLAG, str(HERE / 'build' / 'chain_index_tool'), '--bench', graph, str(cx / f'{tag}.cx')]
         record['commands'].append(command)
-        output = run(command, logs / f'{tag}.log')
+        output = run(command, logs / f'{tag}.log', tolerate=True)
+        text = (logs / f'{tag}.log').read_text(); peak, wall = parse_time(text)
+        if output is None or not any(x.startswith('{') for x in output.splitlines()):
+            err = next((x for x in text.splitlines()[1:] if x.strip() and not x.startswith('\t') and 'Command' not in x), 'failed')
+            print(graph, 'FAILED:', err, flush=True)
+            record['runs'].append({'graph': graph, 'input_sha256': sha(ROOT / graph), 'error': err, 'peak_rss_bytes': peak, 'wall_s': wall, 'host': platform.node()})
+            (HERE / f'{evidence}.json').write_text(json.dumps(record, indent=1) + '\n'); continue
         line = next(x for x in output.splitlines() if x.startswith('{'))
-        peak, wall = parse_time((logs / f'{tag}.log').read_text())
         record['runs'].append({'graph': graph, 'input_sha256': sha(ROOT / graph), 'result': json.loads(line),
                                'file_sha256': sha(cx / f'{tag}.cx'), 'peak_rss_bytes': peak, 'wall_s': wall, 'host': platform.node()})
+        print(graph, 'ok', f"{json.loads(line)['bytes_total']:,} B", flush=True)
+        (HERE / f'{evidence}.json').write_text(json.dumps(record, indent=1) + '\n')   # checkpoint after every graph
     (HERE / f'{evidence}.json').write_text(json.dumps(record, indent=1) + '\n')
 
 if __name__ == '__main__':
