@@ -1,0 +1,5 @@
+build/
+build-asan/
+cx/
+scripts/*.json
+scripts/*-logs/
