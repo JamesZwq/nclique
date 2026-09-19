@@ -12,10 +12,12 @@ struct BuildWork {
     size_t minimum_scratch_bytes=0;
 };
 
+using Offset = uint64_t;   // position in `members`; a graph's clique tree can hold more than 2^32 incidences (com-lj, hollywood)
 struct Row {
-    Vertex begin, hold_end, pivot_end, end, group, lo, hi;
-    Vertex holds() const { return hold_end-begin; }
-    Vertex pivots() const { return pivot_end-hold_end; }
+    Offset begin, hold_end, pivot_end, end;
+    Vertex group, lo, hi;
+    Vertex holds() const { return static_cast<Vertex>(hold_end-begin); }
+    Vertex pivots() const { return static_cast<Vertex>(pivot_end-hold_end); }
     bool valid(int s) const { return lo<=static_cast<Vertex>(s) && static_cast<Vertex>(s)<=hi; }
 };
 
@@ -31,8 +33,7 @@ struct Index {
     void append(const Vertices& h,const Vertices& q,const Vertices& x={},bool zero=false) {
         require(!h.empty(),"terminal requires a hold");
         require(rows.size()<(uint64_t{1}<<30),"packed row ID overflow");
-        require(members.size()+h.size()+q.size()+x.size()<absent,"member ID overflow");
-        const Vertex begin=members.size(),mid=begin+h.size(),last=mid+q.size();
+        const Offset begin=members.size(),mid=begin+h.size(),last=mid+q.size();
         const Vertex low=std::max<size_t>(2,h.size()+(!x.empty() && !zero));
         const Vertex high=std::min<size_t>(maximum,h.size()+q.size()+!x.empty());
         require(low<=high,"invalid terminal size interval");
@@ -46,7 +47,7 @@ struct Index {
         members.insert(members.end(),h.begin(),h.end());
         members.insert(members.end(),q.begin(),q.end());
         members.insert(members.end(),x.begin(),x.end());
-        rows.push_back({begin,mid,last,static_cast<Vertex>(members.size()),group,low,high});
+        rows.push_back({begin,mid,last,static_cast<Offset>(members.size()),group,low,high});
     }
     void prepare(Vertex n) {
         reverse_off.assign(static_cast<size_t>(n)+1,0);
@@ -56,7 +57,7 @@ struct Index {
         auto cursor=reverse_off;
         for(Vertex p=0;p<rows.size();++p) {
             const auto& row=rows[p];
-            for(Vertex i=row.begin;i<row.end;++i) {
+            for(Offset i=row.begin;i<row.end;++i) {
                 const Vertex role=i<row.hold_end?0:(i<row.pivot_end?1:2);
                 reverse[cursor[members[i]]++]=(p<<2)|role;
             }
@@ -243,7 +244,7 @@ template<class Count> struct Solver {
             }
             std::vector<Count> support(n,0),wh(index.rows.size(),0),wp(index.rows.size(),0),wx(index.group_row.size(),0);
             Vertices count(index.rows.size(),0),choices(index.group_row.size(),0);
-            Vertices choice_off(index.group_row.size(),0),choice_size(index.group_row.size(),0),scratch;
+            std::vector<Offset> choice_off(index.group_row.size(),0);Vertices choice_size(index.group_row.size(),0),scratch;
             std::vector<uint8_t> live(n,0),touched(index.rows.size(),0),dead(index.rows.size(),1),dirty(n,0);
             for(Vertex p=0;p<index.rows.size();++p) {
                 const auto& row=index.rows[p];if(!row.valid(s))continue;
@@ -251,10 +252,10 @@ template<class Count> struct Solver {
                 const Vertex z=row.end-row.pivot_end;
                 const auto value=coefficients(index,p,s,count[p],z,choose,metrics);
                 wh[p]=value.h;wp[p]=value.q;
-                auto initialize=[&](Vertex begin,Vertex end,Count weight) {
+                auto initialize=[&](Offset begin,Offset end,Count weight) {
                     if(!weight)return;
                     work.count_reads+=end-begin;
-                    for(Vertex i=begin;i<end;++i)Base::checked_add(support[index.members[i]],weight);
+                    for(Offset i=begin;i<end;++i)Base::checked_add(support[index.members[i]],weight);
                 };
                 initialize(row.begin,row.hold_end,value.h);initialize(row.hold_end,row.pivot_end,value.q);
                 if(row.group!=absent) {
@@ -309,7 +310,7 @@ template<class Count> struct Solver {
             auto memory=[&] {
                 data.state_bytes=std::max(data.state_bytes,
                     (support.capacity()+wh.capacity()+wp.capacity()+wx.capacity())*sizeof(Count)
-                    +(count.capacity()+choices.capacity()+choice_off.capacity()+choice_size.capacity()+scratch.capacity()
+                    +(count.capacity()+choices.capacity()+2*choice_off.capacity()+choice_size.capacity()+scratch.capacity()
                       +order.capacity()+next_order.capacity()+batch.capacity()+affected.capacity()+changed.capacity())*sizeof(Vertex)
                     +live.capacity()+touched.capacity()+dead.capacity()+dirty.capacity()+heap.bytes()+cache.capacity()*sizeof(Cache)+plan.bytes());
             };
@@ -341,10 +342,10 @@ template<class Count> struct Solver {
                     require(support[v]>=loss,"factored degree underflow");support[v]-=loss;++metrics.positive_writes;
                     if(!dirty[v]){dirty[v]=1;changed.push_back(v);}
                 };
-                auto scan=[&](Vertex begin,Vertex end,Count loss) {
+                auto scan=[&](Offset begin,Offset end,Count loss) {
                     if(!loss)return;
                     work.target_reads+=end-begin;
-                    for(Vertex i=begin;i<end;++i)subtract(index.members[i],loss);
+                    for(Offset i=begin;i<end;++i)subtract(index.members[i],loss);
                 };
                 for(Vertex p:affected) {
                     ++metrics.affected_rows;const auto& row=index.rows[p];const Vertex g=row.group;
@@ -357,7 +358,7 @@ template<class Count> struct Solver {
                     ++metrics.group_updates;require(value.x<=wx[g],"negative choice loss");
                     const Count lx=wx[g]-value.x;wx[g]=value.x;
                     if(!lx)continue;
-                    const Vertex begin=choice_off[g];Vertex length=choice_size[g],at=0;
+                    const Offset begin=choice_off[g];Vertex length=choice_size[g],at=0;
                     while(at<length) {
                         Vertex v=scratch[begin+at];++work.target_reads;bool replacement=false;
                         while(!live[v]) {

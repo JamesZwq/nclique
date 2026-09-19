@@ -49,7 +49,7 @@ static cpp_int count_bound_terminal(const terminal::Index& ti, uint32_t n, int d
     std::vector<cpp_int> peaks(d + 2); for (int q = 0; q <= d + 1; ++q) peaks[q] = choose_int(q, q / 2);
     std::vector<cpp_int> bound(n);
     for (const auto& row : ti.rows) { const int q = static_cast<int>(row.end - row.hold_end); require(q >= 0 && q < static_cast<int>(peaks.size()), "row free part exceeds the clique bound");
-        for (Vertex i = row.begin; i < row.end; ++i) bound[ti.members[i]] += peaks[q]; }
+        for (terminal::Offset i = row.begin; i < row.end; ++i) bound[ti.members[i]] += peaks[q]; }
     cpp_int maximum = d; for (const auto& b : bound) if (b > maximum) maximum = b; return maximum * 2;
 }
 // Run f(T{}, bits) at the first width that holds `bound`; if the solver reports an overflow, retry one width up.

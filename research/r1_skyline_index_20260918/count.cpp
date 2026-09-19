@@ -65,7 +65,7 @@ template<class T> static Tree<T> make_tree_row(const Graph& g,const terminal::In
                 if(role==0)++ah[p]; else if(role==1)++aq[p];
                 if(!live[p] && ah[p]==row.holds() && row.holds()+aq[p]>=static_cast<Vertex>(s)) {
                     live[p]=1;rep[p]=v;
-                    for(Vertex i=row.begin;i<row.pivot_end;++i)if(active[index.members[i]])unite(v,index.members[i]);
+                    for(terminal::Offset i=row.begin;i<row.pivot_end;++i)if(active[index.members[i]])unite(v,index.members[i]);
                 } else if(live[p]) unite(v,static_cast<Vertex>(rep[p]));
             }
         }

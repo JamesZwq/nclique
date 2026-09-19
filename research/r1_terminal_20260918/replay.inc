@@ -33,7 +33,7 @@ template<class Count> class ReplayPlan {
         ordered_.resize(index_.members.size());first_.resize(index_.rows.size());before_.resize(index_.rows.size());
         for(Vertex p:active_rows_) {
             const auto& row=index_.rows[p];Vertex first=index_.members[row.begin];
-            for(Vertex i=row.begin;i<row.hold_end;++i) {
+            for(Offset i=row.begin;i<row.hold_end;++i) {
                 ++metrics_.compile_reads;
                 if(ranks_[index_.members[i]]<ranks_[first])first=index_.members[i];
             }
@@ -42,9 +42,9 @@ template<class Count> class ReplayPlan {
             auto less=[&](Vertex a,Vertex b){++metrics_.sort_comparisons;return ranks_[a]<ranks_[b];};
             std::sort(ordered_.begin()+row.hold_end,ordered_.begin()+row.pivot_end,less);
             std::sort(ordered_.begin()+row.pivot_end,ordered_.begin()+row.end,less);
-            Vertex at=row.hold_end;
+            Offset at=row.hold_end;
             while(at<row.pivot_end && ranks_[ordered_[at]]<ranks_[first]){++at;++metrics_.compile_reads;}
-            before_[p]=at-row.hold_end;
+            before_[p]=static_cast<Vertex>(at-row.hold_end);
         }
         valid_=true;++metrics_.compilations;metrics_.compile_ms+=ms(begin);memory();
     }
@@ -60,7 +60,7 @@ template<class Count> class ReplayPlan {
                 }
                 continue;
             }
-            Vertex qi=row.hold_end,xi=row.pivot_end;
+            Offset qi=row.hold_end,xi=row.pivot_end;
             const Vertex limit=ranks_[first_[p]];
             while(true) {
                 const Vertex qr=qi<row.pivot_end?ranks_[ordered_[qi]]:absent;
@@ -84,30 +84,30 @@ template<class Count> class ReplayPlan {
             const auto& row=index_.rows[p];if(!row.valid(s))continue;
             const int r=s-static_cast<int>(row.holds());const Count level=upper[first_[p]];
             if(row.group==absent) {
-                Vertex at=row.hold_end,at_level=row.pivot_end;
+                Offset at=row.hold_end,at_level=row.pivot_end;
                 while(at<row.pivot_end) {
                     const Count key=upper[ordered_[at]];
                     if(key>=level && at_level==row.pivot_end)at_level=at;
                     if(key>level)break;
-                    Vertex next=at+1;
+                    Offset next=at+1;
                     while(next<row.pivot_end && upper[ordered_[next]]==key)++next;
                     const Count weight=key?coefficient(static_cast<int>(row.pivot_end-at)-1,r-1):Count{0};
                     for(Vertex i=at;i<next;++i){add(ordered_[i],weight);++metrics_.certificate_reads;}
                     at=next;
                 }
                 const Count weight=level?coefficient(row.pivot_end-at_level,r):Count{0};
-                for(Vertex i=row.begin;i<row.hold_end;++i) {
+                for(Offset i=row.begin;i<row.hold_end;++i) {
                     const Vertex v=index_.members[i];if(upper[v]==level)add(v,weight);++metrics_.certificate_reads;
                 }
                 continue;
             }
-            Vertex qi=row.hold_end,xi=row.pivot_end;
+            Offset qi=row.hold_end,xi=row.pivot_end;
             auto next_key=[&]() -> Count {
                 return std::min(qi<row.pivot_end?upper[ordered_[qi]]:Base::infinity,
                                 xi<row.end?upper[ordered_[xi]]:Base::infinity);
             };
             auto group=[&](Count key) {
-                Vertex qe=qi,xe=xi;
+                Offset qe=qi,xe=xi;
                 while(qe<row.pivot_end && upper[ordered_[qe]]==key)++qe;
                 while(xe<row.end && upper[ordered_[xe]]==key)++xe;
                 if(qe>qi) {
@@ -127,7 +127,7 @@ template<class Count> class ReplayPlan {
             };
             while(next_key()<level)group(next_key());
             const Count weight=level?common(p,row.pivot_end-qi,row.end-xi,r):Count{0};
-            for(Vertex i=row.begin;i<row.hold_end;++i) {
+            for(Offset i=row.begin;i<row.hold_end;++i) {
                 const Vertex v=index_.members[i];if(upper[v]==level)add(v,weight);++metrics_.certificate_reads;
             }
             if(next_key()==level)group(level);
@@ -139,7 +139,7 @@ public:
         if(enabled) {
             value_.resize(n);top_.assign(n,1);ranks_.resize(n);active_order_.reserve(n);
             active_rows_.resize(index.rows.size());std::iota(active_rows_.begin(),active_rows_.end(),0);
-            for(const auto& row:index.rows)for(Vertex i=row.begin;i<row.end;++i)
+            for(const auto& row:index.rows)for(Offset i=row.begin;i<row.end;++i)
                 top_[index.members[i]]=std::max(top_[index.members[i]],row.hi);
         }
         memory();
