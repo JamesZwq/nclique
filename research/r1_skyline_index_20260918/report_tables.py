@@ -11,7 +11,7 @@ def load(name):
     return json.loads(p.read_text()) if p.exists() else None
 
 def by_graph(record):
-    return {Path(r['graph']).stem: r['result'] for r in record['runs']}
+    return {Path(r['graph']).stem: r['result'] for r in record['runs'] if 'result' in r}
 
 def fmt(x, digits=0):
     if isinstance(x, float) and digits:
@@ -67,7 +67,10 @@ def final():
         for line in p.read_text().splitlines():
             t = line.split()
             if len(t) >= 2 and t[1] == 'real': wall = t[0]
+            if 'Elapsed (wall clock) time' in line:
+                hms = line.rsplit(' ', 1)[1].split(':'); wall = f"{sum(float(x) * 60 ** i for i, x in enumerate(reversed(hms))):.2f}"
             if 'maximum resident set size' in line: rss = f'{int(t[0])/1048576:,.0f}'
+            if 'Maximum resident set size' in line: rss = f'{int(line.rsplit(":", 1)[1])/1024:,.0f}'
         return wall, rss
     print('### Final module: build, save, load (ms, single thread); whole-process wall time (s) and peak RSS (MB)')
     print('| Graph | solve (all-size peel) | trees | chains + labels | layout | build total | compact | save | load | process wall s | peak RSS MB |')
