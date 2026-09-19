@@ -1,5 +1,9 @@
 # r = 1 All-Size Community Index (chain index)
 
+The self-contained code lives in `src-r1index/` at the repository root
+(index header, hierarchy, tool, flattened solver, drivers); this directory
+is the research record: theory, design stages, evidence and the report.
+
 Research line, 2026-09-18/19. One index for the whole (1, s)-nucleus
 hierarchy of a graph over every clique size s: core values kappa_s(v) and
 every (s, k)-nucleus as a vertex set. Exact; brute-force verified;
