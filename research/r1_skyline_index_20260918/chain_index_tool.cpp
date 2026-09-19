@@ -3,8 +3,8 @@
 //                           checks values, communities, membership, ladders in four forms (build, compact with
 //                           T tops, compact packed, loaded from disk)
 //   --build-only <graph>    build phases, resident memory and bytes, no query passes (JSON line)
-//   --bench <graph> <out>   build, three forms, save/load, query latencies (JSON line); drivers: run_final.py,
-//                           run_buildonly.py; tables: report_tables.py
+//   --bench <graph> <out>   build, three forms, save/load, latencies of the value and community queries (JSON line);
+//                           drivers: run_final.py, run_buildonly.py; tables: report_tables.py
 // Shares the all-size solver of research/r1_terminal_20260918 (streamed rows) and make_tree of count.cpp.
 #define main skyline_stage1_count_main
 #include "count.cpp"
@@ -266,8 +266,7 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
         const int s = 2 + static_cast<int>(rng() % static_cast<uint64_t>(ix.omega[c] - 1)); const V x = ix.value(v, s);
         const V k = regime == 0 ? x : (regime == 1 ? std::max<V>(V{1}, std::floor(x / 2)) : V{1}); qs.push_back({v, static_cast<uint32_t>(rng() % n), s, k}); } return qs; };
     const std::vector<Q> own = draw(0, 20000), half = draw(1, 20000), root = draw(2, 1000);
-    const std::vector<Q> mq = [&] { std::vector<Q> m; for (int r = 0; r < 3; ++r) { auto q = draw(r, 6667); m.insert(m.end(), q.begin(), q.end()); } return m; }();
-    std::vector<uint32_t> ranges; ranges.reserve(1 << 20); std::vector<uint32_t> ids(static_cast<size_t>(n) + ChainIndex<V>::kSlack); std::vector<std::pair<V, uint64_t>> lad;   // ids: caller-owned output buffer with slack
+    std::vector<uint32_t> ranges; ranges.reserve(1 << 20); std::vector<uint32_t> ids(static_cast<size_t>(n) + ChainIndex<V>::kSlack);   // ids: caller-owned output buffer with slack
     auto median5 = [](std::array<double, 5> t) { std::sort(t.begin(), t.end()); return t[2]; };
     auto time_climb = [&](const std::vector<Q>& qs) { const ChainIndex<V>& ix = *px; std::array<double, 5> ts{}; uint64_t z = 0;   // own node lookup + climb only (the part the top encoding touches)
         for (int pass = 0; pass < 6; ++pass) { const auto st = Clock::now(); for (const auto& q : qs) { const uint32_t x = ix.own_node(ix.chain_of(q.v), q.s); z += ix.climb(q.s, x, q.k); }
@@ -285,27 +284,19 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
                 if (pass == 0) { nr += ranges.size() / 2; if (ix.compact) nc += ranges.size() / 2; else { uint32_t b, e; ChainIndex<V>::slice_bounds(ix.layers[q.s], node, b, e); nc += e - b; } } }
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / qs.size(); if (pass == 0) outputs = cnt; else ts[pass - 1] = el; }
         return RangeStat{median5(ts), double(outputs) / qs.size(), double(nr) / qs.size(), double(nc) / qs.size()}; };
-    auto time_member = [&]() { const ChainIndex<V>& ix = *px; std::array<double, 5> ts{}; uint64_t sum = 0;
-        for (int pass = 0; pass < 6; ++pass) { uint64_t z = 0; const auto st = Clock::now(); for (const auto& q : mq) z += ix.member(q.u, q.v, q.s, q.k);
-            const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / mq.size(); sum += z; if (pass) ts[pass - 1] = el; }
-        return std::pair<double, uint64_t>{median5(ts), sum}; };
     auto time_value = [&]() { const ChainIndex<V>& ix = *px; std::array<double, 5> ts{}; uint64_t h = 0; std::vector<std::pair<uint32_t, int>> vq;
         for (int i = 0; i < 200000; ++i) { const uint32_t v = static_cast<uint32_t>(rng() % n); vq.emplace_back(v, 2 + static_cast<int>(rng() % static_cast<uint64_t>(ix.omega[ix.chain_of(v)] + 1))); }
         for (int pass = 0; pass < 6; ++pass) { const auto st = Clock::now(); for (const auto& [v, s] : vq) h ^= static_cast<uint64_t>(std::fmod(ix.value(v, s), 9007199254740993.0)) + s;
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / vq.size(); if (pass) ts[pass - 1] = el; }
         return std::pair<double, uint64_t>{median5(ts), h}; };
-    auto time_ladder = [&]() { const ChainIndex<V>& ix = *px; std::array<double, 5> ts{}; uint64_t steps = 0;
-        for (int pass = 0; pass < 6; ++pass) { uint64_t z = 0; const auto st = Clock::now(); for (const auto& q : own) { ix.ladder(q.v, q.s, lad); z += lad.size(); }
-            const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / own.size(); if (pass == 0) steps = z; else ts[pass - 1] = el; }
-        return std::pair<double, double>{median5(ts), double(steps) / own.size()}; };
     // build form (chain-id DFS arrays): the ablation
     const auto sro = time_ranges(own, false), srh = time_ranges(half, false), srr = time_ranges(root, false), seo = time_ranges(own, true), seh = time_ranges(half, true), ser = time_ranges(root, true);
-    const auto sll = time_ladder(); const auto sco = time_climb(own), sch = time_climb(half), scr = time_climb(root);
+    const auto sco = time_climb(own), sch = time_climb(half), scr = time_climb(root);
     // compact form with tops kept as T (isolates the top encoding), measured on a copy
     ChainIndex<V> full = built; full.compact_runs(false); px = &full;
     const auto fro = time_ranges(own, false), frh = time_ranges(half, false), frr = time_ranges(root, false), feo = time_ranges(own, true);
     const auto fco = time_climb(own), fch = time_climb(half), fcr = time_climb(root); const auto fpo = time_ptr(own), fph = time_ptr(half), fpr = time_ptr(root);
-    const auto fmm = time_member(); const auto fvv = time_value(); const auto fll = time_ladder(); const uint64_t full_bytes_total = full.bytes_total(), full_bytes_layers = full.bytes_layers();
+    const auto fvv = time_value(); const uint64_t full_bytes_total = full.bytes_total(), full_bytes_layers = full.bytes_layers();
     full = ChainIndex<V>{}; px = &built;
     // compact form with packed tops (the file format): convert, save, load, measure on the loaded index
     t0 = Clock::now(); built.compact_runs(true); const double compact_ms = ms(t0);
@@ -318,7 +309,7 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
     require(ro.vertices == sro.vertices && rh.vertices == srh.vertices && rr.vertices == srr.vertices && eo.vertices == seo.vertices, "forms disagree on output size");
     const auto po = time_ptr(own), ph = time_ptr(half), pr = time_ptr(root); const auto co = time_climb(own), ch = time_climb(half), cr = time_climb(root);
     require(co.second == sco.second && ch.second == sch.second && cr.second == scr.second, "climbs differ between forms");
-    const auto mm = time_member(); const auto vv = time_value(); const auto ll = time_ladder();
+    const auto vv = time_value();
     const ChainIndex<V>& ix = loaded;   // the index reported below
     // per-vertex S trees with values, stage-2 `vertices` accounting (index.cpp): nodes (W + 12) each, 8 bytes per (vertex, size) pair
     // (DFS array entry + own-node pointer), 4 (n + 1) offsets, 2 n omega/sigma, 8 (n + 1) residue offsets, W per residue cell
@@ -333,13 +324,13 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
         << ",\"solve_ms\":" << bt.solve_ms << ",\"trees_ms\":" << bt.trees_ms << ",\"chains_ms\":" << bt.chains_ms << ",\"layout_ms\":" << bt.layout_ms << ",\"build_ms\":" << build_ms << ",\"compact_ms\":" << compact_ms << ",\"save_ms\":" << save_ms << ",\"load_ms\":" << load_ms
         << ",\"ti_ms\":" << ti_ms << ",\"ti_bytes\":" << bt.ti_bytes << ",\"rss_start\":" << bt.rss_start << ",\"rss_after_solve\":" << bt.rss_solve << ",\"rss_after_chains\":" << bt.rss_chains << ",\"rss_after_layout\":" << bt.rss_layout
         << ",\"slice_range_own_ns\":" << sro.ns << ",\"slice_range_half_ns\":" << srh.ns << ",\"slice_range_root_ns\":" << srr.ns
-        << ",\"slice_explicit_own_ns\":" << seo.ns << ",\"slice_explicit_half_ns\":" << seh.ns << ",\"slice_explicit_root_ns\":" << ser.ns << ",\"slice_ladder_ns\":" << sll.first
+        << ",\"slice_explicit_own_ns\":" << seo.ns << ",\"slice_explicit_half_ns\":" << seh.ns << ",\"slice_explicit_root_ns\":" << ser.ns
         << ",\"slice_own_ranges\":" << sro.ranges << ",\"slice_half_ranges\":" << srh.ranges << ",\"slice_root_ranges\":" << srr.ranges
         << ",\"full_bytes_total\":" << full_bytes_total << ",\"full_bytes_layers\":" << full_bytes_layers
         << ",\"full_range_own_ns\":" << fro.ns << ",\"full_range_half_ns\":" << frh.ns << ",\"full_range_root_ns\":" << frr.ns << ",\"full_explicit_own_ns\":" << feo.ns
         << ",\"full_climb_own_ns\":" << fco.first << ",\"full_climb_half_ns\":" << fch.first << ",\"full_climb_root_ns\":" << fcr.first
         << ",\"full_ptr_own_ns\":" << fpo.first << ",\"full_ptr_half_ns\":" << fph.first << ",\"full_ptr_root_ns\":" << fpr.first
-        << ",\"full_member_ns\":" << fmm.first << ",\"full_value_ns\":" << fvv.first << ",\"full_ladder_ns\":" << fll.first
+        << ",\"full_value_ns\":" << fvv.first
         << ",\"climb_own_ns\":" << co.first << ",\"climb_half_ns\":" << ch.first << ",\"climb_root_ns\":" << cr.first
         << ",\"slice_climb_own_ns\":" << sco.first << ",\"slice_climb_half_ns\":" << sch.first << ",\"slice_climb_root_ns\":" << scr.first
         << ",\"ptr_own_ns\":" << po.first << ",\"ptr_half_ns\":" << ph.first << ",\"ptr_root_ns\":" << pr.first << ",\"ptr_checksum\":" << (po.second ^ ph.second ^ pr.second)
@@ -348,8 +339,7 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
         << ",\"own_output\":" << eo.vertices << ",\"half_output\":" << eh.vertices << ",\"root_output\":" << er.vertices
         << ",\"own_ranges\":" << ro.ranges << ",\"half_ranges\":" << rh.ranges << ",\"root_ranges\":" << rr.ranges
         << ",\"own_chains\":" << ro.chains << ",\"half_chains\":" << rh.chains << ",\"root_chains\":" << rr.chains
-        << ",\"member_ns\":" << mm.first << ",\"member_checksum\":" << mm.second << ",\"value_ns\":" << vv.first << ",\"value_checksum\":" << vv.second
-        << ",\"ladder_ns\":" << ll.first << ",\"ladder_steps\":" << ll.second << "}\n";
+        << ",\"value_ns\":" << vv.first << ",\"value_checksum\":" << vv.second << "}\n";
 }
 
 int main(int argc, char** argv) {

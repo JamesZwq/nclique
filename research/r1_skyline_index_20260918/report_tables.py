@@ -36,12 +36,12 @@ def layouts():
         a = data['aligned'][g]
         print(f"| {g} | {fmt(a['own_output'])} | {fmt(data['vertices'][g]['own_base_ns'])} | {fmt(data['twins'][g]['own_base_ns'])} | {fmt(data['chains'][g]['own_base_ns'])} | {fmt(a['aligned_own_ns'])} | {fmt(a['aligned_range_own_ns'])} |")
     print()
-    print('### Membership and value queries, ns per query (stage-2 layouts)')
-    print('| Graph | member: per-vertex | twins | chains | aligned | value: per-vertex | chains | aligned |')
-    print('|---|---:|---:|---:|---:|---:|---:|---:|')
+    print('### Value queries, ns per query (stage-2 layouts)')
+    print('| Graph | per-vertex | chains | aligned |')
+    print('|---|---:|---:|---:|')
     for g in graphs:
         a = data['aligned'][g]
-        print(f"| {g} | {data['vertices'][g]['member_base_ns']:.1f} | {data['twins'][g]['member_base_ns']:.1f} | {data['chains'][g]['member_base_ns']:.1f} | {a['aligned_member_ns']:.1f} | {data['vertices'][g]['value_ns']:.1f} | {data['chains'][g]['value_ns']:.1f} | {a['value_ns']:.1f} |")
+        print(f"| {g} | {data['vertices'][g]['value_ns']:.1f} | {data['chains'][g]['value_ns']:.1f} | {a['value_ns']:.1f} |")
     print()
 
 def final():
@@ -84,18 +84,18 @@ def final():
             memcpy = fmt(vert[g][f'{key}_base_ns']) if g in vert else '-'
             print(f"| {g} | {reg} | {fmt(r[f'{key}_output'])} | {r[f'{key}_ranges']:.1f} | {r[f'ptr_{key}_ns']:.1f} | {fmt(r[f'range_{key}_ns'])} | {fmt(r[f'explicit_{key}_ns'])} | {memcpy} | {fmt(r[f'slice_range_{key}_ns'])} | {fmt(r[f'slice_explicit_{key}_ns'])} |")
     print()
-    print('### Final module: membership, value, ladder (ns per query)')
-    print('| Graph | member | value | ladder (compact) | ladder steps | ladder (build form) | max depth |')
-    print('|---|---:|---:|---:|---:|---:|---:|')
+    print('### Final module: value queries (ns per query)')
+    print('| Graph | value | max tree depth |')
+    print('|---|---:|---:|')
     for g, r in data.items():
-        print(f"| {g} | {r['member_ns']:.1f} | {r['value_ns']:.1f} | {fmt(r['ladder_ns'])} | {r['ladder_steps']:.2f} | {fmt(r['slice_ladder_ns'])} | {r['max_depth']} |")
+        print(f"| {g} | {r['value_ns']:.1f} | {r['max_depth']} |")
     print()
     if all('full_bytes_total' in r for r in data.values()):
         print('### Top encoding ablation, same process: compact form with tops as T against packed tops (ns per query)')
-        print('| Graph | bytes T tops | bytes packed | climb own T / packed | climb half T / packed | climb root T / packed | locate own T / packed | member T / packed | value T / packed | ladder T / packed |')
-        print('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+        print('| Graph | bytes T tops | bytes packed | climb own T / packed | climb half T / packed | climb root T / packed | locate own T / packed | value T / packed |')
+        print('|---|---:|---:|---:|---:|---:|---:|---:|')
         for g, r in data.items():
-            print(f"| {g} | {fmt(r['full_bytes_total'])} | {fmt(r['bytes_total'])} | {r['full_climb_own_ns']:.1f} / {r['climb_own_ns']:.1f} | {r['full_climb_half_ns']:.1f} / {r['climb_half_ns']:.1f} | {r['full_climb_root_ns']:.1f} / {r['climb_root_ns']:.1f} | {r['full_ptr_own_ns']:.1f} / {r['ptr_own_ns']:.1f} | {r['full_member_ns']:.1f} / {r['member_ns']:.1f} | {r['full_value_ns']:.1f} / {r['value_ns']:.1f} | {fmt(r['full_ladder_ns'])} / {fmt(r['ladder_ns'])} |")
+            print(f"| {g} | {fmt(r['full_bytes_total'])} | {fmt(r['bytes_total'])} | {r['full_climb_own_ns']:.1f} / {r['climb_own_ns']:.1f} | {r['full_climb_half_ns']:.1f} / {r['climb_half_ns']:.1f} | {r['full_climb_root_ns']:.1f} / {r['climb_root_ns']:.1f} | {r['full_ptr_own_ns']:.1f} / {r['ptr_own_ns']:.1f} | {r['full_value_ns']:.1f} / {r['value_ns']:.1f} |")
         print()
         print('### Climb only (own node lookup + climb), ns per query: build form (T tops, chain-id arrays) against the loaded packed index')
         print('| Graph | own build / packed | half build / packed | root build / packed |')

@@ -1,9 +1,9 @@
 # r = 1 All-Size Community Index (chain index)
 
 Research line, 2026-09-18/19. One index for the whole (1, s)-nucleus
-hierarchy of a graph over every clique size s: core values kappa_s(v),
-every (s, k)-nucleus as a vertex set, membership, and the ladder of a
-vertex. Exact; brute-force verified; measured on 17 graphs of five families.
+hierarchy of a graph over every clique size s: core values kappa_s(v) and
+every (s, k)-nucleus as a vertex set. Exact; brute-force verified;
+measured on 17 graphs of five families.
 
 Headline (17 graphs of five families, one thread, RESULTS_FINAL.md
 Sections 9 and 14): 1.3x-11.7x fewer bytes than one S tree per size
@@ -11,7 +11,7 @@ Sections 9 and 14): 1.3x-11.7x fewer bytes than one S tree per size
 the 1,005-vertex email-Eu-core 1.3x is the worst case); a community is
 located in 3.5-59 ns and listed at 0.04-0.28 ns per vertex on all but the
 most fragmented graphs (faster than a memcpy of the vertex list on 13 of
-15 measured points); membership 5-31 ns; values 6-20 ns; build 15 ms
+15 measured points); values 6-24 ns; build 15 ms
 (GrQc) to 34 s (pokec) and 189 s (dblp-coauthor, 512-bit counts) with
 157 MB (dblp) to 8.8 GB (dblp-coauthor) peak memory. com-lj and com-orkut
 exceed the solver's 32-bit member ids (see RESULTS_FINAL.md Section 11).
@@ -95,8 +95,11 @@ double k = ix.value(v, s);                                       // kappa_s(v), 
 Index::Runs r; uint32_t node;
 ix.community_runs(v, s, k, r, node);                             // O(1): head range, whole runs, tail range
 std::vector<uint32_t> ids(Index::total(r) + Index::kSlack); ix.expand(r, ids.data());   // explicit labels
-bool same = ix.member(u, v, s, k);
 ```
+
+`member(u, v, s, k)` and `ladder(v, s, out)` exist as derived queries
+(the selftest uses them as cross-checks); they are not part of the
+measured interface.
 
 Labels are the aligned internal labels; the permutation from input labels
 is written next to the index file by the tool (`<out.cx>.perm`, 4 bytes
@@ -105,7 +108,6 @@ per vertex) and is unnecessary if the graph is stored in that order.
 ## Status
 
 Complete locally. Open: runs on the servers (tods1/tods2) when they are
-back; optional per-node vertex counts for O(depth) ladders (bytes versus
-latency, a user decision); r >= 2 is closed (CHAINS.md Section 10: the
+back; r >= 2 is closed (CHAINS.md Section 10: the
 paper's size forest already is the chain structure). No production code
 (`src/`) or paper text was changed.
