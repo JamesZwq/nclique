@@ -680,10 +680,31 @@ fixed-width run is `archive/final_v3.json`.
 
 **Sizes beyond 255.** The first version kept omega, sigma and the trie
 level in one byte and failed on dblp-coauthor (degeneracy 449, s_max 450)
-with "trie path length". They are 16-bit now (format `CHAINX04`, 2 more
-bytes per chain, under 0.3 percent of any index); the selftest gained
-K_300 (one chain, every size certified, one range per community, values
-C(299, s-1) up to 512 bits). The
+with "trie path length". They are 16-bit now (2 more bytes per chain,
+under 0.3 percent of any index); the selftest gained K_300 (one chain,
+every size certified, one range per community, values C(299, s-1) up to
+512 bits).
+
+**Values as double (user decision, precision not required).** The stored
+value type is `double` (format `CHAINX05`; the header records 0 for
+double, else the integer width, so a file cannot be read with the wrong
+type). The solver still peels with exact integers (the bucket order needs
+exact comparisons); the conversion happens once when a value is written
+into the index. Per-size widths keep integers below 2^32 at 1, 2 or 4
+bytes, so on the fourteen graphs whose counts fit 64 bits nothing changes
+(byte-identical value blocks); the 128/256/512-bit graphs lose the wide
+fields: HepPh 215,578 -> 193,082 B (-10 percent), dblp-coauthor
+45.3 -> 44.3 MB (-2 percent, its wide values were already confined to a
+few sizes). Below 2^53 every stored value is exact. Above it a value is
+the nearest double; two consecutive levels of a merge tree would have to
+agree to 53 bits to be confused, which does not happen on any input
+measured (K_300, values up to C(299, 149) ~ 10^88, reproduces every level
+and community; the double binomial table agrees with the exact one to
+1e-12 relative). Query latencies are unchanged within noise (interleaved
+A/B on GrQc, HepPh, dblp, amazon: climbs within +-5 ns, both signs). The
+exact integer form remains available as `ChainIndex<T>` with the solver's
+count type and is what the selftest runs alongside the double form
+(4.84 M community queries in total). The
 earlier latency evidence was measured on the index compacted in place
 rather than on the loaded copy (a reference bound once before the target
 pointer changed); the two hold identical arrays, so those numbers stand,

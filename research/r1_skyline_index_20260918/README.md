@@ -29,8 +29,11 @@ exceed the solver's 32-bit member ids (see RESULTS_FINAL.md Section 11).
    (2, k)-community is exactly one range (C4).
 3. Values per chain: omega, the certification point sigma, and residues
    for s < sigma; for s >= sigma the value is C(omega - 1, s - 1).
-4. Node tops and residues at per-size byte widths; file format CHAINX04
-   (omega and sigma 16-bit, so clique sizes above 255 are fine).
+4. Values are stored as `double` (exact below 2^53; the solver still
+   peels with exact integers and converts once at build time); node tops
+   and residues at per-size byte widths (1/2/4-byte integers below 2^32,
+   else the 8-byte double). File format CHAINX05; omega and sigma are
+   16-bit, so clique sizes above 255 are fine.
 
 ## Layout
 
@@ -86,11 +89,12 @@ the machine is busy.
 
 ```
 #include "chain_index.hpp"
-auto ix = chainindex::ChainIndex<uint64_t>::load("dblp.cx");   // T = the count width recorded in the file
-uint64_t k = ix.value(v, s);                                    // kappa_s(v), internal label v
-chainindex::ChainIndex<uint64_t>::Runs r; uint32_t node;
-ix.community_runs(v, s, k, r, node);                            // O(1): head range, whole runs, tail range
-std::vector<uint32_t> ids(r_total + 8); ix.expand(r, ids.data()); // explicit labels (8 spare slots)
+using Index = chainindex::ChainIndex<double>;                    // files written by the tool hold double values
+auto ix = Index::load("dblp.cx");
+double k = ix.value(v, s);                                       // kappa_s(v), internal label v (exact below 2^53)
+Index::Runs r; uint32_t node;
+ix.community_runs(v, s, k, r, node);                             // O(1): head range, whole runs, tail range
+std::vector<uint32_t> ids(Index::total(r) + Index::kSlack); ix.expand(r, ids.data());   // explicit labels
 bool same = ix.member(u, v, s, k);
 ```
 
