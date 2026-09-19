@@ -731,19 +731,27 @@ servers are 1.5-3x those of the Apple M-series laptop (locate 14-35 ns,
 listing 0.10-0.31 ns per vertex, values 15-35 ns), consistent with the
 CPUs; ratios between configurations are the same.
 
-The 32-bit member limit. com-lj (4.0 M vertices, 34.7 M edges),
+The three largest graphs. com-lj (4.0 M vertices, 34.7 M edges),
 ca-hollywood-2009 (1.07 M vertices, 56.3 M edges, cliques up to 2,209)
-and com-orkut (3.07 M vertices, 117 M edges) stopped in the solver's
-clique-tree row index with "member ID overflow": the number of (row,
-vertex) incidences exceeds 2^32. The offsets into the member array are
-64-bit as of commit 0c7e43a (`Row::begin/hold_end/pivot_end/end`,
-choice offsets; solver and index selftests pass, dblp index
-byte-identical); the second tods1 run uses that build. Results are
-appended to the merged table when they finish. hollywood additionally
-needs core values up to about 10^660 (C(2208, 1104)), beyond 512-bit
-integers and beyond double (10^308); the exact solver will report the
-count bound as exceeded, and a long-double or log-domain count type is
-the only way to cover such cliques.
+and com-orkut (3.07 M vertices, 117 M edges) first stopped in the
+solver's clique-tree row index with "member ID overflow" (more than 2^32
+(row, vertex) incidences), then com-lj with "packed row ID overflow"
+(more than 2^30 rows). Both limits are gone: member offsets, row ids and
+the reverse codes are 64-bit (commits 0c7e43a, 6d32fce; solver and index
+selftests pass, dblp index byte-identical). With them com-lj ran for 42
+minutes on tods1, reached 350 GB resident, and stopped with
+`std::bad_alloc` (503 GB machine, about 400 GB free): the terminal
+solver materialises every row of the clique tree, and com-lj's tree does
+not fit. That is the solver's design boundary, recorded for this line
+earlier as "com-lj is a fundamental clique explosion"; the chain index
+itself would be small (the graphs with the largest cliques give the
+largest ratios). hollywood and orkut are expected to end the same way
+(orkut has 3.4x the edges of com-lj); hollywood would additionally need
+core values up to about 10^660 (C(2208, 1104)), beyond 512-bit integers
+and beyond double. Double counts inside the peel are not an option: the
+peel subtracts exact losses from supports that are sums over many
+leaves, and in double the small-leaf terms vanish, merging levels that
+are distinct; only the stored index values are double.
 
 New graphs and what they say. web-uk-2005 (cliques up to 500, 155
 vertices per chain) and ca-coauthors-dblp (cliques up to 337, 58 per
