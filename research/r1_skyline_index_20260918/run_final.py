@@ -33,12 +33,12 @@ def run(command, log):
     return child.stdout.strip()
 
 def main():
-    args = sys.argv[1:]; tag = 'final'; only = False
-    if args[:1] == ['--tag']: tag = args[1]; args = args[2:]
+    args = sys.argv[1:]; name = 'final'; only = False
+    if args[:1] == ['--tag']: name = args[1]; args = args[2:]
     if args[:1] == ['--only']: only = True; args = args[1:]
     graphs = ([] if only else GRAPHS) + args
-    logs = HERE / f'{tag}-logs'; cx = HERE / 'cx'
-    if (HERE / f'{tag}.json').exists() or logs.exists():
+    logs = HERE / f'{name}-logs'; cx = HERE / 'cx'
+    if (HERE / f'{name}.json').exists() or logs.exists():
         raise SystemExit('refusing to overwrite evidence')
     logs.mkdir(); cx.mkdir(exist_ok=True)
     record = {'started': datetime.datetime.now().astimezone().isoformat(), 'commands': [],
@@ -64,7 +64,7 @@ def main():
         line = next(x for x in output.splitlines() if x.startswith('{'))
         record['runs'].append({'graph': graph, 'input_sha256': sha(ROOT / graph), 'result': json.loads(line),
                                'file_sha256': sha(cx / f'{tag}.cx')})
-    (HERE / f'{tag}.json').write_text(json.dumps(record, indent=1) + '\n')
+    (HERE / f'{name}.json').write_text(json.dumps(record, indent=1) + '\n')
 
 if __name__ == '__main__':
     main()

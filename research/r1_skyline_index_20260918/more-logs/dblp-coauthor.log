@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --bench graphs/dblp-coauthor.edges /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/cx/dblp-coauthor.cx
+{"passed":true,"n":4049537,"m":30780033,"s_max":450,"count_bits":512,"chains":363201,"canonical_nodes":274215,"max_depth":5543,"pairs_total":2958470,"runs_total":1761549,"vertex_pairs":26717357,"vertex_residue_cells":3734426,"baseline_vertex_bytes":530275990,"bytes_map":2212112,"bytes_chains":21189882,"bytes_layers":21883355,"bytes_total":45285349,"file_bytes":44207011,"perm_bytes":16198148,"slice_bytes_layers":33771080,"slice_bytes_total":140276804,"solve_ms":91054.958,"trees_ms":47727.910,"chains_ms":49.924,"layout_ms":359.424,"build_ms":139339.518,"compact_ms":52.640,"save_ms":62.852,"load_ms":10.568,"ti_ms":49529.662,"ti_bytes":1761623876,"rss_start":3865214976,"rss_after_solve":7694581760,"rss_after_chains":7698726912,"rss_after_layout":7876247552,"slice_range_own_ns":299530.198,"slice_range_half_ns":331544.956,"slice_range_root_ns":429993.209,"slice_explicit_own_ns":743363.733,"slice_explicit_half_ns":924366.373,"slice_explicit_root_ns":864781.375,"slice_ladder_ns":2510380.454,"slice_own_ranges":64066.916,"slice_half_ranges":68647.104,"slice_root_ranges":78730.232,"full_bytes_total":60532038,"full_bytes_layers":37130044,"full_range_own_ns":17187.044,"full_range_half_ns":18379.400,"full_range_root_ns":21786.167,"full_explicit_own_ns":169425.987,"full_climb_own_ns":11.148,"full_climb_half_ns":42.096,"full_climb_root_ns":9.166,"full_ptr_own_ns":15.665,"full_ptr_half_ns":35.844,"full_ptr_root_ns":13.166,"full_member_ns":17.720,"full_value_ns":9.976,"full_ladder_ns":421503.677,"climb_own_ns":6.338,"climb_half_ns":20.627,"climb_root_ns":5.791,"slice_climb_own_ns":10.844,"slice_climb_half_ns":27.010,"slice_climb_root_ns":9.250,"ptr_own_ns":14.150,"ptr_half_ns":23.996,"ptr_root_ns":6.666,"ptr_checksum":106388172496,"range_own_ns":14987.148,"range_half_ns":21907.233,"range_root_ns":23250.167,"explicit_own_ns":166958.246,"explicit_half_ns":195011.365,"explicit_root_ns":222716.542,"own_output":1907463.082,"half_output":2188824.812,"root_output":2750068.475,"own_ranges":64066.916,"half_ranges":68647.104,"root_ranges":78730.232,"own_chains":64066.916,"half_chains":68647.104,"root_chains":78730.232,"member_ns":18.734,"member_checksum":67200,"value_ns":10.156,"value_checksum":0,"ladder_ns":437714.535,"ladder_steps":90.890}
+      989.67 real       954.82 user        10.20 sys
+          9243787264  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              630226  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  46  voluntary context switches
+              696360  involuntary context switches
+      12438857829965  instructions retired
+       3085232851085  cycles elapsed
+          9421118496  peak memory footprint
