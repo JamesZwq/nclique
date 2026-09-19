@@ -6,9 +6,13 @@
 // maximal runs of consecutive labels plus a per-node entry point (run, label): a community is located in O(1)
 // after the climb and reported as head range + whole runs + tail range (Lemma C6); every (2,k)-community is
 // one range (Lemma C4).  Values: per chain omega, sigma and the residues for s < sigma; s >= sigma is
-// C(omega-1, s-1).  Node tops and residues are stored at per-size byte widths (1, 2, 4, 8, 16 or 32 bytes;
-// aligned constant-width loads, one width dispatch per query).  Flat arrays only; file format CHAINX04.
-// Header-only, templated on the count type T (64/128-bit builtins or boost fixed-width integers).
+// C(omega-1, s-1).  Node tops and residues are stored at per-size byte widths (1, 2, 4 or 8 bytes; aligned
+// constant-width loads, one width dispatch per query).  Flat arrays only; file format CHAINX05.
+// Values are `double` (V): the solver's exact integer counts are converted once at build time.  Below 2^53
+// every value is exact; above it the stored value is the nearest double, and two core values that round to the
+// same double would be indistinguishable to the climb (not observed: consecutive levels of a merge tree differ
+// by far more than one part in 2^53 at those magnitudes).  The header is templated on V so that the exact
+// integer form (V = the solver's count type) remains available for verification.
 #pragma once
 #include <algorithm>
 #include <cstdint>
@@ -39,6 +43,14 @@ template<unsigned Bits> struct Traits<boost::multiprecision::number<boost::multi
     static T get(const unsigned char* p, size_t w = W) { if (w <= 8) { uint64_t v = 0; std::memcpy(&v, p, w); return T(v); } T x; boost::multiprecision::import_bits(x, p, p + w, 8, false); return x; }
     template<size_t Wb> static T load(const unsigned char* p) { if constexpr (Wb <= 8) { uint64_t v = 0; std::memcpy(&v, p, Wb); return T(v); } else { T x; boost::multiprecision::import_bits(x, p, p + Wb, 8, false); return x; } }
     static unsigned width(const T& x) { return x == 0 ? 1u : static_cast<unsigned>(boost::multiprecision::msb(x) / 8 + 1); }
+};
+template<> struct Traits<double> {                      // integers below 2^32 as 1, 2 or 4 unsigned bytes; anything else as the 8-byte double
+    using T = double; static constexpr size_t W = 8;
+    static bool small(double x, uint64_t& u) { if (!(x >= 0) || x >= 4294967296.0) return false; u = static_cast<uint64_t>(x); return static_cast<double>(u) == x; }
+    static void put(double x, unsigned char* p, size_t w = W) { if (w == 8) { std::memcpy(p, &x, 8); return; } uint64_t u = 0; small(x, u); std::memcpy(p, &u, w); }
+    static double get(const unsigned char* p, size_t w = W) { if (w == 8) { double x; std::memcpy(&x, p, 8); return x; } uint64_t u = 0; std::memcpy(&u, p, w); return static_cast<double>(u); }
+    template<size_t Wb> static double load(const unsigned char* p) { if constexpr (Wb == 8) { double x; std::memcpy(&x, p, 8); return x; } else { uint64_t u = 0; std::memcpy(&u, p, Wb); return static_cast<double>(u); } }
+    static unsigned width(double x) { uint64_t u; if (!small(x, u)) return 8; return u < 256 ? 1 : u < 65536 ? 2 : 4; }
 };
 // stored widths are rounded up to 1, 2, 4, 8, 16, 32 or 64 bytes: a field of w bytes at index y sits at offset y * w, aligned
 // to w, so a constant-size load never crosses a cache line; the width is dispatched once per query (with_width)
@@ -219,6 +231,7 @@ template<class T> struct ChainIndex {
         for (auto& L : layers) if (!L.size.empty()) build_jumps(L);
         binom.assign(max_size + 1, std::vector<T>(max_size + 1, T{0}));
         for (int a = 0; a <= max_size; ++a) { binom[a][0] = T{1}; for (int b = 1; b <= a; ++b) binom[a][b] = binom[a - 1][b - 1] + (b <= a - 1 ? binom[a - 1][b] : T{0}); }
+        // (for T = double the recurrence is exact below 2^53 and correctly rounded to within a few ulp above)
     }
 
     // ---- disk format (compact form): magic, header, then arrays as (u64 count, raw bytes)
@@ -229,8 +242,8 @@ template<class T> struct ChainIndex {
     void save(const std::string& path) const {
         if (!compact) throw std::runtime_error("save needs the compact form (call compact_runs first)");
         std::ofstream f(path, std::ios::binary); if (!f) throw std::runtime_error("cannot write " + path);
-        const char magic[8] = {'C','H','A','I','N','X','0','4'}; f.write(magic, 8);
-        const uint32_t hdr[4] = {n, chains, static_cast<uint32_t>(max_size), static_cast<uint32_t>(Traits<T>::W)}; f.write(reinterpret_cast<const char*>(hdr), 16);
+        const char magic[8] = {'C','H','A','I','N','X','0','5'}; f.write(magic, 8);
+        const uint32_t hdr[4] = {n, chains, static_cast<uint32_t>(max_size), std::is_same_v<T, double> ? 0u : static_cast<uint32_t>(Traits<T>::W)}; f.write(reinterpret_cast<const char*>(hdr), 16);   // 0 = double
         const uint8_t flags = packed_tops ? 1 : 0; f.write(reinterpret_cast<const char*>(&flags), 1);
         wv(f, start_bits); wv(f, start_cum); wv(f, start_pos); wv(f, omega); wv(f, sigma); wv(f, traj_off); wv(f, traj_node); wv(f, res_w); wv(f, res_prefix); wv(f, residue_boff); wv(f, residue_bytes);
         for (int s = 2; s <= max_size; ++s) { const Layer& L = layers[s]; if (packed_tops) { f.write(reinterpret_cast<const char*>(&L.top_w), 1); wv(f, L.top_bytes); } else wt(f, L.top); wv(f, L.parent); wv(f, L.size); wv(f, L.entry); wv(f, L.runs); }
@@ -238,9 +251,9 @@ template<class T> struct ChainIndex {
     }
     static ChainIndex load(const std::string& path) {
         std::ifstream f(path, std::ios::binary); if (!f) throw std::runtime_error("cannot read " + path);
-        char magic[8]; f.read(magic, 8); if (std::memcmp(magic, "CHAINX04", 8) != 0) throw std::runtime_error("bad magic");
+        char magic[8]; f.read(magic, 8); if (std::memcmp(magic, "CHAINX05", 8) != 0) throw std::runtime_error("bad magic");
         uint32_t hdr[4]; f.read(reinterpret_cast<char*>(hdr), 16); ChainIndex ix; ix.n = hdr[0]; ix.chains = hdr[1]; ix.max_size = static_cast<int>(hdr[2]);
-        if (hdr[3] != Traits<T>::W) throw std::runtime_error("count width mismatch");
+        if (hdr[3] != (std::is_same_v<T, double> ? 0u : static_cast<uint32_t>(Traits<T>::W))) throw std::runtime_error("value type mismatch (file is " + std::string(hdr[3] ? std::to_string(8 * hdr[3]) + "-bit integer" : "double") + ")");
         uint8_t flags = 0; f.read(reinterpret_cast<char*>(&flags), 1); ix.packed_tops = (flags & 1) != 0;
         rv(f, ix.start_bits); rv(f, ix.start_cum); rv(f, ix.start_pos); rv(f, ix.omega); rv(f, ix.sigma); rv(f, ix.traj_off); rv(f, ix.traj_node); rv(f, ix.res_w); rv(f, ix.res_prefix); rv(f, ix.residue_boff); rv(f, ix.residue_bytes);
         ix.layers.resize(ix.max_size + 1);
