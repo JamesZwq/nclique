@@ -190,19 +190,19 @@ python3 research/r1_skyline_index_20260918/report_tables.py
 ### 9.1 Size
 | Graph | n | s_max | W bits | chains | n / chains | canonical nodes | chains / nodes | (chain,s) pairs | runs | map B | chains B | layers B | total B | file B | perm B | build form total B | per-vertex S trees B | ratio | ratio with perm |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| ca-GrQc | 5,242 | 44 | 64 | 716 | 7.3 | 1,517 | 0.47 | 2,079 | 624 | 3,856 | 16,892 | 47,812 | 68,560 | 64,308 | 20,968 | 65,472 | 272,564 | 3.98x | 3.04x |
-| ca-HepPh | 12,008 | 239 | 256 | 1,136 | 10.6 | 3,538 | 0.32 | 8,468 | 4,969 | 6,808 | 100,632 | 225,632 | 333,072 | 328,536 | 48,032 | 311,136 | 1,899,628 | 5.70x | 4.98x |
-| com-dblp | 317,080 | 114 | 128 | 13,459 | 23.6 | 33,979 | 0.40 | 70,208 | 28,784 | 113,304 | 571,222 | 1,454,420 | 2,138,946 | 2,007,646 | 1,268,320 | 2,052,686 | 16,710,168 | 7.81x | 4.90x |
-| web-Stanford | 281,903 | 72 | 64 | 17,963 | 15.7 | 53,239 | 0.34 | 151,364 | 97,074 | 124,720 | 1,693,758 | 2,267,852 | 4,086,330 | 3,876,310 | 1,127,612 | 3,701,670 | 24,853,426 | 6.08x | 4.77x |
-| amazon0302 | 262,111 | 7 | 64 | 40,867 | 6.4 | 65,134 | 0.63 | 143,567 | 47,380 | 212,628 | 1,443,858 | 2,202,840 | 3,859,326 | 3,599,126 | 1,048,444 | 3,793,970 | 14,414,214 | 3.73x | 2.94x |
-| ca-AstroPh | 18,772 | 57 | 64 | 3,331 | 5.6 | 6,462 | 0.52 | 36,381 | 25,742 | 16,860 | 292,354 | 387,320 | 696,534 | 673,022 | 75,088 | 609,826 | 2,216,476 | 3.18x | 2.87x |
-| ca-CondMat | 23,133 | 26 | 64 | 1,917 | 12.1 | 3,357 | 0.57 | 8,693 | 3,658 | 12,020 | 73,014 | 123,460 | 208,494 | 196,162 | 92,532 | 200,374 | 1,299,206 | 6.23x | 4.32x |
-| cit-HepPh | 34,546 | 31 | 64 | 16,623 | 2.1 | 9,369 | 1.77 | 104,308 | 61,217 | 72,980 | 1,345,614 | 752,308 | 2,170,902 | 2,134,722 | 138,184 | 2,060,682 | 3,199,324 | 1.47x | 1.39x |
-| loc-Brightkite | 58,228 | 53 | 64 | 6,326 | 9.2 | 11,547 | 0.55 | 35,833 | 21,427 | 36,232 | 445,960 | 495,148 | 977,340 | 933,328 | 232,912 | 902,652 | 2,628,872 | 2.69x | 2.17x |
-| soc-Epinions1 | 75,879 | 68 | 64 | 8,821 | 8.6 | 12,886 | 0.68 | 55,344 | 38,876 | 49,524 | 706,210 | 672,352 | 1,428,086 | 1,379,318 | 303,516 | 1,286,374 | 3,221,518 | 2.26x | 1.86x |
-| soc-Slashdot0902 | 82,168 | 56 | 64 | 6,798 | 12.1 | 6,309 | 1.08 | 30,496 | 17,551 | 42,608 | 404,532 | 317,500 | 764,640 | 741,700 | 328,672 | 720,540 | 2,995,392 | 3.92x | 2.74x |
-| com-youtube | 1,134,890 | 52 | 64 | 42,815 | 26.5 | 22,403 | 1.91 | 179,601 | 93,541 | 384,064 | 2,261,714 | 1,376,020 | 4,021,798 | 3,934,322 | 4,539,560 | 3,901,854 | 33,847,412 | 8.42x | 3.95x |
-| soc-pokec | 1,632,803 | 48 | 64 | 383,206 | 4.3 | 67,544 | 5.67 | 2,375,352 | 1,212,885 | 1,838,988 | 30,291,012 | 11,594,688 | 43,724,688 | 43,456,488 | 6,531,212 | 43,252,464 | 101,770,646 | 2.33x | 2.03x |
+| ca-GrQc | 5,242 | 44 | 64 | 716 | 7.3 | 1,517 | 0.47 | 2,079 | 624 | 3,856 | 15,889 | 40,151 | 59,896 | 55,704 | 20,968 | 65,472 | 272,564 | 4.55x | 3.37x |
+| ca-HepPh | 12,008 | 239 | 256 | 1,136 | 10.6 | 3,538 | 0.32 | 8,468 | 4,969 | 6,808 | 49,845 | 158,925 | 215,578 | 211,297 | 48,032 | 311,136 | 1,899,628 | 8.81x | 7.21x |
+| com-dblp | 317,080 | 114 | 128 | 13,459 | 23.6 | 33,979 | 0.40 | 70,208 | 28,784 | 113,304 | 433,259 | 1,080,316 | 1,626,879 | 1,495,709 | 1,268,320 | 2,052,686 | 16,710,168 | 10.27x | 5.77x |
+| web-Stanford | 281,903 | 72 | 64 | 17,963 | 15.7 | 53,239 | 0.34 | 151,364 | 97,074 | 124,720 | 1,279,808 | 2,112,252 | 3,516,780 | 3,306,848 | 1,127,612 | 3,701,670 | 24,853,426 | 7.07x | 5.35x |
+| amazon0302 | 262,111 | 7 | 64 | 40,867 | 6.4 | 65,134 | 0.63 | 143,567 | 47,380 | 212,628 | 1,040,604 | 1,746,902 | 3,000,134 | 2,739,957 | 1,048,444 | 3,793,970 | 14,414,214 | 4.80x | 3.56x |
+| ca-AstroPh | 18,772 | 57 | 64 | 3,331 | 5.6 | 6,462 | 0.52 | 36,381 | 25,742 | 16,860 | 225,357 | 368,353 | 610,570 | 587,131 | 75,088 | 609,826 | 2,216,476 | 3.63x | 3.23x |
+| ca-CondMat | 23,133 | 26 | 64 | 1,917 | 12.1 | 3,357 | 0.57 | 8,693 | 3,658 | 12,020 | 57,438 | 104,370 | 173,828 | 161,538 | 92,532 | 200,374 | 1,299,206 | 7.47x | 4.88x |
+| cit-HepPh | 34,546 | 31 | 64 | 16,623 | 2.1 | 9,369 | 1.77 | 104,308 | 61,217 | 72,980 | 798,209 | 706,524 | 1,577,713 | 1,541,580 | 138,184 | 2,060,682 | 3,199,324 | 2.03x | 1.86x |
+| loc-Brightkite | 58,228 | 53 | 64 | 6,326 | 9.2 | 11,547 | 0.55 | 35,833 | 21,427 | 36,232 | 306,945 | 455,239 | 798,416 | 754,473 | 232,912 | 902,652 | 2,628,872 | 3.29x | 2.55x |
+| soc-Epinions1 | 75,879 | 68 | 64 | 8,821 | 8.6 | 12,886 | 0.68 | 55,344 | 38,876 | 49,524 | 438,839 | 611,619 | 1,099,982 | 1,051,298 | 303,516 | 1,286,374 | 3,221,518 | 2.93x | 2.30x |
+| soc-Slashdot0902 | 82,168 | 56 | 64 | 6,798 | 12.1 | 6,309 | 1.08 | 30,496 | 17,551 | 42,608 | 255,723 | 289,200 | 587,531 | 564,663 | 328,672 | 720,540 | 2,995,392 | 5.10x | 3.27x |
+| com-youtube | 1,134,890 | 52 | 64 | 42,815 | 26.5 | 22,403 | 1.91 | 179,601 | 93,541 | 384,064 | 1,392,191 | 1,241,440 | 3,017,695 | 2,930,287 | 4,539,560 | 3,901,854 | 33,847,412 | 11.22x | 4.48x |
+| soc-pokec | 1,632,803 | 48 | 64 | 383,206 | 4.3 | 67,544 | 5.67 | 2,375,352 | 1,212,885 | 1,838,988 | 18,481,448 | 11,304,285 | 31,624,721 | 31,356,585 | 6,531,212 | 43,252,464 | 101,770,646 | 3.22x | 2.67x |
 
 "total B" is in memory and includes the derived jump pointers (4 bytes
 per node); "file B" is the disk image. "perm B" is the 4 n-byte
@@ -213,113 +213,154 @@ before `compact_runs` (chain-id DFS arrays).
 ### 9.2 Build, save, load
 | Graph | solve (all-size peel) | trees | chains + labels | layout | build total | compact | save | load | process wall s | peak RSS MB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| ca-GrQc | 8 | 5 | 1 | 0 | 14 | 0.03 | 0.5 | 0.1 | 0.28 | 14 |
-| ca-HepPh | 361 | 134 | 6 | 1 | 503 | 0.10 | 65.2 | 0.5 | 1.71 | 178 |
-| com-dblp | 836 | 446 | 78 | 10 | 1,371 | 0.50 | 4.5 | 1.0 | 15.79 | 899 |
-| web-Stanford | 3,414 | 1,375 | 59 | 16 | 4,866 | 1.19 | 6.1 | 1.8 | 28.08 | 869 |
-| amazon0302 | 510 | 228 | 43 | 16 | 801 | 0.74 | 3.4 | 1.0 | 22.96 | 205 |
-| ca-AstroPh | 463 | 126 | 3 | 2 | 595 | 0.32 | 46.5 | 0.3 | 8.03 | 54 |
-| ca-CondMat | 71 | 30 | 4 | 1 | 106 | 0.06 | 15.1 | 0.1 | 1.53 | 26 |
-| cit-HepPh | 1,398 | 241 | 5 | 5 | 1,650 | 0.50 | 1.6 | 0.6 | 30.27 | 220 |
-| loc-Brightkite | 1,175 | 565 | 8 | 4 | 1,753 | 0.24 | 5.1 | 0.4 | 6.86 | 238 |
-| soc-Epinions1 | 6,456 | 1,697 | 8 | 5 | 8,167 | 0.30 | 5.9 | 0.6 | 22.26 | 1,124 |
-| soc-Slashdot0902 | 2,806 | 935 | 9 | 3 | 3,753 | 0.16 | 5.3 | 0.3 | 11.62 | 634 |
-| com-youtube | 5,984 | 1,206 | 75 | 12 | 7,283 | 0.73 | 7.1 | 1.5 | 61.32 | 1,663 |
-| soc-pokec | 52,971 | 9,810 | 345 | 209 | 63,386 | 5.81 | 94.1 | 16.6 | 611.47 | 6,100 |
+| ca-GrQc | 3 | 8 | 0 | 1 | 11 | 0.08 | 1.6 | 0.1 | 0.38 | 13 |
+| ca-HepPh | 174 | 131 | 0 | 1 | 312 | 0.69 | 0.9 | 0.5 | 1.71 | 37 |
+| com-dblp | 292 | 472 | 2 | 9 | 779 | 0.79 | 9.1 | 0.9 | 18.74 | 140 |
+| web-Stanford | 937 | 1,385 | 3 | 21 | 2,349 | 3.63 | 6.7 | 2.2 | 30.26 | 319 |
+| amazon0302 | 121 | 326 | 2 | 15 | 466 | 1.84 | 2.3 | 0.9 | 25.27 | 131 |
+| ca-AstroPh | 105 | 179 | 0 | 4 | 289 | 0.22 | 3.0 | 0.3 | 9.18 | 32 |
+| ca-CondMat | 14 | 30 | 0 | 1 | 45 | 0.15 | 2.6 | 0.2 | 1.74 | 14 |
+| cit-HepPh | 309 | 381 | 1 | 7 | 698 | 0.60 | 4.0 | 0.6 | 37.39 | 99 |
+| loc-Brightkite | 359 | 605 | 1 | 4 | 969 | 0.27 | 5.1 | 0.4 | 6.93 | 89 |
+| soc-Epinions1 | 958 | 1,860 | 1 | 6 | 2,826 | 0.62 | 3.1 | 0.5 | 19.44 | 495 |
+| soc-Slashdot0902 | 527 | 1,001 | 1 | 2 | 1,531 | 0.22 | 2.7 | 0.2 | 8.95 | 258 |
+| com-youtube | 485 | 910 | 4 | 10 | 1,410 | 1.23 | 4.3 | 0.7 | 44.20 | 553 |
+| soc-pokec | 6,687 | 8,698 | 12 | 113 | 15,541 | 16.25 | 27.2 | 7.0 | 495.31 | 3,229 |
 
 Process wall time and peak RSS are for the whole `--bench` run (graph
-load, build, both forms, all query passes); the peak is the build's dense
-core matrix (s_max x n words), the per-size own-node arrays and the chain
-grouping, not the index.
+load, the solver's row index, build, three forms, all query passes);
+"build total" excludes the row index, whose time is the `ti_ms` field of
+`final.json` (Section 14 itemises both). The peak is dominated by the
+solver's row index plus the graph (Section 14).
 
 ### 9.3 Community queries (ns per query; compact form loaded from disk)
 | Graph | regime | output vertices | ranges | locate (pointer) | ranges copied | explicit ids | per-vertex S trees memcpy | build form ranges | build form explicit |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| ca-GrQc | own | 1,658 | 14.1 | 21.5 | 26 | 159 | 225 | 250 | 345 |
-| ca-GrQc | half | 2,108 | 15.8 | 24.1 | 26 | 242 | 305 | 268 | 372 |
-| ca-GrQc | root | 2,208 | 18.6 | 7.2 | 14 | 136 | 206 | 255 | 279 |
-| ca-HepPh | own | 5,327 | 129.8 | 9.8 | 44 | 699 | 625 | 473 | 1,402 |
-| ca-HepPh | half | 6,257 | 137.0 | 18.1 | 54 | 876 | 832 | 991 | 1,141 |
-| ca-HepPh | root | 7,439 | 169.4 | 4.6 | 44 | 424 | 794 | 421 | 1,912 |
-| com-dblp | own | 164,832 | 871.7 | 20.9 | 379 | 12,090 | 23,493 | 9,654 | 22,663 |
-| com-dblp | half | 199,796 | 951.0 | 15.5 | 275 | 14,801 | 26,144 | 11,049 | 25,034 |
-| com-dblp | root | 229,952 | 1236.8 | 8.4 | 426 | 15,177 | 30,259 | 13,289 | 24,206 |
-| web-Stanford | own | 83,227 | 1217.7 | 20.0 | 637 | 7,017 | 11,983 | 7,785 | 15,682 |
-| web-Stanford | half | 102,997 | 1339.6 | 60.9 | 754 | 9,471 | 12,157 | 10,475 | 18,039 |
-| web-Stanford | root | 115,934 | 1772.8 | 16.3 | 885 | 13,957 | 19,274 | 9,233 | 24,428 |
-| amazon0302 | own | 105,997 | 734.6 | 5.3 | 265 | 8,345 | 14,277 | 19,737 | 27,912 |
-| amazon0302 | half | 151,391 | 1283.2 | 15.4 | 1,169 | 12,245 | 24,757 | 26,702 | 37,503 |
-| amazon0302 | root | 160,229 | 1529.7 | 4.7 | 344 | 15,890 | 23,022 | 25,906 | 45,182 |
-| ca-AstroPh | own | 8,854 | 960.8 | 6.1 | 392 | 1,743 | - | 2,200 | 3,891 |
-| ca-AstroPh | half | 9,701 | 984.4 | 21.9 | 404 | 1,723 | - | 2,530 | 4,372 |
-| ca-AstroPh | root | 11,775 | 1140.8 | 14.0 | 242 | 2,140 | - | 3,850 | 3,192 |
-| ca-CondMat | own | 9,999 | 165.0 | 18.4 | 86 | 949 | - | 992 | 1,791 |
-| ca-CondMat | half | 12,008 | 181.1 | 24.9 | 57 | 1,192 | - | 1,139 | 2,140 |
-| ca-CondMat | root | 14,389 | 214.9 | 6.3 | 52 | 1,405 | - | 1,326 | 3,081 |
-| cit-HepPh | own | 18,252 | 3693.7 | 12.8 | 1,639 | 4,327 | - | 17,257 | 19,325 |
-| cit-HepPh | half | 21,348 | 4107.8 | 61.7 | 1,880 | 6,644 | - | 16,173 | 20,585 |
-| cit-HepPh | root | 26,461 | 4941.0 | 20.8 | 2,613 | 10,264 | - | 20,031 | 23,786 |
-| loc-Brightkite | own | 32,323 | 400.7 | 4.2 | 151 | 2,654 | - | 5,030 | 7,151 |
-| loc-Brightkite | half | 39,732 | 415.3 | 8.4 | 172 | 2,846 | - | 5,036 | 8,262 |
-| loc-Brightkite | root | 45,279 | 463.9 | 3.8 | 197 | 2,079 | - | 5,383 | 8,536 |
-| soc-Epinions1 | own | 49,098 | 922.5 | 7.7 | 387 | 3,738 | - | 8,131 | 11,561 |
-| soc-Epinions1 | half | 57,388 | 973.7 | 4.5 | 371 | 2,603 | - | 7,862 | 11,338 |
-| soc-Epinions1 | root | 61,009 | 1149.8 | 3.1 | 431 | 2,863 | - | 8,198 | 13,446 |
-| soc-Slashdot0902 | own | 47,604 | 469.5 | 8.3 | 174 | 2,993 | - | 6,215 | 9,399 |
-| soc-Slashdot0902 | half | 59,057 | 478.6 | 4.9 | 196 | 2,521 | - | 6,428 | 10,473 |
-| soc-Slashdot0902 | root | 70,421 | 459.1 | 3.6 | 192 | 2,714 | - | 6,617 | 10,771 |
-| com-youtube | own | 774,495 | 959.7 | 18.9 | 397 | 52,608 | - | 35,061 | 85,362 |
-| com-youtube | half | 936,661 | 993.2 | 26.9 | 346 | 53,530 | - | 41,801 | 92,033 |
-| com-youtube | root | 1,005,937 | 985.7 | 8.9 | 379 | 68,494 | - | 30,641 | 96,139 |
-| soc-pokec | own | 827,163 | 40378.2 | 15.2 | 12,424 | 89,881 | - | 416,638 | 494,246 |
-| soc-pokec | half | 992,602 | 44650.3 | 31.3 | 15,949 | 100,437 | - | 441,975 | 551,340 |
-| soc-pokec | root | 1,240,689 | 51695.1 | 10.1 | 14,146 | 130,705 | - | 487,253 | 596,274 |
+| ca-GrQc | own | 1,658 | 14.1 | 18.7 | 43 | 181 | 225 | 228 | 288 |
+| ca-GrQc | half | 2,108 | 15.8 | 25.3 | 61 | 230 | 305 | 145 | 480 |
+| ca-GrQc | root | 2,208 | 18.6 | 8.7 | 30 | 238 | 206 | 118 | 542 |
+| ca-HepPh | own | 5,327 | 129.8 | 13.8 | 94 | 533 | 625 | 383 | 1,101 |
+| ca-HepPh | half | 6,257 | 137.0 | 30.9 | 102 | 710 | 832 | 1,111 | 1,980 |
+| ca-HepPh | root | 7,439 | 169.4 | 12.6 | 95 | 839 | 794 | 1,157 | 1,988 |
+| com-dblp | own | 164,832 | 871.7 | 24.2 | 399 | 13,421 | 23,493 | 11,068 | 24,068 |
+| com-dblp | half | 199,796 | 951.0 | 29.4 | 429 | 17,343 | 26,144 | 11,373 | 27,780 |
+| com-dblp | root | 229,952 | 1236.8 | 8.4 | 557 | 20,913 | 30,259 | 14,061 | 32,508 |
+| web-Stanford | own | 83,227 | 1217.7 | 6.5 | 859 | 7,800 | 11,983 | 9,125 | 16,595 |
+| web-Stanford | half | 102,997 | 1339.6 | 20.9 | 891 | 10,256 | 12,157 | 8,821 | 20,578 |
+| web-Stanford | root | 115,934 | 1772.8 | 6.0 | 710 | 10,705 | 19,274 | 9,819 | 18,977 |
+| amazon0302 | own | 105,997 | 734.6 | 28.9 | 335 | 8,520 | 14,277 | 19,294 | 29,894 |
+| amazon0302 | half | 151,391 | 1283.2 | 38.4 | 562 | 13,921 | 24,757 | 29,015 | 41,943 |
+| amazon0302 | root | 160,229 | 1529.7 | 9.1 | 613 | 16,791 | 23,022 | 30,443 | 48,376 |
+| ca-AstroPh | own | 8,854 | 960.8 | 9.0 | 375 | 1,503 | - | 2,954 | 4,614 |
+| ca-AstroPh | half | 9,701 | 984.4 | 44.6 | 405 | 1,521 | - | 3,028 | 4,633 |
+| ca-AstroPh | root | 11,775 | 1140.8 | 10.4 | 446 | 2,491 | - | 3,710 | 5,075 |
+| ca-CondMat | own | 9,999 | 165.0 | 16.9 | 97 | 1,110 | - | 1,097 | 1,908 |
+| ca-CondMat | half | 12,008 | 181.1 | 26.5 | 113 | 1,330 | - | 1,204 | 2,270 |
+| ca-CondMat | root | 14,389 | 214.9 | 9.9 | 106 | 1,570 | - | 722 | 2,597 |
+| cit-HepPh | own | 18,252 | 3693.7 | 10.4 | 1,851 | 5,079 | - | 16,839 | 21,592 |
+| cit-HepPh | half | 21,348 | 4107.8 | 40.0 | 2,008 | 6,698 | - | 19,426 | 23,891 |
+| cit-HepPh | root | 26,461 | 4941.0 | 10.7 | 2,200 | 9,043 | - | 21,200 | 28,590 |
+| loc-Brightkite | own | 32,323 | 400.7 | 7.3 | 168 | 2,491 | - | 5,317 | 7,621 |
+| loc-Brightkite | half | 39,732 | 415.3 | 9.3 | 182 | 2,847 | - | 5,538 | 8,547 |
+| loc-Brightkite | root | 45,279 | 463.9 | 4.3 | 185 | 2,078 | - | 4,642 | 9,412 |
+| soc-Epinions1 | own | 49,098 | 922.5 | 7.1 | 382 | 3,751 | - | 8,835 | 12,791 |
+| soc-Epinions1 | half | 57,388 | 973.7 | 8.2 | 408 | 4,589 | - | 9,187 | 13,786 |
+| soc-Epinions1 | root | 61,009 | 1149.8 | 3.5 | 483 | 2,796 | - | 10,189 | 13,659 |
+| soc-Slashdot0902 | own | 47,604 | 469.5 | 8.2 | 102 | 2,054 | - | 4,068 | 8,816 |
+| soc-Slashdot0902 | half | 59,057 | 478.6 | 6.8 | 110 | 3,508 | - | 7,074 | 9,073 |
+| soc-Slashdot0902 | root | 70,421 | 459.1 | 4.4 | 101 | 2,680 | - | 4,780 | 10,085 |
+| com-youtube | own | 774,495 | 959.7 | 8.1 | 281 | 33,848 | - | 27,297 | 59,264 |
+| com-youtube | half | 936,661 | 993.2 | 6.6 | 288 | 39,096 | - | 28,422 | 67,235 |
+| com-youtube | root | 1,005,937 | 985.7 | 5.1 | 264 | 43,134 | - | 28,789 | 69,581 |
+| soc-pokec | own | 827,163 | 40378.2 | 9.6 | 9,731 | 76,321 | - | 346,782 | 416,385 |
+| soc-pokec | half | 992,602 | 44650.3 | 27.0 | 13,033 | 87,064 | - | 374,750 | 449,683 |
+| soc-pokec | root | 1,240,689 | 51695.1 | 8.5 | 13,302 | 105,102 | - | 405,789 | 503,011 |
 
 "locate" returns the head range, a pointer to the whole runs and the
 tail range (no copy). "ranges copied" materialises the range list.
 "explicit ids" writes every vertex id. The build-form columns are the
-same index before `compact_runs`. The memcpy column is the stage-2
-per-vertex S-tree listing, available for the five stage-2 graphs.
+same index before `compact_runs` (chain-id arrays, tops and residues as
+T). The memcpy column is the stage-2 per-vertex S-tree listing, available
+for the five stage-2 graphs. All compact-form numbers are measured on the
+index loaded back from its file (per-size widths, `CHAINX03`).
 
 ### 9.4 Membership, values, ladders (ns per query)
 | Graph | member | value | ladder (compact) | ladder steps | ladder (build form) | max depth |
 |---|---:|---:|---:|---:|---:|---:|
-| ca-GrQc | 20.9 | 10.8 | 50 | 2.08 | 128 | 26 |
-| ca-HepPh | 6.8 | 5.6 | 131 | 7.28 | 1,814 | 131 |
-| com-dblp | 5.0 | 5.8 | 760 | 5.05 | 13,549 | 157 |
-| web-Stanford | 32.9 | 18.4 | 19,510 | 61.20 | 82,306 | 2138 |
-| amazon0302 | 6.2 | 18.5 | 657 | 3.22 | 37,600 | 10 |
-| ca-AstroPh | 9.9 | 8.9 | 11,730 | 42.85 | 30,526 | 571 |
-| ca-CondMat | 23.8 | 11.1 | 237 | 7.10 | 1,935 | 105 |
-| cit-HepPh | 33.8 | 13.5 | 24,000 | 48.10 | 122,036 | 1062 |
-| loc-Brightkite | 6.6 | 7.6 | 504 | 7.23 | 6,632 | 730 |
-| soc-Epinions1 | 3.6 | 6.8 | 8,052 | 17.89 | 35,131 | 1614 |
-| soc-Slashdot0902 | 5.2 | 6.3 | 603 | 6.46 | 11,398 | 587 |
-| com-youtube | 11.8 | 12.2 | 3,306 | 4.12 | 38,751 | 1604 |
-| soc-pokec | 24.2 | 13.0 | 130,768 | 23.04 | 1,968,585 | 2413 |
+| ca-GrQc | 20.2 | 13.2 | 27 | 2.08 | 162 | 26 |
+| ca-HepPh | 27.0 | 12.1 | 135 | 7.28 | 1,401 | 131 |
+| com-dblp | 15.3 | 12.7 | 848 | 5.05 | 13,044 | 157 |
+| web-Stanford | 20.1 | 20.2 | 20,851 | 61.20 | 87,207 | 2138 |
+| amazon0302 | 27.5 | 16.5 | 778 | 3.22 | 40,651 | 10 |
+| ca-AstroPh | 28.3 | 11.5 | 7,523 | 42.85 | 32,041 | 571 |
+| ca-CondMat | 14.9 | 12.5 | 328 | 7.10 | 2,249 | 105 |
+| cit-HepPh | 28.1 | 15.2 | 24,349 | 48.10 | 140,178 | 1062 |
+| loc-Brightkite | 4.9 | 7.8 | 502 | 7.23 | 7,177 | 730 |
+| soc-Epinions1 | 6.9 | 7.1 | 9,475 | 17.89 | 35,034 | 1614 |
+| soc-Slashdot0902 | 9.5 | 6.3 | 606 | 6.46 | 9,299 | 587 |
+| com-youtube | 8.5 | 8.2 | 2,343 | 4.12 | 29,040 | 1604 |
+| soc-pokec | 11.0 | 11.2 | 113,261 | 23.04 | 1,637,301 | 2413 |
 
 ### 9.5 Explicit listing cost per output vertex (ns)
 | Graph | final module (own) | per-vertex S trees (own) | final module (root) | per-vertex S trees (root) |
 |---|---:|---:|---:|---:|
-| ca-GrQc | 0.096 | 0.136 | 0.062 | 0.090 |
-| ca-HepPh | 0.131 | 0.117 | 0.057 | 0.112 |
-| com-dblp | 0.073 | 0.143 | 0.066 | 0.132 |
-| web-Stanford | 0.084 | 0.145 | 0.120 | 0.153 |
-| amazon0302 | 0.079 | 0.133 | 0.099 | 0.139 |
-| ca-AstroPh | 0.197 | - | 0.182 | - |
-| ca-CondMat | 0.095 | - | 0.098 | - |
-| cit-HepPh | 0.237 | - | 0.388 | - |
-| loc-Brightkite | 0.082 | - | 0.046 | - |
-| soc-Epinions1 | 0.076 | - | 0.047 | - |
-| soc-Slashdot0902 | 0.063 | - | 0.039 | - |
-| com-youtube | 0.068 | - | 0.068 | - |
-| soc-pokec | 0.109 | - | 0.105 | - |
+| ca-GrQc | 0.109 | 0.136 | 0.108 | 0.090 |
+| ca-HepPh | 0.100 | 0.117 | 0.113 | 0.112 |
+| com-dblp | 0.081 | 0.143 | 0.091 | 0.132 |
+| web-Stanford | 0.094 | 0.145 | 0.092 | 0.153 |
+| amazon0302 | 0.080 | 0.133 | 0.105 | 0.139 |
+| ca-AstroPh | 0.170 | - | 0.212 | - |
+| ca-CondMat | 0.111 | - | 0.109 | - |
+| cit-HepPh | 0.278 | - | 0.342 | - |
+| loc-Brightkite | 0.077 | - | 0.046 | - |
+| soc-Epinions1 | 0.076 | - | 0.046 | - |
+| soc-Slashdot0902 | 0.043 | - | 0.038 | - |
+| com-youtube | 0.044 | - | 0.043 | - |
+| soc-pokec | 0.092 | - | 0.085 | - |
+
+selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 2422268, "membership_checks": 14607572, "value_checks": 2561684, "ladder_checks": 1386196}, "build-asan": {"passed": true, "graphs": 34075, "community_queries": 2422268, "membership_checks": 14607572, "value_checks": 2561684, "ladder_checks": 1386196}}
 
 selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816701, "membership_checks": 10955679, "value_checks": 1921263, "ladder_checks": 1039647}, "build-asan": {"passed": true, "graphs": 34075, "community_queries": 1816701, "membership_checks": 10955679, "value_checks": 1921263, "ladder_checks": 1039647}}
 
 selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816701, "membership_checks": 10955679, "value_checks": 1921263, "ladder_checks": 1039647}, "build-asan": {"passed": true, "graphs": 34075, "community_queries": 1816701, "membership_checks": 10955679, "value_checks": 1921263, "ladder_checks": 1039647}}
 
-### 9.6 The four stage-2 layouts for reference (five graphs)
+### 9.6 Top encoding ablation (same process)
+
+| Graph | bytes T tops | bytes packed | climb own T / packed | climb half T / packed | climb root T / packed | locate own T / packed | member T / packed | value T / packed | ladder T / packed |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| ca-GrQc | 67,557 | 59,896 | 13.1 / 14.6 | 12.3 / 16.2 | 6.9 / 7.5 | 22.2 / 18.7 | 17.0 / 20.2 | 12.5 / 13.2 | 51 / 27 |
+| ca-HepPh | 282,285 | 215,578 | 16.1 / 13.9 | 34.7 / 27.2 | 12.6 / 10.5 | 22.4 / 13.8 | 26.9 / 27.0 | 12.2 / 12.1 | 241 / 135 |
+| com-dblp | 2,000,983 | 1,626,879 | 17.4 / 17.3 | 12.7 / 21.8 | 8.2 / 9.2 | 23.5 / 24.2 | 18.7 / 15.3 | 12.2 / 12.7 | 878 / 848 |
+| web-Stanford | 3,672,380 | 3,516,780 | 11.3 / 5.6 | 19.0 / 20.1 | 9.6 / 10.9 | 17.2 / 6.5 | 11.6 / 20.1 | 17.7 / 20.2 | 20,058 / 20,851 |
+| amazon0302 | 3,456,072 | 3,000,134 | 14.7 / 15.0 | 13.5 / 37.1 | 9.0 / 10.7 | 27.5 / 28.9 | 17.1 / 27.5 | 14.9 / 16.5 | 451 / 778 |
+| ca-AstroPh | 629,537 | 610,570 | 11.3 / 9.8 | 16.8 / 32.1 | 11.7 / 10.4 | 14.5 / 9.0 | 12.3 / 28.3 | 11.6 / 11.5 | 9,211 / 7,523 |
+| ca-CondMat | 192,918 | 173,828 | 14.9 / 13.5 | 10.8 / 18.1 | 8.5 / 9.1 | 7.8 / 16.9 | 11.8 / 14.9 | 11.9 / 12.5 | 324 / 328 |
+| cit-HepPh | 1,623,497 | 1,577,713 | 8.3 / 9.9 | 30.0 / 42.3 | 10.8 / 9.5 | 10.4 / 10.4 | 21.1 / 28.1 | 15.9 / 15.2 | 24,006 / 24,349 |
+| loc-Brightkite | 838,325 | 798,416 | 17.7 / 7.0 | 11.1 / 6.5 | 7.2 / 3.8 | 20.1 / 7.3 | 10.8 / 4.9 | 17.1 / 7.8 | 928 / 502 |
+| soc-Epinions1 | 1,160,715 | 1,099,982 | 13.3 / 6.3 | 9.3 / 5.7 | 6.2 / 3.9 | 15.1 / 7.1 | 11.1 / 6.9 | 12.2 / 7.1 | 9,963 / 9,475 |
+| soc-Slashdot0902 | 615,831 | 587,531 | 10.3 / 7.9 | 6.7 / 6.6 | 4.5 / 3.9 | 11.1 / 8.2 | 10.1 / 9.5 | 9.2 / 6.3 | 606 / 606 |
+| com-youtube | 3,152,275 | 3,017,695 | 8.6 / 9.9 | 9.5 / 4.5 | 3.7 / 3.2 | 9.5 / 8.1 | 9.9 / 8.5 | 8.0 / 8.2 | 2,304 / 2,343 |
+| soc-pokec | 31,915,124 | 31,624,721 | 5.2 / 7.9 | 31.7 / 20.3 | 6.3 / 7.8 | 13.6 / 9.6 | 9.7 / 11.0 | 12.3 / 11.2 | 112,989 / 113,261 |
+
+### 9.7 Climb only
+
+| Graph | own build / packed | half build / packed | root build / packed |
+|---|---:|---:|---:|
+| ca-GrQc | 16.5 / 14.6 | 8.0 / 16.2 | 6.0 / 7.5 |
+| ca-HepPh | 16.7 / 13.9 | 19.4 / 27.2 | 10.8 / 10.5 |
+| com-dblp | 17.6 / 17.3 | 13.3 / 21.8 | 10.2 / 9.2 |
+| web-Stanford | 13.0 / 5.6 | 20.9 / 20.1 | 10.5 / 10.9 |
+| amazon0302 | 8.2 / 15.0 | 32.3 / 37.1 | 10.9 / 10.7 |
+| ca-AstroPh | 11.3 / 9.8 | 16.9 / 32.1 | 10.4 / 10.4 |
+| ca-CondMat | 14.7 / 13.5 | 10.2 / 18.1 | 7.5 / 9.1 |
+| cit-HepPh | 7.1 / 9.9 | 25.4 / 42.3 | 9.1 / 9.5 |
+| loc-Brightkite | 15.3 / 7.0 | 8.4 / 6.5 | 5.8 / 3.8 |
+| soc-Epinions1 | 12.6 / 6.3 | 8.2 / 5.7 | 5.7 / 3.9 |
+| soc-Slashdot0902 | 10.5 / 7.9 | 10.1 / 6.6 | 4.2 / 3.9 |
+| com-youtube | 8.6 / 9.9 | 5.4 / 4.5 | 3.8 / 3.2 |
+| soc-pokec | 6.5 / 7.9 | 14.7 / 20.3 | 6.6 / 7.8 |
+
+### 9.8 The four stage-2 layouts for reference (five graphs)
 
 #### Bytes with values (Block D), stage-2 layouts
 | Graph | per-vertex S trees | over twins | over chains | aligned chains (index.cpp) | aligned vs per-vertex |
@@ -342,48 +383,57 @@ selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816
 ## 10. Analysis Of Runtime And Memory
 
 Measured facts.
-- Bytes: 1.47x (cit-HepPh) to 8.42x (com-youtube) below per-vertex S
-  trees, median 3.9x over the thirteen graphs; 1.39x to 4.98x if the
+- Bytes: 2.03x (cit-HepPh) to 11.22x (com-youtube) below per-vertex S
+  trees, median 4.8x over the thirteen graphs; 1.86x to 7.21x if the
   label permutation is charged to the index. The ratio follows the
   vertex collapse n / chains: 2.1 vertices per chain on cit-HepPh, 4.3 on
-  pokec, 5.6 on AstroPh (ratios 1.5x, 2.3x, 3.2x) against 23.6 on dblp and
-  26.5 on youtube (7.8x, 8.4x). Where the bytes sit also changes with the
-  graph: the per-size layers are 55-70 percent of the index on the
-  collaboration, web and product graphs (dblp 68, GrQc 70), the per-chain
-  block (trajectories and residue values) 49-69 percent on the social and
-  citation graphs (pokec 69, cit-HepPh 62, youtube 56, Slashdot 53,
-  Epinions 49); the map is 2-10 percent everywhere.
+  pokec, 5.6 on AstroPh (ratios 2.0x, 3.2x, 3.6x) against 23.6 on dblp and
+  26.5 on youtube (10.3x, 11.2x). Where the bytes sit changes with the
+  graph: the per-size layers are 58-74 percent of the index on the
+  collaboration, web and product graphs (HepPh 74, GrQc 67, dblp 66), the
+  per-chain block (trajectories and residue values) 44-58 percent on the
+  social and citation graphs (pokec 58, cit-HepPh 51, youtube 46,
+  Slashdot 44); the map is 3-13 percent.
 - Chains against canonical nodes: 0.32-0.68 on nine graphs, but 1.08
   (Slashdot), 1.77 (cit-HepPh), 1.91 (youtube) and 5.67 (pokec). The
   recombination of CHAINS.md Section 7 is real on social and citation
   graphs; the index stays smaller than per-vertex S trees there because
   the per-vertex trees pay per vertex and per size, and chains still
   collapse 2-27 vertices each.
-- Runs against (chain, size) pairs: 1.4x-3.3x fewer entries. The compact
-  form costs 1.1-14.2 percent more bytes than the chain-id form (the
-  8-byte entry per node) and pays back in queries: range answers 5.6x-121x
-  faster, explicit answers 1.3x-5.5x, ladders 2.6x-57x.
-- Locating a community takes 3-62 ns on every graph and regime: bitmap
+- Runs against (chain, size) pairs: 1.4x-3.3x fewer entries. With
+  per-size widths the compact form is now 0-31 percent smaller than the
+  chain-id build form (the 8-byte entry per node is paid back by the
+  narrower tops and residues) and answers faster: range answers 2.4x-109x,
+  explicit answers 1.55x-5.5x, ladders 3.7x-52x.
+- Locating a community takes 3.5-45 ns on every graph and regime: bitmap
   rank, trajectory lookup, jump-pointer climb, two entry reads. Copying the
-  range list takes 14 ns to 16 us (pokec root, 51,695 ranges); the range
+  range list takes 30 ns to 13 us (pokec root, 51,695 ranges); the range
   list is 5x (cit-HepPh) to 807x (youtube) shorter than the vertex list.
-- Explicit listing runs at 0.06-0.13 ns per vertex on eleven graphs and
-  0.20-0.24 ns on the two most fragmented (AstroPh 9 vertices per range,
+- Explicit listing runs at 0.04-0.11 ns per vertex on eleven graphs and
+  0.17-0.28 ns on the two most fragmented (AstroPh 9 vertices per range,
   cit-HepPh 5). Against the memcpy baseline (0.09-0.15 ns per vertex on
-  the five graphs where it was measured) the fill is faster on 14 of 15
-  (graph, regime) points: own level 1.42x (GrQc), 1.94x (dblp), 1.71x
-  (Stanford), 1.71x (amazon), half 1.26x-2.02x, root 1.38x-1.99x; the
-  exceptions are HepPh own and half at 0.90x and 0.95x. Per output vertex
-  the fill reads 8 bytes per range instead of 4 bytes per vertex, and the
+  the five graphs where it was measured) the fill is faster on 13 of 15
+  (graph, regime) points: own level 1.24x (GrQc), 1.17x (HepPh), 1.75x
+  (dblp), 1.54x (Stanford), 1.68x (amazon); root 1.37x-1.80x on the three
+  large graphs, 0.86x and 0.95x on GrQc and HepPh. Per output vertex the
+  fill reads 8 bytes per range instead of 4 bytes per vertex, and the
   branchless eight-wide stores remove the per-range branch that made the
   scalar-tail fill of `final_v2.json` 1.3x-2.4x slower on the fragmented
   graphs.
-- Membership 3.6-34 ns and values 5.6-18.5 ns: two bitmap ranks plus a
+- Top encoding (Section 9.6, same process): with tops packed to per-size
+  widths the climb is 0.91x (own) and 0.89x (root) of the T-tops climb in
+  the median over the thirteen graphs, the spread (0.4x-1.5x) being the
+  run-to-run noise of identical code on this machine; residue packing has
+  no visible cost. Against the fixed-width run of `final_v3.json` the
+  median ratios of every latency class lie between 0.92 and 1.12 with
+  both signs, so the widths change bytes, not time.
+- Membership 4.9-28 ns and values 6.3-20 ns: two bitmap ranks plus a
   climb, or one rank plus a residue or binomial lookup.
-- Build: 14 ms (GrQc) to 67 s (pokec, 1.63 M vertices), 60-85 percent in
-  the all-size peel (the terminal solver), the rest in the per-size
-  union-find trees; chains and layout add at most 0.6 s. Peak build memory
-  reaches 5.1 GB on pokec against a 44 MB index.
+- Build: 15 ms (GrQc) to 34 s (pokec, 1.63 M vertices) including the
+  solver's row index (pokec: row index 14 s, all-size peel 9 s, trees and
+  trie 11 s in this run); chains and layout add at most 0.3 s. Peak build
+  memory is 157 MB on dblp and 2.9 GB on pokec (Section 14), against a
+  32 MB index.
 
 Hypotheses (not measured): a per-node vertex count (4 bytes per node)
 would make ladders O(depth) (pokec 132 us, cit-HepPh 23 us today); the
@@ -421,9 +471,11 @@ vectorised fill and the Myers skip pointers are engineering.
   no memcpy baseline was measured on them. On HepPh (own and half) the
   fill is 5-10 percent slower than the memcpy listing.
 - Ladder queries on deep trees (pokec depth 2,413, cit-HepPh 1,062) cost
-  23-132 us because each level sums its runs.
-- Peak build memory is the solver's dense s_max x n core matrix plus the
-  per-size own arrays (5.1 GB on pokec), not the index.
+  24-113 us because each level sums its runs.
+- Peak build memory is the solver's row index plus the graph (2.9 GB on
+  pokec, of which the row index is 1.46 GB), not the index; the dense
+  core matrix and the per-size own arrays of the first version are gone
+  (Section 14).
 - The number of chains exceeds the number of canonical nodes on four of
   thirteen graphs (up to 5.7x on pokec); no bound in terms of the
   hierarchy exists (CHAINS.md Section 7).
@@ -437,16 +489,18 @@ vectorised fill and the Myers skip pointers are engineering.
 ## 12. Final Conclusion
 
 The all-size r = 1 nucleus hierarchy of a graph is stored exactly in
-1.5x-8.4x fewer bytes than one S tree per size (median 3.9x over thirteen
-graphs, 3.7x-7.8x on the five stage-2 graphs), communities are located in
-constant time (3-62 ns) and listed faster than a memcpy of the vertex
-list on 14 of the 15 points where that baseline exists (0.9x-2.0x), from
-a partition of the vertices
+2.0x-11.2x fewer bytes than one S tree per size (median 4.8x over thirteen
+graphs; dblp 10.3x), communities are located in constant time (3.5-45 ns)
+and listed faster than a memcpy of the vertex list on 13 of the 15 points
+where that baseline exists (0.86x-1.80x), from a partition of the
+vertices
 (chains) that the theory proves exact, aligned labels that make chains id
-ranges, and per-size run arrays with node entry points that make every
-community a head range, whole runs and a tail range. Correctness is
-brute-force verified in three forms on 34,075 graphs under Release and
-sanitizers, and the canonical node counts agree with the independent
+ranges, per-size run arrays with node entry points that make every
+community a head range, whole runs and a tail range, and per-size byte
+widths for the stored values. The build streams the solver's rows and
+needs O(n + chains x sizes) working memory beyond the solver's own row
+index. Correctness is brute-force verified in four forms on 34,075 graphs
+under Release and sanitizers, and the canonical node counts agree with the independent
 stage-1/2 pipeline on the five shared graphs. The SGL skyline dedup is
 dominated in this setting and dropped. Framing for a paper: the
 contribution starts from the chain partition (hierarchy equivalence),
@@ -527,10 +581,11 @@ alternate between sizes of different widths that jump mispredicts, which
 costs about 1-3 ns per query in the worst case and nothing when the size
 repeats. In-process two-round comparisons of "compact, tops as T" against
 "compact, packed tops" on GrQc, HepPh, amazon and dblp (fields `full_*`
-against the unprefixed ones in the bench JSON) show no consistent
-direction under the machine load at the time (the same code varies 2-3x
-between rounds), so the effect is below what this laptop can resolve; a
-quiet-machine or server measurement is pending. Packing is on by default
+against the unprefixed ones in the bench JSON) are in Section 9.6 for
+all thirteen graphs: packed tops climb in 0.91x (own) and 0.89x (root) of
+the T-tops time in the median, with a 0.4x-1.5x spread that matches the
+run-to-run noise of identical code on this machine (1-minute load 4-7
+during the run, after the browser was closed). Packing is on by default
 and switchable (`compact_runs(false)` keeps tops as T; the file records
 the choice).
 
@@ -550,9 +605,10 @@ the choice).
 | com-youtube | 4,021,798 | 3,017,695 | -25.0% | 11.22x | 384,064 | 1,392,191 | 1,241,440 |
 | soc-pokec | 43,724,688 | 31,624,721 | -27.7% | 3.22x | 1,838,988 | 18,481,448 | 11,304,285 |
 
-The ratio against per-vertex S trees is now 2.03x (cit-HepPh) to 11.22x
-(youtube), median about 4.8x; dblp 10.27x. The earlier latency evidence
-(`final.json`) was measured on the index compacted in place rather than
-on the loaded copy (a reference bound once before the target pointer
-changed); the two hold identical arrays, so those numbers stand, and the
-bench now measures the loaded copy.
+The ratio against per-vertex S trees is 2.03x (cit-HepPh) to 11.22x
+(youtube), median 4.8x; dblp 10.27x. Section 9 now holds the latencies of
+this version (`final.json`); the fixed-width run is `final_v3.json`. The
+earlier latency evidence was measured on the index compacted in place
+rather than on the loaded copy (a reference bound once before the target
+pointer changed); the two hold identical arrays, so those numbers stand,
+and the bench now measures the loaded copy.

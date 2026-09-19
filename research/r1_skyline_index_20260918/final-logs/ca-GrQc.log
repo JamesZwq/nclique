@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --bench data/ca-GrQc.edges /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/cx/ca-GrQc.cx
+{"passed":true,"n":5242,"m":14484,"s_max":44,"count_bits":64,"chains":716,"canonical_nodes":1517,"max_depth":26,"pairs_total":2079,"runs_total":624,"vertex_pairs":20045,"vertex_residue_cells":1058,"baseline_vertex_bytes":272564,"bytes_map":3856,"bytes_chains":15889,"bytes_layers":40151,"bytes_total":59896,"file_bytes":55704,"perm_bytes":20968,"slice_bytes_layers":44724,"slice_bytes_total":65472,"solve_ms":2.911,"trees_ms":7.510,"chains_ms":0.058,"layout_ms":0.504,"build_ms":11.054,"compact_ms":0.078,"save_ms":1.596,"load_ms":0.136,"ti_ms":3.442,"ti_bytes":385400,"rss_start":2949120,"rss_after_solve":4505600,"rss_after_chains":4521984,"rss_after_layout":4653056,"slice_range_own_ns":227.983,"slice_range_half_ns":144.935,"slice_range_root_ns":117.500,"slice_explicit_own_ns":287.604,"slice_explicit_half_ns":479.785,"slice_explicit_root_ns":541.500,"slice_ladder_ns":162.473,"slice_own_ranges":14.084,"slice_half_ranges":15.750,"slice_root_ranges":18.610,"full_bytes_total":67557,"full_bytes_layers":47812,"full_range_own_ns":51.294,"full_range_half_ns":49.244,"full_range_root_ns":33.917,"full_explicit_own_ns":97.000,"full_climb_own_ns":13.121,"full_climb_half_ns":12.269,"full_climb_root_ns":6.875,"full_ptr_own_ns":22.238,"full_ptr_half_ns":21.631,"full_ptr_root_ns":9.083,"full_member_ns":17.047,"full_value_ns":12.546,"full_ladder_ns":50.502,"climb_own_ns":14.608,"climb_half_ns":16.244,"climb_root_ns":7.541,"slice_climb_own_ns":16.467,"slice_climb_half_ns":8.008,"slice_climb_root_ns":5.958,"ptr_own_ns":18.725,"ptr_half_ns":25.300,"ptr_root_ns":8.667,"ptr_checksum":495280072,"range_own_ns":43.392,"range_half_ns":61.344,"range_root_ns":30.208,"explicit_own_ns":181.021,"explicit_half_ns":230.077,"explicit_root_ns":238.000,"own_output":1658.127,"half_output":2107.703,"root_output":2208.126,"own_ranges":14.084,"half_ranges":15.750,"root_ranges":18.610,"own_chains":14.084,"half_chains":15.750,"root_chains":18.610,"member_ns":20.186,"member_checksum":45720,"value_ns":13.231,"value_checksum":0,"ladder_ns":27.137,"ladder_steps":2.084}
+        0.38 real         0.33 user         0.00 sys
+            14008320  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                1043  page reclaims
+                   3  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   5  voluntary context switches
+                 485  involuntary context switches
+          3874961654  instructions retired
+           876118729  cycles elapsed
+            13353344  peak memory footprint
