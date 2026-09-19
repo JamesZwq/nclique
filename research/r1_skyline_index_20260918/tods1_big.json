@@ -1,0 +1,95 @@
+{
+ "started": "2026-09-19T11:38:07.876122+00:00",
+ "commands": [
+  [
+   "cmake",
+   "-S",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918",
+   "-B",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build",
+   "-DCMAKE_BUILD_TYPE=Release",
+   "-DSANITIZE=OFF"
+  ],
+  [
+   "cmake",
+   "--build",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build",
+   "-j",
+   "12",
+   "--target",
+   "chain_index_tool"
+  ],
+  [
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool",
+   "--selftest"
+  ],
+  [
+   "cmake",
+   "-S",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918",
+   "-B",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build-asan",
+   "-DCMAKE_BUILD_TYPE=Release",
+   "-DSANITIZE=ON"
+  ],
+  [
+   "cmake",
+   "--build",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build-asan",
+   "-j",
+   "12",
+   "--target",
+   "chain_index_tool"
+  ],
+  [
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build-asan/chain_index_tool",
+   "--selftest"
+  ],
+  [
+   "/usr/bin/time",
+   "-v",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool",
+   "--bench",
+   "/data/wenqianz/graphs/com-lj.edges",
+   "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/com-lj.cx"
+  ]
+ ],
+ "sources": {
+  "research/r1_skyline_index_20260918/chain_index.hpp": "95bea897c3d127dd842fbc7837b3d4cc45e878f006020ddc51d3eb724c1cf849",
+  "research/r1_skyline_index_20260918/chain_index_tool.cpp": "fad9f099675fc2ae3bbb4088502254ebd59f90696abede409322e276ff95eceb",
+  "research/r1_skyline_index_20260918/count.cpp": "2b2d36fcf6ad8a7ed7dad9145935b09c6d9fd504241d9e54ecd3cc71727f0a88",
+  "research/r1_skyline_index_20260918/common.hpp": "831a520ccd9d2d556e5bf6c9ff31a9aba2a34849a79a356140092036647ac430",
+  "research/r1_skyline_index_20260918/CMakeLists.txt": "ea2d3b73abe268131512092b810bab7de8194ea1c64de1e19154b8446339487d",
+  "research/r1_skyline_index_20260918/run_final.py": "aee16a371bcec448f096467dff6d1208d0008d072a2ef5c647f5c743b2970110",
+  "research/r1_skyline_index_20260918/CHAINS.md": "0792e1f8bbc2fdcc0ccbfe453cef20171b66008f10a85daa4e32c2fabafda29b",
+  "research/r1_skyline_index_20260918/THEORY.md": "e8423553ed259d2c5a4fc2c52c9500c9941bb18a2dd9087b555d3c44ca7979ef"
+ },
+ "selftests": {
+  "build": {
+   "passed": true,
+   "graphs": 34075,
+   "community_queries": 4844536,
+   "membership_checks": 29215144,
+   "value_checks": 5123368,
+   "ladder_checks": 2772392
+  },
+  "build-asan": {
+   "passed": true,
+   "graphs": 34075,
+   "community_queries": 4844536,
+   "membership_checks": 29215144,
+   "value_checks": 5123368,
+   "ladder_checks": 2772392
+  }
+ },
+ "runs": [
+  {
+   "graph": "/data/wenqianz/graphs/com-lj.edges",
+   "input_sha256": "47ba0214b871c10070ec98b66b7e44e7de412c37a7f063684d54ddda93699344",
+   "error": "packed row ID overflow",
+   "peak_rss_bytes": 303322226688,
+   "wall_s": 2576.27,
+   "host": "radonduo"
+  }
+ ]
+}
