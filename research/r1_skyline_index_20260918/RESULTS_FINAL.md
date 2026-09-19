@@ -148,16 +148,20 @@ that the module keeps (GrQc 716, HepPh 1,136).
 ## 8. Experimental Setup
 
 Machine: the local Apple M-series laptop of the earlier stages, one
-thread (`OMP_NUM_THREADS=1`), no other timing run concurrent. Thirteen
-inputs: the five of stage 2 (`data/ca-GrQc.edges`, `data/ca-HepPh.edges`,
-`data/com-dblp.edges`, `graphs/web-Stanford.edges`,
-`graphs/amazon0302.edges`) plus `graphs/ca-AstroPh.edges`,
-`graphs/ca-CondMat.edges`, `graphs/cit-HepPh.edges`,
-`graphs/loc-Brightkite.edges`, `graphs/soc-Epinions1.edges`,
-`graphs/soc-Slashdot0902.edges`, `graphs/com-youtube.edges`,
-`graphs/soc-pokec.edges` (sha256 of every input in `final.json`). Count
-width chosen by `count_bound`: 64 bits except ca-HepPh (256, s_max 239)
-and com-dblp (128). Queries (seed 20260918, drawn from active vertices
+thread (`OMP_NUM_THREADS=1`), no other timing run concurrent. Seventeen
+inputs in five families: collaboration (`data/ca-GrQc.edges`,
+`data/ca-HepPh.edges`, `graphs/ca-HepTh.edges`, `graphs/ca-AstroPh.edges`,
+`graphs/ca-CondMat.edges`, `data/com-dblp.edges`, and the dense
+4.05 M-vertex `graphs/dblp-coauthor.edges` with s_max 450), citation
+(`graphs/cit-HepPh.edges`), web (`graphs/web-Stanford.edges`), product
+(`graphs/amazon0302.edges`, `graphs/amazon-copurchase.edges`), social and
+communication (`graphs/email-Eu-core.edges`, `graphs/loc-Brightkite.edges`,
+`graphs/soc-Epinions1.edges`, `graphs/soc-Slashdot0902.edges`,
+`graphs/com-youtube.edges`, `graphs/soc-pokec.edges`). The first thirteen
+are in `final.json`, the last four (HepTh, email, com-amazon,
+dblp-coauthor) in `more.json` (sha256 of every input recorded). Count
+width chosen from the solver's rows: 64 bits except com-dblp (128),
+ca-HepPh (256, s_max 239) and dblp-coauthor (512, s_max 450). Queries (seed 20260918, drawn from active vertices
 and sizes 2 <= s <= omega(v)): community regimes own (k = kappa_s(v),
 20,000), half (k = max(1, kappa/2), 20,000), root (k = 1, 1,000);
 membership 20,001 (random u, mixed regimes); values 200,000; ladders on
@@ -182,6 +186,7 @@ cmake --build research/r1_skyline_index_20260918/build -j 12 --target chain_inde
 research/r1_skyline_index_20260918/build/chain_index_tool --selftest
 /usr/bin/time -l research/r1_skyline_index_20260918/build/chain_index_tool --bench data/com-dblp.edges research/r1_skyline_index_20260918/cx/com-dblp.cx
 python3 research/r1_skyline_index_20260918/run_final.py graphs/ca-AstroPh.edges graphs/ca-CondMat.edges graphs/cit-HepPh.edges graphs/loc-Brightkite.edges graphs/soc-Epinions1.edges graphs/soc-Slashdot0902.edges graphs/com-youtube.edges graphs/soc-pokec.edges
+python3 research/r1_skyline_index_20260918/run_final.py --tag more --only graphs/ca-HepTh.edges graphs/email-Eu-core.edges graphs/amazon-copurchase.edges graphs/dblp-coauthor.edges
 python3 research/r1_skyline_index_20260918/report_tables.py
 ```
 
@@ -203,6 +208,10 @@ python3 research/r1_skyline_index_20260918/report_tables.py
 | soc-Slashdot0902 | 82,168 | 56 | 64 | 6,798 | 12.1 | 6,309 | 1.08 | 30,496 | 17,551 | 42,608 | 255,723 | 289,200 | 587,531 | 564,663 | 328,672 | 720,540 | 2,995,392 | 5.10x | 3.27x |
 | com-youtube | 1,134,890 | 52 | 64 | 42,815 | 26.5 | 22,403 | 1.91 | 179,601 | 93,541 | 384,064 | 1,392,191 | 1,241,440 | 3,017,695 | 2,930,287 | 4,539,560 | 3,901,854 | 33,847,412 | 11.22x | 4.48x |
 | soc-pokec | 1,632,803 | 48 | 64 | 383,206 | 4.3 | 67,544 | 5.67 | 2,375,352 | 1,212,885 | 1,838,988 | 18,481,448 | 11,304,285 | 31,624,721 | 31,356,585 | 6,531,212 | 43,252,464 | 101,770,646 | 3.22x | 2.67x |
+| ca-HepTh | 9,877 | 32 | 64 | 1,104 | 8.9 | 1,583 | 0.70 | 3,112 | 1,044 | 6,284 | 26,475 | 43,388 | 76,147 | 71,199 | 39,508 | 87,244 | 422,086 | 5.54x | 3.65x |
+| email-Eu-core | 1,005 | 35 | 64 | 667 | 1.5 | 2,602 | 0.26 | 6,080 | 4,423 | 2,868 | 47,387 | 95,335 | 145,590 | 136,689 | 4,020 | 166,432 | 186,738 | 1.28x | 1.25x |
+| amazon-copurchase | 548,552 | 7 | 64 | 56,315 | 9.7 | 86,798 | 0.65 | 163,658 | 54,803 | 328,132 | 1,385,981 | 2,261,230 | 3,975,343 | 3,628,510 | 2,194,208 | 4,840,472 | 19,697,700 | 4.95x | 3.19x |
+| dblp-coauthor | 4,049,537 | 450 | 512 | 363,201 | 11.1 | 274,215 | 1.32 | 2,958,470 | 1,761,549 | 2,212,112 | 21,189,882 | 21,883,355 | 45,285,349 | 44,207,011 | 16,198,148 | 140,276,804 | 530,275,990 | 11.71x | 8.62x |
 
 "total B" is in memory and includes the derived jump pointers (4 bytes
 per node); "file B" is the disk image. "perm B" is the 4 n-byte
@@ -226,6 +235,10 @@ before `compact_runs` (chain-id DFS arrays).
 | soc-Slashdot0902 | 527 | 1,001 | 1 | 2 | 1,531 | 0.22 | 2.7 | 0.2 | 8.95 | 258 |
 | com-youtube | 485 | 910 | 4 | 10 | 1,410 | 1.23 | 4.3 | 0.7 | 44.20 | 553 |
 | soc-pokec | 6,687 | 8,698 | 12 | 113 | 15,541 | 16.25 | 27.2 | 7.0 | 495.31 | 3,229 |
+| ca-HepTh | 4 | 8 | 0 | 0 | 13 | 0.06 | 0.4 | 0.2 | 0.75 | 11 |
+| email-Eu-core | 41 | 48 | 0 | 1 | 91 | 0.16 | 0.6 | 0.2 | 4.88 | 19 |
+| amazon-copurchase | 213 | 640 | 5 | 29 | 888 | 2.84 | 11.1 | 1.9 | 32.05 | 160 |
+| dblp-coauthor | 91,055 | 47,728 | 50 | 359 | 139,340 | 52.64 | 62.9 | 10.6 | 989.67 | 8,816 |
 
 Process wall time and peak RSS are for the whole `--bench` run (graph
 load, the solver's row index, build, three forms, all query passes);
@@ -275,6 +288,18 @@ solver's row index plus the graph (Section 14).
 | soc-pokec | own | 827,163 | 40378.2 | 9.6 | 9,731 | 76,321 | - | 346,782 | 416,385 |
 | soc-pokec | half | 992,602 | 44650.3 | 27.0 | 13,033 | 87,064 | - | 374,750 | 449,683 |
 | soc-pokec | root | 1,240,689 | 51695.1 | 8.5 | 13,302 | 105,102 | - | 405,789 | 503,011 |
+| ca-HepTh | own | 3,957 | 38.2 | 17.9 | 49 | 416 | - | 532 | 889 |
+| ca-HepTh | half | 5,149 | 44.2 | 27.4 | 54 | 457 | - | 622 | 1,246 |
+| ca-HepTh | root | 5,654 | 52.1 | 7.0 | 43 | 493 | - | 633 | 1,399 |
+| email-Eu-core | own | 647 | 285.1 | 12.5 | 179 | 496 | - | 980 | 1,539 |
+| email-Eu-core | half | 679 | 287.6 | 46.1 | 186 | 527 | - | 1,188 | 1,365 |
+| email-Eu-core | root | 744 | 276.8 | 12.1 | 154 | 495 | - | 993 | 1,342 |
+| amazon-copurchase | own | 123,947 | 627.0 | 32.4 | 767 | 10,605 | - | 24,358 | 36,395 |
+| amazon-copurchase | half | 179,284 | 949.6 | 59.1 | 829 | 14,281 | - | 35,093 | 56,646 |
+| amazon-copurchase | root | 187,527 | 1154.4 | 16.6 | 1,053 | 17,359 | - | 39,934 | 60,956 |
+| dblp-coauthor | own | 1,907,463 | 64066.9 | 14.2 | 14,987 | 166,958 | - | 299,530 | 743,364 |
+| dblp-coauthor | half | 2,188,825 | 68647.1 | 24.0 | 21,907 | 195,011 | - | 331,545 | 924,366 |
+| dblp-coauthor | root | 2,750,068 | 78730.2 | 6.7 | 23,250 | 222,717 | - | 429,993 | 864,781 |
 
 "locate" returns the head range, a pointer to the whole runs and the
 tail range (no copy). "ranges copied" materialises the range list.
@@ -300,6 +325,10 @@ index loaded back from its file (per-size widths, `CHAINX03`).
 | soc-Slashdot0902 | 9.5 | 6.3 | 606 | 6.46 | 9,299 | 587 |
 | com-youtube | 8.5 | 8.2 | 2,343 | 4.12 | 29,040 | 1604 |
 | soc-pokec | 11.0 | 11.2 | 113,261 | 23.04 | 1,637,301 | 2413 |
+| ca-HepTh | 17.6 | 13.0 | 63 | 2.35 | 666 | 18 |
+| email-Eu-core | 24.7 | 12.8 | 4,328 | 66.31 | 24,216 | 325 |
+| amazon-copurchase | 30.9 | 17.6 | 941 | 2.50 | 35,952 | 10 |
+| dblp-coauthor | 18.7 | 10.2 | 437,715 | 90.89 | 2,510,380 | 5543 |
 
 ### 9.5 Explicit listing cost per output vertex (ns)
 | Graph | final module (own) | per-vertex S trees (own) | final module (root) | per-vertex S trees (root) |
@@ -317,6 +346,14 @@ index loaded back from its file (per-size widths, `CHAINX03`).
 | soc-Slashdot0902 | 0.043 | - | 0.038 | - |
 | com-youtube | 0.044 | - | 0.043 | - |
 | soc-pokec | 0.092 | - | 0.085 | - |
+| ca-HepTh | 0.105 | - | 0.087 | - |
+| email-Eu-core | 0.768 | - | 0.665 | - |
+| amazon-copurchase | 0.086 | - | 0.093 | - |
+| dblp-coauthor | 0.088 | - | 0.081 | - |
+
+selftests (final.json): {"build": {"passed": true, "graphs": 34075, "community_queries": 2422268, "membership_checks": 14607572, "value_checks": 2561684, "ladder_checks": 1386196}, "build-asan": {"passed": true, "graphs": 34075, "community_queries": 2422268, "membership_checks": 14607572, "value_checks": 2561684, "ladder_checks": 1386196}}
+selftests (more.json): {"build": {"passed": true, "graphs": 34075, "community_queries": 2422268, "membership_checks": 14607572, "value_checks": 2561684, "ladder_checks": 1386196}, "build-asan": {"passed": true, "graphs": 34075, "community_queries": 2422268, "membership_checks": 14607572, "value_checks": 2561684, "ladder_checks": 1386196}}
+byte ratio over 17 graphs: min 1.28x, median 4.95x, max 11.71x
 
 selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 2422268, "membership_checks": 14607572, "value_checks": 2561684, "ladder_checks": 1386196}, "build-asan": {"passed": true, "graphs": 34075, "community_queries": 2422268, "membership_checks": 14607572, "value_checks": 2561684, "ladder_checks": 1386196}}
 
@@ -325,7 +362,6 @@ selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816
 selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816701, "membership_checks": 10955679, "value_checks": 1921263, "ladder_checks": 1039647}, "build-asan": {"passed": true, "graphs": 34075, "community_queries": 1816701, "membership_checks": 10955679, "value_checks": 1921263, "ladder_checks": 1039647}}
 
 ### 9.6 Top encoding ablation (same process)
-
 | Graph | bytes T tops | bytes packed | climb own T / packed | climb half T / packed | climb root T / packed | locate own T / packed | member T / packed | value T / packed | ladder T / packed |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | ca-GrQc | 67,557 | 59,896 | 13.1 / 14.6 | 12.3 / 16.2 | 6.9 / 7.5 | 22.2 / 18.7 | 17.0 / 20.2 | 12.5 / 13.2 | 51 / 27 |
@@ -341,9 +377,12 @@ selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816
 | soc-Slashdot0902 | 615,831 | 587,531 | 10.3 / 7.9 | 6.7 / 6.6 | 4.5 / 3.9 | 11.1 / 8.2 | 10.1 / 9.5 | 9.2 / 6.3 | 606 / 606 |
 | com-youtube | 3,152,275 | 3,017,695 | 8.6 / 9.9 | 9.5 / 4.5 | 3.7 / 3.2 | 9.5 / 8.1 | 9.9 / 8.5 | 8.0 / 8.2 | 2,304 / 2,343 |
 | soc-pokec | 31,915,124 | 31,624,721 | 5.2 / 7.9 | 31.7 / 20.3 | 6.3 / 7.8 | 13.6 / 9.6 | 9.7 / 11.0 | 12.3 / 11.2 | 112,989 / 113,261 |
+| ca-HepTh | 85,683 | 76,147 | 17.5 / 14.1 | 10.5 / 12.7 | 7.2 / 6.6 | 19.6 / 17.9 | 10.3 / 17.6 | 13.2 / 13.0 | 70 / 63 |
+| email-Eu-core | 158,767 | 145,590 | 4.0 / 11.0 | 23.6 / 42.5 | 10.2 / 10.2 | 8.9 / 12.5 | 18.6 / 24.7 | 13.7 / 12.8 | 4,107 / 4,328 |
+| amazon-copurchase | 4,582,929 | 3,975,343 | 18.1 / 20.4 | 37.0 / 41.1 | 11.3 / 10.2 | 37.8 / 32.4 | 57.2 / 30.9 | 29.0 / 17.6 | 647 / 941 |
+| dblp-coauthor | 60,532,038 | 45,285,349 | 11.1 / 6.3 | 42.1 / 20.6 | 9.2 / 5.8 | 15.7 / 14.2 | 17.7 / 18.7 | 10.0 / 10.2 | 421,504 / 437,715 |
 
 ### 9.7 Climb only
-
 | Graph | own build / packed | half build / packed | root build / packed |
 |---|---:|---:|---:|
 | ca-GrQc | 16.5 / 14.6 | 8.0 / 16.2 | 6.0 / 7.5 |
@@ -359,6 +398,10 @@ selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816
 | soc-Slashdot0902 | 10.5 / 7.9 | 10.1 / 6.6 | 4.2 / 3.9 |
 | com-youtube | 8.6 / 9.9 | 5.4 / 4.5 | 3.8 / 3.2 |
 | soc-pokec | 6.5 / 7.9 | 14.7 / 20.3 | 6.6 / 7.8 |
+| ca-HepTh | 14.2 / 14.1 | 14.2 / 12.7 | 6.8 / 6.6 |
+| email-Eu-core | 8.5 / 11.0 | 38.0 / 42.5 | 9.2 / 10.2 |
+| amazon-copurchase | 16.6 / 20.4 | 14.9 / 41.1 | 5.9 / 10.2 |
+| dblp-coauthor | 10.8 / 6.3 | 27.0 / 20.6 | 9.2 / 5.8 |
 
 ### 9.8 The four stage-2 layouts for reference (five graphs)
 
@@ -383,35 +426,40 @@ selftests: {"build": {"passed": true, "graphs": 34075, "community_queries": 1816
 ## 10. Analysis Of Runtime And Memory
 
 Measured facts.
-- Bytes: 2.03x (cit-HepPh) to 11.22x (com-youtube) below per-vertex S
-  trees, median 4.8x over the thirteen graphs; 1.86x to 7.21x if the
-  label permutation is charged to the index. The ratio follows the
-  vertex collapse n / chains: 2.1 vertices per chain on cit-HepPh, 4.3 on
-  pokec, 5.6 on AstroPh (ratios 2.0x, 3.2x, 3.6x) against 23.6 on dblp and
-  26.5 on youtube (10.3x, 11.2x). Where the bytes sit changes with the
-  graph: the per-size layers are 58-74 percent of the index on the
-  collaboration, web and product graphs (HepPh 74, GrQc 67, dblp 66), the
-  per-chain block (trajectories and residue values) 44-58 percent on the
-  social and citation graphs (pokec 58, cit-HepPh 51, youtube 46,
-  Slashdot 44); the map is 3-13 percent.
-- Chains against canonical nodes: 0.32-0.68 on nine graphs, but 1.08
-  (Slashdot), 1.77 (cit-HepPh), 1.91 (youtube) and 5.67 (pokec). The
-  recombination of CHAINS.md Section 7 is real on social and citation
-  graphs; the index stays smaller than per-vertex S trees there because
-  the per-vertex trees pay per vertex and per size, and chains still
-  collapse 2-27 vertices each.
+- Bytes: 1.28x (email-Eu-core) to 11.71x (dblp-coauthor) below
+  per-vertex S trees, median 4.95x over the seventeen graphs; 1.25x to
+  8.62x if the label permutation is charged to the index. The ratio
+  follows the vertex collapse n / chains: 1.5 vertices per chain on
+  email-Eu-core (1,005 vertices, nearly every vertex its own chain), 2.1
+  on cit-HepPh, 4.3 on pokec (ratios 1.3x, 2.0x, 3.2x) against 11.1 on
+  dblp-coauthor, 23.6 on dblp and 26.5 on youtube (11.7x, 10.3x, 11.2x).
+  The largest input, dblp-coauthor (4.05 M vertices, cliques up to 450,
+  512-bit counts), is also the best case: 45 MB against 530 MB. Where the
+  bytes sit changes with the graph: the per-size layers are 58-74 percent
+  of the index on the collaboration, web and product graphs (HepPh 74,
+  GrQc 67, dblp 66), the per-chain block (trajectories and residue
+  values) 44-58 percent on the social and citation graphs (pokec 58,
+  cit-HepPh 51, youtube 46, Slashdot 44); the map is 3-13 percent.
+- Chains against canonical nodes: 0.26-0.70 on twelve graphs, but 1.08
+  (Slashdot), 1.32 (dblp-coauthor), 1.77 (cit-HepPh), 1.91 (youtube) and
+  5.67 (pokec). The recombination of CHAINS.md Section 7 is real on
+  social, citation and dense collaboration graphs; the index stays
+  smaller than per-vertex S trees there because the per-vertex trees pay
+  per vertex and per size, and chains still collapse 2-27 vertices each.
 - Runs against (chain, size) pairs: 1.4x-3.3x fewer entries. With
   per-size widths the compact form is now 0-31 percent smaller than the
   chain-id build form (the 8-byte entry per node is paid back by the
   narrower tops and residues) and answers faster: range answers 2.4x-109x,
   explicit answers 1.55x-5.5x, ladders 3.7x-52x.
-- Locating a community takes 3.5-45 ns on every graph and regime: bitmap
+- Locating a community takes 3.5-59 ns on every graph and regime: bitmap
   rank, trajectory lookup, jump-pointer climb, two entry reads. Copying the
-  range list takes 30 ns to 13 us (pokec root, 51,695 ranges); the range
-  list is 5x (cit-HepPh) to 807x (youtube) shorter than the vertex list.
-- Explicit listing runs at 0.04-0.11 ns per vertex on eleven graphs and
-  0.17-0.28 ns on the two most fragmented (AstroPh 9 vertices per range,
-  cit-HepPh 5). Against the memcpy baseline (0.09-0.15 ns per vertex on
+  range list takes 30 ns to 23 us (dblp-coauthor root, 78,730 ranges); the
+  range list is 2.3x (email-Eu-core) to 807x (youtube) shorter than the
+  vertex list.
+- Explicit listing runs at 0.04-0.11 ns per vertex on fourteen graphs
+  (dblp-coauthor included: 1.9 M vertices per own-level community in
+  167 us) and 0.17-0.77 ns on the three most fragmented (AstroPh 9
+  vertices per range, cit-HepPh 5, email-Eu-core 2.3). Against the memcpy baseline (0.09-0.15 ns per vertex on
   the five graphs where it was measured) the fill is faster on 13 of 15
   (graph, regime) points: own level 1.24x (GrQc), 1.17x (HepPh), 1.75x
   (dblp), 1.54x (Stanford), 1.68x (amazon); root 1.37x-1.80x on the three
@@ -427,13 +475,14 @@ Measured facts.
   no visible cost. Against the fixed-width run of `archive/final_v3.json` the
   median ratios of every latency class lie between 0.92 and 1.12 with
   both signs, so the widths change bytes, not time.
-- Membership 4.9-28 ns and values 6.3-20 ns: two bitmap ranks plus a
+- Membership 4.9-31 ns and values 6.3-20 ns: two bitmap ranks plus a
   climb, or one rank plus a residue or binomial lookup.
-- Build: 15 ms (GrQc) to 34 s (pokec, 1.63 M vertices) including the
-  solver's row index (pokec: row index 14 s, all-size peel 9 s, trees and
-  trie 11 s in this run); chains and layout add at most 0.3 s. Peak build
-  memory is 157 MB on dblp and 2.9 GB on pokec (Section 14), against a
-  32 MB index.
+- Build: 15 ms (GrQc) to 34 s (pokec, 1.63 M vertices) and 189 s
+  (dblp-coauthor, 4.05 M vertices, 512-bit counts) including the solver's
+  row index (pokec: row index 14 s, all-size peel 9 s, trees and trie 11 s;
+  dblp-coauthor: 50 s, 91 s, 48 s); chains and layout add at most 0.4 s.
+  Peak build memory is 157 MB on dblp, 2.9 GB on pokec and 8.8 GB on
+  dblp-coauthor (Section 14), against 1.6, 32 and 45 MB indexes.
 
 Hypotheses (not measured): a per-node vertex count (4 bytes per node)
 would make ladders O(depth) (pokec 132 us, cit-HepPh 23 us today); the
@@ -466,16 +515,24 @@ vectorised fill and the Myers skip pointers are engineering.
 - The label permutation is not free: 4 n bytes unless the graph is stored
   in aligned order (60 percent of the dblp index, 113 percent on youtube
   where the index is tiny against n). Reported both ways.
+- When almost every vertex is its own chain the index degenerates toward
+  per-vertex S trees: email-Eu-core (1,005 vertices, 667 chains, 2.3
+  vertices per range) is 1.28x smaller, and its explicit listing costs
+  0.77 ns per vertex. The saving is the vertex collapse; without it only
+  the run encoding and the certified tail remain.
 - Explicit listing costs 0.20-0.24 ns per vertex on the two most
   fragmented graphs (AstroPh, cit-HepPh), about twice the cost elsewhere;
   no memcpy baseline was measured on them. On HepPh (own and half) the
   fill is 5-10 percent slower than the memcpy listing.
-- Ladder queries on deep trees (pokec depth 2,413, cit-HepPh 1,062) cost
-  24-113 us because each level sums its runs.
+- Ladder queries on deep trees (dblp-coauthor depth 5,543, pokec 2,413,
+  cit-HepPh 1,062) cost 24-438 us because each level sums its runs.
 - Peak build memory is the solver's row index plus the graph (2.9 GB on
   pokec, of which the row index is 1.46 GB), not the index; the dense
   core matrix and the per-size own arrays of the first version are gone
-  (Section 14).
+  (Section 14). With 512-bit counts (dblp-coauthor) the solver's own
+  per-size weight arrays (two counts per clique-tree row) add about 4 GB
+  on top of the 1.7 GB row index, for 8.8 GB in total; that is inside
+  `r1_terminal_20260918`, not in this module.
 - The number of chains exceeds the number of canonical nodes on four of
   thirteen graphs (up to 5.7x on pokec); no bound in terms of the
   hierarchy exists (CHAINS.md Section 7).
@@ -489,18 +546,19 @@ vectorised fill and the Myers skip pointers are engineering.
 ## 12. Final Conclusion
 
 The all-size r = 1 nucleus hierarchy of a graph is stored exactly in
-2.0x-11.2x fewer bytes than one S tree per size (median 4.8x over thirteen
-graphs; dblp 10.3x), communities are located in constant time (3.5-45 ns)
-and listed faster than a memcpy of the vertex list on 13 of the 15 points
-where that baseline exists (0.86x-1.80x), from a partition of the
-vertices
+1.3x-11.7x fewer bytes than one S tree per size (median 4.95x over
+seventeen graphs of five families; dblp 10.3x, the 4.05 M-vertex
+dblp-coauthor 11.7x, the 1,005-vertex email-Eu-core 1.3x), communities
+are located in constant time (3.5-59 ns) and listed faster than a memcpy
+of the vertex list on 13 of the 15 points where that baseline exists
+(0.86x-1.80x), from a partition of the vertices
 (chains) that the theory proves exact, aligned labels that make chains id
 ranges, per-size run arrays with node entry points that make every
 community a head range, whole runs and a tail range, and per-size byte
 widths for the stored values. The build streams the solver's rows and
 needs O(n + chains x sizes) working memory beyond the solver's own row
 index. Correctness is brute-force verified in four forms on 34,075 graphs
-under Release and sanitizers, and the canonical node counts agree with the independent
+plus K_300 (sizes beyond 255) under Release and sanitizers, and the canonical node counts agree with the independent
 stage-1/2 pipeline on the five shared graphs. The SGL skyline dedup is
 dominated in this setting and dropped. Framing for a paper: the
 contribution starts from the chain partition (hierarchy equivalence),
@@ -605,9 +663,17 @@ the choice).
 | com-youtube | 4,021,798 | 3,017,695 | -25.0% | 11.22x | 384,064 | 1,392,191 | 1,241,440 |
 | soc-pokec | 43,724,688 | 31,624,721 | -27.7% | 3.22x | 1,838,988 | 18,481,448 | 11,304,285 |
 
-The ratio against per-vertex S trees is 2.03x (cit-HepPh) to 11.22x
-(youtube), median 4.8x; dblp 10.27x. Section 9 now holds the latencies of
-this version (`final.json`); the fixed-width run is `archive/final_v3.json`. The
+The ratio against per-vertex S trees is 1.28x (email-Eu-core) to 11.71x
+(dblp-coauthor), median 4.95x over seventeen graphs; dblp 10.27x. Section
+9 holds the latencies of this version (`final.json`, `more.json`); the
+fixed-width run is `archive/final_v3.json`.
+
+**Sizes beyond 255.** The first version kept omega, sigma and the trie
+level in one byte and failed on dblp-coauthor (degeneracy 449, s_max 450)
+with "trie path length". They are 16-bit now (format `CHAINX04`, 2 more
+bytes per chain, under 0.3 percent of any index); the selftest gained
+K_300 (one chain, every size certified, one range per community, values
+C(299, s-1) up to 512 bits). The
 earlier latency evidence was measured on the index compacted in place
 rather than on the loaded copy (a reference bound once before the target
 pointer changed); the two hold identical arrays, so those numbers stand,
