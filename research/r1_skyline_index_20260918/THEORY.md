@@ -560,6 +560,6 @@ Sections 5-7 by S trees over hierarchy-equivalence chains with aligned
 labels and run arrays: [CHAINS.md](CHAINS.md) (Lemmas C1-C6) and
 [RESULTS_FINAL.md](RESULTS_FINAL.md). The skyline dedup of Block C and
 the cross-size pointer of L2 were measured as a space/time trade
-(RESULTS_INDEX.md) and are not part of the final module; Section 13
+(stages/RESULTS_INDEX.md) and are not part of the final module; Section 13
 (empty nodes) is moot for S trees, where every canonical node has an own
 chain. Block D (residues plus the certified tail) survives per chain.

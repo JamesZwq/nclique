@@ -5,7 +5,7 @@
 // main renamed) so that make_tree, shadow, twins and the selftest graphs
 // are shared byte-for-byte with `count`.
 #define main skyline_stage1_count_main
-#include "count.cpp"
+#include "../count.cpp"
 #undef main
 
 #include <chrono>

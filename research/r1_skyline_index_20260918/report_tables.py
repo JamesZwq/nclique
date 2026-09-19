@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-LAYOUTS = [('vertices', 'index_vertices.json'), ('twins', 'index.json'), ('chains', 'index_chains.json'), ('aligned', 'index_aligned.json')]
+LAYOUTS = [('vertices', 'stages/index_vertices.json'), ('twins', 'stages/index.json'), ('chains', 'stages/index_chains.json'), ('aligned', 'stages/index_aligned.json')]
 
 def load(name):
     p = HERE / name
@@ -48,7 +48,7 @@ def final():
     rec = load('final.json')
     if rec is None:
         print('(final.json not present yet)'); return
-    data = by_graph(rec); vert = by_graph(load('index_vertices.json'))
+    data = by_graph(rec); vert = by_graph(load('stages/index_vertices.json'))
     def vbytes(g, r): return r.get('baseline_vertex_bytes', vert[g]['base_with_d'] if g in vert else 0)
     print('### Final module: size')
     print('| Graph | n | s_max | W bits | chains | n / chains | canonical nodes | chains / nodes | (chain,s) pairs | runs | map B | chains B | layers B | total B | file B | perm B | build form total B | per-vertex S trees B | ratio | ratio with perm |')

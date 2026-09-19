@@ -51,7 +51,7 @@ query answer is a union of chain classes (C2).
 
 ## 3. Counts On The Five Local Inputs
 
-`chains.cpp` (builds the trees of stage 1, groups vertices by their node
+`stages/chains.cpp` (builds the trees of stage 1, groups vertices by their node
 tuple, checks that kappa agrees on every size inside every class):
 
 | Graph | n | twin classes | chains | canonical nodes | largest chain | (v,s) pairs -> (chain,s) pairs | residue cells -> per chain |
@@ -105,7 +105,7 @@ is one rank plus one interval test, values are one lookup per chain.
 
 ## 6. Measured (2026-09-19)
 
-Done: [RESULTS_CHAINS.md](RESULTS_CHAINS.md). S trees over chains are
+Done: [RESULTS_CHAINS.md](stages/RESULTS_CHAINS.md). S trees over chains are
 2.5x to 4.5x smaller than S trees over twins as measured (3.9x to 8.3x
 projected with aligned labels) and 1.7x to 8.6x faster on community
 listing; the skyline over chains is dominated.

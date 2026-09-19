@@ -2,16 +2,16 @@
 
 Date: 2026-09-19. Same program, harness and protocol as stage 2
 ([RESULTS_INDEX.md](RESULTS_INDEX.md)); the only change is the class
-definition: hierarchy-equivalence chains ([CHAINS.md](CHAINS.md)) in place
+definition: hierarchy-equivalence chains ([CHAINS.md](../CHAINS.md)) in place
 of closed-neighbourhood twins. Evidence: `index_chains.json`,
 `index-logs_chains/`. The twin-class run of stage 2 is untouched.
-Superseded as the final design by [RESULTS_FINAL.md](RESULTS_FINAL.md)
+Superseded as the final design by [RESULTS_FINAL.md](../RESULTS_FINAL.md)
 (aligned labels and run arrays); the numbers here remain the chain-id
 layout with an explicit vertex-to-chain map.
 
 ## 1. Problem Summary
 
-Measure, not project, the index of [CHAINS.md](CHAINS.md) Section 4: the
+Measure, not project, the index of [CHAINS.md](../CHAINS.md) Section 4: the
 S-tree baseline and the skyline index built over chain classes, against
 the stage-2 twin-class layouts, on the five local full-range inputs.
 

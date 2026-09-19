@@ -10,8 +10,9 @@ import os
 from pathlib import Path
 import subprocess
 
-HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
+HERE = Path(__file__).resolve().parent          # stages/: evidence of this stage lives here
+SRC = HERE.parent                                # the CMake project (count.cpp, CMakeLists.txt, THEORY.md)
+ROOT = SRC.parents[1]
 GRAPHS = ['data/ca-GrQc.edges', 'data/ca-HepPh.edges', 'data/com-dblp.edges',
           'graphs/web-Stanford.edges', 'graphs/amazon0302.edges']
 
@@ -39,12 +40,12 @@ def main():
     logs.mkdir()
     record = {'mode': mode, 'started': datetime.datetime.now().astimezone().isoformat(), 'commands': [],
               'sources': {str(p.relative_to(ROOT)): sha(p) for p in
-                          (HERE / 'index.cpp', HERE / 'count.cpp', HERE / 'common.hpp', HERE / 'CMakeLists.txt',
-                           HERE / 'run_index.py', HERE / 'IMPLEMENTATION2.md', HERE / 'THEORY.md')},
+                          (HERE / 'index.cpp', SRC / 'count.cpp', SRC / 'common.hpp', SRC / 'CMakeLists.txt',
+                           HERE / 'run_index.py', HERE / 'IMPLEMENTATION2.md', SRC / 'THEORY.md')},
               'selftests': {}, 'runs': []}
     for name, sanitize in [('build', 'OFF'), ('build-asan', 'ON')]:
-        build = HERE / name
-        commands = [['cmake', '-S', str(HERE), '-B', str(build), '-DCMAKE_BUILD_TYPE=Release', f'-DSANITIZE={sanitize}'],
+        build = SRC / name
+        commands = [['cmake', '-S', str(SRC), '-B', str(build), '-DCMAKE_BUILD_TYPE=Release', f'-DSANITIZE={sanitize}'],
                     ['cmake', '--build', str(build), '-j', '12'],
                     [str(build / 'index'), '--selftest'],
                     [str(build / 'count'), '--selftest']]
@@ -55,7 +56,7 @@ def main():
                 record['selftests'][f'{name}-{Path(command[0]).name}'] = json.loads(out.splitlines()[-1])
     for graph in GRAPHS:
         tag = Path(graph).stem
-        command = ['/usr/bin/time', '-l', str(HERE / 'build' / 'index'), '--graph', graph, mode]
+        command = ['/usr/bin/time', '-l', str(SRC / 'build' / 'index'), '--graph', graph, mode]
         record['commands'].append(command)
         output = run(command, logs / f'{tag}.log')
         line = next(x for x in output.splitlines() if x.startswith('{'))

@@ -1,12 +1,14 @@
-// ChainIndex: the final r = 1 all-size community/value index (CHAINS.md,
-// RESULTS_CHAINS.md, RESULTS_FINAL.md).  Vertices carry aligned labels: every
-// chain is one id range, so the vertex-to-chain map is a bitmap with rank.
-// Per size, a tree over canonical nodes plus a DFS array of the chains.  The
-// compact form stores each DFS array as its maximal runs of consecutive vertex
-// ids; a node keeps its entry point (run, vertex), so a community is located
-// in O(1) and reported as the minimal number of id ranges (plus at most one).
-// Node tops and residue values are stored at per-size byte widths (the widest value of that size).
-// Flat arrays only; one file on disk.  Header-only, templated on the count type T.
+// ChainIndex: the r = 1 all-size community/value index (THEORY.md, CHAINS.md, RESULTS_FINAL.md).
+//
+// Vertices are partitioned into chains (equal own canonical node at every size, Lemma C1) and relabelled so
+// that every chain is one id range; the vertex-to-chain map is a bitmap with a rank directory.  Per size s the
+// canonical merge tree is stored over chains with node tops, parents, subtree sizes, and its DFS array as
+// maximal runs of consecutive labels plus a per-node entry point (run, label): a community is located in O(1)
+// after the climb and reported as head range + whole runs + tail range (Lemma C6); every (2,k)-community is
+// one range (Lemma C4).  Values: per chain omega, sigma and the residues for s < sigma; s >= sigma is
+// C(omega-1, s-1).  Node tops and residues are stored at per-size byte widths (1, 2, 4, 8, 16 or 32 bytes;
+// aligned constant-width loads, one width dispatch per query).  Flat arrays only; file format CHAINX03.
+// Header-only, templated on the count type T (64/128-bit builtins or boost fixed-width integers).
 #pragma once
 #include <algorithm>
 #include <cstdint>
@@ -38,15 +40,14 @@ template<unsigned Bits> struct Traits<boost::multiprecision::number<boost::multi
     template<size_t Wb> static T load(const unsigned char* p) { if constexpr (Wb <= 8) { uint64_t v = 0; std::memcpy(&v, p, Wb); return T(v); } else { T x; boost::multiprecision::import_bits(x, p, p + Wb, 8, false); return x; } }
     static unsigned width(const T& x) { return x == 0 ? 1u : static_cast<unsigned>(boost::multiprecision::msb(x) / 8 + 1); }
 };
-// stored widths are rounded up to 1, 2, 4, 8, 16, 32 or 64 bytes: a field of w bytes at index y sits at offset y * w, aligned to w,
-// so a constant-size load of w bytes never crosses a cache line; the width is dispatched once per query
+// stored widths are rounded up to 1, 2, 4, 8, 16, 32 or 64 bytes: a field of w bytes at index y sits at offset y * w, aligned
+// to w, so a constant-size load never crosses a cache line; the width is dispatched once per query (with_width)
 static inline unsigned round_width(unsigned w) { unsigned r = 1; while (r < w) r <<= 1; return r; }
 template<class F> static inline auto with_width(unsigned w, F&& f) {
     switch (w) { case 1: return f(std::integral_constant<size_t, 1>{}); case 2: return f(std::integral_constant<size_t, 2>{}); case 4: return f(std::integral_constant<size_t, 4>{});
         case 8: return f(std::integral_constant<size_t, 8>{}); case 16: return f(std::integral_constant<size_t, 16>{}); case 32: return f(std::integral_constant<size_t, 32>{});
         default: return f(std::integral_constant<size_t, 64>{}); }
 }
-static constexpr size_t kPad = 0;
 
 template<class T> struct ChainIndex {
     // header
@@ -179,7 +180,7 @@ template<class T> struct ChainIndex {
             for (; x <= N; ++x) { L.entry[2 * x] = M; L.entry[2 * x + 1] = 0; }   // sentinel (and any empty trailing segment)
             L.slice.clear(); L.slice.shrink_to_fit(); L.bucket.clear(); L.bucket.shrink_to_fit();
             if (pack_tops) { unsigned w = 1; for (const T& t : L.top) w = std::max(w, Traits<T>::width(t)); w = round_width(w); L.top_w = static_cast<uint8_t>(w);
-                L.top_bytes.assign(N * w + kPad, 0); for (size_t i = 0; i < N; ++i) Traits<T>::put(L.top[i], L.top_bytes.data() + i * w, w);
+                L.top_bytes.assign(N * w, 0); for (size_t i = 0; i < N; ++i) Traits<T>::put(L.top[i], L.top_bytes.data() + i * w, w);
                 L.top.clear(); L.top.shrink_to_fit(); } }
         // residues: the widest stored value per size, then one packed block per chain
         res_w.assign(max_size + 1, 1); res_prefix.assign(max_size + 2, 0);
@@ -188,7 +189,7 @@ template<class T> struct ChainIndex {
         for (int s = 2; s <= max_size; ++s) res_prefix[s + 1] = res_prefix[s] + res_w[s];
         residue_boff.assign(chains + 1, 0);
         for (uint32_t c = 0; c < chains; ++c) { const uint64_t bytes = residue_boff[c] + (sigma[c] > 2 ? res_prefix[sigma[c]] : 0); if (bytes > UINT32_MAX) throw std::overflow_error("residue block exceeds 4 GB"); residue_boff[c + 1] = static_cast<uint32_t>(bytes); }
-        residue_bytes.assign(residue_boff[chains] + kPad, 0);
+        residue_bytes.assign(residue_boff[chains], 0);
         for (uint32_t c = 0; c < chains; ++c) for (int s = 2; s < sigma[c]; ++s) Traits<T>::put(residue[residue_off[c] + (s - 2)], residue_bytes.data() + residue_boff[c] + res_prefix[s], res_w[s]);
         residue.clear(); residue.shrink_to_fit(); residue_off.clear(); residue_off.shrink_to_fit();
         compact = true;
@@ -198,8 +199,8 @@ template<class T> struct ChainIndex {
     // ---- bytes (in memory; jump pointers are derived and not stored on disk)
     uint64_t bytes_map() const { return 8ull * start_bits.size() + 4ull * start_cum.size() + 4ull * start_pos.size(); }
     uint64_t bytes_chains() const { return omega.size() + sigma.size() + 4ull * traj_off.size() + 4ull * traj_node.size() + 4ull * residue_off.size() + Traits<T>::W * residue.size()
-        + res_w.size() + 4ull * res_prefix.size() + 4ull * residue_boff.size() + (residue_bytes.empty() ? 0 : residue_bytes.size() - kPad); }
-    uint64_t bytes_layers() const { uint64_t b = 0; for (const auto& L : layers) b += Traits<T>::W * L.top.size() + (L.top_bytes.empty() ? 0 : L.top_bytes.size() - kPad) + 4ull * (L.parent.size() + L.size.size() + L.jump.size() + L.bucket.size() + L.slice.size() + L.entry.size() + L.runs.size()); return b; }
+        + res_w.size() + 4ull * res_prefix.size() + 4ull * residue_boff.size() + residue_bytes.size(); }
+    uint64_t bytes_layers() const { uint64_t b = 0; for (const auto& L : layers) b += Traits<T>::W * L.top.size() + L.top_bytes.size() + 4ull * (L.parent.size() + L.size.size() + L.jump.size() + L.bucket.size() + L.slice.size() + L.entry.size() + L.runs.size()); return b; }
     uint64_t bytes_total() const { return bytes_map() + bytes_chains() + bytes_layers(); }
     uint64_t node_count() const { uint64_t c = 0; for (const auto& L : layers) c += L.size.size(); return c; }
 
@@ -223,9 +224,6 @@ template<class T> struct ChainIndex {
     // ---- disk format (compact form): magic, header, then arrays as (u64 count, raw bytes)
     template<class V> static void wv(std::ofstream& f, const std::vector<V>& v) { const uint64_t c = v.size(); f.write(reinterpret_cast<const char*>(&c), 8); if (c) f.write(reinterpret_cast<const char*>(v.data()), c * sizeof(V)); }
     template<class V> static void rv(std::ifstream& f, std::vector<V>& v) { uint64_t c = 0; f.read(reinterpret_cast<char*>(&c), 8); v.resize(c); if (c) f.read(reinterpret_cast<char*>(v.data()), c * sizeof(V)); }
-    // padded byte arrays: on disk without the kPad slack, in memory with it
-    static void wb(std::ofstream& f, const std::vector<uint8_t>& v) { const uint64_t c = v.empty() ? 0 : v.size() - kPad; f.write(reinterpret_cast<const char*>(&c), 8); if (c) f.write(reinterpret_cast<const char*>(v.data()), c); }
-    static void rb(std::ifstream& f, std::vector<uint8_t>& v) { uint64_t c = 0; f.read(reinterpret_cast<char*>(&c), 8); v.assign(c + kPad, 0); if (c) f.read(reinterpret_cast<char*>(v.data()), c); }
     static void wt(std::ofstream& f, const std::vector<T>& v) { const uint64_t c = v.size(); f.write(reinterpret_cast<const char*>(&c), 8); std::vector<unsigned char> buf(c * Traits<T>::W); for (size_t i = 0; i < c; ++i) Traits<T>::put(v[i], buf.data() + i * Traits<T>::W); if (c) f.write(reinterpret_cast<const char*>(buf.data()), buf.size()); }
     static void rt(std::ifstream& f, std::vector<T>& v) { uint64_t c = 0; f.read(reinterpret_cast<char*>(&c), 8); std::vector<unsigned char> buf(c * Traits<T>::W); if (c) f.read(reinterpret_cast<char*>(buf.data()), buf.size()); v.resize(c); for (size_t i = 0; i < c; ++i) v[i] = Traits<T>::get(buf.data() + i * Traits<T>::W); }
     void save(const std::string& path) const {
@@ -234,8 +232,8 @@ template<class T> struct ChainIndex {
         const char magic[8] = {'C','H','A','I','N','X','0','3'}; f.write(magic, 8);
         const uint32_t hdr[4] = {n, chains, static_cast<uint32_t>(max_size), static_cast<uint32_t>(Traits<T>::W)}; f.write(reinterpret_cast<const char*>(hdr), 16);
         const uint8_t flags = packed_tops ? 1 : 0; f.write(reinterpret_cast<const char*>(&flags), 1);
-        wv(f, start_bits); wv(f, start_cum); wv(f, start_pos); wv(f, omega); wv(f, sigma); wv(f, traj_off); wv(f, traj_node); wv(f, res_w); wv(f, res_prefix); wv(f, residue_boff); wb(f, residue_bytes);
-        for (int s = 2; s <= max_size; ++s) { const Layer& L = layers[s]; if (packed_tops) { f.write(reinterpret_cast<const char*>(&L.top_w), 1); wb(f, L.top_bytes); } else wt(f, L.top); wv(f, L.parent); wv(f, L.size); wv(f, L.entry); wv(f, L.runs); }
+        wv(f, start_bits); wv(f, start_cum); wv(f, start_pos); wv(f, omega); wv(f, sigma); wv(f, traj_off); wv(f, traj_node); wv(f, res_w); wv(f, res_prefix); wv(f, residue_boff); wv(f, residue_bytes);
+        for (int s = 2; s <= max_size; ++s) { const Layer& L = layers[s]; if (packed_tops) { f.write(reinterpret_cast<const char*>(&L.top_w), 1); wv(f, L.top_bytes); } else wt(f, L.top); wv(f, L.parent); wv(f, L.size); wv(f, L.entry); wv(f, L.runs); }
         if (!f) throw std::runtime_error("write failed " + path);
     }
     static ChainIndex load(const std::string& path) {
@@ -244,9 +242,9 @@ template<class T> struct ChainIndex {
         uint32_t hdr[4]; f.read(reinterpret_cast<char*>(hdr), 16); ChainIndex ix; ix.n = hdr[0]; ix.chains = hdr[1]; ix.max_size = static_cast<int>(hdr[2]);
         if (hdr[3] != Traits<T>::W) throw std::runtime_error("count width mismatch");
         uint8_t flags = 0; f.read(reinterpret_cast<char*>(&flags), 1); ix.packed_tops = (flags & 1) != 0;
-        rv(f, ix.start_bits); rv(f, ix.start_cum); rv(f, ix.start_pos); rv(f, ix.omega); rv(f, ix.sigma); rv(f, ix.traj_off); rv(f, ix.traj_node); rv(f, ix.res_w); rv(f, ix.res_prefix); rv(f, ix.residue_boff); rb(f, ix.residue_bytes);
+        rv(f, ix.start_bits); rv(f, ix.start_cum); rv(f, ix.start_pos); rv(f, ix.omega); rv(f, ix.sigma); rv(f, ix.traj_off); rv(f, ix.traj_node); rv(f, ix.res_w); rv(f, ix.res_prefix); rv(f, ix.residue_boff); rv(f, ix.residue_bytes);
         ix.layers.resize(ix.max_size + 1);
-        for (int s = 2; s <= ix.max_size; ++s) { Layer& L = ix.layers[s]; if (ix.packed_tops) { f.read(reinterpret_cast<char*>(&L.top_w), 1); rb(f, L.top_bytes); } else rt(f, L.top); rv(f, L.parent); rv(f, L.size); rv(f, L.entry); rv(f, L.runs); }
+        for (int s = 2; s <= ix.max_size; ++s) { Layer& L = ix.layers[s]; if (ix.packed_tops) { f.read(reinterpret_cast<char*>(&L.top_w), 1); rv(f, L.top_bytes); } else rt(f, L.top); rv(f, L.parent); rv(f, L.size); rv(f, L.entry); rv(f, L.runs); }
         if (!f) throw std::runtime_error("read failed " + path);
         ix.compact = true; ix.finish(); return ix;
     }

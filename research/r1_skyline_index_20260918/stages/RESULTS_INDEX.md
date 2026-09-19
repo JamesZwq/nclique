@@ -7,7 +7,7 @@ format, no production, paper or default change.
 ## 1. Problem Summary
 
 Build, from the same canonical trees, (a) the S-tree baseline with the
-DFS-interval layout and (b) the skyline index of [THEORY.md](THEORY.md),
+DFS-interval layout and (b) the skyline index of [THEORY.md](../THEORY.md),
 for r = 1 over all sizes s = 2..d+1; verify both against brute force and
 against each other; measure exact bytes per block and the latency of
 community, membership and value queries.

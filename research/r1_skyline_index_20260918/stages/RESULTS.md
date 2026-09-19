@@ -7,7 +7,7 @@ formulas below are a storage model, not a measured file size.
 ## 1. Problem Summary
 
 For r = 1 and every size s = 2..d+1, decide whether the skyline community
-index of [THEORY.md](THEORY.md) would be smaller than S explicit merge
+index of [THEORY.md](../THEORY.md) would be smaller than S explicit merge
 trees, and verify the lemmas the index relies on, on the five local
 full-range inputs. The quantities are those of THEORY.md Section 11.
 

@@ -1,5 +1,11 @@
-// ChainIndex tool: build from a graph (all-size engine + per-size trees + chains + aligned labels),
-// save/load, brute-force selftest with a disk round trip, and the benchmark of RESULTS_FINAL.md.
+// chain_index_tool: build, verify and measure the chain index (chain_index.hpp).
+//   --selftest              brute-force nuclei on every labelled graph <= 6 vertices, random 7-10, split graphs, K8;
+//                           checks values, communities, membership, ladders in four forms (build, compact with
+//                           T tops, compact packed, loaded from disk)
+//   --build-only <graph>    build phases, resident memory and bytes, no query passes (JSON line)
+//   --bench <graph> <out>   build, three forms, save/load, query latencies (JSON line); drivers: run_final.py,
+//                           run_buildonly.py; tables: report_tables.py
+// Shares the all-size solver of research/r1_terminal_20260918 (streamed rows) and make_tree of count.cpp.
 #define main skyline_stage1_count_main
 #include "count.cpp"
 #undef main
@@ -24,7 +30,6 @@ static uint64_t rss_now() {   // current resident set size in bytes (Linux: /pro
     return resident * static_cast<uint64_t>(sysconf(_SC_PAGESIZE));
 }
 #endif
-static double g_ti_ms = 0;   // time to build the shared row index (outside build_chain_index)
 struct BuildTimes { double solve_ms = 0, trees_ms = 0, chains_ms = 0, layout_ms = 0;
                     uint64_t rss_start = 0, rss_solve = 0, rss_trees = 0, rss_chains = 0, rss_layout = 0, ti_bytes = 0, core_bytes = 0, own_bytes = 0; };
 
@@ -222,47 +227,46 @@ static void tool_selftest() {
 }
 
 // ------------------------------------------------------------ benchmark
-template<class T> static void bench(const Input& in, const terminal::Index& ti, unsigned bits, const std::string& outpath) {
+template<class T> static void bench(const Input& in, const terminal::Index& ti, unsigned bits, const std::string& outpath, double ti_ms) {
     using Clock = std::chrono::steady_clock; auto ms = [](Clock::time_point a) { return std::chrono::duration<double, std::milli>(Clock::now() - a).count(); };
     std::vector<uint32_t> perm; BuildTimes bt; auto t0 = Clock::now(); auto built = build_chain_index<T>(in, ti, perm, bt); const double build_ms = ms(t0);
     const uint64_t slice_bytes_layers = built.bytes_layers(), slice_bytes_total = built.bytes_total(), pairs = built.pairs_total();
     const uint32_t n = built.n; std::vector<uint32_t> active; for (uint32_t v = 0; v < n; ++v) if (built.omega[built.chain_of(v)] >= 2) active.push_back(v);
     const ChainIndex<T>* px = &built;   // the index under measurement: build form, then the compact form with T tops, then the loaded packed form
-#define ix (*px)
     struct Q { uint32_t v, u; int s; T k; }; std::mt19937_64 rng(20260918);
-    auto draw = [&](int regime, int count) { std::vector<Q> qs; for (int i = 0; i < count; ++i) { const uint32_t v = active[rng() % active.size()]; const uint32_t c = ix.chain_of(v);
+    auto draw = [&](int regime, int count) { const ChainIndex<T>& ix = *px; std::vector<Q> qs; for (int i = 0; i < count; ++i) { const uint32_t v = active[rng() % active.size()]; const uint32_t c = ix.chain_of(v);
         const int s = 2 + static_cast<int>(rng() % static_cast<uint64_t>(ix.omega[c] - 1)); const T x = ix.value(v, s);
         const T k = regime == 0 ? x : (regime == 1 ? std::max<T>(T{1}, x / 2) : T{1}); qs.push_back({v, static_cast<uint32_t>(rng() % n), s, k}); } return qs; };
     const std::vector<Q> own = draw(0, 20000), half = draw(1, 20000), root = draw(2, 1000);
     const std::vector<Q> mq = [&] { std::vector<Q> m; for (int r = 0; r < 3; ++r) { auto q = draw(r, 6667); m.insert(m.end(), q.begin(), q.end()); } return m; }();
     std::vector<uint32_t> ranges; ranges.reserve(1 << 20); std::vector<uint32_t> ids(static_cast<size_t>(n) + ChainIndex<T>::kSlack); std::vector<std::pair<T, uint64_t>> lad;   // ids: caller-owned output buffer with slack
     auto median5 = [](std::array<double, 5> t) { std::sort(t.begin(), t.end()); return t[2]; };
-    auto time_climb = [&](const std::vector<Q>& qs) { std::array<double, 5> ts{}; uint64_t z = 0;   // own node lookup + climb only (the part the top encoding touches)
+    auto time_climb = [&](const std::vector<Q>& qs) { const ChainIndex<T>& ix = *px; std::array<double, 5> ts{}; uint64_t z = 0;   // own node lookup + climb only (the part the top encoding touches)
         for (int pass = 0; pass < 6; ++pass) { const auto st = Clock::now(); for (const auto& q : qs) { const uint32_t x = ix.own_node(ix.chain_of(q.v), q.s); z += ix.climb(q.s, x, q.k); }
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / qs.size(); if (pass) ts[pass - 1] = el; }
         return std::pair<double, uint64_t>{median5(ts), z}; };
-    auto time_ptr = [&](const std::vector<Q>& qs) { std::array<double, 5> ts{}; uint64_t z = 0;   // compact form: climb + pointer, no copy
+    auto time_ptr = [&](const std::vector<Q>& qs) { const ChainIndex<T>& ix = *px; std::array<double, 5> ts{}; uint64_t z = 0;   // compact form: climb + pointer, no copy
         for (int pass = 0; pass < 6; ++pass) { const auto st = Clock::now(); for (const auto& q : qs) { typename ChainIndex<T>::Runs r; uint32_t nd = 0; ix.community_runs(q.v, q.s, q.k, r, nd); z += r.nmid + r.lo0 + nd; }
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / qs.size(); if (pass) ts[pass - 1] = el; }
         return std::pair<double, uint64_t>{median5(ts), z}; };
     struct RangeStat { double ns, vertices, ranges, chains; };   // per query: latency, output vertices, merged ranges, chains in the segment
-    auto time_ranges = [&](const std::vector<Q>& qs, bool explicit_ids) { std::array<double, 5> ts{}; uint64_t outputs = 0, nr = 0, nc = 0;
+    auto time_ranges = [&](const std::vector<Q>& qs, bool explicit_ids) { const ChainIndex<T>& ix = *px; std::array<double, 5> ts{}; uint64_t outputs = 0, nr = 0, nc = 0;
         for (int pass = 0; pass < 6; ++pass) { uint64_t cnt = 0; const auto st = Clock::now();
             for (const auto& q : qs) { const uint32_t node = ix.community_ranges(q.v, q.s, q.k, ranges);
                 if (explicit_ids) cnt += static_cast<uint64_t>(ChainIndex<T>::expand(ranges, ids.data()) - ids.data()); else cnt += ChainIndex<T>::total(ranges);
                 if (pass == 0) { nr += ranges.size() / 2; if (ix.compact) nc += ranges.size() / 2; else { uint32_t b, e; ChainIndex<T>::slice_bounds(ix.layers[q.s], node, b, e); nc += e - b; } } }
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / qs.size(); if (pass == 0) outputs = cnt; else ts[pass - 1] = el; }
         return RangeStat{median5(ts), double(outputs) / qs.size(), double(nr) / qs.size(), double(nc) / qs.size()}; };
-    auto time_member = [&]() { std::array<double, 5> ts{}; uint64_t sum = 0;
+    auto time_member = [&]() { const ChainIndex<T>& ix = *px; std::array<double, 5> ts{}; uint64_t sum = 0;
         for (int pass = 0; pass < 6; ++pass) { uint64_t z = 0; const auto st = Clock::now(); for (const auto& q : mq) z += ix.member(q.u, q.v, q.s, q.k);
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / mq.size(); sum += z; if (pass) ts[pass - 1] = el; }
         return std::pair<double, uint64_t>{median5(ts), sum}; };
-    auto time_value = [&]() { std::array<double, 5> ts{}; uint64_t h = 0; std::vector<std::pair<uint32_t, int>> vq;
+    auto time_value = [&]() { const ChainIndex<T>& ix = *px; std::array<double, 5> ts{}; uint64_t h = 0; std::vector<std::pair<uint32_t, int>> vq;
         for (int i = 0; i < 200000; ++i) { const uint32_t v = static_cast<uint32_t>(rng() % n); vq.emplace_back(v, 2 + static_cast<int>(rng() % static_cast<uint64_t>(ix.omega[ix.chain_of(v)] + 1))); }
         for (int pass = 0; pass < 6; ++pass) { const auto st = Clock::now(); for (const auto& [v, s] : vq) h ^= static_cast<uint64_t>(ix.value(v, s)) + s;
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / vq.size(); if (pass) ts[pass - 1] = el; }
         return std::pair<double, uint64_t>{median5(ts), h}; };
-    auto time_ladder = [&]() { std::array<double, 5> ts{}; uint64_t steps = 0;
+    auto time_ladder = [&]() { const ChainIndex<T>& ix = *px; std::array<double, 5> ts{}; uint64_t steps = 0;
         for (int pass = 0; pass < 6; ++pass) { uint64_t z = 0; const auto st = Clock::now(); for (const auto& q : own) { ix.ladder(q.v, q.s, lad); z += lad.size(); }
             const double el = std::chrono::duration<double, std::nano>(Clock::now() - st).count() / own.size(); if (pass == 0) steps = z; else ts[pass - 1] = el; }
         return std::pair<double, double>{median5(ts), double(steps) / own.size()}; };
@@ -287,8 +291,7 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
     const auto po = time_ptr(own), ph = time_ptr(half), pr = time_ptr(root); const auto co = time_climb(own), ch = time_climb(half), cr = time_climb(root);
     require(co.second == sco.second && ch.second == sch.second && cr.second == scr.second, "climbs differ between forms");
     const auto mm = time_member(); const auto vv = time_value(); const auto ll = time_ladder();
-#undef ix
-    const ChainIndex<T>& ix = loaded;
+    const ChainIndex<T>& ix = loaded;   // the index reported below
     // per-vertex S trees with values, stage-2 `vertices` accounting (index.cpp): nodes (W + 12) each, 8 bytes per (vertex, size) pair
     // (DFS array entry + own-node pointer), 4 (n + 1) offsets, 2 n omega/sigma, 8 (n + 1) residue offsets, W per residue cell
     uint64_t pairs_v = 0, residue_v = 0; for (uint32_t c = 0; c < ix.chains; ++c) { const uint64_t sz = ix.start_pos[c + 1] - ix.start_pos[c]; if (ix.omega[c] >= 2) { pairs_v += sz * (ix.omega[c] - 1); residue_v += sz * (ix.sigma[c] - 2); } }
@@ -300,7 +303,7 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
         << ",\"bytes_map\":" << ix.bytes_map() << ",\"bytes_chains\":" << ix.bytes_chains() << ",\"bytes_layers\":" << ix.bytes_layers() << ",\"bytes_total\":" << ix.bytes_total() << ",\"file_bytes\":" << file_bytes << ",\"perm_bytes\":" << 4ull * n
         << ",\"slice_bytes_layers\":" << slice_bytes_layers << ",\"slice_bytes_total\":" << slice_bytes_total
         << ",\"solve_ms\":" << bt.solve_ms << ",\"trees_ms\":" << bt.trees_ms << ",\"chains_ms\":" << bt.chains_ms << ",\"layout_ms\":" << bt.layout_ms << ",\"build_ms\":" << build_ms << ",\"compact_ms\":" << compact_ms << ",\"save_ms\":" << save_ms << ",\"load_ms\":" << load_ms
-        << ",\"ti_ms\":" << g_ti_ms << ",\"ti_bytes\":" << bt.ti_bytes << ",\"rss_start\":" << bt.rss_start << ",\"rss_after_solve\":" << bt.rss_solve << ",\"rss_after_chains\":" << bt.rss_chains << ",\"rss_after_layout\":" << bt.rss_layout
+        << ",\"ti_ms\":" << ti_ms << ",\"ti_bytes\":" << bt.ti_bytes << ",\"rss_start\":" << bt.rss_start << ",\"rss_after_solve\":" << bt.rss_solve << ",\"rss_after_chains\":" << bt.rss_chains << ",\"rss_after_layout\":" << bt.rss_layout
         << ",\"slice_range_own_ns\":" << sro.ns << ",\"slice_range_half_ns\":" << srh.ns << ",\"slice_range_root_ns\":" << srr.ns
         << ",\"slice_explicit_own_ns\":" << seo.ns << ",\"slice_explicit_half_ns\":" << seh.ns << ",\"slice_explicit_root_ns\":" << ser.ns << ",\"slice_ladder_ns\":" << sll.first
         << ",\"slice_own_ranges\":" << sro.ranges << ",\"slice_half_ranges\":" << srh.ranges << ",\"slice_root_ranges\":" << srr.ranges
@@ -327,18 +330,18 @@ int main(int argc, char** argv) {
         require((argc == 3 && std::string(argv[1]) == "--build-only") || (argc == 4 && std::string(argv[1]) == "--bench"), "usage: chain_index_tool --selftest | --build-only <graph> | --bench <graph> <out.cx>");
         Input in = prepare(argv[2]); const uint64_t rss_loaded = rss_now(); const auto tti = std::chrono::steady_clock::now();
         const terminal::Index ti = build_terminal_index(in); const cpp_int bound = count_bound_terminal(ti, in.graph.n, in.d); const uint64_t rss_ti = rss_now();
-        g_ti_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tti).count();
+        const double ti_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tti).count();
         if (std::string(argv[1]) == "--build-only") {
             dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); std::vector<uint32_t> perm; BuildTimes bt; auto ix = build_chain_index<T>(in, ti, perm, bt);
                 const uint64_t build_form_bytes = ix.bytes_total(); const auto tc = std::chrono::steady_clock::now(); ix.compact_runs(true); const double compact_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tc).count();
                 std::cout << "{\"n\":" << in.graph.n << ",\"count_bits\":" << bits << ",\"chains\":" << ix.chains << ",\"canonical_nodes\":" << ix.node_count() << ",\"index_bytes\":" << ix.bytes_total() << ",\"build_form_bytes\":" << build_form_bytes << ",\"compact_ms\":" << compact_ms
                     << ",\"bytes_map\":" << ix.bytes_map() << ",\"bytes_chains\":" << ix.bytes_chains() << ",\"bytes_layers\":" << ix.bytes_layers()
-                    << ",\"ti_ms\":" << g_ti_ms << ",\"ti_bytes\":" << bt.ti_bytes << ",\"rss_loaded\":" << rss_loaded << ",\"rss_with_ti\":" << rss_ti
+                    << ",\"ti_ms\":" << ti_ms << ",\"ti_bytes\":" << bt.ti_bytes << ",\"rss_loaded\":" << rss_loaded << ",\"rss_with_ti\":" << rss_ti
                     << ",\"rss_start\":" << bt.rss_start << ",\"rss_after_solve\":" << bt.rss_solve << ",\"rss_after_chains\":" << bt.rss_chains << ",\"rss_after_layout\":" << bt.rss_layout
                     << ",\"solve_ms\":" << bt.solve_ms << ",\"trees_ms\":" << bt.trees_ms << ",\"chains_ms\":" << bt.chains_ms << ",\"layout_ms\":" << bt.layout_ms << "}\n"; });
             return 0;
         }
         const std::string out = argv[3];
-        dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); bench<T>(in, ti, bits, out); });
+        dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); bench<T>(in, ti, bits, out, ti_ms); });
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

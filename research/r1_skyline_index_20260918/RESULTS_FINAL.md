@@ -5,7 +5,7 @@ chainindex`), tool `chain_index_tool.cpp` (`--selftest`, `--bench`),
 driver `run_final.py`. Evidence: `final.json`, `final-logs/` (one
 `/usr/bin/time -l` log per graph, build and selftest logs), index files
 `cx/<graph>.cx` (not committed). Tables are printed by `report_tables.py`
-from `final.json` and the stage-2 files `index*.json`. Theory:
+from `final.json` and the stage-2 files `stages/index*.json`. Theory:
 [THEORY.md](THEORY.md) (hierarchy, F1-F8, canonical nodes, certified
 tail), [CHAINS.md](CHAINS.md) (chains C1-C3, layout C4-C6).
 
@@ -27,7 +27,7 @@ build must be one pass of the existing all-size peel.
 The strongest simple exact representation is one S tree per size: the
 canonical merge tree of size s with a DFS array of vertex ids, a
 community being one contiguous slice (stage 2, mode `vertices`,
-[RESULTS_INDEX.md](RESULTS_INDEX.md), `index_vertices.json`). It lists a
+[RESULTS_INDEX.md](stages/RESULTS_INDEX.md), `stages/index_vertices.json`). It lists a
 community by one memcpy (0.09-0.15 ns per output vertex) and costs
 30-60 bytes per vertex (272 KB GrQc to 24.9 MB Stanford, values
 included). Its redundancy is the vertex axis: a vertex appears in
@@ -164,12 +164,12 @@ membership 20,001 (random u, mixed regimes); values 200,000; ladders on
 the own set. One warm-up pass plus five timed passes, median reported.
 Explicit ids are written into a preallocated caller buffer. The
 per-vertex S-tree bytes are computed by the tool with the stage-2
-`vertices` accounting (verified equal to `index_vertices.json` on the
+`vertices` accounting (verified equal to `stages/index_vertices.json` on the
 five stage-2 graphs, 16,710,168 bytes on dblp); the memcpy listing
 baseline exists only for those five graphs (stage-2 run, same protocol,
-its own query draw). Evidence lineage: `final_v1.json` / `final-logs_v1/` is the
+its own query draw). Evidence lineage: `archive/final_v1.json` / `archive/final-logs_v1/` is the
 first five-graph run (before the baseline field and the extra graphs);
-`final_v2.json` / `final-logs_v2/` is the 13-graph run with the earlier
+`archive/final_v2.json` / `archive/final-logs_v2/` is the 13-graph run with the earlier
 fill (eight ids per step, scalar tail); `final.json` / `final-logs/` is
 the 13-graph run with the branchless fill that the module now uses.
 Bytes, build times and every non-listing latency agree across the runs
@@ -418,13 +418,13 @@ Measured facts.
   large graphs, 0.86x and 0.95x on GrQc and HepPh. Per output vertex the
   fill reads 8 bytes per range instead of 4 bytes per vertex, and the
   branchless eight-wide stores remove the per-range branch that made the
-  scalar-tail fill of `final_v2.json` 1.3x-2.4x slower on the fragmented
+  scalar-tail fill of `archive/final_v2.json` 1.3x-2.4x slower on the fragmented
   graphs.
 - Top encoding (Section 9.6, same process): with tops packed to per-size
   widths the climb is 0.91x (own) and 0.89x (root) of the T-tops climb in
   the median over the thirteen graphs, the spread (0.4x-1.5x) being the
   run-to-run noise of identical code on this machine; residue packing has
-  no visible cost. Against the fixed-width run of `final_v3.json` the
+  no visible cost. Against the fixed-width run of `archive/final_v3.json` the
   median ratios of every latency class lie between 0.92 and 1.12 with
   both signs, so the widths change bytes, not time.
 - Membership 4.9-28 ns and values 6.3-20 ns: two bitmap ranks plus a
@@ -514,7 +514,7 @@ role of the chain structure (CHAINS.md Section 10).
    O(1) community sizes.
 2. The branchless fill is in (it cut the per-vertex listing cost 1.3x
    to 1.9x on every graph tried against the scalar-tail fill of
-   `final_v2.json`); a prefetch of the next run could shave the remaining
+   `archive/final_v2.json`); a prefetch of the next run could shave the remaining
    per-range constant on the fragmented graphs.
 3. Store the graph in the aligned order and drop the permutation; the
    compressed wavelet-tree form (numbers in Section 10) is only for
@@ -607,7 +607,7 @@ the choice).
 
 The ratio against per-vertex S trees is 2.03x (cit-HepPh) to 11.22x
 (youtube), median 4.8x; dblp 10.27x. Section 9 now holds the latencies of
-this version (`final.json`); the fixed-width run is `final_v3.json`. The
+this version (`final.json`); the fixed-width run is `archive/final_v3.json`. The
 earlier latency evidence was measured on the index compacted in place
 rather than on the loaded copy (a reference bound once before the target
 pointer changed); the two hold identical arrays, so those numbers stand,

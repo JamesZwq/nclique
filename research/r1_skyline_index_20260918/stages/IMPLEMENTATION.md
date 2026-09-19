@@ -5,7 +5,7 @@ Scope: a C++ counting program plus its selftest, run on the five local
 full-range inputs. NO index implementation, NO query benchmark, NO change
 to production, paper, or any other research directory.
 
-What to count is Section 11 of [THEORY.md](THEORY.md). The program lives
+What to count is Section 11 of [THEORY.md](../THEORY.md). The program lives
 in this directory as `count.cpp`, built by its own `CMakeLists.txt` in
 the style of `../r1_terminal_20260918/CMakeLists.txt` (C++23, Boost from
 /opt/homebrew/include, optional SANITIZE). It reuses the terminal harness:

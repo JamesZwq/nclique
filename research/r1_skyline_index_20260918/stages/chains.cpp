@@ -2,7 +2,7 @@
 // canonical nodes (X_2(v), ..., X_omega(v)).  Counts distinct chains and
 // projects index bytes for S trees over chains.  Counting only.
 #define main skyline_stage1_count_main
-#include "count.cpp"
+#include "../count.cpp"
 #undef main
 #include <unordered_map>
 

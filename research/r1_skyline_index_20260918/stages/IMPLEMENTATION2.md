@@ -2,7 +2,7 @@
 
 Date: 2026-09-18. Authorized by the user after the counting gate passed
 ("可以的 继续"). Scope: one C++ program that builds, in memory, the S-tree
-baseline and the skyline index of [THEORY.md](THEORY.md) for r = 1 over all
+baseline and the skyline index of [THEORY.md](../THEORY.md) for r = 1 over all
 sizes, checks both against brute force and against each other, and
 measures exact bytes and query latency on the five local inputs. No
 production, paper or default change. Everything stays in this directory.
