@@ -1,0 +1,81 @@
+$ cmake --build /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build-asan -j 12 --target chain_index_tool
+[ 50%] Building CXX object CMakeFiles/chain_index_tool.dir/chain_index_tool.cpp.o
+[100%] Linking CXX executable chain_index_tool
+[100%] Built target chain_index_tool
+In file included from /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:10:
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/count.cpp:139:660: warning: non-void function does not return a value in all control paths [-Wreturn-type]
+  139 | int main(int argc,char** argv){try{if(argc==2&&std::string(argv[1])=="--selftest"){selftest();return 0;}require(argc==3&&std::string(argv[1])=="--graph","usage: count --selftest | --graph path");Input in=prepare(argv[2]);int maximum=std::max(2,static_cast<int>(in.d)+1);Layout l(in.graph,maximum);l.prepare(in.graph.n);unsigned b=width(count_bound(in.graph,l,in.d));if(b==64)print(measure<uint64_t>(in,b));else if(b==128)print(measure<unsigned __int128>(in,b));else if(b==256)print(measure<boost::multiprecision::uint256_t>(in,b));else print(measure<boost::multiprecision::uint512_t>(in,b));}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:59:76: warning: compound literals are a C99-specific feature [-Wc99-extensions]
+   59 |         try { if (bits == 64) f(uint64_t{}, bits); else if (bits == 128) f((unsigned __int128){}, bits); else if (bits == 256) f(boost::multiprecision::uint256_t{}, bits); else f(boost::multiprecision::uint512_t{}, bits); return; }
+      |                                                                            ^
+In file included from /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:12:
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:52:163: warning: 'memcpy' will always overflow; destination buffer has size 8, but size argument is 16 [-Wfortify-source]
+   52 |     template<size_t Wb> static double load(const unsigned char* p) { if constexpr (Wb == 8) { double x; std::memcpy(&x, p, 8); return x; } else { uint64_t u = 0; std::memcpy(&u, p, Wb); return static_cast<double>(u); } }
+      |                                                                                                                                                                   ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:112:175: note: in instantiation of function template specialization 'chainindex::Traits<double>::load<16UL>' requested here
+  112 |         if (compact) { const unsigned char* q = residue_bytes.data() + residue_boff[c] + res_prefix[s]; return with_width(res_w[s], [&](auto wb) { return Traits<T>::template load<decltype(wb)::value>(q); }); }
+      |                                                                                                                                                                               ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:233:79: note: in instantiation of member function 'chainindex::ChainIndex<double>::value' requested here
+  233 |         const double ed = expect.convert_to<double>(); const double got = ixd.value(perm[0], static_cast<int>(s));
+      |                                                                               ^
+In file included from /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:12:
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:52:163: warning: 'memcpy' will always overflow; destination buffer has size 8, but size argument is 32 [-Wfortify-source]
+   52 |     template<size_t Wb> static double load(const unsigned char* p) { if constexpr (Wb == 8) { double x; std::memcpy(&x, p, 8); return x; } else { uint64_t u = 0; std::memcpy(&u, p, Wb); return static_cast<double>(u); } }
+      |                                                                                                                                                                   ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:112:175: note: in instantiation of function template specialization 'chainindex::Traits<double>::load<32UL>' requested here
+  112 |         if (compact) { const unsigned char* q = residue_bytes.data() + residue_boff[c] + res_prefix[s]; return with_width(res_w[s], [&](auto wb) { return Traits<T>::template load<decltype(wb)::value>(q); }); }
+      |                                                                                                                                                                               ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:233:79: note: in instantiation of member function 'chainindex::ChainIndex<double>::value' requested here
+  233 |         const double ed = expect.convert_to<double>(); const double got = ixd.value(perm[0], static_cast<int>(s));
+      |                                                                               ^
+In file included from /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:12:
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:52:163: warning: 'memcpy' will always overflow; destination buffer has size 8, but size argument is 64 [-Wfortify-source]
+   52 |     template<size_t Wb> static double load(const unsigned char* p) { if constexpr (Wb == 8) { double x; std::memcpy(&x, p, 8); return x; } else { uint64_t u = 0; std::memcpy(&u, p, Wb); return static_cast<double>(u); } }
+      |                                                                                                                                                                   ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:112:175: note: in instantiation of function template specialization 'chainindex::Traits<double>::load<64UL>' requested here
+  112 |         if (compact) { const unsigned char* q = residue_bytes.data() + residue_boff[c] + res_prefix[s]; return with_width(res_w[s], [&](auto wb) { return Traits<T>::template load<decltype(wb)::value>(q); }); }
+      |                                                                                                                                                                               ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:233:79: note: in instantiation of member function 'chainindex::ChainIndex<double>::value' requested here
+  233 |         const double ed = expect.convert_to<double>(); const double got = ixd.value(perm[0], static_cast<int>(s));
+      |                                                                               ^
+In file included from /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:12:
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:36:74: warning: 'memcpy' will always overflow; destination buffer has size 8, but size argument is 16 [-Wfortify-source]
+   36 |     template<size_t Wb> static T load(const unsigned char* p) { T x = 0; std::memcpy(&x, p, Wb); return x; }   // constant-size load, Wb <= W
+      |                                                                          ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:112:175: note: in instantiation of function template specialization 'chainindex::Traits<unsigned long long>::load<16UL>' requested here
+  112 |         if (compact) { const unsigned char* q = residue_bytes.data() + residue_boff[c] + res_prefix[s]; return with_width(res_w[s], [&](auto wb) { return Traits<T>::template load<decltype(wb)::value>(q); }); }
+      |                                                                                                                                                                               ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:190:158: note: in instantiation of member function 'chainindex::ChainIndex<unsigned long long>::value' requested here
+  190 |         for (int s = 2; s <= S + 1; ++s) for (uint32_t v = 0; v < n; ++v) { const T truth = s <= S ? core[static_cast<size_t>(s) * n + v] : T{0}; require(ix.value(perm[v], s) == to_value<V>(truth), "value"); ++values; }
+      |                                                                                                                                                              ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:244:44: note: in instantiation of function template specialization 'selftest_graph<unsigned long long, unsigned long long>' requested here
+  244 |     auto one = [&](const Graph& g) { try { selftest_graph<uint64_t, uint64_t>(g, tmp, queries, members, values, ladders); selftest_graph<uint64_t, double>(g, tmp, queries, members, values, ladders); } catch (const std::exception& e) {
+      |                                            ^
+In file included from /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:12:
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:36:74: warning: 'memcpy' will always overflow; destination buffer has size 8, but size argument is 32 [-Wfortify-source]
+   36 |     template<size_t Wb> static T load(const unsigned char* p) { T x = 0; std::memcpy(&x, p, Wb); return x; }   // constant-size load, Wb <= W
+      |                                                                          ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:112:175: note: in instantiation of function template specialization 'chainindex::Traits<unsigned long long>::load<32UL>' requested here
+  112 |         if (compact) { const unsigned char* q = residue_bytes.data() + residue_boff[c] + res_prefix[s]; return with_width(res_w[s], [&](auto wb) { return Traits<T>::template load<decltype(wb)::value>(q); }); }
+      |                                                                                                                                                                               ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:190:158: note: in instantiation of member function 'chainindex::ChainIndex<unsigned long long>::value' requested here
+  190 |         for (int s = 2; s <= S + 1; ++s) for (uint32_t v = 0; v < n; ++v) { const T truth = s <= S ? core[static_cast<size_t>(s) * n + v] : T{0}; require(ix.value(perm[v], s) == to_value<V>(truth), "value"); ++values; }
+      |                                                                                                                                                              ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:244:44: note: in instantiation of function template specialization 'selftest_graph<unsigned long long, unsigned long long>' requested here
+  244 |     auto one = [&](const Graph& g) { try { selftest_graph<uint64_t, uint64_t>(g, tmp, queries, members, values, ladders); selftest_graph<uint64_t, double>(g, tmp, queries, members, values, ladders); } catch (const std::exception& e) {
+      |                                            ^
+In file included from /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:12:
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:36:74: warning: 'memcpy' will always overflow; destination buffer has size 8, but size argument is 64 [-Wfortify-source]
+   36 |     template<size_t Wb> static T load(const unsigned char* p) { T x = 0; std::memcpy(&x, p, Wb); return x; }   // constant-size load, Wb <= W
+      |                                                                          ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index.hpp:112:175: note: in instantiation of function template specialization 'chainindex::Traits<unsigned long long>::load<64UL>' requested here
+  112 |         if (compact) { const unsigned char* q = residue_bytes.data() + residue_boff[c] + res_prefix[s]; return with_width(res_w[s], [&](auto wb) { return Traits<T>::template load<decltype(wb)::value>(q); }); }
+      |                                                                                                                                                                               ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:190:158: note: in instantiation of member function 'chainindex::ChainIndex<unsigned long long>::value' requested here
+  190 |         for (int s = 2; s <= S + 1; ++s) for (uint32_t v = 0; v < n; ++v) { const T truth = s <= S ? core[static_cast<size_t>(s) * n + v] : T{0}; require(ix.value(perm[v], s) == to_value<V>(truth), "value"); ++values; }
+      |                                                                                                                                                              ^
+/Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/chain_index_tool.cpp:244:44: note: in instantiation of function template specialization 'selftest_graph<unsigned long long, unsigned long long>' requested here
+  244 |     auto one = [&](const Graph& g) { try { selftest_graph<uint64_t, uint64_t>(g, tmp, queries, members, values, ladders); selftest_graph<uint64_t, double>(g, tmp, queries, members, values, ladders); } catch (const std::exception& e) {
+      |                                            ^
+8 warnings generated.
