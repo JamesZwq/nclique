@@ -66,51 +66,67 @@ def table_size():
     (OUT / 'size_stats.tex').write_text(f"\\newcommand{{\\numgraphs}}{{{len(rows)}}}\n\\newcommand{{\\ratiomin}}{{{min(rat):.2f}}}\n\\newcommand{{\\ratiomedian}}{{{statistics.median(rat):.1f}}}\n\\newcommand{{\\ratiomax}}{{{max(rat):.1f}}}\n")
 
 def strees_latency():
-    """Own-level listing latency of S trees (stage-2 `vertices` mode) keyed by (machine, graph)."""
+    """S trees latency keyed by (machine, graph): the in-process baseline of query_profile (same decomposition, same queries,
+    parent-pointer climb, one memory copy per answer), from profile_<machine>.json.  Keys mirror the index's fields:
+    own/half/root list and locate times in ns."""
     out = {}
-    for where, f in [('laptop', 'stages/index_vertices.json'), ('tods2', 'stages/index_vertices_tods2.json'), ('tods1', 'stages/index_vertices_tods1.json')]:
-        rec = load(f)
+    for where in ('laptop', 'tods1', 'tods2'):
+        rec = load(f'profile_{where}.json')
         if rec is None: continue
         for r in rec['runs']:
-            if 'result' in r: out[(where, NAMES.get(Path(r['graph']).stem, Path(r['graph']).stem))] = r['result']
+            if 'result' not in r: continue
+            g = NAMES.get(Path(r['index']).stem, Path(r['index']).stem)
+            if '_p' in g: continue
+            R = r['result']['regimes']
+            out[(where, g)] = {f'{reg}_base_ns': R[reg]['st_list_ns'] for reg in R} | {f'{reg}_locate_ns': R[reg]['st_locate_ns'] for reg in R} | {f'{reg}_ours_ns': R[reg]['list_ns'] for reg in R} | {f'{reg}_ours_locate_ns': R[reg]['locate_ns'] for reg in R}
     return out
 
 def table_queries():
-    """One row per graph; the machine is the one on which the S trees latency was also measured when there is one."""
+    """One row per graph.  Community columns come from the profile record of the machine (index and S trees measured in one
+    process on the same queries); the value query from the run_final record of the same machine."""
     st = strees_latency(); rows = []
     for key, by in rows_by_graph().items():
-        with_base = [w for w in ('tods2', 'laptop', 'tods1') if w in by and (w, by[w][0]) in st]
+        with_base = [w for w in ('tods2', 'tods1', 'laptop') if w in by and (w, by[w][0]) in st]
         where = with_base[0] if with_base else next(w for w in ('tods1', 'tods2', 'laptop') if w in by); g, r = by[where]; rows.append((where, g, r))
     rows.sort(key=lambda t: t[2]['result']['baseline_vertex_bytes'] / t[2]['result']['bytes_total'])
+    prof = {}
+    for where in ('laptop', 'tods1', 'tods2'):
+        rec = load(f'profile_{where}.json')
+        if rec is None: continue
+        for r in rec['runs']:
+            if 'result' in r: prof[(where, NAMES.get(Path(r['index']).stem, Path(r['index']).stem))] = r['result']['regimes']['own']
     lines = [r'\begin{tabular}{@{}llrrrrrrrr@{}}', r'\toprule',
-             r'Graph & Machine & Locate (ns) & Ranges & Copy ranges (ns) & Vertices & List (ns) & List (ns/vertex) & \strees list (ns) & Value (ns) \\', r'\midrule']
+             r'Graph & Machine & Locate (ns) & \strees locate (ns) & Ranges & Vertices & List (ns) & \strees list (ns) & List (ns/vertex) & Value (ns) \\', r'\midrule']
     for where, g, r in rows:
-        x = r['result']; s = st.get((where, g))
-        base = f"{s['own_base_ns']:,.0f}" if s else '--'
-        lines.append(f"{tex_escape(g)} & {where} & {x['ptr_own_ns']:.0f} & {x['own_ranges']:.0f} & {x['range_own_ns']:,.0f} & {fmt(x['own_output'])} & {x['explicit_own_ns']:,.0f} & {x['explicit_own_ns']/x['own_output']:.2f} & {base} & {x['value_ns']:.0f} \\\\")
+        x = r['result']; o = prof.get((where, g))
+        if o: lines.append(f"{tex_escape(g)} & {where} & {o['locate_ns']:.0f} & {o['st_locate_ns']:.0f} & {o['ranges']:.0f} & {fmt(o['output'])} & {o['list_ns']:,.0f} & {o['st_list_ns']:,.0f} & {o['list_ns']/o['output']:.2f} & {x['value_ns']:.0f} \\\\")
+        else: lines.append(f"{tex_escape(g)} & {where} & {x['ptr_own_ns']:.0f} & -- & {x['own_ranges']:.0f} & {fmt(x['own_output'])} & {x['explicit_own_ns']:,.0f} & -- & {x['explicit_own_ns']/x['own_output']:.2f} & {x['value_ns']:.0f} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'queries.tex').write_text('\n'.join(lines) + '\n')
-    # macros for the text: ranges and medians over the merged rows
+    # macros for the text, from the same rows as the table (profile numbers where a profile exists)
     all_rows = merged_rows(); x = lambda k: [r['result'][k] for w, g, r in all_rows]
-    big = [r['result'] for w, g, r in all_rows if r['result']['own_output'] >= 1000]
-    macros = {'locmin': f"{min(x('ptr_own_ns')):.0f}", 'locmax': f"{max(x('ptr_own_ns')):.0f}", 'locmedian': f"{statistics.median(x('ptr_own_ns')):.0f}",
-              'halfmedian': f"{statistics.median(x('ptr_half_ns')):.0f}", 'halfmax': f"{max(x('ptr_half_ns')):.0f}", 'rootmedian': f"{statistics.median(x('ptr_root_ns')):.0f}",
-              'pervmin': f"{min(r['explicit_own_ns'] / r['own_output'] for r in big):.2f}", 'pervmax': f"{max(r['explicit_own_ns'] / r['own_output'] for r in big):.2f}",
+    picked = [(where, g, prof.get((where, g)), r['result']) for where, g, r in rows]
+    loc = [o['locate_ns'] if o else r['ptr_own_ns'] for w, g, o, r in picked]
+    outs = [(o['list_ns'], o['output']) if o else (r['explicit_own_ns'], r['own_output']) for w, g, o, r in picked]
+    big = [l / n for l, n in outs if n >= 1000]
+    macros = {'locmin': f"{min(loc):.0f}", 'locmax': f"{max(loc):.0f}", 'locmedian': f"{statistics.median(loc):.0f}",
+              'pervmin': f"{min(big):.2f}", 'pervmax': f"{max(big):.2f}",
               'valmin': f"{min(x('value_ns')):.0f}", 'valmax': f"{max(x('value_ns')):.0f}", 'valmedian': f"{statistics.median(x('value_ns')):.0f}",
               'storedmin': f"{min(100 * r['result']['vertex_residue_cells'] / r['result']['vertex_pairs'] for w, g, r in all_rows):.1f}",
               'storedmax': f"{max(100 * r['result']['vertex_residue_cells'] / r['result']['vertex_pairs'] for w, g, r in all_rows):.1f}",
               'storedmedian': f"{statistics.median(100 * r['result']['vertex_residue_cells'] / r['result']['vertex_pairs'] for w, g, r in all_rows):.0f}"}
-    # S trees listing against ours on every (graph, level) point measured on the same machine
-    faster = total = pairs = 0; ratios = []
-    for key, by in rows_by_graph().items():
-        for where, (g, r) in by.items():
-            s = st.get((where, g))
-            if not s: continue
-            pairs += 1
-            for reg in ('own', 'half', 'root'):
-                ratio = s[f'{reg}_base_ns'] / r['result'][f'explicit_{reg}_ns']; ratios.append(ratio); total += 1; faster += ratio > 1
-    macros.update({'stpoints': str(total), 'stfaster': str(faster), 'stpairs': str(pairs), 'stgraphs': str(len({g for (w, g) in st})),
-                   'stmin': f"{min(ratios):.1f}" if ratios else '?', 'stmax': f"{max(ratios):.1f}" if ratios else '?'})
+    # levels, from the profiles (index and S trees in one process)
+    half = [s['half_ours_locate_ns'] for s in st.values()]; root = [s['root_ours_locate_ns'] for s in st.values()]; own = [s['own_ours_locate_ns'] for s in st.values()]
+    macros.update({'ownmedian': f"{statistics.median(own):.0f}", 'halfmedian': f"{statistics.median(half):.0f}", 'halfmax': f"{max(half):.0f}", 'rootmedian': f"{statistics.median(root):.0f}"})
+    # index against S trees, both from the profiles
+    faster = total = 0; ratios = []; own_loc = []; deep_loc = []
+    for (where, g), s in st.items():
+        for reg in ('own', 'half', 'root'):
+            ratio = s[f'{reg}_base_ns'] / s[f'{reg}_ours_ns']; ratios.append(ratio); total += 1; faster += ratio > 1
+        own_loc.append(s['own_locate_ns'] / s['own_ours_locate_ns']); deep_loc.append(max(s['half_locate_ns'] / s['half_ours_locate_ns'], s['root_locate_ns'] / s['root_ours_locate_ns']))
+    macros.update({'stpoints': str(total), 'stfaster': str(faster), 'stpairs': str(len(st)), 'stgraphs': str(len({g for (w, g) in st})),
+                   'stmin': f"{min(ratios):.1f}" if ratios else '?', 'stmax': f"{max(ratios):.1f}" if ratios else '?', 'stmedian': f"{statistics.median(ratios):.2f}" if ratios else '?',
+                   'stlocown': f"{statistics.median(own_loc):.1f}" if own_loc else '?', 'stlocdeepmax': f"{max(deep_loc):.0f}" if deep_loc else '?', 'stlocdeepmedian': f"{statistics.median(deep_loc):.1f}" if deep_loc else '?'})
     (OUT / 'query_stats.tex').write_text(''.join(f"\\newcommand{{\\{k}}}{{{v}}}\n" for k, v in macros.items()))
 
 def table_build():

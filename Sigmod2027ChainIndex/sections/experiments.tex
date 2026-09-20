@@ -39,26 +39,27 @@ The skyline deduplication of SGL \cite{SGL}, which we also implemented over chai
 \end{table*}
 
 \expsection{Query latency}
-Table~\ref{tab:queries} reports, at the own level, the time to locate a community (climb and two entry reads), the number of ranges of the answer, the time to copy the range list, and the time to expand it into vertex labels, together with the listing time of \strees where it was measured and the value query.
-Locating takes \locmin{} to \locmax{}~ns on every graph (median \locmedian{}~ns); a community of 1.9 million vertices on the 4-million-vertex coauthorship graph is located in 11~ns and listed in 167~$\mu$s.
-Listing costs \pervmin{} to \pervmax{}~ns per vertex on the graphs whose mean answer has at least a thousand vertices; the per-vertex cost is lowest where runs are long and highest on the most fragmented graphs (\emailcore, 2.3 vertices per range), and on the two graphs with answers below a hundred vertices the fixed cost of a query dominates.
-Against the memory copy of \strees, measured on \stpairs{} (graph, machine) pairs at the three levels, expansion is faster on \stfaster{} of the \stpoints{} points, by \stmin$\times$ to \stmax$\times$: a run costs eight bytes to read however many labels it expands to, and the copy reads every label from arrays that no longer sit in cache.
-The gap is 0.9$\times$ to 3.2$\times$ on the laptop and 2.5$\times$ to 5.0$\times$ on the server, whose per-core memory bandwidth is lower.
+Table~\ref{tab:queries} reports, at the own level, the time to locate a community (climb and two entry reads), the number of ranges of the answer, its size, the time to list it as vertex labels, and the value query; beside the two community times stand those of \strees, measured in the same process on the same queries (own-node lookup, parent-pointer climb, one memory copy of the DFS slice).
+Locating takes \locmin{} to \locmax{}~ns (median \locmedian{}~ns); a community of 1.9 million vertices on the 4-million-vertex coauthorship graph is located in 11~ns and listed in 167~$\mu$s.
+At the own level \strees locates in about \stlocown{} of that time: two dependent loads against the map, trajectory and entry reads of the index.
+Listing costs \pervmin{} to \pervmax{}~ns per vertex on the graphs whose mean answer has at least a thousand vertices, and on the two graphs with answers below a hundred vertices the fixed cost of a query dominates.
+Against the memory copy of \strees the listing time ranges from \stmin$\times$ to \stmax$\times$ (median \stmedian, faster on \stfaster{} of \stpoints{} (graph, level) points): a run costs eight bytes to read however many labels it expands to, so the index is faster where the answer is a few long ranges (the social, product and web graphs) and slower where it is fragmented (\emailcore, \textsf{cit-HepPh}, \textsf{ca-AstroPh}, 2 to 5 vertices per range), where one range costs as much as tens of copied labels.
 Value queries take \valmin{} to \valmax{}~ns (median \valmedian{}~ns); the slowest is \webuk, whose binomial table for cliques of 500 vertices no longer fits the first-level cache.
 
-Figure~\ref{fig:regimes} shows the three levels of the workload.
-Listing time is linear in the size of the answer at every level, between 0.05 and 0.5~ns per vertex above a fixed cost of a few nanoseconds, because the number of ranges grows with the answer while the cost per range stays constant.
-Locating costs a median of \locmedian{}~ns at the own level, \halfmedian{}~ns at half the level (the climb from the own node to an ancestor) and \rootmedian{}~ns at $k=1$: the jump pointers make the climb to the root as cheap as no climb at all, and the half-level climb, which stops at an interior node, costs at most \halfmax{}~ns.
+Figure~\ref{fig:regimes} shows the three levels of the workload for both structures.
+Listing time is linear in the size of the answer at every level, between 0.05 and 0.5~ns per vertex above a fixed cost of a few nanoseconds, for the index and for the copy alike.
+Locating costs a median of \ownmedian{}~ns at the own level, \halfmedian{}~ns at half the level (the climb from the own node to an ancestor) and \rootmedian{}~ns at $k=1$: the jump pointers make the climb to the root as cheap as no climb at all, and the half-level climb, which stops at an interior node, costs at most \halfmax{}~ns.
+The parent-pointer climb of \strees has no such bound: at the two deeper levels it costs up to \stlocdeepmax$\times$ the index's time (1,086~ns against 109~ns at the half level of the coauthorship graph, whose hierarchy has 5,543 levels), which is why the index keeps the derived jump pointers although they are a third of its per-node bytes.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_regimes.pdf}
-\caption{Community queries at the own level, at half the level and at $k=1$ on the \numgraphs{} graphs. Left: listing time against the mean size of the answer (one point per graph and level; the dashed lines are 0.05 and 0.5~ns per vertex above a fixed 8~ns). Right: locating time by level, one point per graph.}\label{fig:regimes}
+\caption{Community queries at the own level, at half the level and at $k=1$, index (filled) against \strees (hollow), measured in one process on the same queries. Left: listing time against the mean size of the answer (one point per graph and level; the dashed lines are 0.05 and 0.5~ns per vertex above a fixed 8~ns). Right: locating time by level over the graphs.}\label{fig:regimes}
 \end{figure*}
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{Own-level community queries and value queries, ns, one thread; the \strees column is the memory copy of the same answer where our implementation of \strees was run on the same machine. Laptop and server latencies are not directly comparable (the servers' single-core speed is 1.5 to 3 times lower).}\label{tab:queries}
+\caption{Own-level community queries and value queries, ns, one thread; the \strees columns are the same queries on \strees in the same process (parent-pointer climb, one memory copy). Laptop and server latencies are not directly comparable (the servers' single-core speed is 1.5 to 3 times lower).}\label{tab:queries}
 \input{tables/queries}
 \end{table*}
 
@@ -72,6 +73,18 @@ Three graphs did not build: \textsf{com-lj}, \textsf{ca-hollywood-2009} and \tex
 \caption{Construction time (s, one thread) and peak resident memory of the whole process; the index passes are trees, chains, run arrays and values.}\label{tab:build}
 \input{tables/build}
 \end{table*}
+
+\expsection{Scalability}
+Figure~\ref{fig:scale} follows two graphs through vertex-induced random samples of 20, 40, 60 and 80 percent of their vertices (every vertex kept independently, seed fixed) up to the full graph; a sample keeps about the square of the fraction of the edges, so the curves show a graph family growing in size and in density at once, with the largest cliques of \textsf{web-BerkStan} going from 45 to 202 vertices.
+The index grows about linearly with the vertices (2.9 to 3.2 bytes per vertex on \textsf{cit-Patents}, 5.3 to 12.6 on \textsf{web-BerkStan} as its cliques grow), \strees grows with the vertices times the sizes they take part in, and the ratio between the two rises along each curve, from 7.7$\times$ to 12.1$\times$ and from 6.4$\times$ to 19.2$\times$.
+The build, which is the all-size peel, grows faster than the graph (0.56 to 19.5 seconds over five times the vertices of \textsf{cit-Patents}, 0.21 to 65.6 seconds on \textsf{web-BerkStan}), and \cnd run once per size grows faster still; the peak memory is the clique tree of the peel.
+Query latency does not move: locating stays between 21 and 28~ns and listing between 0.09 and 0.21~ns per vertex at every size, against \strees on the same samples.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_scale.pdf}
+\caption{Vertex-induced samples of \textsf{cit-Patents} and \textsf{web-BerkStan} at 20 to 100 percent (second server): bytes of the index (solid) and of \strees (dashed); build time of the index (solid) and of \cnd run once per size (dashed); own-level locating and listing time of the index (solid) and of \strees (dashed).}\label{fig:scale}
+\end{figure*}
 
 \expsection{Against the single-size decomposition}
 The published counting-based nucleus decomposition \cnd \cite{Zhang2026NucleusCounting} computes the $(1,s)$ core values of one size per run: it builds a clique path index and peels while rewriting the index.
