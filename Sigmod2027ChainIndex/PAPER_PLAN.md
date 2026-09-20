@@ -37,11 +37,11 @@ points and certified tails turn the partition into contiguous memory.
 | 1 Introduction | sections/introduction.tex | drafted, partition-first; opening claim about "every previous index pays a version of this bill" needs the related-work check |
 | 2 Preliminaries | sections/preliminaries.tex | drafted |
 | 3 Hierarchy of one size | sections/hierarchy.tex | drafted; certified-tail proof transcribed from THEORY.md F2/F8 |
-| 4 Chains | sections/chains.tex | drafted; example figure is a placeholder box (TikZ to do) |
+| 4 Chains | sections/chains.tex | drafted; example figure drawn in TikZ (2026-09-21), values checked by hand |
 | 5 The chain index | sections/index.tex | drafted (labels, order, runs, values, size accounting, example) |
 | 6 Construction | sections/construction.tex | drafted |
 | 7 Queries | sections/queries.tex | drafted |
-| 8 Experiments | sections/experiments.tex | drafted; Exp-1 size (29 graphs), Exp-2 bytes, Exp-3 design study, Exp-4 latency, Exp-5 build, Exp-6 correctness |
+| 8 Experiments | sections/experiments.tex | widened 2026-09-21 (user: "实验有点少"): size (+values stored), bytes, design study, xz yardstick (Table compress), latency (+S trees column, Fig regimes), build, CND on every machine (Table prior, 12 pairs so far), correctness; pending data: Fig profile (by s / by answer size, tods2), Fig scale (20-100 percent samples, tods2), S trees latency on tods2 (7) and tods1 (20), CND on tods1 (20) |
 | 9 Related work | sections/related.tex | stub; needs the k-core community-search index literature and the parallel nucleus papers (keys exist in references.bib) |
 | 10 Conclusion | sections/conclusion.tex | drafted |
 
@@ -50,7 +50,10 @@ points and certified tails turn the partition into contiguous memory.
 - Table 1 size (tables/size.tex): 29 graphs, generated.
 - Table 2 design study (tables/layouts.tex): five laptop graphs, generated.
 - Table 3 queries (tables/queries.tex), Table 4 build (tables/build.tex): generated.
-- Figure 1 example graph: placeholder; draw in TikZ (three parts, colours by chain).
+- Figure 1 example graph: TikZ, done.
+- Figure regimes (figures/fig_regimes.pdf, make_figures.py): listing vs answer size and locate by level, done.
+- Figure profile (fig_profile.pdf) and Figure scale (fig_scale.pdf): code in make_figures.py, waiting for profile_tods2.json and scale_tods2.json.
+- Table compress (tables/compress.tex): xz yardstick, 17 laptop graphs, done; whether it stays is the user's call (recommended: keep).
 - Candidate Figure 2: ratio against vertices per chain (scatter, log x), from the same JSON; the artifact page already has it.
 - Candidate Figure 3: bytes breakdown per graph (map / chain records / trees).
 
