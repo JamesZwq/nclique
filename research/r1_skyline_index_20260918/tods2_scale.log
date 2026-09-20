@@ -1,0 +1,18 @@
+START 2026-09-20T20:38:45+00:00 host=radonduo load=1.40 1.87 1.94
+research/r1_skyline_index_20260918/scale/cit-Patents_p20.edges 753998 660159
+research/r1_skyline_index_20260918/scale/cit-Patents_p40.edges 1508958 2636229
+research/r1_skyline_index_20260918/scale/cit-Patents_p60.edges 2263960 5942946
+research/r1_skyline_index_20260918/scale/cit-Patents_p80.edges 3019516 10562496
+research/r1_skyline_index_20260918/scale/web-BerkStan_p20.edges 136792 256508
+research/r1_skyline_index_20260918/scale/web-BerkStan_p40.edges 274384 1069804
+research/r1_skyline_index_20260918/scale/web-BerkStan_p60.edges 411236 2418981
+research/r1_skyline_index_20260918/scale/web-BerkStan_p80.edges 548210 4185189
+research/r1_skyline_index_20260918/scale/cit-Patents_p20.edges ok 2,292,230 B
+research/r1_skyline_index_20260918/scale/cit-Patents_p40.edges ok 4,145,021 B
+research/r1_skyline_index_20260918/scale/cit-Patents_p60.edges ok 6,272,718 B
+research/r1_skyline_index_20260918/scale/cit-Patents_p80.edges ok 8,963,004 B
+research/r1_skyline_index_20260918/scale/web-BerkStan_p20.edges ok 727,322 B
+research/r1_skyline_index_20260918/scale/web-BerkStan_p40.edges ok 1,922,455 B
+research/r1_skyline_index_20260918/scale/web-BerkStan_p60.edges ok 3,864,328 B
+research/r1_skyline_index_20260918/scale/web-BerkStan_p80.edges ok 6,259,913 B
+END 2026-09-20T20:55:45+00:00 rc=0

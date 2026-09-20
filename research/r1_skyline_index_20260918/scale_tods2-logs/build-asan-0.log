@@ -1,0 +1,4 @@
+$ cmake -S /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918 -B /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build-asan -DCMAKE_BUILD_TYPE=Release -DSANITIZE=ON
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build-asan

@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --bench research/r1_skyline_index_20260918/scale/cit-Patents_p40.edges /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/cx/cit-Patents_p40.cx
+{"passed":true,"n":1508958,"m":2636229,"s_max":26,"count_bits":64,"chains":81002,"canonical_nodes":66770,"max_depth":38,"pairs_total":164151,"runs_total":53449,"vertex_pairs":1674187,"vertex_residue_cells":908191,"baseline_vertex_bytes":43119848,"bytes_map":606952,"bytes_chains":1696770,"bytes_layers":1841299,"bytes_total":4145021,"file_bytes":3879079,"perm_bytes":6035832,"slice_bytes_layers":2259084,"slice_bytes_total":4997240,"solve_ms":353.087,"trees_ms":974.076,"chains_ms":9.215,"layout_ms":17.512,"build_ms":1358.695,"compact_ms":1.906,"save_ms":2.200,"load_ms":0.920,"ti_ms":756.179,"ti_bytes":189799652,"rss_start":278278144,"rss_after_solve":448311296,"rss_after_chains":428478464,"rss_after_layout":428478464,"slice_range_own_ns":58839.713,"slice_range_half_ns":69414.912,"slice_range_root_ns":68678.994,"slice_explicit_own_ns":150103.361,"slice_explicit_half_ns":196877.660,"slice_explicit_root_ns":205667.316,"slice_own_ranges":283.185,"slice_half_ranges":391.576,"slice_root_ranges":252.260,"full_bytes_total":4601074,"full_bytes_layers":2297352,"full_range_own_ns":143.031,"full_range_half_ns":194.212,"full_range_root_ns":125.726,"full_explicit_own_ns":83739.220,"full_climb_own_ns":14.589,"full_climb_half_ns":23.635,"full_climb_root_ns":9.858,"full_ptr_own_ns":22.629,"full_ptr_half_ns":28.050,"full_ptr_root_ns":13.509,"full_value_ns":15.915,"climb_own_ns":19.301,"climb_half_ns":28.208,"climb_root_ns":14.593,"slice_climb_own_ns":14.480,"slice_climb_half_ns":23.657,"slice_climb_root_ns":10.632,"ptr_own_ns":26.319,"ptr_half_ns":32.246,"ptr_root_ns":15.525,"ptr_checksum":35927475850,"range_own_ns":148.010,"range_half_ns":201.350,"range_root_ns":133.992,"explicit_own_ns":83633.572,"explicit_half_ns":120222.259,"explicit_root_ns":127654.995,"own_output":659704.868,"half_output":934034.021,"root_output":998830.469,"own_ranges":283.185,"half_ranges":391.576,"root_ranges":252.260,"own_chains":283.185,"half_chains":391.576,"root_chains":252.260,"value_ns":15.814,"value_checksum":0}
+	Command being timed: "/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --bench research/r1_skyline_index_20260918/scale/cit-Patents_p40.edges /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/cx/cit-Patents_p40.cx"
+	User time (seconds): 98.01
+	System time (seconds): 0.37
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:38.39
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 478500
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 275702
+	Voluntary context switches: 1
+	Involuntary context switches: 164
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 19376
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
