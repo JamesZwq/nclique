@@ -1,0 +1,2 @@
+$ /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --selftest
+{"passed":true,"graphs":34075,"community_queries":2421904,"membership_checks":14606360,"value_checks":5759336}

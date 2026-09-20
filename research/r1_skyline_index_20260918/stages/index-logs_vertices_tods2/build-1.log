@@ -1,0 +1,98 @@
+$ cmake --build /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build -j 12 --target index
+[ 50%] Building CXX object CMakeFiles/index.dir/stages/index.cpp.o
+[100%] Linking CXX executable index
+[100%] Built target index
+In file included from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../../r1_bottomup_20260917/../r1_sizesplit_20260917/../r1_floorbatch_20260916/../r1_envelopecore_20260916/../r1_jointpeel_20260916/ceiling/ceiling.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../../r1_bottomup_20260917/../r1_sizesplit_20260917/../r1_floorbatch_20260916/../r1_envelopecore_20260916/envelope.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../../r1_bottomup_20260917/../r1_sizesplit_20260917/../r1_floorbatch_20260916/floor.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../../r1_bottomup_20260917/../r1_sizesplit_20260917/split.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../../r1_bottomup_20260917/bottomup.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../capped.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../components.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/stream.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/generated.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../order.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/active.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/terminal.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../common.hpp:6,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp:1,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/index.cpp:8:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../../r1_bottomup_20260917/../r1_sizesplit_20260917/../r1_floorbatch_20260916/../r1_envelopecore_20260916/../r1_jointpeel_20260916/ceiling/../joint.hpp: In function ‘bool allsize::choose_at_most(uint64_t, int, partial::Count)’:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../../r1_bottomup_20260917/../r1_sizesplit_20260917/../r1_floorbatch_20260916/../r1_envelopecore_20260916/../r1_jointpeel_20260916/ceiling/../joint.hpp:198:14: warning: ISO C++ does not support ‘__int128’ for ‘value’ [-Wpedantic]
+  198 |     unsigned __int128 value = 1;
+      |              ^~~~~~~~
+In file included from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../components.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/stream.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/generated.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../order.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/active.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/terminal.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../common.hpp:6,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp:1,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/index.cpp:8:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../capped.hpp: In function ‘partial::Count tworoads::capped_choose(uint64_t, int, partial::Count, tworoads::Statistics&)’:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../capped.hpp:28:14: warning: ISO C++ does not support ‘__int128’ for ‘value’ [-Wpedantic]
+   28 |     unsigned __int128 value=1;
+      |              ^~~~~~~~
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../capped.hpp:34:49: warning: ISO C++ does not support ‘__int128’ for ‘type name’ [-Wpedantic]
+   34 |     return static_cast<Count>(std::min<unsigned __int128>(cap,value));
+      |                                                 ^~~~~~~~
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../capped.hpp: In function ‘tworoads::Result tworoads::capped(const partial::Graph&, const allsize::Layout&, const partial::Combinations&, const Vertices&, const std::vector<long unsigned int>*)’:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../capped.hpp:101:36: warning: ISO C++ does not support ‘__int128’ for ‘ratio’ [-Wpedantic]
+  101 |                     const unsigned __int128 ratio=ordinary[v]<static_cast<Vertex>(s-1) ? 0 :
+      |                                    ^~~~~~~~
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../capped.hpp:102:46: warning: ISO C++ does not support ‘__int128’ for ‘type name’ [-Wpedantic]
+  102 |                         static_cast<unsigned __int128>(previous[v])*(ordinary[v]-s+2)/(s-1);
+      |                                              ^~~~~~~~
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/../capped.hpp:103:64: warning: ISO C++ does not support ‘__int128’ for ‘type name’ [-Wpedantic]
+  103 |                     value=static_cast<Count>(std::min<unsigned __int128>(value,ratio));
+      |                                                                ^~~~~~~~
+In file included from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/generated.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../order.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/active.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/terminal.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../common.hpp:6,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp:1,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/index.cpp:8:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/stream.hpp: In function ‘orderdp::Result orderdp::solve(const partial::Graph&, const allsize::Layout&, const partial::Combinations&, const Vertices&, const std::vector<long unsigned int>*)’:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/stream.hpp:152:36: warning: ISO C++ does not support ‘__int128’ for ‘ratio’ [-Wpedantic]
+  152 |                     const unsigned __int128 ratio=static_cast<unsigned __int128>(previous[v])*(ordinary[v]-s+2)/(s-1);
+      |                                    ^~~~~~~~
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/../r1_tworoads_20260917/stream/stream.hpp:152:72: warning: ISO C++ does not support ‘__int128’ for ‘type name’ [-Wpedantic]
+  152 |                     const unsigned __int128 ratio=static_cast<unsigned __int128>(previous[v])*(ordinary[v]-s+2)/(s-1);
+      |                                                                        ^~~~~~~~
+In file included from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../order.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/active.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/terminal.hpp:3,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../common.hpp:6,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp:1,
+                 from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/index.cpp:8:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/generated.hpp: At global scope:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/generated.hpp:11:56: warning: ISO C++ does not support ‘__int128’ for ‘type name’ [-Wpedantic]
+   11 | template<> struct Wide<uint64_t> { using type=unsigned __int128; };
+      |                                                        ^~~~~~~~
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../../r1_terminal_20260918/../r1_orderreplay_20260917/active/../../r1_fullrange_20260917/generated.hpp:12:33: warning: ISO C++ does not support ‘__int128’ for ‘type name’ [-Wpedantic]
+   12 | template<> struct Wide<unsigned __int128> { using type=boost::multiprecision::uint256_t; };
+      |                                 ^~~~~~~~
+In file included from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/index.cpp:8:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp: In function ‘boost::multiprecision::cpp_int shadow(int, boost::multiprecision::cpp_int)’:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp:22:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   22 |     if(!k)return 0; cpp_int ans=0;
+      |     ^~
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp:22:21: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   22 |     if(!k)return 0; cpp_int ans=0;
+      |                     ^~~~~~~
+In file included from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/index.cpp:8:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp: In function ‘int skyline_stage1_count_main(int, char**)’:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp:139:445: warning: ISO C++ does not support ‘__int128’ for ‘type name’ [-Wpedantic]
+  139 | int main(int argc,char** argv){try{if(argc==2&&std::string(argv[1])=="--selftest"){selftest();return 0;}require(argc==3&&std::string(argv[1])=="--graph","usage: count --selftest | --graph path");Input in=prepare(argv[2]);int maximum=std::max(2,static_cast<int>(in.d)+1);Layout l(in.graph,maximum);l.prepare(in.graph.n);unsigned b=width(count_bound(in.graph,l,in.d));if(b==64)print(measure<uint64_t>(in,b));else if(b==128)print(measure<unsigned __int128>(in,b));else if(b==256)print(measure<boost::multiprecision::uint256_t>(in,b));else print(measure<boost::multiprecision::uint512_t>(in,b));}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+      |                                                                                                                                                                                                                                                                                                                                                                                                                                                             ^~~~~~~~
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/index.cpp: In function ‘int main(int, char**)’:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/index.cpp:382:94: warning: ISO C++ does not support ‘__int128’ for ‘type name’ [-Wpedantic]
+  382 |         if (w == 64) run_graph<uint64_t>(in, w, mode); else if (w == 128) run_graph<unsigned __int128>(in, w, mode);
+      |                                                                                              ^~~~~~~~
+In file included from /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/index.cpp:8:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp: In function ‘int skyline_stage1_count_main(int, char**)’:
+/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/stages/../count.cpp:139:660: warning: control reaches end of non-void function [-Wreturn-type]
+  139 | int main(int argc,char** argv){try{if(argc==2&&std::string(argv[1])=="--selftest"){selftest();return 0;}require(argc==3&&std::string(argv[1])=="--graph","usage: count --selftest | --graph path");Input in=prepare(argv[2]);int maximum=std::max(2,static_cast<int>(in.d)+1);Layout l(in.graph,maximum);l.prepare(in.graph.n);unsigned b=width(count_bound(in.graph,l,in.d));if(b==64)print(measure<uint64_t>(in,b));else if(b==128)print(measure<unsigned __int128>(in,b));else if(b==256)print(measure<boost::multiprecision::uint256_t>(in,b));else print(measure<boost::multiprecision::uint512_t>(in,b));}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ^

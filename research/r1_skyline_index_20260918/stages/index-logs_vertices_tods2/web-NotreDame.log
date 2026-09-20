@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/dsets/web-NotreDame.edges vertices
+{"passed":true,"mode":"vertices","bytes_shared_aligned":2666909,"n":325729,"m":1090108,"s_max":156,"count_bits":256,"classes":325729,"active_pairs":1177313,"skyline_entries":492834,"canonical_nodes":15604,"bytes_shared":0,"bytes_base_nodes":686576,"bytes_base_pairs":10721424,"bytes_sky_nodes":748992,"bytes_sky_entries":2464170,"bytes_sky_location":5070010,"bytes_sky_cross":124344,"bytes_block_d":13432466,"bytes_block_d_variant_b":10920850,"base_without_d":11408000,"sky_without_d":8407516,"base_with_d":24840466,"sky_with_d":21839982,"own_base_ns":118003.239,"own_sky_ns":325321.486,"own_output":194567.162,"half_base_ns":139487.557,"half_sky_ns":353566.340,"half_output":233131.285,"root_base_ns":144372.912,"root_sky_ns":356515.118,"root_output":247267.279,"aligned_own_ns":0.000,"aligned_half_ns":0.000,"aligned_root_ns":0.000,"aligned_range_own_ns":0.000,"aligned_range_half_ns":0.000,"aligned_range_root_ns":0.000,"aligned_member_ns":0.000,"aligned_member_checksum":0,"member_base_ns":26.495,"member_sky_ns":45.749,"member_checksum":82962,"member_checksum_sky":82962,"value_ns":16.026,"value_checksum":0}
+	Command being timed: "/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/dsets/web-NotreDame.edges vertices"
+	User time (seconds): 499.47
+	System time (seconds): 7.61
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 8:27.10
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 7898080
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 4060579
+	Voluntary context switches: 1
+	Involuntary context switches: 1048
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

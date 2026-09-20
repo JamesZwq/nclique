@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/dsets/cit-Patents.edges vertices
+{"passed":true,"mode":"vertices","bytes_shared_aligned":30905914,"n":3774768,"m":16518947,"s_max":65,"count_bits":64,"classes":3774768,"active_pairs":6678119,"skyline_entries":6288883,"canonical_nodes":123156,"bytes_shared":0,"bytes_base_nodes":2463120,"bytes_base_pairs":68524028,"bytes_sky_nodes":2955744,"bytes_sky_entries":31444415,"bytes_sky_location":61642567,"bytes_sky_cross":968932,"bytes_block_d":75186808,"bytes_block_d_variant_b":74348456,"base_without_d":70987148,"sky_without_d":97011658,"base_with_d":146173956,"sky_with_d":172198466,"own_base_ns":1102383.274,"own_sky_ns":2240747.501,"own_output":1987375.909,"half_base_ns":1474804.691,"half_sky_ns":2968079.273,"half_output":2669308.491,"root_base_ns":1692504.518,"root_sky_ns":3308770.259,"root_output":3063035.188,"aligned_own_ns":0.000,"aligned_half_ns":0.000,"aligned_root_ns":0.000,"aligned_range_own_ns":0.000,"aligned_range_half_ns":0.000,"aligned_range_root_ns":0.000,"aligned_member_ns":0.000,"aligned_member_checksum":0,"member_base_ns":54.382,"member_sky_ns":70.133,"member_checksum":81924,"member_checksum_sky":81924,"value_ns":26.170,"value_checksum":0}
+	Command being timed: "/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/dsets/cit-Patents.edges vertices"
+	User time (seconds): 10139.37
+	System time (seconds): 56.08
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:49:57
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 12354928
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 10594361
+	Voluntary context switches: 1
+	Involuntary context switches: 39027
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
