@@ -1,0 +1,61 @@
+{
+ "graph": "/data/wenqianz/graphs/com-amazon.ungraph.edges",
+ "n": 334863,
+ "s_max": 7,
+ "binary": "/data/wenqianz/pivoter_repo/build/bin/degeneracy_cliques",
+ "mode": "original NCliqueVertexCoreDecomposition",
+ "started": "2026-09-20T05:44:53",
+ "sizes": [
+  {
+   "s": 2,
+   "rc": 0,
+   "build_ms": 466.283,
+   "peel_ms": 388.634,
+   "wall_s": 1.64,
+   "peak_rss_bytes": 256561152
+  },
+  {
+   "s": 3,
+   "rc": 0,
+   "build_ms": 313.635,
+   "peel_ms": 323.199,
+   "wall_s": 1.35,
+   "peak_rss_bytes": 204541952
+  },
+  {
+   "s": 4,
+   "rc": 0,
+   "build_ms": 259.269,
+   "peel_ms": 204.73,
+   "wall_s": 1.18,
+   "peak_rss_bytes": 160759808
+  },
+  {
+   "s": 5,
+   "rc": 0,
+   "build_ms": 151.615,
+   "peel_ms": 92.4673,
+   "wall_s": 0.82,
+   "peak_rss_bytes": 135413760
+  },
+  {
+   "s": 6,
+   "rc": 0,
+   "build_ms": 113.524,
+   "peel_ms": 62.3382,
+   "wall_s": 0.72,
+   "peak_rss_bytes": 123633664
+  },
+  {
+   "s": 7,
+   "rc": 0,
+   "build_ms": 102.093,
+   "peel_ms": 55.9474,
+   "wall_s": 0.71,
+   "peak_rss_bytes": 120135680
+  }
+ ],
+ "total_wall_s": 6.42,
+ "total_inproc_ms": 2533.7349,
+ "sizes_ok": 6
+}

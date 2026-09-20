@@ -1,0 +1,26 @@
+{
+ "graph": "/data/wenqianz/graphs/web-it-2004.edges",
+ "n": 509338,
+ "s_max": 432,
+ "binary": "/data/wenqianz/pivoter_repo/build/bin/degeneracy_cliques",
+ "mode": "original NCliqueVertexCoreDecomposition",
+ "started": "2026-09-20T22:52:05",
+ "sizes": [
+  {
+   "s": 2,
+   "rc": 0,
+   "build_ms": 129378.0,
+   "peel_ms": 862.4,
+   "wall_s": 133.97,
+   "peak_rss_bytes": 631607296
+  },
+  {
+   "s": 3,
+   "rc": 0,
+   "build_ms": 130073.0,
+   "peel_ms": 813.671,
+   "wall_s": 134.5,
+   "peak_rss_bytes": 583671808
+  }
+ ]
+}
