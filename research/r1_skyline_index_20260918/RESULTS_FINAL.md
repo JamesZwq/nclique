@@ -1013,3 +1013,22 @@ study table (stage 2) compares layouts that all pay the second copy, so its
 relative ordering stands; its absolute numbers are not the paper's latency
 numbers. The paper's queries table and latency text now come from the
 profiles (`profile_<machine>.json`), index and S trees in one process.
+
+### 17.7 Query profiles on tods2 (`profile_tods2.json`, 7 graphs + 8 samples, 2026-09-21)
+
+`query_profile` (index and S trees in one process, same queries). Fixed
+workload, own level, list ns (index vs S trees): com-dblp 29,172 vs 45,338;
+web-Stanford 18,645 vs 15,013; com-amazon 13,097 vs 36,897; web-NotreDame
+33,584 vs 43,493; web-Google 74,654 vs 79,272; web-BerkStan 39,984 vs
+50,520; cit-Patents 389,124 vs 404,427. Own-level locate: index 19-32 ns,
+S trees 10-14 ns. Half level, S trees' parent climb: web-Stanford 69 ns vs
+54, web-BerkStan 84 vs 67; k = 1: web-Stanford 116 vs 25, web-BerkStan 127
+vs 29 (jump pointers). Stratified per clique size (5,000 own-level
+queries per s): index locate 8-44 ns (peak at s = 4-6), S trees 2-11 ns;
+listing at s = 2, 3 index 1.0x-3.2x faster than the copy (big, few-run
+answers), at s >= 4 the copy 2x-5x faster (answers of hundreds to a few
+thousand vertices over many ranges). Deciles by answer size: below 1e5
+vertices the copy 2x-3x faster; above, equal within 10%. Over all 24
+(graph, machine) pairs with profiles (laptop 17 + tods2 7): listing
+0.2x-2.8x of the copy, median 1.02, faster on 41 of 72 points. Paper:
+Figure profile + the paragraph "Latency by clique size and by answer size".

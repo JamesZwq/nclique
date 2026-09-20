@@ -63,6 +63,19 @@ The parent-pointer climb of \strees has no such bound: at the two deeper levels 
 \input{tables/queries}
 \end{table*}
 
+\expsection{Latency by clique size and by answer size}
+Figure~\ref{fig:profile} separates the two variables that the mixed workload averages, on the four largest graphs of the second server, for the index and for \strees.
+Panel (a) draws 5,000 own-level queries per clique size, the vertex uniform among the vertices active at that size: the index locates in 8 to 44~ns at every size, highest at $s=4$ to $6$, where the per-size trees have the most nodes, and \strees in 2 to 11~ns, because its own-node lookup is two dependent loads.
+Panel (b) lists those answers: at $s=2$ and $3$, where the answers are large and consist of a few long runs, the index lists 1.0$\times$ to 3.2$\times$ faster than the memory copy; from $s=4$ on, where the own-level answers shrink to hundreds or a few thousand vertices spread over many ranges, the copy is 2$\times$ to 5$\times$ faster.
+Panel (c) sorts the 20,000 own-level queries of the fixed workload by answer size into deciles: below $10^5$ vertices the copy is 2$\times$ to 3$\times$ faster, and above it the two coincide within 10 percent.
+The index trades a constant per range for a constant per label, so it lists at the speed of the copy where answers are big and contiguous and behind it where they are small and fragmented; the bytes it saves (Table~\ref{tab:size}) do not depend on the answer.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_profile.pdf}
+\caption{Own-level latency of the index (solid) and \strees (dashed) on the four largest graphs of the second server: (a) locating and (b) listing against the clique size, 5,000 queries per size; (c) listing against the answer size, deciles of the fixed workload.}\label{fig:profile}
+\end{figure*}
+
 \expsection{Construction}
 Table~\ref{tab:build} splits the build into the clique tree, the all-size peel, and the index passes, with the peak resident memory of the process.
 The index passes (trees, chains, run arrays, values) are a few percent of the total; the peel and its clique tree are the rest, and the peak memory is the clique tree.

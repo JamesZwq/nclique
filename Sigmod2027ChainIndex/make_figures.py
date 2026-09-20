@@ -86,16 +86,16 @@ def fig_profile():
         bs = x['by_size']; col = cmap(i)
         a.plot([e['s'] for e in bs], [e['locate_ns'] for e in bs], marker='o', ms=2, lw=0.8, color=col, label=g)
         a.plot([e['s'] for e in bs], [e['st_locate_ns'] for e in bs], marker='o', ms=2, lw=0.8, ls='--', color=col, markerfacecolor='none')
-        b.plot([e['s'] for e in bs], [e['list_ns'] / max(e['output'], 1) for e in bs], marker='o', ms=2, lw=0.8, color=col)
-        b.plot([e['s'] for e in bs], [e['st_list_ns'] / max(e['output'], 1) for e in bs], marker='o', ms=2, lw=0.8, ls='--', color=col, markerfacecolor='none')
+        b.plot([e['s'] for e in bs], [e['list_ns'] for e in bs], marker='o', ms=2, lw=0.8, color=col)
+        b.plot([e['s'] for e in bs], [e['st_list_ns'] for e in bs], marker='o', ms=2, lw=0.8, ls='--', color=col, markerfacecolor='none')
         dc = x['own_by_output']
         c.plot([e['output'] for e in dc], [e['list_ns'] for e in dc], marker='o', ms=2, lw=0.8, color=col)
         c.plot([e['output'] for e in dc], [e['st_list_ns'] for e in dc], marker='o', ms=2, lw=0.8, ls='--', color=col, markerfacecolor='none')
     from matplotlib.lines import Line2D
     a.set_xscale('log'); a.set_xlabel('clique size s'); a.set_ylabel('locating time (ns)'); a.set_ylim(0, None)
     a.legend(ncol=1, loc='upper left', handlelength=1.2, handletextpad=0.3, labelspacing=0.15, fontsize=5.5)
-    b.set_xscale('log'); b.set_yscale('log'); b.set_xlabel('clique size s'); b.set_ylabel('listing time per vertex (ns)')
-    b.legend(handles=[Line2D([], [], color='0.3', lw=0.9, label='chain index'), Line2D([], [], color='0.3', lw=0.9, ls='--', label='S trees')], loc='upper left')
+    b.set_xscale('log'); b.set_yscale('log'); b.set_xlabel('clique size s'); b.set_ylabel('listing time (ns)')
+    b.legend(handles=[Line2D([], [], color='0.3', lw=0.9, label='chain index'), Line2D([], [], color='0.3', lw=0.9, ls='--', label='S trees')], loc='upper right')
     c.set_xscale('log'); c.set_yscale('log'); c.set_xlabel('answer size (vertices, decile mean)'); c.set_ylabel('listing time (ns)')
     fig.tight_layout(w_pad=1.2); fig.savefig(OUT / 'fig_profile.pdf'); plt.close(fig)
 
@@ -139,7 +139,7 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
         ax.set_xlabel('vertices (millions)'); ax.set_ylabel(lab); ax.set_xlim(0, None)
     axes[0].set_yscale('log'); axes[1].set_yscale('log'); axes[2].set_ylim(0, None); axes[3].set_ylim(0, None)
     axes[0].legend(handlelength=1.5, labelspacing=0.2, loc='lower right')
-    axes[1].legend(handles=[Line2D([], [], color='0.3', lw=0.9, label='chain index'), Line2D([], [], color='0.3', lw=0.9, ls='--', label='S trees / CND')], loc='lower right')
+    axes[1].legend(handles=[Line2D([], [], color='0.3', lw=0.9, label='chain index'), Line2D([], [], color='0.3', lw=0.9, ls='--', label='S trees / CND')], loc='center right')
     fig.tight_layout(w_pad=1.0); fig.savefig(OUT / 'fig_scale.pdf'); plt.close(fig)
 
 if __name__ == '__main__':
