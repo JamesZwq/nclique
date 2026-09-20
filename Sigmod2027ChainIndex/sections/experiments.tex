@@ -60,15 +60,16 @@ Three graphs did not build: \textsf{com-lj}, \textsf{ca-hollywood-2009} and \tex
 \input{tables/build}
 \end{table*}
 
-\expsection{Against the existing single-size tool}
-The repository's production pipeline computes the $(1,s)$ core values of one size with its own pivoting clique tree and builds that size's hierarchy (one branch per vertex birth with parent pointers); obtaining every size means one run per size.
-Table~\ref{tab:prior} sums those runs over $s=2,\dots,s_{\max}$ on the five design-study graphs.
-Building the chain index for all sizes is 8.5$\times$ to 105$\times$ faster than the sum of the single-size runs (2.5$\times$ to 54$\times$ counting only their in-process work, the rest being repeated graph loading and clique-tree construction), and the per-size hierarchies of that tool occupy 10.6$\times$ to 118$\times$ the bytes of the chain index: 40 bytes per branch and one owner id per vertex, per size, on \dblp 269,181 branches at $s=3$ alone.
+\expsection{Against the existing single-size tools}
+Two existing single-size implementations serve as construction baselines: the original $(1,s)$ vertex core decomposition of this codebase (a clique-tree build followed by a tree-mutating peel, core values only) and its optimized successor, which builds a size-specific pivoting clique tree, peels, and builds that size's hierarchy (one branch per vertex birth with parent pointers).
+Obtaining every size with either means one run per size; Table~\ref{tab:prior} sums those runs over $s=2,\dots,s_{\max}$ on the five design-study graphs.
+Building the chain index for all sizes is 15$\times$ to 195$\times$ faster than the original and 8.5$\times$ to 105$\times$ faster than the optimized pipeline (2.5$\times$ to 54$\times$ counting only the latter's in-process work, the rest being repeated graph loading and clique-tree construction).
+The per-size hierarchies of the optimized pipeline occupy 10.6$\times$ to 118$\times$ the bytes of the chain index: 40 bytes per branch and one owner id per vertex, per size, on \dblp 269,181 branches at $s=3$ alone; the original stores no hierarchy.
 \strees is the tighter storage baseline (1.1$\times$ to 11.6$\times$ smaller than these hierarchies), which is why the size tables compare against it.
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{The production single-size pipeline run once per size (prior tool) against the all-size chain index build; one thread, laptop.}\label{tab:prior}
+\caption{The existing single-size implementations run once per size (original and optimized) against the all-size chain index build; one thread, laptop.}\label{tab:prior}
 \input{tables/prior}
 \end{table*}
 

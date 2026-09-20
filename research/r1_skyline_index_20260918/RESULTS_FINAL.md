@@ -845,3 +845,27 @@ Build time: 8.5x to 105x (wall) or 2.5x to 54x (in-process) slower than
 the chain index for all sizes. Peak memory: the largest single-size run
 of the prior tool (web-Stanford 573 MB) is above the chain index's
 all-size build (299 MB).
+
+### 16.1 The original reference implementation (added 2026-09-20)
+
+The user's original r = 1 implementation, `NCliqueVertexCoreDecomposition`
+(the default path of `degeneracy_cliques <graph> 1 <s>` with no environment
+variable: an SDCT build plus the tree-mutating peel, core values only, no
+hierarchy dump), run once per size on the same five graphs
+(`prior/prior_original_<graph>.json`, `prior_sweep.py --original`). It is
+the baseline the ST_* variants were later derived from.
+
+| Graph | sizes | original: wall s | original: in-process s | original: peak MB (one size) | ST_V3: wall s | ST_V3: in-process s | chain index: build s | build peak MB | original / chain | ST_V3 / chain |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| ca-GrQc | 43 | 2.0 | 0.2 | 12 | 0.9 | 0.1 | 0.01 | 5 | 195x | 90x |
+| ca-HepPh | 238 | 123.0 | 103.4 | 28 | 19.2 | 5.5 | 0.67 | 29 | 184x | 29x |
+| com-dblp | 113 | 122.3 | 36.2 | 267 | 87.5 | 15.7 | 0.84 | 157 | 146x | 105x |
+| web-Stanford | 71 | 367.3 | 280.1 | 589 | 266.4 | 201.4 | 3.75 | 299 | 98x | 71x |
+| amazon0302 | 6 | 7.1 | 3.1 | 253 | 4.0 | 1.2 | 0.47 | 134 | 15x | 9x |
+
+The original is 1.4x to 6.4x slower than ST_V3 over all sizes and 15x to
+195x slower than the chain index build (wall); its in-process time (SDCT
+build plus peel, no hierarchy) is 0.2 s (GrQc) to 280 s (Stanford). It
+stores no hierarchy, so the storage comparison stays with `STrees` and
+the ST_V3 branch tables; the original is the construction-time baseline
+of record, ST_V3 the optimized one.
