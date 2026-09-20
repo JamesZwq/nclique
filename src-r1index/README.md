@@ -46,6 +46,22 @@ with exact-integer and double values (4,844,536 community queries).  The
 index this tree produces is byte-identical to the one recorded in the
 research evidence (`final.json`, sha256 of `com-dblp.cx`).
 
+## Query workload (fixed rule)
+
+`--bench` draws its queries with a fixed generator (seed 20260918); this
+rule is part of the protocol and is not changed between runs or machines.
+
+- Community queries (v, s, k): v uniform among the active vertices
+  (omega(v) >= 2); s uniform in [2, omega(v)] for that v; k in three
+  regimes, each with its own draw: own (k = kappa_s(v); 20,000 queries),
+  half (k = max(1, floor(kappa_s(v) / 2)); 20,000), root (k = 1; 1,000).
+- Value queries (v, s): v uniform among all vertices, s uniform in
+  [2, omega(v) + 1] (the last value returns 0); 200,000 queries.
+- Timing: one warm-up pass, then five passes; the median is reported.
+  Community time is split into locate (climb and entry reads), copying
+  the range list, and expanding to explicit labels; the output size in
+  vertices and ranges is recorded with it.
+
 ## Using the index
 
 ```
