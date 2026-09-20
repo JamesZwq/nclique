@@ -99,17 +99,17 @@ def table_layouts():
     (OUT / 'layouts.tex').write_text('\n'.join(lines) + '\n')
 
 def table_prior():
-    """Original and optimized single-size pipelines run once per size against the chain index build, five laptop graphs."""
+    """The original single-size implementation run once per size against the chain index build, five laptop graphs."""
     ours = {}
     for f in ('final.json', 'more.json'):
         for r in load(f)['runs']: ours[Path(r['graph']).stem] = r['result']
     bo = {Path(r['graph']).stem: r for r in load('buildonly.json')['runs']}
-    lines = [r'\begin{tabular}{@{}lrrrrrrrr@{}}', r'\toprule', r'Graph & Sizes & Original, all sizes (s) & Original peak RSS (MB) & Optimized (ST\_V3), all sizes (s) & Optimized hierarchies (MB) & \chainidx build (s) & Build peak RSS (MB) & \chainidx (MB) \\', r'\midrule']
+    lines = [r'\begin{tabular}{@{}lrrrrrrr@{}}', r'\toprule', r'Graph & Sizes & Single-size tool, all sizes (s) & of which in-process (s) & Peak RSS, one size (MB) & \chainidx build, all sizes (s) & Build peak RSS (MB) & \chainidx (MB) \\', r'\midrule']
     for g in ['ca-GrQc', 'ca-HepPh', 'com-dblp', 'web-Stanford', 'amazon0302']:
-        v3 = load(f'prior/prior_{g}.json'); og = load(f'prior/prior_original_{g}.json')
-        if v3 is None or og is None: continue
+        og = load(f'prior/prior_original_{g}.json')
+        if og is None: continue
         o = ours[g]; b = bo[g]; opeak = max(e['peak_rss_bytes'] or 0 for e in og['sizes'])
-        lines.append(f"{tex_escape(g)} & {og['sizes_ok']} & {og['total_wall_s']:.1f} & {opeak/1048576:,.0f} & {v3['total_wall_s']:.1f} & {v3['total_prior_bytes']/1048576:.1f} & {(o['ti_ms']+o['build_ms']+o['compact_ms'])/1000:.2f} & {b['peak_rss_bytes']/1048576:,.0f} & {o['bytes_total']/1048576:.2f} \\\\")
+        lines.append(f"{tex_escape(g)} & {og['sizes_ok']} & {og['total_wall_s']:.1f} & {og['total_inproc_ms']/1000:.1f} & {opeak/1048576:,.0f} & {(o['ti_ms']+o['build_ms']+o['compact_ms'])/1000:.2f} & {b['peak_rss_bytes']/1048576:,.0f} & {o['bytes_total']/1048576:.2f} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'prior.tex').write_text('\n'.join(lines) + '\n')
 

@@ -1,11 +1,11 @@
-\begin{tabular}{@{}lrrrrrrrr@{}}
+\begin{tabular}{@{}lrrrrrrr@{}}
 \toprule
-Graph & Sizes & Original, all sizes (s) & Original peak RSS (MB) & Optimized (ST\_V3), all sizes (s) & Optimized hierarchies (MB) & \chainidx build (s) & Build peak RSS (MB) & \chainidx (MB) \\
+Graph & Sizes & Single-size tool, all sizes (s) & of which in-process (s) & Peak RSS, one size (MB) & \chainidx build, all sizes (s) & Build peak RSS (MB) & \chainidx (MB) \\
 \midrule
-ca-GrQc & 43 & 2.0 & 12 & 0.9 & 1.6 & 0.01 & 5 & 0.06 \\
-ca-HepPh & 238 & 123.0 & 28 & 19.2 & 17.5 & 0.67 & 29 & 0.18 \\
-com-dblp & 113 & 122.3 & 267 & 87.5 & 184.2 & 0.84 & 157 & 1.57 \\
-web-Stanford & 71 & 367.3 & 589 & 266.4 & 137.7 & 3.75 & 299 & 3.39 \\
-amazon0302 & 6 & 7.1 & 253 & 4.0 & 37.5 & 0.47 & 134 & 2.94 \\
+ca-GrQc & 43 & 2.0 & 0.2 & 12 & 0.01 & 5 & 0.06 \\
+ca-HepPh & 238 & 123.0 & 103.4 & 28 & 0.67 & 29 & 0.18 \\
+com-dblp & 113 & 122.3 & 36.2 & 267 & 0.84 & 157 & 1.57 \\
+web-Stanford & 71 & 367.3 & 280.1 & 589 & 3.75 & 299 & 3.39 \\
+amazon0302 & 6 & 7.1 & 3.1 & 253 & 0.47 & 134 & 2.94 \\
 \bottomrule
 \end{tabular}
