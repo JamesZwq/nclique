@@ -4,26 +4,28 @@
 All code is C++23, single-threaded, compiled at \texttt{-O3}.
 Three machines: a laptop (Apple M-series) and two Ubuntu 22.04 servers (GCC 11.4, 96 cores, 503~GB); no timing run shared a machine with another timing run of ours, and the servers carried a background load of 1 to 8 from other users.
 Datasets: \numgraphs{} graphs from five families (collaboration, citation, web, product, social and communication), from 1,005 to 4,049,537 vertices, with largest cliques from 7 to 500 vertices; Table~\ref{tab:size} lists them.
-The baseline \strees is one tree and one DFS array per size with all core values stored (Section~\ref{sec:prelim}); its size is computed from the same decomposition, and its query latency was measured on the five laptop graphs of the design study.
+The baseline \strees is one tree and one DFS array per size with all core values stored (Section~\ref{sec:prelim}); its size is computed from the same decomposition, and its query latency was measured with our own implementation on the five laptop graphs of the design study and on the seven graphs of the second server.
 Queries are drawn from the active vertices and their sizes $2\le s\le\omg{v}$: 20,000 community queries at the vertex's own level ($k=\core{s}{v}$), 20,000 at half that level, 1,000 at $k=1$, and 200,000 value queries; every latency is the median of five passes after one warm-up.
 Every number in the tables is generated from the recorded JSON evidence.
 
 \expsection{Size against one tree per size}
-Table~\ref{tab:size} gives, for every graph, the number of chains, the vertices per chain, the index size and the size of \strees.
+Table~\ref{tab:size} gives, for every graph, the number of chains, the vertices per chain, the share of core values that are stored explicitly, the index size and the size of \strees.
 The index is \ratiomin$\times$ to \ratiomax$\times$ smaller, median \ratiomedian$\times$.
 The ratio follows the vertices per chain: \emailcore (1,005 vertices, 667 chains) is the worst case at \ratiomin$\times$, and \webuk (129,632 vertices, 839 chains, cliques up to 500) the best at \ratiomax$\times$; the two coauthorship graphs with the largest cliques compress by 45.8$\times$ and 12.0$\times$, the web graphs by 5.7$\times$ to 48.7$\times$, the social graphs by 2.9$\times$ to 15.9$\times$.
 The label permutation, if the graph is not stored in the index's order, adds $4n$ bytes and lowers the ratios to 1.25$\times$--8.8$\times$ on the laptop set.
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{Index size against \strees on \numgraphs{} graphs (one row per distinct graph). $n/$chains is the average number of vertices per chain.}\label{tab:size}
+\caption{Index size against \strees on \numgraphs{} graphs (one row per distinct graph). $n/$chains is the average number of vertices per chain; ``values stored'' is the share of the active (vertex, size) pairs whose core value is a stored residue rather than the closed form $\binomc{\omg{v}-1}{s-1}$.}\label{tab:size}
 \input{tables/size}
 \end{table*}
 
 \expsection{Where the bytes go}
 On the collaboration, web and product graphs the per-size trees with their run arrays are 58 to 74 percent of the index and the chain records 23 to 41 percent; on the social and citation graphs, where chains are shorter, the chain records reach 44 to 58 percent, most of it the trajectories (one node id per chain per size).
 The map is 3 to 13 percent.
-Core values are a small part everywhere once residues and per-size widths are in place: \dblp stores 9,737 residue values for 1,246,933 active (vertex, size) pairs.
+Core values are a small part everywhere once residues and per-size widths are in place.
+The certified tail (Theorem~\ref{thm:tail}) is what makes them small: the share of active (vertex, size) pairs whose value must be stored ranges from \storedmin{} percent (\webuk, where one residue suffices for 23.5 million pairs) to \storedmax{} percent (\emailcore), median \storedmedian{} percent (Table~\ref{tab:size}); it is lowest on the graphs with large cliques, where most of a vertex's values lie in its tail, and highest on the sparse social and citation graphs, where $\sigma$ is close to $\omega$.
+Stored residues are shared by the vertices of a chain, so the stored values are fewer still: \dblp stores 9,737 residues for 1,246,933 active pairs.
 
 \expsection{Design study}
 Table~\ref{tab:layouts} isolates the steps on the five graphs of the design study.
@@ -37,15 +39,25 @@ The skyline deduplication of SGL \cite{SGL}, which we also implemented over chai
 \end{table*}
 
 \expsection{Query latency}
-Table~\ref{tab:queries} reports, at the own level, the time to locate a community (climb and two entry reads), the number of ranges of the answer, the time to copy the range list, and the time to expand it into vertex labels, together with the value query.
-Locating takes 4 to 76~ns on every graph; a community of 1.9 million vertices on the 4-million-vertex coauthorship graph is located in 11~ns and listed in 167~$\mu$s.
-Listing costs 0.04 to 0.31~ns per vertex; the per-vertex cost is lowest where runs are long and highest on the two most fragmented graphs (\emailcore, 2.3 vertices per range).
-Against the memory copy of \strees, measured on the five laptop graphs, expansion is faster on 13 of the 15 (graph, level) points, by 0.9$\times$ to 2.0$\times$: a run costs eight bytes to read however many labels it expands to.
-Value queries take 6 to 24~ns on the laptop and 15 to 35~ns on the servers.
+Table~\ref{tab:queries} reports, at the own level, the time to locate a community (climb and two entry reads), the number of ranges of the answer, the time to copy the range list, and the time to expand it into vertex labels, together with the listing time of \strees where it was measured and the value query.
+Locating takes \locmin{} to \locmax{}~ns on every graph (median \locmedian{}~ns); a community of 1.9 million vertices on the 4-million-vertex coauthorship graph is located in 11~ns and listed in 167~$\mu$s.
+Listing costs \pervmin{} to \pervmax{}~ns per vertex on the graphs whose mean answer has at least a thousand vertices; the per-vertex cost is lowest where runs are long and highest on the most fragmented graphs (\emailcore, 2.3 vertices per range), and on the two graphs with answers below a hundred vertices the fixed cost of a query dominates.
+Against the memory copy of \strees, expansion is faster on 13 of the 15 (graph, level) points of the laptop set, by 0.9$\times$ to 2.0$\times$: a run costs eight bytes to read however many labels it expands to.
+Value queries take \valmin{} to \valmax{}~ns (median \valmedian{}~ns); the slowest is \webuk, whose binomial table for cliques of 500 vertices no longer fits the first-level cache.
+
+Figure~\ref{fig:regimes} shows the three levels of the workload.
+Listing time is linear in the size of the answer at every level, between 0.05 and 0.5~ns per vertex above a fixed cost of a few nanoseconds, because the number of ranges grows with the answer while the cost per range stays constant.
+Locating costs a median of \locmedian{}~ns at the own level, \halfmedian{}~ns at half the level (the climb from the own node to an ancestor) and \rootmedian{}~ns at $k=1$: the jump pointers make the climb to the root as cheap as no climb at all, and the half-level climb, which stops at an interior node, costs at most \halfmax{}~ns.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_regimes.pdf}
+\caption{Community queries at the own level, at half the level and at $k=1$ on the \numgraphs{} graphs. Left: listing time against the mean size of the answer (one point per graph and level; the dashed lines are 0.05 and 0.5~ns per vertex above a fixed 8~ns). Right: locating time by level, one point per graph.}\label{fig:regimes}
+\end{figure*}
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{Own-level community queries and value queries, ns, one thread. Laptop and server latencies are not directly comparable (the servers' single-core speed is 1.5 to 3 times lower).}\label{tab:queries}
+\caption{Own-level community queries and value queries, ns, one thread; the \strees column is the memory copy of the same answer where our implementation of \strees was run on the same machine. Laptop and server latencies are not directly comparable (the servers' single-core speed is 1.5 to 3 times lower).}\label{tab:queries}
 \input{tables/queries}
 \end{table*}
 
@@ -62,15 +74,16 @@ Three graphs did not build: \textsf{com-lj}, \textsf{ca-hollywood-2009} and \tex
 
 \expsection{Against the single-size decomposition}
 The published counting-based nucleus decomposition \cnd \cite{Zhang2026NucleusCounting} computes the $(1,s)$ core values of one size per run: it builds a clique path index and peels while rewriting the index.
-Obtaining every size with it means one run per size; Table~\ref{tab:prior} sums those runs over $s=2,\dots,s_{\max}$ on the five design-study graphs, both as whole-process wall time and as the in-process build and peel timers alone.
+Obtaining every size with it means one run per size; Table~\ref{tab:prior} sums those runs over $s=2,\dots,s_{\max}$ on \priorgraphs{} (graph, machine) pairs, both as whole-process wall time and as the in-process build and peel timers alone, against the whole chain index build (clique tree, all-size peel, trees, chains, run arrays) on the same machine.
 (A faster single-size peel that keeps the index fixed exists; it lowers the constant of each run and leaves the number of runs, one per size, unchanged.)
-Counting only the tool's clique-tree build and peel against the whole chain index build (clique tree, all-size peel, trees, chains, run arrays), the chain index is built 6.6$\times$ (amazon0302, six sizes) to 154$\times$ (ca-HepPh, 238 sizes) faster, 43$\times$ on \dblp; counting the tool's whole processes, which reload and sort the graph for every size, 15$\times$ to 195$\times$.
-The clique tree is built once instead of once per size, and the sizes share their peel through bounds and certificates.
+Counting only \cnd's clique-tree build and peel, the chain index is built \priormin$\times$ (com-amazon, six sizes) to \priormax$\times$ (ca-HepPh, 238 sizes) faster, median \priormedian$\times$; counting \cnd's whole processes, which reload and sort the graph for every size, the factors are larger still.
+The clique tree is built once instead of once per size, and the sizes share their peel through bounds and certificates; the ratio grows with the number of sizes, and on web-BerkStan (201 sizes) the 2.3 hours of \cnd become 66 seconds.
+The same table is the cost of answering a community query without an index: the smallest possible online answer is one decomposition at the queried size, seconds to minutes per query on these graphs, against the nanoseconds of Table~\ref{tab:queries}.
 \cnd stores no hierarchy, so the storage comparison stays with \strees.
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{\cnd run once per size against the all-size chain index build; one thread, laptop.}\label{tab:prior}
+\caption{\cnd run once per size against the all-size chain index build on the same machine; one thread. The ratio is \cnd's summed build and peel time over the chain index build time.}\label{tab:prior}
 \input{tables/prior}
 \end{table*}
 

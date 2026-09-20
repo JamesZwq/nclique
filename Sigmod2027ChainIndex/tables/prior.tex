@@ -1,11 +1,18 @@
-\begin{tabular}{@{}lrrrrrrr@{}}
+\begin{tabular}{@{}llrrrrrrrr@{}}
 \toprule
-Graph & Sizes & Single-size tool, all sizes (s) & of which in-process (s) & Peak RSS, one size (MB) & \chainidx build, all sizes (s) & Build peak RSS (MB) & \chainidx (MB) \\
+Graph & Machine & Sizes & \cnd, all sizes (s) & of which build and peel (s) & \cnd peak RSS, one size (MB) & \chainidx build, all sizes (s) & Ratio (build and peel) & Build peak RSS (MB) & \chainidx (MB) \\
 \midrule
-ca-GrQc & 43 & 2.0 & 0.2 & 12 & 0.01 & 5 & 0.06 \\
-ca-HepPh & 238 & 123.0 & 103.4 & 28 & 0.67 & 29 & 0.18 \\
-com-dblp & 113 & 122.3 & 36.2 & 267 & 0.84 & 157 & 1.57 \\
-web-Stanford & 71 & 367.3 & 280.1 & 589 & 3.75 & 299 & 3.39 \\
-amazon0302 & 6 & 7.1 & 3.1 & 253 & 0.47 & 134 & 2.94 \\
+ca-GrQc & laptop & 43 & 2.0 & 0.2 & 12 & 0.01 & 17.6$\times$ & 5 & 0.06 \\
+ca-HepPh & laptop & 238 & 123.0 & 103.4 & 28 & 0.67 & 154.9$\times$ & 29 & 0.18 \\
+amazon0302 & laptop & 6 & 7.1 & 3.1 & 253 & 0.47 & 6.7$\times$ & 134 & 2.94 \\
+web-Stanford & laptop & 71 & 367.3 & 280.1 & 589 & 3.75 & 74.7$\times$ & 299 & 3.39 \\
+com-dblp & laptop & 113 & 122.3 & 36.2 & 267 & 0.84 & 43.3$\times$ & 157 & 1.57 \\
+web-Stanford & tods2 & 71 & 490.2 & 384.5 & 518 & 4.89 & 78.6$\times$ & 228 & 3.39 \\
+com-dblp & tods2 & 113 & 115.6 & 28.7 & 235 & 1.92 & 14.9$\times$ & 113 & 1.57 \\
+web-NotreDame & tods2 & 155 & 314.2 & 199.5 & 254 & 4.16 & 48.0$\times$ & 189 & 0.96 \\
+com-amazon & tods2 & 6 & 6.9 & 2.5 & 245 & 0.72 & 3.5$\times$ & 115 & 3.11 \\
+web-BerkStan & tods2 & 201 & 8,112.9 & 7,170.4 & 1,506 & 65.64 & 109.2$\times$ & 1,069 & 8.21 \\
+web-Google & tods2 & 44 & 240.7 & 93.3 & 760 & 5.90 & 15.8$\times$ & 355 & 10.64 \\
+cit-Patents & tods2 & 64 & 1,386.9 & 355.9 & 4,231 & 19.53 & 18.2$\times$ & 2,005 & 11.52 \\
 \bottomrule
 \end{tabular}
