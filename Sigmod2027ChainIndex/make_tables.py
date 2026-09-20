@@ -152,10 +152,6 @@ def table_layouts():
     for g in graphs:
         a = data['aligned'][g]; ab = a['bytes_shared_aligned'] + a['bytes_base_nodes'] + a['bytes_base_pairs'] + a['bytes_block_d']
         lines.append(f"{tex_escape(g)} & {fmt(data['vertices'][g]['base_with_d'])} & {fmt(data['twins'][g]['base_with_d'])} & {fmt(data['chains'][g]['base_with_d'])} & {fmt(ab)} & {fmt(final[g]['bytes_total'])} \\\\")
-    lines += [r'\midrule', r'\multicolumn{6}{@{}l}{Community listing at the own level, ns per query (explicit vertex ids)} \\']
-    for g in graphs:
-        a = data['aligned'][g]
-        lines.append(f"{tex_escape(g)} & {fmt(data['vertices'][g]['own_base_ns'])} & {fmt(data['twins'][g]['own_base_ns'])} & {fmt(data['chains'][g]['own_base_ns'])} & {fmt(a['aligned_own_ns'])} & {fmt(final[g]['explicit_own_ns'])} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'layouts.tex').write_text('\n'.join(lines) + '\n')
 

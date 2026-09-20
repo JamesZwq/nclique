@@ -29,12 +29,12 @@ Stored residues are shared by the vertices of a chain, so the stored values are 
 
 \expsection{Design study}
 Table~\ref{tab:layouts} isolates the steps on the five graphs of the design study.
-Trees over twin classes do not help (twin classes have 1.03 to 1.28 vertices); trees over chains with an explicit vertex-to-chain map are 2.5$\times$ to 4.5$\times$ smaller than \strees and already faster to list because a community is a few chain slices; aligned labels remove the map and turn answers into ranges; run arrays with entry points and per-size widths give the final sizes and make the location constant-time.
+Trees over twin classes do not help (twin classes have 1.03 to 1.28 vertices); trees over chains with an explicit vertex-to-chain map are 2.5$\times$ to 4.5$\times$ smaller than \strees; aligned labels remove the map and turn answers into ranges; run arrays with entry points and per-size widths give the final sizes and make the location constant-time.
 The skyline deduplication of SGL \cite{SGL}, which we also implemented over chains, was 0.99$\times$ to 2.28$\times$ smaller than the corresponding tree layout but 2 to 3 times slower to query and is dominated by chains; it is not part of the index.
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{Design study on five graphs: bytes (top) and own-level community listing in ns (bottom) for the successive layouts.}\label{tab:layouts}
+\caption{Design study on five graphs: bytes of the successive layouts.}\label{tab:layouts}
 \input{tables/layouts}
 \end{table*}
 
