@@ -3,3 +3,10 @@
 Hierarchy equivalence is a partition of the vertices, and that partition is the right unit for indexing every clique-core hierarchy of a graph at once.
 Storing chains instead of vertices, aligning labels to chains, ordering chains lexicographically and keeping each size's DFS array as runs with entry points gives an index that is \ratiomin$\times$ to \ratiomax$\times$ smaller than one tree per size, locates any community in tens of nanoseconds and lists it at memory-copy speed.
 The construction is one all-size peel and one pass per size; its memory is the peel's, not the index's.
+
+\stitle{Limits.}
+The index is static: an edge insertion can change core values at every size, and we have no maintenance beyond a rebuild.
+Its construction inherits the memory of the all-size peel, whose clique tree keeps every leaf; the three graphs whose trees exceed 350~GB have no index yet, and a peel that streams the tree is the way to them.
+Values are stored as doubles, exact below $2^{53}$, which covers every value on our graphs but not the counts of cliques in the hundreds of vertices that the peel handles internally with wide integers.
+The index is not at its entropy: a general-purpose compressor shrinks it by a further five to eight times, at the price of decoding in the query path, and the runs of the S trees themselves compress below the index; the constant-time queries are what the plain layout buys.
+Finally, the partition is exact for $r=1$; for edges and larger $r$-cliques the same equivalence holds, but the atomic units are no longer vertices, and we have not built that index.
