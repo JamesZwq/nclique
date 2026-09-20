@@ -1053,3 +1053,11 @@ far: web-uk-2005, 499 sizes, CND 16.8 h wall / 15.7 h build+peel against a
 both records: 2.8x (com-amazon, 6 sizes) to 814x, median 16x. Still
 running on tods1: web-it-2004 (432 sizes), ca-coauthors-dblp (337),
 soc-pokec, tech-as-skitter, wiki-Talk.
+
+CND once per size on the eight samples (tods2, `prior/tods2/prior_original_*_p*.json`),
+build+peel seconds against the chain index build: cit-Patents 20% 3.7 vs
+0.56 (6.6x), 40% 19.3 vs 2.12 (9.1x), 60% 64.5 vs 5.56 (11.6x), 80% 161.4
+vs 11.21 (14.4x), 100% 355.9 vs 19.53 (18.2x); web-BerkStan 20% 12.8 vs
+0.21 (61x), 40% 197.5 vs 1.46 (135x), 60% 1006 vs 11.44 (88x), 80% 2668 vs
+27.12 (98x), 100% 7170 vs 65.64 (109x). The figure's build panel now has
+its baseline (Section 17.5).

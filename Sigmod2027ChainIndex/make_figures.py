@@ -139,7 +139,7 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
         ax.set_xlabel('vertices (millions)'); ax.set_ylabel(lab); ax.set_xlim(0, None)
     axes[0].set_yscale('log'); axes[1].set_yscale('log'); axes[2].set_ylim(0, None); axes[3].set_ylim(0, None)
     axes[0].legend(handlelength=1.5, labelspacing=0.2, loc='lower right')
-    axes[1].legend(handles=[Line2D([], [], color='0.3', lw=0.9, label='chain index'), Line2D([], [], color='0.3', lw=0.9, ls='--', label='S trees / CND')], loc='center right')
+    axes[1].legend(handles=[Line2D([], [], color='0.3', lw=0.9, label='chain index'), Line2D([], [], color='0.3', lw=0.9, ls='--', label='S trees / CND')], loc='lower right')
     fig.tight_layout(w_pad=1.0); fig.savefig(OUT / 'fig_scale.pdf'); plt.close(fig)
 
 if __name__ == '__main__':
