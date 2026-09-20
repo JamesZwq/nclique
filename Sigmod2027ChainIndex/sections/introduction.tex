@@ -12,7 +12,7 @@ Each size's hierarchy is a laminar family, so it is a tree; with the vertices wr
 One tree per size is therefore the natural index, and it is fast.
 It is also large: a vertex that participates in sizes $2,\dots,\omg{v}$ appears in $\omg{v}-1$ arrays and carries $\omg{v}-1$ core values.
 On \dblp the trees total 16.7~MB for a 317,080-vertex graph; on a coauthorship graph with cliques of 337 vertices they total 202~MB for 540,486 vertices.
-Every previous index for a related hierarchy pays a version of this bill: indexes for $k$-core community search store the hierarchy of one size, and the recent SGL index for bipartite bi-components \cite{SGL} stores a vertex once per non-dominated pair of parameters, so a vertex still appears many times.
+Every previous index for a related hierarchy pays a version of this bill: indexes for $k$-core and $k$-truss community search store the hierarchy of one size, and the recent SGL index for bipartite bi-components \cite{SGL} stores a vertex once per non-dominated pair of parameters, so a vertex still appears many times.
 
 \stitle{Hierarchy equivalence.}
 Our starting point is a question about the queries rather than about the storage.
@@ -34,7 +34,7 @@ Core values are stored per chain and only for the sizes where a closed form fail
 
 \stitle{Results.}
 On \numgraphs{} graphs from five families, measured on a laptop and two servers, the index is \ratiomin$\times$ to \ratiomax$\times$ smaller than one tree per size, with median \ratiomedian$\times$; the ratio grows with the number of vertices per chain, and graphs with large cliques compress the most.
-A community is located in 4 to 76 nanoseconds and its vertices are listed at 0.04 to 0.3 nanoseconds each, faster than the memory copy of the per-size trees on 13 of 15 measured points.
+A community is located in \locmin{} to \locmax{} nanoseconds and its vertices are listed at \pervmin{} to \pervmax{} nanoseconds each, faster than the memory copy of the per-size trees on \stfaster{} of \stpoints{} measured points.
 The build is one all-size peel plus one pass per size, with working memory that is dominated by the clique tree of the peel.
 Correctness is checked against brute force on \selfgraphs{} small graphs, in four storage forms.
 
