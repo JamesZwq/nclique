@@ -1032,3 +1032,11 @@ vertices the copy 2x-3x faster; above, equal within 10%. Over all 24
 (graph, machine) pairs with profiles (laptop 17 + tods2 7): listing
 0.2x-2.8x of the copy, median 1.02, faster on 41 of 72 points. Paper:
 Figure profile + the paragraph "Latency by clique size and by answer size".
+
+Laptop profiles were run twice (load average 5-7 during the first run;
+the second run was made right after and is lower on every locate figure,
+so it is the record `profile_laptop.json`; the first is
+`archive/profile_laptop_run1.json`). Between the two runs own-level locate
+moved by up to 4x (amazon-copurchase 58 -> 14 ns) and the listing ratio
+S trees / index by up to +-30% (median 0.94 vs 0.90): laptop latencies
+are indicative only; the servers are the reference.
