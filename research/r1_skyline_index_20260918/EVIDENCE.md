@@ -44,9 +44,17 @@ Paper Table layouts and RESULTS_FINAL.md Section 9.8 come from these.
 | `archive/final_v4_int.json`, `archive/more_v4_int.json` | 17 graphs, integer values with per-size widths (before double) |
 | `archive/index_aligned_v1.json` | aligned layout with the slow push_back expansion |
 
+## Additional experiments (2026-09-21, RESULTS_FINAL.md Section 17)
+
+- `compress.json` (laptop, bytes only): xz/zstd on the S trees materialized by `strees_dump` (input labels and aligned labels) and on the index file, 17 graphs; `archive/compress_aligned_only.json` is the first run (aligned labels only).
+- `stages/index_vertices_tods2.json` + `stages/index-logs_vertices_tods2/`: S trees latency baseline on the seven tods2 graphs (`run_strees.py`, launcher `tods2_strees.sh`); tods1 (20 graphs) queued behind the CND sweep (`tods1_after_prior.sh`).
+- `scale_tods2.json` + `scale_tods2-logs/`: vertex-induced samples at 20/40/60/80 percent of cit-Patents and web-BerkStan (`sample_vertices.py`, seed 20260921), full bench (`tods2_scale.sh`); the 100 percent points are the tods2.json rows.
+- `profile_tods2.json` + `profile_tods2-logs/`: query latency profiles (`query_profile`: the fixed workload by level, own-level deciles by answer size, stratified own-level queries per clique size, seed 20260921 for the strata) on the seven tods2 graphs and the eight samples (`tods2_profile.sh`).
+- `prior/tods1/`: CND sweep on the twenty tods1 graphs (in progress).
+
 ## Not measured (known gaps)
 
-- The S-tree baseline's query latency exists only for the five laptop graphs (`stages/index_vertices.json`); on the servers only its bytes are computed (from the same decomposition, by the tool's `baseline_vertex_bytes`).
+- The S-tree baseline's query latency existed only for the five laptop graphs (`stages/index_vertices.json`) until 2026-09-21; the server runs are listed above.
 - Laptop records in `final.json`/`more.json` have no `peak_rss_bytes` field; the laptop peaks are in `buildonly.json` and in the `final-logs/*.log` time output.
-- The prior-tool sweep covers the five laptop graphs only.
+- The CND sweep covers the five laptop graphs, the seven tods2 graphs and (in progress) the twenty tods1 graphs.
 - Query latencies mix machines across tables; each row names its machine. Server single-core speed is 1.5 to 3 times lower than the laptop's.
