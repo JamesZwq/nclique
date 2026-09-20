@@ -63,7 +63,8 @@ Three graphs did not build: \textsf{com-lj}, \textsf{ca-hollywood-2009} and \tex
 \expsection{Against the existing single-size tool}
 The existing $(1,s)$ vertex core decomposition of this codebase computes one size per run: a clique-tree build followed by a peel that yields the core values of that size.
 Obtaining every size with it means one run per size; Table~\ref{tab:prior} sums those runs over $s=2,\dots,s_{\max}$ on the five design-study graphs, both as whole-process wall time and as the in-process build and peel timers alone.
-Building the chain index for all sizes is 15$\times$ (amazon0302, six sizes) to 195$\times$ (ca-GrQc) faster, 146$\times$ on \dblp; the clique tree is built once instead of once per size, and the sizes share their peel through bounds and certificates.
+Counting only the tool's clique-tree build and peel against the whole chain index build (clique tree, all-size peel, trees, chains, run arrays), the chain index is built 6.6$\times$ (amazon0302, six sizes) to 154$\times$ (ca-HepPh, 238 sizes) faster, 43$\times$ on \dblp; counting the tool's whole processes, which reload and sort the graph for every size, 15$\times$ to 195$\times$.
+The clique tree is built once instead of once per size, and the sizes share their peel through bounds and certificates.
 The single-size tool stores no hierarchy, so the storage comparison stays with \strees.
 
 \begin{table*}[t]

@@ -830,9 +830,11 @@ against pipeline.
 
 "wall" is the sum over sizes of whole-process wall times (each run reloads
 the graph, sorts it and rebuilds the SDCT); "in-process" is the sum of the
-SDCT build and peel timers. The chain index build is one process for all
-sizes: 15x (amazon0302, six sizes) to 195x (GrQc) faster, 146x on
-com-dblp. The original stores no hierarchy, so the storage baseline of the
+SDCT build and peel timers, the comparable quantity (the chain index build
+time likewise excludes graph loading and covers the clique-tree row index,
+the all-size peel, trees, chains and run arrays). On the in-process basis
+the chain index is built 6.6x (amazon0302, six sizes) to 154x (HepPh)
+faster, 43x on com-dblp; on the wall basis 15x to 195x. The original stores no hierarchy, so the storage baseline of the
 report remains `STrees` (Section 9). A sweep of the optimized ST_V3
 pipeline made before the rule was set is kept under `prior/not_used_v3/`
 and is not used anywhere.
