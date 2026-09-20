@@ -988,3 +988,28 @@ clique tree (0.16 -> 1.96 GB, 0.04 -> 1.04 GB). Query latencies are flat:
 locate 21-28 ns, listing 0.09-0.21 ns per vertex at every size. The CND
 all-size sweep on the eight samples (build-time baseline of the figure)
 runs after the profiles (`tods2_scale_prior.sh`).
+
+### 17.6 Correction: the stage-2 S trees listing paid two copies (2026-09-21)
+
+`query_profile.cpp` builds the S trees in-process (same decomposition,
+per-vertex own-node pointers, parent-pointer climb, ONE memcpy of the DFS
+slice) and measures both structures on the same queries. Against it, the
+stage-2 program's `vertices` mode (`stages/index.cpp`) is 1.5x-2.5x slower
+than a single copy on the server: its `run_graph` copies the slice into
+`co` (`base_community`) and then again into `va` (`va.assign`), so every
+"S trees" listing number of Sections 9/17.4 and the design study carries a
+second copy. Consequences: the claim "faster than the memory copy on 13 of
+15 points" (laptop) and "2.5x-5.0x on the server" (17.4) are artifacts and
+are withdrawn from the paper; the honest comparison (profiles, laptop 17
+graphs): listing 0.2x-1.8x of one memcpy (median 0.95), faster on 22 of 51
+(graph, level) points (long-range graphs: youtube 1.27x, Epinions 1.46x,
+Slashdot 1.34x, dblp 1.24x, amazon-copurchase 1.26x; fragmented graphs:
+AstroPh 0.42x, cit-HepPh 0.35x, email-Eu-core 0.20x). Own-level locate: S
+trees about 0.4x of ours (two dependent loads vs map + trajectory + entry).
+Deep climbs (half level, k = 1): S trees' parent-pointer climb up to 13x
+slower (dblp-coauthor half level 1,086 ns vs 109 ns; web-Stanford k = 1
+165 vs 17 ns) because the index carries derived jump pointers. The design
+study table (stage 2) compares layouts that all pay the second copy, so its
+relative ordering stands; its absolute numbers are not the paper's latency
+numbers. The paper's queries table and latency text now come from the
+profiles (`profile_<machine>.json`), index and S trees in one process.
