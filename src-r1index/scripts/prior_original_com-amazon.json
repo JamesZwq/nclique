@@ -1,0 +1,61 @@
+{
+ "graph": "/data/wenqianz/dsets/com-amazon.edges",
+ "n": 334863,
+ "s_max": 7,
+ "binary": "/home/wenqianz/UNSW/pivoter/build/bin/degeneracy_cliques",
+ "mode": "original NCliqueVertexCoreDecomposition",
+ "started": "2026-09-20T05:50:11",
+ "sizes": [
+  {
+   "s": 2,
+   "rc": 0,
+   "build_ms": 489.376,
+   "peel_ms": 401.181,
+   "wall_s": 1.78,
+   "peak_rss_bytes": 256602112
+  },
+  {
+   "s": 3,
+   "rc": 0,
+   "build_ms": 319.054,
+   "peel_ms": 327.308,
+   "wall_s": 1.37,
+   "peak_rss_bytes": 204709888
+  },
+  {
+   "s": 4,
+   "rc": 0,
+   "build_ms": 223.998,
+   "peel_ms": 184.313,
+   "wall_s": 1.09,
+   "peak_rss_bytes": 161046528
+  },
+  {
+   "s": 5,
+   "rc": 0,
+   "build_ms": 157.668,
+   "peel_ms": 95.2934,
+   "wall_s": 0.91,
+   "peak_rss_bytes": 135553024
+  },
+  {
+   "s": 6,
+   "rc": 0,
+   "build_ms": 118.319,
+   "peel_ms": 63.0845,
+   "wall_s": 0.86,
+   "peak_rss_bytes": 123580416
+  },
+  {
+   "s": 7,
+   "rc": 0,
+   "build_ms": 105.577,
+   "peel_ms": 56.1679,
+   "wall_s": 0.85,
+   "peak_rss_bytes": 120176640
+  }
+ ],
+ "total_wall_s": 6.86,
+ "total_inproc_ms": 2541.3397999999997,
+ "sizes_ok": 6
+}
