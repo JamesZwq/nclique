@@ -952,3 +952,39 @@ laptop): the copy reads every label from DFS arrays that fall out of cache
 between queries, the runs are eight bytes per range and only written.
 Over all 12 (graph, machine) pairs with both measurements: faster on 34 of
 36 (pair, level) points.
+
+### 17.5 Scalability on vertex-induced samples (tods2, `scale_tods2.json`, 2026-09-21)
+
+`sample_vertices.py` keeps every vertex with probability p (seed
+20260921), relabels, and writes the induced subgraph; p = 0.2, 0.4, 0.6,
+0.8 of cit-Patents and web-BerkStan, the 100% points being the tods2.json
+rows. Full `run_final.py` bench per sample (Release + ASan builds and
+selftests first). Vertex sampling keeps about p^2 of the edges, so the
+samples are sparser and their largest cliques smaller than the full
+graph's; this is the usual protocol and the reader should read the
+curves as "the same graph family at growing size", not as a fixed density.
+
+| sample | n | m | s_max | chains | index MB | S trees MB | ratio | build s | peak GB | locate ns | list ns/vertex |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| cit-Patents 20% | 753,998 | 660,159 | 14 | 48,831 | 2.19 | 16.92 | 7.7 | 0.56 | 0.16 | 26 | 0.177 |
+| cit-Patents 40% | 1,508,958 | 2,636,229 | 26 | 81,002 | 3.95 | 41.12 | 10.4 | 2.12 | 0.46 | 26 | 0.127 |
+| cit-Patents 60% | 2,263,960 | 5,942,946 | 40 | 114,266 | 5.98 | 70.04 | 11.7 | 5.56 | 0.90 | 23 | 0.132 |
+| cit-Patents 80% | 3,019,516 | 10,562,496 | 54 | 156,824 | 8.55 | 102.94 | 12.0 | 11.21 | 1.54 | 23 | 0.139 |
+| cit-Patents 100% | 3,774,768 | 16,518,947 | 65 | 203,819 | 11.52 | 139.40 | 12.1 | 19.53 | 1.96 | 24 | 0.157 |
+| web-BerkStan 20% | 136,792 | 256,508 | 45 | 12,301 | 0.69 | 4.46 | 6.4 | 0.21 | 0.04 | 21 | 0.159 |
+| web-BerkStan 40% | 274,384 | 1,069,804 | 87 | 23,630 | 1.83 | 17.15 | 9.4 | 1.46 | 0.12 | 27 | 0.091 |
+| web-BerkStan 60% | 411,236 | 2,418,981 | 134 | 29,958 | 3.69 | 56.46 | 15.3 | 11.44 | 0.36 | 28 | 0.110 |
+| web-BerkStan 80% | 548,210 | 4,185,189 | 167 | 37,078 | 5.97 | 97.24 | 16.3 | 27.12 | 0.68 | 28 | 0.196 |
+| web-BerkStan 100% | 685,230 | 6,649,470 | 202 | 39,559 | 8.21 | 157.64 | 19.2 | 65.64 | 1.04 | 27 | 0.213 |
+
+Findings: index bytes grow about linearly with the vertices (cit-Patents
+2.9 B/vertex at 20% to 3.2 B/vertex at 100%; BerkStan 5.3 to 12.6
+B/vertex as its largest cliques grow from 45 to 202) while the S trees grow
+with the vertices times the sizes they take part in, so the ratio rises
+along the curve (7.7x -> 12.1x, 6.4x -> 19.2x). Build time grows faster
+than the graph (it is the all-size peel: cit-Patents 0.56 s -> 19.5 s over
+5x the vertices, BerkStan 0.21 s -> 65.6 s), and the peak memory is the
+clique tree (0.16 -> 1.96 GB, 0.04 -> 1.04 GB). Query latencies are flat:
+locate 21-28 ns, listing 0.09-0.21 ns per vertex at every size. The CND
+all-size sweep on the eight samples (build-time baseline of the figure)
+runs after the profiles (`tods2_scale_prior.sh`).
