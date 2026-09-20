@@ -927,3 +927,28 @@ Findings (measured):
   compressed representation could reach, and none of the compressed forms
   answers a query without decompressing (34 MB for the com-youtube S trees).
   A reviewer can run xz; better that the paper shows it.
+
+### 17.4 S trees latency baseline on tods2 (`stages/index_vertices_tods2.json`, 2026-09-21)
+
+The stage-2 program (`index --graph <g> vertices`: one tree and one DFS
+array per size over vertices, parent-pointer climb, listing = one memory
+copy) on the seven tods2 graphs, same fixed workload as `tods2.json`. Its
+byte count equals the tool's `baseline_vertex_bytes` on every graph (an
+independent implementation of the accounting). Listing (ns, S trees vs
+chain index, own / half / root):
+
+| graph | own | half | root | peak RSS of the stage-2 build |
+|---|---:|---:|---:|---:|
+| com-dblp | 93,820 vs 30,664 | 122,388 vs 37,635 | 140,568 vs 44,168 | 2.1 GB |
+| web-Stanford | 30,165 vs 11,246 | 40,211 vs 13,868 | 50,226 vs 16,984 | 1.2 GB |
+| com-amazon | 76,310 vs 15,340 | 118,286 vs 24,222 | 129,166 vs 27,185 | 0.3 GB |
+| web-NotreDame | 118,003 vs 34,120 | 139,488 vs 41,359 | 144,373 vs 44,998 | 7.5 GB |
+| web-Google | 204,251 vs 62,451 | 242,480 vs 74,782 | 260,088 vs 89,144 | 1.9 GB |
+| web-BerkStan | 118,019 vs 43,098 | 147,478 vs 55,111 | 163,867 vs 66,899 | 21.7 GB |
+| cit-Patents | 1,102,383 vs 313,243 | 1,474,805 vs 422,107 | 1,692,505 vs 480,595 | 11.8 GB |
+
+The chain index lists 2.5x-5.0x faster on the server (0.9x-3.2x on the
+laptop): the copy reads every label from DFS arrays that fall out of cache
+between queries, the runs are eight bytes per range and only written.
+Over all 12 (graph, machine) pairs with both measurements: faster on 34 of
+36 (pair, level) points.
