@@ -163,10 +163,11 @@ def table_compress():
     rec = load('compress.json')
     if rec is None or not rec.get('finished'): return
     lines = [r'\begin{tabular}{@{}lrrrrrrr@{}}', r'\toprule',
-             r'Graph & \strees (MB) & xz, input labels (MB) & xz, aligned labels (MB) & \chainidx (MB) & \chainidx file, xz (MB) & xz(\strees)/\chainidx & \chainidx/xz(\chainidx) \\', r'\midrule']
+             r'Graph & \strees (KB) & xz, input labels (KB) & xz, aligned labels (KB) & \chainidx (KB) & \chainidx file, xz (KB) & xz(\strees)/\chainidx & \chainidx/xz(\chainidx) \\', r'\midrule']
+    kb = lambda b: f'{b / 1024:,.0f}'
     for g, e in sorted(rec['graphs'].items(), key=lambda kv: kv[1]['dump']['n']):
         d = e['dump']; sd = e['strees_compressed_degeneracy']['xz9e']; sa = e['strees_compressed_aligned']['xz9e']; ix = e['index_bytes_total']; cx = e['index_compressed']['xz9e']
-        lines.append(f"{tex_escape(NAMES.get(g, g))} & {d['strees_bytes']/1048576:.2f} & {sd/1048576:.2f} & {sa/1048576:.2f} & {ix/1048576:.2f} & {cx/1048576:.2f} & {sd/ix:.2f} & {e['index_file_bytes']/cx:.1f} \\\\")
+        lines.append(f"{tex_escape(NAMES.get(g, g))} & {kb(d['strees_bytes'])} & {kb(sd)} & {kb(sa)} & {kb(ix)} & {kb(cx)} & {sd/ix:.2f} & {e['index_file_bytes']/cx:.1f} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'compress.tex').write_text('\n'.join(lines) + '\n')
 

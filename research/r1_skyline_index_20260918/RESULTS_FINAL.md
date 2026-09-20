@@ -838,3 +838,92 @@ faster, 43x on com-dblp; on the wall basis 15x to 195x. The original stores no h
 report remains `STrees` (Section 9). A sweep of the optimized ST_V3
 pipeline made before the rule was set is kept under `prior/not_used_v3/`
 and is not used anywhere.
+
+## 17. Additional Experiments (started 2026-09-21)
+
+The user judged the experimental section thin ("实验有点少"). Added, in
+order of what a reviewer of an index paper asks for: (a) a general-purpose
+compressor as the yardstick of the size comparison, (b) the query latency
+by level, by clique size and by community size, (c) the S trees latency
+baseline on the servers, (d) a scalability curve on vertex-induced samples,
+(e) the CND sweep on every server graph, (f) the fraction of core values
+that are stored explicitly. New programs: `strees_dump.cpp` (materializes
+the S trees from an index file), `query_profile.cpp` (latency profiles),
+`sample_vertices.py`, drivers `run_compress.py`, `run_strees.py`,
+`run_profile.py`, launchers `tods2_strees.sh`, `tods2_scale.sh`,
+`tods2_profile.sh`, `tods1_after_prior.sh`. The paper's tables and figures
+come from `Sigmod2027ChainIndex/make_tables.py` and `make_figures.py`.
+
+### 17.1 Values stored explicitly (from the existing records)
+
+`vertex_residue_cells / vertex_pairs` per graph: the share of active
+(vertex, size) pairs whose value is a stored residue rather than the closed
+form C(omega - 1, s - 1). Over the 29 graphs: 0.00% (web-uk-2005: one
+residue for 23.5 M pairs) to 87.7% (email-Eu-core), median 36%. Lowest on
+large-clique graphs (web-uk 0.00, ca-coauthors-dblp 0.38, web-it 1.39,
+dblp-core30 0.07, ca-HepPh 3.5), highest on sparse social/citation graphs
+(email-Eu-core 87.7, cit-HepPh 86.3, soc-pokec 82.1, tech-as-skitter 76.3,
+cit-Patents 70.1). Now a column of the paper's size table.
+
+### 17.2 Latency by level (from the existing records, figure `fig_regimes`)
+
+Over the 29 merged rows, own-level locate 5-35 ns (median 22), half-level
+(a climb to an interior ancestor) 8-68 ns (median 33), k = 1 (climb to the
+root) 5-31 ns (median 19): the jump pointers make the root climb as cheap as
+no climb. Listing is linear in the answer at every level, 0.05-0.5 ns per
+vertex above a fixed cost of a few ns (email-Eu-core and dblp-core30, whose
+mean answers are 76-647 vertices, are dominated by the fixed cost: 0.77 and
+0.82 ns per vertex). Corrected in the paper: value queries range 6-144 ns,
+the 144 ns being web-uk-2005 on tods1 (binomial table for cliques of 500
+vertices, 2 MB, outside the first-level cache), not "15-35 ns on the servers".
+
+### 17.3 A general-purpose compressor as the yardstick (laptop, bytes only; `compress.json`)
+
+`strees_dump` materializes the S trees of a graph from its index file with
+the byte accounting of the paper (per size: nodes with value 8, parent 4,
+first and last DFS position 4 + 4; per active (vertex, size) pair its DFS
+entry 4 and own-node pointer 4; per vertex offsets, omega, sigma, residue
+offsets and residues), once with the labels the decomposition works with
+(the degeneracy order of the input) and once with the index's aligned
+labels; `run_compress.py` compresses both and the index file with
+zstd -19, zstd -19 --long=31 and xz -9e (xz is the strongest of the three
+everywhere; the table shows xz). 17 laptop graphs.
+
+| graph | S trees | xz, input labels | xz, aligned labels | chain index (memory) | index file, xz | xz(S trees, input) / index | index file / xz(index) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| email-Eu-core | 186,738 | 25,900 | 25,120 | 145,590 | 26,076 | 0.18 | 5.2 |
+| ca-GrQc | 272,564 | 17,612 | 14,400 | 61,328 | 8,932 | 0.29 | 6.4 |
+| ca-HepTh | 422,086 | 27,024 | 19,724 | 76,147 | 10,628 | 0.35 | 6.7 |
+| ca-HepPh | 1,670,620 | 55,044 | 47,824 | 193,082 | 27,224 | 0.29 | 6.9 |
+| ca-AstroPh | 2,216,476 | 122,792 | 104,724 | 617,232 | 85,928 | 0.20 | 6.9 |
+| ca-CondMat | 1,299,206 | 65,088 | 47,880 | 177,662 | 25,556 | 0.37 | 6.5 |
+| cit-HepPh | 3,199,324 | 349,984 | 271,368 | 1,610,959 | 310,312 | 0.22 | 5.1 |
+| loc-Brightkite | 2,628,872 | 217,120 | 161,060 | 811,068 | 143,096 | 0.27 | 5.4 |
+| soc-Epinions1 | 3,221,518 | 269,996 | 217,312 | 1,117,624 | 213,976 | 0.24 | 5.0 |
+| soc-Slashdot0902 | 2,995,392 | 204,096 | 138,564 | 601,127 | 108,708 | 0.34 | 5.3 |
+| amazon0302 | 14,414,214 | 1,011,140 | 643,376 | 3,081,868 | 479,236 | 0.33 | 5.9 |
+| web-Stanford | 24,853,426 | 1,088,680 | 825,836 | 3,552,706 | 565,836 | 0.31 | 5.9 |
+| com-dblp | 15,766,256 | 640,688 | 434,416 | 1,641,813 | 213,500 | 0.39 | 7.1 |
+| amazon-copurchase | 19,697,700 | 1,319,036 | 793,580 | 3,975,343 | 566,924 | 0.33 | 6.4 |
+| com-youtube | 33,847,412 | 1,499,644 | 880,112 | 3,103,325 | 511,208 | 0.48 | 5.9 |
+| soc-pokec | 101,770,646 | 9,728,912 | 5,300,640 | 32,391,133 | 5,991,152 | 0.30 | 5.4 |
+| dblp-coauthor | 305,792,094 | 13,082,920 | 7,107,432 | 44,284,853 | 5,584,604 | 0.30 | 7.7 |
+
+Findings (measured):
+- xz shrinks the S trees 10x-23x (input labels); that is 2.1x-5.6x BELOW
+  the chain index (ratio column 0.18-0.48). The bytes of the S trees are
+  mostly repetition across sizes, which a stream compressor with a 64 MB
+  window finds; a random-access structure cannot use it.
+- Our aligned labels alone make the S trees 1.0x-1.8x more compressible
+  (aligned vs input columns): the labels carry the chain structure.
+- The chain index itself compresses a further 5.0x-7.7x with xz: it is not
+  at its entropy. The remaining redundancy is the plain 4-byte layout of the
+  per-size arrays (parent, subtree size, entry point, run bounds,
+  trajectories), which is what makes a query a handful of aligned loads.
+  Any narrower coding costs decoding in the query path (user rule: nothing
+  may get slower), so it is not done.
+- Positioning for the paper: the size comparison is between structures
+  that answer queries in place; xz is the yardstick that bounds what any
+  compressed representation could reach, and none of the compressed forms
+  answers a query without decompressing (34 MB for the com-youtube S trees).
+  A reviewer can run xz; better that the paper shows it.

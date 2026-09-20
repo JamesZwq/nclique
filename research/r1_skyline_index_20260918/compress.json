@@ -1,0 +1,555 @@
+{
+ "started": "2026-09-21T02:28:21.247919+10:00",
+ "tools": {
+  "zstd19": "zstd -19 -T1 -q -c",
+  "zstd19long": "zstd -19 --long=31 -T1 -q -c",
+  "xz9e": "xz -9e -T1 -c"
+ },
+ "graphs": {
+  "amazon-copurchase": {
+   "index_file_bytes": 3628510,
+   "index_compressed": {
+    "zstd19": 812278,
+    "zstd19long": 811421,
+    "xz9e": 566924
+   },
+   "index_bytes_total": 3975343,
+   "baseline_vertex_bytes": 19697700,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 548552,
+    "s_max": 7,
+    "strees_bytes": 19697700,
+    "node_bytes": 1735960,
+    "pair_bytes": 7461240,
+    "vertex_bytes": 7679740,
+    "residue_bytes": 2820760,
+    "index_bytes": 3975343
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 2068900,
+    "zstd19long": 2076190,
+    "xz9e": 1319036
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 1513072,
+    "zstd19long": 1487430,
+    "xz9e": 793580
+   }
+  },
+  "amazon0302": {
+   "index_file_bytes": 2821691,
+   "index_compressed": {
+    "zstd19": 663844,
+    "zstd19long": 663698,
+    "xz9e": 479236
+   },
+   "index_bytes_total": 3081868,
+   "baseline_vertex_bytes": 14414214,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 262111,
+    "s_max": 7,
+    "strees_bytes": 14414214,
+    "node_bytes": 1302680,
+    "pair_bytes": 6599928,
+    "vertex_bytes": 3669566,
+    "residue_bytes": 2842040,
+    "index_bytes": 3081868
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 1610927,
+    "zstd19long": 1607334,
+    "xz9e": 1011140
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 1215983,
+    "zstd19long": 1200910,
+    "xz9e": 643376
+   }
+  },
+  "ca-AstroPh": {
+   "index_file_bytes": 593793,
+   "index_compressed": {
+    "zstd19": 108992,
+    "zstd19long": 108981,
+    "xz9e": 85928
+   },
+   "index_bytes_total": 617232,
+   "baseline_vertex_bytes": 2216476,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 18772,
+    "s_max": 57,
+    "strees_bytes": 2216476,
+    "node_bytes": 129240,
+    "pair_bytes": 1644200,
+    "vertex_bytes": 262820,
+    "residue_bytes": 180216,
+    "index_bytes": 617232
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 160111,
+    "zstd19long": 159889,
+    "xz9e": 122792
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 145075,
+    "zstd19long": 144836,
+    "xz9e": 104724
+   }
+  },
+  "ca-CondMat": {
+   "index_file_bytes": 165372,
+   "index_compressed": {
+    "zstd19": 34174,
+    "zstd19long": 34078,
+    "xz9e": 25556
+   },
+   "index_bytes_total": 177662,
+   "baseline_vertex_bytes": 1299206,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 23133,
+    "s_max": 26,
+    "strees_bytes": 1299206,
+    "node_bytes": 67140,
+    "pair_bytes": 830144,
+    "vertex_bytes": 323874,
+    "residue_bytes": 78048,
+    "index_bytes": 177662
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 99055,
+    "zstd19long": 99021,
+    "xz9e": 65088
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 81627,
+    "zstd19long": 81584,
+    "xz9e": 47880
+   }
+  },
+  "ca-GrQc": {
+   "index_file_bytes": 57136,
+   "index_compressed": {
+    "zstd19": 11237,
+    "zstd19long": 11229,
+    "xz9e": 8932
+   },
+   "index_bytes_total": 61328,
+   "baseline_vertex_bytes": 272564,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 5242,
+    "s_max": 44,
+    "strees_bytes": 272564,
+    "node_bytes": 30340,
+    "pair_bytes": 160360,
+    "vertex_bytes": 73400,
+    "residue_bytes": 8464,
+    "index_bytes": 61328
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 24227,
+    "zstd19long": 24234,
+    "xz9e": 17612
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 20734,
+    "zstd19long": 20729,
+    "xz9e": 14400
+   }
+  },
+  "ca-HepPh": {
+   "index_file_bytes": 188801,
+   "index_compressed": {
+    "zstd19": 34475,
+    "zstd19long": 34437,
+    "xz9e": 27224
+   },
+   "index_bytes_total": 193082,
+   "baseline_vertex_bytes": 1899628,
+   "count_bits": 256,
+   "dump": {
+    "labels": "aligned",
+    "n": 12008,
+    "s_max": 239,
+    "strees_bytes": 1670620,
+    "node_bytes": 70760,
+    "pair_bytes": 1383704,
+    "vertex_bytes": 168124,
+    "residue_bytes": 48032,
+    "index_bytes": 193082
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 73938,
+    "zstd19long": 73657,
+    "xz9e": 55044
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 65230,
+    "zstd19long": 64919,
+    "xz9e": 47824
+   }
+  },
+  "ca-HepTh": {
+   "index_file_bytes": 71199,
+   "index_compressed": {
+    "zstd19": 13930,
+    "zstd19long": 13911,
+    "xz9e": 10628
+   },
+   "index_bytes_total": 76147,
+   "baseline_vertex_bytes": 422086,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 9877,
+    "s_max": 32,
+    "strees_bytes": 422086,
+    "node_bytes": 31660,
+    "pair_bytes": 217376,
+    "vertex_bytes": 138290,
+    "residue_bytes": 34760,
+    "index_bytes": 76147
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 40594,
+    "zstd19long": 40574,
+    "xz9e": 27024
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 34351,
+    "zstd19long": 34396,
+    "xz9e": 19724
+   }
+  },
+  "cit-HepPh": {
+   "index_file_bytes": 1574826,
+   "index_compressed": {
+    "zstd19": 400178,
+    "zstd19long": 404235,
+    "xz9e": 310312
+   },
+   "index_bytes_total": 1610959,
+   "baseline_vertex_bytes": 3199324,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 34546,
+    "s_max": 31,
+    "strees_bytes": 3199324,
+    "node_bytes": 187380,
+    "pair_bytes": 1357096,
+    "vertex_bytes": 483656,
+    "residue_bytes": 1171192,
+    "index_bytes": 1610959
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 448937,
+    "zstd19long": 448874,
+    "xz9e": 349984
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 378672,
+    "zstd19long": 378346,
+    "xz9e": 271368
+   }
+  },
+  "com-dblp": {
+   "index_file_bytes": 1510643,
+   "index_compressed": {
+    "zstd19": 289656,
+    "zstd19long": 294350,
+    "xz9e": 213500
+   },
+   "index_bytes_total": 1641813,
+   "baseline_vertex_bytes": 16710168,
+   "count_bits": 128,
+   "dump": {
+    "labels": "aligned",
+    "n": 317080,
+    "s_max": 114,
+    "strees_bytes": 15766256,
+    "node_bytes": 679580,
+    "pair_bytes": 9975464,
+    "vertex_bytes": 4439132,
+    "residue_bytes": 672080,
+    "index_bytes": 1641813
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 1115883,
+    "zstd19long": 1081202,
+    "xz9e": 640688
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 852429,
+    "zstd19long": 773598,
+    "xz9e": 434416
+   }
+  },
+  "com-youtube": {
+   "index_file_bytes": 3015917,
+   "index_compressed": {
+    "zstd19": 704664,
+    "zstd19long": 703122,
+    "xz9e": 511208
+   },
+   "index_bytes_total": 3103325,
+   "baseline_vertex_bytes": 33847412,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 1134890,
+    "s_max": 52,
+    "strees_bytes": 33847412,
+    "node_bytes": 448060,
+    "pair_bytes": 12589192,
+    "vertex_bytes": 15888472,
+    "residue_bytes": 4921688,
+    "index_bytes": 3103325
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 3309333,
+    "zstd19long": 2759351,
+    "xz9e": 1499644
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 2649609,
+    "zstd19long": 1999486,
+    "xz9e": 880112
+   }
+  },
+  "dblp-coauthor": {
+   "index_file_bytes": 43206515,
+   "index_compressed": {
+    "zstd19": 7401335,
+    "zstd19long": 7407000,
+    "xz9e": 5584604
+   },
+   "index_bytes_total": 44284853,
+   "baseline_vertex_bytes": 530275990,
+   "count_bits": 512,
+   "dump": {
+    "labels": "aligned",
+    "n": 4049537,
+    "s_max": 450,
+    "strees_bytes": 305792094,
+    "node_bytes": 5484300,
+    "pair_bytes": 213738856,
+    "vertex_bytes": 56693530,
+    "residue_bytes": 29875408,
+    "index_bytes": 44284853
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 39265804,
+    "zstd19long": 19852983,
+    "xz9e": 13082920
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 24048730,
+    "zstd19long": 12700312,
+    "xz9e": 7107432
+   }
+  },
+  "email-Eu-core": {
+   "index_file_bytes": 136689,
+   "index_compressed": {
+    "zstd19": 32198,
+    "zstd19long": 32194,
+    "xz9e": 26076
+   },
+   "index_bytes_total": 145590,
+   "baseline_vertex_bytes": 186738,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 1005,
+    "s_max": 35,
+    "strees_bytes": 186738,
+    "node_bytes": 52040,
+    "pair_bytes": 64256,
+    "vertex_bytes": 14082,
+    "residue_bytes": 56360,
+    "index_bytes": 145590
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 34076,
+    "zstd19long": 33953,
+    "xz9e": 25900
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 33424,
+    "zstd19long": 33421,
+    "xz9e": 25120
+   }
+  },
+  "loc-Brightkite": {
+   "index_file_bytes": 767125,
+   "index_compressed": {
+    "zstd19": 183525,
+    "zstd19long": 183294,
+    "xz9e": 143096
+   },
+   "index_bytes_total": 811068,
+   "baseline_vertex_bytes": 2628872,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 58228,
+    "s_max": 53,
+    "strees_bytes": 2628872,
+    "node_bytes": 230940,
+    "pair_bytes": 1011224,
+    "vertex_bytes": 815204,
+    "residue_bytes": 571504,
+    "index_bytes": 811068
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 316527,
+    "zstd19long": 316134,
+    "xz9e": 217120
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 261539,
+    "zstd19long": 261529,
+    "xz9e": 161060
+   }
+  },
+  "soc-Epinions1": {
+   "index_file_bytes": 1068940,
+   "index_compressed": {
+    "zstd19": 277320,
+    "zstd19long": 277083,
+    "xz9e": 213976
+   },
+   "index_bytes_total": 1117624,
+   "baseline_vertex_bytes": 3221518,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 75879,
+    "s_max": 68,
+    "strees_bytes": 3221518,
+    "node_bytes": 257720,
+    "pair_bytes": 1228752,
+    "vertex_bytes": 1062318,
+    "residue_bytes": 672728,
+    "index_bytes": 1117624
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 394496,
+    "zstd19long": 393501,
+    "xz9e": 269996
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 347057,
+    "zstd19long": 345498,
+    "xz9e": 217312
+   }
+  },
+  "soc-Slashdot0902": {
+   "index_file_bytes": 578259,
+   "index_compressed": {
+    "zstd19": 144760,
+    "zstd19long": 144575,
+    "xz9e": 108708
+   },
+   "index_bytes_total": 601127,
+   "baseline_vertex_bytes": 2995392,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 82168,
+    "s_max": 56,
+    "strees_bytes": 2995392,
+    "node_bytes": 126180,
+    "pair_bytes": 1057680,
+    "vertex_bytes": 1150364,
+    "residue_bytes": 661168,
+    "index_bytes": 601127
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 326302,
+    "zstd19long": 326234,
+    "xz9e": 204096
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 264865,
+    "zstd19long": 265026,
+    "xz9e": 138564
+   }
+  },
+  "soc-pokec": {
+   "index_file_bytes": 32122997,
+   "index_compressed": {
+    "zstd19": 8024671,
+    "zstd19long": 7988601,
+    "xz9e": 5991152
+   },
+   "index_bytes_total": 32391133,
+   "baseline_vertex_bytes": 101770646,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 1632803,
+    "s_max": 48,
+    "strees_bytes": 101770646,
+    "node_bytes": 1350880,
+    "pair_bytes": 42602920,
+    "vertex_bytes": 22859254,
+    "residue_bytes": 34957592,
+    "index_bytes": 32391133
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 16535901,
+    "zstd19long": 12979339,
+    "xz9e": 9728912
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 9784339,
+    "zstd19long": 8363758,
+    "xz9e": 5300640
+   }
+  },
+  "web-Stanford": {
+   "index_file_bytes": 3342774,
+   "index_compressed": {
+    "zstd19": 702876,
+    "zstd19long": 697616,
+    "xz9e": 565836
+   },
+   "index_bytes_total": 3552706,
+   "baseline_vertex_bytes": 24853426,
+   "count_bits": 64,
+   "dump": {
+    "labels": "aligned",
+    "n": 281903,
+    "s_max": 72,
+    "strees_bytes": 24853426,
+    "node_bytes": 1064780,
+    "pair_bytes": 12863912,
+    "vertex_bytes": 3946654,
+    "residue_bytes": 6978080,
+    "index_bytes": 3552706
+   },
+   "strees_compressed_degeneracy": {
+    "zstd19": 1677287,
+    "zstd19long": 1645042,
+    "xz9e": 1088680
+   },
+   "strees_compressed_aligned": {
+    "zstd19": 1356994,
+    "zstd19long": 1292578,
+    "xz9e": 825836
+   }
+  }
+ },
+ "finished": "2026-09-21T02:46:59.106962+10:00"
+}
