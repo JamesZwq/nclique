@@ -1040,3 +1040,16 @@ so it is the record `profile_laptop.json`; the first is
 moved by up to 4x (amazon-copurchase 58 -> 14 ns) and the listing ratio
 S trees / index by up to +-30% (median 0.94 vs 0.90): laptop latencies
 are indicative only; the servers are the reference.
+
+### 17.8 CND sweep on tods1, interim (15 of 20 graphs, 2026-09-21; `prior/tods1/`)
+
+Records copied from tods1 (interim commit 4a5a2e1). Three of them
+(com-dblp, web-Stanford, web-Google) were reconstructed from
+`tods1_prior.log` because the JSON files written on tods1 were overwritten
+by the tods2 records of the same names at a git pull (per-size build, peel
+and wall times are in the log; peak RSS is not, shown as "--"). Largest so
+far: web-uk-2005, 499 sizes, CND 16.8 h wall / 15.7 h build+peel against a
+69.5 s chain index build (814x). Over all 27 (graph, machine) pairs with
+both records: 2.8x (com-amazon, 6 sizes) to 814x, median 16x. Still
+running on tods1: web-it-2004 (432 sizes), ca-coauthors-dblp (337),
+soc-pokec, tech-as-skitter, wiki-Talk.
