@@ -8,5 +8,4 @@ The construction is one all-size peel and one pass per size; its memory is the p
 The index is static: an edge insertion can change core values at every size, and we have no maintenance beyond a rebuild.
 Its construction inherits the memory of the all-size peel, whose clique tree keeps every leaf; the three graphs whose trees exceed 350~GB have no index yet, and a peel that streams the tree is the way to them.
 Values are stored as doubles, exact below $2^{53}$, which covers every value on our graphs but not the counts of cliques in the hundreds of vertices that the peel handles internally with wide integers.
-The index is not at its entropy: a general-purpose compressor shrinks it by a further five to eight times, and shrinks \strees below it, at the price of decoding in the query path; the constant-time queries are what the plain layout buys.
 Finally, the partition is stated for vertices ($r=1$); hierarchy equivalence of edges and larger $r$-cliques is defined the same way, and an index over it is not built here.

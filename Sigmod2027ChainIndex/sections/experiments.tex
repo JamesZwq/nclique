@@ -38,19 +38,6 @@ The skyline deduplication of SGL \cite{SGL}, which we also implemented over chai
 \input{tables/layouts}
 \end{table*}
 
-\expsection{A compressor as the yardstick}
-Table~\ref{tab:compress} applies \texttt{xz -9e}, the strongest general-purpose compressor available to us, to \strees and to the index file on the laptop graphs.
-\strees is written with the labels the decomposition works with (the degeneracy order of the input) and, separately, with the index's aligned labels.
-Under the input labels \texttt{xz} shrinks \strees by 10$\times$ to 23$\times$, to 0.18 to 0.48 of the index: most bytes of \strees are repetition across sizes, which a stream compressor with a 64~MB window finds and no random-access structure can use; under the aligned labels \strees compresses 1.0$\times$ to 1.8$\times$ further, the labels alone carrying the chain structure.
-The index file itself compresses by a further 5.0$\times$ to 7.7$\times$: its per-size arrays (parents, subtree sizes, entry points, run bounds, trajectories) are plain 4-byte words, which is what makes a query a handful of aligned loads, and every narrower coding would put decoding into the query path.
-The size comparison of Table~\ref{tab:size} is therefore between structures that answer queries in place; the compressor is the yardstick for what any representation could reach, and none of the compressed forms answers a query without decompressing (34~MB for the \strees of com-youtube).
-
-\begin{table*}[t]
-\centering\footnotesize
-\caption{\texttt{xz -9e} applied to \strees (with the input labels and with the aligned labels) and to the index file; KB. The last two columns are the compressed \strees over the index and the index file over its own compressed form.}\label{tab:compress}
-\input{tables/compress}
-\end{table*}
-
 \expsection{Query latency}
 Table~\ref{tab:queries} reports, at the own level, the time to locate a community (climb and two entry reads), the number of ranges of the answer, the time to copy the range list, and the time to expand it into vertex labels, together with the listing time of \strees where it was measured and the value query.
 Locating takes \locmin{} to \locmax{}~ns on every graph (median \locmedian{}~ns); a community of 1.9 million vertices on the 4-million-vertex coauthorship graph is located in 11~ns and listed in 167~$\mu$s.

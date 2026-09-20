@@ -167,23 +167,10 @@ def table_prior():
     (OUT / 'prior.tex').write_text('\n'.join(lines) + '\n')
     (OUT / 'prior_stats.tex').write_text(f"\\newcommand{{\\priorgraphs}}{{{len(ratios)}}}\n\\newcommand{{\\priormin}}{{{min(ratios):.1f}}}\n\\newcommand{{\\priormedian}}{{{statistics.median(ratios):.0f}}}\n\\newcommand{{\\priormax}}{{{max(ratios):.0f}}}\n")
 
-def table_compress():
-    """General-purpose compression as a yardstick: xz -9e on the S trees (degeneracy labels and aligned labels) and on the index file."""
-    rec = load('compress.json')
-    if rec is None or not rec.get('finished'): return
-    lines = [r'\begin{tabular}{@{}lrrrrrrr@{}}', r'\toprule',
-             r'Graph & \strees (KB) & xz, input labels (KB) & xz, aligned labels (KB) & \chainidx (KB) & \chainidx file, xz (KB) & xz(\strees)/\chainidx & \chainidx/xz(\chainidx) \\', r'\midrule']
-    kb = lambda b: f'{b / 1024:,.0f}'
-    for g, e in sorted(rec['graphs'].items(), key=lambda kv: kv[1]['dump']['n']):
-        d = e['dump']; sd = e['strees_compressed_degeneracy']['xz9e']; sa = e['strees_compressed_aligned']['xz9e']; ix = e['index_bytes_total']; cx = e['index_compressed']['xz9e']
-        lines.append(f"{tex_escape(NAMES.get(g, g))} & {kb(d['strees_bytes'])} & {kb(sd)} & {kb(sa)} & {kb(ix)} & {kb(cx)} & {sd/ix:.2f} & {e['index_file_bytes']/cx:.1f} \\\\")
-    lines += [r'\bottomrule', r'\end{tabular}']
-    (OUT / 'compress.tex').write_text('\n'.join(lines) + '\n')
-
 def table_selftest():
     rec = load('final.json'); s = rec['selftests']['build']
     (OUT / 'selftest.tex').write_text(f"\\newcommand{{\\selfgraphs}}{{{fmt(s['graphs'])}}}\n\\newcommand{{\\selfcommunities}}{{{fmt(s['community_queries'])}}}\n\\newcommand{{\\selfvalues}}{{{fmt(s['value_checks'])}}}\n\\newcommand{{\\selfmembers}}{{{fmt(s['membership_checks'])}}}\n")
 
 if __name__ == '__main__':
-    table_size(); table_queries(); table_build(); table_layouts(); table_prior(); table_compress(); table_selftest()
+    table_size(); table_queries(); table_build(); table_layouts(); table_prior(); table_selftest()
     print('tables written to', OUT)

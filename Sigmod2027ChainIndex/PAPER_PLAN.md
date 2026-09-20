@@ -41,7 +41,7 @@ points and certified tails turn the partition into contiguous memory.
 | 5 The chain index | sections/index.tex | drafted (labels, order, runs, values, size accounting, example) |
 | 6 Construction | sections/construction.tex | drafted |
 | 7 Queries | sections/queries.tex | drafted |
-| 8 Experiments | sections/experiments.tex | widened 2026-09-21 (user: "实验有点少"): size (+values stored), bytes, design study, xz yardstick (Table compress), latency (+S trees column, Fig regimes), build, CND on every machine (Table prior, 12 pairs so far), correctness; pending data: Fig profile (by s / by answer size, tods2), Fig scale (20-100 percent samples, tods2), S trees latency on tods2 (7) and tods1 (20), CND on tods1 (20) |
+| 8 Experiments | sections/experiments.tex | widened 2026-09-21 (user: "实验有点少"): size (+values stored), bytes, design study, latency (+S trees column, Fig regimes), build, CND on every machine (Table prior, 12 pairs so far), correctness; pending data: Fig profile (by s / by answer size, tods2), Fig scale (20-100 percent samples, tods2), S trees latency on tods2 (7) and tods1 (20), CND on tods1 (20) |
 | 9 Related work | sections/related.tex | stub; needs the k-core community-search index literature and the parallel nucleus papers (keys exist in references.bib) |
 | 10 Conclusion | sections/conclusion.tex | drafted |
 
@@ -53,7 +53,7 @@ points and certified tails turn the partition into contiguous memory.
 - Figure 1 example graph: TikZ, done.
 - Figure regimes (figures/fig_regimes.pdf, make_figures.py): listing vs answer size and locate by level, done.
 - Figure profile (fig_profile.pdf) and Figure scale (fig_scale.pdf): code in make_figures.py, waiting for profile_tods2.json and scale_tods2.json.
-- Table compress (tables/compress.tex): xz yardstick, 17 laptop graphs, done; whether it stays is the user's call (recommended: keep).
+- No general-purpose-compressor (xz) comparison in the paper: user decision 2026-09-21 (the measurement stays in the research record, RESULTS_FINAL.md 17.3).
 - Candidate Figure 2: ratio against vertices per chain (scatter, log x), from the same JSON; the artifact page already has it.
 - Candidate Figure 3: bytes breakdown per graph (map / chain records / trees).
 
