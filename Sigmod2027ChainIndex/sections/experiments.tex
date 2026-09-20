@@ -42,7 +42,8 @@ The skyline deduplication of SGL \cite{SGL}, which we also implemented over chai
 Table~\ref{tab:queries} reports, at the own level, the time to locate a community (climb and two entry reads), the number of ranges of the answer, the time to copy the range list, and the time to expand it into vertex labels, together with the listing time of \strees where it was measured and the value query.
 Locating takes \locmin{} to \locmax{}~ns on every graph (median \locmedian{}~ns); a community of 1.9 million vertices on the 4-million-vertex coauthorship graph is located in 11~ns and listed in 167~$\mu$s.
 Listing costs \pervmin{} to \pervmax{}~ns per vertex on the graphs whose mean answer has at least a thousand vertices; the per-vertex cost is lowest where runs are long and highest on the most fragmented graphs (\emailcore, 2.3 vertices per range), and on the two graphs with answers below a hundred vertices the fixed cost of a query dominates.
-Against the memory copy of \strees, measured on \stgraphs{} graphs at the three levels, expansion is faster on \stfaster{} of the \stpoints{} (graph, level) points, by \stmin$\times$ to \stmax$\times$: a run costs eight bytes to read however many labels it expands to.
+Against the memory copy of \strees, measured on \stpairs{} (graph, machine) pairs at the three levels, expansion is faster on \stfaster{} of the \stpoints{} points, by \stmin$\times$ to \stmax$\times$: a run costs eight bytes to read however many labels it expands to, and the copy reads every label from arrays that no longer sit in cache.
+The gap is 0.9$\times$ to 3.2$\times$ on the laptop and 2.5$\times$ to 5.0$\times$ on the server, whose per-core memory bandwidth is lower.
 Value queries take \valmin{} to \valmax{}~ns (median \valmedian{}~ns); the slowest is \webuk, whose binomial table for cliques of 500 vertices no longer fits the first-level cache.
 
 Figure~\ref{fig:regimes} shows the three levels of the workload.

@@ -101,13 +101,15 @@ def table_queries():
               'storedmax': f"{max(100 * r['result']['vertex_residue_cells'] / r['result']['vertex_pairs'] for w, g, r in all_rows):.1f}",
               'storedmedian': f"{statistics.median(100 * r['result']['vertex_residue_cells'] / r['result']['vertex_pairs'] for w, g, r in all_rows):.0f}"}
     # S trees listing against ours on every (graph, level) point measured on the same machine
-    faster = total = 0; ratios = []
-    for where, g, r in rows:
-        s = st.get((where, g))
-        if not s: continue
-        for reg in ('own', 'half', 'root'):
-            ratio = s[f'{reg}_base_ns'] / r['result'][f'explicit_{reg}_ns']; ratios.append(ratio); total += 1; faster += ratio > 1
-    macros.update({'stpoints': str(total), 'stfaster': str(faster), 'stgraphs': str(len({(w, g) for w, g, r in rows if (w, g) in st})),
+    faster = total = pairs = 0; ratios = []
+    for key, by in rows_by_graph().items():
+        for where, (g, r) in by.items():
+            s = st.get((where, g))
+            if not s: continue
+            pairs += 1
+            for reg in ('own', 'half', 'root'):
+                ratio = s[f'{reg}_base_ns'] / r['result'][f'explicit_{reg}_ns']; ratios.append(ratio); total += 1; faster += ratio > 1
+    macros.update({'stpoints': str(total), 'stfaster': str(faster), 'stpairs': str(pairs), 'stgraphs': str(len({g for (w, g) in st})),
                    'stmin': f"{min(ratios):.1f}" if ratios else '?', 'stmax': f"{max(ratios):.1f}" if ratios else '?'})
     (OUT / 'query_stats.tex').write_text(''.join(f"\\newcommand{{\\{k}}}{{{v}}}\n" for k, v in macros.items()))
 
