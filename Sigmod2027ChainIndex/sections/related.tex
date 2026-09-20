@@ -4,7 +4,8 @@
 Sariy{\"u}ce et al.\ introduced $(r,s)$-nucleus decompositions and their hierarchies \cite{firstNucleus}; later work sped up their computation with local, parallel and counting-based algorithms \cite{Pivoter}.
 % TODO: cite the parallel nucleus papers and CND already in references.bib; check keys.
 The clique-tree line \cite{Pivoter} counts $s$-cliques for all $s$ from a pivoting tree without enumerating them; the all-size peel we build on uses that tree.
-These works compute the decomposition; the present paper stores every size's hierarchy for querying.
+The counting-based decomposition \cnd \cite{Zhang2026NucleusCounting} peels one size from a clique path index that it rewrites as vertices leave; a later single-size peel keeps the index fixed and updates only the counts, and rebuilds that size's hierarchy afterwards.
+Both compute one size per run; the present paper stores every size's hierarchy for querying, from one all-size peel.
 
 \stitle{Community-search indexes.}
 Indexes for core-based community search store the hierarchy of one parameter and answer containment queries from it; the recent SGL index for bipartite bi-components \cite{SGL} stores units that are neither nested nor overlapping so that each vertex is retrieved once, while a vertex still appears in one unit per non-dominated parameter pair.

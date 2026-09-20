@@ -60,16 +60,17 @@ Three graphs did not build: \textsf{com-lj}, \textsf{ca-hollywood-2009} and \tex
 \input{tables/build}
 \end{table*}
 
-\expsection{Against the existing single-size tool}
-The existing $(1,s)$ vertex core decomposition of this codebase computes one size per run: a clique-tree build followed by a peel that yields the core values of that size.
+\expsection{Against the single-size decomposition}
+The published counting-based nucleus decomposition \cnd \cite{Zhang2026NucleusCounting} computes the $(1,s)$ core values of one size per run: it builds a clique path index and peels while rewriting the index.
 Obtaining every size with it means one run per size; Table~\ref{tab:prior} sums those runs over $s=2,\dots,s_{\max}$ on the five design-study graphs, both as whole-process wall time and as the in-process build and peel timers alone.
+(A faster single-size peel that keeps the index fixed exists; it lowers the constant of each run and leaves the number of runs, one per size, unchanged.)
 Counting only the tool's clique-tree build and peel against the whole chain index build (clique tree, all-size peel, trees, chains, run arrays), the chain index is built 6.6$\times$ (amazon0302, six sizes) to 154$\times$ (ca-HepPh, 238 sizes) faster, 43$\times$ on \dblp; counting the tool's whole processes, which reload and sort the graph for every size, 15$\times$ to 195$\times$.
 The clique tree is built once instead of once per size, and the sizes share their peel through bounds and certificates.
-The single-size tool stores no hierarchy, so the storage comparison stays with \strees.
+\cnd stores no hierarchy, so the storage comparison stays with \strees.
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{The existing single-size implementation run once per size against the all-size chain index build; one thread, laptop.}\label{tab:prior}
+\caption{\cnd run once per size against the all-size chain index build; one thread, laptop.}\label{tab:prior}
 \input{tables/prior}
 \end{table*}
 
