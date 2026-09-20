@@ -1,0 +1,213 @@
+{
+ "graph": "research/r1_skyline_index_20260918/scale/cit-Patents_p40.edges",
+ "n": 1508958,
+ "s_max": 26,
+ "binary": "/home/wenqianz/UNSW/pivoter/build/bin/degeneracy_cliques",
+ "mode": "original NCliqueVertexCoreDecomposition",
+ "started": "2026-09-20T21:17:44",
+ "sizes": [
+  {
+   "s": 2,
+   "rc": 0,
+   "build_ms": 1681.93,
+   "peel_ms": 1640.59,
+   "wall_s": 6.08,
+   "peak_rss_bytes": 1011675136
+  },
+  {
+   "s": 3,
+   "rc": 0,
+   "build_ms": 659.194,
+   "peel_ms": 629.022,
+   "wall_s": 3.31,
+   "peak_rss_bytes": 598069248
+  },
+  {
+   "s": 4,
+   "rc": 0,
+   "build_ms": 464.18,
+   "peel_ms": 313.536,
+   "wall_s": 3.08,
+   "peak_rss_bytes": 512315392
+  },
+  {
+   "s": 5,
+   "rc": 0,
+   "build_ms": 419.754,
+   "peel_ms": 266.649,
+   "wall_s": 2.64,
+   "peak_rss_bytes": 498384896
+  },
+  {
+   "s": 6,
+   "rc": 0,
+   "build_ms": 397.773,
+   "peel_ms": 256.161,
+   "wall_s": 2.61,
+   "peak_rss_bytes": 495149056
+  },
+  {
+   "s": 7,
+   "rc": 0,
+   "build_ms": 392.916,
+   "peel_ms": 255.716,
+   "wall_s": 2.6,
+   "peak_rss_bytes": 494366720
+  },
+  {
+   "s": 8,
+   "rc": 0,
+   "build_ms": 383.442,
+   "peel_ms": 253.223,
+   "wall_s": 2.94,
+   "peak_rss_bytes": 493916160
+  },
+  {
+   "s": 9,
+   "rc": 0,
+   "build_ms": 382.522,
+   "peel_ms": 248.813,
+   "wall_s": 2.62,
+   "peak_rss_bytes": 493924352
+  },
+  {
+   "s": 10,
+   "rc": 0,
+   "build_ms": 380.563,
+   "peel_ms": 249.536,
+   "wall_s": 2.58,
+   "peak_rss_bytes": 493867008
+  },
+  {
+   "s": 11,
+   "rc": 0,
+   "build_ms": 382.095,
+   "peel_ms": 251.953,
+   "wall_s": 2.58,
+   "peak_rss_bytes": 493813760
+  },
+  {
+   "s": 12,
+   "rc": 0,
+   "build_ms": 377.896,
+   "peel_ms": 250.263,
+   "wall_s": 2.57,
+   "peak_rss_bytes": 493785088
+  },
+  {
+   "s": 13,
+   "rc": 0,
+   "build_ms": 394.267,
+   "peel_ms": 250.583,
+   "wall_s": 2.6,
+   "peak_rss_bytes": 493899776
+  },
+  {
+   "s": 14,
+   "rc": 0,
+   "build_ms": 376.942,
+   "peel_ms": 253.346,
+   "wall_s": 2.58,
+   "peak_rss_bytes": 493842432
+  },
+  {
+   "s": 15,
+   "rc": 0,
+   "build_ms": 373.519,
+   "peel_ms": 247.985,
+   "wall_s": 2.85,
+   "peak_rss_bytes": 493797376
+  },
+  {
+   "s": 16,
+   "rc": 0,
+   "build_ms": 377.551,
+   "peel_ms": 248.777,
+   "wall_s": 2.6,
+   "peak_rss_bytes": 493682688
+  },
+  {
+   "s": 17,
+   "rc": 0,
+   "build_ms": 385.629,
+   "peel_ms": 249.094,
+   "wall_s": 2.6,
+   "peak_rss_bytes": 493899776
+  },
+  {
+   "s": 18,
+   "rc": 0,
+   "build_ms": 376.683,
+   "peel_ms": 247.517,
+   "wall_s": 2.56,
+   "peak_rss_bytes": 493883392
+  },
+  {
+   "s": 19,
+   "rc": 0,
+   "build_ms": 380.677,
+   "peel_ms": 248.121,
+   "wall_s": 2.55,
+   "peak_rss_bytes": 493928448
+  },
+  {
+   "s": 20,
+   "rc": 0,
+   "build_ms": 376.753,
+   "peel_ms": 249.456,
+   "wall_s": 2.91,
+   "peak_rss_bytes": 493801472
+  },
+  {
+   "s": 21,
+   "rc": 0,
+   "build_ms": 378.692,
+   "peel_ms": 247.58,
+   "wall_s": 2.89,
+   "peak_rss_bytes": 493797376
+  },
+  {
+   "s": 22,
+   "rc": 0,
+   "build_ms": 376.402,
+   "peel_ms": 246.966,
+   "wall_s": 2.86,
+   "peak_rss_bytes": 493756416
+  },
+  {
+   "s": 23,
+   "rc": 0,
+   "build_ms": 384.499,
+   "peel_ms": 249.267,
+   "wall_s": 2.98,
+   "peak_rss_bytes": 493785088
+  },
+  {
+   "s": 24,
+   "rc": 0,
+   "build_ms": 382.526,
+   "peel_ms": 249.73,
+   "wall_s": 2.57,
+   "peak_rss_bytes": 493805568
+  },
+  {
+   "s": 25,
+   "rc": 0,
+   "build_ms": 374.751,
+   "peel_ms": 248.628,
+   "wall_s": 2.88,
+   "peak_rss_bytes": 493772800
+  },
+  {
+   "s": 26,
+   "rc": 0,
+   "build_ms": 380.453,
+   "peel_ms": 248.553,
+   "wall_s": 2.58,
+   "peak_rss_bytes": 493867008
+  }
+ ],
+ "total_wall_s": 71.62,
+ "total_inproc_ms": 19342.674000000006,
+ "sizes_ok": 25
+}

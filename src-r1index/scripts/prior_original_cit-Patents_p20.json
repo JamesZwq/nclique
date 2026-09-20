@@ -1,0 +1,117 @@
+{
+ "graph": "research/r1_skyline_index_20260918/scale/cit-Patents_p20.edges",
+ "n": 753998,
+ "s_max": 14,
+ "binary": "/home/wenqianz/UNSW/pivoter/build/bin/degeneracy_cliques",
+ "mode": "original NCliqueVertexCoreDecomposition",
+ "started": "2026-09-20T21:17:32",
+ "sizes": [
+  {
+   "s": 2,
+   "rc": 0,
+   "build_ms": 374.629,
+   "peel_ms": 507.435,
+   "wall_s": 1.63,
+   "peak_rss_bytes": 384663552
+  },
+  {
+   "s": 3,
+   "rc": 0,
+   "build_ms": 122.442,
+   "peel_ms": 171.872,
+   "wall_s": 0.85,
+   "peak_rss_bytes": 263409664
+  },
+  {
+   "s": 4,
+   "rc": 0,
+   "build_ms": 93.6838,
+   "peel_ms": 130.492,
+   "wall_s": 0.74,
+   "peak_rss_bytes": 248381440
+  },
+  {
+   "s": 5,
+   "rc": 0,
+   "build_ms": 89.7618,
+   "peel_ms": 126.576,
+   "wall_s": 0.73,
+   "peak_rss_bytes": 246677504
+  },
+  {
+   "s": 6,
+   "rc": 0,
+   "build_ms": 105.598,
+   "peel_ms": 151.811,
+   "wall_s": 0.9,
+   "peak_rss_bytes": 246673408
+  },
+  {
+   "s": 7,
+   "rc": 0,
+   "build_ms": 91.3625,
+   "peel_ms": 124.07,
+   "wall_s": 0.77,
+   "peak_rss_bytes": 246558720
+  },
+  {
+   "s": 8,
+   "rc": 0,
+   "build_ms": 104.529,
+   "peel_ms": 149.561,
+   "wall_s": 0.96,
+   "peak_rss_bytes": 246325248
+  },
+  {
+   "s": 9,
+   "rc": 0,
+   "build_ms": 87.7517,
+   "peel_ms": 125.047,
+   "wall_s": 0.75,
+   "peak_rss_bytes": 246456320
+  },
+  {
+   "s": 10,
+   "rc": 0,
+   "build_ms": 105.876,
+   "peel_ms": 149.534,
+   "wall_s": 0.9,
+   "peak_rss_bytes": 246497280
+  },
+  {
+   "s": 11,
+   "rc": 0,
+   "build_ms": 107.544,
+   "peel_ms": 148.033,
+   "wall_s": 0.88,
+   "peak_rss_bytes": 245981184
+  },
+  {
+   "s": 12,
+   "rc": 0,
+   "build_ms": 87.6903,
+   "peel_ms": 124.036,
+   "wall_s": 0.75,
+   "peak_rss_bytes": 246558720
+  },
+  {
+   "s": 13,
+   "rc": 0,
+   "build_ms": 87.7911,
+   "peel_ms": 123.911,
+   "wall_s": 0.72,
+   "peak_rss_bytes": 246210560
+  },
+  {
+   "s": 14,
+   "rc": 0,
+   "build_ms": 86.3672,
+   "peel_ms": 124.081,
+   "wall_s": 0.74,
+   "peak_rss_bytes": 246108160
+  }
+ ],
+ "total_wall_s": 11.32,
+ "total_inproc_ms": 3701.4853999999996,
+ "sizes_ok": 13
+}
