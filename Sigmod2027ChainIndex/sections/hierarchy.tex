@@ -16,19 +16,24 @@ For $1\le k\le\core{s}{v}$ the community of $v$ at $(s,k)$ is the unique ancesto
 $\core{s}{v}\ge1$ if and only if $2\le s\le\omg{v}$.
 \end{fact}
 
-\begin{theorem}[certified tail]\label{thm:tail}
-For $2\le s\le\omg{v}$, $\core{s}{v}\ge f_s(v):=\binomc{\omg{v}-1}{s-1}$.
-If $\core{t}{v}=f_t(v)$ for some $t\le\omg{v}$, then $\core{s}{v}=f_s(v)$ for every $s\in[t,\omg{v}]$.
+\begin{theorem}[floor and certified tail]\label{thm:tail}
+Let $2\le s\le\omg{v}$ and $f_s(v)=\binomc{\omg{v}-1}{s-1}$.
+\begin{enumerate}[label=(\alph*),leftmargin=*,nosep]
+\item $\core{s}{v}\ge f_s(v)$.
+\item If $\core{s}{v}=f_s(v)$ and $s<\omg{v}$, then $\core{s+1}{v}=f_{s+1}(v)$.
+\end{enumerate}
+Hence once the value of $v$ meets its floor it stays on the floor at every larger size.
 \end{theorem}
 \begin{proof}
-A largest clique $M$ containing $v$ has $\omg{v}$ vertices, every vertex of $M$ lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of $M$, and $M$ is connected through them; so $M$ lies in an $\Nuc{s}{f_s(v)}$ and $\core{s}{v}\ge f_s(v)$.
+(a) A largest clique $M$ containing $v$ has $\omg{v}$ vertices; every vertex of $M$ lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of $M$, and $M$ is connected through them, so $M$ lies in an $\Nuc{s}{f_s(v)}$.
 
-For the second claim we use the Kruskal--Katona shadow \cite{kruskal1963,katona1968}.
-Write $k$ in its $s$-cascade $k=\binomc{a_s}{s}+\binomc{a_{s-1}}{s-1}+\dots$ with $a_s>a_{s-1}>\dots$, and let $\sigma_s(k)=\binomc{a_s}{s-1}+\binomc{a_{s-1}}{s-2}+\dots$ be the least number of $(s-1)$-subsets that $k$ distinct $s$-subsets can have.
-First, $\core{s}{v}\ge\sigma_s(\core{s+1}{v})$: let $N$ be the $\Nuc{s+1}{\core{s+1}{v}}$ containing $v$ and fix $u\in N$; removing $u$ from the at least $\core{s+1}{v}$ $(s+1)$-cliques of $N$ through $u$ gives as many distinct $s$-sets in the neighbourhood of $u$, whose shadow has at least $\sigma_s(\core{s+1}{v})$ $(s-1)$-sets, and each of them with $u$ is an $s$-clique of $N$ through $u$; so every vertex of $N$ has at least $\sigma_s(\core{s+1}{v})$ $s$-cliques in $N$, and $N$ is connected through them.
-Second, strictness: for $a\ge s\ge2$ and $k>\binomc{a}{s}$, $\sigma_s(k)>\binomc{a}{s-1}$, because the leading cascade term of $k$ is $\binomc{a_s}{s}$ with $a_s\ge a$; if $a_s>a$ then $\sigma_s(k)\ge\binomc{a_s}{s-1}>\binomc{a}{s-1}$, and if $a_s=a$ then $k>\binomc{a}{s}$ forces further terms, each adding at least one to the shadow.
-Now suppose $\core{s+1}{v}>f_{s+1}(v)=\binomc{\omg{v}-1}{s}$ for some $s+1\in[t+1,\omg{v}]$; then $\core{s}{v}\ge\sigma_s(\core{s+1}{v})>\binomc{\omg{v}-1}{s-1}=f_s(v)$.
-Descending from any strict size above $t$ reaches a strict value at $t$, contradicting $\core{t}{v}=f_t(v)$.
+(b) We use the Kruskal--Katona theorem in Lov\'asz's form \cite{kruskal1963,katona1968,lovasz1979}: $k\ge1$ distinct $s$-subsets of a ground set have at least $g_s(k)=\binomc{x}{s-1}$ distinct $(s-1)$-subsets, where $x\ge s$ is the real number with $\binomc{x}{s}=k$; both $x\mapsto\binomc{x}{s}$ and $x\mapsto\binomc{x}{s-1}$ increase strictly for $x\ge s-1$.
+Let $N$ be the $\Nuc{s+1}{\core{s+1}{v}}$ containing $v$ and take any $u\in N$.
+Removing $u$ from the at least $\core{s+1}{v}$ $(s+1)$-cliques of $N$ through $u$ leaves as many distinct $s$-subsets of the neighbours of $u$ in $N$; their $(s-1)$-shadow has at least $g_s(\core{s+1}{v})$ members, and each member together with $u$ is an $s$-clique of $N$ through $u$.
+So every vertex of $N$ lies in at least $g_s(\core{s+1}{v})$ $s$-cliques of $N$, and $N$ is connected through them (two $(s+1)$-cliques that share a vertex contain $s$-cliques that share it); therefore $\core{s}{v}\ge g_s(\core{s+1}{v})$.
+Now suppose $\core{s+1}{v}>f_{s+1}(v)=\binomc{\omg{v}-1}{s}$.
+Then the $x$ with $\binomc{x}{s}=\core{s+1}{v}$ exceeds $\omg{v}-1\ge s$, so $\core{s}{v}\ge g_s(\core{s+1}{v})=\binomc{x}{s-1}>\binomc{\omg{v}-1}{s-1}=f_s(v)$, contradicting $\core{s}{v}=f_s(v)$.
+Since $\core{s+1}{v}\ge f_{s+1}(v)$ by (a), equality holds.
 \end{proof}
 
 We write $\sig{v}$ for the smallest $s$ at which equality holds ($\sig{v}\le\omg{v}+1$, the latter meaning that it never holds).
