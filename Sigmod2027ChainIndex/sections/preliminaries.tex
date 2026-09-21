@@ -2,7 +2,8 @@
 % 2026-09-21 house shape: prose notation, one definition with its example on Figure 1, the two queries, a two-sentence problem statement.
 
 \stitle{Graphs and cliques.}
-$G=(V,E)$ is a simple undirected graph with $n$ vertices.
+% 2026-09-22 prose pass: words before symbols; the clique-number example says why.
+We consider a simple undirected graph $G=(V,E)$ with $n$ vertices.
 %
 An \textit{$s$-clique} is a set of $s$ pairwise adjacent vertices.
 %
@@ -10,9 +11,11 @@ A $2$-clique is an edge and a $3$-clique a triangle.
 %
 The \textit{clique number} of a vertex $v$, denoted as $\omg{v}$, is the number of vertices of a largest clique containing $v$.
 %
-Dropping vertices from a clique leaves a clique, so $v$ lies in an $s$-clique if and only if $2\le s\le\omg{v}$.
+Dropping vertices from a clique leaves a clique, so $v$ lies in an $s$-clique for every size $s$ from $2$ to $\omg{v}$ and for no larger size.
 %
-In Figure~\ref{fig:example}, $\omg{a_1}=5$, $\omg{x}=4$ and $\omg{u_1}=3$.
+In Figure~\ref{fig:example}, the clique number of $a_1$ is $5$, since $A$ has five vertices.
+%
+The clique number of $x$ is $4$ because of $B$, and that of $u_1$ is $3$ because of the triangles $\{x,u_1,w_j\}$.
 
 \stitle{Nuclei.}
 The community model of this paper is the $(1,s)$-nucleus of Sariy\"uce et al.~\cite{firstNucleus}: the unit is the vertex, and cliques of $s$ vertices are what is counted around it.
@@ -35,7 +38,7 @@ It is $0$ if $v$ lies in no $s$-clique.
 %
 The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$.
 %
-It exists, since the $\Nuc{s}{\core{s}{v}}$ containing $v$ satisfies the two properties at level $k$ and lies inside a maximal set that does.
+Such a nucleus exists: the $\Nuc{s}{\core{s}{v}}$ containing $v$ has the two properties at level $k$ as well, and a maximal set with the two properties that contains it is an $\Nuc{s}{k}$ containing $v$.
 %
 It is unique, since nuclei of one size and level are disjoint.
 \begin{example}\label{ex:nucleus}
@@ -45,9 +48,22 @@ Every vertex of $A$ lies in $\binom{4}{2}=6$ triangles of $A$, and $A$ is a $(3,
 %
 Each of $b_1,b_2,b_3$ lies in $3$ triangles of $B$, each $u_i$ in the $3$ triangles $\{u_i,w_j,x\}$, and $x$ in $3+9=12$.
 %
-The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-nucleus, and $\core{3}{v}=3$ for its ten vertices.
+The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-nucleus.
 %
-At size $2$ the core values are the $k$-core numbers: $\core{2}{a_i}=4$, $\core{2}{b_i}=3$ because $b_1$ and $b_2$ have only $3$ neighbours, and $\core{2}{v}=4$ for $x$ and the six vertices $u_1,\dots,w_3$.
+Every vertex of $N$ lies in at least three of its triangles, and any two of these triangles are joined through $x$ or through $B$.
+%
+No vertex of $A$ can be added, since the edge $a_5b_3$ lies in no triangle.
+%
+No vertex of $N$ reaches level $4$.
+%
+Each of $u_1,\dots,w_3$ lies in three triangles of the whole graph, and without these six vertices each vertex of $B$ lies in the three triangles of $B$ only.
+%
+So $\core{3}{v}=3$ for the ten vertices of $N$.
+%
+At size $2$ the core values are the $k$-core numbers: $\core{2}{a_i}=4$, and $\core{2}{b_i}=3$, since $b_1$ and $b_2$ have three neighbours and $b_3$ keeps two once they are removed.
+%
+The value $\core{2}{v}$ is $4$ for $x$ and for the six vertices $u_1,\dots,w_3$.
+% trace 2026-09-22 (make_concept.py, brute force): kappa_3 = 6 on A, 3 on N; kappa_2 = 4 on A and on {x,u,w}, 3 on b_i; kappa_4 = 4 on A, 1 on B; kappa_5 = 1 on A.
 %
 At size $4$ only $A$ and $B$ have a nonzero value, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{4}{v}=1$ for the vertices of $B$; at size $5$, $\core{5}{a_i}=1$.
 \end{example}

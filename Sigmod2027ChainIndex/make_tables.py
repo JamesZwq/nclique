@@ -57,7 +57,7 @@ def table_size():
     """One row per graph: chains, values stored, bytes of the index and of STrees, build time and peak memory (build table folded in)."""
     rows = merged_rows(); bo = {Path(r['graph']).stem: r for r in load('buildonly.json')['runs']}
     lines = [r'\begin{tabular}{@{}llrrrrrrrrrr@{}}', r'\toprule',
-             r'Graph & Type & $n$ & $s_{\max}$ & Chains & $n/$chains & Values stored & \chainidx (MB) & \strees (MB) & Ratio & Build (s) & Peak (GB) \\', r'\midrule']
+             r'Graph & Type & $n$ & $s_{\max}$ & Chains & $n/$chains & Values stored & \chainidx (MB) & \strees (MB) & Ratio & Build (s) & Memory (GB) \\', r'\midrule']
     for where, g, r in rows:
         x = r['result']; total = (x['ti_ms'] + x['build_ms'] + x['compact_ms']) / 1000
         peak = bo[g]['peak_rss_bytes'] if where == 'laptop' and g in bo else r.get('peak_rss_bytes')
@@ -193,7 +193,7 @@ def table_prior():
             og = json.loads(p.read_text()); g = NAMES.get(p.stem[len('prior_original_'):], p.stem[len('prior_original_'):])
             if 'total_wall_s' in og and (where, g) in ours: prior.append((where, g, og))
     lines = [r'\begin{tabular}{@{}llrrrrrr@{}}', r'\toprule',
-             r'Graph & Machine & Sizes & \multicolumn{2}{c}{\cnd, all sizes (s)} & \cnd peak & \chainidx & Ratio \\',
+             r'Graph & Machine & Sizes & \multicolumn{2}{c}{\cnd, all sizes (s)} & \cnd memory & \chainidx & Ratio \\',
              r' & & & total & build and peel & one size (MB) & build (s) & build and peel \\', r'\midrule']
     ratios = []
     for where, g, og in sorted(prior, key=lambda t: (t[0] != 'laptop', t[0], ours[(t[0], t[1])]['result']['n'])):

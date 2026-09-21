@@ -29,17 +29,26 @@ Its \textit{top} is the largest such $k$.
 %
 The canonical nodes of size $s$ ordered by inclusion form the forest $\Tree{s}$: the largest sets are its roots, and a node's children are the largest nodes strictly inside it.
 %
-The \textit{own node} of a vertex $v$ with $\core{s}{v}\ge1$, denoted as $\own{s}{v}$, is the $\Nuc{s}{\core{s}{v}}$ containing $v$; it is the deepest node of $\Tree{s}$ containing $v$, and its top is $\core{s}{v}$.
+The \textit{own node} of a vertex $v$ with $\core{s}{v}\ge1$, denoted as $\own{s}{v}$, is the $\Nuc{s}{\core{s}{v}}$ containing $v$.
 \end{definition}
+% 2026-09-22 prose pass: the three facts about tops each carry their reason (nesting, maximality); the derived properties of the own node moved out of the definition.
+The own node of $v$ is the deepest node of $\Tree{s}$ containing $v$, and its top is $\core{s}{v}$: a larger top would put $v$ in a nucleus of a larger level.
+%
 The top of a node equals the smallest core value of its vertices.
 %
-Otherwise every vertex of a node of top $t$ would have a core value above $t$, and each would lie in at least $t+1$ cliques of $s$ vertices inside the node.
+Otherwise every vertex of a node of top $t$ would have a core value above $t$, and its nucleus at level $t+1$ would lie inside the node by the nesting above.
 %
-The node would then satisfy the two properties at level $t+1$, and its top would exceed $t$.
+Every vertex of the node would then lie in at least $t+1$ cliques of $s$ vertices inside the node.
+%
+The node would have the two properties at level $t+1$, and its top would exceed $t$.
 %
 Tops increase strictly from a root down to its descendants.
 %
-For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is therefore the highest node on the path from $\own{s}{v}$ up to its root whose top is at least $k$.
+A node with top $t$ has the two properties at every level up to $t$, so a child, which is maximal at its own top, has a top above $t$.
+%
+The nodes containing $v$ are the path from $\own{s}{v}$ up to its root.
+%
+For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is therefore the highest node on this path whose top is at least $k$.
 %
 We call it the highest ancestor-or-self of $\own{s}{v}$ with top at least $k$.
 \begin{figure}[t]
@@ -51,17 +60,17 @@ We call it the highest ancestor-or-self of $\own{s}{v}$ with top at least $k$.
 \begin{example}\label{ex:tree}
 Consider Figure~\ref{fig:example}; Figure~\ref{fig:strees} draws the trees of its four sizes.
 %
-$\Tree{2}$ has a root holding all $15$ vertices.
+At size $2$ the forest $\Tree{2}$ has one root holding all $15$ vertices.
 %
 The graph is connected and its smallest degree is $3$ (at $b_1$ and $b_2$), so the root is the $(2,k)$-nucleus for $k=1,2,3$ and has top $3$.
 %
 The root has two children of top $4$, $A$ and $\{x,u_1,\dots,w_3\}$.
 %
-$\Tree{3}$ has two roots and no other node: $N=B\cup\{u_1,\dots,w_3\}$ with top $3$ and $A$ with top $6$.
+At size $3$ the forest $\Tree{3}$ has two roots and no other node: $N=B\cup\{u_1,\dots,w_3\}$ with top $3$ and $A$ with top $6$.
 %
 No triangle joins them, because the edge $a_5b_3$ lies in none.
 %
-$\Tree{4}$ has the roots $A$ (top $4$) and $B$ (top $1$), and $\Tree{5}$ is $A$ alone.
+At size $4$ the roots are $A$ (top $4$) and $B$ (top $1$), and at size $5$ the forest is $A$ alone.
 %
 The own node of $b_1$ is the root at size $2$, $N$ at size $3$ and $B$ at size $4$.
 %
@@ -85,7 +94,7 @@ A community query climbs from the own node to the highest ancestor whose top is 
 %
 A value query reads the stored value.
 %
-The answer is one memory copy, the fastest form an answer can take.
+The answer is one memory copy.
 
 \stitle{One hierarchy per size.}
 Every size has its own tree.
@@ -115,7 +124,7 @@ Across sizes it runs into the three difficulties of Section~\ref{sec:intro}.
 %
 \emph{Repetition across sizes}: a vertex is stored once per size it lives in.
 %
-\emph{Contiguity of communities}: a community is one block only inside its own size's array, and an index that groups vertices across sizes must find another way to contiguity.
+\emph{Contiguity of communities}: a community is one block only inside its own size's array, and an index that groups vertices across sizes must make communities contiguous in another way.
 %
 \emph{Construction of every size}: each size is one decomposition.
 %

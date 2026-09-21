@@ -47,16 +47,17 @@ The workload has $20{,}000$ community queries at the vertex's own level ($k=\cor
 %
 Every latency is the per-query average of the median of five passes after one warm-up pass.
 %
-Sizes are bytes of the structure in memory.
+Index sizes are measured in memory.
 %
 Build times exclude the reading of the graph.
 %
-Every number in the tables and figures is generated from the recorded measurements.
 
 \expsection{Index size}
 Table~\ref{tab:size} lists every graph with its number of chains, its vertices per chain and its share of values stored explicitly.
 %
-The next three columns are the sizes of \chainidx and of \strees and their ratio; the last two, discussed in Exp-6, are the build time and the peak memory of \build.
+The next three columns are the sizes of \chainidx and of \strees and their ratio.
+%
+The last two, discussed in Exp-6, are the build time and the memory usage of \build.
 %
 \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than \strees, median \ratiomedian$\times$.
 %
@@ -74,7 +75,7 @@ If the graph is not stored in the index's order, the permutation of $n$ labels l
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{Index size against \strees, with build time and peak memory.}\label{tab:size}
+\caption{Index size against \strees, with build time and memory usage.}\label{tab:size}
 \input{tables/size}
 \end{table*}
 
@@ -91,13 +92,13 @@ The map is $3$ to $13$ percent.
 %
 The values are a small part everywhere once only the residues are stored.
 %
-The certified tail (Theorem~\ref{thm:tail}) is what makes them small.
+The certified tail (Theorem~\ref{thm:tail}) makes them small.
 %
 The share of active (vertex, size) pairs whose value must be stored ranges from \storedmin{} percent to \storedmax{} percent, with a median of \storedmedian{} percent (Table~\ref{tab:size}).
 %
 On \webuk one residue serves $23.5$ million pairs.
 %
-\emailcore is the other end.
+\emailcore stores \storedmax{} percent of its values.
 %
 The share is lowest on the graphs with large cliques, where most of a vertex's values lie in its tail.
 %
@@ -171,7 +172,7 @@ It lies between $0.05$ and $0.5$~ns per vertex above a fixed cost of a few nanos
 %
 On these pairs, locating costs a median of \ownmedian{}~ns at the own level, \halfmedian{}~ns at half the level and \rootmedian{}~ns at $k=1$.
 %
-The jump pointers make the climb to the root as cheap as no climb at all.
+With the jump pointers the climb to the root costs no more than no climb.
 %
 The half-level climb stops at an interior node and costs at most \halfmax{}~ns.
 %
@@ -208,7 +209,9 @@ Panels (a) and (b) draw $5{,}000$ own-level queries per clique size, the vertex 
 %
 At $s=2$ and $3$, where the answers are large and consist of a few long runs, \chainidx lists the answer in \profsmallmin$\times$ to \profsmallmax$\times$ the speed of the memory copy.
 %
-From $s=4$ on, where the own-level answers shrink and spread over many ranges, the copy is faster, by up to \profbigmax$\times$ at $s=\profbigs$ on \textsf{cit-Patents}, where an answer has \profbigout{} vertices in \profbigranges{} ranges.
+From $s=4$ on, where the own-level answers shrink and spread over many ranges, the copy is faster.
+%
+It is up to \profbigmax$\times$ faster at $s=\profbigs$ on \textsf{cit-Patents}, where an answer has \profbigout{} vertices in \profbigranges{} ranges.
 %
 Panel (c) sorts the $20{,}000$ own-level queries of the fixed workload by answer size into deciles.
 %
@@ -223,13 +226,13 @@ Below $10^5$ vertices the copy is \profdeclowmin$\times$ to \profdeclowmax$\time
 \end{figure*}
 
 \expsection{Construction}
-The last two columns of Table~\ref{tab:size} give the build time of \chainidx, clique tree and all-size peel and index passes together, and the peak resident memory of the process.
+The last two columns of Table~\ref{tab:size} give the build time of \chainidx, clique tree and all-size peel and index passes together, and its memory usage.
 %
 The index passes, the trees, the chain trie, the run arrays and the values, are a few percent of the total.
 %
-The peel and its clique tree are the rest, and the peak memory is the clique tree.
+The peel and its clique tree are the rest, and the memory usage is that of the clique tree.
 %
-The build takes $0.01$~s on \textsf{ca-GrQc} and $221$~s on the $4$-million-vertex coauthorship graph, with a peak of $8.8$~GB there.
+The build takes $0.01$~s on \textsf{ca-GrQc} and $221$~s on the $4$-million-vertex coauthorship graph, with $8.8$~GB of memory there.
 %
 \dblp is built in $0.84$~s with $157$~MB.
 
@@ -240,7 +243,7 @@ The runs are on the second server.
 %
 The x-axis is the number of vertices.
 %
-The panels show the bytes of both indexes, then the build time of \chainidx and of \cnd run once per size, then the own-level locating and listing time of both indexes.
+The panels show the sizes of both indexes, then the build time of \chainidx and of \cnd run once per size, then the own-level locating and listing time of both indexes.
 %
 A sample keeps about the square of the fraction of the edges.
 %
@@ -279,7 +282,7 @@ It reports the wall time of the whole run and the build and peel time alone, aga
 %
 Counting only the clique-tree build and peel of \cnd, \chainidx is built \priormin$\times$ (com-amazon, six sizes) to \priormax$\times$ (\webuk, $499$ sizes) faster, median \priormedian$\times$.
 %
-Counting the whole processes of \cnd, which reload and sort the graph for every size, the factors are larger still.
+Counting the whole runs of \cnd, which read and sort the graph for every size, the factors are larger still.
 %
 The clique tree is built once instead of once per size.
 %
@@ -289,7 +292,7 @@ The ratio grows with the number of sizes.
 %
 On \textsf{web-BerkStan} ($201$ sizes) the $2.3$ hours of \cnd become $66$ seconds, and on \webuk{} $15.7$ hours become $70$ seconds.
 %
-The same table is the cost of answering a community query without an index.
+Table~\ref{tab:prior} also gives the cost of answering a community query without an index.
 %
 The smallest possible online answer is one decomposition at the queried size, seconds to minutes per query on these graphs, against the nanoseconds of Table~\ref{tab:queries}.
 
@@ -299,10 +302,10 @@ The smallest possible online answer is one decomposition at the queried size, se
 \input{tables/prior}
 \end{table*}
 
-\expsection{Case Study I: the best size varies per query}
+\expsection{Case Study I: the best size per query}
 We study which clique size best recovers ground-truth communities.
 %
-Three SNAP graphs come with them: \dblp (publication venues), \textsf{com-amazon} (product categories) and \textsf{com-youtube} (user groups), the top $5{,}000$ communities of each.
+Three SNAP graphs come with ground truth, the top $5{,}000$ communities of each: \dblp (publication venues), \textsf{com-amazon} (product categories) and \textsf{com-youtube} (user groups).
 %
 Take a member $v$ of a ground-truth community $C$.
 %
@@ -310,7 +313,9 @@ For every size $s\le\omg{v}$ and every level $k$, we score the $(s,k)$-nucleus o
 %
 The whole $(s,k)$ space of a query is scanned from the index without listing a community.
 %
-$|N\cap C|$ is counted through the members of $C$, whose own nodes fall inside the node's subtree or not, and $|N|$ comes from the run bounds.
+The size of the intersection is counted by testing, for every member of $C$, whether its own node lies in the subtree of the nucleus.
+%
+The size of the nucleus comes from its entries.
 %
 The absolute scale of $k$ differs between sizes, and we compare the best level of each size.
 %
@@ -323,7 +328,7 @@ Table~\ref{tab:casehist} gives where the best size falls.
 \sstitle{No single size is right on \dblp.}
 The best size spreads over $2$ to $8$.
 %
-$26$ percent of the queries are best served at size $2$, $23$ at $3$, $18$ at $4$, $13$ at $5$ and $20$ at $6$ or more.
+Size $2$ is best for $26$ percent of the queries, size $3$ for $23$ percent, size $4$ for $18$, size $5$ for $13$, and sizes $6$ and above for $20$.
 %
 Choosing the size per query gives an F1 of $0.179$, $3.6\times$ the $0.049$ of the $k$-core index and $1.2\times$ the $0.140$ of the best fixed size.
 %
@@ -353,8 +358,8 @@ Without the index, each size of the scan would be one decomposition of the graph
 \input{tables/case_gt_hist}
 \end{table}
 
-\expsection{Case Study II: the size as a zoom on Amazon}
-We study \textsf{com-amazon} joined with the SNAP product metadata, titles, groups and category paths, which covers $334{,}852$ of its $334{,}863$ products.
+\expsection{Case Study II: Amazon products across sizes}
+We study \textsf{com-amazon} joined with the SNAP product metadata (titles, groups and category paths), available for $334{,}852$ of its $334{,}863$ products.
 %
 For a query product $q$, the \textit{leaf purity} of a community is the share of its members that share a leaf category with $q$.
 %
@@ -378,13 +383,13 @@ Table~\ref{tab:caseexamples} lists six products.
 %
 ``Kind of Blue'' goes from $36{,}878$ products ($1$ percent jazz) at size $2$ to $23$ Blue Note albums at size $3$.
 %
-At size $5$ it is six albums, the canonical jazz shelf.
+At size $5$ it is six jazz albums.
 %
 ``Introduction to Algorithms'' goes from the $157{,}331$-product core to $57$ computing books at size $3$ and $13$ theory textbooks at size $4$.
 %
 The Godfather soundtrack reaches $28$ products at size $5$ whose category purity is only $0.32$.
 %
-They are one shelf all the same: the four soundtracks with Jerry Vale, Lou Monte and ``Italian American Classics''.
+They still form one shelf: the four Godfather soundtracks with Jerry Vale, Lou Monte and ``Italian American Classics''.
 %
 The category tree has no name for this community.
 %

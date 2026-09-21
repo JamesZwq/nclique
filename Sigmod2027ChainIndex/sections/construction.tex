@@ -29,7 +29,7 @@ Figure~\ref{fig:pipeline} draws the two objects this section adds on the running
 \stitle{Core values from one clique tree.}
 The clique counts come from a pivoting clique tree~\cite{Pivoter}, built once and shared by every size.
 %
-Each of its paths has a mandatory set $H$ and an optional set $Q$, and it represents the cliques $H\cup X$ for every $X\subseteq Q$ with $|X|=s-|H|$.
+Each of its paths has a mandatory set $H$ and an optional set $Q$, and it represents the cliques $H\cup Z$ for every subset $Z$ of $Q$ with $s-|H|$ vertices.
 %
 For every size $s$, every $s$-clique of the graph is represented by exactly one path.
 %
@@ -43,7 +43,7 @@ Each size first tries to reuse the \textit{removal order} of the previous size, 
 %
 The next theorem says when the reuse is exact.
 %
-Write $d_s(W,u)$ for the number of $s$-cliques of $u$ inside $G[W]$.
+Write $d_s(W,u)$ for the number of $s$-cliques of $u$ whose vertices all lie in the set $W$.
 %
 For a permutation $\pi=(v_0,\dots,v_{n-1})$ of the vertices, the \textit{forward count} $f_s(v_i)=d_s(\{v_i,\dots,v_{n-1}\},v_i)$ is the number of $s$-cliques of $v_i$ inside its suffix, and $U_s(v_i)=\max_{j\le i}f_s(v_j)$ is the running maximum.
 %
@@ -55,14 +55,18 @@ The forward counts need no such update, since each clique is charged to one vert
 %
 They are computed in one sweep of the paths along $\pi$.
 \begin{theorem}[order replay]\label{thm:replay}
-$U_s(v)\ge\core{s}{v}$ for every $v$.
+The running maximum bounds the core value from above: $U_s(v)\ge\core{s}{v}$ for every vertex $v$.
 %
-Moreover, $U_s=\core{s}{\cdot}$ at every vertex if and only if every $v$ has at least $U_s(v)$ $s$-cliques inside $\{u: U_s(u)\ge U_s(v)\}$.
+The running maxima are the core values, $U_s(v)=\core{s}{v}$ for every $v$, if and only if every vertex $v$ lies in at least $U_s(v)$ $s$-cliques inside $\{u: U_s(u)\ge U_s(v)\}$.
 \end{theorem}
 \begin{proof}
 A \textit{witness} for $v$ at level $k$ is a set $W\ni v$ that satisfies the two properties of Definition~\ref{def:nucleus} at level $k$, and $\core{s}{v}$ is the largest level with a witness.
 %
-For a witness $W\ni v$ let $v_j$ be its earliest vertex in $\pi$; $W$ lies in the suffix of $v_j$, so $\min_{u\in W}d_s(W,u)\le d_s(W,v_j)\le f_s(v_j)\le U_s(v)$, and hence $\core{s}{v}\le U_s(v)$.
+Let $W$ be a witness for $v$ at level $k$, and let $v_j$ be the earliest vertex of $W$ in $\pi$.
+%
+Every vertex of $W$ lies in at least $k$ $s$-cliques inside $W$, so $k\le d_s(W,v_j)\le f_s(v_j)$, since $W$ lies in the suffix of $v_j$.
+%
+Since $v_j$ is at or before $v$ in $\pi$, $f_s(v_j)\le U_s(v)$, and hence $\core{s}{v}\le U_s(v)$.
 %
 Suppose the condition holds and fix a level $k$; let $W_k=\{u:U_s(u)\ge k\}$.
 %
@@ -72,7 +76,9 @@ The part of $W_k$ reachable from $v$ through $s$-cliques of $W_k$ is therefore a
 %
 Conversely, suppose $U_s$ is the core value.
 %
-The set $\{u:\core{s}{u}\ge k\}$ is the union of all witnesses at level $k$; every vertex in it lies in at least $k$ $s$-cliques inside it, which is the condition.
+The set $\{u:\core{s}{u}\ge k\}$ is the union of all witnesses at level $k$, so every vertex $v$ in it lies in at least $k$ $s$-cliques inside it.
+%
+For $k=\core{s}{v}=U_s(v)$ this set is $\{u:U_s(u)\ge U_s(v)\}$, which is the condition.
 \end{proof}
 We call the condition of the theorem the \textit{certificate}.
 %
@@ -82,15 +88,11 @@ When it fails, the size is peeled exactly.
 %
 The vertex of smallest count is removed.
 %
-The counts of the vertices on the paths through it are decreased by the cliques that contained it, computed from the sets of each path in closed form.
+The counts of the vertices on the paths through it are decreased by the cliques that contained it, and each path gives its decrease in closed form from its two sets.
 %
 The removal order of that peel is the order tried at the next size.
 %
-The previous size's values also cap the next size's.
-%
-By the Kruskal--Katona theorem \cite{kruskal1963,katona1968}, a vertex with $\core{s-1}{v}$ cliques of $s-1$ vertices lies in at most a computable number of $s$-cliques.
-%
-The sweep starts every count from that bound.
+The previous size's values also cap the next size's: by the argument of Theorem~\ref{thm:tail}(b), $\core{s}{v}\le\binomc{t}{s}$ for the real $t$ with $\binomc{t}{s-1}=\core{s-1}{v}$, and the peel needs no count above this bound.
 \begin{example}\label{ex:replay}
 Consider Figure~\ref{fig:example} at size $2$ and the order $\pi=(b_1,b_2,b_3,a_1,\dots,a_5,u_1,u_2,u_3,w_1,w_2,w_3,x)$, the upper block of Figure~\ref{fig:pipeline}(a).
 %
@@ -98,7 +100,7 @@ The forward count of a vertex is its number of edges to later vertices.
 %
 It is $3,2,2$ for $b_1,b_2,b_3$; $4,3,2,1,0$ for $a_1,\dots,a_5$; $4,4,4$ for $u_1,u_2,u_3$; $1,1,1$ for $w_1,w_2,w_3$; and $0$ for $x$.
 %
-The prefix maxima are $U_2=3$ on $b_1,b_2,b_3$ and $U_2=4$ on every later vertex.
+The running maxima are $U_2=3$ on $b_1,b_2,b_3$ and $U_2=4$ on every later vertex.
 %
 The certificate checks every vertex inside the set of vertices whose running maximum is at least its own.
 %
@@ -108,7 +110,7 @@ Each of the twelve vertices with $U_2=4$ has at least $4$ edges inside $A\cup\{x
 %
 The certificate holds, and $U_2$ is the size-$2$ core value of every vertex.
 %
-With $x$ first instead, its forward count is $9$ and every prefix maximum is $9$.
+With $x$ first instead, its forward count is $9$ and every running maximum is $9$.
 %
 The vertex $a_1$ has only $4$ edges inside the whole graph, the certificate fails, and the size is peeled exactly.
 % trace 2026-09-21, tools/example_check.py: f=[3,2,2,4,3,2,1,0,4,4,4,1,1,1,0], U=[3,3,3,4,...,4], b=[3,3,4,4,4,4,4,4,4,4,4,4,4,4,6];
@@ -121,46 +123,52 @@ The vertex $a_1$ has only $4$ edges inside the whole graph, the certificate fail
 \SetAlgoLined\DontPrintSemicolon
 \KwIn{a graph $G$.}
 \KwOut{\chainidx: the map, the chain records, one tree with a run array per size.}
-$T\leftarrow$ clique tree of $G$; $\pi\leftarrow$ the degeneracy order of $G$\;\label{ln:b-tree}
-put every vertex at the root of an empty trie\;\label{ln:b-trie}
+$T\leftarrow$ the clique tree of $G$; $\pi\leftarrow$ a degeneracy order of $G$\;\label{ln:b-tree}
+$\mathrm{node}[v]\leftarrow$ the root of an empty trie, for every vertex $v$\;\label{ln:b-trie}
 \For{$s\leftarrow2,3,\dots$ \KwSty{while} some vertex lies in an $s$-clique}{\label{ln:b-sizes}
-  $f_s\leftarrow$ forward counts along $\pi$; $U_s\leftarrow$ prefix maxima\;\label{ln:b-forward}
+  \tcp{Step 1: the values of size $s$}
+  $f_s,U_s\leftarrow$ the forward counts and running maxima along $\pi$\;\label{ln:b-forward}
   \lIf{the certificate of Theorem~\ref{thm:replay} holds}{$\core{s}{\cdot}\leftarrow U_s$}\label{ln:b-accept}
-  \lElse{$(\core{s}{\cdot},\pi)\leftarrow$ exact peel of size $s$ on $T$}\label{ln:b-peel}
-  \ForEach{value $k$ of size $s$ in decreasing order}{\label{ln:b-levels}
-    activate the vertices with $\core{s}{v}=k$\;\label{ln:b-activate}
-    join the active vertices of every live path of $T$\;\label{ln:b-union}
-    each changed component becomes a node of top $k$\;\label{ln:b-nodes}
-    the nodes it absorbed become its children\;\label{ln:b-parent}
-    activated vertices take their component as own node\;\label{ln:b-own}
+  \lElse{$(\core{s}{\cdot},\pi)\leftarrow$ the exact peel of size $s$ on $T$}\label{ln:b-peel}
+  \tcp{Step 2: the tree of size $s$ and the chains}
+  \ForEach{value $k$ of size $s$, in decreasing order}{\label{ln:b-levels}
+    $\mathrm{active}[v]\leftarrow$ true, for every $v$ with $\core{s}{v}=k$\;\label{ln:b-activate}
+    join the active vertices of every live path of $T$ into one component\;\label{ln:b-union}
+    every component that changed becomes a node of $\Tree{s}$ with top $k$\;\label{ln:b-nodes}
+    the nodes that such a component absorbed become its children\;\label{ln:b-parent}
+    $\own{s}{v}\leftarrow$ the component of $v$, for every $v$ with $\core{s}{v}=k$\;\label{ln:b-own}
   }
-  \lForEach{active vertex $v$}{move $v$ to the trie child $\own{s}{v}$}\label{ln:b-refine}
+  $\mathrm{node}[v]\leftarrow$ the child of $\mathrm{node}[v]$ labelled $\own{s}{v}$, for every active $v$\;\label{ln:b-refine}
 }
-rank the chains in trie depth-first order; label vertices\;\label{ln:b-rank}
+\tcp{Step 3: the layout}
+rank the chains, the stopped sets of the trie, in its depth-first order; label the vertices\;\label{ln:b-rank}
 record the chain starts\;\label{ln:b-bitmap}
 \ForEach{size $s$}{\label{ln:b-layout}
   traverse $\Tree{s}$ with children by smallest rank\;\label{ln:b-traverse}
-  merge consecutive ranks into runs; record the entries\;\label{ln:b-runs}
+  merge consecutive ranks into runs; record the entry of every node\;\label{ln:b-runs}
 }
-\lForEach{chain $c$}{store $\omega$, $\sigma$, residues below $\sigma$, trajectory}\label{ln:b-values}
+\lForEach{chain $c$}{store $\omega$, $\sigma$, the residues, the trajectory}\label{ln:b-values}
 \end{algorithm}
 
 \stitle{Algorithm.}
-Algorithm~\ref{alg:build} has three steps: the peel of every size, the refinement of the chains, and the layout.
+% 2026-09-22 algorithm pass: the float names its three steps, assigns to named arrays (active, node, own node) and calls the peel and the forward counts by name; the walk follows the steps.
+Algorithm~\ref{alg:build} has three steps for every size: the values, the tree with the refinement of the chains, and, after the last size, the layout.
 %
 A path of the clique tree $T$ is \textit{live} when its mandatory vertices are all active and at least $s$ of its vertices are active.
 %
-Every clique that a live path represents among the active vertices then contains the path's mandatory set, which is what keeps the counting exact.
+Every clique that a live path represents among the active vertices then contains the path's mandatory set, and this keeps the counting exact.
 %
-\emph{During the peel}, the algorithm builds the clique tree once and takes the degeneracy order of the graph as the first order to try (Line~\ref{ln:b-tree}).
+Before the first size, the algorithm builds the clique tree once and takes a degeneracy order of the graph as the first order to try (Line~\ref{ln:b-tree}).
 %
-For every size (Line~\ref{ln:b-sizes}) it computes the forward counts along the current order in one sweep of the clique tree (Line~\ref{ln:b-forward}).
+It puts every vertex at the root of the trie that will hold the chains (Line~\ref{ln:b-trie}).
 %
-Based on Theorem~\ref{thm:replay}, it accepts the prefix maxima as the core values when the certificate holds (Line~\ref{ln:b-accept}).
+\emph{During Step 1}, for every size (Line~\ref{ln:b-sizes}) it computes the forward counts and the running maxima along the current order in one sweep of the clique tree (Line~\ref{ln:b-forward}).
+%
+Based on Theorem~\ref{thm:replay}, it accepts the running maxima as the core values when the certificate holds (Line~\ref{ln:b-accept}).
 %
 Otherwise it peels the size exactly and keeps that peel's removal order for the next size (Line~\ref{ln:b-peel}).
 %
-\emph{During the refinement}, the algorithm builds the tree of size $s$ from the values of that size.
+\emph{During Step 2}, the algorithm builds the tree of size $s$ from the values of that size.
 %
 It goes through the values of the size from the highest down (Line~\ref{ln:b-levels}) and activates the vertices of the current value (Line~\ref{ln:b-activate}).
 %
@@ -178,9 +186,9 @@ At size $2$ the vertices are grouped by their own node, and at each later size e
 %
 A vertex stops at its trie node once its clique number is passed, and the node may still gain children from vertices that continue.
 %
-A chain is the set of vertices that stopped at one trie node.
+A chain is the set of vertices that stopped at one trie node, and its trajectory is the path of labels from the root to that node.
 %
-\emph{During the layout}, the algorithm ranks the chains by a depth-first traversal of the trie.
+\emph{During Step 3}, the algorithm ranks the chains by a depth-first traversal of the trie.
 %
 The traversal visits the vertices stopped at a node before the node's children, and the children in increasing order of the preorder number of their own node.
 %
@@ -190,9 +198,9 @@ For each size the algorithm traverses the tree with children ordered by their sm
 %
 It merges the chain sequence into runs and records every node's entry (Line~\ref{ln:b-runs}).
 %
-Each chain then receives $\omega$, its trajectory and its values (Line~\ref{ln:b-values}).
+Each chain then receives its clique number $\omega$, its trajectory and its values (Line~\ref{ln:b-values}).
 %
-The certification point $\sigma$ is the first size at which the chain's value equals the floor, and only the values below $\sigma$ are stored.
+The certification point $\sigma$ is the first size at which the chain's value equals the floor, and only the values below $\sigma$, the residues, are stored.
 
 \begin{example}\label{ex:build}
 Consider Figure~\ref{fig:example}.
@@ -205,15 +213,19 @@ These are the two nodes of top $4$.
 %
 Activating the value $3$ joins everything into the root of top $3$, the own node of $b_1,b_2,b_3$.
 %
-The trie now has three children of the root: $\{b_i\}$, $\{a_i\}$ and $\{x,u_1,\dots,w_3\}$.
+The trie now has three children of the root, holding $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$ and $\{x,u_1,\dots,w_3\}$.
 %
 At size $3$ the third group is not split, since all seven vertices have own node $N$.
 %
-At size $4$ it splits into $\{u_1,\dots,w_3\}$, whose clique number $3$ has been reached, and $\{x\}$ with own node $B$.
+At size $4$ it splits: $u_1,\dots,w_3$ stop, since their clique number $3$ is passed, and $x$ moves on to the child labelled $B$.
 %
 The four trie nodes where vertices stopped, drawn in Figure~\ref{fig:pipeline}(b), are the chains of Example~\ref{ex:chains}.
 %
-The traversal ranks them $\{b_i\},\{a_i\},\{u,w\},\{x\}$: the children of the root follow the preorder root, $A$, $\{x,u_1,\dots,w_3\}$ of their size-$2$ nodes, and $\{u,w\}$ comes before its child $\{x\}$.
+The traversal ranks them as chains $0$ to $3$.
+%
+The three children of the root follow the preorder of their size-$2$ nodes: the root, then $A$, then $\{x,u_1,\dots,w_3\}$.
+%
+The stopped set $\{u_1,\dots,w_3\}$ comes before the child that holds $x$.
 %
 The layout of size $3$ produces the runs $[0,3)$, $[8,15)$, $[3,8)$ and the entries of Figure~\ref{fig:layout}.
 % trace 2026-09-21: tools/example_check.py (nodes, own nodes, chains); LEDGER.md (ranks, runs, entries).

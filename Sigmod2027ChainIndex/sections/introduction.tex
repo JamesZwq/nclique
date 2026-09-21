@@ -18,7 +18,7 @@ Size $2$ gives the $k$-core, since a clique of two vertices is an edge; size $3$
 %
 At every size a vertex has one community per level, and the largest level at which it has one is its \emph{core value} at that size.
 %
-The size is a knob a user turns to ask for a different kind of group.
+The size is the parameter that selects the kind of group a query asks for.
 
 \begin{figure}[t]
 \centering
@@ -30,7 +30,9 @@ The size is a knob a user turns to ask for a different kind of group.
 \begin{example}\label{ex:intro}
 Consider the graph in Figure~\ref{fig:example}.
 %
-It has a $5$-clique $A=\{a_1,\dots,a_5\}$, a $4$-clique $B=\{x,b_1,b_2,b_3\}$, and a complete bipartite graph between $\{u_1,u_2,u_3\}$ and $\{w_1,w_2,w_3\}$ whose six vertices are all adjacent to $x$; we write $\{u_1,\dots,w_3\}$ for these six.
+It has a $5$-clique $A=\{a_1,\dots,a_5\}$ and a $4$-clique $B=\{x,b_1,b_2,b_3\}$.
+%
+It also has a complete bipartite graph between $\{u_1,u_2,u_3\}$ and $\{w_1,w_2,w_3\}$, whose six vertices are all adjacent to $x$; we write $\{u_1,\dots,w_3\}$ for these six.
 %
 The edge $a_5b_3$ lies in no triangle.
 %
@@ -55,7 +57,7 @@ The size selects which group a query asks for.
 \end{example}
 
 \stitle{Applications.}
-The size is the parameter a user tunes when the groups of one size are too large or too small.
+The size is the parameter a user changes when the groups of one size are too large or too small.
 %
 \sstitle{Collaboration networks.}
 In a coauthorship graph, where vertices are authors and edges join coauthors, the $k$-core around an author is a broad field~\cite{newman2001structure,ponomariov2016coauthorship}.
@@ -77,7 +79,7 @@ Larger sizes keep such groups and drop the triangles that arise by chance.
 \stitle{Existing methods and their limitation.}
 A community query names a vertex $v$, a size $s$ and a level $k$, and asks for the community of $v$ at $(s,k)$.
 %
-A value query asks only for the core value of $v$ at size $s$, written $\core{s}{v}$.
+A value query asks only for the core value of $v$ at size $s$.
 %
 For a fixed size, the communities of all levels are nested, so containment arranges them in a tree.
 %
@@ -89,9 +91,9 @@ Serving every size then means \textbf{\textit{one hierarchy per size}}, which we
 %
 Its limitation is repetition.
 %
-Let $\omg{v}$ be the size of the largest clique containing $v$.
+Call the size of the largest clique containing a vertex its clique number.
 %
-The vertex lies in cliques of $2,3,\dots,\omg{v}$ vertices, so it appears in $\omg{v}-1$ arrays and carries $\omg{v}-1$ core values.
+A vertex lies in cliques of every size from $2$ to its clique number, so it appears in one array per such size and carries one core value per such size.
 %
 On the web graph \webuk, cliques reach $500$ vertices and a vertex lies in $181$ arrays on average.
 %
@@ -107,7 +109,9 @@ The counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting} needs $15.
 This leads to the question this paper answers: \textbf{\textit{how to index the clique-core hierarchies of every size at once, storing each vertex once and returning every community as a few ranges of labels?}}
 
 \stitle{Challenges.}
-Within one size the question is easy; across sizes it raises three difficulties.
+Within one size the tree of that size answers it.
+%
+Across sizes it raises three difficulties.
 %
 \sstitle{Repetition across sizes.}
 Within one size, two vertices that lie in the same community at every level are interchangeable and could share one record.
@@ -165,9 +169,9 @@ After the climb to the queried level, any community is a first range, whole runs
 %
 They are found in constant time (Theorem~\ref{thm:retrieval}) and listed at the speed of a memory copy.
 %
-Core values are stored per chain and only below the size at which they become $\binomc{\omg{v}-1}{s-1}$, the number of $s$-cliques inside the vertex's largest clique.
+Core values are stored per chain and only below the size at which they reach the number of $s$-cliques inside the vertex's largest clique, a binomial coefficient of its clique number.
 %
-From that size on the value stays there (Theorem~\ref{thm:tail}).
+From that size on the value stays at this number (Theorem~\ref{thm:tail}).
 %
 \sstitle{One clique tree for every size.}
 A single clique tree, built once, gives the clique counts of every size.
@@ -222,4 +226,6 @@ Section~\ref{sec:strees} describes one hierarchy per size and its cost.
 %
 Section~\ref{sec:chains} proves the characterization, Section~\ref{sec:index} gives the index, Section~\ref{sec:queries} its queries and Section~\ref{sec:construction} its construction.
 %
-Section~\ref{sec:exp} reports the experiments and the case studies; Sections~\ref{sec:related} and~\ref{sec:conclusion} discuss related work and conclude.
+Section~\ref{sec:exp} reports the experiments and the case studies.
+%
+Sections~\ref{sec:related} and~\ref{sec:conclusion} discuss related work and conclude.

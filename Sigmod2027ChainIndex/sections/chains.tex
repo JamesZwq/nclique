@@ -2,9 +2,7 @@
 % 2026-09-21 house shape: opener with theorem preview; definition -> announced, named theorem, proof <= 8 sentences
 % -> example on Figure 1 -> remark; lemma; proposition; twins; how many chains.  Cadence pass: short sentences.
 
-This section answers the first difficulty of Section~\ref{sec:intro}.
-%
-It decides which vertices can share one record for every size, every level and every query.
+This section answers the first difficulty of Section~\ref{sec:intro}: which vertices can share one record for every size, every level and every query.
 %
 We define hierarchy equivalence and prove that the own nodes alone decide it (Theorem~\ref{thm:chains}).
 %
@@ -33,7 +31,7 @@ Two vertices $u$ and $v$ with $\omg{u},\omg{v}\ge2$ are hierarchy-equivalent if 
 %
 Both core values are $0$ above that size.
 %
-For $2\le s\le\omg{u}$, $\own{s}{u}=\own{s}{v}$ gives $\core{s}{u}=\mathrm{top}(\own{s}{u})=\core{s}{v}$ by Definition~\ref{def:node}.
+For $2\le s\le\omg{u}$ the two own nodes are equal, and the top of an own node is the core value of its vertex (Section~\ref{sec:strees}), so $\core{s}{u}=\core{s}{v}$.
 %
 For $k\le\core{s}{u}$, the $\Nuc{s}{k}$ containing $u$ is the highest node at or above $\own{s}{u}$ with top at least $k$, and the same node contains $v$.
 %
@@ -74,7 +72,7 @@ If $u$ lies in an $\Nuc{s}{k}$ $N$ with $k\ge1$ and $w$ is in the chain of $u$, 
 \begin{proof}
 The vertex $u$ lies in an $s$-clique, so its chain is given by its trajectory, and $\traj{w}=\traj{u}$ gives $\core{s}{w}=\core{s}{u}\ge k$ and $\own{s}{w}=\own{s}{u}$ by Theorem~\ref{thm:chains}.
 %
-The node $\own{s}{u}$ has top $\core{s}{u}\ge k$, and it lies inside the $\Nuc{s}{k}$ containing $u$, which is $N$.
+The node $\own{s}{u}$ has top $\core{s}{u}\ge k$, and it lies inside the $\Nuc{s}{k}$ containing $u$, namely $N$.
 %
 Hence $w\in N$.
 \end{proof}

@@ -9,13 +9,13 @@ Serving every size from a stored index has meant one hierarchy per size.
 %
 A vertex is then stored once for every size it lives in, and the index reaches hundreds of megabytes on graphs of a few hundred thousand vertices.
 %
-This paper shows that the repetition is unnecessary.
+This paper stores each vertex once for all sizes.
 %
 Two vertices are hierarchy-equivalent when no value or community query at any size tells them apart.
 %
-We prove that this holds exactly when the two vertices share their own node at every size.
+We prove that this holds exactly when, at every size, the two vertices share the smallest community containing them.
 %
-The classes, which we call chains, are read off the per-size hierarchies, partition the vertices, and form the coarsest partition an exact index can use.
+The classes, called chains, partition the vertices and form the coarsest partition an exact index can use.
 %
 We propose \chainidx, an index over chains.
 %
@@ -25,7 +25,7 @@ A chain order makes every size-$2$ community one range, and per-size run arrays 
 %
 Core values are stored only below the size at which they reach a closed form.
 %
-The index of every size is built from one clique tree, the sizes reusing one another's elimination order under a certificate.
+The index of every size is built from one clique tree, and each size reuses the removal order of the previous size when a check on clique counts proves the reuse exact.
 %
 On \numgraphs{} graphs from five families, \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size (median \ratiomedian$\times$).
 %
@@ -37,4 +37,4 @@ Two case studies on graphs whose vertices carry names and categories show what t
 %
 On DBLP the best size changes from query to query.
 %
-On Amazon the size zooms from a store of $157{,}331$ products to a six-album shelf.
+On Amazon the size narrows a community from a store of $157{,}331$ products to a shelf of six albums.
