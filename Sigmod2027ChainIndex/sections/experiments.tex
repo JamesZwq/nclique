@@ -204,27 +204,25 @@ On the coauthorship graph, whose hierarchy has $5{,}543$ levels, the half level 
 \end{table*}
 
 \expsection{Latency by clique size and by answer size}
-Figure~\ref{fig:profile} separates the two variables that the mixed workload averages, on the four largest graphs of the second server.
+Figure~\ref{fig:profile} separates the two variables that the mixed workload averages, on two representative graphs of the second server, \textsf{web-BerkStan} and \textsf{cit-Patents}; the other profiled graphs show the same trends.
 %
 Panel (a) plots the locating time against the clique size, and panel (b) the listing time against the clique size.
 %
 Panel (c) plots the listing time against the answer size.
 %
-Solid lines are \chainidx and dashed lines \strees.
-%
 Panels (a) and (b) draw $5{,}000$ own-level queries per clique size, the vertex uniform among the vertices active at that size.
 %
-\chainidx locates in $8$ to $44$~ns at every size, highest at $s=4$ to $6$ where the per-size trees have the most nodes.
+\chainidx locates in \proflocmin{} to \proflocmax{}~ns at every size, highest between $s=3$ and $6$, where the per-size trees have the most nodes.
 %
-\strees locates in $2$ to $11$~ns.
+\strees locates in \profstlocmin{} to \profstlocmax{}~ns.
 %
-At $s=2$ and $3$, where the answers are large and consist of a few long runs, \chainidx lists $1.0\times$ to $3.2\times$ faster than the memory copy.
+At $s=2$ and $3$, where the answers are large and consist of a few long runs, \chainidx lists the answer in \profsmallmin$\times$ to \profsmallmax$\times$ the speed of the memory copy.
 %
-From $s=4$ on, where the own-level answers shrink to hundreds or a few thousand vertices spread over many ranges, the copy is $2\times$ to $5\times$ faster.
+From $s=4$ on, where the own-level answers shrink and spread over many ranges, the copy is faster, by up to \profbigmax$\times$ at $s=\profbigs$ on \textsf{cit-Patents}, where an answer has \profbigout{} vertices in \profbigranges{} ranges.
 %
 Panel (c) sorts the $20{,}000$ own-level queries of the fixed workload by answer size into deciles.
 %
-Below $10^5$ vertices the copy is $2\times$ to $3\times$ faster, and above it the two coincide within $10$ percent.
+Below $10^5$ vertices the copy is \profdeclowmin$\times$ to \profdeclowmax$\times$ faster, and from $10^6$ vertices on the two coincide within \profdechigh{} percent.
 %
 \chainidx trades a constant per range for a constant per label; the bytes it saves (Table~\ref{tab:size}) do not depend on the answer.
 

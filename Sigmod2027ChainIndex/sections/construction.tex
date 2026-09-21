@@ -12,29 +12,18 @@ The index is built from one clique tree, which gives the clique counts of every 
 %
 No stage holds all core values at once.
 %
-Figure~\ref{fig:pipeline} shows the stages and what flows between them.
-%
 The peel delivers the values of one size at a time.
 %
 The tree of that size is built as its values arrive and is reduced to chains immediately.
 %
 The layout pass turns the chains into labels, run arrays and residues.
+%
+Figure~\ref{fig:pipeline} draws the two objects this section adds on the running example: the replay of an order and the trie of the chains.
 
 \begin{figure*}[t]
 \centering
-\begin{tikzpicture}[font=\scriptsize, stage/.style={draw, rounded corners=2pt, align=center, minimum height=9mm, inner sep=3pt, text width=23mm}, flow/.style={-latex, thick}, lab/.style={font=\tiny, fill=white, inner sep=1pt, align=center}]
-\node[stage] (tree) at (0,0) {\textbf{clique tree}\\ built once (pivoting); paths $(H,Q)$ for every size};
-\node[stage] (peel) at (3.8,0) {\textbf{all-size peel}\\ $s=2,3,\dots$: order replay under the certificate, exact peel otherwise};
-\node[stage] (row) at (7.6,0) {\textbf{tree of size $s$}\\ activate vertices by value, join live paths, canonical nodes, own nodes};
-\node[stage] (trie) at (11.4,0) {\textbf{chains}\\ prefix trie refined by the own nodes of size $s$; ranks by DFS};
-\node[stage] (lay) at (15.2,0) {\textbf{layout}\\ aligned labels, run arrays, entries, residues, widths};
-\draw[flow] (tree) -- node[lab] {counts as\\ binomial sums} (peel);
-\draw[flow] (peel) -- node[lab] {values of size $s$\\ (two-row window)} (row);
-\draw[flow] (row) -- node[lab] {own node of\\ every vertex} (trie);
-\draw[flow] (trie) -- node[lab] {chain of\\ every vertex} (lay);
-\draw[flow] (row.south) .. controls +(0,-0.9) and +(0,-0.9) .. node[lab, below=1pt] {tops, parents and own nodes of every size, kept per chain} (lay.south);
-\end{tikzpicture}
-\caption{Construction: one clique tree serves every size; the peel streams the values of one size at a time; each size's tree is built as its values arrive and immediately reduced to chains; the layout pass turns the chain trie into labels, run arrays and residues.}\label{fig:pipeline}
+\includegraphics[width=\textwidth]{figures/fig_build.pdf}
+\caption{Construction on Figure~\ref{fig:example}: (a) the replay of two orders at size $2$, with the forward counts, the running maxima and the certificate; (b) the trie that refines the chains size by size.}\label{fig:pipeline}
 \end{figure*}
 
 \stitle{Core values from one clique tree.}
@@ -103,7 +92,7 @@ By the Kruskal--Katona theorem \cite{kruskal1963,katona1968}, a vertex with $\co
 %
 The sweep starts every count from that bound.
 \begin{example}\label{ex:replay}
-Consider Figure~\ref{fig:example} at size $2$ and the order $\pi=(b_1,b_2,b_3,a_1,\dots,a_5,u_1,u_2,u_3,w_1,w_2,w_3,x)$.
+Consider Figure~\ref{fig:example} at size $2$ and the order $\pi=(b_1,b_2,b_3,a_1,\dots,a_5,u_1,u_2,u_3,w_1,w_2,w_3,x)$, the upper block of Figure~\ref{fig:pipeline}(a).
 %
 The forward count of a vertex is its number of edges to later vertices.
 %
@@ -222,7 +211,7 @@ At size $3$ the third group is not split, since all seven vertices have own node
 %
 At size $4$ it splits into $\{u_1,\dots,w_3\}$, whose clique number $3$ has been reached, and $\{x\}$ with own node $B$.
 %
-The four trie nodes where vertices stopped are the chains of Example~\ref{ex:chains}.
+The four trie nodes where vertices stopped, drawn in Figure~\ref{fig:pipeline}(b), are the chains of Example~\ref{ex:chains}.
 %
 The traversal ranks them $\{b_i\},\{a_i\},\{u,w\},\{x\}$: the children of the root follow the preorder root, $A$, $\{x,u_1,\dots,w_3\}$ of their size-$2$ nodes, and $\{u,w\}$ comes before its child $\{x\}$.
 %

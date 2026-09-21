@@ -42,8 +42,14 @@ Tops increase strictly from a root down to its descendants.
 For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is therefore the highest node on the path from $\own{s}{v}$ up to its root whose top is at least $k$.
 %
 We call it the highest ancestor-or-self of $\own{s}{v}$ with top at least $k$.
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_strees.pdf}
+\caption{\strees for Figure~\ref{fig:example}: the tree of every size over its depth-first array; a node is a bar over its slice.}
+\label{fig:strees}
+\end{figure}
 \begin{example}\label{ex:tree}
-Consider Figure~\ref{fig:example}.
+Consider Figure~\ref{fig:example}; Figure~\ref{fig:strees} draws the trees of its four sizes.
 %
 $\Tree{2}$ has a root holding all $15$ vertices.
 %
@@ -69,6 +75,8 @@ The vertices with $\core{s}{v}\ge1$ are written into one array in a depth-first 
 %
 The vertices of every node then form one contiguous slice of the array, since the traversal visits a node and all its descendants before moving on.
 %
+In Figure~\ref{fig:strees} every node is drawn as a bar over its slice, and the vertices under a bar that no child bar covers are the node's own vertices.
+%
 Every node stores its top, its parent and the two ends of its slice.
 %
 Every vertex stores its own node and its core value.
@@ -88,7 +96,7 @@ We call this index \strees and measure against it throughout.
 %
 A vertex $v$ appears in the arrays of the $\omg{v}-1$ sizes $2$ to $\omg{v}$.
 %
-The arrays therefore hold $\sum_v(\omg{v}-1)$ entries.
+The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ cells for the $15$ vertices of Figure~\ref{fig:strees}.
 %
 There are as many own-node pointers, and as many stored values.
 %

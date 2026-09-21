@@ -131,6 +131,24 @@ def table_queries():
     macros.update({'stpoints': str(total), 'stfaster': str(faster), 'stpairs': str(len(st)), 'stgraphs': str(len({g for (w, g) in st})),
                    'stmin': f"{min(ratios):.1f}" if ratios else '?', 'stmax': f"{max(ratios):.1f}" if ratios else '?', 'stmedian': f"{statistics.median(ratios):.2f}" if ratios else '?',
                    'stlocown': f"{statistics.median(own_loc):.1f}" if own_loc else '?', 'stlocdeepmax': f"{max(deep_loc):.0f}" if deep_loc else '?', 'stlocdeepmedian': f"{statistics.median(deep_loc):.1f}" if deep_loc else '?'})
+    # Exp-5: the representative pair of the by-size and by-answer-size profiles (figure fig_profile)
+    REP = ['web-BerkStan', 'cit-Patents']; prof = {}
+    for where in ('tods2', 'tods1', 'laptop'):
+        rec = load(f'profile_{where}.json')
+        for r in (rec or {'runs': []})['runs']:
+            g = NAMES.get(Path(r['index']).stem, Path(r['index']).stem)
+            if 'result' in r and g in REP: prof.setdefault(g, r['result'])
+    if len(prof) == len(REP):
+        bs = [e for g in REP for e in prof[g]['by_size']]
+        small = [e['st_list_ns'] / e['list_ns'] for e in bs if e['s'] <= 3]; big = [e['st_list_ns'] / e['list_ns'] for e in bs if e['s'] >= 4]
+        dec = [e for g in REP for e in prof[g]['own_by_output']]
+        low = [e['list_ns'] / e['st_list_ns'] for e in dec if e['output'] < 1e5]; high = [abs(1 - e['st_list_ns'] / e['list_ns']) for e in dec if e['output'] >= 1e6]
+        big_e = min(bs, key=lambda e: e['st_list_ns'] / e['list_ns'] if e['s'] >= 4 else 9)
+        macros.update({'proflocmin': f"{min(e['locate_ns'] for e in bs):.0f}", 'proflocmax': f"{max(e['locate_ns'] for e in bs):.0f}",
+                       'profstlocmin': f"{min(e['st_locate_ns'] for e in bs):.0f}", 'profstlocmax': f"{max(e['st_locate_ns'] for e in bs):.0f}",
+                       'profsmallmin': f"{min(small):.2f}", 'profsmallmax': f"{max(small):.2f}",
+                       'profbigmax': f"{1 / min(big):.0f}", 'profbigs': str(big_e['s']), 'profbigout': f"{big_e['output']:,.0f}", 'profbigranges': f"{big_e['ranges']:,.0f}",
+                       'profdeclowmin': f"{min(low):.1f}", 'profdeclowmax': f"{max(low):.1f}", 'profdechigh': f"{100 * max(high):.0f}"})
     (OUT / 'query_stats.tex').write_text(''.join(f"\\newcommand{{\\{k}}}{{{v}}}\n" for k, v in macros.items()))
 
 def table_build():
