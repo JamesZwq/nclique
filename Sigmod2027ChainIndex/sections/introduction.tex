@@ -12,7 +12,7 @@ On Amazon's co-purchase network the community of the album ``Kind of Blue'' at s
 A query is a triple: a vertex $v$, a size $s$ and a level $k$, and its answer is the community of $v$ at $(s,k)$, or just the core value $\core{s}{v}$.
 The size is chosen at query time, not once per graph: on DBLP, for 5,000 ground-truth communities, the clique size whose community best matches the truth spreads over $s=2$ to $8$ from one query to the next, and choosing it per query gives 3.6 times the F1 of the best $k$-core (Section~\ref{sec:exp}).
 Serving such queries today has two options.
-One is to decompose the graph at the requested size when the query arrives: the published single-size decomposition needs seconds to minutes per size on our graphs and hours over all sizes, so it cannot stand behind an interactive query.
+One is to decompose the graph at the requested size when the query arrives: the published single-size decomposition needs from a fraction of a second to two minutes per size on our graphs, and up to 16 hours over all sizes of one graph, so it cannot stand behind an interactive query.
 The other is to precompute one hierarchy per size.
 For a fixed $s$ the nuclei are laminar, so they form a tree; with the vertices written in DFS order every community is one contiguous slice of an array and is listed by a memory copy.
 This is fast, and it is the natural index; we call it \strees and measure against it throughout.
