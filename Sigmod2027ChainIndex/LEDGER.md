@@ -159,3 +159,38 @@ one after Definition 2.1 ("an (s,k)-core is a k-(1,s)-nucleus in the terminology
 description (its name), and the Related Work paragraph (the (r,s) lineage and the edge/larger-clique extension).
 Never present the work as "the r = 1 special case"; the (r,s) family is background, not the frame.
 
+
+## Filler pass (2026-09-22, user: "写论文就是简单明了地写清楚你要做的东西就可以了")
+
+Rule applied: a paragraph keeps only what the reader must know next; a sentence that restates an earlier block,
+previews a later section, closes a paragraph by summing it up, or explains a query the index does not define is
+removed. Definitions, theorems, proofs, algorithms, figures, tables and every number are unchanged (commit a174f3e,
+92 sentences fewer, 17 -> 16 body+refs pages before the sentence splits, 15 body pages).
+
+Removed or merged, by section:
+- Abstract: the four mechanism sentences (labels, order, per-size tree, value storage) -> one claim sentence; construction -> one sentence.
+- Introduction: "the size is the parameter" kept once (Applications); Example 1.1 states the three communities of x and points to
+  Figure 1 (the counts are Example 2.2); "Its limitation is repetition" label sentence; Our idea 24 -> 16 sentences (entries,
+  runs as maximal stretches, the climb, "read off the trees", "tree built as values arrive" left to Sections 5 and 7);
+  Contributions: chain-index and construction items one or two sentences each with their theorems; Organization two sentences.
+- Preliminaries: the three sentences on membership and level-list queries ("Neither is a separate query").
+- Section 3: the preview of Sections 4-7; the top facts keep one reason each (4 sentences fewer); "The answer is one memory
+  copy"; "Every size has its own tree"; Remark 3.3 (re-listed the three difficulties) -> one bridge sentence.
+- Section 4: one preview sentence instead of two; the two commentary sentences after Definition 4.1; Remark 4.5 and Remark 4.8;
+  "One kind of vertices ... needs no theorem"; "How many chains" merged into the Twins block (the 0.26-5.67 ratio kept);
+  "Relation to other groupings" (SGL, EquiTruss) removed, Section 9 carries both.
+- Section 5: the subsection roadmap and "Example 5.6 walks the same query"; the two id/label sentences merged; the k-core index
+  comparison after Corollary 5.3 (Section 9 has it); the two-sentence preview of Section 6 after Example 5.6; Remark 5.10 (dblp
+  1,246,933 pairs / 84,010 / 9,737 residues) moved to Exp-2 as one sentence; "Sizes with small values cost little per value".
+- Section 6: the opener no longer redefines chain(v) and the entry; "Reporting the ranges costs one step per range / Expanding
+  ... one step per vertex" (the Complexity block says it).
+- Section 7: opener 9 -> 5 sentences ("No stage holds all values" stays in Cost only); "The removal order of that peel is the order
+  tried at the next size" (said twice already); "These recorded values are the values of the chains"; the last Cost sentence.
+- Experiments: "which ask for a core value"; the Exp-5 closer (constant per range vs per label, said in Exp-4); com-youtube two
+  sentences merged.
+- Related work: the theorem restatement after "Chains are the same idea taken across sizes".
+- Conclusion: the label sentence naming the three challenges.
+
+Kept on purpose (judged not filler): Applications (three sstitles, the paper's motivation), the three Challenges, Exp-2's
+share explanation (lowest on large cliques / highest on sparse graphs), Case Study protocol sentences (how the scan reads
+the index), "No step of either procedure touches the graph".
