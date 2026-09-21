@@ -1,22 +1,93 @@
 \section{Queries}\label{sec:queries}
+% 2026-09-21 house shape: the algorithm is three blocks (float, walk, example); complexity closer.  Numbers from LEDGER.md.
 
-\stitle{Value $(v,s)$.}
-The bitmap rank gives the chain $c$ of $v$.
-If $s>\omega(c)$ the value is $0$; if $s\ge\sigma(c)$ it is $\binomc{\omega(c)-1}{s-1}$ from the binomial table; otherwise it is the residue of $c$ at $s$, at a byte offset given by the chain's residue start and the prefix sum of the per-size widths.
-Four memory reads, constant time.
+This section gives the two queries on the index.
+%
+Both start from the vertex-to-chain map.
+%
+The value query reads the chain record; the community query climbs the tree of the queried size and reads two entries.
 
-\stitle{Community $(v,s,k)$.}
-The chain gives the own node $x=\own{s}{c}$ from the trajectory.
-The community is the highest ancestor of $x$ with top at least $k$; the climb follows parent pointers, accelerated by one skip pointer per node in the style of Myers \cite{Myers1983}, so it takes $O(\log d)$ steps for a climb of $d$ levels.
-The entries of the reached node and of its successor in preorder then give the answer by Theorem~\ref{thm:retrieval}: a head range, a pointer to the whole runs, and a tail range, in constant time.
+\begin{algorithm}[t]
+\caption{\query: value and community queries on \chainidx.}\label{alg:query}
+\SetAlgoLined\DontPrintSemicolon
+\SetKwProg{Proc}{Procedure}{}{}
+\SetKwFunction{Value}{Value}\SetKwFunction{Community}{Community}
+\KwIn{the index; a vertex $v$; a size $s$; for a community query, a level $k$ with $1\le k\le\core{s}{v}$.}
+\KwOut{$\core{s}{v}$, or the community of $v$ at $(s,k)$ as label ranges.}
+\Proc{\Value{$v,s$}}{
+  $c\leftarrow\mathrm{rank}_1(v)-1$\;\label{ln:q-chain}
+  \lIf{$s>\omega[c]$}{\Return $0$}\label{ln:q-zero}
+  \lIf{$s\ge\sigma[c]$}{\Return $\binom{\omega[c]-1}{s-1}$ from the binomial table}\label{ln:q-floor}
+  \Return residue$[c][s]$\;\label{ln:q-residue}
+}
+\Proc{\Community{$v,s,k$}}{
+  $c\leftarrow\mathrm{rank}_1(v)-1$; $x\leftarrow$ trajectory$[c][s]$\;\label{ln:q-own}
+  \While{$\mathrm{parent}[x]\ne$ none \KwSty{and} $\mathrm{top}[\mathrm{parent}[x]]\ge k$}{\label{ln:q-climb}
+    \lIf{$\mathrm{jump}[x]\ne$ none \KwSty{and} $\mathrm{top}[\mathrm{jump}[x]]\ge k$}{$x\leftarrow\mathrm{jump}[x]$}\label{ln:q-jump}
+    \lElse{$x\leftarrow\mathrm{parent}[x]$}\label{ln:q-parent}
+  }
+  $y\leftarrow x+\mathrm{size}[x]$\;\label{ln:q-exit}
+  $(r_x,v_x)\leftarrow\mathrm{entry}[x]$; $(r_y,v_y)\leftarrow\mathrm{entry}[y]$\;\label{ln:q-entries}
+  \lIf{$r_x=r_y$}{\Return the range $[v_x,v_y)$}\label{ln:q-one}
+  \Return the head $[v_x,hi(r_x))$, the runs $r_x+1,\dots,r_y-1$, and the tail $[lo(r_y),v_y)$\;\label{ln:q-three}
+}
+\end{algorithm}
+
+\stitle{Algorithm.}
+Algorithm~\ref{alg:query} has two procedures, \Value and \Community.
+%
+\Value reads the chain of $v$ from the bitmap (Line~\ref{ln:q-chain}) and returns $0$ when $s$ exceeds the chain's clique number (Line~\ref{ln:q-zero}).
+%
+Based on Theorem~\ref{thm:tail}, it returns the floor from the binomial table when $s$ is at or past the certification point (Line~\ref{ln:q-floor}), and otherwise the stored residue (Line~\ref{ln:q-residue}).
+%
+The residue sits at a byte offset given by the chain's residue start and the prefix sum of the per-size widths.
+%
+\Community reads the chain and its own node at size $s$ from the trajectory (Line~\ref{ln:q-own}).
+%
+It then climbs to the highest ancestor whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}), the community of $v$ at $(s,k)$ by Definition~\ref{def:node}.
+%
+The climb follows parent pointers.
+%
+It takes one \textit{jump pointer} per node in the style of Myers~\cite{Myers1983} whenever the jump target still has top at least $k$ (Line~\ref{ln:q-jump}).
+%
+The jump pointers are derived when the index is loaded and are not stored.
+%
+The node after the subtree of $x$ in preorder is $x+\mathrm{size}[x]$ (Line~\ref{ln:q-exit}).
+%
+Based on Theorem~\ref{thm:retrieval}, the two entries give the answer (Lines~\ref{ln:q-entries} to~\ref{ln:q-three}).
+%
+It is one range when both entries lie in the same run, and otherwise a head, whole runs and a tail.
+%
 Reporting the ranges costs their number; expanding them into vertex labels costs the number of vertices, written eight labels per vector store.
 
-\stitle{Example.}
-In Figure~\ref{fig:layout}, the value of $u_1$ at size 3: label 8, the bitmap has three ones up to label 8, so $u_1$ is in chain 2, whose $\omega=3$ and $\sigma=4$; $3<\sigma$, so the answer is the residue of chain 2 at size 3, which is 3.
-The value of $a_2$ at size 4: chain 1, $\omega=5$, $\sigma=2\le4$, so the answer is $\binomc{4}{3}=4$ from the table.
-The community of $x$ at $(3,2)$: chain 3, whose trajectory gives the own node $N$ at size 3; $N$ has no parent, so the climb stops there; the entries of $N$ and of its successor $A$ are (run 0, label 0) and (run 2, label 3), so the answer is the head $[0,3)$ and the whole run $[8,15)$: $\{b_1,b_2,b_3,u_1,\dots,w_3,x\}$, two ranges for ten vertices.
+\begin{example}\label{ex:query}
+Consider Figure~\ref{fig:layout}.
+%
+For \Value{$u_1,3$}: $u_1$ has label $8$, three ones lie at or before it, and the chain is $2$ (Line~\ref{ln:q-chain}).
+%
+The chain has $\omega=3$ and $\sigma=4$, and $3<\sigma$.
+%
+The answer is the residue of chain $2$ at size $3$, which is $3$ (Line~\ref{ln:q-residue}).
+%
+For \Value{$a_2,4$}: the chain is $1$ with $\sigma=2\le4$, and the answer is $\binom{4}{3}=4$ from the table (Line~\ref{ln:q-floor}).
+%
+For \Community{$x,3,2$}: the chain is $3$, and its trajectory gives the own node $N$ at size $3$ (Line~\ref{ln:q-own}).
+%
+$N$ has no parent, and the climb stops (Line~\ref{ln:q-climb}).
+%
+The node after $N$ is $A$ (Line~\ref{ln:q-exit}), and the entries are $(0,0)$ and $(2,3)$ (Line~\ref{ln:q-entries}).
+%
+The runs differ, and the answer is the head $[0,3)$, the whole run $[8,15)$ and the empty tail $[3,3)$ (Line~\ref{ln:q-three}): ten vertices in two ranges.
+% trace 2026-09-21 (LEDGER.md): Value(u1,3): chain 2 residues (4,3) -> 3.  Value(a2,4): C(4,3)=4.  Community(x,3,2): N entries (0,0), A (2,3).
+\end{example}
 
 \stitle{Complexity.}
-Value: $O(1)$.
-Community: $O(\log d)$ to locate plus the size of the answer in the chosen form.
-The bound on $d$ is the depth of $\Tree{s}$, at most the number of distinct core values of size $s$.
+\Value takes constant time: four memory reads.
+%
+\Community takes $O(\log d)$ steps for a climb of $d$ levels and constant time for the two entries.
+%
+Expanding the answer costs its size in the chosen form.
+%
+The depth $d$ is at most the number of distinct core values of size $s$.
+%
+No step of either procedure touches the graph.
