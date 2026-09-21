@@ -75,7 +75,8 @@ def fig_regimes():
     Right: locating time by level, one point per graph, both indexes."""
     rows = all_profiles(pairs=True)
     if not rows: return
-    fig, (a, b) = plt.subplots(1, 2, figsize=(TEXT_WIDTH, 1.75), gridspec_kw={'width_ratios': [1.45, 1]})
+    # 2026-09-22: three panels; (b) replaces the per-graph query table: the listing-time ratio against vertices per range
+    fig, (a, c, b) = plt.subplots(1, 3, figsize=(TEXT_WIDTH, 1.75), gridspec_kw={'width_ratios': [1.3, 1, 1]})
     marks = {'own': 'o', 'half': 's', 'root': '^'}; labels = {'own': 'own level', 'half': 'half level', 'root': 'k = 1'}
     for reg, mk in marks.items():
         xs = [x['regimes'][reg]['output'] for w, g, x in rows]
@@ -91,6 +92,15 @@ def fig_regimes():
     handles += [Line2D([], [], marker='o', color=OURS, ls='', markersize=3.6, label='ChainIndex'),
                 Line2D([], [], marker='o', color=BASE, markerfacecolor='white', ls='', markersize=3.6, label='STrees')]
     a.legend(handles=handles, ncol=2, loc='upper left', columnspacing=0.9, handletextpad=0.2)
+    # middle: the listing time of STrees divided by that of ChainIndex against the mean vertices per range
+    for reg, mk in marks.items():
+        pts = [(x['regimes'][reg]['output'] / max(x['regimes'][reg]['ranges'], 1), x['regimes'][reg]['st_list_ns'] / x['regimes'][reg]['list_ns']) for w, g, x in rows]
+        c.scatter([p[0] for p in pts], [p[1] for p in pts], s=11, marker=mk, color=OURS, linewidths=0.5, zorder=3)
+    c.axhline(1, color='0.7', lw=0.6, ls=(0, (2, 1.5)))
+    c.text(1.2e4, 0.17, 'ChainIndex faster above 1', fontsize=6.2, color='0.35', ha='right', va='bottom')
+    c.set_xscale('log'); c.set_yscale('log'); c.set_xlabel('mean vertices per range'); c.set_ylabel('listing time ratio (STrees / ChainIndex)')
+    c.set_xlim(1, 2e4); c.set_ylim(0.15, 8)
+    c.set_yticks([0.2, 0.5, 1, 2, 5]); c.set_yticklabels(['0.2', '0.5', '1', '2', '5'])
     # right: strip plot of the locating times, one point per graph, the two indexes side by side
     import numpy as np
     rng = np.random.default_rng(3)
@@ -107,8 +117,47 @@ def fig_regimes():
     b.set_xticks(range(3)); b.set_xticklabels([labels[r] for r in marks]); b.set_xlim(-0.6, 2.6)
     b.set_yscale('log'); b.set_ylabel('locating time (ns)'); b.set_ylim(1.5, 6000)
     legend_pair(b, loc='upper left')
-    fig.subplots_adjust(left=0.075, right=0.995, bottom=0.2, top=0.97, wspace=0.28)
+    for ax, t in zip((a, c, b), ('(a)', '(b)', '(c)')): ax.set_title(t, loc='left', fontsize=8, pad=3)
+    fig.subplots_adjust(left=0.07, right=0.995, bottom=0.2, top=0.9, wspace=0.4)
     save(fig, 'fig_regimes')
+
+# ------------------------------------------------------------- Exp-8: CND once per size against one build ----
+COL_WIDTH = 240.96 * PT
+
+def fig_prior():
+    """One point per (graph, machine) pair: the summed build and peel time of CND over all sizes against the build
+    time of ChainIndex on the same machine, log-log, with the 10x/100x/1000x lines.  Replaces the per-pair table."""
+    ours = {}
+    for where, f in [('laptop', 'final.json'), ('laptop', 'more.json'), ('tods1', 'tods1.json'), ('tods2', 'tods2.json')]:
+        rec = load(f)
+        if rec is None: continue
+        for r in rec['runs']:
+            if 'result' in r: ours.setdefault((where, NAMES.get(Path(r['graph']).stem, Path(r['graph']).stem)), r['result'])
+    pts = []
+    for where, d in [('laptop', 'prior'), ('tods2', 'prior/tods2'), ('tods1', 'prior/tods1')]:
+        for p in sorted((EV / d).glob('prior_original_*.json')):
+            og = json.loads(p.read_text()); g = NAMES.get(p.stem[len('prior_original_'):], p.stem[len('prior_original_'):])
+            if 'total_inproc_ms' in og and (where, g) in ours:
+                o = ours[(where, g)]; pts.append((where, g, (o['ti_ms'] + o['build_ms'] + o['compact_ms']) / 1000, og['total_inproc_ms'] / 1000, og['sizes_ok']))
+    if not pts: return
+    fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.6))
+    lo, hi = 5e-3, 150
+    for f, lab in ((1, '1x'), (10, '10x'), (100, '100x'), (1000, '1000x')):
+        ax.plot([lo, hi], [lo * f, hi * f], color='0.75', lw=0.6, ls=(0, (2, 1.5)), zorder=1)
+        ax.text(hi * 1.15, hi * f, lab, fontsize=6.4, color='0.4', va='center')
+    mk = {'laptop': 'o', 'tods1': 's', 'tods2': '^'}; lab = {'laptop': 'laptop', 'tods1': 'server 1', 'tods2': 'server 2'}
+    for where in mk:
+        sel = [p for p in pts if p[0] == where]
+        if sel: ax.scatter([p[2] for p in sel], [p[3] for p in sel], s=12, marker=mk[where], color=OURS, linewidths=0.5, zorder=3, label=lab[where])
+    done = set()
+    for where, g, x, y, k in sorted(pts, key=lambda p: p[0] != 'tods1'):
+        if g in ('web-uk-2005', 'com-amazon', 'web-BerkStan') and g not in done:
+            done.add(g); ax.annotate(f'{g}, {k} sizes', (x, y), textcoords='offset points', xytext=(-5, 7), ha='right', fontsize=6.2, color='0.25')
+    ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlim(lo, 1500); ax.set_ylim(0.05, 4e5)
+    ax.set_xlabel('ChainIndex, one build for every size (s)'); ax.set_ylabel('CND, one run per size (s)')
+    ax.legend(loc='lower right', handletextpad=0.2)
+    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.2, top=0.97)
+    save(fig, 'fig_prior')
 
 # ------------------------------------------------------------------- Exp-5: by clique size and answer size ----
 def rep_profiles():
@@ -184,5 +233,5 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
     save(fig, 'fig_scale')
 
 if __name__ == '__main__':
-    fig_regimes(); fig_profile(); fig_scale()
+    fig_regimes(); fig_profile(); fig_scale(); fig_prior()
     print('figures written to', OUT)

@@ -178,6 +178,15 @@ def table_layouts():
         lines.append(f"{tex_escape(g)} & {fmt(data['vertices'][g]['base_with_d'])} & {fmt(data['twins'][g]['base_with_d'])} & {fmt(data['chains'][g]['base_with_d'])} & {fmt(ab)} & {fmt(final[g]['bytes_total'])} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'layouts.tex').write_text('\n'.join(lines) + '\n')
+    # 2026-09-22: the design study is a paragraph, not a table; ranges over the five graphs as macros
+    base = {g: data['vertices'][g]['base_with_d'] for g in graphs}
+    twins = [base[g] / data['twins'][g]['base_with_d'] for g in graphs]
+    chains = [base[g] / data['chains'][g]['base_with_d'] for g in graphs]
+    aligned = [base[g] / (data['aligned'][g]['bytes_shared_aligned'] + data['aligned'][g]['bytes_base_nodes'] + data['aligned'][g]['bytes_base_pairs'] + data['aligned'][g]['bytes_block_d']) for g in graphs]
+    fin = [base[g] / final[g]['bytes_total'] for g in graphs]
+    (OUT / 'layout_stats.tex').write_text(''.join(f"\\newcommand{{\\{k}}}{{{v}}}\n" for k, v in {
+        'laytwinmin': f"{min(twins):.2f}", 'laytwinmax': f"{max(twins):.2f}", 'laychainmin': f"{min(chains):.1f}", 'laychainmax': f"{max(chains):.1f}",
+        'layalignmin': f"{min(aligned):.1f}", 'layalignmax': f"{max(aligned):.1f}", 'layfinalmin': f"{min(fin):.1f}", 'layfinalmax': f"{max(fin):.1f}"}.items()))
 
 def table_prior():
     """CND (the original single-size implementation) run once per size against the chain index build, on every machine

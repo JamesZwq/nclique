@@ -107,91 +107,53 @@ The share is lowest on the graphs with large cliques, where most of a vertex's v
 It is highest on the sparse social and citation graphs, where the certification point is close to the clique number.
 
 \expsection{Design study}
-Table~\ref{tab:layouts} measures the layout decisions one at a time on five graphs.
+% 2026-09-22 compaction: the table of the five layouts is a paragraph with the ranges as macros (tables/layout_stats.tex); the chain factor was misquoted as 4.5 (data: 4.8).
+We measured the layout decisions one at a time on \textsf{ca-GrQc}, \textsf{ca-HepPh}, \dblp, \textsf{web-Stanford} and \textsf{amazon0302}.
 %
-Each column is one layout, and each cell is the size of that layout on one graph.
+Trees over twin classes (Section~\ref{sec:chains}) do not help: they are at best \laytwinmax$\times$ smaller than \strees and on three of the five graphs larger, since twin classes have $1.03$ to $1.28$ vertices on average.
 %
-Trees over twin classes (Section~\ref{sec:chains}) do not help, since twin classes have $1.03$ to $1.28$ vertices on average.
+Trees over chains with an explicit vertex-to-chain map are \laychainmin$\times$ to \laychainmax$\times$ smaller than \strees.
 %
-Trees over chains with an explicit vertex-to-chain map are $2.5\times$ to $4.5\times$ smaller than \strees.
+Aligned labels, which remove the map, bring the factor to \layalignmin$\times$ to \layalignmax$\times$, and the runs with their entries to \layfinalmin$\times$ to \layfinalmax$\times$.
 %
-Aligned labels remove the map and turn answers into ranges, and the runs with their entries give the final sizes.
-%
-We also measured the skyline layout of SGL~\cite{SGL} over chains, which stores one entry per chain and non-dominated size.
-%
-Over chains it took $1.01$ to $1.12$ times the space of the tree layout and $2.3$ to $6.3$ times longer to answer an own-level query, so it is not part of the index.
-
-\begin{table*}[t]
-\centering\footnotesize
-\caption{Design study: bytes of the successive layouts.}\label{tab:layouts}
-\input{tables/layouts}
-\end{table*}
+The skyline layout of SGL~\cite{SGL} over chains, one entry per chain and non-dominated size, took $1.01$ to $1.12$ times the space of the tree layout and $2.3$ to $6.3$ times longer to answer an own-level query, so it is not part of the index.
 
 \expsection{Query latency}
-Table~\ref{tab:queries} reports the own-level community query and the value query.
+% 2026-09-22 compaction: the per-graph query table is gone; Figure fig:regimes (three panels) carries the levels, the listing ratio against vertices per range, and the locating strips.
+Figure~\ref{fig:regimes} reports the community queries of the three levels for both indexes on the \stpairs{} (graph, machine) pairs measured together.
 %
-The community columns are the time to locate a community, the number of ranges of the answer, its size, and the time to list it as vertex labels.
+Locating takes \locmin{} to \locmax{}~ns at the own level, median \locmedian{}~ns.
 %
-The table also gives the two times of \strees, which lists a community by copying its slice of the array, on the same queries.
+\strees takes about half: it reads the own node from the vertex directly, whereas \chainidx maps the vertex to its chain first and then reads the trajectory and the entry.
 %
-Locating takes \locmin{} to \locmax{}~ns, median \locmedian{}~ns.
+Panel (c) gives the medians per level: \ownmedian{}~ns at the own level, \halfmedian{}~ns at half the level and \rootmedian{}~ns at $k=1$ for \chainidx.
+%
+With the jump pointers, the climb to the root costs no more than the own-level query, and the half-level climb, which stops at an interior node, costs at most \halfmax{}~ns.
+%
+The parent-pointer climb of \strees has no such bound and costs up to \stlocdeepmax$\times$ the time of \chainidx: on \textsf{ca-coauthors-dblp}, whose hierarchy has $5{,}543$ levels, $1{,}086$~ns against $109$~ns.
+%
+Listing time, panel (a), grows linearly with the answer size for both indexes, at $0.05$ to $0.5$~ns per vertex above a fixed cost of a few nanoseconds.
 %
 A community of $1.9$ million vertices on \textsf{dblp-coauthor}, the graph of $4$ million vertices, is located in $11$~ns and listed in $167~\mu$s.
 %
-At the own level \strees locates in about half the time of \chainidx.
+\strees lists a community by one memory copy of its slice, and \chainidx reports one range per run however many labels it expands to.
 %
-It reads the own node from the vertex directly, whereas \chainidx maps the vertex to its chain first and then reads the trajectory and the entry.
+Panel (b) plots the ratio of the two listing times against the mean number of vertices per range: \chainidx is faster where the answer is a few long ranges, on the social, product and web graphs, and slower where it is split into short ranges, on \emailcore, \textsf{cit-HepPh} and \textsf{ca-AstroPh} with $2$ to $5$ vertices per range.
 %
-Listing costs \pervmin{} to \pervmax{}~ns per vertex on the graphs whose mean answer has at least a thousand vertices.
-%
-On \emailcore and \textsf{ca-GrQc}, whose answers have fewer than a hundred vertices, the fixed cost of a query dominates.
-%
-The listing time of \strees divided by that of \chainidx ranges from \stmin{} to \stmax{} (median \stmedian) over the \stpoints{} (graph, level) points of the three levels, and \chainidx is the faster one on \stfaster{} of them.
-%
-A run is reported as one range however many labels it expands to.
-%
-\chainidx is therefore faster where the answer is a few long ranges, on the social, product and web graphs, and slower where the answer is split into many short ranges.
-%
-\emailcore, \textsf{cit-HepPh} and \textsf{ca-AstroPh} have $2$ to $5$ vertices per range, and there one range costs as much as tens of copied labels.
+Over the \stpoints{} (graph, level) points the ratio ranges from \stmin{} to \stmax{} (median \stmedian), and \chainidx is the faster one on \stfaster{} of them.
 %
 Value queries take \valmin{} to \valmax{}~ns, median \valmedian{}~ns.
-%
-The slowest is \webuk.
-
-Figure~\ref{fig:regimes} shows the three levels of the workload for both indexes on the \stpairs{} (graph, machine) pairs of Table~\ref{tab:queries} that have both indexes.
-%
-The left panel plots the listing time against the mean size of the answer, one point per graph and level.
-%
-The right panel plots the locating time by level.
-%
-Listing time grows linearly with the size of the answer at every level, for \chainidx and for \strees alike, at $0.05$ to $0.5$~ns per vertex above a fixed cost of a few nanoseconds.
-%
-On these pairs, locating costs a median of \ownmedian{}~ns at the own level, \halfmedian{}~ns at half the level and \rootmedian{}~ns at $k=1$.
-%
-With the jump pointers, the climb to the root at $k=1$ costs no more than the own-level query, which does not climb.
-%
-The half-level climb stops at an interior node and costs at most \halfmax{}~ns.
-%
-The parent-pointer climb of \strees has no such bound: at the half level and at $k=1$ it costs up to \stlocdeepmax$\times$ the time of \chainidx.
-%
-On \textsf{ca-coauthors-dblp}, whose hierarchy has $5{,}543$ levels, the half-level climb takes $1{,}086$~ns for \strees against $109$~ns for \chainidx.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_regimes.pdf}
-\caption{Community queries by level.}\label{fig:regimes}
+\caption{Community queries: (a) listing time by answer size and level, (b) listing time of \strees over that of \chainidx by vertices per range, (c) locating time by level.}\label{fig:regimes}
 \end{figure*}
-
-\begin{table*}[t]
-\centering\footnotesize
-\caption{Own-level community and value queries (ns).}\label{tab:queries}
-\input{tables/queries}
-\end{table*}
 
 \expsection{Latency by clique size and by answer size}
 Figure~\ref{fig:profile} separates two variables that the workload above averages, the clique size and the answer size, on two representative graphs measured on server 2, \textsf{web-BerkStan} and \textsf{cit-Patents}.
 %
-The other graphs of Table~\ref{tab:queries} show the same trends.
+The other graphs show the same trends.
 %
 Panel (a) plots the locating time against the clique size, and panel (b) the listing time against the clique size.
 %
@@ -263,11 +225,10 @@ Query latency stays flat: locating stays between $21$ and $28$~ns and listing be
 \end{figure*}
 
 \expsection{Against one decomposition per size}
-Table~\ref{tab:prior} sums the runs of \cnd, one per size, over the sizes $2$ to $s_{\max}$ on \priorgraphs{} (graph, machine) pairs.
+% 2026-09-22 compaction: the per-pair table is Figure fig:prior (log-log scatter with the 10x/100x/1000x lines).
+Figure~\ref{fig:prior} plots, for the \priorgraphs{} (graph, machine) pairs with both records, the build and peel time of \cnd summed over the sizes $2$ to $s_{\max}$ against the one build of \chainidx on the same machine.
 %
-It reports the end-to-end time of all runs and their build and peel time alone, against the whole build of \chainidx on the same machine.
-%
-Counting only the build and peel time of \cnd, \chainidx is built faster by \priormin$\times$ on \textsf{com-amazon} (six sizes) to \priormax$\times$ on \webuk{} ($499$ sizes), median \priormedian$\times$.
+\chainidx is built faster by \priormin$\times$ on \textsf{com-amazon} (six sizes) to \priormax$\times$ on \webuk{} ($499$ sizes), median \priormedian$\times$.
 %
 Counting the end-to-end time of \cnd, which reads and sorts the graph for every size, the factors are larger still.
 %
@@ -275,13 +236,13 @@ The clique tree is built once instead of once per size, and the peel of one size
 %
 The ratio grows with the number of sizes: on \textsf{web-BerkStan} ($201$ sizes) the $2.0$ hours of build and peel of \cnd become $66$ seconds, and on \webuk{} $15.7$ hours become $70$ seconds.
 %
-Table~\ref{tab:prior} also gives the cost of answering a community query without an index: one decomposition at the queried size, seconds to minutes per query on these graphs, against the nanoseconds of Table~\ref{tab:queries}.
+One run of \cnd is also the cost of answering a community query without an index, a decomposition at the queried size: seconds to minutes per query on these graphs, against the nanoseconds of Figure~\ref{fig:regimes}.
 
-\begin{table*}[t]
-\centering\footnotesize
-\caption{\cnd once per size against one build of \chainidx.}\label{tab:prior}
-\input{tables/prior}
-\end{table*}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_prior.pdf}
+\caption{\cnd once per size against one build of \chainidx.}\label{fig:prior}
+\end{figure}
 
 \expsection{Case Study I: the best size per query}
 We study which clique size best recovers ground-truth communities.
