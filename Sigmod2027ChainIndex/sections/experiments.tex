@@ -30,13 +30,12 @@ Its query latency is measured on the same decomposition and the same queries as 
 It computes core values only, so it is compared on build time and not on index size.
 
 \stitle{Datasets.}
-We use \numgraphs{} real graphs from five families.
-%
-They are collaboration graphs (\textsf{ca-*}, \textsf{com-dblp}, \textsf{dblp-*}), citation graphs (\textsf{cit-*}), web graphs (\textsf{web-*}), product co-purchase graphs (\textsf{amazon*}, \textsf{com-amazon}), and social and communication networks (\textsf{soc-*}, \textsf{com-youtube}, \textsf{email-Eu-core}, \textsf{wiki-Talk}, \textsf{loc-Brightkite}, \textsf{tech-as-skitter}).
+% 2026-09-22 filler pass: the family listing is the Type column of Table 1.
+We use \numgraphs{} real graphs from five families: collaboration, citation, web, product co-purchase, and social and communication networks.
 %
 They range from $1{,}005$ to $4{,}049{,}537$ vertices, with largest cliques from $7$ to $500$ vertices.
 %
-Table~\ref{tab:size} lists them with their largest clique size $s_{\max}$.
+Table~\ref{tab:size} lists them with their family and their largest clique size $s_{\max}$.
 %
 The sizes with a nonzero value are $2$ to $s_{\max}$, that is $s_{\max}-1$ sizes.
 %
@@ -224,13 +223,11 @@ Between $10^5$ and $10^6$ the gap closes, and from $10^6$ vertices on the two ag
 \end{figure*}
 
 \expsection{Construction}
-The last two columns of Table~\ref{tab:size} give the build time of \chainidx and its memory usage.
+The last two columns of Table~\ref{tab:size} give the build time and memory usage of \chainidx.
 %
-The build time covers the clique tree, the peel of every size, and the index passes: the trees, the trie of the chains, the runs and the values (Section~\ref{sec:construction}).
+The build time covers the clique tree, the peel of every size and the index passes of Section~\ref{sec:construction}.
 %
-The index passes are a few percent of the total.
-%
-The peel and its clique tree are the rest, and the memory usage is that of the clique tree.
+The index passes are a few percent of the time; the clique tree and the peel are the rest, and the memory usage is that of the clique tree.
 %
 The build takes $0.01$~s on \textsf{ca-GrQc} and $221$~s on \textsf{dblp-coauthor}, the graph of $4$ million vertices, with $8.8$~GB of memory there.
 %
@@ -266,9 +263,7 @@ Query latency stays flat: locating stays between $21$ and $28$~ns and listing be
 \end{figure*}
 
 \expsection{Against one decomposition per size}
-\cnd computes the core values of one size per run, so obtaining every size with it means one run per size.
-%
-Table~\ref{tab:prior} sums those runs over the sizes $2$ to $s_{\max}$ on \priorgraphs{} (graph, machine) pairs.
+Table~\ref{tab:prior} sums the runs of \cnd, one per size, over the sizes $2$ to $s_{\max}$ on \priorgraphs{} (graph, machine) pairs.
 %
 It reports the end-to-end time of all runs and their build and peel time alone, against the whole build of \chainidx on the same machine.
 %
@@ -312,8 +307,7 @@ The $k$-core at its best level, that is, size $2$, is the first choice.
 Table~\ref{tab:casegt} compares it with three other choices: the triangle size, $s=3$, at its best level; the best single size for the graph at its best level; and the best size chosen per query, at the own level.
 %
 The table also gives the best (size, level) chosen per query.
-%
-Table~\ref{tab:casehist} gives where the best size falls.
+% 2026-09-22 filler pass: Table "Where the best size falls" removed; its dblp row was already in the text, its amazon row is now one sentence (case/*.json: com-amazon best size 3 for 59% of queries).
 %
 \sstitle{No single size is right on \dblp.}
 The best size spreads over $2$ to $8$.
@@ -325,7 +319,7 @@ Choosing the size and level per query gives an F1 of $0.179$, $3.6\times$ the $0
 For $74$ percent of the queries, the remaining ones, some size other than $2$ beats the $k$-core at every level.
 %
 \sstitle{One size can be enough.}
-On \textsf{com-amazon} the triangle size alone reaches $0.824$ against $0.851$ for the per-query choice, $1.7\times$ and $1.8\times$ the $0.474$ of the $k$-core.
+On \textsf{com-amazon} the best size is $3$ for $59$ percent of the queries, and the triangle size alone reaches $0.824$ against $0.851$ for the per-query choice, $1.7\times$ and $1.8\times$ the $0.474$ of the $k$-core.
 %
 On \textsf{com-youtube} every size is far from the ground-truth groups, with F1 below $0.04$.
 %
@@ -341,12 +335,6 @@ Without the index, each size of the scan would be one decomposition of the graph
 \caption{Ground-truth communities: mean F1 of the core of a member.}\label{tab:casegt}
 \input{tables/case_gt}
 \end{table*}
-
-\begin{table}[t]
-\centering\footnotesize
-\caption{Where the best size falls.}\label{tab:casehist}
-\input{tables/case_gt_hist}
-\end{table}
 
 \expsection{Case Study II: Amazon products across sizes}
 We study \textsf{com-amazon} joined with the SNAP product metadata (titles, groups and category paths), available for $334{,}852$ of its $334{,}863$ products.

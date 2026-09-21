@@ -2,7 +2,7 @@
 """Generate the paper's tables (tables/*.tex) from the evidence JSON files of
 research/r1_skyline_index_20260918.  Every number in the paper's tables comes
 from here; nothing is typed by hand.  Run from anywhere."""
-import json
+import json, re
 import statistics
 from pathlib import Path
 
@@ -239,8 +239,18 @@ def table_cases():
         for q in rec['queries']:
             lv = q['levels']; sizes = ', '.join(f"{L['size']:,} ({L['leaf_share']:.2f})" for L in lv)
             last = [L for L in lv if 'members' in L]
-            members = '; '.join(m.replace(' (Music)', '').replace(' (Book)', '').replace(' (DVD)', '')[:38] for m in last[-1]['members'][:8]) + (' \\dots' if last and len(last[-1]['members']) > 8 else '') if last else '--'
-            lines.append(f"{tex_escape(q['title'][:60])} ({q['group']}) & {sizes} & {tex_escape(members)} \\\\")
+            # 2026-09-22: whole words, no bracketed tails, at most six members; the escape runs before \dots is appended
+            def short(m):
+                m = re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', m).strip()
+                for sep in (':', ' - '):
+                    head = m.split(sep)[0].strip()
+                    if len(m) > 55 and sep in m and len(head) >= 15: m = head
+                return m
+            if last:   # the query product itself first, then the others in stored order
+                mem = last[-1]['members']; qt = q['title'] + f" ({q['group']})"
+                mem = ([m for m in mem if m == qt] + [m for m in mem if m != qt])
+            members = ('; '.join(tex_escape(short(m)) for m in mem[:6]) + (' \\dots' if len(mem) > 6 else '')) if last else '--'
+            lines.append(f"{tex_escape(q['title'][:60])} ({q['group']}) & {sizes} & {members} \\\\")
         lines += [r'\bottomrule', r'\end{tabular}']
         (OUT / 'case_examples.tex').write_text('\n'.join(lines) + '\n')
 

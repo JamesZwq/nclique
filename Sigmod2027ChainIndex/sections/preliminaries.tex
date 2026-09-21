@@ -45,7 +45,8 @@ If they shared a vertex, their union would have both properties, the two clique 
 %
 The \textit{core value} of $v$ at size $s$, denoted as $\core{s}{v}$, is the largest $k$ such that $v$ belongs to an $\Nuc{s}{k}$.
 %
-It is $0$ if $v$ lies in no $s$-clique.
+% 2026-09-22 cold read (Sections 3/4): the converse stated once here, Section 3 and the proofs lean on it.
+It is $0$ if $v$ lies in no $s$-clique, and at least $1$ otherwise, since an $s$-clique containing $v$ has the two properties at level $1$ and extends to an $\Nuc{s}{1}$.
 %
 The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$.
 %

@@ -2,33 +2,32 @@
 % 2026-09-21 the fair state-of-the-art section (house order): the tree of one size, its own nodes, the STrees layout
 % and its cost, the per-size construction, and the closing remark that re-lists the three limitations.  Cadence pass.
 
-This section describes the hierarchy of one size, that is, the tree that the cores of that size form, and the index that stores one such tree per size.
+This section describes the hierarchy of one size, that is, the forest that the cores of that size form under inclusion, and the index that stores one such forest per size.
 % 2026-09-22 filler pass: the preview of Sections 4 to 7 removed; the bridge is the last sentence of the section.
 
 \stitle{The tree of one size.}
 Fix a size $s$.
 %
+% 2026-09-22 cold read: k <= k' pointed to where it is used; maximality named; the closing restatement removed; "interval of levels" -> "several levels".
 Two cores of size $s$ are disjoint or nested.
 %
 Let $K$ be an $\Nuc{s}{k}$ and $K'$ an $\Nuc{s}{k'}$ with $k\le k'$, and let the two share a vertex.
 %
-Every vertex of $K\cup K'$ lies in at least $k$ cliques of $s$ vertices inside the union, and the union is connected through the shared vertex.
+Every vertex of $K\cup K'$ lies in at least $k$ cliques of $s$ vertices inside the union, as $k\le k'$, and the union is connected through the shared vertex.
 %
-The union therefore satisfies the two properties of Definition~\ref{def:nucleus} at level $k$.
+The union therefore has the two properties of Definition~\ref{def:nucleus} at level $k$.
 %
-No vertex can be added to $K$, so the union is $K$, and $K'\subseteq K$.
+No vertex can be added to $K$ without losing a property, so the union is $K$, and $K'\subseteq K$.
 %
-Any two cores of size $s$ are therefore disjoint or nested.
-%
-One vertex set can be a core for a whole interval of levels.
+One vertex set can be a core at several levels.
 \begin{definition}[canonical node, own node]\label{def:node}
 A \textit{canonical node} of size $s$ is a vertex set that is an $\Nuc{s}{k}$ for at least one level $k$.
 %
 Its \textit{top} is the largest such $k$.
 %
-The canonical nodes of size $s$ form the forest $\Tree{s}$ under inclusion.
+The canonical nodes of size $s$ form the forest $\Tree{s}$ under inclusion, which we also call the tree of size $s$ although it may have several roots.
 %
-The nodes contained in no other node are its roots, and the children of a node are the nodes inside it that no other node inside it contains.
+The nodes contained in no other node are its roots, and the children of a node are the largest nodes strictly inside it.
 %
 The \textit{own node} of a vertex $v$ with $\core{s}{v}\ge1$, denoted as $\own{s}{v}$, is the $\Nuc{s}{\core{s}{v}}$ containing $v$.
 \end{definition}
@@ -48,39 +47,43 @@ The $\Nuc{s}{\ell+1}$ containing it lies inside it by the nesting and so equals 
 %
 Tops increase strictly from a root down to its descendants.
 %
-A parent with top $\ell$ has the two properties at every level up to $\ell$.
+A parent with top $\ell$ has the two properties at every level up to $\ell$, since a lower level asks for fewer cliques.
 %
-A child with a top of at most $\ell$ could then be extended to its parent without losing a property.
+A child with a top of at most $\ell$ could then be extended to its parent without losing a property, so it would not be a core.
 %
 The nodes containing $v$ are nested, so they form a path from a root downwards.
 %
-The own node of $v$ is the deepest of them, since tops increase downwards and its top, $\core{s}{v}$, is the largest top a node containing $v$ can have.
+The own node of $v$ is the deepest of them: tops increase downwards, and no node containing $v$ has a top above $\core{s}{v}$, since such a node would be a core at that level containing $v$.
 %
-For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is a node on this path with top at least $k$.
+For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is a node on this path with top at least $k$, and it is the one nearest the root among these nodes.
 %
-It is the one nearest the root among them: a larger node containing $v$ with top at least $k$ would have the two properties at level $k$ and strictly contain the community.
+A larger node containing $v$ with top at least $k$ would have the two properties at level $k$ and strictly contain the community, so the community could be extended.
 %
-We call it the node nearest the root with top at least $k$ on the path from $\own{s}{v}$ to its root.
+Later sections name the community by this description: the node nearest the root with top at least $k$ on the path from $\own{s}{v}$ to its root.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_strees.pdf}
-\caption{\strees for Figure~\ref{fig:example}: for every size, the tree over the array of its vertices; a node is drawn as a bar over the vertices it contains.}
+\caption{One hierarchy per size (\strees) for Figure~\ref{fig:example}: for every size, its tree drawn over the depth-first array of its vertices; a node is a bar over the vertices it contains.}
 \label{fig:strees}
 \end{figure}
 \begin{example}\label{ex:tree}
 Consider Figure~\ref{fig:example}.
 %
-Figure~\ref{fig:strees} draws the trees of its four sizes.
+Figure~\ref{fig:strees} draws the trees of its four sizes, $2$ to $5$.
 %
 At size $2$ the forest $\Tree{2}$ has one root holding all $15$ vertices.
 %
-The graph is connected and its smallest degree is $3$ (at $b_1$ and $b_2$), so the root is the $(2,k)$-core for $k=1,2,3$ and has top $3$.
+The graph is connected and every vertex has at least three neighbours, so the whole vertex set is the $(2,k)$-core for $k=1,2,3$.
 %
-The root has two children of top $4$, $A$ and $\{x,u_1,\dots,w_3\}$.
+Its top is $3$, since $b_1$ has exactly three neighbours.
 %
-At size $3$ the forest $\Tree{3}$ has two roots and no other node: $N=B\cup\{u_1,\dots,w_3\}$ with top $3$ and $A$ with top $6$.
+The root has two children of top $4$, $A$ and $\{x,u_1,\dots,w_3\}$, the two $4$-cores of Example~\ref{ex:nucleus}.
 %
-No triangle joins them, because the edge $a_5b_3$ lies in none.
+At size $3$ the forest $\Tree{3}$ has two roots and no other node: $N=B\cup\{u_1,\dots,w_3\}$ with top $3$, and $A$ with top $6$.
+%
+The set $A$ is the $(3,k)$-core for every $k$ from $1$ to $6$, so it is one node.
+%
+No triangle joins $N$ and $A$, because the edge $a_5b_3$ lies in none.
 %
 At size $4$ the roots are $A$ (top $4$) and $B$ (top $1$), and at size $5$ the forest is $A$ alone.
 %
@@ -90,7 +93,7 @@ The community of $x$ at $(2,3)$ is the root, the node nearest the root with top 
 \end{example}
 
 \stitle{The index of one size.}
-The tree of one size gives a fast index for that size~\cite{fastHierarchy,Fang2016CLtree}.
+The tree of one size gives an index for that size~\cite{fastHierarchy,Fang2016CLtree}.
 %
 The vertices with $\core{s}{v}\ge1$ are written into one array in a depth-first traversal of $\Tree{s}$.
 %
@@ -100,7 +103,7 @@ The vertices of every node then form one contiguous slice of the array, since th
 %
 In Figure~\ref{fig:strees} every node is drawn as a bar over its slice.
 %
-The vertices under a bar that no child bar covers are those whose own node the bar's node is.
+The vertices under a bar and under none of its child bars are the vertices whose own node is that bar's node.
 %
 Every node stores its top, its parent and the two ends of its slice.
 %
@@ -115,7 +118,7 @@ An index that serves every size stores, for each size, one tree and one array, t
 %
 We call this index \strees, and it is the baseline of Section~\ref{sec:exp}.
 %
-A vertex $v$ lies in an $s$-clique, and so has a nonzero value, at every size from $2$ to $\omg{v}$, so it appears in $\omg{v}-1$ arrays.
+A vertex $v$ has a nonzero value at every size from $2$ to $\omg{v}$ (Section~\ref{sec:prelim}), so it appears in $\omg{v}-1$ arrays, one per size.
 %
 The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ for the $15$ vertices of Figure~\ref{fig:example}, as Figure~\ref{fig:strees} shows.
 %
@@ -123,11 +126,13 @@ There are as many own-node pointers, and as many stored values.
 %
 On the web graph \webuk of Section~\ref{sec:exp}, a vertex lies in $181$ arrays on average, and \strees takes $190$~MB for $129{,}632$ vertices.
 %
-On the coauthorship graph \textsf{ca-coauthors-dblp}, whose largest cliques have $337$ vertices, it takes $202$~MB for $540{,}486$ vertices, and on the coauthorship graph \textsf{dblp-coauthor} of $4$ million vertices it takes $506$~MB.
+On the coauthorship graph \textsf{ca-coauthors-dblp}, whose largest cliques have $337$ vertices, \strees takes $202$~MB for $540{,}486$ vertices.
+%
+On the coauthorship graph \textsf{dblp-coauthor} of $4$ million vertices it takes $506$~MB.
 %
 Building \strees means one decomposition per size.
 %
-With the counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting}, the $499$ sizes of \webuk take $15.7$ hours of building and peeling.
+With the counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting}, the $499$ sizes of \webuk take $15.7$ hours.
 %
 % 2026-09-22 filler pass: the closing remark re-listed the three difficulties of the introduction; one bridge sentence remains.
 The next sections keep the trees of every size, store each vertex once, and answer a community query with a few ranges instead of one copy.

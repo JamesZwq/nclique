@@ -196,3 +196,32 @@ Removed or merged, by section:
 Kept on purpose (judged not filler): Applications (three sstitles, the paper's motivation), the three Challenges, Exp-2's
 share explanation (lowest on large cliques / highest on sparse graphs), Case Study protocol sentences (how the scan reads
 the index), "No step of either procedure touches the graph".
+
+### Cold read after the filler pass (2026-09-22, two low-context readers: introduction; Sections 3-4 with Section 2 as background)
+Fixed: subject/verb apart in the k-core generalization sentence (now two sentences); "the unit" glossed (cliques counted
+around single vertices rather than edges or larger cliques); level k tied to the k of the k-core; "connected through these
+cliques" spelled out; size 2 = the connected pieces of the k-core; core value named in its own sentence; caption says which
+clique is A and why a5b3 is dashed; Example 1.1 says A is a community of its own and why x lies in one 4-clique; the closing
+7/10/4 restatement dropped; applications: "covers a broad research area", the jazz album at its core value, the account graph
+named; "community search" glossed; STrees named as this paper's baseline; the depth-first traversal in two sentences;
+Challenges: "meets both demands", "size 3" (not "3 or 7"), "constant time per range"; Our idea: labels = new ids, the
+ranking rule (size 2 first, ties at 3, 4, ...), runs in their own sentence, the climb named with its O(log d) cost, the floor
+counts s-cliques "through" the vertex, values under their own sstitle, the replay says what happens when the check fails;
+Contributions: one or two sentences per item, graphs named (com-dblp, com-amazon), "locates" glossed, nanoseconds spelled out,
+working memory = clique tree plus linear space. Section 2: the converse "at least 1 if v lies in an s-clique" stated once.
+Section 3: forest named (also called the tree of size s), k <= k' pointed to where used, maximality named in the nesting and
+the top arguments, children = largest nodes strictly inside, "interval of levels" -> "several levels", the own-node and
+community arguments end on their contradiction, the naming sentence for "node nearest the root with top >= k" says it is a
+name, caption without undefined terms, Example 3.2 with the reasons for top 3 / top 4 / one node for A, "gives an index"
+(not "fast"), bar sentence in plain order, the nonzero-value fact cited to Section 2, the two dblp graphs in two sentences,
+"15.7 hours" without the undefined "peeling". Section 4: "determine" (not "decide"), "largest groups" (not "coarsest"),
+the name chain explained after Definition 4.2, the tuple in a "We write" sentence, the proof of Lemma 4.5 no longer derives an
+unused equality and names the isolated case, the proof of Proposition 4.6 ends on "share a chain", the twins proof names the
+closed neighbourhood, why cores map to cores, why |K| >= 2, why twins are adjacent; "Lemma 4.8" cited for "at most as many as
+twin classes"; "the number of canonical nodes gives no bound".
+Left alone: hierarchy, canonical, trajectory, contiguous, refine, fine (defined terms or in theorem titles); the machine for
+the 15.7 hours (Section 8); the three dblp graph names (they are three graphs).
+Typesetting: \sstitle now uses \uline (ulem) so a run-in title can break across lines; the four overfull boxes it caused are gone.
+Table "Where the best size falls" removed (its rows were in the text); Table 7 (six products) lists whole titles without
+bracketed tails, six members at most, the query product first; the Yang-Leskovec entry is the KAIS 2015 version.
+State: 17 pages (10 reference lines on the last page), 0 overfull, 0 ??; the page budget (<= 12 body pages) is the open item.

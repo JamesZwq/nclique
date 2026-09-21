@@ -4,12 +4,12 @@
 
 % 2026-09-22 cold-read fixes: the opener says what a record and the partition are; the definition reads once; the
 % theorem is named for what it proves; nucleus variables renamed K to keep N for the example's community.
-This section answers the first difficulty of Section~\ref{sec:intro}: which vertices an index can store as one group, with one record, for every size, every level and every query.
+This section answers the first difficulty of Section~\ref{sec:intro}: which vertices an index can store as one group, with one stored record for all of them, for every size, every level and every query.
 %
-% 2026-09-22 filler pass: one preview sentence.
-We define hierarchy equivalence and prove that the own nodes alone decide it (Theorem~\ref{thm:chains}).
+% 2026-09-22 filler pass: one preview sentence.  Cold read: "decide" -> "determine"; "coarsest" -> "largest groups".
+We define hierarchy equivalence and prove that the own nodes alone determine it (Theorem~\ref{thm:chains}).
 %
-Its classes, the chains, are the coarsest partition of the vertices that loses no answer (Proposition~\ref{prop:coarsest}).
+Its classes, the chains, are the partition of the vertices into the largest groups that loses no answer (Proposition~\ref{prop:coarsest}).
 
 \stitle{Hierarchy equivalence.}
 Two vertices can share one record when no query tells them apart.
@@ -18,10 +18,13 @@ Two vertices $u$ and $v$ are \textit{hierarchy-equivalent} if, for every size $s
 \end{definition}
 % 2026-09-22 filler pass: two commentary sentences after the definition removed (the theorem states what the definition reduces to).
 \begin{definition}[trajectory, chain]\label{def:chain}
-For a vertex $v$ with $\omg{v}\ge2$, the \textit{trajectory} $\traj{v}=(\own{2}{v},\own{3}{v},\dots,\own{\omg{v}}{v})$ is the tuple of its own nodes over the sizes $2$ to $\omg{v}$, the sizes at which it lies in a clique.
+For a vertex $v$ in some edge, that is, with $\omg{v}\ge2$, the \textit{trajectory} of $v$ is the tuple of its own nodes over the sizes $2$ to $\omg{v}$.
+%
+We write $\traj{v}=(\own{2}{v},\dots,\own{\omg{v}}{v})$.
 %
 The vertices with equal trajectories form a \textit{chain}, one chain per distinct trajectory, and the isolated vertices, those in no edge, form one more chain.
 \end{definition}
+The name reflects the shape: a chain follows one chain of own nodes through the sizes.
 \begin{theorem}[own nodes decide hierarchy equivalence]\label{thm:chains}
 Two vertices $u$ and $v$ with $\omg{u},\omg{v}\ge2$ are hierarchy-equivalent if and only if $\traj{u}=\traj{v}$.
 \end{theorem}
@@ -30,7 +33,9 @@ Two vertices $u$ and $v$ with $\omg{u},\omg{v}\ge2$ are hierarchy-equivalent if 
 %
 For $2\le s\le\omg{u}$ the two own nodes are equal, and the top of an own node is the core value of its vertex (Section~\ref{sec:strees}), so $\core{s}{u}=\core{s}{v}$.
 %
-For $k\le\core{s}{u}$, the $\Nuc{s}{k}$ containing $u$ is the node nearest the root with top at least $k$ on the path from $\own{s}{u}$ to its root (Section~\ref{sec:strees}), and the same node contains $v$.
+For $k\le\core{s}{u}$, the $\Nuc{s}{k}$ containing $u$ is the node nearest the root with top at least $k$ on the path from $\own{s}{u}$ to its root (Section~\ref{sec:strees}).
+%
+Since $\own{s}{v}=\own{s}{u}$, the path and the node are the same for $v$.
 %
 ($\Rightarrow$) Equal core values at every size give $\omg{u}=\omg{v}$, since $\omg{v}$ is the last size with a nonzero value.
 %
@@ -66,18 +71,19 @@ At size $4$ the two separate: $x$ lies in the $4$-clique $B$, and $u_1$ lies in 
 % 2026-09-22 filler pass: the remark after the example restated the definition and the theorem; removed.
 
 \stitle{Communities and chains.}
-Every answer is a union of whole chains, and no partition with larger groups has this property.
+Every community is a union of whole chains, and no partition with larger groups has this property.
 \begin{lemma}[communities are unions of chains]\label{lem:union}
 If $u$ lies in an $\Nuc{s}{k}$ $K$ with $k\ge1$ and $w$ is in the chain of $u$, then $w\in K$.
 \end{lemma}
 \begin{proof}
-The vertex $u$ lies in an $s$-clique, and its chain is the class of its trajectory; $\traj{w}=\traj{u}$ gives $\own{s}{w}=\own{s}{u}$ and $\core{s}{w}=\core{s}{u}$ by Theorem~\ref{thm:chains}.
+% 2026-09-22 cold read: the proof no longer derives an unused equality; the isolated-chain case is named.
+Since $k\ge1$, $u$ lies in an $s$-clique, so its chain is the class of its trajectory, and $\traj{w}=\traj{u}$ gives $\own{s}{w}=\own{s}{u}$.
 %
 Since $u$ lies in $K$, $\core{s}{u}\ge k$.
 %
 The node $\own{s}{u}$ is a core at the level $\core{s}{u}\ge k$ that contains $u$, so it lies inside the $\Nuc{s}{k}$ containing $u$, namely $K$, by the nesting of Section~\ref{sec:strees}.
 %
-Hence $w\in K$.
+It contains $w$, whose own node it is, and hence $w\in K$.
 \end{proof}
 \begin{proposition}[the coarsest lossless partition]\label{prop:coarsest}
 Call a partition of $V$ \textit{lossless} if every community of every size and level is a union of its blocks, the sets of the partition.
@@ -93,9 +99,9 @@ We show that $u$ and $v$ share a chain.
 %
 Suppose the core values differ at some size, say $\core{s}{u}>\core{s}{v}$.
 %
-The community of $u$ at $(s,\core{s}{u})$ contains $u$ and not $v$, since every vertex of a core at level $\core{s}{u}$ has at least that core value.
+The community of $u$ at $(s,\core{s}{u})$ exists, as $\core{s}{u}\ge1$, and contains $u$ and not $v$, since every vertex of a core at level $\core{s}{u}$ has at least that core value.
 %
-It is not a union of blocks of $P$.
+It is then not a union of blocks of $P$, since $u$ and $v$ share a block.
 %
 The core values therefore agree at every size.
 %
@@ -103,19 +109,19 @@ If $u$ is isolated, so is $v$, since their values at size $2$ agree, and both li
 %
 Otherwise, if $\own{s}{u}\ne\own{s}{v}$ at a size where both have value $k\ge1$, these two $(s,k)$-cores are disjoint (Section~\ref{sec:prelim}), and the community of $u$ at $(s,k)$ again contains $u$ and not $v$.
 %
-Hence the own nodes agree at every size, and $u$ and $v$ are hierarchy-equivalent by Theorem~\ref{thm:chains}.
+Hence the own nodes agree at every size, so $\traj{u}=\traj{v}$, and $u$ and $v$ share a chain.
 \end{proof}
 % 2026-09-22 filler pass: the remark after the proposition restated it; removed.
 
 \stitle{Twins.}
 Two vertices $u$ and $w$ are \textit{twins} when their closed neighbourhoods, the neighbours together with the vertex itself, are the same set, and a twin class is a maximal set of pairwise twins.
 %
-Twin classes are the baseline of Section~\ref{sec:exp} for how much the chains merge.
+Section~\ref{sec:exp} uses twin classes as the baseline for how many vertices a chain groups.
 \begin{lemma}[twins refine chains]\label{lem:twins}
 If $u$ and $w$ have the same closed neighbourhood, then they lie in one chain.
 \end{lemma}
 \begin{proof}
-Swapping $u$ and $w$ maps $G$ onto itself, since the two have the same neighbours; it maps cores to cores and preserves every core value.
+Swapping $u$ and $w$ maps $G$ onto itself, since the two have the same closed neighbourhood, and cores are defined from the graph alone, so it maps cores to cores and preserves every core value.
 %
 It maps every core $K$ containing $u$ to a core $K'$ of the same size and level containing $w$.
 %
@@ -123,17 +129,19 @@ If $K$ has a vertex other than $u$ and $w$, the swap leaves that vertex in place
 %
 Cores of one size and level that share a vertex are equal, and hence $K'=K$.
 %
-Otherwise $K=\{u,w\}$, and the swap maps it to itself.
+Otherwise $K=\{u,w\}$, a core having at least $s\ge2$ vertices, and the swap maps it to itself.
 %
-Hence $u$ and $w$ are hierarchy-equivalent, and since twins are adjacent, Theorem~\ref{thm:chains} puts them in one chain.
+Hence $u$ and $w$ are hierarchy-equivalent.
+%
+Twins are adjacent, since $u$ lies in the closed neighbourhood of $w$, so $\omg{u},\omg{w}\ge2$ and Theorem~\ref{thm:chains} puts them in one chain.
 \end{proof}
 % 2026-09-22 filler pass: "How many chains" merged here; "Relation to other groupings" removed (Section 9 has SGL and EquiTruss).
-Chains are at most as many as twin classes, and on our graphs far fewer.
+By Lemma~\ref{lem:twins}, chains are at most as many as twin classes, and on our graphs they are far fewer.
 %
 Twin classes have $1.03$ to $1.28$ vertices on average.
 %
 \dblp has $13{,}459$ chains for $317{,}080$ vertices, $24$ per chain, and \webuk has $839$ chains for $129{,}632$ vertices, $154$ per chain.
 %
-The trees give no bound on the number of chains: on our graphs the ratio of chains to canonical nodes over all sizes ranges from $0.26$ to $5.67$.
+The number of canonical nodes gives no bound on the number of chains: on our graphs the ratio of chains to canonical nodes over all sizes ranges from $0.26$ to $5.67$.
 %
 Section~\ref{sec:exp} reports the vertices per chain of every graph.
