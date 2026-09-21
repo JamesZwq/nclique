@@ -135,3 +135,19 @@ implementation-term grep of paper-architect/theory-not-implementation.md must hi
   each trie node per size (value[node][s]); the walk says where the residues live between sizes.
 - Gates: median 17 words, over-25 15.7%, >=35 0.9%, which-tails 2.4%, so-rate 7.2%, proofs 16.3%. Page count 17.
 
+## Symbol inventory (2026-09-22 audit; counts = uses in $...$ over sections/*.tex)
+Universal, free everywhere: G, V, n, s, k, v, u (vertices), O(.).
+Model (Sections 2-3, used throughout): kappa_s(v) core value (79), omega(v) clique number (34), (s,k)-nucleus (20),
+T_s forest (13), X_s(v) own node (20); bare omega, sigma = a chain's clique number / certification point (records,
+Algorithm 1).  Section 4: traj(v) (5); K, K' = nuclei inside proofs (Sections 3, 4, 5.4); P = a lossless partition.
+Running example: A, B, N, a_i, b_i, u_i, w_j, x (only names allowed in the introduction besides s, k).
+Index (Section 5): chain(v), C (number of chains), pre_s, X/Y (nodes), r_X, v_X (entry), lo(r), hi(r), R (runs),
+sigma(v), c (a chain), t and m and g_s inside the Kruskal-Katona lemma, L = a largest clique (proof of 5.7a).
+Queries (Section 6): the arrays of Algorithm 1 (parent, top, jump, size, entry, trajectory, residue), d = climb depth.
+Construction (Section 7): T clique tree, H, Q, Z path sets, W / W_k vertex sets, d_s(W,u), pi, f_s forward count,
+U_s running maximum, ell = a top in Section 3 only, the arrays of Algorithm 2 (active, node, value).
+Experiments: s_max, p (sample fraction), q (query product), D (ground-truth community), F1.
+Resolved clashes: M (clique vs node count), Q (nucleus vs optional set), f_s (floor vs forward count), P (partition vs
+pair count), C (chains vs community), t (top vs real), k (level vs set count), N (example vs proof nucleus).
+Inlined (used <= 3 times): the floor symbol, P and M of the size accounting, key(c), chain(u)=chain(w), E.
+
