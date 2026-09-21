@@ -4,12 +4,10 @@
 
 % 2026-09-22 cold-read fixes: the opener says what a record and the partition are; the definition reads once; the
 % theorem is named for what it proves; nucleus variables renamed K to keep N for the example's community.
-This section answers the first difficulty of Section~\ref{sec:intro}: which vertices an index can store as one group, with one stored record for all of them, for every size, every level and every query.
+This section answers the first difficulty of Section~\ref{sec:intro}: which vertices an index can store as one group, with one record for all of them, for every size, every level and every query.
 %
-% 2026-09-22 filler pass: one preview sentence.  Cold read: "decide" -> "determine"; "coarsest" -> "largest groups".
-We define hierarchy equivalence and prove that the own nodes alone determine it (Theorem~\ref{thm:chains}).
-%
-Its classes, the chains, are the partition of the vertices into the largest groups that loses no answer (Proposition~\ref{prop:coarsest}).
+% 2026-09-22 compaction: two sentences.
+The own nodes alone decide hierarchy equivalence (Theorem~\ref{thm:chains}), and its classes, the chains, form the coarsest partition of the vertices that loses no answer (Proposition~\ref{prop:coarsest}).
 
 \stitle{Hierarchy equivalence.}
 Two vertices can share one record when no query tells them apart.
@@ -46,29 +44,15 @@ The $\Nuc{s}{k}$ containing $u$ is $\own{s}{u}$ by definition.
 It contains $v$ by hierarchy equivalence, and it is then the $\Nuc{s}{\core{s}{v}}$ containing $v$, that is $\own{s}{v}$.
 \end{proof}
 \begin{example}\label{ex:chains}
+% 2026-09-22 compaction: four chains in one sentence (make_concept.py: chains {b}, {a}, {u,w}, {x}).
 Consider Figure~\ref{fig:example} with the own nodes of Example~\ref{ex:tree}.
 %
-At size $2$ the own node of $b_i$ is the root of $\Tree{2}$, the $3$-core, since $\core{2}{b_i}=3$.
-%
-The own node of $x$ and of $u_1,\dots,w_3$ is $\{x,u_1,\dots,w_3\}$, since their value is $4$.
-%
-The trajectories give four chains.
-%
-The chain $\{b_1,b_2,b_3\}$ has the trajectory (root, $N$, $B$) over sizes $2$, $3$ and $4$.
-%
-The chain $\{a_1,\dots,a_5\}$ has $(A,A,A,A)$ over sizes $2$ to $5$.
-%
-The chain $\{u_1,\dots,w_3\}$ has the trajectory $(\{x,u_1,\dots,w_3\},\ N)$ over sizes $2$ and $3$.
-%
-The chain $\{x\}$ has the trajectory $(\{x,u_1,\dots,w_3\},\ N,\ B)$ over sizes $2$ to $4$.
+The trajectories give four chains: $\{b_1,b_2,b_3\}$ with (root, $N$, $B$) over sizes $2$ to $4$, $\{a_1,\dots,a_5\}$ with $(A,A,A,A)$ over sizes $2$ to $5$, $\{u_1,\dots,w_3\}$ with $(\{x,u_1,\dots,w_3\},\ N)$ over sizes $2$ and $3$, and $\{x\}$ with $(\{x,u_1,\dots,w_3\},\ N,\ B)$.
 %
 The vertex $a_5$ has one more edge than $a_1$ but the same own node at every size, and no query separates them.
 %
-The vertex $x$ shares the own nodes of $u_1$ at sizes $2$ and $3$.
-%
-At size $4$ the two separate: $x$ lies in the $4$-clique $B$, and $u_1$ lies in no $4$-clique.
+The vertex $x$ shares the own nodes of $u_1$ at sizes $2$ and $3$ and separates from it at size $4$, where $x$ lies in the $4$-clique $B$ and $u_1$ in no $4$-clique.
 \end{example}
-% 2026-09-22 filler pass: the remark after the example restated the definition and the theorem; removed.
 
 \stitle{Communities and chains.}
 Every community is a union of whole chains, and no partition with larger groups has this property.
@@ -136,12 +120,6 @@ Hence $u$ and $w$ are hierarchy-equivalent.
 Twins are adjacent, since $u$ lies in the closed neighbourhood of $w$, so $\omg{u},\omg{w}\ge2$ and Theorem~\ref{thm:chains} puts them in one chain.
 \end{proof}
 % 2026-09-22 filler pass: "How many chains" merged here; "Relation to other groupings" removed (Section 9 has SGL and EquiTruss).
-By Lemma~\ref{lem:twins}, chains are at most as many as twin classes, and on our graphs they are far fewer.
-%
-Twin classes have $1.03$ to $1.28$ vertices on average.
-%
-\dblp has $13{,}459$ chains for $317{,}080$ vertices, $24$ per chain, and \webuk has $839$ chains for $129{,}632$ vertices, $154$ per chain.
+By Lemma~\ref{lem:twins}, chains are at most as many as twin classes, and on our graphs they are far fewer: twin classes have $1.03$ to $1.28$ vertices on average, while \dblp has $13{,}459$ chains for $317{,}080$ vertices ($24$ per chain) and \webuk $839$ chains for $129{,}632$ vertices ($154$ per chain).
 %
 The number of canonical nodes gives no bound on the number of chains: on our graphs the ratio of chains to canonical nodes over all sizes ranges from $0.26$ to $5.67$.
-%
-Section~\ref{sec:exp} reports the vertices per chain of every graph.

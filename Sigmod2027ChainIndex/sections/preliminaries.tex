@@ -56,50 +56,22 @@ The $\Nuc{s}{\core{s}{v}}$ containing $v$ has the two properties at level $k$ as
 %
 This core is unique, since cores of one size and level are disjoint.
 \begin{example}\label{ex:nucleus}
-Consider Figure~\ref{fig:example} at size $3$.
+% 2026-09-22 compaction: eight sentences; every count is from make_concept.py (kappa_3 = 6 on A, 3 on N; kappa_2 = 4 on A and {x,u,w}, 3 on b_i; kappa_4 = 4 on A, 1 on B; kappa_5 = 1 on A).
+Consider Figure~\ref{fig:example} at size $3$, writing $\{u_1,\dots,w_3\}$ for the six vertices $u_1,u_2,u_3,w_1,w_2,w_3$ as in Example~\ref{ex:intro}.
 %
-As in Example~\ref{ex:intro}, $\{u_1,\dots,w_3\}$ denotes the six vertices $u_1,u_2,u_3,w_1,w_2,w_3$.
+Each $a_i$ lies in $\binom{4}{2}=6$ triangles, all inside $A$ since the edge $a_5b_3$ lies in none, so $A$ is a $(3,6)$-core and $\core{3}{a_i}=6$.
 %
-A triangle of $A$ through $a_i$ is $a_i$ with two of the other four vertices, so $a_i$ lies in $\binom{4}{2}=6$ triangles of $A$.
+Each $b_i$ lies in the three triangles of $B$, each $u_i$ and each $w_j$ in the three triangles $\{u_i,w_j,x\}$, and $x$ in twelve.
 %
-It lies in no other triangle, since the edge $a_5b_3$ lies in none.
+The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-core: every vertex lies in at least three of its triangles, every triangle of $N$ except $\{b_1,b_2,b_3\}$ contains $x$ and that one shares $b_1$ with $\{x,b_1,b_2\}$, and no vertex of $A$ can be added.
 %
-$A$ is therefore a $(3,6)$-core, and $\core{3}{a_i}=6$.
+No vertex of $N$ has core value $4$: a $(3,4)$-core contains none of $u_1,\dots,w_3$, and without them a vertex of $B$ lies in three triangles only.
 %
-Each of $b_1,b_2,b_3$ lies in three triangles of $B$.
+So $\core{3}{v}=3$ on $N$.
 %
-Each $u_i$ lies in the three triangles $\{u_i,w_j,x\}$ for $j=1,2,3$, and so does each $w_j$.
+At size $2$, $\core{2}{v}=4$ on $A$ and on $\{x,u_1,\dots,w_3\}$ and $\core{2}{b_i}=3$: every vertex has at least three neighbours, no vertex but $x$ has five, so no $5$-core exists, and once $b_1$ and $b_2$, of degree three, are removed, $b_3$ keeps two.
 %
-The vertex $x$ lies in the three triangles of $B$ and in the nine triangles $\{x,u_i,w_j\}$, twelve in all.
-%
-The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-core.
-%
-Every vertex of $N$ lies in at least three of its triangles.
-%
-Every triangle of $N$ except $\{b_1,b_2,b_3\}$ contains $x$, and that one shares $b_1$ with $\{x,b_1,b_2\}$, so $N$ is connected through its triangles.
-%
-No vertex of $A$ can be added, since the edge $a_5b_3$ lies in no triangle.
-%
-No vertex of $N$ has core value $4$ at size $3$.
-%
-A $(3,4)$-core needs every vertex in four of its triangles, so it contains none of $u_1,\dots,w_3$, and without them a vertex of $B$ lies in the three triangles of $B$ only.
-%
-So $\core{3}{v}=3$ for the ten vertices of $N$, four of $B$ and six of the bipartite graph.
-%
-At size $2$ the core value of a vertex is the largest $k$ for which it lies in a $k$-core.
-%
-Every vertex has core value at least $3$, since the smallest degree of the graph is $3$.
-%
-$\core{2}{a_i}=4$: each of $a_1,\dots,a_4$ has four neighbours, so no $5$-core exists, and $A$ is a $4$-core.
-%
-$\core{2}{b_i}=3$: $b_1$ and $b_2$ have three neighbours, and once they are removed $b_3$ keeps two, so none of the three lies in a $4$-core.
-%
-$\core{2}{v}=4$ for $x$ and for the six vertices $u_1,\dots,w_3$: inside $\{x,u_1,\dots,w_3\}$, $x$ has six neighbours and every other vertex has four.
-% trace 2026-09-22 (make_concept.py, brute force): kappa_3 = 6 on A, 3 on N; kappa_2 = 4 on A and on {x,u,w}, 3 on b_i; kappa_4 = 4 on A, 1 on B; kappa_5 = 1 on A.
-%
-At size $4$ only $A$ and $B$ have a nonzero value, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{4}{v}=1$ for the vertices of $B$.
-%
-At size $5$, $\core{5}{a_i}=1$.
+At size $4$, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{4}{v}=1$ on $B$; at size $5$, $\core{5}{a_i}=1$.
 \end{example}
 
 \stitle{Queries.}

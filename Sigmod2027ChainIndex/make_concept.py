@@ -340,7 +340,7 @@ def fig_strees():
 
 # ---------------------------------------------------------------- Section 5: what ChainIndex stores ----
 def fig_index():
-    PW, PH = 506.0, 212.0
+    PW, PH = 506.0, 178.0          # 2026-09-22: footer (d) dropped (Example 6.2 walks the query); rows tightened
     sv = SVG(PW, PH)
     CW, CH = 16.0, 12.0
     # (a) labels and chains
@@ -383,10 +383,10 @@ def fig_index():
             sv.text(xs[j] + cols[j][1] / 2, y, cell, size=6.4, anchor='middle', italic=False)
     sv.line(xs[0], hy + 3 + rh * 4 + 3, xs[-1], hy + 3 + rh * 4 + 3, w=0.6)
     # (c) one layer per size
-    LY = 92.0
+    LY = 88.0
     sv.text(2, LY - 3, '(c) one layer per size: the tree over chains, and its run array with one entry (run, label) per node', size=7.2)
     px = [2.0, 128.0, 254.0, 380.0]; PWD = 122.0
-    bw, bh = 56.0, 26.0; ROWS = 34.0
+    bw, bh = 56.0, 25.0; ROWS = 31.0
     runs_y = LY + 12 + 2 * ROWS + 4
     for j, s in enumerate(SIZES):
         L = layers[s]; ox = px[j]
@@ -429,21 +429,15 @@ def fig_index():
         sv.rect(x, ry, rw + 4, CH, stroke='#777', sw=0.5, dash='1.5,1.2')
         sv.text(x + (rw + 4) / 2, ry + 8.6, f'({R}, {hi})', size=6.0, anchor='middle', fill='#555')
         sv.text(x + (rw + 4) / 2, ry - 2.2, 'sentinel', size=5.2, anchor='middle', fill='#777')
-    # (d) the traced query, as a footer
-    fy = PH - 13
-    sv.text(2, fy, '<tspan fill="' + ORANGE + '">Community(x, 3, 2)</tspan>: label 14 lies in chain 3, whose own node at size 3 is node 0 = N; N is a root with top 3 ≥ 2, so the climb stops there.',
-            size=6.4)
-    sv.text(2, fy + 9, 'The entries of N and of the next node in preorder, A, are (0, 0) and (2, 3): first range [0, 3), whole run [8, 15), last range [3, 3) empty. Ten vertices in two ranges, shaded in (a).',
-            size=6.4)
     sv.write('fig_index')
 
 # ---------------------------------------------------------------- Section 7: replay and refinement ----
 def fig_build():
-    PW, PH = 506.0, 166.0
+    PW, PH = 506.0, 150.0          # 2026-09-22: rows tightened
     sv = SVG(PW, PH)
     # (a) order replay at size 2, two orders
     sv.text(2, 9, '(a) order replay at s = 2', size=7.2)
-    CW, CH = 14.2, 11.0; X0 = 34.0
+    CW, CH = 14.2, 10.0; X0 = 34.0
     def block(y, order, f, Umax, inside, ok, title):
         sv.text(X0, y - 3, title, size=6.2, fill='#555')
         rows = [('π', [sub(v) for v in order], True),
@@ -461,8 +455,8 @@ def fig_build():
         sv.text(X0 + 15 * CW, y + 4 * CH + 8, ('the certificate holds: U<tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6"> = κ</tspan><tspan font-size="70%" dy="1.6">2</tspan>' if ok
                                                 else 'the certificate fails: inside &lt; U<tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6"> at </tspan><tspan font-style="italic">a</tspan><tspan font-size="70%" dy="1.6">1</tspan>'),
                 size=6.2, anchor='end', fill=(BLUE if ok else ORANGE))
-    block(24, ORDER1, f1, U1, in1, ok1, 'the degeneracy order')
-    block(94, ORDER2, f2, U2, in2, ok2, 'x first')
+    block(22, ORDER1, f1, U1, in1, ok1, 'the degeneracy order')
+    block(84, ORDER2, f2, U2, in2, ok2, 'x first')
     sv.text(2, PH - 4, 'inside: the edges of v inside {u : U<tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6">(u) ≥ U</tspan><tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6">(v)}</tspan>', size=5.8, fill='#555')
     # (b) the refinement of the chains in the prefix trie
     TX = 322.0
@@ -487,7 +481,7 @@ def fig_build():
             for q in kidsp: place(q); xs.append(xpos[q])
             xpos[p] = sum(xs) / len(xs)
     place(())
-    Y = {0: 20, 1: 40, 2: 62, 3: 84, 4: 106, 5: 128}
+    Y = {0: 18, 1: 36, 2: 56, 3: 76, 4: 96, 5: 116}
     NW, NH = 34, 11
     for p in [()] + paths:
         d = len(p); x = xpos[p]; y = Y[d]
