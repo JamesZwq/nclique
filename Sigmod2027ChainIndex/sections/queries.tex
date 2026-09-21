@@ -3,7 +3,7 @@
 
 This section gives the two queries on the index.
 %
-Both start from the bitmap of chain starts, the vertex-to-chain map of Section~\ref{sec:labels}, where $\mathrm{rank}_1(v)$ is the number of ones at positions $0$ to $v$.
+Both start from the vertex-to-chain map of Section~\ref{sec:labels}: $\mathrm{chain}(v)$ is the number of chain starts at or before $v$, minus one.
 %
 The value query then reads the chain record.
 %
@@ -17,13 +17,13 @@ The community query climbs the tree of the queried size and reads two entries, e
 \KwIn{the index; a vertex $v$; a size $s$; for a community query, a level $k$ with $1\le k\le\core{s}{v}$.}
 \KwOut{$\core{s}{v}$, or the community of $v$ at $(s,k)$ as label ranges.}
 \Proc{\Value{$v,s$}}{
-  $c\leftarrow\mathrm{rank}_1(v)-1$\;\label{ln:q-chain}
+  $c\leftarrow\mathrm{chain}(v)$\;\label{ln:q-chain}
   \lIf{$s>\omega[c]$}{\Return $0$}\label{ln:q-zero}
   \lIf{$s\ge\sigma[c]$}{\Return $\binom{\omega[c]-1}{s-1}$}\label{ln:q-floor}
   \Return residue$[c][s]$\;\label{ln:q-residue}
 }
 \Proc{\Community{$v,s,k$}}{
-  $c\leftarrow\mathrm{rank}_1(v)-1$; $X\leftarrow$ trajectory$[c][s]$\;\label{ln:q-own}
+  $c\leftarrow\mathrm{chain}(v)$; $X\leftarrow$ trajectory$[c][s]$\;\label{ln:q-own}
   \While{$\mathrm{parent}[X]\ne$ none \KwSty{and} $\mathrm{top}[\mathrm{parent}[X]]\ge k$}{\label{ln:q-climb}
     \lIf{$\mathrm{jump}[X]\ne$ none \KwSty{and} $\mathrm{top}[\mathrm{jump}[X]]\ge k$}{$X\leftarrow\mathrm{jump}[X]$}\label{ln:q-jump}
     \lElse{$X\leftarrow\mathrm{parent}[X]$}\label{ln:q-parent}
@@ -38,11 +38,9 @@ The community query climbs the tree of the queried size and reads two entries, e
 \stitle{Algorithm.}
 Algorithm~\ref{alg:query} has two procedures, \Value and \Community.
 %
-\Value reads the chain of $v$ from the bitmap (Line~\ref{ln:q-chain}) and returns $0$ when $s$ exceeds the chain's clique number (Line~\ref{ln:q-zero}).
+\Value reads the chain of $v$ from the map (Line~\ref{ln:q-chain}) and returns $0$ when $s$ exceeds the chain's clique number (Line~\ref{ln:q-zero}).
 %
-Based on Theorem~\ref{thm:tail}, it returns the floor $\binom{\omega-1}{s-1}$ from a table of binomial coefficients when $s$ is at or past the certification point (Line~\ref{ln:q-floor}), and otherwise the stored residue (Line~\ref{ln:q-residue}).
-%
-The residue of size $s$ sits at the chain's residue start plus the bytes of the residues of the smaller sizes, a prefix sum kept per size.
+Based on Theorem~\ref{thm:tail}, it returns the floor $\binom{\omega-1}{s-1}$ when $s$ is at or past the certification point (Line~\ref{ln:q-floor}), and otherwise the stored residue (Line~\ref{ln:q-residue}).
 %
 \Community reads the chain and its own node $X$ at size $s$ from the trajectory (Line~\ref{ln:q-own}).
 %
@@ -58,8 +56,6 @@ A jump is taken whenever the jump target still has top at least $k$ (Line~\ref{l
 %
 The jump is safe because tops increase from a root downwards: every node skipped over has top at least $k$ as well.
 %
-The jump pointers are derived when the index is loaded and are not stored.
-%
 Nodes are numbered in preorder and every node knows its subtree size.
 %
 The node after the subtree of $X$ is therefore $X+\mathrm{size}[X]$ (Line~\ref{ln:q-exit}), and for the last node it is the sentinel.
@@ -70,18 +66,18 @@ It is one range when both entries lie in the same run, and otherwise a first ran
 %
 Reporting the ranges costs one step per range.
 %
-Expanding them into vertex labels costs one step per vertex, and the labels are written eight at a time with one vector instruction.
+Expanding them into vertex labels costs one step per vertex.
 
 \begin{example}\label{ex:query}
 Consider Figure~\ref{fig:layout}.
 %
-For \Value{$u_1,3$}: $u_1$ has label $8$, three ones lie at or before it, and the chain is $2$ (Line~\ref{ln:q-chain}).
+For \Value{$u_1,3$}: $u_1$ has label $8$, three chain starts lie at or before it, and the chain is $2$ (Line~\ref{ln:q-chain}).
 %
 The chain has $\omega=3$ and $\sigma=4=\omega+1$, since its values never reach the floor, and $3<\sigma$.
 %
 The answer is the residue of chain $2$ at size $3$, which is $3$ (Line~\ref{ln:q-residue}).
 %
-For \Value{$a_2,4$}: the chain is $1$ with $\omega=5$ and $\sigma=2\le4$, and the answer is $\binom{4}{3}=4$ from the table (Line~\ref{ln:q-floor}).
+For \Value{$a_2,4$}: the chain is $1$ with $\omega=5$ and $\sigma=2\le4$, and the answer is the floor $\binom{4}{3}=4$ (Line~\ref{ln:q-floor}).
 %
 For \Community{$x,3,2$}: the chain is $3$, and its trajectory gives the own node $N$ at size $3$ (Line~\ref{ln:q-own}).
 %
@@ -94,7 +90,7 @@ The runs differ, and the answer is the first range $[0,3)$, the whole run $[8,15
 \end{example}
 
 \stitle{Complexity.}
-\Value takes constant time: a bitmap word and its directory count, the record's $\omega$ and $\sigma$, and one residue or table entry.
+\Value takes constant time: one rank on the chain starts, the record's $\omega$ and $\sigma$, and one residue or one binomial coefficient.
 %
 \Community takes $O(\log d)$ steps for a climb of $d$ levels and constant time for the two entries.
 %

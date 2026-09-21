@@ -2,9 +2,9 @@
 % 2026-09-21 house shape and cadence pass: overview + Figure 2; each block with its property, theorem, proof, example on
 % Figures 1 and 2; the values block holds the certified tail; the size block closes with the accounting.
 
-This section answers the second difficulty of Section~\ref{sec:intro}: how to return any community of any size as a few ranges of memory.
+This section answers the second difficulty of Section~\ref{sec:intro}: how to return any community of any size as a few ranges of labels.
 %
-The index has three blocks, all flat arrays: the vertex-to-chain map, one record per chain, and for every size one tree over the chains with a run array.
+The index has three parts: the vertex-to-chain map, one record per chain, and for every size one tree over the chains with a run array.
 %
 Figure~\ref{fig:layout} draws the three blocks for the running example, and traces one community query through them.
 %
@@ -21,27 +21,25 @@ Chains partition $V$ (Section~\ref{sec:chains}).
 %
 The vertices can be relabelled so that every chain is one interval of labels: chain $c$ owns $[\mathrm{start}(c),\mathrm{start}(c+1))$.
 %
-The map from a vertex to its chain is then a bitmap with a one at every chain start, and the last chain ends at label $n$.
+The map from a vertex to its chain is then determined by the $C$ chain starts: the chain of $v$ is the number of chain starts at or before $v$, minus one.
 %
-The chain of $v$ is $\mathrm{rank}_1(v)-1$, where $\mathrm{rank}_1(v)$ is the number of ones at positions $0$ to $v$ of the bitmap.
+We write it $\mathrm{chain}(v)$.
 %
-A directory stores the number of ones before every block of $64$ labels, so a rank is one directory read and one population count of a $64$-bit word.
-%
-The map costs $1$ bit per vertex for the bitmap and $1/16$ byte per vertex for the directory, plus the first label of every chain.
+It is a rank query on the $n$ labels marked as starts, answered in constant time with $n+o(n)$ bits~\cite{Jacobson1989}; the map stores those bits and the first label of every chain.
 %
 A community is a union of chains (Lemma~\ref{lem:union}), and it becomes a list of label ranges rather than a list of vertex ids.
 %
-If the graph is kept under its original labels, a permutation of $4n$ bytes accompanies the index.
+If the graph is kept under its original ids, a permutation of $n$ labels accompanies the index.
 %
 If the graph is stored in the index's order, nothing is added.
 \begin{example}\label{ex:labels}
 Consider Figure~\ref{fig:layout}.
 %
-The four chains own the label intervals $[0,3)$, $[3,8)$, $[8,14)$ and $[14,15)$, and the bitmap has ones at labels $0$, $3$, $8$ and $14$.
+The four chains own the label intervals $[0,3)$, $[3,8)$, $[8,14)$ and $[14,15)$, so the chain starts are the labels $0$, $3$, $8$ and $14$.
 %
 The vertex $u_1$ has label $8$.
 %
-Three ones lie at or before it, and its chain is $3-1=2$.
+Three starts lie at or before it, and its chain is $3-1=2$.
 \end{example}
 
 \subsection{Chain order}\label{sec:order}
@@ -233,36 +231,26 @@ On real graphs the tail carries most values.
 \end{remark}
 The record of a chain therefore holds $\omega$, $\sigma$, the residue, and the trajectory of the chain (Definition~\ref{def:chain}), from which the community query starts.
 %
-Every value at or past $\sigma$ is read from a table of binomial coefficients, and for $s>\omega$ it is $0$.
+Every value at or past $\sigma$ is the binomial coefficient of Theorem~\ref{thm:tail}, and for $s>\omega$ it is $0$.
 %
-Node tops and residues are stored at a per-size byte width.
-%
-For every size, the widest value of that size decides whether its values take $1$, $2$, $4$ or $8$ bytes.
-%
-Fields are aligned to their width, and a query reads the width of the queried size once.
-%
-A value below $2^{32}$ is an integer of $1$, $2$ or $4$ bytes.
-%
-A larger value is an $8$-byte double, exact below $2^{53}$.
-%
-This covers every value on our graphs.
-%
-The decomposition itself is computed with exact integers.
+The residues and the tops of one size are integers up to the largest core value of that size, and the index stores them at that length; sizes with small values cost little per value.
 
 \subsection{Size}\label{sec:size}
 Let $C$ be the number of chains and $M$ the number of canonical nodes over all sizes.
 %
 Let $P=\sum_c(\omega(c)-1)$ be the number of (chain, size) pairs and $R$ the number of runs over all sizes.
 %
-The map takes $n/8$ bytes for the bitmap, $n/16$ for the directory and $4C$ for the first labels.
+Let a word hold one label, one node or one value.
 %
-The chain records take $4C$ bytes for $\omega$ and $\sigma$, $4P$ for the trajectories, and the residues.
+The map takes $n+o(n)$ bits and $C$ words for the first labels.
 %
-The trees take $20M$ bytes, a parent, a subtree size, an entry of two words and a jump pointer per node, plus $8R$ for the runs and the tops.
+The chain records take $2C$ words for $\omega$ and $\sigma$, $P$ words for the trajectories, and the residues.
 %
-\strees takes $8\sum_v(\omg{v}-1)$ bytes for its arrays and own-node pointers, a value for each of these (vertex, size) pairs, and $12M$ bytes for its nodes plus the tops.
+The layers take $O(M+R)$ words: a parent, a subtree size, a top and an entry per node, and two labels per run.
 %
-Per node the trees of \chainidx cost more, $20$ bytes against $12$.
+\strees takes $\sum_v(\omg{v}-1)$ words for its arrays, as many for its own-node pointers, a value for each of these (vertex, size) pairs, and $O(M)$ words for its nodes.
+%
+Per node the layers of \chainidx cost more, an entry and a subtree size in addition.
 %
 The saving is on the vertex axis, $\sum_v(\omg{v}-1)$ against $P$, and on the values, the residues against a value per pair.
 %

@@ -27,7 +27,7 @@ index is 1.28x to 48.7x smaller than one tree per size while listing at the spee
 | contributions (4) | Chains (Theorem chains, Proposition coarsest); ChainIndex (Theorems onerange, retrieval; Theorem tail for values); Construction (Theorem replay); Comprehensive experimental evaluation |
 | headline numbers (verbatim everywhere) | 1.28x to 48.7x smaller than STrees, median 7.0x; locate 6 to 39 ns; listing within 0.2x to 2.8x of a memory copy (median 1.02); build 2.8x to 814x faster than one decomposition per size (median 16x); 29 graphs |
 | algorithm names | `\query` (Algorithm Query), `\build` (Algorithm Build) |
-| Exp list | Exp-1 size vs STrees; Exp-2 where the bytes go; Exp-3 design study; Exp-4 query latency (+levels figure); Exp-5 latency by clique size and answer size; Exp-6 construction; Exp-7 scalability; Exp-8 vs CND; Exp-9 case study I (ground truth); Exp-10 case study II (Amazon zoom) |
+| Exp list | Exp-1 size vs STrees; Exp-2 size by part; Exp-3 design study; Exp-4 query latency (+levels figure); Exp-5 latency by clique size and answer size; Exp-6 construction; Exp-7 scalability; Exp-8 vs CND; Exp-9 case study I (ground truth); Exp-10 case study II (Amazon zoom) |
 | case studies | I: SNAP ground truth, best (s,k) per query (dblp 3.6x k-core; best s spread 2..8); II: Amazon with titles/categories, median community 157,331 -> 38 -> 11 -> 8 -> 7, purity 0.10 -> 0.44 -> 0.70 -> 0.79 -> 0.83 |
 
 ## Notation (one symbol per quantity; first defined where stated)
@@ -112,3 +112,11 @@ clique tree paths -> forward counts -> replay certificate
 7 Construction: Figure pipeline; one clique tree; Theorem replay; Algorithm Build (float + walk + example); complexity + memory.
 8 Experiments: Hardware / Algorithms / Datasets / Metrics; Exp-1..8; Exp-9, Exp-10 case studies.
 9 Related Work. 10 Conclusion.
+
+## Theory only (user rule, 2026-09-21, "任何实现上面的东西都不要在 paper 里面写")
+Nothing implementation-level anywhere in the paper: no bitmap / rank directory / population count, no byte widths or
+doubles, no cache, SIMD, prefix sums, sanitizers, compiler flags, "in-process", "loaded".  The index is defined by what
+it stores (labels, chain starts as a rank structure with n + o(n) bits, records, layers with runs and entries), its size
+is stated in words and bits, and the experiments keep only the measurement protocol and the numbers.  Gate: the
+implementation-term grep of paper-architect/theory-not-implementation.md must hit only measurement units.
+

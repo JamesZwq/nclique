@@ -80,7 +80,7 @@ When it holds, the values of the size are the running maxima, at the cost of one
 %
 When it fails, the size is peeled exactly.
 %
-A bucket queue yields the vertex of smallest count, and the vertex is removed.
+The vertex of smallest count is removed.
 %
 The counts of the vertices on the paths through it are decreased by the cliques that contained it, computed from the sets of each path in closed form.
 %
@@ -137,7 +137,7 @@ put every vertex at the root of an empty trie\;\label{ln:b-trie}
   \lForEach{active vertex $v$}{move $v$ to the trie child $\own{s}{v}$}\label{ln:b-refine}
 }
 rank the chains in trie depth-first order; label vertices\;\label{ln:b-rank}
-write the bitmap of chain starts\;\label{ln:b-bitmap}
+record the chain starts\;\label{ln:b-bitmap}
 \ForEach{size $s$}{\label{ln:b-layout}
   traverse $\Tree{s}$ with children by smallest rank\;\label{ln:b-traverse}
   merge consecutive ranks into runs; record the entries\;\label{ln:b-runs}
@@ -164,7 +164,7 @@ Otherwise it peels the size exactly and keeps that peel's removal order for the 
 %
 It goes through the values of the size from the highest down (Line~\ref{ln:b-levels}) and activates the vertices of the current value (Line~\ref{ln:b-activate}).
 %
-The active vertices of a live path are pairwise adjacent, so they lie in common $s$-cliques, and the algorithm joins them in a union-find (Line~\ref{ln:b-union}).
+The active vertices of a live path are pairwise adjacent, so they lie in common $s$-cliques, and the algorithm joins them into one component (Line~\ref{ln:b-union}).
 %
 The components are then exactly the sets connected through $s$-cliques of active vertices.
 %
@@ -184,7 +184,7 @@ A chain is the set of vertices that stopped at one trie node.
 %
 The traversal visits the vertices stopped at a node before the node's children, and the children in increasing order of the preorder number of their own node.
 %
-This is the lexicographic key order of Section~\ref{sec:order}, and it yields the chain ranks and the aligned labels (Line~\ref{ln:b-rank}) and the bitmap (Line~\ref{ln:b-bitmap}).
+This is the lexicographic key order of Section~\ref{sec:order}, and it yields the chain ranks and the aligned labels (Line~\ref{ln:b-rank}) and the chain starts (Line~\ref{ln:b-bitmap}).
 %
 For each size the algorithm traverses the tree with children ordered by their smallest chain rank (Line~\ref{ln:b-traverse}).
 %
@@ -228,7 +228,7 @@ The layout adds one pass per size over the chains.
 %
 Together they are a few percent of the total on every graph (Exp-6 of Section~\ref{sec:exp}).
 %
-Peak memory is the clique tree and the graph, plus the values of two consecutive sizes, the trie and the per-size trees over chains.
+The working space is the clique tree and the graph, plus the values of two consecutive sizes, the trie and the per-size trees over chains.
 %
 The last three are linear in the vertices and the chains.
 %

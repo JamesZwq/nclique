@@ -170,7 +170,7 @@ def table_layouts():
     final = {Path(r['graph']).stem: r['result'] for r in load('final.json')['runs']}
     graphs = ['ca-GrQc', 'ca-HepPh', 'com-dblp', 'web-Stanford', 'amazon0302']
     lines = [r'\begin{tabular}{@{}lrrrrr@{}}', r'\toprule',
-             r'Graph & $S$ trees per vertex & over twin classes & over chains & chains, aligned labels & final (runs, widths) \\', r'\midrule']
+             r'Graph & $S$ trees per vertex & over twin classes & over chains & chains, aligned labels & final (runs and entries) \\', r'\midrule']
     for g in graphs:
         a = data['aligned'][g]; ab = a['bytes_shared_aligned'] + a['bytes_base_nodes'] + a['bytes_base_pairs'] + a['bytes_block_d']
         lines.append(f"{tex_escape(g)} & {fmt(data['vertices'][g]['base_with_d'])} & {fmt(data['twins'][g]['base_with_d'])} & {fmt(data['chains'][g]['base_with_d'])} & {fmt(ab)} & {fmt(final[g]['bytes_total'])} \\\\")

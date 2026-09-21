@@ -104,7 +104,7 @@ The alternative is to keep no index and to decompose the graph at the queried si
 The counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting} needs $15.7$ hours to cover the $499$ sizes of \webuk.
 
 \stitle{Research question.}
-This leads to the question this paper answers: \textbf{\textit{how to index the clique-core hierarchies of every size at once, storing each vertex once and returning every community as a few blocks of memory?}}
+This leads to the question this paper answers: \textbf{\textit{how to index the clique-core hierarchies of every size at once, storing each vertex once and returning every community as a few ranges of labels?}}
 
 \stitle{Challenges.}
 Within one size the question is easy; across sizes it raises three difficulties.
@@ -121,9 +121,9 @@ The first difficulty is to decide which vertices can share one record for every 
 \sstitle{Contiguity of communities.}
 Once vertices are grouped, a community is a set of groups rather than one block of an array.
 %
-However, the depth-first order of each size lists the groups differently, and a set of group ids is not something one memory copy can return.
+However, the depth-first order of each size lists the groups differently, and a set of group ids is not a few ranges.
 %
-The second difficulty is to return any community of any size as a few blocks of memory, in constant time.
+The second difficulty is to return any community of any size as a few ranges of labels, in constant time.
 %
 \sstitle{Construction of every size.}
 The tree of one size is the output of one decomposition of the graph.
@@ -189,7 +189,7 @@ The classes partition the vertices, every community is a union of classes, and n
 \sstitle{The chain index.}
 We propose \chainidx, an index over chains.
 %
-Its aligned labels come with a bitmap from vertices to chains, and its chain order makes every size-$2$ community one label range (Theorem~\ref{thm:onerange}).
+Its aligned labels make every chain one interval and map a vertex to its chain in constant time, and its chain order makes every size-$2$ community one label range (Theorem~\ref{thm:onerange}).
 %
 Its per-size run arrays with one entry per node return any community as the fewest ranges in constant time after the climb (Theorem~\ref{thm:retrieval}).
 %
