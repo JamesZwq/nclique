@@ -156,7 +156,8 @@ The paper's object is the (s,k)-core, "the k-core with cliques of s vertices in 
 macro \Nuc typesets (s,k)-core); the per-size hierarchy is the clique-core hierarchy (title, intro, research question,
 contributions, conclusion).  The word nucleus appears only where the origin is credited: one sentence in the intro,
 one after Definition 2.1 ("an (s,k)-core is a k-(1,s)-nucleus in the terminology of Sariyuce et al."), the CND
-description (its name), and the Related Work paragraph (the (r,s) lineage and the edge/larger-clique extension).
+description (its name), and the Related Work paragraph (the (r,s) lineage; the edge/larger-clique extension is future work
+in the conclusion, without the word, since the filler pass of 2026-09-22).
 Never present the work as "the r = 1 special case"; the (r,s) family is background, not the frame.
 
 
@@ -188,7 +189,8 @@ Removed or merged, by section:
   tried at the next size" (said twice already); "These recorded values are the values of the chains"; the last Cost sentence.
 - Experiments: "which ask for a core value"; the Exp-5 closer (constant per range vs per label, said in Exp-4); com-youtube two
   sentences merged.
-- Related work: the theorem restatement after "Chains are the same idea taken across sizes".
+- Related work: the theorem restatement after "Chains are the same idea taken across sizes"; the (r,s) extension sentence (future work, now only in the conclusion).
+- Second round for the page break: Exp-1/Exp-4/Exp-7 table narration (three sentences merged or removed), "At size 2 the order gives a guarantee", "and the rest of the paper refers to it".
 - Conclusion: the label sentence naming the three challenges.
 
 Kept on purpose (judged not filler): Applications (three sstitles, the paper's motivation), the three Challenges, Exp-2's

@@ -61,9 +61,7 @@ Build times exclude the reading of the graph.
 \expsection{Index size}
 Table~\ref{tab:size} lists every graph with its number of chains, its vertices per chain and its share of values stored explicitly.
 %
-The next three columns are the sizes of \chainidx and of \strees and their ratio.
-%
-The last two, discussed in Exp-6, are the build time and the memory usage of \build.
+The next three columns are the sizes of \chainidx and of \strees and their ratio, and the last two the build time and memory usage of \build (Exp-6).
 %
 \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than \strees, median \ratiomedian$\times$.
 %
@@ -135,9 +133,7 @@ Table~\ref{tab:queries} reports the own-level community query and the value quer
 %
 The community columns are the time to locate a community, the number of ranges of the answer, its size, and the time to list it as vertex labels.
 %
-\strees lists a community by copying its slice of the array, one memory copy.
-%
-The table also gives the two times of \strees on the same queries.
+The table also gives the two times of \strees, which lists a community by copying its slice of the array, on the same queries.
 %
 Locating takes \locmin{} to \locmax{}~ns, median \locmedian{}~ns.
 %
@@ -244,8 +240,6 @@ The build takes $0.01$~s on \textsf{ca-GrQc} and $221$~s on \textsf{dblp-coautho
 Figure~\ref{fig:scale} follows \textsf{cit-Patents} and \textsf{web-BerkStan} through vertex-induced random samples of $20$, $40$, $60$ and $80$ percent of their vertices up to the full graph.
 %
 The runs are on server 2.
-%
-The x-axis is the number of vertices of the sample.
 %
 The panels show the sizes of both indexes, then the build time of \chainidx and of \cnd run once per size, then the own-level locating and listing time of both indexes.
 %
