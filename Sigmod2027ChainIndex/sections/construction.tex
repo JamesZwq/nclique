@@ -3,6 +3,7 @@
 % Algorithm Build as float + walk + example; cost closer.  Numbers from LEDGER.md; the peel is this paper's own.
 
 This section answers the third difficulty of Section~\ref{sec:intro}: how to build the trees of every size from one computation.
+% 2026-09-22 filler pass: opener from nine sentences to five; the memory claim stays in the Cost block only.
 %
 The values of one size come from a \textit{peel}.
 %
@@ -10,13 +11,7 @@ Vertices are removed one at a time in increasing order of their clique count, an
 %
 The index is built from one clique tree, which gives the clique counts of every size, and one peel per size that reuses the previous size's work.
 %
-No stage holds the core values of all vertices at once.
-%
-The peel delivers the values of one size at a time.
-%
-The tree of that size is built as its values arrive, and the chains are refined with it.
-%
-The layout pass turns the chains into labels, run arrays and residues.
+The tree of each size is built as its values arrive, and the chains are refined with it.
 %
 Figure~\ref{fig:pipeline} draws, on the running example, the two objects this section adds: the replay of an order and the trie of the chains.
 
@@ -101,8 +96,6 @@ When it fails, the size is peeled exactly.
 The vertex of smallest count is removed.
 %
 The counts of the vertices on the paths through it are decreased by the number of cliques that contained it, which each path gives from its sets $H$ and $Q$ by the binomial sums above.
-%
-The removal order of that peel is the order tried at the next size.
 %
 The previous size's values also bound the next size's: by the argument of Theorem~\ref{thm:tail}(b), $\core{s}{v}\le\binomc{t}{s}$ for the real number $t$ with $\binomc{t}{s-1}=\core{s-1}{v}$, and the peel keeps counts only up to this bound.
 \begin{example}\label{ex:replay}
@@ -208,8 +201,6 @@ A chain is the set of vertices that stopped at one trie node, and its trajectory
 %
 The value of size $s$ is the same for every vertex that moves to one trie node, and the node records it (Line~\ref{ln:b-value}).
 %
-These recorded values are the values of the chains.
-%
 The tree of size $s$ is kept as its nodes with their tops and parents, numbered in the preorder $\mathrm{pre}_s$ of Section~\ref{sec:order}, which is fixed once the tree is complete.
 %
 \emph{During Step 3}, the algorithm ranks the chains by a depth-first traversal of the trie.
@@ -273,5 +264,3 @@ The working space is the clique tree and the graph, plus the values of two conse
 The values of two sizes, the trie and the trees are linear in the vertices, the chains and the canonical nodes.
 %
 No stage holds the core values of all vertices at all sizes.
-%
-The values are recorded per trie node, and those of a chain below its certification point are its residues.

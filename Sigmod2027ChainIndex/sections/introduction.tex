@@ -21,8 +21,7 @@ Size $2$ gives the $k$-core, since a clique of two vertices is an edge; size $3$
 At a given size, a vertex has a community at every level up to some largest level, its \emph{core value} at that size, and none above it.
 %
 The communities of one size, nested by level, form the \emph{clique-core hierarchy} of that size.
-%
-The size is the parameter that selects the kind of group a query asks for.
+% 2026-09-22 filler pass: "the size is the parameter" was said here, at the end of Example 1.1 and in Applications; kept once, in Applications.
 
 \begin{figure}[t]
 \centering
@@ -42,34 +41,19 @@ We write $\{u_1,\dots,w_3\}$ for these six.
 %
 The edge $a_5b_3$ lies in no triangle.
 %
-At size $2$, the vertex $x$ has $9$ neighbours: $b_1,b_2,b_3$ and the six vertices $u_1,\dots,w_3$.
+% 2026-09-22 filler pass: the example states the three communities and points to the figure; the counts that justify them are Example 2.2.
+At size $2$, the core value of $x$ is $4$.
 %
-Each $u_i$ or $w_j$ has $4$ neighbours, $b_3$ has $4$ thanks to the dashed edge, and $b_1$ and $b_2$ have $3$.
+Its community at level $4$ is $\{x,u_1,\dots,w_3\}$, seven vertices with at least four neighbours each inside the set, shaded in Figure~\ref{fig:example}(b).
 %
-The core value of $x$ at size $2$ is $4$: inside $\{x,u_1,\dots,w_3\}$ every vertex has at least $4$ neighbours.
+At size $3$, the core value of $x$ is $3$.
 %
-No set containing $x$ gives every vertex $5$, since each $u_i$ has only $4$ in the whole graph.
+Its community at level $3$ is $N=B\cup\{u_1,\dots,w_3\}$, ten vertices in at least three triangles each inside the set, Figure~\ref{fig:example}(c).
 %
-The community of $x$ at level $4$ is these seven vertices, shaded in Figure~\ref{fig:example}(b).
-%
-$b_3$ is not among them, since without $b_1$ and $b_2$ it keeps two neighbours.
-%
-$A$ is a second community at level $4$, in which every vertex has four neighbours, separate from the first since $b_3$ links them only at level $3$.
-%
-At size $3$, $x$ lies in $12$ triangles, three inside $B$ and nine of the form $\{x,u_i,w_j\}$.
-%
-Its core value at size $3$ is $3$, since each $u_i$ lies in only three triangles, and its community at level $3$ is $N=B\cup\{u_1,\dots,w_3\}$, ten vertices, Figure~\ref{fig:example}(c).
-%
-$A$ is a separate community, because the edge $a_5b_3$ lies in no triangle.
-%
-At size $4$, $x$ lies in one $4$-clique, $B$, since no two of $u_1,u_2,u_3$ are adjacent.
-%
-Its core value is $1$, and its community at level $1$ is $B$, Figure~\ref{fig:example}(d).
+At size $4$, $x$ lies in one $4$-clique, $B$, so its core value is $1$ and its community at level $1$ is $B$, Figure~\ref{fig:example}(d).
 %
 The same vertex has a community of $7$, $10$ and $4$ vertices at its core value for sizes $2$, $3$ and $4$.
-%
-The size selects which group a query asks for.
-% trace 2026-09-21: tools/example_check.py; neighbours of x: b1,b2,b3,u1..u3,w1..w3 = 9; triangles of x: C(3,2)+3*3 = 12.
+% trace 2026-09-21: tools/example_check.py; neighbours of x: b1,b2,b3,u1..u3,w1..w3 = 9; triangles of x: C(3,2)+3*3 = 12; kappa_2(x)=4, kappa_3(x)=3, kappa_4(x)=1 (make_concept.py 2026-09-22).
 \end{example}
 
 \stitle{Applications.}
@@ -105,11 +89,9 @@ Existing indexes for community search store one such tree for one model: the $k$
 %
 An index for every size then holds \textbf{\textit{one hierarchy per size}}, which we call \strees.
 %
-Its limitation is repetition.
-%
 Call the size of the largest clique containing a vertex its clique number.
 %
-A vertex lies in cliques of every size from $2$ to its clique number, so it appears in one array per such size and carries one core value per such size.
+A vertex lies in cliques of every size from $2$ to its clique number, so \strees stores it in one array per such size, with one core value per such size.
 %
 On the web graph \webuk, cliques reach $500$ vertices and a vertex lies in $181$ arrays on average.
 %
@@ -164,47 +146,32 @@ The \emph{own node} of a vertex at a size is its community at its core value, th
 %
 We prove that two vertices are hierarchy-equivalent exactly when they have the same own node at every size (Theorem~\ref{thm:chains}).
 %
-The classes of hierarchy-equivalent vertices are therefore read off the per-size trees.
-%
-We call them \emph{chains}, since a class follows one chain of own nodes through the sizes.
+We call the classes \emph{chains}, since a class follows one chain of own nodes through the sizes.
 %
 Every community is a union of chains, and no coarser partition answers every query (Proposition~\ref{prop:coarsest}).
 %
-On \dblp there are $13{,}459$ chains for $317{,}080$ vertices, $24$ vertices per chain.
+On \dblp, $13{,}459$ chains hold its $317{,}080$ vertices, $24$ per chain.
 %
+% 2026-09-22 filler pass: each idea says what it does and what it buys; the mechanics (entries, runs as maximal stretches, the climb, the binomial bound) are Section 5.
 \sstitle{Aligned labels, chain order and run arrays.}
-We relabel the vertices so that every chain is one interval of labels.
+We relabel the vertices so that every chain is one interval of labels, and rank the chains by the depth-first positions of their own nodes, size $2$ first.
 %
-A community is then a list of label ranges.
+Every size-$2$ community is then one range of labels (Theorem~\ref{thm:onerange}), and at larger sizes the same order keeps the number of ranges small (Table~\ref{tab:queries}).
 %
-We rank the chains by the depth-first positions of their own nodes, comparing size $2$ first, then size $3$, and so on.
+For each size, the index stores the tree of that size and, as runs of consecutive labels, the order in which a depth-first traversal lists the chains.
 %
-Every size-$2$ community then becomes one range (Theorem~\ref{thm:onerange}), and at larger sizes the same order keeps the number of ranges small (Table~\ref{tab:queries}).
+Any community is then a first range, whole runs and a last range, found in constant time after a climb to the queried level (Theorem~\ref{thm:retrieval}).
 %
-For each size, the index stores the tree of that size with, at every node, the chains whose own node it is.
+At every size, the core value of a vertex is at least the number of cliques of that size inside its largest clique, a binomial coefficient of its clique number.
 %
-The order in which a depth-first traversal lists these chains is stored as runs, maximal stretches of consecutive labels, with one entry per node saying where the node's chains start.
-%
-A community query climbs from the own node of the vertex to the node of the queried level.
-%
-That node's community is then a first range, whole runs and a last range, found in constant time (Theorem~\ref{thm:retrieval}) and listed about as fast as a memory copy.
-%
-Core values are stored per chain and only below a certain size.
-%
-At every size, the value is at least the number of cliques of that size through the vertex inside its largest clique, a binomial coefficient of the clique number.
-%
-Once the value equals this number at one size, it equals it at every larger size (Theorem~\ref{thm:tail}).
+Once the value equals this number at one size, it does so at every larger size (Theorem~\ref{thm:tail}), and the index stores values only below that size.
 %
 \sstitle{One clique tree for every size.}
-A clique tree~\cite{Pivoter}, a compact representation of all cliques of a graph, is built once and gives, for every vertex and every size, the number of cliques of that size through the vertex.
+A clique tree~\cite{Pivoter}, a compact representation of all cliques of a graph, gives for every vertex and every size the number of cliques of that size through the vertex.
 %
-The values of one size come from a peel: vertices are removed one at a time in increasing order of their clique counts, and the counts at removal give the values.
+The values of one size come from a peel: vertices are removed in increasing order of their clique counts, and the counts at removal give the values.
 %
-The sizes are processed one after another, and each size first tries the removal order of the previous size.
-%
-A check on clique counts tells whether the result is exact (Theorem~\ref{thm:replay}).
-%
-The tree of each size is built as its values are produced.
+Each size first tries the removal order of the previous size, and a check on clique counts tells whether the result is exact (Theorem~\ref{thm:replay}).
 
 \stitle{Contributions.}
 \sstitle{Chains.}
@@ -212,21 +179,16 @@ We characterize hierarchy equivalence for the clique-core hierarchies of every s
 %
 No value query and no community query at any size tells two vertices apart if and only if they share their own node at every size.
 %
-The classes partition the vertices, every community is a union of classes, and no coarser partition answers every query (Proposition~\ref{prop:coarsest}).
+The chains form the coarsest partition of the vertices for which every community is a union of classes (Proposition~\ref{prop:coarsest}).
 %
+% 2026-09-22 filler pass: one sentence per deliverable with its theorems; the mechanics were a restatement of "Our idea".
 \sstitle{The chain index.}
-We propose \chainidx, an index over chains.
+We propose \chainidx, an index over chains that stores each vertex once.
 %
-The aligned labels of \chainidx make every chain one interval and map a vertex to its chain in constant time, and the chain order makes every size-$2$ community one label range (Theorem~\ref{thm:onerange}).
-%
-The per-size runs with one entry per node return any community as a list of ranges in constant time after the climb (Theorem~\ref{thm:retrieval}).
-%
-Core values are stored per chain and only below the size at which they reach their closed form (Theorem~\ref{thm:tail}).
+It returns every community, at any size and level, as a list of label ranges in constant time after the climb (Theorems~\ref{thm:onerange} and~\ref{thm:retrieval}), and stores a core value only below the size at which it reaches its closed form (Theorem~\ref{thm:tail}).
 %
 \sstitle{Construction from one clique tree.}
-We build every size from one clique tree.
-%
-The sizes are processed in turn, each reusing the removal order of the previous size when a check on clique counts proves the reuse exact (Theorem~\ref{thm:replay}).
+We build the index of every size from one clique tree, each size reusing the removal order of the previous size when a check on clique counts proves the reuse exact (Theorem~\ref{thm:replay}).
 %
 Beyond the clique tree, the working memory is linear in the vertices and the chains.
 %
@@ -244,12 +206,7 @@ On DBLP the size that best matches a ground-truth community changes from query t
 On Amazon the size narrows a community from a store to a shelf.
 
 \stitle{Organization.}
-Section~\ref{sec:prelim} gives the definitions.
+% 2026-09-22 filler pass: two sentences.
+Section~\ref{sec:prelim} gives the definitions and Section~\ref{sec:strees} the cost of one hierarchy per size.
 %
-Section~\ref{sec:strees} describes one hierarchy per size and its cost.
-%
-Section~\ref{sec:chains} proves the characterization, Section~\ref{sec:index} gives the index, Section~\ref{sec:queries} its queries and Section~\ref{sec:construction} its construction.
-%
-Section~\ref{sec:exp} reports the experiments and the case studies.
-%
-Sections~\ref{sec:related} and~\ref{sec:conclusion} discuss related work and conclude.
+Sections~\ref{sec:chains} to~\ref{sec:construction} give the chains, the index, its queries and its construction, Section~\ref{sec:exp} the experiments and Section~\ref{sec:related} related work.

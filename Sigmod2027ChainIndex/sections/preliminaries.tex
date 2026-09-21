@@ -107,12 +107,7 @@ An index for this problem answers two queries, for every size $s$.
 A \textit{value query} $(v,s)$ returns $\core{s}{v}$.
 %
 A \textit{community query} $(v,s,k)$ with $1\le k\le\core{s}{v}$ returns the vertex set of the community of $v$ at $(s,k)$.
-%
-Whether a vertex belongs to a community follows from the community query.
-%
-The list of the communities of $v$ at one size, one per level from $1$ to $\core{s}{v}$, follows from community queries as well.
-%
-Neither is a separate query.
+% 2026-09-22 filler pass: three sentences on queries the index does not define (membership, the list of levels) removed.
 
 \stitle{Problem statement.}
 Given a graph $G$, we aim to build an index that answers value and community queries for every clique size $s\ge2$.

@@ -2,14 +2,11 @@
 % 2026-09-21 house shape: the algorithm is three blocks (float, walk, example); complexity closer.  Numbers from LEDGER.md.
 
 This section gives the two queries on the index.
+% 2026-09-22 filler pass: the opener no longer redefines chain(v) and the entry (Sections 5.1 and 5.3).
 %
-Both start from the vertex-to-chain map of Section~\ref{sec:labels}: $\mathrm{chain}(v)$ is the number of chain starts at or before $v$, minus one.
+Both start from the vertex-to-chain map of Section~\ref{sec:labels}.
 %
-The value query then reads the record of the chain (Section~\ref{sec:values}).
-%
-The community query climbs the tree of the queried size and reads two entries.
-%
-An entry is the number of the run and the label at which a node's segment starts (Section~\ref{sec:runs}).
+The value query then reads the record of the chain (Section~\ref{sec:values}), and the community query climbs the tree of the queried size and reads two entries (Section~\ref{sec:runs}).
 
 \begin{algorithm}[t]
 \caption{\query: value and community queries on \chainidx.}\label{alg:query}
@@ -69,10 +66,6 @@ For the last subtree in this order, it is the sentinel.
 Based on Theorem~\ref{thm:retrieval}, the two entries give the answer (Lines~\ref{ln:q-entries} to~\ref{ln:q-three}).
 %
 The answer is one range when both entries lie in the same run, and otherwise a first range, whole runs and a last range.
-%
-Reporting the ranges costs one step per range.
-%
-Expanding them into vertex labels costs one step per vertex.
 
 \begin{example}\label{ex:query}
 Consider Figure~\ref{fig:layout}.

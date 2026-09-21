@@ -47,7 +47,7 @@ Queries draw a vertex that lies in an edge and a size $s$ between $2$ and its cl
 %
 The workload has $20{,}000$ community queries at the vertex's own level, $k=\core{s}{v}$, $20{,}000$ at half that level (rounded down, at least $1$), and $1{,}000$ at $k=1$.
 %
-It also has $200{,}000$ value queries, which ask for a core value.
+It also has $200{,}000$ value queries.
 %
 Each workload runs six times.
 %
@@ -101,6 +101,9 @@ The values are a small part everywhere, since only the residues are stored (Theo
 Table~\ref{tab:size} gives, for every graph, the share of the pairs $(v,s)$ with a nonzero value whose value is a residue: it ranges from \storedmin{} percent to \storedmax{} percent, with a median of \storedmedian{} percent.
 %
 \webuk has $23.5$ million such pairs and stores one residue in total; \emailcore stores \storedmax{} percent of its values.
+%
+% 2026-09-22 moved from the former Remark 5.10 (LEDGER.md: dblp pairs 1,246,933; residues 84,010 per vertex, 9,737 per chain).
+On \dblp, $84{,}010$ of $1{,}246{,}933$ pairs are residues, and stored once per chain they are $9{,}737$ values.
 %
 The share is lowest on the graphs with large cliques, where most of a vertex's values lie in its tail.
 %
@@ -216,8 +219,7 @@ Panel (c) sorts the $20{,}000$ own-level queries of the workload above by answer
 Below $10^5$ vertices the copy is \profdeclowmin$\times$ to \profdeclowmax$\times$ faster.
 %
 Between $10^5$ and $10^6$ the gap closes, and from $10^6$ vertices on the two agree within \profdechigh{} percent.
-%
-\chainidx pays a constant per range where the copy pays a constant per label, and the space it saves (Table~\ref{tab:size}) is the same whatever the answers.
+% 2026-09-22 filler pass: the closer (constant per range vs per label) was said in Exp-4.
 
 \begin{figure*}[t]
 \centering
@@ -333,9 +335,7 @@ On \textsf{com-amazon} the triangle size alone reaches $0.824$ against $0.851$ f
 %
 On \textsf{com-youtube} every size is far from the ground-truth groups, with F1 below $0.04$.
 %
-Its ground-truth groups are known to be sparse~\cite{dblp}.
-%
-The comparison says nothing there.
+Its ground-truth groups are known to be sparse~\cite{dblp}, and the comparison says nothing there.
 %
 \sstitle{The choice is cheap with the index.}
 The per-query scan over every size and level costs $1$ to $50~\mu$s from \chainidx.

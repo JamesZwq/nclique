@@ -9,10 +9,7 @@ The index has three parts: the vertex-to-chain map, one record per chain, and fo
 We call the tree of a size with its runs the \textit{layer} of that size.
 %
 Figure~\ref{fig:layout} draws the three parts for the running example, and traces one community query through them.
-%
-Example~\ref{ex:query} walks the same query.
-%
-We describe the map and its labels (Section~\ref{sec:labels}), the order of the chains (Theorem~\ref{thm:onerange}), the run arrays (Theorem~\ref{thm:retrieval}), the values (Theorem~\ref{thm:tail}), and the size of the whole (Section~\ref{sec:size}).
+% 2026-09-22 filler pass: the roadmap of the subsections removed.
 
 \begin{figure*}[t]
 \centering
@@ -40,9 +37,7 @@ The map stores those bits and the first label of every chain.
 %
 A community is a union of chains (Lemma~\ref{lem:union}), and it becomes a list of label ranges rather than a list of vertex ids.
 %
-If the graph is kept under its original ids, the index also stores the permutation from ids to labels, $n$ labels.
-%
-If the graph is stored in the index's order, nothing is added.
+If the graph is kept under its original ids, the index also stores the permutation from ids to labels, $n$ labels, and otherwise nothing.
 \begin{example}\label{ex:labels}
 Consider Figure~\ref{fig:layout}.
 %
@@ -100,9 +95,7 @@ The $(2,4)$-core containing $x$, which is $\{x,u_1,\dots,w_3\}$, is the interval
 \begin{corollary}\label{cor:kcore}
 The size-$2$ layer of the index is an index for connected $k$-core communities in which every community is one label range.
 \end{corollary}
-Indexes built for $k$-core community search report a subtree of a core tree or a list of vertices \cite{Barbieri2015ShellStruct,Fang2016CLtree}.
-%
-Here the same answer is the two ends of one range, and the same labels serve every larger size.
+% 2026-09-22 filler pass: the comparison with k-core indexes after the corollary moved to Section 9 (it was already there).
 
 \subsection{Run arrays and entry points}\label{sec:runs}
 % 2026-09-22 prose pass: "active" glossed; the traversal rule in two sentences; the s=2 claim carries its reason; lo/hi defined.
@@ -180,9 +173,7 @@ The answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last
 %
 The community $A$ at $(3,6)$ is followed by the sentinel: $r_A=2\ne3$, so the answer is the first range $[3,\mathrm{hi}(2))=[3,8)$, no whole run and an empty last range.
 \end{example}
-The community query of Section~\ref{sec:queries} first climbs to the node of the queried level.
-%
-The vertices of that node are then located with two entry reads and reported as one range per run that the segment meets.
+% 2026-09-22 filler pass: the two-sentence preview of the query of Section 6 removed.
 
 \subsection{Values}\label{sec:values}
 % 2026-09-21 the certified tail moved here from the former hierarchy section (house order: the theorem where it is used).
@@ -256,17 +247,7 @@ No size reaches the floor, their certification point is $4=\omega+1$, and both v
 %
 Stored per chain, the whole graph keeps three values, the residues column of Figure~\ref{fig:layout}(b): one for chain $3$ ($\{x\}$) and two for chain $2$ ($\{u_1,\dots,w_3\}$).
 \end{example}
-\begin{remark}
-On our graphs the tail holds most values.
-%
-\dblp has $1{,}246{,}933$ pairs $(v,s)$ with a nonzero value.
-%
-Kept per vertex, only $84{,}010$ of these values are residues.
-%
-Kept per chain, $9{,}737$ residues remain.
-%
-\webuk has $23.5$ million such pairs and stores a single residue in total.
-\end{remark}
+% 2026-09-22 filler pass: the remark with the dblp/web-uk residue counts moved to Exp-2 (measurements belong there).
 The record of a chain holds its clique number $\omega$, its certification point $\sigma$, its residues, and its trajectory (Definition~\ref{def:chain}).
 %
 The community query starts from the trajectory.
@@ -274,8 +255,6 @@ The community query starts from the trajectory.
 Every value at or past $\sigma$ is the binomial coefficient of Theorem~\ref{thm:tail}, and for $s>\omega$ it is $0$.
 %
 The residues and the tops of one size are integers at most the largest core value of that size, and the index stores them at that length.
-%
-Sizes with small values cost little per value.
 
 \subsection{Size}\label{sec:size}
 Recall that $C$ is the number of chains, and let a word hold one label, one node or one value.

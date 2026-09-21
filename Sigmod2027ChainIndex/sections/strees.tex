@@ -3,8 +3,7 @@
 % and its cost, the per-size construction, and the closing remark that re-lists the three limitations.  Cadence pass.
 
 This section describes the hierarchy of one size, that is, the tree that the cores of that size form, and the index that stores one such tree per size.
-%
-The chain index of Sections~\ref{sec:chains} to~\ref{sec:construction} keeps the trees of every size and stores them differently.
+% 2026-09-22 filler pass: the preview of Sections 4 to 7 removed; the bridge is the last sentence of the section.
 
 \stitle{The tree of one size.}
 Fix a size $s$.
@@ -38,23 +37,18 @@ The top of the own node of $v$ is $\core{s}{v}$: a larger top would put $v$ in a
 %
 The top of a node equals the smallest core value of its vertices.
 %
+% 2026-09-22 filler pass: the two facts about tops keep one reason each (four sentences fewer).
 Every vertex of a node with top $\ell$ has core value at least $\ell$, since the node is a core at level $\ell$.
 %
-If every vertex had a core value above $\ell$, the core at level $\ell+1$ of each vertex would lie inside the node, by the nesting above.
+If every vertex had a larger value, the core at level $\ell+1$ of each vertex would lie inside the node, by the nesting above.
 %
-Every vertex of the node would then lie in at least $\ell+1$ cliques of $s$ vertices inside the node.
-%
-The node would then have the two properties at level $\ell+1$.
-%
-The $\Nuc{s}{\ell+1}$ containing it lies inside it by the nesting and so equals it, and its top would exceed $\ell$.
+The node would then have the two properties at level $\ell+1$, and its top would exceed $\ell$.
 %
 Tops increase strictly from a root down to its descendants.
 %
-A node with top $\ell$ has the two properties at every level up to $\ell$.
+A parent with top $\ell$ has the two properties at every level up to $\ell$.
 %
-If a child had a top of at most $\ell$, the parent would have the two properties at the child's top and strictly contain the child.
-%
-The child could then be extended without losing a property, a contradiction.
+A child with a top of at most $\ell$ could then be extended to its parent without losing a property.
 %
 The nodes containing $v$ are nested, so they form a path from a root downwards.
 %
@@ -113,12 +107,8 @@ Every vertex stores its own node and its core value.
 A community query climbs from the own node to the node nearest the root whose top is at least $k$ and copies that node's slice.
 %
 A value query reads the stored value.
-%
-The answer is one memory copy.
 
 \stitle{One hierarchy per size.}
-Every size has its own tree.
-%
 An index that serves every size stores, for each size, one tree and one array, together with every core value.
 %
 We call this index \strees, and it is the baseline of Section~\ref{sec:exp}.
@@ -136,17 +126,6 @@ On the coauthorship graph \textsf{ca-coauthors-dblp}, whose largest cliques have
 Building \strees means one decomposition per size.
 %
 With the counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting}, the $499$ sizes of \webuk take $15.7$ hours of building and peeling.
-
-\begin{remark}
-\strees answers a community query with one memory copy after the climb.
 %
-Across sizes it runs into the three difficulties of Section~\ref{sec:intro}.
-%
-\emph{Repetition across sizes}: a vertex is stored once per size at which it has a nonzero value.
-%
-\emph{Contiguity of communities}: a community is one block only inside the array of its size, and an index that groups vertices across sizes must make communities contiguous in another way.
-%
-\emph{Construction of every size}: each size costs one decomposition.
-%
-The next sections keep its trees, remove the repetition, and answer with a few ranges instead of one copy.
-\end{remark}
+% 2026-09-22 filler pass: the closing remark re-listed the three difficulties of the introduction; one bridge sentence remains.
+The next sections keep the trees of every size, store each vertex once, and answer a community query with a few ranges instead of one copy.

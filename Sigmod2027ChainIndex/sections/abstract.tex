@@ -19,17 +19,10 @@ The equivalence classes, called chains, partition the vertices, and no coarser p
 %
 We propose \chainidx, an index over chains.
 %
-Aligned labels make every chain one interval of ids and every community a list of ranges.
+% 2026-09-22 filler pass: the four mechanism sentences (labels, order, per-size tree, value storage) reduced to the claim; the construction to one sentence.
+It labels the chains so that every community, at any size and level, is a few ranges of consecutive ids, found in constant time.
 %
-An order of the chains makes every size-$2$ community one range.
-%
-For every size, a tree over the chains returns any community as a few ranges in constant time after a climb to the queried level.
-%
-A core value is stored only below the size at which it becomes a binomial coefficient of the vertex's clique number, where it stays.
-%
-The trees of all sizes are built from one clique tree.
-%
-The values of a size come from removing vertices in increasing order of their clique counts, and the next size reuses that order when a check on clique counts proves the reuse exact.
+The index of every size is built from one clique tree, each size reusing the vertex removal order of the previous size when a check on clique counts proves the reuse exact.
 %
 On \numgraphs{} graphs from five families, \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size (median \ratiomedian$\times$).
 %

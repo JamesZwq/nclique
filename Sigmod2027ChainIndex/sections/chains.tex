@@ -6,18 +6,17 @@
 % theorem is named for what it proves; nucleus variables renamed K to keep N for the example's community.
 This section answers the first difficulty of Section~\ref{sec:intro}: which vertices an index can store as one group, with one record, for every size, every level and every query.
 %
+% 2026-09-22 filler pass: one preview sentence.
 We define hierarchy equivalence and prove that the own nodes alone decide it (Theorem~\ref{thm:chains}).
 %
-Its classes partition the vertices, and we show that no coarser partition, one with larger groups, serves an index that answers every query exactly (Proposition~\ref{prop:coarsest}).
+Its classes, the chains, are the coarsest partition of the vertices that loses no answer (Proposition~\ref{prop:coarsest}).
 
 \stitle{Hierarchy equivalence.}
 Two vertices can share one record when no query tells them apart.
 \begin{definition}[hierarchy equivalence]\label{def:equiv}
 Two vertices $u$ and $v$ are \textit{hierarchy-equivalent} if, for every size $s$, their core values agree, $\core{s}{u}=\core{s}{v}$, and for every level $1\le k\le\core{s}{u}$ the two vertices lie in the same $\Nuc{s}{k}$.
 \end{definition}
-The condition covers every value query and every community query of Section~\ref{sec:prelim}, so an index that stores two equivalent vertices as one group still answers every query.
-%
-The condition speaks of every size and every level, and the next theorem reduces it to one comparison per size.
+% 2026-09-22 filler pass: two commentary sentences after the definition removed (the theorem states what the definition reduces to).
 \begin{definition}[trajectory, chain]\label{def:chain}
 For a vertex $v$ with $\omg{v}\ge2$, the \textit{trajectory} $\traj{v}=(\own{2}{v},\own{3}{v},\dots,\own{\omg{v}}{v})$ is the tuple of its own nodes over the sizes $2$ to $\omg{v}$, the sizes at which it lies in a clique.
 %
@@ -64,11 +63,7 @@ The vertex $x$ shares the own nodes of $u_1$ at sizes $2$ and $3$.
 %
 At size $4$ the two separate: $x$ lies in the $4$-clique $B$, and $u_1$ lies in no $4$-clique.
 \end{example}
-\begin{remark}
-Hierarchy equivalence covers every query, so an index over chains loses no answer.
-%
-Trajectories come from the per-size trees, so the chains are computed from the trees themselves (Section~\ref{sec:construction}).
-\end{remark}
+% 2026-09-22 filler pass: the remark after the example restated the definition and the theorem; removed.
 
 \stitle{Communities and chains.}
 Every answer is a union of whole chains, and no partition with larger groups has this property.
@@ -110,20 +105,12 @@ Otherwise, if $\own{s}{u}\ne\own{s}{v}$ at a size where both have value $k\ge1$,
 %
 Hence the own nodes agree at every size, and $u$ and $v$ are hierarchy-equivalent by Theorem~\ref{thm:chains}.
 \end{proof}
-\begin{remark}
-A lossless index can store the vertices of one chain as one group, and a partition into larger groups is not lossless.
-%
-Such an index therefore tells, for each vertex, which chain it belongs to.
-%
-Section~\ref{sec:labels} does so in constant time with $n+o(n)$ bits.
-\end{remark}
+% 2026-09-22 filler pass: the remark after the proposition restated it; removed.
 
 \stitle{Twins.}
-One kind of vertices that can always share a record needs no theorem: twins.
+Two vertices $u$ and $w$ are \textit{twins} when their closed neighbourhoods, the neighbours together with the vertex itself, are the same set, and a twin class is a maximal set of pairwise twins.
 %
-Two vertices $u$ and $w$ are twins when their closed neighbourhoods, the neighbours together with the vertex itself, are the same set, and a twin class is a maximal set of pairwise twins.
-%
-Twin classes are a baseline for how much the chains merge.
+Twin classes are the baseline of Section~\ref{sec:exp} for how much the chains merge.
 \begin{lemma}[twins refine chains]\label{lem:twins}
 If $u$ and $w$ have the same closed neighbourhood, then they lie in one chain.
 \end{lemma}
@@ -140,26 +127,13 @@ Otherwise $K=\{u,w\}$, and the swap maps it to itself.
 %
 Hence $u$ and $w$ are hierarchy-equivalent, and since twins are adjacent, Theorem~\ref{thm:chains} puts them in one chain.
 \end{proof}
-Chains are much coarser than twin classes on our graphs.
+% 2026-09-22 filler pass: "How many chains" merged here; "Relation to other groupings" removed (Section 9 has SGL and EquiTruss).
+Chains are at most as many as twin classes, and on our graphs far fewer.
 %
 Twin classes have $1.03$ to $1.28$ vertices on average.
 %
 \dblp has $13{,}459$ chains for $317{,}080$ vertices, $24$ per chain, and \webuk has $839$ chains for $129{,}632$ vertices, $154$ per chain.
-
-\stitle{How many chains.}
-Chains are at most as many as vertices and at most as many as twin classes.
 %
-The trees give no bound: on our graphs the ratio of chains to canonical nodes over all sizes ranges from $0.26$ to $5.67$.
+The trees give no bound on the number of chains: on our graphs the ratio of chains to canonical nodes over all sizes ranges from $0.26$ to $5.67$.
 %
-The saving of the index is the number of vertices per chain, an empirical quantity, and Section~\ref{sec:exp} reports it with the compression of every graph.
-
-\stitle{Relation to other groupings.}
-The SGL index for bipartite graphs \cite{SGL} also groups vertices into units that, within one parameter setting, are neither nested nor overlapping, so that a query retrieves each vertex once.
-%
-Across parameter settings, however, a vertex belongs to one unit per setting, so it is stored several times.
-%
-EquiTruss \cite{akbas2017truss} partitions the edges of a graph into classes of edges that lie in the same $k$-truss communities for every $k$.
-%
-The truss model has no second parameter.
-%
-For the clique cores of every size, the nesting within each size together with Theorem~\ref{thm:chains} makes the groups a partition across every size, so each vertex is stored once.
+Section~\ref{sec:exp} reports the vertices per chain of every graph.
