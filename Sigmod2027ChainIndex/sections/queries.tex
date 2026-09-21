@@ -31,7 +31,7 @@ The community query climbs the tree of the queried size and reads two entries, e
   $Y\leftarrow X+\mathrm{size}[X]$\;\label{ln:q-exit}
   $(r_X,v_X)\leftarrow\mathrm{entry}[X]$; $(r_Y,v_Y)\leftarrow\mathrm{entry}[Y]$\;\label{ln:q-entries}
   \lIf{$r_X=r_Y$}{\Return the range $[v_X,v_Y)$}\label{ln:q-one}
-  \Return $[v_X,hi(r_X))$, the runs $r_X+1,\dots,r_Y-1$, $[lo(r_Y),v_Y)$\;\label{ln:q-three}
+  \Return $[v_X,hi(r_X))$, runs $r_X{+}1..r_Y{-}1$, $[lo(r_Y),v_Y)$\;\label{ln:q-three}
 }
 \end{algorithm}
 

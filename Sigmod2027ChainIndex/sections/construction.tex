@@ -137,7 +137,7 @@ put every vertex at the root of an empty trie\;\label{ln:b-trie}
     join the active vertices of every live path of $T$\;\label{ln:b-union}
     each changed component becomes a node of top $k$\;\label{ln:b-nodes}
     the nodes it absorbed become its children\;\label{ln:b-parent}
-    the activated vertices record their component as own node\;\label{ln:b-own}
+    activated vertices take their component as own node\;\label{ln:b-own}
   }
   \lForEach{active vertex $v$}{move $v$ to the trie child $\own{s}{v}$}\label{ln:b-refine}
 }
