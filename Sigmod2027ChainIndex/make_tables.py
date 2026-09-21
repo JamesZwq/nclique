@@ -63,7 +63,8 @@ def table_size():
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'size.tex').write_text('\n'.join(lines) + '\n')
     rat = [t[2]['result']['baseline_vertex_bytes'] / t[2]['result']['bytes_total'] for t in rows]
-    (OUT / 'size_stats.tex').write_text(f"\\newcommand{{\\numgraphs}}{{{len(rows)}}}\n\\newcommand{{\\ratiomin}}{{{min(rat):.2f}}}\n\\newcommand{{\\ratiomedian}}{{{statistics.median(rat):.1f}}}\n\\newcommand{{\\ratiomax}}{{{max(rat):.1f}}}\n")
+    with_perm = [t[2]['result']['baseline_vertex_bytes'] / (t[2]['result']['bytes_total'] + 4 * t[2]['result']['n']) for t in rows]
+    (OUT / 'size_stats.tex').write_text(f"\\newcommand{{\\numgraphs}}{{{len(rows)}}}\n\\newcommand{{\\ratiomin}}{{{min(rat):.2f}}}\n\\newcommand{{\\ratiomedian}}{{{statistics.median(rat):.1f}}}\n\\newcommand{{\\ratiomax}}{{{max(rat):.1f}}}\n\\newcommand{{\\permmin}}{{{min(with_perm):.2f}}}\n\\newcommand{{\\permmedian}}{{{statistics.median(with_perm):.1f}}}\n\\newcommand{{\\permmax}}{{{max(with_perm):.1f}}}\n")
 
 def strees_latency():
     """S trees latency keyed by (machine, graph): the in-process baseline of query_profile (same decomposition, same queries,
