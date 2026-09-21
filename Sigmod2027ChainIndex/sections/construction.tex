@@ -17,7 +17,7 @@ If the condition holds, $W_k=\{u:U_s(u)\ge k\}$ has minimum $s$-degree at least 
 Conversely, if $U_s$ is the core value, $\{u:\core{s}{u}\ge k\}$ is the union of the level-$k$ witnesses and has minimum $s$-degree at least $k$, which is the condition.
 \end{proof}
 When the certificate holds the size costs one sweep; when it fails the size is peeled exactly (a bucket peel that removes the vertex of smallest count and updates the paths through it in closed form), and the resulting order is the candidate for the next size.
-A vertex whose value has reached the floor of Theorem~\ref{thm:tail} is settled for all larger sizes and leaves the peel.
+The previous size's values also cap the next size's: the Kruskal--Katona shadow bound turns $\core{s-1}{v}$ into an upper bound on $\core{s}{v}$ that seeds the counts.
 The values arrive one size at a time; the index keeps a two-row window, not the $s_{\max}\times n$ matrix.
 
 \stitle{One tree per size, on arrival.}
@@ -33,7 +33,7 @@ Working memory beyond the peel is one trie node per distinct own-node prefix and
 
 \stitle{Run arrays and values.}
 For each size, the tree is traversed with children ordered by their smallest chain rank; the resulting chain sequence is merged into runs and every node's entry is recorded.
-Each chain then receives $\omega$, $\sigma$, its residue and its trajectory, and the per-size widths are chosen from the maxima.
+Each chain then receives $\omega$, its trajectory, and its values: $\sigma$ is the first size at which the chain's value equals the floor $\binomc{\omega-1}{s-1}$ (Theorem~\ref{thm:tail} says it stays there), only the values below $\sigma$ are stored as residues, and the per-size widths are chosen from the maxima.
 
 \stitle{Cost.}
 The peel and the clique tree dominate; the trie, the ranks, the run arrays and the values add a few percent (Section~\ref{sec:exp}).
