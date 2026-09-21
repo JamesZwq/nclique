@@ -85,3 +85,16 @@ ranges), certified tail (values below sigma only). Construction: one clique tree
 Running example (Figure 1, Section 2) used in Sections 3, 4, 5 (Figure 2: the three blocks on the example), 6 (query walk).
 Figure 3: construction pipeline. Queries before construction. Experiments grouped by question: why every size (two case
 studies) / how small / how fast / what it costs to build / correctness. Conclusion retells the story. 13 pages.
+
+## House style pass (2026-09-21, paper-architect + writing-paper-prose)
+
+Rewritten in the house shape: LEDGER.md frozen first (slot ledger, notation, running-example numbers from tools/example_check.py,
+claim -> evidence); introduction Variant B (Figure 1 + Example 1 in the intro, Applications, one bold limitation, research
+question, three challenges mirrored by three idea features and four contributions, Organization); Section 3 = the fair
+state of the art (STrees) with a closing remark re-listing the three difficulties; every definition and theorem followed by
+an example on Figure 1; Figure 2 = the index blocks on the example; Algorithm Query and Algorithm Build as floats with
+line-anchored walks and examples; experiments without subsections (Hardware / Algorithms / Datasets / Metrics, Exp-1..8,
+case studies Exp-9/10 with claim-shaped findings and a practical guideline); monochrome figures; short captions; one
+sentence per line with % separators; style gate PASS on the whole paper (median 16 words, 6% over 25, so-rate 2.4%).
+15 pages. Pending: tods1 records (S trees latency, profiles, last CND rows) -> regenerate tables/figures; a cold read by a
+low-context reader of the intro and the index section.
