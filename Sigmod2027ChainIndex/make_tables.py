@@ -245,7 +245,9 @@ def table_cases():
     rec = load('case/amazon-queries.json')
     if rec is not None:
         lines = [r'\begin{tabular}{@{}p{0.27\linewidth}p{0.26\linewidth}p{0.43\linewidth}@{}}', r'\toprule', r'Query product & Community size (leaf purity) at $s=2,3,\dots$ & Smallest community \\', r'\midrule']
+        keep = ('Kind of Blue', 'Introduction to Algorithms', 'The Fellowship of the Ring', 'The Godfather')   # 2026-09-22: four rows
         for q in rec['queries']:
+            if not q['title'].startswith(keep): continue
             lv = q['levels']; sizes = ', '.join(f"{L['size']:,} ({L['leaf_share']:.2f})" for L in lv)
             last = [L for L in lv if 'members' in L]
             # 2026-09-22: whole words, no bracketed tails, at most six members; the escape runs before \dots is appended

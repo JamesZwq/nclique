@@ -299,11 +299,10 @@ def fig_strees():
     CW, CH = 13.4, 12.0; BH = 11.0; GAP = 1.6
     X0 = 30.0
     sv_parts = []
-    y = 16.0
+    y = 4.0                                     # 2026-09-22: no title line (the caption says it), no footer (the text says 44)
     rows = [(2, X0), (3, X0), (4, X0), (5, X0 + 9 * CW + 24)]
     ys = {}
     sv = SVG(PW, 1)
-    sv.text(2, 9, 'one tree and one array per size', size=7.2)
     total = 0
     for s, x0 in rows:
         L = layers[s]; arr = strees_array(s); total += len(arr)
@@ -327,14 +326,9 @@ def fig_strees():
             sv.text(x0 + i * CW + CW / 2, cells_y + 8.6, sub(v), size=6.4, anchor='middle', italic=True)
         sv.text(x0 - 4, cells_y + 8.6, f's = {s}', size=6.8, anchor='end')
         ys[s] = ytop
-        if s != 4: y = cells_y + CH + 10
-        else: y = cells_y + CH + 10
-    PH = y + 4
+        y = cells_y + CH + 7
+    PH = y - 5
     sv.h = PH
-    sv.text(2, PH - 3, f'{total} cells for 15 vertices: <tspan font-style="italic">a</tspan><tspan font-size="70%" dy="1.6">i</tspan><tspan dy="-1.6"> four times, </tspan>'
-                       f'<tspan font-style="italic">b</tspan><tspan font-size="70%" dy="1.6">i</tspan><tspan dy="-1.6"> and </tspan><tspan font-style="italic">x</tspan> three times, '
-                       f'<tspan font-style="italic">u</tspan><tspan font-size="70%" dy="1.6">i</tspan><tspan dy="-1.6"> and </tspan>'
-                       f'<tspan font-style="italic">w</tspan><tspan font-size="70%" dy="1.6">i</tspan><tspan dy="-1.6"> twice</tspan>', size=6.6)
     assert total == 44
     sv.write('fig_strees')
 

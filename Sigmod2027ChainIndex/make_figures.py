@@ -76,7 +76,7 @@ def fig_regimes():
     rows = all_profiles(pairs=True)
     if not rows: return
     # 2026-09-22: three panels; (b) replaces the per-graph query table: the listing-time ratio against vertices per range
-    fig, (a, c, b) = plt.subplots(1, 3, figsize=(TEXT_WIDTH, 1.75), gridspec_kw={'width_ratios': [1.3, 1, 1]})
+    fig, (a, c, b) = plt.subplots(1, 3, figsize=(TEXT_WIDTH, 1.55), gridspec_kw={'width_ratios': [1.3, 1, 1]})
     marks = {'own': 'o', 'half': 's', 'root': '^'}; labels = {'own': 'own level', 'half': 'half level', 'root': 'k = 1'}
     for reg, mk in marks.items():
         xs = [x['regimes'][reg]['output'] for w, g, x in rows]
@@ -118,7 +118,7 @@ def fig_regimes():
     b.set_yscale('log'); b.set_ylabel('locating time (ns)'); b.set_ylim(1.5, 6000)
     legend_pair(b, loc='upper left')
     for ax, t in zip((a, c, b), ('(a)', '(b)', '(c)')): ax.set_title(t, loc='left', fontsize=8, pad=3)
-    fig.subplots_adjust(left=0.07, right=0.995, bottom=0.2, top=0.9, wspace=0.4)
+    fig.subplots_adjust(left=0.07, right=0.995, bottom=0.23, top=0.89, wspace=0.4)
     save(fig, 'fig_regimes')
 
 # ------------------------------------------------------------- Exp-8: CND once per size against one build ----
@@ -140,7 +140,7 @@ def fig_prior():
             if 'total_inproc_ms' in og and (where, g) in ours:
                 o = ours[(where, g)]; pts.append((where, g, (o['ti_ms'] + o['build_ms'] + o['compact_ms']) / 1000, og['total_inproc_ms'] / 1000, og['sizes_ok']))
     if not pts: return
-    fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.6))
+    fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.45))
     lo, hi = 5e-3, 150
     for f, lab in ((1, '1x'), (10, '10x'), (100, '100x'), (1000, '1000x')):
         ax.plot([lo, hi], [lo * f, hi * f], color='0.75', lw=0.6, ls=(0, (2, 1.5)), zorder=1)
@@ -156,7 +156,7 @@ def fig_prior():
     ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlim(lo, 1500); ax.set_ylim(0.05, 4e5)
     ax.set_xlabel('ChainIndex, one build for every size (s)'); ax.set_ylabel('CND, one run per size (s)')
     ax.legend(loc='lower right', handletextpad=0.2)
-    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.2, top=0.97)
+    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.23, top=0.97)
     save(fig, 'fig_prior')
 
 # ------------------------------------------------------------------- Exp-5: by clique size and answer size ----
@@ -168,7 +168,7 @@ def fig_profile():
     """Own-level latency by clique size (stratified workload) and by answer size (deciles), on the representative pair."""
     rows = rep_profiles()
     if not rows: return
-    fig, (a, b, c) = plt.subplots(1, 3, figsize=(TEXT_WIDTH, 1.7))
+    fig, (a, b, c) = plt.subplots(1, 3, figsize=(TEXT_WIDTH, 1.5))
     for g, x in rows:
         bs = x['by_size']; mk = MARKS[g]
         a.plot([e['s'] for e in bs], [e['locate_ns'] for e in bs], marker=mk, ms=2.8, **OURS_KW, label=g)
@@ -184,7 +184,7 @@ def fig_profile():
     legend_pair(b, loc='upper right')
     c.set_xscale('log'); c.set_yscale('log'); c.set_xlabel('answer size (vertices, decile mean)'); c.set_ylabel('listing time (ns)')
     for ax, t in zip((a, b, c), ('(a)', '(b)', '(c)')): ax.set_title(t, loc='left', fontsize=8, pad=3)
-    fig.subplots_adjust(left=0.07, right=0.995, bottom=0.21, top=0.9, wspace=0.42)
+    fig.subplots_adjust(left=0.07, right=0.995, bottom=0.24, top=0.89, wspace=0.42)
     save(fig, 'fig_profile')
 
 # --------------------------------------------------------------------------------- Exp-7: scalability ----
@@ -208,7 +208,7 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
     for r in fullrec['runs']:
         if 'result' in r and Path(r['graph']).stem in series: series[Path(r['graph']).stem][100] = r['result']
     prof = {g: x for w, g, x in all_profiles(samples=True)}; prof.update({g: x for w, g, x in all_profiles() if w == 'tods2'})
-    fig, axes = plt.subplots(1, 4, figsize=(TEXT_WIDTH, 1.6))
+    fig, axes = plt.subplots(1, 4, figsize=(TEXT_WIDTH, 1.45))
     for g, pts in sorted(series.items()):
         ps = sorted(pts); xs = [pts[p]['n'] / 1e6 for p in ps]; mk = MARKS.get(g, 'o')
         axes[0].plot(xs, [pts[p]['bytes_total'] / 1048576 for p in ps], marker=mk, ms=2.8, **OURS_KW, label=g)
@@ -229,7 +229,7 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
     axes[0].set_yscale('log'); axes[1].set_yscale('log'); axes[2].set_ylim(0, None); axes[3].set_ylim(0, None)
     axes[0].legend(handles=[Line2D([], [], marker=MARKS.get(g, 'o'), color='0.25', ls='', markersize=3.4, label=g) for g in sorted(series)], loc='lower right')
     legend_pair(axes[3], base_label='STrees / CND', loc='lower right')
-    fig.subplots_adjust(left=0.065, right=0.995, bottom=0.23, top=0.9, wspace=0.5)
+    fig.subplots_adjust(left=0.065, right=0.995, bottom=0.26, top=0.89, wspace=0.5)
     save(fig, 'fig_scale')
 
 if __name__ == '__main__':

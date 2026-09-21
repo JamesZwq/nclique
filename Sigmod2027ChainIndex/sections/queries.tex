@@ -1,12 +1,7 @@
 \section{Queries}\label{sec:queries}
 % 2026-09-21 house shape: the algorithm is three blocks (float, walk, example); complexity closer.  Numbers from LEDGER.md.
 
-This section gives the two queries on the index.
-% 2026-09-22 filler pass: the opener no longer redefines chain(v) and the entry (Sections 5.1 and 5.3).
-%
-Both start from the vertex-to-chain map of Section~\ref{sec:labels}.
-%
-The value query then reads the record of the chain (Section~\ref{sec:values}), and the community query climbs the tree of the queried size and reads two entries (Section~\ref{sec:runs}).
+Both queries start from the vertex-to-chain map of Section~\ref{sec:labels}; the value query then reads the record of the chain (Section~\ref{sec:values}), and the community query climbs the tree of the queried size and reads two entries (Section~\ref{sec:runs}).
 
 \begin{algorithm}[t]
 \caption{\query: value and community queries on \chainidx.}\label{alg:query}

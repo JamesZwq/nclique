@@ -13,11 +13,7 @@ The \textit{clique number} of a vertex $v$, denoted as $\omg{v}$, is the largest
 %
 A subset of a clique is a clique, so $v$ lies in an $s$-clique for every size $s$ from $2$ to $\omg{v}$ and for no larger size.
 %
-In Figure~\ref{fig:example}, the clique number of $a_1$ is $5$, since $A$ has five vertices.
-%
-The clique number of $x$ is $4$ because of $B$.
-%
-That of $u_1$ is $3$: it lies in the triangles $\{x,u_1,w_j\}$ for $j=1,2,3$ and in no $4$-clique, since no two of $u_1,u_2,u_3$ are adjacent.
+In Figure~\ref{fig:example}, $\omg{a_1}=5$ because of $A$, $\omg{x}=4$ because of $B$, and $\omg{u_1}=3$: $u_1$ lies in the triangles $\{x,u_1,w_j\}$ and in no $4$-clique.
 
 \stitle{Clique cores.}
 % 2026-09-22 the model is named the clique core (the k-core with cliques of s vertices in place of edges); the nucleus
@@ -33,9 +29,7 @@ Any two vertices of $N$ are joined by a sequence of $s$-cliques contained in $N$
 We say that $N$ is connected through its $s$-cliques.
 \end{definition}
 % the origin of the model, named once
-An $\Nuc{s}{k}$ is a $k$-$(1,s)$-nucleus in the terminology of Sariy\"uce et al.~\cite{firstNucleus}, the vertex case of their $(r,s)$-nucleus, and the $(1,s)$-nucleus decomposition computes the core values of one size.
-%
-We keep the name core and the vertex as the unit throughout.
+An $\Nuc{s}{k}$ is a $k$-$(1,s)$-nucleus in the terminology of Sariy\"uce et al.~\cite{firstNucleus}, the vertex case of their $(r,s)$-nucleus.
 %
 For $s=2$ the cliques are edges, and a $(2,k)$-core is a connected $k$-core: a maximal connected subgraph in which every vertex has at least $k$ neighbours.
 %
@@ -48,13 +42,7 @@ The \textit{core value} of $v$ at size $s$, denoted as $\core{s}{v}$, is the lar
 % 2026-09-22 cold read (Sections 3/4): the converse stated once here, Section 3 and the proofs lean on it.
 It is $0$ if $v$ lies in no $s$-clique, and at least $1$ otherwise, since an $s$-clique containing $v$ has the two properties at level $1$ and extends to an $\Nuc{s}{1}$.
 %
-The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$.
-%
-Such a core exists.
-%
-The $\Nuc{s}{\core{s}{v}}$ containing $v$ has the two properties at level $k$ as well, since $k\le\core{s}{v}$, and adding vertices to it until neither property can be kept gives an $\Nuc{s}{k}$ containing $v$.
-%
-This core is unique, since cores of one size and level are disjoint.
+The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$: it exists, since the $\Nuc{s}{\core{s}{v}}$ containing $v$ has the two properties at level $k$ and extends to an $\Nuc{s}{k}$, and it is unique, since cores of one size and level are disjoint.
 \begin{example}\label{ex:nucleus}
 % 2026-09-22 compaction: eight sentences; every count is from make_concept.py (kappa_3 = 6 on A, 3 on N; kappa_2 = 4 on A and {x,u,w}, 3 on b_i; kappa_4 = 4 on A, 1 on B; kappa_5 = 1 on A).
 Consider Figure~\ref{fig:example} at size $3$, writing $\{u_1,\dots,w_3\}$ for the six vertices $u_1,u_2,u_3,w_1,w_2,w_3$ as in Example~\ref{ex:intro}.
