@@ -151,3 +151,11 @@ Resolved clashes: M (clique vs node count), Q (nucleus vs optional set), f_s (fl
 pair count), C (chains vs community), t (top vs real), k (level vs set count), N (example vs proof nucleus).
 Inlined (used <= 3 times): the floor symbol, P and M of the size accounting, key(c), chain(u)=chain(w), E.
 
+## Model name (user decision 2026-09-22): clique core, not nucleus
+The paper's object is the (s,k)-core, "the k-core with cliques of s vertices in place of edges" (Definition 2.1,
+macro \Nuc typesets (s,k)-core); the per-size hierarchy is the clique-core hierarchy (title, intro, research question,
+contributions, conclusion).  The word nucleus appears only where the origin is credited: one sentence in the intro,
+one after Definition 2.1 ("an (s,k)-core is a k-(1,s)-nucleus in the terminology of Sariyuce et al."), the CND
+description (its name), and the Related Work paragraph (the (r,s) lineage and the edge/larger-clique extension).
+Never present the work as "the r = 1 special case"; the (r,s) family is background, not the frame.
+

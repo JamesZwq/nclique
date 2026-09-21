@@ -2,14 +2,14 @@
 % 2026-09-21 the fair state-of-the-art section (house order): the tree of one size, its own nodes, the STrees layout
 % and its cost, the per-size construction, and the closing remark that re-lists the three limitations.  Cadence pass.
 
-This section describes the hierarchy of one size, that is, the tree that the nuclei of that size form, and the index that stores one such tree per size.
+This section describes the hierarchy of one size, that is, the tree that the cores of that size form, and the index that stores one such tree per size.
 %
 The chain index of Sections~\ref{sec:chains} to~\ref{sec:construction} keeps the trees of every size and stores them differently.
 
 \stitle{The tree of one size.}
 Fix a size $s$.
 %
-Two nuclei of size $s$ are disjoint or nested.
+Two cores of size $s$ are disjoint or nested.
 %
 Let $K$ be an $\Nuc{s}{k}$ and $K'$ an $\Nuc{s}{k'}$ with $k\le k'$, and let the two share a vertex.
 %
@@ -19,9 +19,9 @@ The union therefore satisfies the two properties of Definition~\ref{def:nucleus}
 %
 No vertex can be added to $K$, so the union is $K$, and $K'\subseteq K$.
 %
-Any two nuclei of size $s$ are therefore disjoint or nested.
+Any two cores of size $s$ are therefore disjoint or nested.
 %
-One vertex set can be a nucleus for a whole interval of levels.
+One vertex set can be a core for a whole interval of levels.
 \begin{definition}[canonical node, own node]\label{def:node}
 A \textit{canonical node} of size $s$ is a vertex set that is an $\Nuc{s}{k}$ for at least one level $k$.
 %
@@ -34,13 +34,13 @@ The nodes contained in no other node are its roots, and the children of a node a
 The \textit{own node} of a vertex $v$ with $\core{s}{v}\ge1$, denoted as $\own{s}{v}$, is the $\Nuc{s}{\core{s}{v}}$ containing $v$.
 \end{definition}
 % 2026-09-22 prose pass: the three facts about tops each carry their reason (nesting, maximality); the derived properties of the own node moved out of the definition.
-The top of the own node of $v$ is $\core{s}{v}$: a larger top would put $v$ in a nucleus of a larger level.
+The top of the own node of $v$ is $\core{s}{v}$: a larger top would put $v$ in a core of a larger level.
 %
 The top of a node equals the smallest core value of its vertices.
 %
-Every vertex of a node with top $\ell$ has core value at least $\ell$, since the node is a nucleus at level $\ell$.
+Every vertex of a node with top $\ell$ has core value at least $\ell$, since the node is a core at level $\ell$.
 %
-If every vertex had a core value above $\ell$, the nucleus at level $\ell+1$ of each vertex would lie inside the node, by the nesting above.
+If every vertex had a core value above $\ell$, the core at level $\ell+1$ of each vertex would lie inside the node, by the nesting above.
 %
 Every vertex of the node would then lie in at least $\ell+1$ cliques of $s$ vertices inside the node.
 %
@@ -78,7 +78,7 @@ Figure~\ref{fig:strees} draws the trees of its four sizes.
 %
 At size $2$ the forest $\Tree{2}$ has one root holding all $15$ vertices.
 %
-The graph is connected and its smallest degree is $3$ (at $b_1$ and $b_2$), so the root is the $(2,k)$-nucleus for $k=1,2,3$ and has top $3$.
+The graph is connected and its smallest degree is $3$ (at $b_1$ and $b_2$), so the root is the $(2,k)$-core for $k=1,2,3$ and has top $3$.
 %
 The root has two children of top $4$, $A$ and $\{x,u_1,\dots,w_3\}$.
 %

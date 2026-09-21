@@ -94,7 +94,7 @@ The key of $\{u_1,\dots,w_3\}$ is $(2,0)$ and the key of $\{x\}$ is $(2,0,0)$, t
 %
 This gives the chains $0$ to $3$ of Figure~\ref{fig:layout} and their labels.
 %
-The $(2,4)$-nucleus containing $x$, which is $\{x,u_1,\dots,w_3\}$, is the interval $[8,15)$, and the $(2,3)$-nucleus is $[0,15)$.
+The $(2,4)$-core containing $x$, which is $\{x,u_1,\dots,w_3\}$, is the interval $[8,15)$, and the $(2,3)$-core is $[0,15)$.
 % trace 2026-09-22 (make_concept.py): keys (0,0,0), (1,1,1,0), (2,0), (2,0,0) with pre_3: N=0, A=1 and pre_4: B=0, A=1.
 \end{example}
 \begin{corollary}\label{cor:kcore}
@@ -216,7 +216,7 @@ Let $2\le s\le\omg{v}$.
 \begin{proof}
 (a) A largest clique $L$ containing $v$ has $\omg{v}$ vertices.
 %
-Every vertex of $L$ lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of $L$, and $L$ is connected through them, so $L$ has the two properties at the level of the floor and lies inside a nucleus of size $s$ at that level.
+Every vertex of $L$ lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of $L$, and $L$ is connected through them, so $L$ has the two properties at the level of the floor and lies inside a core of size $s$ at that level.
 
 (b) Let $K$ be the $\Nuc{s+1}{\core{s+1}{v}}$ containing $v$, and take any vertex $u$ of $K$.
 %

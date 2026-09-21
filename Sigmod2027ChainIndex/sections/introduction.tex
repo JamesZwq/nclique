@@ -8,9 +8,9 @@ Graphs model relations between entities, and many graph-mining tasks look for gr
 %
 The $k$-core is a standard answer: the largest subgraph in which every vertex has at least $k$ neighbours~\cite{seidman1983network}.
 %
-The $(1,s)$-nucleus decomposition of Sariy\"uce et al.~\cite{firstNucleus} counts, around each vertex, the cliques of $s$ vertices that contain it instead of its neighbours.
+Counting, around each vertex, the cliques of $s$ vertices that contain it instead of its neighbours generalizes the $k$-core to a clique size $s$.
 %
-The $1$ says that the unit is a single vertex, and the $s$ is the clique size.
+This is the $(1,s)$-nucleus of Sariy\"uce et al.~\cite{firstNucleus}, where the $1$ says that the unit is a single vertex; we call it the clique core.
 %
 Choose a clique size $s$ and a level $k$.
 %
@@ -101,7 +101,7 @@ For a fixed size, a community at a higher level lies inside one community at eac
 %
 A depth-first traversal of that tree, which writes each vertex at the smallest community containing it, gives an order in which every community is one contiguous block of an array~\cite{fastHierarchy,Fang2016CLtree}.
 %
-Existing indexes for community search store one such tree for one model: the $k$-core~\cite{Barbieri2015ShellStruct,Fang2016CLtree}, the $k$-truss, the same idea with edges as the unit~\cite{huang2014truss,akbas2017truss}, or the nuclei of one clique size~\cite{fastHierarchy}.
+Existing indexes for community search store one such tree for one model: the $k$-core~\cite{Barbieri2015ShellStruct,Fang2016CLtree}, the $k$-truss, the same idea with edges as the unit~\cite{huang2014truss,akbas2017truss}, or the clique cores of one clique size~\cite{fastHierarchy}.
 %
 An index for every size then holds \textbf{\textit{one hierarchy per size}}, which we call \strees.
 %
@@ -208,7 +208,7 @@ The tree of each size is built as its values are produced.
 
 \stitle{Contributions.}
 \sstitle{Chains.}
-We characterize hierarchy equivalence for $(1,s)$-nucleus decompositions (Theorem~\ref{thm:chains}).
+We characterize hierarchy equivalence for the clique-core hierarchies of every size (Theorem~\ref{thm:chains}).
 %
 No value query and no community query at any size tells two vertices apart if and only if they share their own node at every size.
 %

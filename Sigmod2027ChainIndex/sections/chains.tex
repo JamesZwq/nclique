@@ -80,7 +80,7 @@ The vertex $u$ lies in an $s$-clique, and its chain is the class of its trajecto
 %
 Since $u$ lies in $K$, $\core{s}{u}\ge k$.
 %
-The node $\own{s}{u}$ is a nucleus at the level $\core{s}{u}\ge k$ that contains $u$, so it lies inside the $\Nuc{s}{k}$ containing $u$, namely $K$, by the nesting of Section~\ref{sec:strees}.
+The node $\own{s}{u}$ is a core at the level $\core{s}{u}\ge k$ that contains $u$, so it lies inside the $\Nuc{s}{k}$ containing $u$, namely $K$, by the nesting of Section~\ref{sec:strees}.
 %
 Hence $w\in K$.
 \end{proof}
@@ -98,7 +98,7 @@ We show that $u$ and $v$ share a chain.
 %
 Suppose the core values differ at some size, say $\core{s}{u}>\core{s}{v}$.
 %
-The community of $u$ at $(s,\core{s}{u})$ contains $u$ and not $v$, since every vertex of a nucleus at level $\core{s}{u}$ has at least that core value.
+The community of $u$ at $(s,\core{s}{u})$ contains $u$ and not $v$, since every vertex of a core at level $\core{s}{u}$ has at least that core value.
 %
 It is not a union of blocks of $P$.
 %
@@ -106,7 +106,7 @@ The core values therefore agree at every size.
 %
 If $u$ is isolated, so is $v$, since their values at size $2$ agree, and both lie in the chain of isolated vertices.
 %
-Otherwise, if $\own{s}{u}\ne\own{s}{v}$ at a size where both have value $k\ge1$, these two $(s,k)$-nuclei are disjoint (Section~\ref{sec:prelim}), and the community of $u$ at $(s,k)$ again contains $u$ and not $v$.
+Otherwise, if $\own{s}{u}\ne\own{s}{v}$ at a size where both have value $k\ge1$, these two $(s,k)$-cores are disjoint (Section~\ref{sec:prelim}), and the community of $u$ at $(s,k)$ again contains $u$ and not $v$.
 %
 Hence the own nodes agree at every size, and $u$ and $v$ are hierarchy-equivalent by Theorem~\ref{thm:chains}.
 \end{proof}
@@ -128,13 +128,13 @@ Twin classes are a baseline for how much the chains merge.
 If $u$ and $w$ have the same closed neighbourhood, then they lie in one chain.
 \end{lemma}
 \begin{proof}
-Swapping $u$ and $w$ maps $G$ onto itself, since the two have the same neighbours; it maps nuclei to nuclei and preserves every core value.
+Swapping $u$ and $w$ maps $G$ onto itself, since the two have the same neighbours; it maps cores to cores and preserves every core value.
 %
-It maps every nucleus $K$ containing $u$ to a nucleus $K'$ of the same size and level containing $w$.
+It maps every core $K$ containing $u$ to a core $K'$ of the same size and level containing $w$.
 %
 If $K$ has a vertex other than $u$ and $w$, the swap leaves that vertex in place, and $K$ and $K'$ share it.
 %
-Nuclei of one size and level that share a vertex are equal, and hence $K'=K$.
+Cores of one size and level that share a vertex are equal, and hence $K'=K$.
 %
 Otherwise $K=\{u,w\}$, and the swap maps it to itself.
 %
@@ -162,4 +162,4 @@ EquiTruss \cite{akbas2017truss} partitions the edges of a graph into classes of 
 %
 The truss model has no second parameter.
 %
-For the nuclei of every clique size, the nesting within each size together with Theorem~\ref{thm:chains} makes the groups a partition across every size, so each vertex is stored once.
+For the clique cores of every size, the nesting within each size together with Theorem~\ref{thm:chains} makes the groups a partition across every size, so each vertex is stored once.

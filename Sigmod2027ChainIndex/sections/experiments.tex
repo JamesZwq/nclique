@@ -25,7 +25,7 @@ Its size is computed from the same core values and trees as \chainidx.
 %
 Its query latency is measured on the same decomposition and the same queries as \chainidx.
 %
-\cnd is the published counting-based nucleus decomposition~\cite{Zhang2026NucleusCounting}, run once per size with its default settings.
+\cnd is the published counting-based nucleus decomposition~\cite{Zhang2026NucleusCounting}, which computes the core values of one clique size; it runs once per size with its default settings.
 %
 It computes core values only, so it is compared on build time and not on index size.
 
@@ -299,15 +299,15 @@ Three graphs of the SNAP collection~\cite{leskovec2016snap} come with ground-tru
 %
 Take a member $v$ of a ground-truth community $D$.
 %
-For every size $s\le\omg{v}$ and every level $k$, we score the $(s,k)$-nucleus of $v$ by its F1 score against $D$.
+For every size $s\le\omg{v}$ and every level $k$, we score the $(s,k)$-core of $v$ by its F1 score against $D$.
 %
-The F1 score is the harmonic mean of the precision and the recall of the nucleus as a guess of $D$.
+The F1 score is the harmonic mean of the precision and the recall of the core as a guess of $D$.
 %
 The whole $(s,k)$ space of a query is scanned from the index without listing a community.
 %
-The size of the intersection is counted by testing, for every member of $D$, whether its own node lies in the subtree of the nucleus.
+The size of the intersection is counted by testing, for every member of $D$, whether its own node lies in the subtree of the core.
 %
-The size of the nucleus comes from its entries.
+The size of the core comes from its entries.
 %
 The absolute scale of $k$ differs between sizes, and we compare the best level of each size.
 %
@@ -344,7 +344,7 @@ Without the index, each size of the scan would be one decomposition of the graph
 
 \begin{table*}[t]
 \centering\footnotesize
-\caption{Ground-truth communities: mean F1 of the nucleus of a member.}\label{tab:casegt}
+\caption{Ground-truth communities: mean F1 of the core of a member.}\label{tab:casegt}
 \input{tables/case_gt}
 \end{table*}
 

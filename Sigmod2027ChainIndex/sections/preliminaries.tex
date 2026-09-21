@@ -19,14 +19,11 @@ The clique number of $x$ is $4$ because of $B$.
 %
 That of $u_1$ is $3$: it lies in the triangles $\{x,u_1,w_j\}$ for $j=1,2,3$ and in no $4$-clique, since no two of $u_1,u_2,u_3$ are adjacent.
 
-\stitle{Nuclei.}
-% 2026-09-22 cold-read fixes: the "1" of (1,s) explained, maximal glossed, the connectivity property named.
-The community model of this paper is the $(1,s)$-nucleus of Sariy\"uce et al.~\cite{firstNucleus}.
-%
-The $1$ says that the unit is a single vertex, and the $s$ is the size of the cliques counted around it.
-%
-We write a nucleus of clique size $s$ at level $k$ as an $\Nuc{s}{k}$.
-\begin{definition}[$(s,k)$-nucleus]\label{def:nucleus}
+\stitle{Clique cores.}
+% 2026-09-22 the model is named the clique core (the k-core with cliques of s vertices in place of edges); the nucleus
+% name is given once as the origin.  Cold-read fixes: maximal glossed, the connectivity property named.
+The community model of this paper is the $k$-core with cliques of $s$ vertices in place of edges, which we call the \textit{clique core} at clique size $s$ and level $k$ and write $\Nuc{s}{k}$.
+\begin{definition}[$(s,k)$-core]\label{def:nucleus}
 For a clique size $s\ge2$ and a level $k\ge1$, an $\Nuc{s}{k}$ is a set $N\subseteq V$ with two properties, to which no vertex can be added without losing one of them.
 %
 Every vertex of $N$ lies in at least $k$ cliques of $s$ vertices contained in $N$.
@@ -35,9 +32,14 @@ Any two vertices of $N$ are joined by a sequence of $s$-cliques contained in $N$
 %
 We say that $N$ is connected through its $s$-cliques.
 \end{definition}
-For $s=2$ the cliques are edges, and a $(2,k)$-nucleus is a connected $k$-core: a maximal connected subgraph in which every vertex has at least $k$ neighbours.
+% the origin of the model, named once
+An $\Nuc{s}{k}$ is a $k$-$(1,s)$-nucleus in the terminology of Sariy\"uce et al.~\cite{firstNucleus}, the vertex case of their $(r,s)$-nucleus, and the $(1,s)$-nucleus decomposition computes the core values of one size.
 %
-Two nuclei of the same size $s$ and level $k$ are disjoint.
+We keep the name core and the vertex as the unit throughout.
+%
+For $s=2$ the cliques are edges, and a $(2,k)$-core is a connected $k$-core: a maximal connected subgraph in which every vertex has at least $k$ neighbours.
+%
+Two cores of the same size $s$ and level $k$ are disjoint.
 %
 If they shared a vertex, their union would have both properties, the two clique sequences being joined at the shared vertex, so each of them could be extended.
 %
@@ -47,11 +49,11 @@ It is $0$ if $v$ lies in no $s$-clique.
 %
 The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$.
 %
-Such a nucleus exists.
+Such a core exists.
 %
 The $\Nuc{s}{\core{s}{v}}$ containing $v$ has the two properties at level $k$ as well, since $k\le\core{s}{v}$, and adding vertices to it until neither property can be kept gives an $\Nuc{s}{k}$ containing $v$.
 %
-This nucleus is unique, since nuclei of one size and level are disjoint.
+This core is unique, since cores of one size and level are disjoint.
 \begin{example}\label{ex:nucleus}
 Consider Figure~\ref{fig:example} at size $3$.
 %
@@ -61,7 +63,7 @@ A triangle of $A$ through $a_i$ is $a_i$ with two of the other four vertices, so
 %
 It lies in no other triangle, since the edge $a_5b_3$ lies in none.
 %
-$A$ is therefore a $(3,6)$-nucleus, and $\core{3}{a_i}=6$.
+$A$ is therefore a $(3,6)$-core, and $\core{3}{a_i}=6$.
 %
 Each of $b_1,b_2,b_3$ lies in three triangles of $B$.
 %
@@ -69,7 +71,7 @@ Each $u_i$ lies in the three triangles $\{u_i,w_j,x\}$ for $j=1,2,3$, and so doe
 %
 The vertex $x$ lies in the three triangles of $B$ and in the nine triangles $\{x,u_i,w_j\}$, twelve in all.
 %
-The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-nucleus.
+The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-core.
 %
 Every vertex of $N$ lies in at least three of its triangles.
 %
@@ -79,7 +81,7 @@ No vertex of $A$ can be added, since the edge $a_5b_3$ lies in no triangle.
 %
 No vertex of $N$ has core value $4$ at size $3$.
 %
-A $(3,4)$-nucleus needs every vertex in four of its triangles, so it contains none of $u_1,\dots,w_3$, and without them a vertex of $B$ lies in the three triangles of $B$ only.
+A $(3,4)$-core needs every vertex in four of its triangles, so it contains none of $u_1,\dots,w_3$, and without them a vertex of $B$ lies in the three triangles of $B$ only.
 %
 So $\core{3}{v}=3$ for the ten vertices of $N$, four of $B$ and six of the bipartite graph.
 %
