@@ -54,12 +54,15 @@ def merged_rows(prefer=('tods1', 'tods2', 'laptop')):
     return sorted(best, key=lambda t: t[2]['result']['baseline_vertex_bytes'] / t[2]['result']['bytes_total'])
 
 def table_size():
-    rows = merged_rows()
-    lines = [r'\begin{tabular}{@{}llrrrrrrrr@{}}', r'\toprule',
-             r'Graph & Type & $n$ & $s_{\max}$ & Chains & $n/$chains & Values stored & Index (MB) & $S$ trees (MB) & Ratio \\', r'\midrule']
+    """One row per graph: chains, values stored, bytes of the index and of STrees, build time and peak memory (build table folded in)."""
+    rows = merged_rows(); bo = {Path(r['graph']).stem: r for r in load('buildonly.json')['runs']}
+    lines = [r'\begin{tabular}{@{}llrrrrrrrrrr@{}}', r'\toprule',
+             r'Graph & Type & $n$ & $s_{\max}$ & Chains & $n/$chains & Values stored & \chainidx (MB) & \strees (MB) & Ratio & Build (s) & Peak (GB) \\', r'\midrule']
     for where, g, r in rows:
-        x = r['result']
-        lines.append(f"{tex_escape(g)} & {family(g)} & {fmt(x['n'])} & {x['s_max']} & {fmt(x['chains'])} & {x['n']/x['chains']:.1f} & {100*x['vertex_residue_cells']/x['vertex_pairs']:.1f}\\% & {mb(x['bytes_total'])} & {mb(x['baseline_vertex_bytes'])} & {x['baseline_vertex_bytes']/x['bytes_total']:.1f}$\\times$ \\\\")
+        x = r['result']; total = (x['ti_ms'] + x['build_ms'] + x['compact_ms']) / 1000
+        peak = bo[g]['peak_rss_bytes'] if where == 'laptop' and g in bo else r.get('peak_rss_bytes')
+        lines.append(f"{tex_escape(g)} & {family(g)} & {fmt(x['n'])} & {x['s_max']} & {fmt(x['chains'])} & {x['n']/x['chains']:.1f} & {100*x['vertex_residue_cells']/x['vertex_pairs']:.1f}\\% & {mb(x['bytes_total'])} & {mb(x['baseline_vertex_bytes'])} & {x['baseline_vertex_bytes']/x['bytes_total']:.1f}$\\times$ & {total:.2f} & {(peak/1073741824):.2f} \\\\" if peak else
+                     f"{tex_escape(g)} & {family(g)} & {fmt(x['n'])} & {x['s_max']} & {fmt(x['chains'])} & {x['n']/x['chains']:.1f} & {100*x['vertex_residue_cells']/x['vertex_pairs']:.1f}\\% & {mb(x['bytes_total'])} & {mb(x['baseline_vertex_bytes'])} & {x['baseline_vertex_bytes']/x['bytes_total']:.1f}$\\times$ & {total:.2f} & -- \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'size.tex').write_text('\n'.join(lines) + '\n')
     rat = [t[2]['result']['baseline_vertex_bytes'] / t[2]['result']['bytes_total'] for t in rows]
@@ -224,5 +227,5 @@ def table_selftest():
     (OUT / 'selftest.tex').write_text(f"\\newcommand{{\\selfgraphs}}{{{fmt(s['graphs'])}}}\n\\newcommand{{\\selfcommunities}}{{{fmt(s['community_queries'])}}}\n\\newcommand{{\\selfvalues}}{{{fmt(s['value_checks'])}}}\n\\newcommand{{\\selfmembers}}{{{fmt(s['membership_checks'])}}}\n")
 
 if __name__ == '__main__':
-    table_size(); table_queries(); table_build(); table_layouts(); table_prior(); table_cases(); table_selftest()
+    table_size(); table_queries(); table_layouts(); table_prior(); table_cases(); table_selftest()
     print('tables written to', OUT)
