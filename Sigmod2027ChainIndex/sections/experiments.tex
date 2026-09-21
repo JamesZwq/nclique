@@ -8,6 +8,48 @@ The baseline \strees is one tree and one DFS array per size with all core values
 Queries are drawn from the active vertices and their sizes $2\le s\le\omg{v}$: 20,000 community queries at the vertex's own level ($k=\core{s}{v}$), 20,000 at half that level, 1,000 at $k=1$, and 200,000 value queries; every latency is the median of five passes after one warm-up.
 Every number in the tables is generated from the recorded JSON evidence.
 
+\expsection{Case study: which clique size is the right one?}
+The index exists because the size is part of the query; the first two experiments ask, on graphs with real semantics, what the size buys.
+Three SNAP graphs come with ground-truth communities (the top 5,000 by quality): \dblp (publication venues), com-amazon (product categories) and com-youtube (user groups).
+For every member $v$ of every ground-truth community $C$, every size $s\le\omg{v}$ and every level $k$, the $(s,k)$-nucleus of $v$ is scored by its F1 against $C$; the whole $(s,k)$ space of a query is scanned from the index without listing a single community, since $|N\cap C|$ is counted through the members of $C$ (own node inside the node's subtree) and $|N|$ comes from the run bounds.
+Table~\ref{tab:casegt} compares the $k$-core index (size 2, best level), the triangle size ($s=3$, best level), the best single size for the graph, and the best size or the best (size, level) chosen per query, and Table~\ref{tab:casehist} gives where the best size falls.
+On \dblp no single size is right: the best size spreads over 2 to 8, choosing it per query gives 3.6$\times$ the F1 of the $k$-core index and 1.2$\times$ the best fixed size, and for 74 percent of the queries some size other than 2 beats every $k$-core.
+On com-amazon the triangle size alone is nearly as good as the per-query choice (0.824 against 0.851) and both are 1.8$\times$ the $k$-core index.
+On com-youtube every cohesive model is far from the ground-truth groups (F1 below 0.04, a known property of that dataset) and the comparison says nothing.
+The per-query choice costs 1 to 50~$\mu$s from the index; without it, each size would be one decomposition of the graph.
+
+\begin{table*}[t]
+\centering\footnotesize
+\caption{Ground-truth communities: mean F1 of the $(s,k)$-nucleus of a member against its community, over all members of the top-5,000 communities. ``Best fixed $s$'' is the size that is best on average; ``per query'' picks the size (or the size and level) with the best F1 for each query; ``beats $k$-core'' is the share of queries whose best $(s,k)$ has $s\ge3$ and beats every $k$-core.}\label{tab:casegt}
+\input{tables/case_gt}
+\end{table*}
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{Where the best (size, level) of a query falls.}\label{tab:casehist}
+\input{tables/case_gt_hist}
+\end{table}
+
+\expsection{Case study: the size as a zoom on Amazon}
+com-amazon joined with the SNAP product metadata (titles, groups, category paths; 334,852 of the 334,863 products) lets the communities be read.
+Table~\ref{tab:caseamazon} follows 5,000 products drawn uniformly among those active at size 3 through their own-level community at every size, scored by purity: the share of members that share a leaf category with the query product, and the share that share a subject (the third level of the category tree, such as Jazz, Computers \& Internet or Science Fiction \& Fantasy).
+At size 2, the $k$-core, three quarters of the products sit in one core of 157,331 products at 10 percent purity; size 3 brings the median community to 38 products at 44 percent, size 4 to 11 products at 70 percent, size 5 to 8 products at 79 percent, and from size 4 on the community's dominant subject covers 99 percent of its members.
+Table~\ref{tab:caseexamples} lists six products.
+``Kind of Blue'' goes from 36,878 products (1 percent jazz) at size 2 to 23 Blue Note albums at size 3 and to six albums at size 5, the canonical jazz shelf; ``Introduction to Algorithms'' from the 157,331-product core to 57 computing books at size 3 and 13 theory textbooks at size 4; the Godfather soundtrack to 28 products at size 5 whose category purity is only 0.32 but which are one shelf, the four soundtracks with Jerry Vale, Lou Monte and ``Italian American Classics'', a community the category tree has no name for.
+Every community after size 2 is a handful of ranges and is listed in under 50~ns.
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{Amazon: own-level communities of 5,000 products by clique size (median size; the mean is 162,162 at $s=2$ and 53,417 at $s=3$). Purity is the share of members sharing a leaf category (subject) with the query product; ``dominant'' the share under the community's most common subject; ``pure'' the share of communities with leaf purity at least 0.8.}\label{tab:caseamazon}
+\input{tables/case_amazon}
+\end{table}
+
+\begin{table*}[t]
+\centering\footnotesize
+\caption{Six products: the size of the own-level community (leaf purity in parentheses) at $s=2,3,\dots,\omg{v}$, and the members of the smallest community when it has at most 30 products.}\label{tab:caseexamples}
+\input{tables/case_examples}
+\end{table*}
+
 \expsection{Size against one tree per size}
 Table~\ref{tab:size} gives, for every graph, the number of chains, the vertices per chain, the share of core values that are stored explicitly, the index size and the size of \strees.
 The index is \ratiomin$\times$ to \ratiomax$\times$ smaller, median \ratiomedian$\times$.

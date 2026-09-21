@@ -22,7 +22,7 @@ def mb(b):
     return f'{b / 1048576:.1f}' if b < 100 * 1048576 else f'{b / 1048576:,.0f}'
 
 def tex_escape(s):
-    return s.replace('_', '\\_')
+    return s.replace('\\', '/').replace('&', '\\&').replace('%', '\\%').replace('#', '\\#').replace('_', '\\_').replace('$', '\\$')
 
 FAMILY = {'ca-': 'collab', 'dblp': 'collab', 'cit-': 'citation', 'web-': 'web', 'amazon': 'product', 'com-amazon': 'product',
           'email': 'comm.', 'loc-': 'social', 'soc-': 'social', 'com-youtube': 'social', 'wiki': 'comm.', 'tech-': 'internet'}
@@ -181,10 +181,47 @@ def table_prior():
     (OUT / 'prior.tex').write_text('\n'.join(lines) + '\n')
     (OUT / 'prior_stats.tex').write_text(f"\\newcommand{{\\priorgraphs}}{{{len(ratios)}}}\n\\newcommand{{\\priormin}}{{{min(ratios):.1f}}}\n\\newcommand{{\\priormedian}}{{{statistics.median(ratios):.0f}}}\n\\newcommand{{\\priormax}}{{{max(ratios):.0f}}}\n")
 
+def table_cases():
+    """Case studies: ground-truth communities (best clique size per query) and the Amazon zoom table with named examples."""
+    # ground truth: com-dblp and com-amazon (com-youtube's ground truth is not cohesive; text only)
+    lines = [r'\begin{tabular}{@{}lrrrrrrrr@{}}', r'\toprule',
+             r'Graph & Queries & $k$-core, best $k$ & $s=3$, best $k$ & Best fixed $s$ & Best $s$ per query & Best $(s,k)$ per query & Beats $k$-core & $\mu$s per query \\', r'\midrule']
+    hist_lines = []
+    for g in ('com-dblp', 'com-amazon', 'com-youtube'):
+        rec = load(f'case/{g}.groundtruth.json')
+        if rec is None: continue
+        fx = rec['fixed']; best_fixed = max(fx.items(), key=lambda kv: kv[1]['mean_own_all'])
+        lines.append(f"{g} & {fmt(rec['queries'])} & {fx['2']['mean_ladder_all']:.3f} & {fx['3']['mean_ladder_all']:.3f} & $s={best_fixed[0]}$: {best_fixed[1]['mean_own_all']:.3f} & {rec['mean_best_own']:.3f} & {rec['mean_best_all']:.3f} & {100*rec['better_than_best_core']:.0f}\\% & {1e6*rec["seconds"]/rec["queries"]:.1f} \\\\")
+        h = rec['best_size_hist']; tot = sum(h.values()); share = lambda a, b: 100 * sum(v for k, v in h.items() if a <= int(k) <= b) / tot
+        hist_lines.append(f"{g} & {share(2,2):.0f}\\% & {share(3,3):.0f}\\% & {share(4,4):.0f}\\% & {share(5,5):.0f}\\% & {share(6,6):.0f}\\% & {share(7,999):.0f}\\% \\\\")
+    lines += [r'\bottomrule', r'\end{tabular}']
+    (OUT / 'case_gt.tex').write_text('\n'.join(lines) + '\n')
+    (OUT / 'case_gt_hist.tex').write_text('\n'.join([r'\begin{tabular}{@{}lrrrrrr@{}}', r'\toprule', r'Graph & $s=2$ & $s=3$ & $s=4$ & $s=5$ & $s=6$ & $s\ge7$ \\', r'\midrule'] + hist_lines + [r'\bottomrule', r'\end{tabular}']) + '\n')
+    # Amazon zoom
+    rec = load('case/amazon-scan.json')
+    if rec is not None:
+        lines = [r'\begin{tabular}{@{}rrrrrrr@{}}', r'\toprule', r'$s$ & Queries & Median size & Leaf purity & Subject purity & Dominant & Pure \\', r'\midrule']
+        for s, v in rec['per_size'].items():
+            if v['queries'] < 100: continue
+            lines.append(f"{s} & {fmt(v['queries'])} & {fmt(v['median_size'])} & {v['mean_leaf_share']:.2f} & {v['mean_subject_share']:.2f} & {v['mean_top_subject_share']:.2f} & {100*v['pure_leaf_08']:.0f}\\% \\\\")
+        lines += [r'\bottomrule', r'\end{tabular}']
+        (OUT / 'case_amazon.tex').write_text('\n'.join(lines) + '\n')
+    # named examples: size and leaf purity per s, members of the smallest community
+    rec = load('case/amazon-queries.json')
+    if rec is not None:
+        lines = [r'\begin{tabular}{@{}p{0.34\linewidth}lp{0.52\linewidth}@{}}', r'\toprule', r'Query product & Community size (purity) at $s=2,3,\dots$ & Smallest community \\', r'\midrule']
+        for q in rec['queries']:
+            lv = q['levels']; sizes = ', '.join(f"{L['size']:,} ({L['leaf_share']:.2f})" for L in lv)
+            last = [L for L in lv if 'members' in L]
+            members = '; '.join(m.replace(' (Music)', '').replace(' (Book)', '').replace(' (DVD)', '')[:38] for m in last[-1]['members'][:8]) + (' \\dots' if last and len(last[-1]['members']) > 8 else '') if last else '--'
+            lines.append(f"{tex_escape(q['title'][:60])} ({q['group']}) & {sizes} & {tex_escape(members)} \\\\")
+        lines += [r'\bottomrule', r'\end{tabular}']
+        (OUT / 'case_examples.tex').write_text('\n'.join(lines) + '\n')
+
 def table_selftest():
     rec = load('final.json'); s = rec['selftests']['build']
     (OUT / 'selftest.tex').write_text(f"\\newcommand{{\\selfgraphs}}{{{fmt(s['graphs'])}}}\n\\newcommand{{\\selfcommunities}}{{{fmt(s['community_queries'])}}}\n\\newcommand{{\\selfvalues}}{{{fmt(s['value_checks'])}}}\n\\newcommand{{\\selfmembers}}{{{fmt(s['membership_checks'])}}}\n")
 
 if __name__ == '__main__':
-    table_size(); table_queries(); table_build(); table_layouts(); table_prior(); table_selftest()
+    table_size(); table_queries(); table_build(); table_layouts(); table_prior(); table_cases(); table_selftest()
     print('tables written to', OUT)

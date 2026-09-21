@@ -6,6 +6,7 @@ Dense-subgraph hierarchies are the standard way to expose the community structur
 The $(1,s)$-nucleus decomposition \cite{firstNucleus} is the clique-based family: for a clique size $s$, the $\Nuc{s}{k}$s are the maximal vertex sets in which every vertex lies in at least $k$ $s$-cliques of the set and which are connected through shared $s$-cliques; $s=2$ gives the $k$-core, $s=3$ the triangle-based hierarchy, and larger $s$ progressively denser and smaller communities.
 A query in this setting is a triple: a vertex $v$, a size $s$, and a level $k$, and the answer is the community of $v$, or just $v$'s core value $\core{s}{v}$.
 Because the size $s$ is part of the query, an index must hold the hierarchy of every size at once.
+Two case studies on graphs with real semantics (Section~\ref{sec:exp}) show why the size is a query parameter and not a constant: on DBLP the clique size whose community best matches a ground-truth community varies from query to query, from 2 to 8, and choosing it per query gives 3.6 times the F1 of the $k$-core index; on Amazon's co-purchase network the size is a zoom, from a core of 157,331 products at size 2 to the 23 Blue Note albums around ``Kind of Blue'' at size 3 and the six-album jazz shelf at size 5, each community listed in nanoseconds.
 
 \stitle{The obvious index and its cost.}
 Each size's hierarchy is a laminar family, so it is a tree; with the vertices written in DFS order, every community is a contiguous slice of one array, and listing it is a memory copy.
