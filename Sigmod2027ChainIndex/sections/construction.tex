@@ -1,11 +1,24 @@
 \section{Construction}\label{sec:construction}
 
-The index is built from one all-size peel and one pass per size, without ever holding all core values at once.
+The index is built from one all-size peel and one pass per size, without ever holding all core values at once; the peel is ours and is described here so that the construction stands on its own.
 
-\stitle{Core values.}
-We reuse the all-size vertex peel of the clique-tree line \cite{Pivoter}: a pivoting clique tree is built once, every vertex's number of $s$-cliques is a sum of binomial coefficients over the tree's leaves, and a bucket peel per size removes the vertex of smallest count and updates the counts of the affected leaves in closed form.
-Sizes share work: the previous size's order and values bound the next size's, and a vertex whose value has reached its floor (Theorem~\ref{thm:tail}) is settled for all larger sizes.
-The peel delivers the values of one size at a time; the index keeps a two-row window, not the $s_{\max}\times n$ matrix.
+\stitle{Core values: one clique tree, every size.}
+The counts come from a pivoting clique tree \cite{Pivoter}, built once: its paths partition the $s$-cliques of every size at the same time, a path with mandatory set $H$ and optional set $Q$ representing the cliques $H\cup X$ for $X\subseteq Q$, $|X|=s-|H|$, so the number of $s$-cliques of a vertex inside any vertex set is a sum of binomial coefficients over the paths through it.
+The sizes are peeled in increasing order, and each size first tries to reuse the elimination order of the previous one.
+Write $d_s(W,u)$ for the number of $s$-cliques of $u$ inside $G[W]$.
+For a permutation $\pi=(v_0,\dots,v_{n-1})$ let $f_s(v_i)=d_s(\{v_i,\dots,v_{n-1}\},v_i)$, the $s$-cliques of $v_i$ inside its suffix, and $U_s(v_i)=\max_{j\le i}f_s(v_j)$.
+Every $s$-clique is counted exactly once, at its earliest vertex in $\pi$, so $f_s$ is one sweep of the paths along $\pi$ with no propagation of losses.
+\begin{theorem}[order replay]\label{thm:replay}
+$U_s(v)\ge\core{s}{v}$ for every $v$, and $U_s=\core{s}{\cdot}$ at every vertex if and only if every $v$ has at least $U_s(v)$ $s$-cliques inside $\{u: U_s(u)\ge U_s(v)\}$.
+\end{theorem}
+\begin{proof}
+For a witness $W\ni v$ let $v_j$ be its earliest vertex; $W$ lies in the suffix of $v_j$, so $\min_{u\in W}d_s(W,u)\le f_s(v_j)\le U_s(v)$.
+If the condition holds, $W_k=\{u:U_s(u)\ge k\}$ has minimum $s$-degree at least $k$ for every level $k$ (a vertex of $W_k$ has its own set $\{u:U_s(u)\ge U_s(v)\}$ inside $W_k$), so $\core{s}{v}\ge U_s(v)$.
+Conversely, if $U_s$ is the core value, $\{u:\core{s}{u}\ge k\}$ is the union of the level-$k$ witnesses and has minimum $s$-degree at least $k$, which is the condition.
+\end{proof}
+When the certificate holds the size costs one sweep; when it fails the size is peeled exactly (a bucket peel that removes the vertex of smallest count and updates the paths through it in closed form), and the resulting order is the candidate for the next size.
+A vertex whose value has reached the floor of Theorem~\ref{thm:tail} is settled for all larger sizes and leaves the peel.
+The values arrive one size at a time; the index keeps a two-row window, not the $s_{\max}\times n$ matrix.
 
 \stitle{One tree per size, on arrival.}
 When the values of size $s$ arrive, the vertices are activated from the highest value down.
