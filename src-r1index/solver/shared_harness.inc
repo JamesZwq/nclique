@@ -11,6 +11,7 @@ struct Input {
     Vertices ordinary;
     Vertex d=0;
     double load_ms=0,order_ms=0;
+    Vertices rank;          // rank[file label] = label of `graph` (the degeneracy order used inside); empty for synthetic inputs
 };
 
 static Input prepare(const std::string& path) {
@@ -21,7 +22,7 @@ static Input prepare(const std::string& path) {
         result.ordinary[seeds.rank[v]]=seeds.ordinary[v];
         for(Vertex u:raw.row(v))if(v<u)edges.emplace_back(seeds.rank[v],seeds.rank[u]);
     }
-    result.graph=Graph::from_edges(raw.n,std::move(edges));result.order_ms=ms(start);return result;
+    result.graph=Graph::from_edges(raw.n,std::move(edges));result.rank=seeds.rank;result.order_ms=ms(start);return result;
 }
 
 static cpp_int count_bound(const Graph& graph,const Layout& index,Vertex d) {

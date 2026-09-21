@@ -1,0 +1,20 @@
+{"passed":true,"n":3441107,"m":22973036,"s_max":449,"count_bits":512,"chains":279930,"canonical_nodes":247468,"max_depth":3607,"pairs_total":1966718,"runs_total":1089277,"vertex_pairs":20670542,"vertex_residue_cells":2826634,"baseline_vertex_bytes":413251990,"bytes_map":1764944,"bytes_chains":14316474,"bytes_layers":14892093,"bytes_total":30973511,"file_bytes":30002120,"perm_bytes":13764428,"slice_bytes_layers":13806104,"slice_bytes_total":34061536,"solve_ms":101460.079,"trees_ms":52086.479,"chains_ms":57.634,"layout_ms":435.365,"build_ms":154209.112,"compact_ms":14.216,"save_ms":57.692,"load_ms":11.916,"ti_ms":32529.751,"ti_bytes":1599853092,"rss_start":1984249856,"rss_after_solve":4306649088,"rss_after_chains":4384849920,"rss_after_layout":4552441856,"slice_range_own_ns":412419.583,"slice_range_half_ns":414528.469,"slice_range_root_ns":443843.417,"slice_explicit_own_ns":641560.787,"slice_explicit_half_ns":712860.825,"slice_explicit_root_ns":799171.208,"slice_own_ranges":41269.273,"slice_half_ranges":42959.706,"slice_root_ranges":50423.405,"full_bytes_total":31728322,"full_bytes_layers":15646904,"full_range_own_ns":17471.152,"full_range_half_ns":18203.881,"full_range_root_ns":23741.792,"full_explicit_own_ns":245768.556,"full_climb_own_ns":16.708,"full_climb_half_ns":36.027,"full_climb_root_ns":5.041,"full_ptr_own_ns":11.365,"full_ptr_half_ns":38.375,"full_ptr_root_ns":13.708,"full_value_ns":11.990,"climb_own_ns":53.077,"climb_half_ns":48.633,"climb_root_ns":12.334,"slice_climb_own_ns":18.496,"slice_climb_half_ns":58.365,"slice_climb_root_ns":12.250,"ptr_own_ns":50.377,"ptr_half_ns":128.248,"ptr_root_ns":18.291,"ptr_checksum":34953593436,"range_own_ns":17495.062,"range_half_ns":18942.792,"range_root_ns":22646.708,"explicit_own_ns":246473.604,"explicit_half_ns":271175.812,"explicit_root_ns":294211.875,"own_output":1608175.336,"half_output":1868434.637,"root_output":2274642.142,"own_ranges":41269.273,"half_ranges":42959.706,"root_ranges":50423.405,"own_chains":41269.273,"half_chains":42959.706,"root_chains":50423.405,"value_ns":24.041,"value_checksum":0}
+      579.85 real       495.44 user         9.51 sys
+          5751095296  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              587676  page reclaims
+                  27  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  79  voluntary context switches
+              866545  involuntary context switches
+       4110861547687  instructions retired
+       1329625246560  cycles elapsed
+          6008984256  peak memory footprint
+done

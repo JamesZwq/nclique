@@ -2,3 +2,11 @@ cx/
 build/
 build-asan/
 scale/
+case/raw/
+case/*.edges
+case/*.map
+case/*.cx
+case/*.cx.perm
+case/dblp/*.cx
+case/dblp/*.cx.perm
+case/dblp/*.edges

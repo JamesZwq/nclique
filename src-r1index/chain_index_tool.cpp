@@ -299,7 +299,9 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
     // compact form with packed tops (the file format): convert, save, load, measure on the loaded index
     t0 = Clock::now(); built.compact_runs(true); const double compact_ms = ms(t0);
     t0 = Clock::now(); built.save(outpath); const double save_ms = ms(t0);
-    { std::ofstream pf(outpath + ".perm", std::ios::binary); pf.write(reinterpret_cast<const char*>(perm.data()), perm.size() * 4); }
+    {   // <out.cx>.perm: perm_file[file label] = internal label (the build's perm is over the degeneracy-order labels of `prepare`)
+        std::vector<uint32_t> perm_file(n); for (uint32_t v = 0; v < n; ++v) perm_file[v] = perm[in.rank.empty() ? v : in.rank[v]];
+        std::ofstream pf(outpath + ".perm", std::ios::binary); pf.write(reinterpret_cast<const char*>(perm_file.data()), static_cast<std::streamsize>(perm_file.size()) * 4); }
     t0 = Clock::now(); auto loaded = ChainIndex<V>::load(outpath); const double load_ms = ms(t0);
     require(loaded.bytes_total() == built.bytes_total() && loaded.chains == built.chains && loaded.runs_total() == built.runs_total(), "load mismatch");
     const uint64_t file_bytes = std::filesystem::file_size(outpath); px = &loaded;

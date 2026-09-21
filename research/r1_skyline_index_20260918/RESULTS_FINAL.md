@@ -1061,3 +1061,64 @@ vs 11.21 (14.4x), 100% 355.9 vs 19.53 (18.2x); web-BerkStan 20% 12.8 vs
 0.21 (61x), 40% 197.5 vs 1.46 (135x), 60% 1006 vs 11.44 (88x), 80% 2668 vs
 27.12 (98x), 100% 7170 vs 65.64 (109x). The figure's build panel now has
 its baseline (Section 17.5).
+
+## 18. Case Studies (started 2026-09-21; user: at least two, strong)
+
+### 18.1 Which clique size is the right one? Ground-truth communities (SNAP top-5000)
+
+`case/prep_snap.py` relabels the raw SNAP graphs (com-dblp, com-amazon,
+com-youtube) to 0..n-1 in increasing original id and maps the top-5000
+ground-truth communities (`case/<g>.cmty`, `case/<g>.map`); the tool now
+writes the permutation from FILE labels (`<g>.cx.perm`, fixed 2026-09-21:
+before, it was from the internal degeneracy-order labels; README updated).
+`case_groundtruth.cpp` checks value(., 2) against an independent k-core
+peel on every vertex (passes on all three graphs), then for every member v
+of every community C and every size s in [2, omega(v)] walks the ladder of
+nuclei containing v (own node and its ancestors) scoring F1 against C;
+|A cap C| is counted through C's members (own node inside A's subtree),
+|A| from the run bounds, so nothing is listed; the climb stops when
+2|C|/(|A|+|C|) drops below the best F1 of the query. `case/<g>.groundtruth.json`.
+
+| graph | queries (members) | seconds, all (s,k) | k-core: s=2 own / best k | s=3 best k (over all queries) | best fixed s (own, over all) | best s per query (own) | best (s,k) per query | best (s,k) beats best k-core |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| com-dblp | 112,228 | 7.1 (64 us/query) | 0.047 / 0.049 | 0.106 | s=5: 0.140 | 0.171 | 0.179 | 74% |
+| com-amazon | 67,462 | 0.06 (1 us/query) | 0.452 / 0.474 | 0.824 | s=3: 0.683 | 0.762 | 0.851 | 66% |
+| com-youtube | 72,959 | 69.9 | 0.009 / 0.010 | 0.016 | s=3: 0.014 | 0.030 | 0.031 | 45% |
+
+Distribution of the best size (best (s,k) per query): com-dblp s=2 26%,
+3 23%, 4 18%, 5 13%, 6 11%, 7 5%, >=8 4%; com-amazon s=2 34%, 3 59%, 4 7%;
+com-youtube s=2 55%, 3 16%, 4 8%, >=5 21%. Reading: on dblp no single size
+is right (the best s spreads over 2..8; choosing it per query gives 3.6x
+the F1 of the k-core index and 1.2x the best fixed size); on amazon s=3
+alone is nearly as good as the per-query choice (0.824 vs 0.851) and both
+beat k-core 1.8x; on youtube every cohesive model is far from the
+ground-truth groups (F1 0.03; known for that dataset) and the case is not
+usable. The whole (s,k) space of a query is scanned in 1-64 us from the
+index; CND would need one decomposition per size.
+
+### 18.2 DBLP with author names: the size axis on real people (`case/dblp/`)
+
+Index of the cs9 DBLP coauthorship graph (3,441,107 authors, 22,973,036
+edges, s_max 449, 512-bit counts; build 580 s, 5.75 GB peak on the
+laptop). `case_dblp_names.cpp`: per anchor and size, the own-level
+community, its size, query time, share of members with a paper at the
+anchor's main venue (CoRR excluded), and the members when small;
+`--scan`: 200,000 authors with omega >= 8 sampled uniformly.
+
+Findings (honest): DBLP has a giant dense core (papers with dozens to
+hundreds of authors are cliques and chain together), and for most authors
+the own-level community at EVERY size below their omega is that core
+(88% of sampled communities have >= 1e5 authors at s = 2, 80% at s = 8);
+the community collapses to the anchor's own largest paper at s = omega.
+Only 7.6% of the sampled authors go from > 1,000 at s = 2 to <= 50 at
+s = 8. Examples: Yoshua Bengio (omega 112): 5,046 at s = 2..6, 119 at
+s = 7..15 (ICML/NIPS people, 42 ns per query); Caitlin Kelleher (omega
+8): 313,689 at s = 2, 829,010 at s = 6, her 8-person HCI group at s = 7;
+Russell Impagliazzo (omega 8): 106,142 at s = 2 .. 822,681 at s = 7, the
+8-author complexity paper at s = 8. Famous hubs (Han, Stonebraker,
+Faloutsos, Widom) sit in the 40k-600k core at every size (`anchors.json`).
+Verdict: a "drill-down by s" story does not hold on DBLP in general; the
+size axis is a different notion of density, and which size is right is a
+per-query matter (18.1). The stronger qualitative domain is co-purchase
+(amazon: F1 0.85), where product titles and categories exist (SNAP
+amazon-meta for amazon0302); candidate for the second case study.

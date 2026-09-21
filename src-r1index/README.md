@@ -76,8 +76,11 @@ ix.expand(r, ids.data());                                // explicit labels, eig
 ```
 
 Labels are the index's aligned labels; the tool writes the permutation
-from input labels next to the index file (`<out.cx>.perm`, 4 bytes per
-vertex).  It is unnecessary if the graph is stored in that order.
+from the labels of the input file next to the index file (`<out.cx>.perm`,
+4 bytes per vertex: `perm[file label] = internal label`; before 2026-09-21
+the file held the permutation from the tool's internal degeneracy-order
+labels instead).  It is unnecessary if the graph is stored in the index's
+order.
 
 ## Limits
 
