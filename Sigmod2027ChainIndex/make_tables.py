@@ -174,13 +174,13 @@ def table_prior():
         for p in sorted((EV / d).glob('prior_original_*.json')):
             og = json.loads(p.read_text()); g = NAMES.get(p.stem[len('prior_original_'):], p.stem[len('prior_original_'):])
             if 'total_wall_s' in og and (where, g) in ours: prior.append((where, g, og))
-    lines = [r'\begin{tabular}{@{}llrrrrrrrr@{}}', r'\toprule', r'Graph & Machine & Sizes & \cnd, all sizes (s) & of which build and peel (s) & \cnd peak RSS, one size (MB) & \chainidx build, all sizes (s) & Ratio (build and peel) & Build peak RSS (MB) & \chainidx (MB) \\', r'\midrule']
+    lines = [r'\begin{tabular}{@{}llrrrrrr@{}}', r'\toprule', r'Graph & Machine & Sizes & \cnd, all sizes (s) & of which build and peel (s) & \cnd peak RSS, one size (MB) & \chainidx build, all sizes (s) & Ratio (build and peel) \\', r'\midrule']
     ratios = []
     for where, g, og in sorted(prior, key=lambda t: (t[0] != 'laptop', t[0], ours[(t[0], t[1])]['result']['n'])):
         r = ours[(where, g)]; o = r['result']; opeak = max(e['peak_rss_bytes'] or 0 for e in og['sizes'])
         build_s = (o['ti_ms'] + o['build_ms'] + o['compact_ms']) / 1000; ratio = og['total_inproc_ms'] / 1000 / build_s; ratios.append(ratio)
         peak = bo[g]['peak_rss_bytes'] if where == 'laptop' and g in bo else r.get('peak_rss_bytes'); opeak_s = f'{opeak/1048576:,.0f}' if opeak else '--'
-        lines.append(f"{tex_escape(g)} & {where} & {og['sizes_ok']} & {og['total_wall_s']:,.1f} & {og['total_inproc_ms']/1000:,.1f} & {opeak_s} & {build_s:.2f} & {ratio:.1f}$\\times$ & {peak/1048576:,.0f} & {o['bytes_total']/1048576:.2f} \\\\")
+        lines.append(f"{tex_escape(g)} & {where} & {og['sizes_ok']} & {og['total_wall_s']:,.1f} & {og['total_inproc_ms']/1000:,.1f} & {opeak_s} & {build_s:.2f} & {ratio:.1f}$\\times$ \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'prior.tex').write_text('\n'.join(lines) + '\n')
     (OUT / 'prior_stats.tex').write_text(f"\\newcommand{{\\priorgraphs}}{{{len(ratios)}}}\n\\newcommand{{\\priormin}}{{{min(ratios):.1f}}}\n\\newcommand{{\\priormedian}}{{{statistics.median(ratios):.0f}}}\n\\newcommand{{\\priormax}}{{{max(ratios):.0f}}}\n")
