@@ -1054,6 +1054,18 @@ both records: 2.8x (com-amazon, 6 sizes) to 814x, median 16x. Still
 running on tods1: web-it-2004 (432 sizes), ca-coauthors-dblp (337),
 soc-pokec, tech-as-skitter, wiki-Talk.
 
+Pickup when the tods1 tmux sessions `prior1` -> `after1` -> `profile1`
+have ended (status 2026-09-21 evening: web-it-2004 at s = 171 of 432,
+~120 s per size, so about nine hours for that graph alone; the two queued
+sessions commit and push their own records): on the laptop run
+`git pull --rebase --autostash`, then
+`python3 research/r1_skyline_index_20260918/collect_tods1.py` (copies the
+tods1 CND records into `prior/tods1/`, regenerates every table and figure),
+recompile the paper twice and check `tables/prior_stats.tex`
+(\priorgraphs 27 -> 32) and `tables/query_stats.tex`, then commit.
+The paper text quotes only the macros, so no sentence needs editing unless
+the min/median/max move; re-check the page count (15 now, body 12.5).
+
 CND once per size on the eight samples (tods2, `prior/tods2/prior_original_*_p*.json`),
 build+peel seconds against the chain index build: cit-Patents 20% 3.7 vs
 0.56 (6.6x), 40% 19.3 vs 2.12 (9.1x), 60% 64.5 vs 5.56 (11.6x), 80% 161.4
