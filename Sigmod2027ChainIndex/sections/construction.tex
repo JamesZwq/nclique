@@ -40,31 +40,16 @@ The running maximum bounds the core value from above: $U_s(v)\ge\core{s}{v}$ for
 The running maxima are the core values, $U_s(v)=\core{s}{v}$ for every $v$, if and only if every vertex $v$ lies in at least $U_s(v)$ cliques of $s$ vertices inside $\{u: U_s(u)\ge U_s(v)\}$.
 \end{theorem}
 \begin{proof}
-A \textit{witness} for $v$ at level $k$ is a set $W$ containing $v$ with the two properties of Definition~\ref{def:nucleus} at level $k$: every vertex of $W$ lies in at least $k$ cliques of $s$ vertices inside $W$, and $W$ is connected through them.
+A \textit{witness} for $v$ at level $k$ is a set $W$ containing $v$ with the two properties of Definition~\ref{def:nucleus} at level $k$, and $\core{s}{v}$ is the largest level with a witness.
 %
-$\core{s}{v}$ is the largest level with a witness.
+% 2026-09-22 compaction: six sentences.
+Let $W$ be a witness for $v$ at level $k$ and $v_j$ its earliest vertex in $\pi$; then $k\le d_s(W,v_j)\le f_s(v_j)\le U_s(v)$, since $W$ lies in the suffix of $v_j$ and $v_j$ is at or before $v$, so $\core{s}{v}\le U_s(v)$.
 %
-Let $W$ be a witness for $v$ at level $k$, and let $v_j$ be the earliest vertex of $W$ in $\pi$.
+Suppose the condition holds, fix a level $k$, and let $W_k=\{u:U_s(u)\ge k\}$.
 %
-Every vertex of $W$ lies in at least $k$ cliques of $s$ vertices inside $W$, so $k\le d_s(W,v_j)\le f_s(v_j)$, since $W$ lies in the suffix of $v_j$.
+For a vertex $v$ of $W_k$, the set $\{u:U_s(u)\ge U_s(v)\}$ lies inside $W_k$ and $v$ lies in at least $U_s(v)\ge k$ cliques of $s$ vertices inside it, so the part of $W_k$ reachable from $v$ through $s$-cliques of $W_k$ is a witness for $v$ at level $k$; with $k=U_s(v)$ this gives $\core{s}{v}\ge U_s(v)$.
 %
-Since $v_j$ is at or before $v$ in $\pi$, $f_s(v_j)\le U_s(v)$, and hence $\core{s}{v}\le U_s(v)$.
-%
-Suppose the condition holds and fix a level $k$.
-%
-Let $W_k=\{u:U_s(u)\ge k\}$.
-%
-For a vertex $v$ of $W_k$, the set $\{u:U_s(u)\ge U_s(v)\}$ lies inside $W_k$, and $v$ lies in at least $U_s(v)\ge k$ cliques of $s$ vertices inside that set.
-%
-The part of $W_k$ reachable from $v$ through $s$-cliques of $W_k$ is therefore a witness for $v$ at level $k$, since the cliques of a reachable vertex are reachable as well.
-%
-With $k=U_s(v)$ this gives $\core{s}{v}\ge U_s(v)$.
-%
-Conversely, suppose $U_s$ is the core value.
-%
-The set $\{u:\core{s}{u}\ge k\}$ is the union of all witnesses at level $k$, and every vertex $v$ in it lies in at least $k$ cliques of $s$ vertices inside it.
-%
-For $k=\core{s}{v}=U_s(v)$ this set is $\{u:U_s(u)\ge U_s(v)\}$, which is the condition.
+Conversely, if $U_s$ is the core value, the set $\{u:\core{s}{u}\ge k\}$ is the union of all witnesses at level $k$, so every vertex in it lies in at least $k$ cliques of $s$ vertices inside it, and for $k=\core{s}{v}=U_s(v)$ this set is $\{u:U_s(u)\ge U_s(v)\}$, which is the condition.
 \end{proof}
 We call the condition of the theorem the \textit{certificate}.
 %
@@ -135,19 +120,13 @@ Before the first size, the algorithm builds the clique tree once, takes a degene
 %
 Based on Theorem~\ref{thm:replay}, it accepts the running maxima as the core values when the certificate holds (Line~\ref{ln:b-accept}), and otherwise peels the size exactly, with counts bounded as above, keeping that peel's removal order for the next size (Line~\ref{ln:b-peel}).
 %
-\emph{During Step 2}, the algorithm builds the tree of size $s$ from the values of that size.
+\emph{During Step 2}, the algorithm builds the tree of size $s$ from its values: it starts with no vertex active (Line~\ref{ln:b-reset}), goes through the values from the highest down (Line~\ref{ln:b-levels}), activates the vertices of the current value (Line~\ref{ln:b-activate}), and joins the active vertices of every live path that gained an active vertex into one component (Line~\ref{ln:b-union}).
 %
-It starts with no vertex active (Line~\ref{ln:b-reset}), goes through the values from the highest down (Line~\ref{ln:b-levels}), activates the vertices of the current value (Line~\ref{ln:b-activate}), and joins the active vertices of every live path that gained an active vertex into one component (Line~\ref{ln:b-union}).
+By the two facts about live paths, the components are exactly the sets of active vertices connected through $s$-cliques of active vertices, so after each value the components that changed are the canonical nodes of that top (Line~\ref{ln:b-nodes}), the nodes they absorbed become their children (Line~\ref{ln:b-parent}), and every vertex activated at that value records its component as its own node (Line~\ref{ln:b-own}).
 %
-By the two facts about live paths, the components are then exactly the sets of active vertices connected through $s$-cliques of active vertices, so after each value the components that changed are the canonical nodes of that top (Line~\ref{ln:b-nodes}), the nodes they absorbed become their children (Line~\ref{ln:b-parent}), and every vertex activated at that value records its component as its own node (Line~\ref{ln:b-own}).
+The chains are refined in a prefix trie whose nodes are labelled by own nodes: at size $2$ the vertices are grouped by their own node, at each later size every group is split by the own node of that size (Line~\ref{ln:b-refine}), and a vertex stops at its trie node once the size exceeds its clique number, so a chain is the set of vertices that stopped at one trie node and its trajectory is the path of labels from the root.
 %
-The chains are refined in a prefix trie whose nodes are labelled by own nodes: at size $2$ the vertices are grouped by their own node, and at each later size every group is split by the own node of that size (Line~\ref{ln:b-refine}).
-%
-A vertex stops at its trie node once the size exceeds its clique number, and the node may still gain children from vertices with larger clique numbers; a chain is the set of vertices that stopped at one trie node, and its trajectory is the sequence of labels from the root to that node.
-%
-The value of size $s$ is the same for every vertex that moves to one trie node, and the node records it (Line~\ref{ln:b-value}).
-%
-The tree of size $s$ is kept as its nodes with their tops and parents, numbered in the preorder $\mathrm{pre}_s$ of Section~\ref{sec:order}, which is fixed once the tree is complete.
+The value of size $s$ is the same for every vertex that moves to one trie node, and the node records it (Line~\ref{ln:b-value}); the tree of size $s$ is kept as its nodes with their tops and parents, numbered in the preorder $\mathrm{pre}_s$ of Section~\ref{sec:order}.
 %
 \emph{During Step 3}, the algorithm ranks the chains by a depth-first traversal of the trie that visits the vertices stopped at a node before the node's children, and the children in increasing order of $\mathrm{pre}_s$ of their own node: this is the lexicographic key order of Section~\ref{sec:order}, and it gives the chain ranks, the aligned labels (Line~\ref{ln:b-rank}) and the chain starts (Line~\ref{ln:b-bitmap}).
 %

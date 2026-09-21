@@ -186,19 +186,12 @@ Every value at or past $\sigma$ is the binomial coefficient of Theorem~\ref{thm:
 The residues and the tops of one size are integers at most the largest core value of that size, and the index stores them at that length.
 
 \subsection{Size}\label{sec:size}
-Recall that $C$ is the number of chains, and let a word hold one label, one node or one value.
+% 2026-09-22 compaction: four sentences; the accounting is unchanged.
+Let a word hold one label, one node or one value, and recall that $C$ is the number of chains.
 %
-The map takes $n+o(n)$ bits and $C$ words for the first labels.
+The map takes $n+o(n)$ bits and $C$ words for the first labels; the chain records take $2C$ words for $\omega$ and $\sigma$, one word per (chain, size) pair for the trajectories, and one word per residue; the layers take a constant number of words per canonical node (parent, top, subtree size and entry) and two labels per run.
 %
-The chain records take $2C$ words for $\omega$ and $\sigma$, one word per (chain, size) pair for the trajectories, and one word per residue.
+\strees takes one word per (vertex, size) pair for its arrays, as many for its own-node pointers, a value for each of these pairs, and a constant number of words per canonical node, so the saving is in the stored units, $\sum_v(\omg{v}-1)$ (vertex, size) pairs against $\sum_c(\omega(c)-1)$ (chain, size) pairs, and in the values, the residues against a value per pair.
 %
-The layers take a constant number of words per canonical node, a parent, a top, a subtree size (which locates the node after the subtree, Section~\ref{sec:queries}) and an entry, and two labels per run.
-%
-\strees takes one word per (vertex, size) pair for its per-size arrays, as many words for its own-node pointers, a value for each of these pairs, and a constant number of words per canonical node.
-%
-Per node the layers of \chainidx cost more, an entry and a subtree size in addition.
-%
-The saving is in the stored units, $\sum_v(\omg{v}-1)$ (vertex, size) pairs against $\sum_c(\omega(c)-1)$ (chain, size) pairs, and in the values, the residues against a value per pair.
-%
-On the running example the index stores $3$ values, $8$ words for $\omega$ and $\sigma$ and $12$ trajectory words, while \strees stores $44$ values and $44$ own-node pointers, one per (vertex, size) pair.
+On the running example the index stores $3$ values, $8$ words for $\omega$ and $\sigma$ and $12$ trajectory words, while \strees stores $44$ values and $44$ own-node pointers.
 % trace 2026-09-21: active pairs = a_i: sizes 2..5 = 4 each, 20; b_i: sizes 2..4 = 3 each, 9; x: 3; u_i,w_i: sizes 2,3 = 2 each, 12; total 44.

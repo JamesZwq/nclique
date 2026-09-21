@@ -2,45 +2,23 @@
 % 2026-09-21 house shape: short, after the experiments; history in citation-as-subject style; contrast sentences; closer = future work.
 
 \stitle{Nucleus decompositions.}
-The clique cores of this paper are the $(1,s)$-nuclei of the $(r,s)$-nucleus decomposition, which, with the hierarchy of the nuclei of one parameter pair, was introduced in \cite{firstNucleus,nuclearTWEB}.
+% 2026-09-22 compaction: twelve sentences in three paragraphs.
+The clique cores of this paper are the $(1,s)$-nuclei of the $(r,s)$-nucleus decomposition, introduced with the hierarchy of the nuclei of one parameter pair in \cite{firstNucleus,nuclearTWEB}; Sariy\"uce and Pinar~\cite{fastHierarchy} build that hierarchy from the peel order without repeated traversals, and local \cite{LocalNuclear} and parallel \cite{sotaPrveHierarchy,sotaHierarchy} algorithms followed.
 %
-Sariy\"uce and Pinar~\cite{fastHierarchy} build that hierarchy from the peel order without repeated traversals.
+Clique counting by pivoting \cite{Pivoter,YeSIGMOD2022Lightning} counts the $s$-cliques of every size from one succinct tree without listing them, and the counting-based decomposition \cnd \cite{Zhang2026NucleusCounting} peels one size from a clique path index that it rewrites as vertices leave.
 %
-Local \cite{LocalNuclear} and parallel \cite{sotaPrveHierarchy,sotaHierarchy} algorithms followed, the last computing the hierarchy of one pair in parallel.
-%
-Clique counting by pivoting \cite{Pivoter,YeSIGMOD2022Lightning} counts the $s$-cliques of every size from one succinct tree without listing them.
-%
-The counting-based decomposition \cnd \cite{Zhang2026NucleusCounting} peels one size from a clique path index that it rewrites as vertices leave.
-%
-All of these compute the values, and at most the hierarchy, of one size per run.
-%
-We store every size's hierarchy for querying, from one peel that shares the clique tree across sizes.
-% 2026-09-22 filler pass: the edge/larger-clique extension is future work and now stated only in the conclusion.
+All of these compute the values, and at most the hierarchy, of one size per run; we store every size's hierarchy for querying, from one peel that shares the clique tree across sizes.
 
 \stitle{Community search and its indexes.}
 Community search returns the cohesive subgraph of a query vertex \cite{SozioGionisKDD2010,Cui2014Local,Fang2020Survey}.
 %
-Indexes for the $k$-core model store the core hierarchy as a tree of nested cores, the ShellStruct and CL-tree structures \cite{Barbieri2015ShellStruct,Fang2016CLtree}.
+Indexes for the $k$-core model store the core hierarchy as a tree of nested cores, the ShellStruct and CL-tree structures \cite{Barbieri2015ShellStruct,Fang2016CLtree}, and answer a query by locating the query vertex's node and walking up to the requested $k$; the size-$2$ layer of our index is such a tree, and Theorem~\ref{thm:onerange} makes each of its communities one label range.
 %
-They answer a query by locating the query vertex's node and walking up to the requested $k$.
+For the $k$-truss model, TCP-index \cite{huang2014truss} keeps a maximum spanning forest per vertex, and EquiTruss \cite{akbas2017truss} partitions the edges into truss-equivalence classes, edges that lie in the same $k$-truss communities for every $k$; chains are the same idea taken across sizes, with the vertex as the unit.
 %
-The size-$2$ layer of our index is such a tree, and Theorem~\ref{thm:onerange} makes each of its communities one label range.
+Indexes over a second axis, time in historical and temporal core queries \cite{core_res1,tian2024abcore}, store versions of one hierarchy, whereas our second axis is the clique size, along which the values reach a closed form (Theorem~\ref{thm:tail}).
 %
-For the $k$-truss model, TCP-index \cite{huang2014truss} keeps a maximum spanning forest per vertex.
-%
-EquiTruss \cite{akbas2017truss} partitions the edges into truss-equivalence classes, edges that lie in the same $k$-truss communities for every $k$.
-%
-Chains are the same idea taken across sizes, with the vertex as the unit.
-%
-Indexes over a second axis, time in historical and temporal core queries \cite{core_res1,tian2024abcore}, store versions of one hierarchy.
-%
-Our second axis is the clique size, along which the values reach a closed form (Theorem~\ref{thm:tail}).
-%
-The SGL index for bi-components of bipartite graphs \cite{SGL} builds its index from units that are neither nested nor overlapping, and it retrieves each vertex once per query.
-%
-A vertex there belongs to one unit per non-dominated parameter pair, whereas chains partition the vertices.
+The SGL index for bi-components of bipartite graphs \cite{SGL} builds its index from units that are neither nested nor overlapping and retrieves each vertex once per query, but a vertex there belongs to one unit per non-dominated parameter pair, whereas chains partition the vertices.
 
 \stitle{Kruskal--Katona.}
-The certified tail (Theorem~\ref{thm:tail}) rests on the shadow theorem of Kruskal and Katona \cite{kruskal1963,katona1968} in the form of Lov\'asz \cite{lovasz1979}.
-%
-The theorem bounds the number of $(s-1)$-cliques through a vertex from below by the number of $s$-cliques through it.
+The certified tail (Theorem~\ref{thm:tail}) rests on the shadow theorem of Kruskal and Katona \cite{kruskal1963,katona1968} in the form of Lov\'asz \cite{lovasz1979}, which bounds the number of $(s-1)$-cliques through a vertex from below by the number of $s$-cliques through it.

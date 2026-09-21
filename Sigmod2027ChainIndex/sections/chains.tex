@@ -77,23 +77,16 @@ The chain partition is lossless, and every lossless partition is at least as fin
 \begin{proof}
 The chain partition is lossless by Lemma~\ref{lem:union}.
 %
-Let $P$ be lossless, and let $u$ and $v$ share a block of $P$.
+% 2026-09-22 compaction: six sentences.
+Let $P$ be lossless, and let $u$ and $v$ share a block of $P$; we show that they share a chain.
 %
-We show that $u$ and $v$ share a chain.
+If $\core{s}{u}>\core{s}{v}$ at some size, the community of $u$ at $(s,\core{s}{u})$ contains $u$ and not $v$, since every vertex of a core at that level has at least that core value, so it is not a union of blocks of $P$.
 %
-Suppose the core values differ at some size, say $\core{s}{u}>\core{s}{v}$.
-%
-The community of $u$ at $(s,\core{s}{u})$ exists, as $\core{s}{u}\ge1$, and contains $u$ and not $v$, since every vertex of a core at level $\core{s}{u}$ has at least that core value.
-%
-It is then not a union of blocks of $P$, since $u$ and $v$ share a block.
-%
-The core values therefore agree at every size.
-%
-If $u$ is isolated, so is $v$, since their values at size $2$ agree, and both lie in the chain of isolated vertices.
+The core values therefore agree at every size; if $u$ is isolated, so is $v$, and both lie in the chain of isolated vertices.
 %
 Otherwise, if $\own{s}{u}\ne\own{s}{v}$ at a size where both have value $k\ge1$, these two $(s,k)$-cores are disjoint (Section~\ref{sec:prelim}), and the community of $u$ at $(s,k)$ again contains $u$ and not $v$.
 %
-Hence the own nodes agree at every size, so $\traj{u}=\traj{v}$, and $u$ and $v$ share a chain.
+Hence the own nodes agree at every size, $\traj{u}=\traj{v}$, and $u$ and $v$ share a chain.
 \end{proof}
 % 2026-09-22 filler pass: the remark after the proposition restated it; removed.
 
@@ -105,19 +98,10 @@ Section~\ref{sec:exp} uses twin classes as the baseline for how many vertices a 
 If $u$ and $w$ have the same closed neighbourhood, then they lie in one chain.
 \end{lemma}
 \begin{proof}
-Swapping $u$ and $w$ maps $G$ onto itself, since the two have the same closed neighbourhood, and cores are defined from the graph alone, so it maps cores to cores and preserves every core value.
+% 2026-09-22 compaction: three sentences.
+Swapping $u$ and $w$ maps $G$ onto itself, so it maps every core $K$ containing $u$ to a core $K'$ of the same size and level containing $w$, and $K'=K$: either $K$ has a third vertex, which the swap leaves in place, and cores of one size and level that share a vertex are equal, or $K=\{u,w\}$, which the swap maps to itself.
 %
-It maps every core $K$ containing $u$ to a core $K'$ of the same size and level containing $w$.
-%
-If $K$ has a vertex other than $u$ and $w$, the swap leaves that vertex in place, and $K$ and $K'$ share it.
-%
-Cores of one size and level that share a vertex are equal, and hence $K'=K$.
-%
-Otherwise $K=\{u,w\}$, a core having at least $s\ge2$ vertices, and the swap maps it to itself.
-%
-Hence $u$ and $w$ are hierarchy-equivalent.
-%
-Twins are adjacent, since $u$ lies in the closed neighbourhood of $w$, so $\omg{u},\omg{w}\ge2$ and Theorem~\ref{thm:chains} puts them in one chain.
+Hence $u$ and $w$ are hierarchy-equivalent, and since twins are adjacent, $\omg{u},\omg{w}\ge2$ and Theorem~\ref{thm:chains} puts them in one chain.
 \end{proof}
 % 2026-09-22 filler pass: "How many chains" merged here; "Relation to other groupings" removed (Section 9 has SGL and EquiTruss).
 By Lemma~\ref{lem:twins}, chains are at most as many as twin classes, and on our graphs they are far fewer: twin classes have $1.03$ to $1.28$ vertices on average, while \dblp has $13{,}459$ chains for $317{,}080$ vertices ($24$ per chain) and \webuk $839$ chains for $129{,}632$ vertices ($154$ per chain).

@@ -76,13 +76,7 @@ The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ for the $15$ vertice
 %
 There are as many own-node pointers, and as many stored values.
 %
-On the web graph \webuk of Section~\ref{sec:exp}, a vertex lies in $181$ arrays on average, and \strees takes $190$~MB for $129{,}632$ vertices.
-%
-On the coauthorship graph \textsf{dblp-coauthor} of $4$ million vertices it takes $506$~MB.
-%
-Building \strees means one decomposition per size.
-%
-With the counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting}, the $499$ sizes of \webuk take $15.7$ hours.
+Building \strees means one decomposition per size, $499$ of them on \webuk (Section~\ref{sec:intro}).
 %
 % 2026-09-22 filler pass: the closing remark re-listed the three difficulties of the introduction; one bridge sentence remains.
 The next sections keep the trees of every size, store each vertex once, and answer a community query with a few ranges instead of one copy.
