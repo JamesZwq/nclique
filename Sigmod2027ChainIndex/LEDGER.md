@@ -120,3 +120,18 @@ it stores (labels, chain starts as a rank structure with n + o(n) bits, records,
 is stated in words and bits, and the experiments keep only the measurement protocol and the numbers.  Gate: the
 implementation-term grep of paper-architect/theory-not-implementation.md must hit only measurement units.
 
+## Prose pass (2026-09-22, writing-paper-prose + five cold readers)
+- Terms fixed at first use: chain(v) = number of chain starts at or before the label, minus one (a rank query); layer =
+  tree of a size with its runs; traversal order = the depth-first order with children by smallest rank (a preorder of
+  T_s, distinct from pre_s, used by Theorem retrieval and Section 6); "node nearest the root with top >= k on the path
+  from X_s(v)" replaces "highest ancestor-or-self"; active chain = size <= clique number; K, K' for nuclei in proofs
+  (N is the example's community); machines are server 1 (tods1) and server 2 (tods2).
+- Corrections found by the cold reads: the listing-time ratio is STrees/ChainIndex (0.2-2.8, median 1.02); the intro
+  and abstract now quote the inverse (ChainIndex takes 0.35-5.3x the copy's time, median 0.98, "about as fast");
+  the skyline layout of SGL over CHAINS is 1.01-1.12x larger and 2.3-6.3x slower (the 0.99-2.28x figure was over twin
+  classes); Table 5's best fixed size is now at its best level (dblp s=5: 0.147, so per-query is 1.2x, not 1.3x);
+  amazon k-core F1 0.474; web-BerkStan CND build+peel is 2.0 h (2.25 h end-to-end).
+- Algorithm 2 now resets active[] per size, joins only live paths with a newly active vertex, and records the value of
+  each trie node per size (value[node][s]); the walk says where the residues live between sizes.
+- Gates: median 17 words, over-25 15.7%, >=35 0.9%, which-tails 2.4%, so-rate 7.2%, proofs 16.3%. Page count 17.
+
