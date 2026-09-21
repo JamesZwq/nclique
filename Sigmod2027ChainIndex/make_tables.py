@@ -210,7 +210,7 @@ def table_cases():
     # named examples: size and leaf purity per s, members of the smallest community
     rec = load('case/amazon-queries.json')
     if rec is not None:
-        lines = [r'\begin{tabular}{@{}p{0.34\linewidth}lp{0.52\linewidth}@{}}', r'\toprule', r'Query product & Community size (purity) at $s=2,3,\dots$ & Smallest community \\', r'\midrule']
+        lines = [r'\begin{tabular}{@{}p{0.27\linewidth}p{0.26\linewidth}p{0.43\linewidth}@{}}', r'\toprule', r'Query product & Community size (leaf purity) at $s=2,3,\dots$ & Smallest community \\', r'\midrule']
         for q in rec['queries']:
             lv = q['levels']; sizes = ', '.join(f"{L['size']:,} ({L['leaf_share']:.2f})" for L in lv)
             last = [L for L in lv if 'members' in L]
