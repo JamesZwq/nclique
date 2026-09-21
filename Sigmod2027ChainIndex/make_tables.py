@@ -174,7 +174,9 @@ def table_prior():
         for p in sorted((EV / d).glob('prior_original_*.json')):
             og = json.loads(p.read_text()); g = NAMES.get(p.stem[len('prior_original_'):], p.stem[len('prior_original_'):])
             if 'total_wall_s' in og and (where, g) in ours: prior.append((where, g, og))
-    lines = [r'\begin{tabular}{@{}llrrrrrr@{}}', r'\toprule', r'Graph & Machine & Sizes & \cnd, all sizes (s) & of which build and peel (s) & \cnd peak RSS, one size (MB) & \chainidx build, all sizes (s) & Ratio (build and peel) \\', r'\midrule']
+    lines = [r'\begin{tabular}{@{}llrrrrrr@{}}', r'\toprule',
+             r'Graph & Machine & Sizes & \multicolumn{2}{c}{\cnd, all sizes (s)} & \cnd peak & \chainidx & Ratio \\',
+             r' & & & total & build and peel & one size (MB) & build (s) & build and peel \\', r'\midrule']
     ratios = []
     for where, g, og in sorted(prior, key=lambda t: (t[0] != 'laptop', t[0], ours[(t[0], t[1])]['result']['n'])):
         r = ours[(where, g)]; o = r['result']; opeak = max(e['peak_rss_bytes'] or 0 for e in og['sizes'])

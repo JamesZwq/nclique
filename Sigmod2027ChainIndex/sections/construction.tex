@@ -24,10 +24,10 @@ The layout pass turns the chains into labels, run arrays and residues.
 \centering
 \begin{tikzpicture}[font=\scriptsize, stage/.style={draw, rounded corners=2pt, align=center, minimum height=9mm, inner sep=3pt, text width=23mm}, flow/.style={-latex, thick}, lab/.style={font=\tiny, fill=white, inner sep=1pt, align=center}]
 \node[stage] (tree) at (0,0) {\textbf{clique tree}\\ built once (pivoting); paths $(H,Q)$ for every size};
-\node[stage] (peel) at (3.9,0) {\textbf{all-size peel}\\ $s=2,3,\dots$: order replay under the certificate, exact peel otherwise};
-\node[stage] (row) at (7.8,0) {\textbf{tree of size $s$}\\ activate vertices by value, join live paths, canonical nodes, own nodes};
-\node[stage] (trie) at (11.7,0) {\textbf{chains}\\ prefix trie refined by the own nodes of size $s$; ranks by DFS};
-\node[stage] (lay) at (15.6,0) {\textbf{layout}\\ aligned labels, run arrays, entries, residues, widths};
+\node[stage] (peel) at (3.8,0) {\textbf{all-size peel}\\ $s=2,3,\dots$: order replay under the certificate, exact peel otherwise};
+\node[stage] (row) at (7.6,0) {\textbf{tree of size $s$}\\ activate vertices by value, join live paths, canonical nodes, own nodes};
+\node[stage] (trie) at (11.4,0) {\textbf{chains}\\ prefix trie refined by the own nodes of size $s$; ranks by DFS};
+\node[stage] (lay) at (15.2,0) {\textbf{layout}\\ aligned labels, run arrays, entries, residues, widths};
 \draw[flow] (tree) -- node[lab] {counts as\\ binomial sums} (peel);
 \draw[flow] (peel) -- node[lab] {values of size $s$\\ (two-row window)} (row);
 \draw[flow] (row) -- node[lab] {own node of\\ every vertex} (trie);
