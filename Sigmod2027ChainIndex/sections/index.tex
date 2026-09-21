@@ -1,7 +1,14 @@
 \section{The Chain Index}\label{sec:index}
+% 2026-09-21 house shape and cadence pass: overview + Figure 2; each block with its property, theorem, proof, example on
+% Figures 1 and 2; the values block holds the certified tail; the size block closes with the accounting.
 
+This section answers the second difficulty of Section~\ref{sec:intro}: how to return any community of any size as a few ranges of memory.
+%
 The index has three blocks, all flat arrays: the vertex-to-chain map, one record per chain, and one tree with a run array per size.
-Figure~\ref{fig:layout} shows them for the running example; we describe each with the property it rests on.
+%
+Figure~\ref{fig:layout} shows the three blocks for the running example.
+%
+We describe each block with the property it rests on: Theorem~\ref{thm:onerange} for the chain order, Theorem~\ref{thm:retrieval} for the run arrays and Theorem~\ref{thm:tail} for the values.
 
 \begin{figure*}[t]
 \centering
@@ -35,57 +42,135 @@ community of $b_1$ at $(3,3)$: head $[0,3)$, whole run $[8,15)$, no tail};
 \end{figure*}
 
 \subsection{Aligned labels}\label{sec:labels}
-Chains partition $V$, so the vertices can be relabelled so that every chain is one interval of labels: chain $c$ owns $[\mathrm{start}(c),\mathrm{start}(c+1))$.
-The map from a vertex to its chain is then a bitmap with a one at every chain start plus a rank directory (one 32-bit count per 64 labels): $\mathrm{chain}(v)=\mathrm{rank}_1(v)-1$ in constant time, at 1 bit plus 1/16 byte per vertex.
-A community, being a union of chains (Lemma~\ref{lem:union}), becomes a list of label ranges rather than a list of vertex ids.
-If the graph is kept under its original labels, a permutation of $4n$ bytes accompanies the index; if the graph is stored in the index's order, nothing is added.
+Chains partition $V$ (Section~\ref{sec:chains}).
+%
+The vertices can be relabelled so that every chain is one interval of labels: chain $c$ owns $[\mathrm{start}(c),\mathrm{start}(c+1))$.
+%
+The map from a vertex to its chain is then a bitmap with a one at every chain start.
+%
+A rank directory of one $32$-bit count per $64$ labels accompanies it.
+%
+The chain of $v$ is $\mathrm{rank}_1(v)-1$, read in constant time, at $1$ bit plus $1/16$ byte per vertex.
+%
+A community is a union of chains (Lemma~\ref{lem:union}), and it becomes a list of label ranges rather than a list of vertex ids.
+%
+If the graph is kept under its original labels, a permutation of $4n$ bytes accompanies the index.
+%
+If the graph is stored in the index's order, nothing is added.
+\begin{example}\label{ex:labels}
+Consider Figure~\ref{fig:layout}.
+%
+The four chains own the label intervals $[0,3)$, $[3,8)$, $[8,14)$ and $[14,15)$, and the bitmap has ones at labels $0$, $3$, $8$ and $14$.
+%
+The vertex $u_1$ has label $8$; three ones lie at or before it, and its chain is $3-1=2$.
+\end{example}
 
 \subsection{Chain order}\label{sec:order}
-The number of ranges an answer needs depends on how chains are ordered.
-Fix any preorder numbering $\mathrm{pre}_s$ of each forest $\Tree{s}$ and give chain $c$ the key $\mathrm{key}(c)=(\mathrm{pre}_2(\own{2}{c}),\mathrm{pre}_3(\own{3}{c}),\dots)$; chains are ranked in lexicographic key order, the vertices without edges forming one last chain.
-
-\begin{theorem}[size-2 communities are single ranges]\label{thm:onerange}
+The number of ranges an answer needs depends on how the chains are ordered.
+%
+Fix any preorder numbering $\mathrm{pre}_s$ of each forest $\Tree{s}$.
+%
+Give chain $c$ the key $\mathrm{key}(c)=(\mathrm{pre}_2(\own{2}{c}),\mathrm{pre}_3(\own{3}{c}),\dots)$, the preorder positions of its own nodes size by size.
+%
+Chains are ranked in lexicographic key order; the vertices without edges form one last chain.
+%
+The order has one guarantee at size $2$ and keeps the larger sizes close to it.
+\begin{theorem}[single ranges at size 2]\label{thm:onerange}
 Under the lexicographic order, the labels of every $\Nuc{2}{k}$ form one interval.
 \end{theorem}
 \begin{proof}
-An $\Nuc{2}{k}$ is the vertex set of the subtree of $\Tree{2}$ rooted at some node $X$; a chain lies in it if and only if $\own{2}{c}$ is in that subtree.
+An $\Nuc{2}{k}$ is the vertex set of the subtree of $\Tree{2}$ rooted at some node $X$.
+%
+A chain lies in it if and only if $\own{2}{c}$ is in that subtree.
+%
 The preorder numbers of a subtree form an interval, and the chains whose first key component lies in an interval are contiguous in lexicographic order.
+%
 Contiguous ranks are contiguous labels.
 \end{proof}
-
+\begin{example}\label{ex:order}
+Consider Figure~\ref{fig:example} with the preorder root $=0$, $A=1$, $\{x,u_1,\dots,w_3\}=2$ of $\Tree{2}$.
+%
+The keys start with $0$ for $\{b_i\}$, $1$ for $\{a_i\}$ and $2$ for $\{u,w\}$ and $\{x\}$.
+%
+The shorter key of $\{u,w\}$ ranks before the longer key of $\{x\}$.
+%
+The ranks are $\{b_i\}<\{a_i\}<\{u,w\}<\{x\}$, the labels of Figure~\ref{fig:layout}.
+%
+The $(2,4)$-nucleus $\{x,u_1,\dots,w_3\}$ is the interval $[8,15)$ and the $(2,3)$-nucleus is $[0,15)$.
+\end{example}
 \begin{corollary}\label{cor:kcore}
-The size-2 layer of the index is a connected-$k$-core community index in which every community is one label range, reported by two numbers after the climb.
+The size-$2$ layer of the index is a connected-$k$-core community index in which every community is one label range.
 \end{corollary}
-Indexes built for $k$-core community search report a subtree of a core tree or a list of vertices \cite{Barbieri2015ShellStruct,Fang2016CLtree}; here the same answer is a single interval, and the same labels serve every larger size.
+Indexes built for $k$-core community search report a subtree of a core tree or a list of vertices \cite{Barbieri2015ShellStruct,Fang2016CLtree}.
+%
+Here the same answer is two numbers, and the same labels serve every larger size.
 
-For $s\ge3$ the DFS array of $\Tree{s}$ visits, at every node, its own chains and its child subtrees in increasing order of the smallest rank they contain (roots likewise).
-Then the chains of any subtree are a contiguous segment of the array, the first chain of a node's segment is the smallest rank in its subtree, and for $s=2$ the array is the rank order itself.
+For $s\ge3$ the depth-first array of $\Tree{s}$ visits, at every node, its own chains first.
+%
+It then visits the child subtrees in increasing order of the smallest rank they contain, and the roots in the same order.
+%
+The chains of any subtree are then a contiguous segment of the array.
+%
+The first chain of a node's segment is the smallest rank in its subtree.
+%
+For $s=2$ the array is the rank order itself.
 
 \subsection{Run arrays and entry points}\label{sec:runs}
-Along the DFS array of size $s$, two consecutive chains with consecutive ranks own adjacent label intervals.
-We merge maximal sequences of such chains into \emph{runs} and store the array as the list of run endpoints $(lo,hi)$.
-Every node $x$ stores one \emph{entry}: the run index $r_x$ that contains the first position of its segment and the label $v_x$ at that position; a sentinel entry follows the last node.
-
+Along the depth-first array of size $s$, two consecutive chains with consecutive ranks own adjacent label intervals.
+%
+We merge maximal sequences of such chains into \textit{runs} and store the array as the list of run endpoints $(lo,hi)$.
+%
+Every node $x$ stores one \textit{entry}: the run index $r_x$ that contains the first position of its segment, and the label $v_x$ at that position.
+%
+A sentinel entry follows the last node.
 \begin{theorem}[retrieval]\label{thm:retrieval}
-Let $y$ be the node that follows the subtree of $x$ in preorder (the sentinel if none).
-The labels of the community of $x$ are $[v_x,v_y)$ if $r_x=r_y$, and otherwise the head $[v_x,hi(r_x))$, the whole runs $r_x+1,\dots,r_y-1$, and the tail $[lo(r_y),v_y)$.
-The number of ranges reported equals the number of maximal runs inside the segment; at $s=2$ it is one.
+Let $y$ be the node that follows the subtree of $x$ in preorder, or the sentinel if there is none.
+%
+If $r_x=r_y$, the labels of the community of $x$ are $[v_x,v_y)$.
+%
+Otherwise they are the head $[v_x,hi(r_x))$, the whole runs $r_x+1,\dots,r_y-1$, and the tail $[lo(r_y),v_y)$.
+%
+The number of ranges reported equals the number of maximal runs inside the segment, and at $s=2$ it is one.
 \end{theorem}
 \begin{proof}
 The segment of $x$ is the position interval from its entry to the entry of $y$.
-Runs are maximal over the whole array, so inside the segment they can be cut only at its two ends: the run holding the first position contributes from $v_x$ on, the run holding the last position contributes up to $v_y$, and the runs strictly between are whole.
+%
+Runs are maximal over the whole array, and inside the segment they can be cut only at its two ends.
+%
+The run holding the first position contributes from $v_x$ on.
+%
+The run holding the last position contributes up to $v_y$.
+%
+The runs strictly between are whole.
+%
 At $s=2$ the whole array is one run by Theorem~\ref{thm:onerange}.
 \end{proof}
-
-After the climb to the right node (Section~\ref{sec:queries}) the community is therefore located with two entry reads and reported with the fewest ranges possible for the given order.
+\begin{example}\label{ex:runs}
+Consider the layer $s=3$ in Figure~\ref{fig:layout}.
+%
+The preorder is $N$, then $A$, and the depth-first array over chains is $\{b_i\},\{u,w\},\{x\},\{a_i\}$.
+%
+The chains $\{u,w\}$ and $\{x\}$ have consecutive ranks and merge into one run, and the array is stored as the three runs $[0,3)$, $[8,15)$, $[3,8)$.
+%
+The entries are $N\to(0,0)$, $A\to(2,3)$ and the sentinel $(3,8)$.
+%
+The community of $b_1$ at $(3,3)$ is $N$, with $r_N=0$ and $r_A=2$.
+%
+The answer is the head $[0,3)$, the whole run $[8,15)$ and the empty tail $[lo(2),3)=[3,3)$: two ranges for ten vertices.
+\end{example}
+After the climb to the right node (Section~\ref{sec:queries}), the community is located with two entry reads and reported with the fewest ranges the order allows.
 
 \subsection{Values}\label{sec:values}
 % 2026-09-21 the certified tail moved here from the former hierarchy section (house order: the theorem where it is used).
-Core values are constant on a chain (Theorem~\ref{thm:chains}), so the values of a chain are one number per size from $2$ to its clique number $\omega$.
+Core values are constant on a chain (Theorem~\ref{thm:chains}).
+%
+The values of a chain are one number per size from $2$ to its clique number $\omega$.
 %
 Most of them need not be stored.
 %
-A vertex lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of its largest clique alone, so its value can never fall below that number; the next theorem says that once the value reaches this floor at some size, it stays on the floor at every larger size.
+A vertex lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of its largest clique alone, and its value can never fall below that number.
+%
+The next theorem says that once the value reaches this floor at some size, it stays on the floor at every larger size.
 \begin{theorem}[floor and certified tail]\label{thm:tail}
 Let $2\le s\le\omg{v}$ and $f_s(v)=\binomc{\omg{v}-1}{s-1}$.
 \begin{enumerate}[label=(\alph*),leftmargin=*,nosep]
@@ -94,15 +179,29 @@ Let $2\le s\le\omg{v}$ and $f_s(v)=\binomc{\omg{v}-1}{s-1}$.
 \end{enumerate}
 \end{theorem}
 \begin{proof}
-(a) A largest clique $M$ containing $v$ has $\omg{v}$ vertices; every vertex of $M$ lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of $M$, and $M$ is connected through them, so $M$ lies in an $\Nuc{s}{f_s(v)}$.
+(a) A largest clique $M$ containing $v$ has $\omg{v}$ vertices.
+%
+Every vertex of $M$ lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of $M$, and $M$ is connected through them.
+%
+Hence $M$ lies in an $\Nuc{s}{f_s(v)}$.
 
-(b) We use the Kruskal--Katona theorem in Lov\'asz's form \cite{kruskal1963,katona1968,lovasz1979}: $k\ge1$ distinct $s$-subsets of a ground set have at least $g_s(k)=\binomc{x}{s-1}$ distinct $(s-1)$-subsets, where $x\ge s$ is the real number with $\binomc{x}{s}=k$; both $x\mapsto\binomc{x}{s}$ and $x\mapsto\binomc{x}{s-1}$ increase strictly for $x\ge s-1$.
+(b) We use the Kruskal--Katona theorem in Lov\'asz's form \cite{kruskal1963,katona1968,lovasz1979}.
+%
+Let $x\ge s$ be the real number with $\binomc{x}{s}=k$; then $k\ge1$ distinct $s$-subsets of a ground set have at least $g_s(k)=\binomc{x}{s-1}$ distinct $(s-1)$-subsets.
+%
+Both $x\mapsto\binomc{x}{s}$ and $x\mapsto\binomc{x}{s-1}$ increase strictly for $x\ge s-1$.
 %
 Let $N$ be the $\Nuc{s+1}{\core{s+1}{v}}$ containing $v$ and take any $u\in N$.
 %
-Removing $u$ from the at least $\core{s+1}{v}$ $(s+1)$-cliques of $N$ through $u$ leaves as many distinct $s$-subsets of the neighbours of $u$ in $N$; their $(s-1)$-shadow has at least $g_s(\core{s+1}{v})$ members, and each member together with $u$ is an $s$-clique of $N$ through $u$.
+Removing $u$ from the at least $\core{s+1}{v}$ $(s+1)$-cliques of $N$ through $u$ leaves as many distinct $s$-subsets of the neighbours of $u$ in $N$.
 %
-So every vertex of $N$ lies in at least $g_s(\core{s+1}{v})$ $s$-cliques of $N$, and $N$ is connected through them, because two $(s+1)$-cliques that share a vertex contain $s$-cliques that share it; therefore $\core{s}{v}\ge g_s(\core{s+1}{v})$.
+Their $(s-1)$-shadow has at least $g_s(\core{s+1}{v})$ members, and each member together with $u$ is an $s$-clique of $N$ through $u$.
+%
+Every vertex of $N$ therefore lies in at least $g_s(\core{s+1}{v})$ $s$-cliques of $N$.
+%
+$N$ is connected through them, because two $(s+1)$-cliques that share a vertex contain $s$-cliques that share it.
+%
+Hence $\core{s}{v}\ge g_s(\core{s+1}{v})$.
 %
 Now suppose $\core{s+1}{v}>f_{s+1}(v)=\binomc{\omg{v}-1}{s}$.
 %
@@ -116,36 +215,59 @@ For $s\ge\sig{v}$ the value is $\binomc{\omg{v}-1}{s-1}$ and is not stored; the 
 \begin{example}\label{ex:tail}
 Consider Figure~\ref{fig:example}.
 %
-The vertices of $A$ have $\omega=5$ and $\core{2}{a_i}=4=\binom{4}{1}$, so $\sig{a_i}=2$ and no value of $A$ is stored: $\core{3}{a_i}=\binom{4}{2}=6$, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{5}{a_i}=\binom{4}{4}=1$ are read from the floor.
+The vertices of $A$ have $\omega=5$ and $\core{2}{a_i}=4=\binom{4}{1}$, and $\sig{a_i}=2$.
 %
-The vertices $b_i$ have $\omega=4$ and $\core{2}{b_i}=3=\binom{3}{1}$, so $\sig{b_i}=2$ as well.
+No value of $A$ is stored: $\core{3}{a_i}=\binom{4}{2}=6$, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{5}{a_i}=\binom{4}{4}=1$ are read from the floor.
 %
-The vertex $x$ has $\omega=4$, $\core{2}{x}=4>\binom{3}{1}$ and $\core{3}{x}=3=\binom{3}{2}$, so $\sig{x}=3$ and its residue is the single value $\core{2}{x}=4$.
+The vertices $b_i$ have $\omega=4$ and $\core{2}{b_i}=3=\binom{3}{1}$, and $\sig{b_i}=2$ as well.
 %
-The six vertices adjacent to $x$ have $\omega=3$, $\core{2}{u_i}=4>2$ and $\core{3}{u_i}=3>1$, so $\sig{u_i}=4=\omega+1$ and both values are residues.
+The vertex $x$ has $\omega=4$, $\core{2}{x}=4>\binom{3}{1}$ and $\core{3}{x}=3=\binom{3}{2}$.
+%
+Its certification point is $3$, and its residue is the single value $\core{2}{x}=4$.
+%
+The six vertices adjacent to $x$ have $\omega=3$, $\core{2}{u_i}=4>2$ and $\core{3}{u_i}=3>1$.
+%
+Their certification point is $4=\omega+1$, and both values are residues.
 %
 The whole graph stores three values.
 \end{example}
 \begin{remark}
-On real graphs the tail carries most values: \dblp has $1{,}246{,}933$ pairs $(v,s)$ with $\core{s}{v}\ge1$ and stores $84{,}010$ residues per vertex, or $9{,}737$ per chain; \webuk stores one residue for $23.5$ million pairs.
+On real graphs the tail carries most values.
+%
+\dblp has $1{,}246{,}933$ pairs $(v,s)$ with $\core{s}{v}\ge1$ and stores $84{,}010$ residues per vertex, or $9{,}737$ per chain.
+%
+\webuk stores one residue for $23.5$ million pairs.
 \end{remark}
-Each chain therefore stores $\omega$, $\sigma$ and its residue, and reads every other value from a table of binomial coefficients; for $s>\omega$ the value is $0$.
+Each chain stores $\omega$, $\sigma$ and its residue.
+%
+Every other value is read from a table of binomial coefficients, and for $s>\omega$ it is $0$.
 %
 Each chain also stores its \textit{trajectory}, the own node of every size it participates in, which the community query starts from.
 %
-Node tops and residues are stored at a per-size byte width: for every size, the widest value of that size determines whether $1$, $2$, $4$ or $8$ bytes are used, fields are aligned to their width, and a query dispatches on the width once.
+Node tops and residues are stored at a per-size byte width.
 %
-Values are stored as doubles, integers below $2^{32}$ as $1$-, $2$- or $4$-byte integers; the decomposition itself is computed with exact integers, and values below $2^{53}$ are stored exactly.
+For every size, the widest value of that size determines whether $1$, $2$, $4$ or $8$ bytes are used.
+%
+Fields are aligned to their width, and a query dispatches on the width once.
+%
+Values are stored as doubles, and integers below $2^{32}$ as $1$-, $2$- or $4$-byte integers.
+%
+The decomposition itself is computed with exact integers, and values below $2^{53}$ are stored exactly.
 
 \subsection{Size}\label{sec:size}
-Let $C$ be the number of chains, $N$ the number of canonical nodes over all sizes, $P=\sum_c(\omega(c)-1)$ the number of (chain, size) pairs and $R$ the number of runs over all sizes.
-The index takes $n/8+n/16+4C$ bytes for the map, $4C+4P+\text{(residue bytes)}$ for the chain records, and $16N+\text{(top bytes)}+8R$ for the trees.
-\strees takes $8\sum_v(\omg{v}-1)$ bytes for its arrays and pointers plus a value per active pair plus $12N$ plus the tops.
+Let $C$ be the number of chains and $N$ the number of canonical nodes over all sizes.
+%
+Let $P=\sum_c(\omega(c)-1)$ be the number of (chain, size) pairs and $R$ the number of runs over all sizes.
+%
+The map takes $n/8+n/16+4C$ bytes.
+%
+The chain records take $4C+4P$ bytes plus the residues.
+%
+The trees take $16N+8R$ bytes plus the tops.
+%
+\strees takes $8\sum_v(\omg{v}-1)$ bytes for its arrays and pointers, a value per active pair, $12N$ bytes for its nodes and the tops.
+%
 The saving is the collapse of the vertex axis: $\sum_v(\omg{v}-1)$ against $P$, and the residue count against the number of active pairs.
-
-\stitle{Example, continued.}
-With the chains ranked $\{b_i\}<\{a_i\}<\{u,w\}<\{x\}$ the labels are $[0,3)$, $[3,8)$, $[8,14)$, $[14,15)$.
-At $s=3$ the forest has two roots, $N=B\cup W\cup\{x\}$ (top 3, chains $\{b_i\},\{u,w\},\{x\}$) and $A$ (top 6, chain $\{a_i\}$); the DFS array is $\{b_i\},\{u,w\},\{x\},\{a_i\}$, whose runs are $[0,3)$, $[8,15)$, $[3,8)$ (the last two chains of $N$ merge).
-The entries are $N\to(\text{run }0,\,0)$ and $A\to(\text{run }2,\,3)$.
-The community of $b_1$ at $(3,3)$ is $N$: head $[0,3)$, whole run $[8,15)$, empty tail, that is $\{b_1,b_2,b_3\}\cup\{u_1,\dots,w_3,x\}$.
-The values stored are three numbers in total: $\core{2}{x}=4$ for chain $\{x\}$ ($\omega=4,\sigma=3$) and $\kappa_2=4,\kappa_3=3$ for chain $\{u,w\}$ ($\omega=3,\sigma=4$); chains $\{a_i\}$ and $\{b_i\}$ are certified from $s=2$.
+%
+On the running example the index stores three values, and \strees stores $44$, one per active pair.
+% trace 2026-09-21: active pairs = a_i: sizes 2..5 = 4 each, 20; b_i: sizes 2..4 = 3 each, 9; x: 3; u_i,w_i: sizes 2,3 = 2 each, 12; total 44.
