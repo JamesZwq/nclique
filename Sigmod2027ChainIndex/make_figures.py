@@ -16,7 +16,10 @@ OUT.mkdir(exist_ok=True)
 plt.rcParams.update({'font.size': 7.5, 'axes.labelsize': 7.5, 'legend.fontsize': 6.5, 'xtick.labelsize': 6.5, 'ytick.labelsize': 6.5,
                      'pdf.fonttype': 42, 'axes.spines.top': False, 'axes.spines.right': False, 'legend.frameon': False})
 NAMES = {'soc-pokec-relationships': 'soc-pokec', 'com-amazon.ungraph': 'com-amazon'}
-COLORS = {'laptop': '#1f5f8b', 'tods1': '#b5541c', 'tods2': '#3b7a3b'}
+COLORS = {'laptop': 'black', 'tods1': 'black', 'tods2': 'black'}
+OURS = 'black'; BASE = '0.45'
+MARKS = ['o', 's', '^', 'D', 'v', 'P', 'X', '*']
+STYLES = ['-', '--', '-.', ':']
 
 def load(name):
     p = EV / name
@@ -55,24 +58,25 @@ def fig_regimes():
     marks = {'own': 'o', 'half': 's', 'root': '^'}; labels = {'own': 'own level', 'half': 'half level', 'root': 'k = 1'}
     for reg, mk in marks.items():
         xs = [x['regimes'][reg]['output'] for w, g, x in rows]
-        a.scatter(xs, [x['regimes'][reg]['list_ns'] for w, g, x in rows], s=12, marker=mk, color='#1f5f8b', linewidths=0.6, zorder=3)
-        a.scatter(xs, [x['regimes'][reg]['st_list_ns'] for w, g, x in rows], s=14, marker=mk, facecolors='none', edgecolors='#b5541c', linewidths=0.7, zorder=2)
+        a.scatter(xs, [x['regimes'][reg]['list_ns'] for w, g, x in rows], s=12, marker=mk, color=OURS, linewidths=0.6, zorder=3)
+        a.scatter(xs, [x['regimes'][reg]['st_list_ns'] for w, g, x in rows], s=14, marker=mk, facecolors='none', edgecolors=BASE, linewidths=0.7, zorder=2)
     lo, hi = 10, 4e6
     for slope, lab in ((0.05, '0.05 ns per vertex'), (0.5, '0.5 ns per vertex')):
         a.plot([lo, hi], [slope * lo + 8, slope * hi + 8], color='0.6', lw=0.6, ls='--'); a.text(hi, slope * hi + 8, ' ' + lab, fontsize=6, color='0.4', va='center')
     a.set_xscale('log'); a.set_yscale('log'); a.set_xlabel('answer size (vertices, mean over the queries)'); a.set_ylabel('listing time (ns)'); a.set_xlim(lo, hi * 8)
     from matplotlib.lines import Line2D
     handles = [Line2D([], [], marker=mk, color='0.3', ls='', markersize=4, label=labels[reg]) for reg, mk in marks.items()]
-    handles += [Line2D([], [], marker='o', color='#1f5f8b', ls='', markersize=4, label='chain index'), Line2D([], [], marker='o', color='#b5541c', markerfacecolor='none', ls='', markersize=4, label='S trees')]
+    handles += [Line2D([], [], marker='o', color=OURS, ls='', markersize=4, label='ChainIndex'), Line2D([], [], marker='o', color=BASE, markerfacecolor='none', ls='', markersize=4, label='STrees')]
     a.legend(handles=handles, ncol=2, loc='upper left', handletextpad=0.2, columnspacing=0.8)
     data = []; ticks = []
     for reg in marks:
         data.append([x['regimes'][reg]['locate_ns'] for w, g, x in rows]); data.append([x['regimes'][reg]['st_locate_ns'] for w, g, x in rows]); ticks.append(labels[reg])
     pos = [1, 1.7, 3, 3.7, 5, 5.7]
     bp = b.boxplot(data, positions=pos, widths=0.55, medianprops={'color': '0.2'}, flierprops={'markersize': 2.5}, patch_artist=True)
-    for i, box in enumerate(bp['boxes']): box.set(facecolor='#1f5f8b' if i % 2 == 0 else 'white', edgecolor='#1f5f8b' if i % 2 == 0 else '#b5541c', alpha=0.85)
+    for i, box in enumerate(bp['boxes']): box.set(facecolor=OURS if i % 2 == 0 else 'white', edgecolor=OURS if i % 2 == 0 else BASE)
+    for i, med in enumerate(bp['medians']): med.set(color='white' if i % 2 == 0 else BASE)
     b.set_xticks([1.35, 3.35, 5.35]); b.set_xticklabels(ticks); b.set_ylabel('locating time (ns)'); b.set_yscale('log')
-    b.legend(handles=[Line2D([], [], color='#1f5f8b', lw=4, label='chain index'), Line2D([], [], color='#b5541c', lw=1.2, label='S trees')], loc='upper right')
+    b.legend(handles=[Line2D([], [], color=OURS, lw=4, label='ChainIndex'), Line2D([], [], color=BASE, lw=1.2, label='STrees')], loc='upper right')
     fig.tight_layout(w_pad=1.5); fig.savefig(OUT / 'fig_regimes.pdf'); plt.close(fig)
 
 def fig_profile():
@@ -81,21 +85,20 @@ def fig_profile():
     if not rows: return
     rows = sorted(rows, key=lambda t: -t[2]['n'])[:4]
     fig, (a, b, c) = plt.subplots(1, 3, figsize=(7.0, 2.0))
-    cmap = plt.get_cmap('tab10')
     for i, (w, g, x) in enumerate(rows):
-        bs = x['by_size']; col = cmap(i)
-        a.plot([e['s'] for e in bs], [e['locate_ns'] for e in bs], marker='o', ms=2, lw=0.8, color=col, label=g)
-        a.plot([e['s'] for e in bs], [e['st_locate_ns'] for e in bs], marker='o', ms=2, lw=0.8, ls='--', color=col, markerfacecolor='none')
-        b.plot([e['s'] for e in bs], [e['list_ns'] for e in bs], marker='o', ms=2, lw=0.8, color=col)
-        b.plot([e['s'] for e in bs], [e['st_list_ns'] for e in bs], marker='o', ms=2, lw=0.8, ls='--', color=col, markerfacecolor='none')
+        bs = x['by_size']; mk = MARKS[i % len(MARKS)]
+        a.plot([e['s'] for e in bs], [e['locate_ns'] for e in bs], marker=mk, ms=2.5, lw=0.8, color=OURS, label=g)
+        a.plot([e['s'] for e in bs], [e['st_locate_ns'] for e in bs], marker=mk, ms=2.5, lw=0.8, ls='--', color=BASE, markerfacecolor='none')
+        b.plot([e['s'] for e in bs], [e['list_ns'] for e in bs], marker=mk, ms=2.5, lw=0.8, color=OURS)
+        b.plot([e['s'] for e in bs], [e['st_list_ns'] for e in bs], marker=mk, ms=2.5, lw=0.8, ls='--', color=BASE, markerfacecolor='none')
         dc = x['own_by_output']
-        c.plot([e['output'] for e in dc], [e['list_ns'] for e in dc], marker='o', ms=2, lw=0.8, color=col)
-        c.plot([e['output'] for e in dc], [e['st_list_ns'] for e in dc], marker='o', ms=2, lw=0.8, ls='--', color=col, markerfacecolor='none')
+        c.plot([e['output'] for e in dc], [e['list_ns'] for e in dc], marker=mk, ms=2.5, lw=0.8, color=OURS)
+        c.plot([e['output'] for e in dc], [e['st_list_ns'] for e in dc], marker=mk, ms=2.5, lw=0.8, ls='--', color=BASE, markerfacecolor='none')
     from matplotlib.lines import Line2D
     a.set_xscale('log'); a.set_xlabel('clique size s'); a.set_ylabel('locating time (ns)'); a.set_ylim(0, None)
     a.legend(ncol=1, loc='upper left', handlelength=1.2, handletextpad=0.3, labelspacing=0.15, fontsize=5.5)
     b.set_xscale('log'); b.set_yscale('log'); b.set_xlabel('clique size s'); b.set_ylabel('listing time (ns)')
-    b.legend(handles=[Line2D([], [], color='0.3', lw=0.9, label='chain index'), Line2D([], [], color='0.3', lw=0.9, ls='--', label='S trees')], loc='upper right')
+    b.legend(handles=[Line2D([], [], color=OURS, lw=0.9, label='ChainIndex'), Line2D([], [], color=BASE, lw=0.9, ls='--', label='STrees')], loc='upper right')
     c.set_xscale('log'); c.set_yscale('log'); c.set_xlabel('answer size (vertices, decile mean)'); c.set_ylabel('listing time (ns)')
     fig.tight_layout(w_pad=1.2); fig.savefig(OUT / 'fig_profile.pdf'); plt.close(fig)
 
@@ -119,27 +122,26 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
         if 'result' in r and Path(r['graph']).stem in series: series[Path(r['graph']).stem][100] = r['result']
     prof = {g: x for w, g, x in all_profiles(samples=True)}; prof.update({g: x for w, g, x in all_profiles() if w == 'tods2'})
     fig, axes = plt.subplots(1, 4, figsize=(7.0, 1.9))
-    cmap = plt.get_cmap('tab10')
     from matplotlib.lines import Line2D
     for i, (g, pts) in enumerate(sorted(series.items())):
-        ps = sorted(pts); xs = [pts[p]['n'] / 1e6 for p in ps]; col = cmap(i)
-        axes[0].plot(xs, [pts[p]['bytes_total'] / 1048576 for p in ps], marker='o', ms=2.5, lw=0.8, color=col, label=g)
-        axes[0].plot(xs, [pts[p]['baseline_vertex_bytes'] / 1048576 for p in ps], marker='o', ms=2.5, lw=0.8, ls='--', color=col, markerfacecolor='none')
-        axes[1].plot(xs, [(pts[p]['ti_ms'] + pts[p]['build_ms'] + pts[p]['compact_ms']) / 1000 for p in ps], marker='o', ms=2.5, lw=0.8, color=col)
+        ps = sorted(pts); xs = [pts[p]['n'] / 1e6 for p in ps]; col = OURS; mk = MARKS[i % len(MARKS)]
+        axes[0].plot(xs, [pts[p]['bytes_total'] / 1048576 for p in ps], marker=mk, ms=2.5, lw=0.8, color=col, label=g)
+        axes[0].plot(xs, [pts[p]['baseline_vertex_bytes'] / 1048576 for p in ps], marker=mk, ms=2.5, lw=0.8, ls='--', color=BASE, markerfacecolor='none')
+        axes[1].plot(xs, [(pts[p]['ti_ms'] + pts[p]['build_ms'] + pts[p]['compact_ms']) / 1000 for p in ps], marker=mk, ms=2.5, lw=0.8, color=col)
         cnd = [(pts[p]['n'] / 1e6, prior_total('tods2', g if p == 100 else f'{g}_p{p}')) for p in ps]; cnd = [(x, y) for x, y in cnd if y is not None]
-        if cnd: axes[1].plot([x for x, y in cnd], [y for x, y in cnd], marker='o', ms=2.5, lw=0.8, ls='--', color=col, markerfacecolor='none')
+        if cnd: axes[1].plot([x for x, y in cnd], [y for x, y in cnd], marker=mk, ms=2.5, lw=0.8, ls='--', color=BASE, markerfacecolor='none')
         names = [g if p == 100 else f'{g}_p{p}' for p in ps]
         have = [(pts[p]['n'] / 1e6, prof[nm]) for p, nm in zip(ps, names) if nm in prof]
         if have:
-            axes[2].plot([x for x, y in have], [y['regimes']['own']['locate_ns'] for x, y in have], marker='o', ms=2.5, lw=0.8, color=col)
-            axes[2].plot([x for x, y in have], [y['regimes']['own']['st_locate_ns'] for x, y in have], marker='o', ms=2.5, lw=0.8, ls='--', color=col, markerfacecolor='none')
-            axes[3].plot([x for x, y in have], [y['regimes']['own']['list_ns'] / y['regimes']['own']['output'] for x, y in have], marker='o', ms=2.5, lw=0.8, color=col)
-            axes[3].plot([x for x, y in have], [y['regimes']['own']['st_list_ns'] / y['regimes']['own']['output'] for x, y in have], marker='o', ms=2.5, lw=0.8, ls='--', color=col, markerfacecolor='none')
+            axes[2].plot([x for x, y in have], [y['regimes']['own']['locate_ns'] for x, y in have], marker=mk, ms=2.5, lw=0.8, color=col)
+            axes[2].plot([x for x, y in have], [y['regimes']['own']['st_locate_ns'] for x, y in have], marker=mk, ms=2.5, lw=0.8, ls='--', color=BASE, markerfacecolor='none')
+            axes[3].plot([x for x, y in have], [y['regimes']['own']['list_ns'] / y['regimes']['own']['output'] for x, y in have], marker=mk, ms=2.5, lw=0.8, color=col)
+            axes[3].plot([x for x, y in have], [y['regimes']['own']['st_list_ns'] / y['regimes']['own']['output'] for x, y in have], marker=mk, ms=2.5, lw=0.8, ls='--', color=BASE, markerfacecolor='none')
     for ax, lab in zip(axes, ('bytes (MB)', 'build time, all sizes (s)', 'locating time (ns)', 'listing time per vertex (ns)')):
         ax.set_xlabel('vertices (millions)'); ax.set_ylabel(lab); ax.set_xlim(0, None)
     axes[0].set_yscale('log'); axes[1].set_yscale('log'); axes[2].set_ylim(0, None); axes[3].set_ylim(0, None)
     axes[0].legend(handlelength=1.5, labelspacing=0.2, loc='lower right')
-    axes[1].legend(handles=[Line2D([], [], color='0.3', lw=0.9, label='chain index'), Line2D([], [], color='0.3', lw=0.9, ls='--', label='S trees / CND')], loc='lower right')
+    axes[1].legend(handles=[Line2D([], [], color=OURS, lw=0.9, label='ChainIndex'), Line2D([], [], color=BASE, lw=0.9, ls='--', label='STrees / CND')], loc='lower right')
     fig.tight_layout(w_pad=1.0); fig.savefig(OUT / 'fig_scale.pdf'); plt.close(fig)
 
 if __name__ == '__main__':
