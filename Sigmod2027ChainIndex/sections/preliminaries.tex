@@ -19,6 +19,31 @@ The index answers two queries over every size at once:
 \end{itemize}
 Membership of a vertex in a community and the ladder of nested communities above a vertex follow from the community query and are not separate targets.
 
+\stitle{Running example.}
+Figure~\ref{fig:example} shows the graph used throughout: a 5-clique $A=\{a_1,\dots,a_5\}$, a 4-clique $B=\{x,b_1,b_2,b_3\}$, a complete bipartite $K_{3,3}$ on $\{u_1,u_2,u_3\}\times\{w_1,w_2,w_3\}$ whose six vertices are all adjacent to $x$ (we write $W$ for the six), and one edge $a_5b_3$ that lies in no triangle.
+Its core values are: the vertices of $A$ have $\kappa_2,\dots,\kappa_5=4,6,4,1$; $b_1,b_2,b_3$ have $3,3,1$; $x$ has $4,3,1$; the vertices of $W$ have $4,3$.
+So $\omg{a_i}=5$, $\omg{b_i}=\omg{x}=4$ and $\omg{u_i}=\omg{w_i}=3$.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[scale=0.8, every node/.style={font=\scriptsize}, v/.style={circle, draw, inner sep=0.8pt, minimum size=11pt},
+  cA/.style={v, fill=blue!18}, cB/.style={v, fill=orange!35}, cW/.style={v, fill=green!22}, cX/.style={v, fill=red!30, thick}]
+% A = K5 (chain of five)
+\foreach \i in {1,...,5} { \node[cA] (a\i) at ({90+72*(\i-1)}:0.62) {$a_{\i}$}; }
+\foreach \i in {1,...,5} \foreach \j in {1,...,5} { \ifnum\i<\j \draw (a\i) -- (a\j); \fi }
+% B = K4 on x, b1, b2, b3 (chain of three plus x)
+\node[cB] (b1) at (1.9, 0.55) {$b_1$}; \node[cB] (b2) at (1.9, -0.55) {$b_2$}; \node[cB] (b3) at (1.25, 0) {$b_3$};
+\node[cX] (x) at (2.75, 0) {$x$};
+\draw (b1) -- (b2) -- (b3) -- (b1) (b1) -- (x) (b2) -- (x) (b3) -- (x);
+% W = x + K_{3,3} (chain of six)
+\foreach \i/\y in {1/0.8,2/0,3/-0.8} { \node[cW] (u\i) at (3.75, \y) {$u_{\i}$}; \node[cW] (w\i) at (4.85, \y) {$w_{\i}$}; }
+\foreach \i in {1,2,3} \foreach \j in {1,2,3} { \draw (u\i) -- (w\j); }
+\foreach \i in {1,2,3} { \draw (x) -- (u\i); \draw (x) -- (w\i); }
+% the edge in no triangle
+\draw[densely dashed] (a5) -- (b3);
+\end{tikzpicture}
+\caption{The running example: $A=K_5$, $B=K_4\ni x$, $W=K_{3,3}$ joined to $x$, and the edge $a_5b_3$; colours are the four chains of Section~\ref{sec:chains}.}\label{fig:example}
+\end{figure}
+
 \stitle{The baseline: one tree per size.}
 For a fixed $s$ the nuclei are laminar in $k$ (Section~\ref{sec:hierarchy}), so they form a tree, and a DFS order of the vertices makes every community a contiguous slice of one array.
 Storing that tree and array for every size, together with every value $\core{s}{v}$, is the fastest simple exact representation: a community is one memory copy.

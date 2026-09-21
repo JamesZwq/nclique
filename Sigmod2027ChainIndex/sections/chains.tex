@@ -37,6 +37,20 @@ The transposition of $u$ and $w$ is an automorphism of $G$; it preserves every c
 
 Chains are much coarser than twin classes on real graphs: twin classes have 1.03 to 1.28 vertices on average on our inputs, while \dblp has 13,459 chains for 317,080 vertices and \webuk has 839 chains for 129,632 vertices.
 
+\begin{proposition}[the coarsest lossless partition]\label{prop:coarsest}
+Call a partition $P$ of $V$ lossless if every community of every size and level is a union of blocks of $P$.
+The chain partition is lossless, and every lossless partition is at least as fine: each of its blocks lies inside one chain.
+\end{proposition}
+\begin{proof}
+Losslessness of chains is Lemma~\ref{lem:union}.
+Let $P$ be lossless and let $u,v$ share a block of $P$; we show $\chain{u}=\chain{v}$.
+By Theorem~\ref{thm:chains} it suffices to show $\own{s}{u}=\own{s}{v}$ at every size.
+If $\core{s}{u}>\core{s}{v}$, the community of $u$ at $(s,\core{s}{u})$ contains $u$ and not $v$, and is not a union of blocks.
+If $\core{s}{u}=\core{s}{v}=k$ and $\own{s}{u}\ne\own{s}{v}$, these two $(s,k)$-nuclei are disjoint, so the community of $u$ at $(s,k)$ again contains $u$ and not $v$.
+Hence the own nodes agree.
+\end{proof}
+So an exact index cannot store fewer than the chains, and storing more than the chains stores nothing that any answer needs; the vertex-to-chain map is the part of the index that no exact representation can avoid.
+
 \stitle{Relation to other atomic units.}
 The SGL index for bipartite bi-components \cite{SGL} also builds its index from cohesive units that are neither nested nor overlapping, so that each vertex is retrieved once per query; there, however, a vertex belongs to one unit per non-dominated parameter pair, so the units overlap and a vertex is stored several times.
 In the $(1,s)$-nucleus setting the per-size laminarity together with Theorem~\ref{thm:chains} makes the units a partition: each vertex is stored once and retrieved once.
@@ -47,27 +61,6 @@ They are not bounded by the number of canonical nodes: two vertices with the sam
 On our graphs the ratio of chains to nodes ranges from 0.26 to 5.67, so the saving is empirical: it is the number of vertices per chain, and Section~\ref{sec:exp} shows that this single quantity predicts the compression.
 
 \stitle{Example.}
-Figure~\ref{fig:example} shows a 15-vertex graph: a 5-clique $A=\{a_1,\dots,a_5\}$, a 4-clique $B=\{x,b_1,b_2,b_3\}$, a complete bipartite $K_{3,3}$ on $\{u_1,u_2,u_3\}\times\{w_1,w_2,w_3\}$ joined to $x$ ($W$), and one edge $a_5b_3$ that lies in no triangle.
-Core values: $A$ has $4,6,4,1$ at $s=2..5$; $b_i$ have $3,3,1$; $x$ has $4,3,1$; the six vertices of $W$ have $4,3$.
-The own nodes give four chains: $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$, $\{u_1,\dots,w_3\}$ and $\{x\}$.
-The vertex $a_5$ has one more edge than $a_1$ but the same own node at every size; $x$ shares the own nodes of $W$ at $s=2,3$ and leaves them at $s=4$, where it lies in the 4-clique $B$ and the vertices of $W$ lie in no 4-clique.
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[scale=0.8, every node/.style={font=\scriptsize}, v/.style={circle, draw, inner sep=0.8pt, minimum size=11pt},
-  cA/.style={v, fill=blue!18}, cB/.style={v, fill=orange!35}, cW/.style={v, fill=green!22}, cX/.style={v, fill=red!30, thick}]
-% A = K5 (chain of five)
-\foreach \i in {1,...,5} { \node[cA] (a\i) at ({90+72*(\i-1)}:0.62) {$a_{\i}$}; }
-\foreach \i in {1,...,5} \foreach \j in {1,...,5} { \ifnum\i<\j \draw (a\i) -- (a\j); \fi }
-% B = K4 on x, b1, b2, b3 (chain of three plus x)
-\node[cB] (b1) at (1.9, 0.55) {$b_1$}; \node[cB] (b2) at (1.9, -0.55) {$b_2$}; \node[cB] (b3) at (1.25, 0) {$b_3$};
-\node[cX] (x) at (2.75, 0) {$x$};
-\draw (b1) -- (b2) -- (b3) -- (b1) (b1) -- (x) (b2) -- (x) (b3) -- (x);
-% W = x + K_{3,3} (chain of six)
-\foreach \i/\y in {1/0.8,2/0,3/-0.8} { \node[cW] (u\i) at (3.75, \y) {$u_{\i}$}; \node[cW] (w\i) at (4.85, \y) {$w_{\i}$}; }
-\foreach \i in {1,2,3} \foreach \j in {1,2,3} { \draw (u\i) -- (w\j); }
-\foreach \i in {1,2,3} { \draw (x) -- (u\i); \draw (x) -- (w\i); }
-% the edge in no triangle
-\draw[densely dashed] (a5) -- (b3);
-\end{tikzpicture}
-\caption{The running example (15 vertices, 4 chains).}\label{fig:example}
-\end{figure}
+In the running example (Figure~\ref{fig:example}) the own nodes give four chains: $\{b_1,b_2,b_3\}$ with own nodes (root, $N$, $B$) at sizes 2, 3, 4; $\{a_1,\dots,a_5\}$ with $(A,A,A,A)$ at sizes 2 to 5; $\{u_1,\dots,w_3\}$ with $(W\cup\{x\},N)$; and $\{x\}$ with $(W\cup\{x\},N,B)$.
+The vertex $a_5$ has one more edge than $a_1$ but the same own node at every size, so the extra edge is invisible to every query; $x$ shares the own nodes of $W$ at sizes 2 and 3 and leaves them at size 4, where it lies in the 4-clique $B$ and the vertices of $W$ lie in no 4-clique.
+
