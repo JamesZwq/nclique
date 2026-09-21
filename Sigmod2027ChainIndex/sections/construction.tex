@@ -1,6 +1,24 @@
 \section{Construction}\label{sec:construction}
 
 The index is built from one all-size peel and one pass per size, without ever holding all core values at once; the peel is ours and is described here so that the construction stands on its own.
+Figure~\ref{fig:pipeline} shows the stages and what flows between them.
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, stage/.style={draw, rounded corners=2pt, align=center, minimum height=9mm, inner sep=3pt, text width=23mm}, flow/.style={-latex, thick}, lab/.style={font=\tiny, fill=white, inner sep=1pt, align=center}]
+\node[stage] (tree) at (0,0) {\textbf{clique tree}\\ built once (pivoting); paths $(H,Q)$ for every size};
+\node[stage] (peel) at (3.9,0) {\textbf{all-size peel}\\ $s=2,3,\dots$: order replay under the certificate, exact peel otherwise};
+\node[stage] (row) at (7.8,0) {\textbf{tree of size $s$}\\ activate vertices by value, join live leaves, canonical nodes, own nodes};
+\node[stage] (trie) at (11.7,0) {\textbf{chains}\\ prefix trie refined by the own nodes of size $s$; ranks by DFS};
+\node[stage] (lay) at (15.6,0) {\textbf{layout}\\ aligned labels, run arrays, entries, residues, widths};
+\draw[flow] (tree) -- node[lab] {counts as\\ binomial sums} (peel);
+\draw[flow] (peel) -- node[lab] {values of size $s$\\ (two-row window)} (row);
+\draw[flow] (row) -- node[lab] {own node of\\ every vertex} (trie);
+\draw[flow] (trie) -- node[lab] {chain of\\ every vertex} (lay);
+\draw[flow] (row.south) .. controls +(0,-0.9) and +(0,-0.9) .. node[lab, below=1pt] {tops, parents and own nodes of every size, kept per chain} (lay.south);
+\end{tikzpicture}
+\caption{Construction: one clique tree serves every size; the peel streams the values of one size at a time; each size's tree is built as its values arrive and immediately reduced to chains; the layout pass turns the chain trie into labels, run arrays and residues.}\label{fig:pipeline}
+\end{figure*}
 
 \stitle{Core values: one clique tree, every size.}
 The counts come from a pivoting clique tree \cite{Pivoter}, built once: its paths partition the $s$-cliques of every size at the same time, a path with mandatory set $H$ and optional set $Q$ representing the cliques $H\cup X$ for $X\subseteq Q$, $|X|=s-|H|$, so the number of $s$-cliques of a vertex inside any vertex set is a sum of binomial coefficients over the paths through it.

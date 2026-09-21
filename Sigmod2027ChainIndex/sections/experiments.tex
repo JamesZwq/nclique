@@ -8,6 +8,7 @@ The baseline \strees is one tree and one DFS array per size with all core values
 Queries are drawn from the active vertices and their sizes $2\le s\le\omg{v}$: 20,000 community queries at the vertex's own level ($k=\core{s}{v}$), 20,000 at half that level, 1,000 at $k=1$, and 200,000 value queries; every latency is the median of five passes after one warm-up.
 Every number in the tables is generated from the recorded JSON evidence.
 
+\subsection{Why every size: two case studies}
 \expsection{Case study: the right clique size}
 The index exists because the size is part of the query; the first two experiments ask, on graphs with real semantics, what the size buys.
 Three SNAP graphs come with ground-truth communities (the top 5,000 by quality): \dblp (publication venues), com-amazon (product categories) and com-youtube (user groups).
@@ -50,6 +51,7 @@ Every community after size 2 is a handful of ranges and is listed in under 50~ns
 \input{tables/case_examples}
 \end{table*}
 
+\subsection{How small the index is}
 \expsection{Size against one tree per size}
 Table~\ref{tab:size} gives, for every graph, the number of chains, the vertices per chain, the share of core values that are stored explicitly, the index size and the size of \strees.
 The index is \ratiomin$\times$ to \ratiomax$\times$ smaller, median \ratiomedian$\times$.
@@ -80,6 +82,7 @@ The skyline deduplication of SGL \cite{SGL}, which we also implemented over chai
 \input{tables/layouts}
 \end{table*}
 
+\subsection{How fast the queries are}
 \expsection{Query latency}
 Table~\ref{tab:queries} reports, at the own level, the time to locate a community (climb and two entry reads), the number of ranges of the answer, its size, the time to list it as vertex labels, and the value query; beside the two community times stand those of \strees, measured in the same process on the same queries (own-node lookup, parent-pointer climb, one memory copy of the DFS slice).
 Locating takes \locmin{} to \locmax{}~ns (median \locmedian{}~ns); a community of 1.9 million vertices on the 4-million-vertex coauthorship graph is located in 11~ns and listed in 167~$\mu$s.
@@ -118,6 +121,7 @@ The index trades a constant per range for a constant per label, so it lists at t
 \caption{Own-level latency of the index (solid) and \strees (dashed) on the four largest graphs of the second server: (a) locating and (b) listing against the clique size, 5,000 queries per size; (c) listing against the answer size, deciles of the fixed workload.}\label{fig:profile}
 \end{figure*}
 
+\subsection{What it costs to build}
 \expsection{Construction}
 Table~\ref{tab:build} splits the build into the clique tree, the all-size peel, and the index passes, with the peak resident memory of the process.
 The index passes (trees, chains, run arrays, values) are a few percent of the total; the peel and its clique tree are the rest, and the peak memory is the clique tree.
@@ -156,6 +160,7 @@ The same table is the cost of answering a community query without an index: the 
 \input{tables/prior}
 \end{table*}
 
-\expsection{Correctness}
+\subsection{Correctness}
+\expsection{Brute force and cross-checks}
 For every labelled graph on at most six vertices, 200 random graphs on 7 to 10 vertices, split graphs and $K_8$ (\selfgraphs{} graphs) plus $K_{300}$, the nuclei were computed by brute force from clique enumeration and union-find, and every $(v,s,k)$ with $1\le k\le\core{s}{v}$ was queried: \selfcommunities{} community queries compared as sets, \selfvalues{} value checks, and \selfmembers{} membership checks across the build form, the compact form and the form loaded from disk, with exact-integer and double values, under a release build and under AddressSanitizer and UndefinedBehaviorSanitizer.
 On the real graphs the number of canonical nodes agrees with an independent implementation, and the index of a graph is byte-identical across the two servers even when the input files list the edges in different orders.

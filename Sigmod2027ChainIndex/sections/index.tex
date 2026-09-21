@@ -1,7 +1,38 @@
 \section{The Chain Index}\label{sec:index}
 
 The index has three blocks, all flat arrays: the vertex-to-chain map, one record per chain, and one tree with a run array per size.
-We describe each with the property it rests on.
+Figure~\ref{fig:layout} shows them for the running example; we describe each with the property it rests on.
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, every node/.style={inner sep=4pt}, box/.style={draw, rounded corners=2pt, align=left}]
+\node[box, anchor=north west] (map) at (0,0) {\textbf{Map} (aligned labels)\\[2pt]
+\begin{tabular}{@{}l@{\,}*{15}{@{\,}c}@{}}
+label & 0&1&2&3&4&5&6&7&8&9&10&11&12&13&14\\
+vertex & $b_1$&$b_2$&$b_3$&$a_1$&$a_2$&$a_3$&$a_4$&$a_5$&$u_1$&$u_2$&$u_3$&$w_1$&$w_2$&$w_3$&$x$\\
+start bit & 1&0&0&1&0&0&0&0&1&0&0&0&0&0&1\\
+\end{tabular}\\[2pt]
+rank directory: one count per 64 labels; $\mathrm{chain}(v)=\mathrm{rank}_1(v)-1$};
+\node[box, anchor=north west] (rec) at ([yshift=-6pt]map.south west) {\textbf{Chain records}\\[2pt]
+\begin{tabular}{@{}rlccll@{}}
+rank & chain & $\omega$ & $\sigma$ & residues & trajectory: own node at $s=2,3,\dots$\\
+0 & $\{b_1,b_2,b_3\}$ & 4 & 2 & -- & root, $N$, $B$\\
+1 & $\{a_1,\dots,a_5\}$ & 5 & 2 & -- & $A$, $A$, $A$, $A$\\
+2 & $\{u_1,\dots,w_3\}$ & 3 & 4 & $4,3$ & $W\cup\{x\}$, $N$\\
+3 & $\{x\}$ & 4 & 3 & $4$ & $W\cup\{x\}$, $N$, $B$\\
+\end{tabular}};
+\node[box, anchor=north west] (lay) at ([xshift=8pt]rec.north east) {\textbf{Layer $s=3$} (tree over chains, run array, entries)\\[2pt]
+\begin{tabular}{@{}lll@{}}
+node (preorder) & top & children\\
+0: $N=B\cup W\cup\{x\}$ & 3 & --\\
+1: $A$ & 6 & --\\
+\end{tabular}\\[3pt]
+DFS array over chains: $\{b_i\},\{u,w\},\{x\},\{a_i\}$ $\Rightarrow$ runs $[0,3),\ [8,15),\ [3,8)$\\[2pt]
+entries: $N\to(\text{run }0,\ \text{label }0)$, $A\to(\text{run }2,\ \text{label }3)$, sentinel $(3,\ 8)$\\[2pt]
+community of $b_1$ at $(3,3)$: head $[0,3)$, whole run $[8,15)$, no tail};
+\end{tikzpicture}
+\caption{The three blocks of the index on the running example (labels in chain order $\{b_i\}<\{a_i\}<\{u,w\}<\{x\}$). Values are stored only below the certification point: three numbers for the whole graph. At $s=3$ the two chains $\{u,w\}$ and $\{x\}$ own adjacent labels and merge into the run $[8,15)$.}\label{fig:layout}
+\end{figure*}
 
 \subsection{Aligned labels}\label{sec:labels}
 Chains partition $V$, so the vertices can be relabelled so that every chain is one interval of labels: chain $c$ owns $[\mathrm{start}(c),\mathrm{start}(c+1))$.
@@ -58,7 +89,7 @@ The saving is the collapse of the vertex axis: $\sum_v(\omg{v}-1)$ against $P$, 
 
 \stitle{Example, continued.}
 With the chains ranked $\{b_i\}<\{a_i\}<\{u,w\}<\{x\}$ the labels are $[0,3)$, $[3,8)$, $[8,14)$, $[14,15)$.
-At $s=3$ the forest has two roots, $N_2=B\cup W$ (top 3, chains $\{b_i\},\{u,w\},\{x\}$) and $A$ (top 6, chain $\{a_i\}$); the DFS array is $\{b_i\},\{u,w\},\{x\},\{a_i\}$, whose runs are $[0,3)$, $[8,15)$, $[3,8)$ (the last two chains of $N_2$ merge).
-The entries are $N_2\to(\text{run }0,\,0)$ and $A\to(\text{run }2,\,3)$.
-The community of $b_1$ at $(3,3)$ is $N_2$: head $[0,3)$, whole run $[8,15)$, empty tail, that is $\{b_1,b_2,b_3\}\cup\{u_1,\dots,w_3,x\}$.
+At $s=3$ the forest has two roots, $N=B\cup W\cup\{x\}$ (top 3, chains $\{b_i\},\{u,w\},\{x\}$) and $A$ (top 6, chain $\{a_i\}$); the DFS array is $\{b_i\},\{u,w\},\{x\},\{a_i\}$, whose runs are $[0,3)$, $[8,15)$, $[3,8)$ (the last two chains of $N$ merge).
+The entries are $N\to(\text{run }0,\,0)$ and $A\to(\text{run }2,\,3)$.
+The community of $b_1$ at $(3,3)$ is $N$: head $[0,3)$, whole run $[8,15)$, empty tail, that is $\{b_1,b_2,b_3\}\cup\{u_1,\dots,w_3,x\}$.
 The values stored are three numbers in total: $\core{2}{x}=4$ for chain $\{x\}$ ($\omega=4,\sigma=3$) and $\kappa_2=4,\kappa_3=3$ for chain $\{u,w\}$ ($\omega=3,\sigma=4$); chains $\{a_i\}$ and $\{b_i\}$ are certified from $s=2$.
