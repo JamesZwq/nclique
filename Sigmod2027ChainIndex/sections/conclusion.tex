@@ -1,12 +1,29 @@
 \section{Conclusion}\label{sec:conclusion}
+% 2026-09-21 house shape: the challenge nouns and the headline numbers verbatim; scope kept neutral.  Cadence pass.
 
-The clique size of a nucleus is a query parameter, and the case studies say why: the size that matches a ground-truth community changes from query to query, and on a co-purchase network the size zooms from the whole store to one shelf.
-An index for every size at once used to mean one hierarchy per size.
-We showed that the vertices no query can tell apart are exactly those with the same own node at every size, that these chains partition the graph and are the coarsest partition an exact index can use, and that a few layout decisions turn the partition into ranges of memory: aligned labels, a chain order under which size-2 communities are single intervals, run arrays with entry points that return any community as the fewest ranges in constant time, and values stored only below their certification point.
-The result is \ratiomin$\times$ to \ratiomax$\times$ fewer bytes than one tree per size at the speed of a memory copy, built for every size from one clique tree \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
+In this paper, we presented \chainidx, an index for the $(1,s)$-nucleus hierarchies of every clique size at once.
+%
+We addressed the repetition across sizes, the contiguity of communities and the construction of every size.
+%
+The vertices no query can tell apart are exactly the chains, and chains are the coarsest lossless partition.
+%
+Aligned labels, a chain order and run arrays turn the partition into communities returned in constant time.
+%
+On \numgraphs{} graphs the index is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size, median \ratiomedian$\times$.
+%
+It lists a community at the speed of a memory copy, and it is built for every size \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
+%
+Two case studies showed that the best size changes from query to query on DBLP and that the size zooms from a store to a shelf on Amazon.
 
-\stitle{Limits.}
-The index is static: an edge insertion can change core values at every size, and we have no maintenance beyond a rebuild.
-Its construction inherits the memory of the all-size peel, whose clique tree keeps every leaf; the three graphs whose trees exceed 350~GB have no index yet, and a peel that streams the tree is the way to them.
-Values are stored as doubles, exact below $2^{53}$, which covers every value on our graphs but not the counts of cliques in the hundreds of vertices that the peel handles internally with wide integers.
-Finally, the partition is stated for vertices ($r=1$); hierarchy equivalence of edges and larger $r$-cliques is defined the same way, and an index over it is not built here.
+\stitle{Scope.}
+The index is static; maintenance under edge insertions beyond a rebuild is future work.
+%
+Its construction inherits the memory of the clique tree of the peel.
+%
+Three graphs whose trees exceed $350$~GB have no index yet, and a peel that streams the tree is the way to them.
+%
+Values are stored as doubles, exact below $2^{53}$, which covers every value on our graphs.
+%
+The partition is stated for vertices.
+%
+Hierarchy equivalence of edges and larger cliques is defined the same way, and an index over it is future work.

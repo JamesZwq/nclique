@@ -1,12 +1,34 @@
-The $(1,s)$-nucleus decomposition of a graph assigns every vertex a core value for every clique size $s$ and organizes the vertices of each size into a hierarchy of nested communities, the $(s,k)$-nuclei.
-Answering community queries for every size at once from a stored index has so far meant storing one hierarchy per size, so that a vertex is stored once for every size it participates in.
-We show that this repetition is unnecessary.
-Two vertices are \emph{hierarchy-equivalent} when they have the same core value at every size and lie in the same community at every level; the equivalence classes, which we call chains, are exactly the vertices that no query can tell apart, and every community is a union of whole chains.
-Chains form a partition, so an index over chains stores each vertex once and retrieves each vertex once.
-We relabel the vertices so that every chain is one interval of ids, order the chains so that every size-2 community is a single interval, and store each size's hierarchy as a tree over chains whose DFS array is kept as maximal runs of consecutive ids with one entry point per node.
-A community is then located in constant time after a jump-pointer climb and reported as the fewest possible id ranges.
-Core values are stored per chain and only where a closed form does not apply: once a vertex's value at some size equals the binomial floor given by its largest clique, it equals that floor at every larger size.
+% 2026-09-21 house shape: the introduction compressed; challenge nouns and headline numbers verbatim.  Cadence pass.
+The $(1,s)$-nucleus decomposition assigns every vertex of a graph a core value for every clique size $s$.
+%
+It organizes the vertices of each size into a hierarchy of nested communities.
+%
+A community query names a vertex, a size and a level, and the size is chosen at query time.
+%
+Serving every size from a stored index has meant one hierarchy per size.
+%
+A vertex is then stored once for every size it lives in, and the index reaches hundreds of megabytes on graphs of a few hundred thousand vertices.
+%
+This paper shows that the repetition is unnecessary.
+%
+Two vertices are hierarchy-equivalent when no value or community query at any size tells them apart.
+%
+We prove that this holds exactly when the two vertices share their own node at every size.
+%
+The classes, which we call chains, are read off the per-size hierarchies, partition the vertices, and form the coarsest partition an exact index can use.
+%
+We propose \chainidx, an index over chains.
+%
+Aligned labels make every chain one interval of ids and every community a list of ranges; a chain order makes every size-$2$ community one range; per-size run arrays with entry points return any community as the fewest ranges in constant time.
+%
+Core values are stored only below the size at which they reach a closed form.
+%
 The index of every size is built from one clique tree, the sizes reusing one another's elimination order under a certificate.
-On \numgraphs{} graphs from five families the index is \ratiomin$\times$ to \ratiomax$\times$ smaller than one tree per size (median \ratiomedian$\times$); a community is located in tens of nanoseconds and listed at the speed of a memory copy of its vertices; and building every size at once is \priormin$\times$ to \priormax$\times$ faster than running a single-size decomposition once per size.
-Two case studies on graphs with real semantics show why the size is a query parameter: on DBLP the clique size whose community best matches a ground-truth community varies from query to query, and on Amazon's co-purchase network the size zooms from a core of 157,331 products to the six-album jazz shelf around ``Kind of Blue''.
-Correctness is verified against brute force on \selfgraphs{} graphs.
+%
+On \numgraphs{} graphs from five families, \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size (median \ratiomedian$\times$).
+%
+It locates a community in \locmin{} to \locmax{} nanoseconds and lists it at the speed of a memory copy.
+%
+It is built for every size \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
+%
+Two case studies on graphs with real semantics show that the best size changes from query to query on DBLP, and that the size zooms from a store of $157{,}331$ products to a six-album shelf on Amazon.
