@@ -35,57 +35,34 @@ The value query then reads the record of the chain (Section~\ref{sec:values}), a
 \end{algorithm}
 
 \stitle{Algorithm.}
+% 2026-09-22 compaction: the walk in nine sentences.
 Algorithm~\ref{alg:query} has two procedures, \Value and \Community.
 %
 \Value reads the chain of $v$ from the map (Line~\ref{ln:q-chain}) and returns $0$ when $s$ exceeds the chain's clique number (Line~\ref{ln:q-zero}).
 %
 Based on Theorem~\ref{thm:tail}, it returns the floor $\binom{\omega-1}{s-1}$ when $s$ is at or past the certification point (Line~\ref{ln:q-floor}), and otherwise the stored residue (Line~\ref{ln:q-residue}).
 %
-\Community reads the chain and its own node $X$ at size $s$ from the trajectory (Line~\ref{ln:q-own}).
+\Community reads the chain and its own node $X$ at size $s$ from the trajectory (Line~\ref{ln:q-own}) and climbs to the node nearest the root whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}), the community of $v$ at $(s,k)$ by Section~\ref{sec:strees}.
 %
-It then climbs towards the root, to the node nearest the root whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}).
+Besides its parent pointer, every node carries a \textit{jump pointer} to an ancestor, chosen as in the skip pointers of Myers~\cite{Myers1983}, so that a climb of $d$ levels takes $O(\log d)$ steps.
 %
-By Section~\ref{sec:strees} this node is the community of $v$ at $(s,k)$.
+A jump is taken whenever the jump target still has top at least $k$ (Line~\ref{ln:q-jump}); this is safe, since tops increase from a root downwards, so every node skipped over has top at least $k$ as well and none of them is the node nearest the root with that property.
 %
-The climb follows parent pointers.
+Nodes are numbered in the traversal order and every node knows its subtree size, so the node after the subtree of $X$ is $X+\mathrm{size}[X]$ (Line~\ref{ln:q-exit}), the sentinel for the last subtree.
 %
-Every node also carries a \textit{jump pointer} to an ancestor, chosen as in the skip pointers of Myers~\cite{Myers1983}, so that any climb of $d$ levels takes $O(\log d)$ steps.
-%
-A jump is taken whenever the jump target still has top at least $k$ (Line~\ref{ln:q-jump}).
-%
-The jump is safe.
-%
-Tops increase from a root downwards, so when the jump target has top at least $k$, every node skipped over has top at least $k$ as well, and none of them is the node nearest the root with that property.
-%
-Nodes are numbered in preorder and every node knows its subtree size.
-%
-The node after the subtree of $X$ is therefore $X+\mathrm{size}[X]$ (Line~\ref{ln:q-exit}).
-%
-For the last subtree in this order, it is the sentinel.
-%
-Based on Theorem~\ref{thm:retrieval}, the two entries give the answer (Lines~\ref{ln:q-entries} to~\ref{ln:q-three}).
-%
-The answer is one range when both entries lie in the same run, and otherwise a first range, whole runs and a last range.
+Based on Theorem~\ref{thm:retrieval}, the two entries give the answer (Lines~\ref{ln:q-entries} to~\ref{ln:q-three}): one range when both lie in the same run, and otherwise a first range, whole runs and a last range.
 
 \begin{example}\label{ex:query}
+% trace 2026-09-21 (LEDGER.md): Value(u1,3): chain 2 residues (4,3) -> 3.  Value(a2,4): C(4,3)=4.  Community(x,3,2): N entries (0,0), A (2,3).
 Consider Figure~\ref{fig:layout}.
 %
-For \Value{$u_1,3$}: $u_1$ has label $8$, three chain starts lie at or before it, and the chain is $2$ (Line~\ref{ln:q-chain}).
-%
-The chain has $\omega=3$, and its values $4$ and $3$ at sizes $2$ and $3$ never reach the floors $\binom{2}{1}=2$ and $\binom{2}{2}=1$, so $\sigma=\omega+1=4$.
-%
-Since $3<\sigma$, the answer is the residue of chain $2$ at size $3$, which is $3$ (Line~\ref{ln:q-residue}).
+For \Value{$u_1,3$}: the chain of $u_1$ is $2$ (Line~\ref{ln:q-chain}), with $\omega=3$ and $\sigma=4$, since its values $4$ and $3$ never reach the floors $\binom{2}{1}$ and $\binom{2}{2}$, so the answer is the residue at size $3$, which is $3$ (Line~\ref{ln:q-residue}).
 %
 For \Value{$a_2,4$}: the chain is $1$ with $\omega=5$ and $\sigma=2\le4$, and the answer is the floor $\binom{4}{3}=4$ (Line~\ref{ln:q-floor}).
 %
-For \Community{$x,3,2$}: the chain is $3$, and its trajectory gives the own node $N$ at size $3$ (Line~\ref{ln:q-own}).
+For \Community{$x,3,2$}: the chain is $3$ and its trajectory gives the own node $N$ at size $3$ (Line~\ref{ln:q-own}), a root, so the climb stops at once (Line~\ref{ln:q-climb}).
 %
-$N$ is one of the two roots of $\Tree{3}$, so the climb stops at once (Line~\ref{ln:q-climb}).
-%
-The node after $N$ in preorder is $A$ (Line~\ref{ln:q-exit}), and the entries are $(0,0)$ and $(2,3)$ (Line~\ref{ln:q-entries}).
-%
-The runs differ, and the answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last range $[3,3)$ (Line~\ref{ln:q-three}): ten vertices in two nonempty ranges.
-% trace 2026-09-21 (LEDGER.md): Value(u1,3): chain 2 residues (4,3) -> 3.  Value(a2,4): C(4,3)=4.  Community(x,3,2): N entries (0,0), A (2,3).
+The node after $N$ is $A$ (Line~\ref{ln:q-exit}), the entries are $(0,0)$ and $(2,3)$ (Line~\ref{ln:q-entries}), and the answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last range $[3,3)$ (Line~\ref{ln:q-three}): ten vertices in two nonempty ranges.
 \end{example}
 
 \stitle{Complexity.}
