@@ -1,4 +1,4 @@
-The $(1,s)$-nucleus decomposition of a graph assigns every vertex a core value for every clique size $s$ and organizes the vertices of each size into a hierarchy of nested communities, the $\Nuc{s}{k}$s.
+The $(1,s)$-nucleus decomposition of a graph assigns every vertex a core value for every clique size $s$ and organizes the vertices of each size into a hierarchy of nested communities, the $(s,k)$-nuclei.
 Answering community queries for every size at once from a stored index has so far meant storing one hierarchy per size, so that a vertex is stored once for every size it participates in.
 We show that this repetition is unnecessary.
 Two vertices are \emph{hierarchy-equivalent} when they have the same core value at every size and lie in the same community at every level; the equivalence classes, which we call chains, are exactly the vertices that no query can tell apart, and every community is a union of whole chains.
