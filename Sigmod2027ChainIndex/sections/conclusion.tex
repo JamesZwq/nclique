@@ -15,15 +15,5 @@ It lists a community at the speed of a memory copy, and it is built for every si
 %
 Two case studies showed that the best size changes from query to query on DBLP and that the size zooms from a store to a shelf on Amazon.
 
-\stitle{Scope.}
-The index is static; maintenance under edge insertions beyond a rebuild is future work.
-%
-Its construction inherits the memory of the clique tree of the peel.
-%
-Three graphs whose trees exceed $350$~GB have no index yet, and a peel that streams the tree is the way to them.
-%
-Values are stored as doubles, exact below $2^{53}$, which covers every value on our graphs.
-%
-The partition is stated for vertices.
-%
-Hierarchy equivalence of edges and larger cliques is defined the same way, and an index over it is future work.
+\stitle{Future work.}
+The index is static; its maintenance under edge insertions, and the same partition over edges and larger cliques (Section~\ref{sec:related}), are future work.

@@ -45,8 +45,6 @@ They are collaboration graphs (\textsf{ca-*}, \textsf{com-dblp}, \textsf{dblp-*}
 They range from $1{,}005$ to $4{,}049{,}537$ vertices, with largest cliques from $7$ to $500$ vertices; Table~\ref{tab:size} lists them with their number of sizes $s_{\max}$.
 %
 Three larger graphs, \textsf{com-lj}, \textsf{ca-hollywood-2009} and \textsf{com-orkut}, exhaust the 503~GB of the server inside the clique tree of the peel.
-%
-They have no index yet.
 
 \stitle{Metrics.}
 Queries are drawn from the vertices with $\omg{v}\ge2$ and their sizes $2\le s\le\omg{v}$.
@@ -62,9 +60,7 @@ Every number in the tables and figures is generated from the recorded measuremen
 \expsection{Index size}
 Table~\ref{tab:size} lists every graph with its number of chains, its vertices per chain and its share of values stored explicitly.
 %
-The next two columns are the sizes of \chainidx and of \strees; the last two, discussed in Exp-6, are the build time and the peak memory.
-%
-The last column is the ratio of the two sizes.
+The next three columns are the sizes of \chainidx and of \strees and their ratio; the last two, discussed in Exp-6, are the build time and the peak memory of \build.
 %
 \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than \strees, median \ratiomedian$\times$.
 %
@@ -165,7 +161,7 @@ Value queries take \valmin{} to \valmax{}~ns, median \valmedian{}~ns.
 %
 The slowest is \webuk, whose binomial table for cliques of $500$ vertices no longer fits the first-level cache.
 
-Figure~\ref{fig:regimes} shows the three levels of the workload for both indexes.
+Figure~\ref{fig:regimes} shows the three levels of the workload for both indexes on the \stpairs{} (graph, machine) pairs with a profile.
 %
 The left panel plots the listing time against the mean size of the answer, one point per graph and level.
 %
@@ -175,7 +171,7 @@ Listing time is linear in the size of the answer at every level, for \chainidx a
 %
 It lies between $0.05$ and $0.5$~ns per vertex above a fixed cost of a few nanoseconds.
 %
-Locating costs a median of \ownmedian{}~ns at the own level, \halfmedian{}~ns at half the level and \rootmedian{}~ns at $k=1$.
+On these pairs, locating costs a median of \ownmedian{}~ns at the own level, \halfmedian{}~ns at half the level and \rootmedian{}~ns at $k=1$.
 %
 The jump pointers make the climb to the root as cheap as no climb at all.
 %
