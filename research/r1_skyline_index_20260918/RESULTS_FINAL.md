@@ -1054,6 +1054,11 @@ both records: 2.8x (com-amazon, 6 sizes) to 814x, median 16x. Still
 running on tods1: web-it-2004 (432 sizes), ca-coauthors-dblp (337),
 soc-pokec, tech-as-skitter, wiki-Talk.
 
+2026-09-21 evening: web-it-2004 finished on tods1: 431 of 432 sizes, CND 11.4 h wall /
+39,572 s build+peel against a 66.5 s chain index build (595x); the record lands in
+`prior/tods1/` with the queue below. Still running: ca-coauthors-dblp (337 sizes), soc-pokec,
+tech-as-skitter, wiki-Talk.
+
 Pickup when the tods1 tmux sessions `prior1` -> `after1` -> `profile1`
 have ended (status 2026-09-21 evening: web-it-2004 at s = 171 of 432,
 ~120 s per size, so about nine hours for that graph alone; the two queued
