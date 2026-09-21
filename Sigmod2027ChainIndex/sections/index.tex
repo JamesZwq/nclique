@@ -80,11 +80,62 @@ At $s=2$ the whole array is one run by Theorem~\ref{thm:onerange}.
 After the climb to the right node (Section~\ref{sec:queries}) the community is therefore located with two entry reads and reported with the fewest ranges possible for the given order.
 
 \subsection{Values}\label{sec:values}
-Core values are constant on a chain (Theorem~\ref{thm:chains}), so each chain stores $\omega$, the certification point $\sigma$, and its residue $\core{s}{c}$ for $2\le s<\sigma$; for $s\ge\sigma$ the value is $\binomc{\omega-1}{s-1}$ from a table (Theorem~\ref{thm:tail}), and for $s>\omega$ it is $0$.
-Each chain also stores its trajectory, the own node of every size it participates in, which the community query starts from.
+% 2026-09-21 the certified tail moved here from the former hierarchy section (house order: the theorem where it is used).
+Core values are constant on a chain (Theorem~\ref{thm:chains}), so the values of a chain are one number per size from $2$ to its clique number $\omega$.
+%
+Most of them need not be stored.
+%
+A vertex lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of its largest clique alone, so its value can never fall below that number; the next theorem says that once the value reaches this floor at some size, it stays on the floor at every larger size.
+\begin{theorem}[floor and certified tail]\label{thm:tail}
+Let $2\le s\le\omg{v}$ and $f_s(v)=\binomc{\omg{v}-1}{s-1}$.
+\begin{enumerate}[label=(\alph*),leftmargin=*,nosep]
+\item $\core{s}{v}\ge f_s(v)$.
+\item If $\core{s}{v}=f_s(v)$ and $s<\omg{v}$, then $\core{s+1}{v}=f_{s+1}(v)$.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+(a) A largest clique $M$ containing $v$ has $\omg{v}$ vertices; every vertex of $M$ lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of $M$, and $M$ is connected through them, so $M$ lies in an $\Nuc{s}{f_s(v)}$.
 
-Node tops and residues are stored at a per-size byte width: for every size, the widest value of that size determines whether 1, 2, 4 or 8 bytes are used, fields are aligned to their width, and a query dispatches on the width once.
-Values are stored as doubles (integers below $2^{32}$ as 1-, 2- or 4-byte integers); the decomposition itself is computed with exact integers, and values below $2^{53}$ are stored exactly.
+(b) We use the Kruskal--Katona theorem in Lov\'asz's form \cite{kruskal1963,katona1968,lovasz1979}: $k\ge1$ distinct $s$-subsets of a ground set have at least $g_s(k)=\binomc{x}{s-1}$ distinct $(s-1)$-subsets, where $x\ge s$ is the real number with $\binomc{x}{s}=k$; both $x\mapsto\binomc{x}{s}$ and $x\mapsto\binomc{x}{s-1}$ increase strictly for $x\ge s-1$.
+%
+Let $N$ be the $\Nuc{s+1}{\core{s+1}{v}}$ containing $v$ and take any $u\in N$.
+%
+Removing $u$ from the at least $\core{s+1}{v}$ $(s+1)$-cliques of $N$ through $u$ leaves as many distinct $s$-subsets of the neighbours of $u$ in $N$; their $(s-1)$-shadow has at least $g_s(\core{s+1}{v})$ members, and each member together with $u$ is an $s$-clique of $N$ through $u$.
+%
+So every vertex of $N$ lies in at least $g_s(\core{s+1}{v})$ $s$-cliques of $N$, and $N$ is connected through them, because two $(s+1)$-cliques that share a vertex contain $s$-cliques that share it; therefore $\core{s}{v}\ge g_s(\core{s+1}{v})$.
+%
+Now suppose $\core{s+1}{v}>f_{s+1}(v)=\binomc{\omg{v}-1}{s}$.
+%
+Then the $x$ with $\binomc{x}{s}=\core{s+1}{v}$ exceeds $\omg{v}-1\ge s$, so $\core{s}{v}\ge g_s(\core{s+1}{v})=\binomc{x}{s-1}>\binomc{\omg{v}-1}{s-1}=f_s(v)$, contradicting $\core{s}{v}=f_s(v)$.
+%
+Since $\core{s+1}{v}\ge f_{s+1}(v)$ by (a), equality holds.
+\end{proof}
+We write $\sig{v}$, the \textit{certification point}, for the smallest size at which the value equals the floor; $\sig{v}\le\omg{v}+1$, the latter meaning that it never does.
+%
+For $s\ge\sig{v}$ the value is $\binomc{\omg{v}-1}{s-1}$ and is not stored; the values for $2\le s<\sig{v}$ are the \textit{residue} of $v$.
+\begin{example}\label{ex:tail}
+Consider Figure~\ref{fig:example}.
+%
+The vertices of $A$ have $\omega=5$ and $\core{2}{a_i}=4=\binom{4}{1}$, so $\sig{a_i}=2$ and no value of $A$ is stored: $\core{3}{a_i}=\binom{4}{2}=6$, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{5}{a_i}=\binom{4}{4}=1$ are read from the floor.
+%
+The vertices $b_i$ have $\omega=4$ and $\core{2}{b_i}=3=\binom{3}{1}$, so $\sig{b_i}=2$ as well.
+%
+The vertex $x$ has $\omega=4$, $\core{2}{x}=4>\binom{3}{1}$ and $\core{3}{x}=3=\binom{3}{2}$, so $\sig{x}=3$ and its residue is the single value $\core{2}{x}=4$.
+%
+The six vertices adjacent to $x$ have $\omega=3$, $\core{2}{u_i}=4>2$ and $\core{3}{u_i}=3>1$, so $\sig{u_i}=4=\omega+1$ and both values are residues.
+%
+The whole graph stores three values.
+\end{example}
+\begin{remark}
+On real graphs the tail carries most values: \dblp has $1{,}246{,}933$ pairs $(v,s)$ with $\core{s}{v}\ge1$ and stores $84{,}010$ residues per vertex, or $9{,}737$ per chain; \webuk stores one residue for $23.5$ million pairs.
+\end{remark}
+Each chain therefore stores $\omega$, $\sigma$ and its residue, and reads every other value from a table of binomial coefficients; for $s>\omega$ the value is $0$.
+%
+Each chain also stores its \textit{trajectory}, the own node of every size it participates in, which the community query starts from.
+%
+Node tops and residues are stored at a per-size byte width: for every size, the widest value of that size determines whether $1$, $2$, $4$ or $8$ bytes are used, fields are aligned to their width, and a query dispatches on the width once.
+%
+Values are stored as doubles, integers below $2^{32}$ as $1$-, $2$- or $4$-byte integers; the decomposition itself is computed with exact integers, and values below $2^{53}$ are stored exactly.
 
 \subsection{Size}\label{sec:size}
 Let $C$ be the number of chains, $N$ the number of canonical nodes over all sizes, $P=\sum_c(\omega(c)-1)$ the number of (chain, size) pairs and $R$ the number of runs over all sizes.
