@@ -6,28 +6,28 @@
 \stitle{Hardware.}
 All algorithms are implemented in C++ and run single-threaded.
 %
-We use a laptop (Apple M-series) and two Ubuntu 22.04 servers (GCC 11.4, 96 cores, 503~GB of memory).
+We use a laptop (Apple M-series) and two Ubuntu 22.04 servers, server 1 and server 2 (GCC 11.4, 96 cores, 503~GB of memory each).
 %
-No timing run of ours shared a machine with another timing run of ours.
+We never ran two timing runs at the same time on one machine.
 %
-The servers carried a background load of 1 to 8 from other users.
+Jobs of other users ran on the servers at the same time, with a load average of 1 to 8 on the 96 cores.
 %
-Laptop and server latencies are not directly comparable, since the servers' single-core speed is 1.5 to 3 times lower.
+One core of the laptop is 1.5 to 3 times faster than one core of a server, so laptop and server latencies are not directly comparable.
 %
 Every table names its machine.
 
 \stitle{Algorithms.}
 \chainidx is the index of Sections~\ref{sec:index} to~\ref{sec:construction}, built by \build and queried by \query.
 %
-\strees is the index of Section~\ref{sec:strees}, one tree and one DFS array per size with every value stored.
+\strees is the index of Section~\ref{sec:strees}, one tree and one depth-first array per size with every value stored.
 %
-Its size is computed from the same decomposition.
+Its size is computed from the same core values and trees as \chainidx.
 %
 Its query latency is measured on the same decomposition and the same queries as \chainidx.
 %
 \cnd is the published counting-based nucleus decomposition~\cite{Zhang2026NucleusCounting}, run once per size with its default settings.
 %
-It computes core values only, and it competes on construction and not on storage.
+It computes core values only, so it is compared on build time and not on index size.
 
 \stitle{Datasets.}
 We use \numgraphs{} real graphs from five families.
@@ -36,16 +36,22 @@ They are collaboration graphs (\textsf{ca-*}, \textsf{com-dblp}, \textsf{dblp-*}
 %
 They range from $1{,}005$ to $4{,}049{,}537$ vertices, with largest cliques from $7$ to $500$ vertices.
 %
-Table~\ref{tab:size} lists them with their number of sizes $s_{\max}$.
+Table~\ref{tab:size} lists them with their largest clique size $s_{\max}$.
 %
-Three larger graphs, \textsf{com-lj}, \textsf{ca-hollywood-2009} and \textsf{com-orkut}, exhaust the 503~GB of the server inside the clique tree of the peel.
+The sizes with a nonzero value are $2$ to $s_{\max}$, that is $s_{\max}-1$ sizes.
+%
+Three larger graphs, \textsf{com-lj}, \textsf{ca-hollywood-2009} and \textsf{com-orkut}, run out of the 503~GB of memory of the servers while the clique tree of the peel is built.
 
 \stitle{Metrics.}
-Queries are drawn from the vertices with $\omg{v}\ge2$ and their sizes $2\le s\le\omg{v}$.
+Queries draw a vertex that lies in an edge and a size $s$ between $2$ and its clique number.
 %
-The workload has $20{,}000$ community queries at the vertex's own level ($k=\core{s}{v}$), $20{,}000$ at half that level, $1{,}000$ at $k=1$, and $200{,}000$ value queries.
+The workload has $20{,}000$ community queries at the vertex's own level, $k=\core{s}{v}$, $20{,}000$ at half that level (rounded down, at least $1$), and $1{,}000$ at $k=1$.
 %
-Every latency is the per-query average of the median of five passes after one warm-up pass.
+It also has $200{,}000$ value queries, which ask for a core value.
+%
+Each workload runs six times.
+%
+The first run warms up, and the latency is the median over the other five of the total time divided by the number of queries.
 %
 Index sizes are measured in memory.
 %
@@ -61,17 +67,17 @@ The last two, discussed in Exp-6, are the build time and the memory usage of \bu
 %
 \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than \strees, median \ratiomedian$\times$.
 %
-The ratio follows the vertices per chain.
+The ratio grows with the number of vertices per chain.
 %
-\emailcore, with $1{,}005$ vertices in $667$ chains, is the worst case at \ratiomin$\times$.
+\emailcore, with $1{,}005$ vertices in $667$ chains, $1.5$ per chain, is the worst case at \ratiomin$\times$.
 %
-\webuk, with $129{,}632$ vertices in $839$ chains and cliques of $500$ vertices, is the best at \ratiomax$\times$.
+\webuk, with $129{,}632$ vertices in $839$ chains, $154$ per chain, and cliques of $500$ vertices, is the best at \ratiomax$\times$.
 %
-The two coauthorship graphs with the largest cliques compress by $45.8\times$ and $12.0\times$.
+The two collaboration graphs with the largest cliques, \textsf{ca-coauthors-dblp} and \textsf{dblp-coauthor}, compress by $45.8\times$ and $12.0\times$.
 %
 The web graphs compress by $5.7\times$ to $48.7\times$, and the social graphs by $2.9\times$ to $15.9\times$.
 %
-If the graph is not stored in the index's order, the permutation of $n$ labels lowers the ratios to \permmin$\times$ to \permmax$\times$ (median \permmedian$\times$).
+If the graph keeps its original vertex ids, the index also stores the permutation from ids to labels (Section~\ref{sec:labels}), $n$ labels, which lowers the ratios to \permmin$\times$ to \permmax$\times$ (median \permmedian$\times$).
 
 \begin{table*}[t]
 \centering\footnotesize
@@ -82,44 +88,38 @@ If the graph is not stored in the index's order, the permutation of $n$ labels l
 \expsection{Size by part}
 On the collaboration, web and product graphs the per-size trees with their run arrays are $58$ to $74$ percent of the index.
 %
-The chain records are $23$ to $41$ percent.
+The records of the chains (Section~\ref{sec:values}) are $23$ to $41$ percent.
 %
-On the social and citation graphs, where chains are shorter, the chain records reach $44$ to $58$ percent.
+On the social and citation graphs, where chains are shorter, the records reach $44$ to $58$ percent.
 %
-Most of it is the trajectories, one node id per chain and size.
+Most of a record is the trajectory, one node id per chain and size.
 %
-The map is $3$ to $13$ percent.
+The vertex-to-chain map is $3$ to $13$ percent.
 %
-The values are a small part everywhere once only the residues are stored.
+The values are a small part everywhere, since only the residues are stored (Theorem~\ref{thm:tail}).
 %
-The certified tail (Theorem~\ref{thm:tail}) makes them small.
+Table~\ref{tab:size} gives, for every graph, the share of the pairs $(v,s)$ with a nonzero value whose value is a residue: it ranges from \storedmin{} percent to \storedmax{} percent, with a median of \storedmedian{} percent.
 %
-The share of active (vertex, size) pairs whose value must be stored ranges from \storedmin{} percent to \storedmax{} percent, with a median of \storedmedian{} percent (Table~\ref{tab:size}).
-%
-On \webuk one residue serves $23.5$ million pairs.
-%
-\emailcore stores \storedmax{} percent of its values.
+\webuk has $23.5$ million such pairs and stores one residue in total; \emailcore stores \storedmax{} percent of its values.
 %
 The share is lowest on the graphs with large cliques, where most of a vertex's values lie in its tail.
 %
-It is highest on the sparse social and citation graphs, where $\sigma$ is close to $\omega$.
+It is highest on the sparse social and citation graphs, where the certification point is close to the clique number.
 
 \expsection{Design study}
-Table~\ref{tab:layouts} isolates the layout decisions on five graphs.
+Table~\ref{tab:layouts} measures the layout decisions one at a time on five graphs.
 %
-Each column is one layout, and each row its size on one graph.
+Each column is one layout, and each cell is the size of that layout on one graph.
 %
-Trees over twin classes do not help, since twin classes have $1.03$ to $1.28$ vertices.
+Trees over twin classes (Section~\ref{sec:chains}) do not help, since twin classes have $1.03$ to $1.28$ vertices on average.
 %
 Trees over chains with an explicit vertex-to-chain map are $2.5\times$ to $4.5\times$ smaller than \strees.
 %
-Aligned labels remove the map and turn answers into ranges, and run arrays with entry points give the final sizes.
+Aligned labels remove the map and turn answers into ranges, and the runs with their entries give the final sizes.
 %
-We also measured the skyline deduplication of SGL~\cite{SGL} over chains.
+We also measured the skyline layout of SGL~\cite{SGL} over chains, which stores one entry per chain and non-dominated size.
 %
-It was $0.99\times$ to $2.28\times$ smaller than the corresponding tree layout but $2$ to $3$ times slower to query.
-%
-It is not part of the index.
+Over chains it took $1.01$ to $1.12$ times the space of the tree layout and $2.3$ to $6.3$ times longer to answer an own-level query, so it is not part of the index.
 
 \begin{table*}[t]
 \centering\footnotesize
@@ -132,55 +132,51 @@ Table~\ref{tab:queries} reports the own-level community query and the value quer
 %
 The community columns are the time to locate a community, the number of ranges of the answer, its size, and the time to list it as vertex labels.
 %
-Beside the two community times stand those of \strees on the same queries.
+\strees lists a community by copying its slice of the array, one memory copy.
+%
+The table also gives the two times of \strees on the same queries.
 %
 Locating takes \locmin{} to \locmax{}~ns, median \locmedian{}~ns.
 %
-A community of $1.9$ million vertices on the $4$-million-vertex coauthorship graph is located in $11$~ns and listed in $167~\mu$s.
+A community of $1.9$ million vertices on \textsf{dblp-coauthor}, the graph of $4$ million vertices, is located in $11$~ns and listed in $167~\mu$s.
 %
-At the own level \strees locates in about \stlocown{} of that time.
+At the own level \strees locates in about half the time of \chainidx.
 %
 It reads the own node from the vertex directly, whereas \chainidx maps the vertex to its chain first and then reads the trajectory and the entry.
 %
 Listing costs \pervmin{} to \pervmax{}~ns per vertex on the graphs whose mean answer has at least a thousand vertices.
 %
-On the two graphs with answers below a hundred vertices the fixed cost of a query dominates.
+On \emailcore and \textsf{ca-GrQc}, whose answers have fewer than a hundred vertices, the fixed cost of a query dominates.
 %
-Against the memory copy of \strees, the listing time of \chainidx ranges from \stmin$\times$ to \stmax$\times$ (median \stmedian), faster on \stfaster{} of the \stpoints{} (graph, level) points.
+The listing time of \strees divided by that of \chainidx ranges from \stmin{} to \stmax{} (median \stmedian) over the \stpoints{} (graph, level) points of the three levels, and \chainidx is the faster one on \stfaster{} of them.
 %
-A run is one range however many labels it expands to.
+A run is reported as one range however many labels it expands to.
 %
-\chainidx is therefore faster where the answer is a few long ranges, on the social, product and web graphs.
-%
-It is slower where the answer is fragmented.
+\chainidx is therefore faster where the answer is a few long ranges, on the social, product and web graphs, and slower where the answer is split into many short ranges.
 %
 \emailcore, \textsf{cit-HepPh} and \textsf{ca-AstroPh} have $2$ to $5$ vertices per range, and there one range costs as much as tens of copied labels.
 %
 Value queries take \valmin{} to \valmax{}~ns, median \valmedian{}~ns.
 %
-The slowest is \webuk, whose cliques reach $500$ vertices.
+The slowest is \webuk.
 
-Figure~\ref{fig:regimes} shows the three levels of the workload for both indexes on the \stpairs{} (graph, machine) pairs with a profile.
+Figure~\ref{fig:regimes} shows the three levels of the workload for both indexes on the \stpairs{} (graph, machine) pairs of Table~\ref{tab:queries} that have both indexes.
 %
 The left panel plots the listing time against the mean size of the answer, one point per graph and level.
 %
 The right panel plots the locating time by level.
 %
-Listing time is linear in the size of the answer at every level, for \chainidx and for the copy alike.
-%
-It lies between $0.05$ and $0.5$~ns per vertex above a fixed cost of a few nanoseconds.
+Listing time grows linearly with the size of the answer at every level, for \chainidx and for \strees alike, at $0.05$ to $0.5$~ns per vertex above a fixed cost of a few nanoseconds.
 %
 On these pairs, locating costs a median of \ownmedian{}~ns at the own level, \halfmedian{}~ns at half the level and \rootmedian{}~ns at $k=1$.
 %
-With the jump pointers the climb to the root costs no more than no climb.
+With the jump pointers, the climb to the root at $k=1$ costs no more than the own-level query, which does not climb.
 %
 The half-level climb stops at an interior node and costs at most \halfmax{}~ns.
 %
-The parent-pointer climb of \strees has no such bound.
+The parent-pointer climb of \strees has no such bound: at the half level and at $k=1$ it costs up to \stlocdeepmax$\times$ the time of \chainidx.
 %
-At the two deeper levels it costs up to \stlocdeepmax$\times$ the time of \chainidx.
-%
-On the coauthorship graph, whose hierarchy has $5{,}543$ levels, the half level takes $1{,}086$~ns against $109$~ns.
+On \textsf{ca-coauthors-dblp}, whose hierarchy has $5{,}543$ levels, the half-level climb takes $1{,}086$~ns for \strees against $109$~ns for \chainidx.
 
 \begin{figure*}[t]
 \centering
@@ -195,29 +191,33 @@ On the coauthorship graph, whose hierarchy has $5{,}543$ levels, the half level 
 \end{table*}
 
 \expsection{Latency by clique size and by answer size}
-Figure~\ref{fig:profile} separates the two variables that the mixed workload averages, on two representative graphs of the second server, \textsf{web-BerkStan} and \textsf{cit-Patents}; the other profiled graphs show the same trends.
+Figure~\ref{fig:profile} separates two variables that the workload above averages, the clique size and the answer size, on two representative graphs measured on server 2, \textsf{web-BerkStan} and \textsf{cit-Patents}.
+%
+The other graphs of Table~\ref{tab:queries} show the same trends.
 %
 Panel (a) plots the locating time against the clique size, and panel (b) the listing time against the clique size.
 %
 Panel (c) plots the listing time against the answer size.
 %
-Panels (a) and (b) draw $5{,}000$ own-level queries per clique size, the vertex uniform among the vertices active at that size.
+Panels (a) and (b) use $5{,}000$ own-level queries per clique size $s$, with the vertex drawn uniformly among the vertices that lie in an $s$-clique.
 %
 \chainidx locates in \proflocmin{} to \proflocmax{}~ns at every size, highest between $s=3$ and $6$, where the per-size trees have the most nodes.
 %
 \strees locates in \profstlocmin{} to \profstlocmax{}~ns.
 %
-At $s=2$ and $3$, where the answers are large and consist of a few long runs, \chainidx lists the answer in \profsmallmin$\times$ to \profsmallmax$\times$ the speed of the memory copy.
+At $s=2$ and $3$, where the answers are large and consist of a few long runs, \chainidx lists the answer in \profsmallinvmax{} to \profsmallinvmin{} times the time of the memory copy.
 %
 From $s=4$ on, where the own-level answers shrink and spread over many ranges, the copy is faster.
 %
-It is up to \profbigmax$\times$ faster at $s=\profbigs$ on \textsf{cit-Patents}, where an answer has \profbigout{} vertices in \profbigranges{} ranges.
+It is up to \profbigmax$\times$ faster at $s=\profbigs$ on \textsf{cit-Patents}, where the mean answer has \profbigout{} vertices in \profbigranges{} ranges.
 %
-Panel (c) sorts the $20{,}000$ own-level queries of the fixed workload by answer size into deciles.
+Panel (c) sorts the $20{,}000$ own-level queries of the workload above by answer size into ten groups of equal count.
 %
-Below $10^5$ vertices the copy is \profdeclowmin$\times$ to \profdeclowmax$\times$ faster, and from $10^6$ vertices on the two coincide within \profdechigh{} percent.
+Below $10^5$ vertices the copy is \profdeclowmin$\times$ to \profdeclowmax$\times$ faster.
 %
-\chainidx trades a constant per range for a constant per label; the space it saves (Table~\ref{tab:size}) does not depend on the answer.
+Between $10^5$ and $10^6$ the gap closes, and from $10^6$ vertices on the two agree within \profdechigh{} percent.
+%
+\chainidx pays a constant per range where the copy pays a constant per label, and the space it saves (Table~\ref{tab:size}) is the same whatever the answers.
 
 \begin{figure*}[t]
 \centering
@@ -226,75 +226,65 @@ Below $10^5$ vertices the copy is \profdeclowmin$\times$ to \profdeclowmax$\time
 \end{figure*}
 
 \expsection{Construction}
-The last two columns of Table~\ref{tab:size} give the build time of \chainidx, clique tree and all-size peel and index passes together, and its memory usage.
+The last two columns of Table~\ref{tab:size} give the build time of \chainidx and its memory usage.
 %
-The index passes, the trees, the chain trie, the run arrays and the values, are a few percent of the total.
+The build time covers the clique tree, the peel of every size, and the index passes: the trees, the trie of the chains, the runs and the values (Section~\ref{sec:construction}).
+%
+The index passes are a few percent of the total.
 %
 The peel and its clique tree are the rest, and the memory usage is that of the clique tree.
 %
-The build takes $0.01$~s on \textsf{ca-GrQc} and $221$~s on the $4$-million-vertex coauthorship graph, with $8.8$~GB of memory there.
+The build takes $0.01$~s on \textsf{ca-GrQc} and $221$~s on \textsf{dblp-coauthor}, the graph of $4$ million vertices, with $8.8$~GB of memory there.
 %
 \dblp is built in $0.84$~s with $157$~MB.
 
 \expsection{Scalability}
 Figure~\ref{fig:scale} follows \textsf{cit-Patents} and \textsf{web-BerkStan} through vertex-induced random samples of $20$, $40$, $60$ and $80$ percent of their vertices up to the full graph.
 %
-The runs are on the second server.
+The runs are on server 2.
 %
-The x-axis is the number of vertices.
+The x-axis is the number of vertices of the sample.
 %
 The panels show the sizes of both indexes, then the build time of \chainidx and of \cnd run once per size, then the own-level locating and listing time of both indexes.
 %
-A sample keeps about the square of the fraction of the edges.
-%
-The curves therefore show a graph family growing in size and in density at once.
+A sample of a fraction $p$ of the vertices keeps about $p^2$ of the edges, so the samples grow in size and in density at once.
 %
 The largest cliques of \textsf{web-BerkStan} go from $45$ to $202$ vertices.
 %
-\chainidx grows about linearly with the vertices, $2.9$ to $3.2$ bytes per vertex on \textsf{cit-Patents} and $5.3$ to $12.6$ on \textsf{web-BerkStan} as its cliques grow.
+\chainidx grows with the vertices, at $2.9$ to $3.2$ bytes per vertex on \textsf{cit-Patents} and at $5.3$ to $12.6$ bytes per vertex on \textsf{web-BerkStan}, whose cliques grow with the sample.
 %
-\strees grows with the vertices times the sizes they take part in.
+\strees grows with the number of (vertex, size) pairs.
 %
-The ratio rises along each curve, from $7.7\times$ to $12.1\times$ and from $6.4\times$ to $19.2\times$.
+The ratio of the two sizes rises along each curve, from $7.7\times$ to $12.1\times$ on \textsf{cit-Patents} and from $6.4\times$ to $19.2\times$ on \textsf{web-BerkStan}.
 %
-The build grows faster than the graph: $0.56$ to $19.5$ seconds over five times the vertices of \textsf{cit-Patents}, and $0.21$ to $65.6$ seconds on \textsf{web-BerkStan}.
+The build time grows faster than the sample: from $0.56$ to $19.5$ seconds as the vertices of \textsf{cit-Patents} grow five times, and from $0.21$ to $65.6$ seconds on \textsf{web-BerkStan}.
 %
-\cnd once per size grows faster still.
+\cnd once per size grows faster still: its build and peel time divided by the build time of \chainidx rises from $6.6$ to $18$ along the \textsf{cit-Patents} curve and lies between $61$ and $135$ along the \textsf{web-BerkStan} curve.
 %
-Its ratio to the build of \chainidx rises from $6.6\times$ to $18\times$ along the \textsf{cit-Patents} curve and lies between $61\times$ and $135\times$ along the \textsf{web-BerkStan} curve.
-%
-Query latency does not move: locating stays between $21$ and $28$~ns and listing between $0.09$ and $0.21$~ns per vertex at every size.
+Query latency stays flat: locating stays between $21$ and $28$~ns and listing between $0.09$ and $0.21$~ns per vertex at every sample size.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_scale.pdf}
-\caption{Vary graph size.}\label{fig:scale}
+\caption{Scalability over vertex-induced samples.}\label{fig:scale}
 \end{figure*}
 
 \expsection{Against one decomposition per size}
-\cnd computes the $(1,s)$ core values of one size per run.
+\cnd computes the core values of one size per run, so obtaining every size with it means one run per size.
 %
-Obtaining every size with it means one run per size.
+Table~\ref{tab:prior} sums those runs over the sizes $2$ to $s_{\max}$ on \priorgraphs{} (graph, machine) pairs.
 %
-Table~\ref{tab:prior} sums those runs over $s=2,\dots,s_{\max}$ on \priorgraphs{} (graph, machine) pairs.
+It reports the end-to-end time of all runs and their build and peel time alone, against the whole build of \chainidx on the same machine.
 %
-It reports the wall time of the whole run and the build and peel time alone, against the whole build of \chainidx on the same machine.
+Counting only the build and peel time of \cnd, \chainidx is built faster by \priormin$\times$ on \textsf{com-amazon} (six sizes) to \priormax$\times$ on \webuk{} ($499$ sizes), median \priormedian$\times$.
 %
-Counting only the clique-tree build and peel of \cnd, \chainidx is built \priormin$\times$ (com-amazon, six sizes) to \priormax$\times$ (\webuk, $499$ sizes) faster, median \priormedian$\times$.
+Counting the end-to-end time of \cnd, which reads and sorts the graph for every size, the factors are larger still.
 %
-Counting the whole runs of \cnd, which read and sort the graph for every size, the factors are larger still.
+The clique tree is built once instead of once per size, and the peel of one size is reused by the next through the certificate of Theorem~\ref{thm:replay} and the bound of Section~\ref{sec:construction}.
 %
-The clique tree is built once instead of once per size.
+The ratio grows with the number of sizes: on \textsf{web-BerkStan} ($201$ sizes) the $2.0$ hours of build and peel of \cnd become $66$ seconds, and on \webuk{} $15.7$ hours become $70$ seconds.
 %
-The sizes share their peel through the certificate of Theorem~\ref{thm:replay} and the Kruskal--Katona cap.
-%
-The ratio grows with the number of sizes.
-%
-On \textsf{web-BerkStan} ($201$ sizes) the $2.3$ hours of \cnd become $66$ seconds, and on \webuk{} $15.7$ hours become $70$ seconds.
-%
-Table~\ref{tab:prior} also gives the cost of answering a community query without an index.
-%
-The smallest possible online answer is one decomposition at the queried size, seconds to minutes per query on these graphs, against the nanoseconds of Table~\ref{tab:queries}.
+Table~\ref{tab:prior} also gives the cost of answering a community query without an index: one decomposition at the queried size, seconds to minutes per query on these graphs, against the nanoseconds of Table~\ref{tab:queries}.
 
 \begin{table*}[t]
 \centering\footnotesize
@@ -305,11 +295,13 @@ The smallest possible online answer is one decomposition at the queried size, se
 \expsection{Case Study I: the best size per query}
 We study which clique size best recovers ground-truth communities.
 %
-Three SNAP graphs come with ground truth, the top $5{,}000$ communities of each: \dblp (publication venues), \textsf{com-amazon} (product categories) and \textsf{com-youtube} (user groups).
+Three graphs of the SNAP collection~\cite{leskovec2016snap} come with ground-truth communities, of which SNAP provides the $5{,}000$ of highest quality: \dblp (publication venues), \textsf{com-amazon} (product categories) and \textsf{com-youtube} (user groups).
 %
 Take a member $v$ of a ground-truth community $C$.
 %
-For every size $s\le\omg{v}$ and every level $k$, we score the $(s,k)$-nucleus of $v$ by its F1 against $C$.
+For every size $s\le\omg{v}$ and every level $k$, we score the $(s,k)$-nucleus of $v$ by its F1 score against $C$.
+%
+The F1 score is the harmonic mean of the precision and the recall of the nucleus as a guess of $C$.
 %
 The whole $(s,k)$ space of a query is scanned from the index without listing a community.
 %
@@ -319,9 +311,11 @@ The size of the nucleus comes from its entries.
 %
 The absolute scale of $k$ differs between sizes, and we compare the best level of each size.
 %
-The $k$-core index is size $2$ at its best level.
+The $k$-core at its best level, that is, size $2$, is the first choice.
 %
-Table~\ref{tab:casegt} compares four choices: the $k$-core index, the triangle size at its best level, the best single size for the graph, and the best size or (size, level) chosen per query.
+Table~\ref{tab:casegt} compares it with three other choices: the triangle size, $s=3$, at its best level; the best single size for the graph at its best level; and the best size chosen per query, at the own level.
+%
+The table also gives the best (size, level) chosen per query.
 %
 Table~\ref{tab:casehist} gives where the best size falls.
 %
@@ -330,14 +324,16 @@ The best size spreads over $2$ to $8$.
 %
 Size $2$ is best for $26$ percent of the queries, size $3$ for $23$ percent, size $4$ for $18$, size $5$ for $13$, and sizes $6$ and above for $20$.
 %
-Choosing the size per query gives an F1 of $0.179$, $3.6\times$ the $0.049$ of the $k$-core index and $1.2\times$ the $0.140$ of the best fixed size.
+Choosing the size and level per query gives an F1 of $0.179$, $3.6\times$ the $0.049$ of the $k$-core and $1.2\times$ the $0.147$ of the best fixed size, $s=5$, at its best level.
 %
-For $74$ percent of the queries some size other than $2$ beats every $k$-core.
+For $74$ percent of the queries, the remaining ones, some size other than $2$ beats the $k$-core at every level.
 %
 \sstitle{One size can be enough.}
-On \textsf{com-amazon} the triangle size alone reaches $0.824$ against $0.851$ for the per-query choice, and both are $1.8\times$ the $k$-core index.
+On \textsf{com-amazon} the triangle size alone reaches $0.824$ against $0.851$ for the per-query choice, $1.7\times$ and $1.8\times$ the $0.474$ of the $k$-core.
 %
-On \textsf{com-youtube} every cohesive model is far from the ground-truth groups, with F1 below $0.04$, a known property of that dataset.
+On \textsf{com-youtube} every size is far from the ground-truth groups, with F1 below $0.04$.
+%
+Its ground-truth groups are known to be sparse~\cite{dblp}.
 %
 The comparison says nothing there.
 %
@@ -361,42 +357,44 @@ Without the index, each size of the scan would be one decomposition of the graph
 \expsection{Case Study II: Amazon products across sizes}
 We study \textsf{com-amazon} joined with the SNAP product metadata (titles, groups and category paths), available for $334{,}852$ of its $334{,}863$ products.
 %
-For a query product $q$, the \textit{leaf purity} of a community is the share of its members that share a leaf category with $q$.
+For a query product $q$, the \textit{leaf purity} of a community is the fraction of its members whose leaf category is the leaf category of $q$.
 %
-Its \textit{subject purity} is the share that share a subject with $q$.
+Its \textit{subject purity} is the fraction of its members whose subject is the subject of $q$.
 %
 A subject is the third level of the category tree, such as Jazz, Computers \& Internet or Science Fiction \& Fantasy.
 %
-Table~\ref{tab:caseamazon} follows $5{,}000$ products, drawn uniformly among those active at size $3$, through their own-level community at every size.
+Table~\ref{tab:caseamazon} follows $5{,}000$ products, drawn uniformly among those that lie in a triangle, through their own-level community at every size.
 %
-\sstitle{Purity rises and size falls with the clique size.}
-At size $2$, the $k$-core, three quarters of the products sit in one core of $157{,}331$ products at $10$ percent leaf purity.
+\sstitle{Purity rises and the communities shrink with the clique size.}
+At size $2$ (the $k$-core), three quarters of the $5{,}000$ products sit in one core of $157{,}331$ products at $10$ percent leaf purity.
 %
-Size $3$ brings the median community to $38$ products at $44$ percent.
+Size $3$ brings the median community to $38$ products at $44$ percent leaf purity.
 %
 Size $4$ brings it to $11$ products at $70$ percent, and size $5$ to $8$ products at $79$ percent.
 %
-From size $4$ on, the community's dominant subject covers $99$ percent of its members.
+From size $4$ on, the most common subject of a community covers $99$ percent of its members on average.
 %
-\sstitle{The communities read as shelves.}
+\sstitle{The communities look like shelves.}
 Table~\ref{tab:caseexamples} lists six products.
 %
-``Kind of Blue'' goes from $36{,}878$ products ($1$ percent jazz) at size $2$ to $23$ Blue Note albums at size $3$.
+``Kind of Blue'' goes from $36{,}878$ products at size $2$, $1$ percent of them jazz, to $23$ albums of the Blue Note label at size $3$.
 %
 At size $5$ it is six jazz albums.
 %
 ``Introduction to Algorithms'' goes from the $157{,}331$-product core to $57$ computing books at size $3$ and $13$ theory textbooks at size $4$.
 %
-The Godfather soundtrack reaches $28$ products at size $5$ whose category purity is only $0.32$.
+The Godfather soundtrack reaches $28$ products at size $5$ at a leaf purity of only $32$ percent.
 %
-They still form one shelf: the four Godfather soundtracks with Jerry Vale, Lou Monte and ``Italian American Classics''.
+They still form one shelf: the four Godfather soundtracks among albums of Italian-American singers such as Jerry Vale and Lou Monte.
 %
 The category tree has no name for this community.
 %
 \sstitle{Practical guideline.}
-Size $3$ is the first size at which most communities become readable, and sizes $4$ and $5$ isolate the shelf.
+Size $3$ is the first size at which the median community, $38$ products, is small enough to read as a list.
 %
-Every community after size $2$ is a handful of ranges and is listed in under $50$~ns.
+Sizes $4$ and $5$ bring it to a shelf of $8$ to $11$ products at $70$ to $79$ percent leaf purity.
+%
+Each of these communities is a few ranges, and the six products of Table~\ref{tab:caseexamples} are listed in under $50$~ns at every size above $2$.
 
 \begin{table}[t]
 \centering\footnotesize

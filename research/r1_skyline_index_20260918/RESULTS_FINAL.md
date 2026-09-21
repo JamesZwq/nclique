@@ -41,8 +41,11 @@ analogue is stronger, a partition (chains, CHAINS.md C1-C3).
 ## 3. Candidate Algorithm Ideas
 
 1. Skyline dedup (SGL transfer, stage 2): one entry per vertex per
-   non-dominated size. Measured: 0.99-2.28x fewer bytes than S trees over
-   the same classes and 2-3x slower queries; a space/time trade only.
+   non-dominated size. Measured: 0.99-2.28x fewer structure bytes than S
+   trees over TWIN classes (stages/index.json), but over CHAINS it is
+   1.01-1.12x LARGER than the tree layout (stages/index_chains.json,
+   structure without block D) and 2.3-6.3x slower at the own level
+   (corrected 2026-09-22; the paper quotes the chain numbers).
 2. S trees over twin classes: 1.03-1.28 vertices per class at r = 1,
    the class map costs more than it saves.
 3. S trees over chains (stage 2, mode `chains`): 2.5-4.5x smaller than

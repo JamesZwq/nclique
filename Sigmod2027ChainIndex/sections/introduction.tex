@@ -6,24 +6,28 @@
 
 Graphs model relations between entities, and many graph-mining tasks look for groups of vertices that are densely connected inside~\cite{leskovec2016snap,fortunato2010community,Fang2020Survey}.
 %
-The $k$-core is the standard answer: the largest subgraph in which every vertex has at least $k$ neighbours~\cite{seidman1983network}.
+The $k$-core is a standard answer: the largest subgraph in which every vertex has at least $k$ neighbours~\cite{seidman1983network}.
 %
-The $(1,s)$-nucleus decomposition of Sariy\"uce et al.~\cite{firstNucleus} keeps the vertex as the unit (the $1$) and counts cliques of $s$ vertices around it instead of neighbours (the $s$).
+The $(1,s)$-nucleus decomposition of Sariy\"uce et al.~\cite{firstNucleus} counts, around each vertex, the cliques of $s$ vertices that contain it instead of its neighbours.
 %
-Fix a clique size $s$ and a level $k$.
+The $1$ says that the unit is a single vertex, and the $s$ is the clique size.
 %
-The community of a vertex is the largest connected set containing it in which every vertex lies in at least $k$ cliques of $s$ vertices inside the set.
+Choose a clique size $s$ and a level $k$.
+%
+The community of a vertex is the largest set containing it in which every vertex lies in at least $k$ cliques of $s$ vertices inside the set, and which is connected through these cliques.
 %
 Size $2$ gives the $k$-core, since a clique of two vertices is an edge; size $3$ gives the groups held together by triangles; larger sizes demand denser groups.
 %
-At every size a vertex has one community per level, and the largest level at which it has one is its \emph{core value} at that size.
+At a given size, a vertex has a community at every level up to some largest level, its \emph{core value} at that size, and none above it.
+%
+The communities of one size, nested by level, form the \emph{clique-core hierarchy} of that size.
 %
 The size is the parameter that selects the kind of group a query asks for.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_running.pdf}
-\caption{Running example: (a) the graph, with the cliques $A$ and $B=\{x,b_1,b_2,b_3\}$, six vertices adjacent to $x$, and the dashed edge $a_5b_3$; (b) to (d) the community of $x$ at its own level of sizes $2$, $3$ and $4$, shaded.}
+\caption{Running example: (a) the graph, with the cliques $A$ and $B=\{x,b_1,b_2,b_3\}$, six vertices adjacent to $x$, and the dashed edge $a_5b_3$; (b) to (d) the community of $x$ at its core value, for sizes $2$, $3$ and $4$, shaded.}
 \label{fig:example}
 \end{figure}
 
@@ -32,25 +36,37 @@ Consider the graph in Figure~\ref{fig:example}.
 %
 It has a $5$-clique $A=\{a_1,\dots,a_5\}$ and a $4$-clique $B=\{x,b_1,b_2,b_3\}$.
 %
-It also has a complete bipartite graph between $\{u_1,u_2,u_3\}$ and $\{w_1,w_2,w_3\}$, whose six vertices are all adjacent to $x$; we write $\{u_1,\dots,w_3\}$ for these six.
+It also has a complete bipartite graph between $\{u_1,u_2,u_3\}$ and $\{w_1,w_2,w_3\}$, whose six vertices are all adjacent to $x$.
+%
+We write $\{u_1,\dots,w_3\}$ for these six.
 %
 The edge $a_5b_3$ lies in no triangle.
 %
-At size $2$, the vertex $x$ has $9$ neighbours, and every one of them has at least $4$ neighbours except $b_1$ and $b_2$, which have $3$.
+At size $2$, the vertex $x$ has $9$ neighbours: $b_1,b_2,b_3$ and the six vertices $u_1,\dots,w_3$.
 %
-The core value of $x$ at size $2$ is $4$, and its community at level $4$ is the seven vertices $\{x,u_1,\dots,w_3\}$, shaded in Figure~\ref{fig:example}(b).
+Each $u_i$ or $w_j$ has $4$ neighbours, $b_3$ has $4$ thanks to the dashed edge, and $b_1$ and $b_2$ have $3$.
 %
-$A$ is a second connected $4$-core, cut off once $b_3$ drops out.
+The core value of $x$ at size $2$ is $4$: inside $\{x,u_1,\dots,w_3\}$ every vertex has at least $4$ neighbours.
+%
+No set containing $x$ gives every vertex $5$, since each $u_i$ has only $4$ in the whole graph.
+%
+The community of $x$ at level $4$ is these seven vertices, shaded in Figure~\ref{fig:example}(b).
+%
+$b_3$ is not among them, since without $b_1$ and $b_2$ it keeps two neighbours.
+%
+$A$ is a second community at level $4$, in which every vertex has four neighbours, separate from the first since $b_3$ links them only at level $3$.
 %
 At size $3$, $x$ lies in $12$ triangles, three inside $B$ and nine of the form $\{x,u_i,w_j\}$.
 %
-Its core value at size $3$ is $3$, and its community at level $3$ is $N=B\cup\{u_1,\dots,w_3\}$, ten vertices, Figure~\ref{fig:example}(c).
+Its core value at size $3$ is $3$, since each $u_i$ lies in only three triangles, and its community at level $3$ is $N=B\cup\{u_1,\dots,w_3\}$, ten vertices, Figure~\ref{fig:example}(c).
 %
 $A$ is a separate community, because the edge $a_5b_3$ lies in no triangle.
 %
-At size $4$, $x$ lies in one $4$-clique, its core value is $1$, and its community at level $1$ is $B$, Figure~\ref{fig:example}(d).
+At size $4$, $x$ lies in one $4$-clique, $B$, since no two of $u_1,u_2,u_3$ are adjacent.
 %
-The same vertex has a community of $7$, $10$ and $4$ vertices at its own level of sizes $2$, $3$ and $4$.
+Its core value is $1$, and its community at level $1$ is $B$, Figure~\ref{fig:example}(d).
+%
+The same vertex has a community of $7$, $10$ and $4$ vertices at its core value for sizes $2$, $3$ and $4$.
 %
 The size selects which group a query asks for.
 % trace 2026-09-21: tools/example_check.py; neighbours of x: b1,b2,b3,u1..u3,w1..w3 = 9; triangles of x: C(3,2)+3*3 = 12.
@@ -60,19 +76,19 @@ The size selects which group a query asks for.
 The size is the parameter a user changes when the groups of one size are too large or too small.
 %
 \sstitle{Collaboration networks.}
-In a coauthorship graph, where vertices are authors and edges join coauthors, the $k$-core around an author is a broad field~\cite{newman2001structure,ponomariov2016coauthorship}.
+In a coauthorship graph, where vertices are authors and edges join coauthors, the $k$-core around an author is a broad research area~\cite{newman2001structure,ponomariov2016coauthorship}.
 %
 The communities at larger sizes keep authors who repeatedly write papers with several of the same people.
 %
 \sstitle{Co-purchase networks.}
 In a product graph, an edge joins two products that are bought together~\cite{linden2003amazon}.
 %
-The community of a jazz album at size $2$ is a core of tens of thousands of products of every kind.
+The community of a jazz album at size $2$ is a core of more than a hundred thousand products of every kind.
 %
-At size $3$ it is the albums of the same record company, and at size $5$ the handful of albums a shop would place on the same shelf (Section~\ref{sec:exp}).
+At size $3$ it is $23$ albums of the same record label, and at size $5$ the few albums a shop would place on the same shelf (Section~\ref{sec:exp}).
 %
 \sstitle{Coordinated groups.}
-Accounts that act together on many of the same targets form cliques, and casual interaction does not~\cite{beutel2013copycatch,hooi2016fraudar}.
+Accounts that act together on many of the same posts or accounts form cliques, and casual interaction rarely does~\cite{beutel2013copycatch,hooi2016fraudar}.
 %
 Larger sizes keep such groups and drop the triangles that arise by chance.
 
@@ -81,13 +97,13 @@ A community query names a vertex $v$, a size $s$ and a level $k$, and asks for t
 %
 A value query asks only for the core value of $v$ at size $s$.
 %
-For a fixed size, the communities of all levels are nested, so containment arranges them in a tree.
+For a fixed size, a community at a higher level lies inside one community at each lower level, and communities at one level are disjoint, so the communities form a tree.
 %
-A depth-first traversal of that tree writes the vertices in an order in which every community is one contiguous block of an array~\cite{fastHierarchy,Fang2016CLtree}.
+A depth-first traversal of that tree, which writes each vertex at the smallest community containing it, gives an order in which every community is one contiguous block of an array~\cite{fastHierarchy,Fang2016CLtree}.
 %
-Existing indexes for community search store one such tree for one setting: the $k$-core~\cite{Barbieri2015ShellStruct,Fang2016CLtree}, the $k$-truss, which is the same idea over edges~\cite{huang2014truss,akbas2017truss}, or one clique size of the nucleus hierarchy~\cite{fastHierarchy}.
+Existing indexes for community search store one such tree for one model: the $k$-core~\cite{Barbieri2015ShellStruct,Fang2016CLtree}, the $k$-truss, the same idea with edges as the unit~\cite{huang2014truss,akbas2017truss}, or the nuclei of one clique size~\cite{fastHierarchy}.
 %
-Serving every size then means \textbf{\textit{one hierarchy per size}}, which we call \strees.
+An index for every size then holds \textbf{\textit{one hierarchy per size}}, which we call \strees.
 %
 Its limitation is repetition.
 %
@@ -99,19 +115,19 @@ On the web graph \webuk, cliques reach $500$ vertices and a vertex lies in $181$
 %
 The index \strees takes $190$~MB for $129{,}632$ vertices, or $1.5$~KB per vertex.
 %
-On a coauthorship graph with cliques of $337$ vertices it takes $202$~MB for $540{,}486$ vertices.
+On the coauthorship graph \textsf{ca-coauthors-dblp}, with cliques of $337$ vertices, it takes $202$~MB for $540{,}486$ vertices.
 %
-The alternative is to keep no index and to decompose the graph at the queried size when the query arrives.
+The alternative is to keep no index and to decompose the graph at the queried size when the query arrives, which costs seconds to minutes per query on these graphs.
 %
-The counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting} needs $15.7$ hours to cover the $499$ sizes of \webuk.
+The counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting} needs $15.7$ hours to cover the $499$ sizes of \webuk once.
 
 \stitle{Research question.}
-This leads to the question this paper answers: \textbf{\textit{how to index the clique-core hierarchies of every size at once, storing each vertex once and returning every community as a few ranges of labels?}}
+This leads to the question this paper answers: \textbf{\textit{how to index the clique-core hierarchies of every size at once, storing each vertex once and returning every community as a few ranges of consecutive ids?}}
 
 \stitle{Challenges.}
-Within one size the tree of that size answers it.
+For one size, the tree of that size stores each vertex once and returns each community as one block.
 %
-Across sizes it raises three difficulties.
+Across sizes, the question raises three difficulties.
 %
 \sstitle{Repetition across sizes.}
 Within one size, two vertices that lie in the same community at every level are interchangeable and could share one record.
@@ -125,14 +141,16 @@ The first difficulty is to decide which vertices can share one record for every 
 \sstitle{Contiguity of communities.}
 Once vertices are grouped, a community is a set of groups rather than one block of an array.
 %
-However, the depth-first order of each size lists the groups differently, and a set of group ids is not a few ranges.
+However, the depth-first order of one size lists the groups in one order and that of another size in another.
 %
-The second difficulty is to return any community of any size as a few ranges of labels, in constant time.
+A community, a set of groups, then does not come out as a few ranges of ids.
+%
+The second difficulty is to return any community of any size as a few ranges of ids, in constant time.
 %
 \sstitle{Construction of every size.}
 The tree of one size is the output of one decomposition of the graph.
 %
-However, the sizes are many, cliques reach hundreds of vertices, and one decomposition per size costs hours.
+However, the sizes are many, cliques reach hundreds of vertices, and the decompositions of all sizes together cost hours.
 %
 The third difficulty is to build the trees of all sizes from one computation.
 
@@ -142,7 +160,7 @@ We start from the queries and ask which pairs of vertices no query can tell apar
 \sstitle{Chains.}
 Two vertices are \emph{hierarchy-equivalent} when they have the same core value at every size and lie in the same community at every size and level.
 %
-The \emph{own node} of a vertex at a size is the deepest node of that size's tree containing it, its community at its core value.
+The \emph{own node} of a vertex at a size is its community at its core value, the deepest node of the tree of that size that contains the vertex.
 %
 We prove that two vertices are hierarchy-equivalent exactly when they have the same own node at every size (Theorem~\ref{thm:chains}).
 %
@@ -150,7 +168,7 @@ The classes of hierarchy-equivalent vertices are therefore read off the per-size
 %
 We call them \emph{chains}, since a class follows one chain of own nodes through the sizes.
 %
-Every community is a union of chains, and no partition with fewer classes answers every query (Proposition~\ref{prop:coarsest}).
+Every community is a union of chains, and no coarser partition answers every query (Proposition~\ref{prop:coarsest}).
 %
 On \dblp there are $13{,}459$ chains for $317{,}080$ vertices, $24$ vertices per chain.
 %
@@ -159,68 +177,74 @@ We relabel the vertices so that every chain is one interval of labels.
 %
 A community is then a list of label ranges.
 %
-We rank the chains by the depth-first positions of their own nodes, size by size.
+We rank the chains by the depth-first positions of their own nodes, comparing size $2$ first, then size $3$, and so on.
 %
-Every size-$2$ community then becomes one range (Theorem~\ref{thm:onerange}), and at larger sizes the same order keeps the ranges few.
+Every size-$2$ community then becomes one range (Theorem~\ref{thm:onerange}), and at larger sizes the same order keeps the number of ranges small (Table~\ref{tab:queries}).
 %
-Each size stores its tree with chains at the nodes, and its depth-first array as maximal runs of consecutive labels with one entry per tree node.
+For each size, the index stores the tree of that size with, at every node, the chains whose own node it is.
 %
-After the climb to the queried level, any community is a first range, whole runs and a last range.
+The order in which a depth-first traversal lists these chains is stored as runs, maximal stretches of consecutive labels, with one entry per node saying where the node's chains start.
 %
-They are found in constant time (Theorem~\ref{thm:retrieval}) and listed at the speed of a memory copy.
+A community query climbs from the own node of the vertex to the node of the queried level.
 %
-Core values are stored per chain and only below the size at which they reach the number of $s$-cliques inside the vertex's largest clique, a binomial coefficient of its clique number.
+That node's community is then a first range, whole runs and a last range, found in constant time (Theorem~\ref{thm:retrieval}) and listed about as fast as a memory copy.
 %
-From that size on the value stays at this number (Theorem~\ref{thm:tail}).
+Core values are stored per chain and only below a certain size.
+%
+At every size, the value is at least the number of cliques of that size through the vertex inside its largest clique, a binomial coefficient of the clique number.
+%
+Once the value equals this number at one size, it equals it at every larger size (Theorem~\ref{thm:tail}).
 %
 \sstitle{One clique tree for every size.}
-A single clique tree, built once, gives the clique counts of every size.
+A clique tree~\cite{Pivoter}, a compact representation of all cliques of a graph, is built once and gives, for every vertex and every size, the number of cliques of that size through the vertex.
 %
-The sizes are processed one after another.
+The values of one size come from a peel: vertices are removed one at a time in increasing order of their clique counts, and the counts at removal give the values.
 %
-Each size reuses the order in which the previous size removed its vertices, whenever a check on clique counts proves the reuse exact (Theorem~\ref{thm:replay}).
+The sizes are processed one after another, and each size first tries the removal order of the previous size.
 %
-The tree of each size is built as its core values arrive.
+A check on clique counts tells whether the result is exact (Theorem~\ref{thm:replay}).
+%
+The tree of each size is built as its values are produced.
 
 \stitle{Contributions.}
 \sstitle{Chains.}
 We characterize hierarchy equivalence for $(1,s)$-nucleus decompositions (Theorem~\ref{thm:chains}).
 %
-Two vertices are told apart by no value or community query at any size if and only if they share their own node at every size.
+No value query and no community query at any size tells two vertices apart if and only if they share their own node at every size.
 %
 The classes partition the vertices, every community is a union of classes, and no coarser partition answers every query (Proposition~\ref{prop:coarsest}).
 %
 \sstitle{The chain index.}
 We propose \chainidx, an index over chains.
 %
-Its aligned labels make every chain one interval and map a vertex to its chain in constant time, and its chain order makes every size-$2$ community one label range (Theorem~\ref{thm:onerange}).
+The aligned labels of \chainidx make every chain one interval and map a vertex to its chain in constant time, and the chain order makes every size-$2$ community one label range (Theorem~\ref{thm:onerange}).
 %
-Its per-size run arrays with one entry per node return any community as the fewest ranges in constant time after the climb (Theorem~\ref{thm:retrieval}).
+The per-size runs with one entry per node return any community as a list of ranges in constant time after the climb (Theorem~\ref{thm:retrieval}).
 %
 Core values are stored per chain and only below the size at which they reach their closed form (Theorem~\ref{thm:tail}).
 %
 \sstitle{Construction from one clique tree.}
 We build every size from one clique tree.
 %
-The sizes are processed in turn, each reusing the previous removal order when a check on clique counts proves it exact (Theorem~\ref{thm:replay}).
+The sizes are processed in turn, each reusing the removal order of the previous size when a check on clique counts proves the reuse exact (Theorem~\ref{thm:replay}).
 %
-The working memory beyond the clique tree is linear in the vertices and the chains.
+Beyond the clique tree, the working memory is linear in the vertices and the chains.
 %
 \sstitle{Experimental evaluation.}
 \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than \strees on \numgraphs{} graphs from five families (median \ratiomedian$\times$).
 %
-It locates a community in \locmin{} to \locmax{}~ns and lists it in \stmin$\times$ to \stmax$\times$ the time of a memory copy of the answer (median \stmedian).
+It locates a community in \locmin{} to \locmax{}~ns and lists it in \stmininv{} to \stmaxinv{} times the time of a memory copy of the answer (median \stmedianinv).
 %
 It is built for every size \priormin$\times$ to \priormax$\times$ faster than one decomposition per size (median \priormedian$\times$).
 %
-Two case studies on graphs whose vertices carry names and categories show what the size buys.
+Two case studies on graphs whose vertices carry names and categories show what a larger size gives.
 %
 On DBLP the size that best matches a ground-truth community changes from query to query.
 %
 On Amazon the size narrows a community from a store to a shelf.
 
 \stitle{Organization.}
-Section~\ref{sec:prelim} fixes the definitions.
+Section~\ref{sec:prelim} gives the definitions.
 %
 Section~\ref{sec:strees} describes one hierarchy per size and its cost.
 %

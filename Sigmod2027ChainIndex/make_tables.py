@@ -26,6 +26,7 @@ def tex_escape(s):
 
 FAMILY = {'ca-': 'collab', 'dblp': 'collab', 'cit-': 'citation', 'web-': 'web', 'amazon': 'product', 'com-amazon': 'product',
           'email': 'comm.', 'loc-': 'social', 'soc-': 'social', 'com-youtube': 'social', 'wiki': 'comm.', 'tech-': 'internet'}
+MACHINE = {'laptop': 'laptop', 'tods1': 'server 1', 'tods2': 'server 2'}
 NAMES = {'soc-pokec-relationships': 'soc-pokec', 'com-amazon.ungraph': 'com-amazon'}
 
 def family(g):
@@ -103,8 +104,8 @@ def table_queries():
              r'Graph & Machine & Locate (ns) & \strees locate (ns) & Ranges & Vertices & List (ns) & \strees list (ns) & List (ns/vertex) & Value (ns) \\', r'\midrule']
     for where, g, r in rows:
         x = r['result']; o = prof.get((where, g))
-        if o: lines.append(f"{tex_escape(g)} & {where} & {o['locate_ns']:.0f} & {o['st_locate_ns']:.0f} & {o['ranges']:.0f} & {fmt(o['output'])} & {o['list_ns']:,.0f} & {o['st_list_ns']:,.0f} & {o['list_ns']/o['output']:.2f} & {x['value_ns']:.0f} \\\\")
-        else: lines.append(f"{tex_escape(g)} & {where} & {x['ptr_own_ns']:.0f} & -- & {x['own_ranges']:.0f} & {fmt(x['own_output'])} & {x['explicit_own_ns']:,.0f} & -- & {x['explicit_own_ns']/x['own_output']:.2f} & {x['value_ns']:.0f} \\\\")
+        if o: lines.append(f"{tex_escape(g)} & {MACHINE[where]} & {o['locate_ns']:.0f} & {o['st_locate_ns']:.0f} & {o['ranges']:.0f} & {fmt(o['output'])} & {o['list_ns']:,.0f} & {o['st_list_ns']:,.0f} & {o['list_ns']/o['output']:.2f} & {x['value_ns']:.0f} \\\\")
+        else: lines.append(f"{tex_escape(g)} & {MACHINE[where]} & {x['ptr_own_ns']:.0f} & -- & {x['own_ranges']:.0f} & {fmt(x['own_output'])} & {x['explicit_own_ns']:,.0f} & -- & {x['explicit_own_ns']/x['own_output']:.2f} & {x['value_ns']:.0f} \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'queries.tex').write_text('\n'.join(lines) + '\n')
     # macros for the text, from the same rows as the table (profile numbers where a profile exists)
@@ -130,6 +131,7 @@ def table_queries():
         own_loc.append(s['own_locate_ns'] / s['own_ours_locate_ns']); deep_loc.append(max(s['half_locate_ns'] / s['half_ours_locate_ns'], s['root_locate_ns'] / s['root_ours_locate_ns']))
     macros.update({'stpoints': str(total), 'stfaster': str(faster), 'stpairs': str(len(st)), 'stgraphs': str(len({g for (w, g) in st})),
                    'stmin': f"{min(ratios):.1f}" if ratios else '?', 'stmax': f"{max(ratios):.1f}" if ratios else '?', 'stmedian': f"{statistics.median(ratios):.2f}" if ratios else '?',
+                   'stmininv': f"{1/max(ratios):.2f}" if ratios else '?', 'stmaxinv': f"{1/min(ratios):.1f}" if ratios else '?', 'stmedianinv': f"{1/statistics.median(ratios):.2f}" if ratios else '?',
                    'stlocown': f"{statistics.median(own_loc):.1f}" if own_loc else '?', 'stlocdeepmax': f"{max(deep_loc):.0f}" if deep_loc else '?', 'stlocdeepmedian': f"{statistics.median(deep_loc):.1f}" if deep_loc else '?'})
     # Exp-5: the representative pair of the by-size and by-answer-size profiles (figure fig_profile)
     REP = ['web-BerkStan', 'cit-Patents']; prof = {}
@@ -146,7 +148,7 @@ def table_queries():
         big_e = min(bs, key=lambda e: e['st_list_ns'] / e['list_ns'] if e['s'] >= 4 else 9)
         macros.update({'proflocmin': f"{min(e['locate_ns'] for e in bs):.0f}", 'proflocmax': f"{max(e['locate_ns'] for e in bs):.0f}",
                        'profstlocmin': f"{min(e['st_locate_ns'] for e in bs):.0f}", 'profstlocmax': f"{max(e['st_locate_ns'] for e in bs):.0f}",
-                       'profsmallmin': f"{min(small):.2f}", 'profsmallmax': f"{max(small):.2f}",
+                       'profsmallmin': f"{min(small):.2f}", 'profsmallmax': f"{max(small):.2f}", 'profsmallinvmin': f"{1/max(small):.2f}", 'profsmallinvmax': f"{1/min(small):.2f}",
                        'profbigmax': f"{1 / min(big):.0f}", 'profbigs': str(big_e['s']), 'profbigout': f"{big_e['output']:,.0f}", 'profbigranges': f"{big_e['ranges']:,.0f}",
                        'profdeclowmin': f"{min(low):.1f}", 'profdeclowmax': f"{max(low):.1f}", 'profdechigh': f"{100 * max(high):.0f}"})
     (OUT / 'query_stats.tex').write_text(''.join(f"\\newcommand{{\\{k}}}{{{v}}}\n" for k, v in macros.items()))
@@ -200,7 +202,7 @@ def table_prior():
         r = ours[(where, g)]; o = r['result']; opeak = max(e['peak_rss_bytes'] or 0 for e in og['sizes'])
         build_s = (o['ti_ms'] + o['build_ms'] + o['compact_ms']) / 1000; ratio = og['total_inproc_ms'] / 1000 / build_s; ratios.append(ratio)
         peak = bo[g]['peak_rss_bytes'] if where == 'laptop' and g in bo else r.get('peak_rss_bytes'); opeak_s = f'{opeak/1048576:,.0f}' if opeak else '--'
-        lines.append(f"{tex_escape(g)} & {where} & {og['sizes_ok']} & {og['total_wall_s']:,.1f} & {og['total_inproc_ms']/1000:,.1f} & {opeak_s} & {build_s:.2f} & {ratio:.1f}$\\times$ \\\\")
+        lines.append(f"{tex_escape(g)} & {MACHINE[where]} & {og['sizes_ok']} & {og['total_wall_s']:,.1f} & {og['total_inproc_ms']/1000:,.1f} & {opeak_s} & {build_s:.2f} & {ratio:.1f}$\\times$ \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'prior.tex').write_text('\n'.join(lines) + '\n')
     (OUT / 'prior_stats.tex').write_text(f"\\newcommand{{\\priorgraphs}}{{{len(ratios)}}}\n\\newcommand{{\\priormin}}{{{min(ratios):.1f}}}\n\\newcommand{{\\priormedian}}{{{statistics.median(ratios):.0f}}}\n\\newcommand{{\\priormax}}{{{max(ratios):.0f}}}\n")
@@ -209,13 +211,13 @@ def table_cases():
     """Case studies: ground-truth communities (best clique size per query) and the Amazon zoom table with named examples."""
     # ground truth: com-dblp and com-amazon (com-youtube's ground truth is not cohesive; text only)
     lines = [r'\begin{tabular}{@{}lrrrrrrrr@{}}', r'\toprule',
-             r'Graph & Queries & $k$-core, best $k$ & $s=3$, best $k$ & Best fixed $s$ & Best $s$ per query & Best $(s,k)$ per query & Beats $k$-core & $\mu$s per query \\', r'\midrule']
+             r'Graph & Queries & $k$-core, best $k$ & $s=3$, best $k$ & Best fixed $s$, best $k$ & Best $s$ per query, own level & Best $(s,k)$ per query & Beats $k$-core & $\mu$s per query \\', r'\midrule']
     hist_lines = []
     for g in ('com-dblp', 'com-amazon', 'com-youtube'):
         rec = load(f'case/{g}.groundtruth.json')
         if rec is None: continue
-        fx = rec['fixed']; best_fixed = max(fx.items(), key=lambda kv: kv[1]['mean_own_all'])
-        lines.append(f"{g} & {fmt(rec['queries'])} & {fx['2']['mean_ladder_all']:.3f} & {fx['3']['mean_ladder_all']:.3f} & $s={best_fixed[0]}$: {best_fixed[1]['mean_own_all']:.3f} & {rec['mean_best_own']:.3f} & {rec['mean_best_all']:.3f} & {100*rec['better_than_best_core']:.0f}\\% & {1e6*rec["seconds"]/rec["queries"]:.1f} \\\\")
+        fx = rec['fixed']; best_fixed = max(fx.items(), key=lambda kv: kv[1]['mean_ladder_all'])   # best fixed size, at its best level
+        lines.append(f"{g} & {fmt(rec['queries'])} & {fx['2']['mean_ladder_all']:.3f} & {fx['3']['mean_ladder_all']:.3f} & $s={best_fixed[0]}$: {best_fixed[1]['mean_ladder_all']:.3f} & {rec['mean_best_own']:.3f} & {rec['mean_best_all']:.3f} & {100*rec['better_than_best_core']:.0f}\\% & {1e6*rec["seconds"]/rec["queries"]:.1f} \\\\")
         h = rec['best_size_hist']; tot = sum(h.values()); share = lambda a, b: 100 * sum(v for k, v in h.items() if a <= int(k) <= b) / tot
         hist_lines.append(f"{g} & {share(2,2):.0f}\\% & {share(3,3):.0f}\\% & {share(4,4):.0f}\\% & {share(5,5):.0f}\\% & {share(6,6):.0f}\\% & {share(7,999):.0f}\\% \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']

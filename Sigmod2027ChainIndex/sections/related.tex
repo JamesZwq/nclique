@@ -4,7 +4,7 @@
 \stitle{Nucleus decompositions.}
 The $(r,s)$-nucleus decomposition and the hierarchy of nuclei of one parameter pair were introduced in \cite{firstNucleus,nuclearTWEB}.
 %
-The work \cite{fastHierarchy} builds that hierarchy from the peel order without repeated traversals.
+Sariy\"uce and Pinar~\cite{fastHierarchy} build that hierarchy from the peel order without repeated traversals.
 %
 Local \cite{LocalNuclear} and parallel \cite{sotaPrveHierarchy,sotaHierarchy} algorithms followed, the last computing the hierarchy of one pair in parallel.
 %
@@ -15,6 +15,8 @@ The counting-based decomposition \cnd \cite{Zhang2026NucleusCounting} peels one 
 All of these compute the values, and at most the hierarchy, of one size per run.
 %
 We store every size's hierarchy for querying, from one peel that shares the clique tree across sizes.
+%
+The same partition, with the object an edge or a larger clique, extends this work to the $(r,s)$-nucleus hierarchies of every size.
 
 \stitle{Community search and its indexes.}
 Community search returns the cohesive subgraph of a query vertex \cite{SozioGionisKDD2010,Cui2014Local}.
@@ -37,7 +39,7 @@ Hierarchy equivalence holds across every size and level, and Theorem~\ref{thm:ch
 %
 Indexes over a second axis, time in historical and temporal core queries \cite{core_res1,tian2024abcore}, store versions of one hierarchy.
 %
-Our second axis is the clique size, along which the values nest by Theorem~\ref{thm:tail}.
+Our second axis is the clique size, along which the values reach a closed form (Theorem~\ref{thm:tail}).
 %
 The SGL index for bi-components of bipartite graphs \cite{SGL} builds its index from units that are neither nested nor overlapping, and it retrieves each vertex once per query.
 %
@@ -46,6 +48,4 @@ A vertex there belongs to one unit per non-dominated parameter pair, whereas cha
 \stitle{Kruskal--Katona.}
 The certified tail (Theorem~\ref{thm:tail}) rests on the shadow theorem of Kruskal and Katona \cite{kruskal1963,katona1968} in the form of Lov\'asz \cite{lovasz1979}.
 %
-The theorem bounds the number of $(s-1)$-cliques through a vertex by the number of $s$-cliques through it.
-%
-The same partition, with the object an edge or a larger clique, is the natural extension of this work to the $(r,s)$-nucleus hierarchies of every size.
+The theorem bounds the number of $(s-1)$-cliques through a vertex from below by the number of $s$-cliques through it.

@@ -1,39 +1,43 @@
 % 2026-09-21 house shape: the introduction compressed; challenge nouns and headline numbers verbatim.  Cadence pass.
 The $(1,s)$-nucleus decomposition assigns every vertex of a graph a core value for every clique size $s$.
 %
-It organizes the vertices of each size into a hierarchy of nested communities.
+For each size, it arranges the vertices into a hierarchy of nested communities, one community per vertex and level up to its core value.
 %
 A community query names a vertex, a size and a level, and the size is chosen at query time.
 %
-Serving every size from a stored index has meant one hierarchy per size.
+An index that answers queries at every size has so far stored one hierarchy per size.
 %
-A vertex is then stored once for every size it lives in, and the index reaches hundreds of megabytes on graphs of a few hundred thousand vertices.
+A vertex is then stored once per size, and the index reaches $190$~MB on a web graph of $129{,}632$ vertices.
 %
 This paper stores each vertex once for all sizes.
 %
-Two vertices are hierarchy-equivalent when no value or community query at any size tells them apart.
+Two vertices are hierarchy-equivalent when no query, for a value or for a community, at any size tells them apart.
 %
-We prove that this holds exactly when, at every size, the two vertices share the smallest community containing them.
+We prove that this holds exactly when, at every size, the smallest community of one vertex is the smallest community of the other.
 %
-The classes, called chains, partition the vertices and form the coarsest partition an exact index can use.
+The equivalence classes, called chains, partition the vertices, and no coarser partition serves an index that answers every query exactly.
 %
 We propose \chainidx, an index over chains.
 %
 Aligned labels make every chain one interval of ids and every community a list of ranges.
 %
-A chain order makes every size-$2$ community one range, and per-size run arrays with entry points return any community as the fewest ranges in constant time.
+An order of the chains makes every size-$2$ community one range.
 %
-Core values are stored only below the size at which they reach a closed form.
+For every size, a tree over the chains returns any community as a few ranges in constant time after a climb to the queried level.
 %
-The index of every size is built from one clique tree, and each size reuses the removal order of the previous size when a check on clique counts proves the reuse exact.
+A core value is stored only below the size at which it becomes a binomial coefficient of the vertex's clique number, where it stays.
+%
+The trees of all sizes are built from one clique tree.
+%
+The values of a size come from removing vertices in increasing order of their clique counts, and the next size reuses that order when a check on clique counts proves the reuse exact.
 %
 On \numgraphs{} graphs from five families, \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size (median \ratiomedian$\times$).
 %
-It locates a community in \locmin{} to \locmax{} nanoseconds and lists it at the speed of a memory copy.
+It locates a community in \locmin{} to \locmax{} nanoseconds and lists it about as fast as a memory copy of the answer.
 %
 It is built for every size \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
 %
-Two case studies on graphs whose vertices carry names and categories show what the size buys.
+Two case studies on graphs whose vertices carry names and categories show what a larger size gives.
 %
 On DBLP the best size changes from query to query.
 %

@@ -5,9 +5,11 @@ This section gives the two queries on the index.
 %
 Both start from the vertex-to-chain map of Section~\ref{sec:labels}: $\mathrm{chain}(v)$ is the number of chain starts at or before $v$, minus one.
 %
-The value query then reads the chain record.
+The value query then reads the record of the chain (Section~\ref{sec:values}).
 %
-The community query climbs the tree of the queried size and reads two entries, each the run index and the label at which a node's segment starts (Section~\ref{sec:runs}).
+The community query climbs the tree of the queried size and reads two entries.
+%
+An entry is the number of the run and the label at which a node's segment starts (Section~\ref{sec:runs}).
 
 \begin{algorithm}[t]
 \caption{\query: value and community queries on \chainidx.}\label{alg:query}
@@ -31,7 +33,7 @@ The community query climbs the tree of the queried size and reads two entries, e
   $Y\leftarrow X+\mathrm{size}[X]$\;\label{ln:q-exit}
   $(r_X,v_X)\leftarrow\mathrm{entry}[X]$; $(r_Y,v_Y)\leftarrow\mathrm{entry}[Y]$\;\label{ln:q-entries}
   \lIf{$r_X=r_Y$}{\Return the range $[v_X,v_Y)$}\label{ln:q-one}
-  \Return $[v_X,hi(r_X))$, runs $r_X{+}1..r_Y{-}1$, $[lo(r_Y),v_Y)$\;\label{ln:q-three}
+  \Return $[v_X,hi(r_X))$, $[lo(r),hi(r))$ for $r_X{<}r{<}r_Y$, $[lo(r_Y),v_Y)$\;\label{ln:q-three}
 }
 \end{algorithm}
 
@@ -44,7 +46,7 @@ Based on Theorem~\ref{thm:tail}, it returns the floor $\binom{\omega-1}{s-1}$ wh
 %
 \Community reads the chain and its own node $X$ at size $s$ from the trajectory (Line~\ref{ln:q-own}).
 %
-It then climbs towards the root to the last node whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}).
+It then climbs towards the root, to the node nearest the root whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}).
 %
 By Section~\ref{sec:strees} this node is the community of $v$ at $(s,k)$.
 %
@@ -54,15 +56,19 @@ Every node also carries a \textit{jump pointer} to an ancestor, chosen as in the
 %
 A jump is taken whenever the jump target still has top at least $k$ (Line~\ref{ln:q-jump}).
 %
-The jump is safe because tops increase from a root downwards: every node skipped over has top at least $k$ as well.
+The jump is safe.
+%
+Tops increase from a root downwards, so when the jump target has top at least $k$, every node skipped over has top at least $k$ as well, and none of them is the node nearest the root with that property.
 %
 Nodes are numbered in preorder and every node knows its subtree size.
 %
-The node after the subtree of $X$ is therefore $X+\mathrm{size}[X]$ (Line~\ref{ln:q-exit}), and for the last node it is the sentinel.
+The node after the subtree of $X$ is therefore $X+\mathrm{size}[X]$ (Line~\ref{ln:q-exit}).
+%
+For the last subtree in this order, it is the sentinel.
 %
 Based on Theorem~\ref{thm:retrieval}, the two entries give the answer (Lines~\ref{ln:q-entries} to~\ref{ln:q-three}).
 %
-It is one range when both entries lie in the same run, and otherwise a first range, whole runs and a last range.
+The answer is one range when both entries lie in the same run, and otherwise a first range, whole runs and a last range.
 %
 Reporting the ranges costs one step per range.
 %
@@ -73,9 +79,9 @@ Consider Figure~\ref{fig:layout}.
 %
 For \Value{$u_1,3$}: $u_1$ has label $8$, three chain starts lie at or before it, and the chain is $2$ (Line~\ref{ln:q-chain}).
 %
-The chain has $\omega=3$ and $\sigma=4=\omega+1$, since its values never reach the floor, and $3<\sigma$.
+The chain has $\omega=3$, and its values $4$ and $3$ at sizes $2$ and $3$ never reach the floors $\binom{2}{1}=2$ and $\binom{2}{2}=1$, so $\sigma=\omega+1=4$.
 %
-The answer is $3$, the residue of chain $2$ at size $3$ (Line~\ref{ln:q-residue}).
+Since $3<\sigma$, the answer is the residue of chain $2$ at size $3$, which is $3$ (Line~\ref{ln:q-residue}).
 %
 For \Value{$a_2,4$}: the chain is $1$ with $\omega=5$ and $\sigma=2\le4$, and the answer is the floor $\binom{4}{3}=4$ (Line~\ref{ln:q-floor}).
 %
@@ -85,12 +91,12 @@ $N$ is one of the two roots of $\Tree{3}$, so the climb stops at once (Line~\ref
 %
 The node after $N$ in preorder is $A$ (Line~\ref{ln:q-exit}), and the entries are $(0,0)$ and $(2,3)$ (Line~\ref{ln:q-entries}).
 %
-The runs differ, and the answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last range $[3,3)$ (Line~\ref{ln:q-three}): ten vertices in two ranges.
+The runs differ, and the answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last range $[3,3)$ (Line~\ref{ln:q-three}): ten vertices in two nonempty ranges.
 % trace 2026-09-21 (LEDGER.md): Value(u1,3): chain 2 residues (4,3) -> 3.  Value(a2,4): C(4,3)=4.  Community(x,3,2): N entries (0,0), A (2,3).
 \end{example}
 
 \stitle{Complexity.}
-\Value takes constant time: one rank on the chain starts, the record's $\omega$ and $\sigma$, and one residue or one binomial coefficient.
+\Value takes constant time: one rank query on the chain starts, the record's $\omega$ and $\sigma$, and one residue or one binomial coefficient, the coefficients up to the largest clique number being computed once with the index.
 %
 \Community takes $O(\log d)$ steps for a climb of $d$ levels and constant time for the two entries.
 %
