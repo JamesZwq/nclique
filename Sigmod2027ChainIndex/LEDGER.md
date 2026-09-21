@@ -42,11 +42,12 @@ index is 1.28x to 48.7x smaller than one tree per size while listing at the spee
 | $\Tree{s}$ | forest of canonical nodes of size $s$ | Sec hierarchy (Def node) |
 | $\own{s}{v}$ | own node of $v$ at size $s$ | Def node |
 | top($X$) | largest level of node $X$ = smallest core value of its vertices | Def node |
-| $\chain{v}$ | chain of $v$ | Def chain |
+| $\traj{v}$, $\chain{v}$ | trajectory (tuple of own nodes) and chain (set of vertices with equal trajectories; isolated vertices form one last chain) | Def chain |
 | $f_s(v)=\binom{\omg{v}-1}{s-1}$ | floor | Theorem tail |
 | $\sig{v}$ | certification point | after Theorem tail |
 | $C, N, P, R$ | chains; canonical nodes over all sizes; (chain,size) pairs; runs over all sizes | Sec size |
-| $(lo,hi)$, $r_x$, $v_x$ | run endpoints; entry of node $x$: run index and label | Sec runs |
+| $(lo,hi)$, $r_X$, $v_X$ | run endpoints; entry of node $X$: run index and label; sentinel $(R, hi(R-1))$; answer = first range, whole runs, last range | Sec runs |
+| $M$ | canonical nodes over all sizes (size accounting) | Sec size |
 | $d_s(W,u)$, $f_s$, $U_s$ | s-cliques of $u$ in $G[W]$; forward count; prefix max | Sec construction |
 
 ## Running example (Figure 1) -- computed by tools/example_check.py (2026-09-21)

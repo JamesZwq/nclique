@@ -25,7 +25,7 @@ The layout pass turns the chains into labels, run arrays and residues.
 \begin{tikzpicture}[font=\scriptsize, stage/.style={draw, rounded corners=2pt, align=center, minimum height=9mm, inner sep=3pt, text width=23mm}, flow/.style={-latex, thick}, lab/.style={font=\tiny, fill=white, inner sep=1pt, align=center}]
 \node[stage] (tree) at (0,0) {\textbf{clique tree}\\ built once (pivoting); paths $(H,Q)$ for every size};
 \node[stage] (peel) at (3.9,0) {\textbf{all-size peel}\\ $s=2,3,\dots$: order replay under the certificate, exact peel otherwise};
-\node[stage] (row) at (7.8,0) {\textbf{tree of size $s$}\\ activate vertices by value, join live leaves, canonical nodes, own nodes};
+\node[stage] (row) at (7.8,0) {\textbf{tree of size $s$}\\ activate vertices by value, join live paths, canonical nodes, own nodes};
 \node[stage] (trie) at (11.7,0) {\textbf{chains}\\ prefix trie refined by the own nodes of size $s$; ranks by DFS};
 \node[stage] (lay) at (15.6,0) {\textbf{layout}\\ aligned labels, run arrays, entries, residues, widths};
 \draw[flow] (tree) -- node[lab] {counts as\\ binomial sums} (peel);
@@ -141,7 +141,7 @@ put every vertex at the root of an empty trie\;\label{ln:b-trie}
   }
   \lForEach{active vertex $v$}{move $v$ to the trie child $\own{s}{v}$}\label{ln:b-refine}
 }
-rank the chains in the trie's depth-first order; label the vertices\;\label{ln:b-rank}
+rank the chains in trie depth-first order; label vertices\;\label{ln:b-rank}
 write the bitmap of chain starts\;\label{ln:b-bitmap}
 \ForEach{size $s$}{\label{ln:b-layout}
   traverse $\Tree{s}$ with children by smallest rank\;\label{ln:b-traverse}
