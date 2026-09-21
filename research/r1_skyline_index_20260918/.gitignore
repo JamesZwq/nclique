@@ -10,3 +10,4 @@ case/*.cx.perm
 case/dblp/*.cx
 case/dblp/*.cx.perm
 case/dblp/*.edges
+case/amazon-meta.tsv

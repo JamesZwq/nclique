@@ -1122,3 +1122,60 @@ size axis is a different notion of density, and which size is right is a
 per-query matter (18.1). The stronger qualitative domain is co-purchase
 (amazon: F1 0.85), where product titles and categories exist (SNAP
 amazon-meta for amazon0302); candidate for the second case study.
+
+### 18.3 Amazon co-purchase with product titles and categories (`case/amazon-*.json`, 2026-09-21)
+
+SNAP com-amazon (334,863 products, 925,872 co-purchase links, s_max 7)
+joined with SNAP amazon-meta (titles, group, category paths) through the
+metadata Id (334,852 of 334,863 products have metadata; `parse_amazon_meta.py`,
+`case_amazon.cpp`). Purity of a community for a query product q: the share
+of members sharing a leaf category with q (fine) and the share sharing a
+subject (third level of the category tree: "Jazz", "Computers & Internet",
+"Science Fiction & Fantasy") with q.
+
+Scan, 5,000 products with omega >= 3 sampled uniformly (seed 20260921),
+own-level community at every size:
+
+| s | queries | median size | mean size | leaf purity | subject purity | top-subject share | communities with leaf purity >= 0.8 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2 | 5,000 | 157,331 | 162,162 | 0.105 | 0.191 | 0.494 | 7.9% |
+| 3 | 5,000 | 38 | 53,417 | 0.445 | 0.568 | 0.762 | 33.5% |
+| 4 | 3,081 | 11 | 102 | 0.704 | 0.859 | 0.993 | 53.5% |
+| 5 | 1,381 | 8 | 12.9 | 0.790 | 0.917 | 0.995 | 65.8% |
+| 6 | 352 | 7 | 8.9 | 0.826 | 0.936 | 0.993 | 71.6% |
+
+Best size by leaf purity: s=3 56%, s=4 24%, s=2 17%, s>=5 4%. Reading:
+the clique size is a zoom. At s = 2 (the k-core) three quarters of the
+products sit in one 157,331-product core (dominated by children's books,
+39% of it) at 10% purity; s = 3 brings the median community to 38
+products at 45% purity, s = 4 to 11 products at 70%, s = 5 to 8 products
+at 79%, and from s = 4 on the community's dominant subject covers 99% of
+its members.
+
+Named drill-downs (`--query`, `case/amazon-queries.json`; query times 0-42
+ns after s = 2, since the answers are a few ranges):
+- "Kind of Blue" (Miles Davis, Music, omega 6): s = 2: 36,878 products,
+  1% jazz; s = 3: 23 albums, 100% jazz (Blue Note catalogue: Maiden Voyage,
+  Speak No Evil, Soul Station, A Night at Birdland, Song for My Father,
+  Moanin', Sidewinder, Monk's Dream ...); s = 5, 6: six albums, Kind of
+  Blue, Monk's Dream, Thelonious Monk with John Coltrane, Mingus Ah Um,
+  Saxophone Colossus, The Best of the Blue Note Years.
+- "Introduction to Algorithms, 2nd ed." (omega 5): s = 2: 157,331; s = 3:
+  57 books, 88% Computers & Internet; s = 4, 5: 13 books, the theory
+  shelf: AIMA, Sipser, Garey-Johnson, Hopcroft-Ullman, Randomized
+  Algorithms, Approximation Algorithms, Papadimitriou-Steiglitz, Aho-
+  Hopcroft-Ullman, Operating System Concepts ...
+- "The Godfather: Trilogy 1, 2 & 3" (soundtrack, omega 5): s = 3: 54
+  classical; s = 5: 28 products, category purity only 0.32 but one shelf:
+  the four Godfather soundtracks with Jerry Vale, Lou Monte, The Gaylords,
+  "Italian American Classics", "Sings Songs for Pizza Lovers" -- a
+  community the category tree has no name for.
+- "Harry Potter and the Goblet of Fire" (omega 5): s = 2: 157,331; s = 3
+  to 5: the same 31 children's books, purity 1.00.
+- "The Fellowship of the Ring" (omega 4): s = 2: 36,878; s = 3: 13,363
+  (children's-books core); s = 4: 56, 98% Science Fiction & Fantasy.
+- "OCP Oracle9i Database: Performance Tuning Exam Guide" (omega 6): 31
+  at s = 2 already pure; s = 3 to 6: the six Oracle9i certification guides.
+Verdict: this is the second case study for the paper (real semantics,
+common-sense readings, numbers over 5,000 queries); DBLP names stay in
+18.2 as a negative finding.
