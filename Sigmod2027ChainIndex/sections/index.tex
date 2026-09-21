@@ -61,4 +61,4 @@ With the chains ranked $\{b_i\}<\{a_i\}<\{u,w\}<\{x\}$ the labels are $[0,3)$, $
 At $s=3$ the forest has two roots, $N_2=B\cup W$ (top 3, chains $\{b_i\},\{u,w\},\{x\}$) and $A$ (top 6, chain $\{a_i\}$); the DFS array is $\{b_i\},\{u,w\},\{x\},\{a_i\}$, whose runs are $[0,3)$, $[8,15)$, $[3,8)$ (the last two chains of $N_2$ merge).
 The entries are $N_2\to(\text{run }0,\,0)$ and $A\to(\text{run }2,\,3)$.
 The community of $b_1$ at $(3,3)$ is $N_2$: head $[0,3)$, whole run $[8,15)$, empty tail, that is $\{b_1,b_2,b_3\}\cup\{u_1,\dots,w_3,x\}$.
-The values stored are three numbers in total: $\core{2}{x}=4$ for chain $\{x\}$ ($\omega=4,\sigma=3$) and $\core{2}{}=4,\core{3}{}=3$ for chain $\{u,w\}$ ($\omega=3,\sigma=4$); chains $\{a_i\}$ and $\{b_i\}$ are certified from $s=2$.
+The values stored are three numbers in total: $\core{2}{x}=4$ for chain $\{x\}$ ($\omega=4,\sigma=3$) and $\kappa_2=4,\kappa_3=3$ for chain $\{u,w\}$ ($\omega=3,\sigma=4$); chains $\{a_i\}$ and $\{b_i\}$ are certified from $s=2$.
