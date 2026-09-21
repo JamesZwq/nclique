@@ -1,66 +1,151 @@
-\section{Chains: Hierarchy Equivalence}\label{sec:chains}
+\section{Chains}\label{sec:chains}
+% 2026-09-21 house shape: opener with theorem preview; definition -> announced, named theorem, proof <= 8 sentences
+% -> example on Figure 1 -> remark; lemma; proposition; twins; how many chains.  Cadence pass: short sentences.
 
-The redundancy of \strees is on the vertex axis: a vertex is stored once per size although many vertices are indistinguishable by every query.
-This section makes that precise.
+This section answers the first difficulty of Section~\ref{sec:intro}.
+%
+It decides which vertices can share one record for every size, every level and every query.
+%
+We define hierarchy equivalence and prove that the own nodes alone decide it (Theorem~\ref{thm:chains}).
+%
+We then show that the resulting partition is the coarsest an exact index can use (Proposition~\ref{prop:coarsest}).
 
+\stitle{Hierarchy equivalence.}
+Two vertices are interchangeable for the index when no query tells them apart.
+%
+We call such vertices \textit{hierarchy-equivalent}.
+%
+They have the same core value at every size.
+%
+At every size and every level up to that value, they lie in the same nucleus.
+%
+The definition quantifies over every size, level and query.
+%
+The next theorem reduces it to one comparison per size.
 \begin{definition}[chain]\label{def:chain}
-For a vertex $v$ with $\omg{v}\ge2$ let $\chain{v}=(\own{2}{v},\own{3}{v},\dots,\own{\omg{v}}{v})$ be the tuple of its own nodes over the sizes it participates in.
-The vertices with equal tuples form a \emph{chain}.
+For a vertex $v$ with $\omg{v}\ge2$, let $\chain{v}=(\own{2}{v},\own{3}{v},\dots,\own{\omg{v}}{v})$ be the tuple of its own nodes over the sizes it participates in.
+%
+The vertices with equal tuples form a \textit{chain}.
 \end{definition}
-
-\begin{theorem}[chains are hierarchy equivalence]\label{thm:chains}
-For $u,v$ with $\omg{u},\omg{v}\ge2$ the following are equivalent:
+\begin{theorem}[hierarchy equivalence]\label{thm:chains}
+For two vertices $u$ and $v$ with $\omg{u},\omg{v}\ge2$, the following are equivalent:
 (a) $\chain{u}=\chain{v}$;
-(b) $\core{s}{u}=\core{s}{v}$ for every $s$, and for every $s$ and every $1\le k\le\core{s}{u}$ the vertices $u$ and $v$ lie in the same $\Nuc{s}{k}$.
+(b) $\core{s}{u}=\core{s}{v}$ for every size $s$, and for every size $s$ and every level $1\le k\le\core{s}{u}$ the vertices $u$ and $v$ lie in the same $\Nuc{s}{k}$.
 \end{theorem}
 \begin{proof}
-(a)$\Rightarrow$(b): $\own{s}{u}=\own{s}{v}$ gives $\core{s}{u}=\mathrm{top}(\own{s}{u})=\core{s}{v}$; for $k\le\core{s}{u}$ the $\Nuc{s}{k}$ containing $u$ is the unique ancestor-or-self of $\own{s}{u}$ whose level interval contains $k$, the same node for $v$.
-(b)$\Rightarrow$(a): with $\core{s}{u}=\core{s}{v}=k$, the $\Nuc{s}{k}$ containing $u$ is $\own{s}{u}$ by definition; it contains $v$ and is therefore the $\Nuc{s}{\core{s}{v}}$ containing $v$, that is $\own{s}{v}$.
+(a)$\Rightarrow$(b): By Definition~\ref{def:node}, $\own{s}{u}=\own{s}{v}$ gives $\core{s}{u}=\mathrm{top}(\own{s}{u})=\core{s}{v}$.
+%
+For $k\le\core{s}{u}$, the $\Nuc{s}{k}$ containing $u$ is the highest ancestor-or-self of $\own{s}{u}$ with top at least $k$.
+%
+The same node contains $v$.
+%
+(b)$\Rightarrow$(a): Let $\core{s}{u}=\core{s}{v}=k$.
+%
+The $\Nuc{s}{k}$ containing $u$ is $\own{s}{u}$ by definition.
+%
+By (b) it contains $v$, and it is the $\Nuc{s}{\core{s}{v}}$ containing $v$, that is $\own{s}{v}$.
 \end{proof}
+\begin{example}\label{ex:chains}
+Consider Figure~\ref{fig:example} with the own nodes of Example~\ref{ex:tree}.
+%
+The tuples give four chains.
+%
+The chain $\{b_1,b_2,b_3\}$ has own nodes (root, $N$, $B$) at sizes $2$, $3$ and $4$.
+%
+The chain $\{a_1,\dots,a_5\}$ has $(A,A,A,A)$ at sizes $2$ to $5$.
+%
+The chain $\{u_1,\dots,w_3\}$ has $(\{x,u_1,\dots,w_3\},N)$, and the chain $\{x\}$ has $(\{x,u_1,\dots,w_3\},N,B)$.
+%
+The vertex $a_5$ has one more edge than $a_1$ but the same own node at every size, and no query separates them.
+%
+The vertex $x$ shares the own nodes of $u_1$ at sizes $2$ and $3$.
+%
+It leaves them at size $4$: $x$ lies in the $4$-clique $B$, and $u_1$ lies in no $4$-clique.
+\end{example}
+\begin{remark}
+Condition (b) is the whole query interface, and an index over chains loses no answer.
+%
+Condition (a) is read off the per-size trees, and the chains come out of the hierarchies themselves (Section~\ref{sec:construction}).
+\end{remark}
 
-Condition (b) says that no value query and no community query distinguishes $u$ from $v$.
-An index over chains therefore loses nothing, and the answers stay whole:
-
+\stitle{Communities and chains.}
+Every answer is a union of whole chains, and the partition cannot be made coarser.
 \begin{lemma}[communities are unions of chains]\label{lem:union}
 If $u$ lies in an $\Nuc{s}{k}$ $N$ with $k\ge1$ and $\chain{w}=\chain{u}$, then $w\in N$.
 \end{lemma}
 \begin{proof}
-$\core{s}{w}=\core{s}{u}\ge k$, and $\own{s}{w}=\own{s}{u}\subseteq N$ because the top of $\own{s}{u}$ is $\core{s}{u}\ge k$.
+By Theorem~\ref{thm:chains}, $\core{s}{w}=\core{s}{u}\ge k$ and $\own{s}{w}=\own{s}{u}$.
+%
+The node $\own{s}{u}$ has top $\core{s}{u}\ge k$, and it lies inside the $\Nuc{s}{k}$ containing $u$, which is $N$.
+%
+Hence $w\in N$.
 \end{proof}
-
-\begin{lemma}[twins refine chains]\label{lem:twins}
-If $u$ and $w$ have the same closed neighbourhood then $\chain{u}=\chain{w}$.
-\end{lemma}
-\begin{proof}
-The transposition of $u$ and $w$ is an automorphism of $G$; it preserves every core value and maps every nucleus to a nucleus containing the other vertex, so condition (b) holds.
-\end{proof}
-
-Chains are much coarser than twin classes on real graphs: twin classes have 1.03 to 1.28 vertices on average on our inputs, while \dblp has 13,459 chains for 317,080 vertices and \webuk has 839 chains for 129,632 vertices.
-
 \begin{proposition}[the coarsest lossless partition]\label{prop:coarsest}
-Call a partition $P$ of $V$ lossless if every community of every size and level is a union of blocks of $P$.
+Call a partition of $V$ \textit{lossless} if every community of every size and level is a union of its blocks.
+%
 The chain partition is lossless, and every lossless partition is at least as fine: each of its blocks lies inside one chain.
 \end{proposition}
 \begin{proof}
-Losslessness of chains is Lemma~\ref{lem:union}.
-Let $P$ be lossless and let $u,v$ share a block of $P$; we show $\chain{u}=\chain{v}$.
+The chain partition is lossless by Lemma~\ref{lem:union}.
+%
+Let $P$ be lossless, and let $u$ and $v$ share a block of $P$.
+%
 By Theorem~\ref{thm:chains} it suffices to show $\own{s}{u}=\own{s}{v}$ at every size.
-If $\core{s}{u}>\core{s}{v}$, the community of $u$ at $(s,\core{s}{u})$ contains $u$ and not $v$, and is not a union of blocks.
-If $\core{s}{u}=\core{s}{v}=k$ and $\own{s}{u}\ne\own{s}{v}$, these two $(s,k)$-nuclei are disjoint, so the community of $u$ at $(s,k)$ again contains $u$ and not $v$.
-Hence the own nodes agree.
+%
+If $\core{s}{u}>\core{s}{v}$, the community of $u$ at $(s,\core{s}{u})$ contains $u$ and not $v$, and it is not a union of blocks of $P$.
+%
+If $\core{s}{u}=\core{s}{v}=k$ and $\own{s}{u}\ne\own{s}{v}$, these two $(s,k)$-nuclei are disjoint, and the community of $u$ at $(s,k)$ again contains $u$ and not $v$.
+%
+Hence the own nodes agree at every size.
 \end{proof}
-So an exact index cannot store fewer than the chains, and storing more than the chains stores nothing that any answer needs; the vertex-to-chain map is the part of the index that no exact representation can avoid.
+\begin{remark}
+An exact index cannot store fewer classes than the chains.
+%
+Storing more than the chains stores nothing that any answer needs.
+%
+The vertex-to-chain map is therefore the one part of an index that no exact representation can avoid; Section~\ref{sec:labels} stores it in one bit per vertex.
+\end{remark}
 
-\stitle{Relation to other atomic units.}
-The SGL index for bipartite bi-components \cite{SGL} also builds its index from cohesive units that are neither nested nor overlapping, so that each vertex is retrieved once per query; there, however, a vertex belongs to one unit per non-dominated parameter pair, so the units overlap and a vertex is stored several times.
-In the $(1,s)$-nucleus setting the per-size laminarity together with Theorem~\ref{thm:chains} makes the units a partition: each vertex is stored once and retrieved once.
+\stitle{Twins.}
+The obvious safe merge is a pair of twins, two vertices with the same closed neighbourhood.
+%
+Twins are a special case.
+\begin{lemma}[twins refine chains]\label{lem:twins}
+If $u$ and $w$ have the same closed neighbourhood, then $\chain{u}=\chain{w}$.
+\end{lemma}
+\begin{proof}
+The transposition of $u$ and $w$ is an automorphism of $G$.
+%
+It preserves every core value.
+%
+It maps every nucleus containing $u$ to a nucleus of the same size and level containing $w$, and the two are the same set because nuclei of one size and level are disjoint.
+%
+Hence condition (b) of Theorem~\ref{thm:chains} holds.
+\end{proof}
+Chains are much coarser than twin classes on real graphs.
+%
+Twin classes have $1.03$ to $1.28$ vertices on average on our inputs.
+%
+\dblp has $13{,}459$ chains for $317{,}080$ vertices, and \webuk has $839$ chains for $129{,}632$ vertices.
 
 \stitle{How many chains.}
 Chains are at most as many as vertices and at most as many as twin classes.
-They are not bounded by the number of canonical nodes: two vertices with the same size-3 node and different size-2 nodes, together with two more vertices in a second size-3 node sharing those two size-2 nodes, give four chains on five nodes, and stacking the construction gives $2^t$ chains on $2t+1$ nodes.
-On our graphs the ratio of chains to nodes ranges from 0.26 to 5.67, so the saving is empirical: it is the number of vertices per chain, and Section~\ref{sec:exp} shows that this single quantity predicts the compression.
+%
+The number of canonical nodes does not bound them.
+%
+Take two vertices with the same size-$3$ node and different size-$2$ nodes, and two more vertices in a second size-$3$ node that share those two size-$2$ nodes; this gives four chains on five nodes, and stacking the construction gives $2^t$ chains on $2t+1$ nodes.
+%
+On our graphs the ratio of chains to nodes ranges from $0.26$ to $5.67$.
+%
+The saving of the index is therefore an empirical quantity: the number of vertices per chain.
+%
+Section~\ref{sec:exp} shows that it predicts the compression on every graph.
 
-\stitle{Example.}
-In the running example (Figure~\ref{fig:example}) the own nodes give four chains: $\{b_1,b_2,b_3\}$ with own nodes (root, $N$, $B$) at sizes 2, 3, 4; $\{a_1,\dots,a_5\}$ with $(A,A,A,A)$ at sizes 2 to 5; $\{u_1,\dots,w_3\}$ with $(W\cup\{x\},N)$; and $\{x\}$ with $(W\cup\{x\},N,B)$.
-The vertex $a_5$ has one more edge than $a_1$ but the same own node at every size, so the extra edge is invisible to every query; $x$ shares the own nodes of $W$ at sizes 2 and 3 and leaves them at size 4, where it lies in the 4-clique $B$ and the vertices of $W$ lie in no 4-clique.
-
+\stitle{Relation to other atomic units.}
+The SGL index for bi-components of bipartite graphs \cite{SGL} also builds its index from cohesive units that are neither nested nor overlapping, and it retrieves each vertex once per query.
+%
+There, however, a vertex belongs to one unit per non-dominated parameter pair, and a vertex is stored several times.
+%
+EquiTruss \cite{akbas2017truss} partitions the edges of a graph into classes that share every $k$-truss community, for one parameter.
+%
+In the $(1,s)$-nucleus setting, the per-size laminarity together with Theorem~\ref{thm:chains} makes the units a partition across every size, and each vertex is stored once and retrieved once.

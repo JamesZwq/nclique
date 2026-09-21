@@ -1,59 +1,93 @@
 \section{One Hierarchy per Size}\label{sec:strees}
-% 2026-09-21 the fair state-of-the-art section (house order, Section 3): the tree of one size, its own nodes, the STrees
-% layout and its cost, the per-size construction, and the closing remark that re-lists the three limitations.
+% 2026-09-21 the fair state-of-the-art section (house order): the tree of one size, its own nodes, the STrees layout
+% and its cost, the per-size construction, and the closing remark that re-lists the three limitations.  Cadence pass.
 
-In this section we describe the hierarchy of one size, the index that stores one such hierarchy per size, and what it costs; the chain index of Sections~\ref{sec:chains} to~\ref{sec:construction} keeps the hierarchies and replaces the storage.
+This section describes the hierarchy of one size and the index that stores one such hierarchy per size.
+%
+The chain index of Sections~\ref{sec:chains} to~\ref{sec:construction} keeps the hierarchies and replaces the storage.
 
 \stitle{The tree of one size.}
 Fix a size $s$.
 %
-Two nuclei of size $s$ are disjoint or nested: if $N$ is an $\Nuc{s}{k}$ and $N'$ an $\Nuc{s}{k'}$ with $k\le k'$ and the two intersect, then $N\cup N'$ satisfies the level-$k$ condition, so $N'\subseteq N$ by the maximality of $N$.
+Two nuclei of size $s$ are disjoint or nested.
 %
-The nuclei of size $s$ therefore form a laminar family, and one vertex set can be a nucleus for a whole interval of levels.
+Let $N$ be an $\Nuc{s}{k}$ and $N'$ an $\Nuc{s}{k'}$ with $k\le k'$ that intersect; then $N\cup N'$ satisfies the level-$k$ condition, and $N'\subseteq N$ by the maximality of $N$.
+%
+The nuclei of size $s$ therefore form a laminar family.
+%
+One vertex set can be a nucleus for a whole interval of levels.
 \begin{definition}[canonical node, own node]\label{def:node}
-A \textit{canonical node} of size $s$ is a vertex set that is an $\Nuc{s}{k}$ for at least one level $k$; its \textit{top} is the largest such $k$, which equals the smallest core value of its vertices.
+A \textit{canonical node} of size $s$ is a vertex set that is an $\Nuc{s}{k}$ for at least one level $k$.
+%
+Its \textit{top} is the largest such $k$, which equals the smallest core value of its vertices.
 %
 The canonical nodes of size $s$ ordered by inclusion form the forest $\Tree{s}$.
 %
 The \textit{own node} of a vertex $v$ with $\core{s}{v}\ge1$, denoted as $\own{s}{v}$, is the $\Nuc{s}{\core{s}{v}}$ containing $v$: the deepest node of $\Tree{s}$ containing $v$, whose top is $\core{s}{v}$.
 \end{definition}
-For $1\le k\le\core{s}{v}$ the community of $v$ at $(s,k)$ is the highest ancestor-or-self of $\own{s}{v}$ in $\Tree{s}$ whose top is at least $k$, since tops decrease strictly along every root path.
+Tops decrease strictly along every root path of $\Tree{s}$.
+%
+For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is therefore the highest ancestor-or-self of $\own{s}{v}$ whose top is at least $k$.
 \begin{example}\label{ex:tree}
 Consider Figure~\ref{fig:example}.
 %
-$\Tree{2}$ has a root holding all $15$ vertices, which is the $(2,k)$-nucleus for $k=1,2,3$ and has top $3$, and two children of top $4$: $A$ and $\{x,u_1,\dots,w_3\}$.
+$\Tree{2}$ has a root holding all $15$ vertices; the root is the $(2,k)$-nucleus for $k=1,2,3$ and has top $3$.
+%
+The root has two children of top $4$, $A$ and $\{x,u_1,\dots,w_3\}$.
 %
 $\Tree{3}$ has two roots, $N=B\cup\{u_1,\dots,w_3\}$ with top $3$ and $A$ with top $6$; they are not joined because the edge $a_5b_3$ lies in no triangle.
 %
 $\Tree{4}$ has the roots $A$ (top $4$) and $B$ (top $1$), and $\Tree{5}$ is $A$ alone.
 %
-The own node of $b_1$ is the root at size $2$, $N$ at size $3$ and $B$ at size $4$; the community of $x$ at $(2,3)$ is the root, the highest ancestor of $\own{2}{x}=\{x,u_1,\dots,w_3\}$ with top at least $3$.
+The own node of $b_1$ is the root at size $2$, $N$ at size $3$ and $B$ at size $4$.
+%
+The community of $x$ at $(2,3)$ is the root, the highest ancestor of $\own{2}{x}=\{x,u_1,\dots,w_3\}$ with top at least $3$.
 \end{example}
 
 \stitle{The index of one size.}
 The tree of one size gives a fast index for that size~\cite{fastHierarchy,Fang2016CLtree}.
 %
-The vertices with $\core{s}{v}\ge1$ are written in a depth-first order of $\Tree{s}$, so that the vertices of every node form one contiguous slice of the array; every node stores its top, its parent and the two ends of its slice, and every vertex stores its own node.
+The vertices with $\core{s}{v}\ge1$ are written in a depth-first order of $\Tree{s}$.
 %
-A community query climbs from the own node to the highest ancestor whose top is at least $k$ and copies that node's slice; a value query reads the stored value.
+The vertices of every node then form one contiguous slice of the array.
 %
-The answer is one memory copy, which is the fastest form an answer can take.
+Every node stores its top, its parent and the two ends of its slice, and every vertex stores its own node.
+%
+A community query climbs from the own node to the highest ancestor whose top is at least $k$ and copies that node's slice.
+%
+A value query reads the stored value.
+%
+The answer is one memory copy, the fastest form an answer can take.
 
 \stitle{One hierarchy per size.}
-Every size has its own tree, so the index for every size stores one tree and one array per size, together with every core value.
+Every size has its own tree.
+%
+The index for every size stores one tree and one array per size, together with every core value.
 %
 We call this index \strees and measure against it throughout.
 %
-A vertex $v$ appears in the arrays of sizes $2$ to $\omg{v}$, so the arrays hold $\sum_v(\omg{v}-1)$ entries, the own-node pointers as many, and the values as many again.
+A vertex $v$ appears in the arrays of sizes $2$ to $\omg{v}$.
 %
-On \webuk a vertex lies in $181$ arrays on average and \strees takes $190$~MB for $129{,}632$ vertices; on a coauthorship graph with cliques of $337$ vertices, $202$~MB for $540{,}486$ vertices; on a coauthorship graph of $4$ million vertices, $506$~MB.
+The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, the own-node pointers as many, and the values as many again.
 %
-Building \strees means one decomposition per size: with the counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting}, the $499$ sizes of \webuk take $15.7$ hours of building and peeling.
+On \webuk a vertex lies in $181$ arrays on average, and \strees takes $190$~MB for $129{,}632$ vertices.
+%
+On a coauthorship graph with cliques of $337$ vertices it takes $202$~MB for $540{,}486$ vertices, and on a coauthorship graph of $4$ million vertices $506$~MB.
+%
+Building \strees means one decomposition per size.
+%
+With the counting-based decomposition \cnd~\cite{Zhang2026NucleusCounting}, the $499$ sizes of \webuk take $15.7$ hours of building and peeling.
 
 \begin{remark}
 \strees answers every query as fast as any index can, and it is the natural index for one size.
 %
-Across sizes it meets the three difficulties of Section~\ref{sec:intro}: \emph{repetition across sizes}, since a vertex is stored once per size it lives in; \emph{contiguity of communities}, since the contiguity holds only inside one size's array and merging vertices across sizes would break it; and \emph{construction of every size}, since each size is one decomposition.
+Across sizes it meets the three difficulties of Section~\ref{sec:intro}.
+%
+\emph{Repetition across sizes}: a vertex is stored once per size it lives in.
+%
+\emph{Contiguity of communities}: the contiguity holds only inside one size's array, and merging vertices across sizes breaks it.
+%
+\emph{Construction of every size}: each size is one decomposition.
 %
 The next sections keep its trees and its memory-copy answers and remove the repetition.
 \end{remark}

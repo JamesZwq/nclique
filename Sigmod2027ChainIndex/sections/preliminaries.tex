@@ -6,20 +6,28 @@ $G=(V,E)$ is a simple undirected graph with $n$ vertices.
 %
 An \textit{$s$-clique} is a set of $s$ pairwise adjacent vertices; a $2$-clique is an edge and a $3$-clique a triangle.
 %
-The \textit{clique number} of a vertex $v$, denoted as $\omg{v}$, is the number of vertices of a largest clique containing $v$; $v$ lies in an $s$-clique exactly when $2\le s\le\omg{v}$.
+The \textit{clique number} of a vertex $v$, denoted as $\omg{v}$, is the number of vertices of a largest clique containing $v$.
+%
+The vertex $v$ lies in an $s$-clique exactly when $2\le s\le\omg{v}$.
 %
 In Figure~\ref{fig:example}, $\omg{a_1}=5$, $\omg{x}=4$ and $\omg{u_1}=3$.
 
 \stitle{Nuclei.}
 The community model of this paper is the $(1,s)$-nucleus of Sariy\"uce et al.~\cite{firstNucleus}, with the vertex as the object and the $s$-clique as the witness.
 \begin{definition}[$(s,k)$-nucleus]\label{def:nucleus}
-For a clique size $s\ge2$ and a level $k\ge1$, an $\Nuc{s}{k}$ is a maximal set $N\subseteq V$ such that every vertex of $N$ lies in at least $k$ $s$-cliques contained in $N$, and any two vertices of $N$ are joined by a sequence of $s$-cliques contained in $N$ in which consecutive cliques share a vertex.
+For a clique size $s\ge2$ and a level $k\ge1$, an $\Nuc{s}{k}$ is a maximal set $N\subseteq V$ with two properties.
+%
+Every vertex of $N$ lies in at least $k$ $s$-cliques contained in $N$.
+%
+Any two vertices of $N$ are joined by a sequence of $s$-cliques contained in $N$ in which consecutive cliques share a vertex.
 \end{definition}
 For $s=2$ the $s$-cliques are edges, and an $\Nuc{2}{k}$ is a connected $k$-core.
 %
 Two nuclei of the same size and level are disjoint, since their union would satisfy the same condition.
 %
-The \textit{core value} of $v$ at size $s$, denoted as $\core{s}{v}$, is the largest $k$ such that $v$ belongs to an $\Nuc{s}{k}$, and $0$ if $v$ lies in no $s$-clique.
+The \textit{core value} of $v$ at size $s$, denoted as $\core{s}{v}$, is the largest $k$ such that $v$ belongs to an $\Nuc{s}{k}$.
+%
+It is $0$ if $v$ lies in no $s$-clique.
 %
 The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$; it is unique because nuclei of one size and level are disjoint.
 \begin{example}\label{ex:nucleus}
@@ -27,7 +35,9 @@ Consider Figure~\ref{fig:example} at size $3$.
 %
 Every vertex of $A$ lies in $\binom{4}{2}=6$ triangles of $A$, and $A$ is a $(3,6)$-nucleus, so $\core{3}{a_i}=6$.
 %
-Each of $b_1,b_2,b_3$ lies in $3$ triangles of $B$, each $u_i$ in the $3$ triangles $\{u_i,w_j,x\}$, and $x$ in $12$; the set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-nucleus, and $\core{3}{v}=3$ for its ten vertices.
+Each of $b_1,b_2,b_3$ lies in $3$ triangles of $B$, each $u_i$ in the $3$ triangles $\{u_i,w_j,x\}$, and $x$ in $12$.
+%
+The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-nucleus, and $\core{3}{v}=3$ for its ten vertices.
 %
 At size $2$ the core values are the $k$-core numbers: $\core{2}{a_i}=4$, $\core{2}{b_i}=3$ and $\core{2}{v}=4$ for $x$ and the six vertices adjacent to it.
 %
@@ -41,7 +51,13 @@ A \textit{value query} $(v,s)$ returns $\core{s}{v}$.
 %
 A \textit{community query} $(v,s,k)$ with $1\le k\le\core{s}{v}$ returns the vertex set of the community of $v$ at $(s,k)$.
 %
-Membership of a vertex in a community and the ladder of nested communities above a vertex follow from the community query and are not separate targets.
+Membership of a vertex in a community follows from the community query.
+%
+So does the ladder of nested communities above a vertex.
+%
+Neither is a separate target.
 
 \stitle{Problem statement.}
-Given a graph $G$, we aim to build an index that answers value and community queries for every clique size $s\ge2$, storing and retrieving each vertex once.
+Given a graph $G$, we aim to build an index that answers value and community queries for every clique size $s\ge2$.
+%
+The index should store and retrieve each vertex once.
