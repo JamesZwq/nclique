@@ -64,7 +64,9 @@ Consider Figure~\ref{fig:layout}.
 %
 The four chains own the label intervals $[0,3)$, $[3,8)$, $[8,14)$ and $[14,15)$, and the bitmap has ones at labels $0$, $3$, $8$ and $14$.
 %
-The vertex $u_1$ has label $8$; three ones lie at or before it, and its chain is $3-1=2$.
+The vertex $u_1$ has label $8$.
+%
+Three ones lie at or before it, and its chain is $3-1=2$.
 \end{example}
 
 \subsection{Chain order}\label{sec:order}
@@ -74,7 +76,9 @@ Fix any preorder numbering $\mathrm{pre}_s$ of each forest $\Tree{s}$.
 %
 Give chain $c$ the key $\mathrm{key}(c)=(\mathrm{pre}_2(\own{2}{c}),\mathrm{pre}_3(\own{3}{c}),\dots)$, the preorder positions of its own nodes size by size.
 %
-Chains are ranked in lexicographic key order; the chain of the vertices in no edge has an empty key and is placed last by convention.
+Chains are ranked in lexicographic key order.
+%
+The chain of the vertices in no edge has an empty key and is placed last by convention.
 %
 The order has one guarantee at size $2$.
 \begin{theorem}[single ranges at size 2]\label{thm:onerange}
@@ -137,7 +141,9 @@ The number of nonempty ranges equals the number of runs that meet the segment, a
 \begin{proof}
 The segment of $X$ runs from the position of its entry to the position of the entry of $Y$.
 %
-Runs are maximal over the whole array, so inside the segment a run can be cut only at the two ends of the segment.
+Runs are maximal over the whole array.
+%
+Inside the segment a run can be cut only at the two ends of the segment.
 %
 The run holding the first position contributes its labels from $v_X$ on, and the run holding the last position contributes up to $v_Y$.
 %
@@ -164,7 +170,9 @@ The answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last
 %
 The community $A$ at $(3,6)$ has the sentinel as successor: $r_A=2\ne3$, so the answer is the first range $[3,hi(2))=[3,8)$, no whole run and an empty last range.
 \end{example}
-The community query of Section~\ref{sec:queries} first climbs to the right node; the node's community is then located with two entry reads and reported as one range per run it meets.
+The community query of Section~\ref{sec:queries} first climbs to the right node.
+%
+The node's community is then located with two entry reads and reported as one range per run it meets.
 
 \subsection{Values}\label{sec:values}
 % 2026-09-21 the certified tail moved here from the former hierarchy section (house order: the theorem where it is used).
@@ -219,7 +227,9 @@ Since $\core{s+1}{v}\ge f_{s+1}(v)$ by (a), equality holds.
 \end{proof}
 We write $\sig{v}$, the \textit{certification point}, for the smallest size at which the value equals the floor, and we set $\sig{v}=\omg{v}+1$ when no size does.
 %
-For $s\ge\sig{v}$ the value is $\binomc{\omg{v}-1}{s-1}$ and is not stored; the values for $2\le s<\sig{v}$ are the \textit{residue} of $v$.
+For $s\ge\sig{v}$ the value is $\binomc{\omg{v}-1}{s-1}$ and is not stored.
+%
+The values for $2\le s<\sig{v}$ are the \textit{residue} of $v$.
 \begin{example}\label{ex:tail}
 Consider Figure~\ref{fig:example}.
 %
@@ -256,7 +266,11 @@ For every size, the widest value of that size decides whether its values take $1
 %
 Fields are aligned to their width, and a query reads the width of the queried size once.
 %
-A value below $2^{32}$ is an integer of $1$, $2$ or $4$ bytes; a larger value is an $8$-byte double, exact below $2^{53}$, which covers every value on our graphs.
+A value below $2^{32}$ is an integer of $1$, $2$ or $4$ bytes.
+%
+A larger value is an $8$-byte double, exact below $2^{53}$.
+%
+This covers every value on our graphs.
 %
 The decomposition itself is computed with exact integers.
 

@@ -12,7 +12,9 @@ No timing run of ours shared a machine with another timing run of ours.
 %
 The servers carried a background load of 1 to 8 from other users.
 %
-Laptop and server latencies are not directly comparable, since the servers' single-core speed is 1.5 to 3 times lower; every table names its machine.
+Laptop and server latencies are not directly comparable, since the servers' single-core speed is 1.5 to 3 times lower.
+%
+Every table names its machine.
 
 \stitle{Algorithms.}
 \chainidx is the index of Sections~\ref{sec:index} to~\ref{sec:construction}, built by \build and queried by \query.
@@ -42,7 +44,9 @@ We use \numgraphs{} real graphs from five families.
 %
 They are collaboration graphs (\textsf{ca-*}, \textsf{com-dblp}, \textsf{dblp-*}), citation graphs (\textsf{cit-*}), web graphs (\textsf{web-*}), product co-purchase graphs (\textsf{amazon*}, \textsf{com-amazon}), and social and communication networks (\textsf{soc-*}, \textsf{com-youtube}, \textsf{email-Eu-core}, \textsf{wiki-Talk}, \textsf{loc-Brightkite}, \textsf{tech-as-skitter}).
 %
-They range from $1{,}005$ to $4{,}049{,}537$ vertices, with largest cliques from $7$ to $500$ vertices; Table~\ref{tab:size} lists them with their number of sizes $s_{\max}$.
+They range from $1{,}005$ to $4{,}049{,}537$ vertices, with largest cliques from $7$ to $500$ vertices.
+%
+Table~\ref{tab:size} lists them with their number of sizes $s_{\max}$.
 %
 Three larger graphs, \textsf{com-lj}, \textsf{ca-hollywood-2009} and \textsf{com-orkut}, exhaust the 503~GB of the server inside the clique tree of the peel.
 
@@ -53,7 +57,9 @@ The workload has $20{,}000$ community queries at the vertex's own level ($k=\cor
 %
 Every latency is the per-query average of the median of five passes after one warm-up pass.
 %
-Sizes are bytes of the structure in memory; build times exclude the reading of the graph.
+Sizes are bytes of the structure in memory.
+%
+Build times exclude the reading of the graph.
 %
 Every number in the tables and figures is generated from the recorded measurements.
 
@@ -99,7 +105,9 @@ The certified tail (Theorem~\ref{thm:tail}) is what makes them small.
 %
 The share of active (vertex, size) pairs whose value must be stored ranges from \storedmin{} percent to \storedmax{} percent, with a median of \storedmedian{} percent (Table~\ref{tab:size}).
 %
-On \webuk one residue serves $23.5$ million pairs; \emailcore is the other end.
+On \webuk one residue serves $23.5$ million pairs.
+%
+\emailcore is the other end.
 %
 The share is lowest on the graphs with large cliques, where most of a vertex's values lie in its tail.
 %
@@ -248,7 +256,9 @@ The panels show the bytes of both indexes, then the build time of \chainidx and 
 %
 A sample keeps about the square of the fraction of the edges.
 %
-The curves therefore show a graph family growing in size and in density at once; the largest cliques of \textsf{web-BerkStan} go from $45$ to $202$ vertices.
+The curves therefore show a graph family growing in size and in density at once.
+%
+The largest cliques of \textsf{web-BerkStan} go from $45$ to $202$ vertices.
 %
 \chainidx grows about linearly with the vertices, $2.9$ to $3.2$ bytes per vertex on \textsf{cit-Patents} and $5.3$ to $12.6$ on \textsf{web-BerkStan} as its cliques grow.
 %

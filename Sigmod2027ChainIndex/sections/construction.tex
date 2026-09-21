@@ -62,7 +62,9 @@ In the sum of all forward counts every $s$-clique is counted exactly once, at it
 %
 A peel updates the counts of a removed vertex's neighbours at every removal.
 %
-The forward counts need no such update, since each clique is charged to one vertex in advance; they are computed in one sweep of the paths along $\pi$.
+The forward counts need no such update, since each clique is charged to one vertex in advance.
+%
+They are computed in one sweep of the paths along $\pi$.
 \begin{theorem}[order replay]\label{thm:replay}
 $U_s(v)\ge\core{s}{v}$ for every $v$.
 %
@@ -81,7 +83,7 @@ The part of $W_k$ reachable from $v$ through $s$-cliques of $W_k$ is therefore a
 %
 Conversely, suppose $U_s$ is the core value.
 %
-The set $\{u:\core{s}{u}\ge k\}$ is the union of all witnesses at level $k$, so every vertex in it lies in at least $k$ $s$-cliques inside it, which is the condition.
+The set $\{u:\core{s}{u}\ge k\}$ is the union of all witnesses at level $k$; every vertex in it lies in at least $k$ $s$-cliques inside it, which is the condition.
 \end{proof}
 We call the condition of the theorem the \textit{certificate}.
 %
@@ -89,13 +91,17 @@ When it holds, the values of the size are the running maxima, at the cost of one
 %
 When it fails, the size is peeled exactly.
 %
-A bucket queue yields the vertex of smallest count, the vertex is removed, and the counts of the vertices on the paths through it are decreased by the cliques that contained it, computed from the sets of each path in closed form.
+A bucket queue yields the vertex of smallest count, and the vertex is removed.
+%
+The counts of the vertices on the paths through it are decreased by the cliques that contained it, computed from the sets of each path in closed form.
 %
 The removal order of that peel is the order tried at the next size.
 %
 The previous size's values also cap the next size's.
 %
-By the Kruskal--Katona theorem \cite{kruskal1963,katona1968}, a vertex with $\core{s-1}{v}$ cliques of $s-1$ vertices lies in at most a computable number of $s$-cliques, and the sweep starts every count from that bound.
+By the Kruskal--Katona theorem \cite{kruskal1963,katona1968}, a vertex with $\core{s-1}{v}$ cliques of $s-1$ vertices lies in at most a computable number of $s$-cliques.
+%
+The sweep starts every count from that bound.
 \begin{example}\label{ex:replay}
 Consider Figure~\ref{fig:example} at size $2$ and the order $\pi=(b_1,b_2,b_3,a_1,\dots,a_5,u_1,u_2,u_3,w_1,w_2,w_3,x)$.
 %
@@ -204,7 +210,9 @@ Consider Figure~\ref{fig:example}.
 %
 At size $2$ the values are $4$ on $A$ and on $\{x,u_1,\dots,w_3\}$ and $3$ on $b_1,b_2,b_3$ (Example~\ref{ex:replay}).
 %
-Activating the value $4$ joins $A$ into one component and $\{x,u_1,\dots,w_3\}$ into another; these are the two nodes of top $4$.
+Activating the value $4$ joins $A$ into one component and $\{x,u_1,\dots,w_3\}$ into another.
+%
+These are the two nodes of top $4$.
 %
 Activating the value $3$ joins everything into the root of top $3$, the own node of $b_1,b_2,b_3$.
 %
@@ -235,4 +243,6 @@ Peak memory is the clique tree and the graph, plus the values of two consecutive
 %
 The last three are linear in the vertices and the chains.
 %
-No stage holds the matrix of all core values of all vertices; the values that survive are the residues, kept per chain.
+No stage holds the matrix of all core values of all vertices.
+%
+The values that survive are the residues, kept per chain.

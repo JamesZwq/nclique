@@ -63,7 +63,9 @@ $A$ is a separate community, because the edge $a_5b_3$ lies in no triangle.
 %
 At size $4$, $x$ lies in one $4$-clique, its core value is $1$, and its community at level $1$ is $B$.
 %
-The same vertex has a community of $7$, $10$ and $4$ vertices at its own level of sizes $2$, $3$ and $4$; the size selects which group a query asks for.
+The same vertex has a community of $7$, $10$ and $4$ vertices at its own level of sizes $2$, $3$ and $4$.
+%
+The size selects which group a query asks for.
 % trace 2026-09-21: tools/example_check.py; neighbours of x: b1,b2,b3,u1..u3,w1..w3 = 9; triangles of x: C(3,2)+3*3 = 12.
 \end{example}
 
@@ -106,7 +108,9 @@ Let $\omg{v}$ be the size of the largest clique containing $v$.
 %
 The vertex lies in cliques of $2,3,\dots,\omg{v}$ vertices, so it appears in $\omg{v}-1$ arrays and carries $\omg{v}-1$ core values.
 %
-On the web graph \webuk, cliques reach $500$ vertices and a vertex lies in $181$ arrays on average; the index \strees takes $190$~MB for $129{,}632$ vertices, or $1.5$~KB per vertex.
+On the web graph \webuk, cliques reach $500$ vertices and a vertex lies in $181$ arrays on average.
+%
+The index \strees takes $190$~MB for $129{,}632$ vertices, or $1.5$~KB per vertex.
 %
 On a coauthorship graph with cliques of $337$ vertices it takes $202$~MB for $540{,}486$ vertices.
 %
@@ -153,14 +157,18 @@ The \emph{own node} of a vertex at a size is the deepest node of that size's tre
 %
 We prove that two vertices are hierarchy-equivalent exactly when they have the same own node at every size (Theorem~\ref{thm:chains}).
 %
-The classes of hierarchy-equivalent vertices are therefore read off the per-size trees; we call them \emph{chains}, since a class follows one chain of own nodes through the sizes.
+The classes of hierarchy-equivalent vertices are therefore read off the per-size trees.
+%
+We call them \emph{chains}, since a class follows one chain of own nodes through the sizes.
 %
 Every community is a union of chains, and no partition with fewer classes answers every query (Proposition~\ref{prop:coarsest}).
 %
 On \dblp there are $13{,}459$ chains for $317{,}080$ vertices, $24$ vertices per chain.
 %
 \sstitle{Aligned labels, chain order and run arrays.}
-We relabel the vertices so that every chain is one interval of labels; a community is then a list of label ranges.
+We relabel the vertices so that every chain is one interval of labels.
+%
+A community is then a list of label ranges.
 %
 We rank the chains by the depth-first positions of their own nodes, size by size.
 %
@@ -218,7 +226,9 @@ It is built for every size \priormin$\times$ to \priormax$\times$ faster than on
 %
 Two case studies on graphs whose vertices carry names and categories show what the size buys.
 %
-On DBLP the size that best matches a ground-truth community changes from query to query; on Amazon the size narrows a community from a store to a shelf.
+On DBLP the size that best matches a ground-truth community changes from query to query.
+%
+On Amazon the size narrows a community from a store to a shelf.
 
 \stitle{Organization.}
 Section~\ref{sec:prelim} fixes the definitions.

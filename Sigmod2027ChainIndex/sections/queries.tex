@@ -46,7 +46,9 @@ The residue of size $s$ sits at the chain's residue start plus the bytes of the 
 %
 \Community reads the chain and its own node $X$ at size $s$ from the trajectory (Line~\ref{ln:q-own}).
 %
-It then climbs towards the root to the last node whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}); by Section~\ref{sec:strees} this node is the community of $v$ at $(s,k)$.
+It then climbs towards the root to the last node whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}).
+%
+By Section~\ref{sec:strees} this node is the community of $v$ at $(s,k)$.
 %
 The climb follows parent pointers.
 %

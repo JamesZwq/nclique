@@ -51,7 +51,9 @@ The graph is connected and its smallest degree is $3$ (at $b_1$ and $b_2$), so t
 %
 The root has two children of top $4$, $A$ and $\{x,u_1,\dots,w_3\}$.
 %
-$\Tree{3}$ has two roots and no other node: $N=B\cup\{u_1,\dots,w_3\}$ with top $3$ and $A$ with top $6$; no triangle joins them, because the edge $a_5b_3$ lies in none.
+$\Tree{3}$ has two roots and no other node: $N=B\cup\{u_1,\dots,w_3\}$ with top $3$ and $A$ with top $6$.
+%
+No triangle joins them, because the edge $a_5b_3$ lies in none.
 %
 $\Tree{4}$ has the roots $A$ (top $4$) and $B$ (top $1$), and $\Tree{5}$ is $A$ alone.
 %
@@ -67,7 +69,9 @@ The vertices with $\core{s}{v}\ge1$ are written into one array in a depth-first 
 %
 The vertices of every node then form one contiguous slice of the array, since the traversal visits a node and all its descendants before moving on.
 %
-Every node stores its top, its parent and the two ends of its slice; every vertex stores its own node and its core value.
+Every node stores its top, its parent and the two ends of its slice.
+%
+Every vertex stores its own node and its core value.
 %
 A community query climbs from the own node to the highest ancestor whose top is at least $k$ and copies that node's slice.
 %
@@ -84,7 +88,9 @@ We call this index \strees and measure against it throughout.
 %
 A vertex $v$ appears in the arrays of the $\omg{v}-1$ sizes $2$ to $\omg{v}$.
 %
-The arrays therefore hold $\sum_v(\omg{v}-1)$ entries; there are as many own-node pointers, and as many stored values.
+The arrays therefore hold $\sum_v(\omg{v}-1)$ entries.
+%
+There are as many own-node pointers, and as many stored values.
 %
 On \webuk a vertex lies in $181$ arrays on average, and \strees takes $190$~MB for $129{,}632$ vertices.
 %

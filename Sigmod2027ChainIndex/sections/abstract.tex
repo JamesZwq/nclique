@@ -19,7 +19,9 @@ The classes, which we call chains, are read off the per-size hierarchies, partit
 %
 We propose \chainidx, an index over chains.
 %
-Aligned labels make every chain one interval of ids and every community a list of ranges; a chain order makes every size-$2$ community one range; per-size run arrays with entry points return any community as the fewest ranges in constant time.
+Aligned labels make every chain one interval of ids and every community a list of ranges.
+%
+A chain order makes every size-$2$ community one range, and per-size run arrays with entry points return any community as the fewest ranges in constant time.
 %
 Core values are stored only below the size at which they reach a closed form.
 %
@@ -31,4 +33,8 @@ It locates a community in \locmin{} to \locmax{} nanoseconds and lists it at the
 %
 It is built for every size \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
 %
-Two case studies on graphs whose vertices carry names and categories show that the best size changes from query to query on DBLP, and that the size zooms from a store of $157{,}331$ products to a six-album shelf on Amazon.
+Two case studies on graphs whose vertices carry names and categories show what the size buys.
+%
+On DBLP the best size changes from query to query.
+%
+On Amazon the size zooms from a store of $157{,}331$ products to a six-album shelf.
