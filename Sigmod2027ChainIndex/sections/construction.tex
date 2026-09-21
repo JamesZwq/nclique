@@ -1,7 +1,18 @@
 \section{Construction}\label{sec:construction}
+% 2026-09-21 house shape: opener; Figure 3; the clique tree and the replay theorem (announced, named, proof <= 8 sentences);
+% Algorithm Build as float + walk + example; cost closer.  Numbers from LEDGER.md; the peel is this paper's own.
 
-The index is built from one all-size peel and one pass per size, without ever holding all core values at once; the peel is ours and is described here so that the construction stands on its own.
+This section answers the third difficulty of Section~\ref{sec:intro}: how to build the hierarchies of every size from one computation.
+%
+The index is built from one clique tree and one peel per size, without ever holding all core values at once.
+%
 Figure~\ref{fig:pipeline} shows the stages and what flows between them.
+%
+The peel delivers the values of one size at a time.
+%
+The tree of that size is built as its values arrive and is reduced to chains at once.
+%
+The layout pass turns the chains into labels, run arrays and residues.
 
 \begin{figure*}[t]
 \centering
@@ -20,39 +31,179 @@ Figure~\ref{fig:pipeline} shows the stages and what flows between them.
 \caption{Construction: one clique tree serves every size; the peel streams the values of one size at a time; each size's tree is built as its values arrive and immediately reduced to chains; the layout pass turns the chain trie into labels, run arrays and residues.}\label{fig:pipeline}
 \end{figure*}
 
-\stitle{Core values: one clique tree, every size.}
-The counts come from a pivoting clique tree \cite{Pivoter}, built once: its paths partition the $s$-cliques of every size at the same time, a path with mandatory set $H$ and optional set $Q$ representing the cliques $H\cup X$ for $X\subseteq Q$, $|X|=s-|H|$, so the number of $s$-cliques of a vertex inside any vertex set is a sum of binomial coefficients over the paths through it.
-The sizes are peeled in increasing order, and each size first tries to reuse the elimination order of the previous one.
+\stitle{Core values from one clique tree.}
+The counts come from a pivoting clique tree~\cite{Pivoter}, built once.
+%
+Its paths partition the $s$-cliques of every size at the same time.
+%
+A path has a mandatory set $H$ and an optional set $Q$, and it represents the cliques $H\cup X$ for $X\subseteq Q$ with $|X|=s-|H|$.
+%
+The number of $s$-cliques of a vertex inside any vertex set is therefore a sum of binomial coefficients over the paths through it.
+%
+The sizes are peeled in increasing order.
+%
+Each size first tries to reuse the elimination order of the previous size, and the next theorem says when the reuse is exact.
+%
 Write $d_s(W,u)$ for the number of $s$-cliques of $u$ inside $G[W]$.
-For a permutation $\pi=(v_0,\dots,v_{n-1})$ let $f_s(v_i)=d_s(\{v_i,\dots,v_{n-1}\},v_i)$, the $s$-cliques of $v_i$ inside its suffix, and $U_s(v_i)=\max_{j\le i}f_s(v_j)$.
-Every $s$-clique is counted exactly once, at its earliest vertex in $\pi$, so $f_s$ is one sweep of the paths along $\pi$ with no propagation of losses.
+%
+For a permutation $\pi=(v_0,\dots,v_{n-1})$ of the vertices, let $f_s(v_i)=d_s(\{v_i,\dots,v_{n-1}\},v_i)$ be the $s$-cliques of $v_i$ inside its suffix, and let $U_s(v_i)=\max_{j\le i}f_s(v_j)$.
+%
+Every $s$-clique is counted exactly once, at its earliest vertex in $\pi$.
+%
+The forward counts are therefore one sweep of the paths along $\pi$, with no propagation of losses.
 \begin{theorem}[order replay]\label{thm:replay}
-$U_s(v)\ge\core{s}{v}$ for every $v$, and $U_s=\core{s}{\cdot}$ at every vertex if and only if every $v$ has at least $U_s(v)$ $s$-cliques inside $\{u: U_s(u)\ge U_s(v)\}$.
+$U_s(v)\ge\core{s}{v}$ for every $v$.
+%
+Moreover, $U_s=\core{s}{\cdot}$ at every vertex if and only if every $v$ has at least $U_s(v)$ $s$-cliques inside $\{u: U_s(u)\ge U_s(v)\}$.
 \end{theorem}
 \begin{proof}
-For a witness $W\ni v$ let $v_j$ be its earliest vertex; $W$ lies in the suffix of $v_j$, so $\min_{u\in W}d_s(W,u)\le f_s(v_j)\le U_s(v)$.
-If the condition holds, $W_k=\{u:U_s(u)\ge k\}$ has minimum $s$-degree at least $k$ for every level $k$ (a vertex $v$ of $W_k$ has its own set $\{u:U_s(u)\ge U_s(v)\}$ inside $W_k$), so the $s$-clique-connected component of $W_k$ containing $v$ is a level-$k$ witness and $\core{s}{v}\ge U_s(v)$.
-Conversely, if $U_s$ is the core value, $\{u:\core{s}{u}\ge k\}$ is the union of the level-$k$ witnesses and has minimum $s$-degree at least $k$, which is the condition.
+For a witness $W\ni v$ let $v_j$ be its earliest vertex; $W$ lies in the suffix of $v_j$, and $\min_{u\in W}d_s(W,u)\le f_s(v_j)\le U_s(v)$.
+%
+Suppose the condition holds and fix a level $k$; let $W_k=\{u:U_s(u)\ge k\}$.
+%
+A vertex $v$ of $W_k$ has its set $\{u:U_s(u)\ge U_s(v)\}$ inside $W_k$, and it has at least $U_s(v)\ge k$ $s$-cliques there.
+%
+The $s$-clique-connected component of $W_k$ containing $v$ is therefore a level-$k$ witness, and $\core{s}{v}\ge U_s(v)$.
+%
+Conversely, suppose $U_s$ is the core value.
+%
+The set $\{u:\core{s}{u}\ge k\}$ is the union of the level-$k$ witnesses and has minimum $s$-degree at least $k$, which is the condition.
 \end{proof}
-When the certificate holds the size costs one sweep; when it fails the size is peeled exactly (a bucket peel that removes the vertex of smallest count and updates the paths through it in closed form), and the resulting order is the candidate for the next size.
+When the certificate holds, the size costs one sweep.
+%
+When it fails, the size is peeled exactly.
+%
+A bucket peel removes the vertex of smallest count and updates the paths through it in closed form.
+%
+The resulting order is the candidate for the next size.
+%
 The previous size's values also cap the next size's: the Kruskal--Katona shadow bound turns $\core{s-1}{v}$ into an upper bound on $\core{s}{v}$ that seeds the counts.
-The values arrive one size at a time; the index keeps a two-row window, not the $s_{\max}\times n$ matrix.
+\begin{example}\label{ex:replay}
+Consider Figure~\ref{fig:example} at size $2$ and the order $\pi=(b_1,b_2,b_3,a_1,\dots,a_5,u_1,u_2,u_3,w_1,w_2,w_3,x)$.
+%
+The forward count of a vertex is its number of edges to later vertices.
+%
+It is $3,2,2$ for $b_1,b_2,b_3$; $4,3,2,1,0$ for $a_1,\dots,a_5$; $4,4,4$ for $u_1,u_2,u_3$; $1,1,1$ for $w_1,w_2,w_3$; and $0$ for $x$.
+%
+The prefix maxima are $U_2=3$ on $b_1,b_2,b_3$ and $U_2=4$ on every later vertex.
+%
+The certificate checks every vertex inside the set of vertices with at least its prefix maximum.
+%
+$b_1$ has $3$ edges in the whole graph.
+%
+Each of the twelve vertices with $U_2=4$ has at least $4$ edges inside $A\cup\{x,u_1,\dots,w_3\}$: $4$ for each $a_i$, $u_i$ and $w_i$, and $6$ for $x$.
+%
+The certificate holds, and $U_2$ is the size-$2$ core value of every vertex.
+%
+With $x$ first instead, its forward count is $9$ and every prefix maximum is $9$.
+%
+The vertex $a_1$ has only $4$ edges inside the whole graph, the certificate fails, and the size is peeled exactly.
+% trace 2026-09-21, tools/example_check.py: f=[3,2,2,4,3,2,1,0,4,4,4,1,1,1,0], U=[3,3,3,4,...,4], b=[3,3,4,4,4,4,4,4,4,4,4,4,4,4,6];
+% x-first order: f(x)=9, U=9 everywhere, b(a1)=4 < 9 -> fails.
+\end{example}
 
-\stitle{One tree per size, on arrival.}
-When the values of size $s$ arrive, the vertices are activated from the highest value down.
-A leaf of the clique tree becomes live when its mandatory vertices are active and at least $s$ of its vertices are active; the active vertices of a live leaf are pairwise adjacent inside a common clique, so they are joined in a union-find structure.
-After each level the components that changed are the canonical nodes created at that level, and every activated vertex records its own node.
-This is the pass that produces $\Tree{s}$ with tops, parents and own nodes.
 
-\stitle{Chains by refinement.}
-Chains are refined size by size in a prefix trie: at $s=2$ vertices are grouped by their own node; at each later size every group is split by the own node of that size; a vertex whose $\omega$ has been reached terminates at its current trie node.
-The trie's DFS order, terminating chains before children, is the lexicographic key order of Section~\ref{sec:order}, so it yields the chain ranks, the aligned labels and the bitmap directly.
-Working memory beyond the peel is one trie node per distinct own-node prefix and $O(n)$ words.
+\begin{algorithm}[t]
+\caption{\build: the chain index from one clique tree.}\label{alg:build}
+\SetAlgoLined\DontPrintSemicolon
+\KwIn{a graph $G$.}
+\KwOut{\chainidx: the map, the chain records, one tree with a run array per size.}
+$T\leftarrow$ clique tree of $G$; $\pi\leftarrow$ degeneracy order\;\label{ln:b-tree}
+put every vertex at the root of an empty trie\;\label{ln:b-trie}
+\For{$s\leftarrow2,3,\dots$ \KwSty{while} some vertex lies in an $s$-clique}{\label{ln:b-sizes}
+  $f_s\leftarrow$ forward counts along $\pi$; $U_s\leftarrow$ prefix maxima\;\label{ln:b-forward}
+  \lIf{the certificate of Theorem~\ref{thm:replay} holds}{$\core{s}{\cdot}\leftarrow U_s$}\label{ln:b-accept}
+  \lElse{$(\core{s}{\cdot},\pi)\leftarrow$ exact peel of size $s$ on $T$}\label{ln:b-peel}
+  \ForEach{value $k$ of size $s$ in decreasing order}{\label{ln:b-levels}
+    activate the vertices with $\core{s}{v}=k$\;\label{ln:b-activate}
+    join the active vertices of every live leaf of $T$\;\label{ln:b-union}
+    each changed component becomes a node of top $k$\;\label{ln:b-nodes}
+    the vertices activated at $k$ record it as their own node\;\label{ln:b-own}
+  }
+  \lForEach{active vertex $v$}{move $v$ to the trie child $\own{s}{v}$}\label{ln:b-refine}
+}
+rank the trie leaves in depth-first order; label the chains\;\label{ln:b-rank}
+write the bitmap of chain starts\;\label{ln:b-bitmap}
+\ForEach{size $s$}{\label{ln:b-layout}
+  traverse $\Tree{s}$ with children by smallest rank\;\label{ln:b-traverse}
+  merge consecutive ranks into runs; record the entries\;\label{ln:b-runs}
+}
+\lForEach{chain $c$}{store $\omega$, $\sigma$, residues below $\sigma$, trajectory}\label{ln:b-values}
+\end{algorithm}
 
-\stitle{Run arrays and values.}
-For each size, the tree is traversed with children ordered by their smallest chain rank; the resulting chain sequence is merged into runs and every node's entry is recorded.
-Each chain then receives $\omega$, its trajectory, and its values: $\sigma$ is the first size at which the chain's value equals the floor $\binomc{\omega-1}{s-1}$ (Theorem~\ref{thm:tail} says it stays there), only the values below $\sigma$ are stored as residues, and the per-size widths are chosen from the maxima.
+\stitle{Algorithm.}
+Algorithm~\ref{alg:build} has three steps: the peel of every size, the refinement of the chains, and the layout.
+%
+\emph{During the peel}, the algorithm builds the clique tree once and takes the degeneracy order as the first candidate order (Line~\ref{ln:b-tree}).
+%
+For every size (Line~\ref{ln:b-sizes}) it computes the forward counts along the current order in one sweep of the tree (Line~\ref{ln:b-forward}).
+%
+Based on Theorem~\ref{thm:replay}, it accepts the prefix maxima as the core values when the certificate holds (Line~\ref{ln:b-accept}).
+%
+Otherwise it peels the size exactly and keeps the new order for the next size (Line~\ref{ln:b-peel}).
+%
+\emph{During the refinement}, the algorithm builds the tree of size $s$ from the values of that size.
+%
+It activates the vertices from the highest value down (Line~\ref{ln:b-levels}).
+%
+It activates the vertices of the current value (Line~\ref{ln:b-activate}).
+%
+A leaf of the clique tree is live when its mandatory vertices are active and at least $s$ of its vertices are active.
+%
+The active vertices of a live leaf are pairwise adjacent inside one clique, and the algorithm joins them in a union-find (Line~\ref{ln:b-union}).
+%
+After each value, the components that changed are the canonical nodes of that top (Line~\ref{ln:b-nodes}).
+%
+Every vertex activated at that value records its component as its own node (Line~\ref{ln:b-own}).
+%
+The chains are refined in a prefix trie.
+%
+At size $2$ the vertices are grouped by their own node, and at each later size every group is split by the own node of that size (Line~\ref{ln:b-refine}).
+%
+A vertex whose clique number has been reached stays at its trie node.
+%
+\emph{During the layout}, the algorithm takes the depth-first order of the trie, a node's own vertices before its children.
+%
+This is the lexicographic key order of Section~\ref{sec:order}, and it yields the chain ranks and the aligned labels (Line~\ref{ln:b-rank}) and the bitmap (Line~\ref{ln:b-bitmap}).
+%
+For each size the algorithm traverses the tree with children ordered by their smallest chain rank (Line~\ref{ln:b-traverse}).
+%
+It merges the chain sequence into runs and records every node's entry (Line~\ref{ln:b-runs}).
+%
+Each chain then receives $\omega$, its trajectory and its values (Line~\ref{ln:b-values}).
+%
+The certification point $\sigma$ is the first size at which the chain's value equals the floor, and only the values below $\sigma$ are stored.
+
+\begin{example}\label{ex:build}
+Consider Figure~\ref{fig:example}.
+%
+At size $2$ the values are $4$ on $A$ and on $\{x,u_1,\dots,w_3\}$ and $3$ on $b_1,b_2,b_3$ (Example~\ref{ex:replay}).
+%
+Activating the value $4$ joins $A$ into one component and $\{x,u_1,\dots,w_3\}$ into another; these are the two nodes of top $4$.
+%
+Activating the value $3$ joins everything into the root of top $3$, the own node of $b_1,b_2,b_3$.
+%
+The trie now has three children of the root: $\{b_i\}$, $\{a_i\}$ and $\{x,u_1,\dots,w_3\}$.
+%
+At size $3$ the third group is not split, since all seven vertices have own node $N$.
+%
+At size $4$ it splits into $\{u_1,\dots,w_3\}$, whose clique number $3$ has been reached, and $\{x\}$ with own node $B$.
+%
+The four leaves are the chains of Example~\ref{ex:chains}, ranked $\{b_i\},\{a_i\},\{u,w\},\{x\}$ by the depth-first order of the trie.
+%
+The layout of size $3$ produces the runs $[0,3)$, $[8,15)$, $[3,8)$ and the entries of Figure~\ref{fig:layout}.
+% trace 2026-09-21: tools/example_check.py (nodes, own nodes, chains); LEDGER.md (ranks, runs, entries).
+\end{example}
 
 \stitle{Cost.}
-The peel and the clique tree dominate; the trie, the ranks, the run arrays and the values add a few percent (Section~\ref{sec:exp}).
-Peak memory is the peel's clique tree plus the graph; the chain index itself is small.
+The peel and the clique tree dominate the build.
+%
+The refinement adds one union-find operation per live leaf and value, and one trie step per vertex and size.
+%
+The layout adds one pass per size over the chains.
+%
+Together they are a few percent of the total (Section~\ref{sec:exp}).
+%
+Peak memory is the clique tree plus the graph plus a two-row window of values.
+%
+No stage holds the $s_{\max}\times n$ matrix of core values, and the chain index itself is small.

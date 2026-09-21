@@ -69,3 +69,21 @@ for s in range(2, 6):
 chains = defaultdict(list)
 for v in names: chains[tuple(own.get((v, s)) for s in range(2, 6))].append(v)
 print('chains:', [sorted(vs) for vs in chains.values()])
+
+# ---- order replay certificate at size 2 (Theorem replay) on two orders
+def replay(order, s=2):
+    pos = {v: i for i, v in enumerate(order)}
+    f = {}
+    for i, v in enumerate(order):
+        suffix = set(order[i:]); f[v] = sum(1 for c in cliques(suffix, s) if v in c)
+    U = {}; m = 0
+    for v in order: m = max(m, f[v]); U[v] = m
+    ok = True; detail = []
+    for v in order:
+        Wv = {u for u in names if U[u] >= U[v]}; b = sum(1 for c in cliques(Wv, s) if v in c)
+        detail.append((v, f[v], U[v], b, b >= U[v])); ok &= b >= U[v]
+    return f, U, detail, ok
+for order in (['b1','b2','b3','a1','a2','a3','a4','a5','u1','u2','u3','w1','w2','w3','x'], ['x','a1','a2','a3','a4','a5','b1','b2','b3','u1','u2','u3','w1','w2','w3']):
+    f, U, detail, ok = replay(order)
+    print('order', order[:3], '... certificate', ok, 'U==kappa2:', all(U[v] == kappa[v][2] for v in names))
+    print('   f:', [f[v] for v in order]); print('   U:', [U[v] for v in order]); print('   b:', [d[3] for d in detail])

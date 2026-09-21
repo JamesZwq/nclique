@@ -17,7 +17,7 @@ The value query reads the chain record; the community query climbs the tree of t
 \Proc{\Value{$v,s$}}{
   $c\leftarrow\mathrm{rank}_1(v)-1$\;\label{ln:q-chain}
   \lIf{$s>\omega[c]$}{\Return $0$}\label{ln:q-zero}
-  \lIf{$s\ge\sigma[c]$}{\Return $\binom{\omega[c]-1}{s-1}$ from the binomial table}\label{ln:q-floor}
+  \lIf{$s\ge\sigma[c]$}{\Return $\binom{\omega[c]-1}{s-1}$}\label{ln:q-floor}
   \Return residue$[c][s]$\;\label{ln:q-residue}
 }
 \Proc{\Community{$v,s,k$}}{
