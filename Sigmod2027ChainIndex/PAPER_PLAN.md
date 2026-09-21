@@ -73,3 +73,15 @@ points and certified tails turn the partition into contiguous memory.
 ## State on 2026-09-21 (evening)
 
 12 pages, compiles clean. Experiments: two case studies (Exp-1 ground truth, Exp-2 Amazon zoom), size (+values stored), bytes, design study (bytes only), latency (+S trees in-process baseline; Fig regimes), latency by size/answer (Fig profile), construction, scalability (Fig scale, all four panels with baselines), CND on 27 pairs, correctness. Pending data: tods1 CND on the last five graphs (web-it, coauthors, pokec, skitter, wiki-Talk), then tods1 S trees + profiles (20 graphs) -> queries table S trees column complete, CND table 32 pairs. Decisions still the user's: venue, title, Overleaf.
+
+## Story line (2026-09-21, user: "don't mind the pages, design the story")
+
+Problem first: the size is a zoom (Kind of Blue) and a query parameter (DBLP ground truth); two ways to serve it today
+(decompose per query: 0.x s to 2 min per size, 16 h over all sizes; one tree per size: a vertex once per size, 200 MB).
+Question: what must an index store? -> hierarchy equivalence -> Theorem chains (own nodes) -> Proposition coarsest
+lossless partition. Four named ideas with guarantees: aligned labels (bitmap, ranges), chain order (size-2 single range;
+Corollary: the size-2 layer is a k-core index with single-interval answers), run arrays + entry points (O(1), fewest
+ranges), certified tail (values below sigma only). Construction: one clique tree, order replay (Theorem replay), streaming.
+Running example (Figure 1, Section 2) used in Sections 3, 4, 5 (Figure 2: the three blocks on the example), 6 (query walk).
+Figure 3: construction pipeline. Queries before construction. Experiments grouped by question: why every size (two case
+studies) / how small / how fast / what it costs to build / correctness. Conclusion retells the story. 13 pages.
