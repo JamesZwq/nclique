@@ -22,7 +22,6 @@ We write $\traj{v}=(\own{2}{v},\dots,\own{\omg{v}}{v})$.
 %
 The vertices with equal trajectories form a \textit{chain}, one chain per distinct trajectory, and the isolated vertices, those in no edge, form one more chain.
 \end{definition}
-The name reflects the shape: a chain follows one chain of own nodes through the sizes.
 \begin{theorem}[own nodes decide hierarchy equivalence]\label{thm:chains}
 Two vertices $u$ and $v$ with $\omg{u},\omg{v}\ge2$ are hierarchy-equivalent if and only if $\traj{u}=\traj{v}$.
 \end{theorem}
@@ -51,7 +50,9 @@ The trajectories give four chains: $\{b_1,b_2,b_3\}$ with (root, $N$, $B$) over 
 %
 The vertex $a_5$ has one more edge than $a_1$ but the same own node at every size, and no query separates them.
 %
-The vertex $x$ shares the own nodes of $u_1$ at sizes $2$ and $3$ and separates from it at size $4$, where $x$ lies in the $4$-clique $B$ and $u_1$ in no $4$-clique.
+The vertex $x$ shares the own nodes of $u_1$ at sizes $2$ and $3$.
+%
+At size $4$ the two separate: $x$ lies in the $4$-clique $B$, and $u_1$ lies in no $4$-clique.
 \end{example}
 
 \stitle{Communities and chains.}
@@ -78,11 +79,17 @@ The chain partition is lossless, and every lossless partition is at least as fin
 The chain partition is lossless by Lemma~\ref{lem:union}.
 %
 % 2026-09-22 compaction: six sentences.
-Let $P$ be lossless, and let $u$ and $v$ share a block of $P$; we show that they share a chain.
+Let $P$ be lossless, and let $u$ and $v$ share a block of $P$.
 %
-If $\core{s}{u}>\core{s}{v}$ at some size, the community of $u$ at $(s,\core{s}{u})$ contains $u$ and not $v$, since every vertex of a core at that level has at least that core value, so it is not a union of blocks of $P$.
+We show that they share a chain.
 %
-The core values therefore agree at every size; if $u$ is isolated, so is $v$, and both lie in the chain of isolated vertices.
+If $\core{s}{u}>\core{s}{v}$ at some size, the community of $u$ at $(s,\core{s}{u})$ contains $u$ and not $v$, since every vertex of a core at that level has at least that core value.
+%
+It is then not a union of blocks of $P$.
+%
+The core values therefore agree at every size.
+%
+If $u$ is isolated, so is $v$, and both lie in the chain of isolated vertices.
 %
 Otherwise, if $\own{s}{u}\ne\own{s}{v}$ at a size where both have value $k\ge1$, these two $(s,k)$-cores are disjoint (Section~\ref{sec:prelim}), and the community of $u$ at $(s,k)$ again contains $u$ and not $v$.
 %
@@ -99,11 +106,17 @@ If $u$ and $w$ have the same closed neighbourhood, then they lie in one chain.
 \end{lemma}
 \begin{proof}
 % 2026-09-22 compaction: three sentences.
-Swapping $u$ and $w$ maps $G$ onto itself, so it maps every core $K$ containing $u$ to a core $K'$ of the same size and level containing $w$, and $K'=K$: either $K$ has a third vertex, which the swap leaves in place, and cores of one size and level that share a vertex are equal, or $K=\{u,w\}$, which the swap maps to itself.
+Swapping $u$ and $w$ maps $G$ onto itself, so it maps every core $K$ containing $u$ to a core $K'$ of the same size and level containing $w$.
+%
+If $K$ has a third vertex, the swap leaves that vertex in place, and cores of one size and level that share a vertex are equal, so $K'=K$.
+%
+Otherwise $K=\{u,w\}$, and the swap maps it to itself.
 %
 Hence $u$ and $w$ are hierarchy-equivalent, and since twins are adjacent, $\omg{u},\omg{w}\ge2$ and Theorem~\ref{thm:chains} puts them in one chain.
 \end{proof}
 % 2026-09-22 filler pass: "How many chains" merged here; "Relation to other groupings" removed (Section 9 has SGL and EquiTruss).
-By Lemma~\ref{lem:twins}, chains are at most as many as twin classes, and on our graphs they are far fewer: twin classes have $1.03$ to $1.28$ vertices on average, while \dblp has $13{,}459$ chains for $317{,}080$ vertices ($24$ per chain) and \webuk $839$ chains for $129{,}632$ vertices ($154$ per chain).
+By Lemma~\ref{lem:twins}, chains are at most as many as twin classes, and on our graphs they are far fewer.
+%
+Twin classes have $1.03$ to $1.28$ vertices on average, while \dblp has $13{,}459$ chains for $317{,}080$ vertices ($24$ per chain) and \webuk $839$ chains for $129{,}632$ vertices ($154$ per chain).
 %
 The number of canonical nodes gives no bound on the number of chains: on our graphs the ratio of chains to canonical nodes over all sizes ranges from $0.26$ to $5.67$.

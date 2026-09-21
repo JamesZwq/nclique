@@ -7,8 +7,6 @@ We consider a simple undirected graph $G$ with vertex set $V$ and $n$ vertices.
 %
 An \textit{$s$-clique} is a set of $s$ pairwise adjacent vertices.
 %
-A $2$-clique is an edge, and a $3$-clique is a triangle.
-%
 The \textit{clique number} of a vertex $v$, denoted as $\omg{v}$, is the largest size of a clique containing $v$.
 %
 A subset of a clique is a clique, so $v$ lies in an $s$-clique for every size $s$ from $2$ to $\omg{v}$ and for no larger size.
@@ -24,7 +22,9 @@ For a clique size $s\ge2$ and a level $k\ge1$, an $\Nuc{s}{k}$ is a set $N\subse
 %
 Every vertex of $N$ lies in at least $k$ cliques of $s$ vertices contained in $N$.
 %
-Any two vertices of $N$ are joined by a sequence of $s$-cliques contained in $N$: the first clique contains one of the two vertices, the last contains the other, and consecutive cliques share a vertex.
+Any two vertices of $N$ are joined by a sequence of $s$-cliques contained in $N$.
+%
+The first clique contains one of the two vertices, the last contains the other, and consecutive cliques share a vertex.
 %
 We say that $N$ is connected through its $s$-cliques.
 \end{definition}
@@ -42,7 +42,9 @@ The \textit{core value} of $v$ at size $s$, denoted as $\core{s}{v}$, is the lar
 % 2026-09-22 cold read (Sections 3/4): the converse stated once here, Section 3 and the proofs lean on it.
 It is $0$ if $v$ lies in no $s$-clique, and at least $1$ otherwise, since an $s$-clique containing $v$ has the two properties at level $1$ and extends to an $\Nuc{s}{1}$.
 %
-The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$: it exists, since the $\Nuc{s}{\core{s}{v}}$ containing $v$ has the two properties at level $k$ and extends to an $\Nuc{s}{k}$, and it is unique, since cores of one size and level are disjoint.
+The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$.
+%
+It exists, since the $\Nuc{s}{\core{s}{v}}$ containing $v$ has the two properties at level $k$ and extends to an $\Nuc{s}{k}$, and it is unique, since cores of one size and level are disjoint.
 \begin{example}\label{ex:nucleus}
 % 2026-09-22 compaction: eight sentences; every count is from make_concept.py (kappa_3 = 6 on A, 3 on N; kappa_2 = 4 on A and {x,u,w}, 3 on b_i; kappa_4 = 4 on A, 1 on B; kappa_5 = 1 on A).
 Consider Figure~\ref{fig:example} at size $3$, writing $\{u_1,\dots,w_3\}$ for the six vertices $u_1,u_2,u_3,w_1,w_2,w_3$ as in Example~\ref{ex:intro}.
@@ -51,26 +53,27 @@ Each $a_i$ lies in $\binom{4}{2}=6$ triangles, all inside $A$ since the edge $a_
 %
 Each $b_i$ lies in the three triangles of $B$, each $u_i$ and each $w_j$ in the three triangles $\{u_i,w_j,x\}$, and $x$ in twelve.
 %
-The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-core: every vertex lies in at least three of its triangles, every triangle of $N$ except $\{b_1,b_2,b_3\}$ contains $x$ and that one shares $b_1$ with $\{x,b_1,b_2\}$, and no vertex of $A$ can be added.
+The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-core.
+%
+Every vertex lies in at least three of its triangles, every triangle of $N$ except $\{b_1,b_2,b_3\}$ contains $x$ and that one shares $b_1$ with $\{x,b_1,b_2\}$, and no vertex of $A$ can be added.
 %
 No vertex of $N$ has core value $4$: a $(3,4)$-core contains none of $u_1,\dots,w_3$, and without them a vertex of $B$ lies in three triangles only.
 %
 So $\core{3}{v}=3$ on $N$.
 %
-At size $2$, $\core{2}{v}=4$ on $A$ and on $\{x,u_1,\dots,w_3\}$ and $\core{2}{b_i}=3$: every vertex has at least three neighbours, no vertex but $x$ has five, so no $5$-core exists, and once $b_1$ and $b_2$, of degree three, are removed, $b_3$ keeps two.
+At size $2$, $\core{2}{v}=4$ on $A$ and on $\{x,u_1,\dots,w_3\}$ and $\core{2}{b_i}=3$.
 %
-At size $4$, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{4}{v}=1$ on $B$; at size $5$, $\core{5}{a_i}=1$.
+Every vertex has at least three neighbours, no vertex but $x$ has five, so no $5$-core exists, and once $b_1$ and $b_2$, of degree three, are removed, $b_3$ keeps two.
+%
+At size $4$, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{4}{v}=1$ on $B$.
+%
+At size $5$, $\core{5}{a_i}=1$.
 \end{example}
 
-\stitle{Queries.}
-An index for this problem answers two queries, for every size $s$.
-%
-A \textit{value query} $(v,s)$ returns $\core{s}{v}$.
-%
-A \textit{community query} $(v,s,k)$ with $1\le k\le\core{s}{v}$ returns the vertex set of the community of $v$ at $(s,k)$.
-% 2026-09-22 filler pass: three sentences on queries the index does not define (membership, the list of levels) removed.
-
 \stitle{Problem statement.}
-Given a graph $G$, we aim to build an index that answers value and community queries for every clique size $s\ge2$.
+% 2026-09-22 compaction: queries and problem statement in one block.
+Given a graph $G$, we aim to build an index that answers two queries for every clique size $s\ge2$.
+%
+The \textit{value query} $(v,s)$ returns $\core{s}{v}$, and the \textit{community query} $(v,s,k)$ with $1\le k\le\core{s}{v}$ returns the vertex set of the community of $v$ at $(s,k)$.
 %
 The index should store each vertex once and return every community as a few ranges of consecutive vertex ids.

@@ -225,3 +225,27 @@ Typesetting: \sstitle now uses \uline (ulem) so a run-in title can break across 
 Table "Where the best size falls" removed (its rows were in the text); Table 7 (six products) lists whole titles without
 bracketed tails, six members at most, the query product first; the Yang-Leskovec entry is the KAIS 2015 version.
 State: 17 pages (10 reference lines on the last page), 0 overfull, 0 ??; the page budget (<= 12 body pages) is the open item.
+
+## Compaction pass (2026-09-22, user: "咱们的算法没有那么复杂，不应该超页数；超了只能是写得太绕、图画得太差")
+Measured first: the text alone was 11.5 pages (no-float compile, incl. 1.4 pages of references) and the floats 3.7 pages,
+of which the three 29-32 row tables (size, queries, CND) were 1.5 pages.  Actions, in order:
+- Floats: per-graph query table -> Figure 4(b) (STrees/ChainIndex listing ratio against vertices per range; the mechanism the
+  table's columns explained); CND table -> Figure 8 (log-log scatter, 10x/100x/1000x lines, one point per (graph, machine));
+  design-study table -> paragraph with generated ranges (tables/layout_stats.tex; the chain factor was misquoted 4.5x, data
+  4.8x); ground-truth F1 table and Amazon-by-size table -> their numbers were already in the text; four-product table -> the
+  shelves paragraph names the members (Kind of Blue's six albums, the 13 textbooks' examples, Fellowship's 56 at 0.95, the
+  Godfather shelf); fig_index 212 -> 170pt (footer dropped, rows tightened); fig_build -> the trie alone at column width (the
+  replay tables are Example 7.2); fig_strees 136 -> 106pt (no title/footer); plots 10-15% shorter; Table 1 arraystretch 0.92.
+  Floats now ~2.3 pages: Table 1, Figures 1-8 (four plots, four drawings).
+- Text (merging saves nothing; only deletion does): Example 2.2 22 -> 8 sentences (counts from make_concept.py), Section 3's
+  hierarchy facts with one reason each, Examples 3.2/4.4/5.1/5.3/5.6/5.9/6.2/7.2/7.3 to the mechanism, Section 5 definitional
+  prose, Section 7 opener/clique-tree block/walk/cost, the abstract 18 -> 12 sentences, intro "Our idea" 14 -> 9 and
+  Contributions 7 -> 5, experiments setup 25 -> 14 sentences, Exp-1..10 tightened, related work 17 -> 12, conclusion 4.
+  Dropped outright: Section 3's repeat of the intro's pain numbers, the running-example size accounting, the Kruskal-Katona
+  related-work paragraph (Section 5.4 cites it), "Query latency stays flat" (Figure 7 shows it), the Exp-8 end-to-end
+  sentence, Section 7's "no stage holds all values" (the intro says it), "Practical guideline" shortened.
+- Sentence hygiene after the pass: 50 semicolon-joined sentences split back (space-neutral), every sentence of 36+ words
+  split; whole paper median 20 words, over-25 24.6%, >=35 2.2%; 0 overfull, 0 ??.
+State: 13 pages = 12 body pages (References begin on page 12, right column, ~20 lines from the bottom) + 1 page of references.
+Frozen numbers unchanged (all macros); Yang-Leskovec entry is the KAIS 2015 version.
+Open: the tods1 CND queue (tech-as-skitter, wiki-Talk) adds points to Figure 8 and moves the prior macros; no rows to add.

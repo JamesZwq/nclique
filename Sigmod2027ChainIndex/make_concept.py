@@ -334,7 +334,7 @@ def fig_strees():
 
 # ---------------------------------------------------------------- Section 5: what ChainIndex stores ----
 def fig_index():
-    PW, PH = 506.0, 178.0          # 2026-09-22: footer (d) dropped (Example 6.2 walks the query); rows tightened
+    PW, PH = 506.0, 170.0          # 2026-09-22: footer (d) dropped (Example 6.2 walks the query); rows tightened
     sv = SVG(PW, PH)
     CW, CH = 16.0, 12.0
     # (a) labels and chains
@@ -380,7 +380,7 @@ def fig_index():
     LY = 88.0
     sv.text(2, LY - 3, '(c) one layer per size: the tree over chains, and its run array with one entry (run, label) per node', size=7.2)
     px = [2.0, 128.0, 254.0, 380.0]; PWD = 122.0
-    bw, bh = 56.0, 25.0; ROWS = 31.0
+    bw, bh = 56.0, 24.0; ROWS = 29.0
     runs_y = LY + 12 + 2 * ROWS + 4
     for j, s in enumerate(SIZES):
         L = layers[s]; ox = px[j]
@@ -426,11 +426,12 @@ def fig_index():
     sv.write('fig_index')
 
 # ---------------------------------------------------------------- Section 7: replay and refinement ----
-def fig_build():
-    PW, PH = 506.0, 150.0          # 2026-09-22: rows tightened
+def fig_build(trie_only=True):
+    # 2026-09-22: the paper shows the trie alone at column width (the replay tables are Example 7.2); trie_only=False draws both panels
+    PW, PH = (241.0, 150.0) if trie_only else (506.0, 150.0)
     sv = SVG(PW, PH)
     # (a) order replay at size 2, two orders
-    sv.text(2, 9, '(a) order replay at s = 2', size=7.2)
+    if not trie_only: sv.text(2, 9, '(a) order replay at s = 2', size=7.2)
     CW, CH = 14.2, 10.0; X0 = 34.0
     def block(y, order, f, Umax, inside, ok, title):
         sv.text(X0, y - 3, title, size=6.2, fill='#555')
@@ -449,12 +450,13 @@ def fig_build():
         sv.text(X0 + 15 * CW, y + 4 * CH + 8, ('the certificate holds: U<tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6"> = κ</tspan><tspan font-size="70%" dy="1.6">2</tspan>' if ok
                                                 else 'the certificate fails: inside &lt; U<tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6"> at </tspan><tspan font-style="italic">a</tspan><tspan font-size="70%" dy="1.6">1</tspan>'),
                 size=6.2, anchor='end', fill=(BLUE if ok else ORANGE))
-    block(22, ORDER1, f1, U1, in1, ok1, 'the degeneracy order')
-    block(84, ORDER2, f2, U2, in2, ok2, 'x first')
-    sv.text(2, PH - 4, 'inside: the edges of v inside {u : U<tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6">(u) ≥ U</tspan><tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6">(v)}</tspan>', size=5.8, fill='#555')
+    if not trie_only:
+        block(22, ORDER1, f1, U1, in1, ok1, 'the degeneracy order')
+        block(84, ORDER2, f2, U2, in2, ok2, 'x first')
+        sv.text(2, PH - 4, 'inside: the edges of v inside {u : U<tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6">(u) ≥ U</tspan><tspan font-size="70%" dy="1.6">2</tspan><tspan dy="-1.6">(v)}</tspan>', size=5.8, fill='#555')
     # (b) the refinement of the chains in the prefix trie
-    TX = 322.0
-    sv.text(TX - 4, 9, '(b) the chains, refined size by size in the trie', size=7.2)
+    TX = 30.0 if trie_only else 322.0
+    if not trie_only: sv.text(TX - 4, 9, '(b) the chains, refined size by size in the trie', size=7.2)
     trie = {}          # path of own-node ids -> vertices that pass through
     stop = defaultdict(list)
     for v in names:
@@ -475,7 +477,8 @@ def fig_build():
             for q in kidsp: place(q); xs.append(xpos[q])
             xpos[p] = sum(xs) / len(xs)
     place(())
-    Y = {0: 18, 1: 36, 2: 56, 3: 76, 4: 96, 5: 116}
+    Y = {0: 10, 1: 28, 2: 48, 3: 68, 4: 88, 5: 108} if trie_only else {0: 18, 1: 36, 2: 56, 3: 76, 4: 96, 5: 116}
+    if trie_only: sv.h = 136.0
     NW, NH = 34, 11
     for p in [()] + paths:
         d = len(p); x = xpos[p]; y = Y[d]

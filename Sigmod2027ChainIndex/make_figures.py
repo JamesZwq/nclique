@@ -140,7 +140,7 @@ def fig_prior():
             if 'total_inproc_ms' in og and (where, g) in ours:
                 o = ours[(where, g)]; pts.append((where, g, (o['ti_ms'] + o['build_ms'] + o['compact_ms']) / 1000, og['total_inproc_ms'] / 1000, og['sizes_ok']))
     if not pts: return
-    fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.45))
+    fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.3))
     lo, hi = 5e-3, 150
     for f, lab in ((1, '1x'), (10, '10x'), (100, '100x'), (1000, '1000x')):
         ax.plot([lo, hi], [lo * f, hi * f], color='0.75', lw=0.6, ls=(0, (2, 1.5)), zorder=1)
@@ -156,7 +156,7 @@ def fig_prior():
     ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlim(lo, 1500); ax.set_ylim(0.05, 4e5)
     ax.set_xlabel('ChainIndex, one build for every size (s)'); ax.set_ylabel('CND, one run per size (s)')
     ax.legend(loc='lower right', handletextpad=0.2)
-    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.23, top=0.97)
+    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.25, top=0.97)
     save(fig, 'fig_prior')
 
 # ------------------------------------------------------------------- Exp-5: by clique size and answer size ----

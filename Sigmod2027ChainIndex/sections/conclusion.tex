@@ -1,11 +1,17 @@
 \section{Conclusion}\label{sec:conclusion}
 % 2026-09-21 house shape: the challenge nouns and the headline numbers verbatim; scope kept neutral.  Cadence pass.
 
-In this paper, we presented \chainidx, an index for the clique-core hierarchies of every clique size at once: the vertices no query can tell apart are exactly the chains, the coarsest lossless partition, and aligned labels, a chain order and run arrays turn the partition into communities returned in constant time.
+In this paper, we presented \chainidx, an index for the clique-core hierarchies of every clique size at once.
 %
-On \numgraphs{} graphs the index is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size, median \ratiomedian$\times$, lists a community about as fast as a memory copy, and is built for every size \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
+The vertices no query can tell apart are exactly the chains, the coarsest lossless partition.
 %
-Two case studies showed that the best size changes from query to query on DBLP and that the size narrows a community from a store to a shelf on Amazon.
+Aligned labels, a chain order and run arrays turn the partition into communities returned in constant time.
+%
+On \numgraphs{} graphs the index is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size, median \ratiomedian$\times$.
+%
+It lists a community about as fast as a memory copy, and it is built for every size \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
 
 \stitle{Future work.}
-The index is static; its maintenance under edge insertions, and the same partition with an edge or a larger clique as the unit in place of the vertex, are future work.
+The index is static.
+%
+Its maintenance under edge insertions, and the same partition with an edge or a larger clique as the unit in place of the vertex, are future work.

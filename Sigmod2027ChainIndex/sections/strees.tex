@@ -9,7 +9,9 @@ This section describes the hierarchy of one size, that is, the forest that the c
 Fix a size $s$.
 %
 % 2026-09-22 compaction: the standard facts of the hierarchy (Sariyuce et al.) with one reason each; nine sentences for twenty.
-Two cores of size $s$ are disjoint or nested: if an $\Nuc{s}{k}$ $K$ and an $\Nuc{s}{k'}$ $K'$ with $k\le k'$ share a vertex, their union has the two properties of Definition~\ref{def:nucleus} at level $k$, so it is $K$ by maximality, and $K'\subseteq K$.
+Two cores of size $s$ are disjoint or nested.
+%
+If an $\Nuc{s}{k}$ $K$ and an $\Nuc{s}{k'}$ $K'$ with $k\le k'$ share a vertex, their union has the two properties of Definition~\ref{def:nucleus} at level $k$, so it is $K$ by maximality, and $K'\subseteq K$.
 %
 One vertex set can be a core at several levels.
 \begin{definition}[canonical node, own node]\label{def:node}
@@ -25,13 +27,17 @@ The \textit{own node} of a vertex $v$ with $\core{s}{v}\ge1$, denoted as $\own{s
 \end{definition}
 Nesting and maximality give three facts about tops~\cite{firstNucleus}.
 %
-The top of a node is the smallest core value of its vertices: every vertex has at least the top, and if all had more, the node would have the two properties one level higher and, being maximal, would be a core there.
+The top of a node is the smallest core value of its vertices.
+%
+Every vertex has at least the top, and if all had more, the node would have the two properties one level higher and, being maximal, would be a core there.
 %
 In particular the top of $\own{s}{v}$ is $\core{s}{v}$.
 %
 Tops increase strictly from a root down to its descendants, since a child with a top of at most its parent's top could be extended to the parent without losing a property.
 %
-The nodes containing $v$ form a path from a root down to $\own{s}{v}$, and for $1\le k\le\core{s}{v}$ the community of $v$ at $(s,k)$ is the node nearest the root with top at least $k$ on this path, since a larger node with top at least $k$ would strictly contain it.
+The nodes containing $v$ form a path from a root down to $\own{s}{v}$.
+%
+For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is the node nearest the root with top at least $k$ on this path, since a larger node with top at least $k$ would strictly contain it.
 %
 Later sections refer to the community by this description.
 \begin{figure}[t]
@@ -41,11 +47,17 @@ Later sections refer to the community by this description.
 \label{fig:strees}
 \end{figure}
 \begin{example}\label{ex:tree}
-Consider Figure~\ref{fig:example}; Figure~\ref{fig:strees} draws the trees of its four sizes, $2$ to $5$.
+Consider Figure~\ref{fig:example}.
 %
-At size $2$ the root holds all $15$ vertices with top $3$ (every vertex has at least three neighbours, $b_1$ exactly three) and has two children of top $4$, $A$ and $\{x,u_1,\dots,w_3\}$, the two $4$-cores of Example~\ref{ex:nucleus}.
+Figure~\ref{fig:strees} draws the trees of its four sizes, $2$ to $5$.
 %
-At size $3$ the forest has two roots and no other node, $N=B\cup\{u_1,\dots,w_3\}$ with top $3$ and $A$ with top $6$: no triangle joins them, and $A$ is the $(3,k)$-core for every $k$ from $1$ to $6$.
+At size $2$ the root holds all $15$ vertices with top $3$, since every vertex has at least three neighbours and $b_1$ exactly three.
+%
+It has two children of top $4$, $A$ and $\{x,u_1,\dots,w_3\}$, the two $4$-cores of Example~\ref{ex:nucleus}.
+%
+At size $3$ the forest has two roots and no other node, $N=B\cup\{u_1,\dots,w_3\}$ with top $3$ and $A$ with top $6$.
+%
+No triangle joins them, and $A$ is the $(3,k)$-core for every $k$ from $1$ to $6$.
 %
 At size $4$ the roots are $A$ (top $4$) and $B$ (top $1$), and at size $5$ the forest is $A$ alone.
 %
@@ -57,24 +69,22 @@ The community of $x$ at $(2,3)$ is the root, the node nearest the root with top 
 \stitle{The index of one size.}
 The tree of one size gives an index for that size~\cite{fastHierarchy,Fang2016CLtree}.
 %
-The vertices with $\core{s}{v}\ge1$ are written into one array by a depth-first traversal of $\Tree{s}$, each vertex when the traversal reaches its own node, so the vertices of every node form one contiguous slice of the array.
+The vertices with $\core{s}{v}\ge1$ are written into one array by a depth-first traversal of $\Tree{s}$, each vertex when the traversal reaches its own node.
 %
-In Figure~\ref{fig:strees} every node is drawn as a bar over its slice, and the vertices under a bar and under none of its child bars are those whose own node it is.
+The vertices of every node then form one contiguous slice of the array.
 %
 Every node stores its top, its parent and the two ends of its slice, and every vertex stores its own node and its core value.
 %
-A community query climbs from the own node to the node nearest the root whose top is at least $k$ and copies that node's slice, and a value query reads the stored value.
+A community query climbs from the own node to the node nearest the root whose top is at least $k$ and copies that node's slice.
+%
+A value query reads the stored value.
 
 \stitle{One hierarchy per size.}
 An index that serves every size stores, for each size, one tree and one array, together with every core value.
 %
-We call this index \strees, and it is the baseline of Section~\ref{sec:exp}.
-%
 A vertex $v$ has a nonzero value at every size from $2$ to $\omg{v}$ (Section~\ref{sec:prelim}), so it appears in $\omg{v}-1$ arrays, one per size.
 %
 The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ for the $15$ vertices of Figure~\ref{fig:example}, as Figure~\ref{fig:strees} shows.
-%
-There are as many own-node pointers, and as many stored values.
 %
 Building \strees means one decomposition per size, $499$ of them on \webuk (Section~\ref{sec:intro}).
 %
