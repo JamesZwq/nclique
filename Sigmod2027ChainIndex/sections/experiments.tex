@@ -8,7 +8,7 @@ The baseline \strees is one tree and one DFS array per size with all core values
 Queries are drawn from the active vertices and their sizes $2\le s\le\omg{v}$: 20,000 community queries at the vertex's own level ($k=\core{s}{v}$), 20,000 at half that level, 1,000 at $k=1$, and 200,000 value queries; every latency is the median of five passes after one warm-up.
 Every number in the tables is generated from the recorded JSON evidence.
 
-\expsection{Case study: which clique size is the right one?}
+\expsection{Case study: the right clique size}
 The index exists because the size is part of the query; the first two experiments ask, on graphs with real semantics, what the size buys.
 Three SNAP graphs come with ground-truth communities (the top 5,000 by quality): \dblp (publication venues), com-amazon (product categories) and com-youtube (user groups).
 For every member $v$ of every ground-truth community $C$, every size $s\le\omg{v}$ and every level $k$, the $(s,k)$-nucleus of $v$ is scored by its F1 against $C$; the whole $(s,k)$ space of a query is scanned from the index without listing a single community, since $|N\cap C|$ is counted through the members of $C$ (own node inside the node's subtree) and $|N|$ comes from the run bounds.
