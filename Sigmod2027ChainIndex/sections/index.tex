@@ -53,6 +53,11 @@ The preorder numbers of a subtree form an interval, and the chains whose first k
 Contiguous ranks are contiguous labels.
 \end{proof}
 
+\begin{corollary}\label{cor:kcore}
+The size-2 layer of the index is a connected-$k$-core community index in which every community is one label range, reported by two numbers after the climb.
+\end{corollary}
+Indexes built for $k$-core community search report a subtree of a core tree or a list of vertices \cite{Barbieri2015ShellStruct,Fang2016CLtree}; here the same answer is a single interval, and the same labels serve every larger size.
+
 For $s\ge3$ the DFS array of $\Tree{s}$ visits, at every node, its own chains and its child subtrees in increasing order of the smallest rank they contain (roots likewise).
 Then the chains of any subtree are a contiguous segment of the array, the first chain of a node's segment is the smallest rank in its subtree, and for $s=2$ the array is the rank order itself.
 

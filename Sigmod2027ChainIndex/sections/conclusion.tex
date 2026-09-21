@@ -1,8 +1,9 @@
 \section{Conclusion}\label{sec:conclusion}
 
-Hierarchy equivalence is a partition of the vertices, and that partition is the right unit for indexing every clique-core hierarchy of a graph at once.
-Storing chains instead of vertices, aligning labels to chains, ordering chains lexicographically and keeping each size's DFS array as runs with entry points gives an index that is \ratiomin$\times$ to \ratiomax$\times$ smaller than one tree per size, locates any community in tens of nanoseconds and lists it at memory-copy speed.
-The construction is one all-size peel and one pass per size; its memory is the peel's, not the index's.
+The clique size of a nucleus is a query parameter, and the case studies say why: the size that matches a ground-truth community changes from query to query, and on a co-purchase network the size zooms from the whole store to one shelf.
+An index for every size at once used to mean one hierarchy per size.
+We showed that the vertices no query can tell apart are exactly those with the same own node at every size, that these chains partition the graph and are the coarsest partition an exact index can use, and that a few layout decisions turn the partition into ranges of memory: aligned labels, a chain order under which size-2 communities are single intervals, run arrays with entry points that return any community as the fewest ranges in constant time, and values stored only below their certification point.
+The result is \ratiomin$\times$ to \ratiomax$\times$ fewer bytes than one tree per size at the speed of a memory copy, built for every size from one clique tree \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
 
 \stitle{Limits.}
 The index is static: an edge insertion can change core values at every size, and we have no maintenance beyond a rebuild.
