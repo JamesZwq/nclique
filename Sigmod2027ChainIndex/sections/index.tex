@@ -64,7 +64,7 @@ The vertices of a chain $c$ share their own node at every size, since their traj
 %
 Fix any preorder numbering $\mathrm{pre}_s$ of each forest $\Tree{s}$.
 %
-Give chain $c$ the key $\mathrm{key}(c)=(\mathrm{pre}_2(\own{2}{c}),\mathrm{pre}_3(\own{3}{c}),\dots)$, the preorder positions of its own nodes size by size.
+Give chain $c$ the key $(\mathrm{pre}_2(\own{2}{c}),\mathrm{pre}_3(\own{3}{c}),\dots)$, the preorder positions of its own nodes size by size.
 %
 Chains are ranked in lexicographic key order.
 %
@@ -128,17 +128,17 @@ Along the array, two chains listed one after the other whose ranks differ by one
 %
 We merge maximal sequences of such chains into \textit{runs} and store the array as the list of runs, numbered $0$ to $R-1$.
 %
-Run $r$ covers the labels from $lo(r)$ to $hi(r)$, the latter excluded.
+Run $r$ covers the labels from $\mathrm{lo}(r)$ to $\mathrm{hi}(r)$, the latter excluded.
 %
 Every node $X$ stores one \textit{entry}, the pair $(r_X,v_X)$: the number of the run that holds the first label of the segment of $X$, and that label.
 %
-A sentinel entry $(R,hi(R-1))$ follows the last node.
+A sentinel entry $(R,\mathrm{hi}(R-1))$ follows the last node.
 \begin{theorem}[retrieval]\label{thm:retrieval}
 Let $Y$ be the node that follows the subtree of $X$ in the traversal order, or the sentinel if there is none.
 %
 If $r_X=r_Y$, the labels of the vertices of $X$ are the one range $[v_X,v_Y)$.
 %
-Otherwise they are the first range $[v_X,hi(r_X))$, the whole runs $r_X+1,\dots,r_Y-1$, and the last range $[lo(r_Y),v_Y)$.
+Otherwise they are the first range $[v_X,\mathrm{hi}(r_X))$, the whole runs $r_X+1,\dots,r_Y-1$, and the last range $[\mathrm{lo}(r_Y),v_Y)$.
 %
 When $Y$ is the sentinel there is no last range.
 %
@@ -176,9 +176,9 @@ The community of $b_1$ at $(3,3)$ is $N$, and so is the community of $x$ at $(3,
 %
 The node after the subtree of $N$ is $A$, with $r_N=0$ and $r_A=2$.
 %
-The answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last range $[lo(2),3)=[3,3)$: two ranges for ten vertices.
+The answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last range $[\mathrm{lo}(2),3)=[3,3)$: two ranges for ten vertices.
 %
-The community $A$ at $(3,6)$ is followed by the sentinel: $r_A=2\ne3$, so the answer is the first range $[3,hi(2))=[3,8)$, no whole run and an empty last range.
+The community $A$ at $(3,6)$ is followed by the sentinel: $r_A=2\ne3$, so the answer is the first range $[3,\mathrm{hi}(2))=[3,8)$, no whole run and an empty last range.
 \end{example}
 The community query of Section~\ref{sec:queries} first climbs to the node of the queried level.
 %
@@ -202,35 +202,35 @@ Its proof uses the Kruskal--Katona theorem in Lov\'asz's form \cite{kruskal1963,
 %
 For $t\ge s-1$ both $\binomc{t}{s}$ and $\binomc{t}{s-1}$ increase strictly with $t$.
 \begin{lemma}[Kruskal--Katona]\label{lem:kk}
-For $k\ge1$ let $t\ge s$ be the real number with $\binomc{t}{s}=k$.
+For $m\ge1$ let $t\ge s$ be the real number with $\binomc{t}{s}=m$.
 %
-Any $k$ or more distinct $s$-element sets have at least $g_s(k)=\binomc{t}{s-1}$ distinct $(s-1)$-element subsets.
+Any $m$ or more distinct $s$-element sets have at least $g_s(m)=\binomc{t}{s-1}$ distinct $(s-1)$-element subsets.
 \end{lemma}
 \begin{theorem}[floor and certified tail]\label{thm:tail}
-Let $2\le s\le\omg{v}$ and $f_s(v)=\binomc{\omg{v}-1}{s-1}$.
+Let $2\le s\le\omg{v}$.
 \begin{enumerate}[label=(\alph*),leftmargin=*,nosep]
-\item $\core{s}{v}\ge f_s(v)$.
-\item If $\core{s}{v}=f_s(v)$ and $s<\omg{v}$, then $\core{s+1}{v}=f_{s+1}(v)$.
+\item $\core{s}{v}\ge\binomc{\omg{v}-1}{s-1}$.
+\item If $\core{s}{v}=\binomc{\omg{v}-1}{s-1}$ and $s<\omg{v}$, then $\core{s+1}{v}=\binomc{\omg{v}-1}{s}$.
 \end{enumerate}
 \end{theorem}
 \begin{proof}
-(a) A largest clique $M$ containing $v$ has $\omg{v}$ vertices.
+(a) A largest clique $L$ containing $v$ has $\omg{v}$ vertices.
 %
-Every vertex of $M$ lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of $M$, and $M$ is connected through them, so $M$ has the two properties at level $f_s(v)$ and lies inside an $\Nuc{s}{f_s(v)}$.
+Every vertex of $L$ lies in $\binomc{\omg{v}-1}{s-1}$ $s$-cliques of $L$, and $L$ is connected through them, so $L$ has the two properties at the level of the floor and lies inside a nucleus of size $s$ at that level.
 
-(b) Let $Q$ be the $\Nuc{s+1}{\core{s+1}{v}}$ containing $v$, and take any vertex $u$ of $Q$.
+(b) Let $K$ be the $\Nuc{s+1}{\core{s+1}{v}}$ containing $v$, and take any vertex $u$ of $K$.
 %
-It lies in at least $\core{s+1}{v}$ cliques of $s+1$ vertices inside $Q$, and removing $u$ from them leaves as many distinct $s$-element sets of neighbours of $u$ in $Q$.
+It lies in at least $\core{s+1}{v}$ cliques of $s+1$ vertices inside $K$, and removing $u$ from them leaves as many distinct $s$-element sets of neighbours of $u$ in $K$.
 %
-By Lemma~\ref{lem:kk} these sets have at least $g_s(\core{s+1}{v})$ distinct $(s-1)$-element subsets, and each of them forms with $u$ an $s$-clique of $Q$.
+By Lemma~\ref{lem:kk} these sets have at least $g_s(\core{s+1}{v})$ distinct $(s-1)$-element subsets, and each of them forms with $u$ an $s$-clique of $K$.
 %
-Every vertex of $Q$ hence lies in at least $g_s(\core{s+1}{v})$ $s$-cliques of $Q$.
+Every vertex of $K$ hence lies in at least $g_s(\core{s+1}{v})$ $s$-cliques of $K$.
 %
-$Q$ is connected through these $s$-cliques, because two $(s+1)$-cliques that share a vertex contain $s$-cliques that share it, and hence $\core{s}{v}\ge g_s(\core{s+1}{v})$.
+$K$ is connected through these $s$-cliques, because two $(s+1)$-cliques that share a vertex contain $s$-cliques that share it, and hence $\core{s}{v}\ge g_s(\core{s+1}{v})$.
 %
-If $\core{s+1}{v}>f_{s+1}(v)=\binomc{\omg{v}-1}{s}$, then the $t$ with $\binomc{t}{s}=\core{s+1}{v}$ exceeds $\omg{v}-1\ge s$, so $\core{s}{v}\ge\binomc{t}{s-1}>\binomc{\omg{v}-1}{s-1}=f_s(v)$, contradicting $\core{s}{v}=f_s(v)$.
+If $\core{s+1}{v}>\binomc{\omg{v}-1}{s}$, then the $t$ with $\binomc{t}{s}=\core{s+1}{v}$ exceeds $\omg{v}-1\ge s$, so $\core{s}{v}\ge\binomc{t}{s-1}>\binomc{\omg{v}-1}{s-1}$, contradicting the assumption of (b).
 %
-Since $\core{s+1}{v}\ge f_{s+1}(v)$ by (a), equality holds.
+Since $\core{s+1}{v}\ge\binomc{\omg{v}-1}{s}$ by (a), equality holds.
 \end{proof}
 We write $\sig{v}$, the \textit{certification point}, for the smallest size at which the value equals the floor, and we set $\sig{v}=\omg{v}+1$ when no size does.
 %
@@ -278,23 +278,19 @@ The residues and the tops of one size are integers at most the largest core valu
 Sizes with small values cost little per value.
 
 \subsection{Size}\label{sec:size}
-Recall that $C$ is the number of chains.
-%
-Let $M$ be the number of canonical nodes over all sizes, $P=\sum_c(\omega(c)-1)$ the number of (chain, size) pairs, and $R$ the number of runs over all sizes.
-%
-Let a word hold one label, one node or one value.
+Recall that $C$ is the number of chains, and let a word hold one label, one node or one value.
 %
 The map takes $n+o(n)$ bits and $C$ words for the first labels.
 %
-The chain records take $2C$ words for $\omega$ and $\sigma$, $P$ words for the trajectories, and one word per residue.
+The chain records take $2C$ words for $\omega$ and $\sigma$, one word per (chain, size) pair for the trajectories, and one word per residue.
 %
-The layers take $O(M+R)$ words: a parent, a top, a subtree size (which locates the node after the subtree, Section~\ref{sec:queries}) and an entry per node, and two labels per run.
+The layers take a constant number of words per canonical node, a parent, a top, a subtree size (which locates the node after the subtree, Section~\ref{sec:queries}) and an entry, and two labels per run.
 %
-\strees takes $\sum_v(\omg{v}-1)$ words for its per-size arrays, as many words for its own-node pointers, a value for each of these (vertex, size) pairs, and $O(M)$ words for its nodes.
+\strees takes one word per (vertex, size) pair for its per-size arrays, as many words for its own-node pointers, a value for each of these pairs, and a constant number of words per canonical node.
 %
 Per node the layers of \chainidx cost more, an entry and a subtree size in addition.
 %
-The saving is in the stored units, $\sum_v(\omg{v}-1)$ (vertex, size) pairs against $P$ (chain, size) pairs, and in the values, the residues against a value per pair.
+The saving is in the stored units, $\sum_v(\omg{v}-1)$ (vertex, size) pairs against $\sum_c(\omega(c)-1)$ (chain, size) pairs, and in the values, the residues against a value per pair.
 %
 On the running example the index stores $3$ values, $8$ words for $\omega$ and $\sigma$ and $12$ trajectory words, while \strees stores $44$ values and $44$ own-node pointers, one per (vertex, size) pair.
 % trace 2026-09-21: active pairs = a_i: sizes 2..5 = 4 each, 20; b_i: sizes 2..4 = 3 each, 9; x: 3; u_i,w_i: sizes 2,3 = 2 each, 12; total 44.

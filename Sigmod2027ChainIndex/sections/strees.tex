@@ -11,13 +11,13 @@ Fix a size $s$.
 %
 Two nuclei of size $s$ are disjoint or nested.
 %
-Let $N$ be an $\Nuc{s}{k}$ and $N'$ an $\Nuc{s}{k'}$ with $k\le k'$, and let the two share a vertex.
+Let $K$ be an $\Nuc{s}{k}$ and $K'$ an $\Nuc{s}{k'}$ with $k\le k'$, and let the two share a vertex.
 %
-Every vertex of $N\cup N'$ lies in at least $k$ cliques of $s$ vertices inside the union, and the union is connected through the shared vertex.
+Every vertex of $K\cup K'$ lies in at least $k$ cliques of $s$ vertices inside the union, and the union is connected through the shared vertex.
 %
 The union therefore satisfies the two properties of Definition~\ref{def:nucleus} at level $k$.
 %
-By the maximality of $N$, the union is $N$, and $N'\subseteq N$.
+No vertex can be added to $K$, so the union is $K$, and $K'\subseteq K$.
 %
 Any two nuclei of size $s$ are therefore disjoint or nested.
 %
@@ -38,21 +38,21 @@ The top of the own node of $v$ is $\core{s}{v}$: a larger top would put $v$ in a
 %
 The top of a node equals the smallest core value of its vertices.
 %
-Every vertex of a node with top $t$ has core value at least $t$, since the node is a nucleus at level $t$.
+Every vertex of a node with top $\ell$ has core value at least $\ell$, since the node is a nucleus at level $\ell$.
 %
-If every vertex had a core value above $t$, the nucleus at level $t+1$ of each vertex would lie inside the node, by the nesting above.
+If every vertex had a core value above $\ell$, the nucleus at level $\ell+1$ of each vertex would lie inside the node, by the nesting above.
 %
-Every vertex of the node would then lie in at least $t+1$ cliques of $s$ vertices inside the node.
+Every vertex of the node would then lie in at least $\ell+1$ cliques of $s$ vertices inside the node.
 %
-The node would then have the two properties at level $t+1$.
+The node would then have the two properties at level $\ell+1$.
 %
-The $\Nuc{s}{t+1}$ containing it lies inside it by the nesting and so equals it, and its top would exceed $t$.
+The $\Nuc{s}{\ell+1}$ containing it lies inside it by the nesting and so equals it, and its top would exceed $\ell$.
 %
 Tops increase strictly from a root down to its descendants.
 %
-A node with top $t$ has the two properties at every level up to $t$.
+A node with top $\ell$ has the two properties at every level up to $\ell$.
 %
-If a child had a top of at most $t$, the parent would have the two properties at the child's top and strictly contain the child.
+If a child had a top of at most $\ell$, the parent would have the two properties at the child's top and strictly contain the child.
 %
 The child could then be extended without losing a property, a contradiction.
 %
@@ -110,7 +110,7 @@ Every node stores its top, its parent and the two ends of its slice.
 %
 Every vertex stores its own node and its core value.
 %
-A community query climbs from the own node to the highest ancestor whose top is at least $k$ and copies that node's slice.
+A community query climbs from the own node to the node nearest the root whose top is at least $k$ and copies that node's slice.
 %
 A value query reads the stored value.
 %

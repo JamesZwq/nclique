@@ -22,8 +22,6 @@ The condition speaks of every size and every level, and the next theorem reduces
 For a vertex $v$ with $\omg{v}\ge2$, the \textit{trajectory} $\traj{v}=(\own{2}{v},\own{3}{v},\dots,\own{\omg{v}}{v})$ is the tuple of its own nodes over the sizes $2$ to $\omg{v}$, the sizes at which it lies in a clique.
 %
 The vertices with equal trajectories form a \textit{chain}, one chain per distinct trajectory, and the isolated vertices, those in no edge, form one more chain.
-%
-$\chain{v}$ denotes the chain of $v$.
 \end{definition}
 \begin{theorem}[own nodes decide hierarchy equivalence]\label{thm:chains}
 Two vertices $u$ and $v$ with $\omg{u},\omg{v}\ge2$ are hierarchy-equivalent if and only if $\traj{u}=\traj{v}$.
@@ -127,7 +125,7 @@ Two vertices $u$ and $w$ are twins when their closed neighbourhoods, the neighbo
 %
 Twin classes are a baseline for how much the chains merge.
 \begin{lemma}[twins refine chains]\label{lem:twins}
-If $u$ and $w$ have the same closed neighbourhood, then $\chain{u}=\chain{w}$.
+If $u$ and $w$ have the same closed neighbourhood, then they lie in one chain.
 \end{lemma}
 \begin{proof}
 Swapping $u$ and $w$ maps $G$ onto itself, since the two have the same neighbours; it maps nuclei to nuclei and preserves every core value.

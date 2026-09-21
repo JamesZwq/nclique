@@ -33,7 +33,7 @@ An entry is the number of the run and the label at which a node's segment starts
   $Y\leftarrow X+\mathrm{size}[X]$\;\label{ln:q-exit}
   $(r_X,v_X)\leftarrow\mathrm{entry}[X]$; $(r_Y,v_Y)\leftarrow\mathrm{entry}[Y]$\;\label{ln:q-entries}
   \lIf{$r_X=r_Y$}{\Return the range $[v_X,v_Y)$}\label{ln:q-one}
-  \Return $[v_X,hi(r_X))$, $[lo(r),hi(r))$ for $r_X{<}r{<}r_Y$, $[lo(r_Y),v_Y)$\;\label{ln:q-three}
+  \Return $[v_X,\mathrm{hi}(r_X))$, $[\mathrm{lo}(r),\mathrm{hi}(r))$ for $r_X{<}r{<}r_Y$, $[\mathrm{lo}(r_Y),v_Y)$\;\label{ln:q-three}
 }
 \end{algorithm}
 

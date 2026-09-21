@@ -297,15 +297,15 @@ We study which clique size best recovers ground-truth communities.
 %
 Three graphs of the SNAP collection~\cite{leskovec2016snap} come with ground-truth communities, of which SNAP provides the $5{,}000$ of highest quality: \dblp (publication venues), \textsf{com-amazon} (product categories) and \textsf{com-youtube} (user groups).
 %
-Take a member $v$ of a ground-truth community $C$.
+Take a member $v$ of a ground-truth community $D$.
 %
-For every size $s\le\omg{v}$ and every level $k$, we score the $(s,k)$-nucleus of $v$ by its F1 score against $C$.
+For every size $s\le\omg{v}$ and every level $k$, we score the $(s,k)$-nucleus of $v$ by its F1 score against $D$.
 %
-The F1 score is the harmonic mean of the precision and the recall of the nucleus as a guess of $C$.
+The F1 score is the harmonic mean of the precision and the recall of the nucleus as a guess of $D$.
 %
 The whole $(s,k)$ space of a query is scanned from the index without listing a community.
 %
-The size of the intersection is counted by testing, for every member of $C$, whether its own node lies in the subtree of the nucleus.
+The size of the intersection is counted by testing, for every member of $D$, whether its own node lies in the subtree of the nucleus.
 %
 The size of the nucleus comes from its entries.
 %
