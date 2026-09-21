@@ -36,14 +36,14 @@ points and certified tails turn the partition into contiguous memory.
 | Abstract | sections/abstract.tex | drafted |
 | 1 Introduction | sections/introduction.tex | drafted, partition-first; opening claim about "every previous index pays a version of this bill" needs the related-work check |
 | 2 Preliminaries | sections/preliminaries.tex | drafted |
-| 3 Hierarchy of one size | sections/hierarchy.tex | drafted; certified-tail proof transcribed from THEORY.md F2/F8 |
+| 3 Hierarchy of one size | sections/hierarchy.tex | certified tail in its simplest r = 1 form (floor; one absorption step, Lovasz-form Kruskal-Katona); user decision: no mention of NSI, the (r,s) generalization is NSI's |
 | 4 Chains | sections/chains.tex | drafted; example figure drawn in TikZ (2026-09-21), values checked by hand |
 | 5 The chain index | sections/index.tex | drafted (labels, order, runs, values, size accounting, example) |
-| 6 Construction | sections/construction.tex | drafted |
+| 6 Construction | sections/construction.tex | self-contained: one clique tree, order replay with Theorem replay (proof), KK cap, sigma at record-writing time, two-row window |
 | 7 Queries | sections/queries.tex | drafted |
 | 8 Experiments | sections/experiments.tex | widened 2026-09-21 (user: "实验有点少"): size (+values stored), bytes, design study, latency (+S trees column, Fig regimes), build, CND on every machine (Table prior, 12 pairs so far), correctness; pending data: Fig profile (by s / by answer size, tods2), Fig scale (20-100 percent samples, tods2), S trees latency on tods2 (7) and tods1 (20), CND on tods1 (20) |
-| 9 Related work | sections/related.tex | stub; needs the k-core community-search index literature and the parallel nucleus papers (keys exist in references.bib) |
-| 10 Conclusion | sections/conclusion.tex | drafted |
+| 9 Related work | sections/related.tex | written 2026-09-21 (nucleus hierarchies, k-core/k-truss community-search indexes with EquiTruss as the one-size analogue, temporal core indexes, SGL, Kruskal-Katona) |
+| 10 Conclusion | sections/conclusion.tex | drafted + limits paragraph (static, peel memory, double values, r = 1) |
 
 ## Figures and tables
 
@@ -69,3 +69,7 @@ points and certified tails turn the partition into contiguous memory.
 ## Ledger
 
 - 2026-09-20: skeleton created, all sections drafted, tables generated, compiles to 7 pages with no undefined references.
+
+## State on 2026-09-21 (evening)
+
+12 pages, compiles clean. Experiments: two case studies (Exp-1 ground truth, Exp-2 Amazon zoom), size (+values stored), bytes, design study (bytes only), latency (+S trees in-process baseline; Fig regimes), latency by size/answer (Fig profile), construction, scalability (Fig scale, all four panels with baselines), CND on 27 pairs, correctness. Pending data: tods1 CND on the last five graphs (web-it, coauthors, pokec, skitter, wiki-Talk), then tods1 S trees + profiles (20 graphs) -> queries table S trees column complete, CND table 32 pairs. Decisions still the user's: venue, title, Overleaf.
