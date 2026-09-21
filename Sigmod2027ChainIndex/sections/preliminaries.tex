@@ -8,56 +8,60 @@ An \textit{$s$-clique} is a set of $s$ pairwise adjacent vertices; a $2$-clique 
 %
 The \textit{clique number} of a vertex $v$, denoted as $\omg{v}$, is the number of vertices of a largest clique containing $v$.
 %
-The vertex $v$ lies in an $s$-clique exactly when $2\le s\le\omg{v}$.
+Dropping vertices from a clique leaves a clique, so $v$ lies in an $s$-clique if and only if $2\le s\le\omg{v}$.
 %
 In Figure~\ref{fig:example}, $\omg{a_1}=5$, $\omg{x}=4$ and $\omg{u_1}=3$.
 
 \stitle{Nuclei.}
-The community model of this paper is the $(1,s)$-nucleus of Sariy\"uce et al.~\cite{firstNucleus}, with the vertex as the object and the $s$-clique as the witness.
+The community model of this paper is the $(1,s)$-nucleus of Sariy\"uce et al.~\cite{firstNucleus}: the unit is the vertex, and cliques of $s$ vertices are what is counted around it.
 \begin{definition}[$(s,k)$-nucleus]\label{def:nucleus}
 For a clique size $s\ge2$ and a level $k\ge1$, an $\Nuc{s}{k}$ is a maximal set $N\subseteq V$ with two properties.
 %
-Every vertex of $N$ lies in at least $k$ $s$-cliques contained in $N$.
+Every vertex of $N$ lies in at least $k$ cliques of $s$ vertices contained in $N$.
 %
-Any two vertices of $N$ are joined by a sequence of $s$-cliques contained in $N$ in which consecutive cliques share a vertex.
+Any two vertices of $N$ are joined by a sequence of $s$-cliques contained in $N$.
+%
+The first clique contains one of the two vertices, the last contains the other, and consecutive cliques share a vertex.
 \end{definition}
-For $s=2$ the $s$-cliques are edges, and an $\Nuc{2}{k}$ is a connected $k$-core.
+For $s=2$ the cliques are edges, and a $(2,k)$-nucleus is a connected $k$-core: a maximal connected subgraph in which every vertex has at least $k$ neighbours.
 %
-Two nuclei of the same size and level are disjoint, since their union would satisfy the same condition.
+Two nuclei of the same size $s$ and level $k$ are disjoint: if they shared a vertex, their union would satisfy both properties, and neither would be maximal.
 %
 The \textit{core value} of $v$ at size $s$, denoted as $\core{s}{v}$, is the largest $k$ such that $v$ belongs to an $\Nuc{s}{k}$.
 %
 It is $0$ if $v$ lies in no $s$-clique.
 %
-The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$; it is unique because nuclei of one size and level are disjoint.
+The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$.
+%
+It exists, since the $\Nuc{s}{\core{s}{v}}$ containing $v$ satisfies the two properties at level $k$ and lies inside a maximal set that does.
+%
+It is unique, since nuclei of one size and level are disjoint.
 \begin{example}\label{ex:nucleus}
-Consider Figure~\ref{fig:example} at size $3$.
+Consider Figure~\ref{fig:example} at size $3$; as in Example~\ref{ex:intro}, $\{u_1,\dots,w_3\}$ denotes the six vertices $u_1,u_2,u_3,w_1,w_2,w_3$.
 %
 Every vertex of $A$ lies in $\binom{4}{2}=6$ triangles of $A$, and $A$ is a $(3,6)$-nucleus, so $\core{3}{a_i}=6$.
 %
-Each of $b_1,b_2,b_3$ lies in $3$ triangles of $B$, each $u_i$ in the $3$ triangles $\{u_i,w_j,x\}$, and $x$ in $12$.
+Each of $b_1,b_2,b_3$ lies in $3$ triangles of $B$, each $u_i$ in the $3$ triangles $\{u_i,w_j,x\}$, and $x$ in $3+9=12$.
 %
 The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-nucleus, and $\core{3}{v}=3$ for its ten vertices.
 %
-At size $2$ the core values are the $k$-core numbers: $\core{2}{a_i}=4$, $\core{2}{b_i}=3$ and $\core{2}{v}=4$ for $x$ and the six vertices adjacent to it.
+At size $2$ the core values are the $k$-core numbers: $\core{2}{a_i}=4$, $\core{2}{b_i}=3$ because $b_1$ and $b_2$ have only $3$ neighbours, and $\core{2}{v}=4$ for $x$ and the six vertices $u_1,\dots,w_3$.
 %
-At size $4$ only $A$ and $B$ remain, with $\core{4}{a_i}=4$ and $\core{4}{v}=1$ for the vertices of $B$; at size $5$, $\core{5}{a_i}=1$.
+At size $4$ only $A$ and $B$ have a nonzero value, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{4}{v}=1$ for the vertices of $B$; at size $5$, $\core{5}{a_i}=1$.
 \end{example}
 
 \stitle{Queries.}
-The index answers two queries over every size at once.
+The index answers two queries, for every size $s$.
 %
 A \textit{value query} $(v,s)$ returns $\core{s}{v}$.
 %
 A \textit{community query} $(v,s,k)$ with $1\le k\le\core{s}{v}$ returns the vertex set of the community of $v$ at $(s,k)$.
 %
-Membership of a vertex in a community follows from the community query.
+Whether a vertex belongs to a community follows from the community query.
 %
-So does the ladder of nested communities above a vertex.
-%
-Neither is a separate target.
+So does the list of the communities of $v$ at the levels $1,\dots,\core{s}{v}$ of one size; neither is a separate query.
 
 \stitle{Problem statement.}
 Given a graph $G$, we aim to build an index that answers value and community queries for every clique size $s\ge2$.
 %
-The index should store and retrieve each vertex once.
+The index should store each vertex once and return every community as a few blocks of memory.

@@ -3,9 +3,11 @@
 
 This section gives the two queries on the index.
 %
-Both start from the vertex-to-chain map.
+Both start from the bitmap of chain starts, the vertex-to-chain map of Section~\ref{sec:labels}, where $\mathrm{rank}_1(v)$ is the number of ones at positions $0$ to $v$.
 %
-The value query reads the chain record; the community query climbs the tree of the queried size and reads two entries.
+The value query then reads the chain record.
+%
+The community query climbs the tree of the queried size and reads two entries, each the run index and the label at which a node's segment starts (Section~\ref{sec:runs}).
 
 \begin{algorithm}[t]
 \caption{\query: value and community queries on \chainidx.}\label{alg:query}
@@ -21,15 +23,15 @@ The value query reads the chain record; the community query climbs the tree of t
   \Return residue$[c][s]$\;\label{ln:q-residue}
 }
 \Proc{\Community{$v,s,k$}}{
-  $c\leftarrow\mathrm{rank}_1(v)-1$; $x\leftarrow$ trajectory$[c][s]$\;\label{ln:q-own}
-  \While{$\mathrm{parent}[x]\ne$ none \KwSty{and} $\mathrm{top}[\mathrm{parent}[x]]\ge k$}{\label{ln:q-climb}
-    \lIf{$\mathrm{jump}[x]\ne$ none \KwSty{and} $\mathrm{top}[\mathrm{jump}[x]]\ge k$}{$x\leftarrow\mathrm{jump}[x]$}\label{ln:q-jump}
-    \lElse{$x\leftarrow\mathrm{parent}[x]$}\label{ln:q-parent}
+  $c\leftarrow\mathrm{rank}_1(v)-1$; $X\leftarrow$ trajectory$[c][s]$\;\label{ln:q-own}
+  \While{$\mathrm{parent}[X]\ne$ none \KwSty{and} $\mathrm{top}[\mathrm{parent}[X]]\ge k$}{\label{ln:q-climb}
+    \lIf{$\mathrm{jump}[X]\ne$ none \KwSty{and} $\mathrm{top}[\mathrm{jump}[X]]\ge k$}{$X\leftarrow\mathrm{jump}[X]$}\label{ln:q-jump}
+    \lElse{$X\leftarrow\mathrm{parent}[X]$}\label{ln:q-parent}
   }
-  $y\leftarrow x+\mathrm{size}[x]$\;\label{ln:q-exit}
-  $(r_x,v_x)\leftarrow\mathrm{entry}[x]$; $(r_y,v_y)\leftarrow\mathrm{entry}[y]$\;\label{ln:q-entries}
-  \lIf{$r_x=r_y$}{\Return the range $[v_x,v_y)$}\label{ln:q-one}
-  \Return the head $[v_x,hi(r_x))$, the runs $r_x+1,\dots,r_y-1$, and the tail $[lo(r_y),v_y)$\;\label{ln:q-three}
+  $Y\leftarrow X+\mathrm{size}[X]$\;\label{ln:q-exit}
+  $(r_X,v_X)\leftarrow\mathrm{entry}[X]$; $(r_Y,v_Y)\leftarrow\mathrm{entry}[Y]$\;\label{ln:q-entries}
+  \lIf{$r_X=r_Y$}{\Return the range $[v_X,v_Y)$}\label{ln:q-one}
+  \Return $[v_X,hi(r_X))$, the runs $r_X+1,\dots,r_Y-1$, $[lo(r_Y),v_Y)$\;\label{ln:q-three}
 }
 \end{algorithm}
 
@@ -38,56 +40,64 @@ Algorithm~\ref{alg:query} has two procedures, \Value and \Community.
 %
 \Value reads the chain of $v$ from the bitmap (Line~\ref{ln:q-chain}) and returns $0$ when $s$ exceeds the chain's clique number (Line~\ref{ln:q-zero}).
 %
-Based on Theorem~\ref{thm:tail}, it returns the floor from the binomial table when $s$ is at or past the certification point (Line~\ref{ln:q-floor}), and otherwise the stored residue (Line~\ref{ln:q-residue}).
+Based on Theorem~\ref{thm:tail}, it returns the floor $\binom{\omega-1}{s-1}$ from a table of binomial coefficients when $s$ is at or past the certification point (Line~\ref{ln:q-floor}), and otherwise the stored residue (Line~\ref{ln:q-residue}).
 %
-The residue sits at a byte offset given by the chain's residue start and the prefix sum of the per-size widths.
+The residue of size $s$ sits at the chain's residue start plus the bytes of the residues of the smaller sizes, a prefix sum kept per size.
 %
-\Community reads the chain and its own node at size $s$ from the trajectory (Line~\ref{ln:q-own}).
+\Community reads the chain and its own node $X$ at size $s$ from the trajectory (Line~\ref{ln:q-own}).
 %
-It then climbs to the highest ancestor whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}), the community of $v$ at $(s,k)$ by Definition~\ref{def:node}.
+It then climbs towards the root to the last node whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}); by Section~\ref{sec:strees} this node is the community of $v$ at $(s,k)$.
 %
 The climb follows parent pointers.
 %
-It takes one \textit{jump pointer} per node in the style of Myers~\cite{Myers1983} whenever the jump target still has top at least $k$ (Line~\ref{ln:q-jump}).
+Every node also carries a \textit{jump pointer} to an ancestor, chosen as in the skip pointers of Myers~\cite{Myers1983}, so that any climb of $d$ levels takes $O(\log d)$ steps.
+%
+A jump is taken whenever the jump target still has top at least $k$ (Line~\ref{ln:q-jump}).
+%
+The jump is safe because tops increase from a root downwards: every node skipped over has top at least $k$ as well.
 %
 The jump pointers are derived when the index is loaded and are not stored.
 %
-The node after the subtree of $x$ in preorder is $x+\mathrm{size}[x]$ (Line~\ref{ln:q-exit}).
+Nodes are numbered in preorder and every node knows its subtree size.
+%
+The node after the subtree of $X$ is therefore $X+\mathrm{size}[X]$ (Line~\ref{ln:q-exit}), and for the last node it is the sentinel.
 %
 Based on Theorem~\ref{thm:retrieval}, the two entries give the answer (Lines~\ref{ln:q-entries} to~\ref{ln:q-three}).
 %
-It is one range when both entries lie in the same run, and otherwise a head, whole runs and a tail.
+It is one range when both entries lie in the same run, and otherwise a first range, whole runs and a last range.
 %
-Reporting the ranges costs their number; expanding them into vertex labels costs the number of vertices, written eight labels per vector store.
+Reporting the ranges costs one step per range.
+%
+Expanding them into vertex labels costs one step per vertex, and the labels are written eight at a time with one vector instruction.
 
 \begin{example}\label{ex:query}
 Consider Figure~\ref{fig:layout}.
 %
 For \Value{$u_1,3$}: $u_1$ has label $8$, three ones lie at or before it, and the chain is $2$ (Line~\ref{ln:q-chain}).
 %
-The chain has $\omega=3$ and $\sigma=4$, and $3<\sigma$.
+The chain has $\omega=3$ and $\sigma=4=\omega+1$, since its values never reach the floor, and $3<\sigma$.
 %
 The answer is the residue of chain $2$ at size $3$, which is $3$ (Line~\ref{ln:q-residue}).
 %
-For \Value{$a_2,4$}: the chain is $1$ with $\sigma=2\le4$, and the answer is $\binom{4}{3}=4$ from the table (Line~\ref{ln:q-floor}).
+For \Value{$a_2,4$}: the chain is $1$ with $\omega=5$ and $\sigma=2\le4$, and the answer is $\binom{4}{3}=4$ from the table (Line~\ref{ln:q-floor}).
 %
 For \Community{$x,3,2$}: the chain is $3$, and its trajectory gives the own node $N$ at size $3$ (Line~\ref{ln:q-own}).
 %
-$N$ has no parent, and the climb stops (Line~\ref{ln:q-climb}).
+$N$ is a root of $\Tree{3}$, which has the two roots $N$ and $A$, so the climb stops at once (Line~\ref{ln:q-climb}).
 %
-The node after $N$ is $A$ (Line~\ref{ln:q-exit}), and the entries are $(0,0)$ and $(2,3)$ (Line~\ref{ln:q-entries}).
+The node after $N$ in preorder is $A$ (Line~\ref{ln:q-exit}), and the entries are $(0,0)$ and $(2,3)$ (Line~\ref{ln:q-entries}).
 %
-The runs differ, and the answer is the head $[0,3)$, the whole run $[8,15)$ and the empty tail $[3,3)$ (Line~\ref{ln:q-three}): ten vertices in two ranges.
+The runs differ, and the answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last range $[3,3)$ (Line~\ref{ln:q-three}): ten vertices in two ranges.
 % trace 2026-09-21 (LEDGER.md): Value(u1,3): chain 2 residues (4,3) -> 3.  Value(a2,4): C(4,3)=4.  Community(x,3,2): N entries (0,0), A (2,3).
 \end{example}
 
 \stitle{Complexity.}
-\Value takes constant time: four memory reads.
+\Value takes constant time: a bitmap word and its directory count, the record's $\omega$ and $\sigma$, and one residue or table entry.
 %
 \Community takes $O(\log d)$ steps for a climb of $d$ levels and constant time for the two entries.
 %
-Expanding the answer costs its size in the chosen form.
+Expanding the answer costs one step per range or one step per vertex, as chosen.
 %
-The depth $d$ is at most the number of distinct core values of size $s$.
+The depth $d$ is at most the number of distinct core values of size $s$, since tops increase strictly along every downward path.
 %
 No step of either procedure touches the graph.
