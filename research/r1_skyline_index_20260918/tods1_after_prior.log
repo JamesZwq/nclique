@@ -1,0 +1,29 @@
+START 2026-09-21T21:47:30+00:00 host=radonduo load=17.84 20.54 25.83
+git: 'Zhang' is not a git command. See 'git --help'.
+error: cannot pull with rebase: Your index contains uncommitted changes.
+error: please commit or stash them.
+running ca-GrQc
+running ca-CondMat
+running ca-HepPh
+running ca-AstroPh
+running email-Eu-core
+running dblp-core30
+running soc-Epinions1
+running com-amazon.ungraph
+running ca-MathSciNet
+running com-dblp
+running ca-dblp-2012
+running web-Stanford
+running web-Google
+running com-youtube
+running web-uk-2005
+running web-it-2004
+running ca-coauthors-dblp
+running soc-pokec-relationships
+running tech-as-skitter
+running wiki-Talk
+strees rc=0
+git: 'Zhang' is not a git command. See 'git --help'.
+error: cannot pull with rebase: Your index contains uncommitted changes.
+error: please commit or stash them.
+END 2026-09-22T05:27:21+00:00

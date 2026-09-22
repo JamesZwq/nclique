@@ -1,0 +1,28 @@
+START 2026-09-22T05:28:08+00:00 host=radonduo load=15.70 16.20 16.47
+error: cannot pull with rebase: Your index contains uncommitted changes.
+error: please commit or stash them.
+profiling ca-AstroPh
+profiling ca-CondMat
+profiling ca-GrQc
+profiling ca-HepPh
+profiling ca-MathSciNet
+profiling ca-coauthors-dblp
+profiling ca-dblp-2012
+profiling com-amazon.ungraph
+profiling com-dblp
+profiling com-youtube
+profiling dblp-core30
+profiling email-Eu-core
+profiling soc-Epinions1
+profiling soc-pokec-relationships
+profiling tech-as-skitter
+profiling web-Google
+profiling web-Stanford
+profiling web-it-2004
+profiling web-uk-2005
+profiling wiki-Talk
+profile rc=0
+git: 'Zhang' is not a git command. See 'git --help'.
+error: cannot pull with rebase: Your index contains uncommitted changes.
+error: please commit or stash them.
+END 2026-09-22T05:47:49+00:00
