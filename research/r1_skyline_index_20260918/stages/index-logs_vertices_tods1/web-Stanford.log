@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/graphs/web-Stanford.edges vertices
+{"passed":true,"mode":"vertices","bytes_shared_aligned":2308082,"n":281903,"m":1992636,"s_max":72,"count_bits":64,"classes":281903,"active_pairs":1607989,"skyline_entries":782912,"canonical_nodes":53239,"bytes_shared":0,"bytes_base_nodes":1064780,"bytes_base_pairs":13991528,"bytes_sky_nodes":1277736,"bytes_sky_entries":3914560,"bytes_sky_location":6169792,"bytes_sky_cross":422172,"bytes_block_d":9797118,"bytes_block_d_variant_b":7889582,"base_without_d":15056308,"sky_without_d":11784260,"base_with_d":24853426,"sky_with_d":21581378,"own_base_ns":34673.209,"own_sky_ns":488927.369,"own_output":82832.592,"half_base_ns":46163.254,"half_sky_ns":549631.419,"half_output":102620.104,"root_base_ns":57833.310,"root_sky_ns":627714.718,"root_output":126319.517,"aligned_own_ns":0.000,"aligned_half_ns":0.000,"aligned_root_ns":0.000,"aligned_range_own_ns":0.000,"aligned_range_half_ns":0.000,"aligned_range_root_ns":0.000,"aligned_member_ns":0.000,"aligned_member_checksum":0,"member_base_ns":104.659,"member_sky_ns":179.521,"member_checksum":43272,"member_checksum_sky":43272,"value_ns":23.608,"value_checksum":0}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/graphs/web-Stanford.edges vertices"
+	User time (seconds): 490.15
+	System time (seconds): 0.62
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 8:10.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1275024
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 397918
+	Voluntary context switches: 2
+	Involuntary context switches: 263
+	Swaps: 0
+	File system inputs: 46864
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

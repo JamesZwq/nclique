@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/graphs/email-Eu-core.edges vertices
+{"passed":true,"mode":"vertices","bytes_shared_aligned":8230,"n":1005,"m":16064,"s_max":35,"count_bits":64,"classes":1005,"active_pairs":8032,"skyline_entries":7163,"canonical_nodes":2602,"bytes_shared":0,"bytes_base_nodes":52040,"bytes_base_pairs":68280,"bytes_sky_nodes":62448,"bytes_sky_entries":35815,"bytes_sky_location":43863,"bytes_sky_cross":20812,"bytes_block_d":66418,"bytes_block_d_variant_b":63626,"base_without_d":120320,"sky_without_d":162938,"base_with_d":186738,"sky_with_d":229356,"own_base_ns":93.254,"own_sky_ns":10373.604,"own_output":501.364,"half_base_ns":125.847,"half_sky_ns":9649.369,"half_output":558.131,"root_base_ns":352.316,"root_sky_ns":11500.261,"root_output":747.386,"aligned_own_ns":0.000,"aligned_half_ns":0.000,"aligned_root_ns":0.000,"aligned_range_own_ns":0.000,"aligned_range_half_ns":0.000,"aligned_range_root_ns":0.000,"aligned_member_ns":0.000,"aligned_member_checksum":0,"member_base_ns":56.769,"member_sky_ns":74.004,"member_checksum":71502,"member_checksum_sky":71502,"value_ns":6.659,"value_checksum":0}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/graphs/email-Eu-core.edges vertices"
+	User time (seconds): 5.09
+	System time (seconds): 0.02
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.12
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 29728
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 8346
+	Voluntary context switches: 2
+	Involuntary context switches: 17
+	Swaps: 0
+	File system inputs: 240
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

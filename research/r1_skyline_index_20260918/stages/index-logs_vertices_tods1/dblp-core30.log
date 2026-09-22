@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/graphs/dblp-core30.edges vertices
+{"passed":true,"mode":"vertices","bytes_shared_aligned":9875,"n":1206,"m":31769,"s_max":114,"count_bits":128,"classes":1206,"active_pairs":61723,"skyline_entries":1210,"canonical_nodes":1380,"bytes_shared":0,"bytes_base_nodes":38640,"bytes_base_pairs":498612,"bytes_sky_nodes":44160,"bytes_sky_entries":6050,"bytes_sky_location":15706,"bytes_sky_cross":11376,"bytes_block_d":12740,"bytes_block_d_variant_b":12132,"base_without_d":537252,"sky_without_d":77292,"base_with_d":549992,"sky_with_d":90032,"own_base_ns":67.728,"own_sky_ns":889.178,"own_output":75.043,"half_base_ns":69.551,"half_sky_ns":970.597,"half_output":83.109,"root_base_ns":57.153,"root_sky_ns":1067.669,"root_output":94.779,"aligned_own_ns":0.000,"aligned_half_ns":0.000,"aligned_root_ns":0.000,"aligned_range_own_ns":0.000,"aligned_range_half_ns":0.000,"aligned_range_root_ns":0.000,"aligned_member_ns":0.000,"aligned_member_checksum":0,"member_base_ns":18.183,"member_sky_ns":147.368,"member_checksum":8748,"member_checksum_sky":8748,"value_ns":5.613,"value_checksum":0}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/index --graph /data/wenqianz/graphs/dblp-core30.edges vertices"
+	User time (seconds): 0.50
+	System time (seconds): 0.00
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.50
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 15488
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 4167
+	Voluntary context switches: 3
+	Involuntary context switches: 6
+	Swaps: 0
+	File system inputs: 512
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
