@@ -7,18 +7,21 @@ We consider a simple undirected graph $G$ with vertex set $V$ and $n$ vertices.
 %
 An \textit{$s$-clique} is a set of $s$ pairwise adjacent vertices.
 %
-The \textit{clique number} of a vertex $v$, denoted as $\omg{v}$, is the largest size of a clique containing $v$.
+The \textit{clique number} of a vertex $v$, denoted as $\omg{v}$, is the largest size of a clique containing $v$, and an isolated vertex has clique number $1$.
 %
 A subset of a clique is a clique, so $v$ lies in an $s$-clique for every size $s$ from $2$ to $\omg{v}$ and for no larger size.
 %
-In Figure~\ref{fig:example}, $\omg{a_1}=5$ because of $A$, $\omg{x}=4$ because of $B$, and $\omg{u_1}=3$: $u_1$ lies in the triangles $\{x,u_1,w_j\}$ and in no $4$-clique.
+In Figure~\ref{fig:example}, $\omg{a_1}=5$, since $A$ is the largest clique of the graph, and $\omg{x}=4$, since $B$ is a $4$-clique and no two of $u_1,\dots,w_3$ on the same side are adjacent.
+%
+Also $\omg{u_1}=3$: $u_1$ lies in the triangles $\{x,u_1,w_j\}$ and in no $4$-clique.
 
 \stitle{Clique cores.}
 % 2026-09-22 the model is named the clique core (the k-core with cliques of s vertices in place of edges); the nucleus
 % name is given once as the origin.  Cold-read fixes: maximal glossed, the connectivity property named.
 The community model of this paper is the $k$-core with cliques of $s$ vertices in place of edges, which we call the \textit{clique core} at clique size $s$ and level $k$ and write $\Nuc{s}{k}$.
 \begin{definition}[$(s,k)$-core]\label{def:nucleus}
-For a clique size $s\ge2$ and a level $k\ge1$, an $\Nuc{s}{k}$ is a set $N\subseteq V$ with two properties, to which no vertex can be added without losing one of them.
+% 2026-09-22 cold read 2: maximal by inclusion, stated (a cold reader built a set to which no single vertex can be added that is not maximal).
+For a clique size $s\ge2$ and a level $k\ge1$, an $\Nuc{s}{k}$ is a \textit{maximal} set $N\subseteq V$ with two properties: a set with the properties that is contained in no larger set with the properties.
 %
 Every vertex of $N$ lies in at least $k$ cliques of $s$ vertices contained in $N$.
 %
@@ -29,33 +32,45 @@ The first clique contains one of the two vertices, the last contains the other, 
 We say that $N$ is connected through its $s$-cliques.
 \end{definition}
 % the origin of the model, named once
-An $\Nuc{s}{k}$ is a $k$-$(1,s)$-nucleus in the terminology of Sariy\"uce et al.~\cite{firstNucleus}, the vertex case of their $(r,s)$-nucleus.
+An $\Nuc{s}{k}$ is a $k$-$(1,s)$-nucleus in the terminology of Sariy\"uce et al.~\cite{firstNucleus}.
 %
 For $s=2$ the cliques are edges, and a $(2,k)$-core is a connected $k$-core: a maximal connected subgraph in which every vertex has at least $k$ neighbours.
 %
 Two cores of the same size $s$ and level $k$ are disjoint.
 %
-If they shared a vertex, their union would have both properties, the two clique sequences being joined at the shared vertex, so each of them could be extended.
+If they shared a vertex, their union would have both properties, since every vertex keeps its $k$ cliques and a clique sequence inside one core continues through the shared vertex into the other.
+%
+By maximality each core would then equal the union.
 %
 The \textit{core value} of $v$ at size $s$, denoted as $\core{s}{v}$, is the largest $k$ such that $v$ belongs to an $\Nuc{s}{k}$.
 %
 % 2026-09-22 cold read (Sections 3/4): the converse stated once here, Section 3 and the proofs lean on it.
-It is $0$ if $v$ lies in no $s$-clique, and at least $1$ otherwise, since an $s$-clique containing $v$ has the two properties at level $1$ and extends to an $\Nuc{s}{1}$.
+We set it to $0$ if $v$ lies in no $s$-clique.
+%
+Otherwise it is at least $1$, since an $s$-clique containing $v$ has the two properties at level $1$ and, the graph being finite, lies inside a maximal such set, an $\Nuc{s}{1}$.
 %
 The \textit{community} of $v$ at $(s,k)$, for $1\le k\le\core{s}{v}$, is the $\Nuc{s}{k}$ containing $v$.
 %
-It exists, since the $\Nuc{s}{\core{s}{v}}$ containing $v$ has the two properties at level $k$ and extends to an $\Nuc{s}{k}$, and it is unique, since cores of one size and level are disjoint.
+It exists, since the $\Nuc{s}{\core{s}{v}}$ containing $v$ has the two properties at level $k$ and lies inside a maximal such set.
+%
+It is unique, since cores of the same size and level are disjoint.
 \begin{example}\label{ex:nucleus}
 % 2026-09-22 compaction: eight sentences; every count is from make_concept.py (kappa_3 = 6 on A, 3 on N; kappa_2 = 4 on A and {x,u,w}, 3 on b_i; kappa_4 = 4 on A, 1 on B; kappa_5 = 1 on A).
 Consider Figure~\ref{fig:example} at size $3$, writing $\{u_1,\dots,w_3\}$ for the six vertices $u_1,u_2,u_3,w_1,w_2,w_3$ as in Example~\ref{ex:intro}.
 %
-Each $a_i$ lies in $\binom{4}{2}=6$ triangles, all inside $A$ since the edge $a_5b_3$ lies in none, so $A$ is a $(3,6)$-core and $\core{3}{a_i}=6$.
+Each $a_i$ lies in $\binom{4}{2}=6$ triangles, one per pair of the other four vertices of $A$, and in no other, since $a_5$ and $b_3$ have no common neighbour.
 %
-Each $b_i$ lies in the three triangles of $B$, each $u_i$ and each $w_j$ in the three triangles $\{u_i,w_j,x\}$, and $x$ in twelve.
+$A$ is connected through its triangles and no other vertex lies in a triangle with two of its vertices, so $A$ is a $(3,6)$-core and $\core{3}{a_i}=6$.
+%
+Each $b_i$ lies in three of the four triangles of $B$, and each $u_i$ in the three triangles $\{u_i,w_j,x\}$ for $j=1,2,3$, and likewise each $w_j$.
+%
+The vertex $x$ lies in twelve triangles, three in $B$ and nine with a $u_i$ and a $w_j$.
 %
 The set $N=B\cup\{u_1,\dots,w_3\}$ is a $(3,3)$-core.
 %
-Every vertex lies in at least three of its triangles, every triangle of $N$ except $\{b_1,b_2,b_3\}$ contains $x$ and that one shares $b_1$ with $\{x,b_1,b_2\}$, and no vertex of $A$ can be added.
+Every vertex of $N$ lies in at least three of its triangles, and $N$ is connected through them, since every vertex of $N$ shares a triangle with $x$.
+%
+No vertex of $A$ can be added, since $a_5$ shares no triangle with $N$.
 %
 No vertex of $N$ has core value $4$: a $(3,4)$-core contains none of $u_1,\dots,w_3$, and without them a vertex of $B$ lies in three triangles only.
 %
@@ -63,7 +78,10 @@ So $\core{3}{v}=3$ on $N$.
 %
 At size $2$, $\core{2}{v}=4$ on $A$ and on $\{x,u_1,\dots,w_3\}$ and $\core{2}{b_i}=3$.
 %
-Every vertex has at least three neighbours, no vertex but $x$ has five, so no $5$-core exists, and once $b_1$ and $b_2$, of degree three, are removed, $b_3$ keeps two.
+% 2026-09-22 cold read 2: a_5 also has five neighbours (the earlier sentence said only x); the argument now counts the vertices of degree at least five.
+Every vertex has at least three neighbours, and only $x$ and $a_5$ have five or more, so no $5$-core exists.
+%
+The vertices $b_1$ and $b_2$ have three neighbours, so no $4$-core contains them, and without them $b_3$ has two neighbours left.
 %
 At size $4$, $\core{4}{a_i}=\binom{4}{3}=4$ and $\core{4}{v}=1$ on $B$.
 %

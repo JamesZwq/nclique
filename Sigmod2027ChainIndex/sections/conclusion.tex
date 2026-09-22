@@ -3,15 +3,12 @@
 
 In this paper, we presented \chainidx, an index for the clique-core hierarchies of every clique size at once.
 %
-The vertices no query can tell apart are exactly the chains, the coarsest lossless partition.
+The vertices no query can tell apart are exactly the chains, the coarsest lossless partition, and aligned labels, a chain order and run arrays turn the partition into communities located in constant time.
 %
-Aligned labels, a chain order and run arrays turn the partition into communities returned in constant time.
-%
-On \numgraphs{} graphs the index is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size, median \ratiomedian$\times$.
+On \numgraphs{} graphs the index is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size (median \ratiomedian$\times$).
 %
 It lists a community about as fast as a memory copy, and it is built for every size \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
-
-\stitle{Future work.}
+%
 The index is static.
 %
-Its maintenance under edge insertions, and the same partition with an edge or a larger clique as the unit in place of the vertex, are future work.
+Its maintenance under edge insertions, and the same partition with an edge as the unit, are future work.

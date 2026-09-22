@@ -1,12 +1,15 @@
 % 2026-09-21 house shape: the introduction compressed; challenge nouns and headline numbers verbatim.  Cadence pass.
-Counting cliques of $s$ vertices around a vertex in place of its neighbours generalizes the $k$-core of a graph to every clique size $s$.
+% 2026-09-22 cold read 2: subject and verb together; the hierarchy sentence; the baseline not presented as prior practice; own node glossed; the peel glossed; the climb named; "decomposition" avoided.
+The $k$-core of a graph counts the neighbours of a vertex.
 %
-At each size every vertex gets a core value, and the vertices form a hierarchy of nested communities, one per vertex and level up to its core value.
+Counting instead the cliques of $s$ vertices that contain it generalizes the $k$-core to every clique size $s$.
+%
+At each size every vertex gets a core value and lies in one community per level from $1$ to its core value, and the communities of a size are nested.
 %
 % 2026-09-22 compaction: thirteen sentences.
 A community query names a vertex, a size and a level, and the size is chosen at query time.
 %
-An index that answers queries at every size has so far stored one hierarchy per size.
+The direct index for every size stores one hierarchy per size.
 %
 A vertex is then stored once per size, and the index reaches $190$~MB on a web graph of $129{,}632$ vertices.
 %
@@ -14,20 +17,26 @@ This paper stores each vertex once for all sizes.
 %
 Two vertices are hierarchy-equivalent when no query, for a value or for a community, at any size tells them apart.
 %
-We prove that this holds exactly when, at every size, the smallest community of one vertex is the smallest community of the other.
+We prove that this holds exactly when, at every size, the smallest community containing one vertex, the one at its core value, is the smallest community containing the other.
 %
-The equivalence classes, called chains, partition the vertices, and no coarser partition serves an index that answers every query exactly.
+The equivalence classes, called chains, partition the vertices, and no partition into larger groups allows an index to answer every query exactly.
 %
-We propose \chainidx, an index over chains that labels them so that every community, at any size and level, is a few ranges of consecutive ids, found in constant time.
+We propose \chainidx, an index over chains.
 %
-The index of every size is built from one clique tree, each size reusing the vertex removal order of the previous size when a check on clique counts proves the reuse exact.
+It numbers the vertices so that every community, at any size and level, is a few ranges of consecutive vertex ids, found in constant time after a climb to the queried level.
+%
+The index of every size is built from one clique tree.
+%
+The values of a size come from removing vertices in increasing order of their clique counts, and the next size reuses that order when a check on clique counts proves the reuse exact.
 %
 On \numgraphs{} graphs from five families, \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size (median \ratiomedian$\times$).
 %
-It locates a community in \locmin{} to \locmax{} nanoseconds and lists it about as fast as a memory copy of the answer.
+It finds the ranges of a community in \locmin{} to \locmax{} nanoseconds and lists its vertices about as fast as a memory copy of the answer.
 %
-It is built for every size \priormin$\times$ to \priormax$\times$ faster than one decomposition per size.
+It is built for every size \priormin$\times$ to \priormax$\times$ faster than computing the sizes one at a time.
 %
-Two case studies on graphs whose vertices carry names and categories show what a larger size gives.
+Two case studies on graphs whose vertices carry names and categories show the effect of the size.
 %
-On DBLP the best size changes from query to query, and on Amazon the size narrows a community from a store of $157{,}331$ products to a shelf of six albums.
+On DBLP the size whose community best matches a ground-truth community changes from query to query.
+%
+On Amazon the size narrows a community from a store of $157{,}331$ products to a shelf of six albums.

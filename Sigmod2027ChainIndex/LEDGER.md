@@ -249,3 +249,41 @@ of which the three 29-32 row tables (size, queries, CND) were 1.5 pages.  Action
 State: 13 pages = 12 body pages (References begin on page 12, right column, ~20 lines from the bottom) + 1 page of references.
 Frozen numbers unchanged (all macros); Yang-Leskovec entry is the KAIS 2015 version.
 Open: the tods1 CND queue (tech-as-skitter, wiki-Talk) adds points to Figure 8 and moves the prior macros; no rows to add.
+
+## Cold read 2 (2026-09-22, after the compaction; four low-context readers: abstract+intro, Sections 2-4, Sections 5-7, experiments+related+conclusion)
+Substantive findings and fixes:
+- Definition 2.1 said "a set to which no vertex can be added without losing a property"; a reader built a set to which no
+  single vertex can be added that is not maximal (a triangle inside a 6-cycle-plus-triangle at s=2, k=2).  The definition
+  now says "a maximal set with two properties: a set with the properties that is contained in no larger set with the
+  properties"; every "by maximality" step in Sections 2 and 3 now rests on that.
+- Example 2.2 claimed "no vertex but x has five neighbours"; a_5 has five (a_1..a_4, b_3).  The no-5-core argument now
+  counts the vertices of degree at least five (x and a_5 only).
+- The traversal rule of Section 5.3 and the walk of Section 7 disagreed (merged by smallest rank vs. own chains first, then
+  children); the build (chain_index_tool.cpp dfs1) merges own chains and child subtrees into one sequence by smallest rank
+  and renumbers the nodes in that traversal order (renum[]), which is what Theorem 5.5 and X+size[X] need.  Section 5.3 and
+  the Step 3 walk now say exactly that; Step 2 says pre_s is the provisional numbering used for the keys.
+- Runs merge only when the next chain's rank is one more than the previous (compact_runs: lo == previous hi); the text said
+  "differ by one".
+- "certificate" (Theorem 7.1) and "certified tail"/"certification point" (Theorem 5.8) shared a word for two things:
+  Theorem 5.8 is now "floor and tail", sigma is the "tail start"; "certificate" stays with the replay condition.
+- B named both the clique {x,b1,b2,b3} and the chain {b1,b2,b3} in Example 5.9; the chains are now named as sets.
+- The size accounting (5.5) omits nothing now: jump pointer per node, and the id permutation if kept.
+- Lemma 4.8 (twins refine chains) folded into two sentences of the Twins block (its proof is one sentence; not a
+  contribution).  Corollary 5.3 folded into one sentence after Example 5.3.
+- Abstract: the baseline is "the direct index for every size", not prior practice; "found in constant time after a climb";
+  the peel glossed; "computing the sizes one at a time" instead of the undefined "decomposition".
+- Intro: subject and verb together in the generalization sentence; the two properties named; "denser structures"; the
+  reason for the name "chains"; the ranking rule (size 2 first, ties at 3, 4, ...); the climb from the own node; "ids" ->
+  "vertex ids"; STrees introduced as this paper's baseline; the 3.9 MB of our index beside the 190 MB of STrees;
+  "decomposition" glossed at first use.
+- Experiments: every latency sentence names the index measured; the ratio direction of Figure 5(b) is in the text; STrees
+  is never called "the copy"; the map share (3-13 percent) restored; SGL's layout glossed; "record label" for Blue Note;
+  Kind of Blue's 36,878 explained (own level higher than the store's); "such graphs" for the no-index cost.
+- Related work: SGL's units are non-overlapping within one parameter setting; the (r,s) lineage in one sentence.
+Page budget kept: 13 pages = 12 body pages (References begin at the foot of page 12) + references; every sentence of 35+
+words split again (2.1 percent remain, all with lists or line references); 0 overfull, 0 ??, no Type 3 fonts.
+Figures: Figure 1 without the blank band (158pt), Figure 3 (index) 150pt, Figure 4 (trie) 124pt, plots 1.2-1.38in; Figure
+5(b) y-label "listing time ratio"; Figure 8 axes for the tods1 points near x = 1000 s.
+Trims for the budget after the cold-read additions: Example 1.1 to five sentences, Example 5.1 folded into 5.1's prose,
+Exp-2's share explanation, Exp-1's family ranges, the Fellowship product, Exp-5's panel (a) sentence, Section 3's
+dblp-coauthor figure, the "trees give no bound" sentence, Table 1 at scriptsize.

@@ -37,19 +37,23 @@ Algorithm~\ref{alg:query} has two procedures, \Value and \Community.
 %
 \Value reads the chain of $v$ from the map (Line~\ref{ln:q-chain}) and returns $0$ when $s$ exceeds the chain's clique number (Line~\ref{ln:q-zero}).
 %
-Based on Theorem~\ref{thm:tail}, it returns the floor $\binom{\omega-1}{s-1}$ when $s$ is at or past the certification point (Line~\ref{ln:q-floor}), and otherwise the stored residue (Line~\ref{ln:q-residue}).
+Based on Theorem~\ref{thm:tail}, it returns the floor $\binom{\omega-1}{s-1}$ when $s$ is at or past the tail start (Line~\ref{ln:q-floor}), and otherwise the stored residue (Line~\ref{ln:q-residue}).
 %
 \Community reads the chain and its own node $X$ at size $s$ from the trajectory (Line~\ref{ln:q-own}).
 %
 It climbs to the node nearest the root whose top is at least $k$ (Lines~\ref{ln:q-climb} to~\ref{ln:q-parent}), the community of $v$ at $(s,k)$ by Section~\ref{sec:strees}.
 %
-Besides its parent pointer, every node carries a \textit{jump pointer} to an ancestor, chosen as in the skip pointers of Myers~\cite{Myers1983}, so that a climb of $d$ levels takes $O(\log d)$ steps.
+Besides its parent pointer, every node carries a \textit{jump pointer} to an ancestor, chosen as in the skip pointers of Myers~\cite{Myers1983}.
+%
+Along every root path, the jump pointers reach any ancestor with $O(\log d)$ jumps and parent steps for a climb of $d$ levels.
 %
 A jump is taken whenever the jump target still has top at least $k$ (Line~\ref{ln:q-jump}).
 %
-This is safe: tops increase from a root downwards, so every node skipped over has top at least $k$ as well, and none of them is the node nearest the root with that property.
+This is safe.
 %
-Nodes are numbered in the traversal order and every node knows its subtree size, so the node after the subtree of $X$ is $X+\mathrm{size}[X]$ (Line~\ref{ln:q-exit}), the sentinel for the last subtree.
+Tops grow from a root down to the leaves, so every node skipped over has top at least $k$ as well, and none of them is the node nearest the root with that property.
+%
+Nodes are numbered in the traversal order of Section~\ref{sec:runs} and every node stores its subtree size, so the node after the subtree of $X$ is $X+\mathrm{size}[X]$ (Line~\ref{ln:q-exit}), the sentinel for the last subtree.
 %
 Based on Theorem~\ref{thm:retrieval}, the two entries give the answer (Lines~\ref{ln:q-entries} to~\ref{ln:q-three}).
 %
@@ -67,9 +71,7 @@ For \Value{$a_2,4$}: the chain is $1$ with $\omega=5$ and $\sigma=2\le4$, and th
 %
 For \Community{$x,3,2$}: the chain is $3$ and its trajectory gives the own node $N$ at size $3$ (Line~\ref{ln:q-own}), a root, so the climb stops at once (Line~\ref{ln:q-climb}).
 %
-The node after $N$ is $A$ (Line~\ref{ln:q-exit}), and the entries are $(0,0)$ and $(2,3)$ (Line~\ref{ln:q-entries}).
-%
-The answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last range $[3,3)$ (Line~\ref{ln:q-three}): ten vertices in two nonempty ranges.
+$N$ has no children, so the node after it is $A$ (Line~\ref{ln:q-exit}), and the entries $(0,0)$ and $(2,3)$ (Line~\ref{ln:q-entries}) give the two ranges of Example~\ref{ex:runs} (Line~\ref{ln:q-three}).
 \end{example}
 
 \stitle{Complexity.}
@@ -77,6 +79,6 @@ The answer is the first range $[0,3)$, the whole run $[8,15)$ and the empty last
 %
 The coefficients up to the largest clique number are computed once with the index.
 %
-\Community takes $O(\log d)$ steps for a climb of $d$ levels and constant time for the two entries, plus one step per range or per vertex to expand the answer.
+\Community takes $O(\log d)$ steps for a climb of $d$ levels and constant time for the two entries, plus one step per range to report the answer, or one per vertex to list it.
 %
 No step of either procedure touches the graph.

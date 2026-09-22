@@ -7,13 +7,14 @@ This section answers the third difficulty of Section~\ref{sec:intro}: how to bui
 % 2026-09-22 compaction: opener in four sentences.
 The values of one size come from a \textit{peel}.
 %
-Vertices are removed one at a time in increasing order of their clique count, and the largest count seen at a removal so far is the core value of the removed vertex.
+% 2026-09-22 cold read 2: the clique count is the current one; a replay is not a peel; the traversal rule and the node numbering of Step 3 match the build (items merged by smallest rank; nodes renumbered in the traversal order); the reason for the top of a changed component; the trie bound.
+Vertices are removed one at a time, each time a vertex of smallest \textit{clique count}, the number of $s$-cliques through it among the vertices not yet removed.
 %
-The index is built from one clique tree, which gives the clique counts of every size, and one peel per size that reuses the previous size's work.
+The largest count seen at a removal so far is the core value of the removed vertex.
 %
-The tree of each size is built as its values arrive, and the chains are refined with it.
+The index is built from one clique tree, which gives the clique counts of every size, and one pass per size that reuses the previous size's removal order when it can.
 %
-Figure~\ref{fig:pipeline} draws the trie of the chains for the running example.
+The tree of each size is built as its values arrive, and the chains are split with it (Figure~\ref{fig:pipeline}).
 
 \begin{figure}[t]
 \centering
@@ -77,7 +78,7 @@ For $k=\core{s}{v}=U_s(v)$ this set is $\{u:U_s(u)\ge U_s(v)\}$, which is the co
 \end{proof}
 We call the condition of the theorem the \textit{certificate}.
 %
-Since $U_s$ does not decrease along $\pi$, the set $\{u:U_s(u)\ge U_s(v)\}$ is a suffix of $\pi$, and the count of every vertex inside its suffix comes from one more sweep of the paths.
+Since $U_s$ does not decrease along $\pi$, the set $\{u:U_s(u)\ge U_s(v)\}$ is a suffix of $\pi$, and one more pass over the paths gives every vertex $v$ its count inside that set.
 %
 When the certificate holds, the values of the size are the running maxima, at the cost of the two sweeps, and $\pi$ stays the order for the next size.
 %
@@ -85,11 +86,13 @@ When it fails, the size is peeled exactly.
 %
 The vertex of smallest count is removed.
 %
-The counts of the vertices on the paths through it decrease by the number of cliques that contained it, which each path gives from its sets $H$ and $Q$ by the binomial sums above.
+The counts of the vertices on the paths through it decrease by the number of cliques that contained it.
+%
+Each path gives that number from its sets $H$ and $Q$ by the binomial sums above.
 %
 The previous size's values also bound the next size's, by the argument of Theorem~\ref{thm:tail}(b): $\core{s}{v}\le\binomc{t}{s}$ for the real number $t$ with $\binomc{t}{s-1}=\core{s-1}{v}$.
 %
-The peel keeps counts only up to this bound.
+The peel keeps counts only up to this bound, since a count above the bound is never the smallest one.
 \begin{example}\label{ex:replay}
 % trace 2026-09-21, tools/example_check.py: f=[3,2,2,4,3,2,1,0,4,4,4,1,1,1,0], U=[3,3,3,4,...,4], b=[3,3,4,4,4,4,4,4,4,4,4,4,4,4,6]; x-first order: f(x)=9, U=9 everywhere, b(a1)=4 < 9 -> fails.
 Consider Figure~\ref{fig:example} at size $2$ and the order $\pi=(b_1,b_2,b_3,a_1,\dots,a_5,u_1,u_2,u_3,w_1,w_2,w_3,x)$.
@@ -150,15 +153,13 @@ Algorithm~\ref{alg:build} has two steps for every size, the values (Step 1) and 
 % 2026-09-22 compaction: the walk in eighteen sentences.
 A path of the clique tree $T$ is \textit{live} when its mandatory vertices are all active and at least $s$ of its vertices are active.
 %
-Any $s$ active vertices of a live path form an $s$-clique of active vertices.
-%
-Conversely, every $s$-clique of active vertices lies on the one path that represents it, which is then live.
+Every $s$-clique of active vertices lies on the one path that represents it, which is then live, and any $s$ active vertices of a live path form an $s$-clique of active vertices.
 %
 Before the first size, the algorithm builds the clique tree once and takes a degeneracy order of the graph as the first order to try (Line~\ref{ln:b-tree}).
 %
 A degeneracy order is obtained by removing a vertex of smallest degree repeatedly.
 %
-It puts every vertex at the root of the trie that will hold the chains (Line~\ref{ln:b-trie}).
+The algorithm puts every vertex at the root of the trie that will hold the chains (Line~\ref{ln:b-trie}).
 %
 \emph{During Step 1}, for every size (Line~\ref{ln:b-sizes}) it computes the forward counts and the running maxima along the current order in one sweep of the clique tree (Line~\ref{ln:b-forward}).
 %
@@ -174,7 +175,11 @@ It joins the active vertices of every live path that gained an active vertex int
 %
 By the two facts about live paths, the components are exactly the sets of active vertices connected through $s$-cliques of active vertices.
 %
-After each value, the components that changed are the canonical nodes of that top (Line~\ref{ln:b-nodes}), and the nodes they absorbed become their children (Line~\ref{ln:b-parent}).
+After each value $k$, the components that changed are the canonical nodes of top $k$ (Line~\ref{ln:b-nodes}).
+%
+Every active vertex has value at least $k$, and a changed component holds a vertex of value $k$.
+%
+The nodes they absorbed become their children (Line~\ref{ln:b-parent}).
 %
 Every vertex activated at that value records its component as its own node (Line~\ref{ln:b-own}).
 %
@@ -188,35 +193,35 @@ A chain is the set of vertices that stopped at one trie node, and its trajectory
 %
 The value of size $s$ is the same for every vertex that moves to one trie node, and the node records it (Line~\ref{ln:b-value}).
 %
-The tree of size $s$ is kept as its nodes with their tops and parents, numbered in the preorder $\mathrm{pre}_s$ of Section~\ref{sec:order}.
+The tree of size $s$ is kept as its nodes with their tops and parents, numbered for now in a preorder $\mathrm{pre}_s$, which Section~\ref{sec:order} uses for the keys.
 %
 \emph{During Step 3}, the algorithm ranks the chains by a depth-first traversal of the trie.
 %
-The traversal visits the vertices stopped at a node before the node's children, and the children in increasing order of $\mathrm{pre}_s$ of their own node.
+The traversal visits the vertices stopped at a node before the node's children, and the children in increasing order of the preorder number $\mathrm{pre}_s$ of their own node.
 %
 This is the lexicographic key order of Section~\ref{sec:order}, and it gives the chain ranks, the aligned labels (Line~\ref{ln:b-rank}) and the chain starts (Line~\ref{ln:b-bitmap}).
 %
 For each size the algorithm traverses the tree over chains of Section~\ref{sec:runs} (Line~\ref{ln:b-traverse}).
 %
-At each node it lists the chains whose own node it is, read from the trajectories, and then its children in increasing order of the smallest chain rank in their subtrees.
+At each node it lists the chains whose own node it is, read from the trajectories, and the subtrees of its children in one sequence by smallest chain rank.
+%
+It renumbers the nodes in this traversal order.
 %
 It merges the chain sequence into runs and records every node's entry (Line~\ref{ln:b-runs}).
 %
 Each chain then receives its clique number $\omega$, its trajectory and its recorded values (Line~\ref{ln:b-values}).
 %
-The certification point $\sigma$ is the first size at which the chain's value equals the floor, and only the values below $\sigma$, the residues, are stored.
+The tail start $\sigma$ is the first size at which the chain's value equals the floor, and only the values below $\sigma$, the residues, are stored.
 
 \begin{example}\label{ex:build}
-% trace 2026-09-21: tools/example_check.py (nodes, own nodes, chains); LEDGER.md (ranks, runs, entries).
+% trace 2026-09-21: tools/example_check.py (nodes, own nodes, chains); LEDGER.md (ranks, runs, entries).  2026-09-22: three sentences.
 In Figure~\ref{fig:example} at size $2$, activating the value $4$ joins $A$ into one component and $\{x,u_1,\dots,w_3\}$ into another, the two nodes of top $4$.
 %
-Activating the value $3$ joins everything into the root of top $3$, the own node of $b_1,b_2,b_3$.
+Activating the value $3$ joins everything into the root of top $3$, and the trie then has three children of the root, holding $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$ and $\{x,u_1,\dots,w_3\}$.
 %
-The trie now has three children of the root, holding $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$ and $\{x,u_1,\dots,w_3\}$.
+At size $3$ no group is split.
 %
-At size $3$ the third group is not split, since all seven vertices have own node $N$.
-%
-At size $4$ it splits, $u_1,\dots,w_3$ stopping since the size exceeds their clique number and $x$ moving on to the child labelled $B$.
+At size $4$ the third group splits: $u_1,\dots,w_3$ stop, since the size exceeds their clique number, and $x$ moves on to the child labelled by the size-$4$ node $B$.
 %
 The four trie nodes where vertices stopped, the dashed leaves of Figure~\ref{fig:pipeline}, are the chains of Example~\ref{ex:chains}, ranked $0$ to $3$ by the traversal.
 %
@@ -224,14 +229,14 @@ The layout of size $3$ produces the runs and entries of Figure~\ref{fig:layout}.
 \end{example}
 
 \stitle{Cost.}
-The peel and the clique tree take most of the build time.
+The peel and the clique tree take most of the build time (Exp-6).
 %
 The refinement adds, for every live path, one union per vertex that becomes active on it, and one trie step per vertex and size.
 %
 The layout adds one pass per size over the chains.
 %
-Together they are a few percent of the total on every graph of Section~\ref{sec:exp} (Exp-6).
+Together they are a few percent of the total on the graphs of Section~\ref{sec:exp}.
 %
 The working space is the clique tree and the graph, plus the values of two consecutive sizes, the trie, and the trees of the sizes with one node per canonical node.
 %
-The last three are linear in the vertices, the chains and the canonical nodes.
+The last three are linear in the vertices, the (chain, size) pairs and the canonical nodes.

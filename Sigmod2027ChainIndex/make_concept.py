@@ -268,18 +268,18 @@ def draw_graph(sv, ox, oy, scale, shaded=frozenset(), labels=True, r=6.2, lw=0.6
     return P
 
 def fig_running():
-    PW, PH = 241.0, 178.0
+    PW, PH = 241.0, 158.0                      # 2026-09-22: the blank band under (a) removed; the panel letter stays in the caption
     sv = SVG(PW, PH)
-    P = draw_graph(sv, 0, 6, 1.0)
+    P = draw_graph(sv, 0, -6, 1.0)
     # the named sets, as light labels beside them
-    sv.text(34, 104, 'A', size=7.5, anchor='middle', italic=True)
-    sv.text(93, 106, 'B', size=7.5, anchor='middle', italic=True)
-    sv.text(18, 14, '(a) the graph', size=7.2)
+    sv.text(34, 92, 'A', size=7.5, anchor='middle', italic=True)
+    sv.text(93, 94, 'B', size=7.5, anchor='middle', italic=True)
+    sv.text(4, 8, '(a)', size=7.2)
     # (b)-(d): the community of x at its own level of sizes 2, 3, 4
     coms = [(2, frozenset(['x'] + U + W)), (3, frozenset(B + U + W)), (4, frozenset(B))]
     for j, (s, com) in enumerate(coms):
         assert com == own[('x', s)], (s, sorted(com))
-        sc = 0.32; ox = 1 + j * 80; oy = 124
+        sc = 0.32; ox = 1 + j * 80; oy = 106
         draw_graph(sv, ox, oy, sc, shaded=com, labels=False, r=6.2, lw=0.5)
         k = kappa['x'][s]
         sv.text(ox + 118 * sc, oy + 118 * sc + 9, f'({"bcd"[j]}) s = {s}: level {k}, {len(com)} vertices', size=6.6, anchor='middle')
@@ -334,7 +334,7 @@ def fig_strees():
 
 # ---------------------------------------------------------------- Section 5: what ChainIndex stores ----
 def fig_index():
-    PW, PH = 506.0, 170.0          # 2026-09-22: footer (d) dropped (Example 6.2 walks the query); rows tightened
+    PW, PH = 506.0, 150.0          # 2026-09-22: footer (d) dropped (Example 6.2 walks the query); rows tightened
     sv = SVG(PW, PH)
     CW, CH = 16.0, 12.0
     # (a) labels and chains
@@ -377,10 +377,10 @@ def fig_index():
             sv.text(xs[j] + cols[j][1] / 2, y, cell, size=6.4, anchor='middle', italic=False)
     sv.line(xs[0], hy + 3 + rh * 4 + 3, xs[-1], hy + 3 + rh * 4 + 3, w=0.6)
     # (c) one layer per size
-    LY = 88.0
+    LY = 82.0
     sv.text(2, LY - 3, '(c) one layer per size: the tree over chains, and its run array with one entry (run, label) per node', size=7.2)
     px = [2.0, 128.0, 254.0, 380.0]; PWD = 122.0
-    bw, bh = 56.0, 24.0; ROWS = 29.0
+    bw, bh = 56.0, 22.0; ROWS = 25.0
     runs_y = LY + 12 + 2 * ROWS + 4
     for j, s in enumerate(SIZES):
         L = layers[s]; ox = px[j]
@@ -428,7 +428,7 @@ def fig_index():
 # ---------------------------------------------------------------- Section 7: replay and refinement ----
 def fig_build(trie_only=True):
     # 2026-09-22: the paper shows the trie alone at column width (the replay tables are Example 7.2); trie_only=False draws both panels
-    PW, PH = (241.0, 150.0) if trie_only else (506.0, 150.0)
+    PW, PH = (241.0, 136.0) if trie_only else (506.0, 150.0)
     sv = SVG(PW, PH)
     # (a) order replay at size 2, two orders
     if not trie_only: sv.text(2, 9, '(a) order replay at s = 2', size=7.2)
@@ -477,8 +477,8 @@ def fig_build(trie_only=True):
             for q in kidsp: place(q); xs.append(xpos[q])
             xpos[p] = sum(xs) / len(xs)
     place(())
-    Y = {0: 10, 1: 28, 2: 48, 3: 68, 4: 88, 5: 108} if trie_only else {0: 18, 1: 36, 2: 56, 3: 76, 4: 96, 5: 116}
-    if trie_only: sv.h = 136.0
+    Y = {0: 8, 1: 25, 2: 43, 3: 61, 4: 79, 5: 97} if trie_only else {0: 18, 1: 36, 2: 56, 3: 76, 4: 96, 5: 116}
+    if trie_only: sv.h = 124.0
     NW, NH = 34, 11
     for p in [()] + paths:
         d = len(p); x = xpos[p]; y = Y[d]

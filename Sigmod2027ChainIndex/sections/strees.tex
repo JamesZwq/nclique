@@ -25,19 +25,27 @@ The nodes contained in no other node are its roots, and the children of a node a
 %
 The \textit{own node} of a vertex $v$ with $\core{s}{v}\ge1$, denoted as $\own{s}{v}$, is the $\Nuc{s}{\core{s}{v}}$ containing $v$.
 \end{definition}
-Nesting and maximality give three facts about tops~\cite{firstNucleus}.
+Nesting and maximality give the following facts~\cite{firstNucleus}.
 %
 The top of a node is the smallest core value of its vertices.
 %
-Every vertex has at least the top, and if all had more, the node would have the two properties one level higher and, being maximal, would be a core there.
+Every vertex has a core value of at least the top.
+%
+If all had more, the node would have the two properties one level higher and would be a core there.
+%
+A larger set with the properties one level higher would have them at the top as well, against maximality.
 %
 In particular the top of $\own{s}{v}$ is $\core{s}{v}$.
 %
-Tops increase strictly from a root down to its descendants, since a child with a top of at most its parent's top could be extended to the parent without losing a property.
+Tops increase strictly from a root down to its descendants.
 %
-The nodes containing $v$ form a path from a root down to $\own{s}{v}$.
+A child whose top is at most the top of its parent lies in a larger set with the properties at that level, its parent, against maximality.
 %
-For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is the node nearest the root with top at least $k$ on this path, since a larger node with top at least $k$ would strictly contain it.
+The nodes containing $v$ form a path from a root down to $\own{s}{v}$, since every node containing $v$ is a core at a level of at most $\core{s}{v}$ and so contains $\own{s}{v}$.
+%
+For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is the node nearest the root with top at least $k$ on this path.
+%
+A node nearer the root with top at least $k$ would have the two properties at level $k$ and strictly contain the community.
 %
 Later sections refer to the community by this description.
 \begin{figure}[t]
@@ -63,7 +71,7 @@ At size $4$ the roots are $A$ (top $4$) and $B$ (top $1$), and at size $5$ the f
 %
 The own node of $b_1$ is the root at size $2$, $N$ at size $3$ and $B$ at size $4$.
 %
-The community of $x$ at $(2,3)$ is the root, the node nearest the root with top at least $3$ on the path from $\own{2}{x}=\{x,u_1,\dots,w_3\}$.
+The community of $x$ at $(2,3)$ is the root: both nodes on the path from $\own{2}{x}=\{x,u_1,\dots,w_3\}$ have top at least $3$.
 \end{example}
 
 \stitle{The index of one size.}
@@ -82,11 +90,13 @@ A value query reads the stored value.
 \stitle{One hierarchy per size.}
 An index that serves every size stores, for each size, one tree and one array, together with every core value.
 %
+We call this index \strees.
+%
 A vertex $v$ has a nonzero value at every size from $2$ to $\omg{v}$ (Section~\ref{sec:prelim}), so it appears in $\omg{v}-1$ arrays, one per size.
 %
-The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ for the $15$ vertices of Figure~\ref{fig:example}, as Figure~\ref{fig:strees} shows.
+The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ for the $15$ vertices of Figure~\ref{fig:example} (each $a_i$ four times, each $b_i$ and $x$ three times, each $u_i$ and $w_j$ twice), as Figure~\ref{fig:strees} shows.
 %
 Building \strees means one decomposition per size, $499$ of them on \webuk (Section~\ref{sec:intro}).
 %
 % 2026-09-22 filler pass: the closing remark re-listed the three difficulties of the introduction; one bridge sentence remains.
-The next sections keep the trees of every size, store each vertex once, and answer a community query with a few ranges instead of one copy.
+The next sections store each vertex once for all sizes, at the price of answering a community query with a few ranges of ids instead of one slice.
