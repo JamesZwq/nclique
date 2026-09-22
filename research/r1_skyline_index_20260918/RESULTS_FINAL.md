@@ -1073,6 +1073,14 @@ a limit of that old tool's class bookkeeping on 337-500-vertex cliques. Nothing 
 records: the S trees sizes in Table 1 come from the main tool's `baseline_vertex_bytes`, and the S trees latencies
 of Figure 5 from the profile runs (profile_<machine>.json, in-process baseline), which profile1 is producing now.
 
+2026-09-22 05:47Z: profile1 ended, all twenty tods1 profiles present (committed by hand, 80f6cee). Regenerated:
+Figure 5 now covers 44 (graph, machine) pairs, 132 (pair, level) points; the chain index lists faster on 69 of 132,
+ratio 0.1-8.1 (median 1.01; the 0.12 is email-Eu-core own level on tods1, 2.3 vertices per range); own-level
+locate over the preferred machine per graph 12-65 ns (median 24; the 65 is ca-AstroPh on tods1), level medians
+22 / 39 / 18 ns, no climb above 92 ns (soc-pokec half level, laptop). The deepest S trees climb is dblp-coauthor at
+k = 1 on the laptop, 216 vs 19 ns (11.6x, macro 12x); the paper's sentence had named ca-coauthors-dblp with 1,086
+vs 109 ns from a superseded record and is corrected. The tods1 queue is closed.
+
 2026-09-21 evening: web-it-2004 finished on tods1: 431 of 432 sizes, CND 11.4 h wall /
 39,572 s build+peel against a 66.5 s chain index build (595x); the record lands in
 `prior/tods1/` with the queue below. Still running: ca-coauthors-dblp (337 sizes), soc-pokec,

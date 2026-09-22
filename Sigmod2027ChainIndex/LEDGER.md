@@ -287,3 +287,9 @@ Figures: Figure 1 without the blank band (158pt), Figure 3 (index) 150pt, Figure
 Trims for the budget after the cold-read additions: Example 1.1 to five sentences, Example 5.1 folded into 5.1's prose,
 Exp-2's share explanation, Exp-1's family ranges, the Fellowship product, Exp-5's panel (a) sentence, Section 3's
 dblp-coauthor figure, the "trees give no bound" sentence, Table 1 at scriptsize.
+
+## tods1 profiles integrated (2026-09-22)
+Figure 5 over 44 pairs / 132 points (was 24 / 72): locmin/max 12/65 ns, level medians 22/39/18, ratio 0.1-8.1 (median
+1.01), faster on 69 of 132; the deep-climb sentence now cites dblp-coauthor at k = 1 (216 vs 19 ns, 5,543 levels) from
+profile_laptop.json; the earlier ca-coauthors-dblp numbers came from a superseded record.  All queue records are in; the
+queue scripts' `$GIT` commit line was broken (escaped space), every record was committed by hand.

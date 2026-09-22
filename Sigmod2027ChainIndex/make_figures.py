@@ -98,10 +98,10 @@ def fig_regimes():
         pts = [(x['regimes'][reg]['output'] / max(x['regimes'][reg]['ranges'], 1), x['regimes'][reg]['st_list_ns'] / x['regimes'][reg]['list_ns']) for w, g, x in rows]
         c.scatter([p[0] for p in pts], [p[1] for p in pts], s=11, marker=mk, color=OURS, linewidths=0.5, zorder=3)
     c.axhline(1, color='0.7', lw=0.6, ls=(0, (2, 1.5)))
-    c.text(1.2e4, 0.17, 'ChainIndex faster above 1', fontsize=6.2, color='0.35', ha='right', va='bottom')
+    c.text(1.2e4, 0.09, 'ChainIndex faster above 1', fontsize=6.2, color='0.35', ha='right', va='bottom')
     c.set_xscale('log'); c.set_yscale('log'); c.set_xlabel('mean vertices per range'); c.set_ylabel('listing time ratio')
-    c.set_xlim(1, 2e4); c.set_ylim(0.15, 8)
-    c.set_yticks([0.2, 0.5, 1, 2, 5]); c.set_yticklabels(['0.2', '0.5', '1', '2', '5'])
+    c.set_xlim(1, 2e4); c.set_ylim(0.08, 8)
+    c.set_yticks([0.1, 0.2, 0.5, 1, 2, 5]); c.set_yticklabels(['0.1', '0.2', '0.5', '1', '2', '5'])
     # right: strip plot of the locating times, one point per graph, the two indexes side by side
     import numpy as np
     rng = np.random.default_rng(3)

@@ -99,7 +99,8 @@ Panel (c) gives the medians per level: \ownmedian{}~ns at the own level, \halfme
 %
 With the jump pointers of Section~\ref{sec:queries} no climb costs more than \halfmax{}~ns.
 %
-The parent-pointer climb of \strees costs up to \stlocdeepmax$\times$ the time of \chainidx: $1{,}086$~ns against $109$~ns on \textsf{ca-coauthors-dblp}, whose hierarchy has $5{,}543$ levels.
+% 2026-09-22 tods1 profiles integrated: the deepest pair is now dblp-coauthor at k = 1 on the laptop (profile_laptop.json: 216 vs 19 ns; more.json max_depth 5543); the earlier sentence named ca-coauthors-dblp with numbers from a superseded record.
+The parent-pointer climb of \strees costs up to \stlocdeepmax$\times$ the time of \chainidx: $216$~ns against $19$~ns for the climb to the root on \textsf{dblp-coauthor}, whose hierarchy has $5{,}543$ levels.
 %
 Listing time is the time to write the answer out as vertex labels.
 %
