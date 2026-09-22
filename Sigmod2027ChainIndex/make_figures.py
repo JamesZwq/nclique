@@ -140,11 +140,11 @@ def fig_prior():
             if 'total_inproc_ms' in og and (where, g) in ours:
                 o = ours[(where, g)]; pts.append((where, g, (o['ti_ms'] + o['build_ms'] + o['compact_ms']) / 1000, og['total_inproc_ms'] / 1000, og['sizes_ok']))
     if not pts: return
-    fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.3))
-    lo, hi = 5e-3, 150
+    fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.35))
+    lo, hi, ymax = 5e-3, 2000, 4e5                       # 2026-09-22: the tods1 records (wiki-Talk, tech-as-skitter) sit near x = 1000
     for f, lab in ((1, '1x'), (10, '10x'), (100, '100x'), (1000, '1000x')):
-        ax.plot([lo, hi], [lo * f, hi * f], color='0.75', lw=0.6, ls=(0, (2, 1.5)), zorder=1)
-        ax.text(hi * 1.15, hi * f, lab, fontsize=6.4, color='0.4', va='center')
+        ax.plot([lo, hi], [lo * f, hi * f], color='0.75', lw=0.6, ls=(0, (2, 1.5)), zorder=1, clip_on=True)
+        xl = min(hi, ymax / f / 1.25); ax.text(xl * 1.15, xl * f, lab, fontsize=6.4, color='0.4', va='center')
     mk = {'laptop': 'o', 'tods1': 's', 'tods2': '^'}; lab = {'laptop': 'laptop', 'tods1': 'server 1', 'tods2': 'server 2'}
     for where in mk:
         sel = [p for p in pts if p[0] == where]
@@ -152,11 +152,13 @@ def fig_prior():
     done = set()
     for where, g, x, y, k in sorted(pts, key=lambda p: p[0] != 'tods1'):
         if g in ('web-uk-2005', 'com-amazon', 'web-BerkStan') and g not in done:
-            done.add(g); ax.annotate(f'{g}, {k} sizes', (x, y), textcoords='offset points', xytext=(-5, 7), ha='right', fontsize=6.2, color='0.25')
-    ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlim(lo, 1500); ax.set_ylim(0.05, 4e5)
-    ax.set_xlabel('ChainIndex, one build for every size (s)'); ax.set_ylabel('CND, one run per size (s)')
+            done.add(g)
+            off = (-5, 7); ha = 'right'
+            ax.annotate(f'{g}, {k} sizes', (x, y), textcoords='offset points', xytext=off, ha=ha, fontsize=6.2, color='0.25')
+    ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlim(lo, 4000); ax.set_ylim(0.05, ymax)
+    ax.set_xlabel('ChainIndex, one build for every size (s)'); ax.set_ylabel('CND, all sizes (s)')
     ax.legend(loc='lower right', handletextpad=0.2)
-    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.25, top=0.97)
+    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.25, top=0.96)
     save(fig, 'fig_prior')
 
 # ------------------------------------------------------------------- Exp-5: by clique size and answer size ----

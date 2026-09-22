@@ -1057,6 +1057,15 @@ both records: 2.8x (com-amazon, 6 sizes) to 814x, median 16x. Still
 running on tods1: web-it-2004 (432 sizes), ca-coauthors-dblp (337),
 soc-pokec, tech-as-skitter, wiki-Talk.
 
+2026-09-22: the tods1 CND queue (prior1) finished all twenty graphs (END 2026-09-21T21:45:53Z). The five last
+records (web-it-2004 431 sizes 39,572 s = 595x; ca-coauthors-dblp 336 sizes 12,860 s = 120x; soc-pokec 47 sizes 935 s
+= 12.7x; tech-as-skitter 111 sizes 11,393 s = 12.3x; wiki-Talk 131 sizes 8,786 s = 12.0x) were committed by hand
+(bf4ed18): the queue script's `$GIT` variable broke on the escaped space in the author name, so its own commit and
+the pull/push never ran (the same line is in tods1_after_prior.sh and tods1_profile.sh; commit their records by hand
+too). `collect_tods1.py` run: \priorgraphs 27 -> 32, min/median/max unchanged (2.8x, 16x, 814x); Figure 8 (the
+log-log scatter that replaced the CND table) carries the 32 points. The after1 (S trees latency) and profile1 sessions
+are still running.
+
 2026-09-21 evening: web-it-2004 finished on tods1: 431 of 432 sizes, CND 11.4 h wall /
 39,572 s build+peel against a 66.5 s chain index build (595x); the record lands in
 `prior/tods1/` with the queue below. Still running: ca-coauthors-dblp (337 sizes), soc-pokec,
