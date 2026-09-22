@@ -1066,6 +1066,13 @@ too). `collect_tods1.py` run: \priorgraphs 27 -> 32, min/median/max unchanged (2
 log-log scatter that replaced the CND table) carries the 32 points. The after1 (S trees latency) and profile1 sessions
 are still running.
 
+2026-09-22 05:27Z: after1 (the stage-2 `index ... vertices` program, S trees latency baseline as in 17.4) ended;
+records committed by hand (0fc1195, same `$GIT` bug). 17 of 20 graphs passed; web-uk-2005, web-it-2004 and
+ca-coauthors-dblp fail in the stage-2 prototype ("location has no size >= s for an active class", 16-54 GB RSS),
+a limit of that old tool's class bookkeeping on 337-500-vertex cliques. Nothing in the paper depends on these three
+records: the S trees sizes in Table 1 come from the main tool's `baseline_vertex_bytes`, and the S trees latencies
+of Figure 5 from the profile runs (profile_<machine>.json, in-process baseline), which profile1 is producing now.
+
 2026-09-21 evening: web-it-2004 finished on tods1: 431 of 432 sizes, CND 11.4 h wall /
 39,572 s build+peel against a 66.5 s chain index build (595x); the record lands in
 `prior/tods1/` with the queue below. Still running: ca-coauthors-dblp (337 sizes), soc-pokec,
