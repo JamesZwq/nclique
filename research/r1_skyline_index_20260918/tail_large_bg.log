@@ -1,0 +1,2 @@
+soc-pokec                  rc=0 identical=True terminal=    6.95s tail=    6.58s residue-peel=    9.94s full-peel=    6.51s residue= 88.1% of active pairs, sizes residue/full=0/27
+dblp-coauthor              rc=0 identical=True terminal=  107.54s tail=   46.00s residue-peel=   56.68s full-peel=   77.67s residue= 13.6% of active pairs, sizes residue/full=66/3

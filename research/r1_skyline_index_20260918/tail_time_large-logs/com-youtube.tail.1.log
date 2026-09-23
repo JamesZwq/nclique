@@ -1,0 +1,26 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/com-youtube.edges 3
+phases omega 4.2e-05 upper 5.83121 mark 0.00125 init 96.9347 peel 308.615 order 0.009665 total 416.911
+tail run 0: 450.283 ms
+phases omega 4.1e-05 upper 5.87054 mark 0.001125 init 95.2297 peel 304.929 order 0.000292 total 409.695
+tail run 1: 441.898 ms
+phases omega 4.2e-05 upper 5.72987 mark 0.001084 init 94.3635 peel 304.841 order 0.000625 total 407.888
+tail run 2: 439.698 ms
+checksum 12975284
+        4.06 real         3.95 user         0.08 sys
+           650592256  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               39902  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                1190  involuntary context switches
+         46275634833  instructions retired
+         17239426238  cycles elapsed
+           650249032  peak memory footprint

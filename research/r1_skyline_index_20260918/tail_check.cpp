@@ -172,6 +172,16 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (argc == 3 && std::string(argv[1]) == "--random") { random_suite(std::stoull(argv[2])); return 0; }
+        if (argc == 3 && std::string(argv[1]) == "--scan") {           // row visits of the tree pass: all rows, rows not yet too small, valid rows
+            const Input in = prepare(argv[2]); const int S = std::max(2, static_cast<int>(in.d) + 1);
+            terminal::Index ti(S); terminal::build(in.graph, ti, 0); const auto pre = tailpeel::prepare(ti, in.graph.n);
+            uint64_t all = 0, alive = 0, valid = 0, incid = ti.members.size();
+            for (Vertex v = 0; v < in.graph.n; ++v) { const uint64_t w = pre.omega[v]; if (w < 2) continue;
+                for (uint64_t code : ti.touching(v)) { const auto& row = ti.rows[code >> 2];
+                    all += w - 1; alive += row.hi - 1; valid += row.hi - std::max<Vertex>(row.lo, 2) + 1; } }
+            std::cout << "{\"incidences\":" << incid << ",\"rows\":" << ti.rows.size() << ",\"visits_all\":" << all << ",\"visits_hi_ge_s\":" << alive << ",\"visits_valid\":" << valid << "}\n";
+            return 0;
+        }
         require(argc == 3 && std::string(argv[1]) == "--graph", "usage: tail_check --random <count> | --graph <path>");
         const Input in = prepare(argv[2]); std::string name = argv[2]; name = name.substr(name.find_last_of('/') + 1);
         run_graph(in, false, true, name);

@@ -6,14 +6,19 @@
 //   --bench <graph> <out>   build, three forms, save/load, latencies of the value and community queries (JSON line);
 //                           drivers: run_final.py, run_buildonly.py; tables: report_tables.py
 // Shares the all-size solver of research/r1_terminal_20260918 (streamed rows) and make_tree of count.cpp.
+// CHAIN_SOLVER selects the all-size solver: "tail" (tail_solver.hpp, the default from 2026-09-23) or "terminal"
+// (terminal::Solver, used for every record before 2026-09-23).  Both deliver the same rows (tail_check.cpp).
 #define main skyline_stage1_count_main
 #include "count.cpp"
 #undef main
 #include "chain_index.hpp"
+#include "tail_solver.hpp"
+#include "treepass.hpp"
 #include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <functional>
+#include <optional>
 
 using chainindex::ChainIndex; using chainindex::kNone;
 
@@ -34,10 +39,26 @@ static uint64_t rss_now() {   // current resident set size in bytes (Linux: /pro
 struct BuildTimes { double solve_ms = 0, trees_ms = 0, chains_ms = 0, layout_ms = 0;
                     uint64_t rss_start = 0, rss_solve = 0, rss_trees = 0, rss_chains = 0, rss_layout = 0, ti_bytes = 0, core_bytes = 0, own_bytes = 0; };
 
-// The clique-tree row index of the terminal solver, built once per graph and shared by every count width.
-static terminal::Index build_terminal_index(const Input& in) {
+static bool tail_solver() {
+    static const bool tail = [] { const char* x = std::getenv("CHAIN_SOLVER"); const std::string s = x ? x : "tail";
+        require(s == "tail" || s == "terminal", "CHAIN_SOLVER is tail or terminal"); return s == "tail"; }();
+    return tail;
+}
+static const char* solver_name() { return tail_solver() ? "tail" : "terminal"; }
+// CHAIN_TREEPASS selects the tree of each size: "fast" (treepass.hpp, the default from 2026-09-23) or "old"
+// (make_tree_row of count.cpp, every record before 2026-09-23).  Same nodes, child lists and own nodes.
+static bool fast_treepass() {
+    static const bool fast = [] { const char* x = std::getenv("CHAIN_TREEPASS"); const std::string s = x ? x : "fast";
+        require(s == "fast" || s == "old", "CHAIN_TREEPASS is fast or old"); return s == "fast"; }();
+    return fast;
+}
+// The clique-tree row index of the solver, built once per graph and shared by every count width.  With `pre`, the
+// reverse lists come from tailpeel::prepare, which also fills the clique numbers the tail solver reads.
+static terminal::Index build_terminal_index(const Input& in, tailpeel::Prepared* pre = nullptr) {
     const int S = std::max(2, static_cast<int>(in.d) + 1);
-    terminal::Index ti(S); terminal::build(in.graph, ti, 0); ti.prepare(in.graph.n); return ti;
+    terminal::Index ti(S); terminal::build(in.graph, ti, 0);
+    if (pre) *pre = tailpeel::prepare(ti, in.graph.n); else ti.prepare(in.graph.n);
+    return ti;
 }
 static uint64_t terminal_index_bytes(const terminal::Index& ti) {
     return ti.rows.size() * sizeof(terminal::Row) + 4ull * ti.members.size() + 8ull * (ti.reverse.size() + ti.group_row.size()) + 8ull * ti.reverse_off.size() + ti.zero_choice.size();
@@ -74,7 +95,8 @@ template<class V, class T> static V to_value(const T& x) {
     else if constexpr (std::is_same_v<V, double>) { if constexpr (std::is_integral_v<T> || std::is_same_v<T, unsigned __int128>) return static_cast<double>(x); else return x.template convert_to<double>(); }
     else return static_cast<V>(x);
 }
-template<class T, class V = double> static ChainIndex<V> build_chain_index(const Input& in, const terminal::Index& ti, std::vector<uint32_t>& perm, BuildTimes& bt) {
+template<class T, class V = double> static ChainIndex<V> build_chain_index(const Input& in, const terminal::Index& ti, std::vector<uint32_t>& perm, BuildTimes& bt,
+                                                                           const tailpeel::Prepared* pre = nullptr) {
     using Clock = std::chrono::steady_clock; auto ms = [](Clock::time_point a) { return std::chrono::duration<double, std::milli>(Clock::now() - a).count(); };
     const Graph& g = in.graph; const uint32_t n = g.n; const int S = ti.maximum; require(S >= 2, "size bound");
     bt.rss_start = rss_now(); bt.ti_bytes = terminal_index_bytes(ti); bt.core_bytes = 2ull * n * sizeof(T); bt.own_bytes = 0;
@@ -91,31 +113,55 @@ template<class T, class V = double> static ChainIndex<V> build_chain_index(const
     auto terminate = [&](Vertex v) { const int32_t t = cls[v]; int32_t& c = trie.chain[t];
         if (c < 0) { c = static_cast<int32_t>(next_chain++); chain_node.push_back(t); } chain_of[v] = c; active[v] = 0; };
     double trees_ms = 0; std::vector<std::pair<uint64_t, Vertex>> keys;
+    // the tree of each size: treepass::Pass (make_tree_row operation for operation, state kept across sizes);
+    // CHAIN_TREE_CHECK=1 also runs make_tree_row and requires the same nodes, child lists and own nodes
+    std::optional<treepass::Pass<T>> pass; if (fast_treepass()) pass.emplace(ti, n);   // the old pass allocates per size
+    std::vector<int> old_leaf, stack;
+    static const bool tree_check = [] { const char* x = std::getenv("CHAIN_TREE_CHECK"); return x && std::string(x) == "1"; }();
     auto on_row = [&](int s, std::span<const T> row) {
         if (s < 2 || s > S) return; const auto t0 = Clock::now();
-        auto tr = make_tree_row<T>(g, ti, row, s); auto& t = trees[s]; const size_t N = tr.nodes.size();
-        t.parent.resize(N); t.hi.resize(N); t.children.resize(N); t.pre.assign(N, kNone);
-        for (size_t i = 0; i < N; ++i) { t.parent[i] = tr.nodes[i].parent; t.hi[i] = to_value<V>(static_cast<T>(tr.nodes[i].hi)); t.children[i] = tr.nodes[i].children; }
-        uint32_t next = 0; std::function<void(int)> dfs0 = [&](int x) { t.pre[x] = next++; for (int y : t.children[x]) dfs0(y); };
-        for (size_t i = 0; i < N; ++i) if (t.parent[i] < 0) dfs0(static_cast<int>(i));
+        auto& t = trees[s];
+        if (!fast_treepass()) {                                          // the old pass, copied into the same arrays
+            auto tr = make_tree_row<T>(g, ti, row, s); const size_t N = tr.nodes.size();
+            t.parent.resize(N); t.hi.resize(N); t.children.resize(N); t.pre.assign(N, kNone);
+            for (size_t i = 0; i < N; ++i) { t.parent[i] = tr.nodes[i].parent; t.hi[i] = to_value<V>(static_cast<T>(tr.nodes[i].hi)); t.children[i] = tr.nodes[i].children; }
+            old_leaf = std::move(tr.leaf);
+        } else {
+            pass->run(row, s); const size_t N = pass->nodes();
+            t.parent.assign(pass->parent.begin(), pass->parent.end()); t.hi.resize(N); t.children.resize(N); t.pre.assign(N, kNone);
+            for (size_t i = 0; i < N; ++i) { t.hi[i] = to_value<V>(pass->top[i]); t.children[i].assign(pass->child.begin() + pass->child_off[i], pass->child.begin() + pass->child_off[i + 1]); }
+        }
+        const std::vector<int>& leaf = fast_treepass() ? pass->leaf : old_leaf;
+        const size_t N = t.parent.size();
+        if (tree_check && fast_treepass()) {
+            auto tr = make_tree_row<T>(g, ti, row, s); require(tr.nodes.size() == N, "tree pass: node count");
+            for (size_t i = 0; i < N; ++i) require(tr.nodes[i].parent == t.parent[i] && static_cast<T>(tr.nodes[i].hi) == pass->top[i] && tr.nodes[i].children == t.children[i], "tree pass: node");
+            for (Vertex v = 0; v < n; ++v) require(tr.leaf[v] == pass->leaf[v], "tree pass: own node");
+        }
+        uint32_t next = 0;                                               // preorder: roots in creation order, children in list order
+        for (size_t i = 0; i < N; ++i) if (t.parent[i] < 0) {
+            stack.assign(1, static_cast<int>(i));
+            while (!stack.empty()) { const int x = stack.back(); stack.pop_back(); t.pre[x] = next++;
+                for (auto c = t.children[x].rbegin(); c != t.children[x].rend(); ++c) stack.push_back(*c); } }
         // refine: a vertex active at s extends its prefix by pre_s(own node); one active at s-1 only terminates (omega = s-1)
         keys.clear();
         for (Vertex v = 0; v < n; ++v) {
-            if (tr.leaf[v] >= 0) { require(s == 2 || active[v], "support nesting: active at s but not at s-1");
-                const uint64_t parent = s == 2 ? 0xFFFFFFFFull : static_cast<uint32_t>(cls[v]); keys.emplace_back((parent << 32) | t.pre[tr.leaf[v]], v); }
+            if (leaf[v] >= 0) { require(s == 2 || active[v], "support nesting: active at s but not at s-1");
+                const uint64_t parent = s == 2 ? 0xFFFFFFFFull : static_cast<uint32_t>(cls[v]); keys.emplace_back((parent << 32) | t.pre[leaf[v]], v); }
             else if (active[v]) terminate(v);
         }
         std::sort(keys.begin(), keys.end());
         for (size_t i = 0; i < keys.size();) { size_t j = i; while (j < keys.size() && keys[j].first == keys[i].first) ++j;
             const Vertex v0 = keys[i].second; const int32_t id = static_cast<int32_t>(trie.parent.size()); const int32_t parent = s == 2 ? -1 : cls[v0];
-            trie.parent.push_back(parent); trie.level.push_back(static_cast<uint16_t>(s)); trie.own.push_back(static_cast<uint32_t>(tr.leaf[v0])); trie.kappa.push_back(row[v0]); trie.chain.push_back(-1); trie.children.emplace_back();
+            trie.parent.push_back(parent); trie.level.push_back(static_cast<uint16_t>(s)); trie.own.push_back(static_cast<uint32_t>(leaf[v0])); trie.kappa.push_back(row[v0]); trie.chain.push_back(-1); trie.children.emplace_back();
             if (parent >= 0) trie.children[parent].push_back(id);
             for (size_t k = i; k < j; ++k) { cls[keys[k].second] = id; active[keys[k].second] = 1; }
             i = j; }
         trees_ms += ms(t0);
     };
     const auto tsolve = Clock::now();
-    terminal::Solver<T>::solve(g, ti, choose, in.ordinary, nullptr, on_row);
+    if (tail_solver()) tailpeel::Solver<T>::solve(g, ti, choose, in.ordinary, on_row, pre);
+    else terminal::Solver<T>::solve(g, ti, choose, in.ordinary, nullptr, on_row);
     for (Vertex v = 0; v < n; ++v) if (active[v]) terminate(v);           // rows past the last delivered one are zero
     bt.solve_ms = ms(tsolve) - trees_ms; bt.trees_ms = trees_ms; bt.rss_solve = rss_now(); bt.rss_trees = bt.rss_solve; auto t0 = Clock::now();
     keys.clear(); keys.shrink_to_fit();
@@ -179,7 +225,8 @@ template<class T, class V = double> static ChainIndex<V> build_chain_index(const
 
 // ------------------------------------------------------------ selftest: brute force + disk round trip
 template<class T, class V> static void selftest_graph(const Graph& g, const std::string& tmp, uint64_t& queries, uint64_t& members, uint64_t& values, uint64_t& ladders) {
-    Seeds z(g); Input in{g, z.ordinary, z.maximum}; std::vector<uint32_t> perm; BuildTimes bt; const terminal::Index ti = build_terminal_index(in); auto built = build_chain_index<T, V>(in, ti, perm, bt);
+    Seeds z(g); Input in{g, z.ordinary, z.maximum}; std::vector<uint32_t> perm; BuildTimes bt; tailpeel::Prepared pre; const tailpeel::Prepared* prep = tail_solver() ? &pre : nullptr;
+    const terminal::Index ti = build_terminal_index(in, tail_solver() ? &pre : nullptr); auto built = build_chain_index<T, V>(in, ti, perm, bt, prep);
     std::vector<uint32_t> inv(g.n); for (uint32_t v = 0; v < g.n; ++v) inv[perm[v]] = v;
     const int S = built.max_size; const uint32_t n = g.n;
     // reference core matrix from the frozen control
@@ -223,9 +270,10 @@ template<class T, class V> static void selftest_graph(const Graph& g, const std:
 // K_m for m > 255: one chain, omega = m, every s in [2, m] certified (kappa_s = C(m-1, s-1)), one node per size, one range per community.
 static void large_clique_test(const std::string& tmp) {
     const Vertex m = 300; Graph g = complete(m); Seeds z(g); Input in{g, z.ordinary, z.maximum}; std::vector<uint32_t> perm; BuildTimes bt;
-    const terminal::Index ti = build_terminal_index(in); using B = boost::multiprecision::uint512_t;
-    auto exact = build_chain_index<B, B>(in, ti, perm, bt); exact.compact_runs(true); exact.save(tmp); auto ix = ChainIndex<B>::load(tmp);
-    auto dbl = build_chain_index<B, double>(in, ti, perm, bt); dbl.compact_runs(true); dbl.save(tmp); auto ixd = ChainIndex<double>::load(tmp);
+    tailpeel::Prepared pre; const tailpeel::Prepared* prep = tail_solver() ? &pre : nullptr;
+    const terminal::Index ti = build_terminal_index(in, tail_solver() ? &pre : nullptr); using B = boost::multiprecision::uint512_t;
+    auto exact = build_chain_index<B, B>(in, ti, perm, bt, prep); exact.compact_runs(true); exact.save(tmp); auto ix = ChainIndex<B>::load(tmp);
+    auto dbl = build_chain_index<B, double>(in, ti, perm, bt, prep); dbl.compact_runs(true); dbl.save(tmp); auto ixd = ChainIndex<double>::load(tmp);
     require(ix.chains == 1 && ix.omega[0] == m && ix.sigma[0] == 2 && ix.max_size >= static_cast<int>(m) && ixd.chains == 1 && ixd.omega[0] == m, "K_300 chain block");
     B expect = 1;   // C(m-1, s-1) for s = 1 is 1; iterate s = 2..m
     std::vector<uint32_t> ranges;
@@ -250,14 +298,14 @@ static void tool_selftest() {
     one(complete(8));
     large_clique_test(tmp);   // s_max > 255: 16-bit omega/sigma/level
     std::filesystem::remove(tmp);
-    std::cout << "{\"passed\":true,\"graphs\":" << graphs << ",\"community_queries\":" << queries << ",\"membership_checks\":" << members << ",\"value_checks\":" << values << ",\"ladder_checks\":" << ladders << "}\n";
+    std::cout << "{\"passed\":true,\"solver\":\"" << solver_name() << "\",\"graphs\":" << graphs << ",\"community_queries\":" << queries << ",\"membership_checks\":" << members << ",\"value_checks\":" << values << ",\"ladder_checks\":" << ladders << "}\n";
 }
 
 // ------------------------------------------------------------ benchmark
-template<class T> static void bench(const Input& in, const terminal::Index& ti, unsigned bits, const std::string& outpath, double ti_ms) {
+template<class T> static void bench(const Input& in, const terminal::Index& ti, const tailpeel::Prepared* pre, unsigned bits, const std::string& outpath, double ti_ms) {
     using Clock = std::chrono::steady_clock; auto ms = [](Clock::time_point a) { return std::chrono::duration<double, std::milli>(Clock::now() - a).count(); };
     using V = double;   // the stored value type
-    std::vector<uint32_t> perm; BuildTimes bt; auto t0 = Clock::now(); auto built = build_chain_index<T, V>(in, ti, perm, bt); const double build_ms = ms(t0);
+    std::vector<uint32_t> perm; BuildTimes bt; auto t0 = Clock::now(); auto built = build_chain_index<T, V>(in, ti, perm, bt, pre); const double build_ms = ms(t0);
     const uint64_t slice_bytes_layers = built.bytes_layers(), slice_bytes_total = built.bytes_total(), pairs = built.pairs_total();
     const uint32_t n = built.n; std::vector<uint32_t> active; for (uint32_t v = 0; v < n; ++v) if (built.omega[built.chain_of(v)] >= 2) active.push_back(v);
     const ChainIndex<V>* px = &built;   // the index under measurement: build form, then the compact form with T tops, then the loaded packed form
@@ -316,7 +364,7 @@ template<class T> static void bench(const Input& in, const terminal::Index& ti, 
     uint64_t pairs_v = 0, residue_v = 0; for (uint32_t c = 0; c < ix.chains; ++c) { const uint64_t sz = ix.start_pos[c + 1] - ix.start_pos[c]; if (ix.omega[c] >= 2) { pairs_v += sz * (ix.omega[c] - 1); residue_v += sz * (ix.sigma[c] - 2); } }
     const uint64_t baseline_vertex_bytes = ix.node_count() * (chainindex::Traits<T>::W + 12) + 8ull * pairs_v + 4ull * (n + 1) + 2ull * n + 8ull * (n + 1) + chainindex::Traits<T>::W * residue_v;   // the baseline keeps exact counts at the solver width
     uint64_t depth_max = 0; for (const auto& L : ix.layers) { std::vector<uint32_t> d(L.size.size(), 0); for (uint32_t x = 0; x < L.size.size(); ++x) { if (L.parent[x] != kNone) d[x] = d[L.parent[x]] + 1; depth_max = std::max<uint64_t>(depth_max, d[x]); } }
-    std::cout << std::fixed << std::setprecision(3) << "{\"passed\":true,\"n\":" << n << ",\"m\":" << in.graph.m << ",\"s_max\":" << ix.max_size << ",\"count_bits\":" << bits << ",\"chains\":" << ix.chains
+    std::cout << std::fixed << std::setprecision(3) << "{\"passed\":true,\"solver\":\"" << solver_name() << "\",\"treepass\":\"" << (fast_treepass() ? "fast" : "old") << "\",\"n\":" << n << ",\"m\":" << in.graph.m << ",\"s_max\":" << ix.max_size << ",\"count_bits\":" << bits << ",\"chains\":" << ix.chains
         << ",\"canonical_nodes\":" << ix.node_count() << ",\"max_depth\":" << depth_max
         << ",\"pairs_total\":" << pairs << ",\"runs_total\":" << ix.runs_total() << ",\"vertex_pairs\":" << pairs_v << ",\"vertex_residue_cells\":" << residue_v << ",\"baseline_vertex_bytes\":" << baseline_vertex_bytes
         << ",\"bytes_map\":" << ix.bytes_map() << ",\"bytes_chains\":" << ix.bytes_chains() << ",\"bytes_layers\":" << ix.bytes_layers() << ",\"bytes_total\":" << ix.bytes_total() << ",\"file_bytes\":" << file_bytes << ",\"perm_bytes\":" << 4ull * n
@@ -347,12 +395,13 @@ int main(int argc, char** argv) {
         if (argc == 2 && std::string(argv[1]) == "--selftest") { tool_selftest(); return 0; }
         require((argc == 3 && std::string(argv[1]) == "--build-only") || (argc == 4 && std::string(argv[1]) == "--bench"), "usage: chain_index_tool --selftest | --build-only <graph> | --bench <graph> <out.cx>");
         Input in = prepare(argv[2]); const uint64_t rss_loaded = rss_now(); const auto tti = std::chrono::steady_clock::now();
-        const terminal::Index ti = build_terminal_index(in); const cpp_int bound = count_bound_terminal(ti, in.graph.n, in.d); const uint64_t rss_ti = rss_now();
+        tailpeel::Prepared pre; const tailpeel::Prepared* prep = tail_solver() ? &pre : nullptr;
+        const terminal::Index ti = build_terminal_index(in, tail_solver() ? &pre : nullptr); const cpp_int bound = count_bound_terminal(ti, in.graph.n, in.d); const uint64_t rss_ti = rss_now();
         const double ti_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tti).count();
         if (std::string(argv[1]) == "--build-only") {
-            dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); std::vector<uint32_t> perm; BuildTimes bt; auto ix = build_chain_index<T, double>(in, ti, perm, bt);
+            dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); std::vector<uint32_t> perm; BuildTimes bt; auto ix = build_chain_index<T, double>(in, ti, perm, bt, prep);
                 const uint64_t build_form_bytes = ix.bytes_total(); const auto tc = std::chrono::steady_clock::now(); ix.compact_runs(true); const double compact_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tc).count();
-                std::cout << "{\"n\":" << in.graph.n << ",\"count_bits\":" << bits << ",\"chains\":" << ix.chains << ",\"canonical_nodes\":" << ix.node_count() << ",\"index_bytes\":" << ix.bytes_total() << ",\"build_form_bytes\":" << build_form_bytes << ",\"compact_ms\":" << compact_ms
+                std::cout << "{\"n\":" << in.graph.n << ",\"solver\":\"" << solver_name() << "\",\"treepass\":\"" << (fast_treepass() ? "fast" : "old") << "\",\"count_bits\":" << bits << ",\"chains\":" << ix.chains << ",\"canonical_nodes\":" << ix.node_count() << ",\"index_bytes\":" << ix.bytes_total() << ",\"build_form_bytes\":" << build_form_bytes << ",\"compact_ms\":" << compact_ms
                     << ",\"bytes_map\":" << ix.bytes_map() << ",\"bytes_chains\":" << ix.bytes_chains() << ",\"bytes_layers\":" << ix.bytes_layers()
                     << ",\"ti_ms\":" << ti_ms << ",\"ti_bytes\":" << bt.ti_bytes << ",\"rss_loaded\":" << rss_loaded << ",\"rss_with_ti\":" << rss_ti
                     << ",\"rss_start\":" << bt.rss_start << ",\"rss_after_solve\":" << bt.rss_solve << ",\"rss_after_chains\":" << bt.rss_chains << ",\"rss_after_layout\":" << bt.rss_layout
@@ -360,6 +409,6 @@ int main(int argc, char** argv) {
             return 0;
         }
         const std::string out = argv[3];
-        dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); bench<T>(in, ti, bits, out, ti_ms); });
+        dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); bench<T>(in, ti, prep, bits, out, ti_ms); });
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

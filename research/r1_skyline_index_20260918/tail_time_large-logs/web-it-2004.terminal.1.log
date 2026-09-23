@@ -1,0 +1,23 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time terminal /Users/zhangwenqian/UNSW/pivoter/graphs/web-it-2004.edges 3
+terminal run 0: 9942.43 ms
+terminal run 1: 9826.65 ms
+terminal run 2: 9811.81 ms
+checksum 213987066
+       33.46 real        33.03 user         0.33 sys
+           594837504  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               36499  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+               11898  involuntary context switches
+        724895588479  instructions retired
+        140512322632  cycles elapsed
+           594461464  peak memory footprint
