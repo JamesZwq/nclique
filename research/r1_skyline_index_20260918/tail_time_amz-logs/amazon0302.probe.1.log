@@ -1,0 +1,40 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time probe /Users/zhangwenqian/UNSW/pivoter/graphs/amazon0302.edges 10
+phases alloc 0.307542 init 8.03504 bounds 1.57558 heap 3.40275 peel 65.5244 total 79.0992
+probe run 0: 82.8168 ms
+phases alloc 0.509793 init 9.77729 bounds 1.57871 heap 3.31746 peel 69.5608 total 85.0267
+probe run 1: 89.2191 ms
+phases alloc 0.691835 init 9.38425 bounds 1.65829 heap 3.55483 peel 75.1964 total 90.7427
+probe run 2: 97.1238 ms
+phases alloc 0.300583 init 8.60179 bounds 1.73404 heap 3.35554 peel 65.8233 total 80.0499
+probe run 3: 84.4538 ms
+phases alloc 0.309334 init 8.44004 bounds 1.564 heap 3.2095 peel 71.4979 total 85.2647
+probe run 4: 89.2189 ms
+phases alloc 0.321668 init 8.30433 bounds 1.53846 heap 3.25079 peel 65.93 total 79.5919
+probe run 5: 83.3867 ms
+phases alloc 0.309957 init 9.02496 bounds 1.56917 heap 3.29771 peel 68.4425 total 82.8832
+probe run 6: 86.7557 ms
+phases alloc 0.301207 init 8.37517 bounds 1.5755 heap 3.26604 peel 67.1336 total 80.8895
+probe run 7: 84.7861 ms
+phases alloc 0.304584 init 8.44433 bounds 1.56163 heap 3.31471 peel 67.9298 total 81.7915
+probe run 8: 85.674 ms
+phases alloc 0.301166 init 8.26171 bounds 1.57967 heap 3.25117 peel 63.8272 total 77.4571
+probe run 9: 81.1817 ms
+checksum 0
+        1.21 real         1.18 user         0.01 sys
+           120160256  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                7527  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 706  involuntary context switches
+         11501812391  instructions retired
+          5167542804  cycles elapsed
+           119603656  peak memory footprint

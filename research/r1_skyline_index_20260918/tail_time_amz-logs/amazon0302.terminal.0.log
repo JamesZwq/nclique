@@ -1,0 +1,30 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time terminal /Users/zhangwenqian/UNSW/pivoter/graphs/amazon0302.edges 10
+terminal run 0: 83.2589 ms
+terminal run 1: 83.7472 ms
+terminal run 2: 82.745 ms
+terminal run 3: 85.8168 ms
+terminal run 4: 86.55 ms
+terminal run 5: 86.3935 ms
+terminal run 6: 85.6034 ms
+terminal run 7: 90.2829 ms
+terminal run 8: 89.5228 ms
+terminal run 9: 87.8402 ms
+checksum 0
+        1.23 real         1.20 user         0.01 sys
+           114835456  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                7202  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 461  involuntary context switches
+         11911860165  instructions retired
+          5242900276  cycles elapsed
+           114278856  peak memory footprint

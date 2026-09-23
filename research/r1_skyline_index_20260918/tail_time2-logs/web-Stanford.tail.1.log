@@ -1,0 +1,30 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/web-Stanford.edges 5
+phases omega 2.31913 upper 44.1551 mark 0.002412 init 126.451 peel 376.182 order 0.001459 total 551.631
+tail run 0: 565.242 ms
+phases omega 2.34004 upper 45.3258 mark 0.003373 init 126.726 peel 397.698 order 0.001666 total 574.24
+tail run 1: 591.603 ms
+phases omega 2.35608 upper 44.6918 mark 0.003084 init 124.568 peel 396.912 order 0.001624 total 570.742
+tail run 2: 584.181 ms
+phases omega 2.34429 upper 44.3031 mark 0.002834 init 122.784 peel 376.648 order 0.001957 total 548.137
+tail run 3: 561.638 ms
+phases omega 2.40542 upper 43.4017 mark 0.00162 init 120.938 peel 377.383 order 0.001456 total 546.211
+tail run 4: 559.812 ms
+checksum 17609854
+        4.12 real         4.00 user         0.10 sys
+           403128320  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               24798  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                2296  involuntary context switches
+         61778873681  instructions retired
+         17530346552  cycles elapsed
+           402670240  peak memory footprint

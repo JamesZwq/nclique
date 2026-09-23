@@ -1,0 +1,30 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/cit-HepPh.edges 5
+phases omega 0.839708 upper 3.12579 mark 0.000667 init 30.5944 peel 122.514 order 0.000251 total 157.532
+tail run 0: 164.043 ms
+phases omega 0.8825 upper 3.04771 mark 0.001164 init 29.3727 peel 120.657 order 0.000376 total 154.293
+tail run 1: 160.796 ms
+phases omega 0.833916 upper 2.99696 mark 0.000543 init 28.7688 peel 119.449 order 0.00046 total 152.361
+tail run 2: 158.848 ms
+phases omega 0.84275 upper 3.00479 mark 0.000834 init 28.9481 peel 118.59 order 0.000333 total 151.722
+tail run 3: 158.183 ms
+phases omega 0.866125 upper 3.09379 mark 0.000792 init 28.756 peel 121.388 order 0.000376 total 154.463
+tail run 4: 160.956 ms
+checksum 644186
+        1.26 real         1.23 user         0.02 sys
+           140197888  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                8750  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 427  involuntary context switches
+         13317268195  instructions retired
+          5469260983  cycles elapsed
+           139592136  peak memory footprint

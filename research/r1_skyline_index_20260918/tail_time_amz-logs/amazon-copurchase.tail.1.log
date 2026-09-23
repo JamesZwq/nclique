@@ -1,0 +1,40 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/amazon-copurchase.edges 10
+phases omega 0 upper 2.18179 mark 0.010876 init 7.25663 peel 52.0756 order 0.038917 total 63.1787
+tail run 0: 68.7103 ms
+phases omega 0 upper 2.14617 mark 0.009334 init 7.01537 peel 52.7273 order 0.022584 total 63.1264
+tail run 1: 68.2249 ms
+phases omega 4.2e-05 upper 2.12634 mark 0.011583 init 6.92158 peel 52.1733 order 0.028667 total 62.424
+tail run 2: 67.8385 ms
+phases omega 4.2e-05 upper 2.12796 mark 0.01 init 6.90271 peel 51.6644 order 0.024833 total 61.8904
+tail run 3: 67.7842 ms
+phases omega 0 upper 2.10579 mark 0.009376 init 7.08763 peel 51.3923 order 0.022625 total 61.786
+tail run 4: 67.6167 ms
+phases omega 0 upper 2.10754 mark 0.009333 init 7.256 peel 50.4531 order 0.022917 total 60.8727
+tail run 5: 66.0411 ms
+phases omega 4.2e-05 upper 2.161 mark 0.01325 init 7.24204 peel 53.165 order 0.025209 total 63.8026
+tail run 6: 70.1747 ms
+phases omega 4.2e-05 upper 2.17183 mark 0.017792 init 7.3695 peel 53.5832 order 0.023291 total 64.2185
+tail run 7: 70.0645 ms
+phases omega 0 upper 2.08838 mark 0.013791 init 7.01704 peel 52.2809 order 0.023917 total 62.4565
+tail run 8: 68.1558 ms
+phases omega 0 upper 2.13246 mark 0.026209 init 7.30775 peel 51.541 order 0.024584 total 62.1454
+tail run 9: 68.7258 ms
+checksum 0
+        1.11 real         1.09 user         0.02 sys
+           158449664  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                9864  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 357  involuntary context switches
+         12198852049  instructions retired
+          4767270001  cycles elapsed
+           157876728  peak memory footprint

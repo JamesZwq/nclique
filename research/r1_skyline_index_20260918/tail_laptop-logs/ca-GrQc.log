@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --graph /Users/zhangwenqian/UNSW/pivoter/data/ca-GrQc.edges
+{"graph":"ca-GrQc.edges","n":5242,"m":14484,"d":43,"rows":6176,"incidences":21316,"bits":64,"sizes":43,"identical":true,"terminal_ms":1.375,"full_ms":1.850,"tail_ms":0.698,"tail_upper_ms":0.109,"tail_mark_ms":0.066,"tail_init_ms":0.040,"tail_peel_ms":0.189,"tail_order_ms":0.043,"full_upper_ms":0.238,"full_mark_ms":0.438,"full_init_ms":0.097,"full_peel_ms":0.594,"full_order_ms":0.214,"active_pairs":14804,"residue_pairs":764,"relevant_vertex_pairs":2404,"relevant_rows":2258,"relevant_incidences":8470,"all_valid_incidences":106076,"closed_sizes":36,"last_residue_size":8,"tail_events":2404,"full_events":14804,"tail_subtracts":2999,"full_subtracts":18788,"per_size":[[3,3855,676,1894,1912,6641,0.260],[4,2369,67,339,228,1052,0.057],[5,1238,10,73,60,360,0.029],[6,718,5,41,31,214,0.023],[7,546,3,34,20,147,0.020],[8,443,3,23,7,56,0.018],[9,390,0,0,0,0,0.007],[10,346,0,0,0,0,0.007],[11,321,0,0,0,0,0.007],[12,316,0,0,0,0,0.007],[13,278,0,0,0,0,0.007],[14,273,0,0,0,0,0.007],[15,259,0,0,0,0,0.007],[16,244,0,0,0,0,0.007],[17,228,0,0,0,0,0.007],[18,228,0,0,0,0,0.007],[19,193,0,0,0,0,0.007],[20,193,0,0,0,0,0.007],[21,191,0,0,0,0,0.007],[22,170,0,0,0,0,0.007],[23,148,0,0,0,0,0.007],[24,148,0,0,0,0,0.007],[25,124,0,0,0,0,0.007],[26,124,0,0,0,0,0.007],[27,123,0,0,0,0,0.007],[28,123,0,0,0,0,0.007],[29,123,0,0,0,0,0.007],[30,123,0,0,0,0,0.007],[31,123,0,0,0,0,0.007],[32,123,0,0,0,0,0.007],[33,115,0,0,0,0,0.007],[34,115,0,0,0,0,0.007],[35,81,0,0,0,0,0.007],[36,46,0,0,0,0,0.007],[37,46,0,0,0,0,0.007],[38,46,0,0,0,0,0.007],[39,46,0,0,0,0,0.007],[40,46,0,0,0,0,0.007],[41,46,0,0,0,0,0.007],[42,46,0,0,0,0,0.007],[43,46,0,0,0,0,0.007],[44,44,0,0,0,0,0.007]]}
+        0.01 real         0.00 user         0.00 sys
+             4063232  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 441  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                   6  involuntary context switches
+           161502327  instructions retired
+            42536792  cycles elapsed
+             3424592  peak memory footprint

@@ -1,0 +1,25 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time terminal /Users/zhangwenqian/UNSW/pivoter/graphs/dblp-core30.edges 5
+terminal run 0: 4.12229 ms
+terminal run 1: 4.06042 ms
+terminal run 2: 4.16642 ms
+terminal run 3: 4.03825 ms
+terminal run 4: 4.0395 ms
+checksum 27628
+        0.03 real         0.03 user         0.00 sys
+             3784704  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 424  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                   8  involuntary context switches
+           640897393  instructions retired
+           138190543  cycles elapsed
+             3113296  peak memory footprint

@@ -1,0 +1,30 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/amazon-copurchase.edges 5
+phases omega 0 upper 2.45842 mark 0.049749 init 7.84283 peel 55.8392 order 0.032249 total 68.1658
+tail run 0: 74.3077 ms
+phases omega 4.1e-05 upper 2.41271 mark 0.010457 init 7.90596 peel 57.3333 order 0.025834 total 68.9982
+tail run 1: 74.975 ms
+phases omega 0 upper 2.27975 mark 0.026458 init 7.89012 peel 56.8112 order 0.028708 total 68.3548
+tail run 2: 74.1666 ms
+phases omega 0 upper 2.33096 mark 0.010374 init 7.59583 peel 56.833 order 0.025416 total 68.0987
+tail run 3: 75.1706 ms
+phases omega 4.1e-05 upper 2.34529 mark 0.01104 init 7.66658 peel 55.9505 order 0.025874 total 67.2013
+tail run 4: 73.9439 ms
+checksum 634056
+        0.87 real         0.84 user         0.02 sys
+           160153600  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                9968  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 625  involuntary context switches
+          9454151278  instructions retired
+          3428151236  cycles elapsed
+           159580664  peak memory footprint

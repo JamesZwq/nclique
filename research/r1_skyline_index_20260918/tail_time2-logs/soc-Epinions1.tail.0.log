@@ -1,0 +1,30 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/soc-Epinions1.edges 5
+phases omega 3.03138 upper 6.48042 mark 0.002168 init 177.126 peel 450.061 order 0.000749 total 638.094
+tail run 0: 667.289 ms
+phases omega 2.92413 upper 6.40237 mark 0.00175 init 172.362 peel 434.767 order 0.000333 total 617.354
+tail run 1: 647.908 ms
+phases omega 2.89554 upper 6.69417 mark 0.002252 init 176.323 peel 442.425 order 0.000959 total 629.2
+tail run 2: 658.357 ms
+phases omega 3.02883 upper 6.34817 mark 0.001792 init 173.606 peel 435.396 order 0.000751 total 619.284
+tail run 3: 648.841 ms
+phases omega 2.94129 upper 7.00517 mark 0.001459 init 179.159 peel 457.78 order 0.000291 total 647.764
+tail run 4: 677.211 ms
+checksum 1982503
+        5.23 real         5.11 user         0.10 sys
+           682573824  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               41854  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                2332  involuntary context switches
+         68443913531  instructions retired
+         22191413075  cycles elapsed
+           682296232  peak memory footprint

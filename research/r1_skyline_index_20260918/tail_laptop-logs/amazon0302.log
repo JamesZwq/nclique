@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --graph /Users/zhangwenqian/UNSW/pivoter/graphs/amazon0302.edges
+{"graph":"amazon0302.edges","n":262111,"m":899792,"d":6,"rows":533214,"incidences":1574814,"bits":64,"sizes":6,"identical":true,"terminal_ms":80.862,"full_ms":114.783,"tail_ms":93.293,"tail_upper_ms":2.151,"tail_mark_ms":13.583,"tail_init_ms":5.699,"tail_peel_ms":65.181,"tail_order_ms":2.135,"full_upper_ms":1.989,"full_mark_ms":23.210,"full_init_ms":6.513,"full_peel_ms":76.226,"full_order_ms":1.737,"active_pairs":562880,"residue_pairs":248299,"relevant_vertex_pairs":330182,"relevant_rows":364629,"relevant_incidences":1339445,"all_valid_incidences":2018374,"closed_sizes":1,"last_residue_size":6,"tail_events":330182,"full_events":562880,"tail_subtracts":616420,"full_subtracts":907563,"per_size":[[3,245821,195411,228718,289521,1018121,68.262],[4,187178,44814,87325,66851,280012,18.178],[5,101075,8058,14122,8248,41258,3.050],[6,28701,16,17,9,54,0.952],[7,105,0,0,0,0,0.318]]}
+        0.63 real         0.61 user         0.01 sys
+           128925696  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                8062  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                 208  involuntary context switches
+          7773053042  instructions retired
+          2762338070  cycles elapsed
+           128369096  peak memory footprint

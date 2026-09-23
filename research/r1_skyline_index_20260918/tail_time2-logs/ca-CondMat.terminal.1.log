@@ -1,0 +1,25 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time terminal /Users/zhangwenqian/UNSW/pivoter/graphs/ca-CondMat.edges 5
+terminal run 0: 7.00771 ms
+terminal run 1: 6.89579 ms
+terminal run 2: 6.79117 ms
+terminal run 3: 6.86525 ms
+terminal run 4: 6.72329 ms
+checksum 297170
+        0.07 real         0.06 user         0.00 sys
+            10272768  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 820  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                  17  involuntary context switches
+          1083150086  instructions retired
+           298606399  cycles elapsed
+             9650536  peak memory footprint

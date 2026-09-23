@@ -1,0 +1,30 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/email-Eu-core.edges 5
+phases omega 0.06225 upper 0.958583 mark 0.000502 init 4.53491 peel 10.3939 order 0.000542 total 15.9938
+tail run 0: 16.7718 ms
+phases omega 0.062125 upper 0.953791 mark 0.000377 init 4.5745 peel 10.7064 order 0.000166 total 16.3313
+tail run 1: 17.1122 ms
+phases omega 0.065833 upper 0.954708 mark 0.00046 init 4.51325 peel 10.4251 order 0.000376 total 15.998
+tail run 2: 16.7815 ms
+phases omega 0.065792 upper 0.968041 mark 0.000208 init 4.55642 peel 10.3778 order 0.000292 total 16
+tail run 3: 16.7719 ms
+phases omega 0.063667 upper 0.943166 mark 0.00025 init 4.46125 peel 10.1078 order 0.000251 total 15.609
+tail run 4: 16.3905 ms
+checksum 19709
+        0.13 real         0.13 user         0.00 sys
+            13533184  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                1019  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                  28  involuntary context switches
+          1859663493  instructions retired
+           575021811  cycles elapsed
+            12861800  peak memory footprint

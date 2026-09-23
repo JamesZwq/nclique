@@ -1,0 +1,30 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/loc-Brightkite.edges 5
+phases omega 0.518042 upper 11.0037 mark 0.001791 init 58.0123 peel 144.645 order 0.000585 total 214.75
+tail run 0: 220.348 ms
+phases omega 0.4835 upper 10.5933 mark 0.00096 init 56.609 peel 138.971 order 0.001668 total 206.987
+tail run 1: 212.613 ms
+phases omega 0.485625 upper 10.7202 mark 0.001247 init 55.8494 peel 136.238 order 0.001378 total 203.592
+tail run 2: 209.109 ms
+phases omega 0.456834 upper 10.403 mark 0.002916 init 55.8079 peel 144.645 order 0.000748 total 211.637
+tail run 3: 216.991 ms
+phases omega 0.503125 upper 10.5759 mark 0.002421 init 55.7139 peel 145.62 order 0.000622 total 212.728
+tail run 4: 218.499 ms
+checksum 129048
+        1.36 real         1.34 user         0.01 sys
+           110362624  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                6929  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   1  voluntary context switches
+                 569  involuntary context switches
+         22081656679  instructions retired
+          5668991255  cycles elapsed
+           109740464  peak memory footprint

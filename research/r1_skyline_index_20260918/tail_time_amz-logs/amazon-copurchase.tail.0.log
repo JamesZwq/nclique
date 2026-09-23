@@ -1,0 +1,40 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/amazon-copurchase.edges 10
+phases omega 0 upper 2.16492 mark 0.048292 init 6.84488 peel 51.182 order 0.039125 total 62.1198
+tail run 0: 67.4136 ms
+phases omega 0 upper 2.16788 mark 0.009208 init 7.06717 peel 51.7111 order 0.026792 total 62.2103
+tail run 1: 67.8768 ms
+phases omega 4.2e-05 upper 2.22025 mark 0.0135 init 7.34271 peel 53.2422 order 0.036542 total 64.0299
+tail run 2: 69.3166 ms
+phases omega 4.2e-05 upper 2.10283 mark 0.023125 init 6.9245 peel 50.9632 order 0.022541 total 61.3114
+tail run 3: 67.5024 ms
+phases omega 0 upper 2.90862 mark 0.036333 init 27.9369 peel 85.4306 order 0.029457 total 117.659
+tail run 4: 123.311 ms
+phases omega 0 upper 2.27625 mark 0.033791 init 7.63954 peel 55.5225 order 0.038875 total 66.7849
+tail run 5: 73.5484 ms
+phases omega 0 upper 2.15796 mark 0.009582 init 7.08342 peel 54.0747 order 0.023417 total 64.4949
+tail run 6: 70.2408 ms
+phases omega 4.2e-05 upper 2.15804 mark 0.020667 init 7.43496 peel 54.104 order 0.023792 total 64.8031
+tail run 7: 70.3757 ms
+phases omega 0 upper 2.10054 mark 0.0105 init 7.24558 peel 52.5214 order 0.022959 total 62.9399
+tail run 8: 68.1593 ms
+phases omega 0 upper 2.09804 mark 0.009876 init 6.93067 peel 51.7138 order 0.021708 total 61.8035
+tail run 9: 67.3142 ms
+checksum 0
+        1.17 real         1.09 user         0.02 sys
+           159956992  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                9956  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 891  involuntary context switches
+         12230059351  instructions retired
+          4823499396  cycles elapsed
+           159384056  peak memory footprint

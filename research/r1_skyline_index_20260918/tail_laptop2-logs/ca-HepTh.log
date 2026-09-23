@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --graph /Users/zhangwenqian/UNSW/pivoter/graphs/ca-HepTh.edges
+{"graph":"ca-HepTh.edges","n":9877,"m":25973,"d":31,"rows":15084,"incidences":44681,"bits":64,"sizes":31,"identical":true,"terminal_ms":2.162,"full_ms":2.892,"tail_ms":1.956,"tail_upper_ms":0.188,"tail_mark_ms":0.217,"tail_init_ms":0.167,"tail_peel_ms":0.909,"tail_order_ms":0.071,"full_upper_ms":0.206,"full_mark_ms":0.433,"full_init_ms":0.136,"full_peel_ms":1.126,"full_order_ms":0.566,"active_pairs":17297,"residue_pairs":3178,"relevant_vertex_pairs":14924,"relevant_rows":13664,"relevant_incidences":57616,"all_valid_incidences":73281,"closed_sizes":26,"last_residue_size":6,"tail_dense_sizes":4,"tail_events":14924,"full_events":17297,"tail_subtracts":17278,"full_subtracts":25405,"per_size":[[3,7435,2445,7435,8795,32103,0.848],[4,4486,639,4486,3476,16146,0.401],[5,2068,81,2068,1041,6406,0.156],[6,935,13,935,352,2961,0.083],[7,439,0,0,0,0,0.015],[8,227,0,0,0,0,0.014],[9,159,0,0,0,0,0.014],[10,106,0,0,0,0,0.014],[11,96,0,0,0,0,0.015],[12,96,0,0,0,0,0.014],[13,96,0,0,0,0,0.014],[14,96,0,0,0,0,0.014],[15,96,0,0,0,0,0.014],[16,96,0,0,0,0,0.014],[17,96,0,0,0,0,0.014],[18,96,0,0,0,0,0.014],[19,96,0,0,0,0,0.014],[20,77,0,0,0,0,0.014],[21,77,0,0,0,0,0.014],[22,56,0,0,0,0,0.014],[23,56,0,0,0,0,0.014],[24,56,0,0,0,0,0.014],[25,32,0,0,0,0,0.014],[26,32,0,0,0,0,0.014],[27,32,0,0,0,0,0.014],[28,32,0,0,0,0,0.014],[29,32,0,0,0,0,0.014],[30,32,0,0,0,0,0.014],[31,32,0,0,0,0,0.014],[32,32,0,0,0,0,0.014]]}
+        0.01 real         0.01 user         0.00 sys
+             5586944  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 534  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                   8  involuntary context switches
+           269021051  instructions retired
+            75640718  cycles elapsed
+             4948304  peak memory footprint

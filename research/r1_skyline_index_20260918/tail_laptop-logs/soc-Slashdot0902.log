@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --graph /Users/zhangwenqian/UNSW/pivoter/graphs/soc-Slashdot0902.edges
+{"graph":"soc-Slashdot0902.edges","n":82168,"m":504230,"d":55,"rows":1049970,"incidences":10202665,"bits":64,"sizes":27,"identical":true,"terminal_ms":357.916,"full_ms":867.282,"tail_ms":854.032,"tail_upper_ms":5.265,"tail_mark_ms":380.888,"tail_init_ms":101.537,"tail_peel_ms":353.165,"tail_order_ms":2.253,"full_upper_ms":5.227,"full_mark_ms":391.598,"full_init_ms":100.377,"full_peel_ms":356.701,"full_order_ms":2.184,"active_pairs":50042,"residue_pairs":43579,"relevant_vertex_pairs":48783,"relevant_rows":7103240,"relevant_incidences":123870622,"all_valid_incidences":123873175,"closed_sizes":0,"last_residue_size":27,"tail_events":48783,"full_events":50042,"tail_subtracts":112112807,"full_subtracts":112113720,"per_size":[[3,27166,24078,26749,322177,1916155,40.149],[4,10017,8152,9580,280909,3531453,40.509],[5,4094,3276,3833,384024,6027540,45.831],[6,1971,1656,1903,474258,7864696,45.406],[7,1196,1043,1170,504424,8556528,45.043],[8,880,786,870,501322,8636510,44.593],[9,683,640,669,488821,8546352,45.580],[10,562,530,549,475536,8427129,42.774],[11,482,459,469,463077,8302539,43.416],[12,406,398,406,450397,8163059,43.225],[13,340,329,340,435124,7979783,42.310],[14,284,280,284,416179,7733498,42.065],[15,266,265,266,392365,7400102,40.514],[16,248,246,248,361042,6930257,40.041],[17,226,223,226,319980,6273265,37.665],[18,211,209,211,269912,5422109,36.071],[19,183,183,183,211204,4365365,33.309],[20,162,162,162,151459,3230210,29.897],[21,145,144,145,98057,2162170,25.230],[22,131,131,131,57376,1307869,21.272],[23,113,113,113,28968,682893,17.711],[24,96,96,96,11767,287270,14.923],[25,80,80,80,3806,96206,11.901],[26,62,62,62,952,24856,10.402],[27,38,38,38,104,2808,8.270],[28,0,0,0,0,0,0.000]]}
+        2.93 real         2.87 user         0.04 sys
+           342278144  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               21084  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                1155  involuntary context switches
+         44964541329  instructions retired
+         12588173216  cycles elapsed
+           341852808  peak memory footprint

@@ -1,0 +1,25 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time terminal /Users/zhangwenqian/UNSW/pivoter/graphs/email-Eu-core.edges 5
+terminal run 0: 17.1374 ms
+terminal run 1: 17.772 ms
+terminal run 2: 17.8526 ms
+terminal run 3: 17.818 ms
+terminal run 4: 17.2708 ms
+checksum 19709
+        0.13 real         0.13 user         0.00 sys
+            13467648  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                1015  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                  62  involuntary context switches
+          1999348719  instructions retired
+           594778250  cycles elapsed
+            12845416  peak memory footprint

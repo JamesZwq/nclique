@@ -1,0 +1,30 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/dblp-core30.edges 5
+phases omega 0.001625 upper 0.255379 mark 0.001539 init 0.005958 peel 0.041168 order 0.019501 total 0.354875
+tail run 0: 0.405291 ms
+phases omega 0.001625 upper 0.272662 mark 0.000999 init 0.002832 peel 0.038044 order 0.021959 total 0.354542
+tail run 1: 0.394666 ms
+phases omega 0.001834 upper 0.255079 mark 0.001251 init 0.003834 peel 0.040665 order 0.020332 total 0.336042
+tail run 2: 0.377125 ms
+phases omega 0.001625 upper 0.254626 mark 0.000913 init 0.002875 peel 0.037877 order 0.019789 total 0.335542
+tail run 3: 0.374166 ms
+phases omega 0.001667 upper 0.252755 mark 0.000751 init 0.003793 peel 0.037082 order 0.020084 total 0.330791
+tail run 4: 0.36875 ms
+checksum 27628
+        0.01 real         0.01 user         0.00 sys
+             3833856  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 427  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                   7  involuntary context switches
+           220564149  instructions retired
+            58122828  cycles elapsed
+             3129680  peak memory footprint

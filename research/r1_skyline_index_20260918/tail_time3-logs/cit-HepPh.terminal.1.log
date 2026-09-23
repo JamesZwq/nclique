@@ -1,0 +1,25 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time terminal /Users/zhangwenqian/UNSW/pivoter/graphs/cit-HepPh.edges 5
+terminal run 0: 169.533 ms
+terminal run 1: 168.663 ms
+terminal run 2: 166.1 ms
+terminal run 3: 168.183 ms
+terminal run 4: 171.879 ms
+checksum 644186
+        1.31 real         1.28 user         0.02 sys
+           141033472  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                8801  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 478  involuntary context switches
+         14212897302  instructions retired
+          5625251813  cycles elapsed
+           140476872  peak memory footprint

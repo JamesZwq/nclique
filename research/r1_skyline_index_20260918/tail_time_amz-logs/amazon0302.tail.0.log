@@ -1,0 +1,40 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/graphs/amazon0302.edges 10
+phases omega 0 upper 1.96096 mark 0.598834 init 5.98583 peel 64.2324 order 0.184666 total 74.1218
+tail run 0: 80.8225 ms
+phases omega 0 upper 1.84475 mark 0.592542 init 6.12754 peel 62.503 order 0.172833 total 72.1044
+tail run 1: 77.5451 ms
+phases omega 4.2e-05 upper 1.84075 mark 0.579209 init 6.22083 peel 62.8642 order 0.162625 total 72.3925
+tail run 2: 76.6492 ms
+phases omega 4.2e-05 upper 1.883 mark 0.597792 init 6.1945 peel 64.1333 order 0.166417 total 73.7948
+tail run 3: 78.3123 ms
+phases omega 0 upper 1.80604 mark 0.571209 init 6.15438 peel 64.5519 order 0.173083 total 74.0078
+tail run 4: 78.2184 ms
+phases omega 0 upper 1.82263 mark 0.569416 init 6.14458 peel 63.1329 order 0.16125 total 72.615
+tail run 5: 77.2357 ms
+phases omega 0 upper 1.82146 mark 0.615126 init 6.06958 peel 63.3995 order 0.164625 total 72.7882
+tail run 6: 77.2127 ms
+phases omega 0 upper 1.81671 mark 0.55354 init 6.04483 peel 62.6874 order 0.157458 total 72.0441
+tail run 7: 77.1047 ms
+phases omega 0 upper 1.81725 mark 0.530875 init 6.1435 peel 63.3876 order 0.165873 total 72.8077
+tail run 8: 77.1119 ms
+phases omega 4.2e-05 upper 1.99325 mark 0.548083 init 6.48871 peel 78.4143 order 0.162417 total 88.3456
+tail run 9: 92.763 ms
+checksum 0
+        1.14 real         1.12 user         0.02 sys
+           125714432  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                7866  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 396  involuntary context switches
+         11256836327  instructions retired
+          4897564889  cycles elapsed
+           125108680  peak memory footprint

@@ -1,0 +1,25 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time terminal /Users/zhangwenqian/UNSW/pivoter/graphs/ca-AstroPh.edges 5
+terminal run 0: 52.6998 ms
+terminal run 1: 49.4368 ms
+terminal run 2: 49.07 ms
+terminal run 3: 48.9565 ms
+terminal run 4: 48.6794 ms
+checksum 27968
+        0.41 real         0.40 user         0.00 sys
+            29409280  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                1990  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 137  involuntary context switches
+          5511735897  instructions retired
+          1718477588  cycles elapsed
+            28803456  peak memory footprint

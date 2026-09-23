@@ -1,0 +1,30 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time tail /Users/zhangwenqian/UNSW/pivoter/data/ca-GrQc.edges 5
+phases omega 0.010167 upper 0.056998 mark 0.00975 init 0.051334 peel 0.222084 order 0.009833 total 0.384625
+tail run 0: 0.43725 ms
+phases omega 0.009917 upper 0.055624 mark 0.020999 init 0.043458 peel 0.191083 order 0.011416 total 0.357667
+tail run 1: 0.40125 ms
+phases omega 0.009708 upper 0.050335 mark 0.005792 init 0.036084 peel 0.1385 order 0.006916 total 0.264917
+tail run 2: 0.303 ms
+phases omega 0.012917 upper 0.049 mark 0.004333 init 0.031916 peel 0.11346 order 0.006831 total 0.234708
+tail run 3: 0.269333 ms
+phases omega 0.009542 upper 0.052502 mark 0.003833 init 0.030207 peel 0.106083 order 0.006667 total 0.226375
+tail run 4: 0.261708 ms
+checksum 139906
+        0.00 real         0.00 user         0.00 sys
+             4046848  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 440  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                   6  involuntary context switches
+           125100217  instructions retired
+            32021791  cycles elapsed
+             3359056  peak memory footprint

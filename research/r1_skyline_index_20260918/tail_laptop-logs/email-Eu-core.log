@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --graph /Users/zhangwenqian/UNSW/pivoter/graphs/email-Eu-core.edges
+{"graph":"email-Eu-core.edges","n":1005,"m":16064,"d":34,"rows":53045,"incidences":503392,"bits":64,"sizes":18,"identical":true,"terminal_ms":16.937,"full_ms":32.466,"tail_ms":31.758,"tail_upper_ms":0.993,"tail_mark_ms":12.275,"tail_init_ms":4.370,"tail_peel_ms":13.586,"tail_order_ms":0.022,"full_upper_ms":1.005,"full_mark_ms":12.814,"full_init_ms":4.293,"full_peel_ms":13.810,"full_order_ms":0.021,"active_pairs":7046,"residue_pairs":6293,"relevant_vertex_pairs":7034,"relevant_rows":361119,"relevant_incidences":3943158,"all_valid_incidences":3943356,"closed_sizes":0,"last_residue_size":18,"tail_events":7034,"full_events":7046,"tail_subtracts":3412442,"full_subtracts":3416388,"per_size":[[3,875,820,875,28286,246865,2.321],[4,806,753,806,42620,397010,2.816],[5,742,706,742,47651,466028,3.057],[6,692,658,692,46597,473741,3.244],[7,637,610,637,42390,450242,3.296],[8,586,544,586,37122,413441,2.907],[9,521,479,521,31721,370233,2.720],[10,446,400,446,26254,321030,2.434],[11,387,325,377,20687,265359,2.142],[12,328,295,328,15333,206465,1.814],[13,281,220,281,10523,148745,1.425],[14,226,170,226,6395,95081,1.191],[15,185,127,185,3334,52217,0.837],[16,158,101,158,1559,25592,0.605],[17,114,59,113,592,10119,0.403],[18,62,26,61,55,990,0.204],[19,0,0,0,0,0,0.000]]}
+        0.13 real         0.12 user         0.00 sys
+            13926400  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                1043  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                  26  involuntary context switches
+          1874882870  instructions retired
+           568745137  cycles elapsed
+            13304168  peak memory footprint

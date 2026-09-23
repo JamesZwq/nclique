@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --graph /Users/zhangwenqian/UNSW/pivoter/graphs/soc-Slashdot0902.edges
+{"graph":"soc-Slashdot0902.edges","n":82168,"m":504230,"d":55,"rows":1049970,"incidences":10202665,"bits":64,"sizes":27,"identical":true,"terminal_ms":366.698,"full_ms":596.824,"tail_ms":591.426,"tail_upper_ms":5.473,"tail_mark_ms":135.071,"tail_init_ms":100.830,"tail_peel_ms":333.267,"tail_order_ms":4.250,"full_upper_ms":5.626,"full_mark_ms":136.221,"full_init_ms":103.452,"full_peel_ms":334.652,"full_order_ms":4.241,"active_pairs":50042,"residue_pairs":43579,"relevant_vertex_pairs":50042,"relevant_rows":7103816,"relevant_incidences":123873175,"all_valid_incidences":123873175,"closed_sizes":0,"last_residue_size":27,"tail_dense_sizes":25,"tail_events":50042,"full_events":50042,"tail_subtracts":112112807,"full_subtracts":112113720,"per_size":[[3,27166,24078,27166,322388,1916840,22.962],[4,10017,8152,10017,281122,3532362,20.495],[5,4094,3276,4094,384114,6028002,27.233],[6,1971,1656,1971,474285,7864872,33.822],[7,1196,1043,1196,504435,8556610,37.545],[8,880,786,880,501326,8636543,38.470],[9,683,640,683,488831,8546452,37.891],[10,562,530,562,475543,8427202,36.707],[11,482,459,482,463080,8302572,36.748],[12,406,398,406,450397,8163059,35.529],[13,340,329,340,435124,7979783,34.464],[14,284,280,284,416179,7733498,34.211],[15,266,265,266,392365,7400102,32.835],[16,248,246,248,361042,6930257,30.201],[17,226,223,226,319980,6273265,28.390],[18,211,209,211,269912,5422109,24.501],[19,183,183,183,211204,4365365,20.518],[20,162,162,162,151459,3230210,16.374],[21,145,144,145,98057,2162170,11.622],[22,131,131,131,57376,1307869,8.230],[23,113,113,113,28968,682893,5.337],[24,96,96,96,11767,287270,3.546],[25,80,80,80,3806,96206,2.775],[26,62,62,62,952,24856,1.960],[27,38,38,38,104,2808,1.559],[28,0,0,0,0,0,0.000]]}
+        2.41 real         2.35 user         0.04 sys
+           341819392  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               21056  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                 992  involuntary context switches
+         39402007490  instructions retired
+         10286879959  cycles elapsed
+           341394056  peak memory footprint

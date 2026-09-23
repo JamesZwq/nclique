@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --graph /Users/zhangwenqian/UNSW/pivoter/graphs/soc-Epinions1.edges
+{"graph":"soc-Epinions1.edges","n":75879,"m":405740,"d":67,"rows":2287595,"incidences":19800202,"bits":64,"sizes":23,"identical":true,"terminal_ms":642.858,"full_ms":1615.432,"tail_ms":1568.677,"tail_upper_ms":7.188,"tail_mark_ms":818.352,"tail_init_ms":155.920,"tail_peel_ms":565.335,"tail_order_ms":1.800,"full_upper_ms":7.161,"full_mark_ms":861.361,"full_init_ms":153.811,"full_peel_ms":570.918,"full_order_ms":1.741,"active_pairs":77715,"residue_pairs":61038,"relevant_vertex_pairs":74809,"relevant_rows":12871902,"relevant_incidences":144610197,"all_valid_incidences":144622587,"closed_sizes":0,"last_residue_size":23,"tail_events":74809,"full_events":77715,"tail_subtracts":123266928,"full_subtracts":123292997,"per_size":[[3,27149,19946,26258,832241,5634229,94.750],[4,14499,10954,13838,1404305,11404181,116.588],[5,9380,7425,8969,1681029,15511848,130.633],[6,6441,5335,6160,1656808,16763589,129.325],[7,4806,4053,4611,1478162,16087804,125.246],[8,3629,3151,3547,1261270,14640942,117.182],[9,2801,2454,2732,1053352,12984808,109.319],[10,2153,1816,2082,868009,11316862,100.492],[11,1623,1385,1597,703242,9669157,93.847],[12,1282,1067,1229,557919,8070602,84.597],[13,997,842,966,431837,6557617,76.482],[14,754,655,720,325504,5175287,67.859],[15,570,485,538,238100,3951631,58.565],[16,418,373,416,166569,2878664,51.519],[17,346,303,328,107373,1931526,45.298],[18,263,237,256,62223,1163974,39.131],[19,217,194,195,30711,596758,31.772],[20,152,131,132,10683,216225,27.044],[21,110,110,110,2269,47945,23.581],[22,83,82,83,278,6134,19.149],[23,42,40,42,18,414,13.324],[24,0,0,0,0,0,0.000]]}
+        5.74 real         5.61 user         0.10 sys
+           693256192  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               42506  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                2403  involuntary context switches
+         70655339465  instructions retired
+         24735323498  cycles elapsed
+           693027752  peak memory footprint

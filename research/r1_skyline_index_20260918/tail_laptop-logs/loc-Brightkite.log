@@ -1,0 +1,20 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --graph /Users/zhangwenqian/UNSW/pivoter/graphs/loc-Brightkite.edges
+{"graph":"loc-Brightkite.edges","n":58228,"m":214078,"d":52,"rows":324450,"incidences":4169392,"bits":64,"sizes":37,"identical":true,"terminal_ms":215.686,"full_ms":463.276,"tail_ms":460.905,"tail_upper_ms":11.017,"tail_mark_ms":164.350,"tail_init_ms":56.889,"tail_peel_ms":220.689,"tail_order_ms":2.185,"full_upper_ms":11.063,"full_mark_ms":168.058,"full_init_ms":54.303,"full_peel_ms":221.944,"full_order_ms":2.109,"active_pairs":68175,"residue_pairs":50776,"relevant_vertex_pairs":63379,"relevant_rows":3258067,"relevant_incidences":80067384,"all_valid_incidences":80081944,"closed_sizes":0,"last_residue_size":37,"tail_events":63379,"full_events":68175,"tail_subtracts":75506233,"full_subtracts":75525206,"per_size":[[3,25788,19084,24369,123138,1056140,16.794],[4,13609,9094,12340,130587,1882088,18.927],[5,7913,5255,7085,149157,2758739,19.428],[6,4938,3411,4442,161089,3347460,19.252],[7,3178,2297,2802,163476,3597187,19.138],[8,2153,1704,1951,160229,3641055,18.961],[9,1561,1344,1489,155445,3613232,18.742],[10,1260,1086,1207,150916,3573175,18.192],[11,978,863,931,146663,3530664,17.761],[12,741,692,728,142509,3484970,17.368],[13,638,603,638,138227,3433586,17.918],[14,511,465,490,133772,3375667,17.195],[15,445,424,445,128970,3308439,16.898],[16,393,393,393,123288,3223209,16.365],[17,358,357,358,117475,3130201,15.710],[18,332,332,332,112252,3041410,15.376],[19,312,312,312,107538,2956558,15.047],[20,301,301,301,103614,2882002,14.618],[21,255,253,255,99539,2800502,13.997],[22,244,244,244,95204,2709467,14.039],[23,235,234,235,90216,2599731,13.228],[24,223,222,223,85123,2482592,12.832],[25,213,211,213,79747,2353568,12.149],[26,203,203,203,72766,2179043,11.735],[27,196,196,196,65826,1998603,10.871],[28,184,184,184,56585,1749096,10.132],[29,176,175,176,46772,1474332,9.323],[30,163,163,163,38173,1224961,8.431],[31,151,151,151,30397,991681,7.541],[32,143,143,143,22623,750687,6.375],[33,123,123,123,15089,509599,5.323],[34,81,81,81,7575,261637,3.029],[35,70,70,70,2818,99899,2.304],[36,58,58,58,1009,36584,1.888],[37,48,48,48,260,9620,1.593],[38,0,0,0,0,0,0.000]]}
+        1.40 real         1.37 user         0.01 sys
+           113754112  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                7136  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                 431  involuntary context switches
+         24859180435  instructions retired
+          6059034336  cycles elapsed
+           113197512  peak memory footprint

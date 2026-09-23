@@ -1,0 +1,25 @@
+$ /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/tail_check --time terminal /Users/zhangwenqian/UNSW/pivoter/graphs/soc-Slashdot0902.edges 5
+terminal run 0: 376.08 ms
+terminal run 1: 370.635 ms
+terminal run 2: 373.803 ms
+terminal run 3: 376.085 ms
+terminal run 4: 373.291 ms
+checksum 3555576
+        2.71 real         2.65 user         0.04 sys
+           335282176  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               20657  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 830  involuntary context switches
+         44686893250  instructions retired
+         11607943322  cycles elapsed
+           334840432  peak memory footprint
