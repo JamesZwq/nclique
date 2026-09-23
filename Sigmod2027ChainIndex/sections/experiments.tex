@@ -41,10 +41,37 @@ Each workload runs six times, the first as a warm-up, and the latency is the med
 %
 Index sizes are measured in memory, and build times exclude the reading of the graph.
 
+\expsection{Construction against one decomposition per size}
+% 2026-09-23 user: the build-time comparison is Exp-1 (former Exp-6 and Exp-8 merged).
+The build time of \chainidx (Table~\ref{tab:size}) covers the clique tree, the peel of every size and the index passes of Section~\ref{sec:construction}, the trees, the trie and the layout.
+%
+% 2026-09-22 compaction: the per-pair table is Figure fig:prior (log-log scatter with the 10x/100x/1000x lines).
+Figure~\ref{fig:prior} plots, for the \priorgraphs{} (graph, machine) pairs with both records, the build and peel time of \cnd summed over the sizes $2$ to $s_{\max}$ against the one build of \chainidx on the same machine.
+%
+\chainidx is built faster by \priormin$\times$ on \textsf{com-amazon} (six sizes) to \priormax$\times$ on \webuk{} ($499$ sizes), median \priormedian$\times$.
+%
+The clique tree is built once instead of once per size, and the peel of one size is reused by the next through the certificate of Theorem~\ref{thm:replay} and the bound of Section~\ref{sec:construction}.
+%
+The ratio grows with the number of sizes: on \textsf{web-BerkStan} ($201$ sizes) the $2.0$ hours of build and peel of \cnd become $66$ seconds, and on \webuk{} $15.7$ hours become $70$ seconds.
+%
+One run of \cnd is also the cost of a community query without an index, seconds to minutes on such graphs against the nanoseconds of Figure~\ref{fig:regimes}.
+%
+The index passes are a few percent of the time, the clique tree and the peel are the rest, and the memory usage is that of the clique tree.
+%
+The build takes $0.01$~s on \textsf{ca-GrQc} and $221$~s on \textsf{dblp-coauthor}, the graph of $4$ million vertices, with $8.8$~GB of memory there.
+%
+\dblp is built in $0.84$~s with $157$~MB.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_prior.pdf}
+\caption{\cnd once per size against one build of \chainidx.}\label{fig:prior}
+\end{figure}
+
 \expsection{Index size}
 Table~\ref{tab:size} lists every graph with its number of chains, its vertices per chain and its share of stored values, the pairs $(v,s)$ with a nonzero value whose value is a residue.
 %
-The next columns are the sizes of \chainidx and of \strees with their ratio, and the last two the build time and memory usage of \build (Exp-6).
+The next columns are the sizes of \chainidx and of \strees with their ratio, and the last two the build time and memory usage of \build (Exp-1).
 %
 \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than \strees, median \ratiomedian$\times$, and the ratio grows with the number of vertices per chain.
 %
@@ -146,15 +173,6 @@ Below $10^5$ vertices \strees is \profdeclowmin$\times$ to \profdeclowmax$\times
 \caption{Own-level latency by clique size and by answer size.}\label{fig:profile}
 \end{figure*}
 
-\expsection{Construction}
-The build time of \chainidx (Table~\ref{tab:size}) covers the clique tree, the peel of every size and the index passes of Section~\ref{sec:construction}, the trees, the trie and the layout.
-%
-The index passes are a few percent of the time, the clique tree and the peel are the rest, and the memory usage is that of the clique tree.
-%
-The build takes $0.01$~s on \textsf{ca-GrQc} and $221$~s on \textsf{dblp-coauthor}, the graph of $4$ million vertices, with $8.8$~GB of memory there.
-%
-\dblp is built in $0.84$~s with $157$~MB.
-
 \expsection{Scalability}
 Figure~\ref{fig:scale} follows \textsf{cit-Patents} and \textsf{web-BerkStan} on server 2 through vertex-induced random samples of $20$, $40$, $60$ and $80$ percent of their vertices up to the full graph.
 %
@@ -177,24 +195,6 @@ Its build and peel time, its whole run less the reading of the graph, is $6.6$ t
 \includegraphics[width=\textwidth]{figures/fig_scale.pdf}
 \caption{Scalability over vertex-induced samples.}\label{fig:scale}
 \end{figure*}
-
-\expsection{Against one decomposition per size}
-% 2026-09-22 compaction: the per-pair table is Figure fig:prior (log-log scatter with the 10x/100x/1000x lines).
-Figure~\ref{fig:prior} plots, for the \priorgraphs{} (graph, machine) pairs with both records, the build and peel time of \cnd summed over the sizes $2$ to $s_{\max}$ against the one build of \chainidx on the same machine.
-%
-\chainidx is built faster by \priormin$\times$ on \textsf{com-amazon} (six sizes) to \priormax$\times$ on \webuk{} ($499$ sizes), median \priormedian$\times$.
-%
-The clique tree is built once instead of once per size, and the peel of one size is reused by the next through the certificate of Theorem~\ref{thm:replay} and the bound of Section~\ref{sec:construction}.
-%
-The ratio grows with the number of sizes: on \textsf{web-BerkStan} ($201$ sizes) the $2.0$ hours of build and peel of \cnd become $66$ seconds, and on \webuk{} $15.7$ hours become $70$ seconds.
-%
-One run of \cnd is also the cost of a community query without an index, seconds to minutes on such graphs against the nanoseconds of Figure~\ref{fig:regimes}.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig_prior.pdf}
-\caption{\cnd once per size against one build of \chainidx.}\label{fig:prior}
-\end{figure}
 
 \expsection{Case Study I: the best size per query}
 % 2026-09-22 compaction: thirteen sentences.

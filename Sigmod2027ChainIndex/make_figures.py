@@ -211,7 +211,7 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
     for r in fullrec['runs']:
         if 'result' in r and Path(r['graph']).stem in series: series[Path(r['graph']).stem][100] = r['result']
     prof = {g: x for w, g, x in all_profiles(samples=True)}; prof.update({g: x for w, g, x in all_profiles() if w == 'tods2'})
-    fig, axes = plt.subplots(1, 4, figsize=(TEXT_WIDTH, 1.2))
+    fig, axes = plt.subplots(1, 4, figsize=(TEXT_WIDTH, 1.16))
     for g, pts in sorted(series.items()):
         ps = sorted(pts); xs = [pts[p]['n'] / 1e6 for p in ps]; mk = MARKS.get(g, 'o')
         axes[0].plot(xs, [pts[p]['bytes_total'] / 1048576 for p in ps], marker=mk, ms=2.8, **OURS_KW, label=g)
