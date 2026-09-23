@@ -58,7 +58,7 @@ Figure~\ref{fig:prior} plots, for the \priorgraphs{} (graph, machine) pairs with
 %
 The ratio is largest where the sizes are many: on \textsf{web-BerkStan} ($201$ sizes) \cnd takes $2.0$ hours and \chainidx \buildberkstan{} seconds, and on \webuk{} \cnd takes $15.7$ hours and \chainidx \buildwebuk{} seconds.
 %
-Two parts of Section~\ref{sec:construction} contribute to the ratio: the clique tree is built once for all sizes, and the peel of a size counts cliques only for the vertices whose values no bound fixes, the unsettled vertices of Theorem~\ref{thm:settled}.
+Two parts of Section~\ref{sec:construction} contribute to the ratio: the clique tree is built once for all sizes, and the peel of a size counts cliques only for the vertices whose values are not yet on the floor, the unsettled vertices of Theorem~\ref{thm:settled}.
 %
 Peeling every vertex at every size instead makes the build slower by a median of \settlemedian$\times$ and by up to \settlemax$\times$.
 %

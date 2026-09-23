@@ -319,3 +319,11 @@ passes "a few percent" (measured 18-55%, now 22-85%).  New construction (RESULTS
 - Page budget: 12 body pages kept by deleting the per-graph build sentences of Exp-1 (Table 1 has them), the no-index
   query cost sentence, the 93% settled share on com-dblp, the Cost paragraph's time shares (Exp-1 has them) and one
   intro sentence.  0 overfull, 0 ??.
+
+## Settled vertices simplified (2026-09-23, user: "实现可以极其丑陋，paper 要优雅、简单、清楚")
+Section 7 now defines settled as s > sigma(v) (the value at size s-1 is already the floor; Theorem 5.6(b) gives the
+floor at s), and the key of an unsettled vertex is its plain clique count.  The Kruskal-Katona upper bound, its integer
+form and the capped keys left the paper: they are code-only refinements (the code settles a superset and caps counts;
+both proof checks covered key = count, i.e. every bound up to the initial count).  Example 7.2: unsettled because the
+size-2 value 4 is above the floors 3 (x) and 2 (u, w).  Abstract, introduction, contributions and Exp-1 say "not yet on
+the floor" instead of "no bound fixes".  Section 7 shorter; references now start on page 12.
