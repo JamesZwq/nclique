@@ -1223,3 +1223,21 @@ ns after s = 2, since the answers are a few ranges):
 Verdict: this is the second case study for the paper (real semantics,
 common-sense readings, numbers over 5,000 queries); DBLP names stay in
 18.2 as a negative finding.
+
+### 17.9 Construction techniques actually timed (audit, 2026-09-23)
+
+`build_chain_index` calls `terminal::build(g, ti, 0)` (mode 0 = plain clique-tree rows, no factoring) and
+`terminal::Solver<T>::solve(g, ti, choose, ordinary, nullptr, on_row)` with the template defaults
+`Audit=false, Replay=false`. So every build time in the paper (Table 1, Figure 5 = CND comparison, Figure 8)
+is: one shared clique tree + per-size exact peel with (i) the Kruskal-Katona upper bound from the previous
+size capping the counts (`integer_upper`), (ii) the previous size's removal order used as a presorted stream
+beside the heap, (iii) stop at the first empty size. The order-replay certificate (paper Theorem 7.1,
+Algorithm 2 Step 1, Example 7.2) is NOT enabled in the timed build.
+
+Against "peel every size on the same shared clique tree" (`fixed` in ../r1_terminal_20260918, laptop,
+paired medians, solver ms): plain(=ours) vs fixed: GrQc 1.244/1.392 (1.12x), HepPh 161.2/214.7 (1.33x),
+com-dblp 271.4/288.9 (1.06x), web-Stanford 896.8/1074.9 (1.20x), amazon0302 120.4/168.4 (1.40x); with the
+clique tree included 1.09x-1.28x. Replay (`active`) vs stream: 1.8x GrQc, 1.55x HepPh, 1.29x dblp, but 0.71x
+Stanford and 0.79x amazon. The 2.8x-814x against CND therefore comes mostly from building one clique tree for
+all sizes instead of one per size and from CND's engine, not from replay. Not measured: per-size peel with a
+per-size rebuilt clique tree on our engine (the clean "peel s times" baseline).
