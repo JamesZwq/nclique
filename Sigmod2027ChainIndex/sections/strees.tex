@@ -48,16 +48,9 @@ For $1\le k\le\core{s}{v}$, the community of $v$ at $(s,k)$ is the node nearest 
 A node nearer the root with top at least $k$ would have the two properties at level $k$ and strictly contain the community.
 %
 Later sections refer to the community by this description.
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig_strees.pdf}
-\caption{The baseline, one hierarchy per size, for Figure~\ref{fig:example}: for every size, its tree drawn over the depth-first array of its vertices; a node is a bar over the vertices it contains.}
-\label{fig:strees}
-\end{figure}
+% 2026-09-24 user: no figure for the baseline; the trees are described in Example ex:tree and drawn over chains in Figure fig:index.
 \begin{example}\label{ex:tree}
-Consider Figure~\ref{fig:example}.
-%
-Figure~\ref{fig:strees} draws the trees of its four sizes, $2$ to $5$.
+Consider Figure~\ref{fig:example}, which has cliques of the sizes $2$ to $5$.
 %
 At size $2$ the root holds all $15$ vertices with top $3$, since every vertex has at least three neighbours and $b_1$ exactly three.
 %
@@ -94,7 +87,7 @@ We call this index \strees.
 %
 A vertex $v$ has a nonzero value at every size from $2$ to $\omg{v}$ (Section~\ref{sec:prelim}), so it appears in $\omg{v}-1$ arrays, one per size.
 %
-The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ for the $15$ vertices of Figure~\ref{fig:example} (each $a_i$ four times, each $b_i$ and $x$ three times, each $u_i$ and $w_j$ twice), as Figure~\ref{fig:strees} shows.
+The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ for the $15$ vertices of Figure~\ref{fig:example} (each $a_i$ four times, each $b_i$ and $x$ three times, each $u_i$ and $w_j$ twice).
 %
 Building \strees means one decomposition per size, $499$ of them on \webuk (Section~\ref{sec:intro}).
 %
