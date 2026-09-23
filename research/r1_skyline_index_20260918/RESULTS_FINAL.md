@@ -1291,5 +1291,98 @@ residue peel touches a few percent of the rows. Social/citation graphs keep a re
 pokec 88%): every size takes the full peel and the gain is the engineering part only (1.01-1.10x). The adaptive
 policy's regret against the better mode per size was <= 3.5 ms on all 15 laptop graphs (`tail_laptop3.json`).
 
-**Build-time ablation** (whole index build = ti + build + compact, four settings CHAIN_SOLVER x CHAIN_TREEPASS):
-`ablation_laptop.json`, `tods1_ablation.json`, `tods2_ablation.json` -- running; see 17.11.
+**Build-time ablation**: Section 17.11.
+
+### 17.11 Build-time ablation of the whole chain-index build (2026-09-23; build b683253)
+
+Settings (`chain_index_tool --build-only`, `run_build_ablation.py`; `report_build_ablation.py` prints the table):
+CHAIN_SOLVER = terminal (the solver of every record before 2026-09-23) | tail (17.10); CHAIN_TREEPASS = old
+(`make_tree_row`, per-size allocation, cpp_int node values) | fast (`treepass.hpp`: the same operations in the same
+order, state kept across sizes, per-row counts stamped with their size in 16-byte records). All four settings write
+byte-identical .cx files (checked on GrQc, HepPh, AstroPh; CHAIN_TREE_CHECK=1 on five more; selftests pass under every
+setting). Row index narrow (32-bit offsets, row ids, codes) as in every record before 2026-09-19; the 64-bit widening of
+09-19 (for com-lj etc.) had raised the pokec build peak from 2.9 to 4.6 GB and is now `chain_index_tool_wide` only.
+Build time = ti + build + compact (the tables' formula); medians over the rounds; peak = largest /usr/bin/time peak of
+the setting's runs. Rounds: laptop 8 for the 15 graphs below 4 s, 2 for pokec and dblp-coauthor; tods1 6 for the 14
+graphs below 10 s, 1 for the 6 large ones; tods2 2. One process at a time per machine, OMP=1. The two-round laptop
+pass had shown cit-HepPh at 0.97x; 8 rounds give 1.01x (`borderline.json`, 8 rounds: 0.731 -> 0.711 s): the dip was
+noise, as was tods1 web-Google's 0.99x settle ratio with two rounds (six rounds: 1.08x).
+
+Columns: final vs before = terminal+old / tail+fast; every-vertex vs final = terminal+fast / tail+fast (the solver
+alone: every vertex peeled at every size against the settled peel, same tree pass); shares are of the final build.
+
+| machine | graph | rounds | terminal+old s | terminal+fast s | tail+old s | tail+fast s | final vs before | every-vertex vs final | tree % | peel % | passes % | peak MB before -> final |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| laptop | ca-GrQc | 8 | 0.006 | 0.005 | 0.005 | 0.004 | 1.32x | 1.21x | 34 | 9 | 55 | 5 -> 5 |
+| laptop | ca-HepTh | 8 | 0.009 | 0.009 | 0.009 | 0.008 | 1.19x | 1.11x | 41 | 14 | 43 | 6 -> 6 |
+| laptop | email-Eu-core | 8 | 0.088 | 0.087 | 0.087 | 0.086 | 1.03x | 1.01x | 52 | 19 | 29 | 12 -> 12 |
+| laptop | ca-CondMat | 8 | 0.036 | 0.034 | 0.034 | 0.032 | 1.14x | 1.07x | 44 | 14 | 42 | 14 -> 12 |
+| laptop | ca-HepPh | 8 | 0.241 | 0.227 | 0.146 | 0.132 | 1.83x | 1.73x | 48 | 6 | 45 | 27 -> 19 |
+| laptop | ca-AstroPh | 8 | 0.237 | 0.230 | 0.230 | 0.229 | 1.04x | 1.01x | 49 | 19 | 32 | 28 -> 25 |
+| laptop | com-dblp | 8 | 0.565 | 0.512 | 0.462 | 0.405 | 1.39x | 1.27x | 34 | 13 | 52 | 152 -> 131 |
+| laptop | amazon0302 | 8 | 0.371 | 0.342 | 0.369 | 0.332 | 1.12x | 1.03x | 32 | 23 | 45 | 130 -> 122 |
+| laptop | amazon-copurchase | 8 | 0.405 | 0.367 | 0.397 | 0.349 | 1.16x | 1.05x | 33 | 19 | 47 | 160 -> 159 |
+| laptop | cit-HepPh | 8 | 0.736 | 0.731 | 0.733 | 0.729 | 1.01x | 1.00x | 51 | 21 | 28 | 93 -> 102 |
+| laptop | loc-Brightkite | 8 | 0.804 | 0.791 | 0.773 | 0.765 | 1.05x | 1.03x | 28 | 27 | 44 | 92 -> 83 |
+| laptop | soc-Slashdot0902 | 8 | 1.794 | 1.747 | 1.783 | 1.715 | 1.05x | 1.02x | 43 | 20 | 37 | 261 -> 248 |
+| laptop | web-Stanford | 8 | 2.214 | 2.077 | 2.150 | 2.023 | 1.09x | 1.03x | 38 | 26 | 36 | 331 -> 299 |
+| laptop | soc-Epinions1 | 8 | 3.779 | 3.634 | 3.761 | 3.590 | 1.05x | 1.01x | 51 | 17 | 32 | 495 -> 474 |
+| laptop | com-youtube | 8 | 3.135 | 3.024 | 3.131 | 2.998 | 1.05x | 1.01x | 61 | 14 | 25 | 557 -> 576 |
+| laptop | soc-pokec | 2 | 32.898 | 32.970 | 32.596 | 32.371 | 1.02x | 1.02x | 55 | 20 | 26 | 3,115 -> 3,424 |
+| laptop | dblp-coauthor | 2 | 157.906 | 145.738 | 90.643 | 81.678 | 1.93x | 1.78x | 34 | 23 | 42 | 8,608 -> 8,210 |
+| tods1 | ca-GrQc | 6 | 0.022 | 0.016 | 0.019 | 0.015 | 1.44x | 1.06x | 35 | 10 | 53 | 6 -> 6 |
+| tods1 | dblp-core30 | 6 | 0.046 | 0.042 | 0.031 | 0.026 | 1.75x | 1.58x | 20 | 4 | 76 | 6 -> 6 |
+| tods1 | ca-CondMat | 6 | 0.094 | 0.088 | 0.083 | 0.077 | 1.21x | 1.14x | 40 | 15 | 45 | 12 -> 12 |
+| tods1 | email-Eu-core | 6 | 0.231 | 0.226 | 0.216 | 0.209 | 1.11x | 1.08x | 55 | 19 | 26 | 12 -> 12 |
+| tods1 | ca-AstroPh | 6 | 0.611 | 0.588 | 0.532 | 0.508 | 1.20x | 1.16x | 47 | 19 | 34 | 22 -> 22 |
+| tods1 | ca-HepPh | 6 | 0.707 | 0.667 | 0.320 | 0.279 | 2.53x | 2.39x | 37 | 10 | 53 | 18 -> 18 |
+| tods1 | ca-MathSciNet | 6 | 0.947 | 0.866 | 0.828 | 0.746 | 1.27x | 1.16x | 39 | 16 | 44 | 103 -> 97 |
+| tods1 | com-amazon.ungraph | 6 | 0.947 | 0.859 | 0.924 | 0.828 | 1.14x | 1.04x | 31 | 18 | 51 | 115 -> 111 |
+| tods1 | ca-dblp-2012 | 6 | 2.296 | 1.902 | 1.511 | 1.089 | 2.11x | 1.75x | 32 | 15 | 53 | 114 -> 113 |
+| tods1 | com-dblp | 6 | 2.220 | 1.868 | 1.489 | 1.101 | 2.02x | 1.70x | 30 | 15 | 54 | 114 -> 113 |
+| tods1 | web-Stanford | 6 | 5.377 | 4.952 | 4.852 | 4.460 | 1.21x | 1.11x | 33 | 29 | 37 | 229 -> 231 |
+| tods1 | web-Google | 6 | 6.794 | 6.125 | 6.322 | 5.657 | 1.20x | 1.08x | 27 | 25 | 46 | 359 -> 352 |
+| tods1 | com-youtube | 6 | 7.890 | 7.258 | 7.516 | 7.031 | 1.12x | 1.03x | 64 | 13 | 22 | 504 -> 503 |
+| tods1 | soc-Epinions1 | 6 | 9.494 | 9.219 | 9.388 | 8.423 | 1.13x | 1.09x | 57 | 16 | 26 | 311 -> 318 |
+| tods1 | web-it-2004 | 1 | 66.781 | 61.744 | 14.840 | 11.155 | 5.99x | 5.54x | 12 | 13 | 75 | 526 -> 490 |
+| tods1 | web-uk-2005 | 1 | 67.577 | 65.015 | 19.734 | 18.097 | 3.73x | 3.59x | 13 | 2 | 85 | 298 -> 285 |
+| tods1 | soc-pokec-relationships | 1 | 90.032 | 70.091 | 75.079 | 64.852 | 1.39x | 1.08x | 53 | 22 | 25 | 2,809 -> 2,894 |
+| tods1 | ca-coauthors-dblp | 1 | 112.104 | 110.731 | 34.755 | 28.450 | 3.94x | 3.89x | 24 | 8 | 68 | 878 -> 832 |
+| tods1 | wiki-Talk | 1 | 776.984 | 697.425 | 705.774 | 616.988 | 1.26x | 1.13x | 46 | 18 | 36 | 20,143 -> 20,580 |
+| tods1 | tech-as-skitter | 1 | 939.137 | 846.434 | 804.934 | 693.072 | 1.36x | 1.22x | 27 | 31 | 43 | 13,882 -> 14,067 |
+| tods2 | com-amazon | 2 | 0.884 | 0.803 | 0.831 | 0.725 | 1.22x | 1.11x | 31 | 18 | 51 | 115 -> 111 |
+| tods2 | com-dblp | 2 | 1.990 | 1.598 | 1.189 | 0.910 | 2.19x | 1.76x | 30 | 16 | 54 | 114 -> 113 |
+| tods2 | web-NotreDame | 2 | 6.121 | 3.825 | 1.875 | 1.389 | 4.41x | 2.75x | 22 | 34 | 43 | 191 -> 174 |
+| tods2 | web-Stanford | 2 | 4.993 | 4.578 | 4.338 | 3.852 | 1.30x | 1.19x | 32 | 30 | 38 | 229 -> 231 |
+| tods2 | web-Google | 2 | 6.451 | 5.719 | 5.945 | 5.241 | 1.23x | 1.09x | 27 | 26 | 47 | 359 -> 351 |
+| tods2 | cit-Patents_p20 | 2 | 0.554 | 0.485 | 0.569 | 0.464 | 1.19x | 1.05x | 40 | 10 | 46 | 154 -> 143 |
+| tods2 | cit-Patents_p40 | 2 | 2.229 | 1.976 | 2.153 | 1.908 | 1.17x | 1.04x | 44 | 14 | 40 | 409 -> 390 |
+| tods2 | cit-Patents_p60 | 2 | 5.801 | 5.129 | 5.498 | 4.846 | 1.20x | 1.06x | 46 | 17 | 36 | 778 -> 755 |
+| tods2 | cit-Patents_p80 | 2 | 11.678 | 10.578 | 10.910 | 9.896 | 1.18x | 1.07x | 48 | 18 | 33 | 1,294 -> 1,285 |
+| tods2 | cit-Patents | 2 | 21.036 | 19.136 | 19.663 | 17.816 | 1.18x | 1.07x | 48 | 19 | 31 | 2,021 -> 2,034 |
+| tods2 | web-BerkStan_p20 | 2 | 0.252 | 0.183 | 0.169 | 0.150 | 1.68x | 1.22x | 31 | 17 | 51 | 37 -> 35 |
+| tods2 | web-BerkStan_p40 | 2 | 1.540 | 1.372 | 1.034 | 0.839 | 1.83x | 1.63x | 28 | 27 | 44 | 109 -> 105 |
+| tods2 | web-BerkStan_p60 | 2 | 11.541 | 10.701 | 5.695 | 4.885 | 2.36x | 2.19x | 15 | 57 | 27 | 333 -> 314 |
+| tods2 | web-BerkStan_p80 | 2 | 26.760 | 25.149 | 13.226 | 11.623 | 2.30x | 2.16x | 14 | 62 | 24 | 603 -> 575 |
+| tods2 | web-BerkStan | 2 | 63.849 | 56.792 | 30.091 | 26.534 | 2.41x | 2.14x | 14 | 63 | 22 | 1,066 -> 1,060 |
+
+Summary over the 29 Table 1 rows (each graph on its preferred machine; `tables/build_stats.tex`): final vs before
+1.01x-6.0x, median 1.21x; every-vertex vs final 1.00x-5.5x, median 1.11x; final build shares: clique tree 12-64%
+(median 34), peel 2-63% (19), index passes 22-85% (43). Against CND once per size (Figure 5, 32 pairs): 3.1x
+(com-amazon, 6 sizes) to 3547x (web-it-2004, 431 sizes), median 24x (before: 2.8x-814x on 32 pairs, max web-uk).
+
+Where the gain comes from: (i) the settled peel on graphs with few unsettled pairs: web-it (98.7% settled, 380 of 431
+sizes closed form) 5.5x, web-uk 3.6x, ca-coauthors-dblp 3.9x, web-NotreDame 2.8x, ca-HepPh 2.3-2.4x, dblp
+1.7-1.8x; (ii) the fast tree pass: 1.0-1.3x on every graph, most on graphs with many sizes and large n (per-size
+allocation and cpp_int gone); (iii) nothing on the clique tree, identical code. Social and citation graphs keep 70-90%
+of their pairs unsettled: 1.01-1.39x in total, mostly from (ii). Peak memory: lower or within 2% on most graphs; higher
+on cit-HepPh (91 -> 102 MB), com-youtube laptop (+3%), soc-pokec (+6%), wiki-Talk (+2%): the fast pass keeps 16 bytes
+per clique-tree row through the solve.
+
+Remaining bottleneck: the index passes, 75-85% of the build on the web graphs (web-uk 15.3 of 18.1 s; web-it laptop
+3.6 of 6.6 s). Profile (web-it laptop, 512-bit counts): the row-visit loop and union-find finds; the per-size sort
+of 512-bit values is ~10%. Order-preserving options: drop rows whose largest clique is below the size (1.5x fewer
+visits on web-it, 3.8x on ca-HepPh; +4 bytes per incidence or in-place compaction shared with the solver). Reusing a
+size's tree at the next closed-form size needs a different union order and changes the .cx bytes (re-measure sizes and
+latencies), so it is left open.
+
