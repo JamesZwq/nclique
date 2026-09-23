@@ -12,13 +12,14 @@ This section answers the third difficulty of Section~\ref{sec:intro}: how to bui
 The values of one size come from a \textit{peel}.
 %
 % 2026-09-22 cold read 2: the clique count is the current one; a replay is not a peel; the traversal rule and the node numbering of Step 3 match the build (items merged by smallest rank; nodes renumbered in the traversal order); the reason for the top of a changed component; the trie bound.
-Vertices are removed one at a time, each time a vertex of smallest \textit{clique count}, the number of $s$-cliques through it among the vertices not yet removed.
+% 2026-09-23 cold read (Section 7): the verb of the peel sentence; "skips the known values"; "that size"/"that tree"; the peel computes; the proof of (b); t defined; the floor of v; tail start glossed and the arithmetic written; "either"; the proof's steps; the omission sentence; sizes are not settled; the example's size-2 values; the cost's three pairs.
+The peel removes the vertices one at a time, each time one with the smallest \textit{clique count}, the number of $s$-cliques through it among the vertices not yet removed.
 %
 The largest count seen at a removal so far is the core value of the removed vertex.
 %
-The index is built from one clique tree, giving the clique counts of every size, and one peel per size over the vertices whose values Theorem~\ref{thm:tail} does not already give.
+The index is built from one clique tree, giving the clique counts of every size, and one peel per size that skips the vertices whose values are already known.
 %
-The tree of each size is built as its values arrive, and the chains are split with it (Figure~\ref{fig:pipeline}).
+The tree of each size is built as the values of that size arrive, and the chains are split with that tree (Figure~\ref{fig:pipeline}).
 
 \begin{figure}[t]
 \centering
@@ -46,25 +47,25 @@ When the peel removes a vertex $u$, the count of every other vertex $v$ on a pat
 With $r$ of the two vertices optional on the path, this number is $\binomc{|Q\cap W|-r}{s-|H|-r}$.
 
 \stitle{Settled vertices.}
-The peel of a size reads every path of that size, but Theorem~\ref{thm:tail} already gives many of the values it computes.
+The peel of a size reads every path of that size, but Theorem~\ref{thm:tail} already gives many of the values that the peel computes.
 %
 % 2026-09-23 proof check: s >= 3 and t >= s-2 for the bound; the integer bound named; the value's reason; "after" is s > sigma(v).
-For $s\ge3$, the value at size $s-1$ bounds the value from above, by the argument of Theorem~\ref{thm:tail}(b) applied to the sizes $s-1$ and $s$: $\core{s}{v}\le\binomc{t}{s-1}$ for the real number $t\ge s-2$ with $\binomc{t}{s-2}=\core{s-1}{v}$.
+For $s\ge3$, the value at size $s-1$ bounds the value from above, by the proof of Theorem~\ref{thm:tail}(b) applied to the sizes $s-1$ and $s$: $\core{s}{v}\le\binomc{t}{s-1}$, where $t\ge s-2$ is the real number with $\binomc{t}{s-2}=\core{s-1}{v}$.
 %
-The construction uses the theorem in its original form~\cite{kruskal1963,katona1968}, whose bound is an integer and never exceeds this one.
+The construction uses the theorem in its original form~\cite{kruskal1963,katona1968}, whose bound is an integer no larger than this one.
 %
-A vertex $v$ with $\omg{v}\ge s$ is \textit{settled} at size $s$ when this integer bound equals its floor $\binomc{\omg{v}-1}{s-1}$.
+A vertex $v$ with $\omg{v}\ge s$ is \textit{settled} at size $s$ when this integer bound equals the floor of $v$, $\binomc{\omg{v}-1}{s-1}$.
 %
 Its value is then the floor, since it lies between the floor (Theorem~\ref{thm:tail}(a)) and the bound.
 %
-At a size $s>\sig{v}$, after its tail start, a vertex has the floor as its value at size $s-1$, so $t=\omg{v}-1$ and the vertex is settled.
+At every size $s$ after its tail start $\sig{v}$, a vertex has the value $\binomc{\omg{v}-1}{s-2}$ at size $s-1$, so $t=\omg{v}-1$, the bound is the floor, and the vertex is settled.
 %
 % 2026-09-23 compaction: the settled share (93 percent on com-dblp) is left to Exp-1's statement of where settling pays.
 In the peel below, the \textit{key} of a settled vertex is its value, and the key of any other, \textit{unsettled}, vertex is the smaller of its clique count and its bound.
 %
 At size $2$, the first size peeled, there is no bound: no vertex is settled, and every key is a clique count.
 \begin{theorem}[peel with settled vertices]\label{thm:settled}
-Let every vertex $v$ with $\omg{v}\ge s$ be settled, with key $\core{s}{v}$, or unsettled, with key the smaller of its clique count and a bound of at least $\core{s}{v}$.
+Let every vertex $v$ with $\omg{v}\ge s$ be either settled, with key $\core{s}{v}$, or unsettled, with key the smaller of its clique count and a bound of at least $\core{s}{v}$.
 %
 Remove these vertices one at a time, each time one of smallest key, and give each the largest key seen at a removal so far.
 %
@@ -78,42 +79,44 @@ Every vertex of $D_k$ lies in at least $k$ $s$-cliques inside $D_k$.
 %
 Conversely, a set whose every vertex lies in $k$ or more $s$-cliques inside it lies inside $D_k$: each part connected through these cliques has both properties of Definition~\ref{def:nucleus} at level $k$.
 %
-Until a vertex of $D_k$ is removed, every vertex of $D_k$ has key at least $k$, by its value if it is settled and by its bound and its cliques inside $D_k$ otherwise.
+Until a vertex of $D_k$ is removed, every vertex of $D_k$ has key at least $k$, since its value, or else both its bound and its count, are at least $k$.
 %
-Let $R$ be the vertices remaining just before the first removal with key at least $k$; by the previous sentence, $R$ contains $D_k$, and such a removal exists when $D_k$ is not empty.
+The first vertex of $D_k$ to be removed thus has key at least $k$, and a removal with key at least $k$ occurs whenever $D_k$ is not empty.
 %
-Every vertex of $R$ lies in at least $k$ $s$-cliques inside $R$: an unsettled one by its key, and a settled one because its value puts it in $D_k$.
+Just before the first removal with key at least $k$, the remaining vertices, call them $R$, include all of $D_k$.
 %
-By the converse, $R$ lies inside $D_k$, so $R=D_k$, and $D_k$ is not empty whenever such a removal exists.
+Every vertex of $R$ has key at least $k$, and an unsettled one lies in at least $k$ $s$-cliques inside $R$ because its count is at least its key.
 %
-Exactly the vertices of $D_k$ thus receive a value of at least $k$, for every $k\ge1$, and every vertex receives $\core{s}{v}$.
+A settled one has value at least $k$ and lies in $D_k$, where it lies in at least $k$ $s$-cliques, all inside $R$.
+%
+By the converse, $R=D_k$, so exactly the vertices of $D_k$ receive a value of at least $k$, and every vertex receives $\core{s}{v}$.
 \end{proof}
 % 2026-09-23 proof check: why the settled vertices on no followed path can be left out; why a size without unsettled vertices ends the peels.
 The peel never reads the count of a settled vertex, and a removal lowers the counts of the vertices that share a path with the removed vertex.
 %
 The peel of size $s$ thus follows the paths through unsettled vertices.
 %
-A settled vertex on none of them changes no key when removed, at the smallest key, so leaving it out changes no value.
+Removing a settled vertex that lies on none of these paths changes no key and happens at the smallest key, so leaving the vertex out changes no value.
 %
-Once a size has no unsettled vertex, every value there is a floor and every later size is settled too.
+Once a size has no unsettled vertex, every value there is a floor, and every vertex is settled at every later size.
 \begin{example}\label{ex:settled}
 % trace 2026-09-23: tools/example_check.py (settled and unsettled per size, 12 triangles through the unsettled vertices, all removed at level 3).
 Consider Figure~\ref{fig:example} at size $3$.
 %
-The vertices $a_1,\dots,a_5$ and $b_1,b_2,b_3$ have their floors $4$ and $3$ as values at size $2$ (Example~\ref{ex:tail}), so their bounds $\binom{4}{2}=6$ and $\binom{3}{2}=3$ at size $3$ are their floors, and they are settled.
+The vertices $a_1,\dots,a_5$ and $b_1,b_2,b_3$ have their floors $4$ and $3$ as values at size $2$ (Example~\ref{ex:tail}), which makes their bounds $\binom{4}{2}=6$ and $\binom{3}{2}=3$ at size $3$ their floors, and they are settled.
 %
-The bound of $x$ and of the six vertices $u_1,\dots,w_3$ is $\binom{4}{2}=6$, above their floors $3$ and $1$, and these seven vertices are unsettled.
+The value of $x$ and of the six vertices $u_1,\dots,w_3$ at size $2$ is $4$, which gives the bound $\binom{4}{2}=6$, above their floors $3$ and $1$, and these seven vertices are unsettled.
 %
 The peel counts triangles only for them: $x$ lies in $12$, nine through $U$ and $W$ and three inside $B$, and each of the other six lies in $3$.
 %
 % 2026-09-23 proof check: the order among equal keys is free; the sentences hold for every order.
 The smallest keys are $3$, of $u_1,\dots,w_3$ and of the settled $b_1,b_2,b_3$, and these nine vertices leave at level $3$.
 %
-Once $u_1,\dots,w_3$ are gone, $x$ lies in at most the three triangles of $B$, its key is at most $3$, and it leaves at level $3$ as well.
+Once $u_1,\dots,w_3$ are gone, $x$ lies in at most the three triangles of $B$, fewer if some $b_i$ left first, and it leaves at level $3$ as well.
 %
 No triangle joins $a_1,\dots,a_5$ to an unsettled vertex, and the peel never visits them.
 %
-At size $4$, $x$ is settled, since its value $3$ at size $3$ equals its floor $\binom{3}{2}$ there, and so is every other vertex in a $4$-clique.
+At size $4$, $x$ is settled, since its value $3$ at size $3$ equals its floor $\binom{3}{2}$ there, and the $a_i$ and $b_i$ stay settled.
 \end{example}
 
 \begin{algorithm}[t]
@@ -236,4 +239,4 @@ The layout adds one pass per size over the chains.
 %
 The working space is the clique tree and the graph, plus the values of two consecutive sizes, the trie, and the trees of the sizes with one node per canonical node.
 %
-The last three are linear in the vertices, the (chain, size) pairs and the canonical nodes.
+The values take space linear in the vertices, the trie in the (chain, size) pairs, and the trees in the canonical nodes.
