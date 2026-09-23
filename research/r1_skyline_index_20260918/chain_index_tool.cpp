@@ -399,13 +399,15 @@ int main(int argc, char** argv) {
         const terminal::Index ti = build_terminal_index(in, tail_solver() ? &pre : nullptr); const cpp_int bound = count_bound_terminal(ti, in.graph.n, in.d); const uint64_t rss_ti = rss_now();
         const double ti_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tti).count();
         if (std::string(argv[1]) == "--build-only") {
-            dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); std::vector<uint32_t> perm; BuildTimes bt; auto ix = build_chain_index<T, double>(in, ti, perm, bt, prep);
+            dispatch_width(bound, [&](auto tag, unsigned bits) { using T = decltype(tag); std::vector<uint32_t> perm; BuildTimes bt;
+                const auto tb = std::chrono::steady_clock::now(); auto ix = build_chain_index<T, double>(in, ti, perm, bt, prep);
+                const double build_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tb).count();   // as build_ms of --bench
                 const uint64_t build_form_bytes = ix.bytes_total(); const auto tc = std::chrono::steady_clock::now(); ix.compact_runs(true); const double compact_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tc).count();
                 std::cout << "{\"n\":" << in.graph.n << ",\"solver\":\"" << solver_name() << "\",\"treepass\":\"" << (fast_treepass() ? "fast" : "old") << "\",\"count_bits\":" << bits << ",\"chains\":" << ix.chains << ",\"canonical_nodes\":" << ix.node_count() << ",\"index_bytes\":" << ix.bytes_total() << ",\"build_form_bytes\":" << build_form_bytes << ",\"compact_ms\":" << compact_ms
                     << ",\"bytes_map\":" << ix.bytes_map() << ",\"bytes_chains\":" << ix.bytes_chains() << ",\"bytes_layers\":" << ix.bytes_layers()
                     << ",\"ti_ms\":" << ti_ms << ",\"ti_bytes\":" << bt.ti_bytes << ",\"rss_loaded\":" << rss_loaded << ",\"rss_with_ti\":" << rss_ti
                     << ",\"rss_start\":" << bt.rss_start << ",\"rss_after_solve\":" << bt.rss_solve << ",\"rss_after_chains\":" << bt.rss_chains << ",\"rss_after_layout\":" << bt.rss_layout
-                    << ",\"solve_ms\":" << bt.solve_ms << ",\"trees_ms\":" << bt.trees_ms << ",\"chains_ms\":" << bt.chains_ms << ",\"layout_ms\":" << bt.layout_ms << "}\n"; });
+                    << ",\"solve_ms\":" << bt.solve_ms << ",\"trees_ms\":" << bt.trees_ms << ",\"chains_ms\":" << bt.chains_ms << ",\"layout_ms\":" << bt.layout_ms << ",\"build_ms\":" << build_ms << "}\n"; });
             return 0;
         }
         const std::string out = argv[3];
