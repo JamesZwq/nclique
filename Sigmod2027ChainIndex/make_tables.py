@@ -5,6 +5,7 @@ from here; nothing is typed by hand.  Run from anywhere."""
 import json, re
 import statistics
 from pathlib import Path
+import build_records   # 2026-09-23: build time and memory from the build-time ablation (tail+fast = Section 7)
 
 HERE = Path(__file__).resolve().parent
 EV = HERE.parent / 'research' / 'r1_skyline_index_20260918'
@@ -56,12 +57,14 @@ def merged_rows(prefer=('tods1', 'tods2', 'laptop')):
 
 def table_size():
     """One row per graph: chains, values stored, bytes of the index and of STrees, build time and peak memory (build table folded in)."""
-    rows = merged_rows(); bo = {Path(r['graph']).stem: r for r in load('buildonly.json')['runs']}
+    rows = merged_rows(); B = build_records.builds()
     lines = [r'\begin{tabular}{@{}llrrrrrrrrrr@{}}', r'\toprule',
              r'Graph & Type & $n$ & $s_{\max}$ & Chains & $n/$chains & Values stored & \chainidx (MB) & \strees (MB) & Ratio & Build (s) & Memory (GB) \\', r'\midrule']
     for where, g, r in rows:
-        x = r['result']; total = (x['ti_ms'] + x['build_ms'] + x['compact_ms']) / 1000
-        peak = bo[g]['peak_rss_bytes'] if where == 'laptop' and g in bo else r.get('peak_rss_bytes')
+        x = r['result']; b = B.get((where, g))
+        if b is None:   # no build-time ablation record yet: the older record, flagged
+            print(f'PROVISIONAL build numbers for {g} on {where} (older record)'); b = {'total_s': (x['ti_ms'] + x['build_ms'] + x['compact_ms']) / 1000, 'peak_bytes': r.get('peak_rss_bytes')}
+        total = b['total_s']; peak = b['peak_bytes']
         lines.append(f"{tex_escape(g)} & {family(g)} & {fmt(x['n'])} & {x['s_max']} & {fmt(x['chains'])} & {x['n']/x['chains']:.1f} & {100*x['vertex_residue_cells']/x['vertex_pairs']:.1f}\\% & {mb(x['bytes_total'])} & {mb(x['baseline_vertex_bytes'])} & {x['baseline_vertex_bytes']/x['bytes_total']:.1f}$\\times$ & {total:.2f} & {(peak/1073741824):.2f} \\\\" if peak else
                      f"{tex_escape(g)} & {family(g)} & {fmt(x['n'])} & {x['s_max']} & {fmt(x['chains'])} & {x['n']/x['chains']:.1f} & {100*x['vertex_residue_cells']/x['vertex_pairs']:.1f}\\% & {mb(x['bytes_total'])} & {mb(x['baseline_vertex_bytes'])} & {x['baseline_vertex_bytes']/x['bytes_total']:.1f}$\\times$ & {total:.2f} & -- \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
@@ -197,24 +200,53 @@ def table_prior():
         if rec is None: continue
         for r in rec['runs']:
             if 'result' in r: ours[(where, NAMES.get(Path(r['graph']).stem, Path(r['graph']).stem))] = r
-    bo = {Path(r['graph']).stem: r for r in load('buildonly.json')['runs']}   # laptop build-only peaks
+    B = build_records.builds()
     prior = []
     for where, d in [('laptop', 'prior'), ('tods2', 'prior/tods2'), ('tods1', 'prior/tods1')]:
         for p in sorted((EV / d).glob('prior_original_*.json')):
             og = json.loads(p.read_text()); g = NAMES.get(p.stem[len('prior_original_'):], p.stem[len('prior_original_'):])
-            if 'total_wall_s' in og and (where, g) in ours: prior.append((where, g, og))
+            if 'total_wall_s' in og and (where, g) in ours and (where, g) in B: prior.append((where, g, og))
     lines = [r'\begin{tabular}{@{}llrrrrrr@{}}', r'\toprule',
              r'Graph & Machine & Sizes & \multicolumn{2}{c}{\cnd, all sizes (s)} & \cnd memory & \chainidx & Ratio \\',
              r' & & & total & build and peel & one size (MB) & build (s) & build and peel \\', r'\midrule']
     ratios = []
     for where, g, og in sorted(prior, key=lambda t: (t[0] != 'laptop', t[0], ours[(t[0], t[1])]['result']['n'])):
         r = ours[(where, g)]; o = r['result']; opeak = max(e['peak_rss_bytes'] or 0 for e in og['sizes'])
-        build_s = (o['ti_ms'] + o['build_ms'] + o['compact_ms']) / 1000; ratio = og['total_inproc_ms'] / 1000 / build_s; ratios.append(ratio)
-        peak = bo[g]['peak_rss_bytes'] if where == 'laptop' and g in bo else r.get('peak_rss_bytes'); opeak_s = f'{opeak/1048576:,.0f}' if opeak else '--'
+        build_s = B[(where, g)]['total_s']; ratio = og['total_inproc_ms'] / 1000 / build_s; ratios.append(ratio)
+        peak = B[(where, g)]['peak_bytes']; opeak_s = f'{opeak/1048576:,.0f}' if opeak else '--'
         lines.append(f"{tex_escape(g)} & {MACHINE[where]} & {og['sizes_ok']} & {og['total_wall_s']:,.1f} & {og['total_inproc_ms']/1000:,.1f} & {opeak_s} & {build_s:.2f} & {ratio:.1f}$\\times$ \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'prior.tex').write_text('\n'.join(lines) + '\n')
     (OUT / 'prior_stats.tex').write_text(f"\\newcommand{{\\priorgraphs}}{{{len(ratios)}}}\n\\newcommand{{\\priormin}}{{{min(ratios):.1f}}}\n\\newcommand{{\\priormedian}}{{{statistics.median(ratios):.0f}}}\n\\newcommand{{\\priormax}}{{{max(ratios):.0f}}}\n")
+
+def build_stats():
+    """Exp-1 and the cost paragraph of Section 7 (2026-09-23), one value per Table 1 row (its preferred machine):
+    the final build (tail+fast) against the build before (terminal+old) and against every vertex peeled at every size
+    with the same tree pass (terminal+fast), the time shares of the final build, and the builds the text quotes."""
+    fin = build_records.builds(build_records.FINAL); bef = build_records.builds(build_records.BEFORE)
+    every = build_records.builds(('terminal', 'fast'))
+    keys = [(where, g) for where, g, r in merged_rows() if (where, g) in fin]
+    speed = sorted((bef[k]['total_s'] / fin[k]['total_s'], k) for k in keys if k in bef)
+    settle = sorted((every[k]['total_s'] / fin[k]['total_s'], k) for k in keys if k in every)
+    share = lambda f: sorted(f(fin[k]) / fin[k]['total_s'] for k in keys)
+    tree, peel, passes = share(lambda b: b['ti_s']), share(lambda b: b['solve_s']), share(lambda b: b['trees_s'] + b['rest_s'])
+    mem = sorted(fin[k]['rss_with_ti_bytes'] / fin[k]['peak_bytes'] for k in keys)   # graph + clique tree over the peak
+    def quote(g):
+        k = next(k for k in keys if k[1] == g); return fin[k]
+    m = {'buildrows': len(keys),
+         'speedmin': f"{speed[0][0]:.2f}", 'speedmedian': f"{statistics.median(x for x, _ in speed):.2f}", 'speedmax': f"{speed[-1][0]:.1f}",
+         'settlemin': f"{settle[0][0]:.2f}", 'settlemedian': f"{statistics.median(x for x, _ in settle):.2f}", 'settlemax': f"{settle[-1][0]:.1f}",
+         'treesharemin': f"{100*tree[0]:.0f}", 'treesharemedian': f"{100*statistics.median(tree):.0f}", 'treesharemax': f"{100*tree[-1]:.0f}",
+         'peelsharemin': f"{100*peel[0]:.0f}", 'peelsharemedian': f"{100*statistics.median(peel):.0f}", 'peelsharemax': f"{100*peel[-1]:.0f}",
+         'passsharemin': f"{100*passes[0]:.0f}", 'passsharemedian': f"{100*statistics.median(passes):.0f}", 'passsharemax': f"{100*passes[-1]:.0f}",
+         'memsharemin': f"{100*mem[0]:.0f}", 'memsharemedian': f"{100*statistics.median(mem):.0f}"}
+    for name, g in (('grqc', 'ca-GrQc'), ('dblpcoauthor', 'dblp-coauthor'), ('comdblp', 'com-dblp'), ('webuk', 'web-uk-2005'), ('berkstan', 'web-BerkStan'), ('webit', 'web-it-2004')):
+        try:
+            b = quote(g); m[f'build{name}'] = f"{b['total_s']:.2f}" if b['total_s'] < 10 else f"{b['total_s']:,.0f}"; m[f'mem{name}'] = f"{b['peak_bytes']/1048576:,.0f}"
+            m[f'memgb{name}'] = f"{b['peak_bytes']/1073741824:.1f}"
+        except StopIteration: pass
+    (OUT / 'build_stats.tex').write_text(''.join(f"\\newcommand{{\\{k}}}{{{v}}}\n" for k, v in m.items()))
+    print('build stats:', m); print('   speedups', [(round(x, 2), k) for x, k in speed]); print('   settle', [(round(x, 2), k) for x, k in settle])
 
 def table_cases():
     """Case studies: ground-truth communities (best clique size per query) and the Amazon zoom table with named examples."""
@@ -270,5 +302,5 @@ def table_selftest():
     (OUT / 'selftest.tex').write_text(f"\\newcommand{{\\selfgraphs}}{{{fmt(s['graphs'])}}}\n\\newcommand{{\\selfcommunities}}{{{fmt(s['community_queries'])}}}\n\\newcommand{{\\selfvalues}}{{{fmt(s['value_checks'])}}}\n\\newcommand{{\\selfmembers}}{{{fmt(s['membership_checks'])}}}\n")
 
 if __name__ == '__main__':
-    table_size(); table_queries(); table_layouts(); table_prior(); table_cases(); table_selftest()
+    table_size(); table_queries(); table_layouts(); table_prior(); build_stats(); table_cases(); table_selftest()
     print('tables written to', OUT)

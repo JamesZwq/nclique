@@ -1,6 +1,10 @@
 \section{Construction}\label{sec:construction}
 % 2026-09-21 house shape: opener; Figure 3; the clique tree and the replay theorem (announced, named, proof <= 8 sentences);
 % Algorithm Build as float + walk + example; cost closer.  Numbers from LEDGER.md; the peel is this paper's own.
+% 2026-09-23 rewrite: the timed build never used order replay (RESULTS_FINAL 17.9).  Replay, its theorem, certificate and
+% example are replaced by the settled vertices (floor = Kruskal-Katona bound) and Theorem thm:settled, the peel that reads
+% only the paths through unsettled vertices (RESULTS_FINAL 17.10); the bound's index corrected (C(t,s-1) with
+% C(t,s-2) = kappa_{s-1}; the old text had C(t,s) with C(t,s-1), which gives 1 < 3 for b_1 at size 3).
 
 This section answers the third difficulty of Section~\ref{sec:intro}: how to build the trees of every size from one computation.
 %
@@ -12,7 +16,9 @@ Vertices are removed one at a time, each time a vertex of smallest \textit{cliqu
 %
 The largest count seen at a removal so far is the core value of the removed vertex.
 %
-The index is built from one clique tree, which gives the clique counts of every size, and one pass per size that reuses the previous size's removal order when it can.
+The index is built from one clique tree and one peel per size.
+%
+The clique tree gives the clique counts of every size, and the peel runs over the vertices whose values Theorem~\ref{thm:tail} does not already give.
 %
 The tree of each size is built as its values arrive, and the chains are split with it (Figure~\ref{fig:pipeline}).
 
@@ -36,80 +42,78 @@ The number of $s$-cliques of a vertex $v$ inside a vertex set $W$ is therefore a
 %
 A path contributes $\binom{|Q\cap W|}{s-|H|}$ when $v$ is mandatory on it, and $\binom{|Q\cap W|-1}{s-|H|-1}$ when $v$ is optional, since then $Z$ must contain $v$.
 %
-The sizes are peeled in increasing order, and each size first tries to reuse the \textit{removal order} of the previous size, the order in which that size's peel removed its vertices.
+When the peel removes a vertex, the count of every vertex on a path through it decreases by the number of cliques of the path that contained the removed vertex.
 %
-The next theorem says when the reuse is exact.
+Each path gives this number from its sets $H$ and $Q$ by the sums above.
+
+\stitle{Settled vertices.}
+The peel of a size reads every path of that size, but Theorem~\ref{thm:tail} already gives many of the values it computes.
 %
-Write $d_s(W,u)$ for the number of $s$-cliques of $u$ whose vertices all lie in the set $W$.
+The previous size's value also bounds the value from above, by the argument of Theorem~\ref{thm:tail}(b): $\core{s}{v}\le\binomc{t}{s-1}$ for the real number $t$ with $\binomc{t}{s-2}=\core{s-1}{v}$.
 %
-For a permutation $\pi=(v_0,\dots,v_{n-1})$ of the vertices, the \textit{forward count} of $v_i$ is the number of $s$-cliques of $v_i$ inside its suffix, $f_s(v_i)=d_s(\{v_i,\dots,v_{n-1}\},v_i)$.
+The construction uses the theorem in its original form~\cite{kruskal1963,katona1968}, whose bound is an integer and never exceeds this one.
 %
-The \textit{running maximum} $U_s(v_i)=\max_{j\le i}f_s(v_j)$ is the largest forward count at or before $v_i$.
+A vertex $v$ with $\omg{v}\ge s$ is \textit{settled} at size $s$ when this bound equals its floor $\binomc{\omg{v}-1}{s-1}$, and its value is then the floor.
 %
-Every $s$-clique is counted in exactly one forward count, at its earliest vertex in $\pi$.
+After its tail start, a vertex has the floor as its value at size $s-1$.
 %
-The forward counts therefore need none of the count updates of a peel, and they are computed in one sweep of the paths along $\pi$.
-\begin{theorem}[order replay]\label{thm:replay}
-The running maximum bounds the core value from above: $U_s(v)\ge\core{s}{v}$ for every vertex $v$.
+Then $t=\omg{v}-1$, the bound equals the floor at size $s$, and the vertex is settled.
 %
-The running maxima are the core values, $U_s(v)=\core{s}{v}$ for every $v$, if and only if every vertex $v$ lies in at least $U_s(v)$ cliques of $s$ vertices inside $\{u: U_s(u)\ge U_s(v)\}$.
+No vertex is settled at size $2$, the first size peeled.
+%
+On \dblp, $93\%$ of the pairs of a size $s\ge3$ and a vertex in an $s$-clique are settled.
+%
+The other vertices, the \textit{unsettled} ones, are the ones that need a peel.
+%
+In the peel below, the \textit{key} of a vertex is its value if it is settled, and the smaller of its clique count and its bound otherwise.
+\begin{theorem}[peel with settled vertices]\label{thm:settled}
+Remove the vertices $v$ with $\omg{v}\ge s$ one at a time, each time one of smallest key, and give each the largest key seen at a removal so far.
+%
+Every vertex receives its core value $\core{s}{v}$.
 \end{theorem}
 \begin{proof}
-A \textit{witness} for $v$ at level $k$ is a set $W$ containing $v$ with the two properties of Definition~\ref{def:nucleus} at level $k$, and $\core{s}{v}$ is the largest level with a witness.
+Fix a level $k$, and let $D_k$ be the vertices of value at least $k$, the union of the cores of size $s$ at level $k$.
 %
-% 2026-09-22 compaction: six sentences.
-Let $W$ be a witness for $v$ at level $k$ and $v_j$ its earliest vertex in $\pi$.
+Every vertex of $D_k$ lies in at least $k$ cliques of $s$ vertices inside $D_k$, and $D_k$ contains every set with this property.
 %
-Then $k\le d_s(W,v_j)\le f_s(v_j)\le U_s(v)$, since $W$ lies in the suffix of $v_j$ and $v_j$ is at or before $v$, so $\core{s}{v}\le U_s(v)$.
+While no vertex of $D_k$ is removed, every vertex of $D_k$ has key at least $k$.
 %
-Suppose the condition holds, fix a level $k$, and let $W_k=\{u:U_s(u)\ge k\}$.
+A settled one has its value as key, and an unsettled one has a bound and a count inside $D_k$ of at least $k$.
 %
-For a vertex $v$ of $W_k$, the set $\{u:U_s(u)\ge U_s(v)\}$ lies inside $W_k$, and $v$ lies in at least $U_s(v)\ge k$ cliques of $s$ vertices inside it.
+Just before the first removal with key at least $k$, every remaining vertex has key at least $k$, and $D_k$ is still among them.
 %
-The part of $W_k$ reachable from $v$ through $s$-cliques of $W_k$ is therefore a witness for $v$ at level $k$.
+An unsettled remaining vertex then lies in at least $k$ cliques among the remaining vertices, and a settled one lies in at least $k$ cliques inside $D_k$.
 %
-With $k=U_s(v)$ this gives $\core{s}{v}\ge U_s(v)$.
+So the remaining vertices have the property and form $D_k$.
 %
-Conversely, suppose $U_s$ is the core value.
-%
-The set $\{u:\core{s}{u}\ge k\}$ is the union of all witnesses at level $k$, so every vertex in it lies in at least $k$ cliques of $s$ vertices inside it.
-%
-For $k=\core{s}{v}=U_s(v)$ this set is $\{u:U_s(u)\ge U_s(v)\}$, which is the condition.
+A vertex thus receives a value of at least $k$ if and only if $\core{s}{v}\ge k$, which makes its value $\core{s}{v}$.
 \end{proof}
-We call the condition of the theorem the \textit{certificate}.
+The peel never reads the count of a settled vertex, and a removal changes the counts on the paths through the removed vertex.
 %
-Since $U_s$ does not decrease along $\pi$, the set $\{u:U_s(u)\ge U_s(v)\}$ is a suffix of $\pi$, and one more pass over the paths gives every vertex $v$ its count inside that set.
+The peel of size $s$ thus follows the paths through unsettled vertices.
 %
-When the certificate holds, the values of the size are the running maxima, at the cost of the two sweeps, and $\pi$ stays the order for the next size.
+A settled vertex takes part when it lies on one of these paths.
 %
-When it fails, the size is peeled exactly.
+Once a size has no unsettled vertex, no larger size has one, and every remaining value is a floor.
+\begin{example}\label{ex:settled}
+% trace 2026-09-23: tools/example_check.py (settled and unsettled per size, 12 triangles through the unsettled vertices, all removed at level 3).
+Consider Figure~\ref{fig:example} at size $3$.
 %
-The vertex of smallest count is removed.
+The vertices $a_1,\dots,a_5$ and $b_1,b_2,b_3$ have values $4$ and $3$ at size $2$, equal to their floors (Example~\ref{ex:tail}).
 %
-The counts of the vertices on the paths through it decrease by the number of cliques that contained it.
+Their bounds at size $3$ are $\binom{4}{2}=6$ and $\binom{3}{2}=3$, again their floors, and they are settled with these values.
 %
-Each path gives that number from its sets $H$ and $Q$ by the binomial sums above.
+The bound of $x$ and of the six vertices $u_1,\dots,w_3$ is $\binom{4}{2}=6$, above their floors $3$ and $1$, and these seven vertices are unsettled.
 %
-The previous size's values also bound the next size's, by the argument of Theorem~\ref{thm:tail}(b): $\core{s}{v}\le\binomc{t}{s}$ for the real number $t$ with $\binomc{t}{s-1}=\core{s-1}{v}$.
+The peel counts triangles only for them: $x$ lies in $12$, nine through $U$ and $W$ and three inside $B$, and each of the other six lies in $3$.
 %
-The peel keeps counts only up to this bound, since a count above the bound is never the smallest one.
-\begin{example}\label{ex:replay}
-% trace 2026-09-21, tools/example_check.py: f=[3,2,2,4,3,2,1,0,4,4,4,1,1,1,0], U=[3,3,3,4,...,4], b=[3,3,4,4,4,4,4,4,4,4,4,4,4,4,6]; x-first order: f(x)=9, U=9 everywhere, b(a1)=4 < 9 -> fails.
-Consider Figure~\ref{fig:example} at size $2$ and the order $\pi=(b_1,b_2,b_3,a_1,\dots,a_5,u_1,u_2,u_3,w_1,w_2,w_3,x)$.
+The smallest keys are $3$, of $u_1,\dots,w_3$ and of the settled $b_1,b_2,b_3$, which leave at level $3$.
 %
-The forward count of a vertex is its number of edges to later vertices: $3,2,2$ for $b_1,b_2,b_3$; $4,3,2,1,0$ for $a_1,\dots,a_5$; $4,4,4$ for $u_1,u_2,u_3$; $1,1,1$ for $w_1,w_2,w_3$; and $0$ for $x$.
+Then $x$ lies in no triangle and leaves at level $3$ as well.
 %
-So $U_2=3$ on $b_1,b_2,b_3$ and $U_2=4$ on every later vertex.
+No triangle joins $a_1,\dots,a_5$ to an unsettled vertex, and the peel never visits them.
 %
-The certificate checks the edges of every vertex inside the set of vertices whose running maximum is at least its own.
-%
-For $b_1$, $b_2$ and $b_3$ this set is the whole graph, where they have $3$, $3$ and $4$ edges.
-%
-Each of the twelve vertices with $U_2=4$ has at least $4$ edges inside $A\cup\{x,u_1,\dots,w_3\}$.
-%
-The certificate holds, and $U_2$ is the size-$2$ core value of every vertex.
-%
-With $x$ first instead, every running maximum is $9$, $a_1$ has only $4$ edges in the whole graph, the certificate fails, and the size is peeled exactly.
+At size $4$ the value $3$ of $x$ equals its floor $\binom{3}{2}$, every vertex in a $4$-clique is settled, and no larger size is peeled.
 \end{example}
 
 \begin{algorithm}[t]
@@ -117,13 +121,12 @@ With $x$ first instead, every running maximum is $9$, $a_1$ has only $4$ edges i
 \SetAlgoLined\DontPrintSemicolon
 \KwIn{a graph $G$.}
 \KwOut{\chainidx: the map, the chain records, one tree with a run array per size.}
-$T\leftarrow$ the clique tree of $G$; $\pi\leftarrow$ a degeneracy order of $G$\;\label{ln:b-tree}
+$T\leftarrow$ the clique tree of $G$; $\omg{\cdot}\leftarrow$ the clique numbers read from $T$\;\label{ln:b-tree}
 $\mathrm{node}[v]\leftarrow$ the root of an empty trie, for every vertex $v$\;\label{ln:b-trie}
 \For{$s\leftarrow2,3,\dots$ \KwSty{while} some vertex lies in an $s$-clique}{\label{ln:b-sizes}
   \tcp{Step 1: the values of size $s$}
-  $f_s,U_s\leftarrow$ the forward counts and running maxima along $\pi$\;\label{ln:b-forward}
-  \lIf{the certificate of Theorem~\ref{thm:replay} holds}{$\core{s}{\cdot}\leftarrow U_s$}\label{ln:b-accept}
-  \lElse{$(\core{s}{\cdot},\pi)\leftarrow$ the exact peel of size $s$ on $T$}\label{ln:b-peel}
+  $\core{s}{v}\leftarrow\binomc{\omg{v}-1}{s-1}$, for every vertex $v$ settled at size $s$\;\label{ln:b-settle}
+  $\core{s}{v}\leftarrow$ its value in the peel of Theorem~\ref{thm:settled} on the paths of $T$ through unsettled vertices, for every unsettled $v$\;\label{ln:b-peel}
   \tcp{Step 2: the tree of size $s$ and the chains}
   $\mathrm{active}[v]\leftarrow$ false, for every vertex $v$\;\label{ln:b-reset}
   \ForEach{value $k$ of size $s$, in decreasing order}{\label{ln:b-levels}
@@ -155,17 +158,13 @@ A path of the clique tree $T$ is \textit{live} when its mandatory vertices are a
 %
 Every $s$-clique of active vertices lies on the one path that represents it, which is then live, and any $s$ active vertices of a live path form an $s$-clique of active vertices.
 %
-Before the first size, the algorithm builds the clique tree once and takes a degeneracy order of the graph as the first order to try (Line~\ref{ln:b-tree}).
-%
-A degeneracy order is obtained by removing a vertex of smallest degree repeatedly.
+Before the first size, the algorithm builds the clique tree once and reads from it the clique number of every vertex (Line~\ref{ln:b-tree}).
 %
 The algorithm puts every vertex at the root of the trie that will hold the chains (Line~\ref{ln:b-trie}).
 %
-\emph{During Step 1}, for every size (Line~\ref{ln:b-sizes}) it computes the forward counts and the running maxima along the current order in one sweep of the clique tree (Line~\ref{ln:b-forward}).
+\emph{During Step 1}, for every size (Line~\ref{ln:b-sizes}) it gives every settled vertex its floor, based on Theorem~\ref{thm:tail} (Line~\ref{ln:b-settle}).
 %
-Based on Theorem~\ref{thm:replay}, it accepts the running maxima as the core values when the certificate holds (Line~\ref{ln:b-accept}).
-%
-Otherwise it peels the size exactly, with counts bounded as above, and keeps that peel's removal order for the next size (Line~\ref{ln:b-peel}).
+Based on Theorem~\ref{thm:settled}, it peels the unsettled vertices on the paths through them, with the settled vertices of these paths keyed by their values (Line~\ref{ln:b-peel}).
 %
 \emph{During Step 2}, the algorithm builds the tree of size $s$ from its values.
 %
@@ -229,13 +228,14 @@ The layout of size $3$ produces the runs and entries of Figure~\ref{fig:layout}.
 \end{example}
 
 \stitle{Cost.}
-The peel and the clique tree take most of the build time (Exp-1).
+% 2026-09-23: the shares are measured (Exp-1); the index passes are not "a few percent" (18-85 percent of the build).
+The build time goes to the clique tree, the peel of the unsettled vertices, and the trees of the sizes with the trie and the layout.
+%
+Which of the three dominates depends on the graph (Exp-1).
 %
 The refinement adds, for every live path, one union per vertex that becomes active on it, and one trie step per vertex and size.
 %
 The layout adds one pass per size over the chains.
-%
-Together they are a few percent of the total on the graphs of Section~\ref{sec:exp}.
 %
 The working space is the clique tree and the graph, plus the values of two consecutive sizes, the trie, and the trees of the sizes with one node per canonical node.
 %

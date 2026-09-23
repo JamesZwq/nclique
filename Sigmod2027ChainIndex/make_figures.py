@@ -8,6 +8,7 @@ so the 8pt type below is the type size on the page; serif type matching the pape
 import json
 import statistics
 from pathlib import Path
+import build_records   # 2026-09-23: build times from the build-time ablation (tail+fast = Section 7)
 
 import matplotlib
 matplotlib.use('Agg')
@@ -134,12 +135,12 @@ def fig_prior():
         if rec is None: continue
         for r in rec['runs']:
             if 'result' in r: ours.setdefault((where, NAMES.get(Path(r['graph']).stem, Path(r['graph']).stem)), r['result'])
-    pts = []
+    pts = []; B = build_records.builds()
     for where, d in [('laptop', 'prior'), ('tods2', 'prior/tods2'), ('tods1', 'prior/tods1')]:
         for p in sorted((EV / d).glob('prior_original_*.json')):
             og = json.loads(p.read_text()); g = NAMES.get(p.stem[len('prior_original_'):], p.stem[len('prior_original_'):])
-            if 'total_inproc_ms' in og and (where, g) in ours:
-                o = ours[(where, g)]; pts.append((where, g, (o['ti_ms'] + o['build_ms'] + o['compact_ms']) / 1000, og['total_inproc_ms'] / 1000, og['sizes_ok']))
+            if 'total_inproc_ms' in og and (where, g) in ours and (where, g) in B:
+                pts.append((where, g, B[(where, g)]['total_s'], og['total_inproc_ms'] / 1000, og['sizes_ok']))
     if not pts: return
     fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.15))
     lo, hi, ymax = 5e-3, 2000, 4e5                       # 2026-09-22: the tods1 records (wiki-Talk, tech-as-skitter) sit near x = 1000
@@ -216,7 +217,8 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
         ps = sorted(pts); xs = [pts[p]['n'] / 1e6 for p in ps]; mk = MARKS.get(g, 'o')
         axes[0].plot(xs, [pts[p]['bytes_total'] / 1048576 for p in ps], marker=mk, ms=2.8, **OURS_KW, label=g)
         axes[0].plot(xs, [pts[p]['baseline_vertex_bytes'] / 1048576 for p in ps], marker=mk, ms=2.8, **BASE_KW)
-        axes[1].plot(xs, [(pts[p]['ti_ms'] + pts[p]['build_ms'] + pts[p]['compact_ms']) / 1000 for p in ps], marker=mk, ms=2.8, **OURS_KW)
+        B = build_records.builds()
+        axes[1].plot(xs, [B[('tods2', g if p == 100 else f'{g}_p{p}')]['total_s'] for p in ps], marker=mk, ms=2.8, **OURS_KW)
         cnd = [(pts[p]['n'] / 1e6, prior_total('tods2', g if p == 100 else f'{g}_p{p}')) for p in ps]; cnd = [(x, y) for x, y in cnd if y is not None]
         if cnd: axes[1].plot([x for x, y in cnd], [y for x, y in cnd], marker=mk, ms=2.8, **BASE_KW)
         names = [g if p == 100 else f'{g}_p{p}' for p in ps]

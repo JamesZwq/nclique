@@ -27,7 +27,8 @@ It numbers the vertices so that every community, at any size and level, is a few
 %
 The index of every size is built from one clique tree.
 %
-The values of a size come from removing vertices in increasing order of their clique counts, and the next size reuses that order when a check on clique counts proves the reuse exact.
+% 2026-09-23: the construction sentence describes the settled vertices (Theorem thm:settled), not the replay.
+The values of a size come from removing vertices in increasing order of their clique counts, and a vertex whose value a bound from the previous size already fixes is not counted.
 %
 On \numgraphs{} graphs from five families, \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size (median \ratiomedian$\times$).
 %

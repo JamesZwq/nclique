@@ -87,3 +87,48 @@ for order in (['b1','b2','b3','a1','a2','a3','a4','a5','u1','u2','u3','w1','w2',
     f, U, detail, ok = replay(order)
     print('order', order[:3], '... certificate', ok, 'U==kappa2:', all(U[v] == kappa[v][2] for v in names))
     print('   f:', [f[v] for v in order]); print('   U:', [U[v] for v in order]); print('   b:', [d[3] for d in detail])
+
+# ---- settled vertices and the peel of the unsettled ones (Section 7, 2026-09-23)
+from math import comb
+def kk_upper(a, k):
+    """Largest number of (k+1)-sets whose k-subsets all lie in a family of a k-sets (Kruskal-Katona, integer cascade)."""
+    total = 0
+    while a > 0 and k >= 1:
+        x = k
+        while comb(x + 1, k) <= a: x += 1
+        a -= comb(x, k); total += comb(x, k + 1); k -= 1
+    return total
+def lovasz_upper(a, k):
+    """Real form: C(t, k+1) for the real t >= k with C(t, k) = a (bisection)."""
+    import math
+    lo, hi = float(k), float(k + a + 2)
+    f = lambda t: math.prod(t - i for i in range(k)) / math.factorial(k)
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        if f(mid) < a: lo = mid
+        else: hi = mid
+    t = hi; return math.floor(math.prod(t - i for i in range(k + 1)) / math.factorial(k + 1) + 1e-9)
+settled = set()
+for s in range(3, 6):
+    active = [v for v in names if omega[v] >= s]
+    floor = {v: comb(omega[v] - 1, s - 1) for v in active}
+    newly = [v for v in active if v not in settled and kk_upper(kappa[v][s - 1], s - 2) == floor[v]]
+    assert all(lovasz_upper(kappa[v][s - 1], s - 2) >= kk_upper(kappa[v][s - 1], s - 2) for v in active)
+    settled |= set(newly)
+    uns = [v for v in active if v not in settled]
+    for v in active:
+        if v in settled: assert kappa[v][s] == floor[v]
+    # the peel: keys = clique count (unsettled) or known value (settled); only cliques through an unsettled vertex matter
+    cl = [c for c in cliques(set(active), s) if any(u in uns for u in c)]
+    touched = sorted({u for c in cl for u in c}, key=names.index)
+    left = set(touched); level = 0; removed_at = {}
+    while left:
+        key = {v: (sum(1 for c in cl if v in c and c <= left) if v in uns else kappa[v][s]) for v in left}
+        level = max(level, min(key.values()))
+        batch = [v for v in left if key[v] <= level]
+        for v in batch: removed_at[v] = level
+        left -= set(batch)
+    assert all(removed_at[v] == kappa[v][s] for v in uns), removed_at
+    print(f'size {s}: settled {sorted(settled & set(active), key=names.index)}; unsettled {uns}; cliques through them {len(cl)};'
+          f' vertices on them {touched}; values of the unsettled {[kappa[v][s] for v in uns]}')
+    print(f'   bounds from size {s-1}: ' + ', '.join(f'{v}: kappa={kappa[v][s-1]} floor={floor[v]} KK={kk_upper(kappa[v][s-1], s-2)} real={lovasz_upper(kappa[v][s-1], s-2)}' for v in active if v in ('x', 'u1', 'a1', 'b1')))

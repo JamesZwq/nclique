@@ -43,24 +43,32 @@ Index sizes are measured in memory, and build times exclude the reading of the g
 
 \expsection{Construction against one decomposition per size}
 % 2026-09-23 user: the build-time comparison is Exp-1 (former Exp-6 and Exp-8 merged).
+% 2026-09-23 rewrite: build times from the build-time ablation (build_records.py; the settled peel of Section 7); the ratio's
+% sources measured (every vertex peeled at every size = terminal+fast); the time shares measured (the index passes are not
+% "a few percent"); memory share of the graph and the clique tree measured.
 The build time of \chainidx (Table~\ref{tab:size}) covers the clique tree, the peel of every size and the index passes of Section~\ref{sec:construction}, the trees, the trie and the layout.
 %
-% 2026-09-22 compaction: the per-pair table is Figure fig:prior (log-log scatter with the 10x/100x/1000x lines).
 Figure~\ref{fig:prior} plots, for the \priorgraphs{} (graph, machine) pairs with both records, the build and peel time of \cnd summed over the sizes $2$ to $s_{\max}$ against the one build of \chainidx on the same machine.
 %
 \chainidx is built faster by \priormin$\times$ on \textsf{com-amazon} (six sizes) to \priormax$\times$ on \webuk{} ($499$ sizes), median \priormedian$\times$.
 %
-The clique tree is built once instead of once per size, and the peel of one size is reused by the next through the certificate of Theorem~\ref{thm:replay} and the bound of Section~\ref{sec:construction}.
+The ratio grows with the number of sizes: on \textsf{web-BerkStan} ($201$ sizes) the $2.0$ hours of build and peel of \cnd become \buildberkstan{} seconds, and on \webuk{} $15.7$ hours become \buildwebuk{} seconds.
 %
-The ratio grows with the number of sizes: on \textsf{web-BerkStan} ($201$ sizes) the $2.0$ hours of build and peel of \cnd become $66$ seconds, and on \webuk{} $15.7$ hours become $70$ seconds.
+Two parts of Section~\ref{sec:construction} produce the ratio: the clique tree is built once for all sizes, and the peel of a size counts cliques only for its unsettled vertices (Theorem~\ref{thm:settled}).
+%
+Peeling every vertex at every size instead makes the build \settlemin$\times$ to \settlemax$\times$ slower, median \settlemedian$\times$.
+%
+The difference is largest on web and collaboration graphs, where most pairs of a vertex and a size are settled, and smallest on social graphs, where most are not.
+%
+In the build, the clique tree takes \treesharemin{} to \treesharemax{} percent of the time, the peel \peelsharemin{} to \peelsharemax{} percent, and the trees of the sizes with the trie and the layout \passsharemin{} to \passsharemax{} percent.
+%
+The graph and the clique tree take at least \memsharemin{} percent of the memory (median \memsharemedian{} percent).
 %
 One run of \cnd is also the cost of a community query without an index, seconds to minutes on such graphs against the nanoseconds of Figure~\ref{fig:regimes}.
 %
-The index passes are a few percent of the time, the clique tree and the peel are the rest, and the memory usage is that of the clique tree.
+The build takes \buildgrqc{}~s on \textsf{ca-GrQc} and \builddblpcoauthor{}~s on \textsf{dblp-coauthor}, the graph of $4$ million vertices, with \memgbdblpcoauthor{}~GB of memory there.
 %
-The build takes $0.01$~s on \textsf{ca-GrQc} and $221$~s on \textsf{dblp-coauthor}, the graph of $4$ million vertices, with $8.8$~GB of memory there.
-%
-\dblp is built in $0.84$~s with $157$~MB.
+\dblp is built in \buildcomdblp{}~s with \memcomdblp{}~MB.
 
 \begin{figure}[t]
 \centering
