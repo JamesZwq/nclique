@@ -217,7 +217,11 @@ def table_prior():
         lines.append(f"{tex_escape(g)} & {MACHINE[where]} & {og['sizes_ok']} & {og['total_wall_s']:,.1f} & {og['total_inproc_ms']/1000:,.1f} & {opeak_s} & {build_s:.2f} & {ratio:.1f}$\\times$ \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'prior.tex').write_text('\n'.join(lines) + '\n')
-    (OUT / 'prior_stats.tex').write_text(f"\\newcommand{{\\priorgraphs}}{{{len(ratios)}}}\n\\newcommand{{\\priormin}}{{{min(ratios):.1f}}}\n\\newcommand{{\\priormedian}}{{{statistics.median(ratios):.0f}}}\n\\newcommand{{\\priormax}}{{{max(ratios):.0f}}}\n")
+    # 2026-09-23: the graphs at the two ends (named in Exp-1), with their numbers of sizes
+    ends = sorted((og['total_inproc_ms'] / 1000 / B[(where, g)]['total_s'], g, og['sizes_ok']) for where, g, og in prior)
+    (OUT / 'prior_stats.tex').write_text(f"\\newcommand{{\\priorgraphs}}{{{len(ratios)}}}\n\\newcommand{{\\priormin}}{{{min(ratios):.1f}}}\n\\newcommand{{\\priormedian}}{{{statistics.median(ratios):.0f}}}\n\\newcommand{{\\priormax}}{{{max(ratios):.0f}}}\n"
+        f"\\newcommand{{\\priormingraph}}{{\\textsf{{{ends[0][1]}}}}}\n\\newcommand{{\\priorminsizes}}{{{ends[0][2]}}}\n"
+        f"\\newcommand{{\\priormaxgraph}}{{\\textsf{{{ends[-1][1]}}}}}\n\\newcommand{{\\priormaxsizes}}{{{ends[-1][2]}}}\n")
 
 def build_stats():
     """Exp-1 and the cost paragraph of Section 7 (2026-09-23), one value per Table 1 row (its preferred machine):

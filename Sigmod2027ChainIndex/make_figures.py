@@ -143,7 +143,7 @@ def fig_prior():
                 pts.append((where, g, B[(where, g)]['total_s'], og['total_inproc_ms'] / 1000, og['sizes_ok']))
     if not pts: return
     fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.15))
-    lo, hi, ymax = 5e-3, 2000, 4e5                       # 2026-09-22: the tods1 records (wiki-Talk, tech-as-skitter) sit near x = 1000
+    lo, hi, ymax = 5e-3, 2000, 1.5e6                     # 2026-09-23: room above web-uk-2005 (5.7e4 s) for its label
     for f, lab in ((1, '1x'), (10, '10x'), (100, '100x'), (1000, '1000x')):
         ax.plot([lo, hi], [lo * f, hi * f], color='0.75', lw=0.6, ls=(0, (2, 1.5)), zorder=1, clip_on=True)
         xl = min(hi, ymax / f / 1.25); ax.text(xl * 1.15, xl * f, lab, fontsize=6.4, color='0.4', va='center')
@@ -151,12 +151,13 @@ def fig_prior():
     for where in mk:
         sel = [p for p in pts if p[0] == where]
         if sel: ax.scatter([p[2] for p in sel], [p[3] for p in sel], s=12, marker=mk[where], color=OURS, linewidths=0.5, zorder=3, label=lab[where])
-    done = set()
+    done = set()   # 2026-09-23: the two extremes and web-uk-2005; offsets keep the labels inside the frame
+    place = {'web-uk-2005': ((-6, 3), 'right', 'bottom'), 'web-it-2004': ((-6, -3), 'right', 'top'),
+             'com-amazon': ((6, -2), 'left', 'top')}   # web-BerkStan unlabelled: its label met the 1x guide
     for where, g, x, y, k in sorted(pts, key=lambda p: p[0] != 'tods1'):
-        if g in ('web-uk-2005', 'com-amazon', 'web-BerkStan') and g not in done:
-            done.add(g)
-            off = (-5, 7); ha = 'right'
-            ax.annotate(f'{g}, {k} sizes', (x, y), textcoords='offset points', xytext=off, ha=ha, fontsize=6.2, color='0.25')
+        if g in place and g not in done:
+            done.add(g); off, ha, va = place[g]
+            ax.annotate(f'{g}, {k} sizes', (x, y), textcoords='offset points', xytext=off, ha=ha, va=va, fontsize=6.2, color='0.25')
     ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlim(lo, 4000); ax.set_ylim(0.05, ymax)
     ax.set_xlabel('ChainIndex, one build for every size (s)'); ax.set_ylabel('CND, all sizes (s)')
     ax.legend(loc='lower right', handletextpad=0.2)
