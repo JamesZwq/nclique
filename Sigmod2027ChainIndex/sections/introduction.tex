@@ -183,6 +183,13 @@ For each size, the index stores the tree of that size, with every chain at its o
 %
 Consecutive labels in this order are merged into \emph{runs}.
 %
+% 2026-09-24 user: the trees are kept (same nodes as the baseline); the saving is the three items stored per vertex and size.
+The trees are those of \strees, with the same nodes.
+%
+The saving is in what \strees stores for every vertex and every size: an array entry, an own-node pointer and a value.
+%
+The index stores runs in place of the arrays, an own node per chain and size in place of one per vertex and size, and a value only below the tail start of a chain.
+%
 A community query climbs the tree from the own node of the vertex to the node of the queried level and reads that node's ranges in constant time (Theorem~\ref{thm:retrieval}).
 
 %

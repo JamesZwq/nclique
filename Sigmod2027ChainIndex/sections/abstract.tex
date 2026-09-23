@@ -21,7 +21,8 @@ We prove that this holds exactly when, at every size, the smallest community con
 %
 The equivalence classes, called chains, partition the vertices, and no partition into larger groups allows an index to answer every query exactly.
 %
-We propose \chainidx, an index over chains.
+% 2026-09-24 user: say that the hierarchy of every size is kept; what is saved is the per-vertex storage.
+We propose \chainidx, which keeps the hierarchy of every size over chains instead of vertices.
 %
 It numbers the vertices so that every community, at any size and level, is a few ranges of consecutive vertex ids, found in constant time after a climb to the queried level.
 %

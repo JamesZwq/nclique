@@ -89,7 +89,10 @@ A vertex $v$ has a nonzero value at every size from $2$ to $\omg{v}$ (Section~\r
 %
 The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ for the $15$ vertices of Figure~\ref{fig:example} (each $a_i$ four times, each $b_i$ and $x$ three times, each $u_i$ and $w_j$ twice).
 %
+% 2026-09-24 user: the three items per (vertex, size) pair, which Section 5 replaces.
+For every such pair of a vertex and a size, \strees stores an array entry, an own-node pointer and a value.
+%
 Building \strees means one decomposition per size, $499$ of them on \webuk (Section~\ref{sec:intro}).
 %
 % 2026-09-22 filler pass: the closing remark re-listed the three difficulties of the introduction; one bridge sentence remains.
-The next sections store each vertex once for all sizes, at the price of answering a community query with a few ranges of ids instead of one slice.
+The next sections keep these trees and store each vertex once for all sizes, at the price of answering a community query with a few ranges of ids instead of one slice.
