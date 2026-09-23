@@ -2,7 +2,7 @@
 """Generate the paper's experiment figures (figures/*.pdf) from the evidence JSON files of
 research/r1_skyline_index_20260918.  Run from anywhere; each figure skips silently when its evidence is missing.
 
-House style: monochrome; ChainIndex solid black with filled markers, the baseline (STrees or CND) dotted grey with
+House style: monochrome; ChainIndex solid black with filled markers, the baseline (Baseline or CND) dotted grey with
 hollow markers; every figure is drawn at exactly the width it is printed at (a figure* is \\textwidth = 506.3pt),
 so the 8pt type below is the type size on the page; serif type matching the paper (Linux Libertine)."""
 import json
@@ -66,7 +66,7 @@ def all_profiles(samples=False, pairs=False):
 def save(fig, name):
     fig.savefig(OUT / f'{name}.pdf'); plt.close(fig); print('  wrote figures/%s.pdf' % name)
 
-def legend_pair(ax, base_label='STrees', loc='best', **kw):
+def legend_pair(ax, base_label='Baseline', loc='best', **kw):
     ax.legend(handles=[Line2D([], [], marker='o', ms=3.2, **OURS_KW, label='ChainIndex'),
                        Line2D([], [], marker='o', ms=3.2, **BASE_KW, label=base_label)], loc=loc, **kw)
 
@@ -92,9 +92,9 @@ def fig_regimes():
     a.set_xlabel('mean answer size (vertices)'); a.set_ylabel('listing time (ns)')
     handles = [Line2D([], [], marker=mk, color='0.25', ls='', markersize=3.6, label=labels[reg]) for reg, mk in marks.items()]
     handles += [Line2D([], [], marker='o', color=OURS, ls='', markersize=3.6, label='ChainIndex'),
-                Line2D([], [], marker='o', color=BASE, markerfacecolor='white', ls='', markersize=3.6, label='STrees')]
+                Line2D([], [], marker='o', color=BASE, markerfacecolor='white', ls='', markersize=3.6, label='Baseline')]
     a.legend(handles=handles, ncol=2, loc='upper left', columnspacing=0.9, handletextpad=0.2)
-    # middle: the listing time of STrees divided by that of ChainIndex against the mean vertices per range
+    # middle: the listing time of Baseline divided by that of ChainIndex against the mean vertices per range
     for reg, mk in marks.items():
         pts = [(x['regimes'][reg]['output'] / max(x['regimes'][reg]['ranges'], 1), x['regimes'][reg]['st_list_ns'] / x['regimes'][reg]['list_ns']) for w, g, x in rows]
         c.scatter([p[0] for p in pts], [p[1] for p in pts], s=11, marker=mk, color=OURS, linewidths=0.5, zorder=3)
@@ -255,7 +255,7 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
         ax.set_title(t, loc='left', fontsize=8, pad=3)
     axes[0].set_yscale('log'); axes[1].set_yscale('log'); axes[2].set_ylim(0, None); axes[3].set_ylim(0, None)
     axes[0].legend(handles=[Line2D([], [], marker=MARKS.get(g, 'o'), color='0.25', ls='', markersize=3.4, label=g) for g in sorted(series)], loc='lower right')
-    legend_pair(axes[3], base_label='STrees / CND', loc='lower right')
+    legend_pair(axes[3], base_label='Baseline / CND', loc='lower right')
     fig.subplots_adjust(left=0.065, right=0.995, bottom=0.29, top=0.88, wspace=0.5)
     save(fig, 'fig_scale')
 

@@ -3,7 +3,7 @@
 converted to vector PDF with Chrome (the paper's font, Linux Libertine, is embedded as TrueType).
 
   figures/fig_running.pdf   Figure 1: the graph, and the community of x at sizes 2, 3 and 4 (shaded)
-  figures/fig_strees.pdf    Section 3: one tree and one array per size (STrees): 44 cells for 15 vertices
+  figures/fig_strees.pdf    Section 3: one tree and one array per size (Baseline): 44 cells for 15 vertices
   figures/fig_index.pdf     Section 5: what ChainIndex stores: labels and chains, the chain records, one layer per
                             size (tree over chains, run array, entries), and one community query traced
   figures/fig_build.pdf     Section 7: order replay at size 2 (two orders) and the refinement of the chains in the trie
