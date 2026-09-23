@@ -142,7 +142,7 @@ def fig_prior():
             if 'total_inproc_ms' in og and (where, g) in ours and (where, g) in B:
                 pts.append((where, g, B[(where, g)]['total_s'], og['total_inproc_ms'] / 1000, og['sizes_ok']))
     if not pts: return
-    fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.15))
+    fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.08))
     lo, hi, ymax = 5e-3, 2000, 1.5e6                     # 2026-09-23: room above web-uk-2005 (5.7e4 s) for its label
     for f, lab in ((1, '1x'), (10, '10x'), (100, '100x'), (1000, '1000x')):
         ax.plot([lo, hi], [lo * f, hi * f], color='0.75', lw=0.6, ls=(0, (2, 1.5)), zorder=1, clip_on=True)
@@ -161,8 +161,29 @@ def fig_prior():
     ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlim(lo, 4000); ax.set_ylim(0.05, ymax)
     ax.set_xlabel('ChainIndex, one build for every size (s)'); ax.set_ylabel('CND, all sizes (s)')
     ax.legend(loc='lower right', handletextpad=0.2)
-    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.27, top=0.96)
+    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.31, top=0.96)
     save(fig, 'fig_prior')
+
+def fig_settled():
+    """2026-09-23: the peel of every size with settled vertices given their values against every vertex peeled (same
+    clique tree, same tree pass), one point per Table 1 graph, against its share of stored values (Table 1)."""
+    import make_tables as M
+    fin = build_records.builds(build_records.FINAL); every = build_records.builds(('terminal', 'fast'))
+    pts = []
+    for where, g, r in M.merged_rows():
+        if (where, g) in fin and (where, g) in every:
+            x = r['result']; pts.append((100 * x['vertex_residue_cells'] / x['vertex_pairs'], every[(where, g)]['solve_s'] / fin[(where, g)]['solve_s'], g))
+    if not pts: return
+    fig, ax = plt.subplots(figsize=(COL_WIDTH, 0.95))
+    ax.axhline(1, color='0.6', lw=0.7, ls=(0, (2, 1.5)), zorder=1)
+    ax.scatter([p[0] for p in pts], [p[1] for p in pts], s=11, color=OURS, zorder=3, linewidths=0.5)
+    for x, y, g in pts:
+        if g in ('web-uk-2005', 'web-it-2004', 'ca-HepPh', 'web-BerkStan'):
+            ax.annotate(g, (x, y), textcoords='offset points', xytext=(4, -5 if g == 'ca-coauthors-dblp' else (4 if g == 'web-it-2004' else 1)), fontsize=6.2, color='0.25', va='center')
+    ax.set_yscale('log'); ax.set_xlim(-2, 100); ax.set_ylim(0.55, 300)
+    ax.set_xlabel('values stored (% of (vertex, size) pairs)'); ax.set_ylabel('peel speedup')
+    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.35, top=0.96)
+    save(fig, 'fig_settled')
 
 # ------------------------------------------------------------------- Exp-5: by clique size and answer size ----
 def rep_profiles():
@@ -239,5 +260,5 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
     save(fig, 'fig_scale')
 
 if __name__ == '__main__':
-    fig_regimes(); fig_profile(); fig_scale(); fig_prior()
+    fig_regimes(); fig_profile(); fig_scale(); fig_prior(); fig_settled()
     print('figures written to', OUT)

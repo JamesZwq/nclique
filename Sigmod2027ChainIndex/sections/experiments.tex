@@ -60,9 +60,13 @@ The ratio is largest where the sizes are many: on \textsf{web-BerkStan} ($201$ s
 %
 Two parts of Section~\ref{sec:construction} contribute to the ratio: the clique tree is built once for all sizes, and the peel of a size counts cliques only for the vertices whose values are not yet on the floor, the unsettled vertices of Theorem~\ref{thm:settled}.
 %
-Peeling every vertex at every size instead makes the build slower by a median of \settlemedian$\times$ and by up to \settlemax$\times$.
+% 2026-09-23 user: say how much the settled vertices are worth; from the build records (terminal+fast against tail+fast).
+Figure~\ref{fig:settled} compares this peel with the peel of every vertex at every size, against the share of stored values (Table~\ref{tab:size}), which is small when most pairs are settled.
 %
-The difference is largest on web and collaboration graphs, where most pairs of a vertex and a size are settled, and smallest on social graphs, where most are not.
+On the \lowgraphs{} graphs that store less than $5$ percent of their values, the peel is \lowpeelmin$\times$ to \lowpeelmax$\times$ faster and the whole build \lowbuildmin$\times$ to \lowbuildmax$\times$.
+%
+On the \highgraphs{} graphs that store more than half, the peel is \highpeelmin$\times$ to \highpeelmax$\times$ faster.
+
 %
 The clique tree takes \treesharemin{} to \treesharemax{} percent of the build time, the peel \peelsharemin{} to \peelsharemax{} percent, and the index passes \passsharemin{} to \passsharemax{} percent.
 
@@ -75,7 +79,13 @@ The clique tree takes \treesharemin{} to \treesharemax{} percent of the build ti
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_prior.pdf}
-\caption{Build time: \cnd once per size, summed, against one build of \chainidx.}\label{fig:prior}
+\caption{Build time of \cnd, all sizes, against \chainidx.}\label{fig:prior}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_settled.pdf}
+\caption{Peel speedup from the settled vertices.}\label{fig:settled}
 \end{figure}
 
 \expsection{Index size}

@@ -249,6 +249,15 @@ def build_stats():
             b = quote(g); m[f'build{name}'] = f"{b['total_s']:.2f}" if b['total_s'] < 10 else f"{b['total_s']:,.0f}"; m[f'mem{name}'] = f"{b['peak_bytes']/1048576:,.0f}"
             m[f'memgb{name}'] = f"{b['peak_bytes']/1073741824:.1f}"
         except StopIteration: pass
+    # 2026-09-23: the peel with and without settled vertices (terminal+fast against tail+fast), against the stored share
+    rowsb = {(where, g): r for where, g, r in merged_rows()}
+    pe = []
+    for k in keys:
+        x = rowsb[k]['result']; pe.append((x['vertex_residue_cells'] / x['vertex_pairs'], every[k]['solve_s'] / fin[k]['solve_s'], every[k]['total_s'] / fin[k]['total_s'], k[1]))
+    low = [q for q in pe if q[0] < 0.05]; high = [q for q in pe if q[0] >= 0.5]
+    m.update({'peelspeedmin': f"{min(q[1] for q in pe):.1f}", 'peelspeedmedian': f"{statistics.median(q[1] for q in pe):.1f}", 'peelspeedmax': f"{max(q[1] for q in pe):.0f}",
+              'lowpeelmin': f"{min(q[1] for q in low):.0f}", 'lowpeelmax': f"{max(q[1] for q in low):.0f}", 'lowbuildmin': f"{min(q[2] for q in low):.1f}", 'lowbuildmax': f"{max(q[2] for q in low):.1f}", 'lowgraphs': str(len(low)),
+              'highpeelmin': f"{min(q[1] for q in high):.1f}", 'highpeelmax': f"{max(q[1] for q in high):.1f}", 'highgraphs': str(len(high))})
     (OUT / 'build_stats.tex').write_text(''.join(f"\\newcommand{{\\{k}}}{{{v}}}\n" for k, v in m.items()))
     print('build stats:', m); print('   speedups', [(round(x, 2), k) for x, k in speed]); print('   settle', [(round(x, 2), k) for x, k in settle])
 

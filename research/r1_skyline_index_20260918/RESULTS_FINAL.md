@@ -1386,3 +1386,11 @@ visits on web-it, 3.8x on ca-HepPh; +4 bytes per incidence or in-place compactio
 size's tree at the next closed-form size needs a different union order and changes the .cx bytes (re-measure sizes and
 latencies), so it is left open.
 
+
+**17.11 addendum (2026-09-23, user: how much the settled vertices are worth, from the existing records):** peel time
+terminal+fast (every vertex peeled) against tail+fast (settled), same clique tree and tree pass, per Table 1 row, against
+the share of stored values (Table 1): peel 1.0x-126x, median 1.7x.  Stored share < 5% (5 graphs: web-uk 0.0%, dblp-core30,
+ca-coauthors-dblp, web-it, ca-HepPh): peel 15x-126x (web-uk 48.0 -> 0.38 s), whole build 1.6x-5.5x.  Stored share > 50%
+(10 graphs, social/citation/web-Stanford/BerkStan): peel 1.0x-2.8x.  Paper: Figure 6 (fig_settled) + two sentences in Exp-1.
+The "without" setting is the previous solver (all vertices, KK-capped keys, order stream), so the ratio also holds the
+solver's small engineering gain (<= 1.1x on the social graphs, 17.10).
