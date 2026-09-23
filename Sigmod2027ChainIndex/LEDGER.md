@@ -293,3 +293,29 @@ Figure 5 over 44 pairs / 132 points (was 24 / 72): locmin/max 12/65 ns, level me
 1.01), faster on 69 of 132; the deep-climb sentence now cites dblp-coauthor at k = 1 (216 vs 19 ns, 5,543 levels) from
 profile_laptop.json; the earlier ca-coauthors-dblp numbers came from a superseded record.  All queue records are in; the
 queue scripts' `$GIT` commit line was broken (escaped space), every record was committed by hand.
+
+## Construction rewrite (2026-09-23; user: construction techniques against peeling every size; "不要你管NSI")
+Audit (RESULTS_FINAL 17.9): the timed build never used order replay; Section 7 described it (Theorem 7.1, Algorithm 2
+Step 1, Example 7.2), Exp-1 credited the ratio to its certificate, and the Cost paragraph and Exp-1 called the index
+passes "a few percent" (measured 18-55%, now 22-85%).  New construction (RESULTS_FINAL 17.10): settled vertices.
+- Section 7: "Settled vertices" block.  Bound for s >= 3: kappa_s <= C(t, s-1), t >= s-2, C(t, s-2) = kappa_{s-1}; the old
+  text had C(t, s) with C(t, s-1), which gives 1 < kappa_3(b_1) = 3 on the running example (index error, fixed).  Integer
+  (original) Kruskal-Katona bound named; settled = integer bound equals the floor; every size s > sigma(v) is settled.
+  Theorem 7.1 [peel with settled vertices] with an 8-sentence proof; checked independently by codex (exhaustive over all
+  33,867 graphs up to 6 vertices, every bound, settled set and tie order; 4.5M configurations) and Fable (42,408 random
+  peels, 0 mismatches).  Their fixes: the maximality step (clique-connected parts lie in cores), the empty case, the
+  settled vertex in D_k, the peel update counts cliques containing BOTH vertices (binomial with r optional fixed), size 2
+  keys, why settled vertices on no followed path can be omitted (their removal changes no key and happens at the
+  smallest key).  Example 7.2 (size 3 on Figure 1): a's and b's settled, x/u/w unsettled, 12 triangles, all at level 3,
+  the a's never visited; trace in tools/example_check.py; stated independently of the tie order.
+- Algorithm 2: Line 1 reads the clique numbers from T (the degeneracy order is gone); Step 1 = settle, then peel the
+  unsettled vertices on their paths (Theorem 7.1).  Cost paragraph: operation counts and working space only.
+- Abstract, introduction (idea paragraph, contributions): the replay sentences replaced by the settled vertices.
+- Exp-1: build numbers from build_records.py (the build-time ablation: tail+fast medians on every machine; index bytes
+  and latencies unchanged, the .cx files are byte-identical); the ratio's sources measured (peeling every vertex at every
+  size instead: macros settle*), time shares (treeshare/peelshare/passshare) and the memory share measured; cold-read
+  fixes (three parts named once; "unsettled" glossed; "takes" for the two systems; caption names the build time; setup:
+  query order, median of five runs, core value).
+- Page budget: 12 body pages kept by deleting the per-graph build sentences of Exp-1 (Table 1 has them), the no-index
+  query cost sentence, the 93% settled share on com-dblp, the Cost paragraph's time shares (Exp-1 has them) and one
+  intro sentence.  0 overfull, 0 ??.
