@@ -505,5 +505,100 @@ def fig_build(trie_only=True):
         sv.text(TX - 4, Y[d + 1] + 2.4, f's = {s}', size=6.0, anchor='end', fill='#777')
     sv.write('fig_build')
 
+# ---------------------------------------------------------------- Figure 2: the baseline beside ChainIndex ----
+CHAIN_TINT = {0: '#dce8f5', 1: '#f3e9d4', 2: '#e1efd9', 3: '#ebe1f3'}
+
+def kappa_txt(s, k):
+    return f'<tspan font-style="italic">κ</tspan><tspan font-size="70%" dy="1.6">{s}</tspan><tspan dy="-1.6"> = {k}</tspan>'
+
+def fig_pair():
+    """2026-09-24 (user): one figure, (a) Baseline beside (b) ChainIndex, one row per size and the rows aligned.
+    Both panels draw the tree of a size the same way: bars stacked by depth, each over the members of its node and
+    labelled with its name and top.  (a) puts them over the depth-first array of the vertices of the size (44 positions
+    over the four sizes); (b) over the chains in depth-first order, whose runs are the brackets labelled with their
+    label ranges, under the one label array with the four chains and their records.  Cells are tinted by chain.
+    Orange: the community query of x at (3, 2), one slice in (a), two runs in (b), two label ranges on top."""
+    PW = 506.0
+    CW, CH = 14.4, 11.5                # vertex and label cells
+    CC = 28.0                          # chain cells of (b)
+    BH, BG = 10.0, 1.6                 # bar height, gap between bar rows
+    XA, XB = 26.0, 272.0               # left edges of the cells of (a) and of (b)
+    sv = SVG(PW, 1)
+    hot_s, hot_N = 3, own[('x', 3)]
+    assert hot_N == frozenset(B + U + W)
+    answer = set(range(0, 3)) | set(range(8, 15))
+    sv.text(2, 8.5, '(a) Baseline', size=7.2)
+    sv.text(XB - 20, 8.5, '(b) ChainIndex', size=7.2)
+    # (b) the label array, the chains, their records
+    LY = 23.0
+    sv.text(XB - 3, LY - 3.4, 'label', size=5.0, anchor='end', fill='#777')
+    for i, v in enumerate(label_order):
+        x = XB + i * CW
+        sv.rect(x, LY, CW, CH, fill=CHAIN_TINT[chain_of[v]], stroke='#000', sw=0.5)
+        sv.text(x + CW / 2, LY - 3.4, str(i), size=5.0, anchor='middle', fill='#777')
+        sv.text(x + CW / 2, LY + 8.4, sub(v), size=6.4, anchor='middle', italic=True)
+    for lo, hi in ((0, 3), (8, 15)):                                   # the answer of the traced query
+        sv.line(XB + lo * CW + 0.6, LY - 1.0, XB + hi * CW - 0.6, LY - 1.0, color=ORANGE, w=1.2)
+    sv.rect(XB + 14 * CW, LY, CW, CH, stroke=ORANGE, sw=1.1)           # the query vertex x
+    BY = LY + CH + 5.0
+    for c in range(4):
+        lo, hi = XB + start[c] * CW, XB + start[c + 1] * CW; cx = (lo + hi) / 2
+        sv.bracket(lo + 1, hi - 1, BY, tick=2.4, w=0.6)
+        rec = f'{c}: <tspan font-style="italic">ω</tspan> = {omega_c[c]}, <tspan font-style="italic">σ</tspan> = {sigma_c[c]}'
+        sv.text(cx, BY + 7.6, rec, size=5.8, anchor='middle', fill=(ORANGE if c == 3 else '#000'))
+        if residues[c]:
+            sv.text(cx, BY + 14.8, ', '.join(kappa_txt(s, k) for s, k in residues[c]), size=5.8, anchor='middle')
+    y = BY + 24.0
+    total_a = 0; total_runs = 0
+    for j, s in enumerate(SIZES):
+        L = layers[s]; par = children(s)
+        def dep(N): return 0 if par[N] is None else 1 + dep(par[N])
+        maxd = max(dep(N) for N in nodes[s])
+        # left-to-right numbering of the bars of (b) is the preorder the text uses
+        lr = sorted(nodes[s], key=lambda N: (L['seg'][N][0], dep(N)))
+        assert [pre[s][N] for N in lr] == list(range(len(lr))), s
+        if j: sv.line(2, y - 3.0, PW - 2, y - 3.0, color='#dddddd', w=0.4)
+        cy = y + (maxd + 1) * (BH + BG)
+        sv.text(XA - 4, cy + 8.2, f's = {s}', size=6.6, anchor='end')
+        # (a): the depth-first array of the vertices, the bars over it
+        arr_v = strees_array(s); total_a += len(arr_v)
+        pa = {v: XA + i * CW for i, v in enumerate(arr_v)}
+        for v in arr_v:
+            hot = (s == hot_s and v == 'x')
+            sv.rect(pa[v], cy, CW, CH, fill=CHAIN_TINT[chain_of[v]], stroke=(ORANGE if hot else '#000'), sw=(1.1 if hot else 0.5))
+            sv.text(pa[v] + CW / 2, cy + 8.4, sub(v), size=6.4, anchor='middle', italic=True)
+        # (b): the chains in depth-first order
+        for i, c in enumerate(L['arr']):
+            hot = (s == hot_s and c == 3)
+            sv.rect(XB + i * CC, cy, CC, CH, fill=CHAIN_TINT[c], stroke=(ORANGE if hot else '#000'), sw=(1.1 if hot else 0.5))
+            sv.text(XB + i * CC + CC / 2, cy + 8.4, str(c), size=6.4, anchor='middle')
+        # the same bars in both panels
+        for N in nodes[s]:
+            nm = setname(N); lab = (f'{nm}, top {nodes[s][N]}' if nm else f'top {nodes[s][N]}')
+            hot = (s == hot_s and N == hot_N); by = y + dep(N) * (BH + BG)
+            a0, a1 = L['seg'][N]
+            vlo = members[L['arr'][a0]][0]; vhi = members[L['arr'][a1 - 1]][-1]
+            for lo, hi in ((pa[vlo], pa[vhi] + CW), (XB + a0 * CC, XB + a1 * CC)):
+                sv.rect(lo + 0.9, by, hi - lo - 1.8, BH, rx=1.5, fill=(ORANGE_SHADE if hot else '#f6f6f6'),
+                        stroke=(ORANGE if hot else '#000'), sw=(1.0 if hot else 0.55))
+                sv.text((lo + hi) / 2, by + 7.3, lab, size=6.0, anchor='middle')
+        # (b): the runs under the chains
+        ry = cy + CH + 4.5
+        for r, (lo_l, hi_l) in enumerate(L['runs']):
+            idx = [i for i, c in enumerate(L['arr']) if lo_l <= start[c] < hi_l]
+            assert idx == list(range(idx[0], idx[-1] + 1))
+            hot = (s == hot_s and (lo_l, hi_l) in ((0, 3), (8, 15)))
+            x0, x1 = XB + idx[0] * CC, XB + (idx[-1] + 1) * CC
+            sv.bracket(x0 + 1.5, x1 - 1.5, ry, tick=2.4, w=(0.9 if hot else 0.6), color=(ORANGE if hot else '#000'))
+            sv.text((x0 + x1) / 2, ry + 7.2, f'[{lo_l}, {hi_l})', size=5.8, anchor='middle', fill=(ORANGE if hot else '#000'))
+            total_runs += 1
+        y = ry + 7.2 + 8.0
+    assert total_a == 44 and total_runs == 8
+    sv.h = y - 1.0
+    sv.write('fig_pair')
+
+FIGS = {'fig_running': fig_running, 'fig_strees': fig_strees, 'fig_index': fig_index, 'fig_build': fig_build, 'fig_pair': fig_pair}
+
 if __name__ == '__main__':
-    fig_running(); fig_strees(); fig_index(); fig_build()
+    only = [a for a in sys.argv[1:] if a in FIGS]
+    for name in (only or ['fig_running', 'fig_strees', 'fig_index', 'fig_build']): FIGS[name]()
