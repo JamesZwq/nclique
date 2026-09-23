@@ -17,9 +17,12 @@ The peel removes the vertices one at a time, each time one with the smallest \te
 %
 The largest count seen at a removal so far is the core value of the removed vertex.
 %
-The index is built from one clique tree, giving the clique counts of every size, and one peel per size that skips the vertices whose values are already known.
+% 2026-09-24: the opener tells the static clique tree story.
+A decomposition that counts cliques on clique paths, such as \cnd, edits the paths as vertices leave, so every size starts again from the graph.
 %
-The tree of each size is built as the values of that size arrive, and the chains are split with that tree (Figure~\ref{fig:pipeline}).
+The index is built instead from one clique tree that no step edits: a removal only lowers counters on its paths.
+%
+The same tree serves the peel of every size, which skips the vertices whose values are already known, and gives the tree of every size, which splits the chains (Figure~\ref{fig:pipeline}).
 
 \begin{figure}[t]
 \centering
@@ -27,38 +30,55 @@ The tree of each size is built as the values of that size arrive, and the chains
 \caption{The trie that refines the chains of Figure~\ref{fig:example} size by size; the vertices stop at the dashed leaves.}\label{fig:pipeline}
 \end{figure}
 
-\stitle{Core values from one clique tree.}
-The clique counts come from a pivoting clique tree~\cite{Pivoter}, built once and shared by every size.
+\stitle{One clique tree for every size.}
+% 2026-09-24 user: tell the static clique tree story (idea of the unpublished r = 1 paper, used here, not cited): one tree,
+% never edited, serves the peel of every size and the tree of every size.  Definition, count lemma, removal lemma.
+The clique counts of every size come from one pivoting clique tree~\cite{Pivoter}.
+\begin{definition}[clique tree]\label{def:cliquetree}
+A \textit{clique tree} of $G$ is a set of paths.
 %
-% 2026-09-22 compaction: the clique tree, the replay and the forward counts in eight sentences.
-Each root-to-leaf path carries a mandatory set $H$ and an optional set $Q$ whose union is a clique.
+A path $P$ carries two disjoint vertex sets, a nonempty \textit{mandatory set} $H$ and an \textit{optional set} $Q$, whose union is a clique.
 %
-The path represents the cliques $H\cup Z$ for every subset $Z$ of $Q$ with $s-|H|$ vertices.
+At size $s$ the path represents the $s$-cliques $H\cup Z$ for every $Z\subseteq Q$ with $|Z|=s-|H|$, and every $s$-clique of $G$ is represented by exactly one path.
+\end{definition}
+A path represents cliques at the sizes from $|H|$ to $|H|+|Q|$, so one clique tree serves every size.
 %
-Every $s$-clique of the graph is represented by exactly one path.
+For a vertex $v$ and a vertex set $W$, write $c_s(v,W)$ for the clique count of $v$ in $W$, the number of $s$-cliques that contain $v$ and lie inside $W$.
+\begin{lemma}[clique count]\label{lem:count}
+For $v\in W$, $c_s(v,W)$ is the sum, over the paths through $v$ whose mandatory set lies in $W$, of $\binomc{|Q\cap W|-r}{s-|H|-r}$, where $r=1$ if $v\in Q$ and $r=0$ otherwise.
+\end{lemma}
+\begin{proof}
+An $s$-clique through $v$ inside $W$ is represented by one path $P$ through $v$ as $H\cup Z$, and it lies in $W$ exactly when $H\subseteq W$ and $Z\subseteq Q\cap W$.
 %
-The number of $s$-cliques of a vertex $v$ inside a vertex set $W$, written $c_s(v,W)$, is therefore a sum over the paths through $v$ whose mandatory set lies in $W$.
+If $v\in H$, any $s-|H|$ vertices of $Q\cap W$ form $Z$, and if $v\in Q$, $Z$ contains $v$ and $s-|H|-1$ of the other vertices of $Q\cap W$.
+\end{proof}
+The peel of a size removes vertices from $W$ one at a time, and the next lemma shows that no removal changes a path.
+\begin{lemma}[removal]\label{lem:removal}
+Let $u\ne v$ lie in $W$.
 %
-A path contributes $\binom{|Q\cap W|}{s-|H|}$ when $v$ is mandatory on it, and $\binom{|Q\cap W|-1}{s-|H|-1}$ when $v$ is optional, since then $Z$ must contain $v$.
+Then $c_s(u,W)-c_s(u,W\setminus\{v\})$ is the sum, over the paths through both $u$ and $v$ whose mandatory set lies in $W$, of $\binomc{|Q\cap W|-r}{s-|H|-r}$, where $r$ of the two vertices lie in $Q$.
+\end{lemma}
+\begin{proof}
+The cliques counted in $c_s(u,W)$ and not in $c_s(u,W\setminus\{v\})$ are those that contain $v$ as well.
 %
-% 2026-09-23 proof check (codex, Fable): a removal lowers a count by the cliques containing both vertices, not all cliques of the path through the removed one.
-When the peel removes a vertex $u$, the count of every other vertex $v$ on a path through $u$ decreases by the number of cliques of the path that contain both.
+By the argument of Lemma~\ref{lem:count}, a path through both vertices represents $\binomc{|Q\cap W|-r}{s-|H|-r}$ of them, and a path without $v$ represents none.
+\end{proof}
+A path thus depends on $W$ only through whether its mandatory set lies in $W$ and through $|Q\cap W|$.
 %
-With $r$ of the two vertices optional on the path, this number is $\binomc{|Q\cap W|-r}{s-|H|-r}$.
+Removing a mandatory vertex ends the path's contribution, and removing an optional vertex lowers $|Q\cap W|$ by one.
+%
+The peel keeps one counter per path and never edits a path, so the clique tree is \textit{static} and serves every size.
 
-\stitle{Settled vertices.}
+\stitle{Change-only peel with settled vertices.}
 The peel of a size reads every path of that size, but Theorem~\ref{thm:tail} already gives many of the values that the peel computes.
 %
-% 2026-09-23 simplification (user: elegant paper, engineering stays in the code): settled = past the tail start; the
-% unsettled key is the plain clique count.  The code settles with the integer Kruskal-Katona bound and caps counts by it,
-% a refinement of this algorithm (it settles a superset and gives the same values).
 A vertex $v$ with $\omg{v}\ge s$ is \textit{settled} at size $s$ when $s>\sig{v}$, that is, when its value at size $s-1$ is already its floor.
 %
 By Theorem~\ref{thm:tail}(b), its value at size $s$ is then the floor $\binomc{\omg{v}-1}{s-1}$.
 %
 The other vertices, the \textit{unsettled} ones, are peeled.
 %
-In the peel below, the \textit{key} of a settled vertex is its value, and the key of an unsettled vertex is its clique count.
+In the peel below, the \textit{key} of a settled vertex is its value, and the key of an unsettled vertex is its clique count among the vertices not yet removed.
 %
 At size $2$, the first size peeled, no vertex is settled.
 \begin{theorem}[peel with settled vertices]\label{thm:settled}
@@ -88,20 +108,15 @@ A settled one has value at least $k$ and lies in $D_k$, where it lies in at leas
 %
 By the converse, $R=D_k$, so exactly the vertices of $D_k$ receive a value of at least $k$, and every vertex receives $\core{s}{v}$.
 \end{proof}
-% 2026-09-23 proof check: why the settled vertices on no followed path can be left out; why a size without unsettled vertices ends the peels.
-The peel never reads the count of a settled vertex, and a removal lowers the counts of the vertices that share a path with the removed vertex.
+By Lemma~\ref{lem:removal}, a removal changes only the counts of the vertices that share a path with the removed vertex, and the peel never reads the count of a settled vertex.
 %
-The peel of size $s$ thus follows the paths through unsettled vertices.
+Procedure \kw{Peel} of Algorithm~\ref{alg:peellevels} is this peel.
 %
-Removing a settled vertex that lies on none of these paths changes no key and happens at the smallest key, so leaving the vertex out changes no value.
+It keys the settled vertices by their floors and counts the others by Lemma~\ref{lem:count} (Lines~\ref{ln:p-init}--\ref{ln:p-count}).
 %
-Once a size has no unsettled vertex, every value there is a floor, and every vertex is settled at every later size.
+It removes a vertex of smallest key and gives it the largest key seen so far (Lines~\ref{ln:p-min}--\ref{ln:p-give}).
 %
-Procedure \kw{Peel} of Algorithm~\ref{alg:peelsweep} is this peel at size $s$ with the set $S$ of settled vertices.
-%
-It keys the settled vertices by their floors and the others by their clique counts among the vertices with $\omg{v}\ge s$ (Lines~\ref{ln:p-init}--\ref{ln:p-count}).
-%
-It removes a vertex of smallest key, gives it the largest key seen so far (Lines~\ref{ln:p-min}--\ref{ln:p-give}), and recounts its unsettled neighbours, the only vertices whose counts the removal can change (Line~\ref{ln:p-update}).
+It then subtracts from every unsettled vertex on a path through the removed one the loss of Lemma~\ref{lem:removal}, the only change the removal causes (Line~\ref{ln:p-update}).
 \begin{example}\label{ex:settled}
 % trace 2026-09-23: tools/example_check.py (settled and unsettled per size, 12 triangles through the unsettled vertices, all removed at level 3).
 Consider Figure~\ref{fig:example} at size $3$.
@@ -117,36 +132,47 @@ The smallest keys are $3$, of $u_1,\dots,w_3$ and of the settled $b_1,b_2,b_3$, 
 %
 Once $u_1,\dots,w_3$ are gone, $x$ lies in at most the three triangles of $B$, fewer if some $b_i$ left first, and it leaves at level $3$ as well.
 %
-No triangle joins $a_1,\dots,a_5$ to an unsettled vertex, and the peel never visits them.
+No triangle joins $a_1,\dots,a_5$ to an unsettled vertex, and their removals change no key.
 %
 At size $4$, $x$ is settled, since its value $3$ at size $3$ equals its floor $\binom{3}{2}$ there, and the $a_i$ and $b_i$ stay settled.
 \end{example}
 
 \stitle{The tree of a size.}
-% 2026-09-24 user: Peel and Sweep need pseudocode; Algorithm alg:peelsweep holds both, Build calls them.
-Procedure \kw{Sweep} of Algorithm~\ref{alg:peelsweep} builds the tree $\Tree{s}$ and the own nodes from the values of size $s$.
+% 2026-09-24: the tree of a size from merge events of the static clique tree (the idea of the r = 1 paper's hierarchy step).
+Once the values of size $s$ are known, the tree $\Tree{s}$ is read off the static clique tree without listing a clique.
 %
-It activates the vertices from the highest value down (Lines~\ref{ln:w-levels}--\ref{ln:w-activate}).
+A clique of a path enters the cores at the smallest value among its vertices.
 %
-An \textit{$s$-part} of a vertex set $A$ is a largest subset of $A$ connected through $s$-cliques inside $A$.
+For a path with $|H|\le s\le|H|+|Q|$, let $\eta=s-|H|$, let $h$ be the smallest value of size $s$ on $H$, and order $Q$ as $p_1,\dots,p_m$ by nonincreasing value.
 %
-After each value $k$, the $s$-parts of the active vertices are the cores of size $s$ at level $k$, so an $s$-part that is not yet a node is a canonical node of top $k$ (Lines~\ref{ln:w-parts}--\ref{ln:w-node}).
+The path makes one \textit{event} for its first clique, $H\cup\{p_1,\dots,p_\eta\}$ at level $\min(h,\core{s}{p_\eta})$, and, if $\eta\ge1$, one event $\{p_1,p_i\}$ at level $\min(h,\core{s}{p_i})$ for every $i>\eta$ (for $\eta=0$ the only event is $H$ at level $h$).
+\begin{lemma}[events]\label{lem:events}
+For every level $k\ge1$, joining the vertices of each event of level at least $k$ gives as components exactly the cores of size $s$ at level $k$.
+\end{lemma}
+\begin{proof}
+An event of level at least $k$ joins vertices of value at least $k$ that are connected through $s$-cliques of such vertices.
 %
-Its children are the largest nodes inside it (Line~\ref{ln:w-children}), and every vertex of value $k$ receives its $s$-part as own node (Line~\ref{ln:w-own}).
+The first event is a clique, and $p_1$ and $p_i$ lie together in the clique $H\cup\{p_1,\dots,p_{\eta-1},p_i\}$ when $\eta\ge2$, or share the cliques $H\cup\{p_1\}$ and $H\cup\{p_i\}$ when $\eta=1$.
 %
-The parts are found from the clique tree with one union per path and vertex.
+Conversely, let $C=H\cup Z$ be an $s$-clique of a path whose vertices all have value at least $k$.
 %
-A path is \textit{live} when its mandatory vertices are all active and at least $s$ of its vertices are active.
+Then $h\ge k$, and the $\eta$ vertices of $Z$ have values at least $k$, so $\core{s}{p_\eta}\ge k$ and the first event has level at least $k$.
 %
-Every $s$-clique of active vertices lies on the one path that represents it, which is then live, and any $s$ active vertices of a live path form an $s$-clique of active vertices.
+Every other vertex $p_i$ of $Z$ joins $p_1$ in an event of level $\min(h,\core{s}{p_i})\ge k$, so $C$ lies in one component.
 %
-Joining the active vertices of every live path into one part therefore gives the $s$-parts of Line~\ref{ln:w-parts}.
+The components are therefore the parts of the vertices of value at least $k$ connected through their $s$-cliques, the cores at level $k$.
+\end{proof}
+Procedure \kw{Hierarchy} of Algorithm~\ref{alg:peellevels} collects the events (Lines~\ref{ln:l-events}--\ref{ln:l-pairs}) and processes them by decreasing level with a union-find structure (Lines~\ref{ln:l-levels}--\ref{ln:l-union}).
+%
+By Lemma~\ref{lem:events}, after the events of level $k$ every component that changed is a canonical node of top $k$, and the nodes it absorbed become its children (Line~\ref{ln:l-node}).
+%
+Every vertex of value $k$ receives its component as its own node (Line~\ref{ln:l-own}).
 
 \begin{algorithm}[t]
-\caption{\kw{Peel} and \kw{Sweep} at size $s$.}\label{alg:peelsweep}
+\caption{\kw{Peel} and \kw{Hierarchy} at size $s$.}\label{alg:peellevels}
 \SetAlgoLined\DontPrintSemicolon
 \SetKwProg{Proc}{Procedure}{}{}
-\SetKwFunction{Peel}{Peel}\SetKwFunction{Sweep}{Sweep}
+\SetKwFunction{Peel}{Peel}\SetKwFunction{Hierarchy}{Hierarchy}
 \Proc{\Peel{$s,S$}}{
   $A\leftarrow\{v:\omg{v}\ge s\}$; $\ell\leftarrow0$\;\label{ln:p-a}
   $\mathrm{key}(v)\leftarrow\binomc{\omg{v}-1}{s-1}$, for every $v\in S$\;\label{ln:p-init}
@@ -154,19 +180,20 @@ Joining the active vertices of every live path into one part therefore gives the
   \While{$A\ne\emptyset$}{
     $v\leftarrow$ a vertex of $A$ with the smallest key\;\label{ln:p-min}
     $A\leftarrow A\setminus\{v\}$; $\ell\leftarrow\max(\ell,\mathrm{key}(v))$; $\core{s}{v}\leftarrow\ell$\;\label{ln:p-give}
-    $\mathrm{key}(u)\leftarrow c_s(u,A)$ for $u\in A\setminus S$ adjacent to $v$\;\label{ln:p-update}
+    $\mathrm{key}(u)\leftarrow\mathrm{key}(u)-c_s(u,A\cup\{v\})+c_s(u,A)$, for $u\in A\setminus S$\;\label{ln:p-update}
   }
   \Return $\core{s}{\cdot}$\;
 }
-\Proc{\Sweep{$s$}}{
-  $A\leftarrow\emptyset$; $\Tree{s}\leftarrow\emptyset$\;
-  \ForEach{value $k$ of size $s$, in decreasing order}{\label{ln:w-levels}
-    $B\leftarrow\{v:\core{s}{v}=k\}$; $A\leftarrow A\cup B$\;\label{ln:w-activate}
-    \ForEach{$s$-part $K$ of $A$ with $K\notin\Tree{s}$}{\label{ln:w-parts}
-      add $K$ to $\Tree{s}$ with top $k$\;\label{ln:w-node}
-      $\mathrm{children}(K)\leftarrow$ the largest nodes of $\Tree{s}$ inside $K$\;\label{ln:w-children}
-    }
-    $\own{s}{v}\leftarrow$ the $s$-part of $A$ containing $v$, for $v\in B$\;\label{ln:w-own}
+\Proc{\Hierarchy{$s$}}{
+  $E\leftarrow\emptyset$; $\Tree{s}\leftarrow\emptyset$\;
+  \ForEach{path with $|H|\le s\le|H|+|Q|$}{\label{ln:l-events}
+    add $H\cup\{p_1,\dots,p_\eta\}$ at level $\min(h,\core{s}{p_\eta})$ to $E$\;\label{ln:l-first}
+    \lIf{$\eta\ge1$}{add $\{p_1,p_i\}$ at level $\min(h,\core{s}{p_i})$ to $E$, for $\eta<i\le m$}\label{ln:l-pairs}
+  }
+  \ForEach{level $k\ge1$ of $E$, in decreasing order}{\label{ln:l-levels}
+    join the vertices of every event of level $k$\;\label{ln:l-union}
+    add every component that changed to $\Tree{s}$ with top $k$\;\label{ln:l-node}
+    $\own{s}{v}\leftarrow$ the component of $v$, for $v$ with $\core{s}{v}=k$\;\label{ln:l-own}
   }
   \Return $(\Tree{s},X_s)$\;
 }
@@ -184,7 +211,7 @@ $\mathcal{P}\leftarrow\{V\}$\;\label{ln:b-part}
   $S\leftarrow$ the vertices settled at size $s$\;\label{ln:b-settle}
   $\kappa_s\leftarrow\kw{Peel}(s,S)$\;\label{ln:b-peel}
   \tcp{Step 2: the tree of size $s$ and the chains}
-  $(\Tree{s},X_s)\leftarrow\kw{Sweep}(s)$\;\label{ln:b-sweep}
+  $(\Tree{s},X_s)\leftarrow\kw{Hierarchy}(s)$\;\label{ln:b-sweep}
   $\mathcal{P}\leftarrow\{\,C\cap X_s^{-1}(x):C\in\mathcal{P},\ x\in\Tree{s}\cup\{\bot\}\,\}\setminus\{\emptyset\}$\;\label{ln:b-refine}
 }
 \tcp{Step 3: the layout}
@@ -195,7 +222,7 @@ rank the chains $\mathcal{P}$ by their keys and label the vertices\;\label{ln:b-
 
 \stitle{Algorithm.}
 % 2026-09-24: the walk follows the abstract float; the layout steps point to Section 5, where they are defined.
-Algorithm~\ref{alg:build} builds the clique tree once (Line~\ref{ln:b-tree}) and starts from one class holding every vertex (Line~\ref{ln:b-part}).
+Algorithm~\ref{alg:build} builds the clique tree once (Line~\ref{ln:b-tree}), and by Lemma~\ref{lem:removal} no later step edits it; it starts from one class holding every vertex (Line~\ref{ln:b-part}).
 %
 For every size (Line~\ref{ln:b-sizes}) it computes the values (Step 1) and the tree with the refinement of the classes (Step 2), and after the last size it lays out the index (Step 3).
 %
@@ -203,7 +230,7 @@ For every size (Line~\ref{ln:b-sizes}) it computes the values (Step 1) and the t
 %
 Based on Theorem~\ref{thm:settled}, \kw{Peel} gives them their floors and peels only the other vertices (Line~\ref{ln:b-peel}).
 %
-\emph{During Step 2}, \kw{Sweep} builds $\Tree{s}$ and the own nodes of size $s$ (Line~\ref{ln:b-sweep}).
+\emph{During Step 2}, \kw{Hierarchy} builds $\Tree{s}$ and the own nodes of size $s$ from the same clique tree (Line~\ref{ln:b-sweep}).
 %
 The algorithm then splits every class by the own node of size $s$, where $\own{s}{v}=\bot$ for a vertex of value $0$ (Line~\ref{ln:b-refine}).
 %
@@ -219,9 +246,9 @@ It stores for every chain its clique number, its tail start, its residues and it
 
 \begin{example}\label{ex:build}
 % trace 2026-09-21: tools/example_check.py (nodes, own nodes, chains); LEDGER.md (ranks, runs, entries).  2026-09-22: three sentences.
-In Figure~\ref{fig:example} at size $2$, activating the value $4$ joins $A$ into one component and $\{x,u_1,\dots,w_3\}$ into another, the two nodes of top $4$.
+In Figure~\ref{fig:example} at size $2$, the events of level $4$ join $A$ into one component and $\{x,u_1,\dots,w_3\}$ into another, the two nodes of top $4$.
 %
-Activating the value $3$ joins everything into the root of top $3$, and the partition then has three classes, $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$ and $\{x,u_1,\dots,w_3\}$.
+The events of level $3$ join everything into the root of top $3$, and the partition then has three classes, $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$ and $\{x,u_1,\dots,w_3\}$.
 %
 At size $3$ no class is split.
 %
@@ -233,12 +260,13 @@ The layout of size $3$ produces the runs and entries of Figure~\ref{fig:layout}.
 \end{example}
 
 \stitle{Cost.}
-% 2026-09-23: the shares are measured (Exp-1); the index passes are not "a few percent" (18-85 percent of the build).
-% 2026-09-23 compaction: the time shares are measured in Exp-1 and not repeated here.
-\kw{Sweep} adds, for every live path, one union per vertex that becomes active on it, and the refinement one step per vertex and size.
+% 2026-09-24: bounds in terms of the incidences of the paths of a size, from the three lemmas.
+Let $I_s$ be the total size of the paths with $|H|\le s\le|H|+|Q|$.
 %
-The layout adds one pass per size over the chains.
+\kw{Peel} reads each such path once to count (Lemma~\ref{lem:count}) and once per vertex that leaves it (Lemma~\ref{lem:removal}), and only the paths through unsettled vertices at all.
+%
+\kw{Hierarchy} makes at most $I_s$ events and unions and sorts them in $O(I_s\log I_s)$ time.
+%
+The refinement adds one step per vertex and size, and the layout one pass per size over the chains.
 %
 The working space is the clique tree and the graph, plus the values of two consecutive sizes, the partition, and the trees of the sizes with one node per canonical node.
-%
-The values take space linear in the vertices, the partition in the (chain, size) pairs, and the trees in the canonical nodes.
