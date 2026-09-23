@@ -178,7 +178,7 @@ Consecutive labels in this order are merged into \emph{runs}.
 %
 A community query climbs the tree from the own node of the vertex to the node of the queried level and reads that node's ranges in constant time (Theorem~\ref{thm:retrieval}).
 %
-At every size $s$, the core value of a vertex is at least the number of $s$-cliques through it inside a largest clique containing it, a binomial coefficient of its clique number.
+At every size $s$, the core value of a vertex is at least the number of $s$-cliques through it inside a largest clique containing it, a binomial coefficient of its clique number that we call its \emph{floor}.
 %
 Once the value equals this number at one size, it does so at every larger size (Theorem~\ref{thm:tail}).
 %
@@ -190,9 +190,9 @@ A clique tree~\cite{Pivoter} is a set of paths, each with a mandatory and an opt
 %
 The values of one size come from a \emph{peel}.
 %
-Vertices are removed one at a time in increasing order of their clique counts, and the largest count seen so far at a removal is the core value of the removed vertex.
+Vertices are removed one at a time, each time one with the smallest clique count among the vertices left, and the largest count seen so far at a removal is the core value of the removed vertex.
 %
-Removing a vertex never changes a path: it ends the paths on which the vertex is mandatory and shortens the optional part of the others (Lemma~\ref{lem:removal}).
+Removing a vertex never changes a path: the paths on which the vertex is mandatory stop counting, and on the others a counter of the optional vertices left drops by one (Lemma~\ref{lem:removal}).
 %
 The clique tree is therefore \emph{static}, and the same tree serves the peel of every size and gives the tree of every size (Lemma~\ref{lem:events}).
 %
