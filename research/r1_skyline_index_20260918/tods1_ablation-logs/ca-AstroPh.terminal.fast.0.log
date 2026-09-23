@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=terminal CHAIN_TREEPASS=fast /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/ca-AstroPh.edges
+{"n":18772,"solver":"terminal","treepass":"fast","count_bits":64,"chains":3331,"canonical_nodes":6462,"index_bytes":617240,"build_form_bytes":616488,"compact_ms":0.522897,"bytes_map":16860,"bytes_chains":232019,"bytes_layers":368361,"ti_ms":243.296,"ti_bytes":8266272,"rss_loaded":7569408,"rss_with_ti":17559552,"rss_start":17559552,"rss_after_solve":22745088,"rss_after_chains":22745088,"rss_after_layout":22745088,"solve_ms":169.968,"trees_ms":168.04,"chains_ms":0.600811,"layout_ms":5.06808,"build_ms":344.884}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/ca-AstroPh.edges"
+	User time (seconds): 0.66
+	System time (seconds): 0.01
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.67
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 22212
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 6532
+	Voluntary context switches: 1
+	Involuntary context switches: 2
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

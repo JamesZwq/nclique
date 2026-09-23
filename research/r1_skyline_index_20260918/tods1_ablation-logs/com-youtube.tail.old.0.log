@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=tail CHAIN_TREEPASS=old /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/com-youtube.edges
+{"n":1134890,"solver":"tail","treepass":"old","count_bits":64,"chains":42815,"canonical_nodes":22403,"index_bytes":3104309,"build_form_bytes":3987484,"compact_ms":1.94693,"bytes_map":384064,"bytes_chains":1477821,"bytes_layers":1242424,"ti_ms":4209.58,"ti_bytes":220101384,"rss_loaded":92512256,"rss_with_ti":303669248,"rss_start":303669248,"rss_after_solve":464023552,"rss_after_chains":445861888,"rss_after_layout":445861888,"solve_ms":891.435,"trees_ms":2093.86,"chains_ms":7.77652,"layout_ms":21.5408,"build_ms":3017.06}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/com-youtube.edges"
+	User time (seconds): 8.44
+	System time (seconds): 0.62
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:09.06
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 512544
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 426116
+	Voluntary context switches: 1
+	Involuntary context switches: 11
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

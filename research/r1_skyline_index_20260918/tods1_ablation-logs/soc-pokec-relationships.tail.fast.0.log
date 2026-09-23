@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=tail CHAIN_TREEPASS=fast /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/soc-pokec-relationships.edges
+{"n":1632803,"solver":"tail","treepass":"fast","count_bits":64,"chains":383206,"canonical_nodes":67544,"index_bytes":32391325,"build_form_bytes":44018876,"compact_ms":28.9948,"bytes_map":1838988,"bytes_chains":19247860,"bytes_layers":11304477,"ti_ms":34373.4,"ti_bytes":1525656592,"rss_loaded":214994944,"rss_with_ti":1753718784,"rss_start":1753718784,"rss_after_solve":2090229760,"rss_after_chains":2071396352,"rss_after_layout":2074099712,"solve_ms":14113.1,"trees_ms":15699.3,"chains_ms":25.0305,"layout_ms":336.515,"build_ms":30449.5}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/soc-pokec-relationships.edges"
+	User time (seconds): 74.42
+	System time (seconds): 2.13
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:16.55
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2963244
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 1262845
+	Voluntary context switches: 1
+	Involuntary context switches: 81
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

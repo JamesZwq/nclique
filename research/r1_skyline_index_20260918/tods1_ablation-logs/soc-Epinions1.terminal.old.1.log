@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=terminal CHAIN_TREEPASS=old /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/soc-Epinions1.edges
+{"n":75879,"solver":"terminal","treepass":"old","count_bits":64,"chains":8821,"canonical_nodes":12886,"index_bytes":1117672,"build_form_bytes":1304016,"compact_ms":0.921538,"bytes_map":49524,"bytes_chains":456481,"bytes_layers":611667,"ti_ms":5293.93,"ti_bytes":223061316,"rss_loaded":12947456,"rss_with_ti":235425792,"rss_start":235425792,"rss_after_solve":325877760,"rss_after_chains":325877760,"rss_after_layout":326148096,"solve_ms":2267.47,"trees_ms":3193.48,"chains_ms":1.04901,"layout_ms":9.94759,"build_ms":5473.02}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/soc-Epinions1.edges"
+	User time (seconds): 10.81
+	System time (seconds): 0.22
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:11.03
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 318504
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 140155
+	Voluntary context switches: 1
+	Involuntary context switches: 33
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
