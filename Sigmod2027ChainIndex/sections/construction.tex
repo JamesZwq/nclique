@@ -37,7 +37,7 @@ The path represents the cliques $H\cup Z$ for every subset $Z$ of $Q$ with $s-|H
 %
 Every $s$-clique of the graph is represented by exactly one path.
 %
-The number of $s$-cliques of a vertex $v$ inside a vertex set $W$ is therefore a sum over the paths through $v$ whose mandatory set lies in $W$.
+The number of $s$-cliques of a vertex $v$ inside a vertex set $W$, written $c_s(v,W)$, is therefore a sum over the paths through $v$ whose mandatory set lies in $W$.
 %
 A path contributes $\binom{|Q\cap W|}{s-|H|}$ when $v$ is mandatory on it, and $\binom{|Q\cap W|-1}{s-|H|-1}$ when $v$ is optional, since then $Z$ must contain $v$.
 %
@@ -97,7 +97,11 @@ Removing a settled vertex that lies on none of these paths changes no key and ha
 %
 Once a size has no unsettled vertex, every value there is a floor, and every vertex is settled at every later size.
 %
-We write $\kw{Peel}(s,S)$ for this peel at size $s$ with the set $S$ of settled vertices.
+Procedure \kw{Peel} of Algorithm~\ref{alg:peelsweep} is this peel at size $s$ with the set $S$ of settled vertices.
+%
+It keys the settled vertices by their floors and the others by their clique counts among the vertices with $\omg{v}\ge s$ (Lines~\ref{ln:p-init}--\ref{ln:p-count}).
+%
+It removes a vertex of smallest key, gives it the largest key seen so far (Lines~\ref{ln:p-min}--\ref{ln:p-give}), and recounts its unsettled neighbours, the only vertices whose counts the removal can change (Line~\ref{ln:p-update}).
 \begin{example}\label{ex:settled}
 % trace 2026-09-23: tools/example_check.py (settled and unsettled per size, 12 triangles through the unsettled vertices, all removed at level 3).
 Consider Figure~\ref{fig:example} at size $3$.
@@ -119,23 +123,54 @@ At size $4$, $x$ is settled, since its value $3$ at size $3$ equals its floor $\
 \end{example}
 
 \stitle{The tree of a size.}
-% 2026-09-24 user: Algorithm 2 was too close to the code.  The level sweep that builds T_s is now the named step Sweep,
-% described here; the float keeps only set-level assignments.
-Given the values of size $s$, a sweep over the levels builds the tree $\Tree{s}$ and the own nodes, which we call $\kw{Sweep}(s)$.
+% 2026-09-24 user: Peel and Sweep need pseudocode; Algorithm alg:peelsweep holds both, Build calls them.
+Procedure \kw{Sweep} of Algorithm~\ref{alg:peelsweep} builds the tree $\Tree{s}$ and the own nodes from the values of size $s$.
 %
-A path of the clique tree is \textit{live} when its mandatory vertices are all active and at least $s$ of its vertices are active.
+It activates the vertices from the highest value down (Lines~\ref{ln:w-levels}--\ref{ln:w-activate}).
+%
+An \textit{$s$-part} of a vertex set $A$ is a largest subset of $A$ connected through $s$-cliques inside $A$.
+%
+After each value $k$, the $s$-parts of the active vertices are the cores of size $s$ at level $k$, so an $s$-part that is not yet a node is a canonical node of top $k$ (Lines~\ref{ln:w-parts}--\ref{ln:w-node}).
+%
+Its children are the largest nodes inside it (Line~\ref{ln:w-children}), and every vertex of value $k$ receives its $s$-part as own node (Line~\ref{ln:w-own}).
+%
+The parts are found from the clique tree with one union per path and vertex.
+%
+A path is \textit{live} when its mandatory vertices are all active and at least $s$ of its vertices are active.
 %
 Every $s$-clique of active vertices lies on the one path that represents it, which is then live, and any $s$ active vertices of a live path form an $s$-clique of active vertices.
 %
-The sweep starts with no vertex active and goes through the values of size $s$ from the highest down.
-%
-At each value $k$ it activates the vertices of value $k$ and joins the active vertices of every live path that gained an active vertex into one component.
-%
-By the two facts about live paths, the components are the sets of active vertices connected through $s$-cliques of active vertices.
-%
-The components that changed are therefore the canonical nodes of top $k$, and the nodes they absorbed become their children.
-%
-Every vertex of value $k$ receives its component as its own node.
+Joining the active vertices of every live path into one part therefore gives the $s$-parts of Line~\ref{ln:w-parts}.
+
+\begin{algorithm}[t]
+\caption{\kw{Peel} and \kw{Sweep} at size $s$.}\label{alg:peelsweep}
+\SetAlgoLined\DontPrintSemicolon
+\SetKwProg{Proc}{Procedure}{}{}
+\SetKwFunction{Peel}{Peel}\SetKwFunction{Sweep}{Sweep}
+\Proc{\Peel{$s,S$}}{
+  $A\leftarrow\{v:\omg{v}\ge s\}$; $\ell\leftarrow0$\;\label{ln:p-a}
+  $\mathrm{key}(v)\leftarrow\binomc{\omg{v}-1}{s-1}$, for every $v\in S$\;\label{ln:p-init}
+  $\mathrm{key}(v)\leftarrow c_s(v,A)$, for every $v\in A\setminus S$\;\label{ln:p-count}
+  \While{$A\ne\emptyset$}{
+    $v\leftarrow$ a vertex of $A$ with the smallest key\;\label{ln:p-min}
+    $A\leftarrow A\setminus\{v\}$; $\ell\leftarrow\max(\ell,\mathrm{key}(v))$; $\core{s}{v}\leftarrow\ell$\;\label{ln:p-give}
+    $\mathrm{key}(u)\leftarrow c_s(u,A)$ for $u\in A\setminus S$ adjacent to $v$\;\label{ln:p-update}
+  }
+  \Return $\core{s}{\cdot}$\;
+}
+\Proc{\Sweep{$s$}}{
+  $A\leftarrow\emptyset$; $\Tree{s}\leftarrow\emptyset$\;
+  \ForEach{value $k$ of size $s$, in decreasing order}{\label{ln:w-levels}
+    $B\leftarrow\{v:\core{s}{v}=k\}$; $A\leftarrow A\cup B$\;\label{ln:w-activate}
+    \ForEach{$s$-part $K$ of $A$ with $K\notin\Tree{s}$}{\label{ln:w-parts}
+      add $K$ to $\Tree{s}$ with top $k$\;\label{ln:w-node}
+      $\mathrm{children}(K)\leftarrow$ the largest nodes of $\Tree{s}$ inside $K$\;\label{ln:w-children}
+    }
+    $\own{s}{v}\leftarrow$ the $s$-part of $A$ containing $v$, for $v\in B$\;\label{ln:w-own}
+  }
+  \Return $(\Tree{s},X_s)$\;
+}
+\end{algorithm}
 
 \begin{algorithm}[t]
 \caption{\build: the chain index from one clique tree.}\label{alg:build}
