@@ -9,7 +9,9 @@
 // What changes is the cost: the per-size arrays over the vertices and the rows are allocated once and reset through
 // the entries a size touched, the pending child lists are linked lists over node ids instead of one vector per vertex,
 // node values stay in the count type, and everything a row visit reads or writes (size interval, holds, active counts,
-// representative) sits in one 20-byte record per row; the row itself is read only when it becomes live.
+// representative) sits in one aligned 16-byte record per row; the row itself is read only when it becomes live.  A row's
+// counts carry the size that set them and are cleared at its first visit of a new size, so no list of touched rows and
+// no reset pass over the rows exist.
 #include "../r1_terminal_20260918/terminal.hpp"
 #include <span>
 
@@ -31,8 +33,9 @@ public:
         std::iota(dsu_.begin(), dsu_.end(), 0);
         for (size_t p = 0; p < index.rows.size(); ++p) {
             const auto& row = index.rows[p];
-            require(row.hi < 65536 && row.lo < 65536, "size interval exceeds 16 bits");
-            state_[p].lo = static_cast<uint16_t>(row.lo); state_[p].hi = static_cast<uint16_t>(row.hi); state_[p].holds = row.holds();
+            require(row.hi < 65535 && row.lo < 65535 && row.holds() < 65536 && row.pivots() < 65536, "row exceeds 16-bit fields");
+            state_[p].lo = static_cast<uint16_t>(row.lo); state_[p].hi = static_cast<uint16_t>(row.hi);
+            state_[p].holds = static_cast<uint16_t>(row.holds());
         }
     }
 
@@ -58,7 +61,7 @@ public:
                     const size_t p = code >> 2; const unsigned role = code & 3;
                     RowState& st = state_[p];
                     if (st.lo > sv || st.hi < sv) continue;                            // row not valid at s
-                    if (!st.ah && !st.aq && st.rep < 0) rows_.push_back(p);
+                    if (st.stamp != sv) { st.stamp = static_cast<uint16_t>(sv); st.ah = 0; st.aq = 0; st.rep = -1; }   // first visit at size s
                     if (role == 0) ++st.ah; else if (role == 1) ++st.aq;
                     if (st.rep < 0) {
                         if (st.ah == st.holds && st.holds + st.aq >= sv) {             // the row becomes live
@@ -87,8 +90,6 @@ public:
         for (size_t x = 0; x < parent.size(); ++x) if (parent[x] >= 0) require(top[parent[x]] < top[x], "parent order");
         // reset what this size touched
         for (Vertex v : order_) { dsu_[v] = v; size_[v] = 1; active_[v] = 0; cur_[v] = -1; head_[v] = tail_[v] = -1; }
-        for (size_t p : rows_) { state_[p].ah = 0; state_[p].aq = 0; state_[p].rep = -1; }
-        rows_.clear();
     }
     size_t nodes() const { return parent.size(); }
 
@@ -125,11 +126,11 @@ private:
     Vertices dsu_, size_;
     std::vector<uint8_t> active_;
     std::vector<int> cur_, head_, tail_, next_;
-    struct RowState { uint16_t lo = 0, hi = 0; uint32_t holds = 0, ah = 0, aq = 0; int32_t rep = -1; };   // rep >= 0: live
+    struct alignas(16) RowState { uint16_t lo = 0, hi = 0, holds = 0, stamp = 0, ah = 0, aq = 0; int32_t rep = -1; };   // rep >= 0: live at size stamp
+    static_assert(sizeof(RowState) == 16);
     std::vector<RowState> state_;
     std::vector<uint64_t> marked_;
     uint64_t stamp_ = 0;
     Vertices order_, touched_;
-    std::vector<size_t> rows_;
 };
 }

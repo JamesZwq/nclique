@@ -36,6 +36,7 @@ struct Policy {
 struct SizeStats {
     int s = 0, mode = 0;     // mode 0: closed form (no residue) or past the clique number, 1: residue peel, 2: full peel
     uint64_t active = 0, residue = 0, settled_new = 0, residue_degree = 0, valid_incidences = 0;
+    uint64_t settled_early = 0;   // settled by the integer cascade although kappa_{s-1} is above the floor of size s-1
     uint64_t relevant_vertices = 0, relevant_rows = 0, relevant_incidences = 0;
     double ms = 0;
 };
@@ -75,7 +76,7 @@ inline Prepared prepare(terminal::Index& index, Vertex n) {
         for (Offset i = row.begin; i < row.end; ++i) {
             const Vertex u = index.members[i];
             const uint64_t role = i < row.hold_end ? 0 : (i < row.pivot_end ? 1 : 2);
-            index.reverse[cursor[u]++] = (p << 2) | role;
+            index.reverse[cursor[u]++] = static_cast<terminal::Code>((static_cast<uint64_t>(p) << 2) | role);
             out.omega[u] = std::max<Vertex>(out.omega[u], row.hi);
         }
         const uint64_t len = row.end - row.begin;
@@ -174,7 +175,10 @@ template<class Count, bool Tail = true> struct Solver {
                     if (entry.key != a) entry = {a, Base::integer_upper(a, s - 2, maximum, bstats)};
                     const Count upper = entry.value;
                     require(upper >= floor_value, "upper bound below the clique floor");
-                    if (Tail && upper == floor_value) { setl[v] = 1; value[v] = floor_value; ++ss.settled_new; }
+                    if (Tail && upper == floor_value) {
+                        setl[v] = 1; value[v] = floor_value; ++ss.settled_new;
+                        if (s > 3 && a != choose(static_cast<int>(om[v]) - 1, s - 2)) ++ss.settled_early;
+                    }
                     else { value[v] = upper; res[v] = 1; residue.push_back(v); residue_degree += index.reverse_off[v + 1] - index.reverse_off[v]; }
                 }
                 order.resize(kept); ss.active = kept;

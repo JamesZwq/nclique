@@ -12,8 +12,18 @@ struct BuildWork {
     size_t minimum_scratch_bytes=0;
 };
 
-using Offset = uint64_t;   // position in `members`; a graph's clique tree can hold more than 2^32 incidences (com-lj, hollywood)
-using RowId = uint64_t;    // row (leaf) index; com-lj has more than 2^30 rows.  Reverse codes pack (row << 2) | role in 64 bits.
+// Width of the row index (2026-09-23).  Narrow, the default: 32-bit member offsets, row ids and reverse codes, the
+// layout of every chain-index record up to 2026-09-19 (limits 2^32 incidences and 2^30 rows, both checked in append).
+// -DTERMINAL_WIDE: 64-bit, for clique trees past those limits (com-lj, hollywood, orkut; 2026-09-19).
+#ifdef TERMINAL_WIDE
+using Offset = uint64_t;   // position in `members`
+using RowId = uint64_t;    // row (leaf) index
+using Code = uint64_t;     // reverse code (row << 2) | role
+#else
+using Offset = uint32_t;
+using RowId = uint32_t;
+using Code = uint32_t;
+#endif
 struct Row {
     Offset begin, hold_end, pivot_end, end;
     Vertex group, lo, hi;
@@ -25,7 +35,7 @@ struct Row {
 struct Index {
     std::vector<Row> rows;
     Vertices members;
-    std::vector<uint64_t> reverse;        // per vertex: (row << 2) | role, role 0 hold, 1 pivot, 2 choice
+    std::vector<Code> reverse;            // per vertex: (row << 2) | role, role 0 hold, 1 pivot, 2 choice
     std::vector<RowId> group_row;
     std::vector<size_t> reverse_off;
     std::vector<uint8_t> zero_choice;
@@ -36,6 +46,10 @@ struct Index {
     void append(const Vertices& h,const Vertices& q,const Vertices& x={},bool zero=false) {
         require(!h.empty(),"terminal requires a hold");
         require(group_row.size()<absent,"group ID overflow");
+#ifndef TERMINAL_WIDE
+        require(rows.size()<(uint64_t{1}<<30),"packed row ID overflow (build with TERMINAL_WIDE)");
+        require(members.size()+h.size()+q.size()+x.size()<absent,"member offset overflow (build with TERMINAL_WIDE)");
+#endif
         const Offset begin=members.size(),mid=begin+h.size(),last=mid+q.size();
         const Vertex low=std::max<size_t>(2,h.size()+(!x.empty() && !zero));
         const Vertex high=std::min<size_t>(maximum,h.size()+q.size()+!x.empty());
@@ -62,16 +76,16 @@ struct Index {
             const auto& row=rows[p];
             for(Offset i=row.begin;i<row.end;++i) {
                 const uint64_t role=i<row.hold_end?0:(i<row.pivot_end?1:2);
-                reverse[cursor[members[i]]++]=(p<<2)|role;
+                reverse[cursor[members[i]]++]=static_cast<Code>((static_cast<uint64_t>(p)<<2)|role);
             }
         }
     }
-    std::span<const uint64_t> touching(Vertex v) const {
-        return std::span<const uint64_t>(reverse).subspan(reverse_off[v],reverse_off[v+1]-reverse_off[v]);
+    std::span<const Code> touching(Vertex v) const {
+        return std::span<const Code>(reverse).subspan(reverse_off[v],reverse_off[v+1]-reverse_off[v]);
     }
     size_t bytes() const {
         return rows.capacity()*sizeof(Row)
-            +members.capacity()*sizeof(Vertex)+(reverse.capacity()+group_row.capacity())*sizeof(uint64_t)
+            +members.capacity()*sizeof(Vertex)+reverse.capacity()*sizeof(Code)+group_row.capacity()*sizeof(RowId)
             +reverse_off.capacity()*sizeof(size_t)+zero_choice.capacity();
     }
 };

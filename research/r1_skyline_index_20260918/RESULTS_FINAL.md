@@ -1241,3 +1241,55 @@ clique tree included 1.09x-1.28x. Replay (`active`) vs stream: 1.8x GrQc, 1.55x 
 Stanford and 0.79x amazon. The 2.8x-814x against CND therefore comes mostly from building one clique tree for
 all sizes instead of one per size and from CND's engine, not from replay. Not measured: per-size peel with a
 per-size rebuilt clique tree on our engine (the clean "peel s times" baseline).
+
+### 17.10 Tail-certified solver (2026-09-23; `tail_solver.hpp`, `tail_check.cpp`, `bench_tail_time.py`)
+
+**Idea.** At size s every active vertex (clique number omega(v) >= s) has the floor C(omega-1, s-1) as a lower bound
+and the integer Kruskal-Katona cascade `integer_upper(kappa_{s-1}(v), s-2)` as an upper bound. When they coincide the
+value is known before any peeling ("settled"); by Theorem floor-and-tail(b) it stays on the floor at every larger
+size (settled is sticky, R_{s+1} is a subset of R_s, and once the residue is empty every later size is closed form).
+The integer cascade certifies more than the tail theorem alone: kappa_{s-1} = floor_{s-1} + 1 already gives
+`integer_upper` = floor_s (the cascade's second term C(s-3, s-2) is 0).
+- Residue peel: only rows valid at s that hold a residue vertex are initialised; their members are the relevant
+  vertices; settled relevant vertices carry no count and leave the stream exactly at their known value (asserted).
+  Correctness: after level l the remaining set is D_{l+1} = {kappa_s >= l+1} (induction: D_{l+1} members never drop,
+  and every member of the final set has >= l+1 cliques inside it, settled ones because D_{l+1} is inside it).
+- Full peel: the terminal per-size peel statement for statement over every valid row and active vertex (settled
+  vertices peeled like the others; result asserted equal to the floor). Chosen when the residue's touching volume
+  exceeds 0.30 of the valid incidences, or when the marked rows exceed 0.60 of them (marking aborted).
+- Engineering (all modes): arrays kept across sizes and reset through touched entries; one value row updated in
+  place; the stream order holds only active vertices; hot loops read array bases and counters from locals (the
+  first version, with lambda-captured vectors and Stats counters in memory, was 20% slower in the peel than the
+  terminal code it copied; `terminal_probe.hpp` = the terminal solver with phase timers located it); the clique
+  numbers and valid-row volumes come from `tailpeel::prepare`, fused with `Index::prepare`.
+
+**Correctness.** `tail_check --random 20000`: 54,009 graphs (all labelled graphs <= 6 vertices, K2..K14, split graphs,
+G(n,p) and planted cliques), five configurations (terminal; tail adaptive; tail forced residue; tail forced full;
+Tail=false through the unprepared path) equal value by value. Real graphs (`tail_laptop3.json`, `tail_large.json`),
+row hashes equal for all five on 19 graphs: the 15 laptop graphs, com-youtube, web-it-2004, soc-pokec,
+dblp-coauthor. `chain_index_tool --selftest` passes with CHAIN_SOLVER=tail and =terminal; .cx files byte-identical.
+
+**Solver time** (laptop M-series, OMP=1, `tail_check --time`, index preparation included, one process per
+(graph, solver, round), rounds alternate the order; medians of 10 runs, 20 for the two Amazon graphs, 6 for the
+two large ones; `tail_time2/3/_amz/_large.json`):
+
+| graph | terminal ms | tail ms | speedup | graph | terminal ms | tail ms | speedup |
+|---|---:|---:|---:|---|---:|---:|---:|
+| ca-GrQc | 1.2 | 0.3 | 3.75x | cit-HepPh | 169.3 | 160.6 | 1.05x |
+| ca-HepTh | 1.9 | 1.1 | 1.70x | amazon0302 | 84.3 | 77.4 | 1.09x |
+| ca-CondMat | 6.8 | 4.6 | 1.48x | amazon-copurchase | 70.7 | 68.2 | 1.04x |
+| dblp-core30 | 4.1 | 0.4 | 10.6x | loc-Brightkite | 223.7 | 221.6 | 1.01x |
+| ca-HepPh | 217.1 | 9.5 | 22.9x | soc-Slashdot0902 | 375.9 | 354.2 | 1.06x |
+| com-dblp | 168.3 | 57.5 | 2.92x | soc-Epinions1 | 664.0 | 628.8 | 1.06x |
+| ca-AstroPh | 50.2 | 43.2 | 1.16x | web-Stanford | 599.7 | 543.3 | 1.10x |
+| email-Eu-core | 17.4 | 16.5 | 1.05x | com-youtube | 482.4 | 444.0 | 1.09x |
+| web-it-2004 | 9,775 | 455 | 21.5x | | | | |
+
+Where it wins and why: collaboration and web graphs have few residue vertices (ca-HepPh 2.8% of active
+(vertex, size) pairs, web-it 1.3%), most sizes are closed form (web-it 380 of 431, dblp-coauthor 379 of 449), and a
+residue peel touches a few percent of the rows. Social/citation graphs keep a residue of 55-90% (Epinions 78%,
+pokec 88%): every size takes the full peel and the gain is the engineering part only (1.01-1.10x). The adaptive
+policy's regret against the better mode per size was <= 3.5 ms on all 15 laptop graphs (`tail_laptop3.json`).
+
+**Build-time ablation** (whole index build = ti + build + compact, four settings CHAIN_SOLVER x CHAIN_TREEPASS):
+`ablation_laptop.json`, `tods1_ablation.json`, `tods2_ablation.json` -- running; see 17.11.

@@ -11,6 +11,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent; ROOT = HERE.parents[1]
 SETTINGS = [('terminal', 'old'), ('terminal', 'fast'), ('tail', 'old'), ('tail', 'fast')]
+if os.environ.get('ABLATION_SETTINGS'):   # e.g. "tail:old,tail:fast" for a two-setting comparison
+    SETTINGS = [tuple(x.split(':')) for x in os.environ['ABLATION_SETTINGS'].split(',')]
 TIME_FLAG = '-l' if sys.platform == 'darwin' else '-v'
 
 def sha(path):

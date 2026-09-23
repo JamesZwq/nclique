@@ -61,7 +61,7 @@ static terminal::Index build_terminal_index(const Input& in, tailpeel::Prepared*
     return ti;
 }
 static uint64_t terminal_index_bytes(const terminal::Index& ti) {
-    return ti.rows.size() * sizeof(terminal::Row) + 4ull * ti.members.size() + 8ull * (ti.reverse.size() + ti.group_row.size()) + 8ull * ti.reverse_off.size() + ti.zero_choice.size();
+    return ti.rows.size() * sizeof(terminal::Row) + 4ull * ti.members.size() + sizeof(terminal::Code) * ti.reverse.size() + sizeof(terminal::RowId) * ti.group_row.size() + 8ull * ti.reverse_off.size() + ti.zero_choice.size();
 }
 // Upper bound on every count the solver accumulates, from the rows themselves: a row whose free part (pivots and
 // choices) has q members holds at most C(q, floor(q/2)) cliques of any one size through any member, so a member's
@@ -162,6 +162,7 @@ template<class T, class V = double> static ChainIndex<V> build_chain_index(const
     const auto tsolve = Clock::now();
     if (tail_solver()) tailpeel::Solver<T>::solve(g, ti, choose, in.ordinary, on_row, pre);
     else terminal::Solver<T>::solve(g, ti, choose, in.ordinary, nullptr, on_row);
+    pass.reset(); std::vector<int>().swap(old_leaf); std::vector<int>().swap(stack);   // the tree pass state is not needed past the last size
     for (Vertex v = 0; v < n; ++v) if (active[v]) terminate(v);           // rows past the last delivered one are zero
     bt.solve_ms = ms(tsolve) - trees_ms; bt.trees_ms = trees_ms; bt.rss_solve = rss_now(); bt.rss_trees = bt.rss_solve; auto t0 = Clock::now();
     keys.clear(); keys.shrink_to_fit();

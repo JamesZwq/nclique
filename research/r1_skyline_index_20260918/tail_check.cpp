@@ -56,11 +56,11 @@ static tailpeel::Policy env_policy(int force) {                     // the adapt
     if (const char* x = std::getenv("TAIL_RELEVANT")) p.relevant = std::stod(x);
     return p;
 }
-static void print_sizes(const char* key, const tailpeel::Stats& st) {   // [s, mode, active, residue, residue_degree, valid_incid, rel_incid, rel_vertices, ms]
+static void print_sizes(const char* key, const tailpeel::Stats& st) {   // [s, mode, active, residue, residue_degree, valid_incid, rel_incid, rel_vertices, ms, settled_new, settled_early]
     std::cout << ",\"" << key << "\":[";
     for (size_t i = 0; i < st.sizes.size(); ++i) { const auto& x = st.sizes[i];
         std::cout << (i ? "," : "") << "[" << x.s << "," << x.mode << "," << x.active << "," << x.residue << "," << x.residue_degree << "," << x.valid_incidences
-                  << "," << x.relevant_incidences << "," << x.relevant_vertices << "," << x.ms << "]"; }
+                  << "," << x.relevant_incidences << "," << x.relevant_vertices << "," << x.ms << "," << x.settled_new << "," << x.settled_early << "]"; }
     std::cout << "]";
 }
 template<class T> static void compare_one(const Input& in, const terminal::Index& ti, const tailpeel::Prepared& omega, double prepare_ms, double fused_ms,
