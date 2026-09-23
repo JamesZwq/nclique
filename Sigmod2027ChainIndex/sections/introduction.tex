@@ -165,6 +165,13 @@ Every community is a union of chains, and no partition into larger groups answer
 %
 On \dblp, $13{,}459$ chains hold its $317{,}080$ vertices, so one record serves $24$ vertices on average.
 %
+% 2026-09-24 user-agreed storyline: the floor is the second half of the repetition (values), used again by the build.
+The values repeat across sizes as well.
+%
+At every size $s$, the core value of a vertex is at least the number of $s$-cliques through it inside a largest clique containing it, a binomial coefficient of its clique number that we call its \emph{floor}.
+%
+Once the value equals the floor at one size, it does so at every larger size (Theorem~\ref{thm:tail}), and a chain stores its values only below that size, its \emph{tail start}.
+%
 \sstitle{Labels, order and runs.}
 We give the vertices new ids, their \emph{labels}, so that every chain is one interval.
 %
@@ -177,14 +184,9 @@ For each size, the index stores the tree of that size, with every chain at its o
 Consecutive labels in this order are merged into \emph{runs}.
 %
 A community query climbs the tree from the own node of the vertex to the node of the queried level and reads that node's ranges in constant time (Theorem~\ref{thm:retrieval}).
+
 %
-At every size $s$, the core value of a vertex is at least the number of $s$-cliques through it inside a largest clique containing it, a binomial coefficient of its clique number that we call its \emph{floor}.
-%
-Once the value equals this number at one size, it does so at every larger size (Theorem~\ref{thm:tail}).
-%
-The index stores values only below that size.
-%
-\sstitle{One clique tree for every size.}
+\sstitle{One static clique tree.}
 % 2026-09-24: the static clique tree story (Lemmas lem:removal and lem:events).
 A clique tree~\cite{Pivoter} is a set of paths, each with a mandatory and an optional vertex set, that represents every clique of every size exactly once.
 %
@@ -197,7 +199,11 @@ Removing a vertex never changes a path: the paths on which the vertex is mandato
 The clique tree is therefore \emph{static}, and the same tree serves the peel of every size and gives the tree of every size (Lemma~\ref{lem:events}).
 %
 % 2026-09-23: the replay sentence replaced by the settled vertices.
-A vertex whose value is on the floor at the previous size keeps the floor (Theorem~\ref{thm:tail}), and the peel counts cliques only for the other vertices (Theorem~\ref{thm:settled}).
+The floor saves work here too.
+%
+A vertex whose value is on the floor at the previous size keeps it.
+%
+The peel therefore counts cliques for a vertex only up to its tail start: at the sizes whose values the index stores, and at the one size where the value first reaches the floor (Theorem~\ref{thm:settled}).
 
 \stitle{Contributions.}
 % 2026-09-22 compaction: five sentences.
@@ -205,7 +211,7 @@ Theorem~\ref{thm:chains} decides hierarchy equivalence from the own nodes alone,
 %
 \chainidx stores each vertex once and returns every community as label ranges in constant time after the climb (Theorems~\ref{thm:onerange}, \ref{thm:retrieval} and~\ref{thm:tail}).
 %
-\build computes it for every size from one static clique tree, which gives the values and the tree of every size (Lemmas~\ref{lem:removal} and~\ref{lem:events}), peeling at each size only the vertices whose values are not yet on the floor (Theorem~\ref{thm:settled}).
+\build computes it for every size from one static clique tree, which gives the values and the tree of every size (Lemmas~\ref{lem:removal} and~\ref{lem:events}), and the floor spares the peel every vertex whose value at the previous size is already on it (Theorems~\ref{thm:tail} and~\ref{thm:settled}).
 %
 On \numgraphs{} graphs from five families, \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than \strees (median \ratiomedian$\times$).
 %

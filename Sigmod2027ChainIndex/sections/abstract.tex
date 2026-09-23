@@ -25,12 +25,15 @@ We propose \chainidx, an index over chains.
 %
 It numbers the vertices so that every community, at any size and level, is a few ranges of consecutive vertex ids, found in constant time after a climb to the queried level.
 %
-The index of every size is built from one clique tree.
 %
 % 2026-09-23: the construction sentence describes the settled vertices (Theorem thm:settled), not the replay.
-The values of a size come from removing vertices one at a time, each time one with the fewest cliques among the vertices left, and a vertex whose value at the previous size equals a binomial lower bound is not counted.
+The values of a size come from removing vertices one at a time, each time one in the fewest cliques among the vertices left.
 % 2026-09-24: the static clique tree (a removal lowers counters, never edits a path; the same tree gives the hierarchy).
-A removal only lowers counters on the paths of the clique tree, so the tree is never edited, and it also gives the hierarchy of every size.
+Removing a vertex only lowers counters on the paths of one clique tree.
+%
+The tree is never edited, and it gives the values and the hierarchy of every size.
+%
+Once a value reaches its floor, a binomial lower bound, it stays there at every larger size, and the index neither stores it nor, from the next size on, computes it.
 %
 On \numgraphs{} graphs from five families, \chainidx is \ratiomin$\times$ to \ratiomax$\times$ smaller than one hierarchy per size (median \ratiomedian$\times$).
 %
