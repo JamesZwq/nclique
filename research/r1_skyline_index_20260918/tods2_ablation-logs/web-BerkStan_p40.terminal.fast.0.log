@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=terminal CHAIN_TREEPASS=fast /usr/bin/time -v /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/scale/web-BerkStan_p40.edges
+{"n":274384,"solver":"terminal","treepass":"fast","count_bits":128,"chains":23630,"canonical_nodes":40500,"index_bytes":1922455,"build_form_bytes":2166704,"compact_ms":1.00692,"bytes_map":145984,"bytes_chains":624467,"bytes_layers":1152004,"ti_ms":283.117,"ti_bytes":31283320,"rss_loaded":30838784,"rss_with_ti":51933184,"rss_start":51933184,"rss_after_solve":112230400,"rss_after_chains":112230400,"rss_after_layout":112230400,"solve_ms":730.825,"trees_ms":440.955,"chains_ms":1.89069,"layout_ms":11.7428,"build_ms":1192.98}
+	Command being timed: "/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/scale/web-BerkStan_p40.edges"
+	User time (seconds): 2.05
+	System time (seconds): 0.05
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.11
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 109600
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 33952
+	Voluntary context switches: 1
+	Involuntary context switches: 2
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

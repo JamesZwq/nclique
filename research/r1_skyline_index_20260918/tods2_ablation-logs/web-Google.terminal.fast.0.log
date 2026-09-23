@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=terminal CHAIN_TREEPASS=fast /usr/bin/time -v /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/dsets/web-Google.edges
+{"n":875713,"solver":"terminal","treepass":"fast","count_bits":64,"chains":73836,"canonical_nodes":188362,"index_bytes":11156521,"build_form_bytes":12200784,"compact_ms":6.56366,"bytes_map":459560,"bytes_chains":3805974,"bytes_layers":6890987,"ti_ms":1404.92,"ti_bytes":123475112,"rss_loaded":56143872,"rss_with_ti":207568896,"rss_start":207568896,"rss_after_solve":367374336,"rss_after_chains":367374336,"rss_after_layout":367374336,"solve_ms":1842.13,"trees_ms":2362.73,"chains_ms":7.00745,"layout_ms":72.5905,"build_ms":4308.68}
+	Command being timed: "/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/dsets/web-Google.edges"
+	User time (seconds): 7.80
+	System time (seconds): 0.22
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:08.03
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 358764
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 139642
+	Voluntary context switches: 1
+	Involuntary context switches: 21
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

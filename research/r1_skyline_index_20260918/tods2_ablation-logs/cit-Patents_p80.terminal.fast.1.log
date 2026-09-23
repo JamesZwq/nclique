@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=terminal CHAIN_TREEPASS=fast /usr/bin/time -v /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/scale/cit-Patents_p80.edges
+{"n":3019516,"solver":"terminal","treepass":"fast","count_bits":64,"chains":156824,"canonical_nodes":102349,"index_bytes":8963004,"build_form_bytes":11404152,"compact_ms":5.19581,"bytes_map":1193464,"bytes_chains":4123477,"bytes_layers":3646063,"ti_ms":4600.67,"ti_bytes":511777392,"rss_loaded":149028864,"rss_with_ti":684904448,"rss_start":684904448,"rss_after_solve":958869504,"rss_after_chains":912498688,"rss_after_layout":912498688,"solve_ms":2619.62,"trees_ms":3166.05,"chains_ms":17.8958,"layout_ms":64.4486,"build_ms":5977.45}
+	Command being timed: "/home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /home/wenqianz/UNSW/pivoter/research/r1_skyline_index_20260918/scale/cit-Patents_p80.edges"
+	User time (seconds): 16.55
+	System time (seconds): 1.32
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:17.87
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1303712
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 895024
+	Voluntary context switches: 1
+	Involuntary context switches: 22
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
