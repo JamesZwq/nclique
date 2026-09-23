@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=tail CHAIN_TREEPASS=fast /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/dblp-core30.edges
+{"n":1206,"solver":"tail","treepass":"fast","count_bits":128,"chains":35,"canonical_nodes":1380,"index_bytes":50114,"build_form_bytes":45844,"compact_ms":0.041781,"bytes_map":376,"bytes_chains":6949,"bytes_layers":42789,"ti_ms":5.0239,"ti_bytes":320852,"rss_loaded":4349952,"rss_with_ti":4349952,"rss_start":4349952,"rss_after_solve":5591040,"rss_after_chains":5591040,"rss_after_layout":5591040,"solve_ms":1.06407,"trees_ms":19.3702,"chains_ms":0.039795,"layout_ms":0.258425,"build_ms":20.9308}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/dblp-core30.edges"
+	User time (seconds): 0.04
+	System time (seconds): 0.00
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.04
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 5916
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 634
+	Voluntary context switches: 1
+	Involuntary context switches: 0
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

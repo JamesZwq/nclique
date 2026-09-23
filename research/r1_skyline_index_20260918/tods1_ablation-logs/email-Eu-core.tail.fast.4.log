@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=tail CHAIN_TREEPASS=fast /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/email-Eu-core.edges
+{"n":1005,"solver":"tail","treepass":"fast","count_bits":64,"chains":667,"canonical_nodes":2602,"index_bytes":145590,"build_form_bytes":166432,"compact_ms":0.126541,"bytes_map":2868,"bytes_chains":47387,"bytes_layers":95335,"ti_ms":115.119,"ti_bytes":5520444,"rss_loaded":4173824,"rss_with_ti":10100736,"rss_start":10100736,"rss_after_solve":12832768,"rss_after_chains":12832768,"rss_after_layout":12832768,"solve_ms":39.5292,"trees_ms":52.2169,"chains_ms":0.093493,"layout_ms":1.30499,"build_ms":93.7762}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/email-Eu-core.edges"
+	User time (seconds): 0.22
+	System time (seconds): 0.00
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.23
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 12532
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 3050
+	Voluntary context switches: 1
+	Involuntary context switches: 0
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
