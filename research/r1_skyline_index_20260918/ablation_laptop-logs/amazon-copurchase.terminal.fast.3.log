@@ -1,0 +1,20 @@
+$ CHAIN_SOLVER=terminal CHAIN_TREEPASS=fast /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /Users/zhangwenqian/UNSW/pivoter/graphs/amazon-copurchase.edges
+{"n":548552,"solver":"terminal","treepass":"fast","count_bits":64,"chains":56315,"canonical_nodes":86798,"index_bytes":3975343,"build_form_bytes":4840472,"compact_ms":1.14458,"bytes_map":328132,"bytes_chains":1385981,"bytes_layers":2261230,"ti_ms":117.682,"ti_bytes":34704420,"rss_loaded":49692672,"rss_with_ti":109723648,"rss_start":109740032,"rss_after_solve":165445632,"rss_after_chains":165445632,"rss_after_layout":165953536,"solve_ms":63.8068,"trees_ms":151.628,"chains_ms":1.74287,"layout_ms":8.48342,"build_ms":227.649}
+        0.66 real         0.63 user         0.01 sys
+           166084608  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               10331  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 200  involuntary context switches
+          8633781210  instructions retired
+          2821363843  cycles elapsed
+           165495336  peak memory footprint

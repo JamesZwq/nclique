@@ -19,7 +19,7 @@ One core of the laptop is 1.5 to 3 times faster than one core of a server, so la
 \strees is the index of Section~\ref{sec:strees}, one tree and one depth-first array per size with every value stored.
 %
 % 2026-09-22 cold read 2 (experiments): who is measured named in every latency sentence; the ratio direction in the text; STrees never called "the copy"; the map share restored; the residue sentences; SGL glossed; the graphs of the case studies named; "record label" (the word label is taken).
-Its size and its query latency are measured on the same core values, trees and queries as \chainidx.
+Its size and its query latency are measured with the core values, trees and queries used for \chainidx.
 %
 \cnd is the published counting-based nucleus decomposition~\cite{Zhang2026NucleusCounting}, run once per size with its default settings.
 %
@@ -28,16 +28,18 @@ It computes core values only, so it is compared on build time and not on index s
 \stitle{Datasets.}
 We use \numgraphs{} real graphs from five families, collaboration, citation, web, product co-purchase, and social and communication networks, with $1{,}005$ to $4{,}049{,}537$ vertices and largest cliques of $7$ to $500$ vertices.
 %
-Table~\ref{tab:size} lists them with their family and their largest clique size $s_{\max}$, so the sizes with a nonzero value are $2$ to $s_{\max}$.
+Table~\ref{tab:size} lists them with their family and their largest clique size $s_{\max}$, so the sizes at which some vertex has a nonzero core value are $2$ to $s_{\max}$.
 %
-Three larger graphs, not among the \numgraphs{}, \textsf{com-lj}, \textsf{ca-hollywood-2009} and \textsf{com-orkut}, run out of the 503~GB of memory of the servers while the clique tree is built.
+Three larger graphs run out of the 503~GB of memory of the servers while the clique tree is built, and they are not among the \numgraphs{}: \textsf{com-lj}, \textsf{ca-hollywood-2009} and \textsf{com-orkut}.
 
 \stitle{Metrics.}
-Queries draw a vertex that lies in an edge and a size $s$ between $2$ and the clique number of the vertex.
+Each query draws a vertex that lies in an edge, and then a size $s$ between $2$ and the clique number of that vertex.
 %
 The workload has $20{,}000$ community queries at the vertex's own level, $k=\core{s}{v}$, $20{,}000$ at half that level (rounded down, at least $1$), $1{,}000$ at $k=1$, and $200{,}000$ value queries, which ask for a core value.
 %
-Each workload runs six times, the first as a warm-up, and the latency is the median over the other five of the total time divided by the number of queries.
+Each workload runs six times, the first as a warm-up.
+%
+For each of the other five runs we divide the total time by the number of queries, and the latency is the median of these five values.
 %
 Index sizes are measured in memory, and build times exclude the reading of the graph.
 
@@ -46,34 +48,33 @@ Index sizes are measured in memory, and build times exclude the reading of the g
 % 2026-09-23 rewrite: build times from the build-time ablation (build_records.py; the settled peel of Section 7); the ratio's
 % sources measured (every vertex peeled at every size = terminal+fast); the time shares measured (the index passes are not
 % "a few percent"); memory share of the graph and the clique tree measured.
-The build time of \chainidx (Table~\ref{tab:size}) covers the clique tree, the peel of every size and the index passes of Section~\ref{sec:construction}, the trees, the trie and the layout.
+% 2026-09-23 cold read (Exp-1): three parts named once; "unsettled" glossed; "take" for the two systems; the one-size run of CND; the caption names the time; the memory scope.
+The build time of \chainidx (Table~\ref{tab:size}) has three parts: the clique tree, the peel of every size, and the index passes of Section~\ref{sec:construction} (the trees of the sizes, the trie and the layout).
 %
 Figure~\ref{fig:prior} plots, for the \priorgraphs{} (graph, machine) pairs with both records, the build and peel time of \cnd summed over the sizes $2$ to $s_{\max}$ against the one build of \chainidx on the same machine.
 %
 \chainidx is built faster by \priormin$\times$ on \textsf{com-amazon} (six sizes) to \priormax$\times$ on \webuk{} ($499$ sizes), median \priormedian$\times$.
 %
-The ratio grows with the number of sizes: on \textsf{web-BerkStan} ($201$ sizes) the $2.0$ hours of build and peel of \cnd become \buildberkstan{} seconds, and on \webuk{} $15.7$ hours become \buildwebuk{} seconds.
+The ratio is largest where the sizes are many: on \textsf{web-BerkStan} ($201$ sizes) \cnd takes $2.0$ hours and \chainidx \buildberkstan{} seconds, and on \webuk{} \cnd takes $15.7$ hours and \chainidx \buildwebuk{} seconds.
 %
-Two parts of Section~\ref{sec:construction} produce the ratio: the clique tree is built once for all sizes, and the peel of a size counts cliques only for its unsettled vertices (Theorem~\ref{thm:settled}).
+Two parts of Section~\ref{sec:construction} produce the ratio: the clique tree is built once for all sizes, and the peel of a size counts cliques only for the vertices whose values no bound fixes, the unsettled vertices of Theorem~\ref{thm:settled}.
 %
 Peeling every vertex at every size instead makes the build \settlemin$\times$ to \settlemax$\times$ slower, median \settlemedian$\times$.
 %
 The difference is largest on web and collaboration graphs, where most pairs of a vertex and a size are settled, and smallest on social graphs, where most are not.
 %
-In the build, the clique tree takes \treesharemin{} to \treesharemax{} percent of the time, the peel \peelsharemin{} to \peelsharemax{} percent, and the trees of the sizes with the trie and the layout \passsharemin{} to \passsharemax{} percent.
+The clique tree takes \treesharemin{} to \treesharemax{} percent of the build time, the peel \peelsharemin{} to \peelsharemax{} percent, and the index passes \passsharemin{} to \passsharemax{} percent.
 %
-The graph and the clique tree take at least \memsharemin{} percent of the memory (median \memsharemedian{} percent).
-%
-One run of \cnd is also the cost of a community query without an index, seconds to minutes on such graphs against the nanoseconds of Figure~\ref{fig:regimes}.
-%
-The build takes \buildgrqc{}~s on \textsf{ca-GrQc} and \builddblpcoauthor{}~s on \textsf{dblp-coauthor}, the graph of $4$ million vertices, with \memgbdblpcoauthor{}~GB of memory there.
-%
-\dblp is built in \buildcomdblp{}~s with \memcomdblp{}~MB.
+The graph and the clique tree take a median \memsharemedian{} percent of the peak memory.
+
+
+% 2026-09-23 compaction: the per-graph build times and memory are Table 1's last two columns.
+
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_prior.pdf}
-\caption{\cnd once per size against one build of \chainidx.}\label{fig:prior}
+\caption{Build time: \cnd once per size, summed, against one build of \chainidx.}\label{fig:prior}
 \end{figure}
 
 \expsection{Index size}

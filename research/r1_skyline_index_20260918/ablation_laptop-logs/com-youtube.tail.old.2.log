@@ -1,0 +1,20 @@
+$ CHAIN_SOLVER=tail CHAIN_TREEPASS=old /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /Users/zhangwenqian/UNSW/pivoter/graphs/com-youtube.edges
+{"n":1134890,"solver":"tail","treepass":"old","count_bits":64,"chains":42815,"canonical_nodes":22403,"index_bytes":3103325,"build_form_bytes":3987484,"compact_ms":0.963375,"bytes_map":384064,"bytes_chains":1477821,"bytes_layers":1241440,"ti_ms":1870.04,"ti_bytes":220101384,"rss_loaded":128106496,"rss_with_ti":447447040,"rss_start":447463424,"rss_after_solve":584728576,"rss_after_chains":584728576,"rss_after_layout":586858496,"solve_ms":416.179,"trees_ms":834.442,"chains_ms":3.43908,"layout_ms":8.37225,"build_ms":1263.34}
+        3.99 real         3.89 user         0.08 sys
+           587022336  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               36023  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                1546  involuntary context switches
+         44092630929  instructions retired
+         17004141239  cycles elapsed
+           586629984  peak memory footprint

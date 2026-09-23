@@ -1,0 +1,20 @@
+$ CHAIN_SOLVER=tail CHAIN_TREEPASS=fast /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /Users/zhangwenqian/UNSW/pivoter/data/ca-GrQc.edges
+{"n":5242,"solver":"tail","treepass":"fast","count_bits":64,"chains":716,"canonical_nodes":1517,"index_bytes":61328,"build_form_bytes":66904,"compact_ms":0.025,"bytes_map":3856,"bytes_chains":17321,"bytes_layers":40151,"ti_ms":1.58079,"ti_bytes":385400,"rss_loaded":2342912,"rss_with_ti":2965504,"rss_start":2981888,"rss_after_solve":4390912,"rss_after_chains":4423680,"rss_after_layout":4734976,"solve_ms":0.437036,"trees_ms":2.17509,"chains_ms":0.027292,"layout_ms":0.205792,"build_ms":2.89342}
+        0.00 real         0.00 user         0.00 sys
+             4751360  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 484  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                   9  involuntary context switches
+           140404379  instructions retired
+            38607830  cycles elapsed
+             3998032  peak memory footprint

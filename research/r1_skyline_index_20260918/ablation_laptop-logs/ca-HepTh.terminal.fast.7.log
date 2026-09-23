@@ -1,0 +1,20 @@
+$ CHAIN_SOLVER=terminal CHAIN_TREEPASS=fast /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /Users/zhangwenqian/UNSW/pivoter/graphs/ca-HepTh.edges
+{"n":9877,"solver":"terminal","treepass":"fast","count_bits":64,"chains":1104,"canonical_nodes":1583,"index_bytes":76147,"build_form_bytes":87244,"compact_ms":0.030417,"bytes_map":6284,"bytes_chains":26475,"bytes_layers":43388,"ti_ms":3.70333,"ti_bytes":858824,"rss_loaded":2785280,"rss_with_ti":3964928,"rss_start":3981312,"rss_after_solve":5750784,"rss_after_chains":5783552,"rss_after_layout":6193152,"solve_ms":1.87641,"trees_ms":3.09509,"chains_ms":0.040708,"layout_ms":0.223625,"build_ms":5.28642}
+        0.01 real         0.01 user         0.00 sys
+             6242304  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                 575  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                  21  involuntary context switches
+           253403979  instructions retired
+            68858057  cycles elapsed
+             5505360  peak memory footprint
