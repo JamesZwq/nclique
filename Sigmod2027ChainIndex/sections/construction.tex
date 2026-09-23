@@ -96,6 +96,8 @@ The peel of size $s$ thus follows the paths through unsettled vertices.
 Removing a settled vertex that lies on none of these paths changes no key and happens at the smallest key, so leaving the vertex out changes no value.
 %
 Once a size has no unsettled vertex, every value there is a floor, and every vertex is settled at every later size.
+%
+We write $\kw{Peel}(s,S)$ for this peel at size $s$ with the set $S$ of settled vertices.
 \begin{example}\label{ex:settled}
 % trace 2026-09-23: tools/example_check.py (settled and unsettled per size, 12 triangles through the unsettled vertices, all removed at level 3).
 Consider Figure~\ref{fig:example} at size $3$.
@@ -116,113 +118,81 @@ No triangle joins $a_1,\dots,a_5$ to an unsettled vertex, and the peel never vis
 At size $4$, $x$ is settled, since its value $3$ at size $3$ equals its floor $\binom{3}{2}$ there, and the $a_i$ and $b_i$ stay settled.
 \end{example}
 
+\stitle{The tree of a size.}
+% 2026-09-24 user: Algorithm 2 was too close to the code.  The level sweep that builds T_s is now the named step Sweep,
+% described here; the float keeps only set-level assignments.
+Given the values of size $s$, a sweep over the levels builds the tree $\Tree{s}$ and the own nodes, which we call $\kw{Sweep}(s)$.
+%
+A path of the clique tree is \textit{live} when its mandatory vertices are all active and at least $s$ of its vertices are active.
+%
+Every $s$-clique of active vertices lies on the one path that represents it, which is then live, and any $s$ active vertices of a live path form an $s$-clique of active vertices.
+%
+The sweep starts with no vertex active and goes through the values of size $s$ from the highest down.
+%
+At each value $k$ it activates the vertices of value $k$ and joins the active vertices of every live path that gained an active vertex into one component.
+%
+By the two facts about live paths, the components are the sets of active vertices connected through $s$-cliques of active vertices.
+%
+The components that changed are therefore the canonical nodes of top $k$, and the nodes they absorbed become their children.
+%
+Every vertex of value $k$ receives its component as its own node.
+
 \begin{algorithm}[t]
 \caption{\build: the chain index from one clique tree.}\label{alg:build}
 \SetAlgoLined\DontPrintSemicolon
 \KwIn{a graph $G$.}
-\KwOut{\chainidx: the map, the chain records, one tree with a run array per size.}
-$T\leftarrow$ the clique tree of $G$; $\omg{\cdot}\leftarrow$ the clique numbers read from $T$\;\label{ln:b-tree}
-$\mathrm{node}[v]\leftarrow$ the root of an empty trie, for every vertex $v$\;\label{ln:b-trie}
-\For{$s\leftarrow2,3,\dots$ \KwSty{while} some vertex lies in an $s$-clique}{\label{ln:b-sizes}
+\KwOut{\chainidx.}
+$T\leftarrow$ the clique tree of $G$\;\label{ln:b-tree}
+$\mathcal{P}\leftarrow\{V\}$\;\label{ln:b-part}
+\For{$s\leftarrow2,3,\dots$ \KwSty{while} $G$ has an $s$-clique}{\label{ln:b-sizes}
   \tcp{Step 1: the values of size $s$}
-  $\core{s}{v}\leftarrow\binomc{\omg{v}-1}{s-1}$, for every vertex $v$ settled at size $s$\;\label{ln:b-settle}
-  $\core{s}{v}\leftarrow$ its value in the peel of Theorem~\ref{thm:settled} on the paths of $T$ through unsettled vertices, for every unsettled $v$\;\label{ln:b-peel}
+  $S\leftarrow$ the vertices settled at size $s$\;\label{ln:b-settle}
+  $\kappa_s\leftarrow\kw{Peel}(s,S)$\;\label{ln:b-peel}
   \tcp{Step 2: the tree of size $s$ and the chains}
-  $\mathrm{active}[v]\leftarrow$ false, for every vertex $v$\;\label{ln:b-reset}
-  \ForEach{value $k$ of size $s$, in decreasing order}{\label{ln:b-levels}
-    $\mathrm{active}[v]\leftarrow$ true, for every $v$ with $\core{s}{v}=k$\;\label{ln:b-activate}
-    join the active vertices of every live path with a newly active vertex into one component\;\label{ln:b-union}
-    every component that changed becomes a node of $\Tree{s}$ with top $k$\;\label{ln:b-nodes}
-    the nodes that the changed component absorbed become its children\;\label{ln:b-parent}
-    $\own{s}{v}\leftarrow$ the component of $v$, for every $v$ with $\core{s}{v}=k$\;\label{ln:b-own}
-  }
-  $\mathrm{node}[v]\leftarrow$ the child of $\mathrm{node}[v]$ labelled $\own{s}{v}$, created if absent, for every active $v$\;\label{ln:b-refine}
-  $\mathrm{value}[\mathrm{node}[v]][s]\leftarrow\core{s}{v}$, for every active $v$\;\label{ln:b-value}
+  $(\Tree{s},X_s)\leftarrow\kw{Sweep}(s)$\;\label{ln:b-sweep}
+  $\mathcal{P}\leftarrow\{\,C\cap X_s^{-1}(x):C\in\mathcal{P},\ x\in\Tree{s}\cup\{\bot\}\,\}\setminus\{\emptyset\}$\;\label{ln:b-refine}
 }
 \tcp{Step 3: the layout}
-rank the chains, the stopped sets of the trie, in its depth-first order; label the vertices\;\label{ln:b-rank}
-record the chain starts\;\label{ln:b-bitmap}
-\ForEach{size $s$}{\label{ln:b-layout}
-  traverse $\Tree{s}$ with children by smallest rank\;\label{ln:b-traverse}
-  merge consecutive ranks into runs; record the entry of every node\;\label{ln:b-runs}
-}
-\lForEach{chain $c$}{store $\omega$, $\sigma$, the residues from $\mathrm{value}[c][\cdot]$, the trajectory}\label{ln:b-values}
+rank the chains $\mathcal{P}$ by their keys and label the vertices\;\label{ln:b-rank}
+\lForEach{size $s$}{build the run array of $\Tree{s}$}\label{ln:b-runs}
+\lForEach{chain $c\in\mathcal{P}$}{store its record}\label{ln:b-values}
 \end{algorithm}
 
 \stitle{Algorithm.}
-% 2026-09-22 algorithm pass: the float names its three steps, assigns to named arrays (active, node, own node) and calls the peel and the forward counts by name; the walk follows the steps.
-Algorithm~\ref{alg:build} has two steps for every size, the values (Step 1) and the tree with the refinement of the chains (Step 2), and one step after the last size, the layout (Step 3).
+% 2026-09-24: the walk follows the abstract float; the layout steps point to Section 5, where they are defined.
+Algorithm~\ref{alg:build} builds the clique tree once (Line~\ref{ln:b-tree}) and starts from one class holding every vertex (Line~\ref{ln:b-part}).
 %
-% 2026-09-22 compaction: the walk in eighteen sentences.
-A path of the clique tree $T$ is \textit{live} when its mandatory vertices are all active and at least $s$ of its vertices are active.
+For every size (Line~\ref{ln:b-sizes}) it computes the values (Step 1) and the tree with the refinement of the classes (Step 2), and after the last size it lays out the index (Step 3).
 %
-Every $s$-clique of active vertices lies on the one path that represents it, which is then live, and any $s$ active vertices of a live path form an $s$-clique of active vertices.
+\emph{During Step 1}, the algorithm collects the vertices settled at size $s$ (Line~\ref{ln:b-settle}).
 %
-Before the first size, the algorithm builds the clique tree once and reads from it the clique number of every vertex (Line~\ref{ln:b-tree}).
+Based on Theorem~\ref{thm:settled}, \kw{Peel} gives them their floors and peels only the other vertices (Line~\ref{ln:b-peel}).
 %
-The algorithm puts every vertex at the root of the trie that will hold the chains (Line~\ref{ln:b-trie}).
+\emph{During Step 2}, \kw{Sweep} builds $\Tree{s}$ and the own nodes of size $s$ (Line~\ref{ln:b-sweep}).
 %
-\emph{During Step 1}, for every size (Line~\ref{ln:b-sizes}) it gives every settled vertex its floor, based on Theorem~\ref{thm:tail} (Line~\ref{ln:b-settle}).
+The algorithm then splits every class by the own node of size $s$, where $\own{s}{v}=\bot$ for a vertex of value $0$ (Line~\ref{ln:b-refine}).
 %
-Based on Theorem~\ref{thm:settled}, it peels the unsettled vertices on the paths through them, with the settled vertices of these paths keyed by their values (Line~\ref{ln:b-peel}).
+After the last size, two vertices share a class exactly when they have the same own node at every size, so by Theorem~\ref{thm:chains} the classes are the chains.
 %
-\emph{During Step 2}, the algorithm builds the tree of size $s$ from its values.
+Figure~\ref{fig:pipeline} draws this refinement as a trie, one level per size.
 %
-It starts with no vertex active (Line~\ref{ln:b-reset}), goes through the values from the highest down (Line~\ref{ln:b-levels}), and activates the vertices of the current value (Line~\ref{ln:b-activate}).
+\emph{During Step 3}, the algorithm ranks the chains by the keys of Section~\ref{sec:order} and gives the vertices their labels (Line~\ref{ln:b-rank}).
 %
-It joins the active vertices of every live path that gained an active vertex into one component (Line~\ref{ln:b-union}).
+It builds the run array and the entries of every size as in Section~\ref{sec:runs} (Line~\ref{ln:b-runs}).
 %
-By the two facts about live paths, the components are exactly the sets of active vertices connected through $s$-cliques of active vertices.
-%
-After each value $k$, the components that changed are the canonical nodes of top $k$ (Line~\ref{ln:b-nodes}).
-%
-Every active vertex has value at least $k$, and a changed component holds a vertex of value $k$.
-%
-The nodes they absorbed become their children (Line~\ref{ln:b-parent}).
-%
-Every vertex activated at that value records its component as its own node (Line~\ref{ln:b-own}).
-%
-The chains are refined in a prefix trie whose nodes are labelled by own nodes.
-%
-At size $2$ the vertices are grouped by their own node, and at each later size every group is split by the own node of that size (Line~\ref{ln:b-refine}).
-%
-A vertex stops at its trie node once the size exceeds its clique number.
-%
-A chain is the set of vertices that stopped at one trie node, and its trajectory is the path of labels from the root.
-%
-The value of size $s$ is the same for every vertex that moves to one trie node, and the node records it (Line~\ref{ln:b-value}).
-%
-The tree of size $s$ is kept as its nodes with their tops and parents, numbered for now in a preorder $\mathrm{pre}_s$, which Section~\ref{sec:order} uses for the keys.
-%
-\emph{During Step 3}, the algorithm ranks the chains by a depth-first traversal of the trie.
-%
-The traversal visits the vertices stopped at a node before the node's children, and the children in increasing order of the preorder number $\mathrm{pre}_s$ of their own node.
-%
-This is the lexicographic key order of Section~\ref{sec:order}, and it gives the chain ranks, the aligned labels (Line~\ref{ln:b-rank}) and the chain starts (Line~\ref{ln:b-bitmap}).
-%
-For each size the algorithm traverses the tree over chains of Section~\ref{sec:runs} (Line~\ref{ln:b-traverse}).
-%
-At each node it lists the chains whose own node it is, read from the trajectories, and the subtrees of its children in one sequence by smallest chain rank.
-%
-It renumbers the nodes in this traversal order.
-%
-It merges the chain sequence into runs and records every node's entry (Line~\ref{ln:b-runs}).
-%
-Each chain then receives its clique number $\omega$, its trajectory and its recorded values (Line~\ref{ln:b-values}).
-%
-The tail start $\sigma$ is the first size at which the chain's value equals the floor, and only the values below $\sigma$, the residues, are stored.
+It stores for every chain its clique number, its tail start, its residues and its trajectory, as in Section~\ref{sec:values} (Line~\ref{ln:b-values}).
 
 \begin{example}\label{ex:build}
 % trace 2026-09-21: tools/example_check.py (nodes, own nodes, chains); LEDGER.md (ranks, runs, entries).  2026-09-22: three sentences.
 In Figure~\ref{fig:example} at size $2$, activating the value $4$ joins $A$ into one component and $\{x,u_1,\dots,w_3\}$ into another, the two nodes of top $4$.
 %
-Activating the value $3$ joins everything into the root of top $3$, and the trie then has three children of the root, holding $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$ and $\{x,u_1,\dots,w_3\}$.
+Activating the value $3$ joins everything into the root of top $3$, and the partition then has three classes, $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$ and $\{x,u_1,\dots,w_3\}$.
 %
-At size $3$ no group is split.
+At size $3$ no class is split.
 %
-At size $4$ the third group splits: $u_1,\dots,w_3$ stop, since the size exceeds their clique number, and $x$ moves on to the child labelled by the size-$4$ node $B$.
+At size $4$ the third class splits: $u_1,\dots,w_3$ have value $0$, and $x$ has the own node $B$.
 %
-The four trie nodes where vertices stopped, the dashed leaves of Figure~\ref{fig:pipeline}, are the chains of Example~\ref{ex:chains}, ranked $0$ to $3$ by the traversal.
+The four classes, the dashed leaves of Figure~\ref{fig:pipeline}, are the chains of Example~\ref{ex:chains}, ranked $0$ to $3$ by their keys.
 %
 The layout of size $3$ produces the runs and entries of Figure~\ref{fig:layout}.
 \end{example}
@@ -230,10 +200,10 @@ The layout of size $3$ produces the runs and entries of Figure~\ref{fig:layout}.
 \stitle{Cost.}
 % 2026-09-23: the shares are measured (Exp-1); the index passes are not "a few percent" (18-85 percent of the build).
 % 2026-09-23 compaction: the time shares are measured in Exp-1 and not repeated here.
-The refinement adds, for every live path, one union per vertex that becomes active on it, and one trie step per vertex and size.
+\kw{Sweep} adds, for every live path, one union per vertex that becomes active on it, and the refinement one step per vertex and size.
 %
 The layout adds one pass per size over the chains.
 %
-The working space is the clique tree and the graph, plus the values of two consecutive sizes, the trie, and the trees of the sizes with one node per canonical node.
+The working space is the clique tree and the graph, plus the values of two consecutive sizes, the partition, and the trees of the sizes with one node per canonical node.
 %
-The values take space linear in the vertices, the trie in the (chain, size) pairs, and the trees in the canonical nodes.
+The values take space linear in the vertices, the partition in the (chain, size) pairs, and the trees in the canonical nodes.
