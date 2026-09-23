@@ -22,7 +22,7 @@ A decomposition that counts cliques on clique paths, such as \cnd, edits the pat
 %
 The index is built instead from one clique tree that no step edits: a removal only lowers counters on its paths.
 %
-The same tree serves the peel of every size, which skips the vertices whose values are already known, and gives the tree of every size, which splits the chains (Figure~\ref{fig:pipeline}).
+The same tree serves the peel of every size, which counts cliques only for the vertices whose values are not yet known, and gives the tree of every size, which splits the chains (Figure~\ref{fig:pipeline}).
 
 \begin{figure}[t]
 \centering
@@ -67,7 +67,7 @@ A path thus depends on $W$ only through whether its mandatory set lies in $W$ an
 %
 Removing a mandatory vertex ends the path's contribution, and removing an optional vertex lowers $|Q\cap W|$ by one.
 %
-The peel therefore keeps for every path one \textit{counter}, the number $q(P)=|Q\cap W|$ of its optional vertices not yet removed, and never edits a path, so the clique tree is \textit{static}.
+The peel therefore keeps for every path one \textit{counter}, the number $q(P)=|Q\cap W|$ of its optional vertices not yet removed while its mandatory set is intact, and never edits a path, so the clique tree is \textit{static}.
 
 \stitle{Change-only peel with settled vertices.}
 The peel of a size counts cliques for every vertex, but Theorem~\ref{thm:tail} already gives many of the values that the peel computes.
@@ -236,7 +236,7 @@ For every size (Line~\ref{ln:b-sizes}) it computes the values (Step 1) and the t
 %
 \emph{During Step 1}, the algorithm collects the vertices settled at size $s$ (Line~\ref{ln:b-settle}).
 %
-Based on Theorem~\ref{thm:settled}, \kw{Peel} gives them their floors and peels only the other vertices (Line~\ref{ln:b-peel}).
+Based on Theorem~\ref{thm:settled}, \kw{Peel} keys them by their floors and counts cliques only for the other vertices (Line~\ref{ln:b-peel}).
 %
 \emph{During Step 2}, \kw{Hierarchy} builds $\Tree{s}$ and the own nodes of size $s$ from the same clique tree (Line~\ref{ln:b-hier}).
 %
@@ -280,7 +280,7 @@ Let $I_s$ be the total size of the paths with $|H|\le s\le|H|+|Q|$.
 %
 \kw{Peel} reads each such path once to count (Lemma~\ref{lem:count}) and once per removed vertex of the path while its mandatory set is intact (Lemma~\ref{lem:removal}).
 %
-\kw{Hierarchy} makes at most $I_s$ events and unions and sorts them in $O(I_s\log I_s)$ time.
+\kw{Hierarchy} makes at most $I_s$ events and at most $I_s$ unions and sorts them in $O(I_s\log I_s)$ time.
 %
 The refinement adds one step per vertex and size, and the layout one pass per size over the chains.
 %
