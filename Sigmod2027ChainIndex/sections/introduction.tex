@@ -104,7 +104,7 @@ We call this index \strees and compare against it in the experiments.
 %
 Call the size of the largest clique containing a vertex its clique number.
 %
-A vertex lies in cliques of every size from $2$ to its clique number, so \strees stores it in the array of every such size and keeps a core value for each.
+A vertex lies in cliques of every size from $2$ to its clique number, so \strees stores it in the array of every such size.
 %
 On the web graph \webuk, cliques reach $500$ vertices, a vertex lies in $181$ arrays on average, and \strees takes $190$~MB for $129{,}632$ vertices, or $1.5$~KB per vertex.
 %
@@ -179,16 +179,12 @@ We order the chains by the depth-first positions of their own nodes, comparing t
 %
 Every size-$2$ community is then one range of labels (Theorem~\ref{thm:onerange}), and at larger sizes the same order keeps the number of ranges small (Figure~\ref{fig:regimes}).
 %
-For each size, the index stores the tree of that size, with every chain at its own node, and the order in which a depth-first traversal of the tree lists the chains.
+% 2026-09-24 user + cold read: the trees are kept (same nodes as the baseline); the saving is what the baseline keeps for every vertex of every array.
+For each size, the index stores the tree of that size, with the same nodes as in \strees and with every chain at its own node.
 %
-Consecutive labels in this order are merged into \emph{runs}.
+It also stores the order in which a depth-first traversal of the tree lists the chains, and consecutive labels in this order are merged into \emph{runs}.
 %
-% 2026-09-24 user: the trees are kept (same nodes as the baseline); the saving is the three items stored per vertex and size.
-The trees are those of \strees, with the same nodes.
-%
-The saving is in what \strees stores for every vertex and every size: an array entry, an own-node pointer and a value.
-%
-The index stores runs in place of the arrays, an own node per chain and size in place of one per vertex and size, and a value only below the tail start of a chain.
+Where \strees keeps, for every vertex of every array, its position and a pointer to its own node, the index keeps the runs and one own node per chain and size.
 %
 A community query climbs the tree from the own node of the vertex to the node of the queried level and reads that node's ranges in constant time (Theorem~\ref{thm:retrieval}).
 

@@ -81,16 +81,18 @@ A community query climbs from the own node to the node nearest the root whose to
 A value query reads the stored value.
 
 \stitle{One hierarchy per size.}
-An index that serves every size stores, for each size, one tree and one array, together with every core value.
+An index that serves every size stores, for each size, one tree and one array, together with the core values.
 %
 We call this index \strees.
 %
 A vertex $v$ has a nonzero value at every size from $2$ to $\omg{v}$ (Section~\ref{sec:prelim}), so it appears in $\omg{v}-1$ arrays, one per size.
 %
-The arrays therefore hold $\sum_v(\omg{v}-1)$ entries, $44$ for the $15$ vertices of Figure~\ref{fig:example} (each $a_i$ four times, each $b_i$ and $x$ three times, each $u_i$ and $w_j$ twice).
+The arrays therefore hold $\sum_v(\omg{v}-1)$ positions, $44$ for the $15$ vertices of Figure~\ref{fig:example} (each $a_i$ four times, each $b_i$ and $x$ three times, each $u_i$ and $w_j$ twice).
 %
-% 2026-09-24 user: the three items per (vertex, size) pair, which Section 5 replaces.
-For every such pair of a vertex and a size, \strees stores an array entry, an own-node pointer and a value.
+% 2026-09-24 cold read: as measured (chain_index_tool.cpp baseline_vertex_bytes): two words per pair, values per vertex in the form of Section 5.4.
+For every such pair of a vertex and a size, \strees stores the array position and a pointer to the own node.
+%
+It stores the core values of every vertex in the form that Section~\ref{sec:values} gives for a chain: the clique number, the tail start and the values below it.
 %
 Building \strees means one decomposition per size, $499$ of them on \webuk (Section~\ref{sec:intro}).
 %

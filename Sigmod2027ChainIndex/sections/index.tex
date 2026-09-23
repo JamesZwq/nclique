@@ -14,9 +14,7 @@ We call the tree of a size with its runs the \textit{layer} of that size.
 % 2026-09-24 user: what the index keeps (the trees of Section 3) and what it replaces (the three items per pair).
 The tree of a size is the tree $\Tree{s}$ of \strees, with the same nodes.
 %
-What changes is what \strees stores for every pair of a vertex and a size, an array entry, an own-node pointer and a value (Section~\ref{sec:strees}).
-%
-The array of a size becomes its runs, the own node is stored once per chain and size, and only the values above the floor are stored (Section~\ref{sec:values}).
+What the index replaces is what \strees stores per vertex: a position and a pointer to the own node in every array, and the values (Section~\ref{sec:size}).
 % 2026-09-22 filler pass: the roadmap of the subsections removed.
 
 \begin{figure*}[t]
@@ -210,7 +208,9 @@ The six vertices $u_1,\dots,w_3$, with $\omega=3$, have values $4$ and $3$ above
 Stored per chain, the whole graph keeps three values, the residues column of Figure~\ref{fig:layout}(b).
 \end{example}
 % 2026-09-24: omega, sigma and the residues answer a value query without reading a layer (Algorithm alg:query, Value).
-The record of a chain holds its clique number $\omega$, its tail start $\sigma$ and its residues, which answer every value query without reading a layer (Section~\ref{sec:queries}), and its trajectory (Definition~\ref{def:chain}), from which the community query starts.
+The record of a chain holds its clique number $\omega$, its tail start $\sigma$, its residues, and its trajectory (Definition~\ref{def:chain}).
+%
+The first three answer every value query without reading a layer (Section~\ref{sec:queries}), and the trajectory starts every community query.
 %
 A value at or past $\sigma$ is the binomial coefficient of Theorem~\ref{thm:tail}, and for $s>\omega$ it is $0$.
 
@@ -224,13 +224,16 @@ The chain records take $2C$ words for $\omega$ and $\sigma$, one word per (chain
 %
 The layers take a constant number of words per canonical node (parent, jump pointer, top, subtree size and entry) and two labels per run, and the permutation of Section~\ref{sec:labels}, if kept, $n$ labels.
 %
-% 2026-09-24 user: the comparison item by item; the canonical nodes are the same in both indexes.
-\strees takes, for every (vertex, size) pair, one word in the array of the size, one own-node pointer and one value, and a constant number of words per canonical node.
+% 2026-09-24 user: the comparison item by item.  Cold read: the measured Baseline (chain_index_tool.cpp baseline_vertex_bytes)
+% stores 8 bytes per (vertex, size) pair, array position + own-node pointer, and omega, sigma and the residues per vertex; no value per pair.
+\strees takes, for every (vertex, size) pair, one word for the array position and one for the pointer to the own node, and a constant number of words per canonical node.
 %
-The canonical nodes are the same in both indexes, and the saving is in the three words per pair.
+It stores the values in the form of Section~\ref{sec:values}, but per vertex: $\omega$, $\sigma$ and the residues of every vertex.
 %
-The arrays become two labels per run, the $\sum_v(\omg{v}-1)$ own-node pointers become $\sum_c(\omega(c)-1)$ trajectory entries, and the values become the residues.
+The canonical nodes are the same in both indexes.
 %
-% trace 2026-09-24 (make_concept.py layers and records): 44 pairs; runs 1+3+3+1 = 8; trajectory entries 3+4+2+3 = 12; residues 2+1 = 3; canonical nodes 3+2+2+1 = 8 in both.
-In Figure~\ref{fig:example} the $44$ array entries become $8$ runs, the $44$ own-node pointers $12$ trajectory entries and the $44$ values $3$ residues, and both indexes have $8$ canonical nodes.
+The saving is in the pairs and in the values: the array positions become two labels per run, the $\sum_v(\omg{v}-1)$ pointers become the $\sum_c(\omega(c)-1)$ own nodes of the trajectories, and $\omega$, $\sigma$ and the residues are stored once per chain instead of once per vertex.
+%
+% trace 2026-09-24 (make_concept.py): 44 pairs; runs 1+3+3+1 = 8; own nodes in trajectories 3+4+2+3 = 12; residues per vertex 6*2+1 = 13, per chain 2+1 = 3; canonical nodes 3+2+2+1 = 8 in both.
+In Figure~\ref{fig:example} the $44$ array positions become $8$ runs of two labels, the $44$ pointers the $12$ own nodes of the trajectories, and the $13$ residues of the vertices the $3$ residues of the chains, and both indexes have $8$ canonical nodes.
 % trace 2026-09-21: active pairs = a_i: sizes 2..5 = 4 each, 20; b_i: sizes 2..4 = 3 each, 9; x: 3; u_i,w_i: sizes 2,3 = 2 each, 12; total 44.
