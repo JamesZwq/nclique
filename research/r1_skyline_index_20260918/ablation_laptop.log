@@ -1,0 +1,153 @@
+ca-GrQc                  r0 terminal old  total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        5 MB
+ca-GrQc                  r0 terminal fast total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        4 MB
+ca-GrQc                  r0 tail     old  total      0.00s ti     0.00 solve     0.00 trees     0.00 peak        5 MB
+ca-GrQc                  r0 tail     fast total      0.00s ti     0.00 solve     0.00 trees     0.00 peak        5 MB
+ca-GrQc                  r1 tail     fast total      0.00s ti     0.00 solve     0.00 trees     0.00 peak        4 MB
+ca-GrQc                  r1 tail     old  total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        5 MB
+ca-GrQc                  r1 terminal fast total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        4 MB
+ca-GrQc                  r1 terminal old  total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        5 MB
+== ca-GrQc: terminal+old 0.01s (1.00x) terminal+fast 0.01s (1.08x) tail+old 0.01s (1.10x) tail+fast 0.00s (1.29x)
+ca-HepTh                 r0 terminal old  total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        6 MB
+ca-HepTh                 r0 terminal fast total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        6 MB
+ca-HepTh                 r0 tail     old  total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        6 MB
+ca-HepTh                 r0 tail     fast total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        6 MB
+ca-HepTh                 r1 tail     fast total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        6 MB
+ca-HepTh                 r1 tail     old  total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        6 MB
+ca-HepTh                 r1 terminal fast total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        6 MB
+ca-HepTh                 r1 terminal old  total      0.01s ti     0.00 solve     0.00 trees     0.00 peak        6 MB
+== ca-HepTh: terminal+old 0.01s (1.00x) terminal+fast 0.01s (1.06x) tail+old 0.01s (1.07x) tail+fast 0.01s (1.17x)
+email-Eu-core            r0 terminal old  total      0.09s ti     0.05 solve     0.02 trees     0.02 peak       12 MB
+email-Eu-core            r0 terminal fast total      0.09s ti     0.04 solve     0.02 trees     0.02 peak       11 MB
+email-Eu-core            r0 tail     old  total      0.09s ti     0.05 solve     0.02 trees     0.02 peak       11 MB
+email-Eu-core            r0 tail     fast total      0.09s ti     0.05 solve     0.02 trees     0.02 peak       11 MB
+email-Eu-core            r1 tail     fast total      0.09s ti     0.05 solve     0.02 trees     0.02 peak       11 MB
+email-Eu-core            r1 tail     old  total      0.09s ti     0.04 solve     0.02 trees     0.03 peak       11 MB
+email-Eu-core            r1 terminal fast total      0.09s ti     0.05 solve     0.02 trees     0.03 peak       11 MB
+email-Eu-core            r1 terminal old  total      0.09s ti     0.05 solve     0.02 trees     0.03 peak       11 MB
+== email-Eu-core: terminal+old 0.09s (1.00x) terminal+fast 0.09s (1.02x) tail+old 0.09s (1.02x) tail+fast 0.09s (1.02x)
+ca-CondMat               r0 terminal old  total      0.04s ti     0.01 solve     0.01 trees     0.02 peak       12 MB
+ca-CondMat               r0 terminal fast total      0.03s ti     0.01 solve     0.01 trees     0.01 peak       11 MB
+ca-CondMat               r0 tail     old  total      0.03s ti     0.01 solve     0.00 trees     0.01 peak       12 MB
+ca-CondMat               r0 tail     fast total      0.03s ti     0.01 solve     0.00 trees     0.01 peak       12 MB
+ca-CondMat               r1 tail     fast total      0.03s ti     0.01 solve     0.00 trees     0.01 peak       12 MB
+ca-CondMat               r1 tail     old  total      0.03s ti     0.01 solve     0.00 trees     0.01 peak       12 MB
+ca-CondMat               r1 terminal fast total      0.04s ti     0.01 solve     0.01 trees     0.01 peak       11 MB
+ca-CondMat               r1 terminal old  total      0.04s ti     0.01 solve     0.01 trees     0.01 peak       12 MB
+== ca-CondMat: terminal+old 0.04s (1.00x) terminal+fast 0.03s (1.06x) tail+old 0.03s (1.10x) tail+fast 0.03s (1.12x)
+ca-HepPh                 r0 terminal old  total      0.24s ti     0.06 solve     0.10 trees     0.07 peak       23 MB
+ca-HepPh                 r0 terminal fast total      0.23s ti     0.06 solve     0.10 trees     0.06 peak       27 MB
+ca-HepPh                 r0 tail     old  total      0.15s ti     0.06 solve     0.01 trees     0.07 peak       19 MB
+ca-HepPh                 r0 tail     fast total      0.13s ti     0.06 solve     0.01 trees     0.06 peak       18 MB
+ca-HepPh                 r1 tail     fast total      0.13s ti     0.06 solve     0.01 trees     0.06 peak       18 MB
+ca-HepPh                 r1 tail     old  total      0.14s ti     0.06 solve     0.01 trees     0.07 peak       18 MB
+ca-HepPh                 r1 terminal fast total      0.23s ti     0.06 solve     0.10 trees     0.06 peak       20 MB
+ca-HepPh                 r1 terminal old  total      0.24s ti     0.07 solve     0.10 trees     0.07 peak       22 MB
+== ca-HepPh: terminal+old 0.24s (1.00x) terminal+fast 0.23s (1.07x) tail+old 0.15s (1.66x) tail+fast 0.13s (1.84x)
+ca-AstroPh               r0 terminal old  total      0.24s ti     0.11 solve     0.05 trees     0.07 peak       25 MB
+ca-AstroPh               r0 terminal fast total      0.23s ti     0.11 solve     0.05 trees     0.07 peak       23 MB
+ca-AstroPh               r0 tail     old  total      0.23s ti     0.11 solve     0.04 trees     0.08 peak       23 MB
+ca-AstroPh               r0 tail     fast total      0.24s ti     0.11 solve     0.05 trees     0.08 peak       23 MB
+ca-AstroPh               r1 tail     fast total      0.23s ti     0.12 solve     0.04 trees     0.07 peak       23 MB
+ca-AstroPh               r1 tail     old  total      0.23s ti     0.11 solve     0.04 trees     0.07 peak       23 MB
+ca-AstroPh               r1 terminal fast total      0.23s ti     0.11 solve     0.05 trees     0.07 peak       23 MB
+ca-AstroPh               r1 terminal old  total      0.24s ti     0.11 solve     0.05 trees     0.07 peak       23 MB
+== ca-AstroPh: terminal+old 0.24s (1.00x) terminal+fast 0.23s (1.02x) tail+old 0.23s (1.03x) tail+fast 0.24s (1.00x)
+com-dblp                 r0 terminal old  total      0.58s ti     0.13 solve     0.17 trees     0.27 peak      137 MB
+com-dblp                 r0 terminal fast total      0.51s ti     0.13 solve     0.16 trees     0.21 peak      135 MB
+com-dblp                 r0 tail     old  total      0.45s ti     0.14 solve     0.05 trees     0.26 peak      141 MB
+com-dblp                 r0 tail     fast total      0.40s ti     0.14 solve     0.05 trees     0.20 peak      130 MB
+com-dblp                 r1 tail     fast total      0.40s ti     0.13 solve     0.05 trees     0.21 peak      130 MB
+com-dblp                 r1 tail     old  total      0.48s ti     0.14 solve     0.06 trees     0.28 peak      136 MB
+com-dblp                 r1 terminal fast total      0.54s ti     0.14 solve     0.18 trees     0.22 peak      141 MB
+com-dblp                 r1 terminal old  total      0.57s ti     0.13 solve     0.16 trees     0.27 peak      152 MB
+== com-dblp: terminal+old 0.58s (1.00x) terminal+fast 0.53s (1.10x) tail+old 0.47s (1.23x) tail+fast 0.40s (1.44x)
+amazon0302               r0 terminal old  total      0.37s ti     0.11 solve     0.08 trees     0.17 peak      128 MB
+amazon0302               r0 terminal fast total      0.34s ti     0.11 solve     0.08 trees     0.14 peak      113 MB
+amazon0302               r0 tail     old  total      0.37s ti     0.11 solve     0.08 trees     0.17 peak      125 MB
+amazon0302               r0 tail     fast total      0.33s ti     0.10 solve     0.08 trees     0.14 peak      113 MB
+amazon0302               r1 tail     fast total      0.33s ti     0.10 solve     0.08 trees     0.14 peak      114 MB
+amazon0302               r1 tail     old  total      0.37s ti     0.11 solve     0.08 trees     0.17 peak      123 MB
+amazon0302               r1 terminal fast total      0.35s ti     0.11 solve     0.08 trees     0.15 peak      113 MB
+amazon0302               r1 terminal old  total      0.37s ti     0.10 solve     0.08 trees     0.18 peak      125 MB
+== amazon0302: terminal+old 0.37s (1.00x) terminal+fast 0.34s (1.09x) tail+old 0.37s (1.01x) tail+fast 0.33s (1.12x)
+amazon-copurchase        r0 terminal old  total      0.40s ti     0.11 solve     0.07 trees     0.21 peak      156 MB
+amazon-copurchase        r0 terminal fast total      0.33s ti     0.11 solve     0.06 trees     0.15 peak      158 MB
+amazon-copurchase        r0 tail     old  total      0.39s ti     0.11 solve     0.07 trees     0.20 peak      156 MB
+amazon-copurchase        r0 tail     fast total      0.34s ti     0.11 solve     0.07 trees     0.15 peak      159 MB
+amazon-copurchase        r1 tail     fast total      0.39s ti     0.14 solve     0.07 trees     0.16 peak      159 MB
+amazon-copurchase        r1 tail     old  total      0.40s ti     0.12 solve     0.06 trees     0.20 peak      159 MB
+amazon-copurchase        r1 terminal fast total      0.37s ti     0.12 solve     0.07 trees     0.17 peak      159 MB
+amazon-copurchase        r1 terminal old  total      0.39s ti     0.11 solve     0.06 trees     0.20 peak      158 MB
+== amazon-copurchase: terminal+old 0.39s (1.00x) terminal+fast 0.35s (1.11x) tail+old 0.39s (0.99x) tail+fast 0.36s (1.07x)
+cit-HepPh                r0 terminal old  total      0.73s ti     0.37 solve     0.15 trees     0.19 peak       91 MB
+cit-HepPh                r0 terminal fast total      0.72s ti     0.37 solve     0.15 trees     0.19 peak      101 MB
+cit-HepPh                r0 tail     old  total      0.77s ti     0.37 solve     0.17 trees     0.22 peak       94 MB
+cit-HepPh                r0 tail     fast total      0.77s ti     0.41 solve     0.16 trees     0.20 peak      102 MB
+cit-HepPh                r1 tail     fast total      0.73s ti     0.38 solve     0.15 trees     0.20 peak      100 MB
+cit-HepPh                r1 tail     old  total      0.73s ti     0.37 solve     0.15 trees     0.20 peak       92 MB
+cit-HepPh                r1 terminal fast total      0.75s ti     0.38 solve     0.16 trees     0.20 peak      102 MB
+cit-HepPh                r1 terminal old  total      0.72s ti     0.37 solve     0.15 trees     0.19 peak       91 MB
+== cit-HepPh: terminal+old 0.73s (1.00x) terminal+fast 0.73s (0.99x) tail+old 0.75s (0.97x) tail+fast 0.75s (0.97x)
+loc-Brightkite           r0 terminal old  total      0.84s ti     0.22 solve     0.25 trees     0.38 peak       92 MB
+loc-Brightkite           r0 terminal fast total      0.83s ti     0.23 solve     0.24 trees     0.35 peak       84 MB
+loc-Brightkite           r0 tail     old  total      0.78s ti     0.22 solve     0.21 trees     0.35 peak       86 MB
+loc-Brightkite           r0 tail     fast total      0.76s ti     0.22 solve     0.21 trees     0.33 peak       81 MB
+loc-Brightkite           r1 tail     fast total      0.75s ti     0.22 solve     0.20 trees     0.33 peak       81 MB
+loc-Brightkite           r1 tail     old  total      0.76s ti     0.21 solve     0.20 trees     0.34 peak       86 MB
+loc-Brightkite           r1 terminal fast total      0.80s ti     0.22 solve     0.23 trees     0.34 peak       84 MB
+loc-Brightkite           r1 terminal old  total      0.81s ti     0.22 solve     0.23 trees     0.36 peak       88 MB
+== loc-Brightkite: terminal+old 0.83s (1.00x) terminal+fast 0.81s (1.02x) tail+old 0.77s (1.07x) tail+fast 0.76s (1.09x)
+soc-Slashdot0902         r0 terminal old  total      1.78s ti     0.72 solve     0.37 trees     0.68 peak      256 MB
+soc-Slashdot0902         r0 terminal fast total      1.72s ti     0.72 solve     0.37 trees     0.63 peak      248 MB
+soc-Slashdot0902         r0 tail     old  total      1.81s ti     0.74 solve     0.36 trees     0.70 peak      261 MB
+soc-Slashdot0902         r0 tail     fast total      1.69s ti     0.72 solve     0.34 trees     0.63 peak      246 MB
+soc-Slashdot0902         r1 tail     fast total      1.74s ti     0.72 solve     0.36 trees     0.66 peak      246 MB
+soc-Slashdot0902         r1 tail     old  total      1.78s ti     0.74 solve     0.35 trees     0.69 peak      258 MB
+soc-Slashdot0902         r1 terminal fast total      1.72s ti     0.72 solve     0.37 trees     0.63 peak      245 MB
+soc-Slashdot0902         r1 terminal old  total      1.85s ti     0.73 solve     0.39 trees     0.73 peak      259 MB
+== soc-Slashdot0902: terminal+old 1.82s (1.00x) terminal+fast 1.72s (1.06x) tail+old 1.79s (1.01x) tail+fast 1.71s (1.06x)
+web-Stanford             r0 terminal old  total      2.18s ti     0.76 solve     0.58 trees     0.83 peak      322 MB
+web-Stanford             r0 terminal fast total      2.06s ti     0.77 solve     0.57 trees     0.70 peak      298 MB
+web-Stanford             r0 tail     old  total      2.12s ti     0.76 solve     0.52 trees     0.83 peak      318 MB
+web-Stanford             r0 tail     fast total      2.05s ti     0.77 solve     0.53 trees     0.73 peak      296 MB
+web-Stanford             r1 tail     fast total      1.98s ti     0.76 solve     0.51 trees     0.70 peak      296 MB
+web-Stanford             r1 tail     old  total      2.19s ti     0.78 solve     0.54 trees     0.86 peak      318 MB
+web-Stanford             r1 terminal fast total      2.04s ti     0.76 solve     0.57 trees     0.70 peak      298 MB
+web-Stanford             r1 terminal old  total      2.24s ti     0.78 solve     0.60 trees     0.84 peak      331 MB
+== web-Stanford: terminal+old 2.21s (1.00x) terminal+fast 2.05s (1.08x) tail+old 2.15s (1.03x) tail+fast 2.01s (1.10x)
+soc-Epinions1            r0 terminal old  total      3.75s ti     1.79 solve     0.65 trees     1.30 peak      491 MB
+soc-Epinions1            r0 terminal fast total      3.60s ti     1.81 solve     0.64 trees     1.15 peak      473 MB
+soc-Epinions1            r0 tail     old  total      3.72s ti     1.81 solve     0.61 trees     1.30 peak      491 MB
+soc-Epinions1            r0 tail     fast total      3.58s ti     1.81 solve     0.60 trees     1.16 peak      473 MB
+soc-Epinions1            r1 tail     fast total      3.60s ti     1.83 solve     0.61 trees     1.16 peak      473 MB
+soc-Epinions1            r1 tail     old  total      3.70s ti     1.81 solve     0.60 trees     1.28 peak      491 MB
+soc-Epinions1            r1 terminal fast total      3.60s ti     1.81 solve     0.64 trees     1.14 peak      473 MB
+soc-Epinions1            r1 terminal old  total      3.88s ti     1.80 solve     0.69 trees     1.38 peak      495 MB
+== soc-Epinions1: terminal+old 3.81s (1.00x) terminal+fast 3.60s (1.06x) tail+old 3.71s (1.03x) tail+fast 3.59s (1.06x)
+com-youtube              r0 terminal old  total      3.07s ti     1.78 solve     0.44 trees     0.84 peak      554 MB
+com-youtube              r0 terminal fast total      2.95s ti     1.78 solve     0.43 trees     0.72 peak      556 MB
+com-youtube              r0 tail     old  total      3.09s ti     1.84 solve     0.41 trees     0.83 peak      562 MB
+com-youtube              r0 tail     fast total      2.98s ti     1.84 solve     0.40 trees     0.72 peak      574 MB
+com-youtube              r1 tail     fast total      2.99s ti     1.82 solve     0.41 trees     0.73 peak      576 MB
+com-youtube              r1 tail     old  total      3.15s ti     1.85 solve     0.43 trees     0.86 peak      560 MB
+com-youtube              r1 terminal fast total      3.02s ti     1.85 solve     0.43 trees     0.72 peak      556 MB
+com-youtube              r1 terminal old  total      3.14s ti     1.86 solve     0.44 trees     0.83 peak      557 MB
+== com-youtube: terminal+old 3.10s (1.00x) terminal+fast 2.99s (1.04x) tail+old 3.12s (0.99x) tail+fast 2.98s (1.04x)
+soc-pokec                r0 terminal old  total     32.55s ti    17.60 solve     6.45 trees     8.34 peak     3114 MB
+soc-pokec                r0 terminal fast total     32.53s ti    17.58 solve     6.56 trees     8.19 peak     3170 MB
+soc-pokec                r0 tail     old  total     32.22s ti    17.50 solve     6.29 trees     8.27 peak     3141 MB
+soc-pokec                r0 tail     fast total     32.36s ti    17.68 solve     6.36 trees     8.12 peak     3424 MB
+soc-pokec                r1 tail     fast total     32.39s ti    17.61 solve     6.39 trees     8.19 peak     3193 MB
+soc-pokec                r1 tail     old  total     32.98s ti    18.01 solve     6.39 trees     8.41 peak     3141 MB
+soc-pokec                r1 terminal fast total     33.41s ti    18.44 solve     6.58 trees     8.18 peak     3169 MB
+soc-pokec                r1 terminal old  total     33.25s ti    17.95 solve     6.64 trees     8.51 peak     3115 MB
+== soc-pokec: terminal+old 32.90s (1.00x) terminal+fast 32.97s (1.00x) tail+old 32.60s (1.01x) tail+fast 32.37s (1.02x)
+dblp-coauthor            r0 terminal old  total    154.92s ti    28.33 solve    82.61 trees    43.52 peak     7510 MB
+dblp-coauthor            r0 terminal fast total    147.58s ti    28.47 solve    83.40 trees    35.26 peak     8435 MB
+dblp-coauthor            r0 tail     old  total     91.43s ti    28.48 solve    19.13 trees    43.41 peak     8254 MB
+dblp-coauthor            r0 tail     fast total     82.26s ti    28.21 solve    19.02 trees    34.62 peak     8210 MB
+dblp-coauthor            r1 tail     fast total     81.10s ti    27.82 solve    18.94 trees    33.90 peak     8210 MB
+dblp-coauthor            r1 tail     old  total     89.86s ti    27.62 solve    18.91 trees    42.87 peak     8465 MB
+dblp-coauthor            r1 terminal fast total    143.90s ti    27.50 solve    81.31 trees    34.63 peak     8436 MB
+dblp-coauthor            r1 terminal old  total    160.90s ti    29.01 solve    86.05 trees    45.34 peak     8608 MB
+== dblp-coauthor: terminal+old 157.91s (1.00x) terminal+fast 145.74s (1.08x) tail+old 90.64s (1.74x) tail+fast 81.68s (1.93x)

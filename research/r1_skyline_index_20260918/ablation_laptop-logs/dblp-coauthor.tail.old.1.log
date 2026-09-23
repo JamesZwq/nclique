@@ -1,0 +1,20 @@
+$ CHAIN_SOLVER=tail CHAIN_TREEPASS=old /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /Users/zhangwenqian/UNSW/pivoter/graphs/dblp-coauthor.edges
+{"n":4049537,"solver":"tail","treepass":"old","count_bits":512,"chains":363201,"canonical_nodes":274215,"index_bytes":44284853,"build_form_bytes":47832116,"compact_ms":14.9244,"bytes_map":2212112,"bytes_chains":21089986,"bytes_layers":20982755,"ti_ms":27615.6,"ti_bytes":1761623876,"rss_loaded":918798336,"rss_with_ti":4220747776,"rss_start":4220764160,"rss_after_solve":8847572992,"rss_after_chains":8847654912,"rss_after_layout":8875819008,"solve_ms":18909.7,"trees_ms":42872.1,"chains_ms":33.079,"layout_ms":272.354,"build_ms":62225.7}
+       99.41 real        97.35 user         1.68 sys
+          8875819008  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              542114  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   1  voluntary context switches
+               35667  involuntary context switches
+        899481021402  instructions retired
+        414228916935  cycles elapsed
+          8879430304  peak memory footprint

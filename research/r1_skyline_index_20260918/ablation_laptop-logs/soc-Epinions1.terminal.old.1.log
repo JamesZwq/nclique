@@ -1,0 +1,20 @@
+$ CHAIN_SOLVER=terminal CHAIN_TREEPASS=old /usr/bin/time -l /Users/zhangwenqian/UNSW/pivoter/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /Users/zhangwenqian/UNSW/pivoter/graphs/soc-Epinions1.edges
+{"n":75879,"solver":"terminal","treepass":"old","count_bits":64,"chains":8821,"canonical_nodes":12886,"index_bytes":1117624,"build_form_bytes":1304016,"compact_ms":0.449125,"bytes_map":49524,"bytes_chains":456481,"bytes_layers":611619,"ti_ms":1795.22,"ti_bytes":223061316,"rss_loaded":14893056,"rss_with_ti":484229120,"rss_start":484245504,"rss_after_solve":517226496,"rss_after_chains":517242880,"rss_after_layout":518553600,"solve_ms":692.559,"trees_ms":1383.89,"chains_ms":0.465,"layout_ms":3.69771,"build_ms":2081.01}
+        3.96 real         3.87 user         0.05 sys
+           518782976  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               31858  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                2107  involuntary context switches
+         46626335410  instructions retired
+         16312375736  cycles elapsed
+           518341376  peak memory footprint
