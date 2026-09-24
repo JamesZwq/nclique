@@ -8,9 +8,11 @@
 % 2026-09-24 audit: one server (tods1 and tods2 are one machine, user), 2 x 24 cores (96 threads), load 1 to 26 in the run logs,
 % our own timing runs overlapped there (2026-09-19 index runs, 2026-09-20 CND queues, 2026-09-23 build ablations); laptop/server
 % build ratio 1.90-3.52 (median 2.30, 12 graphs, build_records).
-All algorithms are implemented in C++ and run single-threaded on a laptop (Apple M-series) and on one shared Ubuntu 22.04 server (GCC 11.4, two sockets of 24 cores, 503~GB of memory).
+% 2026-09-24 user: the overlap of our own runs changes no result (repeated CND/build ratios of one graph differ by 9-18%,
+% e.g. com-dblp 26.7/27.5/31.5x; two single-threaded jobs on 96 threads) and is not stated; the false "never two at once" stays out.
+All algorithms are implemented in C++ and run single-threaded on a laptop (Apple M-series) and on one Ubuntu 22.04 server (GCC 11.4, two sockets of 24 cores, 503~GB of memory).
 %
-On the server, jobs of other users ran at the same time, with a load average of 1 to 26, and some of our own timing runs overlapped with one another.
+Jobs of other users ran on the server at the same time, with a load average of 1 to 26.
 %
 The laptop builds the index 1.9 to 3.5 times faster than the server, so every comparison of times is between runs on the same machine, and Table~\ref{tab:size} marks the graphs built on the laptop.
 
