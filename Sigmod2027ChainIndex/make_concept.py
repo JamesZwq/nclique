@@ -3,14 +3,14 @@
 converted to vector PDF with Chrome (the paper's font, Linux Libertine, is embedded as TrueType).
 
   figures/fig_running.pdf   Figure 1: the graph, and the community of x at sizes 2, 3 and 4 (shaded)
-  figures/fig_strees.pdf    Section 3: one tree and one array per size (Baseline): 44 cells for 15 vertices
-  figures/fig_index.pdf     Section 5: what ChainIndex stores: labels and chains, the chain records, one layer per
-                            size (tree over chains, run array, entries), and one community query traced
+  figures/fig_pair.pdf      Figure 2 (Section 3): Baseline beside ChainIndex, one row per size: the same bars (nodes)
+                            over the vertex arrays (44 positions) and over the chains with their runs, the label array
+                            with the chain records, and the query of x at (3, 2) in orange
   figures/fig_build.pdf     Section 7: order replay at size 2 (two orders) and the refinement of the chains in the trie
 
 Every object is recomputed here by brute force from the definitions (nuclei, own nodes, chains, ranks, depth-first
 arrays, runs, entries, forward counts); the assertions pin the numbers the text prints.
-Usage: python3 make_concept.py   (writes the four PDFs; add --png for previews in figures/preview/)
+Usage: python3 make_concept.py [fig_name ...]   (default: all four PDFs; add --png for previews in figures/preview/)
 """
 import itertools, os, subprocess, sys
 from collections import defaultdict
@@ -292,139 +292,6 @@ def strees_array(s):
     for c in L['arr']: out += members[c]
     return out
 
-def fig_strees():
-    """icicle layout: every node is a bar as wide as its slice of the depth-first array, stacked by depth over the cells;
-    the own vertices of a node are the cells under it that no child bar covers."""
-    PW = 241.0
-    CW, CH = 13.4, 12.0; BH = 11.0; GAP = 1.6
-    X0 = 30.0
-    sv_parts = []
-    y = 4.0                                     # 2026-09-22: no title line (the caption says it), no footer (the text says 44)
-    rows = [(2, X0), (3, X0), (4, X0), (5, X0 + 9 * CW + 24)]
-    ys = {}
-    sv = SVG(PW, 1)
-    total = 0
-    for s, x0 in rows:
-        L = layers[s]; arr = strees_array(s); total += len(arr)
-        par = children(s)
-        def dep(N): return 0 if par[N] is None else 1 + dep(par[N])
-        maxd = max(dep(N) for N in nodes[s])
-        if s == 5: y = ys[4]                       # s = 5 sits beside s = 4
-        ytop = y
-        # bars, root row first
-        posv = {}
-        cells_y = ytop + (maxd + 1) * (BH + GAP)
-        for i, v in enumerate(arr): posv[v] = x0 + i * CW
-        for N in sorted(nodes[s], key=dep):
-            lo = posv[members[L['arr'][L['seg'][N][0]]][0]]; hi = posv[members[L['arr'][L['seg'][N][1] - 1]][-1]] + CW
-            by = ytop + dep(N) * (BH + GAP)
-            sv.rect(lo + 0.9, by, hi - lo - 1.8, BH, rx=1.5, fill='#f2f2f2', stroke='#000', sw=0.55)
-            nm = setname(N); top = nodes[s][N]
-            sv.text((lo + hi) / 2, by + 8.0, (f'{nm}, top {top}' if nm else f'top {top}'), size=6.2, anchor='middle')
-        for i, v in enumerate(arr):
-            sv.rect(x0 + i * CW, cells_y, CW, CH, stroke='#000', sw=0.5)
-            sv.text(x0 + i * CW + CW / 2, cells_y + 8.6, sub(v), size=6.4, anchor='middle', italic=True)
-        sv.text(x0 - 4, cells_y + 8.6, f's = {s}', size=6.8, anchor='end')
-        ys[s] = ytop
-        y = cells_y + CH + 7
-    PH = y - 5
-    sv.h = PH
-    assert total == 44
-    sv.write('fig_strees')
-
-# ---------------------------------------------------------------- Section 5: what ChainIndex stores ----
-def fig_index():
-    PW, PH = 506.0, 150.0          # 2026-09-22: footer (d) dropped (Example 6.2 walks the query); rows tightened
-    sv = SVG(PW, PH)
-    CW, CH = 16.0, 12.0
-    # (a) labels and chains
-    X0, Y0 = 12.0, 22.0
-    sv.text(2, 9, '(a) labels and chains', size=7.2)
-    q_answer = set(range(0, 3)) | set(range(8, 15))           # Community(x, 3, 2) = N: labels [0,3) and [8,15)
-    for i, v in enumerate(label_order):
-        on = i in q_answer
-        sv.rect(X0 + i * CW, Y0, CW, CH, fill=(SHADE if on else 'none'), stroke='#000', sw=0.5)
-        sv.text(X0 + i * CW + CW / 2, Y0 - 2.4, str(i), size=5.2, anchor='middle', fill='#777')
-        sv.text(X0 + i * CW + CW / 2, Y0 + 8.6, sub(v), size=6.6, anchor='middle', italic=True)
-    sv.rect(X0 + 14 * CW, Y0, CW, CH, fill='none', stroke=ORANGE, sw=1.1)          # the query vertex x
-    for c in range(4):
-        lo, hi = X0 + start[c] * CW, X0 + start[c + 1] * CW
-        sv.bracket(lo + 1, hi - 1, Y0 + CH + 5.5, tick=2.4, w=0.6)
-        sv.text((lo + hi) / 2, Y0 + CH + 14.5, f'chain {c}', size=6.4, anchor='middle', fill=(ORANGE if c == 3 else '#000'))
-    sv.text(X0 - 2, Y0 - 2.4, 'label', size=5.2, anchor='end', fill='#777')
-    # (b) the chain records, as a table
-    TX = 268.0; TY = 12.0
-    sv.text(TX, TY - 3, '(b) one record per chain', size=7.2)
-    cols = [('chain', 24), ('ω', 16), ('σ', 16), ('residues', 46), ('s = 2', 30), ('s = 3', 30), ('s = 4', 30), ('s = 5', 30)]
-    xs = [TX]
-    for _, w in cols: xs.append(xs[-1] + w)
-    rh = 10.5
-    sv.text((xs[4] + xs[-1]) / 2, TY + 6.2, 'own node at each size, drawn in (c)', size=5.6, fill='#777', anchor='middle')
-    sv.line(xs[4], TY + 8.5, xs[-1], TY + 8.5, color='#777', w=0.4)
-    hy = TY + 16.5
-    for j, (h, w) in enumerate(cols):
-        sv.text(xs[j] + w / 2, hy, h, size=6.4, anchor='middle', italic=(h in ('ω', 'σ')))
-    sv.line(xs[0], hy + 3, xs[-1], hy + 3, w=0.6)
-    for c in range(4):
-        y = hy + 3 + rh * (c + 1)
-        if c == 3: sv.rect(xs[0] - 1, y - rh + 1.5, xs[-1] - xs[0] + 2, rh, fill=ORANGE_SHADE, stroke='none')
-        row = [str(c), str(omega_c[c]), str(sigma_c[c]), (', '.join(f'κ<tspan font-size="70%" dy="1.6">{s}</tspan><tspan dy="-1.6"> = {k}</tspan>' for s, k in residues[c]) or '–')]
-        for s in SIZES:
-            if s in kappa_c[c]:
-                N = own[(members[c][0], s)]; nm = setname(N); row.append(f'{pre[s][N]}' + (f' ({nm})' if nm else ''))
-            else: row.append('–')
-        for j, cell in enumerate(row):
-            sv.text(xs[j] + cols[j][1] / 2, y, cell, size=6.4, anchor='middle', italic=False)
-    sv.line(xs[0], hy + 3 + rh * 4 + 3, xs[-1], hy + 3 + rh * 4 + 3, w=0.6)
-    # (c) one layer per size
-    LY = 82.0
-    sv.text(2, LY - 3, '(c) one layer per size: the tree over chains, and its run array with one entry (run, label) per node', size=7.2)
-    px = [2.0, 128.0, 254.0, 380.0]; PWD = 122.0
-    bw, bh = 56.0, 22.0; ROWS = 25.0
-    runs_y = LY + 12 + 2 * ROWS + 4
-    for j, s in enumerate(SIZES):
-        L = layers[s]; ox = px[j]
-        sv.text(ox, LY + 8, f's = {s}', size=6.8)
-        par = children(s)
-        def dep(N): return 0 if par[N] is None else 1 + dep(par[N])
-        order = sorted(nodes[s], key=lambda N: pre[s][N])
-        centre = {}
-        by_depth = defaultdict(list)
-        for N in order: by_depth[dep(N)].append(N)
-        for d, Ns in by_depth.items():
-            n = len(Ns); span = PWD - 4
-            for i, N in enumerate(Ns):
-                cx = ox + 2 + span * (i + 0.5) / n; cy = LY + 12 + d * ROWS
-                centre[N] = (cx, cy)
-        for N in order:
-            cx, cy = centre[N]; nm = setname(N)
-            hot = (s == 3 and N == N3); read = (s == 3 and N == frozenset(A))
-            sv.rect(cx - bw / 2, cy, bw, bh, rx=2.5, sw=(1.1 if hot else 0.6), stroke=(ORANGE if hot else '#000'),
-                    dash=('2,1.4' if read else None), fill=(ORANGE_SHADE if hot else 'none'))
-            title = f'node {pre[s][N]}' + (f' = {nm}' if nm else '') + f', top {nodes[s][N]}'
-            sv.text(cx, cy + 7.2, title, size=6.0, anchor='middle')
-            oc = L['ownc'][N]; r, lab = L['entry'][N]
-            sv.text(cx, cy + 15.0, f'own chains {", ".join(map(str, oc))}', size=5.8, anchor='middle')
-            sv.text(cx, cy + 22.6, f'entry ({r}, {lab})', size=5.8, anchor='middle', fill=(ORANGE if (hot or read) else '#000'))
-            if par[N] is not None:
-                pxx, pyy = centre[par[N]]
-                sv.line(pxx, pyy + bh, cx, cy, w=0.5)
-        # run array, at one height for every size
-        ry = runs_y
-        rw = 21.0
-        sv.text(ox, ry + 8.4, 'runs', size=5.8, fill='#777')
-        for r, (lo, hi) in enumerate(L['runs']):
-            x = ox + 18 + r * (rw + 2)
-            hot = (s == 3 and r in (0, 1))
-            sv.rect(x, ry, rw, CH, fill=(SHADE if hot else 'none'), stroke='#000', sw=0.5)
-            sv.text(x + rw / 2, ry - 2.2, f'{r}', size=5.2, anchor='middle', fill='#777')
-            sv.text(x + rw / 2, ry + 8.6, f'[{lo}, {hi})', size=6.2, anchor='middle')
-        R, hi = L['sentinel']; x = ox + 18 + len(L['runs']) * (rw + 2)
-        sv.rect(x, ry, rw + 4, CH, stroke='#777', sw=0.5, dash='1.5,1.2')
-        sv.text(x + (rw + 4) / 2, ry + 8.6, f'({R}, {hi})', size=6.0, anchor='middle', fill='#555')
-        sv.text(x + (rw + 4) / 2, ry - 2.2, 'sentinel', size=5.2, anchor='middle', fill='#777')
-    sv.write('fig_index')
-
 # ---------------------------------------------------------------- Section 7: replay and refinement ----
 def fig_build(trie_only=True):
     # 2026-09-22: the paper shows the trie alone at column width (the replay tables are Example 7.2); trie_only=False draws both panels
@@ -597,8 +464,8 @@ def fig_pair():
     sv.h = y - 1.0
     sv.write('fig_pair')
 
-FIGS = {'fig_running': fig_running, 'fig_strees': fig_strees, 'fig_index': fig_index, 'fig_build': fig_build, 'fig_pair': fig_pair}
+FIGS = {'fig_running': fig_running, 'fig_pair': fig_pair, 'fig_build': fig_build}
 
 if __name__ == '__main__':
     only = [a for a in sys.argv[1:] if a in FIGS]
-    for name in (only or ['fig_running', 'fig_strees', 'fig_index', 'fig_build']): FIGS[name]()
+    for name in (only or list(FIGS)): FIGS[name]()

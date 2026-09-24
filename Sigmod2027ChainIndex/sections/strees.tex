@@ -3,6 +3,12 @@
 % and its cost, the per-size construction, and the closing remark that re-lists the three limitations.  Cadence pass.
 
 This section describes the hierarchy of one size, that is, the forest that the cores of that size form under inclusion, and the index that stores one such forest per size.
+% 2026-09-24 user: the baseline and the index in one figure, one row per size, the rows aligned (make_concept.py fig_pair).
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_pair.pdf}
+\caption{\strees (a) and \chainidx (b) for Figure~\ref{fig:example}, one row per size; the query of $x$ at $(3,2)$ in orange.}\label{fig:layout}
+\end{figure*}
 % 2026-09-22 filler pass: the preview of Sections 4 to 7 removed; the bridge is the last sentence of the section.
 
 \stitle{The tree of one size.}
@@ -52,6 +58,8 @@ Later sections refer to the community by this description.
 \begin{example}\label{ex:tree}
 Consider Figure~\ref{fig:example}, which has cliques of the sizes $2$ to $5$.
 %
+Figure~\ref{fig:layout}(a) draws the tree of each size, one bar per node over the array of the size.
+%
 At size $2$ the root holds all $15$ vertices with top $3$, since every vertex has at least three neighbours and $b_1$ exactly three.
 %
 It has two children of top $4$, $A$ and $\{x,u_1,\dots,w_3\}$, the two $4$-cores of Example~\ref{ex:nucleus}.
@@ -87,7 +95,7 @@ We call this index \strees.
 %
 A vertex $v$ has a nonzero value at every size from $2$ to $\omg{v}$ (Section~\ref{sec:prelim}), so it appears in $\omg{v}-1$ arrays, one per size.
 %
-The arrays therefore hold $\sum_v(\omg{v}-1)$ positions, $44$ for the $15$ vertices of Figure~\ref{fig:example} (each $a_i$ four times, each $b_i$ and $x$ three times, each $u_i$ and $w_j$ twice).
+The arrays therefore hold $\sum_v(\omg{v}-1)$ positions, $44$ for the $15$ vertices of Figure~\ref{fig:example} (each $a_i$ four times, each $b_i$ and $x$ three times, each $u_i$ and $w_j$ twice), the cells of Figure~\ref{fig:layout}(a).
 %
 % 2026-09-24 cold read: as measured (chain_index_tool.cpp baseline_vertex_bytes): two words per pair, values per vertex in the form of Section 5.4.
 For every such pair of a vertex and a size, \strees stores the array position and a pointer to the own node.
