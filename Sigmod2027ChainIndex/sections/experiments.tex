@@ -107,11 +107,15 @@ If the graph keeps its original vertex ids, the index also stores the permutatio
 
 \expsection{Size by part}
 % 2026-09-22 compaction: six sentences.
-On the collaboration, web and product graphs the per-size trees with their run arrays are $58$ to $74$ percent of the index.
+% 2026-09-24: recomputed on the graphs of Table tab:size (make_tables.merged_rows: bytes_layers, bytes_chains, bytes_map over
+% bytes_total).  The family ranges written on 2026-09-22 (58-74, 23-41, 3-13, 44-58) were stale, and "shorter chains" did not hold
+% (wiki-Talk 80.6 vertices per chain).  Layers 34.9-86.6 (median 56.9), records 12.7-59.4 (median 36.4), map 0.7-14.3; records larger
+% than layers on cit-HepPh, soc-pokec, com-youtube, dblp-coauthor, cit-Patents.
+The per-size trees with their run arrays take $35$ to $87$ percent of the index (median $57$), and they are its largest part on $24$ of the \numgraphs{} graphs.
 %
-The records of the chains (Section~\ref{sec:values}) are $23$ to $41$ percent, and the vertex-to-chain map $3$ to $13$ percent.
+The records of the chains (Section~\ref{sec:values}) take $13$ to $59$ percent (median $36$), and the vertex-to-chain map $1$ to $14$ percent.
 %
-On the social and citation graphs, where chains are shorter, the records reach $44$ to $58$ percent.
+The records are the larger part on \textsf{soc-pokec}, \textsf{com-youtube}, \textsf{dblp-coauthor} and the two citation graphs.
 %
 Only the residues are stored (Theorem~\ref{thm:tail}), and the share of stored values (Table~\ref{tab:size}) ranges from \storedmin{} to \storedmax{} percent, median \storedmedian{} percent.
 %
