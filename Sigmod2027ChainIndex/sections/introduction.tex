@@ -73,9 +73,10 @@ The communities at larger sizes keep the authors who repeatedly write papers wit
 \sstitle{Co-purchase networks.}
 In a product graph, an edge joins two products bought together~\cite{linden2003amazon}.
 %
-The community of a jazz album at its core value is, at size $2$, a core of more than a hundred thousand products of every kind.
+% 2026-09-24 audit: Kind of Blue (case/amazon-queries.json): 36,878 at size 2 (1% jazz), 23 jazz albums at size 3, 22 albums at size 4 (14 of them from size 3), 6 at size 5.
+The community of the jazz album Kind of Blue at its core value is, at size $2$, a core of $36{,}878$ products, $1$ percent of them jazz.
 %
-At size $3$ it is the $23$ albums of one record label, at size $4$ $22$ of them, and at size $5$ the six albums a shop would place on one shelf (Section~\ref{sec:exp}).
+At size $3$ it is $23$ jazz albums, at size $4$ $22$ albums, and at size $5$ the six albums a shop would place on one shelf (Section~\ref{sec:exp}).
 %
 \sstitle{Coordinated groups.}
 In a graph whose edges join accounts that like or comment on the same posts, accounts that act together on many posts form cliques, and casual interaction rarely forms one~\cite{beutel2013copycatch,hooi2016fraudar}.
@@ -177,7 +178,8 @@ We give the vertices new ids, their \emph{labels}, so that every chain is one in
 %
 We order the chains by the depth-first positions of their own nodes, comparing the positions at size $2$ first and breaking ties at size $3$, $4$ and so on.
 %
-Every size-$2$ community is then one range of labels (Theorem~\ref{thm:onerange}), and at larger sizes the same order keeps the number of ranges small (Figure~\ref{fig:regimes}).
+Every size-$2$ community is then one range of labels (Theorem~\ref{thm:onerange}), and at larger sizes a community takes a few ranges or many, depending on the graph (Figure~\ref{fig:regimes}).
+% 2026-09-24 audit: "keeps the number of ranges small" did not hold (soc-pokec s=5: 196,921 ranges per own-level answer).
 %
 % 2026-09-24 user + cold read: the trees are kept (same nodes as the baseline); the saving is what the baseline keeps for every vertex of every array.
 For each size, the index stores the tree of that size, with the same nodes as in \strees and with every chain at its own node.

@@ -33,3 +33,28 @@ def builds(setting=FINAL):
                                'rest_s': med('chains_ms') + med('layout_ms') + med('compact_ms'), 'rounds': len(rs),
                                'rss_with_ti_bytes': statistics.median(x['result']['rss_with_ti'] for x in rs)}
     return out
+
+# 2026-09-24 audit: the largest clique size of every graph (omega.json, read from the stored indexes).  CND was run on the
+# sizes 2 .. degeneracy + 1; the sizes above the clique number have no clique, so its totals count only 2 .. omega.
+OMEGA = {k: v for k, v in json.loads((EV / 'omega.json').read_text()).items() if not k.startswith('_')}
+
+def cnd_sizes(og, g):
+    """(build and peel seconds, wall seconds, number of sizes) of a CND prior record over the sizes 2 .. omega(g); checks that
+    the per-size records add up to the recorded total over all sizes."""
+    ok = [e for e in og['sizes'] if e['rc'] == 0]
+    full = sum(e['build_ms'] + e['peel_ms'] for e in ok)
+    assert abs(full - og['total_inproc_ms']) <= 1e-6 * og['total_inproc_ms'] + 1e-3, (g, full, og['total_inproc_ms'])
+    keep = [e for e in ok if e['s'] <= OMEGA[g]]
+    assert len(keep) == OMEGA[g] - 1, (g, len(keep), OMEGA[g])
+    return sum(e['build_ms'] + e['peel_ms'] for e in keep) / 1000, sum(e['wall_s'] for e in keep), len(keep)
+
+def one_per_pair(entries):
+    """2026-09-24: tods1 and tods2 are one machine, so some graphs have two or three CND runs on it (com-amazon, com-dblp as
+    com-dblp and ca-dblp-2012, web-Google, web-Stanford).  Keep one run per (machine, graph), the graph identified by (n, m),
+    preferring tods1 as Table 2 does and the name Table 2 uses.  entries: (where, g, og, n, m, ...)."""
+    rank = {'tods1': 0, 'tods2': 1, 'laptop': 0}
+    best = {}
+    for e in sorted(entries, key=lambda e: (rank[e[0]], e[1] == 'ca-dblp-2012')):
+        key = ('laptop' if e[0] == 'laptop' else 'server', e[3], e[4])
+        best.setdefault(key, e)
+    return list(best.values())

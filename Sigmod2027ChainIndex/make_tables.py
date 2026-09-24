@@ -27,7 +27,7 @@ def tex_escape(s):
 
 FAMILY = {'ca-': 'collab', 'dblp': 'collab', 'cit-': 'citation', 'web-': 'web', 'amazon': 'product', 'com-amazon': 'product',
           'email': 'comm.', 'loc-': 'social', 'soc-': 'social', 'com-youtube': 'social', 'wiki': 'comm.', 'tech-': 'comm.'}   # 2026-09-24 user: skitter in the social and communication family
-MACHINE = {'laptop': 'laptop', 'tods1': 'server 1', 'tods2': 'server 2'}
+MACHINE = {'laptop': 'laptop', 'tods1': 'server', 'tods2': 'server'}   # 2026-09-24: tods1 and tods2 are one machine (user)
 NAMES = {'soc-pokec-relationships': 'soc-pokec', 'com-amazon.ungraph': 'com-amazon'}
 
 def family(g):
@@ -65,8 +65,9 @@ def table_size():
         if b is None:   # no build-time ablation record yet: the older record, flagged
             print(f'PROVISIONAL build numbers for {g} on {where} (older record)'); b = {'total_s': (x['ti_ms'] + x['build_ms'] + x['compact_ms']) / 1000, 'peak_bytes': r.get('peak_rss_bytes')}
         total = b['total_s']; peak = b['peak_bytes']
-        lines.append(f"{tex_escape(g)} & {family(g)} & {fmt(x['n'])} & {x['s_max']} & {fmt(x['chains'])} & {x['n']/x['chains']:.1f} & {100*x['vertex_residue_cells']/x['vertex_pairs']:.1f}\\% & {mb(x['bytes_total'])} & {mb(x['baseline_vertex_bytes'])} & {x['baseline_vertex_bytes']/x['bytes_total']:.1f}$\\times$ & {total:.2f} & {(peak/1073741824):.2f} \\\\" if peak else
-                     f"{tex_escape(g)} & {family(g)} & {fmt(x['n'])} & {x['s_max']} & {fmt(x['chains'])} & {x['n']/x['chains']:.1f} & {100*x['vertex_residue_cells']/x['vertex_pairs']:.1f}\\% & {mb(x['bytes_total'])} & {mb(x['baseline_vertex_bytes'])} & {x['baseline_vertex_bytes']/x['bytes_total']:.1f}$\\times$ & {total:.2f} & -- \\\\")
+        mark = r'$^\dagger$' if where == 'laptop' else ''   # 2026-09-24: built on the laptop
+        lines.append(f"{tex_escape(g)}{mark} & {family(g)} & {fmt(x['n'])} & {build_records.OMEGA[g]} & {fmt(x['chains'])} & {x['n']/x['chains']:.1f} & {100*x['vertex_residue_cells']/x['vertex_pairs']:.1f}\\% & {mb(x['bytes_total'])} & {mb(x['baseline_vertex_bytes'])} & {x['baseline_vertex_bytes']/x['bytes_total']:.1f}$\\times$ & {total:.2f} & {(peak/1073741824):.2f} \\\\" if peak else
+                     f"{tex_escape(g)}{mark} & {family(g)} & {fmt(x['n'])} & {build_records.OMEGA[g]} & {fmt(x['chains'])} & {x['n']/x['chains']:.1f} & {100*x['vertex_residue_cells']/x['vertex_pairs']:.1f}\\% & {mb(x['bytes_total'])} & {mb(x['baseline_vertex_bytes'])} & {x['baseline_vertex_bytes']/x['bytes_total']:.1f}$\\times$ & {total:.2f} & -- \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'size.tex').write_text('\n'.join(lines) + '\n')
     rat = [t[2]['result']['baseline_vertex_bytes'] / t[2]['result']['bytes_total'] for t in rows]
@@ -77,14 +78,17 @@ def strees_latency():
     """S trees latency keyed by (machine, graph): the in-process baseline of query_profile (same decomposition, same queries,
     parent-pointer climb, one memory copy per answer), from profile_<machine>.json.  Keys mirror the index's fields:
     own/half/root list and locate times in ns."""
-    out = {}
+    out = {}; seen = set()   # 2026-09-24: tods1 and tods2 are one machine; one run per (machine, graph), tods1 first, by (n, s_max)
     for where in ('laptop', 'tods1', 'tods2'):
         rec = load(f'profile_{where}.json')
         if rec is None: continue
-        for r in rec['runs']:
+        for r in sorted(rec['runs'], key=lambda r: 'ca-dblp-2012' in r.get('index', '')):
             if 'result' not in r: continue
             g = NAMES.get(Path(r['index']).stem, Path(r['index']).stem)
             if '_p' in g: continue
+            key = ('laptop' if where == 'laptop' else 'server', r['result']['n'], r['result']['s_max'])
+            if key in seen: continue
+            seen.add(key)
             R = r['result']['regimes']
             out[(where, g)] = {f'{reg}_base_ns': R[reg]['st_list_ns'] for reg in R} | {f'{reg}_locate_ns': R[reg]['st_locate_ns'] for reg in R} | {f'{reg}_ours_ns': R[reg]['list_ns'] for reg in R} | {f'{reg}_ours_locate_ns': R[reg]['locate_ns'] for reg in R}
     return out
@@ -205,20 +209,22 @@ def table_prior():
     for where, d in [('laptop', 'prior'), ('tods2', 'prior/tods2'), ('tods1', 'prior/tods1')]:
         for p in sorted((EV / d).glob('prior_original_*.json')):
             og = json.loads(p.read_text()); g = NAMES.get(p.stem[len('prior_original_'):], p.stem[len('prior_original_'):])
-            if 'total_wall_s' in og and (where, g) in ours and (where, g) in B: prior.append((where, g, og))
+            if 'total_wall_s' in og and (where, g) in ours and (where, g) in B:
+                prior.append((where, g, og, ours[(where, g)]['result']['n'], ours[(where, g)]['result']['m']))
+    prior = [e[:3] for e in build_records.one_per_pair(prior)]   # 2026-09-24: one run per (machine, graph)
     lines = [r'\begin{tabular}{@{}llrrrrrr@{}}', r'\toprule',
              r'Graph & Machine & Sizes & \multicolumn{2}{c}{\cnd, all sizes (s)} & \cnd memory & \chainidx & Ratio \\',
              r' & & & total & build and peel & one size (MB) & build (s) & build and peel \\', r'\midrule']
     ratios = []
     for where, g, og in sorted(prior, key=lambda t: (t[0] != 'laptop', t[0], ours[(t[0], t[1])]['result']['n'])):
         r = ours[(where, g)]; o = r['result']; opeak = max(e['peak_rss_bytes'] or 0 for e in og['sizes'])
-        build_s = B[(where, g)]['total_s']; ratio = og['total_inproc_ms'] / 1000 / build_s; ratios.append(ratio)
+        build_s = B[(where, g)]['total_s']; cnd_s, cnd_wall, cnd_k = build_records.cnd_sizes(og, g); ratio = cnd_s / build_s; ratios.append(ratio)
         peak = B[(where, g)]['peak_bytes']; opeak_s = f'{opeak/1048576:,.0f}' if opeak else '--'
-        lines.append(f"{tex_escape(g)} & {MACHINE[where]} & {og['sizes_ok']} & {og['total_wall_s']:,.1f} & {og['total_inproc_ms']/1000:,.1f} & {opeak_s} & {build_s:.2f} & {ratio:.1f}$\\times$ \\\\")
+        lines.append(f"{tex_escape(g)} & {MACHINE[where]} & {cnd_k} & {cnd_wall:,.1f} & {cnd_s:,.1f} & {opeak_s} & {build_s:.2f} & {ratio:.1f}$\\times$ \\\\")
     lines += [r'\bottomrule', r'\end{tabular}']
     (OUT / 'prior.tex').write_text('\n'.join(lines) + '\n')
     # 2026-09-23: the graphs at the two ends (named in Exp-1), with their numbers of sizes
-    ends = sorted((og['total_inproc_ms'] / 1000 / B[(where, g)]['total_s'], g, og['sizes_ok']) for where, g, og in prior)
+    ends = sorted((build_records.cnd_sizes(og, g)[0] / B[(where, g)]['total_s'], g, build_records.cnd_sizes(og, g)[2]) for where, g, og in prior)
     (OUT / 'prior_stats.tex').write_text(f"\\newcommand{{\\priorgraphs}}{{{len(ratios)}}}\n\\newcommand{{\\priormin}}{{{min(ratios):.1f}}}\n\\newcommand{{\\priormedian}}{{{statistics.median(ratios):.0f}}}\n\\newcommand{{\\priormax}}{{{max(ratios):.0f}}}\n"
         f"\\newcommand{{\\priormingraph}}{{\\textsf{{{ends[0][1]}}}}}\n\\newcommand{{\\priorminsizes}}{{{ends[0][2]}}}\n"
         f"\\newcommand{{\\priormaxgraph}}{{\\textsf{{{ends[-1][1]}}}}}\n\\newcommand{{\\priormaxsizes}}{{{ends[-1][2]}}}\n")

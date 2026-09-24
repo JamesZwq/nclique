@@ -372,3 +372,27 @@ Setup / method (need user decisions)
 - Value-query workload: v uniform over all n vertices (incl. isolated), s in 2..omega(v)+2 (the text says: vertex in an
   edge, s up to its clique number).  "every table and figure names its machine": Table 2 mixes three machines.
   "96 cores" = 48 cores / 96 threads; "503 GB" = 503.5 GiB; laptop/server "1.5 to 3" -> build 1.9-3.5.
+
+### 2026-09-24 audit fixes applied (user: "按你的建议全部改, tods1 和 tods2 是一台")
+- One machine: tods1 and tods2 are two containers on one host (both radonduo; separate file systems, loads and uptimes).
+  Hardware now: one shared server (2 x 24 cores, 503 GB), other users' load 1 to 26, some of our own timing runs overlapped
+  (2026-09-19 index runs, 2026-09-20 CND queues, 2026-09-23 build ablations); "never two timing runs at once" removed.
+  Laptop builds 1.9-3.5x faster (12 graphs); Table 2 marks laptop rows (dagger).  make_tables/make_figures: 'server'.
+- Clique numbers: omega.json (research/r1_skyline_index_20260918), read from the stored .cx (server tods1 cx/, tods2
+  rebuilt with --bench for web-NotreDame 155, web-BerkStan 201, cit-Patents 11 and the 8 scale samples, laptop cx/).
+  Table 2 s_max = omega (11 graphs changed, e.g. cit-Patents 65 -> 11, wiki-Talk 132 -> 26).  CND totals over sizes
+  2..omega only (build_records.cnd_sizes, checked against total_inproc_ms), one run per (machine, graph) (one_per_pair,
+  tods1 first; com-amazon, com-dblp/ca-dblp-2012, web-Google, web-Stanford had repeats): 27 pairs, 3.1x-3547x, median
+  16x (was 24x on 32 runs over all sizes).  web-BerkStan 200 sizes.  Scalability: build 0.46->17.8 s and 0.15->26.5 s,
+  CND 4.0-5.3x (cit-Patents; was 6.6-18x) and 85-269x (web-BerkStan); web-BerkStan cliques 45 -> 201.
+- Latency pairs deduplicated the same way (39 pairs on 29 graphs; memory-copy median 1.02, range 0.57-8.1).
+- Case study: case_amazon.cpp counts a subject once per member (re-run --scan, same seed, every other field identical):
+  top-subject share from size 4 on 0.899 -> "90 percent".  Kind of Blue: 36,878 -> 23 jazz albums (12 Blue Note) -> 22 ->
+  6; abstract "the community of a jazz album from 36,878 products to a shelf of six albums"; three quarters = own-level
+  community over 100,000 products; leaf purity 11; five Godfather albums; best size 2-33 (2-8: 98%); 21 percent; scan
+  0.45 / 48 / 949 us per query; "under 50 ns" removed.
+- Wording/numbers: 2.7-3.2 B/vertex; 2-10 vertices per range; 0.05-0.3 ns per vertex on answers >= 1,000; 5,543 parent
+  steps; profsmallinv range in increasing order; "a few long runs" and "many ranges" causes removed; intro "a few ranges or
+  many, depending on the graph"; value-query workload as coded; MB/GB = 2^20/2^30; three larger graphs as recorded
+  (com-orkut stopped by hand); chains section: twin range from the design study, 23.6 and 154.5 per chain.
+- Figure 8 (scalability): y labels shortened (were cut), legends moved off the data.

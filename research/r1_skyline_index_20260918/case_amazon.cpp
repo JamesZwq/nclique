@@ -39,16 +39,17 @@ int main(int argc, char** argv) {
     std::vector<uint32_t> mark(cat_name.size() + 1, 0); uint32_t stamp = 0; std::vector<uint32_t> ids(static_cast<size_t>(n) + Index::kSlack);
     // purity of the member list ids[0, sz) for query label q (file labels after inv): linear in the members, array counters
     std::vector<uint32_t> qmark(cat_name.size() + 1, 0), cnt(cat_name.size() + 1, 0), touched; uint32_t qstamp = 0;
+    std::vector<uint64_t> mseen(cat_name.size() + 1, 0); uint64_t mstamp = 0;   // 2026-09-24: a subject counts once per member
     auto purity = [&](uint32_t q, uint64_t sz, double& leaf_share, double& subject_share, std::string& top_subject, double& top_share) {
         ++qstamp; for (uint32_t c : prod[q].leaf) qmark[c] = qstamp; uint32_t ls = 0;
         for (uint64_t i = 0; i < sz; ++i) { const uint32_t u = inv[ids[i]]; for (uint32_t c : prod[u].leaf) if (qmark[c] == qstamp) { ++ls; break; } }
         ++qstamp; for (uint32_t c : prod[q].subject) qmark[c] = qstamp; uint32_t ss = 0; touched.clear();
-        for (uint64_t i = 0; i < sz; ++i) { const uint32_t u = inv[ids[i]]; bool hit = false;
-            for (uint32_t c : prod[u].subject) { if (qmark[c] == qstamp) hit = true; if (cnt[c] == 0) touched.push_back(c); if (cnt[c] < (1u << 31)) ++cnt[c]; }
+        for (uint64_t i = 0; i < sz; ++i) { const uint32_t u = inv[ids[i]]; bool hit = false; ++mstamp;
+            for (uint32_t c : prod[u].subject) { if (qmark[c] == qstamp) hit = true; if (mseen[c] == mstamp) continue; mseen[c] = mstamp; if (cnt[c] == 0) touched.push_back(c); ++cnt[c]; }
             ss += hit; }
         uint32_t best = 0, bc = 0; for (uint32_t c : touched) { if (cnt[c] > bc) { bc = cnt[c]; best = c; } }
-        for (uint32_t c : touched) cnt[c] = 0;   // a member with the same subject on two paths counts twice; rare and harmless for the top subject
-        leaf_share = sz ? double(ls) / sz : 0; subject_share = sz ? double(ss) / sz : 0; top_subject = bc ? cat_name[best] : ""; top_share = sz ? std::min(1.0, double(bc) / sz) : 0; };
+        for (uint32_t c : touched) cnt[c] = 0;   // 2026-09-24 audit: a member with the same subject on several paths used to count once per path (capped at 1), which read 0.99 where once per member gives 0.88-0.95
+        leaf_share = sz ? double(ls) / sz : 0; subject_share = sz ? double(ss) / sz : 0; top_subject = bc ? cat_name[best] : ""; top_share = sz ? double(bc) / sz : 0; };
     const std::string mode = argv[4];
     if (mode == "--find") { for (uint32_t v = 0; v < n; ++v) if (prod[v].title.find(argv[5]) != std::string::npos) std::cout << orig[v] << "\t" << prod[v].group << "\t" << ix.omega[ix.chain_of(perm[v])] << "\t" << prod[v].title << "\n"; return 0; }
     if (mode == "--scan") {

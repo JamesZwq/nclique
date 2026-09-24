@@ -57,10 +57,11 @@ def all_profiles(samples=False, pairs=False):
     """(machine, graph, result) over the profile records; samples excluded unless asked; one row per graph, servers
     first, or every (graph, machine) pair when pairs=True (the set the text's level medians are computed on)."""
     seen = {}
-    for where in ('tods2', 'tods1', 'laptop'):
-        for g, x in profile_runs(f'profile_{where}'):
+    # 2026-09-24: tods1 and tods2 are one machine; with pairs=True one run per (machine, graph), tods1 first, as in make_tables
+    for where in (('tods1', 'tods2', 'laptop') if pairs else ('tods2', 'tods1', 'laptop')):
+        for g, x in sorted(profile_runs(f'profile_{where}'), key=lambda t: t[0] == 'ca-dblp-2012'):
             if ('_p' in g) != samples: continue
-            seen.setdefault((x['n'], x['s_max']) if not pairs else (where, g), (where, g, x))
+            seen.setdefault((x['n'], x['s_max']) if not pairs else ('laptop' if where == 'laptop' else 'server', x['n'], x['s_max']), (where, g, x))
     return list(seen.values())
 
 def save(fig, name):
@@ -140,17 +141,18 @@ def fig_prior():
         for p in sorted((EV / d).glob('prior_original_*.json')):
             og = json.loads(p.read_text()); g = NAMES.get(p.stem[len('prior_original_'):], p.stem[len('prior_original_'):])
             if 'total_inproc_ms' in og and (where, g) in ours and (where, g) in B:
-                pts.append((where, g, B[(where, g)]['total_s'], og['total_inproc_ms'] / 1000, og['sizes_ok']))
+                c = build_records.cnd_sizes(og, g); pts.append((where, g, og, ours[(where, g)]['n'], ours[(where, g)]['m'], B[(where, g)]['total_s'], c[0], c[2]))   # 2026-09-24: sizes 2 .. omega
+    pts = [(e[0], e[1], e[5], e[6], e[7]) for e in build_records.one_per_pair(pts)]   # 2026-09-24: one run per (machine, graph)
     if not pts: return
     fig, ax = plt.subplots(figsize=(COL_WIDTH, 1.08))
     lo, hi, ymax = 5e-3, 2000, 1.5e6                     # 2026-09-23: room above web-uk-2005 (5.7e4 s) for its label
     for f, lab in ((1, '1x'), (10, '10x'), (100, '100x'), (1000, '1000x')):
         ax.plot([lo, hi], [lo * f, hi * f], color='0.75', lw=0.6, ls=(0, (2, 1.5)), zorder=1, clip_on=True)
         xl = min(hi, ymax / f / 1.25); ax.text(xl * 1.15, xl * f, lab, fontsize=6.4, color='0.4', va='center')
-    mk = {'laptop': 'o', 'tods1': 's', 'tods2': '^'}; lab = {'laptop': 'laptop', 'tods1': 'server 1', 'tods2': 'server 2'}
-    for where in mk:
-        sel = [p for p in pts if p[0] == where]
-        if sel: ax.scatter([p[2] for p in sel], [p[3] for p in sel], s=12, marker=mk[where], color=OURS, linewidths=0.5, zorder=3, label=lab[where])
+    # 2026-09-24: tods1 and tods2 are one machine (user): one server marker
+    for lab_, wh, m_ in (('laptop', ('laptop',), 'o'), ('server', ('tods1', 'tods2'), 's')):
+        sel = [p for p in pts if p[0] in wh]
+        if sel: ax.scatter([p[2] for p in sel], [p[3] for p in sel], s=12, marker=m_, color=OURS, linewidths=0.5, zorder=3, label=lab_)
     done = set()   # 2026-09-23: the two extremes and web-uk-2005; offsets keep the labels inside the frame
     place = {'web-uk-2005': ((-6, 3), 'right', 'bottom'), 'web-it-2004': ((-6, -3), 'right', 'top'),
              'com-amazon': ((6, -2), 'left', 'top')}   # web-BerkStan unlabelled: its label met the 1x guide
@@ -220,7 +222,7 @@ def prior_total(where, g):
     p = EV / d / f'prior_original_{g}.json'
     if not p.exists(): p = EV / d / f"prior_original_{ {v: k for k, v in NAMES.items()}.get(g, g) }.json"
     if not p.exists(): return None
-    og = json.loads(p.read_text()); return og['total_inproc_ms'] / 1000 if 'total_inproc_ms' in og else None
+    og = json.loads(p.read_text()); return build_records.cnd_sizes(og, g)[0] if 'total_inproc_ms' in og else None   # 2026-09-24: sizes 2 .. omega
 
 def fig_scale(tag='scale_tods2', full='tods2.json'):
     """Vertex-induced samples at 20 to 100 percent: bytes (index, S trees), build time (index, CND all sizes),
@@ -250,12 +252,15 @@ def fig_scale(tag='scale_tods2', full='tods2.json'):
             axes[2].plot([x for x, y in have], [y['regimes']['own']['st_locate_ns'] for x, y in have], marker=mk, ms=2.8, **BASE_KW)
             axes[3].plot([x for x, y in have], [y['regimes']['own']['list_ns'] / y['regimes']['own']['output'] for x, y in have], marker=mk, ms=2.8, **OURS_KW)
             axes[3].plot([x for x, y in have], [y['regimes']['own']['st_list_ns'] / y['regimes']['own']['output'] for x, y in have], marker=mk, ms=2.8, **BASE_KW)
-    for ax, lab, t in zip(axes, ('index size (MB)', 'build time, all sizes (s)', 'locating time (ns)', 'listing time per vertex (ns)'), ('(a)', '(b)', '(c)', '(d)')):
+    # 2026-09-24: shorter y labels (the long ones were cut at the top of panels (b) and (d))
+    for ax, lab, t in zip(axes, ('index size (MB)', 'build time (s)', 'locating time (ns)', 'listing (ns/vertex)'), ('(a)', '(b)', '(c)', '(d)')):
         ax.set_xlabel('vertices (millions)'); ax.set_ylabel(lab); ax.set_xlim(0, None)
         ax.set_title(t, loc='left', fontsize=8, pad=3)
     axes[0].set_yscale('log'); axes[1].set_yscale('log'); axes[2].set_ylim(0, None); axes[3].set_ylim(0, None)
+    axes[0].set_ylim(0.03, None)   # 2026-09-24: room under the curves for the graph legend (it covered cit-Patents points)
     axes[0].legend(handles=[Line2D([], [], marker=MARKS.get(g, 'o'), color='0.25', ls='', markersize=3.4, label=g) for g in sorted(series)], loc='lower right')
-    legend_pair(axes[3], base_label='Baseline / CND', loc='lower right')
+    axes[3].set_ylim(0, 0.42)   # 2026-09-24: the legend above the curves (it covered the ChainIndex line)
+    legend_pair(axes[3], base_label='Baseline / CND', loc='upper right')
     fig.subplots_adjust(left=0.065, right=0.995, bottom=0.29, top=0.88, wspace=0.5)
     save(fig, 'fig_scale')
 
