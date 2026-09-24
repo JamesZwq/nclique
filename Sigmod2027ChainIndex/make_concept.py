@@ -392,9 +392,8 @@ def fig_pair():
     PW = 506.0
     CW, CH = 13.8, 12.0                # vertex and label cells
     CC = 30.0                          # chain cells of (b)
-    BH, BG = 10.5, 1.6                 # bar height, gap between bar rows (no longer used for the bars)
-    LH = 8.0                           # 2026-09-25: height of one level k
-    XA, XB = 34.0, 276.0               # left edges of the cells of (a) and of (b); 2026-09-25: room for the size labels
+    BH, BG = 10.5, 1.6                 # bar height, gap between bar rows
+    XA, XB = 26.0, 262.0               # left edges of the cells of (a) and of (b)
     GRAY = '#555'
     sv = SVG(PW, 1)
     hot_s, hot_N = 3, own[('x', 3)]
@@ -427,24 +426,14 @@ def fig_pair():
         L = layers[s]; par = children(s)
         def dep(N): return 0 if par[N] is None else 1 + dep(par[N])
         maxd = max(dep(N) for N in nodes[s])
-        # 2026-09-25 (user): the vertical axis is the level k, from 1 at the top down to the largest top; a node spans the
-        # levels from its parent's top + 1 to its own top, the levels at which it is the community of its vertices
-        kmax = max(nodes[s].values())
-        def klo(N): return 1 if par[N] is None else nodes[s][par[N]] + 1
         # numbering the bars of (b) by their left ends (outer first on a tie) is the preorder the text uses
         lr = sorted(nodes[s], key=lambda N: (L['seg'][N][0], dep(N)))
         assert [pre[s][N] for N in lr] == list(range(len(lr))), s
         assert len({L['seg'][N][0] for N in nodes[s]}) == len(nodes[s]), s   # no two bars share a left end
         if j: sv.line(2, y - 3.2, PW - 2, y - 3.2, color='#dddddd', w=0.4)
-        cy = y + kmax * LH + 5.0
-        for k in range(1, kmax + 1):                                   # level ticks, gray; the queried level in orange
-            hotk = (s == hot_s and k == 2)
-            for xk in (XA - 4, XB - 4):
-                sv.text(xk, y + (k - 1) * LH + LH / 2 + 1.9, str(k), size=5.2, anchor='end', fill=(ORANGE if hotk else GRAY))
-        if j == 0:
-            for xk in (XA - 4, XB - 4): sv.text(xk, y - 2.0, 'k', size=5.8, anchor='end', italic=True, fill=GRAY)
-        sv.text(XA - 12, cy + 8.6, f's = {s}', size=7.0, anchor='end')
-        sv.text(XB - 12, cy + 8.6, f's = {s}', size=6.4, anchor='end', fill=GRAY)
+        cy = y + (maxd + 1) * (BH + BG)
+        sv.text(XA - 4, cy + 8.6, f's = {s}', size=7.0, anchor='end')
+        sv.text(XB - 4, cy + 8.6, f's = {s}', size=6.4, anchor='end', fill=GRAY)
         # (a): the depth-first array of the vertices, the bars over it
         arr_v = strees_array(s); total_a += len(arr_v)
         pa = {v: XA + i * CW for i, v in enumerate(arr_v)}
@@ -457,44 +446,16 @@ def fig_pair():
             hot = (s == hot_s and c == 3)
             sv.rect(XB + i * CC, cy, CC, CH, fill=CHAIN_TINT[c], stroke=(ORANGE if hot else '#000'), sw=(1.2 if hot else 0.5))
             sv.text(XB + i * CC + CC / 2, cy + 8.8, str(c), size=7.0, anchor='middle')
-        # 2026-09-25 (user: "tree, 你知道什么是tree吗?"): the tree of the size as a node-link tree over the levels k.  A node is a
-        # box (a dot when it has no name) at the first level at which it is a core, its thick line runs down to its top, its
-        # children hang from the end of that line, and its own vertices (b: own chains) hang below it on a thin gray line.
-        # Every node has own members (its top is the smallest value in it), and they are one block of the array.
-        def own_block(N, panel):
-            if panel == 'a':
-                idx = [i for i, v in enumerate(arr_v) if own[(v, s)] == N]
-                x0, x1 = XA + idx[0] * CW, XA + (idx[-1] + 1) * CW
-            else:
-                idx = [i for i, c in enumerate(L['arr']) if c in L['ownc'][N]]
-                x0, x1 = XB + idx[0] * CC, XB + (idx[-1] + 1) * CC
-            assert idx == list(range(idx[0], idx[-1] + 1)), (s, panel)
-            return x0, x1
-        left_to_right = sorted(nodes[s], key=lambda N: sum(own_block(N, 'b')))
-        assert [pre[s][N] for N in left_to_right] == list(range(len(left_to_right))), s   # left to right = the text's preorder
-        def yrow(k): return y + (k - 1) * LH
-        BXH = LH - 2.0
-        for panel in ('a', 'b'):
-            xs = {N: sum(own_block(N, panel)) / 2 for N in nodes[s]}
-            for N in nodes[s]:
-                nm = setname(N); hot = (s == hot_s and N == hot_N); col = ORANGE if hot else '#000'
-                k0, top = klo(N), nodes[s][N]; x = xs[N]
-                ytop, yend = yrow(k0) + 1.0, yrow(top + 1) - 0.4           # the node's levels k0 .. top
-                sv.line(x, ytop + BXH / 2, x, yend, color=col, w=(1.3 if hot else 1.0))
-                if nm:
-                    w = 13.0; sv.rect(x - w / 2, ytop, w, BXH, rx=1.5, fill='#fff', stroke=col, sw=(1.1 if hot else 0.6))
-                    sv.text(x, ytop + BXH / 2 + 2.1, nm, size=6.0, anchor='middle', italic=True, fill=col)
-                else:
-                    sv.circle(x, ytop + BXH / 2, 1.9, fill=col, stroke=col, sw=0.5)
-                kids = [C for C in nodes[s] if par[C] == N]
-                if kids:                                                 # the children start one level below the top
-                    xl = min([x] + [xs[C] for C in kids]); xr = max([x] + [xs[C] for C in kids])
-                    sv.line(xl, yend, xr, yend, w=0.6)
-                    for C in kids: sv.line(xs[C], yend, xs[C], yrow(top + 1) + 1.0, w=0.6)
-                x0, x1 = own_block(N, panel)                             # the own members hang below the node
-                sv.line(x, yend, x, cy - 2.6, color='#9a9a9a', w=0.5, dash='1.2,1.0')
-                sv.line(x0 + 1.2, cy - 2.6, x1 - 1.2, cy - 2.6, color='#9a9a9a', w=0.5)
-                sv.line(x0 + 1.2, cy - 2.6, x0 + 1.2, cy - 0.9, color='#9a9a9a', w=0.5); sv.line(x1 - 1.2, cy - 2.6, x1 - 1.2, cy - 0.9, color='#9a9a9a', w=0.5)
+        # the same bars in both panels; the traced bar outlined in orange, no fill
+        for N in nodes[s]:
+            nm = setname(N); lab = (f'{nm}, top {nodes[s][N]}' if nm else f'top {nodes[s][N]}')
+            hot = (s == hot_s and N == hot_N); by = y + dep(N) * (BH + BG)
+            a0, a1 = L['seg'][N]
+            vlo = members[L['arr'][a0]][0]; vhi = members[L['arr'][a1 - 1]][-1]
+            for lo, hi in ((pa[vlo], pa[vhi] + CW), (XB + a0 * CC, XB + a1 * CC)):
+                sv.rect(lo + 0.9, by, hi - lo - 1.8, BH, rx=1.5, fill='#fff',
+                        stroke=(ORANGE if hot else '#000'), sw=(1.2 if hot else 0.55))
+                sv.text((lo + hi) / 2, by + 7.6, lab, size=6.6, anchor='middle')
         # (b): the runs under the chains
         ry = cy + CH + 4.5
         for r, (lo_l, hi_l) in enumerate(L['runs']):

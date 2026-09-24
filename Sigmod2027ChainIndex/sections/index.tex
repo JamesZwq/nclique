@@ -14,7 +14,7 @@ We call the tree of a size with its runs the \textit{layer} of that size.
 % 2026-09-24 cold read: the regions of Figure 2(b) named.
 In Figure~\ref{fig:layout}(b) the map is the row of labels on top, and the record of each chain is printed under it after the chain number, all but the trajectory, which the rows show.
 %
-Each layer is one row: the tree, with every chain hanging from its own node, and the runs as brackets under the chains with their label ranges.
+Each layer is one row: the tree as bars over the chains, and the runs as brackets under them with their label ranges.
 %
 % 2026-09-24 user: what the index keeps (the trees of Section 3) and what it replaces (the three items per pair).
 The tree of a size is the tree $\Tree{s}$ of \strees, with the same nodes.
@@ -69,9 +69,9 @@ Contiguous ranks are contiguous labels.
 \begin{example}\label{ex:order}
 % trace 2026-09-22 (make_concept.py): keys (0,0,0), (1,1,1,0), (2,0), (2,0,0) with pre_2: root=0, A=1, {x,u,w}=2; pre_3: N=0, A=1; pre_4: B=0, A=1.
 % 2026-09-24: fig_pair asserts that numbering the bars of each row of (b) from left to right is this preorder.
-Number the nodes of each row of Figure~\ref{fig:layout}(b) from left to right, which gives a preorder of the tree of that size.
+Number the bars of each row of Figure~\ref{fig:layout}(b) by their left ends, which gives a preorder of the tree of that size.
 %
-The own node of a chain is the node it hangs from, so the keys of the chains $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$, $\{u_1,\dots,w_3\}$ and $\{x\}$ are $(0,0,0)$, $(1,1,1,0)$, $(2,0)$ and $(2,0,0)$.
+The own node of a chain is the lowest bar above it, so the keys of the chains $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$, $\{u_1,\dots,w_3\}$ and $\{x\}$ are $(0,0,0)$, $(1,1,1,0)$, $(2,0)$ and $(2,0,0)$.
 %
 This gives the chains $0$ to $3$, and the $(2,4)$-core $\{x,u_1,\dots,w_3\}$ is the interval $[8,15)$.
 \end{example}

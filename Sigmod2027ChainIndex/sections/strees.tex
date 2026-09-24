@@ -7,7 +7,7 @@ This section describes the hierarchy of one size, that is, the forest that the c
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_pair.pdf}
-\caption{\strees (a) and \chainidx (b) for Figure~\ref{fig:example}, one row per size, levels $k$ downward; orange: the query of $x$ at $(3,2)$.}\label{fig:layout}
+\caption{\strees (a) and \chainidx (b) for Figure~\ref{fig:example}, one row per size; tints mark chains, orange the query of $x$ at $(3,2)$.}\label{fig:layout}
 \end{figure*}
 % 2026-09-22 filler pass: the preview of Sections 4 to 7 removed; the bridge is the last sentence of the section.
 
@@ -58,11 +58,7 @@ Later sections refer to the community by this description.
 \begin{example}\label{ex:tree}
 Consider Figure~\ref{fig:example}, which has cliques of the sizes $2$ to $5$.
 %
-% 2026-09-25 (user): the figure's vertical axis is the level k; a node spans the levels from its parent's top + 1 to its top,
-% exactly the levels at which it is the community of its vertices.
-Figure~\ref{fig:layout}(a) draws the tree of each size above the array of the size, with the levels $k$ downward.
-%
-The line of a node runs through the levels at which it is a core, from one below the top of its parent to its own top, and the vertices whose own node it is hang below it.
+Figure~\ref{fig:layout}(a) draws the tree of each size, one bar per node over the array of the size.
 %
 At size $2$ the root holds all $15$ vertices with top $3$, since every vertex has at least three neighbours and $b_1$ exactly three.
 %
