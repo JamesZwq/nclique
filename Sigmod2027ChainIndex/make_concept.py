@@ -392,8 +392,9 @@ def fig_pair():
     PW = 506.0
     CW, CH = 13.8, 12.0                # vertex and label cells
     CC = 30.0                          # chain cells of (b)
-    BH, BG = 10.5, 1.6                 # bar height, gap between bar rows
-    XA, XB = 26.0, 262.0               # left edges of the cells of (a) and of (b)
+    BH, BG = 10.5, 1.6                 # bar height, gap between bar rows (no longer used for the bars)
+    LH = 6.5                           # 2026-09-25: height of one level k
+    XA, XB = 34.0, 276.0               # left edges of the cells of (a) and of (b); 2026-09-25: room for the size labels
     GRAY = '#555'
     sv = SVG(PW, 1)
     hot_s, hot_N = 3, own[('x', 3)]
@@ -426,14 +427,24 @@ def fig_pair():
         L = layers[s]; par = children(s)
         def dep(N): return 0 if par[N] is None else 1 + dep(par[N])
         maxd = max(dep(N) for N in nodes[s])
+        # 2026-09-25 (user): the vertical axis is the level k, from 1 at the top down to the largest top; a node spans the
+        # levels from its parent's top + 1 to its own top, the levels at which it is the community of its vertices
+        kmax = max(nodes[s].values())
+        def klo(N): return 1 if par[N] is None else nodes[s][par[N]] + 1
         # numbering the bars of (b) by their left ends (outer first on a tie) is the preorder the text uses
         lr = sorted(nodes[s], key=lambda N: (L['seg'][N][0], dep(N)))
         assert [pre[s][N] for N in lr] == list(range(len(lr))), s
         assert len({L['seg'][N][0] for N in nodes[s]}) == len(nodes[s]), s   # no two bars share a left end
         if j: sv.line(2, y - 3.2, PW - 2, y - 3.2, color='#dddddd', w=0.4)
-        cy = y + (maxd + 1) * (BH + BG)
-        sv.text(XA - 4, cy + 8.6, f's = {s}', size=7.0, anchor='end')
-        sv.text(XB - 4, cy + 8.6, f's = {s}', size=6.4, anchor='end', fill=GRAY)
+        cy = y + kmax * LH + 2.0
+        for k in range(1, kmax + 1):                                   # level ticks, gray; the queried level in orange
+            hotk = (s == hot_s and k == 2)
+            for xk in (XA - 4, XB - 4):
+                sv.text(xk, y + (k - 1) * LH + LH / 2 + 1.9, str(k), size=5.2, anchor='end', fill=(ORANGE if hotk else GRAY))
+        if j == 0:
+            for xk in (XA - 4, XB - 4): sv.text(xk, y - 2.0, 'k', size=5.8, anchor='end', italic=True, fill=GRAY)
+        sv.text(XA - 12, cy + 8.6, f's = {s}', size=7.0, anchor='end')
+        sv.text(XB - 12, cy + 8.6, f's = {s}', size=6.4, anchor='end', fill=GRAY)
         # (a): the depth-first array of the vertices, the bars over it
         arr_v = strees_array(s); total_a += len(arr_v)
         pa = {v: XA + i * CW for i, v in enumerate(arr_v)}
@@ -449,13 +460,13 @@ def fig_pair():
         # the same bars in both panels; the traced bar outlined in orange, no fill
         for N in nodes[s]:
             nm = setname(N); lab = (f'{nm}, top {nodes[s][N]}' if nm else f'top {nodes[s][N]}')
-            hot = (s == hot_s and N == hot_N); by = y + dep(N) * (BH + BG)
+            hot = (s == hot_s and N == hot_N); by = y + (klo(N) - 1) * LH; bh = (nodes[s][N] - klo(N) + 1) * LH - 1.0
             a0, a1 = L['seg'][N]
             vlo = members[L['arr'][a0]][0]; vhi = members[L['arr'][a1 - 1]][-1]
             for lo, hi in ((pa[vlo], pa[vhi] + CW), (XB + a0 * CC, XB + a1 * CC)):
-                sv.rect(lo + 0.9, by, hi - lo - 1.8, BH, rx=1.5, fill='#fff',
+                sv.rect(lo + 0.9, by + 0.5, hi - lo - 1.8, bh, rx=1.5, fill='#f4f4f4',
                         stroke=(ORANGE if hot else '#000'), sw=(1.2 if hot else 0.55))
-                sv.text((lo + hi) / 2, by + 7.6, lab, size=6.6, anchor='middle')
+                if nm: sv.text((lo + hi) / 2, by + 0.5 + min(bh, LH) / 2 + 2.0, nm, size=6.2, anchor='middle', italic=True)
         # (b): the runs under the chains
         ry = cy + CH + 4.5
         for r, (lo_l, hi_l) in enumerate(L['runs']):
