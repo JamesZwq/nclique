@@ -327,3 +327,48 @@ form and the capped keys left the paper: they are code-only refinements (the cod
 both proof checks covered key = count, i.e. every bound up to the initial count).  Example 7.2: unsettled because the
 size-2 value 4 is above the floors 3 (x) and 2 (u, w).  Abstract, introduction, contributions and Exp-1 say "not yet on
 the floor" instead of "no bound fixes".  Section 7 shorter; references now start on page 12.
+
+## 2026-09-24 number audit (every hand-typed measured number vs the records; paper not changed by the audit)
+
+Method: 90 source lines with measured numbers (abstract, intro, Sections 3-7, experiments, conclusion) checked by four
+read-only agents, every MISMATCH re-verified by hand.  The records are sound: make_tables/build_records regenerate every
+table and macro byte-identically, and the case tools re-run reproduce case/*.json field for field.  The problems are in
+the prose and in two method details.
+
+Stale (right when written, data changed later)
+- Size by part: family ranges 58-74/23-41/3-13/44-58 predate the added graphs -> FIXED (a75f2fc): 35-87 (median 57), 13-59, 1-14.
+- Scalability: build 0.56->19.5 s, 0.21->65.6 s and CND 6.6-18x, 61-135x are the build before 2026-09-23; current build
+  (build_records, plotted in the figure, Table 2) 0.46->17.8 s, 0.15->26.5 s, CND 8.0-20x, 85-270x.  PENDING.
+Wrong numbers (transcription/rounding)
+- cit-Patents 2.9-3.2 B/vertex -> 2.75-3.20 (index byte-identical, so wrong from the start).  "2 to 5 vertices per
+  range" (email, cit-HepPh, ca-AstroPh) -> 2.3-10.3 (ca-AstroPh 9.2-10.3).  "1 to 50 us" -> 0.45 (amazon), 47.8 (dblp),
+  949 (youtube) us per query (timed loop includes F1).  Best size "2 to 8" -> 2 to 33 (2-8: 97.7%).  "6 and above 20" ->
+  20.7 -> 21.  Size-2 leaf purity "10" -> 0.1054 -> 11.  "154 per chain" -> 154.5.  \profsmallinvmax to \profsmallinvmin
+  prints "1.06 to 0.74" (reversed).  PENDING.
+Case-study wording contradicted by the records (member lists from the verified case tool re-run, D_work/query_audit.txt)
+- Intro: the jazz album's size-2 core is 36,878 products (not "more than a hundred thousand of every kind").
+- "23 albums of one record label" / "of the Blue Note record label": 12 of the 23 carry Blue Note Records; Kind of Blue
+  itself does not.  "at size 4 22 of them": 14 of the 22 are in the size-3 community, 8 are new (Brubeck, ...).
+- Abstract "from a store of 157,331 products to a shelf of six albums" joins two products (157,331 = Harry Potter /
+  Introduction to Algorithms / Godfather size-2 core and the median; the six albums = Kind of Blue, which starts at 36,878).
+- "three quarters of the 5,000 sit in one core of 157,331": 74.6% is the >=1e5 size bucket (three nested cores 157,331 /
+  250,759 / 305,892); own-level 157,331 for 38%; impossible anyway since the mean size 162,162 exceeds 157,331.
+- "top subject covers 99 percent" (size >= 4): case_amazon.cpp purity() counts a member once per category path and caps
+  at 1; counting each member once gives 88-95%.  Code bug; re-run needed.  PENDING (user decision).
+- "four Godfather soundtracks": five Godfather titles incl. the query.  "each community a few ranges listed in under 50 ns":
+  no record (re-run: size 4 up to 278 ranges, 95 of 3,081 >= 50 ns).
+Overclaims in method wording
+- Intro "at larger sizes the same order keeps the number of ranges small": soc-pokec s=5 196,921 ranges per own-level
+  answer (1.6 vertices per range), wiki-Talk 22k, skitter 95k.  "a few long runs" holds at s=2 only.  Listing cost per
+  vertex reaches 0.81 ns (not 0.05-0.5).  "5,543 levels" = 5,543 parent steps.
+Setup / method (need user decisions)
+- Table 2 s_max = degeneracy + 1 (chain_index_tool.cpp build_terminal_index), not the clique number; smaller clique number
+  on 11 of 29 graphs (e.g. cit-Patents 10-11 vs 65).  CND was run on sizes 2..s_max, i.e. also on empty sizes: restricted to
+  sizes <= clique number the median prior ratio is 22x instead of 24x (min 3.1x and max 3547x unchanged).
+- "load average of 1 to 8": server 1 logs 5.8-25.8 (Table 2 builds at 19.6, profiles at 15.7-16.5).
+- "two servers": both logs say host=radonduo (SigmodPlus says one box), but loads 3 s apart differ (19.57 vs 8.00).
+- com-orkut did not run out of memory: stopped by hand after 4.5 min at 9.4 GiB (RESULTS_FINAL); com-lj bad_alloc at
+  350 GB, hollywood OOM-killed at 435 GB; all three with the build before 2026-09-23.
+- Value-query workload: v uniform over all n vertices (incl. isolated), s in 2..omega(v)+2 (the text says: vertex in an
+  edge, s up to its clique number).  "every table and figure names its machine": Table 2 mixes three machines.
+  "96 cores" = 48 cores / 96 threads; "503 GB" = 503.5 GiB; laptop/server "1.5 to 3" -> build 1.9-3.5.
