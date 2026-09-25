@@ -12,9 +12,9 @@ They are the vertex-to-chain map, one record per chain, and for every size one t
 We call the tree of a size with its runs the \textit{layer} of that size.
 %
 % 2026-09-24 cold read: the regions of Figure 2(b) named.
-In Figure~\ref{fig:layout}(b) the map is the column of labels on the right, and the record of each chain is printed beside it after the chain number, all but the trajectory, which the rows show.
+In Figure~\ref{fig:layout}(b) the map is the row of labels, and the record of each chain is printed under it after the chain number, all but the trajectory, which the trees show.
 %
-Each layer is one row: the tree as bars over the chains, and the runs as brackets under them with their label ranges.
+Each layer is one tree on the bottom line: bars over the chains, and the runs as brackets under them with their label ranges.
 %
 % 2026-09-24 user: what the index keeps (the trees of Section 3) and what it replaces (the three items per pair).
 The tree of a size is the tree $\Tree{s}$ of \strees, with the same nodes.
@@ -69,7 +69,7 @@ Contiguous ranks are contiguous labels.
 \begin{example}\label{ex:order}
 % trace 2026-09-22 (make_concept.py): keys (0,0,0), (1,1,1,0), (2,0), (2,0,0) with pre_2: root=0, A=1, {x,u,w}=2; pre_3: N=0, A=1; pre_4: B=0, A=1.
 % 2026-09-24: fig_pair asserts that numbering the bars of each row of (b) from left to right is this preorder.
-Number the bars of each row of Figure~\ref{fig:layout}(b) by their left ends, which gives a preorder of the tree of that size.
+Number the bars of each tree of Figure~\ref{fig:layout}(b) by their left ends, which gives a preorder of the tree of that size.
 %
 The own node of a chain is the lowest bar above it, so the keys of the chains $\{b_1,b_2,b_3\}$, $\{a_1,\dots,a_5\}$, $\{u_1,\dots,w_3\}$ and $\{x\}$ are $(0,0,0)$, $(1,1,1,0)$, $(2,0)$ and $(2,0,0)$.
 %
@@ -129,13 +129,13 @@ If $Y$ is the sentinel, the segment ends with run $R-1$, which is whole.
 Each run that overlaps the segment gives one range, and at $s=2$ the whole array is one run, since it is the rank order.
 \end{proof}
 \begin{example}\label{ex:runs}
-Consider the row $s=3$ of Figure~\ref{fig:layout}(b).
+Consider the tree $s=3$ of Figure~\ref{fig:layout}(b).
 %
 The two roots $N$ and $A$ have no children.
 %
 The traversal lists $N$ before $A$, since $N$ holds chain $0$, and the chains of $N$ in rank order, so the depth-first array is chain $0$, chain $2$, chain $3$, chain $1$.
 %
-Chains $2$ and $3$ have consecutive ranks and merge into one run, so the array is stored as the three runs $[0,3)$, $[8,15)$ and $[3,8)$, the brackets under the row, numbered $0$ to $2$ from left to right.
+Chains $2$ and $3$ have consecutive ranks and merge into one run, so the array is stored as the three runs $[0,3)$, $[8,15)$ and $[3,8)$, the brackets under the tree, numbered $0$ to $2$ from left to right.
 %
 The entries are $N\to(0,0)$, $A\to(2,3)$ and the sentinel $(3,8)$.
 %
@@ -208,7 +208,7 @@ The vertex $x$ has $\core{2}{x}=4>\binom{3}{1}$ and $\core{3}{x}=3=\binom{3}{2}$
 %
 The six vertices $u_1,\dots,w_3$, with $\omega=3$, have values $4$ and $3$ above their floors $\binom{2}{1}=2$ and $\binom{2}{2}=1$, so $\sigma=4$ and both values are residues.
 %
-Stored per chain, the whole graph keeps three values, the residues beside the chains in Figure~\ref{fig:layout}(b).
+Stored per chain, the whole graph keeps three values, the residues under the chains in Figure~\ref{fig:layout}(b).
 \end{example}
 % 2026-09-24: omega, sigma and the residues answer a value query without reading a layer (Algorithm alg:query, Value).
 The record of a chain holds its clique number $\omega$, its tail start $\sigma$, its residues, and its trajectory (Definition~\ref{def:chain}).
@@ -238,7 +238,7 @@ The canonical nodes are the same in both indexes.
 The saving is in the pairs and in the values: the array positions become two labels per run, the $\sum_v(\omg{v}-1)$ pointers become the $\sum_c(\omega(c)-1)$ own nodes of the trajectories, and $\omega$, $\sigma$ and the residues are stored once per chain instead of once per vertex.
 %
 % trace 2026-09-24 (make_concept.py): 44 pairs; runs 1+3+3+1 = 8; own nodes in trajectories 3+4+2+3 = 12; residues per vertex 6*2+1 = 13, per chain 2+1 = 3; canonical nodes 3+2+2+1 = 8 in both.
-In Figure~\ref{fig:layout} the $44$ array positions of (a) become the $8$ runs of (b), the brackets under its rows, and the $44$ pointers become one own node per chain cell of (b), $12$ in all.
+In Figure~\ref{fig:layout} the $44$ array positions of (a) become the $8$ runs of (b), the brackets under its trees, and the $44$ pointers become one own node per chain cell of (b), $12$ in all.
 %
 Both panels draw the same $8$ canonical nodes, and the $13$ residues of the vertices, which (a) does not draw, become the $3$ residues printed in (b).
 % trace 2026-09-21: active pairs = a_i: sizes 2..5 = 4 each, 20; b_i: sizes 2..4 = 3 each, 9; x: 3; u_i,w_i: sizes 2,3 = 2 each, 12; total 44.

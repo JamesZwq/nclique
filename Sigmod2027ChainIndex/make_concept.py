@@ -381,97 +381,112 @@ def kappa_txt(s, k):
     return f'<tspan font-style="italic">κ</tspan><tspan font-size="75%" dy="1.7">{s}</tspan><tspan dy="-1.7"> = {k}</tspan>'
 
 def fig_pair():
-    """2026-09-24 (user): one figure, (a) Baseline beside (b) ChainIndex, one row per size and the rows aligned.
-    Both panels draw the tree of a size the same way: bars stacked by depth, each over the members of its node and
-    labelled with its name and top.  (a) puts them over the depth-first array of the vertices of the size (44 positions
-    over the four sizes); (b) over the chains in depth-first order, whose runs are the brackets labelled with their
-    label ranges, under the one label array with the four chains and their records.  Cells are tinted by chain.
-    Orange: the community query of x at (3, 2), one slice in (a), two runs in (b), two label ranges on top.
-    Cold read 2026-09-24: larger type (names 7 pt, bars 6.6 pt, records and runs 6.4 pt, gray numbers 5.8 pt), the
-    traced bar outlined only, the rows of (b) labelled, the records tagged, the record of chain 3 in black."""
+    """2026-09-24 (user): one figure, (a) Baseline and (b) ChainIndex.  Both panels draw the tree of a size the same way:
+    bars stacked by depth, each over the members of its node and labelled with its name and top.  (a) puts them over the
+    depth-first array of the vertices of the size (44 positions over the four sizes); (b) over the chains in depth-first
+    order, whose runs are the brackets labelled with their label ranges, beside the one label array with the four chains
+    and their records.  Cells are tinted by chain.  Orange: the community query of x at (3, 2), one slice in (a), two
+    runs in (b), two label ranges in the label array.
+    2026-09-25 (user: still too much space; (b) in one line, (a) in about two): (a) is two lines (sizes 2 and 3, then 4
+    and 5); (b) is the label array with its records, to the right of the second line of (a), and one line holding the
+    four sizes side by side.  The small (b) against the large (a) shows how little the index stores."""
     PW = 506.0
-    CW, CH = 13.8, 12.0                # vertex and label cells
+    CW, CH = 12.6, 12.0                # vertex and label cells
     CC = 30.0                          # chain cells of (b)
     BH, BG = 10.5, 1.6                 # bar height, gap between bar rows
-    XA, XB = 26.0, 262.0               # left edges of the cells of (a) and of (b)
+    SL = 22.0                          # room for a size label left of its cells
     GRAY = '#555'
     sv = SVG(PW, 1)
     hot_s, hot_N = 3, own[('x', 3)]
     assert hot_N == frozenset(B + U + W)
-    sv.text(2, 9.0, '(a) Baseline', size=7.8)
-    sv.text(XB - 20, 9.0, '(b) ChainIndex', size=7.8)
-    # (b) the label array, the chains, their records: one column at the right edge, beside the rows
-    # 2026-09-25 (user: the figure takes too much space): the column replaces the header band over (b), so the rows
-    # of both panels start at the top.
-    LX, LH, LY = 424.0, 11.0, 19.0     # left edge of the label cells, cell height, top of the column
-    sv.text(LX + CW / 2, LY - 4.0, 'label', size=5.8, anchor='middle', fill=GRAY)
-    for i, v in enumerate(label_order):
-        yy = LY + i * LH
-        sv.rect(LX, yy, CW, LH, fill=CHAIN_TINT[chain_of[v]], stroke='#000', sw=0.5)
-        sv.text(LX - 3.0, yy + 7.9, str(i), size=5.8, anchor='end', fill=GRAY)
-        sv.text(LX + CW / 2, yy + 8.2, sub(v), size=7.0, anchor='middle', italic=True)
-    for lo, hi in ((0, 3), (8, 15)):                                   # the answer of the traced query
-        sv.line(LX - 11.5, LY + lo * LH + 0.6, LX - 11.5, LY + hi * LH - 0.6, color=ORANGE, w=1.2)
-    sv.rect(LX, LY + 14 * LH, CW, LH, stroke=ORANGE, sw=1.2)           # the query vertex x
-    RX = LX + CW + 4.0
-    sv.text(RX + 3.5, LY - 4.0, 'record', size=5.8, fill=GRAY)
-    for c in range(4):
-        lo, hi = LY + start[c] * LH, LY + start[c + 1] * LH
-        sv.line(RX, lo + 1, RX, hi - 1, w=0.6); sv.line(RX, lo + 1, RX - 2.4, lo + 1, w=0.6); sv.line(RX, hi - 1, RX - 2.4, hi - 1, w=0.6)
-        lines = [f'{c}: <tspan font-style="italic">ω</tspan> = {omega_c[c]}, <tspan font-style="italic">σ</tspan> = {sigma_c[c]}']
-        if residues[c]: lines.append('\u2002\u2002' + ', '.join(kappa_txt(s, k) for s, k in residues[c]))
-        ty = lo + 8.0 if hi - lo < 2 * LH else (lo + hi) / 2 - 4.0 * (len(lines) - 1) + 2.2
-        for t, line in enumerate(lines):
-            sv.text(RX + 3.5, ty + t * 8.0, line, size=6.4)
-    y = LY
-    total_a = 0; total_runs = 0
-    for j, s in enumerate(SIZES):
-        L = layers[s]; par = children(s)
-        def dep(N): return 0 if par[N] is None else 1 + dep(par[N])
-        maxd = max(dep(N) for N in nodes[s])
-        # numbering the bars of (b) by their left ends (outer first on a tie) is the preorder the text uses
-        lr = sorted(nodes[s], key=lambda N: (L['seg'][N][0], dep(N)))
-        assert [pre[s][N] for N in lr] == list(range(len(lr))), s
-        assert len({L['seg'][N][0] for N in nodes[s]}) == len(nodes[s]), s   # no two bars share a left end
-        if j: sv.line(2, y - 3.2, LX - 16.0, y - 3.2, color='#dddddd', w=0.4)
-        cy = y + (maxd + 1) * (BH + BG)
-        sv.text(XA - 4, cy + 8.6, f's = {s}', size=7.0, anchor='end')
-        sv.text(XB - 4, cy + 8.6, f's = {s}', size=6.4, anchor='end', fill=GRAY)
-        # (a): the depth-first array of the vertices, the bars over it
-        arr_v = strees_array(s); total_a += len(arr_v)
-        pa = {v: XA + i * CW for i, v in enumerate(arr_v)}
+    def dep(s, N): return 0 if children(s)[N] is None else 1 + dep(s, children(s)[N])
+    def maxd(s): return max(dep(s, N) for N in nodes[s])
+    def lab(s, N):
+        nm = setname(N); return f'{nm}, top {nodes[s][N]}' if nm else f'top {nodes[s][N]}'
+    def bar(s, N, lo, hi, cy):
+        hot = (s == hot_s and N == hot_N); by = cy - (maxd(s) + 1 - dep(s, N)) * (BH + BG)
+        sv.rect(lo + 0.9, by, hi - lo - 1.8, BH, rx=1.5, fill='#fff', stroke=(ORANGE if hot else '#000'), sw=(1.2 if hot else 0.55))
+        sv.text((lo + hi) / 2, by + 7.6, lab(s, N), size=6.6, anchor='middle')
+    total = {'a': 0, 'runs': 0}
+    def tree_a(s, x0, cy):             # the baseline tree of size s: the depth-first array of its vertices, the bars over it
+        L = layers[s]
+        sv.text(x0 + SL - 4, cy + 8.6, f's = {s}', size=7.0, anchor='end')
+        arr_v = strees_array(s); total['a'] += len(arr_v)
+        pa = {v: x0 + SL + i * CW for i, v in enumerate(arr_v)}
         for v in arr_v:
             hot = (s == hot_s and v == 'x')
             sv.rect(pa[v], cy, CW, CH, fill=CHAIN_TINT[chain_of[v]], stroke=(ORANGE if hot else '#000'), sw=(1.2 if hot else 0.5))
             sv.text(pa[v] + CW / 2, cy + 8.8, sub(v), size=7.0, anchor='middle', italic=True)
-        # (b): the chains in depth-first order
+        for N in nodes[s]:
+            a0, a1 = L['seg'][N]
+            bar(s, N, pa[members[L['arr'][a0]][0]], pa[members[L['arr'][a1 - 1]][-1]] + CW, cy)
+        return x0 + SL + len(arr_v) * CW
+    def tree_b(s, x0, cy):             # the index tree of size s: the chains in depth-first order, the bars, the runs
+        L = layers[s]
+        lr = sorted(nodes[s], key=lambda N: (L['seg'][N][0], dep(s, N)))
+        assert [pre[s][N] for N in lr] == list(range(len(lr))), s          # bars numbered by left ends = the preorder
+        assert len({L['seg'][N][0] for N in nodes[s]}) == len(nodes[s]), s
+        sv.text(x0 + SL - 4, cy + 8.6, f's = {s}', size=7.0, anchor='end')
+        xb = x0 + SL
         for i, c in enumerate(L['arr']):
             hot = (s == hot_s and c == 3)
-            sv.rect(XB + i * CC, cy, CC, CH, fill=CHAIN_TINT[c], stroke=(ORANGE if hot else '#000'), sw=(1.2 if hot else 0.5))
-            sv.text(XB + i * CC + CC / 2, cy + 8.8, str(c), size=7.0, anchor='middle')
-        # the same bars in both panels; the traced bar outlined in orange, no fill
+            sv.rect(xb + i * CC, cy, CC, CH, fill=CHAIN_TINT[c], stroke=(ORANGE if hot else '#000'), sw=(1.2 if hot else 0.5))
+            sv.text(xb + i * CC + CC / 2, cy + 8.8, str(c), size=7.0, anchor='middle')
         for N in nodes[s]:
-            nm = setname(N); lab = (f'{nm}, top {nodes[s][N]}' if nm else f'top {nodes[s][N]}')
-            hot = (s == hot_s and N == hot_N); by = y + dep(N) * (BH + BG)
-            a0, a1 = L['seg'][N]
-            vlo = members[L['arr'][a0]][0]; vhi = members[L['arr'][a1 - 1]][-1]
-            for lo, hi in ((pa[vlo], pa[vhi] + CW), (XB + a0 * CC, XB + a1 * CC)):
-                sv.rect(lo + 0.9, by, hi - lo - 1.8, BH, rx=1.5, fill='#fff',
-                        stroke=(ORANGE if hot else '#000'), sw=(1.2 if hot else 0.55))
-                sv.text((lo + hi) / 2, by + 7.6, lab, size=6.6, anchor='middle')
-        # (b): the runs under the chains
+            a0, a1 = L['seg'][N]; bar(s, N, xb + a0 * CC, xb + a1 * CC, cy)
         ry = cy + CH + 4.5
-        for r, (lo_l, hi_l) in enumerate(L['runs']):
+        for (lo_l, hi_l) in L['runs']:
             idx = [i for i, c in enumerate(L['arr']) if lo_l <= start[c] < hi_l]
             assert idx == list(range(idx[0], idx[-1] + 1))
             hot = (s == hot_s and (lo_l, hi_l) in ((0, 3), (8, 15)))
-            x0, x1 = XB + idx[0] * CC, XB + (idx[-1] + 1) * CC
-            sv.bracket(x0 + 1.5, x1 - 1.5, ry, tick=2.4, w=(0.9 if hot else 0.6), color=(ORANGE if hot else '#000'))
-            sv.text((x0 + x1) / 2, ry + 7.8, f'[{lo_l}, {hi_l})', size=6.4, anchor='middle', fill=(ORANGE if hot else '#000'))
-            total_runs += 1
-        y = ry + 7.8 + 6.5
-    assert total_a == 44 and total_runs == 8
-    sv.h = max(y - 1.0, LY + 15 * LH + 18.0)
+            x0r, x1r = xb + idx[0] * CC, xb + (idx[-1] + 1) * CC
+            sv.bracket(x0r + 1.5, x1r - 1.5, ry, tick=2.4, w=(0.9 if hot else 0.6), color=(ORANGE if hot else '#000'))
+            sv.text((x0r + x1r) / 2, ry + 7.8, f'[{lo_l}, {hi_l})', size=6.4, anchor='middle', fill=(ORANGE if hot else '#000'))
+            total['runs'] += 1
+        return xb + len(L['arr']) * CC
+    def top_of(sizes, cy): return cy - (max(maxd(s) for s in sizes) + 1) * (BH + BG)
+    # (a), line 1: sizes 2 and 3
+    sv.text(2, 9.0, '(a) Baseline', size=7.8)
+    cy1 = 16.0 + (max(maxd(2), maxd(3)) + 1) * (BH + BG)
+    x = tree_a(2, 4.0, cy1); tree_a(3, x + 12.0, cy1)
+    # (a), line 2: sizes 4 and 5
+    cy2 = cy1 + CH + 8.0 + (max(maxd(4), maxd(5)) + 1) * (BH + BG)
+    x = tree_a(4, 4.0, cy2); xa_end = tree_a(5, x + 4.0, cy2)
+    assert total['a'] == 44
+    # (b), right of line 2: the label array, the chains, their records
+    LW = 11.8                          # label cells of (b)
+    XL = PW - 15 * LW - 26.0
+    assert XL > xa_end + 56
+    LY = cy1 + CH + 16.0
+    sv.text(XL - 4, LY + 8.6, '(b) ChainIndex', size=7.8, anchor='end')
+    sv.text(XL - 3, LY - 2.2, 'label', size=5.8, anchor='end', fill=GRAY)
+    for i, v in enumerate(label_order):
+        xx = XL + i * LW
+        sv.rect(xx, LY, LW, CH, fill=CHAIN_TINT[chain_of[v]], stroke='#000', sw=0.5)
+        sv.text(xx + LW / 2, LY - 2.2, str(i), size=5.6, anchor='middle', fill=GRAY)
+        sv.text(xx + LW / 2, LY + 8.8, sub(v), size=7.0, anchor='middle', italic=True)
+    for lo, hi in ((0, 3), (8, 15)):                                   # the answer of the traced query
+        sv.line(XL + lo * LW + 0.6, LY + CH + 1.4, XL + hi * LW - 0.6, LY + CH + 1.4, color=ORANGE, w=1.2)
+    sv.rect(XL + 14 * LW, LY, LW, CH, stroke=ORANGE, sw=1.2)           # the query vertex x
+    BY = LY + CH + 5.5
+    sv.text(XL - 3, BY + 8.2, 'record', size=5.8, anchor='end', fill=GRAY)
+    for c in range(4):
+        lo, hi = XL + start[c] * LW, XL + start[c + 1] * LW; cx = (lo + hi) / 2
+        if c == 3: cx = min(cx, PW - 25.0)
+        sv.bracket(lo + 1, hi - 1, BY, tick=2.4, w=0.6)
+        rec = f'{c}: <tspan font-style="italic">ω</tspan> = {omega_c[c]}, <tspan font-style="italic">σ</tspan> = {sigma_c[c]}'
+        sv.text(cx, BY + 8.2, rec, size=6.4, anchor='middle')
+        if residues[c]:
+            sv.text(cx, BY + 16.2, ', '.join(kappa_txt(s, k) for s, k in residues[c]), size=6.4, anchor='middle')
+    # (b), one line: the trees of the four sizes side by side
+    ytop3 = max(cy2 + CH + 10.0, BY + 22.0)
+    sv.line(2, cy2 + CH + 5.0, xa_end + 4.0, cy2 + CH + 5.0, color='#dddddd', w=0.4)   # (a) above, (b) right and below
+    sv.line(xa_end + 4.0, cy1 + CH + 4.0, xa_end + 4.0, cy2 + CH + 5.0, color='#dddddd', w=0.4)
+    cy3 = ytop3 + (max(maxd(s) for s in SIZES) + 1) * (BH + BG)
+    x = 4.0
+    for s in SIZES: x = tree_b(s, x, cy3) + 12.0
+    assert x - 12.0 <= PW - 2 and total['runs'] == 8
+    sv.h = cy3 + CH + 4.5 + 9.5
     sv.write('fig_pair')
 
 FIGS = {'fig_running': fig_running, 'fig_pair': fig_pair, 'fig_build': fig_build}
