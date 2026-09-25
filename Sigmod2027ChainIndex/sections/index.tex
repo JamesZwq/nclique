@@ -12,7 +12,7 @@ They are the vertex-to-chain map, one record per chain, and for every size one t
 We call the tree of a size with its runs the \textit{layer} of that size.
 %
 % 2026-09-24 cold read: the regions of Figure 2(b) named.
-In Figure~\ref{fig:layout}(b) the map is the row of labels, and the record of each chain is printed under it after the chain number, all but the trajectory, which the trees show.
+In Figure~\ref{fig:layout}(b) the map is the row of labels, and the record of each chain is printed beside it after a cell with the chain number, all but the trajectory, which the trees show.
 %
 Each layer is one tree on the bottom line: bars over the chains, and the runs as brackets under them with their label ranges.
 %
@@ -208,7 +208,7 @@ The vertex $x$ has $\core{2}{x}=4>\binom{3}{1}$ and $\core{3}{x}=3=\binom{3}{2}$
 %
 The six vertices $u_1,\dots,w_3$, with $\omega=3$, have values $4$ and $3$ above their floors $\binom{2}{1}=2$ and $\binom{2}{2}=1$, so $\sigma=4$ and both values are residues.
 %
-Stored per chain, the whole graph keeps three values, the residues under the chains in Figure~\ref{fig:layout}(b).
+Stored per chain, the whole graph keeps three values, the residues in the records of Figure~\ref{fig:layout}(b).
 \end{example}
 % 2026-09-24: omega, sigma and the residues answer a value query without reading a layer (Algorithm alg:query, Value).
 The record of a chain holds its clique number $\omega$, its tail start $\sigma$, its residues, and its trajectory (Definition~\ref{def:chain}).

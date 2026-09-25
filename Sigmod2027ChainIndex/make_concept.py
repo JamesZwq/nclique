@@ -387,9 +387,9 @@ def fig_pair():
     order, whose runs are the brackets labelled with their label ranges, beside the one label array with the four chains
     and their records.  Cells are tinted by chain.  Orange: the community query of x at (3, 2), one slice in (a), two
     runs in (b), two label ranges in the label array.
-    2026-09-25 (user: still too much space; (b) in one line, (a) in about two): (a) is two lines (sizes 2 and 3, then 4
-    and 5); (b) is the label array with its records, to the right of the second line of (a), and one line holding the
-    four sizes side by side.  The small (b) against the large (a) shows how little the index stores."""
+    2026-09-25 (user: still too much space; (b) in one line, (a) in about two; then: split (a) and (b) by lines): (a) is
+    two lines (sizes 2 and 3, then 4 and 5); under a rule, (b) is the label array with the records beside it, then one
+    line holding the four trees side by side.  The small (b) against the large (a) shows how little the index stores."""
     PW = 506.0
     CW, CH = 12.6, 12.0                # vertex and label cells
     CC = 30.0                          # chain cells of (b)
@@ -451,37 +451,38 @@ def fig_pair():
     x = tree_a(2, 4.0, cy1); tree_a(3, x + 12.0, cy1)
     # (a), line 2: sizes 4 and 5
     cy2 = cy1 + CH + 8.0 + (max(maxd(4), maxd(5)) + 1) * (BH + BG)
-    x = tree_a(4, 4.0, cy2); xa_end = tree_a(5, x + 4.0, cy2)
+    x = tree_a(4, 4.0, cy2); tree_a(5, x + 12.0, cy2)
     assert total['a'] == 44
-    # (b), right of line 2: the label array, the chains, their records
+    # (b) below (a), on its own lines (user 2026-09-25: split (a) and (b) by lines): first the label array with the
+    # records of the chains beside it, then the trees of the four sizes side by side
+    ysep = cy2 + CH + 6.0
+    sv.line(2, ysep, PW - 2, ysep, color='#cccccc', w=0.5)
+    sv.text(2, ysep + 11.0, '(b) ChainIndex', size=7.8)
     LW = 11.8                          # label cells of (b)
-    XL = PW - 15 * LW - 26.0
-    assert XL > xa_end + 56
-    LY = cy1 + CH + 16.0
-    sv.text(XL - 4, LY + 8.6, '(b) ChainIndex', size=7.8, anchor='end')
-    sv.text(XL - 3, LY - 2.2, 'label', size=5.8, anchor='end', fill=GRAY)
+    XL, LY = 4.0 + SL, ysep + 26.0
+    sv.text(XL - 4, LY + 8.6, 'label', size=6.4, anchor='end', fill=GRAY)
     for i, v in enumerate(label_order):
         xx = XL + i * LW
         sv.rect(xx, LY, LW, CH, fill=CHAIN_TINT[chain_of[v]], stroke='#000', sw=0.5)
         sv.text(xx + LW / 2, LY - 2.2, str(i), size=5.6, anchor='middle', fill=GRAY)
         sv.text(xx + LW / 2, LY + 8.8, sub(v), size=7.0, anchor='middle', italic=True)
     for lo, hi in ((0, 3), (8, 15)):                                   # the answer of the traced query
-        sv.line(XL + lo * LW + 0.6, LY + CH + 1.4, XL + hi * LW - 0.6, LY + CH + 1.4, color=ORANGE, w=1.2)
+        sv.line(XL + lo * LW + 0.6, LY + CH + 1.6, XL + hi * LW - 0.6, LY + CH + 1.6, color=ORANGE, w=1.2)
     sv.rect(XL + 14 * LW, LY, LW, CH, stroke=ORANGE, sw=1.2)           # the query vertex x
-    BY = LY + CH + 5.5
-    sv.text(XL - 3, BY + 8.2, 'record', size=5.8, anchor='end', fill=GRAY)
-    for c in range(4):
-        lo, hi = XL + start[c] * LW, XL + start[c + 1] * LW; cx = (lo + hi) / 2
-        if c == 3: cx = min(cx, PW - 25.0)
-        sv.bracket(lo + 1, hi - 1, BY, tick=2.4, w=0.6)
-        rec = f'{c}: <tspan font-style="italic">ω</tspan> = {omega_c[c]}, <tspan font-style="italic">σ</tspan> = {sigma_c[c]}'
-        sv.text(cx, BY + 8.2, rec, size=6.4, anchor='middle')
-        if residues[c]:
-            sv.text(cx, BY + 16.2, ', '.join(kappa_txt(s, k) for s, k in residues[c]), size=6.4, anchor='middle')
-    # (b), one line: the trees of the four sizes side by side
-    ytop3 = max(cy2 + CH + 10.0, BY + 22.0)
-    sv.line(2, cy2 + CH + 5.0, xa_end + 4.0, cy2 + CH + 5.0, color='#dddddd', w=0.4)   # (a) above, (b) right and below
-    sv.line(xa_end + 4.0, cy1 + CH + 4.0, xa_end + 4.0, cy2 + CH + 5.0, color='#dddddd', w=0.4)
+    # the records, one per chain, each after a chain cell like those of the trees
+    RX = XL + 15 * LW + 40.0; CWR = 14.0
+    sv.text(RX - 6, LY + 8.6, 'record', size=6.4, anchor='end', fill=GRAY)
+    cols = [(0, 2), (1, 3)]; colw = 0.0
+    for col, cs in enumerate(cols):
+        for rowi, c in enumerate(cs):
+            yy = LY - 7.0 + rowi * 14.0; xx = RX + col * 104.0
+            sv.rect(xx, yy, CWR, 11.0, fill=CHAIN_TINT[c], stroke='#000', sw=0.5)
+            sv.text(xx + CWR / 2, yy + 8.0, str(c), size=6.8, anchor='middle')
+            rec = f'<tspan font-style="italic">ω</tspan> = {omega_c[c]}, <tspan font-style="italic">σ</tspan> = {sigma_c[c]}'
+            if residues[c]: rec += ', ' + ', '.join(kappa_txt(s, k) for s, k in residues[c])
+            sv.text(xx + CWR + 3.5, yy + 8.0, rec, size=6.4)
+    # the trees of (b), one line
+    ytop3 = LY + CH + 8.0
     cy3 = ytop3 + (max(maxd(s) for s in SIZES) + 1) * (BH + BG)
     x = 4.0
     for s in SIZES: x = tree_b(s, x, cy3) + 12.0
