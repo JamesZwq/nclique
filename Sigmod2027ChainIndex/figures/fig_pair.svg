@@ -1,257 +1,257 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 506.0 259.7" font-family="Linux Libertine, Libertine, Times New Roman, serif"><rect width="506.0" height="259.7" fill="#fff"/><text x="2.00" y="9.00" font-size="7.8px" text-anchor="start" fill="#000" >(a) Baseline</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 506.0 202.0" font-family="Linux Libertine, Libertine, Times New Roman, serif"><rect width="506.0" height="202.0" fill="#fff"/><text x="2.00" y="9.00" font-size="7.8px" text-anchor="start" fill="#000" >(a) Baseline</text>
 <text x="242.00" y="9.00" font-size="7.8px" text-anchor="start" fill="#000" >(b) ChainIndex</text>
-<text x="259.00" y="20.60" font-size="5.8px" text-anchor="end" fill="#555" >label</text>
-<rect x="262.00" y="25.00" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="268.90" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >0</text>
-<text x="268.90" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="275.80" y="25.00" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="282.70" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >1</text>
-<text x="282.70" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="289.60" y="25.00" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="296.50" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >2</text>
-<text x="296.50" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="303.40" y="25.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="310.30" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >3</text>
-<text x="310.30" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="317.20" y="25.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="324.10" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >4</text>
-<text x="324.10" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="331.00" y="25.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="337.90" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >5</text>
-<text x="337.90" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="344.80" y="25.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="351.70" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >6</text>
-<text x="351.70" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="358.60" y="25.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="365.50" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >7</text>
-<text x="365.50" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="372.40" y="25.00" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="379.30" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >8</text>
-<text x="379.30" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="386.20" y="25.00" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="393.10" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >9</text>
-<text x="393.10" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="400.00" y="25.00" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="406.90" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >10</text>
-<text x="406.90" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="413.80" y="25.00" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="420.70" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >11</text>
-<text x="420.70" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="427.60" y="25.00" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="434.50" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >12</text>
-<text x="434.50" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="441.40" y="25.00" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="448.30" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >13</text>
-<text x="448.30" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="455.20" y="25.00" width="13.80" height="12.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
-<text x="462.10" y="20.60" font-size="5.8px" text-anchor="middle" fill="#555" >14</text>
-<text x="462.10" y="33.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >x</text>
-<line x1="262.60" y1="23.00" x2="302.80" y2="23.00" stroke="#c2531a" stroke-width="1.2" stroke-linecap="butt"/>
-<line x1="373.00" y1="23.00" x2="468.40" y2="23.00" stroke="#c2531a" stroke-width="1.2" stroke-linecap="butt"/>
-<rect x="455.20" y="25.00" width="13.80" height="12.00" rx="0" fill="none" stroke="#c2531a" stroke-width="1.2"/>
-<text x="259.00" y="50.20" font-size="5.8px" text-anchor="end" fill="#555" >record</text>
-<line x1="263.00" y1="42.00" x2="302.40" y2="42.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="263.00" y1="42.00" x2="263.00" y2="39.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="302.40" y1="42.00" x2="302.40" y2="39.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="282.70" y="50.20" font-size="6.4px" text-anchor="middle" fill="#000" >0: <tspan font-style="italic">ω</tspan> = 4, <tspan font-style="italic">σ</tspan> = 2</text>
-<line x1="304.40" y1="42.00" x2="371.40" y2="42.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="304.40" y1="42.00" x2="304.40" y2="39.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="371.40" y1="42.00" x2="371.40" y2="39.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="337.90" y="50.20" font-size="6.4px" text-anchor="middle" fill="#000" >1: <tspan font-style="italic">ω</tspan> = 5, <tspan font-style="italic">σ</tspan> = 2</text>
-<line x1="373.40" y1="42.00" x2="454.20" y2="42.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="373.40" y1="42.00" x2="373.40" y2="39.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="454.20" y1="42.00" x2="454.20" y2="39.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="413.80" y="50.20" font-size="6.4px" text-anchor="middle" fill="#000" >2: <tspan font-style="italic">ω</tspan> = 3, <tspan font-style="italic">σ</tspan> = 4</text>
-<text x="413.80" y="58.20" font-size="6.4px" text-anchor="middle" fill="#000" ><tspan font-style="italic">κ</tspan><tspan font-size="75%" dy="1.7">2</tspan><tspan dy="-1.7"> = 4</tspan>, <tspan font-style="italic">κ</tspan><tspan font-size="75%" dy="1.7">3</tspan><tspan dy="-1.7"> = 3</tspan></text>
-<line x1="456.20" y1="42.00" x2="468.00" y2="42.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="456.20" y1="42.00" x2="456.20" y2="39.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="468.00" y1="42.00" x2="468.00" y2="39.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="462.10" y="50.20" font-size="6.4px" text-anchor="middle" fill="#000" >3: <tspan font-style="italic">ω</tspan> = 4, <tspan font-style="italic">σ</tspan> = 3</text>
-<text x="462.10" y="58.20" font-size="6.4px" text-anchor="middle" fill="#000" ><tspan font-style="italic">κ</tspan><tspan font-size="75%" dy="1.7">2</tspan><tspan dy="-1.7"> = 4</tspan></text>
-<text x="22.00" y="101.80" font-size="7.0px" text-anchor="end" fill="#000" >s = 2</text>
-<text x="258.00" y="101.80" font-size="6.4px" text-anchor="end" fill="#555" >s = 2</text>
-<rect x="26.00" y="93.20" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="32.90" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="39.80" y="93.20" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="46.70" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="53.60" y="93.20" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="60.50" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="67.40" y="93.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="74.30" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="81.20" y="93.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="88.10" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="95.00" y="93.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="101.90" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="108.80" y="93.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="115.70" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="122.60" y="93.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="129.50" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="136.40" y="93.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="143.30" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="150.20" y="93.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="157.10" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="164.00" y="93.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="170.90" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="177.80" y="93.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="184.70" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="191.60" y="93.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="198.50" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="205.40" y="93.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="212.30" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="219.20" y="93.20" width="13.80" height="12.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
-<text x="226.10" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >x</text>
-<rect x="262.00" y="93.20" width="30.00" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="277.00" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" >0</text>
-<rect x="292.00" y="93.20" width="30.00" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="307.00" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" >1</text>
-<rect x="322.00" y="93.20" width="30.00" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="337.00" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" >2</text>
-<rect x="352.00" y="93.20" width="30.00" height="12.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
-<text x="367.00" y="102.00" font-size="7.0px" text-anchor="middle" fill="#000" >3</text>
-<rect x="26.90" y="69.00" width="205.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="129.50" y="76.60" font-size="6.6px" text-anchor="middle" fill="#000" >top 3</text>
-<rect x="262.90" y="69.00" width="118.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="322.00" y="76.60" font-size="6.6px" text-anchor="middle" fill="#000" >top 3</text>
-<rect x="137.30" y="81.10" width="94.80" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="184.70" y="88.70" font-size="6.6px" text-anchor="middle" fill="#000" >top 4</text>
-<rect x="322.90" y="81.10" width="58.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="352.00" y="88.70" font-size="6.6px" text-anchor="middle" fill="#000" >top 4</text>
-<rect x="68.30" y="81.10" width="67.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="101.90" y="88.70" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 4</text>
-<rect x="292.90" y="81.10" width="28.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="307.00" y="88.70" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 4</text>
-<line x1="263.50" y1="109.70" x2="380.50" y2="109.70" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="263.50" y1="109.70" x2="263.50" y2="107.30" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="380.50" y1="109.70" x2="380.50" y2="107.30" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="322.00" y="117.50" font-size="6.4px" text-anchor="middle" fill="#000" >[0, 15)</text>
-<line x1="2.00" y1="122.80" x2="504.00" y2="122.80" stroke="#dddddd" stroke-width="0.4" stroke-linecap="butt"/>
-<text x="22.00" y="146.70" font-size="7.0px" text-anchor="end" fill="#000" >s = 3</text>
-<text x="258.00" y="146.70" font-size="6.4px" text-anchor="end" fill="#555" >s = 3</text>
-<rect x="26.00" y="138.10" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="32.90" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="39.80" y="138.10" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="46.70" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="53.60" y="138.10" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="60.50" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="67.40" y="138.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="74.30" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="81.20" y="138.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="88.10" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="95.00" y="138.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="101.90" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="108.80" y="138.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="115.70" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="122.60" y="138.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="129.50" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="136.40" y="138.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="143.30" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="150.20" y="138.10" width="13.80" height="12.00" rx="0" fill="#b7a9cf" stroke="#c2531a" stroke-width="1.2"/>
-<text x="157.10" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >x</text>
-<rect x="164.00" y="138.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="170.90" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="177.80" y="138.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="184.70" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="191.60" y="138.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="198.50" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="205.40" y="138.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="212.30" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="219.20" y="138.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="226.10" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="262.00" y="138.10" width="30.00" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="277.00" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" >0</text>
-<rect x="292.00" y="138.10" width="30.00" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
-<text x="307.00" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" >2</text>
-<rect x="322.00" y="138.10" width="30.00" height="12.00" rx="0" fill="#b7a9cf" stroke="#c2531a" stroke-width="1.2"/>
-<text x="337.00" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" >3</text>
-<rect x="352.00" y="138.10" width="30.00" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="367.00" y="146.90" font-size="7.0px" text-anchor="middle" fill="#000" >1</text>
-<rect x="26.90" y="126.00" width="136.20" height="10.50" rx="1.5" fill="#fff" stroke="#c2531a" stroke-width="1.2"/>
-<text x="95.00" y="133.60" font-size="6.6px" text-anchor="middle" fill="#000" >N, top 3</text>
-<rect x="262.90" y="126.00" width="88.20" height="10.50" rx="1.5" fill="#fff" stroke="#c2531a" stroke-width="1.2"/>
-<text x="307.00" y="133.60" font-size="6.6px" text-anchor="middle" fill="#000" >N, top 3</text>
-<rect x="164.90" y="126.00" width="67.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="198.50" y="133.60" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 6</text>
-<rect x="352.90" y="126.00" width="28.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="367.00" y="133.60" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 6</text>
-<line x1="263.50" y1="154.60" x2="290.50" y2="154.60" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
-<line x1="263.50" y1="154.60" x2="263.50" y2="152.20" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
-<line x1="290.50" y1="154.60" x2="290.50" y2="152.20" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
-<text x="277.00" y="162.40" font-size="6.4px" text-anchor="middle" fill="#c2531a" >[0, 3)</text>
-<line x1="293.50" y1="154.60" x2="350.50" y2="154.60" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
-<line x1="293.50" y1="154.60" x2="293.50" y2="152.20" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
-<line x1="350.50" y1="154.60" x2="350.50" y2="152.20" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
-<text x="322.00" y="162.40" font-size="6.4px" text-anchor="middle" fill="#c2531a" >[8, 15)</text>
-<line x1="353.50" y1="154.60" x2="380.50" y2="154.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="353.50" y1="154.60" x2="353.50" y2="152.20" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="380.50" y1="154.60" x2="380.50" y2="152.20" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="367.00" y="162.40" font-size="6.4px" text-anchor="middle" fill="#000" >[3, 8)</text>
-<line x1="2.00" y1="167.70" x2="504.00" y2="167.70" stroke="#dddddd" stroke-width="0.4" stroke-linecap="butt"/>
-<text x="22.00" y="191.60" font-size="7.0px" text-anchor="end" fill="#000" >s = 4</text>
-<text x="258.00" y="191.60" font-size="6.4px" text-anchor="end" fill="#555" >s = 4</text>
-<rect x="26.00" y="183.00" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="32.90" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="39.80" y="183.00" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="46.70" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="53.60" y="183.00" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="60.50" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="67.40" y="183.00" width="13.80" height="12.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
-<text x="74.30" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >x</text>
-<rect x="81.20" y="183.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="88.10" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="95.00" y="183.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="101.90" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="108.80" y="183.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="115.70" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="122.60" y="183.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="129.50" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="136.40" y="183.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="143.30" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="262.00" y="183.00" width="30.00" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
-<text x="277.00" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" >0</text>
-<rect x="292.00" y="183.00" width="30.00" height="12.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
-<text x="307.00" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" >3</text>
-<rect x="322.00" y="183.00" width="30.00" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="337.00" y="191.80" font-size="7.0px" text-anchor="middle" fill="#000" >1</text>
-<rect x="82.10" y="170.90" width="67.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="115.70" y="178.50" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 4</text>
-<rect x="322.90" y="170.90" width="28.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="337.00" y="178.50" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 4</text>
-<rect x="26.90" y="170.90" width="53.40" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="53.60" y="178.50" font-size="6.6px" text-anchor="middle" fill="#000" >B, top 1</text>
-<rect x="262.90" y="170.90" width="58.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="292.00" y="178.50" font-size="6.6px" text-anchor="middle" fill="#000" >B, top 1</text>
-<line x1="263.50" y1="199.50" x2="290.50" y2="199.50" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="263.50" y1="199.50" x2="263.50" y2="197.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="290.50" y1="199.50" x2="290.50" y2="197.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="277.00" y="207.30" font-size="6.4px" text-anchor="middle" fill="#000" >[0, 3)</text>
-<line x1="293.50" y1="199.50" x2="320.50" y2="199.50" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="293.50" y1="199.50" x2="293.50" y2="197.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="320.50" y1="199.50" x2="320.50" y2="197.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="307.00" y="207.30" font-size="6.4px" text-anchor="middle" fill="#000" >[14, 15)</text>
-<line x1="323.50" y1="199.50" x2="350.50" y2="199.50" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="323.50" y1="199.50" x2="323.50" y2="197.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="350.50" y1="199.50" x2="350.50" y2="197.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="337.00" y="207.30" font-size="6.4px" text-anchor="middle" fill="#000" >[3, 8)</text>
-<line x1="2.00" y1="212.60" x2="504.00" y2="212.60" stroke="#dddddd" stroke-width="0.4" stroke-linecap="butt"/>
-<text x="22.00" y="236.50" font-size="7.0px" text-anchor="end" fill="#000" >s = 5</text>
-<text x="258.00" y="236.50" font-size="6.4px" text-anchor="end" fill="#555" >s = 5</text>
-<rect x="26.00" y="227.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="32.90" y="236.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="39.80" y="227.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="46.70" y="236.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="53.60" y="227.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="60.50" y="236.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="67.40" y="227.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="74.30" y="236.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="81.20" y="227.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="88.10" y="236.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
-<rect x="262.00" y="227.90" width="30.00" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
-<text x="277.00" y="236.70" font-size="7.0px" text-anchor="middle" fill="#000" >1</text>
-<rect x="26.90" y="215.80" width="67.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="60.50" y="223.40" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 1</text>
-<rect x="262.90" y="215.80" width="28.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
-<text x="277.00" y="223.40" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 1</text>
-<line x1="263.50" y1="244.40" x2="290.50" y2="244.40" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="263.50" y1="244.40" x2="263.50" y2="242.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<line x1="290.50" y1="244.40" x2="290.50" y2="242.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
-<text x="277.00" y="252.20" font-size="6.4px" text-anchor="middle" fill="#000" >[3, 8)</text></svg>
+<text x="430.90" y="15.00" font-size="5.8px" text-anchor="middle" fill="#555" >label</text>
+<rect x="424.00" y="19.00" width="13.80" height="11.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="26.90" font-size="5.8px" text-anchor="end" fill="#555" >0</text>
+<text x="430.90" y="27.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="30.00" width="13.80" height="11.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="37.90" font-size="5.8px" text-anchor="end" fill="#555" >1</text>
+<text x="430.90" y="38.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="41.00" width="13.80" height="11.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="48.90" font-size="5.8px" text-anchor="end" fill="#555" >2</text>
+<text x="430.90" y="49.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="52.00" width="13.80" height="11.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="59.90" font-size="5.8px" text-anchor="end" fill="#555" >3</text>
+<text x="430.90" y="60.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="63.00" width="13.80" height="11.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="70.90" font-size="5.8px" text-anchor="end" fill="#555" >4</text>
+<text x="430.90" y="71.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="74.00" width="13.80" height="11.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="81.90" font-size="5.8px" text-anchor="end" fill="#555" >5</text>
+<text x="430.90" y="82.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="85.00" width="13.80" height="11.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="92.90" font-size="5.8px" text-anchor="end" fill="#555" >6</text>
+<text x="430.90" y="93.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="96.00" width="13.80" height="11.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="103.90" font-size="5.8px" text-anchor="end" fill="#555" >7</text>
+<text x="430.90" y="104.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="107.00" width="13.80" height="11.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="114.90" font-size="5.8px" text-anchor="end" fill="#555" >8</text>
+<text x="430.90" y="115.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="118.00" width="13.80" height="11.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="125.90" font-size="5.8px" text-anchor="end" fill="#555" >9</text>
+<text x="430.90" y="126.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="129.00" width="13.80" height="11.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="136.90" font-size="5.8px" text-anchor="end" fill="#555" >10</text>
+<text x="430.90" y="137.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="140.00" width="13.80" height="11.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="147.90" font-size="5.8px" text-anchor="end" fill="#555" >11</text>
+<text x="430.90" y="148.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="151.00" width="13.80" height="11.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="158.90" font-size="5.8px" text-anchor="end" fill="#555" >12</text>
+<text x="430.90" y="159.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="162.00" width="13.80" height="11.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="169.90" font-size="5.8px" text-anchor="end" fill="#555" >13</text>
+<text x="430.90" y="170.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="424.00" y="173.00" width="13.80" height="11.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
+<text x="421.00" y="180.90" font-size="5.8px" text-anchor="end" fill="#555" >14</text>
+<text x="430.90" y="181.20" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >x</text>
+<line x1="412.50" y1="19.60" x2="412.50" y2="51.40" stroke="#c2531a" stroke-width="1.2" stroke-linecap="butt"/>
+<line x1="412.50" y1="107.60" x2="412.50" y2="183.40" stroke="#c2531a" stroke-width="1.2" stroke-linecap="butt"/>
+<rect x="424.00" y="173.00" width="13.80" height="11.00" rx="0" fill="none" stroke="#c2531a" stroke-width="1.2"/>
+<text x="445.30" y="15.00" font-size="5.8px" text-anchor="start" fill="#555" >record</text>
+<line x1="441.80" y1="20.00" x2="441.80" y2="51.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="441.80" y1="20.00" x2="439.40" y2="20.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="441.80" y1="51.00" x2="439.40" y2="51.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="445.30" y="37.70" font-size="6.4px" text-anchor="start" fill="#000" >0: <tspan font-style="italic">ω</tspan> = 4, <tspan font-style="italic">σ</tspan> = 2</text>
+<line x1="441.80" y1="53.00" x2="441.80" y2="106.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="441.80" y1="53.00" x2="439.40" y2="53.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="441.80" y1="106.00" x2="439.40" y2="106.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="445.30" y="81.70" font-size="6.4px" text-anchor="start" fill="#000" >1: <tspan font-style="italic">ω</tspan> = 5, <tspan font-style="italic">σ</tspan> = 2</text>
+<line x1="441.80" y1="108.00" x2="441.80" y2="172.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="441.80" y1="108.00" x2="439.40" y2="108.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="441.80" y1="172.00" x2="439.40" y2="172.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="445.30" y="138.20" font-size="6.4px" text-anchor="start" fill="#000" >2: <tspan font-style="italic">ω</tspan> = 3, <tspan font-style="italic">σ</tspan> = 4</text>
+<text x="445.30" y="146.20" font-size="6.4px" text-anchor="start" fill="#000" >  <tspan font-style="italic">κ</tspan><tspan font-size="75%" dy="1.7">2</tspan><tspan dy="-1.7"> = 4</tspan>, <tspan font-style="italic">κ</tspan><tspan font-size="75%" dy="1.7">3</tspan><tspan dy="-1.7"> = 3</tspan></text>
+<line x1="441.80" y1="174.00" x2="441.80" y2="183.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="441.80" y1="174.00" x2="439.40" y2="174.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="441.80" y1="183.00" x2="439.40" y2="183.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="445.30" y="181.00" font-size="6.4px" text-anchor="start" fill="#000" >3: <tspan font-style="italic">ω</tspan> = 4, <tspan font-style="italic">σ</tspan> = 3</text>
+<text x="445.30" y="189.00" font-size="6.4px" text-anchor="start" fill="#000" >  <tspan font-style="italic">κ</tspan><tspan font-size="75%" dy="1.7">2</tspan><tspan dy="-1.7"> = 4</tspan></text>
+<text x="22.00" y="51.80" font-size="7.0px" text-anchor="end" fill="#000" >s = 2</text>
+<text x="258.00" y="51.80" font-size="6.4px" text-anchor="end" fill="#555" >s = 2</text>
+<rect x="26.00" y="43.20" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="32.90" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="39.80" y="43.20" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="46.70" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="53.60" y="43.20" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="60.50" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="67.40" y="43.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="74.30" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="81.20" y="43.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="88.10" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="95.00" y="43.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="101.90" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="108.80" y="43.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="115.70" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="122.60" y="43.20" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="129.50" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="136.40" y="43.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="143.30" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="150.20" y="43.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="157.10" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="164.00" y="43.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="170.90" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="177.80" y="43.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="184.70" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="191.60" y="43.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="198.50" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="205.40" y="43.20" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="212.30" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="219.20" y="43.20" width="13.80" height="12.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
+<text x="226.10" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >x</text>
+<rect x="262.00" y="43.20" width="30.00" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="277.00" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" >0</text>
+<rect x="292.00" y="43.20" width="30.00" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="307.00" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" >1</text>
+<rect x="322.00" y="43.20" width="30.00" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="337.00" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" >2</text>
+<rect x="352.00" y="43.20" width="30.00" height="12.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
+<text x="367.00" y="52.00" font-size="7.0px" text-anchor="middle" fill="#000" >3</text>
+<rect x="26.90" y="19.00" width="205.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="129.50" y="26.60" font-size="6.6px" text-anchor="middle" fill="#000" >top 3</text>
+<rect x="262.90" y="19.00" width="118.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="322.00" y="26.60" font-size="6.6px" text-anchor="middle" fill="#000" >top 3</text>
+<rect x="137.30" y="31.10" width="94.80" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="184.70" y="38.70" font-size="6.6px" text-anchor="middle" fill="#000" >top 4</text>
+<rect x="322.90" y="31.10" width="58.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="352.00" y="38.70" font-size="6.6px" text-anchor="middle" fill="#000" >top 4</text>
+<rect x="68.30" y="31.10" width="67.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="101.90" y="38.70" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 4</text>
+<rect x="292.90" y="31.10" width="28.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="307.00" y="38.70" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 4</text>
+<line x1="263.50" y1="59.70" x2="380.50" y2="59.70" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="263.50" y1="59.70" x2="263.50" y2="57.30" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="380.50" y1="59.70" x2="380.50" y2="57.30" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="322.00" y="67.50" font-size="6.4px" text-anchor="middle" fill="#000" >[0, 15)</text>
+<line x1="2.00" y1="70.80" x2="408.00" y2="70.80" stroke="#dddddd" stroke-width="0.4" stroke-linecap="butt"/>
+<text x="22.00" y="94.70" font-size="7.0px" text-anchor="end" fill="#000" >s = 3</text>
+<text x="258.00" y="94.70" font-size="6.4px" text-anchor="end" fill="#555" >s = 3</text>
+<rect x="26.00" y="86.10" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="32.90" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="39.80" y="86.10" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="46.70" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="53.60" y="86.10" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="60.50" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="67.40" y="86.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="74.30" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="81.20" y="86.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="88.10" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="95.00" y="86.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="101.90" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >u<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="108.80" y="86.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="115.70" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="122.60" y="86.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="129.50" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="136.40" y="86.10" width="13.80" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="143.30" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >w<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="150.20" y="86.10" width="13.80" height="12.00" rx="0" fill="#b7a9cf" stroke="#c2531a" stroke-width="1.2"/>
+<text x="157.10" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >x</text>
+<rect x="164.00" y="86.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="170.90" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="177.80" y="86.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="184.70" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="191.60" y="86.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="198.50" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="205.40" y="86.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="212.30" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="219.20" y="86.10" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="226.10" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="262.00" y="86.10" width="30.00" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="277.00" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" >0</text>
+<rect x="292.00" y="86.10" width="30.00" height="12.00" rx="0" fill="#b6cfad" stroke="#000" stroke-width="0.5"/>
+<text x="307.00" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" >2</text>
+<rect x="322.00" y="86.10" width="30.00" height="12.00" rx="0" fill="#b7a9cf" stroke="#c2531a" stroke-width="1.2"/>
+<text x="337.00" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" >3</text>
+<rect x="352.00" y="86.10" width="30.00" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="367.00" y="94.90" font-size="7.0px" text-anchor="middle" fill="#000" >1</text>
+<rect x="26.90" y="74.00" width="136.20" height="10.50" rx="1.5" fill="#fff" stroke="#c2531a" stroke-width="1.2"/>
+<text x="95.00" y="81.60" font-size="6.6px" text-anchor="middle" fill="#000" >N, top 3</text>
+<rect x="262.90" y="74.00" width="88.20" height="10.50" rx="1.5" fill="#fff" stroke="#c2531a" stroke-width="1.2"/>
+<text x="307.00" y="81.60" font-size="6.6px" text-anchor="middle" fill="#000" >N, top 3</text>
+<rect x="164.90" y="74.00" width="67.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="198.50" y="81.60" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 6</text>
+<rect x="352.90" y="74.00" width="28.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="367.00" y="81.60" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 6</text>
+<line x1="263.50" y1="102.60" x2="290.50" y2="102.60" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
+<line x1="263.50" y1="102.60" x2="263.50" y2="100.20" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
+<line x1="290.50" y1="102.60" x2="290.50" y2="100.20" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
+<text x="277.00" y="110.40" font-size="6.4px" text-anchor="middle" fill="#c2531a" >[0, 3)</text>
+<line x1="293.50" y1="102.60" x2="350.50" y2="102.60" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
+<line x1="293.50" y1="102.60" x2="293.50" y2="100.20" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
+<line x1="350.50" y1="102.60" x2="350.50" y2="100.20" stroke="#c2531a" stroke-width="0.9" stroke-linecap="butt"/>
+<text x="322.00" y="110.40" font-size="6.4px" text-anchor="middle" fill="#c2531a" >[8, 15)</text>
+<line x1="353.50" y1="102.60" x2="380.50" y2="102.60" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="353.50" y1="102.60" x2="353.50" y2="100.20" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="380.50" y1="102.60" x2="380.50" y2="100.20" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="367.00" y="110.40" font-size="6.4px" text-anchor="middle" fill="#000" >[3, 8)</text>
+<line x1="2.00" y1="113.70" x2="408.00" y2="113.70" stroke="#dddddd" stroke-width="0.4" stroke-linecap="butt"/>
+<text x="22.00" y="137.60" font-size="7.0px" text-anchor="end" fill="#000" >s = 4</text>
+<text x="258.00" y="137.60" font-size="6.4px" text-anchor="end" fill="#555" >s = 4</text>
+<rect x="26.00" y="129.00" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="32.90" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="39.80" y="129.00" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="46.70" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="53.60" y="129.00" width="13.80" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="60.50" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >b<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="67.40" y="129.00" width="13.80" height="12.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
+<text x="74.30" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >x</text>
+<rect x="81.20" y="129.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="88.10" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="95.00" y="129.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="101.90" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="108.80" y="129.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="115.70" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="122.60" y="129.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="129.50" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="136.40" y="129.00" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="143.30" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="262.00" y="129.00" width="30.00" height="12.00" rx="0" fill="#d0ddee" stroke="#000" stroke-width="0.5"/>
+<text x="277.00" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" >0</text>
+<rect x="292.00" y="129.00" width="30.00" height="12.00" rx="0" fill="#b7a9cf" stroke="#000" stroke-width="0.5"/>
+<text x="307.00" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" >3</text>
+<rect x="322.00" y="129.00" width="30.00" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="337.00" y="137.80" font-size="7.0px" text-anchor="middle" fill="#000" >1</text>
+<rect x="26.90" y="116.90" width="53.40" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="53.60" y="124.50" font-size="6.6px" text-anchor="middle" fill="#000" >B, top 1</text>
+<rect x="262.90" y="116.90" width="58.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="292.00" y="124.50" font-size="6.6px" text-anchor="middle" fill="#000" >B, top 1</text>
+<rect x="82.10" y="116.90" width="67.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="115.70" y="124.50" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 4</text>
+<rect x="322.90" y="116.90" width="28.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="337.00" y="124.50" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 4</text>
+<line x1="263.50" y1="145.50" x2="290.50" y2="145.50" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="263.50" y1="145.50" x2="263.50" y2="143.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="290.50" y1="145.50" x2="290.50" y2="143.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="277.00" y="153.30" font-size="6.4px" text-anchor="middle" fill="#000" >[0, 3)</text>
+<line x1="293.50" y1="145.50" x2="320.50" y2="145.50" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="293.50" y1="145.50" x2="293.50" y2="143.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="320.50" y1="145.50" x2="320.50" y2="143.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="307.00" y="153.30" font-size="6.4px" text-anchor="middle" fill="#000" >[14, 15)</text>
+<line x1="323.50" y1="145.50" x2="350.50" y2="145.50" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="323.50" y1="145.50" x2="323.50" y2="143.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="350.50" y1="145.50" x2="350.50" y2="143.10" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="337.00" y="153.30" font-size="6.4px" text-anchor="middle" fill="#000" >[3, 8)</text>
+<line x1="2.00" y1="156.60" x2="408.00" y2="156.60" stroke="#dddddd" stroke-width="0.4" stroke-linecap="butt"/>
+<text x="22.00" y="180.50" font-size="7.0px" text-anchor="end" fill="#000" >s = 5</text>
+<text x="258.00" y="180.50" font-size="6.4px" text-anchor="end" fill="#555" >s = 5</text>
+<rect x="26.00" y="171.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="32.90" y="180.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">1</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="39.80" y="171.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="46.70" y="180.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">2</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="53.60" y="171.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="60.50" y="180.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">3</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="67.40" y="171.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="74.30" y="180.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">4</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="81.20" y="171.90" width="13.80" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="88.10" y="180.70" font-size="7.0px" text-anchor="middle" fill="#000" font-style="italic" >a<tspan font-size="70%" dy="1.6" font-style="normal">5</tspan><tspan dy="-1.6"> </tspan></text>
+<rect x="262.00" y="171.90" width="30.00" height="12.00" rx="0" fill="#f7f0e1" stroke="#000" stroke-width="0.5"/>
+<text x="277.00" y="180.70" font-size="7.0px" text-anchor="middle" fill="#000" >1</text>
+<rect x="26.90" y="159.80" width="67.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="60.50" y="167.40" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 1</text>
+<rect x="262.90" y="159.80" width="28.20" height="10.50" rx="1.5" fill="#fff" stroke="#000" stroke-width="0.55"/>
+<text x="277.00" y="167.40" font-size="6.6px" text-anchor="middle" fill="#000" >A, top 1</text>
+<line x1="263.50" y1="188.40" x2="290.50" y2="188.40" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="263.50" y1="188.40" x2="263.50" y2="186.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="290.50" y1="188.40" x2="290.50" y2="186.00" stroke="#000" stroke-width="0.6" stroke-linecap="butt"/>
+<text x="277.00" y="196.20" font-size="6.4px" text-anchor="middle" fill="#000" >[3, 8)</text></svg>

@@ -400,27 +400,30 @@ def fig_pair():
     assert hot_N == frozenset(B + U + W)
     sv.text(2, 9.0, '(a) Baseline', size=7.8)
     sv.text(XB - 20, 9.0, '(b) ChainIndex', size=7.8)
-    # (b) the label array, the chains, their records
-    LY = 25.0
-    sv.text(XB - 3, LY - 4.4, 'label', size=5.8, anchor='end', fill=GRAY)
+    # (b) the label array, the chains, their records: one column at the right edge, beside the rows
+    # 2026-09-25 (user: the figure takes too much space): the column replaces the header band over (b), so the rows
+    # of both panels start at the top.
+    LX, LH, LY = 424.0, 11.0, 19.0     # left edge of the label cells, cell height, top of the column
+    sv.text(LX + CW / 2, LY - 4.0, 'label', size=5.8, anchor='middle', fill=GRAY)
     for i, v in enumerate(label_order):
-        x = XB + i * CW
-        sv.rect(x, LY, CW, CH, fill=CHAIN_TINT[chain_of[v]], stroke='#000', sw=0.5)
-        sv.text(x + CW / 2, LY - 4.4, str(i), size=5.8, anchor='middle', fill=GRAY)
-        sv.text(x + CW / 2, LY + 8.8, sub(v), size=7.0, anchor='middle', italic=True)
+        yy = LY + i * LH
+        sv.rect(LX, yy, CW, LH, fill=CHAIN_TINT[chain_of[v]], stroke='#000', sw=0.5)
+        sv.text(LX - 3.0, yy + 7.9, str(i), size=5.8, anchor='end', fill=GRAY)
+        sv.text(LX + CW / 2, yy + 8.2, sub(v), size=7.0, anchor='middle', italic=True)
     for lo, hi in ((0, 3), (8, 15)):                                   # the answer of the traced query
-        sv.line(XB + lo * CW + 0.6, LY - 2.0, XB + hi * CW - 0.6, LY - 2.0, color=ORANGE, w=1.2)
-    sv.rect(XB + 14 * CW, LY, CW, CH, stroke=ORANGE, sw=1.2)           # the query vertex x
-    BY = LY + CH + 5.0
-    sv.text(XB - 3, BY + 8.2, 'record', size=5.8, anchor='end', fill=GRAY)
+        sv.line(LX - 11.5, LY + lo * LH + 0.6, LX - 11.5, LY + hi * LH - 0.6, color=ORANGE, w=1.2)
+    sv.rect(LX, LY + 14 * LH, CW, LH, stroke=ORANGE, sw=1.2)           # the query vertex x
+    RX = LX + CW + 4.0
+    sv.text(RX + 3.5, LY - 4.0, 'record', size=5.8, fill=GRAY)
     for c in range(4):
-        lo, hi = XB + start[c] * CW, XB + start[c + 1] * CW; cx = (lo + hi) / 2
-        sv.bracket(lo + 1, hi - 1, BY, tick=2.4, w=0.6)
-        rec = f'{c}: <tspan font-style="italic">ω</tspan> = {omega_c[c]}, <tspan font-style="italic">σ</tspan> = {sigma_c[c]}'
-        sv.text(cx, BY + 8.2, rec, size=6.4, anchor='middle')
-        if residues[c]:
-            sv.text(cx, BY + 16.2, ', '.join(kappa_txt(s, k) for s, k in residues[c]), size=6.4, anchor='middle')
-    y = BY + 27.0
+        lo, hi = LY + start[c] * LH, LY + start[c + 1] * LH
+        sv.line(RX, lo + 1, RX, hi - 1, w=0.6); sv.line(RX, lo + 1, RX - 2.4, lo + 1, w=0.6); sv.line(RX, hi - 1, RX - 2.4, hi - 1, w=0.6)
+        lines = [f'{c}: <tspan font-style="italic">ω</tspan> = {omega_c[c]}, <tspan font-style="italic">σ</tspan> = {sigma_c[c]}']
+        if residues[c]: lines.append('\u2002\u2002' + ', '.join(kappa_txt(s, k) for s, k in residues[c]))
+        ty = lo + 8.0 if hi - lo < 2 * LH else (lo + hi) / 2 - 4.0 * (len(lines) - 1) + 2.2
+        for t, line in enumerate(lines):
+            sv.text(RX + 3.5, ty + t * 8.0, line, size=6.4)
+    y = LY
     total_a = 0; total_runs = 0
     for j, s in enumerate(SIZES):
         L = layers[s]; par = children(s)
@@ -430,7 +433,7 @@ def fig_pair():
         lr = sorted(nodes[s], key=lambda N: (L['seg'][N][0], dep(N)))
         assert [pre[s][N] for N in lr] == list(range(len(lr))), s
         assert len({L['seg'][N][0] for N in nodes[s]}) == len(nodes[s]), s   # no two bars share a left end
-        if j: sv.line(2, y - 3.2, PW - 2, y - 3.2, color='#dddddd', w=0.4)
+        if j: sv.line(2, y - 3.2, LX - 16.0, y - 3.2, color='#dddddd', w=0.4)
         cy = y + (maxd + 1) * (BH + BG)
         sv.text(XA - 4, cy + 8.6, f's = {s}', size=7.0, anchor='end')
         sv.text(XB - 4, cy + 8.6, f's = {s}', size=6.4, anchor='end', fill=GRAY)
@@ -466,9 +469,9 @@ def fig_pair():
             sv.bracket(x0 + 1.5, x1 - 1.5, ry, tick=2.4, w=(0.9 if hot else 0.6), color=(ORANGE if hot else '#000'))
             sv.text((x0 + x1) / 2, ry + 7.8, f'[{lo_l}, {hi_l})', size=6.4, anchor='middle', fill=(ORANGE if hot else '#000'))
             total_runs += 1
-        y = ry + 7.8 + 8.5
+        y = ry + 7.8 + 6.5
     assert total_a == 44 and total_runs == 8
-    sv.h = y - 1.0
+    sv.h = max(y - 1.0, LY + 15 * LH + 18.0)
     sv.write('fig_pair')
 
 FIGS = {'fig_running': fig_running, 'fig_pair': fig_pair, 'fig_build': fig_build}
