@@ -91,9 +91,9 @@ struct Index {
 };
 
 // Mode 0 includes the old direct-empty-child shortcut, but no merging.
-template<int Mode> class Builder {
+template<int Mode,class Idx=Index> class Builder {   // Idx: Index, or any sink with maximum, work and append (2026-10-04)
     const Graph& graph_;
-    Index& index_;
+    Idx& index_;
     Vertices holds_,pivots_,minimum_;
     void visit(Vertices candidates) {
         ++index_.work.states;
@@ -162,7 +162,7 @@ template<int Mode> class Builder {
         pivots_.resize(saved);
     }
 public:
-    Builder(const Graph& graph,Index& index): graph_(graph),index_(index) {}
+    Builder(const Graph& graph,Idx& index): graph_(graph),index_(index) {}
     void run() {
         for(Vertex v=0;v<graph_.n;++v) {
             Vertices later;
