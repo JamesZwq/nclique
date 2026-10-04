@@ -1,0 +1,125 @@
+START 2026-10-03T15:07:21+00:00 host=radonduo load=12.30 11.54 11.32 git=50765ed
+== (1) bench 2026-10-03T15:07:21+00:00
+/data/wenqianz/graphs/inf-roadNet-CA.edges ok 4,416,797 B
+/data/wenqianz/graphs/sc-msdoor.edges ok 1,756,811 B
+/data/wenqianz/graphs/web-baidu-baike.edges ok 14,455,885 B
+bench rc=0 2026-10-03T15:25:01+00:00
+== (2) omega 2026-10-03T15:25:01+00:00
+research/r1_skyline_index_20260918/cx/inf-roadNet-CA.cx 4 max_size 4
+research/r1_skyline_index_20260918/cx/sc-msdoor.cx 21 max_size 35
+research/r1_skyline_index_20260918/cx/web-baidu-baike.cx 31 max_size 79
+== (3) ablation 2026-10-03T15:25:03+00:00
+ablation inf-roadNet-CA rounds=6 2026-10-03T15:25:03+00:00
+inf-roadNet-CA           r0 terminal old  total      1.45s ti     0.55 solve     0.12 trees     0.74 peak      487 MB
+inf-roadNet-CA           r0 terminal fast total      1.23s ti     0.46 solve     0.12 trees     0.57 peak      468 MB
+inf-roadNet-CA           r0 tail     old  total      1.43s ti     0.57 solve     0.07 trees     0.75 peak      473 MB
+inf-roadNet-CA           r0 tail     fast total      1.32s ti     0.56 solve     0.07 trees     0.60 peak      455 MB
+inf-roadNet-CA           r1 tail     fast total      1.11s ti     0.47 solve     0.06 trees     0.50 peak      455 MB
+inf-roadNet-CA           r1 tail     old  total      1.28s ti     0.47 solve     0.06 trees     0.71 peak      474 MB
+inf-roadNet-CA           r1 terminal fast total      1.15s ti     0.45 solve     0.12 trees     0.51 peak      468 MB
+inf-roadNet-CA           r1 terminal old  total      1.33s ti     0.46 solve     0.12 trees     0.70 peak      488 MB
+inf-roadNet-CA           r2 terminal old  total      1.33s ti     0.49 solve     0.12 trees     0.69 peak      487 MB
+inf-roadNet-CA           r2 terminal fast total      1.42s ti     0.59 solve     0.13 trees     0.61 peak      468 MB
+inf-roadNet-CA           r2 tail     old  total      1.29s ti     0.48 solve     0.06 trees     0.71 peak      474 MB
+inf-roadNet-CA           r2 tail     fast total      1.33s ti     0.58 solve     0.07 trees     0.59 peak      455 MB
+inf-roadNet-CA           r3 tail     fast total      1.30s ti     0.56 solve     0.07 trees     0.59 peak      455 MB
+inf-roadNet-CA           r3 tail     old  total      1.49s ti     0.56 solve     0.07 trees     0.82 peak      474 MB
+inf-roadNet-CA           r3 terminal fast total      1.35s ti     0.54 solve     0.13 trees     0.60 peak      468 MB
+inf-roadNet-CA           r3 terminal old  total      1.33s ti     0.47 solve     0.12 trees     0.71 peak      487 MB
+inf-roadNet-CA           r4 terminal old  total      1.34s ti     0.47 solve     0.12 trees     0.71 peak      487 MB
+inf-roadNet-CA           r4 terminal fast total      1.32s ti     0.54 solve     0.12 trees     0.58 peak      467 MB
+inf-roadNet-CA           r4 tail     old  total      1.28s ti     0.48 solve     0.06 trees     0.70 peak      474 MB
+inf-roadNet-CA           r4 tail     fast total      1.19s ti     0.54 solve     0.06 trees     0.52 peak      455 MB
+inf-roadNet-CA           r5 tail     fast total      1.31s ti     0.56 solve     0.07 trees     0.60 peak      455 MB
+inf-roadNet-CA           r5 tail     old  total      1.40s ti     0.56 solve     0.06 trees     0.74 peak      473 MB
+inf-roadNet-CA           r5 terminal fast total      1.36s ti     0.54 solve     0.14 trees     0.60 peak      468 MB
+inf-roadNet-CA           r5 terminal old  total      1.50s ti     0.54 solve     0.13 trees     0.78 peak      488 MB
+== inf-roadNet-CA: terminal+old 1.34s (1.00x) terminal+fast 1.34s (1.00x) tail+old 1.34s (1.00x) tail+fast 1.31s (1.02x)
+ablation inf-roadNet-CA rc=0 2026-10-03T15:26:27+00:00
+ablation sc-msdoor rounds=2 2026-10-03T15:26:27+00:00
+sc-msdoor                r0 terminal old  total     20.33s ti     3.19 solve     8.00 trees     9.11 peak      775 MB
+sc-msdoor                r0 terminal fast total     19.21s ti     3.16 solve     8.17 trees     7.82 peak      776 MB
+sc-msdoor                r0 tail     old  total     17.79s ti     3.23 solve     5.59 trees     8.93 peak      779 MB
+sc-msdoor                r0 tail     fast total     16.93s ti     3.21 solve     5.73 trees     7.92 peak      781 MB
+sc-msdoor                r1 tail     fast total     16.67s ti     3.18 solve     5.69 trees     7.74 peak      781 MB
+sc-msdoor                r1 tail     old  total     18.28s ti     3.25 solve     5.67 trees     9.33 peak      779 MB
+sc-msdoor                r1 terminal fast total     19.04s ti     3.15 solve     8.08 trees     7.75 peak      775 MB
+sc-msdoor                r1 terminal old  total     19.90s ti     3.17 solve     7.85 trees     8.84 peak      775 MB
+== sc-msdoor: terminal+old 20.11s (1.00x) terminal+fast 19.12s (1.05x) tail+old 18.03s (1.12x) tail+fast 16.80s (1.20x)
+ablation sc-msdoor rc=0 2026-10-03T15:29:32+00:00
+ablation web-baidu-baike rounds=1 2026-10-03T15:29:32+00:00
+web-baidu-baike          r0 terminal old  total     77.92s ti    44.86 solve    15.67 trees    17.21 peak     2533 MB
+web-baidu-baike          r0 terminal fast total     73.53s ti    44.82 solve    17.01 trees    11.28 peak     2569 MB
+web-baidu-baike          r0 tail     old  total     71.30s ti    45.26 solve     8.44 trees    17.41 peak     2559 MB
+web-baidu-baike          r0 tail     fast total     68.73s ti    47.25 solve     9.38 trees    11.66 peak     2591 MB
+== web-baidu-baike: terminal+old 77.92s (1.00x) terminal+fast 73.53s (1.06x) tail+old 71.30s (1.09x) tail+fast 68.73s (1.13x)
+ablation web-baidu-baike rc=0 2026-10-03T15:35:06+00:00
+== (4) profile 2026-10-03T15:35:06+00:00
+profiling inf-roadNet-CA
+profiling sc-msdoor
+profiling web-baidu-baike
+profile rc=0 2026-10-03T15:44:07+00:00
+== (5) CND 2026-10-03T15:44:07+00:00
+CND inf-roadNet-CA sizes 2..4 2026-10-03T15:44:07+00:00
+s=   2 rc=0 build 1354.18 ms peel 2130.28 ms wall 6.82 s
+s=   3 rc=0 build 534.209 ms peel 552.163 ms wall 3.99 s
+s=   4 rc=0 build 411.282 ms peel 361.289 ms wall 3.45 s
+total wall 14.3 s; in-process 5.3 s
+CND inf-roadNet-CA rc=0 2026-10-03T15:44:21+00:00
+CND sc-msdoor sizes 2..21 2026-10-03T15:44:21+00:00
+s=   2 rc=0 build 11631.0 ms peel 1856.61 ms wall 21.41 s
+s=   3 rc=0 build 17266.0 ms peel 6196.26 ms wall 31.81 s
+s=   4 rc=0 build 19613.3 ms peel 7809.45 ms wall 36.6 s
+s=   5 rc=0 build 20145.0 ms peel 7786.06 ms wall 36.68 s
+s=   6 rc=0 build 19121.6 ms peel 7087.86 ms wall 34.7 s
+s=   7 rc=0 build 16581.9 ms peel 6774.9 ms wall 31.5 s
+s=   8 rc=0 build 16241.8 ms peel 6642.09 ms wall 30.96 s
+s=   9 rc=0 build 18002.9 ms peel 8714.64 ms wall 35.22 s
+s=  10 rc=0 build 16091.8 ms peel 9520.84 ms wall 33.87 s
+s=  11 rc=0 build 15552.0 ms peel 5522.44 ms wall 28.92 s
+s=  12 rc=0 build 18007.7 ms peel 5325.63 ms wall 31.97 s
+s=  13 rc=0 build 14196.3 ms peel 4603.77 ms wall 26.7 s
+s=  14 rc=0 build 15774.1 ms peel 3995.86 ms wall 27.68 s
+s=  15 rc=0 build 14233.4 ms peel 3265.69 ms wall 26.01 s
+s=  16 rc=0 build 11323.8 ms peel 3573.21 ms wall 22.43 s
+s=  17 rc=0 build 11191.9 ms peel 2072.92 ms wall 21.37 s
+s=  18 rc=0 build 9424.05 ms peel 1434.96 ms wall 18.12 s
+s=  19 rc=0 build 8382.48 ms peel 1002.59 ms wall 16.64 s
+s=  20 rc=0 build 7576.22 ms peel 615.453 ms wall 15.24 s
+s=  21 rc=0 build 6904.37 ms peel 348.142 ms wall 14.3 s
+total wall 542.1 s; in-process 381.4 s
+CND sc-msdoor rc=0 2026-10-03T15:53:23+00:00
+CND web-baidu-baike sizes 2..31 2026-10-03T15:53:23+00:00
+s=   2 rc=0 build 61719.1 ms peel 8052.92 ms wall 89.68 s
+s=   3 rc=0 build 63095.2 ms peel 11104.1 ms wall 90.93 s
+s=   4 rc=0 build 61848.2 ms peel 8917.35 ms wall 87.5 s
+s=   5 rc=0 build 66940.8 ms peel 5593.61 ms wall 88.66 s
+s=   6 rc=0 build 56756.9 ms peel 3655.97 ms wall 77.38 s
+s=   7 rc=0 build 63417.2 ms peel 2473.46 ms wall 81.37 s
+s=   8 rc=0 build 58207.0 ms peel 1409.51 ms wall 77.74 s
+s=   9 rc=0 build 54741.8 ms peel 745.243 ms wall 73.64 s
+s=  10 rc=0 build 47739.1 ms peel 493.225 ms wall 61.5 s
+s=  11 rc=0 build 46713.2 ms peel 405.366 ms wall 59.99 s
+s=  12 rc=0 build 47042.4 ms peel 391.693 ms wall 60.45 s
+s=  13 rc=0 build 46499.5 ms peel 385.867 ms wall 59.69 s
+s=  14 rc=0 build 46013.0 ms peel 378.579 ms wall 59.0 s
+s=  15 rc=0 build 46254.8 ms peel 361.216 ms wall 59.39 s
+s=  16 rc=0 build 45834.1 ms peel 359.7 ms wall 58.89 s
+s=  17 rc=0 build 45625.3 ms peel 382.572 ms wall 60.56 s
+s=  18 rc=0 build 45446.4 ms peel 379.661 ms wall 58.52 s
+s=  19 rc=0 build 45816.7 ms peel 361.728 ms wall 59.19 s
+s=  20 rc=0 build 45462.9 ms peel 364.774 ms wall 58.68 s
+s=  21 rc=0 build 45301.5 ms peel 358.466 ms wall 58.15 s
+s=  22 rc=0 build 45586.8 ms peel 363.43 ms wall 58.83 s
+s=  23 rc=0 build 45270.1 ms peel 379.206 ms wall 58.57 s
+s=  24 rc=0 build 46287.9 ms peel 381.39 ms wall 59.41 s
+s=  25 rc=0 build 45621.5 ms peel 379.368 ms wall 59.54 s
+s=  26 rc=0 build 45452.5 ms peel 383.084 ms wall 58.75 s
+s=  27 rc=0 build 45696.3 ms peel 382.678 ms wall 59.52 s
+s=  28 rc=0 build 46133.5 ms peel 376.756 ms wall 60.1 s
+s=  29 rc=0 build 45768.8 ms peel 377.545 ms wall 59.89 s
+s=  30 rc=0 build 45893.9 ms peel 374.046 ms wall 60.01 s
+s=  31 rc=0 build 45864.0 ms peel 383.59 ms wall 60.84 s
+total wall 1976.4 s; in-process 1548.4 s
+CND web-baidu-baike rc=0 2026-10-03T16:26:20+00:00
+END 2026-10-03T16:26:20+00:00

@@ -1,0 +1,809 @@
+{
+ "tag": "profile_tods1_new3",
+ "host": "radonduo",
+ "started": "2026-10-03T15:35:06.930835+00:00",
+ "runs": [
+  {
+   "index": "research/r1_skyline_index_20260918/cx/inf-roadNet-CA.cx",
+   "result": {
+    "n": 1957027,
+    "s_max": 4,
+    "active": 1957027,
+    "index_bytes": 4416797,
+    "strees_struct_bytes": 27827860,
+    "regimes": {
+     "own": {
+      "queries": 20000,
+      "locate_ns": 23.92,
+      "list_ns": 316112.082,
+      "st_locate_ns": 14.674,
+      "st_list_ns": 318578.621,
+      "output": 1526081.257,
+      "ranges": 1.0
+     },
+     "half": {
+      "queries": 20000,
+      "locate_ns": 22.498,
+      "list_ns": 353554.922,
+      "st_locate_ns": 12.682,
+      "st_list_ns": 375496.996,
+      "output": 1802520.035,
+      "ranges": 1.0
+     },
+     "root": {
+      "queries": 1000,
+      "locate_ns": 14.08,
+      "list_ns": 359356.092,
+      "st_locate_ns": 4.147,
+      "st_list_ns": 382893.105,
+      "output": 1835691.56,
+      "ranges": 1.0
+     }
+    },
+    "own_by_output": [
+     {
+      "decile": 0,
+      "queries": 2000,
+      "output_min": 3,
+      "output_max": 1589938,
+      "locate_ns": 13.972,
+      "list_ns": 53828.191,
+      "st_locate_ns": 27.358,
+      "st_list_ns": 54164.349,
+      "output": 259958.434,
+      "ranges": 1.004
+     },
+     {
+      "decile": 1,
+      "queries": 2000,
+      "output_min": 1589938,
+      "output_max": 1589938,
+      "locate_ns": 11.048,
+      "list_ns": 375308.817,
+      "st_locate_ns": 4.409,
+      "st_list_ns": 322854.009,
+      "output": 1589938.0,
+      "ranges": 1.0
+     },
+     {
+      "decile": 2,
+      "queries": 2000,
+      "output_min": 1589938,
+      "output_max": 1589938,
+      "locate_ns": 11.04,
+      "list_ns": 381536.882,
+      "st_locate_ns": 5.133,
+      "st_list_ns": 378136.599,
+      "output": 1589938.0,
+      "ranges": 1.0
+     },
+     {
+      "decile": 3,
+      "queries": 2000,
+      "output_min": 1589938,
+      "output_max": 1589938,
+      "locate_ns": 11.81,
+      "list_ns": 321256.527,
+      "st_locate_ns": 4.221,
+      "st_list_ns": 377921.742,
+      "output": 1589938.0,
+      "ranges": 1.0
+     },
+     {
+      "decile": 4,
+      "queries": 2000,
+      "output_min": 1589938,
+      "output_max": 1589938,
+      "locate_ns": 11.171,
+      "list_ns": 320051.813,
+      "st_locate_ns": 4.587,
+      "st_list_ns": 364425.599,
+      "output": 1589938.0,
+      "ranges": 1.0
+     },
+     {
+      "decile": 5,
+      "queries": 2000,
+      "output_min": 1589938,
+      "output_max": 1589938,
+      "locate_ns": 11.159,
+      "list_ns": 317830.713,
+      "st_locate_ns": 4.082,
+      "st_list_ns": 341666.637,
+      "output": 1589938.0,
+      "ranges": 1.0
+     },
+     {
+      "decile": 6,
+      "queries": 2000,
+      "output_min": 1589938,
+      "output_max": 1589938,
+      "locate_ns": 10.87,
+      "list_ns": 313940.601,
+      "st_locate_ns": 4.244,
+      "st_list_ns": 340109.816,
+      "output": 1589938.0,
+      "ranges": 1.0
+     },
+     {
+      "decile": 7,
+      "queries": 2000,
+      "output_min": 1589938,
+      "output_max": 1589938,
+      "locate_ns": 10.971,
+      "list_ns": 360684.722,
+      "st_locate_ns": 6.296,
+      "st_list_ns": 321106.714,
+      "output": 1589938.0,
+      "ranges": 1.0
+     },
+     {
+      "decile": 8,
+      "queries": 2000,
+      "output_min": 1589938,
+      "output_max": 1957027,
+      "locate_ns": 9.742,
+      "list_ns": 376341.689,
+      "st_locate_ns": 3.087,
+      "st_list_ns": 387354.134,
+      "output": 1914261.131,
+      "ranges": 1.0
+     },
+     {
+      "decile": 9,
+      "queries": 2000,
+      "output_min": 1957027,
+      "output_max": 1957027,
+      "locate_ns": 11.053,
+      "list_ns": 477775.465,
+      "st_locate_ns": 3.624,
+      "st_list_ns": 406512.847,
+      "output": 1957027.0,
+      "ranges": 1.0
+     }
+    ],
+    "by_size": [
+     {
+      "s": 2,
+      "active": 1957027,
+      "nodes": 510,
+      "runs": 1,
+      "queries": 5000,
+      "locate_ns": 17.208,
+      "list_ns": 464542.244,
+      "st_locate_ns": 7.981,
+      "st_list_ns": 353811.966,
+      "output": 1658486.901,
+      "ranges": 1.0
+     },
+     {
+      "s": 3,
+      "active": 317624,
+      "nodes": 89513,
+      "runs": 472,
+      "queries": 5000,
+      "locate_ns": 26.416,
+      "list_ns": 31.848,
+      "st_locate_ns": 6.869,
+      "st_list_ns": 19.44,
+      "output": 4.039,
+      "ranges": 1.003
+     },
+     {
+      "s": 4,
+      "active": 160,
+      "nodes": 40,
+      "runs": 34,
+      "queries": 5000,
+      "locate_ns": 13.018,
+      "list_ns": 18.783,
+      "st_locate_ns": 2.205,
+      "st_list_ns": 4.366,
+      "output": 4.0,
+      "ranges": 1.0
+     }
+    ]
+   }
+  },
+  {
+   "index": "research/r1_skyline_index_20260918/cx/sc-msdoor.cx",
+   "result": {
+    "n": 404785,
+    "s_max": 35,
+    "active": 404785,
+    "index_bytes": 1756811,
+    "strees_struct_bytes": 65522120,
+    "regimes": {
+     "own": {
+      "queries": 20000,
+      "locate_ns": 22.371,
+      "list_ns": 37118.421,
+      "st_locate_ns": 8.516,
+      "st_list_ns": 47773.018,
+      "output": 162210.638,
+      "ranges": 544.195
+     },
+     "half": {
+      "queries": 20000,
+      "locate_ns": 72.284,
+      "list_ns": 51300.286,
+      "st_locate_ns": 98.636,
+      "st_list_ns": 84296.684,
+      "output": 259280.379,
+      "ranges": 1202.438
+     },
+     "root": {
+      "queries": 1000,
+      "locate_ns": 35.991,
+      "list_ns": 74423.198,
+      "st_locate_ns": 163.798,
+      "st_list_ns": 86499.782,
+      "output": 285003.253,
+      "ranges": 2139.211
+     }
+    },
+    "own_by_output": [
+     {
+      "decile": 0,
+      "queries": 2000,
+      "output_min": 21,
+      "output_max": 66935,
+      "locate_ns": 15.433,
+      "list_ns": 9451.836,
+      "st_locate_ns": 4.268,
+      "st_list_ns": 5180.357,
+      "output": 44462.024,
+      "ranges": 27.748
+     },
+     {
+      "decile": 1,
+      "queries": 2000,
+      "output_min": 66935,
+      "output_max": 77350,
+      "locate_ns": 13.834,
+      "list_ns": 13984.629,
+      "st_locate_ns": 4.359,
+      "st_list_ns": 9178.055,
+      "output": 73350.435,
+      "ranges": 36.715
+     },
+     {
+      "decile": 2,
+      "queries": 2000,
+      "output_min": 77350,
+      "output_max": 90480,
+      "locate_ns": 12.671,
+      "list_ns": 17569.903,
+      "st_locate_ns": 4.203,
+      "st_list_ns": 9471.197,
+      "output": 82965.504,
+      "ranges": 23.015
+     },
+     {
+      "decile": 3,
+      "queries": 2000,
+      "output_min": 90480,
+      "output_max": 107488,
+      "locate_ns": 12.909,
+      "list_ns": 19969.077,
+      "st_locate_ns": 4.308,
+      "st_list_ns": 11280.826,
+      "output": 102372.735,
+      "ranges": 260.326
+     },
+     {
+      "decile": 4,
+      "queries": 2000,
+      "output_min": 107488,
+      "output_max": 147917,
+      "locate_ns": 14.096,
+      "list_ns": 26441.076,
+      "st_locate_ns": 10.093,
+      "st_list_ns": 16358.216,
+      "output": 126757.303,
+      "ranges": 265.038
+     },
+     {
+      "decile": 5,
+      "queries": 2000,
+      "output_min": 147917,
+      "output_max": 198061,
+      "locate_ns": 14.672,
+      "list_ns": 42950.988,
+      "st_locate_ns": 4.41,
+      "st_list_ns": 35841.22,
+      "output": 186546.202,
+      "ranges": 364.913
+     },
+     {
+      "decile": 6,
+      "queries": 2000,
+      "output_min": 198061,
+      "output_max": 206968,
+      "locate_ns": 13.316,
+      "list_ns": 45478.854,
+      "st_locate_ns": 4.319,
+      "st_list_ns": 47912.024,
+      "output": 200054.916,
+      "ranges": 509.157
+     },
+     {
+      "decile": 7,
+      "queries": 2000,
+      "output_min": 206968,
+      "output_max": 224483,
+      "locate_ns": 29.582,
+      "list_ns": 46647.918,
+      "st_locate_ns": 4.386,
+      "st_list_ns": 50693.6,
+      "output": 215380.976,
+      "ranges": 624.073
+     },
+     {
+      "decile": 8,
+      "queries": 2000,
+      "output_min": 224483,
+      "output_max": 274543,
+      "locate_ns": 14.552,
+      "list_ns": 61478.104,
+      "st_locate_ns": 4.766,
+      "st_list_ns": 57227.039,
+      "output": 247979.084,
+      "ranges": 2239.59
+     },
+     {
+      "decile": 9,
+      "queries": 2000,
+      "output_min": 274543,
+      "output_max": 404785,
+      "locate_ns": 16.848,
+      "list_ns": 78885.925,
+      "st_locate_ns": 4.279,
+      "st_list_ns": 72737.993,
+      "output": 342237.208,
+      "ranges": 1091.373
+     }
+    ],
+    "by_size": [
+     {
+      "s": 2,
+      "active": 404785,
+      "nodes": 21,
+      "runs": 1,
+      "queries": 5000,
+      "locate_ns": 21.5,
+      "list_ns": 50622.236,
+      "st_locate_ns": 5.535,
+      "st_list_ns": 70402.975,
+      "output": 243530.873,
+      "ranges": 1.0
+     },
+     {
+      "s": 3,
+      "active": 404785,
+      "nodes": 61,
+      "runs": 70,
+      "queries": 5000,
+      "locate_ns": 13.936,
+      "list_ns": 59293.068,
+      "st_locate_ns": 5.45,
+      "st_list_ns": 73268.665,
+      "output": 248964.899,
+      "ranges": 29.513
+     },
+     {
+      "s": 4,
+      "active": 404785,
+      "nodes": 98,
+      "runs": 351,
+      "queries": 5000,
+      "locate_ns": 13.974,
+      "list_ns": 38433.54,
+      "st_locate_ns": 5.445,
+      "st_list_ns": 56127.828,
+      "output": 193136.746,
+      "ranges": 138.171
+     },
+     {
+      "s": 5,
+      "active": 404785,
+      "nodes": 123,
+      "runs": 593,
+      "queries": 5000,
+      "locate_ns": 14.055,
+      "list_ns": 39447.396,
+      "st_locate_ns": 5.49,
+      "st_list_ns": 52378.607,
+      "output": 192023.59,
+      "ranges": 238.636
+     },
+     {
+      "s": 6,
+      "active": 404785,
+      "nodes": 138,
+      "runs": 917,
+      "queries": 5000,
+      "locate_ns": 13.889,
+      "list_ns": 41614.555,
+      "st_locate_ns": 5.447,
+      "st_list_ns": 50498.7,
+      "output": 186133.557,
+      "ranges": 319.717
+     },
+     {
+      "s": 8,
+      "active": 404785,
+      "nodes": 220,
+      "runs": 1988,
+      "queries": 5000,
+      "locate_ns": 14.649,
+      "list_ns": 31965.022,
+      "st_locate_ns": 5.497,
+      "st_list_ns": 35363.964,
+      "output": 147066.788,
+      "ranges": 410.053
+     },
+     {
+      "s": 10,
+      "active": 404785,
+      "nodes": 270,
+      "runs": 3048,
+      "queries": 5000,
+      "locate_ns": 11.711,
+      "list_ns": 26387.911,
+      "st_locate_ns": 4.328,
+      "st_list_ns": 30901.984,
+      "output": 145487.398,
+      "ranges": 516.166
+     },
+     {
+      "s": 12,
+      "active": 404785,
+      "nodes": 375,
+      "runs": 4642,
+      "queries": 5000,
+      "locate_ns": 11.306,
+      "list_ns": 26521.814,
+      "st_locate_ns": 4.348,
+      "st_list_ns": 29449.846,
+      "output": 146480.517,
+      "ranges": 708.773
+     },
+     {
+      "s": 16,
+      "active": 404665,
+      "nodes": 336,
+      "runs": 5707,
+      "queries": 5000,
+      "locate_ns": 14.902,
+      "list_ns": 32451.375,
+      "st_locate_ns": 5.451,
+      "st_list_ns": 32440.215,
+      "output": 144696.006,
+      "ranges": 806.436
+     },
+     {
+      "s": 20,
+      "active": 375480,
+      "nodes": 289,
+      "runs": 5057,
+      "queries": 5000,
+      "locate_ns": 18.872,
+      "list_ns": 28930.848,
+      "st_locate_ns": 5.942,
+      "st_list_ns": 26427.845,
+      "output": 134215.56,
+      "ranges": 587.603
+     }
+    ]
+   }
+  },
+  {
+   "index": "research/r1_skyline_index_20260918/cx/web-baidu-baike.cx",
+   "result": {
+    "n": 2140198,
+    "s_max": 79,
+    "active": 2140198,
+    "index_bytes": 14455885,
+    "strees_struct_bytes": 43265040,
+    "regimes": {
+     "own": {
+      "queries": 20000,
+      "locate_ns": 27.085,
+      "list_ns": 178203.693,
+      "st_locate_ns": 14.102,
+      "st_list_ns": 258928.913,
+      "output": 1134315.051,
+      "ranges": 13947.884
+     },
+     "half": {
+      "queries": 20000,
+      "locate_ns": 44.669,
+      "list_ns": 214143.43,
+      "st_locate_ns": 58.248,
+      "st_list_ns": 313991.754,
+      "output": 1415614.251,
+      "ranges": 15087.85
+     },
+     "root": {
+      "queries": 1000,
+      "locate_ns": 18.175,
+      "list_ns": 249703.596,
+      "st_locate_ns": 23.295,
+      "st_list_ns": 363734.669,
+      "output": 1650341.294,
+      "ranges": 18430.502
+     }
+    },
+    "own_by_output": [
+     {
+      "decile": 0,
+      "queries": 2000,
+      "output_min": 2,
+      "output_max": 176031,
+      "locate_ns": 13.45,
+      "list_ns": 41785.433,
+      "st_locate_ns": 3.539,
+      "st_list_ns": 10246.66,
+      "output": 87671.191,
+      "ranges": 36164.676
+     },
+     {
+      "decile": 1,
+      "queries": 2000,
+      "output_min": 176031,
+      "output_max": 389887,
+      "locate_ns": 11.736,
+      "list_ns": 80280.561,
+      "st_locate_ns": 3.312,
+      "st_list_ns": 55256.473,
+      "output": 283886.503,
+      "ranges": 49289.467
+     },
+     {
+      "decile": 2,
+      "queries": 2000,
+      "output_min": 389887,
+      "output_max": 590703,
+      "locate_ns": 10.595,
+      "list_ns": 110305.871,
+      "st_locate_ns": 3.331,
+      "st_list_ns": 102453.633,
+      "output": 503656.279,
+      "ranges": 37031.578
+     },
+     {
+      "decile": 3,
+      "queries": 2000,
+      "output_min": 590703,
+      "output_max": 849353,
+      "locate_ns": 10.072,
+      "list_ns": 123757.095,
+      "st_locate_ns": 3.31,
+      "st_list_ns": 150474.631,
+      "output": 728328.6,
+      "ranges": 7545.356
+     },
+     {
+      "decile": 4,
+      "queries": 2000,
+      "output_min": 849353,
+      "output_max": 1035123,
+      "locate_ns": 9.899,
+      "list_ns": 149714.375,
+      "st_locate_ns": 3.21,
+      "st_list_ns": 205029.685,
+      "output": 1001611.312,
+      "ranges": 4217.86
+     },
+     {
+      "decile": 5,
+      "queries": 2000,
+      "output_min": 1035123,
+      "output_max": 1277265,
+      "locate_ns": 9.348,
+      "list_ns": 179217.389,
+      "st_locate_ns": 3.263,
+      "st_list_ns": 244507.359,
+      "output": 1195057.791,
+      "ranges": 5225.905
+     },
+     {
+      "decile": 6,
+      "queries": 2000,
+      "output_min": 1277265,
+      "output_max": 1595419,
+      "locate_ns": 9.884,
+      "list_ns": 195539.842,
+      "st_locate_ns": 3.392,
+      "st_list_ns": 311365.997,
+      "output": 1507767.573,
+      "ranges": 1.0
+     },
+     {
+      "decile": 7,
+      "queries": 2000,
+      "output_min": 1595419,
+      "output_max": 2107689,
+      "locate_ns": 9.495,
+      "list_ns": 236241.701,
+      "st_locate_ns": 3.408,
+      "st_list_ns": 375284.795,
+      "output": 1819793.26,
+      "ranges": 1.0
+     },
+     {
+      "decile": 8,
+      "queries": 2000,
+      "output_min": 2107689,
+      "output_max": 2107689,
+      "locate_ns": 8.877,
+      "list_ns": 273447.704,
+      "st_locate_ns": 3.001,
+      "st_list_ns": 432223.76,
+      "output": 2107689.0,
+      "ranges": 1.0
+     },
+     {
+      "decile": 9,
+      "queries": 2000,
+      "output_min": 2107689,
+      "output_max": 2107689,
+      "locate_ns": 9.211,
+      "list_ns": 273411.877,
+      "st_locate_ns": 2.913,
+      "st_list_ns": 431425.314,
+      "output": 2107689.0,
+      "ranges": 1.0
+     }
+    ],
+    "by_size": [
+     {
+      "s": 2,
+      "active": 2140198,
+      "nodes": 14635,
+      "runs": 1,
+      "queries": 5000,
+      "locate_ns": 15.105,
+      "list_ns": 155927.367,
+      "st_locate_ns": 9.226,
+      "st_list_ns": 252391.548,
+      "output": 1173873.318,
+      "ranges": 1.0
+     },
+     {
+      "s": 3,
+      "active": 1041170,
+      "nodes": 2388,
+      "runs": 16968,
+      "queries": 5000,
+      "locate_ns": 15.571,
+      "list_ns": 122600.641,
+      "st_locate_ns": 7.105,
+      "st_list_ns": 136242.706,
+      "output": 589615.097,
+      "ranges": 14873.972
+     },
+     {
+      "s": 4,
+      "active": 524234,
+      "nodes": 2431,
+      "runs": 126360,
+      "queries": 5000,
+      "locate_ns": 16.352,
+      "list_ns": 136563.58,
+      "st_locate_ns": 6.05,
+      "st_list_ns": 73503.161,
+      "output": 281680.19,
+      "ranges": 105677.203
+     },
+     {
+      "s": 5,
+      "active": 269735,
+      "nodes": 2797,
+      "runs": 157921,
+      "queries": 5000,
+      "locate_ns": 17.301,
+      "list_ns": 109327.291,
+      "st_locate_ns": 6.119,
+      "st_list_ns": 24701.046,
+      "output": 143973.401,
+      "ranges": 104470.234
+     },
+     {
+      "s": 6,
+      "active": 138605,
+      "nodes": 2631,
+      "runs": 109389,
+      "queries": 5000,
+      "locate_ns": 17.673,
+      "list_ns": 61947.883,
+      "st_locate_ns": 5.874,
+      "st_list_ns": 7117.725,
+      "output": 72027.288,
+      "ranges": 61478.753
+     },
+     {
+      "s": 8,
+      "active": 36043,
+      "nodes": 1575,
+      "runs": 30730,
+      "queries": 5000,
+      "locate_ns": 16.374,
+      "list_ns": 14679.061,
+      "st_locate_ns": 6.194,
+      "st_list_ns": 1458.378,
+      "output": 16894.165,
+      "ranges": 14687.589
+     },
+     {
+      "s": 10,
+      "active": 8587,
+      "nodes": 685,
+      "runs": 6741,
+      "queries": 5000,
+      "locate_ns": 16.526,
+      "list_ns": 2228.915,
+      "st_locate_ns": 5.286,
+      "st_list_ns": 143.954,
+      "output": 2640.087,
+      "ranges": 2186.738
+     },
+     {
+      "s": 12,
+      "active": 2113,
+      "nodes": 240,
+      "runs": 1265,
+      "queries": 5000,
+      "locate_ns": 15.783,
+      "list_ns": 166.691,
+      "st_locate_ns": 6.152,
+      "st_list_ns": 23.131,
+      "output": 182.596,
+      "ranges": 129.934
+     },
+     {
+      "s": 16,
+      "active": 425,
+      "nodes": 57,
+      "runs": 182,
+      "queries": 5000,
+      "locate_ns": 14.265,
+      "list_ns": 48.117,
+      "st_locate_ns": 4.963,
+      "st_list_ns": 12.922,
+      "output": 33.599,
+      "ranges": 14.312
+     },
+     {
+      "s": 20,
+      "active": 252,
+      "nodes": 31,
+      "runs": 92,
+      "queries": 5000,
+      "locate_ns": 14.757,
+      "list_ns": 42.542,
+      "st_locate_ns": 4.911,
+      "st_list_ns": 12.352,
+      "output": 31.6,
+      "ranges": 11.535
+     },
+     {
+      "s": 24,
+      "active": 122,
+      "nodes": 9,
+      "runs": 33,
+      "queries": 5000,
+      "locate_ns": 12.548,
+      "list_ns": 33.353,
+      "st_locate_ns": 2.705,
+      "st_list_ns": 8.745,
+      "output": 30.926,
+      "ranges": 7.913
+     }
+    ]
+   }
+  }
+ ],
+ "finished": "2026-10-03T15:44:07.068446+00:00"
+}

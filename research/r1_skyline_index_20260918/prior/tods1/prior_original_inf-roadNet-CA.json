@@ -1,0 +1,37 @@
+{
+ "graph": "/data/wenqianz/graphs/inf-roadNet-CA.edges",
+ "n": 1957027,
+ "s_max": 4,
+ "binary": "/data/wenqianz/pivoter_repo/build/bin/degeneracy_cliques",
+ "mode": "original NCliqueVertexCoreDecomposition",
+ "started": "2026-10-03T15:44:07",
+ "sizes": [
+  {
+   "s": 2,
+   "rc": 0,
+   "build_ms": 1354.18,
+   "peel_ms": 2130.28,
+   "wall_s": 6.82,
+   "peak_rss_bytes": 1230061568
+  },
+  {
+   "s": 3,
+   "rc": 0,
+   "build_ms": 534.209,
+   "peel_ms": 552.163,
+   "wall_s": 3.99,
+   "peak_rss_bytes": 689721344
+  },
+  {
+   "s": 4,
+   "rc": 0,
+   "build_ms": 411.282,
+   "peel_ms": 361.289,
+   "wall_s": 3.45,
+   "peak_rss_bytes": 632721408
+  }
+ ],
+ "total_wall_s": 14.260000000000002,
+ "total_inproc_ms": 5343.403,
+ "sizes_ok": 3
+}

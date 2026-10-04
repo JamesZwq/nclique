@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=tail CHAIN_TREEPASS=fast /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/sc-msdoor.edges
+{"n":404785,"solver":"tail","treepass":"fast","count_bits":64,"chains":7187,"canonical_nodes":5018,"index_bytes":1756811,"build_form_bytes":2412012,"compact_ms":1.48874,"bytes_map":104656,"bytes_chains":999720,"bytes_layers":652435,"ti_ms":3212.6,"ti_bytes":533980780,"rss_loaded":87150592,"rss_with_ti":634015744,"rss_start":634015744,"rss_after_solve":697864192,"rss_after_chains":697864192,"rss_after_layout":698400768,"solve_ms":5734.43,"trees_ms":7921.37,"chains_ms":2.85765,"layout_ms":22.1617,"build_ms":13716}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/sc-msdoor.edges"
+	User time (seconds): 20.72
+	System time (seconds): 0.61
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:21.34
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 800032
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 337626
+	Voluntary context switches: 1
+	Involuntary context switches: 26
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

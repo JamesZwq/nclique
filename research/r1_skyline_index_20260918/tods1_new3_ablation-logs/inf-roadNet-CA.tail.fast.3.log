@@ -1,0 +1,25 @@
+$ CHAIN_SOLVER=tail CHAIN_TREEPASS=fast /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/inf-roadNet-CA.edges
+{"n":1957027,"solver":"tail","treepass":"fast","count_bits":64,"chains":89728,"canonical_nodes":90063,"index_bytes":4416797,"build_form_bytes":5408644,"compact_ms":1.63125,"bytes_map":725868,"bytes_chains":1795526,"bytes_layers":1895403,"ti_ms":557.49,"ti_bytes":132793392,"rss_loaded":112037888,"rss_with_ti":213696512,"rss_start":213696512,"rss_after_solve":434638848,"rss_after_chains":403390464,"rss_after_layout":403390464,"solve_ms":69.3297,"trees_ms":591.079,"chains_ms":14.6908,"layout_ms":20.6515,"build_ms":742.367}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --build-only /data/wenqianz/graphs/inf-roadNet-CA.edges"
+	User time (seconds): 3.12
+	System time (seconds): 0.27
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:03.39
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 465552
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 170753
+	Voluntary context switches: 1
+	Involuntary context switches: 12
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

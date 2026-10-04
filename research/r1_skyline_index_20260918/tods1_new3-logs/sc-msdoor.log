@@ -1,0 +1,25 @@
+$ /usr/bin/time -v /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/sc-msdoor.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/sc-msdoor.cx
+{"passed":true,"solver":"tail","treepass":"fast","n":404785,"m":9378650,"s_max":35,"count_bits":64,"chains":7187,"canonical_nodes":5018,"max_depth":195,"pairs_total":137755,"runs_total":67139,"vertex_pairs":7975327,"vertex_residue_cells":7795636,"baseline_vertex_bytes":131935066,"bytes_map":104656,"bytes_chains":999720,"bytes_layers":652435,"bytes_total":1756811,"file_bytes":1738246,"perm_bytes":1619140,"slice_bytes_layers":671452,"slice_bytes_total":2412012,"solve_ms":5628.987,"trees_ms":7812.948,"chains_ms":2.904,"layout_ms":22.381,"build_ms":13503.048,"compact_ms":2.001,"save_ms":2.269,"load_ms":0.619,"ti_ms":3192.241,"ti_bytes":533980780,"rss_start":633913344,"rss_after_solve":697737216,"rss_after_chains":697737216,"rss_after_layout":698273792,"slice_range_own_ns":5064.505,"slice_range_half_ns":12732.144,"slice_range_root_ns":18177.922,"slice_explicit_own_ns":40864.677,"slice_explicit_half_ns":64253.481,"slice_explicit_root_ns":123454.318,"slice_own_ranges":544.195,"slice_half_ranges":1202.438,"slice_root_ranges":2139.211,"full_bytes_total":1782264,"full_bytes_layers":677888,"full_range_own_ns":309.484,"full_range_half_ns":722.793,"full_range_root_ns":1075.096,"full_explicit_own_ns":35241.944,"full_climb_own_ns":9.446,"full_climb_half_ns":64.676,"full_climb_root_ns":23.687,"full_ptr_own_ns":14.293,"full_ptr_half_ns":75.868,"full_ptr_root_ns":36.699,"full_value_ns":20.657,"climb_own_ns":15.514,"climb_half_ns":71.998,"climb_root_ns":26.760,"slice_climb_own_ns":9.162,"slice_climb_half_ns":66.547,"slice_climb_root_ns":23.494,"ptr_own_ns":19.066,"ptr_half_ns":75.246,"ptr_root_ns":29.075,"ptr_checksum":16948228300,"range_own_ns":312.022,"range_half_ns":668.000,"range_root_ns":1086.541,"explicit_own_ns":34371.159,"explicit_half_ns":51119.357,"explicit_root_ns":60471.522,"own_output":162210.638,"half_output":259280.379,"root_output":285003.253,"own_ranges":544.195,"half_ranges":1202.438,"root_ranges":2139.211,"own_chains":544.195,"half_chains":1202.438,"root_chains":2139.211,"value_ns":16.709,"value_checksum":0}
+	Command being timed: "/data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/build/chain_index_tool --bench /data/wenqianz/graphs/sc-msdoor.edges /data/wenqianz/pivoter_repo/research/r1_skyline_index_20260918/cx/sc-msdoor.cx"
+	User time (seconds): 52.34
+	System time (seconds): 0.70
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:53.06
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 799904
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 340825
+	Voluntary context switches: 1
+	Involuntary context switches: 1013
+	Swaps: 0
+	File system inputs: 246232
+	File system outputs: 6568
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
